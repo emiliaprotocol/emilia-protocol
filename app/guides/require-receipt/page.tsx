@@ -26,7 +26,9 @@ npm install --save-exact @emilia-protocol/mcp-guard@0.6.0
 npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action release_payment --apply --verify
 
 # only after reading the generated map and manifest, bind the reviewed bytes
-npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action release_payment --reviewed`;
+# and initialize one explicitly unsealed Crossing Lab workspace
+npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action release_payment --reviewed \
+  --crossing-profile ccs-wang-draft08-v13`;
 
 const MANIFEST = `{
   "@version": "EP-ACTION-CONTROL-MANIFEST-v0.2",

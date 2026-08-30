@@ -37,6 +37,11 @@ const MCP_GUARD_VERSION = '0.6.0';
 const MCP_GUARD_INSTALL_SPEC = `@emilia-protocol/mcp-guard@${MCP_GUARD_VERSION}`;
 const GATE_STARTER_MARKER_FILE = '.emilia-gate-starter.json';
 const GATE_STARTER_MARKER_VERSION = 'EP-GATE-STARTER-v1';
+const CROSSING_PROFILES = new Set([
+  'ccs-wang-draft08-v13',
+  'cedulon-aeb-crossing-v0.1',
+  'pinto-cbap1-aeb-v0.1',
+]);
 const GATE_STARTER_BOUND_FILES = Object.freeze([
   'action-control.manifest.json',
   'authority-map.html',
@@ -62,6 +67,12 @@ function sourceSafeCliValue(value, label, maxLength = 4_096) {
     console.error(`${label} contains unsupported or source-confusing characters`);
     process.exit(64);
   }
+  return value;
+}
+
+/** @param {string | null} value @param {string} label @returns {string} */
+function requireParsedCliValue(value, label) {
+  if (value === null) throw new Error(`internal invariant: ${label} was not parsed`);
   return value;
 }
 
@@ -210,7 +221,10 @@ let sample = false;
 let verify = false;
 let reviewed = false;
 let selectedTool = null;
+let crossingProfile = null;
+let crossingOut = null;
 let outSeen = false;
+let crossingOutSeen = false;
 const positionals = [];
 for (let index = 0; index < args.length; index += 1) {
   const arg = args[index];
@@ -234,6 +248,33 @@ for (let index = 0; index < args.length; index += 1) {
     }
     if (selectedTool !== null) { console.error('exactly one --action may be selected'); process.exit(64); }
     selectedTool = sourceSafeCliValue(candidate, '--action tool name', 256);
+    index += 1;
+    continue;
+  }
+  if (arg === '--crossing-profile') {
+    const candidate = args[index + 1];
+    if (!candidate || candidate.startsWith('-')) {
+      console.error('--crossing-profile requires a launch profile id');
+      process.exit(2);
+    }
+    if (crossingProfile !== null) { console.error('duplicate option: --crossing-profile'); process.exit(64); }
+    crossingProfile = sourceSafeCliValue(candidate, '--crossing-profile', 128);
+    if (!CROSSING_PROFILES.has(crossingProfile)) {
+      console.error(`unsupported crossing profile: ${terminalSafe(crossingProfile)}`);
+      process.exit(64);
+    }
+    index += 1;
+    continue;
+  }
+  if (arg === '--crossing-out') {
+    const candidate = args[index + 1];
+    if (!candidate || candidate.startsWith('-')) {
+      console.error('--crossing-out requires a value');
+      process.exit(2);
+    }
+    if (crossingOutSeen) { console.error('duplicate option: --crossing-out'); process.exit(64); }
+    crossingOutSeen = true;
+    crossingOut = sourceSafeCliValue(candidate, '--crossing-out', 128);
     index += 1;
     continue;
   }
@@ -281,7 +322,23 @@ if (reviewed && selectedTool === null) {
   console.error('--reviewed requires exactly one --action');
   process.exit(64);
 }
+if (reviewed && crossingProfile === null) {
+  console.error('--reviewed requires --crossing-profile with one supported launch profile');
+  process.exit(64);
+}
+if (!reviewed && (crossingProfile !== null || crossingOut !== null)) {
+  console.error('--crossing-profile and --crossing-out are valid only with --reviewed');
+  process.exit(64);
+}
+if (reviewed && crossingOut === null) crossingOut = `${outDir}-crossing-lab`;
 assertAllowedOutputRoot(outDir);
+if (crossingOut !== null) {
+  assertAllowedOutputRoot(crossingOut);
+  if (crossingOut === outDir) {
+    console.error('--crossing-out must differ from the Gate Starter directory');
+    process.exit(64);
+  }
+}
 
 let input;
 let inputReference;
@@ -292,7 +349,7 @@ if (sample) {
 else {
   const file = positionals[0];
   if (!file) {
-    console.error('usage: codemod.mjs <actions.json|--sample> [--out dir] [--action tool] [--apply] [--verify] [--force] | <input> --action tool --reviewed');
+    console.error('usage: codemod.mjs <actions.json|--sample> [--out dir] [--action tool] [--apply] [--verify] [--force] | <input> --action tool --reviewed --crossing-profile profile [--crossing-out dir]');
     process.exit(2);
   }
   input = ingest(file);
@@ -502,12 +559,14 @@ export { manifest };
 const verifySetupJs = `// SPDX-License-Identifier: Apache-2.0
 // GENERATED local setup check. It performs no network request and only invokes
 // its own synthetic handler. Ephemeral state here is intentional and demo-only.
-// It writes nothing unless --emit-handoff is explicit, and then only creates
-// scan-adoption-handoff.json beside this file without replacing existing bytes.
+// It writes nothing unless --emit-handoff is explicit. A reviewed launch-profile
+// selection then creates an owner-only seed, an unsealed Lab workspace, and the
+// adoption handoff without replacing existing bytes.
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
 import {
   closeSync,
+  existsSync,
   fsyncSync,
   linkSync,
   openSync,
@@ -515,7 +574,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bindToolAction } from '@emilia-protocol/mcp-guard';
 import { guardDispatchDemo, protectionSelection } from './guard.mjs';
@@ -577,6 +636,8 @@ const cli = {
   expectedSurfaceDigest: null,
   reviewedManifestDigest: null,
   selectedTools: [],
+  crossingProfile: null,
+  crossingOut: null,
 };
 const argv = process.argv.slice(2);
 for (let i = 0; i < argv.length; i += 1) {
@@ -619,6 +680,26 @@ for (let i = 0; i < argv.length; i += 1) {
     i += 1;
     continue;
   }
+  if (arg === '--crossing-profile') {
+    const value = argv[i + 1];
+    if (!value || !${JSON.stringify([...CROSSING_PROFILES])}.includes(value)) {
+      throw new Error('a supported launch profile is required after --crossing-profile');
+    }
+    if (cli.crossingProfile !== null) throw new Error('crossing profile may be supplied only once');
+    cli.crossingProfile = value;
+    i += 1;
+    continue;
+  }
+  if (arg === '--crossing-out') {
+    const value = argv[i + 1];
+    if (!value || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value)) {
+      throw new Error('a portable direct-child directory is required after --crossing-out');
+    }
+    if (cli.crossingOut !== null) throw new Error('crossing output may be supplied only once');
+    cli.crossingOut = value;
+    i += 1;
+    continue;
+  }
   throw new Error('unknown verify-setup option');
 }
 if (cli.selectedTools.length > 32) throw new Error('at most 32 actions may be selected');
@@ -632,6 +713,12 @@ if (cli.acknowledgeReviewedManifest && !cli.emitHandoff) {
 if (cli.requireGeneratedSelection && !cli.emitHandoff) {
   throw new Error('--require-generated-selection requires --emit-handoff');
 }
+if ((cli.crossingProfile === null) !== (cli.crossingOut === null)) {
+  throw new Error('--crossing-profile and --crossing-out must be supplied together');
+}
+if (cli.crossingProfile !== null && !cli.emitHandoff) {
+  throw new Error('Crossing Lab generation requires --emit-handoff');
+}
 
 const visibleConsequential = [];
 const visibleByTool = new Map();
@@ -643,12 +730,19 @@ for (const action of Array.isArray(manifest?.actions) ? manifest.actions : []) {
     throw new Error('reviewed manifest has an invalid visible consequential action');
   }
   if (visibleByTool.has(tool)) throw new Error('reviewed manifest has duplicate visible consequential actions');
+  const materialFields = action?.execution_binding?.required_fields;
+  if (!Array.isArray(materialFields) || materialFields.length === 0 || materialFields.length > 64
+      || !materialFields.every((field) => typeof field === 'string' && field.length > 0 && field.length <= 256)
+      || new Set(materialFields).size !== materialFields.length || !materialFields.includes('action_type')) {
+    throw new Error('reviewed manifest has invalid material fields for a consequential action');
+  }
   const selected = {
     id: String(action.id),
     selector: { protocol: 'mcp', tool },
     action_type: String(action.action_type),
     assurance_class: String(action.assurance_class),
     receipt_required: true,
+    material_fields: materialFields,
   };
   visibleConsequential.push(selected);
   visibleByTool.set(tool, selected);
@@ -680,6 +774,7 @@ const selectedActions = cli.selectedTools.map((tool) => {
   if (!action) throw new Error('selected tool is not a visible consequential action in the reviewed manifest');
   return action;
 });
+const handoffSelectedActions = selectedActions.map(({ material_fields: _materialFields, ...action }) => action);
 
 if (cli.emitHandoff) {
   if (cli.acknowledgeReviewedManifest) cli.reviewedManifestDigest = manifestDigest;
@@ -688,6 +783,9 @@ if (cli.emitHandoff) {
   }
   if (cli.reviewedManifestDigest !== manifestDigest) throw new Error('reviewed manifest digest does not match the current manifest bytes');
   if (selectedActions.length === 0) throw new Error('at least one visible consequential action must be explicitly selected');
+  if (cli.crossingProfile !== null && selectedActions.length !== 1) {
+    throw new Error('Crossing Lab generation requires exactly one reviewed consequential action');
+  }
 }
 
 let syntheticHandlerCalls = 0;
@@ -837,9 +935,34 @@ console.log('Manifest digest to review: ' + manifestDigest);
 console.log('Generated scaffold digest: ' + scaffoldDigest);
 console.log('RR-1 results digest: ' + rr1ResultsDigest);
 
+function createOwnerOnlyJson(target, value) {
+  const bytes = Buffer.from(JSON.stringify(value, null, 2) + '\\n', 'utf8');
+  const temp = join(dirname(target), '.' + basename(target) + '.' + process.pid + '.' + randomUUID() + '.tmp');
+  let fd;
+  try {
+    fd = openSync(temp, 'wx', 0o600);
+    writeFileSync(fd, bytes);
+    fsyncSync(fd);
+    closeSync(fd);
+    fd = undefined;
+    linkSync(temp, target);
+    unlinkSync(temp);
+    return bytes;
+  } catch (error) {
+    if (fd !== undefined) closeSync(fd);
+    try { unlinkSync(temp); } catch (cleanupError) {
+      if (cleanupError.code !== 'ENOENT') throw cleanupError;
+    }
+    if (error.code === 'EEXIST') throw new Error('Refusing to overwrite existing generated adoption artifact');
+    throw error;
+  }
+}
+
 if (cli.emitHandoff) {
   const handoff = {
-    '@version': 'EP-SCAN-ADOPTION-HANDOFF-v2',
+    '@version': cli.crossingProfile === null
+      ? 'EP-SCAN-ADOPTION-HANDOFF-v2'
+      : 'EP-SCAN-ADOPTION-HANDOFF-v3',
     reviewed_manifest: {
       file: manifestFile,
       sha256: manifestDigest,
@@ -848,7 +971,7 @@ if (cli.emitHandoff) {
       sha256: scaffoldDigest,
       files: scaffoldFiles,
     },
-    selected_actions: selectedActions,
+    selected_actions: handoffSelectedActions,
     local_refusal: {
       status: 'passed',
       claim: 'selected synthetic calls were refused by the generated local demo wrapper before the supplied handler',
@@ -898,25 +1021,67 @@ if (cli.emitHandoff) {
     },
   };
   const target = join(here, 'scan-adoption-handoff.json');
-  const temp = join(here, '.scan-adoption-handoff.' + process.pid + '.' + randomUUID() + '.tmp');
-  let fd;
-  try {
-    fd = openSync(temp, 'wx', 0o600);
-    writeFileSync(fd, JSON.stringify(handoff, null, 2) + '\\n', 'utf8');
-    fsyncSync(fd);
-    closeSync(fd);
-    fd = undefined;
-    linkSync(temp, target);
-    unlinkSync(temp);
-  } catch (error) {
-    if (fd !== undefined) closeSync(fd);
-    try { unlinkSync(temp); } catch (cleanupError) {
-      if (cleanupError.code !== 'ENOENT') throw cleanupError;
-    }
-    if (error.code === 'EEXIST') throw new Error('Refusing to overwrite existing handoff');
-    throw error;
+  const seedTarget = join(here, 'scan-crossing-seed.json');
+  const workspaceTarget = cli.crossingOut === null ? null : resolve(process.cwd(), cli.crossingOut);
+  if (existsSync(target)) throw new Error('Refusing to overwrite existing handoff');
+  if (cli.crossingProfile !== null && (existsSync(seedTarget) || existsSync(workspaceTarget))) {
+    throw new Error('Refusing to overwrite existing Crossing Lab seed or workspace');
   }
+  let workspaceCreated = false;
+  if (cli.crossingProfile !== null) {
+    const selectedAction = selectedActions[0];
+    const {
+      CROSSING_LAB_VERIFY_VERSION,
+      crossingLabScanProfileContract,
+      initCrossingLabFromScanSeed,
+    } = await import('@emilia-protocol/verify/crossing-lab');
+    const seed = {
+      '@version': 'EP-SCAN-CROSSING-SEED-v1',
+      verify_version: CROSSING_LAB_VERIFY_VERSION,
+      profile_id: cli.crossingProfile,
+      profile_contract: crossingLabScanProfileContract(cli.crossingProfile),
+      profile_compatibility: 'UNVERIFIED_OPERATOR_CONFIRMATION_REQUIRED',
+      reviewed_manifest: {
+        file: manifestFile,
+        sha256: manifestDigest,
+      },
+      generated_scaffold_sha256: scaffoldDigest,
+      local_rr1_results_digest: rr1ResultsDigest,
+      selected_action: selectedAction,
+      selected_action_digest: 'sha256:' + createHash('sha256')
+        .update(Buffer.from(canonicalize(selectedAction), 'utf8'))
+        .digest('hex'),
+      operator_confirmation: {
+        status: 'required',
+        workspace_state: 'unsealed',
+        required_inputs: [
+          'native_artifact',
+          'adapter_bytes',
+          'trust_roots',
+          'status_source',
+          'relying_party_id',
+          'exact_material_fields',
+          'profile_compatibility_confirmation',
+        ],
+      },
+    };
+    const seedBytes = createOwnerOnlyJson(seedTarget, seed);
+    initCrossingLabFromScanSeed(seedTarget, workspaceTarget);
+    workspaceCreated = true;
+    handoff.crossing_seed = {
+      file: 'scan-crossing-seed.json',
+      sha256: 'sha256:' + createHash('sha256').update(seedBytes).digest('hex'),
+    };
+  }
+  // Deliberately avoid pathname-based rollback. If a later safe-create fails,
+  // already-created owner-only artifacts remain for operator inspection rather
+  // than risking deletion of a concurrent replacement.
+  createOwnerOnlyJson(target, handoff);
   console.log('Created owner-only scan-adoption-handoff.json beside the reviewed Gate Starter.');
+  if (workspaceCreated) {
+    console.log('Created an unsealed Crossing Lab workspace at ' + workspaceTarget + '.');
+    console.log('Operator-supplied native evidence, adapter bytes, trust roots, status, relying party, and material values are still required.');
+  }
 }
 `;
 
@@ -956,14 +1121,14 @@ const dispatch = guardDispatch(rawDispatch, {
 
 \`\`\`bash
 ${selectedContract
-    ? `npx ${SCAN_INSTALL_SPEC} protect ${inputReference === '--sample' ? '--sample' : posixQuote(inputReference.startsWith('-') ? `./${inputReference}` : inputReference)} --out ${posixQuote(outDir)} --action ${posixQuote(selectedContract.tool)} --reviewed`
+    ? `npx ${SCAN_INSTALL_SPEC} protect ${inputReference === '--sample' ? '--sample' : posixQuote(inputReference.startsWith('-') ? `./${inputReference}` : inputReference)} --out ${posixQuote(outDir)} --action ${posixQuote(selectedContract.tool)} --reviewed --crossing-profile <launch-profile>`
     : `node ${outDir}/verify-setup.mjs --emit-handoff --acknowledge-reviewed-manifest --action <reviewed-tool-name>`}
 \`\`\`
 
    The command validates the existing manifest against the current input,
-   reruns RR-1, and creates owner-only
-   \`${outDir}/scan-adoption-handoff.json\` without overwriting the starter or an
-   existing handoff. It includes no tool arguments, credentials, ambient
+   reruns RR-1, and creates an owner-only handoff and seed plus an explicitly
+   unsealed Crossing Lab workspace without overwriting existing artifacts. The
+   seed includes no tool arguments, credentials, ambient
    identity, host data, timestamps, or paths outside this output directory.
    If you edited the manifest during review, use the explicit
    \`verify-setup.mjs --reviewed-manifest-digest ...\` path so the exact edited
@@ -1018,6 +1183,9 @@ console.log(`\n${B}EMILIA codemod — ${input.source} surface, ${rep.counts.tota
   `(${rep.counts.gate} gated, ${rep.counts.review_fail_closed} fail-closed for review)${R}`);
 
 if (reviewed) {
+  const reviewedSelectedTool = requireParsedCliValue(selectedTool, 'reviewed selected tool');
+  const reviewedCrossingProfile = requireParsedCliValue(crossingProfile, 'reviewed crossing profile');
+  const reviewedCrossingOut = requireParsedCliValue(crossingOut, 'reviewed crossing output');
   const outAbsolute = path.resolve(outDir);
   const relativeOut = path.relative(process.cwd(), outAbsolute);
   if (relativeOut.startsWith('..') || path.isAbsolute(relativeOut)
@@ -1050,7 +1218,7 @@ if (reviewed) {
     console.error(`${Y}Reviewed shortcut requires an existing selected-action Gate Starter.${R}`);
     process.exit(1);
   }
-  if (existingMarker.selected_action !== selectedTool) {
+  if (existingMarker.selected_action !== reviewedSelectedTool) {
     console.error(`${Y}Selected tool does not match the generated Gate Starter.${R}`);
     process.exit(1);
   }
@@ -1092,7 +1260,11 @@ if (reviewed) {
     '--expected-surface-digest',
     declaredSurfaceDigest,
     '--action',
-    selectedTool,
+    reviewedSelectedTool,
+    '--crossing-profile',
+    reviewedCrossingProfile,
+    '--crossing-out',
+    reviewedCrossingOut,
   ], { cwd: process.cwd(), stdio: 'inherit' });
   if (verified.error) throw verified.error;
   if (verified.status !== 0) {
@@ -1212,11 +1384,12 @@ try {
   throw error;
 }
 if (verify) {
+  const verifiedSelectedTool = requireParsedCliValue(selectedTool, 'verified selected tool');
   console.log(`\n${B}Running the selected action's local four-case RR-1 check.${R}`);
   const checked = spawnSync(process.execPath, [
     path.resolve(outDir, 'verify-setup.mjs'),
     '--action',
-    selectedTool,
+    verifiedSelectedTool,
     '--expected-surface-digest',
     declaredSurfaceDigest,
   ], { cwd: process.cwd(), stdio: 'inherit' });

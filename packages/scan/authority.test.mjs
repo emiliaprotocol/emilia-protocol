@@ -36,7 +36,7 @@ test('authority reports the package release version from package metadata', () =
   const cwd = join(home, 'project');
   mkdirSync(cwd, { recursive: true });
   assert.equal(AUTHORITY_SCAN_VERSION, packageVersion);
-  assert.equal(packageMetadata.dependencies['@emilia-protocol/verify'], '^3.21.0');
+  assert.equal(packageMetadata.dependencies['@emilia-protocol/verify'], '3.21.0');
   assert.equal(runAuthorityScan({
     cwd,
     home,

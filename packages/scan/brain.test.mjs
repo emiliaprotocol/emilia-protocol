@@ -60,7 +60,7 @@ test('renders a self-contained Authority Brain from the real scanActions report'
   assert.equal(model.actions[0].verifyCommand, null);
   assert.match(model.actions[0].handoffCommand, /scan@0\.5\.0 protect '\.\/tools\.json'/);
   assert.match(model.actions[0].handoffCommand, /--action 'sendWire'/);
-  assert.match(model.actions[0].handoffCommand, /--reviewed$/);
+  assert.match(model.actions[0].handoffCommand, /--reviewed --crossing-profile '<launch-profile>'$/);
   assert.deepEqual(model.blindSpots, [
     'Runtime-registered tools are not visible.',
     'Whether every execution path reaches a credential-owning Gate. Complete mediation must be verified after integration.',
@@ -85,7 +85,7 @@ test('an embedded selected-action map suppresses regeneration and exposes only i
 
   assert.equal(selected.protectCommand, null);
   assert.equal(selected.starterSelectedAction, true);
-  assert.match(selected.handoffCommand, /scan@0\.5\.0 protect '\.\/tools\.json' --action 'sendWire' --reviewed$/);
+  assert.match(selected.handoffCommand, /scan@0\.5\.0 protect '\.\/tools\.json' --action 'sendWire' --reviewed --crossing-profile '<launch-profile>'$/);
   assert.equal(pending.protectCommand, null);
   assert.equal(pending.handoffCommand, null);
   assert.equal(pending.starterReviewPending, true);
@@ -158,6 +158,8 @@ test('pasteable commands keep hostile paths and visible action names inert under
     '--action',
     actionName,
     '--reviewed',
+    '--crossing-profile',
+    '<launch-profile>',
   ]);
   for (const injected of [
     'injected-input',

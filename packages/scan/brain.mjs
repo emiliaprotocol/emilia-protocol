@@ -218,7 +218,7 @@ function buildModel(report, {
         : null,
       verifyCommand: null,
       handoffCommand: handoffEligible
-        ? `npx ${SCAN_INSTALL_SPEC} protect ${protectTarget}${outputOption} --action ${posixQuote(action.name)} --reviewed`
+        ? `npx ${SCAN_INSTALL_SPEC} protect ${protectTarget}${outputOption} --action ${posixQuote(action.name)} --reviewed --crossing-profile '<launch-profile>'`
         : null,
       handoffLimitation: isMcp && receiptRequired && !reviewPendingInStarter && action.name.startsWith('-')
         ? 'The selected-action Gate Starter cannot safely select a leading-dash tool name. Rename that declared tool before generating the starter.'

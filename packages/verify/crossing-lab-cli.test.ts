@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdtempSync,
@@ -12,7 +13,13 @@ import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { initCrossingLab, sealCrossingLab } from './src/crossing-lab.js';
+import {
+  CROSSING_LAB_VERIFY_VERSION,
+  crossingLabScanProfileContract,
+  digestCrossingLab,
+  initCrossingLab,
+  sealCrossingLab,
+} from './src/crossing-lab.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CLI = resolve(HERE, 'cli.js');
@@ -34,6 +41,80 @@ function runCli(args: readonly string[]) {
     maxBuffer: 4 * 1024 * 1024,
   });
 }
+
+function scanSeedFixture(): { seed: string; target: string } {
+  const parent = mkdtempSync(join(tmpdir(), 'emilia-crossing-lab-cli-scan-'));
+  const manifest = {
+    actions: [{
+      id: 'discovered.sendwire',
+      action_type: 'payment.release.1',
+      assurance_class: 'class_a',
+      receipt_required: true,
+      match: { protocol: 'mcp', tool: 'sendWire' },
+      execution_binding: { required_fields: ['action_type', 'amount_usd'] },
+    }],
+  };
+  const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+  writeFileSync(join(parent, 'action-control.manifest.json'), manifestBytes);
+  const selectedAction = {
+    id: 'discovered.sendwire',
+    selector: { protocol: 'mcp', tool: 'sendWire' },
+    action_type: 'payment.release.1',
+    assurance_class: 'class_a',
+    receipt_required: true,
+    material_fields: ['action_type', 'amount_usd'],
+  };
+  const seedValue = {
+    '@version': 'EP-SCAN-CROSSING-SEED-v1',
+    verify_version: CROSSING_LAB_VERIFY_VERSION,
+    profile_id: 'ccs-wang-draft08-v13',
+    profile_contract: crossingLabScanProfileContract('ccs-wang-draft08-v13'),
+    profile_compatibility: 'UNVERIFIED_OPERATOR_CONFIRMATION_REQUIRED',
+    reviewed_manifest: {
+      file: 'action-control.manifest.json',
+      sha256: `sha256:${createHash('sha256').update(manifestBytes).digest('hex')}`,
+    },
+    generated_scaffold_sha256: `sha256:${'1'.repeat(64)}`,
+    local_rr1_results_digest: `sha256:${'2'.repeat(64)}`,
+    selected_action: selectedAction,
+    selected_action_digest: digestCrossingLab(selectedAction),
+    operator_confirmation: {
+      status: 'required',
+      workspace_state: 'unsealed',
+      required_inputs: [
+        'native_artifact',
+        'adapter_bytes',
+        'trust_roots',
+        'status_source',
+        'relying_party_id',
+        'exact_material_fields',
+        'profile_compatibility_confirmation',
+      ],
+    },
+  };
+  const seed = join(parent, 'scan-crossing-seed.json');
+  writeFileSync(seed, `${JSON.stringify(seedValue, null, 2)}\n`);
+  return { seed, target: join(parent, 'workspace') };
+}
+
+test('crossing-lab init-from-scan creates an unsealed workspace and rejects malformed operands', () => {
+  const fixture = scanSeedFixture();
+  const result = runCli(['crossing-lab', 'init-from-scan', fixture.seed, fixture.target]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /unsealed Crossing Lab workspace created/i);
+  assert.equal(existsSync(join(fixture.target, 'workspace.json')), true);
+
+  for (const args of [
+    ['crossing-lab', 'init-from-scan'],
+    ['crossing-lab', 'init-from-scan', fixture.seed],
+    ['crossing-lab', 'init-from-scan', '--seed', fixture.target],
+    ['crossing-lab', 'init-from-scan', fixture.seed, fixture.target, 'extra'],
+  ]) {
+    const invalid = runCli(args);
+    assert.equal(invalid.status, 1);
+    assert.match(invalid.stderr, /usage: verify crossing-lab init-from-scan/);
+  }
+});
 
 function workspaceWithDifferentPinnedCaid(): { root: string; candidateCaid: string; pinnedCaid: string } {
   const root = freshWorkspace();

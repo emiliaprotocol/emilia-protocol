@@ -52,7 +52,7 @@
     "test": "node --test test.js authority.test.mjs classification.test.mjs brain.test.mjs source.test.mjs packed-consumer.test.mjs"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^3.21.0"
+    "@emilia-protocol/verify": "3.21.0"
   },
   "repository": {
     "type": "git",

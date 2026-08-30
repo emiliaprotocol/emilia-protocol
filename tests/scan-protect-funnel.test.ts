@@ -45,7 +45,7 @@ describe('scan to protected MCP boundary funnel', () => {
     expect(guard).toContain('href="/guides/require-receipt"');
     expect(guard).toContain('href="/mcp"');
     expect(guard).toContain('href="/scan"');
-    expect(guide).toContain('npm install --save-exact @emilia-protocol/mcp-guard@0.5.0');
+    expect(guide).toContain('npm install --save-exact @emilia-protocol/mcp-guard@0.6.0');
     expect(guide).toContain('npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action release_payment --apply --verify');
     expect(guide).toContain('npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action release_payment --reviewed');
     expect(guide).toContain('durable provenance ledger');

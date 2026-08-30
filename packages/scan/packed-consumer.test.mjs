@@ -78,6 +78,7 @@ test('packed scan refuses missing runtime, then uses the exact audited guard in 
     '--no-audit',
     '--no-fund',
     scanTarball,
+    verifyTarball,
   ], {
     cwd: consumer,
     env: { ...process.env, npm_config_before: REGISTRY_CUTOFF },
@@ -130,7 +131,6 @@ test('packed scan refuses missing runtime, then uses the exact audited guard in 
     '--no-fund',
     guardTarball,
     requireReceiptTarball,
-    verifyTarball,
   ], {
     cwd: consumer,
     env: { ...process.env, npm_config_before: REGISTRY_CUTOFF },
@@ -189,12 +189,15 @@ test('packed scan refuses missing runtime, then uses the exact audited guard in 
     '--action',
     'rotateApiKey',
     '--reviewed',
+    '--crossing-profile',
+    'ccs-wang-draft08-v13',
     '--out',
     'emilia',
   ], { cwd: consumer });
   assert.match(reviewedOutput, /Reviewed handoff created without changing the Gate Starter/);
 
   const handoff = JSON.parse(readFileSync(join(consumer, 'emilia', 'scan-adoption-handoff.json'), 'utf8'));
+  assert.equal(handoff['@version'], 'EP-SCAN-ADOPTION-HANDOFF-v3');
   assert.deepEqual(
     handoff.selected_actions.map((action) => action.selector.tool),
     ['rotateApiKey'],

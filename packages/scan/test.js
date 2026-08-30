@@ -15,6 +15,7 @@ function installLocalMcpGuard(dir) {
   mkdirSync(scope, { recursive: true });
   cpSync(join(import.meta.dirname, '..', 'mcp-guard'), join(scope, 'mcp-guard'), { recursive: true });
   cpSync(join(import.meta.dirname, '..', 'require-receipt'), join(scope, 'require-receipt'), { recursive: true });
+  cpSync(join(import.meta.dirname, '..', 'verify'), join(scope, 'verify'), { recursive: true });
 }
 
 function expectedScaffoldBinding(dir) {
@@ -656,6 +657,8 @@ test('selected-action Gate Starter is two-stage, blocks every unselected runtime
     '--action',
     'sendWire',
     '--reviewed',
+    '--crossing-profile',
+    'ccs-wang-draft08-v13',
   ], { cwd: dir, encoding: 'utf8' });
   assert.equal(reviewed.status, 0, `${reviewed.stdout}\n${reviewed.stderr}`);
   assert.match(reviewed.stdout, /Reviewed handoff created without changing the Gate Starter/);
@@ -667,11 +670,87 @@ test('selected-action Gate Starter is two-stage, blocks every unselected runtime
   const handoffBytes = readFileSync(handoffPath);
   const overwrite = spawnSync(process.execPath, [
     join(import.meta.dirname, 'cli.mjs'),
-    'protect', input, '--action', 'sendWire', '--reviewed',
+    'protect', input, '--action', 'sendWire', '--reviewed', '--crossing-profile', 'ccs-wang-draft08-v13',
   ], { cwd: dir, encoding: 'utf8' });
   assert.notEqual(overwrite.status, 0);
   assert.match(`${overwrite.stdout}${overwrite.stderr}`, /refusing to overwrite existing handoff/i);
   assert.deepEqual(readFileSync(handoffPath), handoffBytes);
+});
+
+test('reviewed selected action requires an explicit launch profile and creates a bound unsealed Lab workspace', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'emilia-scan-crossing-seed-'));
+  const input = join(dir, 'tools.json');
+  writeFileSync(input, JSON.stringify([
+    { name: 'sendWire', description: 'Send an outgoing wire transfer' },
+    { name: 'getAccountBalance', description: 'Read the current balance' },
+  ]));
+  installLocalMcpGuard(dir);
+  const cli = join(import.meta.dirname, 'cli.mjs');
+  const apply = spawnSync(process.execPath, [
+    cli, 'protect', input, '--action', 'sendWire', '--apply',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(apply.status, 0, `${apply.stdout}\n${apply.stderr}`);
+
+  const missingProfile = spawnSync(process.execPath, [
+    cli, 'protect', input, '--action', 'sendWire', '--reviewed',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(missingProfile.status, 64);
+  assert.match(`${missingProfile.stdout}${missingProfile.stderr}`, /--reviewed requires --crossing-profile/);
+  assert.equal(existsSync(join(dir, 'emilia', 'scan-crossing-seed.json')), false);
+  assert.equal(existsSync(join(dir, 'emilia-crossing-lab')), false);
+
+  const reviewed = spawnSync(process.execPath, [
+    cli,
+    'protect',
+    input,
+    '--action',
+    'sendWire',
+    '--reviewed',
+    '--crossing-profile',
+    'ccs-wang-draft08-v13',
+  ], { cwd: dir, encoding: 'utf8' });
+  assert.equal(reviewed.status, 0, `${reviewed.stdout}\n${reviewed.stderr}`);
+  assert.match(reviewed.stdout, /unsealed Crossing Lab workspace/i);
+
+  const seedPath = join(dir, 'emilia', 'scan-crossing-seed.json');
+  const handoffPath = join(dir, 'emilia', 'scan-adoption-handoff.json');
+  const workspaceRoot = join(dir, 'emilia-crossing-lab');
+  const seed = JSON.parse(readFileSync(seedPath, 'utf8'));
+  const handoff = JSON.parse(readFileSync(handoffPath, 'utf8'));
+  const workspace = JSON.parse(readFileSync(join(workspaceRoot, 'workspace.json'), 'utf8'));
+
+  assert.equal(seed['@version'], 'EP-SCAN-CROSSING-SEED-v1');
+  assert.equal(seed.verify_version, '3.21.0');
+  assert.equal(seed.profile_id, 'ccs-wang-draft08-v13');
+  assert.deepEqual(seed.profile_contract, {
+    action_type: 'agent.tool-invocation.1',
+    material_fields: ['action_type', 'parameters'],
+  });
+  assert.equal(seed.profile_compatibility, 'UNVERIFIED_OPERATOR_CONFIRMATION_REQUIRED');
+  assert.equal(seed.operator_confirmation.required_inputs.includes('profile_compatibility_confirmation'), true);
+  assert.deepEqual(seed.selected_action.material_fields, [
+    'action_type',
+    'amount_usd',
+    'currency',
+    'payment_instruction_id',
+    'beneficiary_account_hash',
+  ]);
+  assert.equal(seed.reviewed_manifest.sha256, handoff.reviewed_manifest.sha256);
+  assert.deepEqual(handoff.crossing_seed, {
+    file: 'scan-crossing-seed.json',
+    sha256: sha256(readFileSync(seedPath)),
+  });
+  assert.deepEqual(readdirSync(workspaceRoot).sort(), ['adapter.mjs', 'artifact.json', 'workspace.json']);
+  assert.equal(workspace['@version'], 'EP-AEB-CROSSING-LAB-DRAFT-v1');
+  assert.equal(workspace.state, 'UNSEALED_OPERATOR_INPUT_REQUIRED');
+  assert.equal(workspace.verify_version, '3.21.0');
+  assert.deepEqual(workspace.profile_contract, seed.profile_contract);
+  assert.equal(workspace.profile_compatibility, 'UNVERIFIED_OPERATOR_CONFIRMATION_REQUIRED');
+  assert.equal(workspace.source_seed.sha256, handoff.crossing_seed.sha256);
+  assert.deepEqual(workspace.selected_action, seed.selected_action);
+  assert.equal(handoff['@version'], 'EP-SCAN-ADOPTION-HANDOFF-v3');
+  assert.equal(statSync(seedPath).mode & 0o777, 0o600);
+  assert.equal(statSync(join(workspaceRoot, 'workspace.json')).mode & 0o777, 0o600);
 });
 
 test('selected-action shortcut refuses unknown, read-only, multiple, and unavailable verification requests before writes', () => {
@@ -710,7 +789,7 @@ test('selected-action shortcut refuses unknown, read-only, multiple, and unavail
 
   const missingRuntime = run('--action', 'sendWire', '--apply', '--verify');
   assert.equal(missingRuntime.status, 1);
-  assert.match(`${missingRuntime.stdout}${missingRuntime.stderr}`, /npm install --save-exact @emilia-protocol\/mcp-guard@0\.5\.0/);
+  assert.match(`${missingRuntime.stdout}${missingRuntime.stderr}`, /npm install --save-exact @emilia-protocol\/mcp-guard@0\.6\.0/);
   assert.equal(existsSync(join(dir, 'emilia')), false, 'failed verification preflight must not write a partial starter');
 
   const hostileOutput = spawnSync(process.execPath, [
@@ -755,7 +834,7 @@ test('reviewed shortcut refuses manifest drift, wrong selected action, and hando
   const originalGuard = readFileSync(guardPath);
   writeFileSync(guardPath, `${originalGuard.toString('utf8')}\n// reviewed edit\n`);
   const runtimeDrift = spawnSync(process.execPath, [
-    cli, 'protect', input, '--action', 'sendWire', '--reviewed',
+    cli, 'protect', input, '--action', 'sendWire', '--reviewed', '--crossing-profile', 'ccs-wang-draft08-v13',
   ], { cwd: dir, encoding: 'utf8' });
   assert.notEqual(runtimeDrift.status, 0);
   assert.match(`${runtimeDrift.stdout}${runtimeDrift.stderr}`, /generated file digest changed: guard\.mjs/i);
@@ -763,7 +842,7 @@ test('reviewed shortcut refuses manifest drift, wrong selected action, and hando
   writeFileSync(guardPath, originalGuard);
 
   const wrong = spawnSync(process.execPath, [
-    cli, 'protect', input, '--action', 'deployToProduction', '--reviewed',
+    cli, 'protect', input, '--action', 'deployToProduction', '--reviewed', '--crossing-profile', 'ccs-wang-draft08-v13',
   ], { cwd: dir, encoding: 'utf8' });
   assert.notEqual(wrong.status, 0);
   assert.match(`${wrong.stdout}${wrong.stderr}`, /does not match the generated Gate Starter/);
@@ -775,7 +854,7 @@ test('reviewed shortcut refuses manifest drift, wrong selected action, and hando
     { name: 'getAccountBalance', description: 'Read the current balance' },
   ]));
   const surfaceDrift = spawnSync(process.execPath, [
-    cli, 'protect', input, '--action', 'sendWire', '--reviewed',
+    cli, 'protect', input, '--action', 'sendWire', '--reviewed', '--crossing-profile', 'ccs-wang-draft08-v13',
   ], { cwd: dir, encoding: 'utf8' });
   assert.notEqual(surfaceDrift.status, 0);
   assert.match(`${surfaceDrift.stdout}${surfaceDrift.stderr}`, /declared surface does not match the generated Gate Starter/);
@@ -789,7 +868,7 @@ test('reviewed shortcut refuses manifest drift, wrong selected action, and hando
   const originalManifest = readFileSync(manifestPath);
   writeFileSync(manifestPath, `${originalManifest.toString('utf8').trim()}\n \n`);
   const drift = spawnSync(process.execPath, [
-    cli, 'protect', input, '--action', 'sendWire', '--reviewed',
+    cli, 'protect', input, '--action', 'sendWire', '--reviewed', '--crossing-profile', 'ccs-wang-draft08-v13',
   ], { cwd: dir, encoding: 'utf8' });
   assert.notEqual(drift.status, 0);
   assert.match(`${drift.stdout}${drift.stderr}`, /generated file digest changed: action-control\.manifest\.json|existing manifest is not the current scanner proposal/);
@@ -806,7 +885,7 @@ test('reviewed shortcut cannot relabel a legacy surface-wide scaffold as a selec
   assert.equal(apply.status, 0, `${apply.stdout}\n${apply.stderr}`);
 
   const reviewed = spawnSync(process.execPath, [
-    cli, 'protect', '--sample', '--action', 'sendWire', '--reviewed',
+    cli, 'protect', '--sample', '--action', 'sendWire', '--reviewed', '--crossing-profile', 'ccs-wang-draft08-v13',
   ], { cwd: dir, encoding: 'utf8' });
   assert.notEqual(reviewed.status, 0);
   assert.match(`${reviewed.stdout}${reviewed.stderr}`, /requires an existing selected-action Gate Starter/);

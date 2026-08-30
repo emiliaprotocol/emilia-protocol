@@ -10,7 +10,7 @@
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync, } from 'node:fs';
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { adapterPinDigest, digestAeb, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, } from './aeb-adapter-contract.js';
 import { canonicalizeStrictJson, strictJsonGate } from './strict-json.js';
@@ -20,6 +20,34 @@ import { computeCaid } from '../vendor/caid.mjs';
 export const CROSSING_LAB_WORKSPACE_VERSION = 'EMILIA-CROSSING-LAB-LOCAL-WORKSPACE-v1';
 export const CROSSING_LAB_REPORT_VERSION = 'EMILIA-CROSSING-LAB-LOCAL-REPORT-v1';
 export const CROSSING_LAB_STATEMENT = 'SELF_ATTESTED_ADAPTER_COMPATIBILITY_TEST_NOT_CERTIFICATION';
+export const CROSSING_LAB_SCAN_SEED_VERSION = 'EP-SCAN-CROSSING-SEED-v1';
+export const CROSSING_LAB_DRAFT_WORKSPACE_VERSION = 'EP-AEB-CROSSING-LAB-DRAFT-v1';
+export const CROSSING_LAB_VERIFY_VERSION = '3.21.0';
+export const CROSSING_LAB_SCAN_PROFILES = Object.freeze([
+    'ccs-wang-draft08-v13',
+    'cedulon-aeb-crossing-v0.1',
+    'pinto-cbap1-aeb-v0.1',
+]);
+export const CROSSING_LAB_SCAN_PROFILE_CONTRACTS = Object.freeze({
+    'ccs-wang-draft08-v13': Object.freeze({
+        action_type: 'agent.tool-invocation.1',
+        material_fields: Object.freeze(['action_type', 'parameters']),
+    }),
+    'cedulon-aeb-crossing-v0.1': Object.freeze({
+        action_type: 'cedulon.payment.attempt.1',
+        material_fields: Object.freeze(['action_type', 'amount', 'currency', 'payee', 'tool', 'nonce', 'manifest_hash']),
+    }),
+    'pinto-cbap1-aeb-v0.1': Object.freeze({
+        action_type: 'account.suspend.1',
+        material_fields: Object.freeze(['account_ref', 'action_type', 'policy_event_ref']),
+    }),
+});
+export function crossingLabScanProfileContract(profileId) {
+    if (typeof profileId !== 'string' || !Object.hasOwn(CROSSING_LAB_SCAN_PROFILE_CONTRACTS, profileId)) {
+        throw new TypeError('supported crossing profile required');
+    }
+    return structuredClone(CROSSING_LAB_SCAN_PROFILE_CONTRACTS[profileId]);
+}
 export const CROSSING_LAB_LIMITS = Object.freeze({
     max_file_bytes: 1_048_576,
     max_adapter_bytes: 262_144,
@@ -163,6 +191,125 @@ function assertDirectFile(root, name, maxBytes) {
     if (realRel === '..' || realRel.startsWith(`..${sep}`) || isAbsolute(realRel))
         throw new TypeError('workspace file resolves outside root');
     return real;
+}
+function assertNoUserSymlinkComponents(absolutePath, label) {
+    const parsed = parse(absolutePath);
+    const segments = absolutePath.slice(parsed.root.length).split(sep).filter(Boolean);
+    let cursor = parsed.root;
+    for (const segment of segments) {
+        cursor = join(cursor, segment);
+        const stat = lstatSync(cursor);
+        if (stat.isSymbolicLink()) {
+            const rootOwnedSystemAlias = dirname(cursor) === parsed.root && stat.uid === 0;
+            if (!rootOwnedSystemAlias)
+                throw new TypeError(`${label} must not traverse a symlink`);
+        }
+    }
+}
+const SCAN_REQUIRED_OPERATOR_INPUTS = Object.freeze([
+    'native_artifact',
+    'adapter_bytes',
+    'trust_roots',
+    'status_source',
+    'relying_party_id',
+    'exact_material_fields',
+    'profile_compatibility_confirmation',
+]);
+function validateScanCrossingSeed(seed) {
+    if (!isObject(seed) || !exactKeys(seed, [
+        '@version', 'verify_version', 'profile_id', 'profile_contract', 'profile_compatibility',
+        'reviewed_manifest', 'generated_scaffold_sha256',
+        'local_rr1_results_digest', 'selected_action', 'selected_action_digest',
+        'operator_confirmation',
+    ]) || seed['@version'] !== CROSSING_LAB_SCAN_SEED_VERSION) {
+        throw new TypeError('invalid Scan crossing seed');
+    }
+    if (seed.verify_version !== CROSSING_LAB_VERIFY_VERSION) {
+        throw new TypeError('Scan crossing seed Verify version mismatch');
+    }
+    const expectedProfileContract = crossingLabScanProfileContract(seed.profile_id);
+    if (canonicalizeCrossingLab(seed.profile_contract) !== canonicalizeCrossingLab(expectedProfileContract)
+        || seed.profile_compatibility !== 'UNVERIFIED_OPERATOR_CONFIRMATION_REQUIRED') {
+        throw new TypeError('Scan crossing seed profile contract mismatch');
+    }
+    if (!DIGEST_RE.test(seed.generated_scaffold_sha256 ?? '')
+        || !DIGEST_RE.test(seed.local_rr1_results_digest ?? '')
+        || !DIGEST_RE.test(seed.selected_action_digest ?? '')) {
+        throw new TypeError('invalid Scan crossing seed digest');
+    }
+    if (!isObject(seed.reviewed_manifest)
+        || !exactKeys(seed.reviewed_manifest, ['file', 'sha256'])
+        || !FILE_RE.test(seed.reviewed_manifest.file ?? '')
+        || !DIGEST_RE.test(seed.reviewed_manifest.sha256 ?? '')) {
+        throw new TypeError('invalid Scan crossing seed reviewed manifest');
+    }
+    const action = seed.selected_action;
+    if (!isObject(action) || !exactKeys(action, [
+        'id', 'selector', 'action_type', 'assurance_class', 'receipt_required', 'material_fields',
+    ]) || !ID_RE.test(action.id ?? '') || !ID_RE.test(action.action_type ?? '')
+        || !['class_a', 'quorum'].includes(action.assurance_class)
+        || action.receipt_required !== true
+        || !isObject(action.selector) || !exactKeys(action.selector, ['protocol', 'tool'])
+        || action.selector.protocol !== 'mcp' || !ID_RE.test(action.selector.tool ?? '')
+        || !Array.isArray(action.material_fields) || action.material_fields.length === 0
+        || action.material_fields.length > 64
+        || !action.material_fields.every((field) => typeof field === 'string' && ID_RE.test(field))
+        || new Set(action.material_fields).size !== action.material_fields.length
+        || !action.material_fields.includes('action_type')) {
+        throw new TypeError('invalid Scan crossing seed selected action');
+    }
+    if (digestCrossingLab(action) !== seed.selected_action_digest) {
+        throw new TypeError('selected action digest mismatch');
+    }
+    const confirmation = seed.operator_confirmation;
+    if (!isObject(confirmation)
+        || !exactKeys(confirmation, ['status', 'workspace_state', 'required_inputs'])
+        || confirmation.status !== 'required' || confirmation.workspace_state !== 'unsealed'
+        || canonicalizeCrossingLab(confirmation.required_inputs) !== canonicalizeCrossingLab(SCAN_REQUIRED_OPERATOR_INPUTS)) {
+        throw new TypeError('invalid Scan crossing seed operator confirmation');
+    }
+    inspectJson(seed);
+}
+function verifySeedManifest(seedRoot, seed) {
+    const manifestPath = assertDirectFile(seedRoot, seed.reviewed_manifest.file, CROSSING_LAB_LIMITS.max_file_bytes);
+    const manifestStat = lstatSync(manifestPath);
+    if (manifestStat.nlink !== 1)
+        throw new TypeError('reviewed manifest must not be hard-linked');
+    const manifestBytes = readFileSync(manifestPath);
+    if (sha256Bytes(manifestBytes) !== seed.reviewed_manifest.sha256) {
+        throw new TypeError('reviewed manifest digest mismatch');
+    }
+    const manifest = parseStrictJson(manifestBytes.toString('utf8'), seed.reviewed_manifest.file);
+    if (!isObject(manifest) || !Array.isArray(manifest.actions)) {
+        throw new TypeError('reviewed manifest has no action list');
+    }
+    if (!manifest.actions.every((candidate) => (isObject(candidate) && typeof candidate.id === 'string' && isObject(candidate.match)))) {
+        throw new TypeError('reviewed manifest contains an invalid action');
+    }
+    const seenIds = new Set();
+    const seenSelectors = new Set();
+    for (const candidate of manifest.actions) {
+        const selector = canonicalizeCrossingLab(candidate.match);
+        if (seenIds.has(candidate.id) || seenSelectors.has(selector)) {
+            throw new TypeError('reviewed manifest contains a duplicate action id or selector');
+        }
+        seenIds.add(candidate.id);
+        seenSelectors.add(selector);
+    }
+    const matches = manifest.actions.filter((candidate) => (candidate.id === seed.selected_action.id));
+    if (matches.length !== 1)
+        throw new TypeError('reviewed manifest selected action is not unique');
+    const [selected] = matches;
+    if (!isObject(selected)
+        || selected.action_type !== seed.selected_action.action_type
+        || selected.assurance_class !== seed.selected_action.assurance_class
+        || selected.receipt_required !== true
+        || canonicalizeCrossingLab(selected.match) !== canonicalizeCrossingLab(seed.selected_action.selector)
+        || !isObject(selected.execution_binding)
+        || canonicalizeCrossingLab(selected.execution_binding.required_fields)
+            !== canonicalizeCrossingLab(seed.selected_action.material_fields)) {
+        throw new TypeError('reviewed manifest selected action mismatch');
+    }
 }
 function validateWorkspace(workspace) {
     if (!isObject(workspace) || !exactKeys(workspace, [
@@ -835,6 +982,95 @@ export function initCrossingLab(targetDirectory) {
     writeFileSync(resolve(target, 'artifact.json'), `${JSON.stringify(artifact, null, 2)}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
     writeFileSync(resolve(target, 'workspace.json'), `${JSON.stringify(workspace, null, 2)}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
     return { directory: target, files: ['adapter.mjs', 'artifact.json', 'workspace.json'] };
+}
+/**
+ * Turn one owner-reviewed Scan selection into a deliberately unsealed Lab
+ * workspace. The result is a bounded editing surface, not an executable
+ * adapter: the operator must supply and review the native artifact, adapter,
+ * trust roots, status source, relying party, and exact material values before
+ * replacing the draft workspace with a sealable v1 workspace.
+ */
+export function initCrossingLabFromScanSeed(seedFile, targetDirectory) {
+    const seedPath = resolve(seedFile);
+    const seedStat = lstatSync(seedPath);
+    if (!seedStat.isFile() || seedStat.isSymbolicLink()) {
+        throw new TypeError('Scan crossing seed must be a regular non-symlink file');
+    }
+    if (seedStat.nlink !== 1)
+        throw new TypeError('Scan crossing seed must not be hard-linked');
+    if (seedStat.size > CROSSING_LAB_LIMITS.max_file_bytes)
+        throw new TypeError('Scan crossing seed exceeds file-size limit');
+    assertNoUserSymlinkComponents(seedPath, 'Scan crossing seed path');
+    const seedRoot = realpathSync(dirname(seedPath));
+    const seedBytes = readFileSync(seedPath);
+    const seed = parseStrictJson(seedBytes.toString('utf8'), basename(seedPath));
+    validateScanCrossingSeed(seed);
+    verifySeedManifest(seedRoot, seed);
+    const target = resolve(targetDirectory);
+    if (existsSync(target))
+        throw new TypeError('refusing to overwrite an existing Crossing Lab workspace');
+    const requestedParent = resolve(dirname(target));
+    assertNoUserSymlinkComponents(requestedParent, 'workspace parent');
+    if (lstatSync(requestedParent).isSymbolicLink())
+        throw new TypeError('workspace parent must not be a symlink');
+    const seedDigest = sha256Bytes(seedBytes);
+    const materialValues = Object.fromEntries(seed.selected_action.material_fields.map((field) => [field, null]));
+    const workspace = {
+        '@version': CROSSING_LAB_DRAFT_WORKSPACE_VERSION,
+        state: 'UNSEALED_OPERATOR_INPUT_REQUIRED',
+        profile_id: seed.profile_id,
+        profile_contract: structuredClone(seed.profile_contract),
+        profile_compatibility: seed.profile_compatibility,
+        verify_version: seed.verify_version,
+        source_seed: {
+            file: basename(seedPath),
+            sha256: seedDigest,
+            reviewed_manifest_sha256: seed.reviewed_manifest.sha256,
+        },
+        selected_action: structuredClone(seed.selected_action),
+        material_values: materialValues,
+        required_inputs: [...SCAN_REQUIRED_OPERATOR_INPUTS],
+        next_step: 'Replace all draft inputs with the selected profile artifacts, then run crossing-lab seal and crossing-lab run.',
+        non_claims: [
+            'authorization',
+            'adapter_compatibility',
+            'native_verification',
+            'production_enforcement',
+            'execution_evidence',
+        ],
+    };
+    const artifact = {
+        '@version': 'EP-AEB-CROSSING-LAB-NATIVE-DRAFT-v1',
+        profile_id: seed.profile_id,
+        profile_compatibility: seed.profile_compatibility,
+        source_seed_sha256: seedDigest,
+        native_artifact: null,
+        status: 'operator_input_required',
+    };
+    const adapter = `// SPDX-License-Identifier: Apache-2.0
+// Generated from an owner-reviewed Scan selection. This draft adapter refuses
+// until the selected native profile is installed and reviewed.
+const refuse = () => { throw new Error('scan_crossing_workspace_unsealed'); };
+export default Object.freeze({
+  id: ${JSON.stringify(`scan:${seed.profile_id}:pending`)},
+  version: '0.0.0-draft',
+  verifyNative: refuse,
+  mapAction: refuse,
+});
+`;
+    // Never roll back by pathname: a same-user concurrent process could replace
+    // the just-created path between a failed write and cleanup. A rare partial
+    // directory remains invalid and blocks reuse until the operator inspects it.
+    mkdirSync(target, { mode: 0o700 });
+    writeFileSync(resolve(target, 'adapter.mjs'), adapter, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+    writeFileSync(resolve(target, 'artifact.json'), `${JSON.stringify(artifact, null, 2)}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+    writeFileSync(resolve(target, 'workspace.json'), `${JSON.stringify(workspace, null, 2)}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+    return {
+        directory: target,
+        files: ['adapter.mjs', 'artifact.json', 'workspace.json'],
+        profile_id: seed.profile_id,
+        state: 'unsealed',
+    };
 }
 function recomputeConfigPins(config) {
     for (const [id, pin] of Object.entries(config.adapters))
