@@ -4,11 +4,13 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -151,6 +153,18 @@ test('packed scan refuses missing runtime, then uses the exact audited guard in 
   ));
   assert.equal(installedVerifyPackage.version, VERIFY_VERSION);
 
+  // Model npm exec/npx isolation faithfully: Verify is available to Scan as
+  // its exact dependency, but it is not resolvable from the generated file in
+  // the consumer project. The reviewed command must pass Scan's own resolved
+  // module into the child instead of relying on accidental root hoisting.
+  const rootVerify = join(installedRoot, '@emilia-protocol', 'verify');
+  const nestedScope = join(installedScan, 'node_modules', '@emilia-protocol');
+  const nestedVerify = join(nestedScope, 'verify');
+  mkdirSync(nestedScope, { recursive: true });
+  renameSync(rootVerify, nestedVerify);
+  assert.equal(existsSync(rootVerify), false);
+  assert.equal(JSON.parse(readFileSync(join(nestedVerify, 'package.json'), 'utf8')).version, VERIFY_VERSION);
+
   const verifyOutput = run(scanBin, [
     'protect',
     input,
@@ -193,7 +207,13 @@ test('packed scan refuses missing runtime, then uses the exact audited guard in 
     'ccs-wang-draft08-v13',
     '--out',
     'emilia',
-  ], { cwd: consumer });
+  ], {
+    cwd: consumer,
+    env: {
+      ...process.env,
+      EMILIA_SCAN_CROSSING_LAB_MODULE_URL: 'https://attacker.invalid/crossing-lab.mjs',
+    },
+  });
   assert.match(reviewedOutput, /Reviewed handoff created without changing the Gate Starter/);
 
   const handoff = JSON.parse(readFileSync(join(consumer, 'emilia', 'scan-adoption-handoff.json'), 'utf8'));

@@ -35,6 +35,8 @@ const MAX_INPUT_BYTES = 8 * 1024 * 1024;
 const MAX_GENERATED_FILE_BYTES = 64 * 1024 * 1024;
 const MCP_GUARD_VERSION = '0.6.0';
 const MCP_GUARD_INSTALL_SPEC = `@emilia-protocol/mcp-guard@${MCP_GUARD_VERSION}`;
+const CROSSING_LAB_VERIFY_VERSION = '3.21.0';
+const CROSSING_LAB_MODULE_ENV = 'EMILIA_SCAN_CROSSING_LAB_MODULE_URL';
 const GATE_STARTER_MARKER_FILE = '.emilia-gate-starter.json';
 const GATE_STARTER_MARKER_VERSION = 'EP-GATE-STARTER-v1';
 const CROSSING_PROFILES = new Set([
@@ -52,6 +54,23 @@ const GATE_STARTER_BOUND_FILES = Object.freeze([
 const RESERVED_OUTPUT_ROOTS = new Set(['.git', '.hg', '.svn', 'node_modules']);
 const SOURCE_CONFUSING = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/u;
 const TERMINAL_CONTROLS = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/gu;
+
+async function resolveCrossingLabModuleUrl() {
+  const candidates = [
+    import.meta.resolve('@emilia-protocol/verify/crossing-lab'),
+    new URL('../verify/dist/crossing-lab.js', import.meta.url).href,
+  ];
+  for (const candidate of new Set(candidates)) {
+    if (!candidate.startsWith('file:')) continue;
+    try {
+      const runtime = await import(candidate);
+      if (runtime.CROSSING_LAB_VERIFY_VERSION === CROSSING_LAB_VERIFY_VERSION) return candidate;
+    } catch {
+      // Try the monorepo sibling after a stale or unavailable package link.
+    }
+  }
+  throw new Error(`Unable to resolve exact @emilia-protocol/verify@${CROSSING_LAB_VERIFY_VERSION} Crossing Lab runtime`);
+}
 
 function terminalSafe(value) {
   return String(value).replace(TERMINAL_CONTROLS, (character) => {
@@ -1030,11 +1049,18 @@ if (cli.emitHandoff) {
   let workspaceCreated = false;
   if (cli.crossingProfile !== null) {
     const selectedAction = selectedActions[0];
+    const crossingLabModuleUrl = process.env.${CROSSING_LAB_MODULE_ENV};
+    if (typeof crossingLabModuleUrl !== 'string' || !crossingLabModuleUrl.startsWith('file:')) {
+      throw new Error('Crossing Lab generation must be launched by the reviewed @emilia-protocol/scan command');
+    }
     const {
       CROSSING_LAB_VERIFY_VERSION,
       crossingLabScanProfileContract,
       initCrossingLabFromScanSeed,
-    } = await import('@emilia-protocol/verify/crossing-lab');
+    } = await import(crossingLabModuleUrl);
+    if (CROSSING_LAB_VERIFY_VERSION !== ${JSON.stringify(CROSSING_LAB_VERIFY_VERSION)}) {
+      throw new Error('Refusing a Crossing Lab runtime outside the exact Scan dependency contract');
+    }
     const seed = {
       '@version': 'EP-SCAN-CROSSING-SEED-v1',
       verify_version: CROSSING_LAB_VERIFY_VERSION,
@@ -1252,6 +1278,7 @@ if (reviewed) {
     }
   }
   console.log(`${B}Existing selected-action Gate Starter validated. Running RR-1 and binding the reviewed bytes.${R}`);
+  const crossingLabModuleUrl = await resolveCrossingLabModuleUrl();
   const verified = spawnSync(process.execPath, [
     path.join(outAbsolute, 'verify-setup.mjs'),
     '--emit-handoff',
@@ -1265,7 +1292,14 @@ if (reviewed) {
     reviewedCrossingProfile,
     '--crossing-out',
     reviewedCrossingOut,
-  ], { cwd: process.cwd(), stdio: 'inherit' });
+  ], {
+    cwd: process.cwd(),
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      [CROSSING_LAB_MODULE_ENV]: crossingLabModuleUrl,
+    },
+  });
   if (verified.error) throw verified.error;
   if (verified.status !== 0) {
     console.error(`${Y}Reviewed handoff was not emitted because the local verification failed.${R}`);
