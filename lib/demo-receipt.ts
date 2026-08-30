@@ -20,7 +20,7 @@
 //      a recursive canonical-JSON function — same depth-first
 //      key-sorting algorithm used by lib/guard-policies.js
 //      (hashCanonicalAction) and the corrected
-//      @emilia-protocol/verify@1.0.1 verifier. Nested fields (claim,
+//      current repository-local @emilia-protocol/verify source. Nested fields (claim,
 //      claim.context, claim.context.change, claim.context.risk_signals)
 //      are all cryptographically bound — a buyer cannot tamper with
 //      the deeply-nested vendor_id or risk_signals without the

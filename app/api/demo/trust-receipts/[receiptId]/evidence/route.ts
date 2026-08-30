@@ -20,7 +20,7 @@
 //   }
 //
 // A buyer pipes `document` and `public_key` into verifyReceipt() from
-// @emilia-protocol/verify@1.0.1+ and gets `{ valid: true, ... }` —
+// the current @emilia-protocol/verify API and gets `{ valid: true, ... }` —
 // proving the entire deeply-nested payload (claim, context, risk_signals,
 // change.after_bank_hash, etc.) is cryptographically bound.
 //

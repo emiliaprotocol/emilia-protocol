@@ -56,4 +56,21 @@ describe('public runtime release pins', () => {
       expect(linkedVerify.version, lockPath).toBe(verify.version);
     }
   });
+
+  it('keeps active verifier and Gate documentation on the prepared release surface', () => {
+    const verify = readJson('packages/verify/package.json');
+    const adapterLock = readJson('conformance/composition/aeb-adapter-v1.lock.json');
+    const gate = readJson('packages/gate/package.json');
+    const demoSources = [
+      read('lib/demo-receipt.ts'),
+      read('lib/demo-receipt.js'),
+      read('app/api/demo/trust-receipts/[receiptId]/evidence/route.ts'),
+    ].join('\n');
+    const gateReadme = read('packages/gate/README.md');
+
+    expect(adapterLock.verify_package_version).toBe(verify.version);
+    expect(demoSources).not.toMatch(/@emilia-protocol\/verify@1\.0\.1/);
+    expect(gateReadme).toContain(`@emilia-protocol/gate@${gate.version}`);
+    expect(gateReadme).not.toContain('@emilia-protocol/gate@0.23.13');
+  });
 });
