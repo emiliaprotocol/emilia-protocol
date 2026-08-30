@@ -45,7 +45,7 @@
       {
         "audience": "protocol implementer",
         "url": "https://github.com/emiliaprotocol/emilia-protocol",
-        "purpose": "inspect the open verifier, formats, vectors, and reference implementations"
+        "purpose": "inspect the open verifier, formats, vectors, reference implementations, and the local AEB Crossing Lab adapter workbench"
       }
     ],
     "commercial_product": {
@@ -119,6 +119,10 @@
     {
       "term": "Action Evidence Boundary (AEB)",
       "definition": "The relying-party contract that keeps native verification, exact-action matching, evidence satisfaction, local authorization, one-time consumption, and executed or indeterminate outcome distinct. AEB joins independently verified evidence under pinned mappings and requirements; it never authorizes by itself."
+    },
+    {
+      "term": "EMILIA Crossing Lab",
+      "definition": "An open, offline developer workbench over the existing AEB adapter contract. It scaffolds, locally seals, and hostile-tests one bundled deterministic native adapter under relying-party-pinned trust, mapping, status, and evidence requirements. Its local report keeps native verification, acceptance, exact-action mapping, freshness, and satisfaction separate. It is an adapter compatibility self-test, not a new wire protocol, native-specification validation, independent interoperability evidence, certification, authorization, deployment evidence, or execution evidence."
     },
     {
       "term": "Trust Program",

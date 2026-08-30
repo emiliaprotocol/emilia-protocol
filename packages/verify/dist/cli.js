@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 import { strictJsonGate } from './strict-json.js';
 import { verifyReceipt, verifyReceiptBundle, verifyCommitmentProof, verifyWebAuthnSignoff, verifyTrustReceipt, verifyQuorum, verifyRevocation, verifyProvenanceOffline, } from './index.js';
 const MAX_CLI_JSON_BYTES = 8 * 1024 * 1024;
+const CROSSING_LAB_DIAGNOSTIC_REASON_LIMIT = 3;
+const CROSSING_LAB_DIAGNOSTIC_TEXT_LIMIT = 160;
 function loadStrictJson(path) {
     const raw = readFileSync(path, 'utf8');
     if (Buffer.byteLength(raw, 'utf8') > MAX_CLI_JSON_BYTES)
@@ -23,6 +25,51 @@ function loadStrictJson(path) {
     if (!strict.ok)
         throw new Error(`strict JSON required: ${strict.reason}`);
     return JSON.parse(raw);
+}
+function boundedDiagnosticText(value) {
+    const compact = String(value)
+        .replace(/[\u0000-\u001f\u007f-\u009f]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (compact.length <= CROSSING_LAB_DIAGNOSTIC_TEXT_LIMIT)
+        return compact;
+    return `${compact.slice(0, CROSSING_LAB_DIAGNOSTIC_TEXT_LIMIT - 1)}…`;
+}
+function crossingLabFailureDiagnostics(report) {
+    const lines = [];
+    for (const row of report.adapter_rows.filter((entry) => !entry.passed)) {
+        const actual = row.actual;
+        const reasons = row.reasons
+            .slice(0, CROSSING_LAB_DIAGNOSTIC_REASON_LIMIT)
+            .map(boundedDiagnosticText);
+        const omitted = Math.max(0, row.reasons.length - reasons.length);
+        const reasonSummary = reasons.length > 0
+            ? `${reasons.join(', ')}${omitted > 0 ? ` (+${omitted} more)` : ''}`
+            : 'none reported';
+        lines.push(`failed adapter row ${boundedDiagnosticText(row.id)}: `
+            + `native=${actual.native_verification}, acceptance=${actual.acceptance}, mapping=${actual.mapping}, `
+            + `freshness=${actual.freshness}, satisfaction=${actual.satisfaction}, evaluation_valid=${actual.evaluation_valid}; `
+            + `reasons=${reasonSummary}`);
+    }
+    const failedHarness = report.harness_self_tests
+        .filter((entry) => !entry.passed)
+        .map((entry) => boundedDiagnosticText(entry.id));
+    if (failedHarness.length > 0)
+        lines.push(`failed harness rows: ${failedHarness.join(', ')}`);
+    // A failed positive leg can still expose the adapter's independently mapped
+    // CAID. Surface it as a review candidate only; never silently adopt it into
+    // the pinned workspace or imply that a local self-test authorizes an action.
+    const positive = report.adapter_rows.find((entry) => entry.category === 'positive');
+    const workspaceCaid = positive?.evaluation?.caid;
+    const candidateCaid = positive?.evaluation?.legs?.[0]?.caid;
+    if (typeof candidateCaid === 'string'
+        && typeof workspaceCaid === 'string'
+        && candidateCaid !== workspaceCaid) {
+        lines.push(`candidate mapped CAID ${boundedDiagnosticText(candidateCaid)} differs from workspace evaluation CAID `
+            + `${boundedDiagnosticText(workspaceCaid)}. Review it against the pinned mapping profile; if correct, deliberately `
+            + 'update workspace.evaluation.caid, run crossing-lab seal, then rerun crossing-lab run.');
+    }
+    return lines;
 }
 const args = process.argv.slice(2);
 if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
@@ -54,6 +101,13 @@ printed beneath the cryptographic checks. It never affects whether the receipt
 verifies.
 
 Subcommands:
+  crossing-lab init <directory>
+  crossing-lab seal <workspace-directory>
+  crossing-lab run <workspace-directory> [--out <new-report.json>]
+    Scaffold, pin, or evaluate one offline, relying-party-pinned native adapter.
+    Reports are deterministic local adapter compatibility self-tests, never
+    certification, authorization, deployment proof, or execution proof.
+    Exit 0 = every lab row passed; 2 = a row failed; 1 = operational error.
   reliance-gap <packet.json> (--profile <profile.json> | --profiles <dir>)
                [--now <rfc3339>] [--out <path>]
     Acceptance preflight: run the reliance kernel over a de-identified action
@@ -71,6 +125,86 @@ Subcommands:
 
 Exit code 0 = every document verified; 1 = any failure.`);
     process.exit(args.length === 0 ? 1 : 0);
+}
+// Subcommand: AEB Crossing Lab. A custom adapter runs in a bounded child
+// process under Node's permission model with no ambient network, write, or
+// child-process permission. Workspace JSON pins every input and the adapter's
+// exact bytes. The report remains a self-test and has no authorization effect.
+if (args[0] === 'crossing-lab') {
+    const { initCrossingLab, runCrossingLab, sealCrossingLab, writeCrossingLabReport } = await import('./crossing-lab.js');
+    const sub = args.slice(1);
+    const mode = sub.shift();
+    if (mode === 'init') {
+        if (sub.length !== 1 || sub[0].startsWith('-')) {
+            console.error('usage: verify crossing-lab init <directory>');
+            process.exit(1);
+        }
+        try {
+            const created = initCrossingLab(sub[0]);
+            console.log(`Crossing Lab workspace created at ${created.directory}`);
+            for (const file of created.files)
+                console.log(`  ${file}`);
+            process.exit(0);
+        }
+        catch (error) {
+            console.error(`error: ${error.message}`);
+            process.exit(1);
+        }
+    }
+    if (mode === 'seal') {
+        if (sub.length !== 1 || sub[0].startsWith('-')) {
+            console.error('usage: verify crossing-lab seal <workspace-directory>');
+            process.exit(1);
+        }
+        try {
+            const sealed = sealCrossingLab(sub[0]);
+            console.log(`Crossing Lab local pins updated: ${sealed.workspace_digest}`);
+            console.log('Review the workspace diff, then run the lab; sealing does not validate native semantics or authorize an action.');
+            process.exit(0);
+        }
+        catch (error) {
+            console.error(`error: ${error.message}`);
+            process.exit(1);
+        }
+    }
+    if (mode === 'run') {
+        const workspacePath = sub[0] ?? null;
+        const hasOutput = sub.length === 3 && sub[1] === '--out';
+        const outPath = hasOutput ? sub[2] : null;
+        const valid = typeof workspacePath === 'string'
+            && workspacePath.length > 0
+            && !workspacePath.startsWith('-')
+            && (sub.length === 1
+                || (hasOutput && typeof outPath === 'string' && outPath.length > 0 && !outPath.startsWith('-')));
+        if (!valid) {
+            console.error('usage: verify crossing-lab run <workspace-directory> [--out <new-report.json>]');
+            process.exit(1);
+        }
+        try {
+            const report = runCrossingLab(workspacePath);
+            const json = `${JSON.stringify(report, null, 2)}\n`;
+            const diagnostics = report.lab_passed ? [] : crossingLabFailureDiagnostics(report);
+            if (outPath) {
+                writeCrossingLabReport(outPath, report);
+                console.log(`Crossing Lab ${report.lab_passed ? 'PASSED' : 'FAILED'} — local compatibility self-test only; report written to ${outPath}`);
+                for (const line of diagnostics)
+                    console.log(line);
+            }
+            else {
+                process.stdout.write(json);
+                console.error(`Crossing Lab ${report.lab_passed ? 'PASSED' : 'FAILED'} — local compatibility self-test only, not certification or authorization`);
+                for (const line of diagnostics)
+                    console.error(line);
+            }
+            process.exit(report.lab_passed ? 0 : 2);
+        }
+        catch (error) {
+            console.error(`error: ${error.message}`);
+            process.exit(1);
+        }
+    }
+    console.error('usage: verify crossing-lab (init <directory> | seal <workspace-directory> | run <workspace-directory> [--out <new-report.json>])');
+    process.exit(1);
 }
 // Subcommand: acceptance preflight. Builds an EP-RELIANCE-GAP-REPORT-v1 (or the
 // combined EP-RELIANCE-GAP-MULTI-v1 with --profiles) over a de-identified action
