@@ -1,0 +1,116 @@
+{
+  "@version": "CCS-V1.4-AEB-GITHUB-REFERENCE-VECTORS-v1",
+  "source_lock": {
+    "repository": "https://github.com/DSHCorrectover/ccs-conformance-vectors",
+    "commit": "a3503b2bc48922f92a28c372003885a0831da02b",
+    "manifest_sha256": "3e77eae3045eb2bc824c52b8d022b75029beaf56623841ce7c035a99e65a2ddd",
+    "upstream_case": "vectors/v1.4.0-conformance/01-allow",
+    "upstream_receipt_sha256": "889855dc9fcebdb642bd7e0f369651015781b4c004227aef510feb1fb7cb4361"
+  },
+  "upstream_allow_receipt": {
+    "trace_id": "conformance-v1.4.0-trace",
+    "receipt_version": "1.4",
+    "verdict": "allow",
+    "timestamp": 1750003200,
+    "tool": "lookup_customer",
+    "tool_call_id": "call-conformance-01",
+    "params_hash": "f516269c2104b2764cd6d4cab363c29e0a48c5c185d07a481eb226bf6f395ba2",
+    "args_digest": "f2e46a341a25d489c55ec109d41c0dae85a3477666b83321cbf0ba266ee8fd4a",
+    "rule_summary": "conformance-reference-policy",
+    "rule_version": "1.4.0-conformance",
+    "request_hash": "55a300ad27d7f65e05ba41bdb5361c08c103229e9ad8bdd1e1332aa7f340dd89",
+    "response_hash": "b810bf2ed31e7b2489e999c5a1770fe7c4f1a08ceefd3389726181c470a99793",
+    "runtime_context_hash": "497b261529f5a98e5b07cfa8419017872d5a73a1be069e964f0ebc245eb354d8",
+    "config_hash": "0abcb7ab76d5cb8ba879d6feba6199247c0c2622614451d8d03c16614a73bcfb",
+    "verifier_source_class": "ConformanceVectorGenerator",
+    "deployment_mode": "in-process",
+    "issuer": "ccs-conformance/v1.4.0",
+    "audience": "independent-verifier",
+    "nonce": "conformance-nonce-0000",
+    "sequence": 0,
+    "issued_at": 1750003200,
+    "expires_at": 1750089600,
+    "max_clock_skew": 30,
+    "action": "lookup_customer.execute",
+    "signature": "i6cDOARGniKQSc/sScpQw0X86LkIGT6kWECGHEgZzZ0Grxvasss8Pax1MnANqBE2p6guqwYzcWafUWK35elxDA==",
+    "signing_algorithm": "Ed25519",
+    "public_key_fingerprint": "26a02d86f5d0a10f",
+    "public_key": "ndAkiPndnKQ7hLAMOQBu4BE79y0BM3NA0diA0YDB2cI=",
+    "verified_at": 1750003200,
+    "latency_us": 842
+  },
+  "emilia_github_fixture": {
+    "action": {
+      "action_type": "github.issue-update.1",
+      "parameters": {
+        "tool": "github_issue_update",
+        "arguments": {
+          "repository": "emiliaprotocol/emilia-protocol",
+          "issue_number": 538,
+          "title": "Record missing-evidence disposition",
+          "body": "Evidence unavailable; no execution authority inferred.",
+          "state": "open"
+        }
+      }
+    },
+    "caid": "caid:1:github.issue-update.1:jcs-sha256:hcpVY2uUgF1xTGcDoqhuSzYB2avddWtiPXEQVE6p-kk",
+    "ccs_artifact": {
+      "receipt": {
+        "trace_id": "ccs-v14-emilia-github-trace",
+        "receipt_version": "1.4",
+        "verdict": "allow",
+        "timestamp": 1750003210,
+        "tool": "github_issue_update",
+        "tool_call_id": "call-ccs-v14-emilia-001",
+        "params_hash": "c511a941651d21d21a89af3123a027bac376523661dc1f5938778890be410b65",
+        "args_digest": "8efa8c4f9c636616618856e65f235b0b86cd34ea8f21bd4493fb2bebc1a82d6b",
+        "rule_summary": "github-issue-update-conformance",
+        "rule_version": "1.4.0-conformance",
+        "request_hash": "c511a941651d21d21a89af3123a027bac376523661dc1f5938778890be410b65",
+        "response_hash": "d410958ad3821ea861ae3f7196cd9f8a83fb9e7e457f8837d3d0983ecc96b628",
+        "runtime_context_hash": "d66c66cb0d4d8b37084e76e518b0625a35e5f4369096ff246ea43ed446d9c8ff",
+        "config_hash": "3edd8b7cae30c8df4cf034be4e33d2c869bd3401d105b7b57a02814239bf33d1",
+        "verifier_source_class": "EMILIAIndependentComposition",
+        "deployment_mode": "test-in-process",
+        "issuer": "ccs-conformance/v1.4.0",
+        "audience": "rp:emilia-github-gate",
+        "nonce": "ccs-v14-emilia-nonce-001",
+        "sequence": 0,
+        "issued_at": 1750003210,
+        "expires_at": 1750003290,
+        "max_clock_skew": 30,
+        "action": "github_issue_update.execute",
+        "signing_algorithm": "Ed25519",
+        "public_key_fingerprint": "26a02d86f5d0a10f",
+        "public_key": "ndAkiPndnKQ7hLAMOQBu4BE79y0BM3NA0diA0YDB2cI=",
+        "verified_at": 1750003210,
+        "latency_us": 842,
+        "signature": "xWUqa2M9TdKH+y13ZLtdi5Y1YkmIqKfZL9+3Eonf9nHFpmeL5e14S8n+Tk4Ultzbbj8gZSQ7L3V+7B2oSm1FCA=="
+      },
+      "tool_args": {
+        "repository": "emiliaprotocol/emilia-protocol",
+        "issue_number": 538,
+        "title": "Record missing-evidence disposition",
+        "body": "Evidence unavailable; no execution authority inferred.",
+        "state": "open"
+      },
+      "response_body": {
+        "issue_url": "https://github.com/emiliaprotocol/emilia-protocol/issues/538",
+        "updated": true
+      }
+    },
+    "relying_party": "rp:emilia-github-gate",
+    "provider": {
+      "tenant_id": "tenant:emilia-protocol",
+      "provider_id": "provider:github",
+      "provider_account_id": "account:futureenterprises",
+      "environment": "test-fixture"
+    }
+  },
+  "limits": [
+    "The upstream vector and local GitHub fixture use a public deterministic conformance key, not a production trust root.",
+    "The local GitHub fixture is EMILIA-authored and source-compatible; it is not represented as a Correctover-issued upstream vector.",
+    "CCS ALLOW is machine-policy evidence only. Separate relying-party authorization is required before provider entry.",
+    "The provider is a counting test stub; no GitHub issue is changed."
+  ]
+}
