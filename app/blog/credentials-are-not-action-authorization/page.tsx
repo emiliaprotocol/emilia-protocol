@@ -150,6 +150,7 @@ export default function CredentialsPostPage(): React.ReactElement {
           }}>npx @emilia-protocol/scan authority</pre>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '10px 0 56px' }}>
             <Link href="/scan" style={cta.primary}>Run the passive scan</Link>
+            <Link href="/cyber-authority#authority-drill" style={cta.secondary}>Pressure-test one defensive action</Link>
             <Link href="/gate" style={cta.secondary}>See the separate enforcement boundary</Link>
           </div>
 

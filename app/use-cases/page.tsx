@@ -7,6 +7,13 @@ import { styles, color, font, radius } from '@/lib/tokens';
 
 const USE_CASES = [
   {
+    title: 'Automated security actions',
+    desc: 'Let an AI defender propose remediation while Gate controls the exact identity, endpoint, session, or bounded rule change at the credential-owning boundary.',
+    href: '/cyber-authority',
+    accent: color.gold,
+    tag: 'Authority for AI defenders',
+  },
+  {
     title: 'MCP and agent tool calls',
     desc: 'Put Gate immediately before a configured consequential tool and require action-bound evidence before invocation.',
     href: '/mcp',

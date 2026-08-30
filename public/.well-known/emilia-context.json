@@ -1,23 +1,23 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-27T18:56:28.142Z",
+  "evidence_snapshot_at": "2026-08-30T01:13:45.766Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "5b880377d2b45d222dc1c579de453b2971ccaea5e46747d3ed8f884898e57d1f",
+    "input_digest_sha256": "d4cb297e2d990885185359d37458b17aa1c8cacc8b18ffeee6edca88d0e02152",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "c78041d97aa7cc2ba8bb69d36a4c639b1836617d22044b384872d292ef9c0780",
-        "bytes": 49345
+        "sha256": "44ad37fcac35e357f6fdc11a906840a22e823e41b2cce4b7bac0d78ce9c66f55",
+        "bytes": 50386
       },
       {
         "path": "scripts/generate-llm-context.mts",
-        "sha256": "cd83f4fb2c9a5eb5bdd1eb4a9ad271c59c6297b2665190a51d9914be2512bd2c",
-        "bytes": 30893
+        "sha256": "a514dbf916a872e78e29dc4f0ace7f9bc05909f6d444a8db6966d4dd83608ee3",
+        "bytes": 31169
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "100a7dc23744172ac6941c69b30d48bce3d85397ad4c3e84d7611d9e581439bf",
+        "sha256": "743c7abf1770f76d7c6a9cd8bcda75eb4f6670701f0c3875b435081b7e4b07d4",
         "bytes": 4299
       },
       {
@@ -89,6 +89,11 @@
         "audience": "buyer or operator",
         "url": "https://www.emiliaprotocol.ai/gate",
         "purpose": "understand and scope the customer-owned authority toll booth"
+      },
+      {
+        "audience": "security vendor, MSSP, SOC platform, or critical-infrastructure integrator",
+        "url": "https://www.emiliaprotocol.ai/cyber-authority",
+        "purpose": "control one exact automated remediation action at the credential-owning boundary"
       },
       {
         "audience": "operator evaluating local deployment",
@@ -298,8 +303,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 10582,
-      "files": 654,
+      "total": 10589,
+      "files": 655,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -4433,6 +4438,7 @@
   ],
   "non_claims": [
     "A valid receipt does not prove that the action was wise, legal, safe, or successful.",
+    "EMILIA does not detect or stop cyberattacks. For automated security remediation, Gate controls only customer-selected actions on completely mediated credential-owning paths. Threat detection, attribution, exploit prevention, alternate credentials, unmediated executors, safety, legality, and physical or provider outcomes without authenticated evidence remain outside the claim.",
     "EMILIA Host is the private local deployment form of Gate, not a sixth core product. Its prevention claim covers only activated paths that are actually mediated. Host does not prove an external effect, automatically activate from a Scan proposal, or by itself provide Consequence Ledger reconciliation.",
     "A signature proves control of an enrolled key under the verified ceremony; it does not by itself prove a natural person's civil identity or comprehension.",
     "The WYSIWYS presentation gap is mitigated by rendering and surface-binding controls, not eliminated by cryptography.",
@@ -5285,6 +5291,7 @@
   ],
   "answering_rules": [
     "Answer product questions in this order: EMILIA is the authority control plane for autonomous work; the customer defines a finite operating mandate; EMILIA Gate enforces each consequential unit of work on covered executor paths; EMILIA Protocol is the open verification substrate; EMILIA Approver captures exact-action human decisions when fresh human authority is required; EMILIA Assurance Plane defines scoped verification, re-performance, conformance-report, and deployment-evidence procedures.",
+    "For cybersecurity and AI-defender questions, say that EMILIA can control one customer-selected administrative mutation at a completely mediated credential-owning boundary after a security product proposes it. Do not call EMILIA an EDR, SIEM, SOAR, threat detector, exploit-prevention system, incident-attribution system, or universal critical-infrastructure defense.",
     "Describe EMILIA Host as the private local deployment form of Gate beside credential-owning HTTP or MCP adapters. Current scope is an HTTP local service alpha over an owner-permissioned Unix socket, HTTP and MCP SDK protection, and governed pilots; the local service is not a general HTTP reverse proxy. Do not present Host as generally available, an appliance, a universal firewall, complete mediation, proof of external effect, automatic Scan activation, or Consequence Ledger reconciliation.",
     "Use the core line 'Protocol proves. Gate prevents.' Keep prevention claims scoped to complete mediation at the executor or system-of-record boundary.",
     "Do not say every consequential action requires a human approval. A human decision is one authority source and an exception path. Agents may work unattended inside a finite operating mandate; missing, stale, exhausted, indeterminate, or wider authority fails closed or returns to the authority source.",

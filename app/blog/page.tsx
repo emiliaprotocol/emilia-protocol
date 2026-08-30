@@ -16,6 +16,14 @@ interface Post {
 
 const POSTS: Post[] = [
   {
+    title: 'AI defenders need action authority, not just credentials',
+    desc: 'Cyber-capable AI can move defenders faster. Before it changes a customer system, the exact remediation action still needs a bounded authority decision.',
+    href: '/blog/ai-defenders-need-action-authority',
+    date: '2026-08',
+    tag: 'Agent Security',
+    accent: color.gold,
+  },
+  {
     title: 'A credential was all the authority it needed',
     desc: 'The OpenAI–Hugging Face incident began as a containment failure. At external services, exposed credentials became enough to act. Those are different security problems.',
     href: '/blog/credentials-are-not-action-authorization',
