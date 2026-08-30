@@ -3,6 +3,13 @@
 
 ## Unreleased
 
+## 2.8.4 (2026-08-30)
+
+### Changed
+
+- Publish the corrected installation guidance with the current reproducible
+  Python release toolchain. Verifier behavior and public APIs are unchanged.
+
 ## 2.8.3 (2026-08-01)
 
 ### Security
