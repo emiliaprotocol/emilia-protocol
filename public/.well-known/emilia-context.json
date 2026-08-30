@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-30T13:16:04.471Z",
+  "evidence_snapshot_at": "2026-08-30T14:25:35.281Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "f669c65d3693160f6d60df16c090a006a2726b623029fd66105114e9b4565d8b",
+    "input_digest_sha256": "b46a2135aa7f5aeeef8a67cb9f7f46814896eb97b92dadb0c708c56fcdf719ad",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "e60b54a52c18d76cb1fd861a38781de6ad02f67196a73f8219f9ce504132f751",
+        "sha256": "becf3c618ced2fad7b54fbd735651b8a1af4c7b0ad2672430811ec3ac9bc252b",
         "bytes": 4299
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "e3b377a48f14c350a611239a143fe3fdbf5ac2210113e46ad26c47de9c7bf88d",
-        "bytes": 251674
+        "sha256": "cabb11967ff45b2d6a595be155ed95371d89c307bc3da276cf76353095f236e0",
+        "bytes": 251616
       },
       {
         "path": "security/security-case.json",
-        "sha256": "48b162a04b365b4f562fdb21fe9f2f74c5b0a454eb2858d2926ca56ec57695f0",
-        "bytes": 386304
+        "sha256": "957bd0978725330ed8a61e04bd16ca094fef322655c433456c3297bf067db307",
+        "bytes": 386020
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -414,8 +414,8 @@
     "security_case": {
       "status": "passed",
       "claims": 35,
-      "evidence_files": 260,
-      "evidence_bundle_sha256": "cd3ffb1656f7654aed884e6ee84d8460cf2effe21f5fec6c75f57146bc5733f9"
+      "evidence_files": 259,
+      "evidence_bundle_sha256": "7ff0001992a1bfbc2588c56e08c8101cb5db7d677db9fa70c8245e3185184de4"
     },
     "caid": {
       "core_vectors": 48,
@@ -2937,8 +2937,8 @@
           "reason": "Release workflow verification is a repository control implemented in JavaScript."
         },
         "go": {
-          "status": "covered",
-          "evidence": "packages/go-verify/signoff_compatibility_test.go"
+          "status": "not_applicable",
+          "reason": "Go release-chain enforcement is a repository control implemented in JavaScript and GitHub Actions; the Go module tests verifier behavior, not registry tag or proxy state."
         }
       },
       "vectors": [
