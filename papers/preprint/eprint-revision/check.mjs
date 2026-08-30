@@ -185,7 +185,8 @@ for (const claim of [
 for (const text of [
   "IACR ePrint submission packet: v5",
   "Per-Issuance Authorization Non-Amplification under Chosen-Context Signature Collection",
-  "Prepared for a new Cryptology ePrint Archive submission. Not yet submitted.",
+  "Submitted and email-confirmed on 30 August 2026 as temporary Cryptology ePrint",
+  "xxxx/111420",
   "Creative Commons Attribution 4.0 International",
   "Contribution to cryptology",
   "xxxx/111404",

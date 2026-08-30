@@ -118,6 +118,7 @@ cp build-a/main.pdf main.pdf
 node check.mjs
 ```
 
-The v3 predecessor is published at `10.5281/zenodo.21968577`. Version 5 has not
-been called submitted or posted until an external interface returns the
-corresponding confirmation state.
+The v3 predecessor is published at `10.5281/zenodo.21968577`. Version 5 was
+submitted and email-confirmed as temporary IACR ePrint submission
+`xxxx/111420` on 30 August 2026. It remains awaiting editor screening and has
+not been called approved, posted, or peer reviewed.
