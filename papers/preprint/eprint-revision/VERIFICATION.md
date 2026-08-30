@@ -1,48 +1,70 @@
-# Verification receipt: ANA preprint v4
+# Verification receipt: ANA preprint v5
 
-Date: 29 August 2026
+Date: 30 August 2026
 
-This receipt identifies the exact manuscript, PDF, symbolic models, and runner
-evidence checked for **Authorization Non-Amplification under Chosen-Context
-Signer Harvesting**. It records local reproducibility, not IACR acceptance,
-peer review, or security of a deployed system.
+This receipt identifies the exact source, PDF, symbolic models, and runner
+evidence checked for **Per-Issuance Authorization Non-Amplification under
+Chosen-Context Signature Collection**. It records local reproducibility and an
+adversarial proof review. It is not IACR acceptance, peer review, a mechanized
+proof of the computational theorem, or verification of a deployed system.
 
-## Manuscript audit
+## Proof-audit chronology
 
-The v4 security experiment and proof received an independent, full-source audit
-after the final context fields and state interfaces were frozen. The audit found
-no remaining theorem, game, reduction, adaptive-corruption, audience-binding,
-or state-model blocker. Material repairs made before that verdict include:
+The first v5 audit found material defects rather than certifying the draft:
 
-- binding the enforcement domain and relying-party audience into the signed
-  context and checking the audience against a trusted domain function;
-- carrying the accepted evidence set in the provider-entry event;
-- defining a fixed certified key-and-identity relation;
-- distinguishing the cardinality clause from the exact witness clause;
-- summing the EUF-CMA bound over the complete enrolled-key universe;
-- defining the real-resource experiment and its registry and mediation failure
-  events; and
-- delimiting ANA to one issued instance, with semantic reissuance explicitly
-  outside the theorem.
+- issuance storage and the `Issued` witness were not one atomic event;
+- the evidence map could change between validation and mediation;
+- duplicate identical issuance was not charged by `RegistryBreak`;
+- real issuance was not bound to trusted caller input;
+- exact action bytes disappeared before the modeled provider boundary;
+- distinct-key setup silently conditioned the key distribution;
+- successful consume could return a token without an exact `Consumed` event;
+  and
+- the completeness lemma ignored the stated signature-correctness error.
 
-The novelty audit added anonymous counting tokens, Bellare–Neven
-multisignatures, object-capability authority safety, and source-authority
-non-amplification to the prior-work comparison.
+The repaired source adds `ValidatedIssueInput`, atomic unique `Issued` and
+`Consumed` events, exact action and evidence preservation through
+`ValidatedEntryInput` and `Entry`, an explicit `KeyCollision` term, and a
+correctness-conditioned completeness lemma. It separates exact-witness
+authenticity, ideal non-amplification, and their composition. A final
+adversarial pass found no remaining counterexample, false bound, game-index
+error, or material theorem overclaim.
 
-## Build toolchain
+This is still an in-model theorem. A deployment must separately establish the
+probabilities of `RegistryBreak` and `MediationBreak` and show that no provider
+path bypasses the mediator.
 
-The PDF was built twice with Tectonic and a fixed
-`SOURCE_DATE_EPOCH=1786752000`. The outputs were byte-identical. Text extraction
-and the focused artifact guard use Poppler `pdftotext` and Node.js. All 15
-rendered pages were visually inspected.
+## Exact manuscript and PDF
 
-The Tamarin runners pin:
+| Property | Value |
+|---|---|
+| Source | `papers/preprint/eprint-revision/main.tex` |
+| Source SHA-256 | `ebc93f0a57af389c2b9eefaa910a74ed82c50f13ae3f3d80ec8eeb313d592864` |
+| PDF | `papers/preprint/eprint-revision/main.pdf` |
+| Delivery PDF | `output/pdf/authorization-non-amplification-v5.pdf` |
+| Pages | 19 |
+| Bytes | 173,254 |
+| PDF SHA-256 | `1f0b9e220f2072f42724516b53aa169e866770bad909f9b7a4fef8e90886406b` |
+
+Two clean Tectonic builds used `SOURCE_DATE_EPOCH=1786752000` and were
+byte-identical. The log contained no TeX warnings, overfull boxes, underfull
+boxes, undefined references, or errors. Poppler reported PDF 1.5 and 19 pages.
+All rendered pages were inspected after the build recorded below.
+
+## Symbolic evidence boundary
+
+The Tamarin artifacts were not changed by v5. They remain pinned to repository
+commit `c3e5da51d656f56470c2d568cd6295cb842893cf` and provide bounded case
+studies only. They do not prove the computational theorem or the real-resource
+refinement.
+
+The pinned container is:
 
 ```text
 lmandrelli/tamarin-prover-and-batch@sha256:dff2af961e192e2b8eef3faa0484a0075c380b476bd0e79c160a5619b2519083
 ```
 
-That image contains Tamarin 1.10.0 and Maude 3.4.
+It contains Tamarin 1.10.0 and Maude 3.4.
 
 ## Source digests
 
@@ -56,9 +78,10 @@ That image contains Tamarin 1.10.0 and Maude 3.4.
 | `formal/tamarin/run-quorum.sh` | `3dcaf37a0d1fa047bc655319ee35959b3f4ee6fc6afde358b7487eb5227691d7` |
 | `formal/tamarin/run-composed.sh` | `c04a9471d29c3d8164c52b2f2e01b38275d1fdc47ccdd587561315e8835e640f` |
 
-## Receipt-core rerun
+## Recorded Tamarin reruns
 
-Executed from the pinned container on 29 August 2026:
+The focused and composed runners completed on 29 August 2026. The receipt and
+quorum models reported:
 
 ```text
 executable_honest_receipt (exists-trace): verified (9 steps)
@@ -67,16 +90,7 @@ acceptance_prefix_integrity_after_later_reveal (all-traces): verified (12 steps)
 no_replay_across_actions (all-traces): verified (11 steps)
 injective_acceptance_with_consumption (all-traces): verified (11 steps)
 unchecked_acceptance_is_injective (all-traces): falsified - found trace (11 steps)
-```
 
-The final line is a required negative control: removing linear consumption lets
-one genuine artifact reach acceptance twice.
-
-## Quorum-core rerun
-
-Executed from the pinned container on 29 August 2026:
-
-```text
 executable_quorum (exists-trace): verified (13 steps)
 quorum_requires_two_distinct_uv_gated_signatures (all-traces): verified (27 steps)
 initiator_cannot_self_approve (all-traces): verified (4 steps)
@@ -84,49 +98,17 @@ no_single_signer_fills_quorum (all-traces): verified (4 steps)
 commit_requires_signature_over_that_action (all-traces): verified (8 steps)
 ```
 
-## Composed models
-
-The pinned composed runner was executed again on 29 August 2026 and exited
-successfully with `All composed proof obligations passed.` It verified 20
-positive obligations across the two theories and reproduced eight required
-negative controls using the same source and runner digests above. Its positive claims include exact
-action identity, current registry view, issuer and scope pinning, profile and
-audience binding, registered challenge consumption, action-keyed entry, and
-fail-closed reservation handling.
-
-The negative controls are:
-
-```text
-unchecked_composition_is_injective (all-traces): falsified - found trace (31 steps)
-unchecked_registry_view_is_current (all-traces): falsified - found trace (20 steps)
-unchecked_presenter_class_is_pinned (all-traces): falsified
-unchecked_signed_denial_cannot_authorize (all-traces): falsified
-unchecked_authority_scope_is_pinned (all-traces): falsified
-unchecked_reliance_profile_is_pinned (all-traces): falsified
-unchecked_unregistered_challenge_is_registered (all-traces): falsified
-unchecked_presenter_execution_key_is_canonical (all-traces): falsified
-```
-
-These symbolic results do not establish the computational theorem. The theories
-idealize signatures and typed encodings and assume the linear state facts they
-consume.
-
-## PDF artifact
-
-| Property | Value |
-|---|---|
-| File | `papers/preprint/eprint-revision/main.pdf` |
-| Pages | 15 |
-| Bytes | 152,612 |
-| SHA-256 | `3f86f29129f0ed4b1b2d502b7b9a6e62a7a311b022d19ea3eed9e3462992990d` |
+The composed runner verified 20 positive obligations and reproduced eight
+required negative controls. The committed result summary is
+`formal/tamarin/results/ep_reliance_composed.summary.txt`.
 
 ## Reproduction commands
 
 ```sh
 cd formal/tamarin
-TAMARIN_OUT_DIR=/tmp/emilia-abia-v4-receipt ./run-receipt-core.sh
-TAMARIN_OUT_DIR=/tmp/emilia-abia-v4-quorum ./run-quorum.sh
-TAMARIN_OUT_DIR=/tmp/emilia-abia-v4-composed ./run-composed.sh
+TAMARIN_OUT_DIR=/tmp/emilia-ana-v5-receipt ./run-receipt-core.sh
+TAMARIN_OUT_DIR=/tmp/emilia-ana-v5-quorum ./run-quorum.sh
+TAMARIN_OUT_DIR=/tmp/emilia-ana-v5-composed ./run-composed.sh
 
 cd ../../papers/preprint/eprint-revision
 SOURCE_DATE_EPOCH=1786752000 tectonic --keep-logs --outdir build-a main.tex
@@ -136,7 +118,6 @@ cp build-a/main.pdf main.pdf
 node check.mjs
 ```
 
-The rejected v3 PDF remains the published predecessor at
-`10.5281/zenodo.21968577`. It was not relabeled as v4. The v4 ePrint and Zenodo
-records remain unsubmitted and unpublished until their external interfaces
-return confirmation identifiers.
+The v3 predecessor is published at `10.5281/zenodo.21968577`. Version 5 has not
+been called submitted or posted until an external interface returns the
+corresponding confirmation state.

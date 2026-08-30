@@ -1,93 +1,146 @@
-# IACR ePrint submission packet: v4
+# IACR ePrint submission packet: v5
 
 ## State
 
-This packet is prepared for a new IACR Cryptology ePrint Archive submission after the final manuscript, artifact checks, and PDF digest are complete. It has not been submitted.
+Prepared for a new Cryptology ePrint Archive submission. Not yet submitted.
 
-The Cryptology ePrint Archive distributes technical reports. Posting there is not peer review, acceptance by IACR, or validation of the paper's claims. The peer-reviewed venue plan is separate in [`CSF-2027-SUBMISSION-PLAN.md`](CSF-2027-SUBMISSION-PLAN.md).
+Temporary submission `xxxx/111404` was declined because an ePrint report must
+be clear, readable, self-contained, look new and interesting, and contain
+proofs or convincing arguments for its claims. Version 5 directly addresses
+that screen. It is a substantive replacement, not a relabeling of the rejected
+PDF.
 
-The earlier temporary ePrint submissions, including the jointly reconsidered submission `xxxx/111261`, were rejected and did not receive a permanent ePrint number. Version 4 is a substantive replacement, not a relabeling of a rejected PDF. It introduces a different security target, a complete finite experiment, explicit ideal state resources, separation results, and a multi-user reduction over the full enrolled-key universe.
+An ePrint posting is not peer review, IACR endorsement, or validation of a
+deployed system.
 
-## Form fields
+## Authorized public fields
 
-### Title
-
-Authorization Non-Amplification under Chosen-Context Signer Harvesting
-
-### Author
-
-Iman Schrock
-
+- Author: Iman Schrock
 - Affiliation: EMILIA Protocol, Inc.
 - ORCID: `0009-0004-0290-5433`
 - Contact: `team@emiliaprotocol.ai`
+- Category: Cryptographic protocols
+- License: Creative Commons Attribution 4.0 International (CC BY 4.0)
 
-### Primary area
+## Title
 
-Cryptographic protocols
+Per-Issuance Authorization Non-Amplification under Chosen-Context Signature Collection
 
-### Keywords
+## Keywords
 
-authorization non-amplification; chosen-context signer harvesting; digital signatures; replay; injective agreement; stateful authorization; formal verification; Tamarin
+authorization non-amplification; chosen-context signature collection; digital
+signatures; replay; injective agreement; stateful authorization; multi-user
+security; formal verification; Tamarin
 
-### Abstract
+## Prior-publication disclosure
 
-A signature limits who could have produced a message. It does not limit how many consequential actions that message can unlock. This distinction is easy to miss in authorization systems whose collector may solicit genuine signatures on adaptively chosen requests, retain the resulting artifacts, and present them to multiple executors.
+- Selection: Published elsewhere
+- Venue: Zenodo preprint v3
+- DOI: `10.5281/zenodo.21968577`
+- Difference: Major differences (more than 25% of the material)
 
-We study *authorization non-amplification* (ANA), a per-issued-instance trace property connecting cryptographic approval events to provider-entry cardinality. An entry must map to one exact issued context and, for every required key not yet revealed, to a prior signature on that context's exact slot message. No issued instance may map to more than one entry. ANA is not implied by EUF-CMA security or by signer-to-collector Lowe-style injective agreement: replaying one valid artifact preserves both while violating ANA with probability one.
+Version 5 replaces the security experiment, construction, proof, systems
+refinement, closest-work comparison, and limitations. The Zenodo record is
+disclosed as the predecessor; it has no IACR ePrint identifier.
 
-We define a finite multi-user chosen-context experiment and give a compiler from an EUF-CMA signature scheme, a collision-resistant hash, an injective typed encoding, and ideal issue-and-consume and mediation resources. An unwitnessed entry yields a signature forgery or hash collision; duplicate entry is excluded by the linear resources. A real-resource refinement bound exposes registry and mediation failures as separate trace events rather than cryptographic advantages. Four Tamarin models provide symbolic case studies and nine deliberately weakened comparisons. The result concerns admission, not human identity, display fidelity, policy wisdom, or exactly-once physical effects.
+## Abstract
+
+A valid signature proves that a key signed a message. It does not say how many
+actions an executor may perform with that message. This gap matters when an
+untrusted collector can ask honest signers to approve adaptively chosen
+requests, retain the resulting artifacts, and present them concurrently to
+several executors. Replaying one genuine approval can then cause two provider
+entries without forging any signature.
+
+We formalize this gap as *authorization non-amplification* (ANA). In a finite
+multi-user experiment, the adversary wins if a provider entry lacks a prior
+issuance record or, for any required key unrevealed before entry, lacks an
+earlier signing event for the accepted context and slot. The adversary also
+wins if one issued instance witnesses more than one provider entry. We show
+that neither EUF-CMA security nor signer-to-collector injective agreement
+implies ANA.
+
+Our construction combines EUF-CMA signatures, a collision-resistant hash,
+injective typed encodings, an ideal exact issue-and-consume resource, and a
+one-use provider mediator. Except for setup-key collision, an entry without the
+required witness yields either a signature forgery or a hash collision; the
+state resources rule out duplicate entry. A separate bound names the registry
+and mediation failures that a real implementation must control. Four Tamarin
+models illustrate the correspondence, while nine weakened variants produce the
+expected attacks. The result concerns provider entry only; it does not establish
+human identity, display fidelity, policy correctness, or exactly-once physical
+effect.
 
 ## Note to the archive editor
 
-Version 4 replaces the earlier security target with a finite multi-user chosen-context experiment whose winning events are an unwitnessed provider entry and reuse of one issued instance for two entries. It proves a compiler from standard signatures and hashing in an explicit ideal issue-and-consume/mediation model, then gives a real-resource refinement bound with separate registry and mediation failure events. The claims stop at provider entry and do not include human identity, display fidelity, policy correctness, or exactly-once physical execution.
+Version 5 begins with the minimal no-forgery failure and states one research
+question. It then gives the full adversary interface, win conditions, typed
+encoding, construction, and dependency ladder in the report itself. The main
+result separates three claims that the previous version blurred:
 
-## What is new in v4
+1. exact-witness authenticity reduces to duplicate-key setup risk, hash
+   collision, and per-key EUF-CMA security;
+2. one-entry cardinality follows from explicit linear issue-and-consume and
+   mediation resources; and
+3. the deployment corollary charges concrete registry and mediation failures.
 
-Version 4 contains these substantive changes:
+The resubmission audit produced material repairs. Validated caller input,
+unique atomic issuance, exact action bytes, the exact evidence map, and one
+matching consume event are now preserved through provider entry. The proof no
+longer conditions key generation by resampling. The closest-work section states
+the contribution relationally, and the limitations sit next to the claims they
+qualify.
 
-1. **A precise security target.** ANA requires an exact issuance-and-signature witness for every provider entry and an injective map from entries to issued authorization instances.
-2. **A complete experiment.** The game fixes the enrolled-key universe and gives explicit issuance, chosen-context signing, reveal, admission, consumption, and entry events with finite query budgets.
-3. **Separations from existing notions.** The paper shows that EUF-CMA, a signed fresh nonce, byte-level unforgeability under noninjective encoding, and Lowe-style injective agreement do not supply the provider-entry bound.
-4. **A standard-primitive compiler.** The construction uses EUF-CMA signatures, collision resistance, injective typed encoding, exact issue-and-consume state, and complete provider mediation. It does not present state correctness as a consequence of signature security.
-5. **An honest multi-user bound.** The reduction sums over all enrolled challenge keys fixed before play. It does not select only the keys in a winning policy after the fact.
-6. **A real-resource refinement.** Registry and mediation failures are named trace events whose probabilities must come from a refinement proof, transactional argument, or fault model.
-7. **Machine-checked case studies with bounded claims.** The Tamarin models support concrete separations. They are not presented as a computational proof or a deployment verification.
+This is a substantive replacement for declined temporary submission
+`xxxx/111404` and a major revision of the v3 Zenodo preprint at
+`10.5281/zenodo.21968577`.
+
+## Public additional note
+
+Major revision of the v3 Zenodo preprint. Version 5 rebuilds the security
+experiment, construction, proof, real-resource refinement, closest-work
+comparison, and limitations.
 
 ## Contribution to cryptology
 
-The paper identifies a gap between message authenticity and action cardinality. EUF-CMA asks whether an adversary produced a valid signature on a message it did not obtain from the signing oracle. A collector can stay entirely inside that boundary, replay authentic approval artifacts, and still cause more consequential entries than the issuer authorized. ANA makes the missing quantity explicit and gives it a reduction-based treatment.
+EUF-CMA limits forgery of signed messages. It does not count how many provider
+entries an authentic artifact may unlock. ANA defines that missing quantity in
+a finite multi-user chosen-context experiment and gives a reduction-based
+treatment that joins certified multi-key evidence to exact issuance, adaptive
+reveal, one-time consumption, and provider entry.
 
-The manuscript does not claim priority over every use of “non-amplification” or single use. It distinguishes anonymous counting tokens, multisignatures, object-capability authority safety, source-authority preservation in agent memory, single-use delegation, and durable semantic-replay state. Its bounded contribution is the finite multi-user chosen-context experiment and reduction that join certified multi-key evidence, exact issuance, adaptive reveal, and provider-entry cardinality.
+The paper does not claim that replay prevention, single-use state, or the term
+non-amplification is new. Its bounded contribution is the exact cross-role
+correspondence and the separation of cryptographic authenticity from the state
+and mediation obligations needed when the conclusion concerns actions rather
+than signed bytes.
 
-The result is not that signatures are deficient. It is that a cryptographic authorization theorem needs an executor event and a state transition if its conclusion is about actions rather than signed bytes. The paper formalizes that endpoint, proves the separations, and states which remaining obligations are operational rather than cryptographic.
+## Five-report editorial calibration
 
-## Files to upload
+The structure was compared end to end with ePrint reports 2026/1833,
+2026/1832, 2026/1831, 2026/1830, and 2026/1829. The comparison is recorded in
+`IACR-RESUBMISSION-EDITORIAL-MEMO.md`. These reports were approved into the
+archive; that status is not peer review.
 
-- Final v4 PDF generated from `main.tex`
-- Optional public artifact bundle containing the four cited Tamarin theories, pinned runners, proof-status records, and this submission metadata
+## Exact upload artifact
 
-Do not upload the old `main.pdf` unless its digest has first been confirmed to be the new v4 artifact. The final upload record should contain the exact filename, page count, byte count, and SHA-256 digest.
+- Filename: `authorization-non-amplification-v5.pdf`
+- Pages: `19`
+- Bytes: `173,254`
+- SHA-256: `1f0b9e220f2072f42724516b53aa169e866770bad909f9b7a4fef8e90886406b`
+- ePrint identifier: `TBD; not yet submitted`
 
 ## Preflight checklist
 
-- [x] The title, abstract, theorem statement, conclusion, and metadata all use **Authorization Non-Amplification**, not the superseded ABIA framing.
-- [x] The final source compiles from the dedicated clean-base worktree.
-- [x] Two clean builds are byte-identical.
-- [x] The PDF has been rendered to images and visually inspected page by page.
-- [x] Every new bibliography entry was checked against a primary publication record.
-- [x] The Tamarin result counts and deliberate falsifications match the committed proof-status files.
-- [x] The repository checker passes against the v4 claims.
-- [x] The final PDF filename, page count, byte count, and SHA-256 digest are recorded here before upload.
-- [ ] The uploaded PDF is reopened from the ePrint submission interface and compared to the local digest when the interface permits download.
-- [ ] The confirmation email or archive identifier is saved before calling the paper submitted.
-
-## Final artifact record
-
-Fill only after the final build:
-
-- Filename: `authorization-non-amplification-v4.pdf`
-- Pages: `15`
-- Bytes: `152,612`
-- SHA-256: `3f86f29129f0ed4b1b2d502b7b9a6e62a7a311b022d19ea3eed9e3462992990d`
-- ePrint identifier: `TBD, not submitted`
+- [x] Exact public identity, category, and CC BY license recorded.
+- [x] Title and abstract match `main.tex`.
+- [x] Complete experiment, construction, definitions, theorem, proof, and limitations are in the PDF.
+- [x] Final adversarial proof audit passed after repairing the discovered defects.
+- [x] Two clean fixed-epoch builds are byte-identical.
+- [x] PDF has no TeX warnings or undefined references.
+- [x] Tamarin claims match the committed proof records and remain bounded as case studies.
+- [x] Final PDF filename, pages, bytes, and digest are pinned.
+- [x] Every rendered page has been visually inspected.
+- [x] Repository checker passes against v5.
+- [ ] Uploaded PDF is reopened or otherwise compared when the interface permits.
+- [ ] Submission confirmation is preserved before changing the state above.
