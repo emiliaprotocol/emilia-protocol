@@ -11,6 +11,7 @@ import {
   readdirSync,
   realpathSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -186,6 +187,73 @@ test('packed scan refuses missing runtime, then uses the exact audited guard in 
     'generated integration must pin the audited guard release exactly',
   );
 
+  const starterMarker = JSON.parse(readFileSync(
+    join(consumer, 'emilia', '.emilia-gate-starter.json'),
+    'utf8',
+  ));
+  const nestedGuard = join(
+    consumer,
+    'emilia',
+    'node_modules',
+    '@emilia-protocol',
+    'mcp-guard',
+  );
+  mkdirSync(nestedGuard, { recursive: true });
+  writeFileSync(join(nestedGuard, 'package.json'), JSON.stringify({
+    name: '@emilia-protocol/mcp-guard',
+    version: '666.0.0',
+    type: 'module',
+    main: 'index.js',
+    exports: { '.': { import: './index.js' } },
+  }));
+  writeFileSync(join(nestedGuard, 'index.js'), "throw new Error('nested shadow guard was imported');\n");
+
+  const directVerifyOutput = run(process.execPath, [
+    join(consumer, 'emilia', 'verify-setup.mjs'),
+    '--action',
+    'rotateApiKey',
+    '--expected-surface-digest',
+    starterMarker.declared_surface_sha256,
+  ], { cwd: consumer });
+  assert.match(directVerifyOutput, /EMILIA RR-1 CHECK: PASS — 4\/4 cases matched the protected-action contract/);
+
+  const directHostileEnv = spawnSync(process.execPath, [
+    join(consumer, 'emilia', 'verify-setup.mjs'),
+    '--action',
+    'rotateApiKey',
+    '--expected-surface-digest',
+    starterMarker.declared_surface_sha256,
+  ], {
+    cwd: consumer,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      EMILIA_SCAN_MCP_GUARD_MODULE_URL: 'https://attacker.invalid/mcp-guard.mjs',
+    },
+  });
+  assert.equal(directHostileEnv.status, 1, `${directHostileEnv.stdout}\n${directHostileEnv.stderr}`);
+  assert.match(
+    `${directHostileEnv.stdout}${directHostileEnv.stderr}`,
+    /outside the consumer dependency root/,
+  );
+
+  const shadowReviewed = spawnSync(scanBin, [
+    'protect',
+    input,
+    '--action',
+    'rotateApiKey',
+    '--reviewed',
+    '--crossing-profile',
+    'ccs-wang-draft08-v13',
+    '--out',
+    'emilia',
+  ], { cwd: consumer, encoding: 'utf8' });
+  assert.equal(shadowReviewed.status, 1, `${shadowReviewed.stdout}\n${shadowReviewed.stderr}`);
+  assert.match(`${shadowReviewed.stdout}${shadowReviewed.stderr}`, /unrecognized or missing files/);
+  assert.equal(existsSync(join(consumer, 'emilia', 'scan-adoption-handoff.json')), false);
+  assert.equal(existsSync(join(consumer, 'emilia-crossing-lab')), false);
+  rmSync(join(consumer, 'emilia', 'node_modules'), { recursive: true });
+
   const manifestFile = join(consumer, 'emilia', 'action-control.manifest.json');
   const manifestBytes = readFileSync(manifestFile);
   const manifest = JSON.parse(manifestBytes.toString('utf8'));
@@ -211,6 +279,7 @@ test('packed scan refuses missing runtime, then uses the exact audited guard in 
     cwd: consumer,
     env: {
       ...process.env,
+      EMILIA_SCAN_MCP_GUARD_MODULE_URL: 'https://attacker.invalid/mcp-guard.mjs',
       EMILIA_SCAN_CROSSING_LAB_MODULE_URL: 'https://attacker.invalid/crossing-lab.mjs',
     },
   });

@@ -35,6 +35,9 @@
 - Refuse verification before writing when the consumer project does not contain
   exact `@emilia-protocol/mcp-guard@0.6.0`; Scan never installs dependencies or
   performs a network request on the caller's behalf.
+- Resolve that exact Guard from the consumer dependency root for both direct
+  RR-1 checks and reviewed handoffs. Refuse nested package shadows, unexpected
+  starter files, and inherited runtime URLs instead of executing them.
 - Reject source-confusing action, input, and output CLI values before rendering
   them or writing generated artifacts.
 - Refuse `--force` for reserved roots or any directory that is not an exact,

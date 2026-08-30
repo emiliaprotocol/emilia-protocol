@@ -673,7 +673,7 @@ test('selected-action Gate Starter is two-stage, blocks every unselected runtime
     'protect', input, '--action', 'sendWire', '--reviewed', '--crossing-profile', 'ccs-wang-draft08-v13',
   ], { cwd: dir, encoding: 'utf8' });
   assert.notEqual(overwrite.status, 0);
-  assert.match(`${overwrite.stdout}${overwrite.stderr}`, /refusing to overwrite existing handoff/i);
+  assert.match(`${overwrite.stdout}${overwrite.stderr}`, /unrecognized or missing files/i);
   assert.deepEqual(readFileSync(handoffPath), handoffBytes);
 });
 

@@ -7,6 +7,11 @@ All notable changes to `@emilia-protocol/mcp-guard` are documented here.
 
 ## 0.6.0 (2026-08-30)
 
+### Added
+
+- Export the package runtime version so generated consumers can verify that the
+  loaded module is the exact release they pinned.
+
 ### Security
 
 - Keep the exact bound execution arguments private from consent, signoff,
