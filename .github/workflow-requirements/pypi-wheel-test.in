@@ -1,0 +1,4 @@
+cryptography==50.0.0
+langchain-core>=0.3,<2
+pytest==9.1.1
+pytest-asyncio==1.4.0
