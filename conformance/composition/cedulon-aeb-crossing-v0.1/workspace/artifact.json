@@ -1,0 +1,38 @@
+{
+  "@version": "CEDULON-DECISION-TOKEN-AEB-INPUT-v0.1",
+  "policy": {
+    "maxAmount": "500000",
+    "maxCumulative": "1000000",
+    "maxPayments": 5,
+    "windowMs": 3600000,
+    "allowedPayees": [
+      "merchant:cedulon-demo"
+    ],
+    "allowedCurrencies": [
+      "USD"
+    ],
+    "allowedTools": [
+      "x402.settle"
+    ]
+  },
+  "request": {
+    "amount": "125000",
+    "currency": "USD",
+    "payee": "merchant:cedulon-demo",
+    "tool": "x402.settle",
+    "nonce": "3b5b3d6fb7e449b4a7cb6f7c552d7e3c",
+    "manifestHash": "92d1541a242777213ecf5cd1196e5f8c8cfc169b83427103ea62a57236da2fa3"
+  },
+  "token": {
+    "claims": {
+      "requestHash": "c1d990b0661ba3968cb0ba44953cc84c0c7783904e7a79bd2260655f238330c2",
+      "policyHash": "ddbe2801811eac968404af79d88c8353e8e564aca61d838558025cd70b9187a4",
+      "expiryMs": 1801483500000,
+      "nonce": "3b5b3d6fb7e449b4a7cb6f7c552d7e3c",
+      "singleUseId": "decision:cedulon-demo:001"
+    },
+    "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\n-----END PUBLIC KEY-----\n",
+    "encoding": "cose",
+    "coseHex": "845831a301320378216170706c69636174696f6e2f636564756c6f6e2d6465636973696f6e2b63626f72044806e3fd8fda29bb60a058e4a53a0001129c7840633164393930623036363162613339363863623062613434393533636338346330633737383339303465376137396264323236303635356632333833333063323a0001129d7840646462653238303138313165616339363834303461663739643838633833353365386535363461636136316438333835353830323563643730623931383761343a0001129e1b000001a370c8b9e03a0001129f782033623562336436666237653434396234613763623666376335353264376533633a000112a078196465636973696f6e3a636564756c6f6e2d64656d6f3a3030315840efa38d52a903985efe72c20ecd0df8034e9cc6847b4b01f3816180712f8c72ffacd8e5dd400fc955e7e96818eb223fc8e8880aa9b609dd909018a95bec324e07"
+  }
+}

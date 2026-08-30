@@ -1,0 +1,83 @@
+{
+  "@version": "CEDULON-DECISION-TOKEN-TO-CAID-v0.1",
+  "native_protocol": "draft-dogru-cedulon-04",
+  "native_artifact": "Decision Token",
+  "source_media_type": "application/cedulon-decision+cbor",
+  "source_profile": "Cedulon-v0.7.0-compatible-strict-subset",
+  "projection": "six-field-request",
+  "action_type": "cedulon.payment.attempt.1",
+  "suite": "jcs-sha256",
+  "field_map": [
+    {
+      "source": "request.amount",
+      "target": "amount",
+      "transform": "copy"
+    },
+    {
+      "source": "request.currency",
+      "target": "currency",
+      "transform": "copy"
+    },
+    {
+      "source": "request.payee",
+      "target": "payee",
+      "transform": "copy"
+    },
+    {
+      "source": "request.tool",
+      "target": "tool",
+      "transform": "copy"
+    },
+    {
+      "source": "request.nonce",
+      "target": "nonce",
+      "transform": "copy"
+    },
+    {
+      "source": "request.manifestHash",
+      "target": "manifest_hash",
+      "transform": "copy"
+    }
+  ],
+  "definitions": [
+    {
+      "action_type": "cedulon.payment.attempt.1",
+      "status": "active",
+      "risk_class": "irreversible-financial",
+      "summary": "Attempt one Cedulon-gated payment using the exact six fields evaluated by the PDP.",
+      "required_fields": [
+        {
+          "name": "amount",
+          "type": "amount-string",
+          "notes": "minor units; Cedulon decimal string syntax"
+        },
+        {
+          "name": "currency",
+          "type": "string"
+        },
+        {
+          "name": "payee",
+          "type": "string"
+        },
+        {
+          "name": "tool",
+          "type": "string"
+        },
+        {
+          "name": "nonce",
+          "type": "string"
+        },
+        {
+          "name": "manifest_hash",
+          "type": "string",
+          "notes": "lowercase hexadecimal SHA-256 of signed manifest COSE bytes"
+        }
+      ],
+      "optional_fields": [],
+      "digest_notes": "All six Cedulon requestHash fields are material. This v0.1 subset refuses null tool or manifestHash.",
+      "references": [
+        "draft-dogru-cedulon-04 Sections 7.1, 8, and 16.6"
+      ]
+    }
+  ]
+}
