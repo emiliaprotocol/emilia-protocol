@@ -2,7 +2,8 @@
 
 ## State
 
-Prepared for a new Cryptology ePrint Archive submission. Not yet submitted.
+Submitted and email-confirmed on 30 August 2026 as temporary Cryptology ePrint
+submission `xxxx/111420`. Awaiting editor screening; not yet approved or posted.
 
 Temporary submission `xxxx/111404` was declined because an ePrint report must
 be clear, readable, self-contained, look new and interesting, and contain
@@ -128,7 +129,8 @@ archive; that status is not peer review.
 - Pages: `19`
 - Bytes: `173,254`
 - SHA-256: `1f0b9e220f2072f42724516b53aa169e866770bad909f9b7a4fef8e90886406b`
-- ePrint identifier: `TBD; not yet submitted`
+- Temporary ePrint submission: `xxxx/111420`
+- Archive state: email-confirmed; awaiting editor screening
 
 ## Preflight checklist
 
@@ -142,5 +144,7 @@ archive; that status is not peer review.
 - [x] Final PDF filename, pages, bytes, and digest are pinned.
 - [x] Every rendered page has been visually inspected.
 - [x] Repository checker passes against v5.
-- [ ] Uploaded PDF is reopened or otherwise compared when the interface permits.
-- [ ] Submission confirmation is preserved before changing the state above.
+- [x] Exact local upload artifact was selected and the portal returned
+  temporary submission `xxxx/111420`.
+- [x] Author-email ownership was confirmed and the portal reported that the
+  paper was received for editor review.

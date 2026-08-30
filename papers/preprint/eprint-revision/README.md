@@ -31,7 +31,8 @@ An ePrint posting is an archive-screening outcome, not peer review.
 - Manuscript: v5 proof repair complete; final adversarial audit passed
 - Tamarin evidence: unchanged, pinned to repository commit
   `c3e5da51d656f56470c2d568cd6295cb842893cf`
-- IACR ePrint: not yet resubmitted
+- IACR ePrint: submitted and email-confirmed as temporary submission
+  `xxxx/111420`; awaiting editor screening
 - Peer review: not submitted
 - Zenodo v5: metadata staged, not published
 
