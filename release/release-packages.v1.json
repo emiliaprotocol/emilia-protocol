@@ -11,7 +11,7 @@
       "registry_dependency_tarballs": [
         {
           "spec": "@emilia-protocol/verify@3.21.0",
-          "sha256": "8fc4694ef7bebb753a313f395d0d74ce7145ca0435038179614999ffbf72594f"
+          "sha256": "e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265"
         }
       ]
     },
@@ -30,7 +30,7 @@
         },
         {
           "spec": "@emilia-protocol/verify@3.21.0",
-          "sha256": "8fc4694ef7bebb753a313f395d0d74ce7145ca0435038179614999ffbf72594f"
+          "sha256": "e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265"
         }
       ]
     },
@@ -46,7 +46,7 @@
       "registry_dependency_tarballs": [
         {
           "spec": "@emilia-protocol/verify@3.21.0",
-          "sha256": "8fc4694ef7bebb753a313f395d0d74ce7145ca0435038179614999ffbf72594f"
+          "sha256": "e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265"
         }
       ]
     },
@@ -66,7 +66,7 @@
         },
         {
           "spec": "@emilia-protocol/verify@3.21.0",
-          "sha256": "8fc4694ef7bebb753a313f395d0d74ce7145ca0435038179614999ffbf72594f"
+          "sha256": "e8ba6a7bd34b5fb30767c939360ac7c7c9006bce8407b66cf5940febd0717265"
         }
       ]
     },
