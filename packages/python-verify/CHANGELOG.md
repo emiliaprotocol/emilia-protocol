@@ -9,6 +9,8 @@
 
 - Publish the corrected installation guidance with the current reproducible
   Python release toolchain. Verifier behavior and public APIs are unchanged.
+- Set the supported Python floor to 3.10 so runtime metadata and the pinned
+  build toolchain describe the same supported interpreter line.
 
 ## 2.8.3 (2026-08-01)
 

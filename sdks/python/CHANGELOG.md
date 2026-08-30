@@ -15,6 +15,8 @@
   delegation, commit, and batch methods.
 - Added installed-wheel metadata, namespace, route-contract, and negative
   lifecycle tests.
+- Set the supported Python floor to 3.10, matching the pinned build toolchain
+  and avoiding an unsupported Python 3.9 release line.
 
 This is a breaking release. Replace `from ep import ...` with
 `from emilia_protocol import ...` and remove `await` from client calls.

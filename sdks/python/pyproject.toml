@@ -8,7 +8,7 @@ version = "0.11.0"
 description = "Synchronous, zero-dependency client for EMILIA handshakes, trust gate, and v1 trust receipts."
 readme = "README.md"
 license = {text = "Apache-2.0"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
 keywords = ["trust", "ai-agents", "emilia-protocol", "handshake", "trust-receipt"]
 classifiers = [
@@ -16,7 +16,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
