@@ -16,8 +16,8 @@ test('scaffold pins official packages and keeps trust roots outside receipts', (
     assert.equal(result.status, 0, result.stderr);
     const root = join(cwd, 'secure-demo');
     const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
-    assert.equal(pkg.dependencies['@emilia-protocol/verify'], '3.10.0');
-    assert.equal(pkg.dependencies['@emilia-protocol/issue'], '0.6.1');
+    assert.equal(pkg.dependencies['@emilia-protocol/verify'], '3.21.0');
+    assert.equal(pkg.dependencies['@emilia-protocol/issue'], '0.7.0');
     const verifier = readFileSync(join(root, 'verify-receipt.mjs'), 'utf8');
     assert.match(verifier, /relying-party-trust/);
     assert.match(verifier, /strictJsonGate/);
@@ -34,4 +34,13 @@ test('scaffold refuses path traversal and existing destinations', () => {
     }
     assert.equal(spawnSync(process.execPath, [join(import.meta.dirname, 'index.js'), 'demo'], { cwd }).status, 0);
     assert.notEqual(spawnSync(process.execPath, [join(import.meta.dirname, 'index.js'), 'demo'], { cwd }).status, 0);
+});
+test('release metadata records the dependency refresh', () => {
+    const metadata = JSON.parse(readFileSync(join(import.meta.dirname, 'package.json'), 'utf8'));
+    assert.equal(metadata.version, '0.2.2');
+    assert.ok(metadata.files.includes('CHANGELOG.md'));
+    const changelog = readFileSync(join(import.meta.dirname, 'CHANGELOG.md'), 'utf8');
+    assert.match(changelog, /^## 0\.2\.2 \(2026-08-30\)$/m);
+    assert.match(changelog, /@emilia-protocol\/issue` 0\.7\.0/);
+    assert.match(changelog, /@emilia-protocol\/verify` 3\.21\.0/);
 });
