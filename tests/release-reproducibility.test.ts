@@ -242,7 +242,11 @@ describe('release byte reproducibility', () => {
       else process.env.GITHUB_WORKSPACE = priorWorkspace;
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  // This fixture performs two isolated npm builds. On a cold or saturated
+  // workstation those synchronous subprocesses can legitimately exceed
+  // Vitest's five-second unit-test default, while still remaining bounded by
+  // the release verifier's own process timeouts.
+  }, 600_000);
 
   it('rejects a deterministic build-time package version rewrite', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-version-rewrite-'));
