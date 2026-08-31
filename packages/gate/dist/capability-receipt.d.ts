@@ -158,6 +158,7 @@ type ExecuteWithCapabilityOptions = {
 type ExecuteWithCapabilityResult = {
     ok: boolean;
     reason?: string;
+    status?: number;
     result?: any;
     scope?: any;
     authorization?: any;
@@ -169,6 +170,7 @@ type ExecuteWithCapabilityResult = {
     holding_operation_id?: string | null;
     caid?: string;
     remaining?: any;
+    provider_entry_evidence?: Readonly<Record<string, any>> | null;
 };
 /** Digest the exact immutable action snapshot exercised under a capability. */
 export declare function capabilityActionDigest(action: any): string;

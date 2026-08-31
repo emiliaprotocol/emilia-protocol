@@ -244,6 +244,257 @@ test('gate capability path derives the organization control domain from the guar
   );
 });
 
+test('gate capability path preserves provider-entry evidence in the result and execution record', async () => {
+  const providerEntryEvidence = {
+    kind: 'equipment_status',
+    source_id: 'source:operator-equipment-status',
+    source_digest: `sha256:${'ab'.repeat(32)}`,
+    observed_at: new Date(NOW).toISOString(),
+  };
+  const f = fixture({
+    providerEntryGuard: async () => ({ ok: true, evidence: providerEntryEvidence }),
+  });
+
+  const result = await f.gate.run(
+    request(f, { operationId: ACTION.payment_instruction_id }),
+    async (_authorization, operation) => operation.providerEntryEvidence,
+  );
+
+  assert.equal(result.ok, true, result.capability?.reason || result.authorization?.reason);
+  assert.deepEqual(result.result, providerEntryEvidence);
+  assert.deepEqual(result.capability.provider_entry_evidence, providerEntryEvidence);
+  assert.deepEqual(result.execution.detail.provider_entry_evidence, providerEntryEvidence);
+});
+
+test('capability execution without a provider-entry guard preserves the legacy result shape', async () => {
+  const f = fixture();
+  let operationContext: any = null;
+  const result = await f.gate.run(
+    request(f, { operationId: ACTION.payment_instruction_id }),
+    async (_authorization, operation) => {
+      operationContext = operation;
+      return 'settled';
+    },
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(Object.hasOwn(operationContext, 'providerEntryEvidence'), false);
+  assert.equal(Object.hasOwn(result.capability, 'provider_entry_evidence'), false);
+  assert.equal(Object.hasOwn(result.execution.detail, 'provider_entry_evidence'), false);
+});
+
+test('gate capability refusal preserves provider-entry evidence in the result and capability event', async () => {
+  const providerEntryEvidence = {
+    version: 'EP-GATE-PROVIDER-ENTRY-GUARD-v1',
+    kind: 'equipment_status',
+    source_id: 'source:operator-equipment-status',
+    source_digest: `sha256:${'cd'.repeat(32)}`,
+    status: 'revoked',
+    observed_at: new Date(NOW).toISOString(),
+  };
+  const f = fixture({
+    providerEntryGuard: async () => ({
+      ok: false,
+      reason: 'equipment_status_revoked',
+      status: 423,
+      reservation: 'burn',
+      evidence: providerEntryEvidence,
+    }),
+  });
+
+  const result = await f.gate.run(
+    request(f, { operationId: ACTION.payment_instruction_id }),
+    async () => { throw new Error('effect must not run'); },
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 423);
+  assert.equal(result.capability.reason, 'equipment_status_revoked');
+  assert.deepEqual(result.provider_entry_evidence, providerEntryEvidence);
+  assert.deepEqual(result.capability.provider_entry_evidence, providerEntryEvidence);
+  assert.equal(Object.hasOwn(result.refusal, 'provider_entry_evidence'), false);
+  assert.equal(Object.hasOwn(result.refusal.challenge.rejected, 'provider_entry_evidence'), false);
+  const capabilityEvent = f.gate.evidence.all().find((entry) => entry.kind === 'capability');
+  assert.deepEqual(capabilityEvent?.provider_entry_evidence, providerEntryEvidence);
+});
+
+test('gate preserves successful guard evidence when the store refuses provider entry', async () => {
+  const providerEntryEvidence = {
+    kind: 'equipment_status',
+    source_id: 'source:operator-equipment-status',
+    source_digest: `sha256:${'ef'.repeat(32)}`,
+    status: 'active',
+    observed_at: new Date(NOW).toISOString(),
+  };
+  const f = fixture({
+    providerEntryGuard: async () => ({ ok: true, evidence: providerEntryEvidence }),
+  });
+  f.capabilityStore.beginProviderEntry = async () => ({
+    ok: false,
+    reason: 'capability_provider_entry_refused',
+  });
+  let effects = 0;
+
+  const result = await f.gate.run(
+    request(f, { operationId: ACTION.payment_instruction_id }),
+    async () => { effects += 1; return 'must-not-run'; },
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.capability.reason, 'capability_provider_entry_refused');
+  assert.equal(effects, 0);
+  assert.deepEqual(result.provider_entry_evidence, providerEntryEvidence);
+  assert.deepEqual(result.capability.provider_entry_evidence, providerEntryEvidence);
+  const capabilityEvent = f.gate.evidence.all().find((entry) => entry.kind === 'capability');
+  assert.deepEqual(capabilityEvent?.provider_entry_evidence, providerEntryEvidence);
+});
+
+test('gate preserves refusal evidence when the pre-entry reservation transition is indeterminate', async () => {
+  const providerEntryEvidence = {
+    kind: 'equipment_status',
+    source_id: 'source:operator-equipment-status',
+    source_digest: `sha256:${'ac'.repeat(32)}`,
+    status: 'revoked',
+    observed_at: new Date(NOW).toISOString(),
+  };
+  const f = fixture({
+    providerEntryGuard: async () => ({
+      ok: false,
+      reason: 'equipment_status_revoked',
+      reservation: 'burn',
+      evidence: providerEntryEvidence,
+    }),
+  });
+  f.capabilityStore.recoverPreEntrySpend = async () => ({
+    ok: false,
+    reason: 'storage_outcome_unknown',
+  });
+  let effects = 0;
+
+  const result = await f.gate.run(
+    request(f, { operationId: ACTION.payment_instruction_id }),
+    async () => { effects += 1; return 'must-not-run'; },
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.capability.reason, 'capability_provider_entry_reservation_transition_indeterminate');
+  assert.equal(effects, 0);
+  assert.deepEqual(result.provider_entry_evidence, providerEntryEvidence);
+  assert.deepEqual(result.capability.provider_entry_evidence, providerEntryEvidence);
+  assert.equal(Object.hasOwn(result.refusal.challenge.rejected, 'provider_entry_evidence'), false);
+  const capabilityEvent = f.gate.evidence.all().find((entry) => entry.kind === 'capability');
+  assert.deepEqual(capabilityEvent?.provider_entry_evidence, providerEntryEvidence);
+});
+
+test('gate refuses non-JSON provider-entry evidence before the effect', async () => {
+  const f = fixture({
+    providerEntryGuard: async () => ({
+      ok: true,
+      evidence: {
+        kind: 'equipment_status',
+        // A Date is structured-cloneable but is outside the bounded canonical
+        // JSON evidence domain and must never survive until post-effect recording.
+        observed_at: new Date(NOW),
+      },
+    }),
+  });
+  let effects = 0;
+
+  const result = await f.gate.run(
+    request(f, { operationId: ACTION.payment_instruction_id }),
+    async () => { effects += 1; return 'must-not-run'; },
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.capability.reason, 'provider_entry_guard_evidence_invalid');
+  assert.equal(effects, 0);
+  assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, 0);
+  assert.equal(f.capabilityStore.getState('cap_100').reserved_amount, 40);
+  assert.equal(f.capabilityStore.getOperation(ACTION.payment_instruction_id).status, 'reserved');
+});
+
+test('terminal metadata preserves provider-entry evidence when execution recording fails', async () => {
+  const providerEntryEvidence = {
+    kind: 'equipment_status',
+    source_id: 'source:operator-equipment-status',
+    source_digest: `sha256:${'bd'.repeat(32)}`,
+    observed_at: new Date(NOW).toISOString(),
+  };
+  const f = fixture({
+    providerEntryGuard: async () => ({ ok: true, evidence: providerEntryEvidence }),
+  });
+  const record = f.gate.evidence.record.bind(f.gate.evidence);
+  f.gate.evidence.record = async (entry) => {
+    if (entry?.kind === 'execution') throw new Error('evidence backend unavailable');
+    return record(entry);
+  };
+  let effects = 0;
+
+  await assert.rejects(
+    f.gate.run(
+      request(f, { operationId: ACTION.payment_instruction_id }),
+      async () => { effects += 1; return { settled: true }; },
+    ),
+    (error: any) => {
+      assert.equal(error.code, 'EMILIA_GATE_TERMINAL_OUTCOME');
+      assert.equal(error.emiliaGateOutcome.outcome, 'executed');
+      assert.equal(error.emiliaGateOutcome.reason, 'execution_evidence_unavailable');
+      assert.deepEqual(error.emiliaGateOutcome.provider_entry_evidence, providerEntryEvidence);
+      return true;
+    },
+  );
+  assert.equal(effects, 1);
+  assert.equal(
+    f.capabilityStore.getOperation(ACTION.payment_instruction_id).outcome,
+    'executed',
+  );
+});
+
+test('terminal metadata preserves provider-entry evidence when capability refusal recording fails', async () => {
+  const providerEntryEvidence = {
+    kind: 'equipment_status',
+    source_id: 'source:operator-equipment-status',
+    source_digest: `sha256:${'ce'.repeat(32)}`,
+    status: 'revoked',
+    observed_at: new Date(NOW).toISOString(),
+  };
+  const f = fixture({
+    providerEntryGuard: async () => ({
+      ok: false,
+      reason: 'equipment_status_revoked',
+      status: 423,
+      reservation: 'burn',
+      evidence: providerEntryEvidence,
+    }),
+  });
+  const record = f.gate.evidence.record.bind(f.gate.evidence);
+  f.gate.evidence.record = async (entry) => {
+    if (entry?.kind === 'capability') throw new Error('evidence backend unavailable');
+    return record(entry);
+  };
+  let effects = 0;
+
+  await assert.rejects(
+    f.gate.run(
+      request(f, { operationId: ACTION.payment_instruction_id }),
+      async () => { effects += 1; return { settled: true }; },
+    ),
+    (error: any) => {
+      assert.equal(error.code, 'EMILIA_GATE_TERMINAL_OUTCOME');
+      assert.equal(error.emiliaGateOutcome.outcome, 'refused');
+      assert.equal(error.emiliaGateOutcome.reason, 'capability_evidence_unavailable');
+      assert.equal(error.emiliaGateOutcome.result.reason, 'equipment_status_revoked');
+      assert.deepEqual(error.emiliaGateOutcome.provider_entry_evidence, providerEntryEvidence);
+      return true;
+    },
+  );
+  assert.equal(effects, 0);
+  assert.equal(
+    f.capabilityStore.getOperation(ACTION.payment_instruction_id).outcome,
+    'refused',
+  );
+});
+
 test('gate capability path refuses overspend before the effect', async () => {
   const f = fixture({ budget: 30 });
   let effects = 0;
@@ -345,6 +596,35 @@ test('a throwing provider-entry guard holds authority instead of restoring it', 
   const operation = f.capabilityStore.getOperation(ACTION.payment_instruction_id);
   assert.equal(operation.status, 'reserved');
   assert.equal(f.capabilityStore.getState('cap_100').reserved_amount, 40);
+});
+
+test('runtime refusal after capability provider entry is recorded as indeterminate', async () => {
+  const f = fixture({
+    providerEntryGuard: async () => ({
+      ok: true,
+      evidence: { kind: 'equipment_status', source_digest: `sha256:${'fa'.repeat(32)}` },
+    }),
+  });
+  f.runtimeMonitor.beginExecution = () => ({
+    ok: false,
+    reason: 'runtime_test_refusal',
+    event: { theorem: 'test' },
+  });
+  let effects = 0;
+
+  const out = await f.gate.run(
+    request(f, { operationId: ACTION.payment_instruction_id }),
+    async () => { effects += 1; },
+  );
+
+  assert.equal(out.ok, false);
+  assert.equal(out.capability.reason, 'effect_indeterminate');
+  assert.equal(out.evidence.kind, 'execution');
+  assert.equal(out.evidence.outcome, 'indeterminate');
+  assert.equal(out.evidence.detail.code, 'provider_entry_committed_effect_not_invoked');
+  assert.equal(f.capabilityStore.getOperation(ACTION.payment_instruction_id).outcome, 'indeterminate');
+  assert.equal(f.capabilityStore.getState('cap_100').consumed_amount, 40);
+  assert.equal(effects, 0);
 });
 
 test('gate capability path refuses a missing stable operation id before the effect', async () => {

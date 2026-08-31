@@ -121,12 +121,13 @@ export * from './claim-assurance.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 const CAPABILITY_FAILURE_STATUS = 409;
-function gateOutcomeError(cause, { outcome, reason, authorization, execution, result = null }) {
+function gateOutcomeError(cause, { outcome, reason, authorization, execution, result = null, providerEntryEvidence = undefined, }) {
     const error = new Error(cause?.message ?? `EMILIA Gate terminal outcome: ${reason}`, { cause });
     error.code = 'EMILIA_GATE_TERMINAL_OUTCOME';
     let authorizationEvidence = null;
     let executionEvidence = null;
     let resultSnapshot = null;
+    let providerEntryEvidenceSnapshot = undefined;
     try {
         authorizationEvidence = structuredClone(authorization?.evidence ?? null);
     }
@@ -139,6 +140,12 @@ function gateOutcomeError(cause, { outcome, reason, authorization, execution, re
         resultSnapshot = structuredClone(result);
     }
     catch { /* unavailable */ }
+    if (providerEntryEvidence !== undefined) {
+        try {
+            providerEntryEvidenceSnapshot = structuredClone(providerEntryEvidence);
+        }
+        catch { /* unavailable */ }
+    }
     Object.defineProperty(error, 'emiliaGateOutcome', {
         value: Object.freeze({
             outcome,
@@ -146,6 +153,9 @@ function gateOutcomeError(cause, { outcome, reason, authorization, execution, re
             authorizationEvidence,
             execution: executionEvidence,
             result: resultSnapshot,
+            ...(providerEntryEvidence !== undefined
+                ? { provider_entry_evidence: providerEntryEvidenceSnapshot }
+                : {}),
         }),
         enumerable: false,
         configurable: false,
@@ -1463,8 +1473,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             throw new Error('EMILIA Gate route(): handler is required');
         return async function emiliaGateRoute(req, res) {
             const input = await requestGateInput(req, opts);
-            const out = await run(input, async (authorization) => {
+            const out = await run(input, async (authorization, operationContext) => {
                 req.emiliaGate = authorization;
+                if (operationContext && Object.hasOwn(operationContext, 'providerEntryEvidence')) {
+                    req.emiliaProviderEntryEvidence = operationContext.providerEntryEvidence;
+                    return handler(req, res, authorization, operationContext);
+                }
                 return handler(req, res, authorization);
             });
             if (!out.ok)
@@ -1535,7 +1549,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             ...(detail !== undefined ? { detail } : {}),
         });
     }
-    async function recordCapabilityEvent({ authorization, capability, outcome, reason = null } = {}) {
+    async function recordCapabilityEvent({ authorization, capability, outcome, reason = null, providerEntryEvidence = undefined } = {}) {
         return evidence.record({
             kind: 'capability',
             at: new Date(typeof now === 'function' ? now() : now).toISOString(),
@@ -1544,9 +1558,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             ...capabilitySummary(capability, capability?.operationId),
             outcome,
             ...(reason ? { reason } : {}),
+            ...(providerEntryEvidence !== undefined
+                ? { provider_entry_evidence: providerEntryEvidence }
+                : {}),
         });
     }
-    function capabilityRefusal({ authorization = null, capability = null, reason, status = CAPABILITY_FAILURE_STATUS, event = null } = {}) {
+    function capabilityRefusal({ authorization = null, capability = null, reason, status = CAPABILITY_FAILURE_STATUS, event = null, providerEntryEvidence = undefined } = {}) {
         const body = {
             rejected: {
                 type: 'capability',
@@ -1567,8 +1584,17 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                 challenge: body,
                 header: null,
             },
-            capability: { reason, ...capabilitySummary(capability, capability?.operationId) },
+            capability: {
+                reason,
+                ...capabilitySummary(capability, capability?.operationId),
+                ...(providerEntryEvidence !== undefined
+                    ? { provider_entry_evidence: providerEntryEvidence }
+                    : {}),
+            },
             evidence: event,
+            ...(providerEntryEvidence !== undefined
+                ? { provider_entry_evidence: providerEntryEvidence }
+                : {}),
         };
     }
     /**
@@ -1597,7 +1623,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         }
         let authorization = null;
         let effectError = null;
-        let effectStarted = false;
+        let providerCallbackInvoked = false;
         const capabilityGate = {
             check: (input = {}) => check({
                 ...input,
@@ -1618,13 +1644,16 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                 error.code = 'EMILIA_RUNTIME_MONITOR_REFUSED';
                 throw error;
             }
-            effectStarted = true;
             try {
+                providerCallbackInvoked = true;
                 const value = await fn(authorization, {
                     operationId,
                     providerIdempotencyKey: operationId,
                     actionDigest: executionContext.action_digest,
                     observedAction: executionContext.observed_action,
+                    ...(Object.hasOwn(executionContext, 'provider_entry_evidence')
+                        ? { providerEntryEvidence: executionContext.provider_entry_evidence }
+                        : {}),
                 });
                 runtimeMonitor?.effectReturned(runtimeCycleId);
                 return value;
@@ -1652,6 +1681,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         const capabilityResult = Array.isArray(context.shares)
             ? await executeWithThreshold(/** @type {any} */ ({ ...executorInput, shares: context.shares }))
             : await executeWithCapability(/** @type {any} */ ({ ...executorInput, secret: context.secret }));
+        const capabilityHasProviderEntryEvidence = Object.hasOwn(capabilityResult, 'provider_entry_evidence');
         authorization = authorization || capabilityResult.authorization || null;
         const runtimeCycleId = authorization?._runtime_cycle_id;
         if (capabilityResult.ok) {
@@ -1666,7 +1696,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                     authorization,
                     outcome: 'executed',
                     observedAction,
-                    detail: { capability: { ...capabilitySummary(context, operationId), outcome: 'executed' } },
+                    detail: {
+                        capability: { ...capabilitySummary(context, operationId), outcome: 'executed' },
+                        ...(capabilityHasProviderEntryEvidence
+                            ? { provider_entry_evidence: capabilityResult.provider_entry_evidence }
+                            : {}),
+                    },
                 });
                 runtimeMonitor?.executionRecorded(runtimeCycleId);
                 const packet = await reliancePacket({ authorization, execution });
@@ -1679,11 +1714,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                     authorization,
                     execution,
                     result: capabilityResult.result,
+                    providerEntryEvidence: capabilityResult.provider_entry_evidence,
                 });
             }
         }
-        if (effectStarted && (capabilityResult.reason === 'effect_indeterminate'
-            || capabilityResult.reason === 'capability_commit_indeterminate')) {
+        if (capabilityResult.reason === 'effect_indeterminate'
+            || capabilityResult.reason === 'capability_commit_indeterminate') {
             if (capabilityResult.reason === 'effect_indeterminate')
                 runtimeMonitor?.consumptionCommitted(runtimeCycleId);
             let execution = null;
@@ -1694,8 +1730,13 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                         outcome: 'indeterminate',
                         observedAction,
                         detail: {
-                            code: 'effect_attempted_outcome_unknown',
+                            code: providerCallbackInvoked
+                                ? 'effect_attempted_outcome_unknown'
+                                : 'provider_entry_committed_effect_not_invoked',
                             capability: { ...capabilitySummary(context, operationId), outcome: 'indeterminate' },
+                            ...(capabilityHasProviderEntryEvidence
+                                ? { provider_entry_evidence: capabilityResult.provider_entry_evidence }
+                                : {}),
                         },
                     });
                 }
@@ -1705,6 +1746,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                         reason: 'execution_evidence_unavailable',
                         authorization,
                         execution: null,
+                        providerEntryEvidence: capabilityResult.provider_entry_evidence,
                     });
                 }
             }
@@ -1717,19 +1759,47 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                     reason: capabilityResult.reason,
                     authorization,
                     execution,
+                    providerEntryEvidence: capabilityResult.provider_entry_evidence,
                 });
             }
-            return capabilityRefusal({ authorization, capability: context, reason: capabilityResult.reason, event: execution });
-        }
-        if (authorization?.allow === true) {
-            const event = await recordCapabilityEvent({
+            return capabilityRefusal({
                 authorization,
                 capability: context,
-                outcome: 'refused',
                 reason: capabilityResult.reason,
+                event: execution,
+                providerEntryEvidence: capabilityResult.provider_entry_evidence,
             });
+        }
+        if (authorization?.allow === true) {
+            let event = null;
+            try {
+                event = await recordCapabilityEvent({
+                    authorization,
+                    capability: context,
+                    outcome: 'refused',
+                    reason: capabilityResult.reason,
+                    providerEntryEvidence: capabilityResult.provider_entry_evidence,
+                });
+            }
+            catch (error) {
+                throw gateOutcomeError(error, {
+                    outcome: 'refused',
+                    reason: 'capability_evidence_unavailable',
+                    authorization,
+                    execution: null,
+                    result: capabilityResult,
+                    providerEntryEvidence: capabilityResult.provider_entry_evidence,
+                });
+            }
             runtimeMonitor?.capabilityRefused(runtimeCycleId);
-            return capabilityRefusal({ authorization, capability: context, reason: capabilityResult.reason, event });
+            return capabilityRefusal({
+                authorization,
+                capability: context,
+                reason: capabilityResult.reason,
+                status: capabilityResult.status ?? CAPABILITY_FAILURE_STATUS,
+                event,
+                providerEntryEvidence: capabilityResult.provider_entry_evidence,
+            });
         }
         if (authorization) {
             return {
@@ -1770,7 +1840,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         const runtimeCycleId = authorization._runtime_cycle_id;
         const entryVerdict = await providerEntryVerdict({ authorization, selector, observedAction, capability: null });
         if (!entryVerdict.ok) {
-            const disposition = entryVerdict.reservation || 'release';
+            // A missing disposition is uncertainty. Never restore one-time authority
+            // unless the guard explicitly proves provider entry did not occur.
+            const disposition = entryVerdict.reservation || 'hold';
             let transitionOk = disposition === 'hold';
             try {
                 if (disposition === 'burn')
@@ -1785,19 +1857,40 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                 ? entryVerdict.reason || 'provider_entry_refused'
                 : 'provider_entry_reservation_transition_indeterminate';
             const status = transitionOk ? (entryVerdict.status || 409) : 503;
-            const refusalEvidence = await evidence.record({
-                kind: 'provider_entry',
-                at: new Date(typeof now === 'function' ? now() : now).toISOString(),
-                authorizes_decision: authorization.evidence?.hash ?? null,
-                action: authorization.action ?? null,
-                receipt_id: receiptId ?? null,
-                outcome: 'refused',
-                reason,
-                guard_evidence: entryVerdict.evidence ?? null,
-                reservation_disposition: disposition,
-                reservation_transition_ok: transitionOk,
-            });
+            let refusalEvidence = null;
+            try {
+                refusalEvidence = await evidence.record({
+                    kind: 'provider_entry',
+                    at: new Date(typeof now === 'function' ? now() : now).toISOString(),
+                    authorizes_decision: authorization.evidence?.hash ?? null,
+                    action: authorization.action ?? null,
+                    receipt_id: receiptId ?? null,
+                    outcome: 'refused',
+                    reason,
+                    guard_evidence: entryVerdict.evidence ?? null,
+                    reservation_disposition: disposition,
+                    reservation_transition_ok: transitionOk,
+                });
+            }
+            catch (error) {
+                throw gateOutcomeError(error, {
+                    outcome: 'refused',
+                    reason: 'provider_entry_evidence_unavailable',
+                    authorization,
+                    execution: null,
+                    result: {
+                        reason,
+                        status,
+                        reservation_disposition: disposition,
+                        reservation_transition_ok: transitionOk,
+                    },
+                    providerEntryEvidence: entryVerdict.evidence ?? null,
+                });
+            }
             runtimeMonitor?.providerEntryRefused?.(runtimeCycleId);
+            const publicRefusalEvidence = refusalEvidence && typeof refusalEvidence === 'object'
+                ? Object.fromEntries(Object.entries(refusalEvidence).filter(([field]) => field !== 'guard_evidence'))
+                : null;
             const refusal = {
                 allow: false,
                 status,
@@ -1811,17 +1904,41 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                     },
                 },
                 header: null,
-                evidence: refusalEvidence,
+                // Keep the full guard bundle in the internal evidence log and the
+                // direct run result. Public refusal/guard surfaces receive only a
+                // non-sensitive reference so framework error serialization cannot
+                // disclose source status material.
+                evidence: publicRefusalEvidence,
                 prior_authorization: authorization.evidence?.hash ?? null,
             };
-            return { ok: false, status, body: refusal.challenge, authorization: refusal };
+            return {
+                ok: false,
+                status,
+                body: refusal.challenge,
+                authorization: refusal,
+                provider_entry_evidence: entryVerdict.evidence ?? null,
+            };
         }
+        const providerEntryEvidence = providerEntryGuard !== null
+            ? entryVerdict.evidence ?? null
+            : undefined;
         if (runtimeMonitor && runtimeCycleId) {
             const runtimeStart = runtimeMonitor.beginExecution(runtimeCycleId, authorization);
             if (!runtimeStart.ok) {
                 const error = new Error(`EMILIA Gate runtime monitor refused execution (${runtimeStart.reason})`);
                 error.code = 'EMILIA_RUNTIME_MONITOR_REFUSED';
-                throw error;
+                const terminal = gateOutcomeError(error, {
+                    outcome: 'refused',
+                    reason: runtimeStart.reason,
+                    authorization,
+                    execution: null,
+                    result: { runtime_monitor: runtimeStart.event },
+                    providerEntryEvidence,
+                });
+                // Preserve the established runtime-monitor error code while adding the
+                // structured terminal metadata required to retain guard evidence.
+                terminal.code = error.code;
+                throw terminal;
             }
         }
         let phase = 'reserved';
@@ -1830,7 +1947,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         let execution = null;
         try {
             phase = 'effect_attempted';
-            result = await fn(authorization);
+            result = providerEntryEvidence !== undefined
+                ? await fn(authorization, { providerEntryEvidence })
+                : await fn(authorization);
             phase = 'effect_returned';
             runtimeMonitor?.effectReturned(runtimeCycleId);
             if (typeof consumption.commit === 'function')
@@ -1840,14 +1959,39 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             runtimeMonitor?.consumptionCommitted(runtimeCycleId);
             if (opts.recordExecution === false) {
                 runtimeMonitor?.executionSkipped(runtimeCycleId);
-                return { ok: true, result, authorization, execution: null, packet: null };
+                return {
+                    ok: true,
+                    result,
+                    authorization,
+                    execution: null,
+                    packet: null,
+                    ...(providerEntryEvidence !== undefined
+                        ? { provider_entry_evidence: providerEntryEvidence }
+                        : {}),
+                };
             }
             phase = 'recording_execution';
-            execution = await recordExecution({ authorization, outcome: 'executed', observedAction });
+            execution = await recordExecution({
+                authorization,
+                outcome: 'executed',
+                observedAction,
+                ...(providerEntryEvidence !== undefined
+                    ? { detail: { provider_entry_evidence: providerEntryEvidence } }
+                    : {}),
+            });
             runtimeMonitor?.executionRecorded(runtimeCycleId);
             phase = 'execution_recorded';
             const packet = await reliancePacket({ authorization, execution });
-            return { ok: true, result, authorization, execution, packet };
+            return {
+                ok: true,
+                result,
+                authorization,
+                execution,
+                packet,
+                ...(providerEntryEvidence !== undefined
+                    ? { provider_entry_evidence: providerEntryEvidence }
+                    : {}),
+            };
         }
         catch (e) {
             if (consumptionCommitted
@@ -1858,6 +2002,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                     authorization,
                     execution,
                     result,
+                    providerEntryEvidence,
                 });
             }
             if (runtimeMonitor && runtimeCycleId && (phase === 'effect_attempted' || phase === 'effect_returned')) {
@@ -1887,7 +2032,12 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                         // Exception text frequently contains provider payloads, record IDs,
                         // or secrets. The caller still receives the original exception;
                         // the portable evidence record carries only the closed outcome.
-                        detail: { code: 'effect_attempted_outcome_unknown' },
+                        detail: {
+                            code: 'effect_attempted_outcome_unknown',
+                            ...(providerEntryEvidence !== undefined
+                                ? { provider_entry_evidence: providerEntryEvidence }
+                                : {}),
+                        },
                         observedAction,
                     });
                     const runtimeState = runtimeMonitor?.getState(runtimeCycleId);
@@ -1908,6 +2058,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
                 reason: 'effect_attempted_outcome_unknown',
                 authorization,
                 execution: indeterminateExecution,
+                providerEntryEvidence,
             });
         }
     }

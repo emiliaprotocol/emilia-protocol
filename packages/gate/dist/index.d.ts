@@ -396,12 +396,13 @@ export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, lo
         reliancePacket?: any;
         admissibility?: any;
         capability?: any;
-    } | undefined, fn: any, opts?: GateCallOpts) => Promise<ReturnType<({ authorization, capability, reason, status, event }?: {
+    } | undefined, fn: any, opts?: GateCallOpts) => Promise<ReturnType<({ authorization, capability, reason, status, event, providerEntryEvidence }?: {
         authorization?: any;
         capability?: any;
         reason?: any;
         status?: number;
         event?: any;
+        providerEntryEvidence?: any;
     }) => {
         ok: false;
         status: any;
@@ -410,6 +411,7 @@ export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, lo
         refusal: any;
         capability: any;
         evidence: any;
+        provider_entry_evidence?: any;
         result?: undefined;
         execution?: undefined;
         packet?: undefined;
@@ -440,6 +442,7 @@ export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, lo
         status: any;
         body: any;
         authorization: any;
+        provider_entry_evidence?: any;
         result?: undefined;
         execution?: undefined;
         packet?: undefined;
@@ -449,6 +452,7 @@ export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, lo
         authorization: any;
         execution: any;
         packet: any;
+        provider_entry_evidence?: any;
         status?: undefined;
         body?: undefined;
     }>;
@@ -464,10 +468,33 @@ export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, lo
     } | undefined, protectedRegistry: unknown, opts?: {
         recordExecution?: boolean;
     }) => Promise<{
+        ok: true;
+        result: any;
+        authorization: any;
+        execution: any;
+        packet: any;
+        capability: any;
+        status?: undefined;
+        body?: undefined;
+        refusal?: undefined;
+        evidence?: undefined;
+    } | {
         ok: false;
         status: any;
         body: any;
         authorization: any;
+        refusal: any;
+        capability: any;
+        result?: undefined;
+        execution?: undefined;
+        packet?: undefined;
+        evidence?: undefined;
+    } | {
+        ok: false;
+        status: any;
+        body: any;
+        authorization: any;
+        provider_entry_evidence?: any;
         result?: undefined;
         execution?: undefined;
         packet?: undefined;
@@ -477,6 +504,7 @@ export declare function createGate({ manifest, trustedKeys, maxAgeSec, store, lo
         authorization: any;
         execution: any;
         packet: any;
+        provider_entry_evidence?: any;
         status?: undefined;
         body?: undefined;
     } | {
@@ -653,12 +681,13 @@ export declare function createTrustedActionFirewall(opts?: CreateGateOptions): {
         reliancePacket?: any;
         admissibility?: any;
         capability?: any;
-    } | undefined, fn: any, opts?: GateCallOpts) => Promise<ReturnType<({ authorization, capability, reason, status, event }?: {
+    } | undefined, fn: any, opts?: GateCallOpts) => Promise<ReturnType<({ authorization, capability, reason, status, event, providerEntryEvidence }?: {
         authorization?: any;
         capability?: any;
         reason?: any;
         status?: number;
         event?: any;
+        providerEntryEvidence?: any;
     }) => {
         ok: false;
         status: any;
@@ -667,6 +696,7 @@ export declare function createTrustedActionFirewall(opts?: CreateGateOptions): {
         refusal: any;
         capability: any;
         evidence: any;
+        provider_entry_evidence?: any;
         result?: undefined;
         execution?: undefined;
         packet?: undefined;
@@ -697,6 +727,7 @@ export declare function createTrustedActionFirewall(opts?: CreateGateOptions): {
         status: any;
         body: any;
         authorization: any;
+        provider_entry_evidence?: any;
         result?: undefined;
         execution?: undefined;
         packet?: undefined;
@@ -706,6 +737,7 @@ export declare function createTrustedActionFirewall(opts?: CreateGateOptions): {
         authorization: any;
         execution: any;
         packet: any;
+        provider_entry_evidence?: any;
         status?: undefined;
         body?: undefined;
     }>;
@@ -721,10 +753,33 @@ export declare function createTrustedActionFirewall(opts?: CreateGateOptions): {
     } | undefined, protectedRegistry: unknown, opts?: {
         recordExecution?: boolean;
     }) => Promise<{
+        ok: true;
+        result: any;
+        authorization: any;
+        execution: any;
+        packet: any;
+        capability: any;
+        status?: undefined;
+        body?: undefined;
+        refusal?: undefined;
+        evidence?: undefined;
+    } | {
         ok: false;
         status: any;
         body: any;
         authorization: any;
+        refusal: any;
+        capability: any;
+        result?: undefined;
+        execution?: undefined;
+        packet?: undefined;
+        evidence?: undefined;
+    } | {
+        ok: false;
+        status: any;
+        body: any;
+        authorization: any;
+        provider_entry_evidence?: any;
         result?: undefined;
         execution?: undefined;
         packet?: undefined;
@@ -734,6 +789,7 @@ export declare function createTrustedActionFirewall(opts?: CreateGateOptions): {
         authorization: any;
         execution: any;
         packet: any;
+        provider_entry_evidence?: any;
         status?: undefined;
         body?: undefined;
     } | {

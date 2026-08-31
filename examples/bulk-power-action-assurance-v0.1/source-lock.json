@@ -1,0 +1,26 @@
+{
+  "@version": "EP-SOURCE-LOCK-v1",
+  "profile_id": "emilia.bulk-power.action-assurance.reference.v0.1",
+  "retrieved_at": "2026-08-30T18:53:17-07:00",
+  "primary_source": {
+    "title": "Declaring a National Emergency to Secure the United States Bulk-Power System",
+    "citation": "FR Doc. 2026-17843",
+    "publication_state": "Federal Register public-inspection copy scheduled for publication 2026-08-31",
+    "url": "https://public-inspection.federalregister.gov/2026-17843.pdf",
+    "media_type": "application/pdf",
+    "content_length": 175772,
+    "sha256": "c40bd9077cc8182f0e6612adb0b7e1769256161d53fd167dd6b33b1554400995"
+  },
+  "companion_source": {
+    "title": "White House presidential action page",
+    "url": "https://www.whitehouse.gov/presidential-actions/2026/08/declaring-a-national-emergency-to-secure-the-united-states-bulk-power-system/",
+    "retrieved_sha256": "af8609217b3a77f117f7d0d6e6157006727d10d2849079e5bc6f27e61c4b02d7",
+    "hash_stability": "advisory_html_may_change"
+  },
+  "identifier_conflict": {
+    "white_house_label": "Executive Order 14420",
+    "federal_register_public_inspection_label": "Executive Order 14421",
+    "citation_rule": "Use title, date, and FR Doc. 2026-17843 until the final Federal Register publication resolves the discrepancy."
+  },
+  "revalidation_required": true
+}

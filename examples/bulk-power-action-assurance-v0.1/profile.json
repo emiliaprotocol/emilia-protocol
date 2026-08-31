@@ -1,0 +1,420 @@
+{
+  "@version": "EP-BULK-POWER-ACTION-ASSURANCE-PROFILE-v0.1",
+  "profile_id": "emilia.bulk-power.action-assurance.reference.v0.1",
+  "status": "experimental",
+  "title": "Bulk-Power Action Assurance v0.1",
+  "purpose": "Consume governed equipment eligibility as an external input and bind it to one exact operational action at a relying-party-controlled Gate.",
+  "policy_source": {
+    "title": "Declaring a National Emergency to Secure the United States Bulk-Power System",
+    "issued_at": "2026-08-26",
+    "citation": "FR Doc. 2026-17843",
+    "federal_register_public_inspection_url": "https://public-inspection.federalregister.gov/2026-17843.pdf",
+    "white_house_url": "https://www.whitehouse.gov/presidential-actions/2026/08/declaring-a-national-emergency-to-secure-the-united-states-bulk-power-system/",
+    "identifier_note": "The White House page labeled the order Executive Order 14420 while the Federal Register public-inspection copy labeled it Executive Order 14421 when this profile was authored. This profile identifies the source by title, date, and FR Doc. 2026-17843.",
+    "revalidation_required": true
+  },
+  "separation_of_responsibility": {
+    "supply_chain_eligibility": {
+      "decision_maker": "government_or_relying_party_selected_authority",
+      "role": "governed_external_input",
+      "emilia_makes_decision": false
+    },
+    "operational_admission": {
+      "decision_maker": "relying_party_controlled_emilia_gate",
+      "role": "exact_action_admission_under_current_external_status_and_local_policy",
+      "emilia_makes_decision": true
+    },
+    "physical_effect": {
+      "decision_maker": "field_controller_or_other_configured_provider",
+      "role": "perform_the_native_action_and_optionally_emit_authenticated_outcome_evidence",
+      "emilia_makes_decision": false
+    }
+  },
+  "governed_external_status": {
+    "required_fields": [
+      "subject_type",
+      "subject_id",
+      "status",
+      "source_id",
+      "source_version",
+      "source_artifact_digest",
+      "issuer_key_id",
+      "effective_at",
+      "observed_at",
+      "expires_at",
+      "applicable_asset_ids",
+      "applicable_operation_types",
+      "configuration_digest",
+      "firmware_digest",
+      "authenticated",
+      "claim_boundary"
+    ],
+    "subject_types": [
+      "equipment"
+    ],
+    "extension_subject_types_not_implemented": [
+      "vendor",
+      "transaction",
+      "license",
+      "mitigation_measure",
+      "scope_assertion"
+    ],
+    "illustrative_status_vocabulary": [
+      "ACTIVE",
+      "PREQUALIFIED",
+      "RESTRICTED",
+      "REVOKED"
+    ],
+    "refuse_when": [
+      "missing",
+      "stale",
+      "expired",
+      "revoked",
+      "unavailable",
+      "untrusted_source",
+      "asset_out_of_scope",
+      "operation_out_of_scope"
+    ],
+    "provider_entry_requirement": "Status is read immediately before Gate's serialized provider-entry step. The runner proves that a freeze already committed in the Gate control domain wins. Race freedom against an external source requires the deployment to project source freeze or revision state into that same durable Gate control domain."
+  },
+  "exact_action": {
+    "action_profile": "bulk-power.control-command.1",
+    "required_fields": [
+      "action_type",
+      "action_profile",
+      "amount",
+      "currency",
+      "rp_id",
+      "admission_domain_id",
+      "operation_id",
+      "requested_at",
+      "valid_from",
+      "expires_at",
+      "site_id",
+      "asset_id",
+      "equipment_class",
+      "manufacturer",
+      "model",
+      "serial_number",
+      "configuration_digest",
+      "firmware_digest",
+      "native_protocol",
+      "operation",
+      "parameters",
+      "authority_artifact_digest",
+      "external_status_digest",
+      "policy_id",
+      "policy_version",
+      "policy_digest",
+      "control_epoch",
+      "provider_id",
+      "outcome_evidence_profile"
+    ],
+    "provider_entry_time_rule": "Admission requires valid_from <= checked_at < expires_at. Malformed or expired intervals refuse before the provider is called; an expired action burns its reservation.",
+    "conditional_evidence_for_disruptive_actions": [
+      "safety_assessment_digest",
+      "reliability_assessment_digest",
+      "replacement_availability_digest",
+      "continuity_plan_digest",
+      "compliance_phase_id"
+    ],
+    "disruptive_operations": [
+      "isolate",
+      "disconnect",
+      "replace",
+      "remove"
+    ],
+    "example": {
+      "action_type": "bulk-power.control-command.1",
+      "action_profile": "bulk-power.control-command.1",
+      "amount": 1,
+      "currency": "BULK_POWER_ACTION",
+      "rp_id": "rp:reference-bulk-power-operator",
+      "admission_domain_id": "gate:reference-substation-01",
+      "operation_id": "operation:reference-0001",
+      "requested_at": "2026-08-30T20:00:00.000Z",
+      "valid_from": "2026-08-30T20:00:00.000Z",
+      "expires_at": "2026-08-30T20:05:00.000Z",
+      "site_id": "site:reference-substation-01",
+      "asset_id": "asset:reference-plc-01",
+      "equipment_class": "programmable_logic_controller",
+      "manufacturer": "reference-manufacturer",
+      "model": "reference-model-01",
+      "serial_number": "REFERENCE-SERIAL-0001",
+      "configuration_digest": "sha256:10c7f3785810036c9bf55e4ac0cbf80fa5a24a733fc8645d8887527de42cad95",
+      "firmware_digest": "sha256:6f437288e3f6474b8553314c2885a16e0efab0e8ad564f5f2a646b37e5f93f11",
+      "native_protocol": "modbus-tcp",
+      "operation": "write_single_register",
+      "parameters": {
+        "unit_id": 7,
+        "protocol_address": 4096,
+        "value": 0
+      },
+      "authority_artifact_digest": "sha256:e6167e78916ba989d55af194d913862f5dafc64d80c4b26617ca9bf785e4d93f",
+      "external_status_digest": "sha256:7b838708c603b05ca513f3a1fb01f1aee64e059cc7fb018d9368685483228e78",
+      "policy_id": "policy:reference-bulk-power-action-assurance",
+      "policy_version": "0.1",
+      "policy_digest": "sha256:b86d4bc12a01bcdaef55939ee3b4b3ea2eef949f44ba022e00aa2a5188b760f0",
+      "control_epoch": 1,
+      "provider_id": "provider:reference-field-controller-01",
+      "outcome_evidence_profile": "EP-OUTCOME-STATEMENT-v1"
+    }
+  },
+  "decision_record": {
+    "required_fields": [
+      "action_digest",
+      "operation_id",
+      "rp_id",
+      "admission_domain_id",
+      "external_status_digest",
+      "external_status",
+      "status_observed_at",
+      "policy_digest",
+      "control_epoch",
+      "decision",
+      "reason",
+      "reservation_state",
+      "decided_at"
+    ],
+    "admission_results": [
+      "AUTHORIZED",
+      "REFUSED"
+    ],
+    "terminal_results_after_provider_entry": [
+      "EXECUTED",
+      "INDETERMINATE"
+    ],
+    "post_entry_rule": "Once provider entry occurs, uncertainty consumes authority and blind replay is refused. Negative reconciliation cannot restore authority already consumed at provider entry.",
+    "reference_runner_boundary": "Provider-entry evidence is supplied to the effect context and copied into in-process execution detail after provider entry and effect handling. The runner does not demonstrate atomic durable persistence of that evidence at entry."
+  },
+  "outcome_statement": {
+    "required_fields": [
+      "operation_id",
+      "action_digest",
+      "provider_id",
+      "outcome",
+      "observed_at",
+      "statement_digest",
+      "issuer_key_id",
+      "signature"
+    ],
+    "accepted_outcomes": [
+      "EXECUTED",
+      "INDETERMINATE"
+    ],
+    "claim_boundary": "Authenticated source statement bound to the operation and exact action; not proof of physical truth."
+  },
+  "clause_to_control": [
+    {
+      "order_basis": "Sec. 2(a)(i)-(ii)",
+      "external_decision": "Covered foreign interest and unacceptable-risk status",
+      "profile_control": "Require a current pinned status for the exact equipment, vendor, or transaction and bind its digest and observation time to the action.",
+      "non_claim": "No determination of origin, ownership, control, direction, or risk."
+    },
+    {
+      "order_basis": "Sec. 2(b)",
+      "external_decision": "Conditions on continued use, operation, maintenance, servicing, updating, isolation, monitoring, security, disconnection, replacement, or removal",
+      "profile_control": "Bind the condition and one distinct action type to one asset, parameter set, admission domain, and validity interval.",
+      "non_claim": "No determination that the condition is legally required or sufficient."
+    },
+    {
+      "order_basis": "Sec. 2(b)",
+      "external_decision": "Reliability, safety, replacement availability, continuity, and compliance phase",
+      "profile_control": "Require current evidence references for disruptive actions and bind the selected phase and policy epoch.",
+      "non_claim": "No truth or adequacy claim about the underlying assessments."
+    },
+    {
+      "order_basis": "Sec. 2(c)",
+      "external_decision": "Mitigation measure accepted as a precondition",
+      "profile_control": "Bind mitigation id, version, digest, current status, scope, and expiry to the exact action.",
+      "non_claim": "No claim that the mitigation satisfies the order."
+    },
+    {
+      "order_basis": "Sec. 2(d)",
+      "external_decision": "Exception, directive, or license",
+      "profile_control": "Pin issuer, scope, status, observation time, and expiry; refuse absent or stale authority.",
+      "non_claim": "No legal interpretation or exception-applicability finding."
+    },
+    {
+      "order_basis": "Sec. 2(e)",
+      "external_decision": "Pre-qualified equipment or vendor list entry",
+      "profile_control": "Consume a current authenticated entry immediately before provider entry and project authoritative source freeze or revision state into Gate's serialized control domain when race-free revocation is required.",
+      "non_claim": "No pre-qualification or certification by EMILIA; the runner does not make an arbitrary external status read atomic with source-side revocation."
+    },
+    {
+      "order_basis": "Sec. 2(f)",
+      "external_decision": "Evasion, avoidance, attempt, violation, or conspiracy",
+      "profile_control": "Bind every material field and refuse asset, parameter, domain, operation, and fleet-scope substitution.",
+      "non_claim": "No finding of intent, evasion, conspiracy, or legal violation."
+    },
+    {
+      "order_basis": "Sec. 3(b)",
+      "external_decision": "Controlling rules, covered entities, scrutiny, and licensing procedures",
+      "profile_control": "Pin policy source, version, digest, status vocabulary, and effective interval.",
+      "non_claim": "No prediction, replacement, or interpretation of final rules."
+    },
+    {
+      "order_basis": "Sec. 3(c)(i)-(ii)",
+      "external_decision": "Identification, inventory, isolation, monitoring, or replacement of affected items",
+      "profile_control": "Bind site, asset, model, serial, configuration, firmware, and exact lifecycle action.",
+      "non_claim": "No inventory-completeness claim."
+    },
+    {
+      "order_basis": "Sec. 4(a)-(b)",
+      "external_decision": "Federal procurement requirement or FAR amendment",
+      "profile_control": "Export an offline packet joining exact action, current status, policy, admission, and outcome references.",
+      "non_claim": "No FAR representation or contract-compliance finding."
+    },
+    {
+      "order_basis": "Sec. 5(a)-(b)",
+      "external_decision": "Whether equipment, software, firmware, remote access, or lifecycle mechanisms are in legal scope",
+      "profile_control": "Require an external scope assertion and bind it to the exact asset and action.",
+      "non_claim": "No legal-scope determination; local distribution is excluded by the order's definition."
+    },
+    {
+      "order_basis": "Sec. 6",
+      "external_decision": "Reporting content and completeness",
+      "profile_control": "Preserve exportable action-bound decision and outcome records.",
+      "non_claim": "No population-completeness or reporting-compliance claim."
+    }
+  ],
+  "hostile_cases": [
+    {
+      "id": "asset-substitution",
+      "mutation": "Change site_id, asset_id, model, serial_number, configuration_digest, or equipment_class.",
+      "expected": "REFUSED_BEFORE_PROVIDER_ENTRY"
+    },
+    {
+      "id": "parameter-substitution",
+      "mutation": "Change operation, native address, value, limit, firmware_digest, or target set.",
+      "expected": "REFUSED_BEFORE_PROVIDER_ENTRY"
+    },
+    {
+      "id": "admission-domain-substitution",
+      "mutation": "Present authority from another relying party or admission domain.",
+      "expected": "REFUSED_BEFORE_PROVIDER_ENTRY"
+    },
+    {
+      "id": "single-asset-to-fleet-expansion",
+      "mutation": "Replace one asset with a wildcard, group id, or expanded target list.",
+      "expected": "REFUSED_BEFORE_PROVIDER_ENTRY"
+    },
+    {
+      "id": "read-only-authority-reused-for-mutation",
+      "mutation": "Use monitoring authority for isolate, disconnect, update, replace, or remove.",
+      "expected": "REFUSED_BEFORE_PROVIDER_ENTRY"
+    },
+    {
+      "id": "stale-revoked-unavailable-or-untrusted-status",
+      "mutation": "Supply an old, revoked, unavailable, or untrusted external status.",
+      "expected": "REFUSED_BEFORE_PROVIDER_ENTRY"
+    },
+    {
+      "id": "cached-active-races-freeze",
+      "mutation": "Cache ACTIVE, then commit a freeze in Gate's control domain before provider entry.",
+      "expected": "REFUSED_BEFORE_PROVIDER_ENTRY"
+    },
+    {
+      "id": "firmware-or-configuration-drift",
+      "mutation": "Change firmware or configuration after authorization.",
+      "expected": "REFUSED_BEFORE_PROVIDER_ENTRY"
+    },
+    {
+      "id": "expired-exact-action",
+      "mutation": "Attempt provider entry at or after the exact action's expires_at timestamp.",
+      "expected": "REFUSED_BEFORE_PROVIDER_ENTRY_AND_RESERVATION_BURNED"
+    },
+    {
+      "id": "secure-transport-without-authority",
+      "mutation": "Present an authenticated channel without action-bound authority.",
+      "expected": "REFUSED_BEFORE_PROVIDER_ENTRY"
+    },
+    {
+      "id": "replay-including-after-restart",
+      "mutation": "Retry an already admitted operation against durable shared consumption state.",
+      "expected": "REPLAY_REFUSED"
+    },
+    {
+      "id": "response-loss-after-provider-entry",
+      "mutation": "Lose the response after the provider may have accepted the action.",
+      "expected": "INDETERMINATE_AND_CONSUMED"
+    },
+    {
+      "id": "negative-reconciliation-after-provider-entry",
+      "mutation": "Present later not_entered evidence after provider entry consumed authority.",
+      "expected": "AUTHORITY_NOT_RELEASED"
+    },
+    {
+      "id": "untrusted-or-revoked-outcome-signer",
+      "mutation": "Present an outcome signed by an untrusted or revoked key.",
+      "expected": "OUTCOME_EVIDENCE_REFUSED_ADMISSION_STATE_PRESERVED"
+    },
+    {
+      "id": "clock-skew-or-expired-evidence",
+      "mutation": "Evaluate outside the relying party's accepted time policy.",
+      "expected": "REFUSED_BEFORE_PROVIDER_ENTRY"
+    }
+  ],
+  "reference_runner": {
+    "scope": "Selected executable cases over synthetic local inputs and in-process state; not the complete hostile-case catalog.",
+    "implemented_case_result_ids": [
+      "EXACT-CURRENT-ACTION-ADMITTED",
+      "ASSET-SUBSTITUTION-REFUSED",
+      "PARAMETER-SUBSTITUTION-REFUSED",
+      "ADMISSION-DOMAIN-SUBSTITUTION-REFUSED",
+      "FIRMWARE-DRIFT-REFUSED",
+      "MODBUS-TRANSACTION-ID-IS-NONMATERIAL",
+      "WIRE-OPERATION-LABELS-ARE-CONDUIT-DERIVED",
+      "MALFORMED-ACTION-DIGESTS-REFUSED",
+      "POLICY-SUBSTITUTION-REFUSED",
+      "PROVIDER-SUBSTITUTION-REFUSED",
+      "OUTCOME-PROFILE-SUBSTITUTION-REFUSED",
+      "CONTROL-EPOCH-MISMATCH-REFUSED",
+      "EXPIRED-ACTION-REFUSED",
+      "STALE-STATUS-REFUSED",
+      "FUTURE-STATUS-REFUSED",
+      "REVOKED-STATUS-REFUSED",
+      "UNAVAILABLE-STATUS-REFUSED",
+      "UNTRUSTED-STATUS-SOURCE-REFUSED",
+      "STATUS-DIGEST-SUBSTITUTION-REFUSED",
+      "MALFORMED-STATUS-SCOPE-REFUSED",
+      "CACHED-ACTIVE-CANNOT-BEAT-FREEZE",
+      "REPLAY-REFUSED",
+      "MISSING-AUTHORITY-REFUSED",
+      "LOST-RESPONSE-IS-INDETERMINATE-AND-CONSUMED"
+    ],
+    "not_demonstrated": [
+      "signed outcome-statement verification",
+      "replay after an actual process restart against durable shared state",
+      "atomicity between an external status read and source-side revocation without source-to-Gate-domain integration",
+      "atomic durable persistence of status evidence at provider entry",
+      "cryptographic authentication of the live provider identity behind the profile-pinned provider route",
+      "complete mediation around live equipment",
+      "every production conformance requirement in hostile_cases"
+    ]
+  },
+  "claim_boundary": {
+    "can_show": [
+      "in completed in-process reference runs, the material normalized command fields and admission domain evaluated by the configured Gate",
+      "in completed in-process reference runs, the governed source record, status observation, and profile-pinned local policy identifier, version, and digest used for the decision",
+      "in completed in-process reference runs, whether the configured Gate refused or admitted the action",
+      "in completed in-process reference runs, whether authority was consumed once within the reference runner's admission state",
+      "in completed in-process reference runs, which terminal outcome the configured Gate recorded for the provider attempt"
+    ],
+    "eo_compliance": false,
+    "doe_rule_compliance": false,
+    "far_or_contract_compliance": false,
+    "legal_scope_determination": false,
+    "foreign_origin_ownership_control_or_direction": false,
+    "risk_determination": false,
+    "prequalification_or_license_determination": false,
+    "device_or_firmware_integrity": false,
+    "backdoor_absence": false,
+    "physical_actuation_or_meter_truth": false,
+    "grid_reliability_safety_or_continuity": false,
+    "complete_inventory_or_population": false,
+    "complete_mediation_outside_deployed_gate": false,
+    "certification_accreditation_adoption_or_endorsement": false,
+    "production_deployment": false
+  }
+}

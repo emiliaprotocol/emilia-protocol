@@ -3,6 +3,19 @@
 
 ## Unreleased
 
+### Security
+
+- Validate and bound provider-entry guard evidence as a plain finite-canonical
+  JSON object before any provider effect, preserve accepted or refusing guard
+  evidence through capability results and internal Gate records, and propagate
+  only valid HTTP error statuses. Compatibility note: guard evidence containing
+  Dates, Maps, accessors, symbols, cycles, non-finite numbers, excessive depth,
+  node count, or string data now refuses before provider entry. Finite decimal
+  measurements remain supported. Ordinary Gate refusal objects retain the
+  existing evidence-record fields except that raw `guard_evidence` is now
+  redacted from public refusal and `guard()` error surfaces; the full record
+  remains available through the internal evidence log and direct `run()` result.
+
 ## 0.24.0 (2026-08-30)
 
 ### Security
