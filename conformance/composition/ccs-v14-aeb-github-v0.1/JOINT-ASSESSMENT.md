@@ -1,6 +1,6 @@
 # Joint Interoperability Assessment — CCS v1.4 receipt as EMILIA pre-admission evidence
 
-**Status:** DRAFT v3 for joint review — not final and must not be merged or represented as jointly approved until both parties approve the exact bytes.
+**Status:** FINAL — jointly approved by both parties on 2026-08-31. The approved bytes (this document as DRAFT v3, 8,524 bytes, sha256 `5ddc594671695419889f63dbba51feae94a979dee506b8d0a3f204fd43a07b3b`) were merged upstream via PR #682 (merge commit `1d21cd446aeca566baab9cc7e6205ccc19ccb895`) and mirrored to the public CCS conformance bundle (DSHCorrectover/ccs-conformance-vectors, commit `43cb28f98dc8bfb6f93427980b67692db569a083`). This Final revision records that approval only; vectors, evidence, the eight outcomes, pins, and product boundaries are unchanged from the approved bytes.
 **Date:** 2026-08-30
 **Revision:** v3 supersedes v2 (2026-08-29): per joint review — (a) bundle-scope counts in section 3 reflect the full pinned bundle (489 manifest-covered files, 64 expected-outcome cases); (b) the Correctover checker is described as a standalone package-independent check that operates without importing the CCS verifier package; (c) wording aligned for the public repository. Vectors, the eight composition outcomes, artifact pins, and all product boundaries are unchanged.
 **Parties:**
@@ -135,8 +135,9 @@ identity chain.
 
 ## 8. Signatures
 
-This report is jointly authored. It is not final or jointly approved until both
-parties approve the exact bytes.
+This report is jointly authored. Both parties approved the exact bytes on
+2026-08-31 (the DRAFT v3 merge of PR #682); this Final revision records that
+approval.
 
-- Iman Schrock — EMILIA Protocol, Inc. — _________________ (date)
-- Guigui Wang — Correctover — _________________ (date)
+- Iman Schrock — EMILIA Protocol, Inc. — approved 2026-08-31
+- Guigui Wang — Correctover — approved 2026-08-31
