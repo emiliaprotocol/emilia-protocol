@@ -444,7 +444,9 @@ export async function createFixture({
   if (!capabilityStore.registerCapability(capability.capabilityReceipt)) {
     throw new Error('capability registration failed');
   }
-  const registered = await capabilityStore.registerControlDomain({
+  const registered: Awaited<ReturnType<typeof capabilityStore.registerControlDomain>> & {
+    reason?: string;
+  } = await capabilityStore.registerControlDomain({
     controlDomainId: observedAction.admission_domain_id,
     now: Date.now(),
   });
@@ -571,6 +573,12 @@ export async function createFixture({
     now: Date.now,
   });
   let providerEntries = 0;
+  type GateRunResult = Awaited<ReturnType<typeof gate.run>> & {
+    capability?: {
+      reason?: string;
+      provider_entry_evidence?: unknown;
+    };
+  };
 
   async function attempt({
     presentedAction = observedAction,
@@ -580,7 +588,7 @@ export async function createFixture({
     effect?: (action: Obj, operation: Obj) => any;
   } = {}) {
     try {
-      const result = await gate.run({
+      const result: GateRunResult = await gate.run({
         selector: SELECTOR,
         observedAction: presentedAction,
         capability: {
