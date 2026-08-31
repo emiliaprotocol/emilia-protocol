@@ -65,7 +65,7 @@ Build and download a plan at `https://www.emiliaprotocol.ai/protect`, then sign
 that exact plan locally with a customer-owned Ed25519 key:
 
 ```bash
-npx --package @emilia-protocol/gate@0.23.20 ep-protect activate plan.json \
+npx --package @emilia-protocol/gate@0.24.0 ep-protect activate plan.json \
   --private-key owner.pem \
   --tenant my-tenant \
   --gateway my-mcp-gateway \
@@ -436,13 +436,13 @@ compliance, external effect truth, program safety, or complete mediation. See
 
 ### Install the Gate Qualification v2 SQL artifact
 
-Pin the package artifact to `@emilia-protocol/gate@0.23.13` and verify the exact
+Pin the package artifact to `@emilia-protocol/gate@0.24.0` and verify the exact
 shipped migration before applying it. The SHA-256 below identifies this source
 artifact; it is not a statement that the migration is already deployed:
 
 ```bash
 GATE_SQL_PATH=node_modules/@emilia-protocol/gate/sql/gate-qualification-v2.sql
-test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.23.13"
+test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.24.0"
 printf '%s  %s\n' \
   'e9b55e29c90cf7061bd62a8afd7c97402927e1eeb87649d4a38952a4b08df6b3' \
   "$GATE_SQL_PATH" | shasum -a 256 -c -

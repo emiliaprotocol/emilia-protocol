@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/verify",
-  "version": "3.20.3",
+  "version": "3.21.0",
   "description": "Zero-dependency offline verification for EMILIA authorization receipts: Ed25519 receipts, Merkle anchors, WebAuthn device signoffs, and multi-party quorum. Runs in Node, browsers, and edge runtimes.",
   "license": "Apache-2.0",
   "type": "module",
@@ -142,6 +142,10 @@
     "./aeb-consequence-conformance": {
       "types": "./dist/aeb-consequence-conformance.d.ts",
       "import": "./aeb-consequence-conformance.js"
+    },
+    "./crossing-lab": {
+      "types": "./dist/crossing-lab.d.ts",
+      "import": "./dist/crossing-lab.js"
     },
     "./aeb-discovery-permit-adapter": {
       "types": "./dist/aeb-discovery-permit-adapter.d.ts",
@@ -302,6 +306,7 @@
     "aeb-oauth-transaction-challenge-adapter.js",
     "aeb-consequence-conformance.js",
     "aeb-consequence-conformance.v1.json",
+    "dist/crossing-lab-worker.js",
     "aeb-discovery-permit-adapter.js",
     "aeb-wimse-oauth-adapter.js",
     "authorization-server-confirmation.js",
@@ -366,7 +371,7 @@
     "build": "tsc -p tsconfig.json && node postbuild-ts-nocheck.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test": "node --test test.js hostile-input.test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js status.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js platform-attestation.test.js memory-projection.test.js agent-binding.test.js agentroa.test.js orprg.test.js outcome-binding.test.js authority-program.test.js aeb-adapter-contract.test.js aeb-crossing-record.test.js aeb-acceptance-profile.test.js aeb-execution-conditions.test.js aeb-aps-adapter.test.js aeb-consequence-conformance.test.js aeb-mcgraw-delegation-adapter.test.js aeb-oauth-transaction-challenge-adapter.test.js aeb-wimse-oauth-adapter.test.js authorization-server-confirmation.test.js authorization-bundle.test.js oauth-rar-authorization-binding.test.js aadp-authorization-artifact.test.js policy-decision-evidence.test.js aeb-native-adapters.test.js aeb-oasnt-adapter.test.js aeb-ccs-adapter.test.js aeb-chap-adapter.test.js pedigree-aeb-composition.test.js aeb-psea-adapter.test.js fido-ap2-bridge.test.js discovery-permit-contract.test.js aeb-discovery-permit-adapter.test.js agent-edge-continuity.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js pq-signature-agility.test.js evidence-record-reattestation.test.js receipt-selective-disclosure.test.js scitt-statement.test.js fips-mode.test.js revocation-v2.test.js evidence-record-base-agility.test.js receipt-hybrid.test.mjs && tsx --test portable-state-handoff.test.ts ../../examples/portable-state-handoff/roundtrip.test.mts && npm run test:qualification",
+    "test": "node --test test.js hostile-input.test.js web.test.js federation.test.js trust-receipt.test.js trust-receipt-knobs.test.js quorum.test.js revocation.test.js status.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js platform-attestation.test.js memory-projection.test.js agent-binding.test.js agentroa.test.js orprg.test.js outcome-binding.test.js authority-program.test.js aeb-adapter-contract.test.js aeb-crossing-record.test.js aeb-acceptance-profile.test.js aeb-execution-conditions.test.js aeb-aps-adapter.test.js aeb-consequence-conformance.test.js crossing-lab.test.js crossing-lab-cli.test.js aeb-mcgraw-delegation-adapter.test.js aeb-oauth-transaction-challenge-adapter.test.js aeb-wimse-oauth-adapter.test.js authorization-server-confirmation.test.js authorization-bundle.test.js oauth-rar-authorization-binding.test.js aadp-authorization-artifact.test.js policy-decision-evidence.test.js aeb-native-adapters.test.js aeb-oasnt-adapter.test.js aeb-ccs-adapter.test.js aeb-chap-adapter.test.js pedigree-aeb-composition.test.js aeb-psea-adapter.test.js fido-ap2-bridge.test.js discovery-permit-contract.test.js aeb-discovery-permit-adapter.test.js agent-edge-continuity.test.js consistency.test.js witness.test.js timestamp-proof.test.js currency.test.js consumption-proof.test.js initiator-attestation.test.js surface-binding.test.js consent-grant.test.js resolution.test.js document-action-binding.test.js pq-hybrid.test.js pq-signature-agility.test.js evidence-record-reattestation.test.js receipt-selective-disclosure.test.js scitt-statement.test.js fips-mode.test.js revocation-v2.test.js evidence-record-base-agility.test.js receipt-hybrid.test.mjs && tsx --test portable-state-handoff.test.ts ../../examples/portable-state-handoff/roundtrip.test.mts && npm run test:qualification",
     "test:qualification": "tsx --test gate-qualification.test.ts gate-qualification-promptfoo.test.ts claim-assurance.test.ts a2a-receipt-binding.test.ts ap2-native-adapter.test.ts a2a-evidence-challenge.test.ts"
   },
   "bin": {

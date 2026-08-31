@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "emilia-crewai"
-version = "0.3.3"
+version = "0.3.4"
 description = "Guard CrewAI tools with EMILIA Protocol — require an offline-verifiable authorization receipt (EP-RECEIPT-v1) before an irreversible tool runs: missing -> refused, valid -> runs, replay -> refused, forged -> refused (RR-1)."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Iman Schrock", email = "team@emiliaprotocol.ai" }]
 keywords = ["crewai", "ai-agent", "authorization", "human-in-the-loop", "guardrails", "emilia-protocol", "agent-safety", "multi-agent"]

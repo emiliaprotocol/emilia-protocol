@@ -57,7 +57,7 @@ describe('homepage category contract', () => {
     expect(productStories).toContain("name: 'EMILIA Approver'");
     expect(productStories).toContain("name: 'EMILIA Protocol'");
     expect(productStories).toContain("name: 'Assurance Plane'");
-    expect(page).toContain('href="/authority-brain"');
+    expect(page).toContain('href="/scan#run-local"');
     expect(page).toContain('href="/pilot"');
     expect(page).toContain('href="/products"');
     expect(page).toContain('href="/proof"');

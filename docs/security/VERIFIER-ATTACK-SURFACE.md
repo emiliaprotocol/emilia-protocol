@@ -1,12 +1,16 @@
 # EMILIA Verifier Attack Surface Map
 
-Scope: the published `@emilia-protocol/verify` package (v3.20.1) — the offline
-receipt verifier that anyone can run with no EP infrastructure. This document
-maps the code paths that decide VERIFIED, for the purpose of bonding a public
-forgery bounty. Companion: `BOUNTY-READINESS.md`; regression corpus:
-`tests/verifier-forgery/`.
+Scope: the `@emilia-protocol/verify` package source prepared as v3.21.0 — the
+offline receipt verifier that anyone can run with no EP infrastructure. This
+document maps the code paths that decide VERIFIED, for the purpose of bonding a
+public forgery bounty. It does not claim v3.21.0 is published before the
+protected release workflow completes. Companion: `BOUNTY-READINESS.md`;
+regression corpus: `tests/verifier-forgery/`.
 
-Base commit mapped: `origin/main` @ `24e2468e` (worktree `verifier-hardening`).
+Source snapshot mapped: the exact Git object selected by the v3.21.0 release
+workflow. The immutable `verify-v3.21.0` tag and npm provenance establish that
+object only after protected publication; until then, the repository source and
+its reproducible-package manifest are the review surface.
 
 ## 1. Entry points (exact paths)
 
@@ -22,11 +26,11 @@ re-exports of the `dist` output. Published entry points (`package.json#exports`)
 
 The decision-making functions:
 
-- **`verifyReceipt(doc, publicKeyBase64url, opts)`** — `src/index.ts:315`. Simple
+- **`verifyReceipt(doc, publicKeyBase64url, opts)`** — `src/index.ts:404`. Simple
   receipt: Ed25519 over the canonical `payload`, plus an optional Merkle anchor.
   This is the primitive the bond's simple-receipt claim rests on. Web mirror:
-  `src/web.ts:179`.
-- **`verifyTrustReceipt(receipt, opts)`** — `src/index.ts:1324`. The full I-D
+  `src/web.ts:180`.
+- **`verifyTrustReceipt(receipt, opts)`** — `src/index.ts:1552`. The full I-D
   §6.3 six-step algorithm: recompute action hash; recompute each context hash and
   confirm it commits to the action; verify each signoff signature against the
   **pinned** approver key (Class B raw Ed25519, Class A WebAuthn P-256);
@@ -42,7 +46,7 @@ The decision-making functions:
 
 The verifier consumes an **already-parsed JS object** (not raw JSON bytes). The
 only raw-JSON surface is WebAuthn `clientDataJSON`, decoded with a fatal UTF-8
-decoder and gated by `strictJsonGate` (`src/strict-json.ts:46`), which rejects
+decoder and gated by `strictJsonGate` (`src/strict-json.ts:48`), which rejects
 duplicate object member names, unpaired surrogates, and invalid syntax before
 `JSON.parse`.
 
@@ -82,13 +86,13 @@ There is **no algorithm negotiation from the document**. The verification
 algorithm is pinned by the *key type*, not by `doc.signature.algorithm`:
 
 - `verifyReceipt` calls `crypto.createPublicKey` on the pinned SPKI DER and
-  **rejects any `asymmetricKeyType !== 'ed25519'`** (`src/index.ts:355`), then
+  **rejects any `asymmetricKeyType !== 'ed25519'`** (`src/index.ts:444`), then
   `crypto.verify(null, ...)`. The web mirror imports the key as `{name:'Ed25519'}`.
 - Trust-receipt Class B uses raw Ed25519 (`crypto.verify(null,...)`, which only
   succeeds for Ed25519/Ed448 keys); Class A uses ECDSA P-256/SHA-256.
 - The **pinned key class is authoritative**: a signoff cannot declare
   `key_class:'B'` to downgrade a pinned Class-A (WebAuthn) key to a bare
-  signature (`src/index.ts:1569`).
+  signature (`src/index.ts:1797`).
 
 `doc.signature.algorithm` is required-truthy but its *value is not consulted* —
 it cannot cause a downgrade because the crypto is pinned by key type. See §5.
@@ -101,12 +105,12 @@ resolves a key from the document, from an embedded field, or from the network:
 - `verifyReceipt(doc, publicKeyBase64url)` — the caller passes the exact key.
 - `verifyTrustReceipt(receipt, { approverKeys, logPublicKey })` — approver keys
   are a pinned directory keyed by `approver_key_id`; the log key is pinned.
-- **Identity join** (`src/index.ts:1499`): a pinned key entry must carry
+- **Identity join** (`src/index.ts:1725`): a pinned key entry must carry
   `approver_id`, and it must equal the context's `approver`. Without this, any
   pinned low-privilege key could sign a context that self-asserts a CFO/clinician
   approver. Missing or mismatched identity is a hard signature failure.
 - **Compromise is terminal and retroactive** (`compromised_at`), independent of
-  the presenter-claimed `issued_at` window (`src/index.ts:1519`).
+  the presenter-claimed `issued_at` window (`src/index.ts:1747`).
 - `base64url` decoding is strict/canonical on both runtimes (round-trip check),
   killing malleability via non-canonical encodings.
 

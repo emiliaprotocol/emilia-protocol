@@ -26,7 +26,7 @@ Outputs:
 - `static-result`: `complete` or `incomplete`.
 - `eg1`: always `not_assessed`, retained for compatibility.
 
-The action pins `@emilia-protocol/fire-drill@0.5.0`, rejects malformed or
+The action pins `@emilia-protocol/fire-drill@0.5.2`, rejects malformed or
 oversized input, and fails on missing declarations by default. A complete result
 does not establish that handlers validate pinned issuers, bind exact actions,
 check revocation, fail closed, or consume receipts exactly once.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ep-verify"
-version = "0.2.0"
+version = "0.2.1"
 description = "One-line offline verifier for EMILIA Protocol authorization receipts (EP-RECEIPT-v1). Thin CLI over emilia-verify: proves signature, binding, and anchor integrity against keys you pin; never business correctness."
 readme = "README.md"
 license = { text = "Apache-2.0" }

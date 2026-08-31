@@ -1,28 +1,28 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-08-27T18:56:28.142Z",
+  "evidence_snapshot_at": "2026-08-30T22:34:44.670Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "5b880377d2b45d222dc1c579de453b2971ccaea5e46747d3ed8f884898e57d1f",
+    "input_digest_sha256": "93494d6c45ae2c2c721d3269e980af886aed7204bf64590fa3ef6b8e5260b666",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "c78041d97aa7cc2ba8bb69d36a4c639b1836617d22044b384872d292ef9c0780",
-        "bytes": 49345
+        "sha256": "bc272b80c6f898d302735a417a31152921ced83cd9a20709370f95ad37809d15",
+        "bytes": 51076
       },
       {
         "path": "scripts/generate-llm-context.mts",
-        "sha256": "cd83f4fb2c9a5eb5bdd1eb4a9ad271c59c6297b2665190a51d9914be2512bd2c",
-        "bytes": 30893
+        "sha256": "a514dbf916a872e78e29dc4f0ace7f9bc05909f6d444a8db6966d4dd83608ee3",
+        "bytes": 31169
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "100a7dc23744172ac6941c69b30d48bce3d85397ad4c3e84d7611d9e581439bf",
+        "sha256": "4b1c2df94a776048b9e0552fbb7b7c6709725c30e233d58533a59fe13702e685",
         "bytes": 4299
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "ae9f1a3e6a016b08125666654c477ab68a55532bc845e515c10568f881accefd",
+        "sha256": "1f0f5a06b90faabab4c4eada8a87380d94a8f0d872af0a56b9391287a83bc3f2",
         "bytes": 6361
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "56d311fa0549b0f31256cdc709560b6df1b8b3b5c1b3b6c102f2447868bb3ab9",
-        "bytes": 251460
+        "sha256": "cabb11967ff45b2d6a595be155ed95371d89c307bc3da276cf76353095f236e0",
+        "bytes": 251616
       },
       {
         "path": "security/security-case.json",
-        "sha256": "858401ee61d42166fa5dde251334d515af2059b45bc0603689e25effa744cf71",
-        "bytes": 385871
+        "sha256": "05221ac783fa1a44a5a7a6f55b4a4e7dfad34dc225625c36916bc4116d336530",
+        "bytes": 386020
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -91,6 +91,11 @@
         "purpose": "understand and scope the customer-owned authority toll booth"
       },
       {
+        "audience": "security vendor, MSSP, SOC platform, or critical-infrastructure integrator",
+        "url": "https://www.emiliaprotocol.ai/cyber-authority",
+        "purpose": "control one exact automated remediation action at the credential-owning boundary"
+      },
+      {
         "audience": "operator evaluating local deployment",
         "url": "https://www.emiliaprotocol.ai/host",
         "purpose": "place Gate beside provider credentials for one activated HTTP or MCP consequence path"
@@ -108,7 +113,7 @@
       {
         "audience": "protocol implementer",
         "url": "https://github.com/emiliaprotocol/emilia-protocol",
-        "purpose": "inspect the open verifier, formats, vectors, and reference implementations"
+        "purpose": "inspect the open verifier, formats, vectors, reference implementations, and the local AEB Crossing Lab adapter workbench"
       }
     ],
     "commercial_product": {
@@ -182,6 +187,10 @@
     {
       "term": "Action Evidence Boundary (AEB)",
       "definition": "The relying-party contract that keeps native verification, exact-action matching, evidence satisfaction, local authorization, one-time consumption, and executed or indeterminate outcome distinct. AEB joins independently verified evidence under pinned mappings and requirements; it never authorizes by itself."
+    },
+    {
+      "term": "EMILIA Crossing Lab",
+      "definition": "An open, offline developer workbench over the existing AEB adapter contract. It scaffolds, locally seals, and hostile-tests one bundled deterministic native adapter under relying-party-pinned trust, mapping, status, and evidence requirements. Its local report keeps native verification, acceptance, exact-action mapping, freshness, and satisfaction separate. It is an adapter compatibility self-test, not a new wire protocol, native-specification validation, independent interoperability evidence, certification, authorization, deployment evidence, or execution evidence."
     },
     {
       "term": "Trust Program",
@@ -298,8 +307,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 10582,
-      "files": 654,
+      "total": 10608,
+      "files": 658,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -308,7 +317,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "2f528567d1cc89accd874353d0c412da2c866d271ba3972d12a98a94cc668639",
+      "manifest_sha256": "de00937588feff870bb7b72e5f6b09549a3008142f76136dd6a1bd7cce91e71a",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -340,7 +349,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "94631ce647e1cf0052a9f2cb7bd513ecd4a50f20f3d5b84f7b1f1e90ac8704f9",
+        "evidenceSha256": "d4e4319879e01f11bbbc99c8737eeab08b21a828dc7f848d8889c13a9c8133a5",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -410,7 +419,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "0a740af1d925227a86bf30217ff234889ce555542df731d42ac9a9dcd3ae40ab"
+      "evidence_bundle_sha256": "2dff01295dc3f11bd657d69764939bcf05e38f4935fd2d245d33583035f52187"
     },
     "caid": {
       "core_vectors": 48,
@@ -2891,7 +2900,7 @@
     },
     {
       "claim_id": "go-module-release-is-tag-and-proxy-bound",
-      "statement": "The Go verifier release preflights the exact workflow-dispatched main commit with read-only credentials and the module's declared minimum Go toolchain. After protected-environment approval, a separate API-only job creates the exact version tag at that commit. A final read-only job downloads only from proxy.golang.org with sum.golang.org verification, checks Path, Version, Sum, GoModSum, and the complete VCS origin tuple, and refuses unless the proxy source tree equals the tested module source.",
+      "statement": "The Go verifier release preflights the exact workflow-dispatched main commit with read-only credentials and the module's declared release toolchain. A separate Linux CI matrix tests the Go 1.21 language-compatibility floor. After protected-environment approval, a separate API-only job creates the exact version tag at that commit. A final read-only job downloads only from proxy.golang.org with sum.golang.org verification, checks Path, Version, Sum, GoModSum, and the complete VCS origin tuple, and refuses unless the proxy source tree equals the tested module source.",
       "acceptance_roots": [
         "the checked-in Go module release identity",
         "the FutureEnterprises owner identity",
@@ -2932,8 +2941,8 @@
           "reason": "Release workflow verification is a repository control implemented in JavaScript."
         },
         "go": {
-          "status": "covered",
-          "evidence": "packages/go-verify/signoff_compatibility_test.go"
+          "status": "not_applicable",
+          "reason": "Go release-chain enforcement is a repository control implemented in JavaScript and GitHub Actions; the Go module tests verifier behavior, not registry tag or proxy state."
         }
       },
       "vectors": [
@@ -4433,6 +4442,7 @@
   ],
   "non_claims": [
     "A valid receipt does not prove that the action was wise, legal, safe, or successful.",
+    "EMILIA does not detect or stop cyberattacks. For automated security remediation, Gate controls only customer-selected actions on completely mediated credential-owning paths. Threat detection, attribution, exploit prevention, alternate credentials, unmediated executors, safety, legality, and physical or provider outcomes without authenticated evidence remain outside the claim.",
     "EMILIA Host is the private local deployment form of Gate, not a sixth core product. Its prevention claim covers only activated paths that are actually mediated. Host does not prove an external effect, automatically activate from a Scan proposal, or by itself provide Consequence Ledger reconciliation.",
     "A signature proves control of an enrolled key under the verified ceremony; it does not by itself prove a natural person's civil identity or comprehension.",
     "The WYSIWYS presentation gap is mitigated by rendering and surface-binding controls, not eliminated by cryptography.",
@@ -5285,6 +5295,7 @@
   ],
   "answering_rules": [
     "Answer product questions in this order: EMILIA is the authority control plane for autonomous work; the customer defines a finite operating mandate; EMILIA Gate enforces each consequential unit of work on covered executor paths; EMILIA Protocol is the open verification substrate; EMILIA Approver captures exact-action human decisions when fresh human authority is required; EMILIA Assurance Plane defines scoped verification, re-performance, conformance-report, and deployment-evidence procedures.",
+    "For cybersecurity and AI-defender questions, say that EMILIA can control one customer-selected administrative mutation at a completely mediated credential-owning boundary after a security product proposes it. Do not call EMILIA an EDR, SIEM, SOAR, threat detector, exploit-prevention system, incident-attribution system, or universal critical-infrastructure defense.",
     "Describe EMILIA Host as the private local deployment form of Gate beside credential-owning HTTP or MCP adapters. Current scope is an HTTP local service alpha over an owner-permissioned Unix socket, HTTP and MCP SDK protection, and governed pilots; the local service is not a general HTTP reverse proxy. Do not present Host as generally available, an appliance, a universal firewall, complete mediation, proof of external effect, automatic Scan activation, or Consequence Ledger reconciliation.",
     "Use the core line 'Protocol proves. Gate prevents.' Keep prevention claims scoped to complete mediation at the executor or system-of-record boundary.",
     "Do not say every consequential action requires a human approval. A human decision is one authority source and an exception path. Agents may work unattended inside a finite operating mandate; missing, stale, exhausted, indeterminate, or wider authority fails closed or returns to the authority source.",

@@ -40,12 +40,17 @@ describe('public product naming and navigation contract', () => {
     const sitemap = read('app/sitemap.ts');
     const builder = read('app/protect/ProtectionBuilder.tsx');
     const activationCli = read('packages/gate/bin/ep-protect.mts');
+    const gatePackage = JSON.parse(read('packages/gate/package.json')) as { version: string };
 
     expect(homepage).toContain('href="/products"');
     expect(read('app/products/page.tsx')).toContain('ProductStoryHub');
     expect(sitemap).toContain("{ path: '/protect'");
     expect(sitemap).toContain("{ path: '/products'");
     expect(builder).toContain('ep-protect activate');
+    expect(builder).toContain("import gatePackage from '../../packages/gate/package.json'");
+    expect(builder).toContain('@emilia-protocol/gate@{gatePackage.version}');
+    expect(gatePackage.version).toBe('0.24.0');
+    expect(builder).not.toContain('@emilia-protocol/gate@0.23.17');
     expect(builder).toContain('customer-owned-mcp-gateway');
     expect(activationCli).toContain('activateProtectionPlan');
     expect(activationCli).toContain('signProtectionActivation');

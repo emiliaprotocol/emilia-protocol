@@ -36,6 +36,8 @@
  * assumptions. The demand hook fails CLOSED.
  */
 type AnyRecord = Record<string, any>;
+/** Runtime/package identity used by generated consumers that pin this release. */
+export declare const MCP_GUARD_RUNTIME_VERSION = "0.6.0";
 /** "sha256:<hex>" over canonical JSON — the project-wide hash format. */
 export declare function hashObject(obj: any): string;
 /**

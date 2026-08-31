@@ -21,6 +21,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
@@ -45,6 +46,13 @@ const VERIFY_STRICT_JSON_PACKAGE = '@emilia-protocol/verify/strict-json';
 const FIRE_DRILL_FALLBACK = '../../fire-drill/index.js';
 const FIRE_DRILL_CORPUS_FALLBACK = '../../fire-drill/corpus.js';
 const VERIFY_STRICT_JSON_FALLBACK = '../../verify/strict-json.js';
+const packageVersion = (JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+) as { version?: unknown }).version;
+if (typeof packageVersion !== 'string' || !/^\d+\.\d+\.\d+$/.test(packageVersion)) {
+  throw new Error('fire-drill-mcp package version is invalid');
+}
+export const FIRE_DRILL_MCP_VERSION = packageVersion;
 try {
   ({ scan, FIRE_DRILL_VERSION, TAGLINE } = await import(FIRE_DRILL_PACKAGE));
   ({ REPRESENTATIVE_CORPUS } = await import(FIRE_DRILL_CORPUS_PACKAGE));
@@ -156,7 +164,7 @@ export async function handleToolRequest(request: { params: { name: string; argum
 
 export function createServer() {
   const server = new Server(
-    { name: 'emilia-fire-drill', version: '0.2.0' },
+    { name: 'emilia-fire-drill', version: FIRE_DRILL_MCP_VERSION },
     { capabilities: { tools: {} } },
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));

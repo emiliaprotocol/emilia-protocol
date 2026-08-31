@@ -13,8 +13,9 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const outputPath = resolve(packageRoot, 'bundle.js');
 
 await build({
-  entryPoints: [resolve(packageRoot, 'index.js')],
-  outfile: outputPath,
+  absWorkingDir: packageRoot,
+  entryPoints: ['index.js'],
+  outfile: 'bundle.js',
   bundle: true,
   platform: 'node',
   format: 'esm',

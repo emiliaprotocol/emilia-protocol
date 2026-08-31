@@ -39,7 +39,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup the declared minimum Go toolchain
+      - name: Setup the declared release Go toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version-file: packages/go-verify/go.mod
@@ -230,7 +230,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup the declared minimum Go toolchain
+      - name: Setup the declared release Go toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version-file: packages/go-verify/go.mod

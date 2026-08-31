@@ -1,0 +1,35 @@
+{
+  "@version": "CCS-DRAFT08-V1.3-SOURCE-LOCK-v1",
+  "draft": {
+    "name": "draft-correctover-ccs-08",
+    "url": "https://www.ietf.org/archive/id/draft-correctover-ccs-08.txt",
+    "media_type": "text/plain",
+    "bytes": 153156,
+    "sha256": "fbac2a025f11baec104687ee04ba5c9fb0dad1b5bbb5ad38494965565a977cd3"
+  },
+  "native_profile": {
+    "name": "CCS v1.3 receipt",
+    "field_count": 22,
+    "signature": "Ed25519 over RFC 8785 canonical fields 1-21",
+    "source_sections": [
+      "4.1",
+      "4.2",
+      "4.7.3",
+      "6.1",
+      "6.2",
+      "6.4",
+      "6.5",
+      "6.6",
+      "6.7",
+      "6.8",
+      "6.9",
+      "12.2"
+    ]
+  },
+  "independent_implementation_basis": {
+    "repository": "https://github.com/emiliaprotocol/emilia-protocol",
+    "prior_merge_commit": "5fb2eae9b20d17685e1ecbe061eb4ced03dbe64e",
+    "relationship": "independent profile implementation, not Correctover certification"
+  },
+  "observed_on": "2026-08-30"
+}

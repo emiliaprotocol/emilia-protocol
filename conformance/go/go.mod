@@ -8,11 +8,11 @@ module github.com/emiliaprotocol/emilia-protocol/conformance/go
 
 go 1.25.0
 
-toolchain go1.26.7
+toolchain go1.27.0
 
 require (
 	github.com/cloudflare/circl v1.6.5
-	github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2 v2.0.0
+	github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2 v2.4.5
 )
 
 require golang.org/x/sys v0.47.0 // indirect

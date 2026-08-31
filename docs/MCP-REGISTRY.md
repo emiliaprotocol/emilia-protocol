@@ -15,12 +15,13 @@ Live state checked on 2026-08-22:
 - The Registry API returned active versions `1.0.0` and `1.0.4`, with `1.0.4` marked
   latest.
 - npm returned `@emilia-protocol/mcp-server@2.1.1` with
-  `mcpName=io.github.emiliaprotocol/mcp-server`.
-- The repository manifest now targets `2.1.1` and passes live
-  `mcp-publisher validate` after keeping its description within the Registry's
-  100-character schema limit.
-- Validation is not publication. Version `2.1.1` is registered only after
-  `mcp-publisher publish` succeeds and a fresh Registry API response marks it latest.
+  `mcpName=io.github.emiliaprotocol/mcp-server`; that is the last live npm state
+  established by this dated snapshot.
+- The repository manifest prepares `2.1.2` with verifier `3.21.0`. It is not a
+  published or registered version until the protected npm workflow completes.
+- npm publication is still not Registry publication. Version `2.1.2` is
+  registered only after `mcp-publisher validate` and `mcp-publisher publish`
+  succeed and a fresh Registry API response marks it latest.
 
 Recheck the live Registry without relying on this dated snapshot:
 

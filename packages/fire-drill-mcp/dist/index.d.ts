@@ -18,6 +18,7 @@
  */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 type JsonRecord = Record<string, unknown>;
+export declare const FIRE_DRILL_MCP_VERSION: string;
 export declare const TOOLS: ({
     name: string;
     description: string;

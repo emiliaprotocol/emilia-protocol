@@ -46,7 +46,7 @@ runs:
         MANIFEST_PATH=$(realpath -- "$MANIFEST")
         test -f "$MANIFEST_PATH"
         set +e
-        OUT=$(npx -y @emilia-protocol/fire-drill@0.5.0 "$MANIFEST_PATH" --json)
+        OUT=$(npx -y @emilia-protocol/fire-drill@0.5.2 "$MANIFEST_PATH" --json)
         STATUS=$?
         set -e
         echo "$OUT"

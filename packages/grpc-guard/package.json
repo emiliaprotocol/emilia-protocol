@@ -16,7 +16,7 @@
     "test": "node --test binding.test.mjs guard.test.mjs interceptors.test.mjs"
   },
   "dependencies": {
-    "@emilia-protocol/require-receipt": "^0.8.0"
+    "@emilia-protocol/require-receipt": "^0.8.1"
   },
   "peerDependencies": {
     "@grpc/grpc-js": "^1.10.0"

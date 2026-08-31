@@ -1,0 +1,62 @@
+{
+  "@version": "PINTO-CBAP1-AEB-SOURCE-LOCK-v0.1",
+  "draft": {
+    "name": "draft-pinto-agent-authz-contestability",
+    "revision": "00",
+    "retrieved_at": "2026-08-30T19:56:52Z",
+    "txt": {
+      "url": "https://www.ietf.org/archive/id/draft-pinto-agent-authz-contestability-00.txt",
+      "sha256": "6a879935dc516df39e7cb95fdc8c45f982165869981d93763746911826b0b052",
+      "bytes": 167000
+    },
+    "xml": {
+      "url": "https://www.ietf.org/archive/id/draft-pinto-agent-authz-contestability-00.xml",
+      "sha256": "fab13608e4146a152bc3612618ce7882b93f35aeaf2e40c4f8fcf2e8f3718e52",
+      "bytes": 224643
+    }
+  },
+  "implemented_surface": {
+    "profile": "CBAP-1",
+    "binding_mode": "direct",
+    "acceptance_mode": "exact",
+    "selection_provenance": "unilateral",
+    "declared_effect": "none",
+    "source_sections": [
+      "3",
+      "4.1",
+      "4.2",
+      "4.3",
+      "4.3.1",
+      "4.4",
+      "4.5",
+      "4.6",
+      "4.8",
+      "4.9",
+      "4.11",
+      "4.12",
+      "4.13",
+      "4.14",
+      "4.15",
+      "4.16",
+      "4.17",
+      "5.1",
+      "5.3",
+      "6.1",
+      "6.2",
+      "6.3",
+      "6.4",
+      "6.5",
+      "7",
+      "8.1",
+      "8.2",
+      "8.3"
+    ]
+  },
+  "availability_observation": {
+    "checked_at": "2026-08-30T19:56:52Z",
+    "upstream_public_implementation_or_vector_package_located": false,
+    "draft_declared_shared_positive_bundle_sha256": "8a47e89abb2c77a9de27ffb59a5bc89a7226509236e35b0f11cf6819fd1b6646",
+    "local_fixture_is_draft_declared_bundle": false,
+    "meaning": "The fixture in this directory is an EMILIA same-team compatibility fixture, not a Pinto-author vector or independent implementation. The draft records a retained positive-bundle digest but says a stable public package and explicit license are not yet designated."
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "@version": "EMILIA-CEDULON-AEB-CROSSING-VECTORS-v0.1",
+  "positive": [
+    "pinned Decision Token verifies under the configured PDP Ed25519 key",
+    "requestHash binds amount, currency, payee, tool, nonce, and manifestHash",
+    "policyHash binds the attached policy document",
+    "the six-field request maps without loss to cedulon.payment.attempt.1",
+    "wrapper-only changes preserve the native replay commitment"
+  ],
+  "hostile": [
+    "non-empty actual COSE_Sign1 unprotected map",
+    "token-carried self-signed issuer key",
+    "amount substitution",
+    "currency substitution",
+    "payee substitution",
+    "tool substitution",
+    "nonce substitution",
+    "manifestHash substitution",
+    "detached request substitution under an unchanged token",
+    "expired decision",
+    "consumed decision",
+    "stale status",
+    "unavailable status",
+    "unchecked status",
+    "Spend Receipt used as pre-settlement authority"
+  ],
+  "replay": {
+    "native_identities": [
+      "singleUseId",
+      "nonce"
+    ],
+    "aeb_replay_unit": "sha256(JCS({protocol,version,single_use_id,nonce}))",
+    "required_runtime_fence": "The Cedulon consumer must independently reject reuse of either native identity; provider entry consumes the terminal attempt and indeterminate entry is not blindly retried."
+  }
+}

@@ -1,0 +1,205 @@
+{
+  "@version": "EMILIA-CROSSING-LAB-LOCAL-WORKSPACE-v1",
+  "adapter": {
+    "id": "native:ccs-draft08-v1.3-ed25519",
+    "version": "1.0.0",
+    "module": "adapter.mjs",
+    "module_digest": "sha256:986a91532c333a13b27b908d282d5e45dfebee8c8280589771059c9b7e228b2a"
+  },
+  "artifact": "artifact.json",
+  "artifact_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+  "config": {
+    "@version": "AEB-ADAPTER-v1",
+    "relying_party_id": "rp:emilia:ccs-wang-draft08",
+    "evaluator_keys": {
+      "crossing-lab:self-test": {
+        "public_key": "MCowBQYDK2VwAyEAc_kUSHs4ymdA65GF3OV8C3PDWhelodqfOvCmFe-6oUI"
+      }
+    },
+    "registry": {
+      "@version": "EP-EVIDENCE-REGISTRY-v1",
+      "registry_id": "registry:ccs-wang-draft08-crossing-lab",
+      "epoch": 1,
+      "entries": {
+        "mapping:ccs-draft08-v13-tool-action": {
+          "kind": "mapping-profile",
+          "version": "1",
+          "status": "active",
+          "definition": {
+            "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381"
+          },
+          "definition_digest": "sha256:26a1a6392ac1383cfa45719ae1ba221d4b42b75ae901f84c6047804473f7de20"
+        },
+        "role:machine-policy-decision": {
+          "kind": "evidence-role",
+          "version": "1",
+          "status": "active",
+          "definition": {
+            "role": "machine-policy-decision",
+            "subject_kinds": [
+              "system"
+            ]
+          },
+          "definition_digest": "sha256:c5423693760594b01821636f190ead94fc6081d40e206f3d70723860df3e394c"
+        }
+      },
+      "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c"
+    },
+    "accepted_mappers": [
+      "mapper:ccs-draft08-v1.3-tool-action-v1"
+    ],
+    "adapters": {
+      "native:ccs-draft08-v1.3-ed25519": {
+        "version": "1.0.0",
+        "trust_roots": [
+          {
+            "@version": "AEB-CCS-DRAFT08-V1.3-ROOT-v1",
+            "issuer": "https://correctover.example/ccs/draft08/test",
+            "key_id": "ccs-wang-draft08-public-test-key-1",
+            "algorithm": "Ed25519",
+            "public_key_raw_base64": "J44hPfhth6DPuhIaicostxApd060k+EmfHhKGlrxasA=",
+            "public_key_fingerprint_sha256_16": "b33d89395eee58d0"
+          }
+        ],
+        "config": {
+          "@version": "AEB-CCS-DRAFT08-V1.3-CONFIG-v1",
+          "evidence_role": "machine-policy-decision",
+          "subject": {
+            "id": "system:ccs-wang-draft08-public-vector",
+            "kind": "system"
+          },
+          "issuer": "https://correctover.example/ccs/draft08/test",
+          "audience": "https://gate.example/admission/ccs-wang-draft08",
+          "action_type": "agent.tool-invocation.1",
+          "allowed_tools": [
+            "sum"
+          ],
+          "max_receipt_age_seconds": 300,
+          "max_clock_skew_seconds": 5,
+          "deployment_scope": "pinned-ed25519-issuer"
+        },
+        "config_digest": "sha256:2b453a9304c0954f3e914e557a2687dd41b077aa1435092fa7e3d195ad35d862",
+        "max_status_age_sec": 300
+      }
+    },
+    "profiles": {
+      "ccs-draft08-v13-tool-action": {
+        "version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
+        "definition": {
+          "@version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
+          "source": "draft-correctover-ccs-08-v1.3-fbac2a025f11baec",
+          "source_media_type": "application/x-ccs-receipt+json",
+          "projection": "ccs-v13-signed-tool-and-full-params-digest-v1",
+          "action_type": "agent.tool-invocation.1",
+          "suite": "jcs-sha256",
+          "definitions": [
+            {
+              "action_type": "agent.tool-invocation.1",
+              "required_fields": [
+                {
+                  "name": "action_type",
+                  "type": "string"
+                },
+                {
+                  "name": "parameters",
+                  "type": "object"
+                }
+              ],
+              "optional_fields": []
+            }
+          ]
+        },
+        "registry_entry_ref": "mapping:ccs-draft08-v13-tool-action",
+        "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
+        "resolver": {
+          "id": "mapper:ccs-draft08-v1.3-tool-action-v1",
+          "version": "1.0.0",
+          "implementation_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f"
+        },
+        "semantic_equivalence": {
+          "assertion": "EQUIVALENT_UNDER_PROFILE",
+          "loss_policy": "NO_MATERIAL_FIELD_LOSS",
+          "omitted_material_fields": [],
+          "omitted_nonmaterial_fields": [
+            "trace_id",
+            "verdict",
+            "timestamp",
+            "params_hash",
+            "rule_summary",
+            "receipt",
+            "verified_at",
+            "block_reason",
+            "request_hash",
+            "response_hash",
+            "runtime_context_hash",
+            "config_hash",
+            "issuer",
+            "audience",
+            "nonce",
+            "sequence",
+            "issued_at",
+            "expires_at",
+            "max_clock_skew",
+            "signature"
+          ]
+        },
+        "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381"
+      }
+    },
+    "requirements": {
+      "requirement:machine-policy-decision": {
+        "@version": "AEB-REQUIREMENT-v1",
+        "all_of": [
+          "machine-policy-decision"
+        ],
+        "terms": [
+          {
+            "type": "one-time-consumption"
+          }
+        ]
+      }
+    }
+  },
+  "evaluated_at": "2030-09-01T00:00:20Z",
+  "evaluation": {
+    "operation_id": "operation:ccs-wang-draft08:allow-live-sum",
+    "consumption_nonce": "nonce:ccs-wang-draft08:allow-live-sum",
+    "initiator_id": "agent:ccs-wang-public-vector",
+    "executor_id": "executor:crossing-lab",
+    "requirement_ref": "requirement:machine-policy-decision",
+    "profile_id": "ccs-draft08-v13-tool-action",
+    "artifact_ref": "ccs:draft08:v13:allow-live-sum",
+    "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+    "status": {
+      "checked_at": "2030-09-01T00:00:00Z",
+      "expires_at": "2030-09-01T00:01:00Z",
+      "revocation_checked": true,
+      "revoked": false,
+      "consumed": false,
+      "unavailable": false
+    },
+    "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9"
+  },
+  "expected_action": {
+    "action_type": "agent.tool-invocation.1",
+    "parameters": {
+      "tool": "sum",
+      "arguments": {
+        "left": 19,
+        "right": 23
+      }
+    }
+  },
+  "expected_action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
+  "hostile_expected_action": {
+    "action_type": "agent.tool-invocation.1",
+    "parameters": {
+      "tool": "sum",
+      "arguments": {
+        "left": 19,
+        "right": 24
+      }
+    }
+  },
+  "hostile_expected_action_digest": "sha256:25dd2cac3db9f934ea3b3f9c50e9a670a2bc737acfaf4c0dbe45674bec646b79"
+}

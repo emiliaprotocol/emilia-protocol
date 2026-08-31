@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/scan",
-  "version": "0.4.2",
-  "description": "Passive local authority inventory plus fail-closed static classification for MCP and OpenAPI action surfaces.",
+  "version": "0.5.0",
+  "description": "Local authority mapping and a selected-action Gate Starter for MCP, with passive OpenAPI classification.",
   "license": "Apache-2.0",
   "homepage": "https://www.emiliaprotocol.ai/scan",
   "bugs": {
@@ -52,7 +52,7 @@
     "test": "node --test test.js authority.test.mjs classification.test.mjs brain.test.mjs source.test.mjs packed-consumer.test.mjs"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^3.10.0"
+    "@emilia-protocol/verify": "3.21.0"
   },
   "repository": {
     "type": "git",
@@ -63,6 +63,7 @@
     "emilia",
     "ai-agent",
     "authorization",
+    "gate-starter",
     "mcp",
     "openapi",
     "guardrails"

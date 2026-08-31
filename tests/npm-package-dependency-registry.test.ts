@@ -19,6 +19,8 @@ import {
 
 const GATE_METADATA = JSON.parse(readFileSync('packages/gate/package.json', 'utf8'));
 const QUALIFY_METADATA = JSON.parse(readFileSync('packages/qualify/package.json', 'utf8'));
+const CLI_METADATA = JSON.parse(readFileSync('cli/package.json', 'utf8'));
+const ATTEST_METADATA = JSON.parse(readFileSync('packages/attest/package.json', 'utf8'));
 const RELEASE_REGISTRY = JSON.parse(readFileSync('release/release-packages.v1.json', 'utf8'));
 
 function registryFetcher(
@@ -54,16 +56,50 @@ describe('npm internal dependency registry guard', () => {
       {
         metadata: GATE_METADATA,
         directory: 'packages/gate',
-        version: '0.23.20',
-        verifyVersion: '3.20.3',
-        verifySha256: 'df14fd5791f8d69fe01be84fc926cb16b491b3a4b3bea33d50b5af9b648ef848',
+        version: '0.24.0',
+        expectedPins: [
+          {
+            spec: '@emilia-protocol/require-receipt@0.8.1',
+            sha256: '0d4a0a0b8f0ab7775d0c90eb91b57cfcd5e159e52844af35ada0ded5351a7bef',
+          },
+          {
+            spec: '@emilia-protocol/verify@3.21.0',
+            sha256: 'fb60903a33c49a7952646ddc3ca65c9c44706dbb41051feb7d5ef47e946774ed',
+          },
+        ],
       },
       {
         metadata: QUALIFY_METADATA,
         directory: 'packages/qualify',
-        version: '0.1.3',
-        verifyVersion: '3.17.1',
-        verifySha256: 'de6e741cb52501474c830d31b8da038864d09a086ac1bf160f8470db6446ae2d',
+        version: '0.1.4',
+        expectedPins: [{
+          spec: '@emilia-protocol/verify@3.21.0',
+          sha256: 'fb60903a33c49a7952646ddc3ca65c9c44706dbb41051feb7d5ef47e946774ed',
+        }],
+      },
+      {
+        metadata: CLI_METADATA,
+        directory: 'cli',
+        version: '0.2.7',
+        expectedPins: [{
+          spec: '@emilia-protocol/verify@3.21.0',
+          sha256: 'fb60903a33c49a7952646ddc3ca65c9c44706dbb41051feb7d5ef47e946774ed',
+        }],
+      },
+      {
+        metadata: ATTEST_METADATA,
+        directory: 'packages/attest',
+        version: '0.3.0',
+        expectedPins: [
+          {
+            spec: '@emilia-protocol/issue@0.7.0',
+            sha256: '0fbb002ae0d4a2ea6d39caed442ce7d81779c1ab016313654ffc40da06b117fb',
+          },
+          {
+            spec: '@emilia-protocol/verify@3.21.0',
+            sha256: 'fb60903a33c49a7952646ddc3ca65c9c44706dbb41051feb7d5ef47e946774ed',
+          },
+        ],
       },
     ];
 
@@ -71,13 +107,8 @@ describe('npm internal dependency registry guard', () => {
       metadata,
       directory,
       version,
-      verifyVersion,
-      verifySha256,
+      expectedPins,
     } of downstream) {
-      const expectedPin = {
-        spec: `@emilia-protocol/verify@${verifyVersion}`,
-        sha256: verifySha256,
-      };
       const pins = collectRegistryDependencyTarballPins(
         metadata,
         directory,
@@ -98,21 +129,21 @@ describe('npm internal dependency registry guard', () => {
       );
 
       expect(metadata.version).toBe(version);
-      expect(metadata.dependencies['@emilia-protocol/verify']).toBe(verifyVersion);
-      expect(pins).toContainEqual(expectedPin);
-      expect(requested).not.toContain(expectedPin.spec);
-      expect(verified).toContainEqual(expectedPin);
-      expect(dependencies.map(({ spec }) => spec))
-        .toContain(expectedPin.spec);
+      expect(pins).toEqual(expectedPins);
+      for (const expectedPin of expectedPins) {
+        expect(requested).not.toContain(expectedPin.spec);
+        expect(verified).toContainEqual(expectedPin);
+        expect(dependencies.map(({ spec }) => spec)).toContain(expectedPin.spec);
+      }
 
       expect(() => assertInternalDependenciesPublished(
         metadata,
         () => true,
         pins,
         () => {
-          throw new Error(`registry tarball unavailable for ${expectedPin.spec}`);
+          throw new Error(`registry tarball unavailable for ${expectedPins[0].spec}`);
         },
-      )).toThrow(new RegExp(`registry tarball unavailable.*${verifyVersion.replaceAll('.', '\\.')}`));
+      )).toThrow(/registry tarball unavailable/);
     }
   });
 
@@ -158,11 +189,11 @@ describe('npm internal dependency registry guard', () => {
     expect(() => collectRegistryDependencyTarballPins(
       GATE_METADATA,
       'packages/gate',
-      withPins([{ spec: '@emilia-protocol/verify@3.20.3', sha256: 'not-a-sha256' }]),
+      withPins([{ spec: '@emilia-protocol/verify@3.21.0', sha256: 'not-a-sha256' }]),
     )).toThrow(/invalid sha256/);
 
     const validPin = {
-      spec: '@emilia-protocol/verify@3.20.3',
+      spec: '@emilia-protocol/verify@3.21.0',
       sha256: 'a'.repeat(64),
     };
     expect(() => collectRegistryDependencyTarballPins(

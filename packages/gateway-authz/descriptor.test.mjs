@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -10,6 +11,11 @@ import {
   readSingleHeader,
   selectMaterialHeaders,
 } from './descriptor.mjs';
+
+test('package metadata pins the current receipt gate release line', () => {
+  const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+  assert.equal(packageJson.dependencies['@emilia-protocol/require-receipt'], '^0.8.1');
+});
 
 const BODY = new Uint8Array(Buffer.from('{"beneficiary":"acct_A","amount":25000}', 'utf8'));
 

@@ -1,0 +1,702 @@
+{
+  "@version": "PINTO-CBAP1-AEB-REFERENCE-REPORT-v0.1",
+  "profile": {
+    "id": "pinto:cbap1-account-suspension",
+    "adapter_id": "pinto:cbap1-contestability-binding",
+    "native_protocol": "draft-pinto-agent-authz-contestability-00#CBAP-1",
+    "source_revision": "00",
+    "source_txt_sha256": "6a879935dc516df39e7cb95fdc8c45f982165869981d93763746911826b0b052",
+    "source_xml_sha256": "fab13608e4146a152bc3612618ce7882b93f35aeaf2e40c4f8fcf2e8f3718e52"
+  },
+  "claim_boundary": {
+    "evidence_role": "contestability-binding",
+    "claim_scope": "historical-contestability-binding-only",
+    "subject_kind": "system",
+    "execution_authority": false,
+    "independent_implementation": false,
+    "native_author_endorsement": false,
+    "certification": false
+  },
+  "native_verification": {
+    "ok": true,
+    "reason": null,
+    "reasons": [],
+    "result": {
+      "binding": "valid",
+      "pre_execution_evidence": "executor_attested",
+      "discoverability": "complete",
+      "forum_acknowledgement": "valid_exact",
+      "forum_operational_status": "not_checked",
+      "selection_provenance": "unilateral",
+      "access_binding": "valid",
+      "notice_evidence": "not_claimed",
+      "retrievability": "not_checked",
+      "filing_window_status": "open",
+      "policy_freshness": "indeterminate",
+      "declared_effect": "none",
+      "effect_acceptance": "not_required",
+      "effect_trigger": "not_applicable",
+      "effect_ordering": "not_applicable",
+      "effect_application": "not_applicable",
+      "reasons": []
+    },
+    "action_bytes": "eyJhY2NvdW50X3JlZiI6ImFjY291bnQ6YWxpY2UiLCJhY3Rpb25fdHlwZSI6ImFjY291bnQuc3VzcGVuZC4xIiwicG9saWN5X2V2ZW50X3JlZiI6InBvbGljeS1ldmVudDpyaXNrLTIwMjYtMDgtMjktMDAxIn0",
+    "action_digest": "sha256:583f036629ee9c38330efa6e722f63e86bcfc0a0c5019baddfc15969f07c9559",
+    "authorization_digest": "sha256:f4f98feef23fe8ba8d40896694589be5355620f43c6a1727a68ec66828cfc354",
+    "cpo_digest": "sha256:819126f541457a157c9c6e9063cd38059bb0a9b68035fbbc01636a4c45b69845",
+    "exact_acceptance_digest": "sha256:b34d43909a42132efbc05fc5642afeab2d7e98749da0bcb5eecca83f9d7a2f26",
+    "executor_verification_digest": "sha256:3a38bd4f6be93f9ac9b9683be61ec83b4ff6d7d9292a4bfd0c0d00ea43532c52"
+  },
+  "crossing_lab": {
+    "@version": "EMILIA-CROSSING-LAB-LOCAL-REPORT-v1",
+    "workspace_digest": "sha256:f947415d4a9779ac19b29caaa0613e793f9efde9c986839664552ee1222da88e",
+    "adapter": {
+      "id": "pinto:cbap1-contestability-binding",
+      "version": "0.1.0",
+      "module_digest": "sha256:b5536489a2fabcb45c058ff83824dae6ac4dc523a8b80ebc2eaa5416ecc1074c"
+    },
+    "evaluated_at": "2026-08-30T00:00:00Z",
+    "adapter_rows": [
+      {
+        "id": "native-artifact-through",
+        "category": "positive",
+        "passed": true,
+        "expected": {
+          "rule": "POSITIVE_SATISFIED",
+          "description": "VERIFIED, ACCEPTED, MATCH, FRESH, SATISFIED, and a valid evaluation"
+        },
+        "actual": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "mapping": "MATCH",
+          "freshness": "FRESH",
+          "satisfaction": "SATISFIED",
+          "evaluation_valid": true
+        },
+        "reasons": [],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "composition": {
+            "action_digest": "sha256:2cfd66c9088d7cda142cf18e0c0aedbd881e0e77549f143b2cb0f289146cec49",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "contestability-binding",
+            "satisfied": true
+          },
+          "consumption_nonce": "nonce:pinto-cbap1:aeb-001",
+          "evaluated_at": "2026-08-30T00:00:00Z",
+          "evaluator": {
+            "id": "rp:pinto-cbap1-lab",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:5498abff51dd96a5e3e9ff891dc330f3a5c1c62647d0e25d6a323782e918d5f1"
+          },
+          "evidence_digest": "sha256:412c21a97488a576bf9b752a87dda216c11ffbdd92062ab8c3b5294f32a2a577",
+          "executor_id": "executor:historical-verifier",
+          "initiator_id": "reviewer:crossing-lab",
+          "legs": [
+            {
+              "acceptance": "ACCEPTED",
+              "action_digest": "sha256:583f036629ee9c38330efa6e722f63e86bcfc0a0c5019baddfc15969f07c9559",
+              "adapter_id": "pinto:cbap1-contestability-binding",
+              "adapter_version": "0.1.0",
+              "artifact_ref": "artifact:pinto-cbap1:001",
+              "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+              "evidence_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
+              "evidence_role": "contestability-binding",
+              "freshness": {
+                "age_seconds": 60,
+                "checked_at": "2026-08-29T23:59:00Z",
+                "consumed": false,
+                "expires_at": "2026-08-30T12:00:00Z",
+                "fresh": true,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": false
+              },
+              "mapper_id": "pinto:cbap1-direct-action-mapper",
+              "mapping": "MATCH",
+              "native_verification": "VERIFIED",
+              "profile_digest": "sha256:fedc6d2beb4ecea22ae762b070fe063519f46e5b776fd04d482a38785a825d5d",
+              "profile_id": "pinto:cbap1-account-suspension",
+              "profile_version": "0.1.0",
+              "reasons": [],
+              "replay_unit": "sha256:3248b985a680cf411957345ee9c8f3b4fe832addfe141e487278bbe5a1d8ae5d",
+              "resolver_digest": "sha256:2e167cd9235a0e81aa64daa31d63f1e3aa643810bde8a567cb21cfedcef6e6d7",
+              "status_digest": "sha256:892edc5a331e8456aabe8862afcc5cf1a1e2bd71b390475afed9e37d7d3ae0a1",
+              "subject": {
+                "id": "system:account-platform",
+                "kind": "system"
+              },
+              "verdict": "SATISFIED"
+            }
+          ],
+          "operation_id": "operation:pinto-cbap1:historical-001",
+          "reasons": [],
+          "registry_digest": "sha256:637c8346af8b5bdf4213d6bebb44a645ee677ac01415881bce00dd3fb30dfb52",
+          "requirement_digest": "sha256:82f8f5a02f70af78d92dadb08ab9f5c86b5854f9ec8b6a039354868a3a8e4ddc",
+          "requirement_ref": "requirement:historical-contestability-binding",
+          "verdict": "SATISFIED",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "XT3LIm3Xg32goRYzh7DLcK9dt09s8i03HLFUvl1AN5amIf1mpRO_oElUIy6jNYEakMCT9H6niV8wNBlrwJbzAw"
+          }
+        }
+      },
+      {
+        "id": "exact-action-substitution-refused",
+        "category": "hostile",
+        "passed": true,
+        "expected": {
+          "rule": "ACTION_SUBSTITUTION_SAFE",
+          "description": "the changed material action is not MATCH, not SATISFIED, and not a valid positive evaluation"
+        },
+        "actual": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "mapping": "MISMATCH",
+          "freshness": "FRESH",
+          "satisfaction": "UNSATISFIED",
+          "evaluation_valid": false
+        },
+        "reasons": [
+          "expected_action_digest_mismatch",
+          "normalized_action_digest_mismatch",
+          "requirement not satisfied: \"contestability-binding\" over {∅}"
+        ],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "composition": {
+            "action_digest": "sha256:f63de1694ef37539adcb4ea9e62e6b55a3ba38ac6c90fbe2932908b40252fd6b",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "contestability-binding",
+            "satisfied": false
+          },
+          "consumption_nonce": "nonce:pinto-cbap1:aeb-001",
+          "evaluated_at": "2026-08-30T00:00:00Z",
+          "evaluator": {
+            "id": "rp:pinto-cbap1-lab",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:5498abff51dd96a5e3e9ff891dc330f3a5c1c62647d0e25d6a323782e918d5f1"
+          },
+          "evidence_digest": "sha256:058b6dbedc9c1483e5455fe47a05954d604e771c98623bfc3a5993094e40e085",
+          "executor_id": "executor:historical-verifier",
+          "initiator_id": "reviewer:crossing-lab",
+          "legs": [
+            {
+              "acceptance": "ACCEPTED",
+              "action_digest": "sha256:583f036629ee9c38330efa6e722f63e86bcfc0a0c5019baddfc15969f07c9559",
+              "adapter_id": "pinto:cbap1-contestability-binding",
+              "adapter_version": "0.1.0",
+              "artifact_ref": "artifact:pinto-cbap1:001",
+              "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+              "evidence_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
+              "evidence_role": "contestability-binding",
+              "freshness": {
+                "age_seconds": 60,
+                "checked_at": "2026-08-29T23:59:00Z",
+                "consumed": false,
+                "expires_at": "2026-08-30T12:00:00Z",
+                "fresh": true,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": false
+              },
+              "mapper_id": "pinto:cbap1-direct-action-mapper",
+              "mapping": "MISMATCH",
+              "native_verification": "VERIFIED",
+              "profile_digest": "sha256:fedc6d2beb4ecea22ae762b070fe063519f46e5b776fd04d482a38785a825d5d",
+              "profile_id": "pinto:cbap1-account-suspension",
+              "profile_version": "0.1.0",
+              "reasons": [
+                "expected_action_digest_mismatch",
+                "normalized_action_digest_mismatch"
+              ],
+              "replay_unit": "sha256:3248b985a680cf411957345ee9c8f3b4fe832addfe141e487278bbe5a1d8ae5d",
+              "resolver_digest": "sha256:2e167cd9235a0e81aa64daa31d63f1e3aa643810bde8a567cb21cfedcef6e6d7",
+              "status_digest": "sha256:892edc5a331e8456aabe8862afcc5cf1a1e2bd71b390475afed9e37d7d3ae0a1",
+              "subject": {
+                "id": "system:account-platform",
+                "kind": "system"
+              },
+              "verdict": "UNSATISFIED"
+            }
+          ],
+          "operation_id": "operation:pinto-cbap1:historical-001",
+          "reasons": [
+            "expected_action_digest_mismatch",
+            "normalized_action_digest_mismatch",
+            "requirement not satisfied: \"contestability-binding\" over {∅}"
+          ],
+          "registry_digest": "sha256:637c8346af8b5bdf4213d6bebb44a645ee677ac01415881bce00dd3fb30dfb52",
+          "requirement_digest": "sha256:82f8f5a02f70af78d92dadb08ab9f5c86b5854f9ec8b6a039354868a3a8e4ddc",
+          "requirement_ref": "requirement:historical-contestability-binding",
+          "verdict": "UNSATISFIED",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "TkYGqFyC5B-Kn_fHPtbQIoHLJo7fxaDo7Baov6nMbBXkHa-4JfYds4QXQ6TQsNEDS4OhSdJ1hs5oow-2M8azAw"
+          }
+        }
+      },
+      {
+        "id": "trust-root-substitution-refused",
+        "category": "hostile",
+        "passed": true,
+        "expected": {
+          "rule": "TRUST_SUBSTITUTION_SAFE",
+          "description": "substituted trust cannot remain VERIFIED, ACCEPTED, SATISFIED, or a valid positive evaluation"
+        },
+        "actual": {
+          "native_verification": "FAILED",
+          "acceptance": "REJECTED",
+          "mapping": "MISMATCH",
+          "freshness": "FRESH",
+          "satisfaction": "UNSATISFIED",
+          "evaluation_valid": false
+        },
+        "reasons": [
+          "cbap1:cpo_invalid",
+          "expected_action_digest_mismatch",
+          "native_verification_required",
+          "normalized_action_digest_mismatch",
+          "requirement not satisfied: \"contestability-binding\" over {∅}"
+        ],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "composition": {
+            "action_digest": "sha256:f63de1694ef37539adcb4ea9e62e6b55a3ba38ac6c90fbe2932908b40252fd6b",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "contestability-binding",
+            "satisfied": false
+          },
+          "consumption_nonce": "nonce:pinto-cbap1:aeb-001",
+          "evaluated_at": "2026-08-30T00:00:00Z",
+          "evaluator": {
+            "id": "rp:pinto-cbap1-lab",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:e1f4a2fa0aad2e4eff4430edcd117f3cad190fd1d021caf28662c21ce312894d"
+          },
+          "evidence_digest": "sha256:9cd888360b84586c8027fb7959a28f7373a793c0eaaff7398ffca55a48e932d5",
+          "executor_id": "executor:historical-verifier",
+          "initiator_id": "reviewer:crossing-lab",
+          "legs": [
+            {
+              "acceptance": "REJECTED",
+              "action_digest": null,
+              "adapter_id": "pinto:cbap1-contestability-binding",
+              "adapter_version": "0.1.0",
+              "artifact_ref": "artifact:pinto-cbap1:001",
+              "caid": null,
+              "evidence_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
+              "evidence_role": "contestability-binding",
+              "freshness": {
+                "age_seconds": 60,
+                "checked_at": "2026-08-29T23:59:00Z",
+                "consumed": false,
+                "expires_at": "2026-08-30T12:00:00Z",
+                "fresh": true,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": false
+              },
+              "mapper_id": "pinto:cbap1-direct-action-mapper",
+              "mapping": "MISMATCH",
+              "native_verification": "FAILED",
+              "profile_digest": "sha256:fedc6d2beb4ecea22ae762b070fe063519f46e5b776fd04d482a38785a825d5d",
+              "profile_id": "pinto:cbap1-account-suspension",
+              "profile_version": "0.1.0",
+              "reasons": [
+                "cbap1:cpo_invalid",
+                "expected_action_digest_mismatch",
+                "native_verification_required",
+                "normalized_action_digest_mismatch"
+              ],
+              "replay_unit": "sha256:b28a9a5dd2ff59d98d77d9a3ef7fab018969ef9d72ceb14dfc5585ae033b9e65",
+              "resolver_digest": "sha256:2e167cd9235a0e81aa64daa31d63f1e3aa643810bde8a567cb21cfedcef6e6d7",
+              "status_digest": "sha256:892edc5a331e8456aabe8862afcc5cf1a1e2bd71b390475afed9e37d7d3ae0a1",
+              "subject": {
+                "id": "system:account-platform",
+                "kind": "system"
+              },
+              "verdict": "UNSATISFIED"
+            }
+          ],
+          "operation_id": "operation:pinto-cbap1:historical-001",
+          "reasons": [
+            "cbap1:cpo_invalid",
+            "expected_action_digest_mismatch",
+            "native_verification_required",
+            "normalized_action_digest_mismatch",
+            "requirement not satisfied: \"contestability-binding\" over {∅}"
+          ],
+          "registry_digest": "sha256:637c8346af8b5bdf4213d6bebb44a645ee677ac01415881bce00dd3fb30dfb52",
+          "requirement_digest": "sha256:82f8f5a02f70af78d92dadb08ab9f5c86b5854f9ec8b6a039354868a3a8e4ddc",
+          "requirement_ref": "requirement:historical-contestability-binding",
+          "verdict": "UNSATISFIED",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "w7kqZOCe6bxH16kDmb-4c8gKfrs6DGbmFJALO2sgoQXGaCUb8RtzrP-xfbCWMLANLZvDiEW0fDoTo-RK107cBw"
+          }
+        }
+      },
+      {
+        "id": "stale-status-is-indeterminate",
+        "category": "boundary",
+        "passed": true,
+        "expected": {
+          "rule": "STALE_STATUS_INDETERMINATE",
+          "description": "stale status remains STALE and INDETERMINATE, regardless of where the native adapter detects it"
+        },
+        "actual": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "mapping": "MATCH",
+          "freshness": "STALE",
+          "satisfaction": "INDETERMINATE",
+          "evaluation_valid": false
+        },
+        "reasons": [
+          "status_stale"
+        ],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "composition": {
+            "action_digest": "sha256:f63de1694ef37539adcb4ea9e62e6b55a3ba38ac6c90fbe2932908b40252fd6b",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "contestability-binding",
+            "satisfied": false
+          },
+          "consumption_nonce": "nonce:pinto-cbap1:aeb-001",
+          "evaluated_at": "2026-08-30T00:00:00Z",
+          "evaluator": {
+            "id": "rp:pinto-cbap1-lab",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:5498abff51dd96a5e3e9ff891dc330f3a5c1c62647d0e25d6a323782e918d5f1"
+          },
+          "evidence_digest": "sha256:db8ae3ba3228afd56bc96ab867a15cb3c7bb9564fda1d2077dcaa4cda5d72039",
+          "executor_id": "executor:historical-verifier",
+          "initiator_id": "reviewer:crossing-lab",
+          "legs": [
+            {
+              "acceptance": "ACCEPTED",
+              "action_digest": "sha256:583f036629ee9c38330efa6e722f63e86bcfc0a0c5019baddfc15969f07c9559",
+              "adapter_id": "pinto:cbap1-contestability-binding",
+              "adapter_version": "0.1.0",
+              "artifact_ref": "artifact:pinto-cbap1:001",
+              "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+              "evidence_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
+              "evidence_role": "contestability-binding",
+              "freshness": {
+                "age_seconds": 360,
+                "checked_at": "2026-08-29T23:54:00.000Z",
+                "consumed": false,
+                "expires_at": "2026-08-30T00:01:00.000Z",
+                "fresh": false,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": false
+              },
+              "mapper_id": "pinto:cbap1-direct-action-mapper",
+              "mapping": "MATCH",
+              "native_verification": "VERIFIED",
+              "profile_digest": "sha256:fedc6d2beb4ecea22ae762b070fe063519f46e5b776fd04d482a38785a825d5d",
+              "profile_id": "pinto:cbap1-account-suspension",
+              "profile_version": "0.1.0",
+              "reasons": [
+                "status_stale"
+              ],
+              "replay_unit": "sha256:3248b985a680cf411957345ee9c8f3b4fe832addfe141e487278bbe5a1d8ae5d",
+              "resolver_digest": "sha256:2e167cd9235a0e81aa64daa31d63f1e3aa643810bde8a567cb21cfedcef6e6d7",
+              "status_digest": "sha256:9530e53c9afde5a81e710f92a80a7c17d8e51cefc387de9b3c549cf485580900",
+              "subject": {
+                "id": "system:account-platform",
+                "kind": "system"
+              },
+              "verdict": "INDETERMINATE"
+            }
+          ],
+          "operation_id": "operation:pinto-cbap1:historical-001",
+          "reasons": [
+            "status_stale"
+          ],
+          "registry_digest": "sha256:637c8346af8b5bdf4213d6bebb44a645ee677ac01415881bce00dd3fb30dfb52",
+          "requirement_digest": "sha256:82f8f5a02f70af78d92dadb08ab9f5c86b5854f9ec8b6a039354868a3a8e4ddc",
+          "requirement_ref": "requirement:historical-contestability-binding",
+          "verdict": "INDETERMINATE",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "er_huC_N_EoPhl3sq9-lukEREOeiZtdK8CT8grkqlXWOXutmiwhruG9J7ZmE6ilsIHed_i9jokN7DXkD6LD3AQ"
+          }
+        }
+      },
+      {
+        "id": "unavailable-status-is-indeterminate",
+        "category": "boundary",
+        "passed": true,
+        "expected": {
+          "rule": "UNAVAILABLE_STATUS_INDETERMINATE",
+          "description": "unavailable status remains UNAVAILABLE and INDETERMINATE, regardless of native decomposition"
+        },
+        "actual": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "mapping": "MATCH",
+          "freshness": "UNAVAILABLE",
+          "satisfaction": "INDETERMINATE",
+          "evaluation_valid": false
+        },
+        "reasons": [
+          "status_unavailable"
+        ],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "composition": {
+            "action_digest": "sha256:f63de1694ef37539adcb4ea9e62e6b55a3ba38ac6c90fbe2932908b40252fd6b",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "contestability-binding",
+            "satisfied": false
+          },
+          "consumption_nonce": "nonce:pinto-cbap1:aeb-001",
+          "evaluated_at": "2026-08-30T00:00:00Z",
+          "evaluator": {
+            "id": "rp:pinto-cbap1-lab",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:5498abff51dd96a5e3e9ff891dc330f3a5c1c62647d0e25d6a323782e918d5f1"
+          },
+          "evidence_digest": "sha256:2e77eda8bb33d91506cd1014b92fd5e2afdfa6d3757f7b06431b48c3e0d32e45",
+          "executor_id": "executor:historical-verifier",
+          "initiator_id": "reviewer:crossing-lab",
+          "legs": [
+            {
+              "acceptance": "ACCEPTED",
+              "action_digest": "sha256:583f036629ee9c38330efa6e722f63e86bcfc0a0c5019baddfc15969f07c9559",
+              "adapter_id": "pinto:cbap1-contestability-binding",
+              "adapter_version": "0.1.0",
+              "artifact_ref": "artifact:pinto-cbap1:001",
+              "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+              "evidence_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
+              "evidence_role": "contestability-binding",
+              "freshness": {
+                "age_seconds": 60,
+                "checked_at": "2026-08-29T23:59:00Z",
+                "consumed": false,
+                "expires_at": "2026-08-30T12:00:00Z",
+                "fresh": false,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": true
+              },
+              "mapper_id": "pinto:cbap1-direct-action-mapper",
+              "mapping": "MATCH",
+              "native_verification": "VERIFIED",
+              "profile_digest": "sha256:fedc6d2beb4ecea22ae762b070fe063519f46e5b776fd04d482a38785a825d5d",
+              "profile_id": "pinto:cbap1-account-suspension",
+              "profile_version": "0.1.0",
+              "reasons": [
+                "status_unavailable"
+              ],
+              "replay_unit": "sha256:3248b985a680cf411957345ee9c8f3b4fe832addfe141e487278bbe5a1d8ae5d",
+              "resolver_digest": "sha256:2e167cd9235a0e81aa64daa31d63f1e3aa643810bde8a567cb21cfedcef6e6d7",
+              "status_digest": "sha256:cc0246c8efcf7ad64bdf3acf5c3a071cec2d98ace601faf01e027fcb97d6d27d",
+              "subject": {
+                "id": "system:account-platform",
+                "kind": "system"
+              },
+              "verdict": "INDETERMINATE"
+            }
+          ],
+          "operation_id": "operation:pinto-cbap1:historical-001",
+          "reasons": [
+            "status_unavailable"
+          ],
+          "registry_digest": "sha256:637c8346af8b5bdf4213d6bebb44a645ee677ac01415881bce00dd3fb30dfb52",
+          "requirement_digest": "sha256:82f8f5a02f70af78d92dadb08ab9f5c86b5854f9ec8b6a039354868a3a8e4ddc",
+          "requirement_ref": "requirement:historical-contestability-binding",
+          "verdict": "INDETERMINATE",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "M8uUS_GWgfa3lDy7nqs8E_F_M8a0uxy1RBalBlFbH5tzRReHRv8mVHDOHCSfxJ4piHTzCqUQi0KZkqgFhHBhCQ"
+          }
+        }
+      },
+      {
+        "id": "replay-identity-is-wrapper-independent",
+        "category": "hostile",
+        "passed": true,
+        "expected": {
+          "rule": "REWRAPPED_REPLAY_IDENTITY_STABLE",
+          "description": "a wrapper-only reference change preserves a valid positive evaluation and the native replay unit"
+        },
+        "actual": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "mapping": "MATCH",
+          "freshness": "FRESH",
+          "satisfaction": "SATISFIED",
+          "evaluation_valid": true
+        },
+        "reasons": [],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+          "composition": {
+            "action_digest": "sha256:2cfd66c9088d7cda142cf18e0c0aedbd881e0e77549f143b2cb0f289146cec49",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "contestability-binding",
+            "satisfied": true
+          },
+          "consumption_nonce": "nonce:pinto-cbap1:aeb-001",
+          "evaluated_at": "2026-08-30T00:00:00Z",
+          "evaluator": {
+            "id": "rp:pinto-cbap1-lab",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:5498abff51dd96a5e3e9ff891dc330f3a5c1c62647d0e25d6a323782e918d5f1"
+          },
+          "evidence_digest": "sha256:12be598def0cb8025ba92622bc56747e781dad883b6fc11e32abcc55ca0a19d4",
+          "executor_id": "executor:historical-verifier",
+          "initiator_id": "reviewer:crossing-lab",
+          "legs": [
+            {
+              "acceptance": "ACCEPTED",
+              "action_digest": "sha256:583f036629ee9c38330efa6e722f63e86bcfc0a0c5019baddfc15969f07c9559",
+              "adapter_id": "pinto:cbap1-contestability-binding",
+              "adapter_version": "0.1.0",
+              "artifact_ref": "artifact:pinto-cbap1:001:rewrapped",
+              "caid": "caid:1:account.suspend.1:jcs-sha256:WD8DZinunDgzDvpuci9j6GvPwKDFAZut38FZafB8lVk",
+              "evidence_digest": "sha256:a93f537dbfdadcfb8cbb65155dff72be38db6aea33161da04f929ab7e3eeff35",
+              "evidence_role": "contestability-binding",
+              "freshness": {
+                "age_seconds": 60,
+                "checked_at": "2026-08-29T23:59:00Z",
+                "consumed": false,
+                "expires_at": "2026-08-30T12:00:00Z",
+                "fresh": true,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": false
+              },
+              "mapper_id": "pinto:cbap1-direct-action-mapper",
+              "mapping": "MATCH",
+              "native_verification": "VERIFIED",
+              "profile_digest": "sha256:fedc6d2beb4ecea22ae762b070fe063519f46e5b776fd04d482a38785a825d5d",
+              "profile_id": "pinto:cbap1-account-suspension",
+              "profile_version": "0.1.0",
+              "reasons": [],
+              "replay_unit": "sha256:3248b985a680cf411957345ee9c8f3b4fe832addfe141e487278bbe5a1d8ae5d",
+              "resolver_digest": "sha256:2e167cd9235a0e81aa64daa31d63f1e3aa643810bde8a567cb21cfedcef6e6d7",
+              "status_digest": "sha256:892edc5a331e8456aabe8862afcc5cf1a1e2bd71b390475afed9e37d7d3ae0a1",
+              "subject": {
+                "id": "system:account-platform",
+                "kind": "system"
+              },
+              "verdict": "SATISFIED"
+            }
+          ],
+          "operation_id": "operation:pinto-cbap1:historical-001",
+          "reasons": [],
+          "registry_digest": "sha256:637c8346af8b5bdf4213d6bebb44a645ee677ac01415881bce00dd3fb30dfb52",
+          "requirement_digest": "sha256:82f8f5a02f70af78d92dadb08ab9f5c86b5854f9ec8b6a039354868a3a8e4ddc",
+          "requirement_ref": "requirement:historical-contestability-binding",
+          "verdict": "SATISFIED",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "FPjJPCJ34EpwcQ6AHfxFF6hYLrEaFicROcn27m48ueeg3kANu1kFpfFTGDpMXCnjH9VK2vByhODfY4RgTiuVCA"
+          }
+        }
+      }
+    ],
+    "harness_self_tests": [
+      {
+        "id": "harness-refuses-unknown-native-output",
+        "passed": true,
+        "observed": "adapter_evaluation_error"
+      },
+      {
+        "id": "harness-refuses-unknown-mapping-output",
+        "passed": true,
+        "observed": "adapter_evaluation_error"
+      },
+      {
+        "id": "strict-json-refuses-duplicate-members",
+        "passed": true,
+        "observed": "duplicate object member name"
+      },
+      {
+        "id": "workspace-pin-drift-refused-before-adapter",
+        "passed": true,
+        "observed": "artifact_pin_drift"
+      }
+    ],
+    "summary": {
+      "adapter_rows": 6,
+      "passed": 6,
+      "failed": 0,
+      "harness_passed": 4,
+      "harness_failed": 0
+    },
+    "lab_passed": true,
+    "assurance": {
+      "self_attested": true,
+      "certification": false,
+      "statement": "SELF_ATTESTED_ADAPTER_COMPATIBILITY_TEST_NOT_CERTIFICATION",
+      "evaluator_key_id": "crossing-lab:self-test",
+      "evaluator_key_purpose": "PUBLIC_FIXED_SELF_TEST_KEY_NO_ATTRIBUTION"
+    },
+    "non_claims": [
+      "authorization",
+      "certification",
+      "deployment_evidence",
+      "execution_evidence",
+      "independent_attestation",
+      "native_specification_correctness",
+      "native_protocol_equivalence"
+    ],
+    "report_digest": "sha256:272eb1b8838c9fe6ebfef3aa980cf1c350c20f8637b9b695e155658ce3eb8567"
+  },
+  "report_digest": "sha256:cce041eb44d05f5456193baf2a4a43ad21098b0b8cb04954f4d204d67539cc24"
+}

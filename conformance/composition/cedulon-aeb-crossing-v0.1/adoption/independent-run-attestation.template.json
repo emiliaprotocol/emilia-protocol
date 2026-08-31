@@ -1,0 +1,27 @@
+{
+  "@version": "EMILIA-INDEPENDENT-CROSSING-RUN-ATTESTATION-v0.1",
+  "profile": "cedulon-aeb-crossing-v0.1",
+  "run_record_sha256": "sha256:<hash-of-unaltered-runner-output>",
+  "run_record_report_digest": "sha256:<report-digest-from-runner-output>",
+  "reviewed_commit": "<40-lowercase-hex-git-commit>",
+  "runner": {
+    "name": "<name>",
+    "organization": "<organization-or-independent>",
+    "contact": "<contact>",
+    "relationship_to_emilia": "<description>",
+    "relationship_to_cedulon": "<description>"
+  },
+  "independence_statement": "I ran the repository-supplied immutable command set in a fresh exact-commit checkout and report the resulting bytes without modification.",
+  "exceptions": [],
+  "claim_boundary": {
+    "native_author_confirmation": false,
+    "endorsement_or_certification": false,
+    "authorization": false,
+    "production_deployment": false,
+    "settlement_or_payment_finality": false,
+    "general_security_assurance": false
+  },
+  "signed_at": "<ISO-8601-or-null>",
+  "signature_scheme": "<external-method-or-none>",
+  "signature": "<external-signature-or-null>"
+}

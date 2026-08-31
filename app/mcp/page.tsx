@@ -40,7 +40,7 @@ const MCP_SOFTWARE_JSONLD = {
   url: 'https://www.emiliaprotocol.ai/mcp',
   downloadUrl: 'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
   installUrl: 'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
-  softwareVersion: '2.1.1',
+  softwareVersion: '2.1.2',
   license: 'https://www.apache.org/licenses/LICENSE-2.0',
   author: { '@type': 'Organization', name: 'EMILIA Protocol' },
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },

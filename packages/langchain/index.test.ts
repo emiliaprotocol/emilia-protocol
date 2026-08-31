@@ -13,6 +13,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import {
   requireReceiptForLangChainTool,
   guardAction,
@@ -20,6 +21,13 @@ import {
   _resetConsumed,
 } from './index.js';
 import { bindToolAction } from '../require-receipt/index.js';
+
+test('package metadata pins the current receipt gate release line', () => {
+  const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+  assert.equal(packageJson.version, '0.4.1');
+  assert.equal(packageJson.dependencies['@emilia-protocol/require-receipt'], '^0.8.1');
+  assert.ok(packageJson.files.includes('CHANGELOG.md'));
+});
 
 function canonicalize(v) {
   if (v === null || v === undefined) return JSON.stringify(v);

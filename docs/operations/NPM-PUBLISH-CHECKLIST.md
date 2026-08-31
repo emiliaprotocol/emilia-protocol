@@ -61,10 +61,9 @@ npx --yes npm@11.18.0 trust list <package> --json
 Both commands require maintainer authentication and proof of presence. A
 successful create response is followed by `trust list`; the returned
 repository, workflow filename, and publish permission must exactly match
-`release/release-packages.v1.json`. The current release registry declares 20
-npm publisher relationships. Registry-side activation must be read back for
-every declared caller before its next release; the repository manifest, not a
-historical count in this document, is authoritative.
+`release/release-packages.v1.json`. Registry-side activation must be read back
+for every declared caller before its next release; the repository manifest,
+not a historical count in this document, is authoritative.
 
 The actual npm and PyPI publish jobs declare
 `registry-publishing-approval`; a detached approval job is not an equivalent

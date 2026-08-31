@@ -1,24 +1,65 @@
-# DEPRECATED / LEGACY — this package (emilia_protocol) is no longer the
-# primary distribution.  The canonical, actively-maintained SDK lives in the
-# `ep` package (src/ep/), which is what gets installed when you run
-# `pip install emilia-protocol`.  Please update your imports to use `ep`:
-#
-#     from ep import EPClient, EPError
-#
-# This module is kept for backwards compatibility only and may be removed in a
-# future major release.
-"""EMILIA Protocol Python SDK."""
-from .client import EPClient
+"""Public API for the EMILIA Protocol Python SDK."""
+
+from ._routes import ROUTE_CONTRACT
+from ._version import __version__
+from .client import DEFAULT_BASE_URL, EPClient, EPError
 from .types import (
-    EntityType, AgentBehavior, TransactionType, TrustPolicy,
-    TrustDecision, DisputeReason, ReportType, TrustDomain,
-    EPError,
+    AttestExecutionParams,
+    ConsumeTrustReceiptParams,
+    ConsumeTrustReceiptResult,
+    CreateTrustReceiptParams,
+    ExecutionAttestation,
+    GateParams,
+    GateResult,
+    Handshake,
+    InitiateHandshakeParams,
+    MutationObservationContext,
+    Party,
+    Presentation,
+    PresentParams,
+    QuorumApprover,
+    QuorumPolicy,
+    ReceiptContext,
+    RequestSignoffParams,
+    RequireReceiptParams,
+    RequireReceiptResult,
+    RevokeResult,
+    SignoffRequest,
+    SignoffRequiredContext,
+    TrustReceipt,
+    TrustReceiptState,
+    VerificationResult,
 )
 
-__version__ = "1.1.0"
 __all__ = [
+    "AttestExecutionParams",
+    "ConsumeTrustReceiptParams",
+    "ConsumeTrustReceiptResult",
+    "CreateTrustReceiptParams",
+    "DEFAULT_BASE_URL",
     "EPClient",
-    "EntityType", "AgentBehavior", "TransactionType", "TrustPolicy",
-    "TrustDecision", "DisputeReason", "ReportType", "TrustDomain",
     "EPError",
+    "ExecutionAttestation",
+    "GateParams",
+    "GateResult",
+    "Handshake",
+    "InitiateHandshakeParams",
+    "MutationObservationContext",
+    "Party",
+    "Presentation",
+    "PresentParams",
+    "QuorumApprover",
+    "QuorumPolicy",
+    "ROUTE_CONTRACT",
+    "ReceiptContext",
+    "RequestSignoffParams",
+    "RequireReceiptParams",
+    "RequireReceiptResult",
+    "RevokeResult",
+    "SignoffRequest",
+    "SignoffRequiredContext",
+    "TrustReceipt",
+    "TrustReceiptState",
+    "VerificationResult",
+    "__version__",
 ]

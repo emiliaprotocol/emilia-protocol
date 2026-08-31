@@ -15,6 +15,7 @@ const COL_SYSTEM: FooterLink[] = [
 
 const COL_SOLUTIONS: FooterLink[] = [
   ['/use-cases', 'All Solutions'],
+  ['/cyber-authority', 'AI Defender Authority'],
   ['/private-equity', 'Private Equity'],
   ['/financial', 'Finance Operations'],
   ['/use-cases/enterprise', 'Code and Cloud'],
@@ -25,7 +26,7 @@ const COL_SOLUTIONS: FooterLink[] = [
 
 const COL_DEVELOPERS: FooterLink[] = [
   ['/docs', 'Docs'],
-  ['/scan', 'Local Scanner'],
+  ['/scan', 'Local Scan + Gate Starter'],
   ['/quickstart', 'Gate Quickstart'],
   ['/verify', 'Open Verifier'],
   ['/mcp', 'MCP Integration'],

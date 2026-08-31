@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 2.4.5 (2026-08-30)
+
+### Maintenance
+
+- Update the verified build toolchain to Go 1.27.0 while retaining the module's
+  Go 1.21 language-compatibility declaration.
+- Add an explicit Go 1.21.13 Linux compatibility lane so current-toolchain
+  verification and minimum-language compatibility remain separate claims.
+
 ## 2.4.4 (2026-08-21)
 
 ### Added

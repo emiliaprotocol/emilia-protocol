@@ -1,20 +1,22 @@
 {
   "name": "@emilia-protocol/sdk",
-  "version": "0.10.0",
-  "description": "Minimal TypeScript SDK for the EMILIA Protocol — 5 core endpoints + signoff.",
+  "version": "0.11.0",
+  "description": "TypeScript SDK for EMILIA exact-action authority, receipt acquisition, one-time consumption, execution evidence, and offline-verifiable evidence export.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "default": "./dist/index.js"
     }
   },
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "sideEffects": false,
   "scripts": {

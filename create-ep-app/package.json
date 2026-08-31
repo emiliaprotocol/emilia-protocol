@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/create-ep-app",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Create a fail-closed EMILIA issuer-to-verifier development demo with separately pinned relying-party trust roots.",
   "type": "module",
   "bin": {
@@ -8,7 +8,8 @@
   },
   "files": [
     "index.js",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "test": "node --test test.js"

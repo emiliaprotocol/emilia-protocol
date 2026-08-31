@@ -29,12 +29,14 @@ import {
 const CLI = join(import.meta.dirname, 'cli.mjs');
 
 test('authority reports the package release version from package metadata', () => {
-  const packageVersion = JSON.parse(readFileSync(join(import.meta.dirname, 'package.json'), 'utf8')).version;
+  const packageMetadata = JSON.parse(readFileSync(join(import.meta.dirname, 'package.json'), 'utf8'));
+  const packageVersion = packageMetadata.version;
   const root = mkdtempSync(join(tmpdir(), 'emilia-authority-version-'));
   const home = join(root, 'home');
   const cwd = join(home, 'project');
   mkdirSync(cwd, { recursive: true });
   assert.equal(AUTHORITY_SCAN_VERSION, packageVersion);
+  assert.equal(packageMetadata.dependencies['@emilia-protocol/verify'], '3.21.0');
   assert.equal(runAuthorityScan({
     cwd,
     home,

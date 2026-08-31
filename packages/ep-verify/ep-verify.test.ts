@@ -11,12 +11,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), 'cli.mjs');
+
+test('package metadata pins the current verifier release line', () => {
+  const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+  assert.equal(packageJson.version, '0.2.2');
+  assert.equal(packageJson.dependencies['@emilia-protocol/verify'], '^3.21.0');
+  assert.ok(packageJson.files.includes('CHANGELOG.md'));
+});
 
 // ── helpers (packages/gate/gate.test.js pattern) ─────────────────────────────
 function canon(v) {

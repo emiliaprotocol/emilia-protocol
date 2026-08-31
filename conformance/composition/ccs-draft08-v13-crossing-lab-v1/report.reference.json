@@ -1,0 +1,1054 @@
+{
+  "@version": "CCS-DRAFT08-V1.3-CROSSING-LAB-REPORT-v1",
+  "profile": "ccs-draft08-v13-crossing-lab-v1",
+  "source_lock": {
+    "id": "draft-correctover-ccs-08-v1.3-fbac2a025f11baec",
+    "draft_url": "https://www.ietf.org/archive/id/draft-correctover-ccs-08.txt",
+    "draft_bytes": 153156,
+    "draft_sha256": "fbac2a025f11baec104687ee04ba5c9fb0dad1b5bbb5ad38494965565a977cd3",
+    "source_lock_digest": "sha256:2087c12520dff50fff90aa4d97f303d4dad9391ee638649a07801c13fc9a687e"
+  },
+  "workspace": {
+    "path": "examples/aeb-crossing-lab/ccs-wang-draft08-v13",
+    "workspace_digest": "sha256:fad3b96e1b69fad30b460bd75112c018a689d6b05642497ab9b55abd5fdb9b59",
+    "artifact_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+    "adapter_module_digest": "sha256:986a91532c333a13b27b908d282d5e45dfebee8c8280589771059c9b7e228b2a",
+    "mapping_profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381"
+  },
+  "crossing_lab": {
+    "@version": "EMILIA-CROSSING-LAB-LOCAL-REPORT-v1",
+    "workspace_digest": "sha256:fad3b96e1b69fad30b460bd75112c018a689d6b05642497ab9b55abd5fdb9b59",
+    "adapter": {
+      "id": "native:ccs-draft08-v1.3-ed25519",
+      "version": "1.0.0",
+      "module_digest": "sha256:986a91532c333a13b27b908d282d5e45dfebee8c8280589771059c9b7e228b2a"
+    },
+    "evaluated_at": "2030-09-01T00:00:20Z",
+    "adapter_rows": [
+      {
+        "id": "native-artifact-through",
+        "category": "positive",
+        "passed": true,
+        "expected": {
+          "rule": "POSITIVE_SATISFIED",
+          "description": "VERIFIED, ACCEPTED, MATCH, FRESH, SATISFIED, and a valid evaluation"
+        },
+        "actual": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "mapping": "MATCH",
+          "freshness": "FRESH",
+          "satisfaction": "SATISFIED",
+          "evaluation_valid": true
+        },
+        "reasons": [],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "composition": {
+            "action_digest": "sha256:58265fbbc24cdebbc16d6f67613f00e6f960328e20ab490d2da400ad1963e5eb",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "machine-policy-decision",
+            "satisfied": true
+          },
+          "consumption_nonce": "nonce:ccs-wang-draft08:allow-live-sum",
+          "evaluated_at": "2030-09-01T00:00:20Z",
+          "evaluator": {
+            "id": "rp:emilia:ccs-wang-draft08",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
+          },
+          "evidence_digest": "sha256:2b24f8bb9713a261d1ccc27615ff2aa6eff64cdf549a64c9c41bad69f7e83ebe",
+          "executor_id": "executor:crossing-lab",
+          "initiator_id": "agent:ccs-wang-public-vector",
+          "legs": [
+            {
+              "acceptance": "ACCEPTED",
+              "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
+              "adapter_id": "native:ccs-draft08-v1.3-ed25519",
+              "adapter_version": "1.0.0",
+              "artifact_ref": "ccs:draft08:v13:allow-live-sum",
+              "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+              "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+              "evidence_role": "machine-policy-decision",
+              "freshness": {
+                "age_seconds": 20,
+                "checked_at": "2030-09-01T00:00:00Z",
+                "consumed": false,
+                "expires_at": "2030-09-01T00:01:00Z",
+                "fresh": true,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": false
+              },
+              "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
+              "mapping": "MATCH",
+              "native_verification": "VERIFIED",
+              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_id": "ccs-draft08-v13-tool-action",
+              "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
+              "reasons": [],
+              "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+              "resolver_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f",
+              "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+              "subject": {
+                "id": "system:ccs-wang-draft08-public-vector",
+                "kind": "system"
+              },
+              "verdict": "SATISFIED"
+            }
+          ],
+          "operation_id": "operation:ccs-wang-draft08:allow-live-sum",
+          "reasons": [],
+          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
+          "requirement_ref": "requirement:machine-policy-decision",
+          "verdict": "SATISFIED",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "NfifUcnHWcOf6r9BOGqAsMC0Mqi0MYuYZzVtHTsqohPnbPaOZL5heoUh7029UUwGZzMdDYEtK8WMqK0KFGX0Bg"
+          }
+        }
+      },
+      {
+        "id": "exact-action-substitution-refused",
+        "category": "hostile",
+        "passed": true,
+        "expected": {
+          "rule": "ACTION_SUBSTITUTION_SAFE",
+          "description": "the changed material action is not MATCH, not SATISFIED, and not a valid positive evaluation"
+        },
+        "actual": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "mapping": "MISMATCH",
+          "freshness": "FRESH",
+          "satisfaction": "UNSATISFIED",
+          "evaluation_valid": false
+        },
+        "reasons": [
+          "ccs:draft08_exact_action_projection_mismatch",
+          "requirement not satisfied: \"machine-policy-decision\" over {∅}"
+        ],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "composition": {
+            "action_digest": "sha256:78a2b27e9895d8fd24fbec0cb8ce53f32dc1f693a09b3927be9dd876341b8cc3",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "machine-policy-decision",
+            "satisfied": false
+          },
+          "consumption_nonce": "nonce:ccs-wang-draft08:allow-live-sum",
+          "evaluated_at": "2030-09-01T00:00:20Z",
+          "evaluator": {
+            "id": "rp:emilia:ccs-wang-draft08",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
+          },
+          "evidence_digest": "sha256:3039ba1faaa383d302d5730367fc79db9d1bc76b6e7c42aaf8543a4fbbef74f4",
+          "executor_id": "executor:crossing-lab",
+          "initiator_id": "agent:ccs-wang-public-vector",
+          "legs": [
+            {
+              "acceptance": "ACCEPTED",
+              "action_digest": "sha256:25dd2cac3db9f934ea3b3f9c50e9a670a2bc737acfaf4c0dbe45674bec646b79",
+              "adapter_id": "native:ccs-draft08-v1.3-ed25519",
+              "adapter_version": "1.0.0",
+              "artifact_ref": "ccs:draft08:v13:allow-live-sum",
+              "caid": null,
+              "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+              "evidence_role": "machine-policy-decision",
+              "freshness": {
+                "age_seconds": 20,
+                "checked_at": "2030-09-01T00:00:00Z",
+                "consumed": false,
+                "expires_at": "2030-09-01T00:01:00Z",
+                "fresh": true,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": false
+              },
+              "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
+              "mapping": "MISMATCH",
+              "native_verification": "VERIFIED",
+              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_id": "ccs-draft08-v13-tool-action",
+              "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
+              "reasons": [
+                "ccs:draft08_exact_action_projection_mismatch"
+              ],
+              "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+              "resolver_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f",
+              "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+              "subject": {
+                "id": "system:ccs-wang-draft08-public-vector",
+                "kind": "system"
+              },
+              "verdict": "UNSATISFIED"
+            }
+          ],
+          "operation_id": "operation:ccs-wang-draft08:allow-live-sum",
+          "reasons": [
+            "ccs:draft08_exact_action_projection_mismatch",
+            "requirement not satisfied: \"machine-policy-decision\" over {∅}"
+          ],
+          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
+          "requirement_ref": "requirement:machine-policy-decision",
+          "verdict": "UNSATISFIED",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "LzHeUJcwFDElL9bE7LOR3Z_ydQMYhQiwPjcZkFaeI70qZyQxaqAITVMGZNs9IQQpKT0QQHPkwlQwDGQcSDpUCA"
+          }
+        }
+      },
+      {
+        "id": "trust-root-substitution-refused",
+        "category": "hostile",
+        "passed": true,
+        "expected": {
+          "rule": "TRUST_SUBSTITUTION_SAFE",
+          "description": "substituted trust cannot remain VERIFIED, ACCEPTED, SATISFIED, or a valid positive evaluation"
+        },
+        "actual": {
+          "native_verification": "FAILED",
+          "acceptance": "REJECTED",
+          "mapping": "MISMATCH",
+          "freshness": "FRESH",
+          "satisfaction": "UNSATISFIED",
+          "evaluation_valid": false
+        },
+        "reasons": [
+          "ccs:draft08_trust_root_invalid",
+          "expected_action_digest_mismatch",
+          "native_verification_required",
+          "normalized_action_digest_mismatch",
+          "requirement not satisfied: \"machine-policy-decision\" over {∅}"
+        ],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "composition": {
+            "action_digest": "sha256:78a2b27e9895d8fd24fbec0cb8ce53f32dc1f693a09b3927be9dd876341b8cc3",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "machine-policy-decision",
+            "satisfied": false
+          },
+          "consumption_nonce": "nonce:ccs-wang-draft08:allow-live-sum",
+          "evaluated_at": "2030-09-01T00:00:20Z",
+          "evaluator": {
+            "id": "rp:emilia:ccs-wang-draft08",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:8a12ded26d200ad928638b48049333a22a3f9cc63d7b54127edc98f0d89f70b4"
+          },
+          "evidence_digest": "sha256:74eaf646294627204412cc67e690060112c868946f1ca7673a03ec6a7e1ac58d",
+          "executor_id": "executor:crossing-lab",
+          "initiator_id": "agent:ccs-wang-public-vector",
+          "legs": [
+            {
+              "acceptance": "REJECTED",
+              "action_digest": null,
+              "adapter_id": "native:ccs-draft08-v1.3-ed25519",
+              "adapter_version": "1.0.0",
+              "artifact_ref": "ccs:draft08:v13:allow-live-sum",
+              "caid": null,
+              "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+              "evidence_role": "machine-policy-decision",
+              "freshness": {
+                "age_seconds": 20,
+                "checked_at": "2030-09-01T00:00:00Z",
+                "consumed": false,
+                "expires_at": "2030-09-01T00:01:00Z",
+                "fresh": true,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": false
+              },
+              "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
+              "mapping": "MISMATCH",
+              "native_verification": "FAILED",
+              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_id": "ccs-draft08-v13-tool-action",
+              "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
+              "reasons": [
+                "ccs:draft08_trust_root_invalid",
+                "expected_action_digest_mismatch",
+                "native_verification_required",
+                "normalized_action_digest_mismatch"
+              ],
+              "replay_unit": "sha256:48d727cc673fdf0082638443863cac0a39a636ebba6361d40160678db597cedb",
+              "resolver_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f",
+              "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+              "subject": {
+                "id": "system:ccs-wang-draft08-public-vector",
+                "kind": "system"
+              },
+              "verdict": "UNSATISFIED"
+            }
+          ],
+          "operation_id": "operation:ccs-wang-draft08:allow-live-sum",
+          "reasons": [
+            "ccs:draft08_trust_root_invalid",
+            "expected_action_digest_mismatch",
+            "native_verification_required",
+            "normalized_action_digest_mismatch",
+            "requirement not satisfied: \"machine-policy-decision\" over {∅}"
+          ],
+          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
+          "requirement_ref": "requirement:machine-policy-decision",
+          "verdict": "UNSATISFIED",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "lv3BUuIWMWwAIQgGHJ3ZfkG9kx20PODDBsGaLuaFNQjkui50IggYzQw5qFdHXp7KQ2oZwrkhq0ixG3GtyPxWAA"
+          }
+        }
+      },
+      {
+        "id": "stale-status-is-indeterminate",
+        "category": "boundary",
+        "passed": true,
+        "expected": {
+          "rule": "STALE_STATUS_INDETERMINATE",
+          "description": "stale status remains STALE and INDETERMINATE, regardless of where the native adapter detects it"
+        },
+        "actual": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "mapping": "MATCH",
+          "freshness": "STALE",
+          "satisfaction": "INDETERMINATE",
+          "evaluation_valid": false
+        },
+        "reasons": [
+          "status_stale"
+        ],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "composition": {
+            "action_digest": "sha256:78a2b27e9895d8fd24fbec0cb8ce53f32dc1f693a09b3927be9dd876341b8cc3",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "machine-policy-decision",
+            "satisfied": false
+          },
+          "consumption_nonce": "nonce:ccs-wang-draft08:allow-live-sum",
+          "evaluated_at": "2030-09-01T00:00:20Z",
+          "evaluator": {
+            "id": "rp:emilia:ccs-wang-draft08",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
+          },
+          "evidence_digest": "sha256:bb467ef51200724a131e141e80dfe8c68bc8159d44fb8378afc9633d785b3c3b",
+          "executor_id": "executor:crossing-lab",
+          "initiator_id": "agent:ccs-wang-public-vector",
+          "legs": [
+            {
+              "acceptance": "ACCEPTED",
+              "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
+              "adapter_id": "native:ccs-draft08-v1.3-ed25519",
+              "adapter_version": "1.0.0",
+              "artifact_ref": "ccs:draft08:v13:allow-live-sum",
+              "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+              "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+              "evidence_role": "machine-policy-decision",
+              "freshness": {
+                "age_seconds": 360,
+                "checked_at": "2030-08-31T23:54:20.000Z",
+                "consumed": false,
+                "expires_at": "2030-09-01T00:01:20.000Z",
+                "fresh": false,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": false
+              },
+              "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
+              "mapping": "MATCH",
+              "native_verification": "VERIFIED",
+              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_id": "ccs-draft08-v13-tool-action",
+              "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
+              "reasons": [
+                "status_stale"
+              ],
+              "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+              "resolver_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f",
+              "status_digest": "sha256:cc8f0c6ffc3a21ead7558379921667d579c2cbd84d43a51f455c88a1828beec9",
+              "subject": {
+                "id": "system:ccs-wang-draft08-public-vector",
+                "kind": "system"
+              },
+              "verdict": "INDETERMINATE"
+            }
+          ],
+          "operation_id": "operation:ccs-wang-draft08:allow-live-sum",
+          "reasons": [
+            "status_stale"
+          ],
+          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
+          "requirement_ref": "requirement:machine-policy-decision",
+          "verdict": "INDETERMINATE",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "FlzVfTkD6vxJQmJjL7cNK9mIy8LT98R5Q6CjnkviqS0mXhOGDZQNvPsnYMUyOtk7l0sRA0VX9QKWLMtCd8e2Aw"
+          }
+        }
+      },
+      {
+        "id": "unavailable-status-is-indeterminate",
+        "category": "boundary",
+        "passed": true,
+        "expected": {
+          "rule": "UNAVAILABLE_STATUS_INDETERMINATE",
+          "description": "unavailable status remains UNAVAILABLE and INDETERMINATE, regardless of native decomposition"
+        },
+        "actual": {
+          "native_verification": "VERIFIED",
+          "acceptance": "INDETERMINATE",
+          "mapping": "MATCH",
+          "freshness": "UNAVAILABLE",
+          "satisfaction": "INDETERMINATE",
+          "evaluation_valid": false
+        },
+        "reasons": [
+          "status_unavailable"
+        ],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "composition": {
+            "action_digest": "sha256:78a2b27e9895d8fd24fbec0cb8ce53f32dc1f693a09b3927be9dd876341b8cc3",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "machine-policy-decision",
+            "satisfied": false
+          },
+          "consumption_nonce": "nonce:ccs-wang-draft08:allow-live-sum",
+          "evaluated_at": "2030-09-01T00:00:20Z",
+          "evaluator": {
+            "id": "rp:emilia:ccs-wang-draft08",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
+          },
+          "evidence_digest": "sha256:f79f04f098de9191626b72ecf7fdb206dc0d892d4f86e3a680b9d1ada766d6ef",
+          "executor_id": "executor:crossing-lab",
+          "initiator_id": "agent:ccs-wang-public-vector",
+          "legs": [
+            {
+              "acceptance": "INDETERMINATE",
+              "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
+              "adapter_id": "native:ccs-draft08-v1.3-ed25519",
+              "adapter_version": "1.0.0",
+              "artifact_ref": "ccs:draft08:v13:allow-live-sum",
+              "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+              "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+              "evidence_role": "machine-policy-decision",
+              "freshness": {
+                "age_seconds": 20,
+                "checked_at": "2030-09-01T00:00:00Z",
+                "consumed": false,
+                "expires_at": "2030-09-01T00:01:00Z",
+                "fresh": false,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": true
+              },
+              "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
+              "mapping": "MATCH",
+              "native_verification": "VERIFIED",
+              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_id": "ccs-draft08-v13-tool-action",
+              "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
+              "reasons": [
+                "status_unavailable"
+              ],
+              "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+              "resolver_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f",
+              "status_digest": "sha256:55fe3f1ba342e468ffcd115cf6c03ac74758ab2603d9817b26534dcdac89aba0",
+              "subject": {
+                "id": "system:ccs-wang-draft08-public-vector",
+                "kind": "system"
+              },
+              "verdict": "INDETERMINATE"
+            }
+          ],
+          "operation_id": "operation:ccs-wang-draft08:allow-live-sum",
+          "reasons": [
+            "status_unavailable"
+          ],
+          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
+          "requirement_ref": "requirement:machine-policy-decision",
+          "verdict": "INDETERMINATE",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "5mjGZl2lxrbxRPb_cpTYOOnwxtfjG_C7aCh87JKar38C1xO8thZ-yQ_ee5i527VL3WOJRILaGXUYtRqxASdnCQ"
+          }
+        }
+      },
+      {
+        "id": "replay-identity-is-wrapper-independent",
+        "category": "hostile",
+        "passed": true,
+        "expected": {
+          "rule": "REWRAPPED_REPLAY_IDENTITY_STABLE",
+          "description": "a wrapper-only reference change preserves a valid positive evaluation and the native replay unit"
+        },
+        "actual": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "mapping": "MATCH",
+          "freshness": "FRESH",
+          "satisfaction": "SATISFIED",
+          "evaluation_valid": true
+        },
+        "reasons": [],
+        "evaluation": {
+          "@type": "AEB-EVALUATION-v1",
+          "authority_constraints": {
+            "distinct_human_quorum": true,
+            "executor_exclusion": true,
+            "initiator_exclusion": true,
+            "one_time_consumption": true
+          },
+          "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+          "composition": {
+            "action_digest": "sha256:58265fbbc24cdebbc16d6f67613f00e6f960328e20ab490d2da400ad1963e5eb",
+            "engine": "EP-AEC-v1",
+            "requirement_expression": "machine-policy-decision",
+            "satisfied": true
+          },
+          "consumption_nonce": "nonce:ccs-wang-draft08:allow-live-sum",
+          "evaluated_at": "2030-09-01T00:00:20Z",
+          "evaluator": {
+            "id": "rp:emilia:ccs-wang-draft08",
+            "key_id": "crossing-lab:self-test",
+            "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
+          },
+          "evidence_digest": "sha256:b10b08333dbbb3cec57d2d77a77ac2831f8bb68dcb6dc398049f2ca6ec666970",
+          "executor_id": "executor:crossing-lab",
+          "initiator_id": "agent:ccs-wang-public-vector",
+          "legs": [
+            {
+              "acceptance": "ACCEPTED",
+              "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
+              "adapter_id": "native:ccs-draft08-v1.3-ed25519",
+              "adapter_version": "1.0.0",
+              "artifact_ref": "ccs:draft08:v13:allow-live-sum:rewrapped",
+              "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+              "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+              "evidence_role": "machine-policy-decision",
+              "freshness": {
+                "age_seconds": 20,
+                "checked_at": "2030-09-01T00:00:00Z",
+                "consumed": false,
+                "expires_at": "2030-09-01T00:01:00Z",
+                "fresh": true,
+                "revocation_checked": true,
+                "revoked": false,
+                "unavailable": false
+              },
+              "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
+              "mapping": "MATCH",
+              "native_verification": "VERIFIED",
+              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_id": "ccs-draft08-v13-tool-action",
+              "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
+              "reasons": [],
+              "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+              "resolver_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f",
+              "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+              "subject": {
+                "id": "system:ccs-wang-draft08-public-vector",
+                "kind": "system"
+              },
+              "verdict": "SATISFIED"
+            }
+          ],
+          "operation_id": "operation:ccs-wang-draft08:allow-live-sum",
+          "reasons": [],
+          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
+          "requirement_ref": "requirement:machine-policy-decision",
+          "verdict": "SATISFIED",
+          "signature": {
+            "alg": "Ed25519",
+            "key_id": "crossing-lab:self-test",
+            "value": "y4RUZBZzAA00YzIT_m4_djEpNBzmGkaOXUIRi2js4S4_yzdJfZ1WLoairU_pSlYiRTBTZUhKynWcXaZR9yipDw"
+          }
+        }
+      }
+    ],
+    "harness_self_tests": [
+      {
+        "id": "harness-refuses-unknown-native-output",
+        "passed": true,
+        "observed": "adapter_evaluation_error"
+      },
+      {
+        "id": "harness-refuses-unknown-mapping-output",
+        "passed": true,
+        "observed": "adapter_evaluation_error"
+      },
+      {
+        "id": "strict-json-refuses-duplicate-members",
+        "passed": true,
+        "observed": "duplicate object member name"
+      },
+      {
+        "id": "workspace-pin-drift-refused-before-adapter",
+        "passed": true,
+        "observed": "artifact_pin_drift"
+      }
+    ],
+    "summary": {
+      "adapter_rows": 6,
+      "passed": 6,
+      "failed": 0,
+      "harness_passed": 4,
+      "harness_failed": 0
+    },
+    "lab_passed": true,
+    "assurance": {
+      "self_attested": true,
+      "certification": false,
+      "statement": "SELF_ATTESTED_ADAPTER_COMPATIBILITY_TEST_NOT_CERTIFICATION",
+      "evaluator_key_id": "crossing-lab:self-test",
+      "evaluator_key_purpose": "PUBLIC_FIXED_SELF_TEST_KEY_NO_ATTRIBUTION"
+    },
+    "non_claims": [
+      "authorization",
+      "certification",
+      "deployment_evidence",
+      "execution_evidence",
+      "independent_attestation",
+      "native_specification_correctness",
+      "native_protocol_equivalence"
+    ],
+    "report_digest": "sha256:3a7168022a7837455aa71740154deb09ad603619df6d4cb39e6bd9e0f872145a"
+  },
+  "checks": [
+    {
+      "id": "CCS-08-SOURCE-LOCK",
+      "layer": "SOURCE",
+      "description": "The published draft-08 bytes are pinned by URL, byte length, and SHA-256.",
+      "passed": true,
+      "observed": {
+        "name": "draft-correctover-ccs-08",
+        "url": "https://www.ietf.org/archive/id/draft-correctover-ccs-08.txt",
+        "media_type": "text/plain",
+        "bytes": 153156,
+        "sha256": "fbac2a025f11baec104687ee04ba5c9fb0dad1b5bbb5ad38494965565a977cd3"
+      }
+    },
+    {
+      "id": "CCS-08-EXACT-WORKSPACE",
+      "layer": "LAB",
+      "description": "The runnable public workspace contains exactly the three pinned Lab inputs.",
+      "passed": true,
+      "observed": [
+        "adapter.mjs",
+        "artifact.json",
+        "workspace.json"
+      ]
+    },
+    {
+      "id": "CCS-08-22-FIELD-SHAPE",
+      "layer": "CCS",
+      "description": "The fixture is the exact 22-field v1.3 receipt shape.",
+      "passed": true,
+      "observed": [
+        "action",
+        "audience",
+        "block_reason",
+        "config_hash",
+        "expires_at",
+        "issued_at",
+        "issuer",
+        "max_clock_skew",
+        "nonce",
+        "params_hash",
+        "receipt",
+        "request_hash",
+        "response_hash",
+        "rule_summary",
+        "runtime_context_hash",
+        "sequence",
+        "signature",
+        "timestamp",
+        "tool",
+        "trace_id",
+        "verdict",
+        "verified_at"
+      ]
+    },
+    {
+      "id": "CCS-08-ED25519-ACCEPT",
+      "layer": "CCS",
+      "description": "The receipt verifies under the relying-party-pinned Ed25519 issuer and audience.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+        "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-wang-draft08-public-vector",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "reasons": []
+      }
+    },
+    {
+      "id": "CCS-08-EXACT-ACTION-CAID",
+      "layer": "AEB",
+      "description": "Both the truncated params_hash and signed full digest bind the executor-owned action and CAID.",
+      "passed": true,
+      "observed": {
+        "mapping": "MATCH",
+        "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+        "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
+        "reasons": []
+      }
+    },
+    {
+      "id": "CCS-08-LIVE-RESPONSE-BINDING",
+      "layer": "LIVE-FIXTURE",
+      "description": "The local sum result matches the signed response_hash.",
+      "passed": true,
+      "observed": {
+        "response": {
+          "result": 42
+        },
+        "response_hash": "sha256:0773698cf701d4082d365abcd08181974a52141a62ec0bf2eb2ab14996d02674"
+      }
+    },
+    {
+      "id": "CCS-08-SIGNATURE-TAMPER",
+      "layer": "HOSTILE",
+      "description": "Changing a signed response hash invalidates the receipt.",
+      "passed": true,
+      "observed": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:4a223e937bb820e691c1dc09c86d1beb35f8f3c817c12b4462c01926f0cd6676",
+        "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-wang-draft08-public-vector",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "reasons": [
+          "ccs:draft08_signature_invalid"
+        ]
+      }
+    },
+    {
+      "id": "CCS-08-UNKNOWN-FIELD",
+      "layer": "HOSTILE",
+      "description": "An unsigned extra member cannot smuggle authority into the closed 22-field receipt.",
+      "passed": true,
+      "observed": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:db9332f88945428e116eae61803f83b9267e6a6cf24e4b6394f44d81d266f7a0",
+        "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-wang-draft08-public-vector",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:524213202e2c4b69b201b86dff42a116cdce2d62700769eb8b6073b755e19181",
+        "reasons": [
+          "ccs:draft08_artifact_malformed"
+        ]
+      }
+    },
+    {
+      "id": "CCS-08-RP-AUDIENCE",
+      "layer": "HOSTILE",
+      "description": "A cryptographically valid receipt is refused under a different relying-party audience.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+        "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-wang-draft08-public-vector",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "reasons": [
+          "ccs:draft08_audience_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "CCS-08-TRUST-SUBSTITUTION",
+      "layer": "HOSTILE",
+      "description": "Replacing the relying-party-pinned issuer key cannot validate the receipt.",
+      "passed": true,
+      "observed": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+        "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-wang-draft08-public-vector",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "reasons": [
+          "ccs:draft08_signature_invalid"
+        ]
+      }
+    },
+    {
+      "id": "CCS-08-FRESHNESS",
+      "layer": "HOSTILE",
+      "description": "A signed receipt outside its native freshness window is refused.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+        "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-wang-draft08-public-vector",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "reasons": [
+          "ccs:draft08_receipt_not_fresh"
+        ]
+      }
+    },
+    {
+      "id": "CCS-08-FULL-DIGEST",
+      "layer": "HOSTILE",
+      "description": "Preserving params_hash while changing the signed full digest cannot match the exact action.",
+      "passed": true,
+      "observed": {
+        "native": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "evidence_digest": "sha256:f326cd82031adedce8b45860e3be1a78d2236eac1acaba217e79f47d8006b44b",
+          "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+          "evidence_role": "machine-policy-decision",
+          "subject": {
+            "id": "system:ccs-wang-draft08-public-vector",
+            "kind": "system"
+          },
+          "replay_unit": "sha256:fa0c18e76bc0f0fdf4f83036dc51834f8455422e458e247fe27787f255487d0f",
+          "reasons": []
+        },
+        "mapping": {
+          "mapping": "MISMATCH",
+          "caid": null,
+          "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
+          "reasons": [
+            "ccs:draft08_exact_action_projection_mismatch"
+          ]
+        }
+      }
+    },
+    {
+      "id": "CCS-08-PROFILE-SUBSTITUTION",
+      "layer": "HOSTILE",
+      "description": "A mapping profile that omits a material action field is refused.",
+      "passed": true,
+      "observed": {
+        "mapping": "INDETERMINATE",
+        "caid": null,
+        "action_digest": null,
+        "reasons": [
+          "mapping_profile_invalid"
+        ]
+      }
+    },
+    {
+      "id": "CCS-08-STATUS-UNAVAILABLE",
+      "layer": "HOSTILE",
+      "description": "Unavailable authenticated status remains indeterminate.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "INDETERMINATE",
+        "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+        "status_digest": "sha256:55fe3f1ba342e468ffcd115cf6c03ac74758ab2603d9817b26534dcdac89aba0",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-wang-draft08-public-vector",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "reasons": [
+          "status_unavailable"
+        ]
+      }
+    },
+    {
+      "id": "CCS-08-REPLAY-CONSUMED",
+      "layer": "HOSTILE",
+      "description": "Consumed status refuses a second acceptance of the issuer-plus-nonce replay unit.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
+        "status_digest": "sha256:64add69ae5fdcd88de85db15bd5d6745d6330064d5b4a12cbc4379c94c29568e",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-wang-draft08-public-vector",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "reasons": [
+          "evidence_consumed"
+        ]
+      }
+    },
+    {
+      "id": "CCS-08-DENY-NONAUTHORIZING",
+      "layer": "BOUNDARY",
+      "description": "A valid CCS deny remains rejected and cannot map an admitted action.",
+      "passed": true,
+      "observed": {
+        "native": {
+          "native_verification": "VERIFIED",
+          "acceptance": "REJECTED",
+          "evidence_digest": "sha256:cdb8709c1bf6a7a682e3787f3baa62c45578639c21626bcde05fd55420e725f1",
+          "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+          "evidence_role": "machine-policy-decision",
+          "subject": {
+            "id": "system:ccs-wang-draft08-public-vector",
+            "kind": "system"
+          },
+          "replay_unit": "sha256:7b014ed745198e7498dfe9381418b5df41640025ad083071ba6f07869fa7c3ef",
+          "reasons": [
+            "ccs:deny"
+          ]
+        },
+        "mapping": {
+          "mapping": "INDETERMINATE",
+          "caid": null,
+          "action_digest": null,
+          "reasons": [
+            "accepted_allow_statement_required"
+          ]
+        }
+      }
+    },
+    {
+      "id": "CCS-08-ESCALATE-INDETERMINATE",
+      "layer": "BOUNDARY",
+      "description": "A valid CCS escalate remains indeterminate rather than becoming an allow.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "INDETERMINATE",
+        "evidence_digest": "sha256:c72835b9aaa216013a7b223196bf8931db25445b61dfdeafecae7aa89cb4b981",
+        "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs-wang-draft08-public-vector",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:27021bbbe0e752fc5824e67f374d1a45fc6f20cf4d5e27b36beeabea7f8c87a4",
+        "reasons": [
+          "ccs:escalate"
+        ]
+      }
+    },
+    {
+      "id": "CCS-08-LAB-ROWS",
+      "layer": "LAB",
+      "description": "Every standard Lab adapter row and harness self-test passes.",
+      "passed": true,
+      "observed": {
+        "adapter_rows": 6,
+        "passed": 6,
+        "failed": 0,
+        "harness_passed": 4,
+        "harness_failed": 0
+      }
+    },
+    {
+      "id": "CCS-08-CLAIM-BOUNDARY",
+      "layer": "BOUNDARY",
+      "description": "The Lab keeps authorization and execution evidence outside this composition claim.",
+      "passed": true,
+      "observed": {
+        "evidence_role": "machine-policy-decision",
+        "non_claims": [
+          "authorization",
+          "certification",
+          "deployment_evidence",
+          "execution_evidence",
+          "independent_attestation",
+          "native_specification_correctness",
+          "native_protocol_equivalence"
+        ]
+      }
+    }
+  ],
+  "passed": true,
+  "claim_boundary": {
+    "native_contribution": "signed machine-policy-decision evidence for one pinned issuer, audience, and exact action",
+    "relying_party_decision": "Gate admission remains a separate local decision",
+    "response_hash": "signed response-byte commitment, not physical or application effect proof",
+    "authorization": false,
+    "certification": false,
+    "deployment_evidence": false,
+    "independent_interoperability": false
+  },
+  "adoption_gates": [
+    "Wang or another native author confirms the mapping preserves CCS semantics.",
+    "A second runner reproduces the pinned report.",
+    "One real system installs the profile beside its CCS verifier and Gate deployment."
+  ],
+  "report_digest": "sha256:db23e097a08e32423226c70c5416600449e52931385c63206e83e030fa50a449"
+}
