@@ -7,11 +7,13 @@
   "policy_source": {
     "title": "Declaring a National Emergency to Secure the United States Bulk-Power System",
     "issued_at": "2026-08-26",
-    "citation": "FR Doc. 2026-17843",
-    "federal_register_public_inspection_url": "https://public-inspection.federalregister.gov/2026-17843.pdf",
+    "citation": "Executive Order 14421; 91 FR 55995; FR Doc. 2026-17843",
+    "federal_register_url": "https://www.govinfo.gov/content/pkg/FR-2026-08-31/pdf/2026-17843.pdf",
+    "federal_register_landing_page_url": "https://www.federalregister.gov/documents/2026/08/31/2026-17843/declaring-a-national-emergency-to-secure-the-united-states-bulk-power-system",
     "white_house_url": "https://www.whitehouse.gov/presidential-actions/2026/08/declaring-a-national-emergency-to-secure-the-united-states-bulk-power-system/",
-    "identifier_note": "The White House page labeled the order Executive Order 14420 while the Federal Register public-inspection copy labeled it Executive Order 14421 when this profile was authored. This profile identifies the source by title, date, and FR Doc. 2026-17843.",
-    "revalidation_required": true
+    "identifier_note": "The final Federal Register publication identifies the order as Executive Order 14421. The White House page labeled it Executive Order 14420 when the final source was pinned; this profile uses the final Federal Register identifier.",
+    "revalidation_required": false,
+    "future_rule_profile_update_required": true
   },
   "separation_of_responsibility": {
     "supply_chain_eligibility": {

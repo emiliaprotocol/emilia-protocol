@@ -43,21 +43,20 @@ store, or establish complete mediation around a real controller.
 
 ## Source pin
 
-- Primary citation: **Federal Register Document 2026-17843**, public-inspection copy
-  scheduled for publication August 31, 2026:
-  <https://public-inspection.federalregister.gov/2026-17843.pdf>
+- Primary citation: **Executive Order 14421; 91 FR 55995; Federal Register
+  Document 2026-17843**, published August 31, 2026:
+  <https://www.govinfo.gov/content/pkg/FR-2026-08-31/pdf/2026-17843.pdf>
 - White House publication, August 26, 2026:
   <https://www.whitehouse.gov/presidential-actions/2026/08/declaring-a-national-emergency-to-secure-the-united-states-bulk-power-system/>
 
-`source-lock.json` records the retrieved public-inspection PDF's byte length and
-SHA-256 digest. The final Federal Register publication still requires revalidation.
+`source-lock.json` records the retrieved final Federal Register PDF's byte length and
+SHA-256 digest.
 
-At the time this profile was authored, the White House page labeled the order
-“Executive Order 14420,” while the Federal Register public-inspection copy labeled it
-“Executive Order 14421.” This profile therefore identifies the source by title, date,
-and **FR Doc. 2026-17843**. Implementers must revalidate the profile against the final
-Federal Register publication and the rules, directives, licenses, lists, and FAR text
-that follow it.
+The final Federal Register publication identifies the order as **Executive Order
+14421**. The White House page labeled it “Executive Order 14420” when the final source
+was pinned; this profile uses the final Federal Register identifier. Rules,
+directives, licenses, lists, and FAR text that follow the order remain separate future
+inputs and require their own pinned profile updates.
 
 ## The boundary
 

@@ -14,15 +14,21 @@ import {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-test('the policy source lock identifies the exact public-inspection bytes', () => {
+test('the policy source lock identifies the exact final published bytes', () => {
   const sourceLock = JSON.parse(readFileSync(resolve(HERE, 'source-lock.json'), 'utf8'));
-  assert.equal(sourceLock.primary_source.citation, 'FR Doc. 2026-17843');
-  assert.equal(sourceLock.primary_source.content_length, 175772);
+  assert.equal(
+    sourceLock.primary_source.citation,
+    'Executive Order 14421; 91 FR 55995; FR Doc. 2026-17843',
+  );
+  assert.equal(sourceLock.primary_source.executive_order_number, '14421');
+  assert.equal(sourceLock.primary_source.page_range, '55995-55999');
+  assert.equal(sourceLock.primary_source.content_length, 200004);
   assert.equal(
     sourceLock.primary_source.sha256,
-    'c40bd9077cc8182f0e6612adb0b7e1769256161d53fd167dd6b33b1554400995',
+    '3492b0c9049ee532e58719dedc070ae454d93b0070f71518282eec7ae0a39dbb',
   );
-  assert.equal(sourceLock.revalidation_required, true);
+  assert.equal(sourceLock.revalidation_required, false);
+  assert.equal(sourceLock.future_rule_profile_update_required, true);
 });
 
 test('the reference profile reports every implemented case as passing', async () => {
