@@ -1,8 +1,3 @@
-/**
- * Final, relying-party-owned checks immediately before an external provider is
- * entered. Receipt verification answers whether an action was authorized; this
- * boundary answers whether it is still safe to release the actuator now.
- */
 export declare const PROVIDER_ENTRY_GUARD_VERSION = "EP-GATE-PROVIDER-ENTRY-GUARD-v1";
 export type ProviderEntryContext = Readonly<{
     authorization: Readonly<Record<string, any>>;
@@ -14,7 +9,14 @@ export type ProviderEntryContext = Readonly<{
 export type ProviderEntryGuardResult = Readonly<{
     ok: boolean;
     reason?: string;
+    /** HTTP refusal status. Values outside 400 through 599 are normalized. */
     status?: number;
+    /**
+     * Plain finite-JSON object only. Before provider entry Gate canonicalizes,
+     * snapshots, and bounds it to depth 32, 10,000 nodes, and 256 KiB of string
+     * data. Dates, Maps, accessors, symbols, cycles, and non-finite numbers are
+     * refused; finite decimal measurements remain valid.
+     */
     evidence?: Record<string, any> | null;
     reservation?: 'release' | 'burn' | 'hold';
 }>;

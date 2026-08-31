@@ -6,6 +6,8 @@
  * boundary answers whether it is still safe to release the actuator now.
  */
 
+import { canonicalizeFiniteJson } from './strict-json.js';
+
 export const PROVIDER_ENTRY_GUARD_VERSION = 'EP-GATE-PROVIDER-ENTRY-GUARD-v1';
 
 export type ProviderEntryContext = Readonly<{
@@ -19,7 +21,14 @@ export type ProviderEntryContext = Readonly<{
 export type ProviderEntryGuardResult = Readonly<{
   ok: boolean;
   reason?: string;
+  /** HTTP refusal status. Values outside 400 through 599 are normalized. */
   status?: number;
+  /**
+   * Plain finite-JSON object only. Before provider entry Gate canonicalizes,
+   * snapshots, and bounds it to depth 32, 10,000 nodes, and 256 KiB of string
+   * data. Dates, Maps, accessors, symbols, cycles, and non-finite numbers are
+   * refused; finite decimal measurements remain valid.
+   */
   evidence?: Record<string, any> | null;
   reservation?: 'release' | 'burn' | 'hold';
 }>;
@@ -65,6 +74,19 @@ function cloneFreeze<T>(value: T): T {
     return Object.freeze(candidate);
   };
   return freeze(clone);
+}
+
+function canonicalEvidence(value: unknown): Record<string, any> | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('provider-entry evidence must be a JSON object');
+  }
+  const snapshot = JSON.parse(canonicalizeFiniteJson(value, {
+    maxDepth: 32,
+    maxNodes: 10_000,
+    maxStringBytes: 256 * 1024,
+  }));
+  return cloneFreeze(snapshot);
 }
 
 function boundedReason(value: unknown, fallback: string): string {
@@ -115,6 +137,17 @@ export async function evaluateProviderEntryGuard(
     if (!result || typeof result !== 'object' || typeof result.ok !== 'boolean') {
       return Object.freeze({ ok: false, reason: 'provider_entry_guard_malformed', status: 503 });
     }
+    let evidence: Record<string, any> | null;
+    try {
+      evidence = canonicalEvidence(result.evidence);
+    } catch {
+      return Object.freeze({
+        ok: false,
+        reason: 'provider_entry_guard_evidence_invalid',
+        status: 503,
+        reservation: 'hold',
+      });
+    }
     if (result.ok !== true) {
       const dispositionValid = result.reservation === undefined
         || result.reservation === 'release'
@@ -125,16 +158,18 @@ export async function evaluateProviderEntryGuard(
         reason: dispositionValid
           ? boundedReason(result.reason, 'provider_entry_refused')
           : 'provider_entry_guard_disposition_invalid',
-        status: Number.isSafeInteger(result.status) && Number(result.status) >= 400
+        status: Number.isSafeInteger(result.status)
+          && Number(result.status) >= 400
+          && Number(result.status) <= 599
           ? Number(result.status)
           : 409,
-        evidence: cloneFreeze(result.evidence ?? null),
+        evidence,
         reservation: dispositionValid && result.reservation !== undefined
           ? result.reservation
           : 'hold',
       });
     }
-    return Object.freeze({ ok: true, evidence: cloneFreeze(result.evidence ?? null) });
+    return Object.freeze({ ok: true, evidence });
   } catch {
     return Object.freeze({
       ok: false,
@@ -160,7 +195,13 @@ export function composeProviderEntryGuards(
     const evidence: Record<string, any>[] = [];
     for (const guard of active) {
       const result = await evaluateProviderEntryGuard(guard, context);
-      if (!result.ok) return result;
+      if (!result.ok) {
+        const refusalEvidence = result.evidence ? [...evidence, result.evidence] : evidence;
+        return {
+          ...result,
+          evidence: refusalEvidence.length > 0 ? { guards: refusalEvidence } : null,
+        };
+      }
       if (result.evidence) evidence.push(result.evidence);
     }
     return { ok: true, evidence: { guards: evidence } };

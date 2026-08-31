@@ -494,6 +494,7 @@ export async function runCrossGatewayLab() {
     const staleStatus = await present(staleArtifact, staleWindow());
     const beforeStale = executorCalls.length;
     const { record: bStale, outcome: staleOutcome } = await gatewayBExecute(EXACT_ACTION, staleArtifact);
+    const staleProviderEntryEvidence = staleOutcome.provider_entry_evidence ?? {};
     // Same policy, nothing presented at all: absence is not currency either.
     const unattestedArtifact = harness.mint({ outcome: 'allow_with_signoff', quorum: QUORUM });
     const { record: bUnattested } = await gatewayBExecute(EXACT_ACTION, unattestedArtifact);
@@ -512,7 +513,15 @@ export async function runCrossGatewayLab() {
         verdict: 'refuse',
         reason: bStale.reason,
         status_evidence: {
-            ...(staleOutcome.authorization?.evidence?.guard_evidence ?? {}),
+            // Gate intentionally redacts guard_evidence from portable authorization
+            // records. Publish only this lab's established, non-sensitive status
+            // projection from the direct provider-entry result instead of spreading
+            // arbitrary future guard fields into the machine-readable report.
+            mechanism: staleProviderEntryEvidence.mechanism,
+            status_outcome: staleProviderEntryEvidence.status_outcome,
+            reasons: staleProviderEntryEvidence.reasons,
+            next_update: staleProviderEntryEvidence.next_update,
+            evaluated_at: staleProviderEntryEvidence.evaluated_at,
             presented_next_update: staleStatus.next_update,
             b_max_staleness_sec: B_STATUS_MAX_STALENESS_SEC,
         },

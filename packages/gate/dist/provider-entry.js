@@ -5,6 +5,7 @@
  * entered. Receipt verification answers whether an action was authorized; this
  * boundary answers whether it is still safe to release the actuator now.
  */
+import { canonicalizeFiniteJson } from './strict-json.js';
 export const PROVIDER_ENTRY_GUARD_VERSION = 'EP-GATE-PROVIDER-ENTRY-GUARD-v1';
 function attachRequiredControlDomain(guard, controlDomainId) {
     if (controlDomainId === null)
@@ -34,6 +35,19 @@ function cloneFreeze(value) {
         return Object.freeze(candidate);
     };
     return freeze(clone);
+}
+function canonicalEvidence(value) {
+    if (value === null || value === undefined)
+        return null;
+    if (typeof value !== 'object' || Array.isArray(value)) {
+        throw new TypeError('provider-entry evidence must be a JSON object');
+    }
+    const snapshot = JSON.parse(canonicalizeFiniteJson(value, {
+        maxDepth: 32,
+        maxNodes: 10_000,
+        maxStringBytes: 256 * 1024,
+    }));
+    return cloneFreeze(snapshot);
 }
 function boundedReason(value, fallback) {
     return typeof value === 'string' && value.length > 0 && value.length <= 128
@@ -68,6 +82,18 @@ export async function evaluateProviderEntryGuard(guard, context) {
         if (!result || typeof result !== 'object' || typeof result.ok !== 'boolean') {
             return Object.freeze({ ok: false, reason: 'provider_entry_guard_malformed', status: 503 });
         }
+        let evidence;
+        try {
+            evidence = canonicalEvidence(result.evidence);
+        }
+        catch {
+            return Object.freeze({
+                ok: false,
+                reason: 'provider_entry_guard_evidence_invalid',
+                status: 503,
+                reservation: 'hold',
+            });
+        }
         if (result.ok !== true) {
             const dispositionValid = result.reservation === undefined
                 || result.reservation === 'release'
@@ -78,16 +104,18 @@ export async function evaluateProviderEntryGuard(guard, context) {
                 reason: dispositionValid
                     ? boundedReason(result.reason, 'provider_entry_refused')
                     : 'provider_entry_guard_disposition_invalid',
-                status: Number.isSafeInteger(result.status) && Number(result.status) >= 400
+                status: Number.isSafeInteger(result.status)
+                    && Number(result.status) >= 400
+                    && Number(result.status) <= 599
                     ? Number(result.status)
                     : 409,
-                evidence: cloneFreeze(result.evidence ?? null),
+                evidence,
                 reservation: dispositionValid && result.reservation !== undefined
                     ? result.reservation
                     : 'hold',
             });
         }
-        return Object.freeze({ ok: true, evidence: cloneFreeze(result.evidence ?? null) });
+        return Object.freeze({ ok: true, evidence });
     }
     catch {
         return Object.freeze({
@@ -111,8 +139,13 @@ export function composeProviderEntryGuards(...guards) {
         const evidence = [];
         for (const guard of active) {
             const result = await evaluateProviderEntryGuard(guard, context);
-            if (!result.ok)
-                return result;
+            if (!result.ok) {
+                const refusalEvidence = result.evidence ? [...evidence, result.evidence] : evidence;
+                return {
+                    ...result,
+                    evidence: refusalEvidence.length > 0 ? { guards: refusalEvidence } : null,
+                };
+            }
             if (result.evidence)
                 evidence.push(result.evidence);
         }

@@ -198,6 +198,7 @@ type ExecuteWithCapabilityOptions = {
 type ExecuteWithCapabilityResult = {
   ok: boolean;
   reason?: string;
+  status?: number;
   result?: any;
   scope?: any;
   authorization?: any;
@@ -209,6 +210,7 @@ type ExecuteWithCapabilityResult = {
   holding_operation_id?: string | null;
   caid?: string;
   remaining?: any;
+  provider_entry_evidence?: Readonly<Record<string, any>> | null;
 };
 
 function isRecord(value: unknown): value is Record<string, any> {
@@ -3594,6 +3596,11 @@ export async function executeWithCapability({
       ...(scope.caid ? { caid: scope.caid } : {}),
     };
   }
+  // `undefined` means no provider-entry guard was configured. Preserve that
+  // distinction so enabling this evidence channel does not change the return
+  // shape or canonical bytes of existing no-guard integrations. A configured
+  // guard that returns no evidence is represented explicitly as `null`.
+  let providerEntryEvidence: Readonly<Record<string, any>> | null | undefined = undefined;
   if (providerEntryGuard) {
     const baseEntryContext = providerEntryContext({
       authorization,
@@ -3622,8 +3629,10 @@ export async function executeWithCapability({
         return {
           ok: false,
           reason: 'capability_provider_entry_disposition_invalid',
+          status: entryVerdict?.status ?? 409,
           authorization,
           ...composition,
+          provider_entry_evidence: entryVerdict?.evidence ?? null,
           operation_id: operationId,
           action_digest: scope.action_digest,
           action_fence_digest: scope.action_fence_digest,
@@ -3638,8 +3647,10 @@ export async function executeWithCapability({
         return {
           ok: false,
           reason: 'capability_provider_entry_disposition_invalid',
+          status: entryVerdict?.status ?? 409,
           authorization,
           ...composition,
+          provider_entry_evidence: entryVerdict?.evidence ?? null,
           operation_id: operationId,
           action_digest: scope.action_digest,
           action_fence_digest: scope.action_fence_digest,
@@ -3660,8 +3671,10 @@ export async function executeWithCapability({
           return {
             ok: false,
             reason: 'capability_provider_entry_reservation_transition_indeterminate',
+            status: 503,
             authorization,
             ...composition,
+            provider_entry_evidence: entryVerdict?.evidence ?? null,
             operation_id: operationId,
             action_digest: scope.action_digest,
             action_fence_digest: scope.action_fence_digest,
@@ -3674,14 +3687,17 @@ export async function executeWithCapability({
         reason: typeof entryVerdict?.reason === 'string'
           ? entryVerdict.reason
           : 'provider_entry_guard_refused',
+        status: entryVerdict?.status ?? 409,
         authorization,
         ...composition,
+        provider_entry_evidence: entryVerdict?.evidence ?? null,
         operation_id: operationId,
         action_digest: scope.action_digest,
         action_fence_digest: scope.action_fence_digest,
         ...(scope.caid ? { caid: scope.caid } : {}),
       };
     }
+    providerEntryEvidence = entryVerdict.evidence ?? null;
   }
   const providerEntry = await store.beginProviderEntry({
     capabilityId: verified.capability.id,
@@ -3699,6 +3715,9 @@ export async function executeWithCapability({
       reason: providerEntry?.reason || 'capability_provider_entry_indeterminate',
       authorization,
       ...composition,
+      ...(providerEntryEvidence !== undefined
+        ? { provider_entry_evidence: providerEntryEvidence }
+        : {}),
       operation_id: operationId,
       action_digest: scope.action_digest,
       action_fence_digest: scope.action_fence_digest,
@@ -3716,6 +3735,9 @@ export async function executeWithCapability({
       action_fence_digest: scope.action_fence_digest,
       ...(scope.caid ? { caid: scope.caid } : {}),
       observed_action: immutableAction,
+      ...(providerEntryEvidence !== undefined
+        ? { provider_entry_evidence: providerEntryEvidence }
+        : {}),
       reservation: reserved,
       provider_entry: providerEntry,
     });
@@ -3726,6 +3748,9 @@ export async function executeWithCapability({
         reason: 'capability_commit_indeterminate',
         authorization,
         ...composition,
+        ...(providerEntryEvidence !== undefined
+          ? { provider_entry_evidence: providerEntryEvidence }
+          : {}),
         result,
         operation_id: operationId,
         action_digest: scope.action_digest,
@@ -3738,6 +3763,9 @@ export async function executeWithCapability({
       result,
       authorization,
       ...composition,
+      ...(providerEntryEvidence !== undefined
+        ? { provider_entry_evidence: providerEntryEvidence }
+        : {}),
       operation_id: operationId,
       action_digest: scope.action_digest,
       action_fence_digest: scope.action_fence_digest,
@@ -3751,6 +3779,9 @@ export async function executeWithCapability({
       reason: committed.ok ? 'effect_indeterminate' : 'capability_commit_indeterminate',
       authorization,
       ...composition,
+      ...(providerEntryEvidence !== undefined
+        ? { provider_entry_evidence: providerEntryEvidence }
+        : {}),
       operation_id: operationId,
       action_digest: scope.action_digest,
       action_fence_digest: scope.action_fence_digest,

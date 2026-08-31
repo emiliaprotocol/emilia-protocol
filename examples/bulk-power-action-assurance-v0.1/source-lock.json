@@ -1,0 +1,33 @@
+{
+  "@version": "EP-SOURCE-LOCK-v1",
+  "profile_id": "emilia.bulk-power.action-assurance.reference.v0.1",
+  "retrieved_at": "2026-08-30T21:54:57-07:00",
+  "primary_source": {
+    "title": "Declaring a National Emergency to Secure the United States Bulk-Power System",
+    "citation": "Executive Order 14421; 91 FR 55995; FR Doc. 2026-17843",
+    "publication_state": "Final Federal Register publication dated 2026-08-31",
+    "publication_date": "2026-08-31",
+    "executive_order_number": "14421",
+    "federal_register_volume": 91,
+    "federal_register_issue": 167,
+    "page_range": "55995-55999",
+    "url": "https://www.govinfo.gov/content/pkg/FR-2026-08-31/pdf/2026-17843.pdf",
+    "landing_page_url": "https://www.federalregister.gov/documents/2026/08/31/2026-17843/declaring-a-national-emergency-to-secure-the-united-states-bulk-power-system",
+    "media_type": "application/pdf",
+    "content_length": 200004,
+    "sha256": "3492b0c9049ee532e58719dedc070ae454d93b0070f71518282eec7ae0a39dbb"
+  },
+  "companion_source": {
+    "title": "White House presidential action page",
+    "url": "https://www.whitehouse.gov/presidential-actions/2026/08/declaring-a-national-emergency-to-secure-the-united-states-bulk-power-system/",
+    "retrieved_sha256": "af8609217b3a77f117f7d0d6e6157006727d10d2849079e5bc6f27e61c4b02d7",
+    "hash_stability": "advisory_html_may_change"
+  },
+  "identifier_resolution": {
+    "white_house_label": "Executive Order 14420",
+    "final_federal_register_label": "Executive Order 14421",
+    "citation_rule": "Use the final Federal Register identifier: Executive Order 14421; 91 FR 55995; FR Doc. 2026-17843."
+  },
+  "revalidation_required": false,
+  "future_rule_profile_update_required": true
+}
