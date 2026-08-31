@@ -1,8 +1,8 @@
 # Joint Interoperability Assessment — CCS v1.4 receipt as EMILIA pre-admission evidence
 
 **Status:** DRAFT v3 for joint review — not final and must not be merged or represented as jointly approved until both parties approve the exact bytes.
-**Date:** 2026-08-29
-**Revision:** v3 supersedes v2 (2026-08-30): per joint review — (a) bundle-scope counts in section 3 reflect the full pinned bundle (489 manifest-covered files, 64 expected-outcome cases); (b) the Correctover checker is described as a standalone package-independent check that operates without importing the CCS verifier package; (c) wording aligned for the public repository. Vectors, the eight composition outcomes, artifact pins, and all product boundaries are unchanged.
+**Date:** 2026-08-30
+**Revision:** v3 supersedes v2 (2026-08-29): per joint review — (a) bundle-scope counts in section 3 reflect the full pinned bundle (489 manifest-covered files, 64 expected-outcome cases); (b) the Correctover checker is described as a standalone package-independent check that operates without importing the CCS verifier package; (c) wording aligned for the public repository. Vectors, the eight composition outcomes, artifact pins, and all product boundaries are unchanged.
 **Parties:**
 - **EMILIA Protocol, Inc.** — Iman Schrock (`team@emiliaprotocol.ai`)
 - **Correctover** — Guigui Wang (`wangguigui@correctover.com`)
