@@ -110,7 +110,7 @@ export function ProductStoryHub(): React.ReactElement {
             record other people can check.
           </p>
           <div className={styles.actions}>
-            <Link className={styles.primary} href="/authority-brain">Map my agent</Link>
+            <Link className={styles.primary} href="/scan#run-local">Map and prepare one action</Link>
             <Link className={styles.secondary} href="/pilot">Protect one workflow</Link>
           </div>
         </div>

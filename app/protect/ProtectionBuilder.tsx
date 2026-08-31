@@ -16,6 +16,7 @@ import {
   Unplug,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import gatePackage from '../../packages/gate/package.json';
 import styles from './protect.module.css';
 
 type Preset = {
@@ -158,7 +159,7 @@ export default function ProtectionBuilder({ presets }: { presets: Preset[] }): R
             <span className={styles.eyebrow}>STEP 2 / SIGN LOCALLY</span>
             <h3>Activate the plan with your own key.</h3>
             <p>EMILIA never receives the private key. The Gate utility signs the exact plan on your machine and writes a customer-owned activation artifact.</p>
-            <code>npx --package @emilia-protocol/gate@0.24.0 ep-protect activate {plan.plan_id}.emilia-protection-plan.json --private-key owner.pem --tenant my-tenant --gateway my-mcp-gateway --authorizer my-owner --key-id owner-key-1 --out activation.json</code>
+            <code>npx --package @emilia-protocol/gate@{gatePackage.version} ep-protect activate {plan.plan_id}.emilia-protection-plan.json --private-key owner.pem --tenant my-tenant --gateway my-mcp-gateway --authorizer my-owner --key-id owner-key-1 --out activation.json</code>
             <div className={styles.activationLinks}>
               <a href="https://www.npmjs.com/package/@emilia-protocol/gate" target="_blank" rel="noopener noreferrer">Install EMILIA Gate</a>
               <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/examples/customer-owned-mcp-gateway" target="_blank" rel="noopener noreferrer">Run the customer-owned MCP gateway</a>

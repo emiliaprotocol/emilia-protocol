@@ -41,7 +41,7 @@ boundaries and composes with native identity, authorization, approval, and polic
   deployment evidence. It supports auditors, insurers, regulators, and customers; EMILIA is not an
   auditor or accredited certifier, and no public EMILIA certification program is operating.
 
-Run the local map (`npx @emilia-protocol/scan`), choose one consequential workflow, and place Gate
+Run the local map (`npx @emilia-protocol/scan@0.5.0`), choose one consequential workflow, and place Gate
 where authorized intent becomes consequential action.
 
 The first low-friction distribution profile is GitHub: the open Merge Gate binds a repository-owned
@@ -183,17 +183,22 @@ It deliberately includes no blockchain or simulated zero-knowledge claim. See
 the [receipt-program architecture](docs/architecture/RECEIPT-PROGRAM-EXECUTION-KERNEL.md)
 for the production state and trust requirements.
 
-Start with a dry run against your declared tool surface, then generate the
-reviewable integration files:
+Start with one declared consequential MCP action. Install the exact local
+runtime, then create its Gate Starter and run the bounded four-case check:
 
 ```bash
-npx @emilia-protocol/scan protect ./tools.json
-npx @emilia-protocol/scan protect ./tools.json --apply
-node emilia/verify-setup.mjs
+npm install --save-exact @emilia-protocol/mcp-guard@0.6.0
+npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action sendWire --apply --verify
+
+# after reading emilia/authority-map.html and action-control.manifest.json
+npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action sendWire --reviewed \
+  --crossing-profile ccs-wang-draft08-v13
 ```
 
 The generated local check uses explicitly ephemeral demo state and proves only
-that its synthetic handler was not called. Production requires a durable provenance ledger,
+the stated synthetic missing, exact-match, mutation, replay, and unscanned-tool cases.
+The reviewed command creates a privacy-bounded handoff; it does not activate Gate.
+Production requires a durable provenance ledger,
 a shared atomic consumption store, pinned keys, and the wrapper on every path to the real
 provider credential. See
 [examples/mcp/](examples/mcp/) and [`/mcp`](https://www.emiliaprotocol.ai/mcp).
@@ -429,11 +434,12 @@ complete; until it is, no blanket claim about the whole stack is made.
 
 ## Quickstart
 
-1. Run `npx @emilia-protocol/scan protect ./tools.json` to map supported declared surfaces.
-2. Review the generated action manifest, material fields, credentials, and named blind spots.
-3. Install Gate on the path that owns the provider credential and durable consumption state.
-4. Define the operating mandate and any fresh-human or quorum exception rules.
-5. Run the refusal, exact-action, replay, timeout, and reconciliation cases before enabling enforcement.
+1. Install the exact local guard runtime, then run `npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action sendWire --apply --verify`, replacing `sendWire` with one exact declared consequential tool.
+2. Review the generated Authority Map, action manifest, material fields, selected boundary, and named blind spots.
+3. Run the separate `--reviewed --crossing-profile <launch-profile>` command to create the owner-only handoff and unsealed Lab workspace from those unchanged bytes.
+4. Install Gate on the path that owns the provider credential and durable consumption state.
+5. Define the operating mandate and any fresh-human or quorum exception rules.
+6. Run the refusal, exact-action, replay, timeout, and reconciliation cases before enabling enforcement.
 
 **[90-second demo](https://www.emiliaprotocol.ai/mcp)** · **[Quickstart](https://www.emiliaprotocol.ai/quickstart)** · **[Agent walkthrough](https://www.emiliaprotocol.ai/use-cases/ai-agent)** · **[IETF Draft](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)** · **[Discord](https://discord.gg/cEhbzXkhW)**
 

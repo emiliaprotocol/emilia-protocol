@@ -4,12 +4,12 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync, } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync, } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { CROSSING_LAB_REPORT_VERSION, CROSSING_LAB_STATEMENT, canonicalizeCrossingLab, digestCrossingLab, initCrossingLab, runCrossingLab, sealCrossingLab, writeCrossingLabReport, } from './dist/crossing-lab.js';
+import { CROSSING_LAB_REPORT_VERSION, CROSSING_LAB_SCAN_SEED_VERSION, CROSSING_LAB_STATEMENT, CROSSING_LAB_VERIFY_VERSION, canonicalizeCrossingLab, crossingLabScanProfileContract, digestCrossingLab, initCrossingLab, initCrossingLabFromScanSeed, runCrossingLab, sealCrossingLab, writeCrossingLabReport, } from './dist/crossing-lab.js';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CLI = resolve(HERE, 'cli.js');
 const CROSSING_LAB_RUNTIME_SUPPORTED = process.allowedNodeEnvironmentFlags.has('--allow-net')
@@ -28,6 +28,166 @@ function readWorkspace(root) {
 function writeWorkspace(root, workspace) {
     writeFileSync(join(root, 'workspace.json'), `${JSON.stringify(workspace, null, 2)}\n`);
 }
+const SCAN_PROFILE = 'ccs-wang-draft08-v13';
+function writeScanSeed(parent) {
+    const manifestPath = join(parent, 'action-control.manifest.json');
+    const selectedAction = {
+        id: 'discovered.sendwire',
+        selector: { protocol: 'mcp', tool: 'sendWire' },
+        action_type: 'payment.release.1',
+        assurance_class: 'class_a',
+        receipt_required: true,
+        material_fields: ['action_type', 'amount_usd', 'currency', 'payee_ref'],
+    };
+    const manifest = {
+        actions: [{
+                id: selectedAction.id,
+                action_type: selectedAction.action_type,
+                assurance_class: selectedAction.assurance_class,
+                receipt_required: true,
+                match: selectedAction.selector,
+                execution_binding: { required_fields: selectedAction.material_fields },
+            }],
+    };
+    const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    writeFileSync(manifestPath, manifestBytes);
+    const seed = {
+        '@version': CROSSING_LAB_SCAN_SEED_VERSION,
+        verify_version: CROSSING_LAB_VERIFY_VERSION,
+        profile_id: SCAN_PROFILE,
+        profile_contract: crossingLabScanProfileContract(SCAN_PROFILE),
+        profile_compatibility: 'UNVERIFIED_OPERATOR_CONFIRMATION_REQUIRED',
+        reviewed_manifest: {
+            file: 'action-control.manifest.json',
+            sha256: `sha256:${crypto.createHash('sha256').update(manifestBytes).digest('hex')}`,
+        },
+        generated_scaffold_sha256: `sha256:${'1'.repeat(64)}`,
+        local_rr1_results_digest: `sha256:${'2'.repeat(64)}`,
+        selected_action: selectedAction,
+        selected_action_digest: digestCrossingLab(selectedAction),
+        operator_confirmation: {
+            status: 'required',
+            workspace_state: 'unsealed',
+            required_inputs: [
+                'native_artifact',
+                'adapter_bytes',
+                'trust_roots',
+                'status_source',
+                'relying_party_id',
+                'exact_material_fields',
+                'profile_compatibility_confirmation',
+            ],
+        },
+    };
+    const seedPath = join(parent, 'scan-crossing-seed.json');
+    writeFileSync(seedPath, `${JSON.stringify(seed, null, 2)}\n`);
+    return { seedPath, manifestPath, seed };
+}
+test('reviewed Scan seed creates an explicit unsealed three-file workspace', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'emilia-crossing-lab-scan-'));
+    const { seedPath, seed } = writeScanSeed(parent);
+    const target = join(parent, 'crossing-lab');
+    const created = initCrossingLabFromScanSeed(seedPath, target);
+    assert.deepEqual(created.files, ['adapter.mjs', 'artifact.json', 'workspace.json']);
+    assert.deepEqual(readdirSync(target).sort(), created.files);
+    assert.equal(created.profile_id, SCAN_PROFILE);
+    assert.equal(created.state, 'unsealed');
+    const workspace = JSON.parse(readFileSync(join(target, 'workspace.json'), 'utf8'));
+    assert.equal(workspace['@version'], 'EP-AEB-CROSSING-LAB-DRAFT-v1');
+    assert.equal(workspace.state, 'UNSEALED_OPERATOR_INPUT_REQUIRED');
+    assert.equal(workspace.profile_id, SCAN_PROFILE);
+    assert.equal(workspace.verify_version, CROSSING_LAB_VERIFY_VERSION);
+    assert.deepEqual(workspace.profile_contract, crossingLabScanProfileContract(SCAN_PROFILE));
+    assert.equal(workspace.profile_compatibility, 'UNVERIFIED_OPERATOR_CONFIRMATION_REQUIRED');
+    assert.deepEqual(workspace.selected_action, seed.selected_action);
+    assert.deepEqual(workspace.material_values, {
+        action_type: null,
+        amount_usd: null,
+        currency: null,
+        payee_ref: null,
+    });
+    const rawSeedDigest = `sha256:${crypto.createHash('sha256').update(readFileSync(seedPath)).digest('hex')}`;
+    assert.equal(workspace.source_seed.sha256, rawSeedDigest);
+    assert.equal(JSON.parse(readFileSync(join(target, 'artifact.json'), 'utf8')).source_seed_sha256, rawSeedDigest);
+    assert.match(readFileSync(join(target, 'adapter.mjs'), 'utf8'), /scan_crossing_workspace_unsealed/);
+    assert.throws(() => sealCrossingLab(target), /invalid Crossing Lab workspace schema/);
+    assert.throws(() => runCrossingLab(target), CROSSING_LAB_RUNTIME_SUPPORTED
+        ? /invalid Crossing Lab workspace schema/
+        : /requires a Node permission runtime with --allow-net support/);
+});
+test('Scan seed refuses action, profile, and reviewed-manifest substitution', () => {
+    const cases = [
+        ({ seedPath }) => {
+            const seed = JSON.parse(readFileSync(seedPath, 'utf8'));
+            seed.selected_action.action_type = 'account.delete.1';
+            writeFileSync(seedPath, `${JSON.stringify(seed, null, 2)}\n`);
+        },
+        ({ seedPath }) => {
+            const seed = JSON.parse(readFileSync(seedPath, 'utf8'));
+            seed.profile_id = 'invented-profile';
+            writeFileSync(seedPath, `${JSON.stringify(seed, null, 2)}\n`);
+        },
+        ({ seedPath }) => {
+            const seed = JSON.parse(readFileSync(seedPath, 'utf8'));
+            seed.verify_version = '3.22.0';
+            writeFileSync(seedPath, `${JSON.stringify(seed, null, 2)}\n`);
+        },
+        ({ seedPath }) => {
+            const seed = JSON.parse(readFileSync(seedPath, 'utf8'));
+            seed.profile_contract.material_fields = ['action_type'];
+            writeFileSync(seedPath, `${JSON.stringify(seed, null, 2)}\n`);
+        },
+        ({ manifestPath }) => writeFileSync(manifestPath, '{}\n'),
+    ];
+    for (const [index, mutate] of cases.entries()) {
+        const parent = mkdtempSync(join(tmpdir(), `emilia-crossing-lab-scan-hostile-${index}-`));
+        const fixture = writeScanSeed(parent);
+        mutate(fixture);
+        assert.throws(() => initCrossingLabFromScanSeed(fixture.seedPath, join(parent, 'workspace')), /selected action digest|supported crossing profile|Verify version mismatch|profile contract mismatch|reviewed manifest digest/);
+        assert.equal(existsSync(join(parent, 'workspace')), false);
+    }
+});
+test('Scan seed refuses duplicate reviewed action ids and selectors', () => {
+    const cases = [
+        (manifest) => manifest.actions.push({
+            ...structuredClone(manifest.actions[0]),
+            action_type: 'account.delete.1',
+        }),
+        (manifest) => manifest.actions.push({
+            ...structuredClone(manifest.actions[0]),
+            id: 'discovered.second-action',
+        }),
+    ];
+    for (const [index, mutate] of cases.entries()) {
+        const parent = mkdtempSync(join(tmpdir(), `emilia-crossing-lab-scan-duplicate-${index}-`));
+        const fixture = writeScanSeed(parent);
+        const manifest = JSON.parse(readFileSync(fixture.manifestPath, 'utf8'));
+        mutate(manifest);
+        const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+        writeFileSync(fixture.manifestPath, manifestBytes);
+        const seed = JSON.parse(readFileSync(fixture.seedPath, 'utf8'));
+        seed.reviewed_manifest.sha256 = `sha256:${crypto.createHash('sha256').update(manifestBytes).digest('hex')}`;
+        writeFileSync(fixture.seedPath, `${JSON.stringify(seed, null, 2)}\n`);
+        assert.throws(() => initCrossingLabFromScanSeed(fixture.seedPath, join(parent, 'workspace')), /duplicate action id or selector/);
+    }
+});
+test('Scan seed initializer refuses malformed fields, hard links, and overwrite', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'emilia-crossing-lab-scan-boundary-'));
+    const fixture = writeScanSeed(parent);
+    const linked = join(parent, 'linked-seed.json');
+    execFileSync(process.execPath, ['-e', `require('node:fs').linkSync(${JSON.stringify(fixture.seedPath)}, ${JSON.stringify(linked)})`]);
+    assert.throws(() => initCrossingLabFromScanSeed(linked, join(parent, 'hardlink-workspace')), /hard-linked/);
+    unlinkSync(linked);
+    const target = join(parent, 'workspace');
+    initCrossingLabFromScanSeed(fixture.seedPath, target);
+    assert.throws(() => initCrossingLabFromScanSeed(fixture.seedPath, target), /refusing to overwrite/);
+    const malformedParent = mkdtempSync(join(tmpdir(), 'emilia-crossing-lab-scan-malformed-'));
+    const malformed = writeScanSeed(malformedParent);
+    const seed = JSON.parse(readFileSync(malformed.seedPath, 'utf8'));
+    seed.selected_action.material_fields = ['action_type', 7];
+    writeFileSync(malformed.seedPath, `${JSON.stringify(seed, null, 2)}\n`);
+    assert.throws(() => initCrossingLabFromScanSeed(malformed.seedPath, join(malformedParent, 'workspace')), /invalid Scan crossing seed/);
+});
 runtimeTest('scaffold evaluates every positive, hostile, and boundary row deterministically', () => {
     const root = freshWorkspace();
     const first = runCrossingLab(root);

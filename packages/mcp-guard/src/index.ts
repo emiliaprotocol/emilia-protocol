@@ -56,6 +56,9 @@ import {
 
 type AnyRecord = Record<string, any>;
 
+/** Runtime/package identity used by generated consumers that pin this release. */
+export const MCP_GUARD_RUNTIME_VERSION = '0.6.0';
+
 // ---------------------------------------------------------------------------
 // Canonicalization (RFC 8785-style, key-sorted) — used ONLY for the additive
 // provenance bundle and for hashing tool-call inputs. It is byte-identical to

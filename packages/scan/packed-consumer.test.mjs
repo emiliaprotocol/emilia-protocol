@@ -4,11 +4,14 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -28,7 +31,7 @@ function run(command, args, options = {}) {
   return result.stdout;
 }
 
-test('packed scan installs the audited guard and refuses hostile generated actions in a blank consumer', () => {
+test('packed scan refuses missing runtime, then uses the exact audited guard in a blank consumer', () => {
   const root = mkdtempSync(join(tmpdir(), 'emilia-scan-packed-'));
   const packs = join(root, 'packs');
   const consumer = join(root, 'consumer');
@@ -78,8 +81,6 @@ test('packed scan installs the audited guard and refuses hostile generated actio
     '--no-audit',
     '--no-fund',
     scanTarball,
-    guardTarball,
-    requireReceiptTarball,
     verifyTarball,
   ], {
     cwd: consumer,
@@ -89,22 +90,6 @@ test('packed scan installs the audited guard and refuses hostile generated actio
   const installedRoot = realpathSync(join(consumer, 'node_modules'));
   const installedScan = realpathSync(join(installedRoot, '@emilia-protocol', 'scan'));
   assert.ok(installedScan.startsWith(`${installedRoot}${sep}`), installedScan);
-  const installedGuardPackage = JSON.parse(readFileSync(
-    join(installedRoot, '@emilia-protocol', 'mcp-guard', 'package.json'),
-    'utf8',
-  ));
-  assert.equal(installedGuardPackage.version, MCP_GUARD_VERSION);
-  const installedRequireReceiptPackage = JSON.parse(readFileSync(
-    join(installedRoot, '@emilia-protocol', 'require-receipt', 'package.json'),
-    'utf8',
-  ));
-  assert.equal(installedRequireReceiptPackage.version, REQUIRE_RECEIPT_VERSION);
-  const installedVerifyPackage = JSON.parse(readFileSync(
-    join(installedRoot, '@emilia-protocol', 'verify', 'package.json'),
-    'utf8',
-  ));
-  assert.equal(installedVerifyPackage.version, VERIFY_VERSION);
-
   const scanBin = join(consumer, 'node_modules', '.bin', 'scan');
   const consumerEntries = readdirSync(consumer).sort();
   const missingEmit = spawnSync(scanBin, ['--sample', '--emit'], {
@@ -124,19 +109,150 @@ test('packed scan installs the audited guard and refuses hostile generated actio
     { name: 'rotateApiKey', description: 'Fetch the current API key and rotate it' },
     { name: 'archiveCustomer', description: 'List the customer and archive the record' },
   ]));
-  run(scanBin, [
+  const blankVerify = spawnSync(scanBin, [
     'protect',
     input,
+    '--action',
+    'rotateApiKey',
     '--apply',
+    '--verify',
+    '--out',
+    'emilia',
+  ], { cwd: consumer, encoding: 'utf8' });
+  assert.equal(blankVerify.status, 1, `${blankVerify.stdout}\n${blankVerify.stderr}`);
+  assert.match(
+    `${blankVerify.stdout}${blankVerify.stderr}`,
+    /npm install --save-exact @emilia-protocol\/mcp-guard@0\.6\.0/,
+  );
+  assert.equal(readdirSync(consumer).includes('emilia'), false,
+    'missing runtime preflight must refuse before writing a starter');
+
+  run('npm', [
+    'install',
+    '--ignore-scripts',
+    '--no-audit',
+    '--no-fund',
+    guardTarball,
+    requireReceiptTarball,
+  ], {
+    cwd: consumer,
+    env: { ...process.env, npm_config_before: REGISTRY_CUTOFF },
+  });
+  const installedGuardPackage = JSON.parse(readFileSync(
+    join(installedRoot, '@emilia-protocol', 'mcp-guard', 'package.json'),
+    'utf8',
+  ));
+  assert.equal(installedGuardPackage.version, MCP_GUARD_VERSION);
+  const installedRequireReceiptPackage = JSON.parse(readFileSync(
+    join(installedRoot, '@emilia-protocol', 'require-receipt', 'package.json'),
+    'utf8',
+  ));
+  assert.equal(installedRequireReceiptPackage.version, REQUIRE_RECEIPT_VERSION);
+  const installedVerifyPackage = JSON.parse(readFileSync(
+    join(installedRoot, '@emilia-protocol', 'verify', 'package.json'),
+    'utf8',
+  ));
+  assert.equal(installedVerifyPackage.version, VERIFY_VERSION);
+
+  // Model npm exec/npx isolation faithfully: Verify is available to Scan as
+  // its exact dependency, but it is not resolvable from the generated file in
+  // the consumer project. The reviewed command must pass Scan's own resolved
+  // module into the child instead of relying on accidental root hoisting.
+  const rootVerify = join(installedRoot, '@emilia-protocol', 'verify');
+  const nestedScope = join(installedScan, 'node_modules', '@emilia-protocol');
+  const nestedVerify = join(nestedScope, 'verify');
+  mkdirSync(nestedScope, { recursive: true });
+  renameSync(rootVerify, nestedVerify);
+  assert.equal(existsSync(rootVerify), false);
+  assert.equal(JSON.parse(readFileSync(join(nestedVerify, 'package.json'), 'utf8')).version, VERIFY_VERSION);
+
+  const verifyOutput = run(scanBin, [
+    'protect',
+    input,
+    '--action',
+    'rotateApiKey',
+    '--apply',
+    '--verify',
     '--out',
     'emilia',
   ], { cwd: consumer });
+  assert.match(verifyOutput, /EMILIA RR-1 CHECK: PASS — 4\/4 cases matched the protected-action contract/);
+  assert.match(verifyOutput, /refused an exact synthetic receipt for an unscanned runtime tool/i);
+  assert.equal(readdirSync(join(consumer, 'emilia')).includes('scan-adoption-handoff.json'), false,
+    'first-stage verification must not emit a reviewed handoff');
 
   const integration = readFileSync(join(consumer, 'emilia', 'INTEGRATION.md'), 'utf8');
   assert.ok(
     integration.includes(`npm install --save-exact @emilia-protocol/mcp-guard@${MCP_GUARD_VERSION}`),
     'generated integration must pin the audited guard release exactly',
   );
+
+  const starterMarker = JSON.parse(readFileSync(
+    join(consumer, 'emilia', '.emilia-gate-starter.json'),
+    'utf8',
+  ));
+  const nestedGuard = join(
+    consumer,
+    'emilia',
+    'node_modules',
+    '@emilia-protocol',
+    'mcp-guard',
+  );
+  mkdirSync(nestedGuard, { recursive: true });
+  writeFileSync(join(nestedGuard, 'package.json'), JSON.stringify({
+    name: '@emilia-protocol/mcp-guard',
+    version: '666.0.0',
+    type: 'module',
+    main: 'index.js',
+    exports: { '.': { import: './index.js' } },
+  }));
+  writeFileSync(join(nestedGuard, 'index.js'), "throw new Error('nested shadow guard was imported');\n");
+
+  const directVerifyOutput = run(process.execPath, [
+    join(consumer, 'emilia', 'verify-setup.mjs'),
+    '--action',
+    'rotateApiKey',
+    '--expected-surface-digest',
+    starterMarker.declared_surface_sha256,
+  ], { cwd: consumer });
+  assert.match(directVerifyOutput, /EMILIA RR-1 CHECK: PASS — 4\/4 cases matched the protected-action contract/);
+
+  const directHostileEnv = spawnSync(process.execPath, [
+    join(consumer, 'emilia', 'verify-setup.mjs'),
+    '--action',
+    'rotateApiKey',
+    '--expected-surface-digest',
+    starterMarker.declared_surface_sha256,
+  ], {
+    cwd: consumer,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      EMILIA_SCAN_MCP_GUARD_MODULE_URL: 'https://attacker.invalid/mcp-guard.mjs',
+    },
+  });
+  assert.equal(directHostileEnv.status, 1, `${directHostileEnv.stdout}\n${directHostileEnv.stderr}`);
+  assert.match(
+    `${directHostileEnv.stdout}${directHostileEnv.stderr}`,
+    /outside the consumer dependency root/,
+  );
+
+  const shadowReviewed = spawnSync(scanBin, [
+    'protect',
+    input,
+    '--action',
+    'rotateApiKey',
+    '--reviewed',
+    '--crossing-profile',
+    'ccs-wang-draft08-v13',
+    '--out',
+    'emilia',
+  ], { cwd: consumer, encoding: 'utf8' });
+  assert.equal(shadowReviewed.status, 1, `${shadowReviewed.stdout}\n${shadowReviewed.stderr}`);
+  assert.match(`${shadowReviewed.stdout}${shadowReviewed.stderr}`, /unrecognized or missing files/);
+  assert.equal(existsSync(join(consumer, 'emilia', 'scan-adoption-handoff.json')), false);
+  assert.equal(existsSync(join(consumer, 'emilia-crossing-lab')), false);
+  rmSync(join(consumer, 'emilia', 'node_modules'), { recursive: true });
 
   const manifestFile = join(consumer, 'emilia', 'action-control.manifest.json');
   const manifestBytes = readFileSync(manifestFile);
@@ -149,22 +265,31 @@ test('packed scan installs the audited guard and refuses hostile generated actio
   assert.ok(hostileManifestActions.every((action) => action.receipt_required === true));
 
   const manifestDigest = `sha256:${createHash('sha256').update(manifestBytes).digest('hex')}`;
-  const verifyOutput = run(process.execPath, [
-    join(consumer, 'emilia', 'verify-setup.mjs'),
-    '--emit-handoff',
-    '--reviewed-manifest-digest',
-    manifestDigest,
+  const reviewedOutput = run(scanBin, [
+    'protect',
+    input,
     '--action',
     'rotateApiKey',
-    '--action',
-    'archiveCustomer',
-  ], { cwd: consumer });
-  assert.match(verifyOutput, /EMILIA RR-1 CHECK: PASS — 8\/8 cases matched the protected-action contract/);
+    '--reviewed',
+    '--crossing-profile',
+    'ccs-wang-draft08-v13',
+    '--out',
+    'emilia',
+  ], {
+    cwd: consumer,
+    env: {
+      ...process.env,
+      EMILIA_SCAN_MCP_GUARD_MODULE_URL: 'https://attacker.invalid/mcp-guard.mjs',
+      EMILIA_SCAN_CROSSING_LAB_MODULE_URL: 'https://attacker.invalid/crossing-lab.mjs',
+    },
+  });
+  assert.match(reviewedOutput, /Reviewed handoff created without changing the Gate Starter/);
 
   const handoff = JSON.parse(readFileSync(join(consumer, 'emilia', 'scan-adoption-handoff.json'), 'utf8'));
+  assert.equal(handoff['@version'], 'EP-SCAN-ADOPTION-HANDOFF-v3');
   assert.deepEqual(
     handoff.selected_actions.map((action) => action.selector.tool),
-    ['rotateApiKey', 'archiveCustomer'],
+    ['rotateApiKey'],
   );
   assert.equal(handoff.local_refusal.handler_called, false);
   assert.equal(handoff.local_rr1.status, 'passed');
@@ -172,7 +297,7 @@ test('packed scan installs the audited guard and refuses hostile generated actio
   assert.equal(handoff.local_rr1.manifest_sha256, manifestDigest);
   assert.deepEqual(
     handoff.local_rr1.tested_actions.map((action) => action.selector.tool),
-    ['rotateApiKey', 'archiveCustomer'],
+    ['rotateApiKey'],
   );
   assert.deepEqual(
     handoff.local_rr1.cases.map(({ case_id, observed }) => ({ case_id, observed })),
@@ -181,12 +306,8 @@ test('packed scan installs the audited guard and refuses hostile generated actio
       { case_id: 'RR1-02-valid-receipt:rotateApiKey', observed: 'admitted' },
       { case_id: 'RR1-03-action-substitution:rotateApiKey', observed: 'action_mismatch' },
       { case_id: 'RR1-04-replay:rotateApiKey', observed: 'replay_refused' },
-      { case_id: 'RR1-01-missing-receipt:archiveCustomer', observed: 'emilia_receipt_required' },
-      { case_id: 'RR1-02-valid-receipt:archiveCustomer', observed: 'admitted' },
-      { case_id: 'RR1-03-action-substitution:archiveCustomer', observed: 'action_mismatch' },
-      { case_id: 'RR1-04-replay:archiveCustomer', observed: 'replay_refused' },
     ],
   );
   assert.match(handoff.local_rr1.results_digest, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(handoff.local_rr1.synthetic_handler_calls, 2);
+  assert.equal(handoff.local_rr1.synthetic_handler_calls, 1);
 });

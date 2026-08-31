@@ -121,6 +121,7 @@ verifies.
 
 Subcommands:
   crossing-lab init <directory>
+  crossing-lab init-from-scan <scan-crossing-seed.json> <directory>
   crossing-lab seal <workspace-directory>
   crossing-lab run <workspace-directory> [--out <new-report.json>]
     Scaffold, pin, or evaluate one offline, relying-party-pinned native adapter.
@@ -151,7 +152,13 @@ Exit code 0 = every document verified; 1 = any failure.`);
 // child-process permission. Workspace JSON pins every input and the adapter's
 // exact bytes. The report remains a self-test and has no authorization effect.
 if (args[0] === 'crossing-lab') {
-  const { initCrossingLab, runCrossingLab, sealCrossingLab, writeCrossingLabReport } = await import('./crossing-lab.js');
+  const {
+    initCrossingLab,
+    initCrossingLabFromScanSeed,
+    runCrossingLab,
+    sealCrossingLab,
+    writeCrossingLabReport,
+  } = await import('./crossing-lab.js');
   const sub = args.slice(1);
   const mode = sub.shift();
   if (mode === 'init') {
@@ -163,6 +170,23 @@ if (args[0] === 'crossing-lab') {
       const created = initCrossingLab(sub[0]);
       console.log(`Crossing Lab workspace created at ${created.directory}`);
       for (const file of created.files) console.log(`  ${file}`);
+      process.exit(0);
+    } catch (error: any) {
+      console.error(`error: ${error.message}`);
+      process.exit(1);
+    }
+  }
+  if (mode === 'init-from-scan') {
+    if (sub.length !== 2 || sub.some((value) => value.startsWith('-'))) {
+      console.error('usage: verify crossing-lab init-from-scan <scan-crossing-seed.json> <directory>');
+      process.exit(1);
+    }
+    try {
+      const created = initCrossingLabFromScanSeed(sub[0], sub[1]);
+      console.log(`Unsealed Crossing Lab workspace created at ${created.directory}`);
+      console.log(`Profile selected: ${created.profile_id}`);
+      for (const file of created.files) console.log(`  ${file}`);
+      console.log('Operator confirmation is still required before seal or run; this workspace authorizes nothing.');
       process.exit(0);
     } catch (error: any) {
       console.error(`error: ${error.message}`);
@@ -216,7 +240,7 @@ if (args[0] === 'crossing-lab') {
       process.exit(1);
     }
   }
-  console.error('usage: verify crossing-lab (init <directory> | seal <workspace-directory> | run <workspace-directory> [--out <new-report.json>])');
+  console.error('usage: verify crossing-lab (init <directory> | init-from-scan <scan-crossing-seed.json> <directory> | seal <workspace-directory> | run <workspace-directory> [--out <new-report.json>])');
   process.exit(1);
 }
 

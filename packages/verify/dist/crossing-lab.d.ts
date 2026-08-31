@@ -2,6 +2,25 @@ import { type AebEvaluationRecord } from './aeb-adapter-contract.js';
 export declare const CROSSING_LAB_WORKSPACE_VERSION: "EMILIA-CROSSING-LAB-LOCAL-WORKSPACE-v1";
 export declare const CROSSING_LAB_REPORT_VERSION: "EMILIA-CROSSING-LAB-LOCAL-REPORT-v1";
 export declare const CROSSING_LAB_STATEMENT: "SELF_ATTESTED_ADAPTER_COMPATIBILITY_TEST_NOT_CERTIFICATION";
+export declare const CROSSING_LAB_SCAN_SEED_VERSION: "EP-SCAN-CROSSING-SEED-v1";
+export declare const CROSSING_LAB_DRAFT_WORKSPACE_VERSION: "EP-AEB-CROSSING-LAB-DRAFT-v1";
+export declare const CROSSING_LAB_VERIFY_VERSION: "3.21.0";
+export declare const CROSSING_LAB_SCAN_PROFILES: readonly ["ccs-wang-draft08-v13", "cedulon-aeb-crossing-v0.1", "pinto-cbap1-aeb-v0.1"];
+export declare const CROSSING_LAB_SCAN_PROFILE_CONTRACTS: Readonly<{
+    readonly 'ccs-wang-draft08-v13': Readonly<{
+        action_type: "agent.tool-invocation.1";
+        material_fields: readonly string[];
+    }>;
+    readonly 'cedulon-aeb-crossing-v0.1': Readonly<{
+        action_type: "cedulon.payment.attempt.1";
+        material_fields: readonly string[];
+    }>;
+    readonly 'pinto-cbap1-aeb-v0.1': Readonly<{
+        action_type: "account.suspend.1";
+        material_fields: readonly string[];
+    }>;
+}>;
+export declare function crossingLabScanProfileContract(profileId: unknown): Obj;
 export declare const CROSSING_LAB_LIMITS: Readonly<{
     max_file_bytes: 1048576;
     max_adapter_bytes: 262144;
@@ -11,6 +30,7 @@ export declare const CROSSING_LAB_LIMITS: Readonly<{
     adapter_timeout_ms: 2000;
     max_adapter_output_bytes: 262144;
 }>;
+type Obj = Record<string, any>;
 type Digest = `sha256:${string}`;
 export type CrossingLabAxes = {
     native_verification: 'VERIFIED' | 'FAILED' | 'INDETERMINATE';
@@ -76,6 +96,19 @@ export declare function runCrossingLab(workspaceDirectory: string): CrossingLabR
 export declare function initCrossingLab(targetDirectory: string): {
     directory: string;
     files: string[];
+};
+/**
+ * Turn one owner-reviewed Scan selection into a deliberately unsealed Lab
+ * workspace. The result is a bounded editing surface, not an executable
+ * adapter: the operator must supply and review the native artifact, adapter,
+ * trust roots, status source, relying party, and exact material values before
+ * replacing the draft workspace with a sealable v1 workspace.
+ */
+export declare function initCrossingLabFromScanSeed(seedFile: string, targetDirectory: string): {
+    directory: string;
+    files: string[];
+    profile_id: string;
+    state: 'unsealed';
 };
 /**
  * Recompute local development pins after the author deliberately edits a

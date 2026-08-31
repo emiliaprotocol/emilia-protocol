@@ -26,7 +26,7 @@ const COL_SOLUTIONS: FooterLink[] = [
 
 const COL_DEVELOPERS: FooterLink[] = [
   ['/docs', 'Docs'],
-  ['/scan', 'Local Scanner'],
+  ['/scan', 'Local Scan + Gate Starter'],
   ['/quickstart', 'Gate Quickstart'],
   ['/verify', 'Open Verifier'],
   ['/mcp', 'MCP Integration'],
