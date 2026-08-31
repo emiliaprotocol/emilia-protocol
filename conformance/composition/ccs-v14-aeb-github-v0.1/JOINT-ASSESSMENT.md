@@ -1,6 +1,6 @@
 # Joint Interoperability Assessment — CCS v1.4 receipt as EMILIA pre-admission evidence
 
-**Status:** FINAL — jointly approved by both parties on 2026-08-31. The approved bytes (this document as DRAFT v3, 8,524 bytes, sha256 `5ddc594671695419889f63dbba51feae94a979dee506b8d0a3f204fd43a07b3b`) were merged upstream via PR #682 (merge commit `1d21cd446aeca566baab9cc7e6205ccc19ccb895`) and mirrored to the public CCS conformance bundle (DSHCorrectover/ccs-conformance-vectors, commit `43cb28f98dc8bfb6f93427980b67692db569a083`). This Final revision records that approval only; vectors, evidence, the eight outcomes, pins, and product boundaries are unchanged from the approved bytes.
+**Status:** FINAL — jointly approved by both parties on 2026-08-31. The approved bytes (this document as DRAFT v3, 8,524 bytes, sha256 `5ddc594671695419889f63dbba51feae94a979dee506b8d0a3f204fd43a07b3b`) were merged upstream via PR #682 (merge commit `1d21cd446aeca566baab9cc7e6205ccc19ccb895`) and mirrored to the public CCS conformance bundle (DSHCorrectover/ccs-conformance-vectors, commit `43cb28f98dc8bfb6f93427980b67692db569a083`). This Final revision records that approval and one source-label correction in section 3 (the pinned 153,156-byte specification text defines the CCS v1.3 receipt profile; the v1.4.0 receipt under test comes from the separately pinned conformance bundle); vectors, evidence, the eight outcomes, pins, and product boundaries are unchanged from the approved bytes.
 **Date:** 2026-08-30
 **Revision:** v3 supersedes v2 (2026-08-29): per joint review — (a) bundle-scope counts in section 3 reflect the full pinned bundle (489 manifest-covered files, 64 expected-outcome cases); (b) the Correctover checker is described as a standalone package-independent check that operates without importing the CCS verifier package; (c) wording aligned for the public repository. Vectors, the eight composition outcomes, artifact pins, and all product boundaries are unchanged.
 **Parties:**
@@ -49,8 +49,12 @@ EMILIA pinned commit `a3503b2` and ran the published v1.4 bundle in a fresh envi
 - The standalone package-independent Python checker classified all **64** expected-outcome
   conformance cases as expected.
 - Regenerating the vectors reproduced the committed bundle **byte-for-byte**.
-- EMILIA also pinned the published CCS v1.4 specification text used for comparison
+- EMILIA also pinned the published CCS specification text used for comparison
   (153,156 bytes, sha256 `fbac2a025f11baec104687ee04ba5c9fb0dad1b5bbb5ad38494965565a977cd3`).
+  The receipt section of that pinned text defines the **CCS v1.3** receipt profile;
+  the **v1.4.0 receipt** under test in this composition comes from the separately
+  pinned conformance bundle (`a3503b2bc48922f92a28c372003885a0831da02b`), not from
+  that specification text.
   That pin **anchors the specification version used for comparison**; the pin itself
   does not validate the bundle, and it is not a claim of full specification conformance
   or of completed composition.
