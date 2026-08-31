@@ -1,11 +1,10 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# AEB-05 candidate section: native compilation contract
+# AEB-05 source text: native compilation contract
 
-STATUS: contribution text incorporated into the authorized AEB-05 submission
-packet. AEB-04 remains the current published revision until the Datatracker
-confirms the replacement. This text does not create a new wire format, token,
-receipt, or registry.
+STATUS: contribution text incorporated into the AEB-05 revision published on
+2026-08-31. This text does not create a new wire format, token, receipt, or
+registry.
 
 Implementation and conformance material:
 

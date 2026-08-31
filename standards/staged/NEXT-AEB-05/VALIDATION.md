@@ -1,9 +1,11 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# AEB-05 staging validation
+# AEB-05 publication validation
 
-Validated locally and authorized for submission on 2026-08-31. The replacement
-is not public until the Datatracker upload and posting state are verified.
+Validated locally, submitted, author-confirmed, and posted on 2026-08-31 as
+Datatracker submission 168394. The live Datatracker lists
+`draft-schrock-action-evidence-boundary-05` as an active individual
+Internet-Draft.
 
 ## Draft toolchain
 
@@ -14,6 +16,25 @@ is not public until the Datatracker upload and posting state are verified.
   its `IETF` rendering default; `idnits` accepts the streamless submission
   metadata. This is a metadata choice, not an adoption or stream claim.
 - `shasum -a 256 -c SHA256SUMS` verifies the staged bytes.
+
+## Publication verification
+
+- XML SHA-256:
+  `53b09b275fd3868dfbea11340a71e4827c38ad3cba2fdd12595cdcf42eb6c240`.
+  The submitted, posted, and immutable IETF archive XML are byte-for-byte
+  identical.
+- TXT SHA-256:
+  `402bbdb2ee0906193a188eda4a24f29882ec3604bb5447949cbd0e01f7b6f1cc`.
+  The retained render and immutable IETF archive TXT are byte-for-byte
+  identical.
+- Local HTML SHA-256:
+  `9794cd49c6819d3a9d21e1bfb2dc14b4f15939b3ef689b1474a55ad8a406aae8`.
+  This is the clean checksum-pinned xml2rfc 3.34.0 render. The archive delivery
+  path appends request-specific Cloudflare markup, so no unstable raw archive
+  HTML hash is recorded.
+- Posting establishes publication only. It does not establish native-owner
+  review, completion of the multi-profile conformance gate, working-group
+  adoption, RFC status, or IETF endorsement.
 
 ## Implementation evidence
 
@@ -45,7 +66,7 @@ is not public until the Datatracker upload and posting state are verified.
 - WIMSE R10 profile: 5/5 matrix rows, 11/11 cases, and 9/9 profile tests
   passed. Its successful row uses a candidate host carrier; current HAMR
   `required_evidence` remains `NOT_SUPPORTED`. The report digest is
-  `sha256:5c0b64a3f44fec2e194e38920f4c9f7b8f85f995a64e68fdf7a6a9288f04c2b4`.
+  `sha256:7afd7b8c1981b937bbabb5f82af9296dbd7ab95aa1e4b66184975c53ae19f66a`.
 These are same-team local results and establish three-path feasibility and two
 direct external-native candidates, not a completed conformance gate. The
 AuthZEN-derived path verifies an EMILIA-signed local PEP observation, not an

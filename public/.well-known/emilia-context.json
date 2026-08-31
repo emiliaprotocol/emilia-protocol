@@ -3,11 +3,11 @@
   "evidence_snapshot_at": "2026-08-31T23:06:57.399Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "9407c3473b754d6f95a9a344b829a794b228b400c4b7d04157bc30f109b62d94",
+    "input_digest_sha256": "93da3068562b7471417abf9e2e9716027a4dc08a6389f9addb127d732cc1b7eb",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "bc272b80c6f898d302735a417a31152921ced83cd9a20709370f95ad37809d15",
+        "sha256": "0ffece7de0fd7dc5b68dcf66903d37c947ef794b3e19e927104458c2545166d8",
         "bytes": 51076
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "f5f7aa4994e115cfb6ec23a63afa10db2ba8cafa5ea38e6f5d6e6aedf56e530f",
-        "bytes": 47789
+        "sha256": "5f22b2f201962ec22d13d4e377dc3c860fcb5522bfe7675cde58f21a1fcda5c2",
+        "bytes": 49331
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4540,9 +4540,9 @@
     },
     {
       "identifier": "draft-schrock-action-evidence-boundary",
-      "revision_at_snapshot": "04",
+      "revision_at_snapshot": "05",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published August 16; use -04 as the current generic field-origin-assertion, pinned-adapter, authority-separation, current-status, re-derivable-evaluation, and refusal-evidence baseline",
+      "next_action": "Published August 31; use -05 as the current native-compilation, semantic-loss disclosure, stable native replay-unit, pinned-adapter, authority-separation, current-status, re-derivable-evaluation, refusal-evidence, and one-time consequence-custody baseline. Native-owner review and the complete multi-profile conformance gate remain open",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4724,7 +4724,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-08-22",
+    "updated": "2026-08-31",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -5310,7 +5310,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of August 22, the repository tracks 24 active records: 20 sole-authored series and four coauthored series. Current repository snapshots include CAID -02, Authorization Receipts -12, AEB -04, Bounded Capability Receipts -04, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, DMSC Agent Gateway Gap Analysis -03, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of August 31, the repository tracks 24 active records: 20 sole-authored series and four coauthored series. Current repository snapshots include CAID -02, Authorization Receipts -12, AEB -05, Bounded Capability Receipts -04, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, DMSC Agent Gateway Gap Analysis -03, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",

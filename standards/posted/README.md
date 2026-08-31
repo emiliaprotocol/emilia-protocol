@@ -36,7 +36,7 @@ authoritative for rendered forms.
 
 - `draft-ferro-schrock-memory-projection-record-01`
 - `draft-schrock-ae-challenge-07`
-- `draft-schrock-action-evidence-boundary-04`
+- `draft-schrock-action-evidence-boundary-05`
 - `draft-schrock-action-remedy-receipts-00`
 - `draft-schrock-agent-qualification-statements-00`
 - `draft-schrock-canonical-action-identifier-02`
@@ -80,7 +80,7 @@ subordinate, or demote any active draft.
 The runtime path is [Architecture-02](draft-schrock-ep-architecture-02.xml) →
 [CAID-02](draft-schrock-canonical-action-identifier-02.xml) →
 [AEC-05](draft-schrock-ep-authorization-evidence-chain-05.xml) →
-[AEB-04](draft-schrock-action-evidence-boundary-04.xml): system boundaries,
+[AEB-05](draft-schrock-action-evidence-boundary-05.xml): system boundaries,
 exact material-action matching, evidence satisfaction, then executor-side
 admission and one-time consequence custody.
 
@@ -191,7 +191,7 @@ checksums. Revision -03 is retained in `../archive/`.
 
 ## August 16, 2026 maintenance set
 
-The following current XML, TXT, and HTML snapshots were fetched from the
+The following XML, TXT, and HTML snapshots were fetched from the
 immutable IETF archive after posting. The XML snapshots were verified
 byte-for-byte against the exact submitted source before promotion:
 
@@ -210,3 +210,18 @@ active individual Internet-Draft. Its retained XML and TXT in
 `../profiles/NEXT-GRID-CURTAILMENT-00/` match the immutable IETF archive
 byte-for-byte. The profile packet records the accepted submission, posting,
 digests, and explicit nonclaims.
+
+## August 31, 2026 AEB maintenance revision
+
+`draft-schrock-action-evidence-boundary-05` was posted as an active individual
+Internet-Draft through Datatracker submission 168394. Its XML and TXT are
+byte-for-byte identical to the immutable IETF archive artifacts. The posted
+HTML is a whitespace-normalized local xml2rfc 3.34.0 render because the archive
+delivery path injects request-specific Cloudflare markup; the checksum-pinned
+exact render remains in the provenance packet.
+
+The retained `../staged/NEXT-AEB-05` packet is publication provenance, not an
+upload candidate. Its XML is byte-for-byte identical to the posted source.
+AEB-04 is retained in `../archive/`. Publication does not establish native-owner
+review, completion of the multi-profile conformance gate, working-group
+adoption, RFC status, or IETF endorsement.

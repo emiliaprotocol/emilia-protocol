@@ -19,8 +19,8 @@ The EMILIA source locks are the checked-in posted snapshots recorded by
 
 - `draft-schrock-ep-authorization-receipts-12`, XML SHA-256
   `66eaa988d974f8535063b35efadc5140331006679b5946bc372d50a16efef52d`;
-- `draft-schrock-action-evidence-boundary-04`, XML SHA-256
-  `83f97307a51e7f62200df243f765cb28ee436faae70871df9cb02b15c8d43dd5`;
+- `draft-schrock-action-evidence-boundary-05`, XML SHA-256
+  `53b09b275fd3868dfbea11340a71e4827c38ad3cba2fdd12595cdcf42eb6c240`;
 - `draft-schrock-canonical-action-identifier-02`, XML SHA-256
   `777487b04ac473ad70ff2dd8a0c396657744bb7fd9e92499d4ec0bee67762015`;
   and
@@ -284,7 +284,7 @@ complete mediation at the actual consequence boundary.
 
 ### Specification status and Dependency
 
-Specified by `draft-schrock-action-evidence-boundary-04` and the authorization
+Specified by `draft-schrock-action-evidence-boundary-05` and the authorization
 evidence and CAID snapshots named above. Deployment depends on the resource
 owner's non-bypassable Gate placement, durable store, authenticated current
 status, and provider or system-of-record evidence verifier. This mapping does

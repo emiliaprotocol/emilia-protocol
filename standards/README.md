@@ -77,7 +77,7 @@ complete active portfolio remains the 24 records in
 coauthored records, each with its own scope and revision history.
 
 The separate runtime execution spine is **Architecture-02 -> CAID-02 ->
-AEC-05 -> AEB-04**: architecture and decision boundaries, exact material-action
+AEC-05 -> AEB-05**: architecture and decision boundaries, exact material-action
 identity and matching, evidence satisfaction, then executor-side admission and
 one-time consequence custody. This runtime path is not the four-document
 presentation surface and does not retire, merge, or demote any active profile.
@@ -152,6 +152,18 @@ individual Internet-Draft on August 22, 2026. The retained XML and TXT under
 `profiles/NEXT-GRID-CURTAILMENT-00/` were checked byte-for-byte against the
 immutable IETF archive. Publication is not implementation evidence, deployment
 evidence, working-group adoption, RFC status, or IETF endorsement.
+
+## August 31 AEB maintenance revision
+
+`draft-schrock-action-evidence-boundary-05` was published through Datatracker
+submission 168394. Its XML and TXT match the immutable IETF archive
+byte-for-byte. The posted HTML is a whitespace-normalized local xml2rfc 3.34.0
+render because the archive delivery path injects request-specific Cloudflare
+markup; the checksum-pinned exact render remains in the provenance packet.
+Revision -05 makes AEB a neutral native-compilation target while
+requiring explicit semantic-loss disclosure, exact-action binding, a stable
+native replay unit, and preservation of the AEB lifecycle axes. Native-owner
+review and the complete multi-profile conformance gate remain open.
 
 ## New-filing freeze
 

@@ -60,7 +60,7 @@ const EXPECTED_LOCAL_PINS = Object.freeze({
     '6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f',
   'packages/verify/src/aeb-adapter-contract.ts':
     '38375c23afb5ecc88006d6ce2725cf6e3a94322ddf07ac4de4e7cf4ad404d66a',
-  'standards/posted/draft-schrock-action-evidence-boundary-04.txt':
+  'standards/archive/draft-schrock-action-evidence-boundary-04.txt':
     '23d4daa5e436c4dc321c5e21e75f20965c6430c9807a3007e9c84762d33df63f',
   'standards/posted/draft-schrock-canonical-action-identifier-02.txt':
     '38b3aa55b58c11a89028a64b7a6dbb911cc9b05efad62bb77a0d8a9891ed3cc2',

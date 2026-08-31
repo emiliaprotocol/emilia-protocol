@@ -1,20 +1,22 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# AEB-05 staging packet
+# AEB-05 publication provenance packet
 
-Status: submission authorized on 2026-08-31; Datatracker upload pending.
+Status: published on 2026-08-31 as
+`draft-schrock-action-evidence-boundary-05` through Datatracker submission
+168394.
 
-The current published revision remains
-`draft-schrock-action-evidence-boundary-04` until the Datatracker confirms the
-replacement. The XML under `UPLOAD-THIS/` is the authorized -05 source built
-around the native compilation contract. An AuthZEN-derived local
+The XML under `UPLOAD-THIS/` is the exact submitted -05 source and matches the
+immutable IETF archive byte-for-byte. It is retained for publication
+provenance, not as an upload candidate. The revision is built around the native
+compilation contract. An AuthZEN-derived local
 PEP-observation path, an OAuth
 transaction-challenge path, and a strict WPT-02 plus Transaction Tokens -11
 path pass locally. OAuth transaction challenge and WPT/Transaction Tokens are
 direct external-native candidates. The two-profile gate remains open pending
 native-owner review, the full paired-control audit, and an explicit judgment
 that the two OAuth-adjacent candidates provide enough protocol diversity.
-Those open items limit conformance claims; they do not block publication of the
+Those open items limit conformance claims; they did not block publication of the
 proposed contract for review. The maintainer made the explicit filing decision
 on 2026-08-31.
 
@@ -31,11 +33,11 @@ is introduced.
 
 ## Files
 
-- `UPLOAD-THIS/draft-schrock-action-evidence-boundary-05.xml`: authorized
-  replacement-draft source. Datatracker posting remains unverified until the
-  submission workflow completes.
-- `RENDERS/`: local text and HTML renderings. Only the XML belongs in the
-  Datatracker upload field.
+- `UPLOAD-THIS/draft-schrock-action-evidence-boundary-05.xml`: exact submitted
+  and published source retained for provenance. It is not an upload candidate.
+- `RENDERS/`: checksum-pinned local text and HTML renderings. The text matches
+  the immutable IETF archive byte-for-byte. The clean local HTML is retained
+  because the archive delivery path injects request-specific Cloudflare markup.
 - `NATIVE-COMPILATION-CONTRACT.md`: contribution-ready source text and review
   boundary for the new section.
 - `ORIGIN-LABELS-NATIVE-INPUT.md`: a separate candidate considered for -05.
@@ -71,6 +73,6 @@ turning AEB into an origin taxonomy.
 5. The native protocol owners have had a fair chance to review the mapping and
    nonclaims. Review is not endorsement.
 6. No external protocol is described as endorsing or adopting AEB.
-7. The filing decision was made on 2026-08-31. A passing local packet and an
-   authorization to upload are still not a posted Internet-Draft; only the live
-   Datatracker record establishes publication.
+7. The filing decision, submission, author confirmation, and posting occurred
+   on 2026-08-31. The live Datatracker record is authoritative for publication
+   and status.

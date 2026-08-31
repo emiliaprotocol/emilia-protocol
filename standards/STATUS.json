@@ -1,10 +1,10 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-08-22",
+  "updated": "2026-08-31",
   "active_datatracker_count": 24,
   "active_schrock_datatracker_count": 21,
   "sole_authored_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted contains the current published revision of each of the 20 active sole-authored draft-schrock-* Datatracker records represented in this repository. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. AEB-04, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified byte-for-byte against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
+  "posted_snapshot_policy": "standards/posted contains the current published revision of each of the 20 active sole-authored draft-schrock-* Datatracker records represented in this repository. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. AEB-05, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -125,10 +125,10 @@
         "order": 4,
         "label": "AEB",
         "draft": "draft-schrock-action-evidence-boundary",
-        "revision": "04",
-        "source": "standards/posted/draft-schrock-action-evidence-boundary-04.xml",
+        "revision": "05",
+        "source": "standards/posted/draft-schrock-action-evidence-boundary-05.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/",
-        "snapshot_sha256": "83f97307a51e7f62200df243f765cb28ee436faae70871df9cb02b15c8d43dd5",
+        "snapshot_sha256": "53b09b275fd3868dfbea11340a71e4827c38ad3cba2fdd12595cdcf42eb6c240",
         "runtime_role": "Applies executor-side admission, authority separation, current-status checks, and one-time consequence custody."
       }
     ]
@@ -214,10 +214,10 @@
     },
     {
       "draft": "draft-schrock-action-evidence-boundary",
-      "revision": "04",
+      "revision": "05",
       "layer": "execution_lifecycle",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published August 16; use -04 as the current generic field-origin-assertion, pinned-adapter, authority-separation, current-status, re-derivable-evaluation, and refusal-evidence baseline"
+      "next_action": "Published August 31; use -05 as the current native-compilation, semantic-loss disclosure, stable native replay-unit, pinned-adapter, authority-separation, current-status, re-derivable-evaluation, refusal-evidence, and one-time consequence-custody baseline. Native-owner review and the complete multi-profile conformance gate remain open"
     },
     {
       "draft": "draft-schrock-action-remedy-receipts",
@@ -747,10 +747,10 @@
     "items": [
       {
         "draft": "draft-schrock-action-evidence-boundary-04",
-        "source": "standards/posted/draft-schrock-action-evidence-boundary-04.xml",
+        "source": "standards/archive/draft-schrock-action-evidence-boundary-04.xml",
         "snapshot_sha256": "83f97307a51e7f62200df243f765cb28ee436faae70871df9cb02b15c8d43dd5",
         "datatracker_submission_id": 167790,
-        "state": "published_ietf_archive_verified_exact_local_match"
+        "state": "published_ietf_archive_verified_exact_local_match_superseded_by_05"
       },
       {
         "draft": "draft-schrock-ep-authorization-receipts-12",
@@ -772,6 +772,30 @@
     "txt_sha256": "8dd61f1f66077d64bb185c3a7a5354f46bb19f0d2f28beb9e2ff728a049adb87",
     "verification": "The Datatracker lists revision -00 as an active individual Internet-Draft. The retained XML and TXT are byte-for-byte identical to the immutable IETF archive artifacts. This is publication, not working-group adoption, RFC status, implementation evidence, deployment evidence, or IETF endorsement.",
     "state": "published_ietf_archive_verified_exact_local_match"
+  },
+  "august_31_2026_aeb_maintenance_wave": {
+    "filing_date": "2026-08-31",
+    "item_count": 1,
+    "publication_status": "published_and_ietf_archive_verified_2026_08_31",
+    "filing_order": [
+      "draft-schrock-action-evidence-boundary-05"
+    ],
+    "xml_sha256": "53b09b275fd3868dfbea11340a71e4827c38ad3cba2fdd12595cdcf42eb6c240",
+    "txt_sha256": "402bbdb2ee0906193a188eda4a24f29882ec3604bb5447949cbd0e01f7b6f1cc",
+    "html_sha256": "18929463a8c187643a630d7033bc41179f9c552888cb4a83cf0f9cd2e4be3e89",
+    "verification": "The posted XML and TXT are byte-for-byte identical to the immutable IETF archive artifacts. The posted HTML is a whitespace-normalized local xml2rfc 3.34.0 render because the archive delivery path injects request-specific Cloudflare markup; the checksum-pinned exact render remains in the provenance packet. The XML is byte-for-byte identical to the submitted source retained there.",
+    "provenance_packets": [
+      "standards/staged/NEXT-AEB-05"
+    ],
+    "items": [
+      {
+        "draft": "draft-schrock-action-evidence-boundary-05",
+        "source": "standards/posted/draft-schrock-action-evidence-boundary-05.xml",
+        "snapshot_sha256": "53b09b275fd3868dfbea11340a71e4827c38ad3cba2fdd12595cdcf42eb6c240",
+        "datatracker_submission_id": 168394,
+        "state": "published_ietf_archive_verified_exact_local_match"
+      }
+    ]
   },
   "retired_absorbed": [
     {
@@ -805,7 +829,7 @@
   "held": [],
   "consolidation_rules": [
     "The canonical four-document surface is presentation-only; it does not retire, merge, replace, update, obsolete, or subordinate any active draft.",
-    "The Architecture-02, CAID-02, AEC-05, and AEB-04 runtime execution spine is a separate navigation view; it does not replace the canonical PRESENTATION surface or the active profile portfolio.",
+    "The Architecture-02, CAID-02, AEC-05, and AEB-05 runtime execution spine is a separate navigation view; it does not replace the canonical PRESENTATION surface or the active profile portfolio.",
     "Architecture-02 absorbs the retired Agent Trust Stack map.",
     "AEC owns component verification, action binding, and evidence satisfaction; it does not define effect or ceremony records.",
     "Quorum owns ordered multi-handshake and distinct-human policy semantics.",

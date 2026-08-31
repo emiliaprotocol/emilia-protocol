@@ -192,7 +192,7 @@ Plant the gate at every actuator boundary, widest-adoption-first:
 
 The governed repository inventory currently tracks 24 active Datatracker records: 20
 sole-authored records and four coauthored records. Current snapshots include AE-CHALLENGE -07,
-AEB -04, CAID -02, Architecture -02, AEC -05, Authorization Receipts -12, Bounded Capability
+AEB -05, CAID -02, Architecture -02, AEC -05, Authorization Receipts -12, Bounded Capability
 Receipts -04, Quorum -03, Model-to-Matter -04, and the coauthored GRACE Grid Curtailment -00.
 `standards/STATUS.json` is the repository source and the live Datatracker is authoritative for
 current revision and status. None is an RFC, an adopted working-group item, or IETF endorsement.
