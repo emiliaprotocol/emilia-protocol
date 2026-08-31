@@ -32,11 +32,44 @@ type SupportedAlgorithm = 'ES256' | 'EdDSA';
 
 export const OAUTH_TXN_CHALLENGE_DRAFT_REVISION = 'draft-rosomakho-oauth-txn-challenge-00';
 export const OAUTH_TXN_CHALLENGE_AEB_ADAPTER_ID = 'native:oauth-transaction-challenge';
-export const OAUTH_TXN_CHALLENGE_AEB_ADAPTER_VERSION = '1';
+export const OAUTH_TXN_CHALLENGE_AEB_ADAPTER_VERSION = '3';
 export const OAUTH_TXN_CHALLENGE_CONFIG_VERSION = 'AEB-OAUTH-TXN-CHALLENGE-CONFIG-v1';
 export const OAUTH_TXN_CHALLENGE_TRUST_ROOT_VERSION = 'AEB-OAUTH-TXN-CHALLENGE-ROOT-v1';
-export const OAUTH_TXN_CHALLENGE_MAPPING_VERSION = 'AEB-OAUTH-TXN-CHALLENGE-CAID-MAPPING-v1';
-export const OAUTH_TXN_CHALLENGE_MAPPER_ID = 'mapper:oauth-transaction-exact-action-v1';
+export const OAUTH_TXN_CHALLENGE_MAPPING_VERSION = 'AEB-OAUTH-TXN-CHALLENGE-CAID-MAPPING-v2';
+export const OAUTH_TXN_CHALLENGE_MAPPER_ID = 'mapper:oauth-transaction-exact-action-v2';
+/** Stable across OAuth token reissuance, AEB wrapper changes, and profile revisions. */
+export const OAUTH_TXN_CHALLENGE_REPLAY_NAMESPACE =
+  'emilia:oauth-txn-challenge:protected-resource-transaction:v1';
+
+export const OAUTH_TXN_CHALLENGE_OMITTED_NONMATERIAL_FIELDS = Object.freeze([
+  'challenge.header.alg',
+  'challenge.header.kid',
+  'challenge.header.typ',
+  'challenge.iat',
+  'challenge.exp',
+  'challenge.jti',
+  'challenge.reason',
+  'challenge.reason_uri',
+  'access_token.header.alg',
+  'access_token.header.kid',
+  'access_token.header.typ',
+  'access_token.iat',
+  'access_token.exp',
+  'access_token.jti',
+] as const);
+
+export const OAUTH_TXN_CHALLENGE_SEMANTIC_OMISSION_BASIS = Object.freeze([
+  ...OAUTH_TXN_CHALLENGE_OMITTED_NONMATERIAL_FIELDS.map((path) => Object.freeze({
+    path,
+    relying_party_basis: path.includes('.header.')
+      ? 'signature_and_type_verification_input_not_executed_action_semantics'
+      : path.endsWith('.iat') || path.endsWith('.exp')
+        ? 'freshness_verification_input_not_executed_action_semantics'
+        : path.endsWith('.jti')
+          ? 'artifact_instance_identifier_superseded_by_transaction_scoped_replay_identity'
+          : 'protected_resource_explanation_not_executed_action_semantics',
+  })),
+]);
 
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const B64URL_RE = /^[A-Za-z0-9_-]+$/;
@@ -45,6 +78,7 @@ const ID_RE = /^[A-Za-z0-9][A-Za-z0-9_.:@/#-]{0,511}$/;
 const CONFIG_KEYS = new Set([
   '@version', 'evidence_role', 'subject', 'action_type', 'protected_resource',
   'authorization_server', 'oauth_client_id', 'oauth_subject', 'require_actor_context',
+  'replay_equivalence',
   'clock_skew_seconds', 'max_challenge_lifetime_seconds',
   'max_access_token_lifetime_seconds', 'max_status_age_seconds', 'details_verifier',
 ]);
@@ -63,10 +97,15 @@ const ACCESS_KEYS = new Set([
   'iss', 'sub', 'aud', 'iat', 'exp', 'jti', 'client_id', 'txn', 'authorization_details', 'act',
 ]);
 const EXPECTED_KEYS = new Set(['action_type', 'oauth_transaction']);
-const TXN_ACTION_KEYS_WITH_ACTOR = new Set(['txn', 'authorization_details', 'actor']);
-const TXN_ACTION_KEYS_NO_ACTOR = new Set(['txn', 'authorization_details']);
+const TXN_ACTION_KEYS_WITH_ACTOR = new Set(['txn', 'authorization_details', 'actor', 'verified_context']);
+const TXN_ACTION_KEYS_NO_ACTOR = new Set(['txn', 'authorization_details', 'verified_context']);
+const VERIFIED_CONTEXT_KEYS = new Set([
+  'challenge_issuer', 'challenge_audience', 'access_token_issuer',
+  'access_token_subject', 'access_token_audience', 'access_token_client_id',
+]);
 const MAPPING_KEYS = new Set([
-  '@version', 'native_protocol', 'projection', 'action_type', 'suite', 'definitions',
+  '@version', 'native_protocol', 'projection', 'action_type', 'suite',
+  'semantic_loss_contract', 'definitions',
 ]);
 
 export interface OAuthTransactionChallengeDetailsVerifierDescriptor {
@@ -95,6 +134,8 @@ export interface OAuthTransactionChallengeAdapterConfig {
   oauth_client_id: string;
   oauth_subject: string;
   require_actor_context: boolean;
+  /** Profile rule: a protected-resource transaction identifier is never reusable. */
+  replay_equivalence: 'nonreusable-protected-resource-transaction';
   clock_skew_seconds: number;
   max_challenge_lifetime_seconds: number;
   max_access_token_lifetime_seconds: number;
@@ -185,6 +226,7 @@ function parseConfig(value: unknown): OAuthTransactionChallengeAdapterConfig | n
       || value.subject.native_id !== value.authorization_server
       || !nonEmptyString(value.oauth_client_id) || !nonEmptyString(value.oauth_subject)
       || typeof value.require_actor_context !== 'boolean'
+      || value.replay_equivalence !== 'nonreusable-protected-resource-transaction'
       || !nonNegativeInteger(value.clock_skew_seconds) || value.clock_skew_seconds > 60
       || !nonNegativeInteger(value.max_challenge_lifetime_seconds)
       || value.max_challenge_lifetime_seconds < 1
@@ -314,13 +356,34 @@ function validDetails(value: unknown): boolean {
   try { safeDigest(value); return true; } catch { return false; }
 }
 
-function exactExpectedAction(value: unknown, config: OAuthTransactionChallengeAdapterConfig): value is Obj {
+function exactVerifiedContext(value: unknown): value is Obj {
+  if (!isRecord(value) || !exactKeys(value, VERIFIED_CONTEXT_KEYS)) return false;
+  return [...VERIFIED_CONTEXT_KEYS].every((key) => nonEmptyString(value[key]));
+}
+
+function expectedActionShape(value: unknown, config: OAuthTransactionChallengeAdapterConfig): value is Obj {
   const txnKeys = config.require_actor_context ? TXN_ACTION_KEYS_WITH_ACTOR : TXN_ACTION_KEYS_NO_ACTOR;
   return isRecord(value) && exactKeys(value, EXPECTED_KEYS) && value.action_type === config.action_type
     && isRecord(value.oauth_transaction) && exactKeys(value.oauth_transaction, txnKeys)
     && nonEmptyString(value.oauth_transaction.txn)
     && validDetails(value.oauth_transaction.authorization_details)
+    && exactVerifiedContext(value.oauth_transaction.verified_context)
     && (!config.require_actor_context || isRecord(value.oauth_transaction.actor));
+}
+
+function verifiedContextMatches(value: Obj, config: OAuthTransactionChallengeAdapterConfig): boolean {
+  const transaction = value.oauth_transaction as Obj;
+  const context = transaction.verified_context as Obj;
+  return context.challenge_issuer === config.protected_resource
+    && context.challenge_audience === config.authorization_server
+    && context.access_token_issuer === config.authorization_server
+    && context.access_token_subject === config.oauth_subject
+    && context.access_token_audience === config.protected_resource
+    && context.access_token_client_id === config.oauth_client_id;
+}
+
+function exactExpectedAction(value: unknown, config: OAuthTransactionChallengeAdapterConfig): value is Obj {
+  return expectedActionShape(value, config) && verifiedContextMatches(value, config);
 }
 
 function fallbackNative(input: Omit<AebAdapterInput, 'profile'>, pins: ParsedPins): AebNativeResult {
@@ -342,8 +405,11 @@ function verifyNative(input: Omit<AebAdapterInput, 'profile'>, pins: ParsedPins)
   if (safeDigest(input.adapter_config) !== pins.configDigest || safeDigest(input.trust_roots) !== pins.rootsDigest) {
     return reject(result, 'oauth-txn:constructor_pin_mismatch');
   }
-  if (!exactExpectedAction(input.expected_action, pins.config)) {
+  if (!expectedActionShape(input.expected_action, pins.config)) {
     result.reasons = ['oauth-txn:missing_or_ambiguous_exact_action']; return result;
+  }
+  if (!verifiedContextMatches(input.expected_action, pins.config)) {
+    return reject(result, 'oauth-txn:verified_context_mismatch');
   }
   if (!isRecord(input.artifact) || !exactKeys(input.artifact, ARTIFACT_KEYS)) {
     return reject(result, 'oauth-txn:challenge_and_access_token_required');
@@ -374,6 +440,10 @@ function verifyNative(input: Omit<AebAdapterInput, 'profile'>, pins: ParsedPins)
       || !validDetails(accessClaims.authorization_details)
       || (accessClaims.act !== undefined && !isRecord(accessClaims.act))) {
     return reject(result, 'oauth-txn:access_token_claims_invalid');
+  }
+  if (!pins.config.require_actor_context
+      && (challengeClaims.act !== undefined || accessClaims.act !== undefined)) {
+    return reject(result, 'oauth-txn:actor_context_requires_material_mapping');
   }
   const expectedTxn = input.expected_action.oauth_transaction as Obj;
   if (challengeClaims.txn !== accessClaims.txn || accessClaims.txn !== expectedTxn.txn) {
@@ -411,10 +481,9 @@ function verifyNative(input: Omit<AebAdapterInput, 'profile'>, pins: ParsedPins)
     return reject(result, `oauth-txn:${nonEmptyString(details?.reason) ? details.reason : 'authorization_details_not_verified'}`);
   }
   result.replay_unit = safeDigest({
-    protocol: OAUTH_TXN_CHALLENGE_DRAFT_REVISION,
-    authorization_server: accessClaims.iss,
+    namespace: OAUTH_TXN_CHALLENGE_REPLAY_NAMESPACE,
+    protected_resource: challengeClaims.iss,
     transaction: accessClaims.txn,
-    access_token_jti: accessClaims.jti,
   });
   result.native_verification = 'VERIFIED';
   const status = statusDisposition(input.status, input.now, pins.config.max_status_age_seconds);
@@ -428,7 +497,25 @@ export function createOAuthTransactionChallengeActionDefinition(actionType: stri
   return {
     '@version': OAUTH_TXN_CHALLENGE_MAPPING_VERSION,
     native_protocol: OAUTH_TXN_CHALLENGE_DRAFT_REVISION,
-    projection: 'oauth-transaction-exact-action-v1', action_type: actionType, suite: 'jcs-sha256',
+    projection: 'oauth-transaction-exact-action-v2', action_type: actionType, suite: 'jcs-sha256',
+    semantic_loss_contract: {
+      verified_action_fields: [
+        'challenge.iss',
+        'challenge.aud',
+        'challenge.txn',
+        'challenge.authorization_details',
+        ...(requireActor ? ['challenge.act'] : []),
+        'access_token.iss',
+        'access_token.sub',
+        'access_token.aud',
+        'access_token.client_id',
+        'access_token.txn',
+        'access_token.authorization_details',
+        ...(requireActor ? ['access_token.act'] : []),
+      ],
+      omitted_material_fields: [],
+      omitted_nonmaterial_fields: OAUTH_TXN_CHALLENGE_SEMANTIC_OMISSION_BASIS,
+    },
     definitions: [{
       action_type: actionType,
       required_fields: [{ name: 'action_type', type: 'string' }, { name: 'oauth_transaction', type: 'object' }],
@@ -440,7 +527,7 @@ export function createOAuthTransactionChallengeActionDefinition(actionType: stri
 function validMapping(profile: AebPinnedProfile, config: OAuthTransactionChallengeAdapterConfig): boolean {
   return isRecord(profile) && profile.version === OAUTH_TXN_CHALLENGE_MAPPING_VERSION
     && profile.mapper_id === OAUTH_TXN_CHALLENGE_MAPPER_ID && isRecord(profile.resolver)
-    && profile.resolver.id === OAUTH_TXN_CHALLENGE_MAPPER_ID && profile.resolver.version === '1'
+    && profile.resolver.id === OAUTH_TXN_CHALLENGE_MAPPER_ID && profile.resolver.version === '2'
     && typeof profile.resolver.implementation_digest === 'string' && DIGEST_RE.test(profile.resolver.implementation_digest)
     && isRecord(profile.semantic_equivalence)
     && profile.semantic_equivalence.assertion === 'EQUIVALENT_UNDER_PROFILE'
@@ -448,6 +535,8 @@ function validMapping(profile: AebPinnedProfile, config: OAuthTransactionChallen
     && Array.isArray(profile.semantic_equivalence.omitted_material_fields)
     && profile.semantic_equivalence.omitted_material_fields.length === 0
     && Array.isArray(profile.semantic_equivalence.omitted_nonmaterial_fields)
+    && safeDigest(profile.semantic_equivalence.omitted_nonmaterial_fields)
+      === safeDigest(OAUTH_TXN_CHALLENGE_OMITTED_NONMATERIAL_FIELDS)
     && isRecord(profile.definition) && exactKeys(profile.definition, MAPPING_KEYS)
     && safeDigest(profile.definition)
       === safeDigest(createOAuthTransactionChallengeActionDefinition(config.action_type, config.require_actor_context));

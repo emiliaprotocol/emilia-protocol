@@ -1,0 +1,116 @@
+{
+  "@version": "WIMSE-R10-AEB-SOURCE-LOCK-v0.1",
+  "retrieved_at": "2026-08-31",
+  "requirements_source": {
+    "revision": "draft-reece-wimse-cross-org-delegation-02",
+    "url": "https://www.ietf.org/archive/id/draft-reece-wimse-cross-org-delegation-02.txt",
+    "sha256": "26dca19bc9c4c284b0c2fcdeab9f2abf9231397b9f6df87cb44f2fcc3adf5186",
+    "anchors": [
+      "Section 3.7",
+      "Section 5 R10",
+      "Section 7",
+      "Section 8"
+    ]
+  },
+  "native_sources": [
+    {
+      "id": "asor",
+      "revision": "draft-asor-wimse-agent-delegation-chain-00",
+      "url": "https://www.ietf.org/archive/id/draft-asor-wimse-agent-delegation-chain-00.txt",
+      "sha256": "c36d32864cbdb0405e766cc1485e9197e20ad840dcd4c5ae653ad016c9074ccf",
+      "anchors": [
+        "Section 3",
+        "Section 4",
+        "Section 6",
+        "Section 7"
+      ]
+    },
+    {
+      "id": "hamr",
+      "revision": "draft-hamr-oauth-agent-delegation-00",
+      "url": "https://www.ietf.org/archive/id/draft-hamr-oauth-agent-delegation-00.txt",
+      "sha256": "c8b7eff492d0630ebb5dd26c2f603faa6d325dfcae6832329de39d8af6799729",
+      "anchors": [
+        "Section 5",
+        "Section 6",
+        "Section 7",
+        "Section 8",
+        "Section 9.2",
+        "Section 11",
+        "Section 16"
+      ]
+    },
+    {
+      "id": "agentenvelope",
+      "revision": "draft-mcphillips-agentenvelope-derived-authority-01",
+      "url": "https://www.ietf.org/archive/id/draft-mcphillips-agentenvelope-derived-authority-01.txt",
+      "sha256": "574beda17575ec8d0be512048708f19af4d910269569c6518c051d71ea58c531",
+      "anchors": [
+        "Section 4.1",
+        "Section 6",
+        "Section 9",
+        "Section 15",
+        "Section 16",
+        "Section 18",
+        "Section 21"
+      ]
+    }
+  ],
+  "emilia_sources": [
+    {
+      "revision": "draft-schrock-action-evidence-boundary-04",
+      "url": "https://www.ietf.org/archive/id/draft-schrock-action-evidence-boundary-04.txt",
+      "sha256": "23d4daa5e436c4dc321c5e21e75f20965c6430c9807a3007e9c84762d33df63f"
+    },
+    {
+      "revision": "draft-schrock-canonical-action-identifier-02",
+      "url": "https://www.ietf.org/archive/id/draft-schrock-canonical-action-identifier-02.txt",
+      "sha256": "38b3aa55b58c11a89028a64b7a6dbb911cc9b05efad62bb77a0d8a9891ed3cc2"
+    },
+    {
+      "revision": "draft-schrock-ep-authorization-evidence-chain-05",
+      "url": "https://www.ietf.org/archive/id/draft-schrock-ep-authorization-evidence-chain-05.txt",
+      "sha256": "ea906a245e5e193d6edf3ae52e77810ea1ffa6d06bdfd3ab962be602d91662b7"
+    }
+  ],
+  "local_files": [
+    {
+      "path": "packages/verify/src/aeb-wimse-oauth-adapter.ts",
+      "sha256": "4002f26e3d4596879b7701f02253e0c37af3fd7fe4ffb0737a297aba857284b4",
+      "role": "current native WIMSE OAuth SPT adapter"
+    },
+    {
+      "path": "packages/verify/dist/aeb-consequence-conformance.js",
+      "sha256": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f",
+      "role": "local consequence-admission lifecycle kernel"
+    },
+    {
+      "path": "packages/verify/src/aeb-adapter-contract.ts",
+      "sha256": "38375c23afb5ecc88006d6ce2725cf6e3a94322ddf07ac4de4e7cf4ad404d66a",
+      "role": "native adapter contract"
+    },
+    {
+      "path": "standards/posted/draft-schrock-action-evidence-boundary-04.txt",
+      "sha256": "23d4daa5e436c4dc321c5e21e75f20965c6430c9807a3007e9c84762d33df63f",
+      "role": "AEB revision source"
+    },
+    {
+      "path": "standards/posted/draft-schrock-canonical-action-identifier-02.txt",
+      "sha256": "38b3aa55b58c11a89028a64b7a6dbb911cc9b05efad62bb77a0d8a9891ed3cc2",
+      "role": "exact-action mapping source"
+    },
+    {
+      "path": "standards/posted/draft-schrock-ep-authorization-evidence-chain-05.txt",
+      "sha256": "ea906a245e5e193d6edf3ae52e77810ea1ffa6d06bdfd3ab962be602d91662b7",
+      "role": "human-authorization evidence profile source"
+    }
+  ],
+  "claim_boundary": {
+    "wimse_adoption": false,
+    "reece_endorsement": false,
+    "freedom_to_operate": false,
+    "independent_implementation": false,
+    "production_mediation": false,
+    "note": "The matrix is an EMILIA same-team compatibility analysis over pinned public drafts and local code."
+  }
+}

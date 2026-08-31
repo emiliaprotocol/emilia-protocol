@@ -507,7 +507,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "c96bb681155683554b71160a2527d3ddf7b323406a1b894fad2f4484ab9e9372"
+      "sha256": "db737a439cc77d5382bf7829a1b82a0f92fec24fba9008cc85bb4514ce8b7803"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1051,7 +1051,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "19f4ad5c4cad003f7955cebdd1f8675d85941f75ac6ffc168f6a296897704668"
+      "sha256": "b0899e9464f3a58c816c27d05380db85f8c611fbed50dc10f0c8ed59159ce98f"
     },
     {
       "path": "packages/verify/dist/aeb-aps-adapter.js",
@@ -1086,12 +1086,16 @@
       "sha256": "2662043d35d99e32aa9b39abd2cf9e4d6d5d1f4ecb1e49dc3e088b0cb6569800"
     },
     {
+      "path": "packages/verify/dist/aeb-native-compiler.js",
+      "sha256": "acad523029f0d62670a2bf1b789b6c8555d6a86de4650310efe7933ae374a945"
+    },
+    {
       "path": "packages/verify/dist/aeb-oasnt-adapter.js",
       "sha256": "aa7564f727ffe207249a1d336bcbec002cc449b2f6cff243020ea27f4d344703"
     },
     {
       "path": "packages/verify/dist/aeb-oauth-transaction-challenge-adapter.js",
-      "sha256": "fc42257cb8aad944089ceb6ecd4d67f3f07b040723a9faff8ca3d8e5d7caa068"
+      "sha256": "557bfccd1982bc7b3823d02e7736c9e88742f29c8eb13e316dbbd3cd5958f9c8"
     },
     {
       "path": "packages/verify/dist/aeb-psea-adapter.js",
@@ -1099,7 +1103,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
-      "sha256": "1d87c764a932439af2a5e38e61ec0ddd2438fe91aae8919dbcd53c896f6a7b9f"
+      "sha256": "93e9d73e790673881746fd76dd3d1101ff97d5aa51d270d57fd3d1ec1ff0c5e7"
     },
     {
       "path": "packages/verify/dist/agent-edge-continuity.js",
@@ -1191,7 +1195,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "24a38bfeb2eb98bf2f6d4f47000265efc9c97ab71a50bd0a92e5e03ccf805a86"
+      "sha256": "5234cb7e4b61555d8eb7ee8e08e7df6b84247d2517bbf9d6128755dafb982eb4"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1327,7 +1331,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "8b69f50cc4708dc42fec576d66b23f8a05645a2afa094e36463bbd282deabe10"
+      "sha256": "38375c23afb5ecc88006d6ce2725cf6e3a94322ddf07ac4de4e7cf4ad404d66a"
     },
     {
       "path": "packages/verify/src/authority-program.ts",
@@ -1339,7 +1343,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "b98f02b992726287f0a692845991035ec203693e8dbd2e8a53009164ae21705d"
+      "sha256": "7f6a6c932d2e527c024f9251e78d2a05c80e4a95c7673dd19196041a49ce19db"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

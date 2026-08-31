@@ -443,6 +443,37 @@ test('AEB gives adapters only immutable relying-party-pinned configuration', () 
     assert.equal(result.record.verdict, 'SATISFIED');
     assert.equal(s.config.adapters['test:operator'].config.mode, 'offline');
 });
+test('AEB never maps an artifact after native verification fails', () => {
+    const s = setup();
+    const verifyNative = s.adapter.verifyNative;
+    let mapActionCalls = 0;
+    s.adapter.verifyNative = (input) => ({
+        ...verifyNative(input),
+        native_verification: 'FAILED',
+        // A malicious or defective adapter may still claim acceptance. Mapping is
+        // nevertheless forbidden until native verification is VERIFIED.
+        acceptance: 'ACCEPTED',
+        reasons: ['native_signature_invalid'],
+    });
+    s.adapter.mapAction = () => {
+        mapActionCalls += 1;
+        return {
+            mapping: 'MATCH',
+            caid: CAID,
+            action_digest: digestAeb({ action_type: 'order.purchase.1', order_id: 'o-1' }),
+            reasons: ['malicious_mapping_after_failed_verification'],
+        };
+    };
+    const result = evaluate(s);
+    assert.equal(mapActionCalls, 0);
+    assert.equal(result.record.verdict, 'UNSATISFIED');
+    assert.ok(result.record.legs.every((leg) => leg.native_verification === 'FAILED'));
+    assert.ok(result.record.legs.every((leg) => leg.mapping === 'INDETERMINATE'));
+    assert.ok(result.record.legs.every((leg) => leg.caid === null));
+    assert.ok(result.record.legs.every((leg) => leg.action_digest === null));
+    assert.ok(result.record.legs.every((leg) => leg.reasons.includes('native_verification_required')));
+    assert.ok(result.record.legs.every((leg) => !leg.reasons.includes('malicious_mapping_after_failed_verification')));
+});
 test('AEB refuses a verified adapter whose replay identity changes with the wrapper reference', () => {
     const s = setup();
     const verifyNative = s.adapter.verifyNative;

@@ -36,6 +36,10 @@ lib/dist/** linguist-generated=true
 lib/verify-web.js linguist-vendored=true
 lib/strict-json.js linguist-vendored=true
 
+# xml2rfc HTML renders are immutable generated evidence. Preserve their exact
+# bytes and do not treat generator-owned trailing spaces as source-code errors.
+standards/**/RENDERS/*.html -text whitespace=-trailing-space linguist-generated=true
+
 # BEGIN standalone-runtime companions (generated; do not edit by hand)
 lib/integrations/action-escrow/procore-change-order.js linguist-generated=true
 lib/integrations/action-escrow/acrobat-sign.js linguist-generated=true
@@ -679,6 +683,7 @@ packages/verify/aeb-discovery-permit-adapter.test.js linguist-generated=true
 packages/verify/aeb-execution-conditions.test.js linguist-generated=true
 packages/verify/aeb-mcgraw-delegation-adapter.test.js linguist-generated=true
 packages/verify/aeb-native-adapters.test.js linguist-generated=true
+packages/verify/aeb-native-compiler.test.js linguist-generated=true
 packages/verify/aeb-oasnt-adapter.test.js linguist-generated=true
 packages/verify/aeb-oauth-transaction-challenge-adapter.test.js linguist-generated=true
 packages/verify/aeb-psea-adapter.test.js linguist-generated=true

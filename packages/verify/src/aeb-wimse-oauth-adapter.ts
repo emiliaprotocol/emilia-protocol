@@ -12,10 +12,10 @@
  * headers and claims never select verification keys or broaden those pins.
  *
  * Source lock:
- *   draft-ietf-wimse-http-signature-03
- *   draft-ietf-wimse-workload-creds-01
- *   draft-ietf-wimse-wpt-01
- *   draft-ietf-oauth-transaction-tokens-08
+ *   draft-ietf-wimse-http-signature-06
+ *   draft-ietf-wimse-workload-creds-02
+ *   draft-ietf-wimse-wpt-02
+ *   draft-ietf-oauth-transaction-tokens-11
  *   draft-coetzee-oauth-spt-txn-tokens-03
  *
  * SPT-Txn-03 leaves the exact full-chain parent and transaction-context-hash
@@ -29,35 +29,34 @@ import crypto, { type KeyObject } from 'node:crypto';
 // TypeScript declaration surface in this repository.
 // @ts-expect-error -- checked at runtime and narrowed below.
 import { computeCaid } from '../vendor/caid.mjs';
-import {
-  canonicalizeAeb,
-  digestAeb,
-  type Acceptance,
-  type AebAdapter,
-  type AebAdapterInput,
-  type AebDigest,
-  type AebEvidenceSubject,
-  type AebMappingResult,
-  type AebNativeResult,
-  type AebPinnedProfile,
-  type AebStatusInput,
+import type {
+  Acceptance,
+  AebAdapter,
+  AebAdapterInput,
+  AebDigest,
+  AebEvidenceSubject,
+  AebMappingResult,
+  AebNativeResult,
+  AebPinnedProfile,
+  AebStatusInput,
 } from './aeb-adapter-contract.js';
-import { strictJsonGate } from './strict-json.js';
+import { canonicalizeStrictJson, strictJsonGate } from './strict-json.js';
 
 type Obj = Record<string, unknown>;
 
 export const WIMSE_OAUTH_SPT_AEB_ADAPTER_ID = 'native:wimse-http-signature-oauth-txn-spt-intent';
-export const WIMSE_OAUTH_SPT_AEB_ADAPTER_VERSION = '1';
-export const WIMSE_OAUTH_SPT_AEB_CONFIG_VERSION = 'AEB-WIMSE-OAUTH-SPT-CONFIG-v1';
+export const WIMSE_OAUTH_SPT_AEB_ADAPTER_VERSION = '2';
+export const WIMSE_OAUTH_SPT_AEB_CONFIG_VERSION = 'AEB-WIMSE-OAUTH-SPT-CONFIG-v2';
 export const WIMSE_OAUTH_SPT_TRUST_ROOT_VERSION = 'AEB-WIMSE-OAUTH-SPT-ED25519-ROOT-v1';
-export const WIMSE_OAUTH_SPT_CAID_MAPPING_VERSION = 'AEB-WIMSE-OAUTH-SPT-CAID-MAPPING-v1';
-export const WIMSE_OAUTH_SPT_CAID_MAPPER_ID = 'mapper:wimse-oauth-spt-exact-request-v1';
+export const WIMSE_OAUTH_SPT_CAID_MAPPING_VERSION = 'AEB-WIMSE-OAUTH-SPT-CAID-MAPPING-v2';
+export const WIMSE_OAUTH_SPT_CAID_MAPPER_ID = 'mapper:wimse-oauth-spt-exact-request-v2';
 
-export const WIMSE_HTTP_SIGNATURE_REVISION = 'draft-ietf-wimse-http-signature-03';
-export const WIMSE_WORKLOAD_CREDS_REVISION = 'draft-ietf-wimse-workload-creds-01';
-export const WIMSE_WPT_REVISION = 'draft-ietf-wimse-wpt-01';
-export const OAUTH_TRANSACTION_TOKENS_REVISION = 'draft-ietf-oauth-transaction-tokens-08';
+export const WIMSE_HTTP_SIGNATURE_REVISION = 'draft-ietf-wimse-http-signature-06';
+export const WIMSE_WORKLOAD_CREDS_REVISION = 'draft-ietf-wimse-workload-creds-02';
+export const WIMSE_WPT_REVISION = 'draft-ietf-wimse-wpt-02';
+export const OAUTH_TRANSACTION_TOKENS_REVISION = 'draft-ietf-oauth-transaction-tokens-11';
 export const SPT_TRANSACTION_TOKENS_REVISION = 'draft-coetzee-oauth-spt-txn-tokens-03';
+export const OAUTH_TRANSACTION_TOKEN_REPLAY_NAMESPACE = 'oauth-transaction-token:trust-domain-txn';
 
 const SOURCE_REVISIONS = Object.freeze([
   WIMSE_HTTP_SIGNATURE_REVISION,
@@ -92,6 +91,7 @@ const CONFIG_KEYS = new Set([
   'spt_audience',
   'spt_subject',
   'spt_holder_key',
+  'other_token_headers',
   'action_type',
   'clock_skew_seconds',
   'max_age_seconds',
@@ -129,6 +129,14 @@ const REQUIRED_HTTP_COMPONENTS = Object.freeze([
   '@method',
   '@request-target',
   'content-digest',
+  'txn-token',
+  'workload-identity-token',
+]);
+const RESERVED_OTHER_TOKEN_HEADERS = new Set([
+  'authorization',
+  'content-digest',
+  'signature',
+  'signature-input',
   'txn-token',
   'workload-identity-token',
 ]);
@@ -179,7 +187,7 @@ export interface WimseOAuthSptAdapterConfig {
     native_id: string;
   };
   trust_domain: string;
-  /** Exact -03 `wimse-aud` signature parameter and WPT audience. */
+  /** Exact -06 `wimse-aud` signature parameter and WPT audience. */
   wimse_audience: string;
   /** Exact OAuth Txn-Token trust-domain audience. */
   oauth_audience: string;
@@ -190,6 +198,13 @@ export interface WimseOAuthSptAdapterConfig {
   spt_subject: string;
   /** Opaque -03 holder_key value pinned to the workload-holder key. */
   spt_holder_key: string;
+  /**
+   * Exact lower-case, single-occurrence request header fields whose token
+   * values this relying party understands and requires the WPT `oth` claim to
+   * bind. WPT remains a proof-of-possession and token-binding artifact; this
+   * list does not make any listed token authoritative.
+   */
+  other_token_headers: string[];
   action_type: string;
   clock_skew_seconds: number;
   max_age_seconds: {
@@ -238,6 +253,8 @@ interface ParsedCompactJws {
 interface NormalizedRequest {
   method: string;
   targetUri: string;
+  /** Canonical HTTP target URI with query removed; fragments are rejected. */
+  targetAudience: string;
   requestTarget: string;
   headers: Map<string, string>;
   body: string;
@@ -266,6 +283,15 @@ interface NativeFailure {
 interface StatusDisposition {
   acceptance: Acceptance;
   reasons: string[];
+}
+
+export interface WimseWpt02TokenBindingResult {
+  verification: 'VERIFIED' | 'FAILED';
+  /** Whether the request contains a Txn-Token header. */
+  transaction_token: 'PRESENT' | 'ABSENT';
+  /** Exact understood `oth` header set, sorted independently of JSON order. */
+  other_token_headers: string[];
+  reason: string | null;
 }
 
 function isRecord(value: unknown): value is Obj {
@@ -329,6 +355,19 @@ function sha256Base64url(value: string | Buffer): string {
   return crypto.createHash('sha256').update(value).digest('base64url');
 }
 
+// Keep the WIMSE adapter's small runtime closure independent of the broad AEB
+// contract entry point. These bytes are the compatibility-frozen AEB digest:
+// SHA-256 over the shared strict canonical JSON representation, with no prefix.
+function canonicalizeAeb(value: unknown): string {
+  return canonicalizeStrictJson(value);
+}
+
+function digestAeb(value: unknown): AebDigest {
+  return `sha256:${crypto.createHash('sha256')
+    .update(Buffer.from(canonicalizeAeb(value), 'utf8'))
+    .digest('hex')}`;
+}
+
 function canonicalSpki(value: unknown): KeyObject | null {
   if (typeof value !== 'string' || !B64URL_RE.test(value) || value.length % 4 === 1) return null;
   try {
@@ -369,6 +408,64 @@ function absoluteHttpsUrl(value: unknown): boolean {
 }
 
 /**
+ * Closed audience comparison rule for the WPT-02 profile. Both the pinned
+ * audience and received target URI must already be in WHATWG URL serialized
+ * form. The pinned audience has no query. A request query is ignored exactly
+ * as WPT-02 requires; no authority or path alias is accepted.
+ */
+function canonicalWimseAudience(value: unknown): boolean {
+  if (!nonEmptyString(value)) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:'
+      && parsed.username === ''
+      && parsed.password === ''
+      && parsed.hostname.length > 0
+      && parsed.search === ''
+      && parsed.hash === ''
+      && parsed.href === value;
+  } catch {
+    return false;
+  }
+}
+
+function wptTargetAudience(value: unknown): string | null {
+  if (!nonEmptyString(value)) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:'
+        || parsed.username !== ''
+        || parsed.password !== ''
+        || parsed.hostname.length === 0
+        || parsed.hash !== ''
+        || parsed.href !== value) return null;
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Stable single-spend identity for a native Txn-Token transaction.
+ * Transaction Tokens -11 defines `aud` as the Trust Domain and says `txn`
+ * should be unique within that domain. The draft revision and optional `iss`
+ * are verification metadata, not replay-key material.
+ */
+export function deriveOAuthTransactionTokenReplayUnit(
+  trustDomain: unknown,
+  transactionId: unknown,
+): AebDigest {
+  if (!nonEmptyString(trustDomain) || !nonEmptyString(transactionId)) {
+    throw new TypeError('invalid OAuth Transaction Token replay identity');
+  }
+  return digestAeb({
+    native_namespace: OAUTH_TRANSACTION_TOKEN_REPLAY_NAMESPACE,
+    trust_domain: trustDomain,
+    txn: transactionId,
+  });
+}
+
+/**
  * Conservative relying-party profile for the generic WIMSE Workload
  * Identifier URI. The scheme remains deployment-selected, including `spiffe`,
  * while the exact spelling accepted by this adapter has one comparison form.
@@ -385,6 +482,20 @@ function canonicalWorkloadSubject(value: unknown, trustDomain: string): boolean 
       && WORKLOAD_PATH_SEGMENT_RE.test(segment));
 }
 
+function normalizedOtherTokenHeaders(value: unknown): string[] | null {
+  if (!Array.isArray(value) || value.length > 32) return null;
+  const headers: string[] = [];
+  for (const candidate of value) {
+    if (typeof candidate !== 'string'
+        || candidate !== candidate.toLowerCase()
+        || !HEADER_NAME_RE.test(candidate)
+        || RESERVED_OTHER_TOKEN_HEADERS.has(candidate)
+        || headers.includes(candidate)) return null;
+    headers.push(candidate);
+  }
+  return headers.sort();
+}
+
 function parseConfig(value: unknown): WimseOAuthSptAdapterConfig | null {
   if (!isRecord(value)
       || !exactKeys(value, CONFIG_KEYS)
@@ -399,7 +510,7 @@ function parseConfig(value: unknown): WimseOAuthSptAdapterConfig | null {
       || !nonEmptyString(value.trust_domain)
       || !TRUST_DOMAIN_RE.test(value.trust_domain)
       || value.trust_domain !== value.trust_domain.toLowerCase()
-      || !absoluteHttpsUrl(value.wimse_audience)
+      || !canonicalWimseAudience(value.wimse_audience)
       || !nonEmptyString(value.oauth_audience)
       || !nonEmptyString(value.oauth_subject)
       || !nonEmptyString(value.oauth_scope)
@@ -416,8 +527,16 @@ function parseConfig(value: unknown): WimseOAuthSptAdapterConfig | null {
       || Object.values(value.max_age_seconds).some((age) => Number(age) > 86_400)) {
     return null;
   }
+  const otherTokenHeaders = normalizedOtherTokenHeaders(value.other_token_headers);
+  if (otherTokenHeaders === null
+      || !Array.isArray(value.other_token_headers)
+      || value.other_token_headers.some((header, index) => header !== otherTokenHeaders[index])) {
+    return null;
+  }
   if (!canonicalWorkloadSubject(value.subject.native_id, value.trust_domain)) return null;
-  return structuredClone(value) as unknown as WimseOAuthSptAdapterConfig;
+  const config = structuredClone(value) as unknown as WimseOAuthSptAdapterConfig;
+  config.other_token_headers = otherTokenHeaders;
+  return config;
 }
 
 function parseTrustRoots(
@@ -574,19 +693,37 @@ function timeFailure(
   return null;
 }
 
-function normalizeRequest(value: unknown): NormalizedRequest | null {
-  if (!isRecord(value)
-      || !exactKeys(value, REQUEST_KEYS)
-      || typeof value.method !== 'string'
-      || !METHOD_RE.test(value.method)
-      || typeof value.target_uri !== 'string'
-      || !absoluteHttpsUrl(value.target_uri)
-      || !isRecord(value.headers)
-      || typeof value.body !== 'string'
-      || value.body.includes('\ufffd')) return null;
-  const target = new URL(value.target_uri);
+function wptTimeFailure(
+  claims: Obj,
+  nowSeconds: number,
+  maxAgeSeconds: number,
+  skewSeconds: number,
+): string | null {
+  if (!safeInteger(claims.exp)) return 'wpt_exp_missing_or_invalid';
+  const expires = Number(claims.exp);
+  if (expires <= nowSeconds - skewSeconds) return 'wpt_expired';
+  if (expires > nowSeconds + maxAgeSeconds + skewSeconds) return 'wpt_max_age_exceeded';
+  if (Object.hasOwn(claims, 'iat')) {
+    if (!safeInteger(claims.iat)) return 'wpt_iat_invalid';
+    const issuedAt = Number(claims.iat);
+    if (issuedAt > nowSeconds + skewSeconds) return 'wpt_issued_in_future';
+    if (expires <= issuedAt || expires - issuedAt > maxAgeSeconds) {
+      return 'wpt_invalid_time_window';
+    }
+  }
+  if (Object.hasOwn(claims, 'nbf')) {
+    if (!safeInteger(claims.nbf)) return 'wpt_nbf_invalid';
+    const notBefore = Number(claims.nbf);
+    if (notBefore > nowSeconds + skewSeconds) return 'wpt_not_yet_valid';
+    if (expires <= notBefore) return 'wpt_invalid_time_window';
+  }
+  return null;
+}
+
+function normalizedHeaderMap(value: unknown): Map<string, string> | null {
+  if (!isRecord(value)) return null;
   const headers = new Map<string, string>();
-  for (const [rawName, rawValue] of Object.entries(value.headers)) {
+  for (const [rawName, rawValue] of Object.entries(value)) {
     if (!HEADER_NAME_RE.test(rawName)
         || typeof rawValue !== 'string'
         || /[\r\n\u0000]/.test(rawValue)) return null;
@@ -594,9 +731,101 @@ function normalizeRequest(value: unknown): NormalizedRequest | null {
     if (headers.has(name)) return null;
     headers.set(name, rawValue.replace(/^[\t ]+|[\t ]+$/g, ''));
   }
+  return headers;
+}
+
+function asciiTokenHash(value: unknown): string | null {
+  if (typeof value !== 'string'
+      || value.length === 0
+      || !/^[\x09\x20-\x7e]+$/.test(value)) return null;
+  return sha256Base64url(Buffer.from(value, 'ascii'));
+}
+
+function verifyWpt02TokenBindings(
+  claims: Obj,
+  headers: Map<string, string>,
+  understoodOtherTokenHeaders: readonly string[],
+): WimseWpt02TokenBindingResult {
+  const failed = (reason: string): WimseWpt02TokenBindingResult => ({
+    verification: 'FAILED',
+    transaction_token: headers.has('txn-token') ? 'PRESENT' : 'ABSENT',
+    other_token_headers: [...understoodOtherTokenHeaders].sort(),
+    reason,
+  });
+  const txnToken = headers.get('txn-token');
+  if (txnToken === undefined) {
+    if (Object.hasOwn(claims, 'tth')) return failed('unexpected_tth_without_txn_token');
+  } else {
+    const expected = asciiTokenHash(txnToken);
+    if (expected === null || !safeEqualString(claims.tth, expected)) {
+      return failed('tth_missing_or_mismatch');
+    }
+  }
+
+  const expectedHeaders = [...understoodOtherTokenHeaders].sort();
+  if (expectedHeaders.length === 0) {
+    if (Object.hasOwn(claims, 'oth')) return failed('unexpected_oth_without_understood_tokens');
+  } else {
+    if (!isRecord(claims.oth)
+        || !exactKeys(claims.oth, new Set(expectedHeaders))) {
+      return failed('oth_header_set_mismatch');
+    }
+    for (const header of expectedHeaders) {
+      const expected = asciiTokenHash(headers.get(header));
+      if (expected === null || !safeEqualString(claims.oth[header], expected)) {
+        return failed(`oth_hash_mismatch:${header}`);
+      }
+    }
+  }
+  return {
+    verification: 'VERIFIED',
+    transaction_token: txnToken === undefined ? 'ABSENT' : 'PRESENT',
+    other_token_headers: expectedHeaders,
+    reason: null,
+  };
+}
+
+/**
+ * Reperform only the `tth` and `oth` byte-binding rules from WPT-02.
+ * This function does not verify a WPT signature, authenticate a workload,
+ * authorize a request, reserve an operation, or establish an external effect.
+ */
+export function verifyWimseWpt02TokenBindingClaims(
+  wptClaims: unknown,
+  requestHeaders: unknown,
+  understoodOtherTokenHeaders: readonly string[],
+): WimseWpt02TokenBindingResult {
+  const headers = normalizedHeaderMap(requestHeaders);
+  const understood = normalizedOtherTokenHeaders(understoodOtherTokenHeaders);
+  if (!isRecord(wptClaims) || !headers || !understood) {
+    return {
+      verification: 'FAILED',
+      transaction_token: 'ABSENT',
+      other_token_headers: [],
+      reason: 'binding_input_malformed',
+    };
+  }
+  return verifyWpt02TokenBindings(wptClaims, headers, understood);
+}
+
+function normalizeRequest(value: unknown): NormalizedRequest | null {
+  if (!isRecord(value)
+      || !exactKeys(value, REQUEST_KEYS)
+      || typeof value.method !== 'string'
+      || !METHOD_RE.test(value.method)
+      || typeof value.target_uri !== 'string'
+      || !isRecord(value.headers)
+      || typeof value.body !== 'string'
+      || value.body.includes('\ufffd')) return null;
+  const targetAudience = wptTargetAudience(value.target_uri);
+  if (targetAudience === null) return null;
+  const target = new URL(value.target_uri);
+  const headers = normalizedHeaderMap(value.headers);
+  if (!headers) return null;
   return {
     method: value.method,
     targetUri: value.target_uri,
+    targetAudience,
     requestTarget: `${target.pathname}${target.search}`,
     headers,
     body: value.body,
@@ -816,11 +1045,11 @@ function sptIntentDigest(intent: Obj): string | null {
   }
 }
 
-function bearerToken(request: NormalizedRequest): string | null {
+function wptCredential(request: NormalizedRequest): string | null {
   const authorization = request.headers.get('authorization');
   if (authorization === undefined) return null;
-  const match = /^Bearer ([^\s,]+)$/.exec(authorization);
-  return match?.[1] ?? '';
+  const match = /^WPT +([^\s,]+)$/i.exec(authorization);
+  return match?.[1] ?? null;
 }
 
 function failure(reason: string, acceptance: Acceptance = 'REJECTED'): NativeFailure {
@@ -848,14 +1077,17 @@ function verifyArtifact(
   }
   const request = normalizeRequest(artifact.request);
   if (!request) return failure('request_malformed');
+  if (request.targetAudience !== pins.config.wimse_audience) {
+    return failure('request_target_audience_mismatch');
+  }
   if (request.headers.get('workload-identity-token') !== artifact.wit
-      || request.headers.get('workload-proof-token') !== artifact.wpt
+      || wptCredential(request) !== artifact.wpt
       || request.headers.get('txn-token') !== artifact.txn_token) {
     return failure('native_header_value_mismatch');
   }
   if (!validContentDigest(request)) return failure('content_digest_mismatch');
 
-  // -03 requires validating the WIT before the request signature.
+  // -06 requires validating the WIT before the request signature.
   const wit = verifyCompactJws(artifact.wit, pins.witIssuer, WIT_HEADER_KEYS, 'wit+jwt');
   if (!wit) return failure('wit_signature_or_header_invalid');
   const witTime = timeFailure(
@@ -898,31 +1130,34 @@ function verifyArtifact(
       || !validateJcsValue(oauth.claims.tctx)) {
     return failure('oauth_txn_claims_mismatch');
   }
+  if (Object.hasOwn(oauth.claims, 'rctx')) {
+    return failure('oauth_txn_rctx_unsupported');
+  }
 
   const wpt = verifyCompactJws(artifact.wpt, pins.holder, WPT_HEADER_KEYS, 'wpt+jwt', false);
   if (!wpt) return failure('wpt_signature_or_header_invalid');
-  const wptTime = timeFailure(
+  const wptTime = wptTimeFailure(
     wpt.claims,
     nowSeconds,
     pins.config.max_age_seconds.wpt,
     pins.config.clock_skew_seconds,
-    'wpt',
   );
   if (wptTime) return failure(wptTime);
   if (wpt.claims.aud !== pins.config.wimse_audience
       || !nonEmptyString(wpt.claims.jti)
-      || !safeEqualString(wpt.claims.wth, sha256Base64url(Buffer.from(String(artifact.wit), 'ascii')))
-      || !safeEqualString(wpt.claims.tth, sha256Base64url(Buffer.from(String(artifact.txn_token), 'ascii')))) {
-    return failure('wpt_audience_wth_or_tth_mismatch');
+      || asciiTokenHash(artifact.wit) === null
+      || !safeEqualString(wpt.claims.wth, asciiTokenHash(artifact.wit))) {
+    return failure('wpt_audience_or_wth_mismatch');
   }
-  const bearer = bearerToken(request);
-  if (bearer === '') return failure('authorization_header_malformed');
-  if (bearer === null) {
-    if (Object.hasOwn(wpt.claims, 'ath')) return failure('unexpected_wpt_ath');
-  } else if (!safeEqualString(wpt.claims.ath, sha256Base64url(Buffer.from(bearer, 'ascii')))) {
-    return failure('wpt_ath_mismatch');
+  if (Object.hasOwn(wpt.claims, 'ath')) return failure('unexpected_wpt_ath');
+  const tokenBindings = verifyWpt02TokenBindings(
+    wpt.claims,
+    request.headers,
+    pins.config.other_token_headers,
+  );
+  if (tokenBindings.verification !== 'VERIFIED') {
+    return failure(`wpt_token_binding_failed:${tokenBindings.reason}`);
   }
-  if (Object.hasOwn(wpt.claims, 'oth')) return failure('unsupported_wpt_oth', 'INDETERMINATE');
 
   const httpSignature = verifyHttpSignature(
     request,
@@ -979,11 +1214,10 @@ function verifyArtifact(
     transaction,
   };
   if (sptIntent !== null) action.spt_intent = sptIntent;
-  const replayUnit = digestAeb({
-    native_protocol: OAUTH_TRANSACTION_TOKENS_REVISION,
-    trust_domain: oauth.claims.aud,
-    txn: oauth.claims.txn,
-  });
+  const replayUnit = deriveOAuthTransactionTokenReplayUnit(
+    oauth.claims.aud,
+    oauth.claims.txn,
+  );
   return { action, replayUnit };
 }
 
@@ -1121,7 +1355,7 @@ function validMappingProfile(
       || profile.mapper_id !== WIMSE_OAUTH_SPT_CAID_MAPPER_ID
       || !isRecord(profile.resolver)
       || profile.resolver.id !== WIMSE_OAUTH_SPT_CAID_MAPPER_ID
-      || profile.resolver.version !== '1'
+      || profile.resolver.version !== '2'
       || typeof profile.resolver.implementation_digest !== 'string'
       || !DIGEST_RE.test(profile.resolver.implementation_digest)
       || !isRecord(profile.semantic_equivalence)

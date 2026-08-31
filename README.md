@@ -116,6 +116,29 @@ It is format-neutral and self-run. A passing report is self-attested
 conformance evidence—not an audit, certification, production-deployment claim,
 or permission to execute an action.
 
+## Compile native protocols. Keep them native.
+
+The AEB native compiler gives protocol and gateway developers one typed target
+without asking them to mint an EMILIA credential or change their wire format.
+A relying party pins the native verifier, trust inputs, mapping profile,
+protocol descriptor, evidence requirement, and exact expected action. The
+compiler returns the native result, semantic-loss report, exact-action match,
+evidence result, and caller-supplied local-policy input as separate axes. It
+does not claim to observe the executor or establish local authorization.
+
+Run the signed native-artifact example:
+
+```bash
+npm --prefix packages/verify run build
+node examples/aeb-native-compiler-v1/demo.mjs
+```
+
+The compiler is pure and side-effect free. Reservation, provider entry,
+outcome, retry, and reconciliation remain explicitly unestablished until a
+Gate runtime performs those transitions. Start with the
+[developer example](examples/aeb-native-compiler-v1/README.md) and the
+[adapter contract](docs/protocol/aeb-adapter-contract-v1.md).
+
 For a focused executable proof of the repository's Gate path, run:
 
 ```bash

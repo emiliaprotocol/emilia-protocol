@@ -1,0 +1,451 @@
+{
+  "@version": "OAUTH-TXN-CHALLENGE-AEB-REPORT-v0.1",
+  "profile": "OAUTH-TXN-CHALLENGE-AEB-COMPOSITION-v0.1",
+  "executed_at": "2026-08-31T19:00:30Z",
+  "implementation": {
+    "owner": "EMILIA Protocol",
+    "revision": "v0.1",
+    "independent_implementation": false,
+    "production_mediation": false
+  },
+  "source_pins": {
+    "source_lock_digest": "sha256:eefe460791848c7526a58c6014cb1382238a09e25c5a005c54f710587120fb97",
+    "native_fixture_digest": "sha256:a1495d24f265dad28f7334ad7db5f06fdb140ff7e77ae0f6f90907c97e2c9e98",
+    "upstream_id": "draft-rosomakho-oauth-txn-challenge-00",
+    "upstream_url": "https://www.ietf.org/archive/id/draft-rosomakho-oauth-txn-challenge-00.txt",
+    "upstream_bytes": 70435,
+    "upstream_sha256": "a50c1fee4ce4ae486aa6e6739e9927586dc5c14a209434f44f76200354a8cead",
+    "local_implementation_digest": "sha256:286f1d79073b0a5e054e8bcc3d2a24ae525ee3f3ad8cb0b7e5d933293610c5b8",
+    "adapter_id": "native:oauth-transaction-challenge",
+    "adapter_version": "3",
+    "native_compiler_version": "EP-AEB-NATIVE-COMPILER-v1",
+    "consequence_kernel_version": "AEB-CONSEQUENCE-CONFORMANCE-v1"
+  },
+  "claim_scope": {
+    "atomicity": {
+      "profile": "local_atomic",
+      "guarantees": [
+        "one_linearizable_local_admission_domain",
+        "operation_and_native_replay_reserved_before_invocation",
+        "execution_authority_consumed_before_provider_entry"
+      ],
+      "exclusions": [
+        "remote_atomicity",
+        "federated_atomicity",
+        "provider_commitment",
+        "observed_effect_truth",
+        "downstream_exactly_once"
+      ]
+    },
+    "guarantees": [
+      "source_pinned_native_pair_verified_under_relying_party_keys",
+      "primary_local_implementation_bytes_pinned",
+      "verified_issuer_audience_subject_client_actor_transaction_and_exact_rar_compiled_to_caid",
+      "one_transaction_replay_unit_survives_access_token_reissuance_and_wrapper_changes",
+      "single_process_atomic_store_reserves_exactly_one_concurrent_twin_transaction",
+      "timeout_consumes_retry_authority_until_exact_authenticated_reconciliation"
+    ],
+    "exclusions": [
+      "challenge_is_not_authorization",
+      "pending_transaction_authorization_id_is_not_authorization",
+      "access_token_does_not_prove_named_human_identity",
+      "profile_does_not_reperform_authorization_server_policy_or_consent_correctness",
+      "sender_constrained_token_or_channel_binding_is_not_established",
+      "nonreusable_transaction_rule_is_application_profile_not_oauth_requirement",
+      "compiler_report_is_not_authorization_or_credential",
+      "native_verification_does_not_prove_provider_entry_execution_or_outcome",
+      "local_atomicity_does_not_prove_remote_or_downstream_exactly_once",
+      "single_process_promise_race_does_not_establish_distributed_store_concurrency",
+      "profile_is_signed_jwt_with_inline_exact_rar_not_the_full_base_draft",
+      "indeterminate_does_not_prove_provider_success_or_failure",
+      "test_harness_is_not_independent_implementation_or_production_mediation",
+      "internet_draft_is_not_ietf_adoption_or_endorsement"
+    ]
+  },
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0
+  },
+  "cases": [
+    {
+      "id": "exact_transaction_admits",
+      "passed": true,
+      "expected": {
+        "compiler_axes": {
+          "verified": "VERIFIED",
+          "accepted": "ACCEPTED",
+          "match": "MATCH",
+          "satisfied": "SATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "consequence": {
+          "decision": "ADMIT",
+          "reservation": "RESERVED"
+        },
+        "provider_entry": "AUTHORIZED_NOT_ENTERED"
+      },
+      "observed": {
+        "compiler_axes": {
+          "verified": "VERIFIED",
+          "accepted": "ACCEPTED",
+          "match": "MATCH",
+          "satisfied": "SATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "consequence": {
+          "decision": "ADMIT",
+          "reservation": "RESERVED"
+        },
+        "provider_entry": "AUTHORIZED_NOT_ENTERED"
+      },
+      "details": {
+        "compiler_report_digest": "sha256:4b2ba1d26766441bb81e1d7ccba4abdbec63748ee6863b04d0093b9667ab3379",
+        "artifact_digest": "sha256:34f82763a4442a04cd441080efcfbc9e6dd5b3fd6ce789c5dc0e91e351affccd",
+        "native_replay_unit": "sha256:cee58abdfe07349976fc02acc4b46af7e8ec076aba04b092bf23cf607190b1cb",
+        "compiler_replay_unit": "sha256:78632a2ceaf6b116d5bcf9e9f0a9ba6a6cc07b4a0b82e8a6b8b26c2328a5367c",
+        "compiler_local_authorization": "NOT_EVALUATED",
+        "compiler_provider_entry": "NOT_ESTABLISHED",
+        "compiler_provider_outcome": "NOT_ESTABLISHED",
+        "compiler_observed_effect": "NOT_ESTABLISHED",
+        "report_is_credential": false
+      }
+    },
+    {
+      "id": "material_details_change_refuses",
+      "passed": true,
+      "expected": {
+        "compiler_axes": {
+          "verified": "FAILED",
+          "accepted": "REJECTED",
+          "match": "INDETERMINATE",
+          "satisfied": "UNSATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      },
+      "observed": {
+        "compiler_axes": {
+          "verified": "FAILED",
+          "accepted": "REJECTED",
+          "match": "INDETERMINATE",
+          "satisfied": "UNSATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      },
+      "details": {
+        "compiler_report_digest": "sha256:5f0c3adb742363b8dd98ad722dbfb514ae2a0edd4995756af6baa7330bb6e5e9",
+        "artifact_digest": "sha256:34f82763a4442a04cd441080efcfbc9e6dd5b3fd6ce789c5dc0e91e351affccd",
+        "native_replay_unit": "sha256:34f82763a4442a04cd441080efcfbc9e6dd5b3fd6ce789c5dc0e91e351affccd",
+        "compiler_replay_unit": "sha256:61641b65f5fc46ba382966433f2d6e5de8bf64202f5d0dc1b1ac1889c24ce4a7",
+        "compiler_local_authorization": "NOT_EVALUATED",
+        "compiler_provider_entry": "NOT_ESTABLISHED",
+        "compiler_provider_outcome": "NOT_ESTABLISHED",
+        "compiler_observed_effect": "NOT_ESTABLISHED",
+        "report_is_credential": false
+      }
+    },
+    {
+      "id": "transaction_mismatch_refuses",
+      "passed": true,
+      "expected": {
+        "compiler_axes": {
+          "verified": "FAILED",
+          "accepted": "REJECTED",
+          "match": "INDETERMINATE",
+          "satisfied": "UNSATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      },
+      "observed": {
+        "compiler_axes": {
+          "verified": "FAILED",
+          "accepted": "REJECTED",
+          "match": "INDETERMINATE",
+          "satisfied": "UNSATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      },
+      "details": {
+        "compiler_report_digest": "sha256:2472db4174684c61c4939d1e99282642283938b8d247d4f210d5dbe48465cb85",
+        "artifact_digest": "sha256:34f82763a4442a04cd441080efcfbc9e6dd5b3fd6ce789c5dc0e91e351affccd",
+        "native_replay_unit": "sha256:34f82763a4442a04cd441080efcfbc9e6dd5b3fd6ce789c5dc0e91e351affccd",
+        "compiler_replay_unit": "sha256:61641b65f5fc46ba382966433f2d6e5de8bf64202f5d0dc1b1ac1889c24ce4a7",
+        "compiler_local_authorization": "NOT_EVALUATED",
+        "compiler_provider_entry": "NOT_ESTABLISHED",
+        "compiler_provider_outcome": "NOT_ESTABLISHED",
+        "compiler_observed_effect": "NOT_ESTABLISHED",
+        "report_is_credential": false
+      }
+    },
+    {
+      "id": "challenge_alone_refuses",
+      "passed": true,
+      "expected": {
+        "compiler_axes": {
+          "verified": "FAILED",
+          "accepted": "REJECTED",
+          "match": "INDETERMINATE",
+          "satisfied": "UNSATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      },
+      "observed": {
+        "compiler_axes": {
+          "verified": "FAILED",
+          "accepted": "REJECTED",
+          "match": "INDETERMINATE",
+          "satisfied": "UNSATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      },
+      "details": {
+        "compiler_report_digest": "sha256:fa6857492a9cf637a51aaa59848c569daf059b2eaf91b35cfccf43f0a76eed40",
+        "artifact_digest": "sha256:5ba860db88c57faaedfce737eca461ce207dea2896fce2a81c4c2eb4529a932b",
+        "native_replay_unit": "sha256:5ba860db88c57faaedfce737eca461ce207dea2896fce2a81c4c2eb4529a932b",
+        "compiler_replay_unit": "sha256:0b5a572bb529cbcbc0b6a123324ca9afa306bf9451120448986a37b30f6760af",
+        "compiler_local_authorization": "NOT_EVALUATED",
+        "compiler_provider_entry": "NOT_ESTABLISHED",
+        "compiler_provider_outcome": "NOT_ESTABLISHED",
+        "compiler_observed_effect": "NOT_ESTABLISHED",
+        "report_is_credential": false
+      }
+    },
+    {
+      "id": "twin_token_concurrent_admission_one_reservation",
+      "passed": true,
+      "expected": {
+        "same_native_replay_unit": true,
+        "promise_race": {
+          "arrivals": 2,
+          "admission_states": [
+            "AUTHORIZED",
+            "REFUSED"
+          ],
+          "admission_reasons": [
+            "consumption_conflict",
+            "reserved_for_execution"
+          ],
+          "reservation_states": [
+            "AVAILABLE",
+            "RESERVED"
+          ]
+        },
+        "provider_entry": "ONE_ENTRY_AUTHORIZED_OTHER_REFUSED"
+      },
+      "observed": {
+        "same_native_replay_unit": true,
+        "promise_race": {
+          "arrivals": 2,
+          "admission_states": [
+            "AUTHORIZED",
+            "REFUSED"
+          ],
+          "admission_reasons": [
+            "consumption_conflict",
+            "reserved_for_execution"
+          ],
+          "reservation_states": [
+            "AVAILABLE",
+            "RESERVED"
+          ]
+        },
+        "provider_entry": "ONE_ENTRY_AUTHORIZED_OTHER_REFUSED"
+      },
+      "details": {
+        "first": {
+          "compiler_report_digest": "sha256:032e2ccae53a52fc354489da07264829c3151b23afe65953566d71624f467aba",
+          "artifact_digest": "sha256:34f82763a4442a04cd441080efcfbc9e6dd5b3fd6ce789c5dc0e91e351affccd",
+          "native_replay_unit": "sha256:cee58abdfe07349976fc02acc4b46af7e8ec076aba04b092bf23cf607190b1cb",
+          "compiler_replay_unit": "sha256:78632a2ceaf6b116d5bcf9e9f0a9ba6a6cc07b4a0b82e8a6b8b26c2328a5367c",
+          "compiler_local_authorization": "NOT_EVALUATED",
+          "compiler_provider_entry": "NOT_ESTABLISHED",
+          "compiler_provider_outcome": "NOT_ESTABLISHED",
+          "compiler_observed_effect": "NOT_ESTABLISHED",
+          "report_is_credential": false
+        },
+        "twin": {
+          "compiler_report_digest": "sha256:7cb0767efa6e1f5258c3bc4151798b0a31958579423ff0ba903fae0c96089a09",
+          "artifact_digest": "sha256:45f8d0a8b6627427e305520c73d580daee6e1712c5829b17bb3d56755121a6fa",
+          "native_replay_unit": "sha256:cee58abdfe07349976fc02acc4b46af7e8ec076aba04b092bf23cf607190b1cb",
+          "compiler_replay_unit": "sha256:78632a2ceaf6b116d5bcf9e9f0a9ba6a6cc07b4a0b82e8a6b8b26c2328a5367c",
+          "compiler_local_authorization": "NOT_EVALUATED",
+          "compiler_provider_entry": "NOT_ESTABLISHED",
+          "compiler_provider_outcome": "NOT_ESTABLISHED",
+          "compiler_observed_effect": "NOT_ESTABLISHED",
+          "report_is_credential": false
+        },
+        "signed_evaluations_verified_for_execution": true,
+        "store": "InMemoryAebConsumptionStore",
+        "concurrency_scope": "single_process_promise_barrier"
+      }
+    },
+    {
+      "id": "timeout_after_dispatch_indeterminate",
+      "passed": true,
+      "expected": {
+        "consequence": {
+          "decision": "INDETERMINATE",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REQUIRED",
+          "reasons": [
+            "timeout_after_dispatch"
+          ]
+        },
+        "provider_entry": "DISPATCHED_OUTCOME_UNKNOWN"
+      },
+      "observed": {
+        "consequence": {
+          "decision": "INDETERMINATE",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REQUIRED",
+          "reasons": [
+            "timeout_after_dispatch"
+          ]
+        },
+        "provider_entry": "DISPATCHED_OUTCOME_UNKNOWN"
+      },
+      "details": {
+        "compiler_report_digest": "sha256:4b2ba1d26766441bb81e1d7ccba4abdbec63748ee6863b04d0093b9667ab3379",
+        "artifact_digest": "sha256:34f82763a4442a04cd441080efcfbc9e6dd5b3fd6ce789c5dc0e91e351affccd",
+        "native_replay_unit": "sha256:cee58abdfe07349976fc02acc4b46af7e8ec076aba04b092bf23cf607190b1cb",
+        "compiler_replay_unit": "sha256:78632a2ceaf6b116d5bcf9e9f0a9ba6a6cc07b4a0b82e8a6b8b26c2328a5367c",
+        "compiler_local_authorization": "NOT_EVALUATED",
+        "compiler_provider_entry": "NOT_ESTABLISHED",
+        "compiler_provider_outcome": "NOT_ESTABLISHED",
+        "compiler_observed_effect": "NOT_ESTABLISHED",
+        "report_is_credential": false
+      }
+    },
+    {
+      "id": "blind_retry_refused",
+      "passed": true,
+      "expected": {
+        "consequence": {
+          "decision": "REFUSE",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REQUIRED",
+          "reasons": [
+            "blind_retry_refused"
+          ]
+        },
+        "provider_entry": "REENTRY_REFUSED"
+      },
+      "observed": {
+        "consequence": {
+          "decision": "REFUSE",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REQUIRED",
+          "reasons": [
+            "blind_retry_refused"
+          ]
+        },
+        "provider_entry": "REENTRY_REFUSED"
+      },
+      "details": {
+        "compiler_report_digest": "sha256:4b2ba1d26766441bb81e1d7ccba4abdbec63748ee6863b04d0093b9667ab3379",
+        "artifact_digest": "sha256:34f82763a4442a04cd441080efcfbc9e6dd5b3fd6ce789c5dc0e91e351affccd",
+        "native_replay_unit": "sha256:cee58abdfe07349976fc02acc4b46af7e8ec076aba04b092bf23cf607190b1cb",
+        "compiler_replay_unit": "sha256:78632a2ceaf6b116d5bcf9e9f0a9ba6a6cc07b4a0b82e8a6b8b26c2328a5367c",
+        "compiler_local_authorization": "NOT_EVALUATED",
+        "compiler_provider_entry": "NOT_ESTABLISHED",
+        "compiler_provider_outcome": "NOT_ESTABLISHED",
+        "compiler_observed_effect": "NOT_ESTABLISHED",
+        "report_is_credential": false
+      }
+    },
+    {
+      "id": "reconciliation_mismatch_refused",
+      "passed": true,
+      "expected": {
+        "consequence": {
+          "decision": "REFUSE",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REFUSED",
+          "reasons": [
+            "reconciliation_binding_mismatch"
+          ]
+        },
+        "provider_entry": "NO_REEXECUTION_RECONCILIATION_REFUSED"
+      },
+      "observed": {
+        "consequence": {
+          "decision": "REFUSE",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REFUSED",
+          "reasons": [
+            "reconciliation_binding_mismatch"
+          ]
+        },
+        "provider_entry": "NO_REEXECUTION_RECONCILIATION_REFUSED"
+      },
+      "details": {
+        "compiler_report_digest": "sha256:4b2ba1d26766441bb81e1d7ccba4abdbec63748ee6863b04d0093b9667ab3379",
+        "artifact_digest": "sha256:34f82763a4442a04cd441080efcfbc9e6dd5b3fd6ce789c5dc0e91e351affccd",
+        "native_replay_unit": "sha256:cee58abdfe07349976fc02acc4b46af7e8ec076aba04b092bf23cf607190b1cb",
+        "compiler_replay_unit": "sha256:78632a2ceaf6b116d5bcf9e9f0a9ba6a6cc07b4a0b82e8a6b8b26c2328a5367c",
+        "compiler_local_authorization": "NOT_EVALUATED",
+        "compiler_provider_entry": "NOT_ESTABLISHED",
+        "compiler_provider_outcome": "NOT_ESTABLISHED",
+        "compiler_observed_effect": "NOT_ESTABLISHED",
+        "report_is_credential": false
+      }
+    },
+    {
+      "id": "wrapper_reference_stability",
+      "passed": true,
+      "expected": {
+        "same_leg_replay_unit": true,
+        "same_compiler_replay_unit": true,
+        "provider_entry": "NOT_EVALUATED"
+      },
+      "observed": {
+        "same_leg_replay_unit": true,
+        "same_compiler_replay_unit": true,
+        "provider_entry": "NOT_EVALUATED"
+      },
+      "details": {
+        "first": {
+          "compiler_report_digest": "sha256:4e33f7bf3d4d065c8dc7bdac1ae723ba5970262ff13c63f37e32a5018b35b687",
+          "artifact_digest": "sha256:34f82763a4442a04cd441080efcfbc9e6dd5b3fd6ce789c5dc0e91e351affccd",
+          "native_replay_unit": "sha256:cee58abdfe07349976fc02acc4b46af7e8ec076aba04b092bf23cf607190b1cb",
+          "compiler_replay_unit": "sha256:78632a2ceaf6b116d5bcf9e9f0a9ba6a6cc07b4a0b82e8a6b8b26c2328a5367c",
+          "compiler_local_authorization": "NOT_EVALUATED",
+          "compiler_provider_entry": "NOT_ESTABLISHED",
+          "compiler_provider_outcome": "NOT_ESTABLISHED",
+          "compiler_observed_effect": "NOT_ESTABLISHED",
+          "report_is_credential": false
+        },
+        "second": {
+          "compiler_report_digest": "sha256:da2af52d855589a7a623f90f5990afaa9daf3a9fca88c67b0daa488fdf99e53c",
+          "artifact_digest": "sha256:34f82763a4442a04cd441080efcfbc9e6dd5b3fd6ce789c5dc0e91e351affccd",
+          "native_replay_unit": "sha256:cee58abdfe07349976fc02acc4b46af7e8ec076aba04b092bf23cf607190b1cb",
+          "compiler_replay_unit": "sha256:78632a2ceaf6b116d5bcf9e9f0a9ba6a6cc07b4a0b82e8a6b8b26c2328a5367c",
+          "compiler_local_authorization": "NOT_EVALUATED",
+          "compiler_provider_entry": "NOT_ESTABLISHED",
+          "compiler_provider_outcome": "NOT_ESTABLISHED",
+          "compiler_observed_effect": "NOT_ESTABLISHED",
+          "report_is_credential": false
+        }
+      }
+    }
+  ],
+  "report_digest": "sha256:bc3884857d2a6a82e05f429f13b87614ff03ebf8e4e5f1e6771ae8fd06dc55e9"
+}

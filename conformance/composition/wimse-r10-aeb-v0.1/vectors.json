@@ -1,0 +1,302 @@
+{
+  "@version": "WIMSE-R10-AEB-VECTORS-v0.1",
+  "evaluated_at": "2026-08-31T20:00:00Z",
+  "known_required_evidence_profiles": [
+    "draft-schrock-ep-authorization-evidence-chain-05"
+  ],
+  "fixtures": {
+    "approved_action": {
+      "action_type": "payment.release.1",
+      "arguments": {
+        "amount": "250000.00",
+        "currency": "USD"
+      },
+      "target": "account:beneficiary-42",
+      "acting_for_principal": "principal:customer-7"
+    },
+    "required_evidence": {
+      "id": "human-execution-authorization",
+      "profile": "draft-schrock-ep-authorization-evidence-chain-05",
+      "role": "human-authorization",
+      "principal_kind": "HUMAN",
+      "minimum": 2,
+      "distinct_principals": true,
+      "exclude_initiator": true,
+      "exclude_executor": true,
+      "exact_action_profile": "draft-schrock-canonical-action-identifier-02"
+    },
+    "delegation_hops": [
+      "organization:customer-7",
+      "workload:treasury-orchestrator",
+      "agent:payment-executor"
+    ]
+  },
+  "cases": [
+    {
+      "id": "positive_host_carrier_lifecycle",
+      "description": "The host carrier preserves the required human authorization through every hop, AEB admits once, and a normalized provider observation records the requested effect.",
+      "scenario": "LIFECYCLE_COMMIT",
+      "carrier_mutation": "NONE",
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "ADMIT",
+        "reservation": "CONSUMED",
+        "consumed_on_admission": true,
+        "provider_entry": "ENTERED_ONCE",
+        "custody": "TERMINAL",
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "OBSERVED_AS_REQUESTED",
+        "retry": "REFUSED",
+        "reconciliation": "NOT_REQUIRED",
+        "aeb_decision": "RECORDED",
+        "modeled_provider_entries_total": 1,
+        "reasons": [
+          "provider_committed_effect_observed"
+        ]
+      }
+    },
+    {
+      "id": "stripped_required_evidence_refused",
+      "description": "A child removes the required evidence designation. The chain refuses before AEB admission and consumes nothing.",
+      "scenario": "ADMISSION",
+      "carrier_mutation": "STRIP_REQUIRED_EVIDENCE",
+      "expected": {
+        "preflight": "REFUSE_REQUIRED_EVIDENCE_STRIPPED",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "required_evidence_stripped"
+        ]
+      }
+    },
+    {
+      "id": "downgraded_required_evidence_refused",
+      "description": "A child lowers the minimum human authorization count. The monotonic carrier check refuses the downgrade.",
+      "scenario": "ADMISSION",
+      "carrier_mutation": "DOWNGRADE_REQUIRED_EVIDENCE",
+      "expected": {
+        "preflight": "REFUSE_REQUIRED_EVIDENCE_DOWNGRADE",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "required_evidence_downgrade"
+        ]
+      }
+    },
+    {
+      "id": "unknown_required_evidence_profile_refused",
+      "description": "The chain names a required evidence profile the verifier does not understand. It fails closed before admission.",
+      "scenario": "ADMISSION",
+      "carrier_mutation": "UNKNOWN_REQUIRED_EVIDENCE_PROFILE",
+      "expected": {
+        "preflight": "REFUSE_UNKNOWN_REQUIRED_EVIDENCE_PROFILE",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "unknown_required_evidence_profile"
+        ]
+      }
+    },
+    {
+      "id": "changed_target_refused",
+      "description": "The operation changes the payment target after approval. The exact-action carrier binding refuses the substituted action.",
+      "scenario": "ADMISSION",
+      "carrier_mutation": "NONE",
+      "operation_mutation": "CHANGE_TARGET",
+      "expected": {
+        "preflight": "REFUSE_EXACT_ACTION_BINDING_MISMATCH",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "exact_action_binding_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "changed_acting_for_principal_refused",
+      "description": "The operation changes the principal on whose behalf the action would run. The invariant check refuses it before admission.",
+      "scenario": "ADMISSION",
+      "carrier_mutation": "NONE",
+      "operation_mutation": "CHANGE_ACTING_FOR_PRINCIPAL",
+      "expected": {
+        "preflight": "REFUSE_ACTING_FOR_PRINCIPAL_MISMATCH",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "acting_for_principal_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "native_evidence_replay_refused",
+      "description": "The same native human-authorization replay unit is presented again. AEB refuses it without a second provider entry.",
+      "scenario": "NATIVE_EVIDENCE_REPLAY",
+      "carrier_mutation": "NONE",
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "REFUSE",
+        "reservation": "NATIVE_EVIDENCE_REPLAY",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "REFUSED",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "native_evidence_replay"
+        ]
+      }
+    },
+    {
+      "id": "native_verification_refusal_does_not_consume",
+      "description": "Native evidence verification fails. AEB refuses before reservation and leaves the reliance unit unconsumed.",
+      "scenario": "NATIVE_VERIFICATION_FAILED",
+      "carrier_mutation": "NONE",
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "REFUSE",
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "native_verification_failed"
+        ]
+      }
+    },
+    {
+      "id": "local_policy_refusal_does_not_consume",
+      "description": "The evidence is valid, but local policy denies the action. The refusal does not reserve or consume the evidence.",
+      "scenario": "LOCAL_POLICY_DENY",
+      "carrier_mutation": "NONE",
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "REFUSE",
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "local_policy_denied"
+        ]
+      }
+    },
+    {
+      "id": "timeout_after_dispatch_is_indeterminate",
+      "description": "The operation is admitted and dispatched, then the caller times out. The state stays indeterminate and requires reconciliation.",
+      "scenario": "TIMEOUT_AFTER_DISPATCH",
+      "carrier_mutation": "NONE",
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "ADMIT",
+        "reservation": "CONSUMED",
+        "consumed_on_admission": true,
+        "provider_entry": "ENTERED_ONCE_OUTCOME_UNKNOWN",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "aeb_decision": "INDETERMINATE",
+        "modeled_provider_entries_total": 1,
+        "reasons": [
+          "timeout_after_dispatch"
+        ]
+      }
+    },
+    {
+      "id": "blind_retry_while_unresolved_refused",
+      "description": "A retry arrives while the admitted operation still has an unknown outcome. The retry is refused and the original is reconciled instead.",
+      "scenario": "BLIND_RETRY",
+      "carrier_mutation": "NONE",
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "ADMIT",
+        "reservation": "OPERATION_REPLAY",
+        "consumed_on_admission": true,
+        "provider_entry": "REENTRY_REFUSED",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 1,
+        "reasons": [
+          "blind_retry_refused"
+        ]
+      }
+    }
+  ]
+}

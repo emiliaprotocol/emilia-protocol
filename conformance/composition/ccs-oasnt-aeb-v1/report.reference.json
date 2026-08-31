@@ -12,7 +12,7 @@
   },
   "pins": {
     "aeb_contract": "AEB-ADAPTER-v1",
-    "aeb_contract_lock": "sha256:cfb6210bb7858e164598247c49f5259f3df3d6ddd016b3aafb1500412459ee6b",
+    "aeb_contract_lock": "sha256:ce8c81dacebb5b24a395177f68265eedbfeab48f38b8c85c2fd7813e68436136",
     "ccs_distribution": "1.1.0",
     "ccs_runtime": "0.4.1",
     "oasnt_revision": "draft-thallapelly-oasnt-02",
@@ -101,18 +101,18 @@
       "description": "The compatibility lock matches AEB-ADAPTER-v1 contract bytes.",
       "passed": true,
       "observed": {
-        "lock_digest": "sha256:cfb6210bb7858e164598247c49f5259f3df3d6ddd016b3aafb1500412459ee6b",
+        "lock_digest": "sha256:ce8c81dacebb5b24a395177f68265eedbfeab48f38b8c85c2fd7813e68436136",
         "files": [
           {
             "path": "packages/verify/src/aeb-adapter-contract.ts",
-            "expected": "8b69f50cc4708dc42fec576d66b23f8a05645a2afa094e36463bbd282deabe10",
-            "actual": "8b69f50cc4708dc42fec576d66b23f8a05645a2afa094e36463bbd282deabe10",
+            "expected": "38375c23afb5ecc88006d6ce2725cf6e3a94322ddf07ac4de4e7cf4ad404d66a",
+            "actual": "38375c23afb5ecc88006d6ce2725cf6e3a94322ddf07ac4de4e7cf4ad404d66a",
             "matched": true
           },
           {
             "path": "docs/protocol/aeb-adapter-contract-v1.md",
-            "expected": "dfc7ff5afa6f5a6caf91f07e90a6bc3278571a06f96aa8ee2514bb020a9d4d7a",
-            "actual": "dfc7ff5afa6f5a6caf91f07e90a6bc3278571a06f96aa8ee2514bb020a9d4d7a",
+            "expected": "07aafe6c8a4fc71b7b5b28593d76e5124a5a4151eb565308b2015e65071f70cf",
+            "actual": "07aafe6c8a4fc71b7b5b28593d76e5124a5a4151eb565308b2015e65071f70cf",
             "matched": true
           },
           {
@@ -214,6 +214,6 @@
     "One OASNT native check is pinned to the published draft-thallapelly-oasnt-02 token vector and archived text sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603; the two-leg composition uses a synthetic action-only token under the same verifier rules.",
     "A passing report is not IETF adoption, endorsement, certification, or proof of deployment."
   ],
-  "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA reference composition at repository-working-tree on 2026-08-22T16:32:10.176Z: 7/7 pinned native-protocol checks and 7/7 AEB composition checks passed against AEB-ADAPTER-v1 (sha256:cfb6210bb7858e164598247c49f5259f3df3d6ddd016b3aafb1500412459ee6b). This is a reproduction of the EMILIA reference runner, not an independent implementation or IETF endorsement.",
-  "report_digest": "sha256:c6061bd9d8a4c93c2f657ea0f9f24b442159438cb6051f7e086b9852c14f82f4"
+  "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA reference composition at repository-working-tree on 2026-08-22T16:32:10.176Z: 7/7 pinned native-protocol checks and 7/7 AEB composition checks passed against AEB-ADAPTER-v1 (sha256:ce8c81dacebb5b24a395177f68265eedbfeab48f38b8c85c2fd7813e68436136). This is a reproduction of the EMILIA reference runner, not an independent implementation or IETF endorsement.",
+  "report_digest": "sha256:9c90e56fca53950b8f63b7d419f9ac86bcc7857ebc3e7added08d7d4a4548a78"
 }

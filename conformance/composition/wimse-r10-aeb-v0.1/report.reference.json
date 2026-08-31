@@ -1,0 +1,1136 @@
+{
+  "@version": "WIMSE-R10-AEB-REPORT-v0.1",
+  "profile": "WIMSE-R10-AEB-HOST-CARRIER-v0.1",
+  "executed_at": "2026-08-31T20:00:00Z",
+  "implementation": {
+    "owner": "EMILIA Protocol",
+    "revision": "v0.1",
+    "same_team_reference": true,
+    "independent_implementation": false,
+    "production_mediation": false
+  },
+  "source_pins": {
+    "source_lock_digest": "sha256:b60ac2ab4e58191bd189849fccdf0f325af7bf330c34918dc983955eff137721",
+    "matrix_digest": "sha256:efe2a10e05148cf8f4d0f4f361fa9ca958c31a3b2486b113bf14771a2195161b",
+    "vectors_digest": "sha256:9acf7cb90be47c6aef8b37ba384a213945f3c02d233ab09fe4d26bfca9e2eaec",
+    "requirements_revision": "draft-reece-wimse-cross-org-delegation-02",
+    "requirements_sha256": "26dca19bc9c4c284b0c2fcdeab9f2abf9231397b9f6df87cb44f2fcc3adf5186",
+    "native_revisions": {
+      "draft-asor-wimse-agent-delegation-chain-00": "c36d32864cbdb0405e766cc1485e9197e20ad840dcd4c5ae653ad016c9074ccf",
+      "draft-hamr-oauth-agent-delegation-00": "c8b7eff492d0630ebb5dd26c2f603faa6d325dfcae6832329de39d8af6799729",
+      "draft-mcphillips-agentenvelope-derived-authority-01": "574beda17575ec8d0be512048708f19af4d910269569c6518c051d71ea58c531"
+    },
+    "aeb_kernel_sha256": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f"
+  },
+  "matrix": {
+    "criteria": [
+      "exact_action",
+      "target",
+      "acting_for_principal",
+      "offline_verifiability",
+      "execution_time_required_evidence",
+      "monotonic_non_droppable_carriage",
+      "at_most_once_local_admission",
+      "consume_only_on_admission",
+      "indeterminate_state",
+      "no_blind_retry"
+    ],
+    "grade_vocabulary": [
+      "MET",
+      "PARTIAL",
+      "EXTERNAL_PROFILE_REQUIRED",
+      "NOT_SUPPORTED",
+      "NOT_MET"
+    ],
+    "rows": [
+      {
+        "id": "ASOR-ADC-00",
+        "label": "Asor Agent Delegation Chain -00",
+        "revision": "draft-asor-wimse-agent-delegation-chain-00",
+        "criteria": {
+          "exact_action": {
+            "signal": "request_bound_class_and_constraints",
+            "expected": "PARTIAL",
+            "actual": "PARTIAL",
+            "pass": true
+          },
+          "target": {
+            "signal": "native_resource_or_location",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "acting_for_principal": {
+            "signal": "absent",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          },
+          "offline_verifiability": {
+            "signal": "full_native_verification",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "execution_time_required_evidence": {
+            "signal": "absent",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          },
+          "monotonic_non_droppable_carriage": {
+            "signal": "undefined_extension_point",
+            "expected": "EXTERNAL_PROFILE_REQUIRED",
+            "actual": "EXTERNAL_PROFILE_REQUIRED",
+            "pass": true
+          },
+          "at_most_once_local_admission": {
+            "signal": "explicit_side_effect_free",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          },
+          "consume_only_on_admission": {
+            "signal": "absent",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          },
+          "indeterminate_state": {
+            "signal": "binary_permit_deny",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          },
+          "no_blind_retry": {
+            "signal": "absent",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          }
+        },
+        "summary": {
+          "total": 10,
+          "passed": 10,
+          "failed": 0
+        }
+      },
+      {
+        "id": "HAMR-ADP-00",
+        "label": "HAMR Agent Delegation Profile -00",
+        "revision": "draft-hamr-oauth-agent-delegation-00",
+        "criteria": {
+          "exact_action": {
+            "signal": "signed_request_opaque_scope",
+            "expected": "PARTIAL",
+            "actual": "PARTIAL",
+            "pass": true
+          },
+          "target": {
+            "signal": "opaque_scope_convention",
+            "expected": "EXTERNAL_PROFILE_REQUIRED",
+            "actual": "EXTERNAL_PROFILE_REQUIRED",
+            "pass": true
+          },
+          "acting_for_principal": {
+            "signal": "root_delegator_not_invariant",
+            "expected": "PARTIAL",
+            "actual": "PARTIAL",
+            "pass": true
+          },
+          "offline_verifiability": {
+            "signal": "full_native_verification",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "execution_time_required_evidence": {
+            "signal": "closed_vocabulary",
+            "expected": "NOT_SUPPORTED",
+            "actual": "NOT_SUPPORTED",
+            "pass": true
+          },
+          "monotonic_non_droppable_carriage": {
+            "signal": "closed_vocabulary",
+            "expected": "NOT_SUPPORTED",
+            "actual": "NOT_SUPPORTED",
+            "pass": true
+          },
+          "at_most_once_local_admission": {
+            "signal": "explicit_external_replay_state",
+            "expected": "EXTERNAL_PROFILE_REQUIRED",
+            "actual": "EXTERNAL_PROFILE_REQUIRED",
+            "pass": true
+          },
+          "consume_only_on_admission": {
+            "signal": "absent",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          },
+          "indeterminate_state": {
+            "signal": "uniform_rejection",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          },
+          "no_blind_retry": {
+            "signal": "absent",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          }
+        },
+        "summary": {
+          "total": 10,
+          "passed": 10,
+          "failed": 0
+        }
+      },
+      {
+        "id": "AGENTENVELOPE-01",
+        "label": "AgentEnvelope Derived Authority and Legitimacy -01",
+        "revision": "draft-mcphillips-agentenvelope-derived-authority-01",
+        "criteria": {
+          "exact_action": {
+            "signal": "complete_canonical_action",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "target": {
+            "signal": "native_resource_or_location",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "acting_for_principal": {
+            "signal": "owner_or_custody_not_r5_chain",
+            "expected": "PARTIAL",
+            "actual": "PARTIAL",
+            "pass": true
+          },
+          "offline_verifiability": {
+            "signal": "authority_only",
+            "expected": "PARTIAL",
+            "actual": "PARTIAL",
+            "pass": true
+          },
+          "execution_time_required_evidence": {
+            "signal": "generic_legitimacy",
+            "expected": "PARTIAL",
+            "actual": "PARTIAL",
+            "pass": true
+          },
+          "monotonic_non_droppable_carriage": {
+            "signal": "single_hop_required_reference",
+            "expected": "PARTIAL",
+            "actual": "PARTIAL",
+            "pass": true
+          },
+          "at_most_once_local_admission": {
+            "signal": "external_state_required",
+            "expected": "EXTERNAL_PROFILE_REQUIRED",
+            "actual": "EXTERNAL_PROFILE_REQUIRED",
+            "pass": true
+          },
+          "consume_only_on_admission": {
+            "signal": "absent",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          },
+          "indeterminate_state": {
+            "signal": "generic_unavailable_reason",
+            "expected": "PARTIAL",
+            "actual": "PARTIAL",
+            "pass": true
+          },
+          "no_blind_retry": {
+            "signal": "absent",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          }
+        },
+        "summary": {
+          "total": 10,
+          "passed": 10,
+          "failed": 0
+        }
+      },
+      {
+        "id": "EMILIA-WIMSE-ADAPTER-CURRENT",
+        "label": "Current EMILIA WIMSE OAuth SPT adapter",
+        "revision": "packages/verify/src/aeb-wimse-oauth-adapter.ts@sha256:4002f26e3d4596879b7701f02253e0c37af3fd7fe4ffb0737a297aba857284b4",
+        "criteria": {
+          "exact_action": {
+            "signal": "mapped_exact_request",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "target": {
+            "signal": "mapped_request_target",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "acting_for_principal": {
+            "signal": "workload_only",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          },
+          "offline_verifiability": {
+            "signal": "pinned_local_inputs",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "execution_time_required_evidence": {
+            "signal": "workload_only",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          },
+          "monotonic_non_droppable_carriage": {
+            "signal": "absent",
+            "expected": "NOT_MET",
+            "actual": "NOT_MET",
+            "pass": true
+          },
+          "at_most_once_local_admission": {
+            "signal": "external_aeb_lifecycle",
+            "expected": "EXTERNAL_PROFILE_REQUIRED",
+            "actual": "EXTERNAL_PROFILE_REQUIRED",
+            "pass": true
+          },
+          "consume_only_on_admission": {
+            "signal": "external_aeb_lifecycle",
+            "expected": "EXTERNAL_PROFILE_REQUIRED",
+            "actual": "EXTERNAL_PROFILE_REQUIRED",
+            "pass": true
+          },
+          "indeterminate_state": {
+            "signal": "typed_indeterminate",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "no_blind_retry": {
+            "signal": "external_aeb_lifecycle",
+            "expected": "EXTERNAL_PROFILE_REQUIRED",
+            "actual": "EXTERNAL_PROFILE_REQUIRED",
+            "pass": true
+          }
+        },
+        "summary": {
+          "total": 10,
+          "passed": 10,
+          "failed": 0
+        }
+      },
+      {
+        "id": "EMILIA-AEB-HOST-CARRIER-CANDIDATE",
+        "label": "Candidate native host carrier plus EMILIA AEB lifecycle",
+        "revision": "WIMSE-R10-AEB-HOST-CARRIER-v0.1",
+        "criteria": {
+          "exact_action": {
+            "signal": "host_required_action_binding",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "target": {
+            "signal": "host_required_target_binding",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "acting_for_principal": {
+            "signal": "explicit_invariant",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "offline_verifiability": {
+            "signal": "pinned_local_inputs",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "execution_time_required_evidence": {
+            "signal": "host_required_human_evidence",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "monotonic_non_droppable_carriage": {
+            "signal": "recursive_non_droppable",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "at_most_once_local_admission": {
+            "signal": "aeb_local_atomic",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "consume_only_on_admission": {
+            "signal": "aeb_local_atomic",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "indeterminate_state": {
+            "signal": "typed_indeterminate",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          },
+          "no_blind_retry": {
+            "signal": "aeb_local_atomic",
+            "expected": "MET",
+            "actual": "MET",
+            "pass": true
+          }
+        },
+        "summary": {
+          "total": 10,
+          "passed": 10,
+          "failed": 0
+        }
+      }
+    ],
+    "summary": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0
+    }
+  },
+  "claim_scope": {
+    "requirements_source_role": "NEUTRAL_REQUIREMENTS_SOURCE",
+    "candidate_carrier_role": "EMILIA_HOST_PROFILE_PROPOSAL",
+    "aeb_atomicity": {
+      "profile": "local_atomic",
+      "guarantees": [
+        "one_linearizable_local_admission_domain",
+        "operation_and_native_replay_reserved_before_invocation",
+        "execution_authority_consumed_before_provider_entry"
+      ],
+      "exclusions": [
+        "remote_atomicity",
+        "federated_atomicity",
+        "provider_commitment",
+        "observed_effect_truth",
+        "downstream_exactly_once"
+      ]
+    },
+    "guarantees": [
+      "unknown_required_evidence_profiles_fail_closed",
+      "required_evidence_cannot_be_removed_or_relaxed",
+      "exact_action_target_and_acting_for_bindings_checked_before_admission",
+      "local_atomic_admission_precedes_provider_entry",
+      "refusal_does_not_consume_a_new_reliance_unit",
+      "post_dispatch_timeout_remains_indeterminate",
+      "blind_retry_is_refused_while_the_original_is_unresolved"
+    ],
+    "exclusions": [
+      "wimse_adoption",
+      "reece_endorsement",
+      "freedom_to_operate",
+      "independent_implementation",
+      "production_mediation",
+      "external_provider_invocation_by_this_harness",
+      "native_required_evidence_support_in_asor_00",
+      "native_required_evidence_support_in_hamr_00",
+      "native_recursive_r10_carriage_in_agentenvelope_01",
+      "remote_or_federated_atomicity",
+      "exactly_once_external_effect"
+    ]
+  },
+  "summary": {
+    "matrix_rows": 5,
+    "matrix_rows_passed": 5,
+    "total": 11,
+    "passed": 11,
+    "failed": 0
+  },
+  "cases": [
+    {
+      "id": "positive_host_carrier_lifecycle",
+      "description": "The host carrier preserves the required human authorization through every hop, AEB admits once, and a normalized provider observation records the requested effect.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "ADMIT",
+        "reservation": "CONSUMED",
+        "consumed_on_admission": true,
+        "provider_entry": "ENTERED_ONCE",
+        "custody": "TERMINAL",
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "OBSERVED_AS_REQUESTED",
+        "retry": "REFUSED",
+        "reconciliation": "NOT_REQUIRED",
+        "aeb_decision": "RECORDED",
+        "modeled_provider_entries_total": 1,
+        "reasons": [
+          "provider_committed_effect_observed"
+        ]
+      },
+      "observed": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "ADMIT",
+        "reservation": "CONSUMED",
+        "consumed_on_admission": true,
+        "provider_entry": "ENTERED_ONCE",
+        "custody": "TERMINAL",
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "OBSERVED_AS_REQUESTED",
+        "retry": "REFUSED",
+        "reconciliation": "NOT_REQUIRED",
+        "aeb_decision": "RECORDED",
+        "modeled_provider_entries_total": 1,
+        "reasons": [
+          "provider_committed_effect_observed"
+        ]
+      },
+      "details": {
+        "carrier_digest": "sha256:653f285134a590f39c04dd751a778835108dd34ee2a155bd1e223b3363ca0680",
+        "operation_action_digest": "sha256:1ccc10972fb7956f5d43622589833ef7248a4d8ba302273aabe694d0880a57e8",
+        "aeb_input_digest": "sha256:175b8e7f43f3885c616d90c63289c78eaae3efc26223df3f6cd35ccb45afba4f",
+        "outcome_input_digest": "sha256:a1410f34ff2127221fa71ed5e931d28299f166e6591e74609f6bab5ecdd7e1dd",
+        "admission_result": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "RESERVED",
+          "custody": "RESERVED",
+          "provider_outcome": "NOT_INVOKED",
+          "effect_relation": "NOT_OBSERVED",
+          "retry": "NOT_APPLICABLE",
+          "reconciliation": "NOT_APPLICABLE",
+          "decision": "ADMIT",
+          "reasons": []
+        },
+        "outcome_result": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "CONSUMED",
+          "custody": "TERMINAL",
+          "provider_outcome": "COMMITTED",
+          "effect_relation": "OBSERVED_AS_REQUESTED",
+          "retry": "REFUSED",
+          "reconciliation": "NOT_REQUIRED",
+          "decision": "RECORDED",
+          "reasons": [
+            "provider_committed_effect_observed"
+          ]
+        }
+      }
+    },
+    {
+      "id": "stripped_required_evidence_refused",
+      "description": "A child removes the required evidence designation. The chain refuses before AEB admission and consumes nothing.",
+      "passed": true,
+      "expected": {
+        "preflight": "REFUSE_REQUIRED_EVIDENCE_STRIPPED",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "required_evidence_stripped"
+        ]
+      },
+      "observed": {
+        "preflight": "REFUSE_REQUIRED_EVIDENCE_STRIPPED",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "required_evidence_stripped"
+        ]
+      },
+      "details": {
+        "carrier_digest": "sha256:f46d133a21410e61edaf93d31387dee11291f3dd17a246e7c209c1f362dbba90",
+        "operation_action_digest": "sha256:1ccc10972fb7956f5d43622589833ef7248a4d8ba302273aabe694d0880a57e8",
+        "aeb_input_digest": null,
+        "admission_result": null,
+        "outcome_result": null
+      }
+    },
+    {
+      "id": "downgraded_required_evidence_refused",
+      "description": "A child lowers the minimum human authorization count. The monotonic carrier check refuses the downgrade.",
+      "passed": true,
+      "expected": {
+        "preflight": "REFUSE_REQUIRED_EVIDENCE_DOWNGRADE",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "required_evidence_downgrade"
+        ]
+      },
+      "observed": {
+        "preflight": "REFUSE_REQUIRED_EVIDENCE_DOWNGRADE",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "required_evidence_downgrade"
+        ]
+      },
+      "details": {
+        "carrier_digest": "sha256:3f6ceb6c5f59b1dfce968db389e023126362c10b970e71df7cf2bfb235259a1c",
+        "operation_action_digest": "sha256:1ccc10972fb7956f5d43622589833ef7248a4d8ba302273aabe694d0880a57e8",
+        "aeb_input_digest": null,
+        "admission_result": null,
+        "outcome_result": null
+      }
+    },
+    {
+      "id": "unknown_required_evidence_profile_refused",
+      "description": "The chain names a required evidence profile the verifier does not understand. It fails closed before admission.",
+      "passed": true,
+      "expected": {
+        "preflight": "REFUSE_UNKNOWN_REQUIRED_EVIDENCE_PROFILE",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "unknown_required_evidence_profile"
+        ]
+      },
+      "observed": {
+        "preflight": "REFUSE_UNKNOWN_REQUIRED_EVIDENCE_PROFILE",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "unknown_required_evidence_profile"
+        ]
+      },
+      "details": {
+        "carrier_digest": "sha256:26ac8404adc1c2b4aca421ebb3aa4d929b50d5c0b06d6225e526124704f1f384",
+        "operation_action_digest": "sha256:1ccc10972fb7956f5d43622589833ef7248a4d8ba302273aabe694d0880a57e8",
+        "aeb_input_digest": null,
+        "admission_result": null,
+        "outcome_result": null
+      }
+    },
+    {
+      "id": "changed_target_refused",
+      "description": "The operation changes the payment target after approval. The exact-action carrier binding refuses the substituted action.",
+      "passed": true,
+      "expected": {
+        "preflight": "REFUSE_EXACT_ACTION_BINDING_MISMATCH",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "exact_action_binding_mismatch"
+        ]
+      },
+      "observed": {
+        "preflight": "REFUSE_EXACT_ACTION_BINDING_MISMATCH",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "exact_action_binding_mismatch"
+        ]
+      },
+      "details": {
+        "carrier_digest": "sha256:653f285134a590f39c04dd751a778835108dd34ee2a155bd1e223b3363ca0680",
+        "operation_action_digest": "sha256:c5a446bb2a492159675f524ef408f269328e569b8be2dc5cc1c4b63cd8f96b1d",
+        "aeb_input_digest": null,
+        "admission_result": null,
+        "outcome_result": null
+      }
+    },
+    {
+      "id": "changed_acting_for_principal_refused",
+      "description": "The operation changes the principal on whose behalf the action would run. The invariant check refuses it before admission.",
+      "passed": true,
+      "expected": {
+        "preflight": "REFUSE_ACTING_FOR_PRINCIPAL_MISMATCH",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "acting_for_principal_mismatch"
+        ]
+      },
+      "observed": {
+        "preflight": "REFUSE_ACTING_FOR_PRINCIPAL_MISMATCH",
+        "carrier": "INVALID",
+        "admission_decision": null,
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "acting_for_principal_mismatch"
+        ]
+      },
+      "details": {
+        "carrier_digest": "sha256:653f285134a590f39c04dd751a778835108dd34ee2a155bd1e223b3363ca0680",
+        "operation_action_digest": "sha256:1e4d4d6b3ed3df62974087a721876197d61734960265db8d36df14d90dec6324",
+        "aeb_input_digest": null,
+        "admission_result": null,
+        "outcome_result": null
+      }
+    },
+    {
+      "id": "native_evidence_replay_refused",
+      "description": "The same native human-authorization replay unit is presented again. AEB refuses it without a second provider entry.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "REFUSE",
+        "reservation": "NATIVE_EVIDENCE_REPLAY",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "REFUSED",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "native_evidence_replay"
+        ]
+      },
+      "observed": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "REFUSE",
+        "reservation": "NATIVE_EVIDENCE_REPLAY",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "REFUSED",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "native_evidence_replay"
+        ]
+      },
+      "details": {
+        "carrier_digest": "sha256:653f285134a590f39c04dd751a778835108dd34ee2a155bd1e223b3363ca0680",
+        "operation_action_digest": "sha256:1ccc10972fb7956f5d43622589833ef7248a4d8ba302273aabe694d0880a57e8",
+        "aeb_input_digest": "sha256:dac3e7affe591b45628c9fa241595ab11b4ddf68bffec70e9f25dd33d5a8a18a",
+        "outcome_input_digest": null,
+        "admission_result": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "NATIVE_EVIDENCE_REPLAY",
+          "custody": "UNRESERVED",
+          "provider_outcome": "NOT_INVOKED",
+          "effect_relation": "NOT_OBSERVED",
+          "retry": "REFUSED",
+          "reconciliation": "NOT_APPLICABLE",
+          "decision": "REFUSE",
+          "reasons": [
+            "native_evidence_replay"
+          ]
+        },
+        "outcome_result": null
+      }
+    },
+    {
+      "id": "native_verification_refusal_does_not_consume",
+      "description": "Native evidence verification fails. AEB refuses before reservation and leaves the reliance unit unconsumed.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "REFUSE",
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "native_verification_failed"
+        ]
+      },
+      "observed": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "REFUSE",
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "native_verification_failed"
+        ]
+      },
+      "details": {
+        "carrier_digest": "sha256:653f285134a590f39c04dd751a778835108dd34ee2a155bd1e223b3363ca0680",
+        "operation_action_digest": "sha256:1ccc10972fb7956f5d43622589833ef7248a4d8ba302273aabe694d0880a57e8",
+        "aeb_input_digest": "sha256:2aff93bb2b47fde4f1b6bcc7a1c1f437724b48094e9997de09d2e5360a5af0b3",
+        "outcome_input_digest": null,
+        "admission_result": {
+          "verification": "FAILED",
+          "acceptance": "REJECTED",
+          "action_match": "INDETERMINATE",
+          "satisfaction": "UNSATISFIED",
+          "authorization": "NOT_AUTHORIZED",
+          "reservation": "NOT_ATTEMPTED",
+          "custody": "UNRESERVED",
+          "provider_outcome": "NOT_INVOKED",
+          "effect_relation": "NOT_OBSERVED",
+          "retry": "NOT_APPLICABLE",
+          "reconciliation": "NOT_APPLICABLE",
+          "decision": "REFUSE",
+          "reasons": [
+            "native_verification_failed"
+          ]
+        },
+        "outcome_result": null
+      }
+    },
+    {
+      "id": "local_policy_refusal_does_not_consume",
+      "description": "The evidence is valid, but local policy denies the action. The refusal does not reserve or consume the evidence.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "REFUSE",
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "local_policy_denied"
+        ]
+      },
+      "observed": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "REFUSE",
+        "reservation": "NOT_ATTEMPTED",
+        "consumed_on_admission": false,
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 0,
+        "reasons": [
+          "local_policy_denied"
+        ]
+      },
+      "details": {
+        "carrier_digest": "sha256:653f285134a590f39c04dd751a778835108dd34ee2a155bd1e223b3363ca0680",
+        "operation_action_digest": "sha256:1ccc10972fb7956f5d43622589833ef7248a4d8ba302273aabe694d0880a57e8",
+        "aeb_input_digest": "sha256:40cc3c85cae4efb16c69c9d5d1757ecba2f7ff3d28bcce322acf9fa08eefd01b",
+        "outcome_input_digest": null,
+        "admission_result": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "NOT_AUTHORIZED",
+          "reservation": "NOT_ATTEMPTED",
+          "custody": "UNRESERVED",
+          "provider_outcome": "NOT_INVOKED",
+          "effect_relation": "NOT_OBSERVED",
+          "retry": "NOT_APPLICABLE",
+          "reconciliation": "NOT_APPLICABLE",
+          "decision": "REFUSE",
+          "reasons": [
+            "local_policy_denied"
+          ]
+        },
+        "outcome_result": null
+      }
+    },
+    {
+      "id": "timeout_after_dispatch_is_indeterminate",
+      "description": "The operation is admitted and dispatched, then the caller times out. The state stays indeterminate and requires reconciliation.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "ADMIT",
+        "reservation": "CONSUMED",
+        "consumed_on_admission": true,
+        "provider_entry": "ENTERED_ONCE_OUTCOME_UNKNOWN",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "aeb_decision": "INDETERMINATE",
+        "modeled_provider_entries_total": 1,
+        "reasons": [
+          "timeout_after_dispatch"
+        ]
+      },
+      "observed": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "ADMIT",
+        "reservation": "CONSUMED",
+        "consumed_on_admission": true,
+        "provider_entry": "ENTERED_ONCE_OUTCOME_UNKNOWN",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "aeb_decision": "INDETERMINATE",
+        "modeled_provider_entries_total": 1,
+        "reasons": [
+          "timeout_after_dispatch"
+        ]
+      },
+      "details": {
+        "carrier_digest": "sha256:653f285134a590f39c04dd751a778835108dd34ee2a155bd1e223b3363ca0680",
+        "operation_action_digest": "sha256:1ccc10972fb7956f5d43622589833ef7248a4d8ba302273aabe694d0880a57e8",
+        "aeb_input_digest": "sha256:9c30b6a50a18c202f03b4424b1b91cd423134f36750a5f6468488eb87fa8ed53",
+        "outcome_input_digest": "sha256:c5b23c1ca804e611cf2a95ca11305af9bf6b2de14665dbea392d830d3de69b9b",
+        "admission_result": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "RESERVED",
+          "custody": "RESERVED",
+          "provider_outcome": "NOT_INVOKED",
+          "effect_relation": "NOT_OBSERVED",
+          "retry": "NOT_APPLICABLE",
+          "reconciliation": "NOT_APPLICABLE",
+          "decision": "ADMIT",
+          "reasons": []
+        },
+        "outcome_result": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "CONSUMED",
+          "custody": "INVOKING",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REQUIRED",
+          "decision": "INDETERMINATE",
+          "reasons": [
+            "timeout_after_dispatch"
+          ]
+        }
+      }
+    },
+    {
+      "id": "blind_retry_while_unresolved_refused",
+      "description": "A retry arrives while the admitted operation still has an unknown outcome. The retry is refused and the original is reconciled instead.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "ADMIT",
+        "reservation": "OPERATION_REPLAY",
+        "consumed_on_admission": true,
+        "provider_entry": "REENTRY_REFUSED",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 1,
+        "reasons": [
+          "blind_retry_refused"
+        ]
+      },
+      "observed": {
+        "preflight": "PASS",
+        "carrier": "VALID",
+        "admission_decision": "ADMIT",
+        "reservation": "OPERATION_REPLAY",
+        "consumed_on_admission": true,
+        "provider_entry": "REENTRY_REFUSED",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "aeb_decision": "REFUSE",
+        "modeled_provider_entries_total": 1,
+        "reasons": [
+          "blind_retry_refused"
+        ]
+      },
+      "details": {
+        "carrier_digest": "sha256:653f285134a590f39c04dd751a778835108dd34ee2a155bd1e223b3363ca0680",
+        "operation_action_digest": "sha256:1ccc10972fb7956f5d43622589833ef7248a4d8ba302273aabe694d0880a57e8",
+        "aeb_input_digest": "sha256:46b4fbc6db2f3d8a5e15462983da8658e9a4f2ed295d112f91ecab2e4af8fab1",
+        "outcome_input_digest": "sha256:4ad4b2a7d32003d8bc4b566f108d689a5a28331eaf035e501615399399778b2b",
+        "admission_result": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "RESERVED",
+          "custody": "RESERVED",
+          "provider_outcome": "NOT_INVOKED",
+          "effect_relation": "NOT_OBSERVED",
+          "retry": "NOT_APPLICABLE",
+          "reconciliation": "NOT_APPLICABLE",
+          "decision": "ADMIT",
+          "reasons": []
+        },
+        "outcome_result": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "OPERATION_REPLAY",
+          "custody": "INVOKING",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REQUIRED",
+          "decision": "REFUSE",
+          "reasons": [
+            "blind_retry_refused"
+          ]
+        }
+      }
+    }
+  ],
+  "report_digest": "sha256:5c0b64a3f44fec2e194e38920f4c9f7b8f85f995a64e68fdf7a6a9288f04c2b4"
+}

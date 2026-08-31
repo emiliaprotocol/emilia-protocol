@@ -1,0 +1,125 @@
+{
+  "@version": "OAUTH-TXN-CHALLENGE-AEB-VECTORS-v0.1",
+  "evaluated_at": "2026-08-31T19:00:30Z",
+  "cases": [
+    {
+      "id": "exact_transaction_admits",
+      "expected": {
+        "compiler_axes": {
+          "verified": "VERIFIED",
+          "accepted": "ACCEPTED",
+          "match": "MATCH",
+          "satisfied": "SATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "consequence": {
+          "decision": "ADMIT",
+          "reservation": "RESERVED"
+        },
+        "provider_entry": "AUTHORIZED_NOT_ENTERED"
+      }
+    },
+    {
+      "id": "material_details_change_refuses",
+      "expected": {
+        "compiler_axes": {
+          "verified": "FAILED",
+          "accepted": "REJECTED",
+          "match": "INDETERMINATE",
+          "satisfied": "UNSATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      }
+    },
+    {
+      "id": "transaction_mismatch_refuses",
+      "expected": {
+        "compiler_axes": {
+          "verified": "FAILED",
+          "accepted": "REJECTED",
+          "match": "INDETERMINATE",
+          "satisfied": "UNSATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      }
+    },
+    {
+      "id": "challenge_alone_refuses",
+      "expected": {
+        "compiler_axes": {
+          "verified": "FAILED",
+          "accepted": "REJECTED",
+          "match": "INDETERMINATE",
+          "satisfied": "UNSATISFIED",
+          "local_authorization": "NOT_EVALUATED"
+        },
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      }
+    },
+    {
+      "id": "twin_token_concurrent_admission_one_reservation",
+      "expected": {
+        "same_native_replay_unit": true,
+        "promise_race": {
+          "arrivals": 2,
+          "admission_states": ["AUTHORIZED", "REFUSED"],
+          "admission_reasons": ["consumption_conflict", "reserved_for_execution"],
+          "reservation_states": ["AVAILABLE", "RESERVED"]
+        },
+        "provider_entry": "ONE_ENTRY_AUTHORIZED_OTHER_REFUSED"
+      }
+    },
+    {
+      "id": "timeout_after_dispatch_indeterminate",
+      "expected": {
+        "consequence": {
+          "decision": "INDETERMINATE",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REQUIRED",
+          "reasons": ["timeout_after_dispatch"]
+        },
+        "provider_entry": "DISPATCHED_OUTCOME_UNKNOWN"
+      }
+    },
+    {
+      "id": "blind_retry_refused",
+      "expected": {
+        "consequence": {
+          "decision": "REFUSE",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REQUIRED",
+          "reasons": ["blind_retry_refused"]
+        },
+        "provider_entry": "REENTRY_REFUSED"
+      }
+    },
+    {
+      "id": "reconciliation_mismatch_refused",
+      "expected": {
+        "consequence": {
+          "decision": "REFUSE",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REFUSED",
+          "reasons": ["reconciliation_binding_mismatch"]
+        },
+        "provider_entry": "NO_REEXECUTION_RECONCILIATION_REFUSED"
+      }
+    },
+    {
+      "id": "wrapper_reference_stability",
+      "expected": {
+        "same_leg_replay_unit": true,
+        "same_compiler_replay_unit": true,
+        "provider_entry": "NOT_EVALUATED"
+      }
+    }
+  ]
+}

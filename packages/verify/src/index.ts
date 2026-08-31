@@ -39,6 +39,7 @@ export {
   verifyAuthorityProgram,
 } from './authority-program.js';
 export * from './aeb-adapter-contract.js';
+export * from './aeb-native-compiler.js';
 export * from './aeb-acceptance-profile.js';
 export * from './aeb-execution-conditions.js';
 export * from './aeb-aps-adapter.js';

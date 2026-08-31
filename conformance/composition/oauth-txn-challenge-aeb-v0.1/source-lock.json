@@ -1,0 +1,21 @@
+{
+  "@version": "OAUTH-TXN-CHALLENGE-AEB-SOURCE-LOCK-v0.2",
+  "upstream": {
+    "id": "draft-rosomakho-oauth-txn-challenge-00",
+    "url": "https://www.ietf.org/archive/id/draft-rosomakho-oauth-txn-challenge-00.txt",
+    "bytes": 70435,
+    "sha256": "a50c1fee4ce4ae486aa6e6739e9927586dc5c14a209434f44f76200354a8cead"
+  },
+  "local_implementation": {
+    "packages/verify/src/aeb-adapter-contract.ts": "38375c23afb5ecc88006d6ce2725cf6e3a94322ddf07ac4de4e7cf4ad404d66a",
+    "packages/verify/dist/aeb-adapter-contract.js": "b0899e9464f3a58c816c27d05380db85f8c611fbed50dc10f0c8ed59159ce98f",
+    "packages/verify/src/aeb-oauth-transaction-challenge-adapter.ts": "cf0cca6fddc6b3fe7085f5ce1531ef1a64b7a4182f9aa6460a67c21212cee831",
+    "packages/verify/dist/aeb-oauth-transaction-challenge-adapter.js": "557bfccd1982bc7b3823d02e7736c9e88742f29c8eb13e316dbbd3cd5958f9c8",
+    "packages/verify/src/aeb-native-compiler.ts": "b8bdcf6c46c30d4ff8a954c96e2802d590535b97e0e08f0a0a71559438157286",
+    "packages/verify/dist/aeb-native-compiler.js": "acad523029f0d62670a2bf1b789b6c8555d6a86de4650310efe7933ae374a945",
+    "packages/verify/src/aeb-consequence-conformance.ts": "03556de560f14f64705116b94b78e733f5e9a6f90d671131f5a98ac0169c4590",
+    "packages/verify/dist/aeb-consequence-conformance.js": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f",
+    "packages/verify/vendor/caid.mjs": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5",
+    "conformance/composition/oauth-txn-challenge-aeb-v0.1/run.mjs": "1b329c857deda3441614d76388336a5498100bf1de643d0de7aa86f370a3267b"
+  }
+}

@@ -8,7 +8,7 @@
       "observed": {
         "native_system": "oauth-transaction-challenge",
         "provider_calls": 1,
-        "replay_unit": "sha256:2563696b123541c5d82e7380d82264dc8f1406e132551ec3ad9f86fb528e4bab",
+        "replay_unit": "sha256:55d3353a248c35f6f238772ed68db04eb5e763b11f9441f8b6aa0648c9688d99",
         "state": "EXECUTED"
       },
       "passed": true
@@ -137,5 +137,5 @@
   ],
   "passed": true,
   "profile": "EP-AEB-CROSSING-LIFECYCLE-COMPOSITION-v1",
-  "results_digest": "sha256:6754035950c403db118d8a085f24190bf3e2694f0af327bb39f5b193f78f57bf"
+  "results_digest": "sha256:10e3f676fdbcec8baf3a2064b47ce999c6214b802cd6d521e7b87d6018bdb3ba"
 }

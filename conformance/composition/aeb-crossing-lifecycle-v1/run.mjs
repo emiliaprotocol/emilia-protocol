@@ -16,7 +16,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
 import { adapterPinDigest, canonicalizeAeb, digestAeb, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, } from '../../../packages/verify/aeb-adapter-contract.js';
-import { OAUTH_TXN_CHALLENGE_AEB_ADAPTER_ID, OAUTH_TXN_CHALLENGE_AEB_ADAPTER_VERSION, OAUTH_TXN_CHALLENGE_CONFIG_VERSION, OAUTH_TXN_CHALLENGE_MAPPING_VERSION, OAUTH_TXN_CHALLENGE_MAPPER_ID, OAUTH_TXN_CHALLENGE_TRUST_ROOT_VERSION, createOAuthTransactionChallengeActionDefinition, createOAuthTransactionChallengeAebAdapter, } from '../../../packages/verify/aeb-oauth-transaction-challenge-adapter.js';
+import { OAUTH_TXN_CHALLENGE_AEB_ADAPTER_ID, OAUTH_TXN_CHALLENGE_AEB_ADAPTER_VERSION, OAUTH_TXN_CHALLENGE_CONFIG_VERSION, OAUTH_TXN_CHALLENGE_MAPPING_VERSION, OAUTH_TXN_CHALLENGE_MAPPER_ID, OAUTH_TXN_CHALLENGE_OMITTED_NONMATERIAL_FIELDS, OAUTH_TXN_CHALLENGE_TRUST_ROOT_VERSION, createOAuthTransactionChallengeActionDefinition, createOAuthTransactionChallengeAebAdapter, } from '../../../packages/verify/aeb-oauth-transaction-challenge-adapter.js';
 import { OASNT_AEB_ADAPTER_ID, OASNT_AEB_ADAPTER_VERSION, OASNT_AEB_CONFIG_VERSION, OASNT_CAID_MAPPER_ID, OASNT_CAID_MAPPING_VERSION, OASNT_TRUST_ROOT_VERSION, createOasntActionDefinition, createOasntAebAdapter, } from '../../../packages/verify/aeb-oasnt-adapter.js';
 import { issueAebCrossingRecord, mapBcrCrossingAuthority, verifyAebCrossingRecord, } from '../../../packages/verify/aeb-crossing-record.js';
 import { loadDefaultAgilityMldsaBackend } from '../../../packages/verify/pq-signature-agility.js';
@@ -106,6 +106,14 @@ function oauthFixture() {
             txn: 'txn-canonical-boundary-1',
             authorization_details: details,
             actor: { sub: 'workload:payment-agent' },
+            verified_context: {
+                challenge_issuer: 'https://payments.example',
+                challenge_audience: 'https://as.example',
+                access_token_issuer: 'https://as.example',
+                access_token_subject: 'principal:customer-42',
+                access_token_audience: 'https://payments.example',
+                access_token_client_id: 'agent-client-42',
+            },
         },
     };
     const descriptor = {
@@ -146,6 +154,7 @@ function oauthFixture() {
         oauth_client_id: 'agent-client-42',
         oauth_subject: 'principal:customer-42',
         require_actor_context: true,
+        replay_equivalence: 'nonreusable-protected-resource-transaction',
         clock_skew_seconds: 2,
         max_challenge_lifetime_seconds: 120,
         max_access_token_lifetime_seconds: 180,
@@ -186,17 +195,14 @@ function oauthFixture() {
         mapper_id: OAUTH_TXN_CHALLENGE_MAPPER_ID,
         resolver: {
             id: OAUTH_TXN_CHALLENGE_MAPPER_ID,
-            version: '1',
-            implementation_digest: digestAeb({ implementation: OAUTH_TXN_CHALLENGE_MAPPER_ID, version: '1' }),
+            version: '2',
+            implementation_digest: digestAeb({ implementation: OAUTH_TXN_CHALLENGE_MAPPER_ID, version: '2' }),
         },
         semantic_equivalence: {
             assertion: 'EQUIVALENT_UNDER_PROFILE',
             loss_policy: 'NO_MATERIAL_FIELD_LOSS',
             omitted_material_fields: [],
-            omitted_nonmaterial_fields: [
-                'challenge.reason', 'challenge.jti', 'challenge.iat', 'challenge.exp',
-                'access_token.jti', 'access_token.iat', 'access_token.exp',
-            ],
+            omitted_nonmaterial_fields: [...OAUTH_TXN_CHALLENGE_OMITTED_NONMATERIAL_FIELDS],
         },
         profile_digest: digestAeb(null),
     };

@@ -5,6 +5,30 @@ different protocol or trust domain. It does not replace the native protocol
 and it does not introduce a universal receipt. A relying party supplies the
 trust configuration and decides whether the result is admissible.
 
+## Developer entry point
+
+`compileAebNativeEvidence` is the neutral SDK surface over this contract. It
+accepts unchanged native artifacts, relying-party pins, pure native verifiers,
+mapping profiles, native protocol and verifier descriptors, a relying-party
+expected action, an AEC requirement, and a local-policy input. It returns a
+closed, deterministic report with native verification, acceptance,
+exact-action matching, evidence satisfaction, declared semantic loss, and
+replay identity kept separate. The expected action and policy decision are
+marked `RELYING_PARTY_INPUT`; the compiler does not claim independent
+provenance, authentication, or execution for either input.
+
+The compiler reports an `ALLOW`, `DENY`, or `INDETERMINATE` policy input, then
+stops. Local authorization is `NOT_EVALUATED`. Reservation, consumption,
+provider entry, outcome, observed effect, retry, and reconciliation also remain
+`NOT_EVALUATED` or `NOT_ESTABLISHED` until Gate performs the corresponding
+work. A pinned verifier implementation digest is configuration metadata, not
+proof that a measured runtime executed it.
+
+Import the compiler from `@emilia-protocol/verify/aeb-native-compiler` or the
+main package entry. The runnable
+[`ACME-DELEGATION example`](../../examples/aeb-native-compiler-v1/README.md)
+shows a native Ed25519 artifact compiling without changing its wire bytes.
+
 ## Contract
 
 An adapter is a versioned, deterministic module with two operations:
@@ -17,7 +41,8 @@ An adapter is a versioned, deterministic module with two operations:
 Adapters must not make network calls or use ambient trust. A profile is valid
 only when its digest is pinned in the relying-party configuration. The
 presented artifact cannot select a different adapter, profile, root, or
-requirement.
+requirement. This is an adapter contract; the compiler does not sandbox code
+supplied by its caller.
 
 The implementation passes adapters detached, recursively frozen copies of the
 artifact, expected action, status, trust roots, adapter configuration, and mapping profile. This
@@ -68,10 +93,16 @@ The verifier keeps the following states distinct:
   requirement for one CAID.
 - `AUTHORIZED`: a local execution decision after evidence is satisfied.
 
-`SATISFIED` requires native verification, relying-party acceptance, a fresh
-authenticated status result, a matching CAID, and every role required by the
-pinned requirement. A stale, unavailable, or uncheckable status result is
-`INDETERMINATE`; it is never treated as approval.
+`SATISFIED` requires native verification, relying-party acceptance, a status
+input whose derived freshness passes the pinned adapter rules, a matching
+CAID, and every role required by the pinned requirement. `AebStatusInput` is
+caller-supplied data that is shape-checked and digest-bound; this contract does
+not authenticate its provenance. A stale, unavailable, or uncheckable status
+input is `INDETERMINATE`; it is never treated as approval.
+
+The native compiler stops at evidence satisfaction. Its policy input is not
+the `AUTHORIZED` state described above, and its local-authorization axis stays
+`NOT_EVALUATED` even when the policy input says `ALLOW`.
 
 The evaluation record binds the initiator and, when the requirement uses
 `executor-exclusion`, the server-selected executor. A subject satisfying an
@@ -128,11 +159,11 @@ Historical verification re-derives the status snapshot signed into the
 evaluation and always returns `execution_authorizing: false`. It is the default
 when live execution inputs are absent. Execution-time verification is a
 separate explicit mode: it requires the exact normalized action, verifier
-clock, and a
-fresh status result obtained and authenticated by relying-party configuration
-for every leg. A missing, stale, consumed, revoked, or unavailable current
-status fails closed. `EP-STATUS-v1` is the portable signed status profile for
-deployments that need an offline-verifiable current-status artifact.
+clock, and a fresh status input evaluated under the pinned adapter rules for
+every leg. A missing, stale, consumed, revoked, or unavailable current-status
+input fails closed. `EP-STATUS-v1` is the separate portable signed profile for
+deployments that need an offline-verifiable status artifact; `AebStatusInput`
+alone does not establish that provenance.
 
 ## Execution boundary
 

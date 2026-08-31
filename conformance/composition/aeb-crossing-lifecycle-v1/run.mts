@@ -39,6 +39,7 @@ import {
   OAUTH_TXN_CHALLENGE_CONFIG_VERSION,
   OAUTH_TXN_CHALLENGE_MAPPING_VERSION,
   OAUTH_TXN_CHALLENGE_MAPPER_ID,
+  OAUTH_TXN_CHALLENGE_OMITTED_NONMATERIAL_FIELDS,
   OAUTH_TXN_CHALLENGE_TRUST_ROOT_VERSION,
   createOAuthTransactionChallengeActionDefinition,
   createOAuthTransactionChallengeAebAdapter,
@@ -194,6 +195,14 @@ function oauthFixture(): NativeFixture {
       txn: 'txn-canonical-boundary-1',
       authorization_details: details,
       actor: { sub: 'workload:payment-agent' },
+      verified_context: {
+        challenge_issuer: 'https://payments.example',
+        challenge_audience: 'https://as.example',
+        access_token_issuer: 'https://as.example',
+        access_token_subject: 'principal:customer-42',
+        access_token_audience: 'https://payments.example',
+        access_token_client_id: 'agent-client-42',
+      },
     },
   };
   const descriptor = {
@@ -234,6 +243,7 @@ function oauthFixture(): NativeFixture {
     oauth_client_id: 'agent-client-42',
     oauth_subject: 'principal:customer-42',
     require_actor_context: true,
+    replay_equivalence: 'nonreusable-protected-resource-transaction',
     clock_skew_seconds: 2,
     max_challenge_lifetime_seconds: 120,
     max_access_token_lifetime_seconds: 180,
@@ -274,17 +284,14 @@ function oauthFixture(): NativeFixture {
     mapper_id: OAUTH_TXN_CHALLENGE_MAPPER_ID,
     resolver: {
       id: OAUTH_TXN_CHALLENGE_MAPPER_ID,
-      version: '1',
-      implementation_digest: digestAeb({ implementation: OAUTH_TXN_CHALLENGE_MAPPER_ID, version: '1' }),
+      version: '2',
+      implementation_digest: digestAeb({ implementation: OAUTH_TXN_CHALLENGE_MAPPER_ID, version: '2' }),
     },
     semantic_equivalence: {
       assertion: 'EQUIVALENT_UNDER_PROFILE',
       loss_policy: 'NO_MATERIAL_FIELD_LOSS',
       omitted_material_fields: [],
-      omitted_nonmaterial_fields: [
-        'challenge.reason', 'challenge.jti', 'challenge.iat', 'challenge.exp',
-        'access_token.jti', 'access_token.iat', 'access_token.exp',
-      ],
+      omitted_nonmaterial_fields: [...OAUTH_TXN_CHALLENGE_OMITTED_NONMATERIAL_FIELDS],
     },
     profile_digest: digestAeb(null),
   };

@@ -88,6 +88,23 @@ maps every accepted leg through a pinned CAID profile, composes the legs through
 `EP-AEC-v1`, enforces distinct-human quorum and no-self-approval, and reserves
 the authorization before execution.
 
+For a pure, pre-entry compile step, use the separate native compiler:
+
+```js
+import {
+  compileAebNativeEvidence,
+} from '@emilia-protocol/verify/aeb-native-compiler';
+```
+
+It preserves native artifacts and returns a closed report for verification,
+acceptance, exact-action matching, declared semantic loss, evidence
+satisfaction, and stable native replay identity. The exact expected action and
+local-policy decision are marked `RELYING_PARTY_INPUT`. An `ALLOW` is reported
+as input, not authorization; local authorization remains `NOT_EVALUATED`.
+Reservation, consumption, provider entry, outcome, observed effect, retry, and
+reconciliation remain `NOT_EVALUATED` or `NOT_ESTABLISHED`. A verifier
+descriptor is relying-party-pinned metadata, not a measured-runtime claim.
+
 Use `createAebNativeVerificationAttestationAdapter()` when a native protocol
 verifier runs at a workload gateway. Its signed attestation binds the native
 artifact digest, protocol, audience, subject, evidence role, mapper, resolver,

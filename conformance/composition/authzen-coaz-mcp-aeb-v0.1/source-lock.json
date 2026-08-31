@@ -1,0 +1,123 @@
+{
+  "@version": "AUTHZEN-COAZ-MCP-AEB-SOURCE-LOCK-v0.1",
+  "assembled": "2026-08-31",
+  "inherited_fetch_date": "2026-08-25",
+  "fetch_note": "This profile inherits the exact OpenID source facts refreshed by coaz-translation-v0.1 on 2026-08-25. No newer upstream status is claimed here.",
+  "inherits": {
+    "path": "conformance/composition/coaz-translation-v0.1/source-lock.json",
+    "sha256": "3e5a09c72eba78f67757c2d424c12405ca7ad698576bb2d7ed95138086f918ef"
+  },
+  "upstream_repository": {
+    "url": "https://github.com/openid/authzen",
+    "commit": "e287920eed842b227e38531c1735b712337ca44d",
+    "files": [
+      {
+        "path": "profiles/authzen-coaz-framework-1_0.md",
+        "sha256": "cfea78ebdc9dfb5bf44ffb88faf64ed9da9252e696625ce729692fbf54ea2f7d"
+      },
+      {
+        "path": "profiles/authzen-coaz-mcp-binding-1_0.md",
+        "sha256": "7ebd9dd513aed920f6b0020e2542a58cc9e9d6c562b240f22f4bc361dac2b9c1"
+      }
+    ]
+  },
+  "upstream_issue": {
+    "number": 603,
+    "url": "https://github.com/openid/authzen/issues/603",
+    "title": "[COAZ-MCP] Bind a permit to the MCP operation actually forwarded",
+    "state_at_fetch": "open",
+    "updated_at": "2026-08-13T19:03:08Z",
+    "body_text_sha256": "23e502e38eca90687d4dbeeb54bfdc1e412f99dee37e3c4c23b98b29d707a9c3"
+  },
+  "specs": [
+    {
+      "name": "COAZ: A Framework for Mapping Information Models to AuthZEN Authorization Requests - Draft 1 (OpenID AuthZEN WG, published 13 February 2026)",
+      "url": "https://openid.github.io/authzen/authzen-coaz-framework-1_0.html",
+      "sha256": "e52b719a414f9935b1f0abb4bfa1e903133d3452752fb0eb6f0d23a17dc84bdf"
+    },
+    {
+      "name": "COAZ-MCP: COAZ Binding for the Model Context Protocol - Draft 1 (OpenID AuthZEN WG, published 13 February 2026)",
+      "url": "https://openid.github.io/authzen/authzen-coaz-mcp-binding-1_0.html",
+      "sha256": "b8b2a8506bb8cec89977a25877e204fe807b7b7dadd69d0eda9acc237132a79d"
+    }
+  ],
+  "authzen_base": {
+    "name": "AuthZEN Authorization API 1.0 Final",
+    "url": "https://openid.net/specs/authorization-api-1_0.html",
+    "sha256": "f0ee89cc4a688f9f409dc323c8342579d74c45dc776a6b04a622ba9738de82bc"
+  },
+  "mapping_profile": {
+    "name": "declared release_payment mapping from coaz-translation-v0.1",
+    "canonical_sha256": "6fad7e8cae40b978b880acc2762134ba939f8ffcf56b50f11f6e8a9491b90368"
+  },
+  "native_compiler": {
+    "version": "EP-AEB-NATIVE-COMPILER-v1",
+    "path": "packages/verify/dist/aeb-native-compiler.js",
+    "sha256": "acad523029f0d62670a2bf1b789b6c8555d6a86de4650310efe7933ae374a945",
+    "source_path": "packages/verify/src/aeb-native-compiler.ts",
+    "source_sha256": "b8bdcf6c46c30d4ff8a954c96e2802d590535b97e0e08f0a0a71559438157286"
+  },
+  "native_attestation_bridge": {
+    "version": "EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v1",
+    "path": "packages/verify/dist/aeb-adapter-contract.js",
+    "sha256": "b0899e9464f3a58c816c27d05380db85f8c611fbed50dc10f0c8ed59159ce98f",
+    "source_path": "packages/verify/src/aeb-adapter-contract.ts",
+    "source_sha256": "38375c23afb5ecc88006d6ce2725cf6e3a94322ddf07ac4de4e7cf4ad404d66a",
+    "signer_scope": "deterministic public test-only local PEP harness key; not an AuthZEN or OpenID signature"
+  },
+  "aeb_kernel": {
+    "path": "packages/verify/dist/aeb-consequence-conformance.js",
+    "sha256": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f",
+    "claim_scope": "local_atomic"
+  },
+  "local_files": [
+    {
+      "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/README.md",
+      "sha256": "49e034c186aed663981823bb78c1cea0ff94398bca4f84d7620efdcf1b6bff5a"
+    },
+    {
+      "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/run.mjs",
+      "sha256": "9a9cbae2dc9d21ed8888b50743b4afc1a81f47ac5cd07836f50d63c907accc18"
+    },
+    {
+      "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/run.node-test.mjs",
+      "sha256": "28bd0be40d97a46f1754cd2bbe98b5fcc4dfa8231df6898b070ad77a62af1322"
+    },
+    {
+      "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/vectors.json",
+      "sha256": "354488f019f7be5edfbf7f4af264213c89d72a5b6592d76b7ecc629895c18873"
+    },
+    {
+      "path": "conformance/composition/coaz-translation-v0.1/run.mjs",
+      "sha256": "46ef7675504ea3ce6d84d891026ce5d7bf6a16541678e158618793894cfd36fd"
+    },
+    {
+      "path": "conformance/composition/coaz-translation-v0.1/vectors.json",
+      "sha256": "b079c74190001b9c51a4f1834e18fb756ec71d8612f8bda1d36c817c90696773"
+    },
+    {
+      "path": "packages/verify/dist/aeb-consequence-conformance.js",
+      "sha256": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f"
+    },
+    {
+      "path": "packages/verify/src/aeb-consequence-conformance.ts",
+      "sha256": "03556de560f14f64705116b94b78e733f5e9a6f90d671131f5a98ac0169c4590"
+    },
+    {
+      "path": "packages/verify/dist/aeb-native-compiler.js",
+      "sha256": "acad523029f0d62670a2bf1b789b6c8555d6a86de4650310efe7933ae374a945"
+    },
+    {
+      "path": "packages/verify/src/aeb-native-compiler.ts",
+      "sha256": "b8bdcf6c46c30d4ff8a954c96e2802d590535b97e0e08f0a0a71559438157286"
+    },
+    {
+      "path": "packages/verify/dist/aeb-adapter-contract.js",
+      "sha256": "b0899e9464f3a58c816c27d05380db85f8c611fbed50dc10f0c8ed59159ce98f"
+    },
+    {
+      "path": "packages/verify/src/aeb-adapter-contract.ts",
+      "sha256": "38375c23afb5ecc88006d6ce2725cf6e3a94322ddf07ac4de4e7cf4ad404d66a"
+    }
+  ]
+}

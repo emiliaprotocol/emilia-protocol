@@ -1,0 +1,100 @@
+{
+  "@version": "WIMSE-WPT02-OAUTH-TXN-AEB-VECTORS-v0.1",
+  "evaluated_at": "2026-08-31T19:00:30Z",
+  "other_token_headers": [
+    "oauth-transaction-access-token",
+    "oauth-transaction-challenge"
+  ],
+  "cases": [
+    {
+      "id": "candidate_wrapper_bytes_bound_not_native_oauth_presentation",
+      "mutation": "NONE",
+      "expected": "VERIFIED"
+    },
+    {
+      "id": "missing_tth_with_txn_refused",
+      "mutation": "OMIT_TTH",
+      "expected": "FAILED"
+    },
+    {
+      "id": "mismatched_tth_refused",
+      "mutation": "MISMATCH_TTH",
+      "expected": "FAILED"
+    },
+    {
+      "id": "missing_oth_entry_refused",
+      "mutation": "OMIT_OTH_CHALLENGE",
+      "expected": "FAILED"
+    },
+    {
+      "id": "mismatched_oth_hash_refused",
+      "mutation": "MISMATCH_OTH_CHALLENGE",
+      "expected": "FAILED"
+    },
+    {
+      "id": "oauth_access_token_substitution_refused",
+      "mutation": "SUBSTITUTE_OAUTH_ACCESS_TOKEN",
+      "expected": "FAILED"
+    },
+    {
+      "id": "unknown_oth_entry_refused",
+      "mutation": "ADD_UNKNOWN_OTH_ENTRY",
+      "expected": "FAILED"
+    },
+    {
+      "id": "oth_json_member_order_is_not_semantic",
+      "mutation": "REVERSE_OTH_MEMBER_ORDER",
+      "expected": "VERIFIED"
+    },
+    {
+      "id": "target_authority_substitution_refused",
+      "mutation": "SUBSTITUTE_TARGET_AUTHORITY",
+      "expected": "NATIVE_FAILED"
+    },
+    {
+      "id": "target_path_substitution_refused",
+      "mutation": "SUBSTITUTE_TARGET_PATH",
+      "expected": "NATIVE_FAILED"
+    },
+    {
+      "id": "noncanonical_target_uri_refused",
+      "mutation": "NONCANONICAL_TARGET_URI",
+      "expected": "NATIVE_FAILED"
+    },
+    {
+      "id": "response_signature_negotiation_refused",
+      "mutation": "REQUEST_SIGNED_RESPONSE",
+      "expected": "NATIVE_FAILED"
+    },
+    {
+      "id": "txn_rctx_present_refused_before_mapping",
+      "mutation": "TXN_RCTX_PRESENT",
+      "expected": "NATIVE_FAILED"
+    },
+    {
+      "id": "case_variant_duplicate_header_refused",
+      "mutation": "DUPLICATE_CASE_VARIANT_HEADER",
+      "expected": "FAILED"
+    },
+    {
+      "id": "no_txn_token_requires_no_tth",
+      "mutation": "CLAIM_ONLY_NO_TXN_NO_TTH",
+      "expected": "VERIFIED"
+    },
+    {
+      "id": "orphan_tth_without_txn_refused",
+      "mutation": "CLAIM_ONLY_NO_TXN_WITH_TTH",
+      "expected": "FAILED"
+    },
+    {
+      "id": "draft_revision_migration_does_not_rekey_spend",
+      "mutation": "REPLAY_REVISION_MIGRATION",
+      "expected": "REFUSED_SECOND_SPEND"
+    },
+    {
+      "id": "direct_http_authorization_scheme_collision",
+      "mutation": "EXACT_DRAFT_AUTHORIZATION_COLLISION",
+      "expected": "REFUSED"
+    }
+  ]
+}

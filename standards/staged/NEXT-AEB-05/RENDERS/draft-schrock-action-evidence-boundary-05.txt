@@ -1,0 +1,1512 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                            31 August 2026
+Expires: 4 March 2027
+
+
+      The Action Evidence Boundary for Consequential Agent Effects
+               draft-schrock-action-evidence-boundary-05
+
+Abstract
+
+   Consequential agent actions can cross identity, transport,
+   authorization, policy, and execution systems.  Each system can
+   produce a valid artifact while the executor still lacks a safe rule
+   for joining the artifacts to the exact effect, consuming one-time
+   authority, and handling an uncertain outcome.  This document defines
+   the Action Evidence Boundary (AEB), an executor-side processing model
+   for that lifecycle.
+
+   AEB requires native artifact verification, Canonical Action
+   Identifier (CAID) matching, Authorization Evidence Chain (AEC)
+   satisfaction, a separate local authorization decision, durable atomic
+   consumption or reservation, invocation, closed effect outcomes, and
+   authenticated reconciliation.  It defines no receipt or token format,
+   no policy language, no universal evidence taxonomy, and no new
+   registry.  Native workload credentials, message signatures, attested
+   per-action tokens, permit records, authorization receipts, and status
+   mechanisms retain their own semantics and verifiers.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 4 March 2027.
+
+
+
+
+
+
+Schrock                   Expires 4 March 2027                  [Page 1]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+     1.1.  Scope and Non-Goals . . . . . . . . . . . . . . . . . . .   4
+   2.  Conventions and Terminology . . . . . . . . . . . . . . . . .   5
+   3.  Non-Collapsing Decision and Lifecycle Vocabulary  . . . . . .   6
+   4.  Relying-Party Inputs and Pins . . . . . . . . . . . . . . . .   7
+   5.  Required Processing Model . . . . . . . . . . . . . . . . . .   8
+     5.1.  Construct the Observed Material Action  . . . . . . . . .   8
+     5.2.  Verify Each Native Artifact . . . . . . . . . . . . . . .   8
+     5.3.  Establish CAID Material-Action MATCH  . . . . . . . . . .   9
+     5.4.  Evaluate Required Field-Origin Assertions . . . . . . . .   9
+     5.5.  Evaluate AEC Evidence Satisfaction  . . . . . . . . . . .  10
+     5.6.  Pinned Boundary Requirement and Evaluation Record . . . .  10
+     5.7.  Make the Local Authorization Decision . . . . . . . . . .  11
+     5.8.  Atomically Consume or Reserve Before Invocation . . . . .  12
+     5.9.  Invoke the Frozen Action  . . . . . . . . . . . . . . . .  12
+     5.10. Classify the Effect Outcome . . . . . . . . . . . . . . .  13
+     5.11. Perform Authenticated Reconciliation  . . . . . . . . . .  13
+   6.  Declaration and Challenge Semantics . . . . . . . . . . . . .  14
+   7.  Native Evidence and Transport Boundaries  . . . . . . . . . .  14
+     7.1.  WIMSE and HTTP Message Signatures . . . . . . . . . . . .  15
+     7.2.  Attested Per-Action Tokens and Permit Records . . . . . .  15
+   8.  Native Compilation Contract . . . . . . . . . . . . . . . . .  16
+     8.1.  Pinned Inputs . . . . . . . . . . . . . . . . . . . . . .  16
+     8.2.  Deterministic Operations  . . . . . . . . . . . . . . . .  17
+     8.3.  Closed Compile Result . . . . . . . . . . . . . . . . . .  17
+     8.4.  Semantic-Loss Report  . . . . . . . . . . . . . . . . . .  18
+     8.5.  Stable Native Replay Unit . . . . . . . . . . . . . . . .  19
+     8.6.  Path and Provider Ownership . . . . . . . . . . . . . . .  19
+     8.7.  Compilation Conformance . . . . . . . . . . . . . . . . .  20
+   9.  Conformance and Deployment Claims . . . . . . . . . . . . . .  20
+   10. Security Considerations . . . . . . . . . . . . . . . . . . .  21
+   11. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  22
+
+
+
+Schrock                   Expires 4 March 2027                  [Page 2]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   12. Relationship to EMILIA and Adjacent Work  . . . . . . . . . .  22
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  23
+   14. Changes since -04 . . . . . . . . . . . . . . . . . . . . . .  23
+   15. Implementation Status . . . . . . . . . . . . . . . . . . . .  23
+   16. References  . . . . . . . . . . . . . . . . . . . . . . . . .  24
+     16.1.  Normative References . . . . . . . . . . . . . . . . . .  24
+     16.2.  Informative References . . . . . . . . . . . . . . . . .  25
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  26
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  26
+
+1.  Introduction
+
+   A remote executor can receive several independently useful inputs: a
+   workload credential and protected request, a delegation or
+   capability, a pre-execution permit, a human-authorization artifact,
+   and a policy decision.  None of those inputs alone answers every
+   question the consequence-owning system has to answer before changing
+   its system of record.
+
+   The missing contract is at the effect boundary.  The executor must
+   determine what exact material action it is about to perform; verify
+   each artifact under its native rules; correlate independently
+   verified representations without guessing; evaluate whether the
+   evidence bundle fills its requirement; make its own authorization
+   decision; consume or reserve any one-time or bounded authority;
+   invoke the effect once; and preserve uncertainty when the effect
+   cannot be observed conclusively.
+
+   This document defines that contract.  Its required order is:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 4 March 2027                  [Page 3]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+    native verification
+           |
+           v
+    CAID material-action MATCH
+           |
+           v
+    AEC evidence SATISFIED
+           |
+           v
+    local policy AUTHORIZED
+           |
+           v
+    atomic CONSUMED / RESERVED
+           |
+           v
+    durable DISPATCH_PENDING
+           |
+           v
+    INVOKED
+           |
+           +--> EXECUTED
+           +--> FAILED
+           +--> INDETERMINATE --> authenticated reconciliation
+
+   Every arrow is conditional.  A signature is not authority.  Native
+   verification is not action correlation.  Action correlation is not
+   evidence satisfaction.  Evidence satisfaction is not local
+   authorization.  Authorization is not execution.  An invocation error
+   is not proof that no effect occurred.
+
+1.1.  Scope and Non-Goals
+
+   AEB specifies processing requirements for a boundary that controls a
+   consequential effect.  It can be implemented at a protocol gateway,
+   service mesh component, application middleware, execution adapter, or
+   system-of-record write path, provided the deployment states which
+   effect paths the boundary actually mediates.
+
+   AEB does not define:
+
+   *  a new authorization receipt, access token, attestation token,
+      permit, credential, or execution-evidence format;
+
+   *  a native signature, credential, revocation, status, or
+      transparency verification algorithm;
+
+   *  a policy language, universal authorization decision, or universal
+      human-approval inference;
+
+
+
+Schrock                   Expires 4 March 2027                  [Page 4]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   *  general semantic equivalence between actions;
+
+   *  provider truth, physical truth, legality, safety, wisdom, or
+      complete mediation merely because an AEB implementation is
+      present; or
+
+   *  a registry for evidence types, states, action mappings, or
+      verifier names.
+
+2.  Conventions and Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   BCP 14 is indexed by the RFC Editor at [BCP14].
+
+   Effect boundary:  The last control point that can withhold the
+      protected mutation before it is submitted to the effecting system.
+
+   Relying party:  The party that selects trust inputs, action
+      definitions, mapping profiles, evidence requirements, freshness
+      rules, and local authorization policy, and that relies on the
+      resulting decision.
+
+   Native artifact:  An evidence, credential, permit, token, receipt,
+      status, or message-protection object defined outside AEB and
+      verified under its own specification.
+
+   Field-origin assertion:  A native artifact in which an issuer asserts
+      how exact fields of an action representation were sourced or
+      transformed, and optionally the point-in-time snapshot on which
+      that assertion rests.  Verification establishes the issuer's
+      signed assertion under pinned trust inputs; it does not
+      independently establish where the bytes truly originated.
+
+   Observed action:  The immutable material action constructed by the
+      effect boundary from executor-controlled parsing and system-of-
+      record facts.
+
+   Material field:  A field whose change can alter the protected
+      consequence, as declared by the selected CAID action-type
+      definition.
+
+   Invocation:  The first dispatch of the frozen authorized action to a
+      component that can cause the protected effect.
+
+
+
+Schrock                   Expires 4 March 2027                  [Page 5]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   Authoritative reconciliation:  An authenticated, audience-bound
+      observation from the effecting provider or system of record that
+      is matched to the original action and operation identifier.
+
+3.  Non-Collapsing Decision and Lifecycle Vocabulary
+
+   AEB uses the following decisions with the meanings established by the
+   EMILIA architecture and its component drafts:
+
+   VERIFIED:  One native artifact passed its native verifier under
+      relying-party-selected trust inputs.
+
+   MATCH:  Independently verified artifacts denote the same material
+      action directly or under exact relying-party-pinned CAID mapping
+      profiles.
+
+   SATISFIED:  Verified and matched evidence fills every slot in the
+      relying party's AEC requirement.
+
+   AUTHORIZED:  The consequence-owning relying party's local policy
+      permits this exact action at this time.
+
+   EXECUTED:  The executor records, or an accepted native artifact
+      attests, that the exact effect occurred.  This meaning remains
+      bounded by the native source and its trust assumptions.
+
+   AEB also names operational lifecycle states:
+
+   CONSUMED:  A one-time authorization, challenge, operation key, or
+      equivalent native replay unit has been durably made unavailable
+      for another invocation.
+
+   RESERVED:  Bounded state, such as a capability budget, has been
+      durably fenced for the exact operation before invocation.
+
+   DISPATCH_PENDING:  A durable intent record binds the frozen action,
+      operation identifier, provider environment, and reservation before
+      any effecting dispatch can occur.  Recovery treats a stranded
+      intent as uncertain, not as unused authority.
+
+   INVOKED:  The protected effect was dispatched using the frozen
+      authorized action and operation identifier.
+
+   FAILED:  Authoritative executor or reconciliation evidence
+      establishes that the invoked operation did not cause the protected
+      effect.  A local exception or timeout alone is not sufficient.
+
+   INDETERMINATE:  Invocation began, but available authoritative
+
+
+
+Schrock                   Expires 4 March 2027                  [Page 6]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+      evidence does not establish whether the protected effect occurred.
+
+   CONSUMED, RESERVED, DISPATCH_PENDING, INVOKED, FAILED, and
+   INDETERMINATE are lifecycle terms, not new evidence types or IANA
+   registry values.  A deployment MAY use different local labels if
+   their semantics are at least as strict.
+
+4.  Relying-Party Inputs and Pins
+
+   The requester, presenter, agent, and mutable intermediary context are
+   untrusted inputs.  They MAY propose an action and present native
+   artifacts.  They MUST NOT select or weaken the controls used to
+   accept that request.
+
+   Before evaluating an action, the relying party MUST configure or pin,
+   as applicable:
+
+   *  the supported native artifact revisions, verifier adapters,
+      algorithms, trust anchors, issuers, audiences, and status sources;
+
+   *  when field-origin evidence is required, the accepted assertion
+      profile and digest, trusted issuers and keys, allowed origin
+      classes and transformations for each exact field, snapshot policy,
+      maximum snapshot age, and unavailable-state behavior;
+
+   *  the CAID suite, action-type definition source, exact source
+      descriptors, and mapping-profile digests;
+
+   *  the AEC requirement and the admissible native evidence roles for
+      each slot;
+
+   *  local policy identifiers, policy epochs, tenant and organization
+      boundaries, and any separation-of-duty rule;
+
+   *  the trusted clock, maximum ages, validity windows, allowed skew,
+      and revocation or status freshness requirements;
+
+   *  the durable replay, consumption, reservation, and operation-key
+      namespaces; and
+
+   *  the protected executor, provider environment, reconciliation
+      endpoint, and authenticated provider or system-of-record
+      identities.
+
+   A label, key, profile identifier, requirement, status assertion, or
+   policy identifier carried only in presenter-controlled data MUST NOT
+   become its own trust anchor.  Missing, conflicting, unsupported, or
+   ambiguous required configuration MUST fail closed.
+
+
+
+Schrock                   Expires 4 March 2027                  [Page 7]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+5.  Required Processing Model
+
+5.1.  Construct the Observed Material Action
+
+   The effect boundary MUST construct an immutable observed action from
+   effect-relevant facts it controls.  Depending on the application,
+   those facts can include the protocol operation, tool or method,
+   target resource, tenant, account, amount, currency, destination,
+   environment, input digest, and unique operation identifier.
+
+   The boundary MUST resolve a relying-party-pinned CAID action-type
+   definition and include every field that definition declares material.
+   It MUST NOT copy a requester-supplied action digest, CAID, amount,
+   destination, or resource reference without deriving or checking the
+   corresponding fact at the protected boundary.  If the boundary cannot
+   determine all material fields, it MUST refuse before invocation.
+
+   The observed action MUST be frozen for the remainder of the
+   lifecycle.  A later adapter MUST NOT reconstruct a different action
+   from mutable request state after authorization.
+
+   Before emitting or comparing a CAID, the boundary MUST validate the
+   constructed action against the complete pinned action-type
+   definition.  A source representation is construction-compatible only
+   when a pinned mapping can derive every material target field without
+   guessing.  Construction compatibility is distinct from content
+   equivalence: compatible inputs can still map to different actions,
+   while a missing, ambiguous, or unverified material field yields
+   INDETERMINATE.
+
+5.2.  Verify Each Native Artifact
+
+   Each required native artifact MUST be verified independently under
+   its own specification and relying-party-selected trust inputs before
+   CAID mapping or AEC evaluation.  The AEB implementation MUST use the
+   integrity-protected payload returned by the native verifier, or a
+   projection for which the adapter establishes integrity coverage of
+   every projected field.
+
+   A successful signature check is only one possible step of native
+   verification.  Schema, algorithm, issuer, audience, key status,
+   validity, proof-of-possession, freshness, replay, and native policy
+   checks remain those of the selected native profile.  A verifier
+   exception, unavailable required status source, unsupported critical
+   field, or ambiguous result MUST become a bounded refusal, never an
+   allow path.
+
+
+
+
+
+Schrock                   Expires 4 March 2027                  [Page 8]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   The output of this stage is VERIFIED for each accepted artifact.  An
+   artifact that has not reached VERIFIED MUST NOT participate in action
+   mapping or fill an AEC requirement slot.
+
+5.3.  Establish CAID Material-Action MATCH
+
+   The boundary MUST recompute the CAID of the observed action under the
+   selected suite and definition source.  It MUST compare every action-
+   bound required artifact to that observed action using direct CAID
+   equality or the Action-Mapping Profile defined by [CAID].
+
+   Cross-format mapping MUST occur only after native verification and
+   MUST use the exact source media type, schema version, target action
+   type, definition source, and mapping-profile digest pinned by the
+   relying party.  Every target material field MUST be covered.
+   Missing, lossy, unknown, unpinned, conflicting, or ambiguous mappings
+   yield INDETERMINATE under CAID and MUST fail a required MATCH.  AEB
+   MUST NOT guess equivalence from names, natural-language descriptions,
+   trace identifiers, or presenter assertions.
+
+   MATCH is content correlation only.  It does not validate a native
+   artifact and does not authorize execution.
+
+5.4.  Evaluate Required Field-Origin Assertions
+
+   A relying party MAY require a natively verified field-origin
+   assertion for selected fields before admission.  This document
+   defines the processing contract for that input, not a field-origin
+   wire format, origin taxonomy, scanner, or transformation language.
+
+   The boundary MUST verify the assertion under the relying party's
+   pinned native verifier, issuer and key, assertion profile and digest,
+   action binding, field selectors, accepted origin classes, accepted
+   transformation definitions, snapshot policy, freshness bound, and
+   status inputs.  The verifier output MUST bind each asserted field to
+   the exact observed action or to a lossless, pinned mapping to that
+   action.  A profile identifier or origin label carried only by the
+   presenter MUST NOT select its own verifier or trust root.
+
+   A verified assertion establishes that the pinned issuer made the
+   signed claim.  It does not independently prove source truth, semantic
+   correctness, absence of prompt injection, authorization, settlement,
+   or the truth of a later physical effect.  If policy requires an
+   origin constraint for a material field, a missing assertion, unknown
+   or disallowed origin, unpinned transformation, stale or unreliable
+   required snapshot, action mismatch, or unavailable required status
+   MUST withhold admission.  The boundary MUST preserve the distinction
+   between assertion verification and acceptance under local policy.
+
+
+
+Schrock                   Expires 4 March 2027                  [Page 9]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   A field-origin policy SHOULD be discriminating rather than a blanket
+   prohibition on untrusted content.  For example, it can refuse an
+   untrusted message that selects a payee or destination while accepting
+   the same origin class for a bounded non-authoritative memo field.
+   The accepted and refused field classes are relying-party policy, not
+   universal AEB semantics.
+
+   EP-FIELD-ORIGIN-v0.1 and its finance-operations Gap 6 runner are an
+   informative reference implementation profile [EP-FIELD-ORIGIN].  They
+   do not become a mandatory AEB format and their same-team results are
+   not independent implementation evidence.
+
+5.5.  Evaluate AEC Evidence Satisfaction
+
+   The boundary MUST submit only natively verified, action-matched
+   evidence to an AEC verifier configured with the relying party's
+   requirement.  The requirement used for the decision MUST come from
+   relying-party configuration, not from a presenter-controlled AEC
+   member.
+
+   Every required evidence role MUST be filled by an artifact whose
+   native verifier and adapter are accepted for that role.  A workload
+   identity MUST NOT silently fill a policy-permit or human-
+   authorization slot.  A machine-policy decision MUST NOT silently fill
+   a named-human slot.  A generic operator signature MUST NOT be
+   interpreted as evidence that a human operated a system or performed a
+   named approval ceremony.
+
+   Only a successful AEC evaluation under these inputs reaches
+   SATISFIED.  UNSATISFIED, malformed, unsupported, or ambiguous results
+   MUST withhold invocation.
+
+   A qualification statement can fill an evaluation-evidence role only
+   when its native verifier establishes the measured candidate,
+   evaluation campaign, assignment, policy, freshness, and status.  A
+   qualification result MUST NOT fill an authorization role and MUST NOT
+   by itself cause SATISFIED, AUTHORIZED, reservation, or invocation.
+
+5.6.  Pinned Boundary Requirement and Evaluation Record
+
+   The consequence-owning relying party MUST pin the exact adapter
+   revisions, trust roots, mapping profiles, AEC requirement, and
+   boundary requirement used for a decision.  The presenter MUST NOT
+   select or weaken those inputs.  EP-AEB-REQUIREMENT-v1 is a closed
+   object whose all_of and any_of members name evidence roles and whose
+   terms member carries boundary constraints:
+
+
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 10]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   {
+     "@version": "EP-AEB-REQUIREMENT-v1",
+     "all_of": ["human-authorization", "policy-permit"],
+     "terms": [
+       { "type": "distinct-human-quorum",
+         "role": "human-authorization", "threshold": 2 },
+       { "type": "initiator-exclusion",
+         "roles": ["human-authorization"] },
+       { "type": "executor-exclusion",
+         "roles": ["human-authorization"] },
+       { "type": "one-time-consumption" }
+     ]
+   }
+
+   A conforming implementation MUST reject unknown terms.  It MUST
+   require exactly one one-time-consumption term.  A distinct-human-
+   quorum term counts only distinct natural-person subject identifiers
+   exposed by eligible native verifiers for the named role. initiator-
+   exclusion and executor-exclusion compare those verified subjects with
+   the boundary-owned initiator and executor identifiers.  Different
+   encodings of one key or subject MUST NOT count as different humans.
+
+   Execution-time evaluation MUST resolve current status through
+   relying-party-configured status sources.  Presenter-supplied current
+   status is untrusted.  Revoked, expired, stale, unavailable,
+   ambiguous, or unauthenticated required status MUST withhold
+   authorization.  Historical re-performance MUST be labeled historical
+   and MUST NOT be used as a current execution decision.
+
+   The evaluator SHOULD emit a signed, re-derivable record binding the
+   observed action and CAID, operation and consumption identifiers,
+   initiator and executor, adapter and mapping revisions, complete
+   requirement and configuration digests, native artifact digests,
+   current-status snapshots, per-leg VERIFIED and MATCH results, AEC
+   SATISFIED, boundary constraints, and the separate AUTHORIZED or
+   REFUSED verdict.  The record is evidence of the evaluator's decision;
+   it does not itself perform or authorize an effect.
+
+5.7.  Make the Local Authorization Decision
+
+   The consequence-owning executor MUST make a separate local
+   authorization decision after SATISFIED.  It MUST evaluate the exact
+   observed action, audience, tenant, organization, policy epoch,
+   freshness, current credential and authority status, separation of
+   duties, local risk controls, and any bounded capability state.
+
+
+
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 11]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   Credential revocation and per-action authorization evidence answer
+   different questions.  A current non-revocation or status result can
+   establish that a credential remains acceptable under local policy; it
+   does not prove that the credential holder authorized this action.  A
+   per-action authorization artifact does not prove that every
+   credential in its trust path remains current.  When policy requires
+   both, the boundary MUST verify both without substituting one for the
+   other.
+
+   The boundary reaches AUTHORIZED only if local policy permits the
+   exact action at the decision time.  SATISFIED alone MUST NOT trigger
+   reservation or invocation.
+
+5.8.  Atomically Consume or Reserve Before Invocation
+
+   After AUTHORIZED and before invocation, the boundary MUST perform the
+   durable state transition required by the native evidence and local
+   policy.  This can include consuming a one-time authorization,
+   challenge nonce, or operation key; reserving a bounded capability or
+   budget; and fencing the operation to one owner across replicas.
+
+   The transition MUST be atomic within the relying party's durable
+   state domain.  Its key MUST be derived from verified evidence or the
+   executor-owned observed action and operation identifier, never from a
+   presenter-selected decoy.  If the store is unavailable, non-atomic,
+   stale, or reports an ambiguous result, the boundary MUST refuse
+   before invocation.
+
+   AEB does not claim atomicity between a local store and an unrelated
+   remote provider.  It requires the local consume or reserve transition
+   to occur first so that any uncertainty after dispatch cannot make the
+   same authority available for an uncontrolled second effect.
+
+5.9.  Invoke the Frozen Action
+
+   Before any call, message, or byte can reach an effecting component,
+   the boundary MUST durably enter DISPATCH_PENDING for the frozen
+   observed action that reached AUTHORIZED and CONSUMED or RESERVED.
+   The record MUST bind the action digest, operation identifier,
+   provider environment, audience, reservation or consumption record,
+   and adapter.  Failure or ambiguity while writing this record MUST
+   withhold dispatch.
+
+   The boundary MUST invoke only from that durable state.  It MUST use a
+   stable, action-bound, unique operation identifier or idempotency key
+   where the provider supports one.  After dispatch begins, it MUST
+   durably record INVOKED or a terminal outcome before reporting success
+   to the requester.
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 12]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   The adapter MUST receive only the authority and evidence necessary
+   for the downstream interface.  It MUST NOT accept mutable
+   intermediary or caller context that changes a material field after
+   the boundary's authorization decision.
+
+5.10.  Classify the Effect Outcome
+
+   After invocation begins, the boundary MUST classify the result as
+   EXECUTED, FAILED, or INDETERMINATE.  On restart, a DISPATCH_PENDING
+   operation without an authoritative terminal record MUST be promoted
+   to INDETERMINATE before any retry or release, because the process
+   cannot establish that dispatch did not begin.
+
+   *  EXECUTED requires an authoritative response or accepted native
+      execution evidence matched to the exact action, operation
+      identifier, provider environment, and audience.
+
+   *  FAILED requires authoritative evidence that the invoked operation
+      did not cause the protected effect.  A local parse error,
+      exception, timeout, connection loss, process crash, or missing
+      response is not by itself such evidence.
+
+   *  INDETERMINATE is REQUIRED whenever invocation may have reached the
+      effecting system but the available authoritative evidence does not
+      establish EXECUTED or FAILED.
+
+   For EXECUTED, the boundary MUST commit any reserved spend and
+   preserve the terminal evidence.  For FAILED, it MUST preserve the
+   failure evidence and follow the native reservation policy.  For
+   INDETERMINATE, it MUST preserve or consume the reservation, refuse
+   reuse of the authorization and operation identifier, and prohibit a
+   blind replay.
+
+5.11.  Perform Authenticated Reconciliation
+
+   An INDETERMINATE operation, including one recovered from a stranded
+   DISPATCH_PENDING record, MUST remain closed until reconciliation
+   authenticates the provider or system of record and matches the result
+   to the original action, operation identifier, provider environment,
+   audience, target resource, and every application-specific material
+   field.
+
+   Reconciliation MAY move INDETERMINATE to EXECUTED when authoritative
+   evidence establishes that the exact effect occurred.  It MAY move
+   INDETERMINATE to FAILED when authoritative evidence establishes that
+   it did not occur.  Missing, stale, conflicting, unauthenticated, or
+   action-mismatched observations MUST leave the operation
+   INDETERMINATE.
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 13]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   Reconciliation MUST NOT resurrect the original authorization or
+   silently release its one-time replay unit.  If policy permits a later
+   attempt after an authoritative FAILED result, that attempt MUST use a
+   new action instance and complete the lifecycle required by local
+   policy.  An implementation MUST NOT invoke again merely because a
+   timeout elapsed or because the caller retried.
+
+6.  Declaration and Challenge Semantics
+
+   A deployment MAY publish a static declaration describing protected
+   actions, material fields, evidence requirements, challenge methods,
+   and effect-boundary placement.  Such a declaration is discovery
+   metadata.  It MUST NOT override the relying party's live, local
+   enforcement configuration.  An unsupported declaration version MUST
+   be ignored as discovery input; it cannot weaken or replace live
+   enforcement.  An action that the live boundary configuration cannot
+   classify or process under a supported version MUST fail closed.
+
+   When required evidence is absent or unacceptable, a boundary MAY use
+   its application protocol to return a dynamic challenge.  A challenge
+   MUST identify the boundary-computed action, the missing evidence
+   roles, the policy context, an intended audience, a short expiry, and
+   a single-use unpredictable nonce or equivalent replay unit.  The
+   nonce MUST NOT be consumed merely because untrusted bytes parse.  It
+   MUST be consumed atomically only after the selected native verifier
+   establishes the integrity and challenge binding of an in-window
+   presentation, and before that presentation can reach SATISFIED or
+   authorize an effect.  A presentation that is malformed,
+   unauthenticated, expired, or not bound to the challenge MUST be
+   refused without burning the nonce.  A natively verified, challenge-
+   bound presentation consumes the nonce whether or not the remaining
+   evidence satisfies the requirement.  Follow-up challenges MUST remain
+   bound to the original boundary-computed action and MUST NOT derive
+   that action from presenter input.
+
+   A declaration or challenge authorizes nothing, reserves nothing, and
+   promises no execution.  A satisfied challenge still proceeds through
+   native verification, MATCH, SATISFIED, local AUTHORIZED, and atomic
+   consumption or reservation.  This document intentionally defines no
+   new manifest object, challenge object, well-known URI, HTTP status
+   code, or media type.
+
+7.  Native Evidence and Transport Boundaries
+
+
+
+
+
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 14]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+7.1.  WIMSE and HTTP Message Signatures
+
+   WIMSE workload credentials and the WIMSE HTTP Message Signatures
+   profile [WIMSE-HTTP] can provide end-to-end workload authentication
+   and message integrity for the request components covered by the
+   validated signature, including a body protected by a validated
+   content digest.  HTTP Message Signatures [RFC9421] provide the
+   underlying component-signing mechanism.
+
+   AEB consumes those results; it does not redefine them.  A validated
+   WIMSE request can establish which workload possessed the protected
+   key and that covered message components were not modified
+   undetectably.  It does not by itself establish CAID MATCH, AEC
+   SATISFIED, named-human authorization, local AUTHORIZED, one-time
+   consumption, or execution.
+
+   The AI Agent Authentication and Authorization framework [KLRC-AUTH]
+   and the WIMSE authorization-evidence profile [MUNOZ-WIMSE-EVIDENCE]
+   describe adjacent runtime authorization and signed-evidence
+   compositions.  AEB treats their selected credentials, tokens, and
+   evidence records as native inputs.  It does not replace their
+   issuance, verification, or authorization semantics.
+
+   PEDIGREE [PEDIGREE] describes native identity and delegation-chain
+   evidence.  The AEB result records whether the relying party's stated
+   delegation requirement was satisfied by the mapped evidence.  It does
+   not reinterpret, re-derive, or override the delegation protocol's
+   native decision.  In particular, a PEDIGREE completion block is post-
+   effect evidence and MUST NOT fill a pre-action authorization role.
+
+   Headers, routing metadata, forwarded identity, trace context, or
+   other values that an intermediary can add, remove, or mutate outside
+   the validated end-to-end integrity coverage MUST NOT be load-bearing
+   authorization evidence.  They MAY be used for routing or diagnostics.
+   If such a value affects the protected consequence, the boundary MUST
+   derive it independently or require it to be covered by accepted
+   native integrity and the observed action's material binding.
+
+7.2.  Attested Per-Action Tokens and Permit Records
+
+   Attested per-action tokens, including artifacts described by a
+   deployment as OASNT-like, remain native evidence formats.  AEB does
+   not assign that descriptive label a token type, claim set, registry
+   entry, or trust meaning.  The selected native verifier determines
+   what the token proves and exposes its integrity-protected action
+   commitment, issuer, audience, validity, freshness, status, and
+   bounded result to the AEB adapter.
+
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 15]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   SCITT Permit records defined by [MUNOZ-PERMIT] likewise remain native
+   pre-execution decision evidence.  AEB does not reserialize a Permit
+   or convert it into an AEB receipt.  It verifies the selected Permit
+   revision through its native adapter, maps its protected material
+   action only through a pinned CAID profile, and assigns it only to
+   evidence roles permitted by the relying party's AEC requirement.
+
+   A native format's valid signature proves only the statement and
+   signer semantics that format defines.  It does not, without an
+   additional accepted profile and evidence, prove that a natural person
+   operated the workload, understood the action, held authority, or
+   performed a particular approval ceremony.
+
+8.  Native Compilation Contract
+
+   An AEB adapter compiles the result of a native verifier into the
+   inputs needed by the AEB processing model.  The native artifact,
+   verifier, trust model, and result remain authoritative for their own
+   semantics.  Compilation MUST NOT convert a native result into an AEB
+   credential or permit, and an AEB result MUST NOT overwrite a native
+   result.
+
+   The compilation target is the ordered AEB decision and lifecycle
+   vocabulary: native verification, exact-action matching, evidence
+   satisfaction, local authorization, atomic reservation or consumption,
+   provider entry, outcome classification, and authenticated
+   reconciliation.  A successful compile establishes only that the
+   native result can be evaluated at those interfaces.  It does not
+   establish that the action is authorized, executed, safe, lawful, or
+   true.
+
+8.1.  Pinned Inputs
+
+   Before compilation, the relying party MUST pin:
+
+   *  the native protocol, document revision, media type, schema
+      version, and verifier revision;
+
+   *  the adapter identifier, adapter revision, verifier implementation
+      identifier, and implementation digest;
+
+   *  the native trust anchors, issuer and audience policy, clock,
+      freshness rules, and required status sources;
+
+   *  the exact source descriptor, target CAID action type, mapping
+      profile identifier, mapping revision, and mapping digest;
+
+   *  the accepted evidence role or roles;
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 16]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   *  the native replay-unit derivation profile and replay scope; and
+
+   *  every native field whose omission or change can affect the
+      protected consequence, evidence role, freshness, replay unit, or
+      local policy.
+
+   Presented data MAY select among already pinned native variants only
+   where the native protocol defines that selection and the relying
+   party enables it.  Presented data MUST NOT add or change a trust
+   root, verifier, mapping, evidence role, material-field rule, or
+   replay scope.
+
+   A verifier implementation identifier and digest are relying-party-
+   selected configuration metadata.  They do not prove that a measured
+   runtime loaded or executed those bytes.  A compile result MUST keep
+   runtime measurement unestablished unless a separate accepted native
+   attestation proves it.
+
+8.2.  Deterministic Operations
+
+   An adapter exposes two logically separate operations.  The first,
+   verifyNative, verifies the artifact under the pinned native rules and
+   returns the integrity-protected native result.  The second,
+   mapAction, maps only a VERIFIED native result to the relying party's
+   expected action under the pinned mapping profile.
+
+   Both operations MUST be deterministic for the supplied bytes and
+   pins.  They MUST NOT perform a network request, consult ambient
+   credentials or trust stores, read mutable global state, or accept a
+   caller-supplied verification verdict.  Required current status and
+   time MUST be explicit relying-party inputs.
+
+   The boundary MUST supply detached, recursively immutable copies of
+   the native artifact, expected action, trust inputs, status inputs,
+   adapter configuration, and mapping profile.  An adapter MUST NOT
+   change a pinned input between native verification and action mapping.
+
+8.3.  Closed Compile Result
+
+   For each native artifact, the compiler MUST return a closed result
+   that contains:
+
+   *  the native protocol, exact revision, artifact digest, and native
+      verification result;
+
+   *  the adapter identifier, revision, and configuration digest, plus
+      the pinned verifier implementation identifier, revision, and
+      digest;
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 17]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   *  the mapping profile identifier, revision, and digest, plus mapper
+      and resolver identifiers and the resolver implementation digest;
+
+   *  the source schema or media type and target action type;
+
+   *  the exact relying-party-supplied expected material action value,
+      digest, and input provenance;
+
+   *  the CAID and normalized-action digest, or a named reason they were
+      not produced;
+
+   *  the accepted evidence role and subject, plus the status input and
+      derived freshness result under pinned adapter rules;
+
+   *  the stable native replay unit and replay scope;
+
+   *  whether verifier runtime measurement is established;
+
+   *  the semantic-loss report defined below; and
+
+   *  every compiler state that remains unsupported or indeterminate.
+
+   The compile result is typed verifier output.  It is not a bearer
+   token, permit, receipt, or proof of execution.  A deployment MAY
+   serialize it for diagnostics or evidence transport, but that
+   serialization MUST NOT become reusable authority.
+
+   A native profile MAY expose actor, acting-for principal, target,
+   declared purpose, audience, constraints, validity, or native
+   nonclaims only when its native verifier and pinned mapping establish
+   those values.  The generic compiler MUST NOT infer them from a
+   subject identifier, policy decision, action label, natural-language
+   field, or trace metadata merely to fill a common shape.
+
+   A caller-supplied local-policy decision MAY be reported as an
+   explicit input, but it MUST NOT establish local authorization.
+   Authorization, reservation or consumption, provider entry, outcome,
+   and reconciliation remain unestablished until the component that owns
+   each transition evaluates and records it.
+
+8.4.  Semantic-Loss Report
+
+   The adapter MUST enumerate every field exposed by the native verifier
+   that the selected mapping does not carry into the target action or
+   accepted evidence role.  Each omission MUST be classified as
+   material, non-material, or unknown under relying-party-pinned rules,
+   with a stable field path and declared basis.
+
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 18]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   An omitted material or unknown field makes exact-action matching
+   INDETERMINATE.  That leg MUST NOT report equivalence, MATCH,
+   SATISFIED, or AUTHORIZED.  Renaming, moving, defaulting, unit-
+   converting, rounding, truncating, or combining a material field is a
+   transformation and requires a pinned deterministic rule.  Natural-
+   language similarity, an agent assertion, or a shared trace identifier
+   is not such a rule.
+
+   The compiler MAY retain a native mapper's raw relation, CAID, and
+   normalized-action digest for diagnostics, but MUST label them as raw
+   native output.  They MUST NOT appear as the compiler-effective
+   relation after material or unknown loss.  The effective CAID and
+   normalized- action digest are absent in that case.
+
+   If two compiled legs produce one CAID but different normalized-
+   action digests, the boundary MUST refuse the join.  CAID remains a
+   typed content identifier.  It is not an authorization claim or a
+   general declaration that two source formats have identical semantics.
+
+8.5.  Stable Native Replay Unit
+
+   Every accepted authorization-bearing native result MUST expose a
+   stable native replay unit derived from the verified native authority.
+   The replay unit MUST NOT include an AEB wrapper digest, AEB operation
+   identifier, consumption nonce, caller retry identifier, or other
+   value whose change would make the same native authority spendable
+   again.
+
+   The evaluator MUST probe the adapter with a second deterministic
+   wrapper reference.  If the replay unit changes while the verified
+   native authority does not, the result is INDETERMINATE.  If two
+   distinct verified native artifacts from one adapter collapse onto one
+   replay unit without the native profile defining that equivalence, the
+   result is INDETERMINATE.  A replay-unit value does not prove that
+   reservation or consumption occurred.
+
+8.6.  Path and Provider Ownership
+
+   A deployment MUST state whether the AEB boundary controls the
+   credential or other capability that reaches the effecting provider,
+   which provider-entry paths it mediates, and every direct,
+   administrator, break-glass, alternate-protocol, queued, or system-of-
+   record path that bypasses it.  An observe-only adapter or an adapter
+   placed beside a write path MUST NOT be described as consequence
+   admission or complete mediation.
+
+
+
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 19]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   The compile result MAY record provider-attempt and reconciliation
+   bindings only after the corresponding AEB transitions occur.  A
+   policy allow, access token, message signature, transparency receipt,
+   action record, audit record, or native permit MUST NOT be relabeled
+   as proof that provider entry, commitment, or an external effect
+   occurred.
+
+8.7.  Compilation Conformance
+
+   A native compilation profile MUST publish exact source locks, at
+   least one positive vector containing the original native bytes, and a
+   condition-removed control for every negative vector.  Reports MUST
+   keep native verification, mapping, AEC, local policy, reservation,
+   provider outcome, and reconciliation results separate.
+
+   The profile MUST include hostile vectors for material-field omission
+   and substitution, mapping-pin change, stale or unavailable status,
+   wrapper replay, alternate-path bypass, refusal-time consumption,
+   concurrent admission, timeout after provider entry, blind retry, and
+   reconciliation binding mismatch.  It MUST state every native semantic
+   that could not be compiled without invention.
+
+   A generic AEB compiler conformance claim requires at least two
+   materially unrelated native profiles to reach the same AEB lifecycle
+   without changing their native wire formats or result semantics.  A
+   same-team runner is reference evidence, not an independent
+   implementation.  Matching a finite vector set does not establish
+   complete mediation, production deployment, or provider truth.
+
+9.  Conformance and Deployment Claims
+
+   An implementation conforms to AEB only if every protected invocation
+   follows the ordered processing model in Section 5 and fails closed on
+   every missing or ambiguous required transition.  A deployment MUST
+   document:
+
+   *  the protected action types and the effect paths actually mediated;
+
+   *  the trusted configuration and durable-state boundaries;
+
+   *  the native verifier revisions and relying-party pins;
+
+   *  the method used to derive material action fields at the boundary;
+
+   *  the consumption, reservation, and cross-replica fencing mechanism;
+
+   *  the authoritative sources and matching rules used for
+      reconciliation; and
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 20]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   *  all direct, break-glass, administrator, alternate-protocol, and
+      system-of-record paths that bypass the AEB implementation.
+
+   An implementation placed beside a write path is not complete
+   mediation.  A deployment MUST NOT claim complete mediation unless the
+   protected system rejects all material alternate paths or subjects
+   them to an equivalent boundary.  Observe-only operation MAY be useful
+   during deployment, but it MUST NOT be described as enforcement.
+
+10.  Security Considerations
+
+   *Cross-binding.* An attacker can splice a valid permit, approval,
+   credential, or receipt for action A into a request for action B.
+   Native verification before mapping, executor-owned action
+   construction, exact CAID matching, and a relying-party-pinned AEC
+   requirement are all required defenses.  Omitting any one of them
+   reopens the attack.
+
+   *Mutable context.* Intermediary-added headers and agent annotations
+   are convenient but are not trustworthy merely because they arrived on
+   an authenticated hop.  Every load-bearing field needs accepted end-
+   to-end integrity coverage or independent derivation at the effect
+   boundary.
+
+   *Time of check and time of use.* The action passed to the executor
+   must be the frozen action that was verified, matched, satisfied,
+   authorized, and consumed or reserved.  Mutable aliases, provider
+   defaults, exchange rates, destinations, branch heads, and policy
+   epochs can change a consequence after approval; profiles must bind or
+   revalidate them as material fields.
+
+   *Replay and distributed state.* Process-local caches are insufficient
+   where replicas can invoke the same effect.  Replay, consumption,
+   reservation, and operation ownership state must be durable, atomic,
+   and shared across every boundary instance that can reach the
+   protected executor.
+
+   *Freshness and revocation.* Expiration, nonce checks, credential
+   status, authority status, and policy epoch are separate checks.  A
+   fresh message does not make a revoked credential valid, and a current
+   credential does not make old per-action evidence fresh.
+
+   *Indeterminate effects.* Retrying after a timeout can duplicate a
+   payment, mutation, disclosure, or physical action.  An invocation
+   that might have reached the provider consumes the operation's retry
+   right until authenticated reconciliation resolves the exact outcome.
+   Caller assurances and unauthenticated webhooks do not resolve it.
+
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 21]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   *Signature overclaiming.* A cryptographic signature can establish
+   control of a key and integrity of covered content under a selected
+   verification profile.  It does not inherently identify a human, prove
+   human operation, prove comprehension, establish legal authority, or
+   prove execution.
+
+   *Boundary bypass.* A correct AEB implementation does not protect
+   direct database credentials, alternate APIs, shell access,
+   administrator consoles, side channels, or actuator paths that bypass
+   it.  Deployment topology and credential placement are security
+   properties, not implementation details.
+
+11.  Privacy Considerations
+
+   Action objects and evidence can expose identities, destinations,
+   resources, policy choices, commercial relationships, and sensitive
+   operational timing.  Deployments SHOULD minimize the evidence passed
+   to the executor and retained in portable records, use opaque high-
+   entropy references where appropriate, and avoid treating a plain
+   digest of low-entropy personal data as anonymization.
+
+   Reconciliation queries can disclose that an operation is disputed or
+   uncertain.  They SHOULD be authenticated, authorized, rate-limited,
+   and limited to the exact operation.  AEB does not require public
+   disclosure of native evidence or local policy.
+
+12.  Relationship to EMILIA and Adjacent Work
+
+   CAID [CAID] owns typed material-action identity and exact, relying-
+   party-pinned cross-format mapping.  AEB invokes CAID after native
+   verification and does not extend CAID with trust semantics.
+
+   AEC [AEC] owns heterogeneous evidence composition and the SATISFIED
+   or UNSATISFIED result under a relying-party requirement.  AEB invokes
+   AEC and then makes the separate local authorization and effect-
+   lifecycle decisions.  The earlier Action Evidence Graph series [AEG]
+   is replaced by AEC; an implementation following an older citation
+   MUST NOT treat the superseded series as a second composition
+   contract.
+
+   Authorization Receipts [RECEIPTS] define one native action-bound
+   organizational approval artifact and its receipt-specific consumption
+   semantics.  AEB does not make that format mandatory and does not
+   generalize every native artifact into an EMILIA receipt.
+
+   Static declarations and dynamic evidence challenges remain distinct
+   protocol surfaces.  A manifest can advertise discovery metadata,
+   while an Authorization Evidence Challenge can carry the live, action-
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 22]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   bound refusal and acquisition instructions.  AEB owns the executor
+   lifecycle in which those inputs are evaluated; it does not absorb or
+   replace their wire formats.
+
+   Qualification, revocation, remedy, and action-to-outcome continuity
+   artifacts are optional native inputs or downstream records.  They
+   retain their own semantics.  AEB composes them only through pinned
+   verification, exact-action binding, local policy, durable custody,
+   and authenticated reconciliation.
+
+   A refusal MAY be represented by an action-bound signed refusal
+   statement.  The refusal artifact records what the boundary refused
+   and why; it MUST NOT be interpreted as proof that every bypass path
+   was mediated, that delivery to a requester occurred, or that a later
+   action was refused.
+
+13.  IANA Considerations
+
+   This document has no IANA actions.  In particular, it creates no
+   registry for native evidence types, lifecycle labels, verifier
+   adapters, action mappings, or policy identifiers.
+
+14.  Changes since -04
+
+   This revision adds a deterministic, loss-aware Native Compilation
+   Contract for AEB adapters.  It requires exact native, implementation,
+   and mapping pins; a closed compile result; a complete semantic-loss
+   report; stable native replay units; provider-path disclosure; and
+   hostile conformance across at least two unrelated native profiles.
+   Native formats and results retain their own ownership.  The revision
+   creates no new credential, permit, receipt, registry, or assertion
+   that compilation proves authorization or execution.  The ordered AEB
+   lifecycle and provider-outcome boundaries are unchanged.
+
+15.  Implementation Status
+
+   The Apache-2.0 reference implementation provides relying-party-pinned
+   adapter and mapping registries, multi-leg CAID joins, the boundary
+   terms defined above, current-status verification, signed
+   configuration-bound evaluation records, durable ownership-fenced one-
+   time consumption, execution reservation and reconciliation, and
+   signed refusal statements.  It also exposes a closed native-compiler
+   report over the adapter contract, an AuthZEN-derived local PEP-
+   observation profile, a source-pinned OAuth Transaction Authorization
+   Challenge profile [OAUTH-TXN-CHALLENGE], a strict request-only
+   profile over WPT-02 [WIMSE-WPT] and Transaction Tokens -11
+   [OAUTH-TXN-TOKENS], and a WIMSE R10 compatibility matrix.  All three
+   paths pass locally.  The AuthZEN-derived path verifies an EMILIA-
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 23]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   signed local PEP observation, not an artifact defined or signed by
+   AuthZEN.  It therefore does not count toward the two-external-native-
+   profile gate.  OAuth transaction challenge and WPT plus Transaction
+   Tokens are the two direct external-native candidates.  Their mappings
+   have not been reviewed by the native protocol owners, the published
+   profiles still need an audited match against every required hostile
+   vector and paired control, and their OAuth adjacency requires an
+   explicit protocol-diversity judgment before the generic gate can
+   close.  The result is not an independent implementation or an
+   adoption claim.  The informative EP-FIELD-ORIGIN-v0.1 profile is
+   evaluated before admission in the reference Gate.  Its Gap 6
+   implementation profile has 14 deterministic cases, including
+   disallowed field origins, unknown origin, profile substitution, an
+   unpinned transformation, and the positive case in which untrusted
+   content supplies only a bounded memo field.  Conformance vectors and
+   adversarial tests cover selected reference paths; the full
+   conformance set above remains future conformance work and is not
+   established by this revision.  These same-team artifacts are not an
+   independent implementation and do not prove that a deployment
+   mediates every effect path.
+
+16.  References
+
+16.1.  Normative References
+
+   [AEC]      Schrock, I., "Authorization Evidence Chains: Composing
+              Heterogeneous Agent-Action Evidence (EP-AEC)", Work in
+              Progress, Internet-Draft, draft-schrock-ep-authorization-
+              evidence-chain-05, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-evidence-chain/>.
+
+   [BCP14]    Internet Engineering Task Force, "Key Words for Use in
+              RFCs to Indicate Requirement Levels", BCP 14, 2017,
+              <https://www.rfc-editor.org/info/bcp14>.
+
+   [CAID]     Schrock, I., "The Canonical Action Identifier (CAID)",
+              Work in Progress, Internet-Draft, draft-schrock-canonical-
+              action-identifier-02, 9 August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-canonical-
+              action-identifier/>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 24]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+16.2.  Informative References
+
+   [AEG]      Schrock, I., "Action Evidence Graph for Consequential
+              Agent Actions", Work in Progress, Internet-Draft, draft-
+              schrock-ep-action-evidence-graph-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-action-
+              evidence-graph/>.
+
+   [EP-FIELD-ORIGIN]
+              EMILIA Protocol, "EP-FIELD-ORIGIN-v0.1 Informative
+              Implementation Profile and Gap 6 Runner", 15 August 2026,
+              <https://github.com/emiliaprotocol/emilia-
+              protocol/tree/71358caf0c4d2459958efbbdda3530a0e02889e5/
+              conformance/composition/gap6-execution-evidence-v0.1>.
+
+   [KLRC-AUTH]
+              Kasselman, P., Lombardo, J., Rosomakho, Y., Campbell, B.,
+              Steele, N., and A. Parecki, "AI Agent Authentication and
+              Authorization", Work in Progress, Internet-Draft, draft-
+              klrc-aiagent-auth-03, July 2026,
+              <https://datatracker.ietf.org/doc/draft-klrc-aiagent-
+              auth/>.
+
+   [MUNOZ-PERMIT]
+              Munoz, C., "A SCITT Profile for Pre-Execution AI Action
+              Authorization Records", Work in Progress, Internet-Draft,
+              draft-munoz-scitt-permit-profile-01, July 2026,
+              <https://datatracker.ietf.org/doc/draft-munoz-scitt-
+              permit-profile/>.
+
+   [MUNOZ-WIMSE-EVIDENCE]
+              Munoz, C., "Signed Authorization-Evidence Records for
+              WIMSE-Authorized AI Agent Actions", Work in Progress,
+              Internet-Draft, draft-munoz-wimse-authorization-evidence-
+              01, July 2026, <https://datatracker.ietf.org/doc/draft-
+              munoz-wimse-authorization-evidence/>.
+
+   [OAUTH-TXN-CHALLENGE]
+              Rosomakho, Y., Campbell, B., McGuinness, K., and P.
+              Kasselman, "OAuth Transaction Authorization Challenge",
+              Work in Progress, Internet-Draft, draft-rosomakho-oauth-
+              txn-challenge-00, 25 June 2026,
+              <https://datatracker.ietf.org/doc/draft-rosomakho-oauth-
+              txn-challenge/>.
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 25]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   [OAUTH-TXN-TOKENS]
+              Tulshibagwale, A., Fletcher, G., and P. Kasselman,
+              "Transaction Tokens", Work in Progress, Internet-Draft,
+              draft-ietf-oauth-transaction-tokens-11, 30 July 2026,
+              <https://datatracker.ietf.org/doc/draft-ietf-oauth-
+              transaction-tokens/>.
+
+   [PEDIGREE] Rampalli, K., "PEDIGREE: Verifiable Delegation Identity
+              for Agentic AI Systems", Work in Progress, Internet-Draft,
+              draft-rampalli-pedigree-00, April 2026,
+              <https://datatracker.ietf.org/doc/draft-rampalli-
+              pedigree/>.
+
+   [RECEIPTS] Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-12, 16 August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-receipts/>.
+
+   [RFC9421]  Backman, A., Ed., Richer, J., Ed., and M. Sporny, "HTTP
+              Message Signatures", RFC 9421, DOI 10.17487/RFC9421,
+              February 2024, <https://www.rfc-editor.org/info/rfc9421>.
+
+   [WIMSE-HTTP]
+              Salowey, J. and Y. Sheffer, "WIMSE Workload-to-Workload
+              Authentication with HTTP Signatures", Work in Progress,
+              Internet-Draft, draft-ietf-wimse-http-signature-06, 4
+              August 2026, <https://datatracker.ietf.org/doc/draft-ietf-
+              wimse-http-signature/>.
+
+   [WIMSE-WPT]
+              Campbell, B. and A. Schwenkschuster, "WIMSE Workload Proof
+              Token", Work in Progress, Internet-Draft, draft-ietf-
+              wimse-wpt-02, 27 August 2026,
+              <https://datatracker.ietf.org/doc/draft-ietf-wimse-wpt/>.
+
+Appendix A.  Acknowledgments
+
+   External review sharpened the boundaries between workload and message
+   integrity, per-action authorization evidence, credential status,
+   human operation, and executor-owned effect control.  Those
+   distinctions are load-bearing in this document.  Acknowledgment does
+   not imply endorsement.
+
+Author's Address
+
+
+
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 26]
+
+Internet-Draft          Action Evidence Boundary             August 2026
+
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 4 March 2027                 [Page 27]

@@ -1371,31 +1371,41 @@ function deriveEvaluation(options: AebEvaluationOptions): { body: Omit<AebEvalua
       if (!roleAccepted) base.reasons.push('evidence_role_not_registered_or_subject_kind_refused');
       const freshnessIssues = freshnessReasons(base.freshness, status, adapterPin.max_status_age_sec, options.evaluated_at);
       base.reasons.push(...freshnessIssues);
-      const mapping = adapter.mapAction({
-        artifact,
-        artifact_ref: input.artifact_ref,
-        status,
-        trust_roots: trustRoots,
-        adapter_config: adapterConfig,
-        profile: profileInput,
-        expected_action: expectedAction,
-        now: options.evaluated_at,
-        native,
-      });
-      if (!isObject(mapping) || !['MATCH', 'MISMATCH', 'INDETERMINATE'].includes(mapping.mapping)
-          || (mapping.caid !== null && typeof mapping.caid !== 'string')
-          || (mapping.action_digest !== null && !validDigest(mapping.action_digest))
-          || !Array.isArray(mapping.reasons)) {
-        base.reasons.push('malformed_mapping_result');
+      if (base.native_verification !== 'VERIFIED') {
+        // Mapping unverified bytes would let adapter code turn a failed native
+        // verification into an apparently meaningful action relation. Keep the
+        // relation closed and do not invoke mapper code at all.
+        base.mapping = 'INDETERMINATE';
+        base.caid = null;
+        base.action_digest = null;
+        base.reasons.push('native_verification_required');
       } else {
-        base.mapping = mapping.mapping;
-        base.caid = mapping.caid;
-        base.action_digest = mapping.action_digest;
-        base.reasons.push(...mapping.reasons);
-        if (mapping.mapping === 'MATCH' && mapping.action_digest === null) base.reasons.push('normalized_action_digest_missing');
-        if (options.expected_action !== undefined && mapping.action_digest !== digest(expectedAction)) {
-          base.mapping = 'MISMATCH';
-          base.reasons.push('expected_action_digest_mismatch', 'normalized_action_digest_mismatch');
+        const mapping = adapter.mapAction({
+          artifact,
+          artifact_ref: input.artifact_ref,
+          status,
+          trust_roots: trustRoots,
+          adapter_config: adapterConfig,
+          profile: profileInput,
+          expected_action: expectedAction,
+          now: options.evaluated_at,
+          native,
+        });
+        if (!isObject(mapping) || !['MATCH', 'MISMATCH', 'INDETERMINATE'].includes(mapping.mapping)
+            || (mapping.caid !== null && typeof mapping.caid !== 'string')
+            || (mapping.action_digest !== null && !validDigest(mapping.action_digest))
+            || !Array.isArray(mapping.reasons)) {
+          base.reasons.push('malformed_mapping_result');
+        } else {
+          base.mapping = mapping.mapping;
+          base.caid = mapping.caid;
+          base.action_digest = mapping.action_digest;
+          base.reasons.push(...mapping.reasons);
+          if (mapping.mapping === 'MATCH' && mapping.action_digest === null) base.reasons.push('normalized_action_digest_missing');
+          if (options.expected_action !== undefined && mapping.action_digest !== digest(expectedAction)) {
+            base.mapping = 'MISMATCH';
+            base.reasons.push('expected_action_digest_mismatch', 'normalized_action_digest_mismatch');
+          }
         }
       }
       const hardFailure = base.native_verification === 'FAILED' || base.acceptance === 'REJECTED'

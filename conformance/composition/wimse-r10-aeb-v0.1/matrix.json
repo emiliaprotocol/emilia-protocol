@@ -1,0 +1,236 @@
+{
+  "@version": "WIMSE-R10-NATIVE-MATRIX-v0.1",
+  "requirements_revision": "draft-reece-wimse-cross-org-delegation-02",
+  "criteria": [
+    "exact_action",
+    "target",
+    "acting_for_principal",
+    "offline_verifiability",
+    "execution_time_required_evidence",
+    "monotonic_non_droppable_carriage",
+    "at_most_once_local_admission",
+    "consume_only_on_admission",
+    "indeterminate_state",
+    "no_blind_retry"
+  ],
+  "grade_vocabulary": [
+    "MET",
+    "PARTIAL",
+    "EXTERNAL_PROFILE_REQUIRED",
+    "NOT_SUPPORTED",
+    "NOT_MET"
+  ],
+  "rows": [
+    {
+      "id": "ASOR-ADC-00",
+      "label": "Asor Agent Delegation Chain -00",
+      "revision": "draft-asor-wimse-agent-delegation-chain-00",
+      "signals": {
+        "exact_action": "request_bound_class_and_constraints",
+        "target": "native_resource_or_location",
+        "acting_for_principal": "absent",
+        "offline_verifiability": "full_native_verification",
+        "execution_time_required_evidence": "absent",
+        "monotonic_non_droppable_carriage": "undefined_extension_point",
+        "at_most_once_local_admission": "explicit_side_effect_free",
+        "consume_only_on_admission": "absent",
+        "indeterminate_state": "binary_permit_deny",
+        "no_blind_retry": "absent"
+      },
+      "expected": {
+        "exact_action": "PARTIAL",
+        "target": "MET",
+        "acting_for_principal": "NOT_MET",
+        "offline_verifiability": "MET",
+        "execution_time_required_evidence": "NOT_MET",
+        "monotonic_non_droppable_carriage": "EXTERNAL_PROFILE_REQUIRED",
+        "at_most_once_local_admission": "NOT_MET",
+        "consume_only_on_admission": "NOT_MET",
+        "indeterminate_state": "NOT_MET",
+        "no_blind_retry": "NOT_MET"
+      },
+      "basis": {
+        "exact_action": "The verifier checks an attempted action against actions, locations, and constraints, but the draft does not define a human decision bound to one canonical concrete action.",
+        "target": "Authorization details carry locations and the verifier checks them against the attempted action.",
+        "acting_for_principal": "The token fields identify issuer, subject, audience, and holder. They do not define an invariant acting-for principal across the chain.",
+        "offline_verifiability": "Section 6 defines deterministic offline chain verification with cached status material.",
+        "execution_time_required_evidence": "The current token format defines no execution-time human-authorization designation or required evidence object.",
+        "monotonic_non_droppable_carriage": "The attenuation algorithm could host a separately specified extension, but the current draft gives required evidence no field or subsumption rule.",
+        "at_most_once_local_admission": "The verification algorithm is explicitly side-effect free. Holder binding mitigates theft but is not a one-use admission store.",
+        "consume_only_on_admission": "No reliance-unit consumption lifecycle is defined.",
+        "indeterminate_state": "The algorithm permits or denies and does not preserve a typed post-dispatch unknown state.",
+        "no_blind_retry": "The draft does not bind retry behavior to an unresolved admitted operation."
+      },
+      "anchors": ["Section 3", "Section 4", "Section 6", "Section 7"]
+    },
+    {
+      "id": "HAMR-ADP-00",
+      "label": "HAMR Agent Delegation Profile -00",
+      "revision": "draft-hamr-oauth-agent-delegation-00",
+      "signals": {
+        "exact_action": "signed_request_opaque_scope",
+        "target": "opaque_scope_convention",
+        "acting_for_principal": "root_delegator_not_invariant",
+        "offline_verifiability": "full_native_verification",
+        "execution_time_required_evidence": "closed_vocabulary",
+        "monotonic_non_droppable_carriage": "closed_vocabulary",
+        "at_most_once_local_admission": "explicit_external_replay_state",
+        "consume_only_on_admission": "absent",
+        "indeterminate_state": "uniform_rejection",
+        "no_blind_retry": "absent"
+      },
+      "expected": {
+        "exact_action": "PARTIAL",
+        "target": "EXTERNAL_PROFILE_REQUIRED",
+        "acting_for_principal": "PARTIAL",
+        "offline_verifiability": "MET",
+        "execution_time_required_evidence": "NOT_SUPPORTED",
+        "monotonic_non_droppable_carriage": "NOT_SUPPORTED",
+        "at_most_once_local_admission": "EXTERNAL_PROFILE_REQUIRED",
+        "consume_only_on_admission": "NOT_MET",
+        "indeterminate_state": "NOT_MET",
+        "no_blind_retry": "NOT_MET"
+      },
+      "basis": {
+        "exact_action": "RFC 9421 covers the HTTP request and delegation header, but the authorization scope is opaque and no canonical human-approval binding is defined.",
+        "target": "A deployment may encode a target inside an opaque scope string, but the profile forbids the verifier from interpreting that structure.",
+        "acting_for_principal": "The root delegator may be a human or organization, but the profile does not carry and verify a distinct R10 acting-for principal invariant at every hop.",
+        "offline_verifiability": "The verifier checks message signatures, link signatures, floors, nonce, and expiry with configured trust material and no required runtime callback.",
+        "execution_time_required_evidence": "The floor axis set is closed. An unknown required_evidence axis must be rejected, so this revision cannot honestly claim native support.",
+        "monotonic_non_droppable_carriage": "Floor values tighten monotonically, but required_evidence is not a defined floor axis and cannot inherit those rules in this revision.",
+        "at_most_once_local_admission": "Section 9.2 states that nonce binding is not replay protection and leaves consumed-nonce state to the verifier.",
+        "consume_only_on_admission": "No admission versus consumption state transition is specified.",
+        "indeterminate_state": "The ordered verifier returns one uniform rejection and does not define an indeterminate post-dispatch state.",
+        "no_blind_retry": "No unresolved-effect or retry rule is defined."
+      },
+      "anchors": ["Section 5", "Section 6", "Section 7", "Section 8", "Section 9.2", "Section 11", "Section 16"]
+    },
+    {
+      "id": "AGENTENVELOPE-01",
+      "label": "AgentEnvelope Derived Authority and Legitimacy -01",
+      "revision": "draft-mcphillips-agentenvelope-derived-authority-01",
+      "signals": {
+        "exact_action": "complete_canonical_action",
+        "target": "native_resource_or_location",
+        "acting_for_principal": "owner_or_custody_not_r5_chain",
+        "offline_verifiability": "authority_only",
+        "execution_time_required_evidence": "generic_legitimacy",
+        "monotonic_non_droppable_carriage": "single_hop_required_reference",
+        "at_most_once_local_admission": "external_state_required",
+        "consume_only_on_admission": "absent",
+        "indeterminate_state": "generic_unavailable_reason",
+        "no_blind_retry": "absent"
+      },
+      "expected": {
+        "exact_action": "MET",
+        "target": "MET",
+        "acting_for_principal": "PARTIAL",
+        "offline_verifiability": "PARTIAL",
+        "execution_time_required_evidence": "PARTIAL",
+        "monotonic_non_droppable_carriage": "PARTIAL",
+        "at_most_once_local_admission": "EXTERNAL_PROFILE_REQUIRED",
+        "consume_only_on_admission": "NOT_MET",
+        "indeterminate_state": "PARTIAL",
+        "no_blind_retry": "NOT_MET"
+      },
+      "basis": {
+        "exact_action": "The canonical action envelope binds operation, resources, domain, time window, action index, and limits.",
+        "target": "Resources are native inputs to the action envelope and public action record.",
+        "acting_for_principal": "Customer custody and owner references exist, but the draft does not define a multi-hop invariant acting-for principal in the R10 sense.",
+        "offline_verifiability": "Authority signatures verify offline, while present-tense legitimacy may require latest governance state and evidence outside the sovereign signature check.",
+        "execution_time_required_evidence": "A legitimacyRef can be marked required and profiles can require evidence, but the base draft does not define the accountable-human authorization role and exact R10 evidence contract.",
+        "monotonic_non_droppable_carriage": "A required legitimacyRef is checked from MintDelegate to MintRequest, but recursive multi-hop non-removal is not defined.",
+        "at_most_once_local_admission": "The security section says offline verification does not prove consumption and points to external nonce, idempotency, or max-use state.",
+        "consume_only_on_admission": "The base draft does not define the R10 rule that refusal never consumes a reliance unit.",
+        "indeterminate_state": "Legitimacy reason families include unavailable and unobserved state, but the base decision vocabulary is allowed or denied rather than a typed execution-outcome indeterminate state.",
+        "no_blind_retry": "The draft discusses retries as orchestration intent but does not forbid retry while an admitted external effect is unresolved."
+      },
+      "anchors": ["Section 4.1", "Section 6", "Section 9", "Section 15", "Section 16", "Section 18", "Section 21"]
+    },
+    {
+      "id": "EMILIA-WIMSE-ADAPTER-CURRENT",
+      "label": "Current EMILIA WIMSE OAuth SPT adapter",
+      "revision": "packages/verify/src/aeb-wimse-oauth-adapter.ts@sha256:4002f26e3d4596879b7701f02253e0c37af3fd7fe4ffb0737a297aba857284b4",
+      "signals": {
+        "exact_action": "mapped_exact_request",
+        "target": "mapped_request_target",
+        "acting_for_principal": "workload_only",
+        "offline_verifiability": "pinned_local_inputs",
+        "execution_time_required_evidence": "workload_only",
+        "monotonic_non_droppable_carriage": "absent",
+        "at_most_once_local_admission": "external_aeb_lifecycle",
+        "consume_only_on_admission": "external_aeb_lifecycle",
+        "indeterminate_state": "typed_indeterminate",
+        "no_blind_retry": "external_aeb_lifecycle"
+      },
+      "expected": {
+        "exact_action": "MET",
+        "target": "MET",
+        "acting_for_principal": "NOT_MET",
+        "offline_verifiability": "MET",
+        "execution_time_required_evidence": "NOT_MET",
+        "monotonic_non_droppable_carriage": "NOT_MET",
+        "at_most_once_local_admission": "EXTERNAL_PROFILE_REQUIRED",
+        "consume_only_on_admission": "EXTERNAL_PROFILE_REQUIRED",
+        "indeterminate_state": "MET",
+        "no_blind_retry": "EXTERNAL_PROFILE_REQUIRED"
+      },
+      "basis": {
+        "exact_action": "The adapter pins a declared mapping, maps the signed request and transaction context to CAID, and rejects ambiguous or mismatched action projections.",
+        "target": "The mapped action includes method, request target, content digest, and WIMSE audience.",
+        "acting_for_principal": "The adapter deliberately emits only delegated-workload evidence. An optional SPT human_anchor is not treated as a human role or acting-for principal proof.",
+        "offline_verifiability": "Issuer keys, holder key, audience, subject, mapping, status authority, and freshness are pinned inputs to local verification.",
+        "execution_time_required_evidence": "The accepted native role is delegated-workload, not accountable-human authorization.",
+        "monotonic_non_droppable_carriage": "The current host mapping does not carry a human-authorization designation through a delegation chain.",
+        "at_most_once_local_admission": "The adapter exposes a replay unit and status, but atomic reservation belongs to the separate AEB lifecycle.",
+        "consume_only_on_admission": "The adapter reads consumed status but does not define or perform the admission transition.",
+        "indeterminate_state": "Malformed, unavailable, stale, unsupported, or ambiguously mapped inputs can remain INDETERMINATE rather than becoming acceptance.",
+        "no_blind_retry": "Retry control belongs to AEB, not to the native adapter."
+      },
+      "anchors": ["adapter header", "verifyArtifact", "statusDisposition", "mapAction"]
+    },
+    {
+      "id": "EMILIA-AEB-HOST-CARRIER-CANDIDATE",
+      "label": "Candidate native host carrier plus EMILIA AEB lifecycle",
+      "revision": "WIMSE-R10-AEB-HOST-CARRIER-v0.1",
+      "signals": {
+        "exact_action": "host_required_action_binding",
+        "target": "host_required_target_binding",
+        "acting_for_principal": "explicit_invariant",
+        "offline_verifiability": "pinned_local_inputs",
+        "execution_time_required_evidence": "host_required_human_evidence",
+        "monotonic_non_droppable_carriage": "recursive_non_droppable",
+        "at_most_once_local_admission": "aeb_local_atomic",
+        "consume_only_on_admission": "aeb_local_atomic",
+        "indeterminate_state": "typed_indeterminate",
+        "no_blind_retry": "aeb_local_atomic"
+      },
+      "expected": {
+        "exact_action": "MET",
+        "target": "MET",
+        "acting_for_principal": "MET",
+        "offline_verifiability": "MET",
+        "execution_time_required_evidence": "MET",
+        "monotonic_non_droppable_carriage": "MET",
+        "at_most_once_local_admission": "MET",
+        "consume_only_on_admission": "MET",
+        "indeterminate_state": "MET",
+        "no_blind_retry": "MET"
+      },
+      "basis": {
+        "exact_action": "The candidate carrier requires CAID and normalized action digest fields and the AEB gate compares them before admission.",
+        "target": "Target is material to the normalized action and independently repeated in the carrier requirement.",
+        "acting_for_principal": "Every hop repeats the acting-for principal and derivation rejects removal or change.",
+        "offline_verifiability": "The evidence profile, mapping, issuer, status authority, and freshness inputs are locally pinned.",
+        "execution_time_required_evidence": "The host carrier marks a named human-authorization evidence profile as required at execution time.",
+        "monotonic_non_droppable_carriage": "Every child must preserve each parent requirement or tighten it. Omission, unknown semantics, or relaxation refuses the chain.",
+        "at_most_once_local_admission": "AEB reserves operation and native replay units in one explicitly local linearizable domain.",
+        "consume_only_on_admission": "Refusals do not reserve or consume. Provider entry consumes only after successful admission.",
+        "indeterminate_state": "Post-dispatch uncertainty remains typed as INDETERMINATE and requires reconciliation.",
+        "no_blind_retry": "A retry against an unresolved admitted operation is refused."
+      },
+      "anchors": ["candidate carrier note", "AEB consequence-admission kernel"]
+    }
+  ],
+  "claim_boundary": "Grades describe exact pinned text and code. The candidate host carrier is an EMILIA proposal, not a feature of the current Asor, HAMR, AgentEnvelope, OAuth, or WIMSE drafts."
+}
