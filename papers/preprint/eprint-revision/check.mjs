@@ -207,8 +207,9 @@ for (const lemma of [
 
 for (const text of [
   "Authorization Non-Amplification under Chosen-Context Signer Harvesting",
-  "This packet is prepared for a new IACR Cryptology ePrint Archive submission",
-  "It has not been submitted",
+  "The IACR Cryptology ePrint Archive is no longer a distribution target for this paper",
+  "No further ePrint submission will be made under any title",
+  "`xxxx/111420`",
   "Contribution to cryptology",
 ]) {
   assert(submission.includes(text), `IACR-SUBMISSION.md is missing required text: ${text}`);
