@@ -5,6 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -22,12 +23,18 @@ import {
   parseJsonStrict,
 } from "./evaluate.mjs";
 import {
+  buildArtifactBindings,
   buildCorpusReport,
   loadCorpus,
+  materializeVector,
   stableCorpusReportJson,
 } from "./generate-report.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+function fileSha256(path) {
+  return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
+}
 
 function withTempDirectory(run) {
   const directory = mkdtempSync(join(tmpdir(), "aips1-p3-selftest-"));
@@ -261,6 +268,77 @@ test("RFC 6901 array selection accepts canonical indexes and rejects array prope
     assert.equal(hostile.verdict, "INDETERMINATE", path);
     assert.deepEqual(hostile.reason_codes, ["VALUE_MISSING"], path);
   }
+});
+
+test("the empty RFC 6901 pointer selects the complete source value", () => {
+  const report = evaluateMutation("control-root-pointer", ({ profile, evidenceSet }) => {
+    profile.predicates[0].path = "";
+    profile.predicates[0].expected = { status: "effective" };
+    evidenceSet.observations[0].data = { status: "effective" };
+  });
+  assert.equal(report.verdict, "SATISFIED");
+  assert.equal(report.predicate_results[0].runtime_evaluable, true);
+});
+
+test("string bounds count Unicode code points exactly as the JSON Schemas do", () => {
+  const emoji = "😀";
+  const sourceId = emoji.repeat(LIMITS.max_identifier_length);
+  const revision = emoji.repeat(LIMITS.max_identifier_length);
+  const locator = emoji.repeat(LIMITS.max_locator_length);
+  const propertyName = emoji.repeat(LIMITS.max_locator_length - 1);
+  const payload = emoji.repeat(LIMITS.max_string_length);
+  const profile = structuredClone(baseProfile);
+  const evidenceSet = evidenceWith("effective");
+
+  profile.profile_id = emoji.repeat(200);
+  profile.sources[0].source_id = sourceId;
+  profile.sources[0].source_type = emoji.repeat(LIMITS.max_identifier_length);
+  profile.sources[0].locator = locator;
+  profile.sources[0].revision = revision;
+  profile.predicates[0].predicate_id = emoji.repeat(LIMITS.max_identifier_length);
+  profile.predicates[0].source_ids = [sourceId];
+  profile.predicates[0].path = `/${propertyName}`;
+  profile.predicates[0].expected = payload;
+  evidenceSet.observations[0].source_id = sourceId;
+  evidenceSet.observations[0].locator = locator;
+  evidenceSet.observations[0].revision = revision;
+  evidenceSet.observations[0].data = { [propertyName]: payload };
+  profile.sources[0].data_sha256 = digestJson(evidenceSet.observations[0].data);
+
+  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  addFormats(ajv);
+  const validateProfile = ajv.compile(
+    JSON.parse(readFileSync(join(here, "evaluation-profile.schema.json"), "utf8")),
+  );
+  const validateEvidence = ajv.compile(
+    JSON.parse(readFileSync(join(here, "evidence-set.schema.json"), "utf8")),
+  );
+  const validateReport = ajv.compile(
+    JSON.parse(readFileSync(join(here, "evaluation-report.schema.json"), "utf8")),
+  );
+  assert.equal(validateProfile(profile), true, JSON.stringify(validateProfile.errors));
+  assert.equal(validateEvidence(evidenceSet), true, JSON.stringify(validateEvidence.errors));
+
+  const input = { case_id: "unicode-code-point-control", profile, evidence_set: evidenceSet };
+  const programmaticReport = evaluateCase(input);
+  assert.equal(programmaticReport.verdict, "SATISFIED");
+  assert.equal(validateReport(programmaticReport), true, JSON.stringify(validateReport.errors));
+
+  const parsedReport = evaluateCase(parseJsonStrict(JSON.stringify(input)));
+  assert.equal(parsedReport.verdict, "SATISFIED");
+  assert.equal(validateReport(parsedReport), true, JSON.stringify(validateReport.errors));
+
+  const overBoundProfile = structuredClone(baseProfile);
+  overBoundProfile.profile_id = emoji.repeat(LIMITS.max_identifier_length + 1);
+  assert.equal(validateProfile(overBoundProfile), false);
+  const overBoundReport = evaluateCase({
+    case_id: "unicode-code-point-over-bound",
+    profile: overBoundProfile,
+    evidence_set: evidenceWith("effective"),
+  });
+  assert.equal(overBoundReport.verdict, "INDETERMINATE");
+  assert.deepEqual(overBoundReport.reason_codes, ["PROFILE_INVALID"]);
+  assert.ok(overBoundReport.validation_errors.includes("profile:invalid-profile-id"));
 });
 
 test("timestamps reject impossible calendar dates and precision beyond milliseconds", () => {
@@ -541,12 +619,62 @@ test("every static vector reproduces its expected verdict and reason codes", () 
   }
 });
 
+test("corpus mutation paths cannot traverse or assign prototype-bearing segments", () => {
+  const corpus = loadCorpus(join(here, "vectors", "cases.json"));
+  const marker = "__aips1_p3_polluted__";
+  const paths = [
+    ["__proto__", marker],
+    ["constructor", "prototype", marker],
+    ["profile", "__proto__"],
+    ["profile", "constructor"],
+  ];
+  try {
+    for (const path of paths) {
+      assert.throws(
+        () => materializeVector(corpus, {
+          case_id: "hostile-prototype-path",
+          mutations: [{ op: "SET", path, value: true }],
+        }),
+        /mutation path rejected/,
+        path.join("/"),
+      );
+      assert.equal(Object.prototype[marker], undefined);
+    }
+  } finally {
+    delete Object.prototype[marker];
+  }
+});
+
 test("the generated corpus report is byte-stable and matches report.json", () => {
   const corpus = loadCorpus(join(here, "vectors", "cases.json"));
   const first = stableCorpusReportJson(buildCorpusReport(corpus));
   const second = stableCorpusReportJson(buildCorpusReport(corpus));
   assert.equal(first, second);
   assert.equal(first, readFileSync(join(here, "report.json"), "utf8"));
+});
+
+test("the corpus report binds its source lock, schema, evaluator, and generator bytes", () => {
+  const corpus = loadCorpus(join(here, "vectors", "cases.json"));
+  const report = buildCorpusReport(corpus);
+  assert.deepEqual(report.artifact_bindings, buildArtifactBindings());
+  for (const binding of [
+    report.artifact_bindings.source_lock,
+    report.artifact_bindings.corpus_report_schema,
+    report.artifact_bindings.evaluator,
+    report.artifact_bindings.generator,
+  ]) {
+    assert.equal(binding.sha256, fileSha256(join(here, binding.path)), binding.path);
+  }
+  const { binding_digest: claimedDigest, ...bindingMaterial } = report.artifact_bindings;
+  assert.equal(claimedDigest, digestJson(bindingMaterial));
+  assert.equal(
+    report.artifact_bindings.source_lock.resolved_commit,
+    "280a8ba0e9c2658ee6af10778e0f6a2fb669661d",
+  );
+  assert.equal(
+    report.artifact_bindings.source_lock.resolved_tree,
+    "0131893fd6a7c0341521d73591d14976b1af43ca",
+  );
 });
 
 test("JSON schemas validate the executable's accepted envelopes and emitted reports", () => {
@@ -557,6 +685,7 @@ test("JSON schemas validate the executable's accepted envelopes and emitted repo
     "evaluation-profile.schema.json",
     "evidence-set.schema.json",
     "evaluation-report.schema.json",
+    "corpus-report.schema.json",
     "vector-corpus.schema.json",
   ]) {
     const schema = JSON.parse(readFileSync(join(here, name), "utf8"));
@@ -570,6 +699,7 @@ test("JSON schemas validate the executable's accepted envelopes and emitted repo
   const validateEvidence = ajv.compile(schemas["evidence-set.schema.json"]);
   const validateReport = ajv.compile(reportSchema);
   const validateCorpus = ajv.compile(schemas["vector-corpus.schema.json"]);
+  const validateCorpusReport = ajv.compile(schemas["corpus-report.schema.json"]);
   assert.equal(validateProfile(baseProfile), true, JSON.stringify(validateProfile.errors));
   assert.equal(validateEvidence(evidenceWith("effective")), true, JSON.stringify(validateEvidence.errors));
   const report = evaluateCase({ case_id: "schema-report-control", profile: baseProfile, evidence_set: evidenceWith("effective") });
@@ -601,6 +731,8 @@ test("JSON schemas validate the executable's accepted envelopes and emitted repo
   );
   const corpus = loadCorpus(join(here, "vectors", "cases.json"));
   assert.equal(validateCorpus(corpus), true, JSON.stringify(validateCorpus.errors));
+  const corpusReport = buildCorpusReport(corpus);
+  assert.equal(validateCorpusReport(corpusReport), true, JSON.stringify(validateCorpusReport.errors));
 
   const unsupported = structuredClone(baseProfile);
   unsupported.predicates[0].operator = "FUTURE_PROFILE_OPERATOR";

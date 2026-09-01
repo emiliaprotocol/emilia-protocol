@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emilia:aips1-p3-evidence-source-corpus-report:v0.1",
+  "$comment": "Aggregate report over the repository-local paired corpus. Not an AIPS-1 conformance report.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "corpus_report_version",
+    "corpus_version",
+    "corpus_digest",
+    "artifact_bindings",
+    "lab_profile",
+    "predicate_dialect",
+    "all_expectations_met",
+    "summary",
+    "cases",
+    "scope"
+  ],
+  "properties": {
+    "corpus_report_version": { "const": "aips1-p3-evidence-source-corpus-report-v0.1" },
+    "corpus_version": { "const": "aips1-p3-evidence-source-vectors-v0.1" },
+    "corpus_digest": { "$ref": "#/$defs/digest" },
+    "artifact_bindings": { "$ref": "#/$defs/artifact_bindings" },
+    "lab_profile": { "const": "aips1-p3-evidence-source-evaluation-v0.1" },
+    "predicate_dialect": { "$ref": "#/$defs/predicate_dialect" },
+    "all_expectations_met": { "type": "boolean" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": { "$ref": "#/$defs/case_result" }
+    },
+    "scope": { "$ref": "#/$defs/scope" }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "digest_or_null": {
+      "anyOf": [
+        { "$ref": "#/$defs/digest" },
+        { "type": "null" }
+      ]
+    },
+    "verdict": { "enum": ["SATISFIED", "NOT_SATISFIED", "INDETERMINATE"] },
+    "file_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "sha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "source_lock_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "lock_version", "resolved_commit", "resolved_tree"],
+      "properties": {
+        "path": { "const": "source-lock.json" },
+        "sha256": { "$ref": "#/$defs/digest" },
+        "lock_version": { "const": "EMILIA-AIPS1-P3-SOURCE-LOCK-v0" },
+        "resolved_commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "resolved_tree": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "artifact_bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["binding_version", "source_lock", "corpus_report_schema", "evaluator", "generator", "binding_digest"],
+      "properties": {
+        "binding_version": { "const": "aips1-p3-corpus-artifact-bindings-v0.1" },
+        "source_lock": { "$ref": "#/$defs/source_lock_binding" },
+        "corpus_report_schema": {
+          "allOf": [
+            { "$ref": "#/$defs/file_binding" },
+            { "type": "object", "properties": { "path": { "const": "corpus-report.schema.json" } } }
+          ]
+        },
+        "evaluator": {
+          "allOf": [
+            { "$ref": "#/$defs/file_binding" },
+            { "type": "object", "properties": { "path": { "const": "evaluate.mjs" } } }
+          ]
+        },
+        "generator": {
+          "allOf": [
+            { "$ref": "#/$defs/file_binding" },
+            { "type": "object", "properties": { "path": { "const": "generate-report.mjs" } } }
+          ]
+        },
+        "binding_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "predicate_dialect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dialect_id", "digest", "authority"],
+      "properties": {
+        "dialect_id": { "const": "emilia-aips1-p3-local-json-pointer-v0.1" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "authority": { "const": "repository_local_proposal_not_aips1_v0.1" }
+      }
+    },
+    "reason_codes": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    },
+    "case_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id", "pair_id", "kind", "expected_verdict", "actual_verdict",
+        "expected_reason_codes", "actual_reason_codes", "actual_input_digest",
+        "actual_profile_digest", "actual_evidence_set_digest", "static_evaluable",
+        "runtime_evaluable", "expectation_met"
+      ],
+      "properties": {
+        "case_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "pair_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "kind": { "enum": ["CONTROL", "HOSTILE"] },
+        "expected_verdict": { "$ref": "#/$defs/verdict" },
+        "actual_verdict": { "$ref": "#/$defs/verdict" },
+        "expected_reason_codes": { "$ref": "#/$defs/reason_codes" },
+        "actual_reason_codes": { "$ref": "#/$defs/reason_codes" },
+        "actual_input_digest": { "$ref": "#/$defs/digest_or_null" },
+        "actual_profile_digest": { "$ref": "#/$defs/digest_or_null" },
+        "actual_evidence_set_digest": { "$ref": "#/$defs/digest_or_null" },
+        "static_evaluable": { "type": "boolean" },
+        "runtime_evaluable": { "type": "boolean" },
+        "expectation_met": { "type": "boolean" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "controls", "hostile", "mismatches", "verdict_counts"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "controls": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "hostile": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "mismatches": { "type": "integer", "minimum": 0, "maximum": 256 },
+        "verdict_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["SATISFIED", "NOT_SATISFIED", "INDETERMINATE"],
+          "properties": {
+            "SATISFIED": { "type": "integer", "minimum": 0, "maximum": 256 },
+            "NOT_SATISFIED": { "type": "integer", "minimum": 0, "maximum": 256 },
+            "INDETERMINATE": { "type": "integer", "minimum": 0, "maximum": 256 }
+          }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluates", "evaluation_mode", "does_not_evaluate", "assumptions", "does_not_determine"],
+      "properties": {
+        "evaluates": { "const": "local_trigger_predicate_satisfaction" },
+        "evaluation_mode": { "const": "offline_fixture_evaluation" },
+        "does_not_evaluate": { "type": "array", "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 256 } },
+        "assumptions": { "type": "array", "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 8192 } },
+        "does_not_determine": { "type": "array", "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 256 } }
+      }
+    }
+  }
+}

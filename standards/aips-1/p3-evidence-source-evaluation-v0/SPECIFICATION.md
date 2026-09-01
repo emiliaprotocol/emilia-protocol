@@ -278,6 +278,24 @@ A report contains:
 and one trailing newline. For the same parsed input and evaluator version, the
 bytes are deterministic.
 
+### 10.1 Aggregate corpus report
+
+`report.json` is the aggregate result over `vectors/cases.json` and validates
+against `corpus-report.schema.json`. Its `artifact_bindings` object records
+raw-byte SHA-256 digests for `source-lock.json`, the corpus-report schema,
+`evaluate.mjs`, and `generate-report.mjs`. It also copies the source lock's
+resolved upstream commit and tree. `binding_digest` covers that binding object
+except for the digest field itself.
+
+The generator traverses mutation paths through own properties only. Array
+segments must be existing non-negative integer indexes. The segments
+`__proto__`, `constructor`, and `prototype` are rejected at every position,
+including the final assignment target.
+
+These bindings make the checked report reproducible against named bytes. They
+do not sign the report, establish who produced it, or turn the local result
+into independent AIPS-1 evidence.
+
 The CLI rejects duplicate JSON members and invalid UTF-8. For valid JSON,
 `input_digest` binds the canonical parsed object. When parsing cannot produce
 an object, the report uses a digest of the bounded input bytes when available;
@@ -291,12 +309,14 @@ claim record, or payment instruction.
 ## 11. Resource limits
 
 This implementation caps input at 1,048,576 bytes, nesting at 32 levels,
-total JSON nodes at 10,000, collection members at 256, strings at 8,192 code
-units, identifiers at 256 code units, and locators at 2,048 code units. It also
-caps sources at 32, predicates at 64, observations at 128, and freshness at one
-year. A limit breach returns `INDETERMINATE` with `INPUT_LIMIT_EXCEEDED`.
+total JSON nodes at 10,000, and collection members at 256. It counts string
+limits in Unicode code points, matching JSON Schema: 8,192 for JSON strings,
+256 for identifiers, and 2,048 for locators and pointers. Programmatic input
+also retains a 1,048,576 UTF-16-code-unit aggregate storage bound. Sources are
+capped at 32, predicates at 64, observations at 128, and freshness at one year.
+A limit breach returns `INDETERMINATE` with `INPUT_LIMIT_EXCEEDED`.
 
-Reports retain at most 64 validation diagnostics of at most 512 characters.
+Reports retain at most 64 validation diagnostics of at most 512 Unicode code points.
 Truncated details are replaced by deterministic hashes, and overflow is
 represented by a count and digest rather than silently discarded.
 

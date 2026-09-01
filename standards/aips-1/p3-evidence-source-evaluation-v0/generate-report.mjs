@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Deterministic report generator for the paired local evaluation vectors.
 
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -23,16 +24,69 @@ export function loadCorpus(filePath = join(here, "vectors", "cases.json")) {
   return loadJsonFileStrict(filePath);
 }
 
+function fileBinding(baseDirectory, path) {
+  return {
+    path,
+    sha256: `sha256:${createHash("sha256")
+      .update(readFileSync(join(baseDirectory, path)))
+      .digest("hex")}`,
+  };
+}
+
+export function buildArtifactBindings(baseDirectory = here) {
+  const sourceLock = loadJsonFileStrict(join(baseDirectory, "source-lock.json"));
+  const material = {
+    binding_version: "aips1-p3-corpus-artifact-bindings-v0.1",
+    source_lock: {
+      ...fileBinding(baseDirectory, "source-lock.json"),
+      lock_version: sourceLock["@version"],
+      resolved_commit: sourceLock.upstream_repository?.resolved_commit,
+      resolved_tree: sourceLock.upstream_repository?.resolved_tree,
+    },
+    corpus_report_schema: fileBinding(baseDirectory, "corpus-report.schema.json"),
+    evaluator: fileBinding(baseDirectory, "evaluate.mjs"),
+    generator: fileBinding(baseDirectory, "generate-report.mjs"),
+  };
+  return {
+    ...material,
+    binding_digest: digestJson(material),
+  };
+}
+
+const DANGEROUS_MUTATION_SEGMENTS = new Set(["__proto__", "constructor", "prototype"]);
+
+function rejectMutationPath() {
+  throw new Error("mutation path rejected");
+}
+
+function ownPathValue(container, segment) {
+  if (typeof segment === "string" && DANGEROUS_MUTATION_SEGMENTS.has(segment)) {
+    rejectMutationPath();
+  }
+  if (Array.isArray(container)) {
+    if (!Number.isInteger(segment) || segment < 0 || !Object.hasOwn(container, segment)) {
+      rejectMutationPath();
+    }
+  } else if (
+    container === null ||
+    typeof container !== "object" ||
+    typeof segment !== "string" ||
+    !Object.hasOwn(container, segment)
+  ) {
+    rejectMutationPath();
+  }
+  return container[segment];
+}
+
 function resolveParent(root, path) {
-  if (!Array.isArray(path) || path.length === 0) throw new Error("mutation path must be non-empty");
+  if (!Array.isArray(path) || path.length === 0) rejectMutationPath();
   let parent = root;
   for (const segment of path.slice(0, -1)) {
-    if (parent === null || typeof parent !== "object" || !(segment in parent)) {
-      throw new Error(`mutation path does not resolve: ${path.join("/")}`);
-    }
-    parent = parent[segment];
+    parent = ownPathValue(parent, segment);
   }
-  return { parent, key: path.at(-1) };
+  const key = path.at(-1);
+  ownPathValue(parent, key);
+  return { parent, key };
 }
 
 export function materializeVector(corpus, vector) {
@@ -84,6 +138,7 @@ export function buildCorpusReport(corpus) {
     corpus_report_version: "aips1-p3-evidence-source-corpus-report-v0.1",
     corpus_version: corpus.corpus_version,
     corpus_digest: digestJson(corpus),
+    artifact_bindings: buildArtifactBindings(),
     lab_profile: PROFILE_VERSION,
     predicate_dialect: {
       dialect_id: LOCAL_DIALECT.dialect_id,

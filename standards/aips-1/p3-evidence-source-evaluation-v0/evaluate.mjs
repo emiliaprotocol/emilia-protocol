@@ -121,8 +121,17 @@ function isNonEmptyString(value) {
   return typeof value === "string" && value.length > 0;
 }
 
+function unicodeCodePointLength(value, maximum = Number.POSITIVE_INFINITY) {
+  let length = 0;
+  for (const _codePoint of value) {
+    length += 1;
+    if (length > maximum) return length;
+  }
+  return length;
+}
+
 function isBoundedString(value, maximum) {
-  return isNonEmptyString(value) && value.length <= maximum;
+  return isNonEmptyString(value) && unicodeCodePointLength(value, maximum) <= maximum;
 }
 
 function hasOwn(object, key) {
@@ -169,8 +178,11 @@ function inspectJson(value) {
   const ancestors = new Set();
 
   function countString(valueToCount) {
+    const codePointLength = unicodeCodePointLength(valueToCount, LIMITS.max_string_length);
+    // Retain the original aggregate UTF-16 storage bound as a separate
+    // resource limit. JSON Schema maxLength checks use code points.
     totalStringLength += valueToCount.length;
-    if (valueToCount.length > LIMITS.max_string_length) {
+    if (codePointLength > LIMITS.max_string_length) {
       errors.push("input:max-string-length-exceeded");
     }
     if (totalStringLength > LIMITS.max_total_string_length) {
@@ -431,7 +443,9 @@ export function parseJsonStrict(source) {
         } catch {
           strictJsonError("MALFORMED_JSON");
         }
-        if (decoded.length > LIMITS.max_string_length) strictJsonError("INPUT_LIMIT_EXCEEDED");
+        if (unicodeCodePointLength(decoded, LIMITS.max_string_length) > LIMITS.max_string_length) {
+          strictJsonError("INPUT_LIMIT_EXCEEDED");
+        }
         return decoded;
       }
       if (code < 0x20) strictJsonError("MALFORMED_JSON");
@@ -656,7 +670,12 @@ function validateProfile(profile) {
         errors.push(`${prefix}invalid:predicate_id`);
       }
       if (!validPointer(predicate.path)) errors.push(`${prefix}invalid:path`);
-      if (!isBoundedString(predicate.path, LIMITS.max_locator_length)) errors.push(`${prefix}invalid:path`);
+      if (
+        typeof predicate.path !== "string" ||
+        unicodeCodePointLength(predicate.path, LIMITS.max_locator_length) > LIMITS.max_locator_length
+      ) {
+        errors.push(`${prefix}invalid:path`);
+      }
       if (!isBoundedString(predicate.operator, LIMITS.max_identifier_length)) {
         errors.push(`${prefix}invalid:operator`);
       }
@@ -973,7 +992,9 @@ function digestStringList(values) {
 function normalizeValidationErrors(validationErrors) {
   const unique = [...new Set(validationErrors)].sort();
   const normalized = unique.map((error) => {
-    if (error.length <= LIMITS.max_validation_error_length) return error;
+    if (unicodeCodePointLength(error, LIMITS.max_validation_error_length) <= LIMITS.max_validation_error_length) {
+      return error;
+    }
     return `validation-error-hashed:sha256:${digestStringList([error])}`;
   });
   if (normalized.length <= LIMITS.max_validation_errors) return normalized;

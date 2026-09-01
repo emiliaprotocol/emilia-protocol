@@ -77,4 +77,3 @@
     { "case_id": "hostile-false-plus-unpinned", "pair_id": "indeterminate-dominance", "kind": "HOSTILE", "expected_verdict": "INDETERMINATE", "expected_reason_codes": ["SOURCE_UNPINNED"], "mutations": [{ "op": "SET", "path": ["profile", "predicates", 0, "expected"], "value": "withdrawn" }, { "op": "APPEND", "path": ["profile", "predicates"], "value": { "predicate_id": "undeclared-source", "source_ids": ["absent-source"], "path": "/status", "operator": "EQUALS", "expected": "effective" } }] }
   ]
 }
-

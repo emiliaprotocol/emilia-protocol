@@ -48,7 +48,7 @@ For supplied offline fixtures, the evaluator checks:
 - observation availability and freshness at the profile's evaluation time;
 - agreement between duplicate observations and between declared sources;
 - rejection of a predicate supported only by `ISSUER_OPINION` observations;
-- canonical array-index handling for JSON Pointers;
+- root-value selection and canonical array-index handling for JSON Pointers;
 - strict safe-integer comparison with no string-to-number coercion; and
 - input, profile, evidence-set, and source-snapshot binding in a stable report.
 
@@ -75,6 +75,8 @@ fixed-point integer or a string with separately defined semantics.
 - `evaluation-profile.schema.json`: schema for the local profile.
 - `evidence-set.schema.json`: schema for supplied offline observations.
 - `evaluation-report.schema.json`: schema for local evaluation reports.
+- `corpus-report.schema.json`: schema for the generated aggregate report and
+  its artifact bindings.
 - `vector-corpus.schema.json`: schema for the paired vector corpus.
 - `evaluate.mjs`: zero-dependency evaluator and CLI.
 - `evaluate.selftest.mjs`: behavioral and hostile tests.
@@ -107,9 +109,13 @@ with exit zero; consumers must inspect the verdict and reason codes.
 
 `generate-report.mjs` prints the regenerated report to standard output.
 `generate-report.mjs --check` compares those bytes with checked-in
-`report.json` and fails if it is missing or stale.
+`report.json` and fails if it is missing or stale. The report binds the raw
+bytes of `source-lock.json`, `corpus-report.schema.json`, `evaluate.mjs`, and
+`generate-report.mjs`. It also records the upstream commit and tree from the
+source lock, so a reader can reproduce the exact local evidence and code
+boundary without trusting a filename.
 
-The checked package has 40 passing self-tests and 20 vectors in 10 paired
+The checked package has 44 passing self-tests and 20 vectors in 10 paired
 control/hostile groups. The generated report records 10 `INDETERMINATE`, nine
 `SATISFIED`, and one `NOT_SATISFIED` result, with no expectation mismatch. See
 `CLAIM-EVIDENCE.md` for the exact boundary of those claims.
