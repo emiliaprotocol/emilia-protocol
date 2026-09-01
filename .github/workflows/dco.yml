@@ -15,14 +15,9 @@ on:
 
 jobs:
   dco:
-    # Skip DCO for Dependabot PRs — the bot can't add Signed-off-by to its
-    # own commits, and the bumps it ships don't carry copyrightable
-    # contribution. A skipped job satisfies required status checks per
-    # GitHub's documented behavior, so this doesn't open a hole.
-    # Key this exception to the PR author. A maintainer-triggered "update
-    # branch" changes github.actor but does not change who authored the
-    # dependency update.
-    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    # Keep the required job and checkout present for every pull request. The
+    # commit loop recognizes only Dependabot's exact author identities; any
+    # human commit added to the same branch must carry its own DCO trailer.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -37,7 +32,15 @@ jobs:
         run: |
           failure=0
           while IFS= read -r commit_sha; do
-            author="$(git show -s --format='%an <%ae>' "$commit_sha")"
+            author_name="$(git show -s --format='%an' "$commit_sha")"
+            author_email="$(git show -s --format='%ae' "$commit_sha")"
+            author="$author_name <$author_email>"
+            case "$author" in
+              'dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>'|'dependabot[bot] <support@github.com>')
+                echo "::notice::Commit $commit_sha uses a recognized Dependabot author identity; DCO sign-off is not required."
+                continue
+                ;;
+            esac
             if ! git show -s --format='%B' "$commit_sha" \
               | grep --fixed-strings --ignore-case --quiet "Signed-off-by: $author"; then
               echo "::error::Commit $commit_sha is missing Signed-off-by: $author"
