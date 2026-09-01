@@ -351,6 +351,59 @@ describe('hostile matrix: every bad input is a named refusal, never a throw', ()
       .toThrow(/COSE key too large \(2049 bytes, max 2048\)/);
   });
 
+  it('tiny truncated CBOR containers are refused before material work', () => {
+    // array(1_000_000) and map(1_000_000), each encoded in five bytes. Guard
+    // the intrinsic operations so this test proves prompt remaining-source
+    // refusal without ever permitting the legacy allocation/iteration path.
+    const hostileContainers = [
+      Buffer.from([0x9a, 0x00, 0x0f, 0x42, 0x40]),
+      Buffer.from([0xba, 0x00, 0x0f, 0x42, 0x40]),
+    ];
+    const NativeArray = globalThis.Array;
+    const nativeMapSet = Map.prototype.set;
+    let largestRequestedLength = 0;
+    let mapWrites = 0;
+    const GuardedArray = new Proxy(NativeArray, {
+      construct(target, args, newTarget) {
+        if (args.length === 1 && typeof args[0] === 'number') {
+          largestRequestedLength = Math.max(largestRequestedLength, args[0]);
+          if (args[0] > COSE_KEY_MAX_BYTES.ES256) {
+            throw new Error(`test guard: refused Array(${args[0]})`);
+          }
+        }
+        return Reflect.construct(target, args, newTarget);
+      },
+    });
+    Map.prototype.set = function guardedSet(this: Map<unknown, unknown>, key: unknown, value: unknown) {
+      mapWrites += 1;
+      if (mapWrites > 32) throw new Error('test guard: refused excessive Map writes');
+      return nativeMapSet.call(this, key, value);
+    } as typeof Map.prototype.set;
+
+    const refusals: unknown[] = [];
+    globalThis.Array = GuardedArray as ArrayConstructor;
+    try {
+      for (const hostile of hostileContainers) {
+        try {
+          coseToSpkiP256(hostile);
+        } catch (error) {
+          refusals.push(error);
+        }
+      }
+    } finally {
+      globalThis.Array = NativeArray;
+      Map.prototype.set = nativeMapSet;
+    }
+
+    expect(refusals).toHaveLength(hostileContainers.length);
+    for (const refusal of refusals) {
+      expect(refusal).toBeInstanceOf(Error);
+      expect((refusal as Error).message).toMatch(/Unexpected end of CBOR data/);
+    }
+    expect(largestRequestedLength).toBeLessThanOrEqual(COSE_KEY_MAX_BYTES.ES256);
+    expect(mapWrites).toBe(0);
+  });
+
   it('a truncated ML-DSA-65 COSE public key is refused', () => {
     const truncated = Buffer.from(coseEncoder.encode(
       new Map<number, unknown>([[1, 7], [3, -49], [-1, new Uint8Array(ML_DSA_65_PUBLIC_KEY_BYTES - 1)]]),

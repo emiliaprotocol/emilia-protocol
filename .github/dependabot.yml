@@ -16,6 +16,8 @@ updates:
       day: monday
       time: "09:00"
       timezone: UTC
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - dependencies
@@ -42,6 +44,8 @@ updates:
       day: monday
       time: "09:00"
       timezone: UTC
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     labels:
       - dependencies
@@ -76,6 +80,9 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@sentry/nextjs"
         update-types: ["version-update:semver-major"]
+      # Issue #703 tracks the required 0.9+ parser migration; do not reopen it weekly.
+      - dependency-name: "@xmldom/xmldom"
+        versions: [">= 0.9.0"]
       # ESLint 10 is not yet supported by the plugin versions resolved by
       # eslint-config-next 16.2.9. CI fails inside scope analysis, so hold the
       # major line until the upstream Next.js lint stack declares support.
@@ -90,6 +97,8 @@ updates:
       day: monday
       time: "09:00"
       timezone: UTC
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - dependencies
@@ -106,6 +115,8 @@ updates:
       day: monday
       time: "09:00"
       timezone: UTC
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - dependencies
@@ -122,6 +133,8 @@ updates:
       day: monday
       time: "09:00"
       timezone: UTC
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - dependencies
