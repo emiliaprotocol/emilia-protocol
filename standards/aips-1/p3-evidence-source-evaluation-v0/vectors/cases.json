@@ -1,0 +1,80 @@
+{
+  "corpus_version": "aips1-p3-evidence-source-vectors-v0.1",
+  "base_case": {
+    "case_id": "base",
+    "profile": {
+      "profile_version": "aips1-p3-evidence-source-evaluation-v0.1",
+      "profile_id": "example.trigger.v1",
+      "evaluation_time": "2026-09-01T12:00:00Z",
+      "combiner": "ALL",
+      "sources": [
+        {
+          "source_id": "filing",
+          "source_type": "regulator_filing",
+          "locator": "https://example.test/filings/42",
+          "revision": "sha256:source-revision-42",
+          "format": "application/json",
+          "basis": "OBSERVED_FACT",
+          "data_sha256": "sha256:ddef1aa708fafb20a1a41a29584e8cc9b3a7e7bd7126c70685913bcaa61515dd",
+          "max_age_seconds": 86400
+        }
+      ],
+      "predicates": [
+        {
+          "predicate_id": "filing-is-effective",
+          "source_ids": ["filing"],
+          "path": "/status",
+          "operator": "EQUALS",
+          "expected": "effective"
+        }
+      ]
+    },
+    "evidence_set": {
+      "evidence_set_version": "aips1-p3-evidence-set-v0.1",
+      "observations": [
+        {
+          "source_id": "filing",
+          "locator": "https://example.test/filings/42",
+          "revision": "sha256:source-revision-42",
+          "observed_at": "2026-09-01T11:00:00Z",
+          "availability": "AVAILABLE",
+          "format": "application/json",
+          "basis": "OBSERVED_FACT",
+          "data": { "status": "effective" }
+        }
+      ]
+    }
+  },
+  "vectors": [
+    { "case_id": "control-source-present", "pair_id": "source-presence", "kind": "CONTROL", "expected_verdict": "SATISFIED", "expected_reason_codes": [], "mutations": [] },
+    { "case_id": "hostile-source-missing", "pair_id": "source-presence", "kind": "HOSTILE", "expected_verdict": "INDETERMINATE", "expected_reason_codes": ["SOURCE_MISSING"], "mutations": [{ "op": "SET", "path": ["evidence_set", "observations"], "value": [] }] },
+
+    { "case_id": "control-source-available", "pair_id": "availability", "kind": "CONTROL", "expected_verdict": "SATISFIED", "expected_reason_codes": [], "mutations": [] },
+    { "case_id": "hostile-source-unavailable", "pair_id": "availability", "kind": "HOSTILE", "expected_verdict": "INDETERMINATE", "expected_reason_codes": ["SOURCE_UNAVAILABLE"], "mutations": [{ "op": "SET", "path": ["evidence_set", "observations", 0, "availability"], "value": "UNAVAILABLE" }] },
+
+    { "case_id": "control-source-current", "pair_id": "freshness", "kind": "CONTROL", "expected_verdict": "SATISFIED", "expected_reason_codes": [], "mutations": [] },
+    { "case_id": "hostile-source-stale", "pair_id": "freshness", "kind": "HOSTILE", "expected_verdict": "INDETERMINATE", "expected_reason_codes": ["SOURCE_STALE"], "mutations": [{ "op": "SET", "path": ["evidence_set", "observations", 0, "observed_at"], "value": "2026-08-31T11:59:59Z" }] },
+
+    { "case_id": "control-source-format-supported", "pair_id": "format-support", "kind": "CONTROL", "expected_verdict": "SATISFIED", "expected_reason_codes": [], "mutations": [] },
+    { "case_id": "hostile-source-format-unsupported", "pair_id": "format-support", "kind": "HOSTILE", "expected_verdict": "INDETERMINATE", "expected_reason_codes": ["SOURCE_UNSUPPORTED"], "mutations": [{ "op": "SET", "path": ["profile", "sources", 0, "format"], "value": "application/cbor" }, { "op": "SET", "path": ["evidence_set", "observations", 0, "format"], "value": "application/cbor" }] },
+
+    { "case_id": "control-source-pinned", "pair_id": "source-pin", "kind": "CONTROL", "expected_verdict": "SATISFIED", "expected_reason_codes": [], "mutations": [] },
+    { "case_id": "hostile-source-unpinned", "pair_id": "source-pin", "kind": "HOSTILE", "expected_verdict": "INDETERMINATE", "expected_reason_codes": ["SOURCE_UNPINNED"], "mutations": [{ "op": "SET", "path": ["evidence_set", "observations", 0, "locator"], "value": "https://attacker.test/filing" }] },
+
+    { "case_id": "control-duplicate-agrees", "pair_id": "source-conflict", "kind": "CONTROL", "expected_verdict": "SATISFIED", "expected_reason_codes": [], "mutations": [{ "op": "APPEND", "path": ["evidence_set", "observations"], "value": { "source_id": "filing", "locator": "https://example.test/filings/42", "revision": "sha256:source-revision-42", "observed_at": "2026-09-01T11:00:00Z", "availability": "AVAILABLE", "format": "application/json", "basis": "OBSERVED_FACT", "data": { "status": "effective" } } }] },
+    { "case_id": "hostile-source-conflict", "pair_id": "source-conflict", "kind": "HOSTILE", "expected_verdict": "INDETERMINATE", "expected_reason_codes": ["SOURCE_CONFLICT"], "mutations": [{ "op": "APPEND", "path": ["evidence_set", "observations"], "value": { "source_id": "filing", "locator": "https://example.test/filings/42", "revision": "sha256:source-revision-42", "observed_at": "2026-09-01T11:00:00Z", "availability": "AVAILABLE", "format": "application/json", "basis": "OBSERVED_FACT", "data": { "status": "stayed" } } }] },
+
+    { "case_id": "control-observed-fact", "pair_id": "issuer-opinion", "kind": "CONTROL", "expected_verdict": "SATISFIED", "expected_reason_codes": [], "mutations": [] },
+    { "case_id": "hostile-issuer-opinion-only", "pair_id": "issuer-opinion", "kind": "HOSTILE", "expected_verdict": "INDETERMINATE", "expected_reason_codes": ["SOURCE_ISSUER_OPINION_ONLY"], "mutations": [{ "op": "SET", "path": ["profile", "sources", 0, "basis"], "value": "ISSUER_OPINION" }, { "op": "SET", "path": ["evidence_set", "observations", 0, "basis"], "value": "ISSUER_OPINION" }] },
+
+    { "case_id": "control-operator-defined", "pair_id": "operator-support", "kind": "CONTROL", "expected_verdict": "SATISFIED", "expected_reason_codes": [], "mutations": [] },
+    { "case_id": "hostile-operator-undefined", "pair_id": "operator-support", "kind": "HOSTILE", "expected_verdict": "INDETERMINATE", "expected_reason_codes": ["PREDICATE_UNSUPPORTED"], "mutations": [{ "op": "SET", "path": ["profile", "predicates", 0, "operator"], "value": "ISSUER_DECIDES" }] },
+
+    { "case_id": "control-value-present", "pair_id": "value-presence", "kind": "CONTROL", "expected_verdict": "SATISFIED", "expected_reason_codes": [], "mutations": [] },
+    { "case_id": "hostile-value-missing", "pair_id": "value-presence", "kind": "HOSTILE", "expected_verdict": "INDETERMINATE", "expected_reason_codes": ["VALUE_MISSING"], "mutations": [{ "op": "SET", "path": ["profile", "sources", 0, "data_sha256"], "value": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a" }, { "op": "SET", "path": ["evidence_set", "observations", 0, "data"], "value": {} }] },
+
+    { "case_id": "control-determinate-false", "pair_id": "indeterminate-dominance", "kind": "CONTROL", "expected_verdict": "NOT_SATISFIED", "expected_reason_codes": [], "mutations": [{ "op": "SET", "path": ["profile", "predicates", 0, "expected"], "value": "withdrawn" }] },
+    { "case_id": "hostile-false-plus-unpinned", "pair_id": "indeterminate-dominance", "kind": "HOSTILE", "expected_verdict": "INDETERMINATE", "expected_reason_codes": ["SOURCE_UNPINNED"], "mutations": [{ "op": "SET", "path": ["profile", "predicates", 0, "expected"], "value": "withdrawn" }, { "op": "APPEND", "path": ["profile", "predicates"], "value": { "predicate_id": "undeclared-source", "source_ids": ["absent-source"], "path": "/status", "operator": "EQUALS", "expected": "effective" } }] }
+  ]
+}
+

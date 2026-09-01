@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emilia:aips1-p3-evidence-set:v0.1",
+  "$comment": "Offline fixture envelope for a repository-local public-comment lab, not an AIPS-native evidence format.",
+  "type": "object",
+  "additionalProperties": false,
+  "maxProperties": 2,
+  "required": ["evidence_set_version", "observations"],
+  "properties": {
+    "evidence_set_version": { "const": "aips1-p3-evidence-set-v0.1" },
+    "observations": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/observation" } }
+  },
+  "$defs": {
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 8,
+      "required": ["source_id", "locator", "revision", "availability"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "locator": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "revision": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?!0000)[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{3})?Z$"
+        },
+        "availability": { "enum": ["AVAILABLE", "UNAVAILABLE"] },
+        "format": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "basis": { "enum": ["OBSERVED_FACT", "ISSUER_OPINION"] },
+        "data": { "$ref": "#/$defs/json_value" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "availability": { "const": "AVAILABLE" } }, "required": ["availability"] },
+          "then": {
+            "properties": {
+              "observed_at": true,
+              "format": true,
+              "basis": true,
+              "data": { "$ref": "#/$defs/json_value" }
+            },
+            "required": ["observed_at", "format", "basis", "data"]
+          }
+        }
+      ]
+    },
+    "json_value": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "string", "maxLength": 8192 },
+        { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/json_value" } },
+        {
+          "type": "object",
+          "maxProperties": 256,
+          "propertyNames": { "maxLength": 8192 },
+          "additionalProperties": { "$ref": "#/$defs/json_value" }
+        }
+      ]
+    }
+  }
+}

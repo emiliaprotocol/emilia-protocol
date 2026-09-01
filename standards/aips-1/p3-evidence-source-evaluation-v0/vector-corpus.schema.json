@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emilia:aips1-p3-evidence-source-vectors:v0.1",
+  "$comment": "Paired controls and hostile mutations for this repository-local lab.",
+  "type": "object",
+  "additionalProperties": false,
+  "maxProperties": 3,
+  "required": ["corpus_version", "base_case", "vectors"],
+  "properties": {
+    "corpus_version": { "const": "aips1-p3-evidence-source-vectors-v0.1" },
+    "base_case": { "$ref": "#/$defs/json_object" },
+    "vectors": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "maxProperties": 6,
+        "required": ["case_id", "pair_id", "kind", "expected_verdict", "expected_reason_codes", "mutations"],
+        "properties": {
+          "case_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "pair_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "kind": { "enum": ["CONTROL", "HOSTILE"] },
+          "expected_verdict": { "enum": ["SATISFIED", "NOT_SATISFIED", "INDETERMINATE"] },
+          "expected_reason_codes": { "type": "array", "maxItems": 256, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 256 } },
+          "mutations": {
+            "type": "array",
+            "maxItems": 256,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "maxProperties": 3,
+              "required": ["op", "path", "value"],
+              "properties": {
+                "op": { "enum": ["SET", "APPEND"] },
+                "path": { "type": "array", "minItems": 1, "maxItems": 32, "items": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 256 }, { "type": "integer", "minimum": 0, "maximum": 255 }] } },
+                "value": { "$ref": "#/$defs/json_value" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "json_object": {
+      "type": "object",
+      "maxProperties": 256,
+      "propertyNames": { "maxLength": 8192 },
+      "additionalProperties": { "$ref": "#/$defs/json_value" }
+    },
+    "json_value": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "string", "maxLength": 8192 },
+        { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/json_value" } },
+        { "$ref": "#/$defs/json_object" }
+      ]
+    }
+  }
+}

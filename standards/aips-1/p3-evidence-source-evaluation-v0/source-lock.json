@@ -1,0 +1,120 @@
+{
+  "@version": "EMILIA-AIPS1-P3-SOURCE-LOCK-v0",
+  "retrieved_at": "2026-09-01T21:05:14Z",
+  "subject": {
+    "name": "AIPS-1 Agent Insurance Policy Standard",
+    "version": "0.1",
+    "status": "draft for public comment",
+    "publisher": "Kadikoy Limited, Bermuda",
+    "publication_date": "2026-06-06",
+    "comment_deadline": "2026-11-30"
+  },
+  "upstream_repository": {
+    "url": "https://github.com/Kadikoy1/aips-1",
+    "default_branch": "main",
+    "resolved_commit": "280a8ba0e9c2658ee6af10778e0f6a2fb669661d",
+    "resolved_tree": "0131893fd6a7c0341521d73591d14976b1af43ca",
+    "commit_url": "https://github.com/Kadikoy1/aips-1/commit/280a8ba0e9c2658ee6af10778e0f6a2fb669661d",
+    "commit_timestamp": "2026-06-06T17:16:07Z"
+  },
+  "source_count": 7,
+  "sources": [
+    {
+      "id": "aips1-official-site",
+      "role": "current first-party status, public-comment route, and document index",
+      "url": "https://aips-1.org/",
+      "revision": "web-snapshot:2026-09-01T21:05:14Z",
+      "content_type": "text/html; charset=UTF-8",
+      "etag": "\"4548466ceb38ce0a9778c027fb9b93a6-ssl\"",
+      "bytes": 45144,
+      "sha256": "57a59aa216e0f4d797694e7d6b8ec0bca07067deded6d4545b5908f3db9a2fb2"
+    },
+    {
+      "id": "aips1-site-specification-pdf",
+      "role": "current specification linked from the official site",
+      "url": "https://aips-1.org/AIPS-1_Specification_v0_1.pdf",
+      "revision": "web-snapshot:2026-09-01T21:05:14Z",
+      "content_type": "application/pdf",
+      "etag": "\"7a50f2fdb661a5f50792567a15ef3dba-ssl\"",
+      "bytes": 190174,
+      "sha256": "01bf3d27ed21944f637ffbe1d968629f5dd491677852634e84436c562e3a3e0d",
+      "locators": [
+        "section 2.2, Trigger and Evidence Source definitions",
+        "section 4, P3 Trigger Determinism",
+        "section 5, triggers field",
+        "section 7, deferred reference implementations",
+        "section 13, request for comment",
+        "Appendix A, worked trigger example"
+      ]
+    },
+    {
+      "id": "aips1-repository-specification-pdf",
+      "role": "commit-pinned repository copy of the specification",
+      "url": "https://raw.githubusercontent.com/Kadikoy1/aips-1/280a8ba0e9c2658ee6af10778e0f6a2fb669661d/docs/AIPS-1_Specification_v0_1.pdf",
+      "html_url": "https://github.com/Kadikoy1/aips-1/blob/280a8ba0e9c2658ee6af10778e0f6a2fb669661d/docs/AIPS-1_Specification_v0_1.pdf",
+      "revision": "git:280a8ba0e9c2658ee6af10778e0f6a2fb669661d",
+      "git_blob_sha1": "d1755be85f3e3a1e7071fe0c73f824b7e998df2e",
+      "content_type": "application/octet-stream",
+      "bytes": 189878,
+      "sha256": "aeff5eda37b30bbd92b1d2008bd8c91a14479ccb8e8b97220f6d6e584bbee80c"
+    },
+    {
+      "id": "aips1-repository-readme",
+      "role": "commit-pinned repository status, roadmap, comment channels, and scope statement",
+      "url": "https://raw.githubusercontent.com/Kadikoy1/aips-1/280a8ba0e9c2658ee6af10778e0f6a2fb669661d/README.md",
+      "html_url": "https://github.com/Kadikoy1/aips-1/blob/280a8ba0e9c2658ee6af10778e0f6a2fb669661d/README.md",
+      "revision": "git:280a8ba0e9c2658ee6af10778e0f6a2fb669661d",
+      "git_blob_sha1": "9444a21e88e2b76f471893e56f1ceb9c3f5c1ee5",
+      "content_type": "text/plain; charset=utf-8",
+      "bytes": 8338,
+      "sha256": "a34fc7cb16ac7c5ead69e75f5b587f5341acac2991b6716ba1bad22d3afbc88d"
+    },
+    {
+      "id": "aips1-repository-schemas-status",
+      "role": "commit-pinned status of planned upstream schemas",
+      "url": "https://raw.githubusercontent.com/Kadikoy1/aips-1/280a8ba0e9c2658ee6af10778e0f6a2fb669661d/schemas/README.md",
+      "html_url": "https://github.com/Kadikoy1/aips-1/blob/280a8ba0e9c2658ee6af10778e0f6a2fb669661d/schemas/README.md",
+      "revision": "git:280a8ba0e9c2658ee6af10778e0f6a2fb669661d",
+      "git_blob_sha1": "196c81d05ac62744f32896fcffaa4dabba3af4d4",
+      "content_type": "text/plain; charset=utf-8",
+      "bytes": 1558,
+      "sha256": "cb9e8403919ea9a71536ae3595c602ba7a650e99f2a073a5aa7eea4385f9f63e"
+    },
+    {
+      "id": "aips1-repository-reference-status",
+      "role": "commit-pinned status of planned upstream reference verifiers",
+      "url": "https://raw.githubusercontent.com/Kadikoy1/aips-1/280a8ba0e9c2658ee6af10778e0f6a2fb669661d/reference/README.md",
+      "html_url": "https://github.com/Kadikoy1/aips-1/blob/280a8ba0e9c2658ee6af10778e0f6a2fb669661d/reference/README.md",
+      "revision": "git:280a8ba0e9c2658ee6af10778e0f6a2fb669661d",
+      "git_blob_sha1": "790e9a5761fe637af08f2fb7fbc7921208e32cc9",
+      "content_type": "text/plain; charset=utf-8",
+      "bytes": 1652,
+      "sha256": "01f361387e0509952969735ad6c486933cadcd8bb99605e5399a3f2b0ecd9cc5"
+    },
+    {
+      "id": "aips1-repository-license",
+      "role": "commit-pinned upstream license text",
+      "url": "https://raw.githubusercontent.com/Kadikoy1/aips-1/280a8ba0e9c2658ee6af10778e0f6a2fb669661d/LICENSE",
+      "html_url": "https://github.com/Kadikoy1/aips-1/blob/280a8ba0e9c2658ee6af10778e0f6a2fb669661d/LICENSE",
+      "revision": "git:280a8ba0e9c2658ee6af10778e0f6a2fb669661d",
+      "git_blob_sha1": "90d1065546ed8420a50de14c8f4b5defbaa8f330",
+      "content_type": "text/plain; charset=utf-8",
+      "bytes": 6619,
+      "sha256": "1483739d4d4a5323e12d8cf6b69c21fd218fc0f3c60e581c719f7ca6d225de30",
+      "spdx_id": "CC0-1.0"
+    }
+  ],
+  "observed_variance": {
+    "site_and_repository_pdf_byte_identical": false,
+    "site_pdf_sha256": "01bf3d27ed21944f637ffbe1d968629f5dd491677852634e84436c562e3a3e0d",
+    "repository_pdf_sha256": "aeff5eda37b30bbd92b1d2008bd8c91a14479ccb8e8b97220f6d6e584bbee80c",
+    "review_result": "The current site PDF adds AHS-1 and healthcare material and contains editorial changes. The P3 definitions, P3 requirement, triggers-field description, deferred-verifier statement, public-comment deadline, and predicate-language question used by this package have the same substantive wording in both reviewed copies.",
+    "use_rule": "Use the site PDF for current public wording and the commit-pinned repository PDF for reproducibility. Do not treat the shared v0.1 filename as proof that the bytes are identical."
+  },
+  "license": {
+    "upstream_material": "CC0-1.0",
+    "upstream_evidence": "aips1-repository-license",
+    "this_package": "Apache-2.0",
+    "this_package_evidence": "repository root LICENSE"
+  }
+}

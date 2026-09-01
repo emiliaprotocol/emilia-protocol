@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emilia:aips1-p3-evidence-source-evaluation-profile:v0.1",
+  "$comment": "Repository-local public-comment lab dialect. Not an AIPS-1 v0.1 schema or conformance claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "maxProperties": 6,
+  "required": ["profile_version", "profile_id", "evaluation_time", "combiner", "sources", "predicates"],
+  "properties": {
+    "profile_version": { "const": "aips1-p3-evidence-source-evaluation-v0.1" },
+    "profile_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "evaluation_time": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?!0000)[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{3})?Z$"
+    },
+    "combiner": { "const": "ALL" },
+    "sources": { "type": "array", "minItems": 1, "maxItems": 32, "items": { "$ref": "#/$defs/source" } },
+    "predicates": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/predicate" } }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 8,
+      "required": ["source_id", "source_type", "locator", "revision", "format", "basis", "data_sha256", "max_age_seconds"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "source_type": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "locator": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "revision": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "format": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "basis": { "enum": ["OBSERVED_FACT", "ISSUER_OPINION"] },
+        "data_sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "max_age_seconds": { "type": "integer", "minimum": 0, "maximum": 31536000 }
+      }
+    },
+    "predicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 5,
+      "required": ["predicate_id", "source_ids", "path", "operator", "expected"],
+      "properties": {
+        "predicate_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "source_ids": { "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 256 } },
+        "path": { "type": "string", "maxLength": 2048, "pattern": "^(?:$|/(?:[^~]|~[01])*)$" },
+        "operator": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "expected": { "$ref": "#/$defs/json_value" }
+      }
+    },
+    "json_value": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "string", "maxLength": 8192 },
+        { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+        { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/json_value" } },
+        {
+          "type": "object",
+          "maxProperties": 256,
+          "propertyNames": { "maxLength": 8192 },
+          "additionalProperties": { "$ref": "#/$defs/json_value" }
+        }
+      ]
+    }
+  }
+}

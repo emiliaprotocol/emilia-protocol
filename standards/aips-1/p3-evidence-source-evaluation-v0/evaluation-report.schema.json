@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emilia:aips1-p3-evidence-source-report:v0.1",
+  "$comment": "The verdict vocabulary is local to this lab and is not defined by AIPS-1 v0.1 or EP-AEC.",
+  "type": "object",
+  "additionalProperties": false,
+  "maxProperties": 17,
+  "required": [
+    "report_version", "lab_profile", "predicate_dialect", "case_id", "profile_id",
+    "evaluation_time", "input_digest", "profile_digest", "evidence_set_digest",
+    "source_snapshots", "static_evaluable", "runtime_evaluable", "verdict",
+    "reason_codes", "validation_errors", "predicate_results", "scope"
+  ],
+  "properties": {
+    "report_version": { "const": "aips1-p3-evidence-source-report-v0.1" },
+    "lab_profile": { "const": "aips1-p3-evidence-source-evaluation-v0.1" },
+    "predicate_dialect": { "$ref": "#/$defs/predicate_dialect" },
+    "case_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "profile_id": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 256 }, { "type": "null" }] },
+    "evaluation_time": { "$ref": "#/$defs/timestamp_or_null" },
+    "input_digest": { "$ref": "#/$defs/digest_or_null" },
+    "profile_digest": { "$ref": "#/$defs/digest_or_null" },
+    "evidence_set_digest": { "$ref": "#/$defs/digest_or_null" },
+    "source_snapshots": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/source_snapshot" } },
+    "static_evaluable": { "type": "boolean" },
+    "runtime_evaluable": { "type": "boolean" },
+    "verdict": { "$ref": "#/$defs/verdict" },
+    "reason_codes": { "type": "array", "maxItems": 256, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 256 } },
+    "validation_errors": { "type": "array", "maxItems": 64, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 512 } },
+    "predicate_results": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/predicate_result" } },
+    "scope": { "$ref": "#/$defs/scope" }
+  },
+  "$defs": {
+    "verdict": { "enum": ["SATISFIED", "NOT_SATISFIED", "INDETERMINATE"] },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "digest_or_null": { "anyOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?!0000)[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{3})?Z$"
+    },
+    "timestamp_or_null": { "anyOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] },
+    "predicate_dialect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dialect_id", "digest", "authority"],
+      "properties": {
+        "dialect_id": { "const": "emilia-aips1-p3-local-json-pointer-v0.1" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "authority": { "const": "repository_local_proposal_not_aips1_v0.1" }
+      }
+    },
+    "source_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["availability", "locator", "revision", "observed_at", "format", "basis", "data_sha256"],
+      "properties": {
+        "availability": { "enum": ["AVAILABLE", "UNAVAILABLE"] },
+        "locator": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "revision": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "observed_at": { "$ref": "#/$defs/timestamp_or_null" },
+        "format": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 256 }, { "type": "null" }] },
+        "basis": { "anyOf": [{ "enum": ["OBSERVED_FACT", "ISSUER_OPINION"] }, { "type": "null" }] },
+        "data_sha256": { "$ref": "#/$defs/digest_or_null" }
+      }
+    },
+    "source_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "pin_count", "locator", "revision", "format", "basis", "data_sha256", "max_age_seconds", "observations"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "pin_count": { "type": "integer", "minimum": 1, "maximum": 32 },
+        "locator": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "revision": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "format": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "basis": { "enum": ["OBSERVED_FACT", "ISSUER_OPINION"] },
+        "data_sha256": { "$ref": "#/$defs/digest" },
+        "max_age_seconds": { "type": "integer", "minimum": 0, "maximum": 31536000 },
+        "observations": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/source_observation" } }
+      }
+    },
+    "predicate_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["predicate_id", "source_ids", "static_evaluable", "runtime_evaluable", "verdict", "reason_codes"],
+      "properties": {
+        "predicate_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "source_ids": { "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 256 } },
+        "static_evaluable": { "type": "boolean" },
+        "runtime_evaluable": { "type": "boolean" },
+        "verdict": { "$ref": "#/$defs/verdict" },
+        "reason_codes": { "type": "array", "maxItems": 256, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 256 } }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluates", "evaluation_mode", "does_not_evaluate", "assumptions", "does_not_determine"],
+      "properties": {
+        "evaluates": { "const": "local_trigger_predicate_satisfaction" },
+        "evaluation_mode": { "const": "offline_fixture_evaluation" },
+        "does_not_evaluate": { "type": "array", "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 256 } },
+        "assumptions": { "type": "array", "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 8192 } },
+        "does_not_determine": { "type": "array", "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 256 } }
+      }
+    }
+  }
+}
