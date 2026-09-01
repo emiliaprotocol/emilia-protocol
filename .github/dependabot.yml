@@ -67,6 +67,9 @@ updates:
           - "typescript"
           - "eslint"
           - "eslint-config-next"
+          # 0.x minor releases may contain breaking API changes. Keep xmldom
+          # patches automated, but review 0.9+ as a dedicated migration.
+          - "@xmldom/xmldom"
     ignore:
       # Avoid major version bumps on Next.js without a manual migration review
       - dependency-name: "next"
@@ -78,6 +81,8 @@ updates:
       # major line until the upstream Next.js lint stack declares support.
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "@xmldom/xmldom"
+        update-types: ["version-update:semver-minor"]
 
   # ── npm (MCP server) ────────────────────────────────────────────────────────
   - package-ecosystem: npm
