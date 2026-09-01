@@ -21,15 +21,21 @@ decision can be recorded:
 4. that observation must not be future, older than the fixed 60-second v0.2
    freshness limit, or outside the native credential's validity window.
 
-The bound v2 mappings carry that evaluation time and freshness limit in the
-relying-party context. The exported unbound v1 compatibility mappings require
-the same relying-party-owned temporal context as a separate argument and
-refuse without it; they cannot emit `rp_acceptance=ACCEPTED` from a free
-`CURRENT` label alone.
+Only the bound v2 authority mappings are public. They carry evaluation time and
+the fixed freshness limit in the relying-party context. The package exposes no
+unbound AIC authority result that can be handed to the generic crossing-record
+issuer.
 
-The crossing-record contract digest also commits to `relying_party_id`, so a
-record cannot be transplanted to another relying party by retaining the same
-audience, executor, and state domain.
+The bound authority commits the full admission domain, including
+`relying_party_id`, into its authority-instance, replay, and constraints
+digests. `EP-AEB-CROSSING-RECORD-v1` then commits those opaque digests, but its
+generic issuer cannot recompute the AIC context or prove that a separately
+supplied boundary matches it. AIC issuance therefore uses
+`issueAicBoundCrossingRecord`, which receives the native input, relying-party
+context, and record draft together and refuses any action or admission-domain
+mismatch before signing. The generic crossing issuer is not the AIC issuance
+API. A future crossing-record v2 can make that admission-domain binding
+recomputable without changing the frozen v1 digest.
 
 The adapter keeps the native-verifier result and relying-party policy as
 separate arguments. The native result carries the claimed issuer anchor,
@@ -92,6 +98,12 @@ The adapter derives raw-carrier fingerprints from the bytes it receives. Those
 fingerprints do not prove the native verifier saw the same bytes unless an
 authenticated wrapper binds them to the verifier result.
 
+The JWT-SVID helper has a separate, private source-verification path. It never
+returns a crossing authority. Its projection digest commits the accepted
+source evaluation, including the pinned verifier and source-verification
+profile, verification-evidence digest, selected issuer anchor, status head and
+observation time, native validity, and the fixed 60-second freshness context.
+
 That is a local fail-closed boundary, not an upstream integration claim. A
 deployment crossing a Go or JSON process boundary still needs a tagged or
 authenticated verifier-result wrapper that preserves the original carrier.
@@ -118,7 +130,7 @@ node --test \
 node conformance/composition/aic-aeb-crossing-v0.2/run.mjs --check
 ```
 
-The deterministic report covers nineteen cases: two stipulated native-result mappings
+The deterministic report covers twenty cases: two stipulated native-result mappings
 and hybrid-signed crossing records; separation of jkt and SPKI profiles;
 DER-stable X.509 replay identity; principal-binding mismatch; relying-party
 self-pin refusal; native type
@@ -128,8 +140,9 @@ verification; exact-action and requested-capability substitution; relying-party
 domain and compact-token audience substitution; stale and future status
 observations; refusal to widen the fixed 60-second freshness profile; signed
 JWT temporal relabeling; revoked and unavailable status;
-native-validity failure; and
-signed-record relying-party substitution.
+native-validity failure; issuer-time action and admission-domain mismatch
+refusal before signing; and signed-body relying-party substitution refusal by
+signature verification.
 
 `source-lock.json` pins the exact IETF draft bytes and the exact Varwof source
 revisions inspected. `report.reference.json` embeds that source lock and the

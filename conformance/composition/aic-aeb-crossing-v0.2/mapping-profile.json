@@ -59,6 +59,13 @@
     ],
     "required_relation": "EXACT_MATCH"
   },
+  "workload_identity_projection": {
+    "id": "EP-AIC-JWT-SVID-PROJECTION-v1",
+    "source_verification_profile_id": "EP-AIC-JWT-SVID-SOURCE-VERIFICATION-v1",
+    "purpose": "WORKLOAD_IDENTITY_ONLY",
+    "authority_result_emitted": false,
+    "accepted_source_evaluation_digest_required": true
+  },
   "source_status": {
     "required_value": "CURRENT",
     "observation_member": "status.checked_at",
@@ -85,7 +92,10 @@
     "native_x509_spki_hash_alg": "sha-256",
     "principal_binding_exact_match_required": true,
     "carrier_types_are_not_interchangeable": true,
-    "crossing_contract_binds_relying_party_id": true,
+    "bound_authority_commits_relying_party_id": true,
+    "crossing_record_v1_contract_directly_commits_relying_party_id": false,
+    "aic_bound_issue_helper_requires_action_and_admission_domain_match": true,
+    "generic_crossing_issuer_revalidates_aic_opaque_context": false,
     "crossing_record_is_execution_authority": false
   }
 }

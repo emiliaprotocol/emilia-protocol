@@ -52,7 +52,7 @@ test("all AIC crossing cases pass and match the committed deterministic report",
     const reference = JSON.parse(readFileSync(resolve(HERE, "report.reference.json"), "utf8"));
     assert.equal(report.profile, PROFILE);
     assert.equal(report.passed, true, JSON.stringify(report, null, 2));
-    assert.equal(report.cases.length, 19);
+    assert.equal(report.cases.length, 20);
     assert.equal(report.results_digest, reference.results_digest);
     assert.deepEqual(await buildReferenceReport(), reference);
 });
@@ -100,10 +100,19 @@ test("exact action, admission domain, and source-status substitutions all refuse
         "STATUS-FRESHNESS-PROFILE-WIDENING-REFUSED",
         "NON-CURRENT-SOURCE-STATUS-REFUSED",
         "NATIVE-VALIDITY-WINDOW-REFUSED",
-        "SIGNED-CROSSING-RP-SUBSTITUTION-REFUSED",
+        "AIC-ISSUER-DOMAIN-MISMATCH-REFUSED-BEFORE-SIGNING",
+        "SIGNED-BODY-RP-SUBSTITUTION-REFUSED",
     ])
         assert.equal(byId[id].passed, true, id);
-    assert.match(report.known_limits.join(" "), /binds one exact action/);
+    assert.deepEqual(byId["AIC-ISSUER-DOMAIN-MISMATCH-REFUSED-BEFORE-SIGNING"].observed, {
+        ok: false,
+        reason: "aic_crossing_issue_admission_domain_mismatch",
+    });
+    assert.deepEqual(byId["SIGNED-BODY-RP-SUBSTITUTION-REFUSED"].observed, {
+        reason: "signature_invalid",
+        verified: false,
+    });
+    assert.match(report.known_limits.join(" "), /commits one exact action/);
     assert.match(report.known_limits.join(" "), /explicit source-status observation time/);
     assert.match(report.known_limits.join(" "), /exactly a 60-second maximum age/);
 });
@@ -123,6 +132,6 @@ test("the report carries exact source revisions and calls an external run a repr
     assert.equal(report.native_verification_fixture.execution, "STIPULATED_NOT_EXECUTED");
     assert.equal(report.native_verification_fixture.upstream_native_acceptance_claimed, false);
     assert.match(report.known_limits.join(" "), /does not claim the pinned upstream verifiers accepted/);
-    assert.match(report.reproduction_statement, /19\/19/);
+    assert.match(report.reproduction_statement, /20\/20/);
     assert.match(report.reproduction_statement, /not independent AIC interoperability/);
 });

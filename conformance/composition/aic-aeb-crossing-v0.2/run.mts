@@ -19,27 +19,24 @@ import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
 import {
   AIC_ADMISSION_DOMAIN_VERSION,
   AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
-  AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
   AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE,
+  AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE,
   AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION,
-  AIC_X509_SPKI_CROSSING_MAPPING_PROFILE,
   AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE,
-  mapAicJwtJktCrossingAuthority,
+  issueAicBoundCrossingRecord,
   mapAicJwtJktBoundCrossingAuthority,
-  mapAicX509SpkiCrossingAuthority,
   mapAicX509SpkiBoundCrossingAuthority,
   projectAicJwtToStrictJwtSvid,
   type AicCrossingRelyingPartyContext,
   type AicCrossingRelyingPartyPolicy,
   type AicJwtJktCrossingInput,
   type AicJwtJktBoundCrossingInput,
-  type AicX509SpkiCrossingInput,
+  type AicJwtSvidSourceVerificationPolicy,
   type AicX509SpkiBoundCrossingInput,
 } from "../../../packages/verify/aeb-aic-crossing-adapter.js";
 import {
   AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS,
   AEB_CROSSING_RECORD_VERSION,
-  issueAebCrossingRecord,
   verifyAebCrossingRecord,
   type CrossingNativeAuthority,
   type CrossingRefereeAxes,
@@ -280,14 +277,13 @@ const X509_POLICY = Object.freeze({
   trusted_issuer_trust_anchor_digests: [ISSUER_PIN],
   native_verifier: X509_VERIFIER,
 }) satisfies AicCrossingRelyingPartyPolicy;
-const JWT_UNBOUND_POLICY = Object.freeze({
-  ...JWT_POLICY,
-  mapping_profile_id: AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
-}) satisfies AicCrossingRelyingPartyPolicy;
-const X509_UNBOUND_POLICY = Object.freeze({
-  ...X509_POLICY,
-  mapping_profile_id: AIC_X509_SPKI_CROSSING_MAPPING_PROFILE,
-}) satisfies AicCrossingRelyingPartyPolicy;
+const JWT_PROJECTION_SOURCE_POLICY = Object.freeze({
+  source_verification_profile_id:
+    AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE,
+  source_verification_profile_digest: MAPPING_PROFILE_DIGEST,
+  trusted_issuer_trust_anchor_digests: [ISSUER_PIN],
+  native_verifier: JWT_VERIFIER,
+}) satisfies AicJwtSvidSourceVerificationPolicy;
 function relyingPartyContext(
   policy: AicCrossingRelyingPartyPolicy = JWT_POLICY,
 ): AicCrossingRelyingPartyContext {
@@ -422,14 +418,8 @@ function x509Input(
   };
 }
 
-function unboundJktInput(): AicJwtJktCrossingInput {
+function projectionJwtInput(): AicJwtJktCrossingInput {
   const { request_binding: omitted, ...input } = jktInput();
-  assert.ok(omitted);
-  return input;
-}
-
-function unboundX509Input(): AicX509SpkiCrossingInput {
-  const { request_binding: omitted, ...input } = x509Input();
   assert.ok(omitted);
   return input;
 }
@@ -446,37 +436,49 @@ function mapX509(input = x509Input()): CrossingNativeAuthority {
   return mapped.authority;
 }
 
-async function issue(authority: CrossingNativeAuthority, recordId: string) {
-  return issueAebCrossingRecord(
-    {
-      record_id: recordId,
-      operation_id: `operation:${recordId}`,
-      issued_at: NOW,
-      native_authority: authority,
-      action: ACTION,
-      boundary: BOUNDARY,
-      requirements: REQUIREMENTS,
-      admission_reference: {
-        state: "PRESENT",
-        digest: `sha256:${"88".repeat(32)}`,
-      },
-      lifecycle_records: {
-        evaluation_digest: `sha256:${"ee".repeat(32)}`,
-        consumption_digest: `sha256:${"99".repeat(32)}`,
-        provider_entry_digest: null,
-      },
-      evaluated_evidence_digests: [
-        `sha256:${"66".repeat(32)}`,
-        `sha256:${"77".repeat(32)}`,
-      ],
-      configuration_digests: [
-        `sha256:${"44".repeat(32)}`,
-        `sha256:${"55".repeat(32)}`,
-      ],
-      referee: ADMIT_AXES,
+function crossingDraft(recordId: string) {
+  return {
+    record_id: recordId,
+    operation_id: `operation:${recordId}`,
+    issued_at: NOW,
+    action: ACTION,
+    boundary: BOUNDARY,
+    requirements: REQUIREMENTS,
+    admission_reference: {
+      state: "PRESENT" as const,
+      digest: `sha256:${"88".repeat(32)}` as const,
     },
+    lifecycle_records: {
+      evaluation_digest: `sha256:${"ee".repeat(32)}` as const,
+      consumption_digest: `sha256:${"99".repeat(32)}` as const,
+      provider_entry_digest: null,
+    },
+    evaluated_evidence_digests: [
+      `sha256:${"66".repeat(32)}` as const,
+      `sha256:${"77".repeat(32)}` as const,
+    ],
+    configuration_digests: [
+      `sha256:${"44".repeat(32)}` as const,
+      `sha256:${"55".repeat(32)}` as const,
+    ],
+    referee: ADMIT_AXES,
+  };
+}
+
+async function issue(
+  input: AicJwtJktBoundCrossingInput | AicX509SpkiBoundCrossingInput,
+  context: AicCrossingRelyingPartyContext,
+  recordId: string,
+) {
+  const issued = await issueAicBoundCrossingRecord(
+    input,
+    context,
+    crossingDraft(recordId),
     { signing_keys: [...SIGNERS], deterministic: true, mldsaBackend },
   );
+  assert.equal(issued.ok, true, JSON.stringify(issued));
+  if (!issued.ok) throw new Error(issued.reason);
+  return issued.record;
 }
 
 async function verify(value: unknown) {
@@ -491,7 +493,11 @@ export async function buildReferenceReport() {
   const jkt = mapJkt();
   const x509 = mapX509();
 
-  const jktRecord = await issue(jkt, "crossing:aic:jkt:0001");
+  const jktRecord = await issue(
+    jktInput(),
+    RP_CONTEXT,
+    "crossing:aic:jkt:0001",
+  );
   const jktCheck = await verify(jktRecord);
   cases.push(result(
     "AIC-JWT-JKT-CROSSING",
@@ -508,7 +514,11 @@ export async function buildReferenceReport() {
     },
   ));
 
-  const x509Record = await issue(x509, "crossing:aic:x509:0001");
+  const x509Record = await issue(
+    x509Input(),
+    X509_RP_CONTEXT,
+    "crossing:aic:x509:0001",
+  );
   const x509Check = await verify(x509Record);
   cases.push(result(
     "AIC-X509-SPKI-CROSSING",
@@ -807,18 +817,8 @@ export async function buildReferenceReport() {
     ...X509_RP_CONTEXT,
     ...widenedFreshness,
   });
-  const widenedUnboundJwt = mapAicJwtJktCrossingAuthority(
-    unboundJktInput(),
-    JWT_UNBOUND_POLICY,
-    widenedFreshness,
-  );
-  const widenedUnboundX509 = mapAicX509SpkiCrossingAuthority(
-    unboundX509Input(),
-    X509_UNBOUND_POLICY,
-    widenedFreshness,
-  );
   const widenedProjection = projectAicJwtToStrictJwtSvid({
-    source: unboundJktInput(),
+    source: projectionJwtInput(),
     purpose: "WORKLOAD_IDENTITY_ONLY",
     audience: ["spiffe://services.example/payment-gate"],
     issued_at: 1788246000,
@@ -828,7 +828,7 @@ export async function buildReferenceReport() {
     projected_algorithm: "ES256",
     projected_key_id: "jwt-svid-key-2026-08",
   }, {
-    relying_party_policy: JWT_UNBOUND_POLICY,
+    source_verification_policy: JWT_PROJECTION_SOURCE_POLICY,
     ...widenedFreshness,
   });
   const freshnessMismatch = (value: { ok: boolean; reason?: string }) =>
@@ -838,15 +838,11 @@ export async function buildReferenceReport() {
     "hostile",
     freshnessMismatch(widenedBoundJwt)
       && freshnessMismatch(widenedBoundX509)
-      && freshnessMismatch(widenedUnboundJwt)
-      && freshnessMismatch(widenedUnboundX509)
       && freshnessMismatch(widenedProjection),
     "the fixed 60-second v0.2 freshness profile cannot be widened by a caller",
     {
       bound_jwt: widenedBoundJwt.ok ? null : widenedBoundJwt.reason,
       bound_x509: widenedBoundX509.ok ? null : widenedBoundX509.reason,
-      unbound_jwt: widenedUnboundJwt.ok ? null : widenedUnboundJwt.reason,
-      unbound_x509: widenedUnboundX509.ok ? null : widenedUnboundX509.reason,
       jwt_svid_projection: widenedProjection.ok ? null : widenedProjection.reason,
     },
   ));
@@ -902,17 +898,42 @@ export async function buildReferenceReport() {
     },
   ));
 
+  const issuerTimeDomainMismatch = await issueAicBoundCrossingRecord(
+    jktInput(),
+    RP_CONTEXT,
+    {
+      ...crossingDraft("crossing:aic:jkt:issuer-domain-mismatch"),
+      boundary: {
+        ...BOUNDARY,
+        relying_party_id: "rp:other-company",
+      },
+    },
+    { signing_keys: [] },
+  );
+  cases.push(result(
+    "AIC-ISSUER-DOMAIN-MISMATCH-REFUSED-BEFORE-SIGNING",
+    "hostile",
+    !issuerTimeDomainMismatch.ok
+      && issuerTimeDomainMismatch.reason
+        === "aic_crossing_issue_admission_domain_mismatch",
+    "aic_crossing_issue_admission_domain_mismatch",
+    {
+      ok: issuerTimeDomainMismatch.ok,
+      reason: issuerTimeDomainMismatch.ok
+        ? null
+        : issuerTimeDomainMismatch.reason,
+    },
+  ));
+
   const rpSubstitutedRecord = structuredClone(jktRecord);
   rpSubstitutedRecord.body.boundary.relying_party_id = "rp:other-company";
   const rpSubstitutedCheck = await verify(rpSubstitutedRecord);
   cases.push(result(
-    "SIGNED-CROSSING-RP-SUBSTITUTION-REFUSED",
+    "SIGNED-BODY-RP-SUBSTITUTION-REFUSED",
     "boundary",
     !rpSubstitutedCheck.verified
-      && ["contract_digest_mismatch", "signature_invalid"].includes(
-        rpSubstitutedCheck.reason ?? "",
-      ),
-    "signed record substitution refuses",
+      && rpSubstitutedCheck.reason === "signature_invalid",
+    "signature_invalid",
     {
       verified: rpSubstitutedCheck.verified,
       reason: rpSubstitutedCheck.reason,
@@ -948,7 +969,8 @@ export async function buildReferenceReport() {
       "This deterministic suite stipulates native VERIFIED results to test the adapter boundary. Its JWT signature is a placeholder and its parseable X.509 certificates are not AIC credential-bundle fixtures, so it does not claim the pinned upstream verifiers accepted them.",
       "The relying party pins the exact requested-capability digest and action-projection profile. Production integration must also provide an authenticated native result proving that the same capability request was evaluated; the pinned gateway bearer helper does not set RequestCapability.",
       "The adapter checks a supplied capability-to-action projection for exact equality; it does not produce that projection. Unknown schemes, ambiguous mappings, and unmapped material parameters must refuse upstream.",
-      "The profile binds one exact action and one relying-party admission domain; changing the action, relying party, audience, executor, or state domain requires a new evaluation.",
+      "The bound authority commits one exact action and one relying-party admission domain. The AIC-specific issue helper compares both against the record draft before signing; changing the action, relying party, audience, executor, or state domain requires a new evaluation.",
+      "EP-AEB-CROSSING-RECORD-v1 commits the bound authority's opaque instance, replay, and constraints digests but does not directly commit relying_party_id in its contract digest. The generic issuer cannot recompute the AIC context, so it is not the AIC issuance API. A versioned crossing-record v2 is required for generic recomputable admission-domain binding.",
       "status.checked_at is the explicit source-status observation time. The v0.2 runtime accepts exactly a 60-second maximum age; a caller cannot widen it. CURRENT status is accepted only within that fixed freshness limit and native validity window; revoked, unavailable, stale, future, or otherwise non-current observations refuse.",
       "The native verifier result and relying-party policy are structurally separate. Trusted anchors and expected verifier, mapping-profile, and action-projection pins come only from relying-party policy, never from the presented native result.",
       "The relying party supplies and authenticates mapping-profile provenance and its digest. This reusable adapter enforces the profile identifier and fixed freshness rule but does not load or recompute the checked-in mapping-profile JSON.",
@@ -956,6 +978,7 @@ export async function buildReferenceReport() {
       "The JWT/JKT mapping requires the original compact token, derives its audience, issuer/JTI replay identity, and signed iat/nbf/exp envelope, requires exact agreement with wrapper validity, and requires explicit public JWK material. A bare X.509 object synthesized from a verified AIC-JWT has no native bundle DER and cannot enter the native X.509/SPKI mapping.",
       "The X.509 path derives replay identity, bundle digest, serial, and principal SHA-256 SPKI from DER. Issuer, subject, status, validity, constraints, trust-anchor selection, and verification evidence remain authenticated native-wrapper outputs, not facts derived by this adapter from the leaf DER.",
       "Raw-carrier fingerprints are derived from the bytes supplied to this adapter. They do not prove that the native verifier saw those same bytes unless an authenticated wrapper binds the verifier result to them.",
+      "JWT-SVID workload projection uses a private source verifier that emits no crossing authority. The projection digest commits the accepted source evaluation, including verifier, source-policy, evidence, trust-anchor, status, validity, and freshness inputs.",
       "The local raw-source boundary does not authenticate a verifier result crossing an untrusted Go or JSON boundary. Integration still requires a tagged or authenticated verifier-result wrapper; the pinned gateway bearer helper sets neither ExpectedAudience, RequestCapability, PrincipalMaterial, nor PresenterKey, and no non-test VerifyBearer wiring was observed.",
       "A verified crossing record is evidence of one past relying-party boundary decision and never authorizes another action.",
       "Passing these checks does not establish IETF adoption, certification, production deployment, independent interoperability, or employer endorsement.",
