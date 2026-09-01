@@ -81,8 +81,6 @@ updates:
       # major line until the upstream Next.js lint stack declares support.
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "@xmldom/xmldom"
-        update-types: ["version-update:semver-minor"]
 
   # ── npm (MCP server) ────────────────────────────────────────────────────────
   - package-ecosystem: npm
