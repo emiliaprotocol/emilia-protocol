@@ -24,14 +24,6 @@
       "doctor_required_version": "57.0.2",
       "required_version_published_at": "2026-08-26T19:59:00.097Z",
       "eligible_at": "2026-09-02T19:59:00.097Z"
-    },
-    {
-      "package": "react-native",
-      "accepted_spec": "0.86.2",
-      "accepted_version": "0.86.2",
-      "doctor_required_version": "0.86.3",
-      "required_version_published_at": "2026-08-24T16:16:06.034Z",
-      "eligible_at": "2026-08-31T16:16:06.034Z"
     }
   ]
 }
