@@ -116,6 +116,11 @@ title = "emilia-protocol gitleaks config"
   tags = ["jwt"]
   [rules.allowlist]
     regexTarget = "line"
+    # This exact OAuth transaction-challenge fixture is a deterministic,
+    # public Ed25519 conformance artifact, not a bearer credential.
+    paths = [
+      '''^conformance/composition/oauth-txn-challenge-aeb-v0\.1/native-fixture\.json$''',
+    ]
     regexes = [
       '''example''',
       '''placeholder''',
