@@ -2,11 +2,24 @@
 
 ## State
 
-This packet is prepared for a new IACR Cryptology ePrint Archive submission after the final manuscript, artifact checks, and PDF digest are complete. It has not been submitted.
+Closed. The IACR Cryptology ePrint Archive is no longer a distribution target for this paper.
 
-The Cryptology ePrint Archive distributes technical reports. Posting there is not peer review, acceptance by IACR, or validation of the paper's claims. The peer-reviewed venue plan is separate in [`CSF-2027-SUBMISSION-PLAN.md`](CSF-2027-SUBMISSION-PLAN.md).
+Record of temporary ePrint submissions, all rejected at editor screening:
 
-The earlier temporary ePrint submissions, including the jointly reconsidered submission `xxxx/111261`, were rejected and did not receive a permanent ePrint number. Version 4 is a substantive replacement, not a relabeling of a rejected PDF. It introduces a different security target, a complete finite experiment, explicit ideal state resources, separation results, and a multi-user reduction over the full enrolled-key universe.
+| Temporary id | Manuscript | Submitted | Rejected | Editor note |
+|---|---|---|---|---|
+| `xxxx/110966` | ABIA long | 2026-08-06 | 2026-08-10 | lacks security proofs or convincing arguments |
+| `xxxx/111011` | ABIA long | 2026-08-10 | 2026-08-15 | acceptance-criteria template |
+| `xxxx/111097` | ABIA lean | 2026-08-15 | 2026-08-16 | unclear or insufficient contribution to cryptology |
+| `xxxx/111261` | ABIA lean | 2026-08-22 | 2026-08-22 | same; appeal of 2026-08-24 jointly reconsidered and reaffirmed 2026-08-29 |
+| `xxxx/111404` | ANA v4 | 2026-08-29 | 2026-08-30 | acceptance-criteria template |
+| `xxxx/111420` | ANA v5 | 2026-08-30 | 2026-09-01 | acceptance-criteria template |
+
+None received a permanent ePrint number. No further ePrint submission will be made under any title. The editors stated on 2026-08-29 that they cannot provide feedback beyond the criteria at https://eprint.iacr.org/operations.html.
+
+Posting on ePrint would not have been peer review, acceptance by IACR, or validation of the paper's claims. Public distribution of the paper is the Zenodo record `10.5281/zenodo.21968577` (v3) and a planned arXiv cs.CR posting of v5. The peer-reviewed venue plan is in [`CSF-2027-SUBMISSION-PLAN.md`](CSF-2027-SUBMISSION-PLAN.md).
+
+The form fields, editor note, and preflight checklist below are retained as the record of what was submitted as v4. They are not a plan for another submission.
 
 ## Form fields
 
@@ -90,4 +103,4 @@ Fill only after the final build:
 - Pages: `15`
 - Bytes: `152,612`
 - SHA-256: `3f86f29129f0ed4b1b2d502b7b9a6e62a7a311b022d19ea3eed9e3462992990d`
-- ePrint identifier: `TBD, not submitted`
+- ePrint identifier: `xxxx/111404` (temporary; rejected 2026-08-30). v5 was `xxxx/111420` (temporary; rejected 2026-09-01).
