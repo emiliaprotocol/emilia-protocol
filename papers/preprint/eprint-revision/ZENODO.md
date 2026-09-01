@@ -1,4 +1,4 @@
-# Zenodo v4 upload metadata
+# Zenodo v5 upload metadata
 
 Status: prepared, not uploaded or published.
 
@@ -8,14 +8,14 @@ Status: prepared, not uploaded or published.
 - Previous version DOI: `10.5281/zenodo.21968577`
 - All-versions concept DOI: `10.5281/zenodo.21520972`
 - Resource type: Publication / Preprint
-- Version: `v4`
+- Version: `v5`
 - Publication date: set to the actual Zenodo publication date at upload
 - License: Creative Commons Attribution 4.0 International
 - Copyright: Copyright (C) 2026 Iman Schrock / EMILIA Protocol, Inc.
 
 ## Title
 
-Authorization Non-Amplification under Chosen-Context Signer Harvesting
+Per-Issuance Authorization Non-Amplification under Chosen-Context Signature Collection
 
 ## Creator
 
@@ -23,28 +23,9 @@ Schrock, Iman; EMILIA Protocol, Inc.; ORCID `0009-0004-0290-5433`
 
 ## Description
 
-This preprint studies authorization non-amplification (ANA), a
-per-issued-instance trace property connecting genuine cryptographic approval
-events to provider-entry cardinality. Its adversary controls an authorization
-collector, chooses semantic contexts subject to a closed grammar, obtains
-genuine signatures from uncompromised certified keys, and controls artifact
-storage, scheduling, and presentation.
+A valid signature proves that a key signed a message. It does not say how many actions an executor may perform with that message. This gap matters when an untrusted collector can ask honest signers to approve adaptively chosen requests, retain the resulting artifacts, and present them concurrently to several executors. Replaying one genuine approval can then cause two provider entries without forging any signature. We formalize this gap as authorization non-amplification (ANA). In a finite multi-user experiment, the adversary wins if a provider entry lacks a prior issuance record or, for any required key unrevealed before entry, lacks an earlier signing event for the accepted context and slot. The adversary also wins if one issued instance witnesses more than one provider entry. We show that neither EUF-CMA security nor signer-to-collector injective agreement implies ANA. Our construction combines EUF-CMA signatures, a collision-resistant hash, injective typed encod- ings, an ideal exact issue-and-consume resource, and a one-use provider mediator. Except for setup-key collision, an entry without the required witness yields either a signature forgery or a hash collision; the state resources rule out duplicate entry. A separate bound names the registry and mediation failures that a real implementation must control. Four Tamarin models illustrate the correspondence, while nine weakened variants produce the expected attacks. The result concerns provider entry only; it does not establish human identity, display fidelity, policy correctness, or exactly-once physical eﬀect.
 
-The paper separates ANA from EUF-CMA security, nonce freshness, byte-level
-authenticity under noninjective encodings, and signer-to-collector injective
-agreement. It gives a compiler from an EUF-CMA signature scheme, a
-collision-resistant hash, injective typed encoding, and ideal issue-and-consume
-and mediation resources. The finite multi-user
-reduction ranges over the complete enrolled-key universe. A real-resource
-corollary charges registry and mediation failures explicitly rather than
-treating them as cryptographic advantages.
-
-Four Tamarin theories supply bounded symbolic case studies and deliberately
-weakened comparisons. They are not a computational proof or a verification of a
-deployed database. The result concerns admission, not human identity, display
-fidelity, policy wisdom, semantic reissuance across fresh authorization
-instances, or exactly-once physical effects. This is an unrefereed technical
-preprint.
+This is an unrefereed technical preprint. Version 5 supersedes v4 and the ABIA versions. It is not posted on the IACR ePrint Archive; see IACR-SUBMISSION.md for that record.
 
 ## Keywords
 
@@ -54,8 +35,8 @@ verification; multi-user security; complete mediation
 
 ## Files
 
-- `authorization-non-amplification-v4.pdf`
-- optional `authorization-non-amplification-v4-artifacts.zip`
+- `authorization-non-amplification-v5.pdf` (19 pages, 173254 bytes, SHA-256 1f0b9e220f2072f42724516b53aa169e866770bad909f9b7a4fef8e90886406b)
+- optional `authorization-non-amplification-v5-artifacts.zip`
 - `ZENODO.md`
 
 ## Exact PDF
