@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import test from 'node:test';
 
 import { digestAebTyped } from './dist/aeb-adapter-contract.js';
+import * as aicAdapterSurface from './dist/aeb-aic-crossing-adapter.js';
 import {
   AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
   AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
@@ -220,6 +221,45 @@ function boundX509Input() {
   return {
     ...x509Input(),
     request_binding: boundJwtInput().request_binding,
+  };
+}
+
+function boundIssueDraft() {
+  return {
+    record_id: 'crossing:aic:0001',
+    operation_id: 'operation:aic:0001',
+    issued_at: NOW,
+    action: ACTION,
+    boundary: ADMISSION_DOMAIN,
+    requirements: {
+      admission_digest: DIGEST('a1'),
+      review_digest: DIGEST('a2'),
+    },
+    admission_reference: {
+      state: 'PRESENT' as const,
+      digest: DIGEST('a3'),
+    },
+    lifecycle_records: {
+      evaluation_digest: DIGEST('a4'),
+      consumption_digest: DIGEST('a5'),
+      provider_entry_digest: null,
+    },
+    evaluated_evidence_digests: [DIGEST('a6')],
+    configuration_digests: [DIGEST('a7')],
+    referee: {
+      native_verification: 'VERIFIED' as const,
+      rp_acceptance: 'ACCEPTED' as const,
+      action_relation: 'EXACT_MATCH' as const,
+      status: 'CURRENT' as const,
+      replay: 'FRESH' as const,
+      admission: 'ADMIT' as const,
+      custody: 'RESERVED' as const,
+      provider_commitment: 'NOT_INVOKED' as const,
+      observed_effect: 'NOT_OBSERVED' as const,
+      retry: 'NOT_APPLICABLE' as const,
+      reconciliation: 'NOT_APPLICABLE' as const,
+      reason_codes: [],
+    },
   };
 }
 
@@ -843,5 +883,178 @@ test('JWT-SVID projection refuses type confusion, multiple audiences, and author
       attacker_selected: true,
     } as any),
     { ok: false, reason: 'jwt_svid_projection_input_invalid' },
+  );
+});
+
+test('public AIC surfaces expose no unbound authority mapping', async () => {
+  const mainSurface = await import('./index.js');
+  const subpathSurface = await import('./aeb-aic-crossing-adapter.js');
+  const forbidden = [
+    'AIC_JWT_JKT_CROSSING_MAPPING_PROFILE',
+    'AIC_X509_SPKI_CROSSING_MAPPING_PROFILE',
+    'mapAicJwtJktCrossingAuthority',
+    'mapAicX509SpkiCrossingAuthority',
+  ];
+  for (const name of forbidden) {
+    assert.equal(name in mainSurface, false, `${name} leaked from the package main entry`);
+    assert.equal(name in subpathSurface, false, `${name} leaked from the AIC subpath`);
+  }
+  assert.equal(
+    typeof (subpathSurface as Record<string, unknown>).issueAicBoundCrossingRecord,
+    'function',
+  );
+});
+
+test('AIC bound issuance refuses an action or boundary mismatch before signing', async () => {
+  const issueAicBound = (aicAdapterSurface as Record<string, unknown>)
+    .issueAicBoundCrossingRecord;
+  assert.equal(typeof issueAicBound, 'function');
+  if (typeof issueAicBound !== 'function') return;
+
+  const actionMismatch = await (issueAicBound as (...args: any[]) => Promise<any>)(
+    boundJwtInput(),
+    boundContext(),
+    {
+      ...boundIssueDraft(),
+      action: { ...ACTION, action_digest: DIGEST('fa') },
+    },
+    { signing_keys: [] },
+  );
+  assert.deepEqual(actionMismatch, {
+    ok: false,
+    reason: 'aic_crossing_issue_action_mismatch',
+  });
+
+  const boundaryMismatch = await (issueAicBound as (...args: any[]) => Promise<any>)(
+    boundJwtInput(),
+    boundContext(),
+    {
+      ...boundIssueDraft(),
+      boundary: {
+        ...ADMISSION_DOMAIN,
+        relying_party_id: 'rp:other-company',
+      },
+    },
+    { signing_keys: [] },
+  );
+  assert.deepEqual(boundaryMismatch, {
+    ok: false,
+    reason: 'aic_crossing_issue_admission_domain_mismatch',
+  });
+});
+
+test('native failure short-circuits carrier parsing after structural validation', () => {
+  assert.deepEqual(
+    mapAicJwtJktBoundCrossingAuthority(
+      {
+        ...boundJwtInput(),
+        native_verification: 'FAILED',
+        carrier_provenance: {
+          ...boundJwtInput().carrier_provenance,
+          compact_token: 'not-a-compact-jwt',
+        },
+      },
+      boundContext(),
+    ),
+    { ok: false, reason: 'aic_native_verification_failed' },
+  );
+  assert.deepEqual(
+    mapAicX509SpkiBoundCrossingAuthority(
+      {
+        ...boundX509Input(),
+        native_verification: 'INDETERMINATE',
+        carrier_provenance: {
+          ...boundX509Input().carrier_provenance,
+          agent_certificate_der: 'not-der',
+        },
+      },
+      boundContext(x509Policy(true)),
+    ),
+    { ok: false, reason: 'aic_native_verification_indeterminate' },
+  );
+  assert.deepEqual(
+    projectAicJwtToStrictJwtSvid({
+      source: {
+        ...jwtInput(),
+        native_verification: 'FAILED',
+        carrier_provenance: {
+          ...jwtInput().carrier_provenance,
+          compact_token: 'not-a-compact-jwt',
+        },
+      },
+      purpose: 'WORKLOAD_IDENTITY_ONLY',
+      audience: ['spiffe://services.example/payment-gate'],
+      issued_at: 1788246000,
+      not_before: null,
+      expires_at: 1788246240,
+      token_id: 'jwt-svid-failed-source',
+      projected_algorithm: 'ES256',
+      projected_key_id: 'jwt-svid-key-2026-08',
+    }, projectionContext()),
+    { ok: false, reason: 'aic_native_verification_failed' },
+  );
+});
+
+test('JWT-SVID projection digest binds the accepted source evaluation', () => {
+  const projectionInput = {
+    source: jwtInput(),
+    purpose: 'WORKLOAD_IDENTITY_ONLY' as const,
+    audience: ['spiffe://services.example/payment-gate'],
+    issued_at: 1788246000,
+    not_before: null,
+    expires_at: 1788246240,
+    token_id: 'jwt-svid-source-evaluation-binding',
+    projected_algorithm: 'ES256' as const,
+    projected_key_id: 'jwt-svid-key-2026-08',
+  };
+  const original = projectAicJwtToStrictJwtSvid(
+    projectionInput,
+    projectionContext(),
+  );
+  const changedEvidence = projectAicJwtToStrictJwtSvid({
+    ...projectionInput,
+    source: {
+      ...projectionInput.source,
+      native_verification_evidence_digest: DIGEST('ef'),
+    },
+  }, projectionContext());
+  const changedStatusHead = projectAicJwtToStrictJwtSvid({
+    ...projectionInput,
+    source: {
+      ...projectionInput.source,
+      status: {
+        ...projectionInput.source.status,
+        source_head_digest: DIGEST('f0'),
+      },
+    },
+  }, projectionContext());
+  const changedPolicy = projectAicJwtToStrictJwtSvid(
+    projectionInput,
+    {
+      ...projectionContext(),
+      relying_party_policy: {
+        ...projectionContext().relying_party_policy,
+        mapping_profile_digest: DIGEST('f1'),
+      },
+    },
+  );
+  assert.equal(original.ok, true, JSON.stringify(original));
+  assert.equal(changedEvidence.ok, true, JSON.stringify(changedEvidence));
+  assert.equal(changedStatusHead.ok, true, JSON.stringify(changedStatusHead));
+  assert.equal(changedPolicy.ok, true, JSON.stringify(changedPolicy));
+  if (!original.ok || !changedEvidence.ok || !changedStatusHead.ok || !changedPolicy.ok) {
+    return;
+  }
+  assert.notEqual(
+    original.projection.projection_digest,
+    changedEvidence.projection.projection_digest,
+  );
+  assert.notEqual(
+    original.projection.projection_digest,
+    changedStatusHead.projection.projection_digest,
+  );
+  assert.notEqual(
+    original.projection.projection_digest,
+    changedPolicy.projection.projection_digest,
   );
 });

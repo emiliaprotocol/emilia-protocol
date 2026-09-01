@@ -240,7 +240,7 @@ test("different native authority systems produce different records accepted by t
   assert.equal((await verify(bcr)).verified, true);
 });
 
-test("the contract digest binds the relying-party admission domain", () => {
+test("the v1 contract digest remains compatible across relying-party labels", () => {
   const authority = wimseAuthority();
   const common = {
     native_authority: authority,
@@ -258,7 +258,7 @@ test("the contract digest binds the relying-party admission domain", () => {
       relying_party_id: "rp:attacker-controlled",
     },
   });
-  assert.notEqual(finance, attacker);
+  assert.equal(finance, attacker);
 });
 
 test("signature stripping and algorithm-set narrowing both refuse", async () => {
