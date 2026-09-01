@@ -25,17 +25,30 @@ ten criteria:
 The native results are intentionally strict. Asor -00 has an offline
 delegation chain but no R10 evidence designation or admission lifecycle. The
 `-00` revision of HAMR has a closed floor vocabulary, so `required_evidence`
-is `NOT_SUPPORTED` in that revision. AgentEnvelope -01 has a strong action
-envelope and a generic legitimacy reference, but it does not define recursive
-R10 carriage or the AEB admission lifecycle. The current EMILIA WIMSE adapter
-binds the request and can return `INDETERMINATE`, but its native evidence role
-is delegated workload, not accountable-human authorization.
+is `NOT_SUPPORTED` in that revision. This is a deliberate fail-closed result,
+not a missing attenuation check: recognized floor axes survive every hop,
+ordered values may only tighten, equality values cannot change, and an unknown
+axis rejects the link instead of being ignored or dropped. AgentEnvelope -01
+has a strong action envelope and a generic legitimacy reference, but it does
+not define recursive R10 carriage or the AEB admission lifecycle. The current
+EMILIA WIMSE adapter binds the request and can return `INDETERMINATE`, but its
+native evidence role is delegated workload, not accountable-human
+authorization.
 
-The fifth row is different. It tests a proposed host carrier that keeps a
-named human-authorization requirement, exact action, target, and acting-for
-principal through every hop, then hands the verified inputs to the existing
-AEB consequence-admission kernel. It is a candidate profile, not a claim
-about fields in any current native draft.
+The criteria span three separate layers: who may act and under what floors;
+what exact action and target are bound; and what happened once, including
+admission, consumption, unresolved outcome, and retry. HAMR -00 supplies the
+delegation chain and floors, while its RFC 9421 profile binds the presented
+request but leaves scope semantics opaque. Section 9.2 deliberately leaves
+consumed-nonce state to the verifier, and the draft does not define the third
+layer.
+
+The fifth row is different. It demonstrates one composition: a proposed host
+carrier keeps a named human-authorization requirement, exact action, target,
+and acting-for principal through every hop, then hands the verified inputs to
+the existing AEB consequence-admission kernel. Neither HAMR nor AEB depends on
+the other. This is a candidate profile, not a claim about fields in any
+current native draft.
 
 Run the focused checks from the repository root:
 

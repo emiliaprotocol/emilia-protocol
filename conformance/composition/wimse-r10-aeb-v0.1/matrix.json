@@ -96,14 +96,14 @@
         "target": "A deployment may encode a target inside an opaque scope string, but the profile forbids the verifier from interpreting that structure.",
         "acting_for_principal": "The root delegator may be a human or organization, but the profile does not carry and verify a distinct R10 acting-for principal invariant at every hop.",
         "offline_verifiability": "The verifier checks message signatures, link signatures, floors, nonce, and expiry with configured trust material and no required runtime callback.",
-        "execution_time_required_evidence": "The floor axis set is closed. An unknown required_evidence axis must be rejected, so this revision cannot honestly claim native support.",
-        "monotonic_non_droppable_carriage": "Floor values tighten monotonically, but required_evidence is not a defined floor axis and cannot inherit those rules in this revision.",
+        "execution_time_required_evidence": "The floor-axis set is deliberately closed. Section 8 requires an unknown required_evidence axis to reject the link outright rather than be ignored or dropped, so -00 cannot carry that requirement natively.",
+        "monotonic_non_droppable_carriage": "For every recognized floor axis, Section 7 requires each child to preserve the parent's constraint; ordered values can only tighten and equality values cannot change. required_evidence is outside the closed set, so those safeguards cannot apply to it in -00. Sections 8 and 17 leave an axis registry to future work.",
         "at_most_once_local_admission": "Section 9.2 states that nonce binding is not replay protection and leaves consumed-nonce state to the verifier.",
         "consume_only_on_admission": "No admission versus consumption state transition is specified.",
         "indeterminate_state": "The ordered verifier returns one uniform rejection and does not define an indeterminate post-dispatch state.",
         "no_blind_retry": "No unresolved-effect or retry rule is defined."
       },
-      "anchors": ["Section 5", "Section 6", "Section 7", "Section 8", "Section 9.2", "Section 11", "Section 16"]
+      "anchors": ["Section 5", "Section 6", "Section 7", "Section 8", "Section 9.2", "Section 11", "Section 16", "Section 17"]
     },
     {
       "id": "AGENTENVELOPE-01",

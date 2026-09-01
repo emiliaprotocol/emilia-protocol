@@ -23,7 +23,8 @@ target. A verifier that does not understand a required profile would refuse
 the chain.
 
 Evidence evaluation and action admission remain separate. Verification can be
-side-effect free. A local AEB gate then reserves the operation and native
+side-effect free. The AEB handoff below is one composition, not a dependency in
+either direction. A local AEB gate then reserves the operation and native
 replay units in one linearizable admission domain. Refusal before provider
 entry releases any temporary reservation and does not consume a new reliance
 unit. Once admitted, provider entry is at most once in that domain. An unknown

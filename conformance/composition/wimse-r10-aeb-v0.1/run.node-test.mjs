@@ -12,6 +12,17 @@ import {
 } from './run.mjs';
 
 const report = runSuite();
+const matrixSource = JSON.parse(
+  readFileSync(new URL('./matrix.json', import.meta.url), 'utf8'),
+);
+const readmeSource = readFileSync(
+  new URL('./README.md', import.meta.url),
+  'utf8',
+);
+const candidateCarrierSource = readFileSync(
+  new URL('./CANDIDATE-NATIVE-CARRIER.md', import.meta.url),
+  'utf8',
+);
 
 function result(id) {
   const found = report.cases.find((entry) => entry.id === id);
@@ -84,6 +95,22 @@ test('native rows keep unsupported and external-profile results visible', () => 
     currentAdapter.criteria.consume_only_on_admission.actual,
     'EXTERNAL_PROFILE_REQUIRED',
   );
+});
+
+test('author corrections preserve HAMR fail-closed and composition boundaries', () => {
+  const hamr = matrixSource.rows.find((entry) => entry.id === 'HAMR-ADP-00');
+  assert.ok(hamr, 'missing HAMR-ADP-00 source row');
+  assert.match(
+    hamr.basis.execution_time_required_evidence,
+    /deliberately closed.*reject the link outright/s,
+  );
+  assert.match(
+    hamr.basis.monotonic_non_droppable_carriage,
+    /every recognized floor axis.*axis registry to future work/s,
+  );
+  assert.match(readmeSource, /deliberate fail-closed result/);
+  assert.match(readmeSource, /Neither HAMR nor AEB depends on\s+the other/);
+  assert.match(candidateCarrierSource, /one composition, not a dependency/);
 });
 
 test('only the candidate host carrier plus AEB reaches every criterion', () => {
