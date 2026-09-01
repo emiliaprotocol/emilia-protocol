@@ -18,8 +18,8 @@ decision can be recorded:
    executor, and state domain used by the boundary;
 3. source status must be explicitly `CURRENT` and carry both an observation
    time (`status.checked_at`) and a source-head digest; and
-4. that observation must not be future, older than the pinned freshness limit,
-   or outside the native credential's validity window.
+4. that observation must not be future, older than the fixed 60-second v0.2
+   freshness limit, or outside the native credential's validity window.
 
 The bound v2 mappings carry that evaluation time and freshness limit in the
 relying-party context. The exported unbound v1 compatibility mappings require
@@ -40,6 +40,15 @@ cannot establish acceptance by changing both a claimed anchor and a colocated
 "trusted" list. The relying-party context also pins the exact requested-
 capability digest, action, and admission domain, so a presented projection
 cannot mint a second replay identity by changing one of those values.
+
+The relying party supplies and authenticates the mapping-profile provenance
+and digest. The reusable v0.2 adapter enforces the profile identifier and
+exactly 60 seconds of source-status freshness, but it does not load or
+recompute this directory's `mapping-profile.json` as a trust decision.
+
+The adapter checks a supplied capability-to-action projection for exact
+equality. It does not create that projection. Unknown schemes, ambiguous
+mappings, and unmapped material parameters must refuse upstream.
 
 The adapter consumes a successful native-verifier result. It does not
 reimplement AIC-JWT signatures, delegation, capability or constraint
@@ -79,6 +88,10 @@ digest remain outputs of the trusted native wrapper. The DER-derived bundle
 identity prevents free wrapper labels from fragmenting replay, but those labels
 must still be authenticated before they cross a process boundary.
 
+The adapter derives raw-carrier fingerprints from the bytes it receives. Those
+fingerprints do not prove the native verifier saw the same bytes unless an
+authenticated wrapper binds them to the verifier result.
+
 That is a local fail-closed boundary, not an upstream integration claim. A
 deployment crossing a Go or JSON process boundary still needs a tagged or
 authenticated verifier-result wrapper that preserves the original carrier.
@@ -105,7 +118,7 @@ node --test \
 node conformance/composition/aic-aeb-crossing-v0.2/run.mjs --check
 ```
 
-The deterministic report covers eighteen cases: two stipulated native-result mappings
+The deterministic report covers nineteen cases: two stipulated native-result mappings
 and hybrid-signed crossing records; separation of jkt and SPKI profiles;
 DER-stable X.509 replay identity; principal-binding mismatch; relying-party
 self-pin refusal; native type
@@ -113,7 +126,8 @@ confusion; rejection of a JWT-origin synthesized X.509 carrier in the native
 X.509 mapping while retaining its JWT/JKT route; failed or indeterminate native
 verification; exact-action and requested-capability substitution; relying-party
 domain and compact-token audience substitution; stale and future status
-observations; signed JWT temporal relabeling; revoked and unavailable status;
+observations; refusal to widen the fixed 60-second freshness profile; signed
+JWT temporal relabeling; revoked and unavailable status;
 native-validity failure; and
 signed-record relying-party substitution.
 

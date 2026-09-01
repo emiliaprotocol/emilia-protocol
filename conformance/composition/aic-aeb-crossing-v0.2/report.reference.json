@@ -189,6 +189,19 @@
     },
     {
       "category": "hostile",
+      "expected": "the fixed 60-second v0.2 freshness profile cannot be widened by a caller",
+      "id": "STATUS-FRESHNESS-PROFILE-WIDENING-REFUSED",
+      "observed": {
+        "bound_jwt": "aic_status_freshness_profile_mismatch",
+        "bound_x509": "aic_status_freshness_profile_mismatch",
+        "jwt_svid_projection": "aic_status_freshness_profile_mismatch",
+        "unbound_jwt": "aic_status_freshness_profile_mismatch",
+        "unbound_x509": "aic_status_freshness_profile_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
       "expected": "revoked and unavailable source status both refuse",
       "id": "NON-CURRENT-SOURCE-STATUS-REFUSED",
       "observed": {
@@ -224,12 +237,15 @@
     "The adapter consumes a native verifier result; it does not reimplement AIC signature, certificate-path, delegation, capability, constraint, status, or proof-of-possession validation.",
     "This deterministic suite stipulates native VERIFIED results to test the adapter boundary. Its JWT signature is a placeholder and its parseable X.509 certificates are not AIC credential-bundle fixtures, so it does not claim the pinned upstream verifiers accepted them.",
     "The relying party pins the exact requested-capability digest and action-projection profile. Production integration must also provide an authenticated native result proving that the same capability request was evaluated; the pinned gateway bearer helper does not set RequestCapability.",
+    "The adapter checks a supplied capability-to-action projection for exact equality; it does not produce that projection. Unknown schemes, ambiguous mappings, and unmapped material parameters must refuse upstream.",
     "The profile binds one exact action and one relying-party admission domain; changing the action, relying party, audience, executor, or state domain requires a new evaluation.",
-    "status.checked_at is the explicit source-status observation time. CURRENT status is accepted only within the pinned freshness limit and native validity window; revoked, unavailable, stale, future, or otherwise non-current observations refuse.",
+    "status.checked_at is the explicit source-status observation time. The v0.2 runtime accepts exactly a 60-second maximum age; a caller cannot widen it. CURRENT status is accepted only within that fixed freshness limit and native validity window; revoked, unavailable, stale, future, or otherwise non-current observations refuse.",
     "The native verifier result and relying-party policy are structurally separate. Trusted anchors and expected verifier, mapping-profile, and action-projection pins come only from relying-party policy, never from the presented native result.",
+    "The relying party supplies and authenticates mapping-profile provenance and its digest. This reusable adapter enforces the profile identifier and fixed freshness rule but does not load or recompute the checked-in mapping-profile JSON.",
     "RFC 7638 JWK thumbprints and X.509 SHA-256 SPKI hashes remain separate native mappings and are never treated as interchangeable proof. The JWT path derives the presented JWK thumbprint but does not prove possession of that key.",
     "The JWT/JKT mapping requires the original compact token, derives its audience, issuer/JTI replay identity, and signed iat/nbf/exp envelope, requires exact agreement with wrapper validity, and requires explicit public JWK material. A bare X.509 object synthesized from a verified AIC-JWT has no native bundle DER and cannot enter the native X.509/SPKI mapping.",
     "The X.509 path derives replay identity, bundle digest, serial, and principal SHA-256 SPKI from DER. Issuer, subject, status, validity, constraints, trust-anchor selection, and verification evidence remain authenticated native-wrapper outputs, not facts derived by this adapter from the leaf DER.",
+    "Raw-carrier fingerprints are derived from the bytes supplied to this adapter. They do not prove that the native verifier saw those same bytes unless an authenticated wrapper binds the verifier result to them.",
     "The local raw-source boundary does not authenticate a verifier result crossing an untrusted Go or JSON boundary. Integration still requires a tagged or authenticated verifier-result wrapper; the pinned gateway bearer helper sets neither ExpectedAudience, RequestCapability, PrincipalMaterial, nor PresenterKey, and no non-test VerifyBearer wiring was observed.",
     "A verified crossing record is evidence of one past relying-party boundary decision and never authorizes another action.",
     "Passing these checks does not establish IETF adoption, certification, production deployment, independent interoperability, or employer endorsement."
@@ -251,7 +267,7 @@
     "Ed25519",
     "ML-DSA-65"
   ],
-  "results_digest": "sha256:2a92cbaaaff8ba1bdd5f62a11928b7ae43f4cc4b69c6aa1f9489b302b6c43ad3",
+  "results_digest": "sha256:ee02193091819a333ab1466936f5c2c8eafa20735bd2f05fd2efad60c1e62781",
   "source_lock": {
     "@version": "AIC-AEB-CROSSING-SOURCE-LOCK-v0.2",
     "drafts": [

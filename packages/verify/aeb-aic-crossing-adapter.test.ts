@@ -5,6 +5,7 @@ import test from 'node:test';
 
 import { digestAebTyped } from './dist/aeb-adapter-contract.js';
 import {
+  AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
   AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
   AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE,
   AIC_JWT_SVID_PROJECTION_VERSION,
@@ -157,14 +158,14 @@ function projectionContext() {
   return {
     relying_party_policy: jwtPolicy(),
     evaluated_at: NOW,
-    max_status_age_seconds: 60,
+    max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
   };
 }
 
 function temporalContext() {
   return {
     evaluated_at: NOW,
-    max_status_age_seconds: 60,
+    max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
   };
 }
 
@@ -210,7 +211,7 @@ function boundContext(policy = jwtPolicy(true)) {
     admission_domain: ADMISSION_DOMAIN,
     requested_capability_digest: DIGEST('99'),
     evaluated_at: NOW,
-    max_status_age_seconds: 60,
+    max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
     policy,
   };
 }
@@ -348,11 +349,14 @@ test('bound mapping fails closed on non-current, stale, future, or out-of-window
   );
   assert.deepEqual(
     mapAicJwtJktBoundCrossingAuthority(
-      boundJwtInput(),
+      {
+        ...boundJwtInput(),
+        status: { ...boundJwtInput().status, checked_at: '2026-09-01T07:06:00Z' },
+      },
       {
         ...boundContext(),
         evaluated_at: '2026-09-01T07:06:00Z',
-        max_status_age_seconds: 600,
+        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
       },
     ),
     { ok: false, reason: 'aic_validity_window_mismatch' },
@@ -377,14 +381,70 @@ test('unbound mappings require relying-party evaluation time and freshness', () 
   );
   assert.deepEqual(
     mapAicJwtJktCrossingAuthority(
-      jwtInput(),
+      {
+        ...jwtInput(),
+        status: { ...jwtInput().status, checked_at: '2026-09-01T07:06:00Z' },
+      },
       jwtPolicy(),
       {
         evaluated_at: '2026-09-01T07:06:00Z',
-        max_status_age_seconds: 600,
+        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
       },
     ),
     { ok: false, reason: 'aic_validity_window_mismatch' },
+  );
+});
+
+test('the fixed source-status freshness profile cannot be widened by a caller', () => {
+  assert.deepEqual(
+    mapAicJwtJktBoundCrossingAuthority(boundJwtInput(), {
+      ...boundContext(),
+      max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS - 1,
+    }),
+    { ok: false, reason: 'aic_status_freshness_profile_mismatch' },
+  );
+  const widened = {
+    evaluated_at: NOW,
+    max_status_age_seconds: 86_400,
+  };
+  assert.deepEqual(
+    mapAicJwtJktBoundCrossingAuthority(boundJwtInput(), {
+      ...boundContext(),
+      ...widened,
+    }),
+    { ok: false, reason: 'aic_status_freshness_profile_mismatch' },
+  );
+  assert.deepEqual(
+    mapAicX509SpkiBoundCrossingAuthority(boundX509Input(), {
+      ...boundContext(x509Policy(true)),
+      ...widened,
+    }),
+    { ok: false, reason: 'aic_status_freshness_profile_mismatch' },
+  );
+  assert.deepEqual(
+    mapAicJwtJktCrossingAuthority(jwtInput(), jwtPolicy(), widened),
+    { ok: false, reason: 'aic_status_freshness_profile_mismatch' },
+  );
+  assert.deepEqual(
+    mapAicX509SpkiCrossingAuthority(x509Input(), x509Policy(), widened),
+    { ok: false, reason: 'aic_status_freshness_profile_mismatch' },
+  );
+  assert.deepEqual(
+    projectAicJwtToStrictJwtSvid({
+      source: jwtInput(),
+      purpose: 'WORKLOAD_IDENTITY_ONLY',
+      audience: ['spiffe://services.example/payment-gate'],
+      issued_at: 1788246000,
+      not_before: 1788245940,
+      expires_at: 1788246240,
+      token_id: 'jwt-svid-projection-freshness-widening',
+      projected_algorithm: 'ES256',
+      projected_key_id: 'jwt-svid-key-2026-08',
+    }, {
+      ...projectionContext(),
+      max_status_age_seconds: widened.max_status_age_seconds,
+    }),
+    { ok: false, reason: 'aic_status_freshness_profile_mismatch' },
   );
 });
 
@@ -779,7 +839,7 @@ test('JWT-SVID projection refuses type confusion, multiple audiences, and author
   assert.deepEqual(
     projectAicJwtToStrictJwtSvid(base, {
       ...projectionContext(),
-      max_status_age_seconds: 86_400,
+      max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
       attacker_selected: true,
     } as any),
     { ok: false, reason: 'jwt_svid_projection_input_invalid' },

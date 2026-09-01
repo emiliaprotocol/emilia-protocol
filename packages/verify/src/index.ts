@@ -2389,6 +2389,7 @@ export {
 // X.509 SPKI cases as separate authority systems. The JWT-SVID helper emits a
 // new-signature-required identity projection and never authorizes an action.
 export {
+  AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
   AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
   AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE,
   AIC_JWT_SVID_PROJECTION_VERSION,

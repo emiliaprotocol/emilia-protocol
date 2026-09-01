@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
 import { digestAebTyped } from './dist/aeb-adapter-contract.js';
-import { AIC_JWT_JKT_CROSSING_MAPPING_PROFILE, AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE, AIC_JWT_SVID_PROJECTION_VERSION, AIC_X509_SPKI_CROSSING_MAPPING_PROFILE, AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE, AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION, mapAicJwtJktCrossingAuthority, mapAicJwtJktBoundCrossingAuthority, mapAicX509SpkiCrossingAuthority, mapAicX509SpkiBoundCrossingAuthority, projectAicJwtToStrictJwtSvid, } from './dist/aeb-aic-crossing-adapter.js';
+import { AIC_CROSSING_MAX_STATUS_AGE_SECONDS, AIC_JWT_JKT_CROSSING_MAPPING_PROFILE, AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE, AIC_JWT_SVID_PROJECTION_VERSION, AIC_X509_SPKI_CROSSING_MAPPING_PROFILE, AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE, AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION, mapAicJwtJktCrossingAuthority, mapAicJwtJktBoundCrossingAuthority, mapAicX509SpkiCrossingAuthority, mapAicX509SpkiBoundCrossingAuthority, projectAicJwtToStrictJwtSvid, } from './dist/aeb-aic-crossing-adapter.js';
 const NOW = '2026-09-01T07:00:00Z';
 const DIGEST = (octet) => `sha256:${octet.repeat(32)}`;
 const TRUST_ANCHOR = DIGEST('11');
@@ -133,13 +133,13 @@ function projectionContext() {
     return {
         relying_party_policy: jwtPolicy(),
         evaluated_at: NOW,
-        max_status_age_seconds: 60,
+        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
     };
 }
 function temporalContext() {
     return {
         evaluated_at: NOW,
-        max_status_age_seconds: 60,
+        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
     };
 }
 function jwtInput() {
@@ -182,7 +182,7 @@ function boundContext(policy = jwtPolicy(true)) {
         admission_domain: ADMISSION_DOMAIN,
         requested_capability_digest: DIGEST('99'),
         evaluated_at: NOW,
-        max_status_age_seconds: 60,
+        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
         policy,
     };
 }
@@ -277,10 +277,13 @@ test('bound mapping fails closed on non-current, stale, future, or out-of-window
         ...boundJwtInput(),
         status: { ...boundJwtInput().status, checked_at: '2026-09-01T07:00:01Z' },
     }, boundContext()), { ok: false, reason: 'aic_status_observation_future' });
-    assert.deepEqual(mapAicJwtJktBoundCrossingAuthority(boundJwtInput(), {
+    assert.deepEqual(mapAicJwtJktBoundCrossingAuthority({
+        ...boundJwtInput(),
+        status: { ...boundJwtInput().status, checked_at: '2026-09-01T07:06:00Z' },
+    }, {
         ...boundContext(),
         evaluated_at: '2026-09-01T07:06:00Z',
-        max_status_age_seconds: 600,
+        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
     }), { ok: false, reason: 'aic_validity_window_mismatch' });
 });
 test('unbound mappings require relying-party evaluation time and freshness', () => {
@@ -289,10 +292,47 @@ test('unbound mappings require relying-party evaluation time and freshness', () 
         ...x509Input(),
         status: { ...x509Input().status, checked_at: '2026-09-01T06:58:00Z' },
     }, x509Policy(), temporalContext()), { ok: false, reason: 'aic_status_observation_stale' });
-    assert.deepEqual(mapAicJwtJktCrossingAuthority(jwtInput(), jwtPolicy(), {
+    assert.deepEqual(mapAicJwtJktCrossingAuthority({
+        ...jwtInput(),
+        status: { ...jwtInput().status, checked_at: '2026-09-01T07:06:00Z' },
+    }, jwtPolicy(), {
         evaluated_at: '2026-09-01T07:06:00Z',
-        max_status_age_seconds: 600,
+        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
     }), { ok: false, reason: 'aic_validity_window_mismatch' });
+});
+test('the fixed source-status freshness profile cannot be widened by a caller', () => {
+    assert.deepEqual(mapAicJwtJktBoundCrossingAuthority(boundJwtInput(), {
+        ...boundContext(),
+        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS - 1,
+    }), { ok: false, reason: 'aic_status_freshness_profile_mismatch' });
+    const widened = {
+        evaluated_at: NOW,
+        max_status_age_seconds: 86_400,
+    };
+    assert.deepEqual(mapAicJwtJktBoundCrossingAuthority(boundJwtInput(), {
+        ...boundContext(),
+        ...widened,
+    }), { ok: false, reason: 'aic_status_freshness_profile_mismatch' });
+    assert.deepEqual(mapAicX509SpkiBoundCrossingAuthority(boundX509Input(), {
+        ...boundContext(x509Policy(true)),
+        ...widened,
+    }), { ok: false, reason: 'aic_status_freshness_profile_mismatch' });
+    assert.deepEqual(mapAicJwtJktCrossingAuthority(jwtInput(), jwtPolicy(), widened), { ok: false, reason: 'aic_status_freshness_profile_mismatch' });
+    assert.deepEqual(mapAicX509SpkiCrossingAuthority(x509Input(), x509Policy(), widened), { ok: false, reason: 'aic_status_freshness_profile_mismatch' });
+    assert.deepEqual(projectAicJwtToStrictJwtSvid({
+        source: jwtInput(),
+        purpose: 'WORKLOAD_IDENTITY_ONLY',
+        audience: ['spiffe://services.example/payment-gate'],
+        issued_at: 1788246000,
+        not_before: 1788245940,
+        expires_at: 1788246240,
+        token_id: 'jwt-svid-projection-freshness-widening',
+        projected_algorithm: 'ES256',
+        projected_key_id: 'jwt-svid-key-2026-08',
+    }, {
+        ...projectionContext(),
+        max_status_age_seconds: widened.max_status_age_seconds,
+    }), { ok: false, reason: 'aic_status_freshness_profile_mismatch' });
 });
 test('bound JWT validity must equal the signed compact-token temporal envelope', () => {
     const result = mapAicJwtJktBoundCrossingAuthority({
@@ -625,7 +665,7 @@ test('JWT-SVID projection refuses type confusion, multiple audiences, and author
     }, projectionContext()), { ok: false, reason: 'jwt_svid_projection_input_invalid' });
     assert.deepEqual(projectAicJwtToStrictJwtSvid(base, {
         ...projectionContext(),
-        max_status_age_seconds: 86_400,
+        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
         attacker_selected: true,
     }), { ok: false, reason: 'jwt_svid_projection_input_invalid' });
 });

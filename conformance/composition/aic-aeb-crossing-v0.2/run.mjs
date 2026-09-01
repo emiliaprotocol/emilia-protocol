@@ -16,7 +16,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
-import { AIC_ADMISSION_DOMAIN_VERSION, AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE, AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION, AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE, mapAicJwtJktBoundCrossingAuthority, mapAicX509SpkiBoundCrossingAuthority, } from "../../../packages/verify/aeb-aic-crossing-adapter.js";
+import { AIC_ADMISSION_DOMAIN_VERSION, AIC_CROSSING_MAX_STATUS_AGE_SECONDS, AIC_JWT_JKT_CROSSING_MAPPING_PROFILE, AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE, AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION, AIC_X509_SPKI_CROSSING_MAPPING_PROFILE, AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE, mapAicJwtJktCrossingAuthority, mapAicJwtJktBoundCrossingAuthority, mapAicX509SpkiCrossingAuthority, mapAicX509SpkiBoundCrossingAuthority, projectAicJwtToStrictJwtSvid, } from "../../../packages/verify/aeb-aic-crossing-adapter.js";
 import { AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS, AEB_CROSSING_RECORD_VERSION, issueAebCrossingRecord, verifyAebCrossingRecord, } from "../../../packages/verify/aeb-crossing-record.js";
 import { canonicalizeAeb, digestAebTyped, } from "../../../packages/verify/aeb-adapter-contract.js";
 import { loadDefaultAgilityMldsaBackend } from "../../../packages/verify/pq-signature-agility.js";
@@ -183,13 +183,21 @@ const X509_POLICY = Object.freeze({
     trusted_issuer_trust_anchor_digests: [ISSUER_PIN],
     native_verifier: X509_VERIFIER,
 });
+const JWT_UNBOUND_POLICY = Object.freeze({
+    ...JWT_POLICY,
+    mapping_profile_id: AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
+});
+const X509_UNBOUND_POLICY = Object.freeze({
+    ...X509_POLICY,
+    mapping_profile_id: AIC_X509_SPKI_CROSSING_MAPPING_PROFILE,
+});
 function relyingPartyContext(policy = JWT_POLICY) {
     return {
         action: ACTION,
         admission_domain: BOUNDARY,
         requested_capability_digest: REQUEST_BINDING.requested_capability_digest,
         evaluated_at: NOW,
-        max_status_age_seconds: 60,
+        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
         policy,
     };
 }
@@ -297,6 +305,16 @@ function x509Input(overrides = {}) {
         request_binding: REQUEST_BINDING,
         ...overrides,
     };
+}
+function unboundJktInput() {
+    const { request_binding: omitted, ...input } = jktInput();
+    assert.ok(omitted);
+    return input;
+}
+function unboundX509Input() {
+    const { request_binding: omitted, ...input } = x509Input();
+    assert.ok(omitted);
+    return input;
 }
 function mapJkt(input = jktInput()) {
     const mapped = mapAicJwtJktBoundCrossingAuthority(input, RP_CONTEXT);
@@ -537,6 +555,46 @@ export async function buildReferenceReport() {
         stale: stale.ok ? null : stale.reason,
         future: future.ok ? null : future.reason,
     }));
+    const widenedFreshness = {
+        evaluated_at: NOW,
+        max_status_age_seconds: 86_400,
+    };
+    const widenedBoundJwt = mapAicJwtJktBoundCrossingAuthority(jktInput(), {
+        ...RP_CONTEXT,
+        ...widenedFreshness,
+    });
+    const widenedBoundX509 = mapAicX509SpkiBoundCrossingAuthority(x509Input(), {
+        ...X509_RP_CONTEXT,
+        ...widenedFreshness,
+    });
+    const widenedUnboundJwt = mapAicJwtJktCrossingAuthority(unboundJktInput(), JWT_UNBOUND_POLICY, widenedFreshness);
+    const widenedUnboundX509 = mapAicX509SpkiCrossingAuthority(unboundX509Input(), X509_UNBOUND_POLICY, widenedFreshness);
+    const widenedProjection = projectAicJwtToStrictJwtSvid({
+        source: unboundJktInput(),
+        purpose: "WORKLOAD_IDENTITY_ONLY",
+        audience: ["spiffe://services.example/payment-gate"],
+        issued_at: 1788246000,
+        not_before: 1788245940,
+        expires_at: 1788246240,
+        token_id: "jwt-svid-projection-freshness-widening",
+        projected_algorithm: "ES256",
+        projected_key_id: "jwt-svid-key-2026-08",
+    }, {
+        relying_party_policy: JWT_UNBOUND_POLICY,
+        ...widenedFreshness,
+    });
+    const freshnessMismatch = (value) => !value.ok && value.reason === "aic_status_freshness_profile_mismatch";
+    cases.push(result("STATUS-FRESHNESS-PROFILE-WIDENING-REFUSED", "hostile", freshnessMismatch(widenedBoundJwt)
+        && freshnessMismatch(widenedBoundX509)
+        && freshnessMismatch(widenedUnboundJwt)
+        && freshnessMismatch(widenedUnboundX509)
+        && freshnessMismatch(widenedProjection), "the fixed 60-second v0.2 freshness profile cannot be widened by a caller", {
+        bound_jwt: widenedBoundJwt.ok ? null : widenedBoundJwt.reason,
+        bound_x509: widenedBoundX509.ok ? null : widenedBoundX509.reason,
+        unbound_jwt: widenedUnboundJwt.ok ? null : widenedUnboundJwt.reason,
+        unbound_x509: widenedUnboundX509.ok ? null : widenedUnboundX509.reason,
+        jwt_svid_projection: widenedProjection.ok ? null : widenedProjection.reason,
+    }));
     const revoked = mapAicX509SpkiBoundCrossingAuthority(x509Input({
         status: {
             value: "REVOKED",
@@ -556,10 +614,15 @@ export async function buildReferenceReport() {
         revoked: revoked.ok ? null : revoked.reason,
         unavailable: unavailable.ok ? null : unavailable.reason,
     }));
-    const outOfWindow = mapAicJwtJktBoundCrossingAuthority(jktInput(), {
+    const outOfWindow = mapAicJwtJktBoundCrossingAuthority(jktInput({
+        status: {
+            ...jktInput().status,
+            checked_at: "2026-09-01T07:06:00Z",
+        },
+    }), {
         ...RP_CONTEXT,
         evaluated_at: "2026-09-01T07:06:00Z",
-        max_status_age_seconds: 600,
+        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
     });
     cases.push(result("NATIVE-VALIDITY-WINDOW-REFUSED", "hostile", !outOfWindow.ok
         && outOfWindow.reason === "aic_validity_window_mismatch", "aic_validity_window_mismatch", {
@@ -602,12 +665,15 @@ export async function buildReferenceReport() {
             "The adapter consumes a native verifier result; it does not reimplement AIC signature, certificate-path, delegation, capability, constraint, status, or proof-of-possession validation.",
             "This deterministic suite stipulates native VERIFIED results to test the adapter boundary. Its JWT signature is a placeholder and its parseable X.509 certificates are not AIC credential-bundle fixtures, so it does not claim the pinned upstream verifiers accepted them.",
             "The relying party pins the exact requested-capability digest and action-projection profile. Production integration must also provide an authenticated native result proving that the same capability request was evaluated; the pinned gateway bearer helper does not set RequestCapability.",
+            "The adapter checks a supplied capability-to-action projection for exact equality; it does not produce that projection. Unknown schemes, ambiguous mappings, and unmapped material parameters must refuse upstream.",
             "The profile binds one exact action and one relying-party admission domain; changing the action, relying party, audience, executor, or state domain requires a new evaluation.",
-            "status.checked_at is the explicit source-status observation time. CURRENT status is accepted only within the pinned freshness limit and native validity window; revoked, unavailable, stale, future, or otherwise non-current observations refuse.",
+            "status.checked_at is the explicit source-status observation time. The v0.2 runtime accepts exactly a 60-second maximum age; a caller cannot widen it. CURRENT status is accepted only within that fixed freshness limit and native validity window; revoked, unavailable, stale, future, or otherwise non-current observations refuse.",
             "The native verifier result and relying-party policy are structurally separate. Trusted anchors and expected verifier, mapping-profile, and action-projection pins come only from relying-party policy, never from the presented native result.",
+            "The relying party supplies and authenticates mapping-profile provenance and its digest. This reusable adapter enforces the profile identifier and fixed freshness rule but does not load or recompute the checked-in mapping-profile JSON.",
             "RFC 7638 JWK thumbprints and X.509 SHA-256 SPKI hashes remain separate native mappings and are never treated as interchangeable proof. The JWT path derives the presented JWK thumbprint but does not prove possession of that key.",
             "The JWT/JKT mapping requires the original compact token, derives its audience, issuer/JTI replay identity, and signed iat/nbf/exp envelope, requires exact agreement with wrapper validity, and requires explicit public JWK material. A bare X.509 object synthesized from a verified AIC-JWT has no native bundle DER and cannot enter the native X.509/SPKI mapping.",
             "The X.509 path derives replay identity, bundle digest, serial, and principal SHA-256 SPKI from DER. Issuer, subject, status, validity, constraints, trust-anchor selection, and verification evidence remain authenticated native-wrapper outputs, not facts derived by this adapter from the leaf DER.",
+            "Raw-carrier fingerprints are derived from the bytes supplied to this adapter. They do not prove that the native verifier saw those same bytes unless an authenticated wrapper binds the verifier result to them.",
             "The local raw-source boundary does not authenticate a verifier result crossing an untrusted Go or JSON boundary. Integration still requires a tagged or authenticated verifier-result wrapper; the pinned gateway bearer helper sets neither ExpectedAudience, RequestCapability, PrincipalMaterial, nor PresenterKey, and no non-test VerifyBearer wiring was observed.",
             "A verified crossing record is evidence of one past relying-party boundary decision and never authorizes another action.",
             "Passing these checks does not establish IETF adoption, certification, production deployment, independent interoperability, or employer endorsement.",

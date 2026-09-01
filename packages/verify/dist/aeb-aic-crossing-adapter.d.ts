@@ -7,6 +7,7 @@ export declare const AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE = "EP-AEB-CROS
 export declare const AIC_ADMISSION_DOMAIN_VERSION = "EP-AIC-ADMISSION-DOMAIN-v1";
 export declare const AIC_JWT_SVID_PROJECTION_VERSION = "EP-AIC-JWT-SVID-PROJECTION-v1";
 export declare const AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION = "EP-AIC-X509-CREDENTIAL-BUNDLE-v1";
+export declare const AIC_CROSSING_MAX_STATUS_AGE_SECONDS = 60;
 export type AicSpkiHashAlgorithm = 'sha-256';
 export type AicJwtDownstreamRepresentation = 'DIRECT' | 'SYNTHESIZED-X509';
 export type AicPrincipalPublicJwk = {

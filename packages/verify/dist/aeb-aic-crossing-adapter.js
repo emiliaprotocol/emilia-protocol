@@ -5,9 +5,11 @@
  * The adapter consumes the result of an AIC native verifier. It does not
  * reimplement AIC-JWT signature, delegation, capability, constraint, status,
  * or X.509 path validation. It keeps the RFC 7638 JWK-thumbprint and X.509
- * SPKI-hash paths separate, derives original-carrier provenance from the raw
- * compact token or native certificate bundle, and keeps relying-party policy
- * structurally separate from the native verifier result. The pinned upstream
+ * SPKI-hash paths separate, derives carrier fingerprints and identifiers from
+ * supplied raw carrier material, and keeps relying-party policy structurally
+ * separate from the native verifier result. Authenticating that the native
+ * verifier saw the same carrier bytes remains the deployment wrapper's
+ * responsibility. The pinned upstream
  * bearer helper returns a bare synthesized X.509 object without authenticated
  * provenance, so that object cannot enter the native X.509 mapping: the latter
  * requires real agent and principal certificate DER. A deployment still needs
@@ -27,6 +29,10 @@ export const AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE = 'EP-AEB-CROSSING-AIC
 export const AIC_ADMISSION_DOMAIN_VERSION = 'EP-AIC-ADMISSION-DOMAIN-v1';
 export const AIC_JWT_SVID_PROJECTION_VERSION = 'EP-AIC-JWT-SVID-PROJECTION-v1';
 export const AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION = 'EP-AIC-X509-CREDENTIAL-BUNDLE-v1';
+// The reusable adapter does not load or authenticate the reference mapping-
+// profile JSON. Relying-party policy supplies that profile's provenance and
+// digest; this constant enforces the v0.2 runtime freshness semantic itself.
+export const AIC_CROSSING_MAX_STATUS_AGE_SECONDS = 60;
 const DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 const CAID_RE = /^caid:1:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
 const IDENTIFIER_RE = /^[A-Za-z0-9][A-Za-z0-9:_.@/#-]{0,511}$/;
@@ -548,6 +554,11 @@ function temporalDisposition(input, context) {
     }
     return null;
 }
+function freshnessProfileDisposition(seconds) {
+    return seconds === AIC_CROSSING_MAX_STATUS_AGE_SECONDS
+        ? null
+        : 'aic_status_freshness_profile_mismatch';
+}
 function jwtValidityDisposition(input, carrier) {
     const signedNotBefore = (carrier.notBefore ?? carrier.issuedAt) * 1_000;
     if (Date.parse(input.validity.not_before) !== signedNotBefore
@@ -602,6 +613,9 @@ function boundDisposition(input, context, expectedMappingProfileId) {
     }
     if (input.status.value !== 'CURRENT')
         return 'aic_status_not_current';
+    const freshnessProfile = freshnessProfileDisposition(context.max_status_age_seconds);
+    if (freshnessProfile)
+        return freshnessProfile;
     const temporal = temporalDisposition(input, context);
     if (temporal)
         return temporal;
@@ -622,6 +636,7 @@ function boundAuthorityFrom(input, context, native) {
         requested_capability_digest: context.requested_capability_digest,
         action_projection_profile_id: input.request_binding.action_projection_profile_id,
         action_projection_profile_digest: input.request_binding.action_projection_profile_digest,
+        max_status_age_seconds: context.max_status_age_seconds,
         action: context.action,
         admission_domain: context.admission_domain,
     };
@@ -674,6 +689,9 @@ export function mapAicJwtJktCrossingAuthority(input, policy, temporalContext) {
     if (!validRelyingPartyTemporalContext(temporalContext)) {
         return { ok: false, reason: 'aic_relying_party_temporal_context_required' };
     }
+    const freshnessProfile = freshnessProfileDisposition(temporalContext.max_status_age_seconds);
+    if (freshnessProfile)
+        return { ok: false, reason: freshnessProfile };
     const temporal = temporalDisposition(input, temporalContext);
     if (temporal)
         return { ok: false, reason: temporal };
@@ -697,6 +715,9 @@ export function mapAicJwtJktCrossingAuthority(input, policy, temporalContext) {
                 carrier_origin: carrier.carrierOrigin,
                 downstream_representation: carrier.representation,
                 typ: 'aic+jwt',
+                source_status: input.status,
+                evaluated_at: temporalContext.evaluated_at,
+                max_status_age_seconds: temporalContext.max_status_age_seconds,
             },
         }),
     };
@@ -723,6 +744,9 @@ export function mapAicX509SpkiCrossingAuthority(input, policy, temporalContext) 
     if (!validRelyingPartyTemporalContext(temporalContext)) {
         return { ok: false, reason: 'aic_relying_party_temporal_context_required' };
     }
+    const freshnessProfile = freshnessProfileDisposition(temporalContext.max_status_age_seconds);
+    if (freshnessProfile)
+        return { ok: false, reason: freshnessProfile };
     const temporal = temporalDisposition(input, temporalContext);
     if (temporal)
         return { ok: false, reason: temporal };
@@ -746,6 +770,9 @@ export function mapAicX509SpkiCrossingAuthority(input, policy, temporalContext) 
                 carrier_origin: carrier.carrierOrigin,
                 certificate_serial: carrier.certificateSerial,
                 hash_alg: input.principal_binding.hash_alg,
+                source_status: input.status,
+                evaluated_at: temporalContext.evaluated_at,
+                max_status_age_seconds: temporalContext.max_status_age_seconds,
             },
         }),
     };
