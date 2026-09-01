@@ -18,8 +18,7 @@
       "exclude": [
         "expo",
         "expo-asset",
-        "expo-secure-store",
-        "react-native"
+        "expo-secure-store"
       ]
     }
   },
@@ -33,7 +32,7 @@
     "expo-secure-store": "~57.0.1",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
-    "react-native": "0.86.2"
+    "react-native": "0.86.3"
   },
   "overrides": {
     "@expo/metro": "56.0.2",
