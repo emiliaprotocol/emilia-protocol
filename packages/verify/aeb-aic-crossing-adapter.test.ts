@@ -7,15 +7,12 @@ import { digestAebTyped } from './dist/aeb-adapter-contract.js';
 import * as aicAdapterSurface from './dist/aeb-aic-crossing-adapter.js';
 import {
   AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
-  AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
   AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE,
   AIC_JWT_SVID_PROJECTION_VERSION,
-  AIC_X509_SPKI_CROSSING_MAPPING_PROFILE,
+  AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE,
   AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE,
   AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION,
-  mapAicJwtJktCrossingAuthority,
   mapAicJwtJktBoundCrossingAuthority,
-  mapAicX509SpkiCrossingAuthority,
   mapAicX509SpkiBoundCrossingAuthority,
   projectAicJwtToStrictJwtSvid,
 } from './dist/aeb-aic-crossing-adapter.js';
@@ -129,11 +126,9 @@ function common(nativeVerifier = JWT_VERIFIER) {
   };
 }
 
-function jwtPolicy(bound = false) {
+function jwtPolicy() {
   return {
-    mapping_profile_id: bound
-      ? AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE
-      : AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
+    mapping_profile_id: AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE,
     mapping_profile_digest: DIGEST('33'),
     action_projection_profile_id: 'AIC-EXACT-ACTION-PROJECTION-v1',
     action_projection_profile_digest: DIGEST('88'),
@@ -142,11 +137,9 @@ function jwtPolicy(bound = false) {
   };
 }
 
-function x509Policy(bound = false) {
+function x509Policy() {
   return {
-    mapping_profile_id: bound
-      ? AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE
-      : AIC_X509_SPKI_CROSSING_MAPPING_PROFILE,
+    mapping_profile_id: AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE,
     mapping_profile_digest: DIGEST('33'),
     action_projection_profile_id: 'AIC-EXACT-ACTION-PROJECTION-v1',
     action_projection_profile_digest: DIGEST('88'),
@@ -157,14 +150,13 @@ function x509Policy(bound = false) {
 
 function projectionContext() {
   return {
-    relying_party_policy: jwtPolicy(),
-    evaluated_at: NOW,
-    max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
-  };
-}
-
-function temporalContext() {
-  return {
+    source_verification_policy: {
+      source_verification_profile_id:
+        AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE,
+      source_verification_profile_digest: DIGEST('32'),
+      trusted_issuer_trust_anchor_digests: [TRUST_ANCHOR],
+      native_verifier: JWT_VERIFIER,
+    },
     evaluated_at: NOW,
     max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
   };
@@ -206,7 +198,7 @@ function x509Input() {
   };
 }
 
-function boundContext(policy = jwtPolicy(true)) {
+function boundContext(policy = jwtPolicy()) {
   return {
     action: ACTION,
     admission_domain: ADMISSION_DOMAIN,
@@ -320,7 +312,7 @@ test('bound mapping requires the same exact action and relying-party admission d
     {
       ...boundContext(),
       policy: {
-        ...jwtPolicy(true),
+        ...jwtPolicy(),
         mapping_profile_id: 'attacker-selected-mapping-v1',
       },
     },
@@ -403,38 +395,6 @@ test('bound mapping fails closed on non-current, stale, future, or out-of-window
   );
 });
 
-test('unbound mappings require relying-party evaluation time and freshness', () => {
-  assert.deepEqual(
-    mapAicJwtJktCrossingAuthority(jwtInput(), jwtPolicy()),
-    { ok: false, reason: 'aic_relying_party_temporal_context_required' },
-  );
-  assert.deepEqual(
-    mapAicX509SpkiCrossingAuthority(
-      {
-        ...x509Input(),
-        status: { ...x509Input().status, checked_at: '2026-09-01T06:58:00Z' },
-      },
-      x509Policy(),
-      temporalContext(),
-    ),
-    { ok: false, reason: 'aic_status_observation_stale' },
-  );
-  assert.deepEqual(
-    mapAicJwtJktCrossingAuthority(
-      {
-        ...jwtInput(),
-        status: { ...jwtInput().status, checked_at: '2026-09-01T07:06:00Z' },
-      },
-      jwtPolicy(),
-      {
-        evaluated_at: '2026-09-01T07:06:00Z',
-        max_status_age_seconds: AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
-      },
-    ),
-    { ok: false, reason: 'aic_validity_window_mismatch' },
-  );
-});
-
 test('the fixed source-status freshness profile cannot be widened by a caller', () => {
   assert.deepEqual(
     mapAicJwtJktBoundCrossingAuthority(boundJwtInput(), {
@@ -456,17 +416,9 @@ test('the fixed source-status freshness profile cannot be widened by a caller', 
   );
   assert.deepEqual(
     mapAicX509SpkiBoundCrossingAuthority(boundX509Input(), {
-      ...boundContext(x509Policy(true)),
+      ...boundContext(x509Policy()),
       ...widened,
     }),
-    { ok: false, reason: 'aic_status_freshness_profile_mismatch' },
-  );
-  assert.deepEqual(
-    mapAicJwtJktCrossingAuthority(jwtInput(), jwtPolicy(), widened),
-    { ok: false, reason: 'aic_status_freshness_profile_mismatch' },
-  );
-  assert.deepEqual(
-    mapAicX509SpkiCrossingAuthority(x509Input(), x509Policy(), widened),
     { ok: false, reason: 'aic_status_freshness_profile_mismatch' },
   );
   assert.deepEqual(
@@ -500,21 +452,25 @@ test('bound JWT validity must equal the signed compact-token temporal envelope',
 });
 
 test('pure-JSON RFC 7638 jkt and X.509 SPKI remain distinct native mappings', () => {
-  const jwt = mapAicJwtJktCrossingAuthority(
-    jwtInput(),
-    jwtPolicy(),
-    temporalContext(),
+  const jwt = mapAicJwtJktBoundCrossingAuthority(
+    boundJwtInput(),
+    boundContext(),
   );
-  const x509 = mapAicX509SpkiCrossingAuthority(
-    x509Input(),
-    x509Policy(),
-    temporalContext(),
+  const x509 = mapAicX509SpkiBoundCrossingAuthority(
+    boundX509Input(),
+    boundContext(x509Policy()),
   );
   assert.equal(jwt.ok, true, JSON.stringify(jwt));
   assert.equal(x509.ok, true, JSON.stringify(x509));
   if (!jwt.ok || !x509.ok) return;
-  assert.equal(jwt.authority.mapping_profile_id, AIC_JWT_JKT_CROSSING_MAPPING_PROFILE);
-  assert.equal(x509.authority.mapping_profile_id, AIC_X509_SPKI_CROSSING_MAPPING_PROFILE);
+  assert.equal(
+    jwt.authority.mapping_profile_id,
+    AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE,
+  );
+  assert.equal(
+    x509.authority.mapping_profile_id,
+    AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE,
+  );
   assert.equal(jwt.authority.native_profile, 'AIC-JWT-RFC7638-JKT');
   assert.equal(x509.authority.native_profile, 'AIC-X509-SPKI');
   assert.notEqual(jwt.authority.authority_instance_digest, x509.authority.authority_instance_digest);
@@ -524,7 +480,7 @@ test('pure-JSON RFC 7638 jkt and X.509 SPKI remain distinct native mappings', ()
 });
 
 test('X.509 replay identity comes from exact DER rather than free wrapper labels', () => {
-  const context = boundContext(x509Policy(true));
+  const context = boundContext(x509Policy());
   const original = mapAicX509SpkiBoundCrossingAuthority(
     boundX509Input(),
     context,
@@ -585,51 +541,53 @@ test('JWT replay identity follows issuer and jti across a re-signed compact toke
 });
 
 test('principal binding mismatch refuses before a crossing authority is emitted', () => {
-  const jwt = mapAicJwtJktCrossingAuthority({
-    ...jwtInput(),
+  const jwt = mapAicJwtJktBoundCrossingAuthority({
+    ...boundJwtInput(),
     principal_binding: {
-      ...jwtInput().principal_binding,
+      ...boundJwtInput().principal_binding,
       presented_key_hash: 'C'.repeat(43),
     },
-  }, jwtPolicy(), temporalContext());
-  const x509 = mapAicX509SpkiCrossingAuthority({
-    ...x509Input(),
+  }, boundContext());
+  const x509 = mapAicX509SpkiBoundCrossingAuthority({
+    ...boundX509Input(),
     principal_binding: {
-      ...x509Input().principal_binding,
+      ...boundX509Input().principal_binding,
       presented_key_hash: 'D'.repeat(43),
     },
-  }, x509Policy(), temporalContext());
+  }, boundContext(x509Policy()));
   assert.deepEqual(jwt, { ok: false, reason: 'aic_principal_binding_mismatch' });
   assert.deepEqual(x509, { ok: false, reason: 'aic_principal_binding_mismatch' });
 });
 
 test('native results cannot self-pin relying-party trust or verifier policy', () => {
-  const untrusted = mapAicJwtJktCrossingAuthority({
-    ...jwtInput(),
+  const untrusted = mapAicJwtJktBoundCrossingAuthority({
+    ...boundJwtInput(),
     issuer_trust_anchor_digest: DIGEST('66'),
-  }, jwtPolicy(), temporalContext());
-  const selfPinned = mapAicJwtJktCrossingAuthority({
-    ...jwtInput(),
+  }, boundContext());
+  const selfPinned = mapAicJwtJktBoundCrossingAuthority({
+    ...boundJwtInput(),
     issuer_trust_anchor_digest: DIGEST('66'),
     trusted_issuer_trust_anchor_digests: [DIGEST('66')],
-  } as any, jwtPolicy(), temporalContext());
-  const emptyPolicy = mapAicJwtJktCrossingAuthority(
-    jwtInput(),
-    { ...jwtPolicy(), trusted_issuer_trust_anchor_digests: [] },
-    temporalContext(),
+  } as any, boundContext());
+  const emptyPolicy = mapAicJwtJktBoundCrossingAuthority(
+    boundJwtInput(),
+    boundContext({
+      ...jwtPolicy(),
+      trusted_issuer_trust_anchor_digests: [],
+    }),
   );
-  const verifierSelfPin = mapAicJwtJktCrossingAuthority({
-    ...jwtInput(),
+  const verifierSelfPin = mapAicJwtJktBoundCrossingAuthority({
+    ...boundJwtInput(),
     native_verifier: {
       ...JWT_VERIFIER,
       implementation_digest: DIGEST('fe'),
     },
-  }, jwtPolicy(), temporalContext());
+  }, boundContext());
   assert.deepEqual(untrusted, { ok: false, reason: 'aic_issuer_untrusted' });
   assert.deepEqual(selfPinned, { ok: false, reason: 'mapping_input_invalid' });
   assert.deepEqual(emptyPolicy, {
     ok: false,
-    reason: 'aic_relying_party_policy_invalid',
+    reason: 'mapping_input_invalid',
   });
   assert.deepEqual(verifierSelfPin, {
     ok: false,
@@ -638,68 +596,68 @@ test('native results cannot self-pin relying-party trust or verifier policy', ()
 });
 
 test('raw carrier provenance refuses synthesized-certificate relabeling and type confusion', () => {
-  const wrongJwtCarrier = mapAicJwtJktCrossingAuthority({
-    ...jwtInput(),
+  const wrongJwtCarrier = mapAicJwtJktBoundCrossingAuthority({
+    ...boundJwtInput(),
     carrier_provenance: x509Input().carrier_provenance,
-  } as any, jwtPolicy(), temporalContext());
+  } as any, boundContext());
   const wrongTypToken = jwtCompactToken('JWT');
-  const jwtTyp = mapAicJwtJktCrossingAuthority({
-    ...jwtInput(),
+  const jwtTyp = mapAicJwtJktBoundCrossingAuthority({
+    ...boundJwtInput(),
     artifact_digest: `sha256:${crypto.createHash('sha256')
       .update(wrongTypToken, 'utf8')
       .digest('hex')}`,
     carrier_provenance: {
-      ...jwtInput().carrier_provenance,
+      ...boundJwtInput().carrier_provenance,
       compact_token: wrongTypToken,
     },
-  }, jwtPolicy(), temporalContext());
-  const claimAsPresentedKey = mapAicJwtJktCrossingAuthority({
-    ...jwtInput(),
+  }, boundContext());
+  const claimAsPresentedKey = mapAicJwtJktBoundCrossingAuthority({
+    ...boundJwtInput(),
     carrier_provenance: {
       source_carrier: 'AIC-JWT-COMPACT',
       compact_token: JWT_COMPACT_TOKEN,
       downstream_representation: 'DIRECT',
     },
-  } as any, jwtPolicy(), temporalContext());
-  const jktAsX509 = mapAicX509SpkiCrossingAuthority({
-    ...x509Input(),
+  } as any, boundContext());
+  const jktAsX509 = mapAicX509SpkiBoundCrossingAuthority({
+    ...boundX509Input(),
     principal_binding: jwtInput().principal_binding,
-  } as any, x509Policy(), temporalContext());
-  const synthesizedJwtAsX509 = mapAicX509SpkiCrossingAuthority({
-    ...x509Input(),
+  } as any, boundContext(x509Policy()));
+  const synthesizedJwtAsX509 = mapAicX509SpkiBoundCrossingAuthority({
+    ...boundX509Input(),
     artifact_digest: JWT_ARTIFACT_DIGEST,
     carrier_provenance: {
       ...jwtInput().carrier_provenance,
       downstream_representation: 'SYNTHESIZED-X509',
     },
-  } as any, x509Policy(), temporalContext());
-  const synthesizedJwtAsJwt = mapAicJwtJktCrossingAuthority({
-    ...jwtInput(),
+  } as any, boundContext(x509Policy()));
+  const synthesizedJwtAsJwt = mapAicJwtJktBoundCrossingAuthority({
+    ...boundJwtInput(),
     carrier_provenance: {
-      ...jwtInput().carrier_provenance,
+      ...boundJwtInput().carrier_provenance,
       downstream_representation: 'SYNTHESIZED-X509',
     },
-  }, jwtPolicy(), temporalContext());
-  const missingNativeDer = mapAicX509SpkiCrossingAuthority({
-    ...x509Input(),
+  }, boundContext());
+  const missingNativeDer = mapAicX509SpkiBoundCrossingAuthority({
+    ...boundX509Input(),
     carrier_provenance: {
-      ...x509Input().carrier_provenance,
+      ...boundX509Input().carrier_provenance,
       agent_certificate_der: '',
     },
-  }, x509Policy(), temporalContext());
-  const changedBundleDigest = mapAicX509SpkiCrossingAuthority({
-    ...x509Input(),
+  }, boundContext(x509Policy()));
+  const changedBundleDigest = mapAicX509SpkiBoundCrossingAuthority({
+    ...boundX509Input(),
     artifact_digest: DIGEST('ab'),
-  }, x509Policy(), temporalContext());
-  const unsupportedSpkiHash = mapAicX509SpkiCrossingAuthority({
-    ...x509Input(),
+  }, boundContext(x509Policy()));
+  const unsupportedSpkiHash = mapAicX509SpkiBoundCrossingAuthority({
+    ...boundX509Input(),
     principal_binding: {
       kind: 'X509_SPKI',
       hash_alg: 'sha-384',
       claimed_key_hash: 'A'.repeat(64),
       presented_key_hash: 'A'.repeat(64),
     },
-  } as any, x509Policy(), temporalContext());
+  } as any, boundContext(x509Policy()));
   assert.deepEqual(wrongJwtCarrier, {
     ok: false,
     reason: 'aic_carrier_provenance_unverifiable',
@@ -968,7 +926,7 @@ test('native failure short-circuits carrier parsing after structural validation'
           agent_certificate_der: 'not-der',
         },
       },
-      boundContext(x509Policy(true)),
+      boundContext(x509Policy()),
     ),
     { ok: false, reason: 'aic_native_verification_indeterminate' },
   );
@@ -1032,9 +990,9 @@ test('JWT-SVID projection digest binds the accepted source evaluation', () => {
     projectionInput,
     {
       ...projectionContext(),
-      relying_party_policy: {
-        ...projectionContext().relying_party_policy,
-        mapping_profile_digest: DIGEST('f1'),
+      source_verification_policy: {
+        ...projectionContext().source_verification_policy,
+        source_verification_profile_digest: DIGEST('f1'),
       },
     },
   );

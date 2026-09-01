@@ -22,12 +22,12 @@
  */
 import crypto, { X509Certificate } from 'node:crypto';
 import { digestAebTyped, } from './aeb-adapter-contract.js';
-export const AIC_JWT_JKT_CROSSING_MAPPING_PROFILE = 'EP-AEB-CROSSING-AIC-JWT-JKT-v1';
-export const AIC_X509_SPKI_CROSSING_MAPPING_PROFILE = 'EP-AEB-CROSSING-AIC-X509-SPKI-v1';
+import { issueAebCrossingRecord, } from './aeb-crossing-record.js';
 export const AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE = 'EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2';
 export const AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE = 'EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2';
 export const AIC_ADMISSION_DOMAIN_VERSION = 'EP-AIC-ADMISSION-DOMAIN-v1';
 export const AIC_JWT_SVID_PROJECTION_VERSION = 'EP-AIC-JWT-SVID-PROJECTION-v1';
+export const AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE = 'EP-AIC-JWT-SVID-SOURCE-VERIFICATION-v1';
 export const AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION = 'EP-AIC-X509-CREDENTIAL-BUNDLE-v1';
 // The reusable adapter does not load or authenticate the reference mapping-
 // profile JSON. Relying-party policy supplies that profile's provenance and
@@ -86,10 +86,6 @@ const RP_CONTEXT_KEYS = new Set([
     'max_status_age_seconds',
     'policy',
 ]);
-const RP_TEMPORAL_CONTEXT_KEYS = new Set([
-    'evaluated_at',
-    'max_status_age_seconds',
-]);
 const RP_POLICY_KEYS = new Set([
     'mapping_profile_id',
     'mapping_profile_digest',
@@ -130,9 +126,15 @@ const PROJECTION_INPUT_KEYS = new Set([
     'projected_key_id',
 ]);
 const PROJECTION_CONTEXT_KEYS = new Set([
-    'relying_party_policy',
+    'source_verification_policy',
     'evaluated_at',
     'max_status_age_seconds',
+]);
+const PROJECTION_SOURCE_POLICY_KEYS = new Set([
+    'source_verification_profile_id',
+    'source_verification_profile_digest',
+    'trusted_issuer_trust_anchor_digests',
+    'native_verifier',
 ]);
 const NATIVE_VERIFICATIONS = new Set([
     'VERIFIED',
@@ -238,20 +240,21 @@ function validRelyingPartyContext(value) {
         && Number(value.max_status_age_seconds) <= 86_400
         && validRelyingPartyPolicy(value.policy);
 }
-function validRelyingPartyTemporalContext(value) {
-    return isRecord(value)
-        && exactKeys(value, RP_TEMPORAL_CONTEXT_KEYS)
-        && instant(value.evaluated_at)
-        && Number.isSafeInteger(value.max_status_age_seconds)
-        && Number(value.max_status_age_seconds) >= 0
-        && Number(value.max_status_age_seconds) <= 86_400;
-}
 function validTrustSet(value) {
     return Array.isArray(value)
         && value.length > 0
         && value.length <= 64
         && value.every(digest)
         && new Set(value).size === value.length;
+}
+function validProjectionSourcePolicy(value) {
+    return isRecord(value)
+        && exactKeys(value, PROJECTION_SOURCE_POLICY_KEYS)
+        && value.source_verification_profile_id
+            === AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE
+        && digest(value.source_verification_profile_digest)
+        && validTrustSet(value.trusted_issuer_trust_anchor_digests)
+        && validVerifierDescriptor(value.native_verifier);
 }
 function commonValid(value) {
     return NATIVE_VERIFICATIONS.has(value.native_verification)
@@ -519,16 +522,40 @@ function sameVerifier(left, right) {
         && left.version === right.version
         && left.implementation_digest === right.implementation_digest;
 }
-function trustDisposition(input, policy, expectedMappingProfileId) {
-    if (input.native_verification === 'FAILED')
+function nativeVerificationDisposition(input) {
+    if (input.native_verification === 'FAILED') {
         return 'aic_native_verification_failed';
+    }
     if (input.native_verification === 'INDETERMINATE') {
         return 'aic_native_verification_indeterminate';
     }
+    return null;
+}
+function trustDisposition(input, policy, expectedMappingProfileId) {
+    const nativeVerification = nativeVerificationDisposition(input);
+    if (nativeVerification)
+        return nativeVerification;
     if (!validRelyingPartyPolicy(policy))
         return 'aic_relying_party_policy_invalid';
     if (policy.mapping_profile_id !== expectedMappingProfileId) {
         return 'aic_mapping_profile_unpinned';
+    }
+    if (!sameVerifier(input.native_verifier, policy.native_verifier)) {
+        return 'aic_native_verifier_unpinned';
+    }
+    if (!policy.trusted_issuer_trust_anchor_digests.includes(input.issuer_trust_anchor_digest)) {
+        return 'aic_issuer_untrusted';
+    }
+    if (input.status.value !== 'CURRENT')
+        return 'aic_status_not_current';
+    return null;
+}
+function projectionSourceTrustDisposition(input, policy) {
+    const nativeVerification = nativeVerificationDisposition(input);
+    if (nativeVerification)
+        return nativeVerification;
+    if (!validProjectionSourcePolicy(policy)) {
+        return 'aic_projection_source_policy_invalid';
     }
     if (!sameVerifier(input.native_verifier, policy.native_verifier)) {
         return 'aic_native_verifier_unpinned';
@@ -661,122 +688,6 @@ function boundAuthorityFrom(input, context, native) {
         }, `${native.mappingProfile}:bound-constraints`),
     };
 }
-export function mapAicJwtJktCrossingAuthority(input, policy, temporalContext) {
-    if (!isRecord(input) || !exactKeys(input, JWT_INPUT_KEYS) || !commonValid(input)) {
-        return { ok: false, reason: 'mapping_input_invalid' };
-    }
-    if (!validJktBinding(input.principal_binding)) {
-        return { ok: false, reason: 'aic_native_type_confusion' };
-    }
-    const carrier = inspectJwtCarrier(input);
-    if (!carrier)
-        return { ok: false, reason: 'aic_carrier_provenance_unverifiable' };
-    if (carrier.artifactDigest !== input.artifact_digest) {
-        return { ok: false, reason: 'aic_carrier_artifact_digest_mismatch' };
-    }
-    if (carrier.claimedKeyHash !== input.principal_binding.claimed_key_hash) {
-        return { ok: false, reason: 'aic_principal_binding_mismatch' };
-    }
-    if (carrier.presentedKeyHash !== input.principal_binding.presented_key_hash) {
-        return { ok: false, reason: 'aic_principal_binding_mismatch' };
-    }
-    const jwtValidity = jwtValidityDisposition(input, carrier);
-    if (jwtValidity)
-        return { ok: false, reason: jwtValidity };
-    const trust = trustDisposition(input, policy, AIC_JWT_JKT_CROSSING_MAPPING_PROFILE);
-    if (trust)
-        return { ok: false, reason: trust };
-    if (!validRelyingPartyTemporalContext(temporalContext)) {
-        return { ok: false, reason: 'aic_relying_party_temporal_context_required' };
-    }
-    const freshnessProfile = freshnessProfileDisposition(temporalContext.max_status_age_seconds);
-    if (freshnessProfile)
-        return { ok: false, reason: freshnessProfile };
-    const temporal = temporalDisposition(input, temporalContext);
-    if (temporal)
-        return { ok: false, reason: temporal };
-    if (input.principal_binding.claimed_key_hash
-        !== input.principal_binding.presented_key_hash) {
-        return { ok: false, reason: 'aic_principal_binding_mismatch' };
-    }
-    return {
-        ok: true,
-        authority: authorityFrom(input, policy, {
-            adapterId: 'native:aic-jwt-rfc7638-jkt',
-            mappingProfile: AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
-            nativeProfile: 'AIC-JWT-RFC7638-JKT',
-            binding: input.principal_binding,
-            replayIdentity: {
-                carrier_origin: carrier.carrierOrigin,
-                issuer: carrier.issuer,
-                artifact_id: carrier.artifactId,
-            },
-            instanceContext: {
-                carrier_origin: carrier.carrierOrigin,
-                downstream_representation: carrier.representation,
-                typ: 'aic+jwt',
-                source_status: input.status,
-                evaluated_at: temporalContext.evaluated_at,
-                max_status_age_seconds: temporalContext.max_status_age_seconds,
-            },
-        }),
-    };
-}
-export function mapAicX509SpkiCrossingAuthority(input, policy, temporalContext) {
-    if (!isRecord(input) || !exactKeys(input, X509_INPUT_KEYS) || !commonValid(input)) {
-        return { ok: false, reason: 'mapping_input_invalid' };
-    }
-    if (!validSpkiBinding(input.principal_binding)) {
-        return { ok: false, reason: 'aic_native_type_confusion' };
-    }
-    const carrier = inspectX509Carrier(input);
-    if (!carrier)
-        return { ok: false, reason: 'aic_carrier_provenance_unverifiable' };
-    if (carrier.artifactDigest !== input.artifact_digest) {
-        return { ok: false, reason: 'aic_carrier_artifact_digest_mismatch' };
-    }
-    if (carrier.presentedKeyHash !== input.principal_binding.presented_key_hash) {
-        return { ok: false, reason: 'aic_principal_binding_mismatch' };
-    }
-    const trust = trustDisposition(input, policy, AIC_X509_SPKI_CROSSING_MAPPING_PROFILE);
-    if (trust)
-        return { ok: false, reason: trust };
-    if (!validRelyingPartyTemporalContext(temporalContext)) {
-        return { ok: false, reason: 'aic_relying_party_temporal_context_required' };
-    }
-    const freshnessProfile = freshnessProfileDisposition(temporalContext.max_status_age_seconds);
-    if (freshnessProfile)
-        return { ok: false, reason: freshnessProfile };
-    const temporal = temporalDisposition(input, temporalContext);
-    if (temporal)
-        return { ok: false, reason: temporal };
-    if (input.principal_binding.claimed_key_hash
-        !== input.principal_binding.presented_key_hash) {
-        return { ok: false, reason: 'aic_principal_binding_mismatch' };
-    }
-    return {
-        ok: true,
-        authority: authorityFrom(input, policy, {
-            adapterId: 'native:aic-x509-spki',
-            mappingProfile: AIC_X509_SPKI_CROSSING_MAPPING_PROFILE,
-            nativeProfile: 'AIC-X509-SPKI',
-            binding: input.principal_binding,
-            replayIdentity: {
-                carrier_origin: carrier.carrierOrigin,
-                artifact_digest: carrier.artifactDigest,
-                certificate_serial: carrier.certificateSerial,
-            },
-            instanceContext: {
-                carrier_origin: carrier.carrierOrigin,
-                certificate_serial: carrier.certificateSerial,
-                hash_alg: input.principal_binding.hash_alg,
-                source_status: input.status,
-                evaluated_at: temporalContext.evaluated_at,
-                max_status_age_seconds: temporalContext.max_status_age_seconds,
-            },
-        }),
-    };
-}
 export function mapAicJwtJktBoundCrossingAuthority(input, context) {
     if (!isRecord(input)
         || !exactKeys(input, BOUND_JWT_INPUT_KEYS)
@@ -788,6 +699,9 @@ export function mapAicJwtJktBoundCrossingAuthority(input, context) {
     if (!validJktBinding(input.principal_binding)) {
         return { ok: false, reason: 'aic_native_type_confusion' };
     }
+    const nativeVerification = nativeVerificationDisposition(input);
+    if (nativeVerification)
+        return { ok: false, reason: nativeVerification };
     const carrier = inspectJwtCarrier(input);
     if (!carrier)
         return { ok: false, reason: 'aic_carrier_provenance_unverifiable' };
@@ -844,6 +758,9 @@ export function mapAicX509SpkiBoundCrossingAuthority(input, context) {
     if (!validSpkiBinding(input.principal_binding)) {
         return { ok: false, reason: 'aic_native_type_confusion' };
     }
+    const nativeVerification = nativeVerificationDisposition(input);
+    if (nativeVerification)
+        return { ok: false, reason: nativeVerification };
     const carrier = inspectX509Carrier(input);
     if (!carrier)
         return { ok: false, reason: 'aic_carrier_provenance_unverifiable' };
@@ -880,6 +797,71 @@ export function mapAicX509SpkiBoundCrossingAuthority(input, context) {
         }),
     };
 }
+function sameExactAction(left, right) {
+    return left.caid === right.caid
+        && left.action_digest === right.action_digest;
+}
+function sameAdmissionDomain(left, right) {
+    return left.relying_party_id === right.relying_party_id
+        && left.audience === right.audience
+        && left.executor_id === right.executor_id
+        && left.state_domain_id === right.state_domain_id;
+}
+/**
+ * Maps a bound AIC result and issues its crossing record as one operation.
+ * The caller-supplied record action and boundary must exactly match the
+ * relying-party context before the generic signer is reached.
+ */
+export async function issueAicBoundCrossingRecord(input, context, draft, options) {
+    let inputSnapshot;
+    let contextSnapshot;
+    let draftSnapshot;
+    try {
+        inputSnapshot = structuredClone(input);
+        contextSnapshot = structuredClone(context);
+        draftSnapshot = structuredClone(draft);
+    }
+    catch {
+        return { ok: false, reason: 'aic_crossing_issue_input_invalid' };
+    }
+    if (!validRelyingPartyContext(contextSnapshot)
+        || !isRecord(draftSnapshot)
+        || !validAction(draftSnapshot.action)
+        || !validAdmissionDomain(draftSnapshot.boundary)) {
+        return { ok: false, reason: 'aic_crossing_issue_input_invalid' };
+    }
+    if (!sameExactAction(draftSnapshot.action, contextSnapshot.action)) {
+        return { ok: false, reason: 'aic_crossing_issue_action_mismatch' };
+    }
+    if (!sameAdmissionDomain(draftSnapshot.boundary, contextSnapshot.admission_domain)) {
+        return {
+            ok: false,
+            reason: 'aic_crossing_issue_admission_domain_mismatch',
+        };
+    }
+    if (!isRecord(inputSnapshot) || !isRecord(inputSnapshot.principal_binding)) {
+        return { ok: false, reason: 'mapping_input_invalid' };
+    }
+    let mapped;
+    if (inputSnapshot.principal_binding.kind === 'RFC7638_JKT') {
+        mapped = mapAicJwtJktBoundCrossingAuthority(inputSnapshot, contextSnapshot);
+    }
+    else if (inputSnapshot.principal_binding.kind === 'X509_SPKI') {
+        mapped = mapAicX509SpkiBoundCrossingAuthority(inputSnapshot, contextSnapshot);
+    }
+    else {
+        return { ok: false, reason: 'aic_native_type_confusion' };
+    }
+    if (!mapped.ok)
+        return mapped;
+    const record = await issueAebCrossingRecord({
+        ...draftSnapshot,
+        native_authority: mapped.authority,
+        action: structuredClone(contextSnapshot.action),
+        boundary: structuredClone(contextSnapshot.admission_domain),
+    }, options);
+    return { ok: true, record };
+}
 function spiffeId(value) {
     if (typeof value !== 'string')
         return false;
@@ -912,11 +894,84 @@ function validProjectionInput(value) {
 function validProjectionContext(value) {
     return isRecord(value)
         && exactKeys(value, PROJECTION_CONTEXT_KEYS)
-        && validRelyingPartyPolicy(value.relying_party_policy)
+        && validProjectionSourcePolicy(value.source_verification_policy)
         && instant(value.evaluated_at)
         && Number.isSafeInteger(value.max_status_age_seconds)
         && Number(value.max_status_age_seconds) >= 0
         && Number(value.max_status_age_seconds) <= 86_400;
+}
+function verifyAicJwtProjectionSource(input, context) {
+    if (!isRecord(input) || !exactKeys(input, JWT_INPUT_KEYS) || !commonValid(input)) {
+        return { ok: false, reason: 'mapping_input_invalid' };
+    }
+    if (!validJktBinding(input.principal_binding)) {
+        return { ok: false, reason: 'aic_native_type_confusion' };
+    }
+    const nativeVerification = nativeVerificationDisposition(input);
+    if (nativeVerification)
+        return { ok: false, reason: nativeVerification };
+    const carrier = inspectJwtCarrier(input);
+    if (!carrier)
+        return { ok: false, reason: 'aic_carrier_provenance_unverifiable' };
+    if (carrier.artifactDigest !== input.artifact_digest) {
+        return { ok: false, reason: 'aic_carrier_artifact_digest_mismatch' };
+    }
+    if (carrier.claimedKeyHash !== input.principal_binding.claimed_key_hash
+        || carrier.presentedKeyHash !== input.principal_binding.presented_key_hash
+        || input.principal_binding.claimed_key_hash
+            !== input.principal_binding.presented_key_hash) {
+        return { ok: false, reason: 'aic_principal_binding_mismatch' };
+    }
+    const jwtValidity = jwtValidityDisposition(input, carrier);
+    if (jwtValidity)
+        return { ok: false, reason: jwtValidity };
+    const trust = projectionSourceTrustDisposition(input, context.source_verification_policy);
+    if (trust)
+        return { ok: false, reason: trust };
+    const freshnessProfile = freshnessProfileDisposition(context.max_status_age_seconds);
+    if (freshnessProfile)
+        return { ok: false, reason: freshnessProfile };
+    const temporal = temporalDisposition(input, context);
+    if (temporal)
+        return { ok: false, reason: temporal };
+    return {
+        ok: true,
+        carrier,
+        sourceEvaluationDigest: digestAebTyped({
+            source_verification_profile_id: context.source_verification_policy.source_verification_profile_id,
+            source_verification_profile_digest: context.source_verification_policy.source_verification_profile_digest,
+            trusted_issuer_trust_anchor_digests: [
+                ...context.source_verification_policy
+                    .trusted_issuer_trust_anchor_digests,
+            ].sort(),
+            native_verification: input.native_verification,
+            native_verifier: input.native_verifier,
+            native_verification_evidence_digest: input.native_verification_evidence_digest,
+            issuer: input.issuer,
+            subject: input.subject,
+            artifact_id: input.artifact_id,
+            artifact_digest: input.artifact_digest,
+            issuer_trust_anchor_digest: input.issuer_trust_anchor_digest,
+            constraints_digest: input.constraints_digest,
+            status: input.status,
+            validity: input.validity,
+            principal_binding: input.principal_binding,
+            carrier: {
+                origin: carrier.carrierOrigin,
+                representation: carrier.representation,
+                issuer: carrier.issuer,
+                artifact_id: carrier.artifactId,
+                artifact_digest: carrier.artifactDigest,
+                audiences: carrier.audiences,
+                issued_at: carrier.issuedAt,
+                not_before: carrier.notBefore,
+                expires_at: carrier.expiresAt,
+                semantics: carrier.semantics,
+            },
+            evaluated_at: context.evaluated_at,
+            max_status_age_seconds: context.max_status_age_seconds,
+        }, `${AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE}:accepted-source-evaluation`),
+    };
 }
 export function projectAicJwtToStrictJwtSvid(input, context) {
     if (!isRecord(input)
@@ -924,10 +979,7 @@ export function projectAicJwtToStrictJwtSvid(input, context) {
         || !validProjectionContext(context)) {
         return { ok: false, reason: 'jwt_svid_projection_input_invalid' };
     }
-    const source = mapAicJwtJktCrossingAuthority(input.source, context.relying_party_policy, {
-        evaluated_at: context.evaluated_at,
-        max_status_age_seconds: context.max_status_age_seconds,
-    });
+    const source = verifyAicJwtProjectionSource(input.source, context);
     if (!source.ok) {
         if (source.reason === 'aic_status_observation_future') {
             return { ok: false, reason: 'jwt_svid_source_status_future' };
@@ -940,9 +992,7 @@ export function projectAicJwtToStrictJwtSvid(input, context) {
         }
         return source;
     }
-    const carrier = inspectJwtCarrier(input.source);
-    if (!carrier)
-        return { ok: false, reason: 'aic_carrier_provenance_unverifiable' };
+    const carrier = source.carrier;
     const evaluatedAtMillis = Date.parse(context.evaluated_at);
     const issuedAtMillis = input.issued_at * 1_000;
     if (issuedAtMillis !== evaluatedAtMillis) {
@@ -1011,6 +1061,7 @@ export function projectAicJwtToStrictJwtSvid(input, context) {
             has_delegation_assertion: carrier.semantics.hasDelegationAssertion,
             confirmation_key_present: carrier.semantics.confirmationKeyPresent,
         }, `${AIC_JWT_SVID_PROJECTION_VERSION}:source-semantics`),
+        source_evaluation_digest: source.sourceEvaluationDigest,
     };
     const projectionDigest = digestAebTyped({
         protected_header: protectedHeader,

@@ -1,11 +1,10 @@
 import { type AebDigest } from './aeb-adapter-contract.js';
-import { type CrossingAuthorityMappingResult, type CrossingNativeStatus, type CrossingNativeVerification, type CrossingValidity } from './aeb-crossing-record.js';
-export declare const AIC_JWT_JKT_CROSSING_MAPPING_PROFILE = "EP-AEB-CROSSING-AIC-JWT-JKT-v1";
-export declare const AIC_X509_SPKI_CROSSING_MAPPING_PROFILE = "EP-AEB-CROSSING-AIC-X509-SPKI-v1";
+import { type AebCrossingRecord, type AebCrossingRecordDraft, type AebCrossingRecordIssueOptions, type CrossingAuthorityMappingResult, type CrossingNativeStatus, type CrossingNativeVerification, type CrossingValidity } from './aeb-crossing-record.js';
 export declare const AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE = "EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2";
 export declare const AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE = "EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2";
 export declare const AIC_ADMISSION_DOMAIN_VERSION = "EP-AIC-ADMISSION-DOMAIN-v1";
 export declare const AIC_JWT_SVID_PROJECTION_VERSION = "EP-AIC-JWT-SVID-PROJECTION-v1";
+export declare const AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE = "EP-AIC-JWT-SVID-SOURCE-VERIFICATION-v1";
 export declare const AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION = "EP-AIC-X509-CREDENTIAL-BUNDLE-v1";
 export declare const AIC_CROSSING_MAX_STATUS_AGE_SECONDS = 60;
 export type AicSpkiHashAlgorithm = 'sha-256';
@@ -98,10 +97,6 @@ export interface AicCrossingRelyingPartyContext {
     max_status_age_seconds: number;
     policy: AicCrossingRelyingPartyPolicy;
 }
-export interface AicCrossingRelyingPartyTemporalContext {
-    evaluated_at: string;
-    max_status_age_seconds: number;
-}
 export interface AicJwtJktCrossingInput extends AicCrossingCommonInput {
     carrier_provenance: AicJwtCarrierProvenance;
     principal_binding: AicRfc7638JktBinding;
@@ -116,6 +111,15 @@ export interface AicJwtJktBoundCrossingInput extends AicJwtJktCrossingInput {
 export interface AicX509SpkiBoundCrossingInput extends AicX509SpkiCrossingInput {
     request_binding: AicCrossingRequestBinding;
 }
+export type AicBoundCrossingInput = AicJwtJktBoundCrossingInput | AicX509SpkiBoundCrossingInput;
+export type AicBoundCrossingRecordDraft = Omit<AebCrossingRecordDraft, 'native_authority'>;
+export type AicBoundCrossingRecordIssueResult = {
+    ok: true;
+    record: AebCrossingRecord;
+} | {
+    ok: false;
+    reason: string;
+};
 export type AicJwtSvidProjectionPurpose = 'WORKLOAD_IDENTITY_ONLY' | 'AIC_AUTHORITY';
 export interface AicJwtSvidProjectionInput {
     source: AicJwtJktCrossingInput;
@@ -128,8 +132,14 @@ export interface AicJwtSvidProjectionInput {
     projected_algorithm: 'ES256' | 'RS256';
     projected_key_id: string;
 }
+export interface AicJwtSvidSourceVerificationPolicy {
+    source_verification_profile_id: typeof AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE;
+    source_verification_profile_digest: AebDigest;
+    trusted_issuer_trust_anchor_digests: AebDigest[];
+    native_verifier: AicNativeVerifierDescriptor;
+}
 export interface AicJwtSvidProjectionRelyingPartyContext {
-    relying_party_policy: AicCrossingRelyingPartyPolicy;
+    source_verification_policy: AicJwtSvidSourceVerificationPolicy;
     evaluated_at: string;
     max_status_age_seconds: number;
 }
@@ -153,6 +163,7 @@ export interface AicStrictJwtSvidProjection {
         issuer: string;
         token_digest: AebDigest;
         source_semantics_digest: AebDigest;
+        source_evaluation_digest: AebDigest;
     };
     purpose: 'WORKLOAD_IDENTITY_ONLY';
     omitted_source_members: string[];
@@ -169,10 +180,14 @@ export type AicJwtSvidProjectionResult = {
     ok: false;
     reason: string;
 };
-export declare function mapAicJwtJktCrossingAuthority(input: AicJwtJktCrossingInput, policy: AicCrossingRelyingPartyPolicy, temporalContext?: AicCrossingRelyingPartyTemporalContext): CrossingAuthorityMappingResult;
-export declare function mapAicX509SpkiCrossingAuthority(input: AicX509SpkiCrossingInput, policy: AicCrossingRelyingPartyPolicy, temporalContext?: AicCrossingRelyingPartyTemporalContext): CrossingAuthorityMappingResult;
 export declare function mapAicJwtJktBoundCrossingAuthority(input: AicJwtJktBoundCrossingInput, context: AicCrossingRelyingPartyContext): CrossingAuthorityMappingResult;
 export declare function mapAicX509SpkiBoundCrossingAuthority(input: AicX509SpkiBoundCrossingInput, context: AicCrossingRelyingPartyContext): CrossingAuthorityMappingResult;
+/**
+ * Maps a bound AIC result and issues its crossing record as one operation.
+ * The caller-supplied record action and boundary must exactly match the
+ * relying-party context before the generic signer is reached.
+ */
+export declare function issueAicBoundCrossingRecord(input: AicBoundCrossingInput, context: AicCrossingRelyingPartyContext, draft: AicBoundCrossingRecordDraft, options: AebCrossingRecordIssueOptions): Promise<AicBoundCrossingRecordIssueResult>;
 export declare function projectAicJwtToStrictJwtSvid(input: AicJwtSvidProjectionInput, context: AicJwtSvidProjectionRelyingPartyContext): AicJwtSvidProjectionResult;
 export {};
 //# sourceMappingURL=aeb-aic-crossing-adapter.d.ts.map

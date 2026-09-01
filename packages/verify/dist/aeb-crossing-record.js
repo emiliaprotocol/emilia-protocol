@@ -299,7 +299,6 @@ export function crossingRecordContractDigest(body) {
             validity: body.native_authority.validity,
         },
         requirement_profile: body.requirements.admission_digest,
-        relying_party: body.boundary.relying_party_id,
         audience: body.boundary.audience,
         executor: body.boundary.executor_id,
         state_domain: body.boundary.state_domain_id,

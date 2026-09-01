@@ -213,6 +213,7 @@ test("the v1 contract digest remains compatible across relying-party labels", ()
         },
     });
     assert.equal(finance, attacker);
+    assert.equal(finance, "sha256:0d17ad047e432fd235d60ae06ab6f819691d90dc3b09ecf553b33d4d2c0472fc");
 });
 test("signature stripping and algorithm-set narrowing both refuse", async () => {
     const record = await issue();

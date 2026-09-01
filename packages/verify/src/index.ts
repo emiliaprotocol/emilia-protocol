@@ -2390,16 +2390,14 @@ export {
 // new-signature-required identity projection and never authorizes an action.
 export {
   AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
-  AIC_JWT_JKT_CROSSING_MAPPING_PROFILE,
   AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE,
   AIC_JWT_SVID_PROJECTION_VERSION,
+  AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE,
   AIC_ADMISSION_DOMAIN_VERSION,
-  AIC_X509_SPKI_CROSSING_MAPPING_PROFILE,
   AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE,
-  mapAicJwtJktCrossingAuthority,
   mapAicJwtJktBoundCrossingAuthority,
-  mapAicX509SpkiCrossingAuthority,
   mapAicX509SpkiBoundCrossingAuthority,
+  issueAicBoundCrossingRecord,
   projectAicJwtToStrictJwtSvid,
 } from './aeb-aic-crossing-adapter.js';
 
