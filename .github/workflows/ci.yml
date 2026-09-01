@@ -805,6 +805,81 @@ jobs:
         working-directory: sdks/typescript
         run: npm test
 
+  # The SDK advertises Node >=18, while Vitest 4 intentionally requires Node
+  # 20+. Prove the consumer/runtime floor against the built package without
+  # weakening the normal Node 20 build, type-check, and unit-test lane above.
+  sdk-typescript-node18-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 18.20.8
+          cache: npm
+          cache-dependency-path: sdks/typescript/package-lock.json
+      - name: Install the locked SDK build graph
+        working-directory: sdks/typescript
+        run: npm ci --ignore-scripts
+      - name: Build, pack, and smoke-test the installed SDK
+        working-directory: sdks/typescript
+        shell: bash
+        run: |
+          npm run build
+          consumer_dir="$RUNNER_TEMP/emilia-sdk-node18-consumer"
+          mkdir -p "$consumer_dir"
+          npm pack --pack-destination "$consumer_dir"
+          shopt -s nullglob
+          tarballs=("$consumer_dir"/emilia-protocol-sdk-*.tgz)
+          test "${#tarballs[@]}" -eq 1
+          cd "$consumer_dir"
+          npm init --yes >/dev/null
+          npm install --ignore-scripts --no-audit --no-fund "${tarballs[0]}"
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFile } from 'node:fs/promises';
+          import path from 'node:path';
+          import { EPClient } from '@emilia-protocol/sdk';
+
+          assert.match(process.version, /^v18\./);
+          const packageMetadata = JSON.parse(
+            await readFile(
+              path.join(
+                process.cwd(),
+                'node_modules',
+                '@emilia-protocol',
+                'sdk',
+                'package.json',
+              ),
+              'utf8',
+            ),
+          );
+
+          const observed = {};
+          const fetchImpl = async (url, options) => {
+            observed.url = String(url);
+            observed.method = options.method;
+            observed.headers = options.headers;
+            return new Response(JSON.stringify({ status: 'ok' }), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            });
+          };
+
+          const client = new EPClient({
+            baseUrl: 'https://example.invalid/',
+            fetchImpl,
+          });
+          const result = await client.health();
+
+          assert.equal(result.status, 'ok');
+          assert.equal(observed.url, 'https://example.invalid/api/health');
+          assert.equal(observed.method, 'GET');
+          assert.equal(
+            observed.headers['User-Agent'],
+            `@emilia-protocol/sdk/${packageMetadata.version}`,
+          );
+          NODE
+
   # ── Job 11: Python SDK ──────────────────────────────────────────
   sdk-python:
     runs-on: ubuntu-latest
