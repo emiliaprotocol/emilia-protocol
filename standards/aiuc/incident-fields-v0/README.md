@@ -135,7 +135,7 @@ npx --yes --package ajv-cli@5.0.0 --package ajv-formats@2.1.1 \
 - [ ] Independent subject-matter review completed.
 - [x] Published in the public EMILIA Protocol repository under Apache-2.0.
 - [ ] AIUC-1 form submitted.
-- [ ] Public-link correction to Cristian Trout sent.
+- [x] Public-link correction to Cristian Trout sent on 2026-08-17.
 
 The unchecked items are external review and submission gates. They are not
 authorized by this package.
