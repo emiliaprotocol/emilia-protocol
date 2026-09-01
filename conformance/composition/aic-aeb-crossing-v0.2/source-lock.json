@@ -1,0 +1,148 @@
+{
+  "@version": "AIC-AEB-CROSSING-SOURCE-LOCK-v0.2",
+  "drafts": [
+    {
+      "name": "draft-wei-aic-jwt-00",
+      "url": "https://www.ietf.org/archive/id/draft-wei-aic-jwt-00.txt",
+      "sha256": "c103cb5d4c541c7aa30ee49e0c36d56ad3ac76f50ce73a39fd0be1109781bd3c",
+      "bounded_sections": [
+        "5 AIC-JWT Token Format",
+        "9 Principal Key Binding",
+        "11 Validation Algorithm",
+        "16 Compatibility with the Varwof Unified JWT Profile"
+      ]
+    },
+    {
+      "name": "draft-wei-aic-identity-cert-00",
+      "url": "https://www.ietf.org/archive/id/draft-wei-aic-identity-cert-00.txt",
+      "sha256": "169d2f4ae37b3448e955d8a0e0fde04ef43855b93e7aa1e8e3021fb4eba73b2e",
+      "bounded_sections": [
+        "5 AI Agent Identity Certificate Extension",
+        "8 Agent Authentication and Authorization",
+        "9 Security Considerations"
+      ]
+    }
+  ],
+  "inspection": {
+    "scope": {
+      "repository": "https://github.com/varwof/gateway-core",
+      "revision": "718d42ecdaf90a11ad882b5651fffdd2aeaeb417"
+    },
+    "gateway_bearer_bridge": {
+      "path": "jwt.go",
+      "verified_behavior": "VerifyBearer validates the compact AIC-JWT, then returns a bare synthesized *x509.Certificate plus parsed outer claims",
+      "verify_bearer_returns_synthesized_certificate": true,
+      "verify_bearer_returns_outer_claims": true,
+      "verify_bearer_sets_expected_audience": false,
+      "verify_bearer_sets_request_capability": false,
+      "verify_bearer_sets_principal_material": false,
+      "verify_bearer_sets_presenter_key": false,
+      "synthesized_certificate_sets_raw_der": false,
+      "synthesized_certificate_sets_raw_spki": false,
+      "synthesized_certificate_sets_public_key": false,
+      "authenticated_original_carrier_provenance_returned": false,
+      "non_test_verify_bearer_call_sites_observed": false,
+      "gateway_module_manifest_path": "go.mod",
+      "gateway_types_module_version": "v0.4.0",
+      "gateway_types_module_revision": "76f725ffc375ae7fda1f0255ea3e12a0074f6c4c",
+      "jwt_mapping_requires_original_compact_token": true,
+      "local_mapping_derives_compact_token_audience": true,
+      "local_mapping_derives_presented_jwk_thumbprint": true,
+      "local_mapping_proves_presenter_key_possession": false,
+      "separate_authenticated_capability_evaluation_required": true,
+      "synthesized_certificate_admissible_to_native_x509_mapping": false,
+      "local_boundary": "The synthesized object is not admissible to the native X.509/SPKI mapping; JWT/JKT mapping requires the original compact token"
+    },
+    "native_x509_bundle": {
+      "path": "credential_bundle.go",
+      "verified_behavior": "VerifyBundle requires nonempty agent and principal chain slots, verifies both chains, and compares the AIC principal key hash with the principal certificate SHA-256 SPKI",
+      "requires_nonempty_agent_and_principal_chains": true,
+      "enforces_distinct_agent_and_principal_leaf_der": false,
+      "compares_principal_key_hash_to_principal_certificate_spki": true,
+      "local_mapping_requires_exact_certificate_der": true,
+      "local_mapping_requires_distinct_agent_and_principal_der": true,
+      "principal_spki_hash_algorithm": "sha-256",
+      "local_boundary": "Native X.509 mapping requires exact agent and principal certificate DER and derives the bundle digest, agent serial, and principal SPKI hash from those bytes"
+    },
+    "upstream_wiring": {
+      "cross_process_authenticated_provenance_wrapper_required": true,
+      "deployed_wiring_verified": false,
+      "limit": "A tagged or authenticated verifier-result wrapper is still required to preserve carrier provenance across a Go or JSON process boundary"
+    }
+  },
+  "varwof": {
+    "repositories": [
+      {
+        "repository": "https://github.com/varwof/aic-jwt",
+        "revision": "a3499b07bbe858a79d95ab98f9134f44238cb8cf",
+        "inspected_files": [
+          {
+            "path": "ts/aicjwt.ts",
+            "url": "https://raw.githubusercontent.com/varwof/aic-jwt/a3499b07bbe858a79d95ab98f9134f44238cb8cf/ts/aicjwt.ts",
+            "sha256": "2e5c59b60ce86a309003be8f6e5df8aaeae96e81027b0c3a7cba9e561545c097"
+          }
+        ]
+      },
+      {
+        "repository": "https://github.com/varwof/types",
+        "revision": "683520cd8ae8596a297c24187d0137efe2b263fe",
+        "inspected_files": [
+          {
+            "path": "aicjwt/validate.go",
+            "url": "https://raw.githubusercontent.com/varwof/types/683520cd8ae8596a297c24187d0137efe2b263fe/aicjwt/validate.go",
+            "sha256": "9d85b2212d1ffbc4f76fc7d300d764f93845d6ced35636687619b476b742c9e3"
+          },
+          {
+            "path": "aicjwt/keyhash.go",
+            "url": "https://raw.githubusercontent.com/varwof/types/683520cd8ae8596a297c24187d0137efe2b263fe/aicjwt/keyhash.go",
+            "sha256": "e2fc32c4b17dc49323b92425484a808c19353f12a2554a1ed50f034fd433134e"
+          },
+          {
+            "path": "aicjwt/certjwk.go",
+            "url": "https://raw.githubusercontent.com/varwof/types/683520cd8ae8596a297c24187d0137efe2b263fe/aicjwt/certjwk.go",
+            "sha256": "20bd28626f1559c50a0683ded84f9425504d50a5775d538156965be2628cb3ed"
+          }
+        ]
+      },
+      {
+        "repository": "https://github.com/varwof/gateway-core",
+        "revision": "718d42ecdaf90a11ad882b5651fffdd2aeaeb417",
+        "inspected_files": [
+          {
+            "path": "credential_bundle.go",
+            "url": "https://raw.githubusercontent.com/varwof/gateway-core/718d42ecdaf90a11ad882b5651fffdd2aeaeb417/credential_bundle.go",
+            "sha256": "4c69c00e4e3f8f9ad8c7082f61b6bcee4ddb68ec250cef3eafce49fbc1bd4edc"
+          },
+          {
+            "path": "jwt.go",
+            "url": "https://raw.githubusercontent.com/varwof/gateway-core/718d42ecdaf90a11ad882b5651fffdd2aeaeb417/jwt.go",
+            "sha256": "d2ab9d638f8383aebc06c6244eb9451c23dfc8134450995582bae6f0a8cf3d9a"
+          },
+          {
+            "path": "go.mod",
+            "url": "https://raw.githubusercontent.com/varwof/gateway-core/718d42ecdaf90a11ad882b5651fffdd2aeaeb417/go.mod",
+            "sha256": "23e8b43e0ecbf537f273ded9558e9888425455d00272fe36c42436b3003eef2c"
+          }
+        ]
+      },
+      {
+        "repository": "https://github.com/varwof/types",
+        "revision": "76f725ffc375ae7fda1f0255ea3e12a0074f6c4c",
+        "resolved_module_version": "v0.4.0",
+        "consumed_by": "https://github.com/varwof/gateway-core@718d42ecdaf90a11ad882b5651fffdd2aeaeb417",
+        "inspected_files": [
+          {
+            "path": "aicjwt/validate.go",
+            "url": "https://raw.githubusercontent.com/varwof/types/76f725ffc375ae7fda1f0255ea3e12a0074f6c4c/aicjwt/validate.go",
+            "sha256": "9d85b2212d1ffbc4f76fc7d300d764f93845d6ced35636687619b476b742c9e3"
+          },
+          {
+            "path": "aicjwt/keyhash.go",
+            "url": "https://raw.githubusercontent.com/varwof/types/76f725ffc375ae7fda1f0255ea3e12a0074f6c4c/aicjwt/keyhash.go",
+            "sha256": "e2fc32c4b17dc49323b92425484a808c19353f12a2554a1ed50f034fd433134e"
+          }
+        ]
+      }
+    ]
+  }
+}
