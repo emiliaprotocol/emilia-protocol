@@ -18,7 +18,7 @@ const inputs = () => ({
 test('the committed Expo graph accepts only the current seven-day quarantine entries', () => {
   assert.deepEqual(
     verifyExpoQuarantine({ ...inputs(), now: new Date('2026-08-29T16:00:00Z') }),
-    ['expo', 'expo-asset', 'expo-secure-store', 'react-native'],
+    ['expo', 'expo-asset', 'expo-secure-store'],
   );
 });
 
