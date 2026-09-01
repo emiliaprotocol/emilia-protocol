@@ -2,18 +2,342 @@
 // SPDX-License-Identifier: Apache-2.0
 // Regenerates lib/proof-stats.json from ground truth or checks it in CI.
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   existsSync,
+  linkSync,
+  lstatSync,
+  mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
+  realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { constants, hostname, tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 
+const PROOF_STATS_LOCK_TIMEOUT_MS = 30 * 60 * 1000;
+const PROOF_STATS_LOCK_POLL_MS = 250;
+const PROOF_STATS_LOCK_VERSION = 1;
+const sleepArray = new Int32Array(new SharedArrayBuffer(4));
+
+interface ProofStatsLockOwner {
+  version: number;
+  token: string;
+  pid: number;
+  host: string;
+  processIdentity: string | null;
+  createdAt: string;
+  choosing: boolean;
+  ticket: number | null;
+}
+
+export interface ProofStatsRunLock {
+  queuePath: string;
+  release: () => boolean;
+}
+
+interface ProofStatsRunLockOptions {
+  cwd?: string;
+  timeoutMs?: number;
+  pollMs?: number;
+}
+
+function processIdentity(pid: number): string | null {
+  if (process.platform === "win32") return null;
+  const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], {
+    encoding: "utf8",
+    maxBuffer: 64 * 1024,
+    timeout: 2_000,
+  });
+  if (result.status !== 0 || result.error) return null;
+  const started = result.stdout.trim().replace(/\s+/g, " ");
+  return started || null;
+}
+
+function ownerIsLive(owner: ProofStatsLockOwner): boolean {
+  if (owner.host !== hostname()) return true;
+  try {
+    process.kill(owner.pid, 0);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ESRCH") return false;
+    return true;
+  }
+  const observedIdentity = processIdentity(owner.pid);
+  return !owner.processIdentity || !observedIdentity ||
+    owner.processIdentity === observedIdentity;
+}
+
+function readLockOwner(participantPath: string): ProofStatsLockOwner | null {
+  try {
+    const parsed = JSON.parse(
+      readFileSync(join(participantPath, "owner.json"), "utf8"),
+    ) as Partial<ProofStatsLockOwner>;
+    const token = participantPath.slice(participantPath.lastIndexOf("-") + 1);
+    if (
+      parsed.version !== PROOF_STATS_LOCK_VERSION ||
+      parsed.token !== token ||
+      !Number.isSafeInteger(parsed.pid) ||
+      (parsed.pid as number) < 1 ||
+      parsed.host !== hostname() ||
+      (parsed.processIdentity !== null &&
+        typeof parsed.processIdentity !== "string") ||
+      typeof parsed.createdAt !== "string" ||
+      typeof parsed.choosing !== "boolean" ||
+      (parsed.ticket !== null &&
+        (!Number.isSafeInteger(parsed.ticket) || (parsed.ticket as number) < 1))
+    ) {
+      return null;
+    }
+    return parsed as ProofStatsLockOwner;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    return null;
+  }
+}
+
+function writeLockOwner(participantPath: string, owner: ProofStatsLockOwner): void {
+  const ownerPath = join(participantPath, "owner.json");
+  const temporaryPath = join(
+    participantPath,
+    `.owner-${randomBytes(8).toString("hex")}.tmp`,
+  );
+  writeFileSync(temporaryPath, `${JSON.stringify(owner)}\n`, {
+    encoding: "utf8",
+    flag: "wx",
+    mode: 0o600,
+  });
+  renameSync(temporaryPath, ownerPath);
+}
+
+function lockParticipants(queuePath: string): string[] {
+  return readdirSync(queuePath)
+    .filter((name) => /^participant-[a-f0-9]{32}$/.test(name))
+    .sort()
+    .map((name) => join(queuePath, name));
+}
+
+export function resolveProofStatsLockQueue(cwd: string = process.cwd()): string {
+  const commonDirectory = spawnSync(
+    "git",
+    ["rev-parse", "--git-common-dir"],
+    {
+      cwd,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024,
+      timeout: 5_000,
+    },
+  );
+  if (commonDirectory.error || commonDirectory.status !== 0) {
+    throw new Error(
+      `proof-stats run lock could not resolve the shared Git directory: ${
+        commonDirectory.error?.message || commonDirectory.stderr || "unknown error"
+      }`,
+    );
+  }
+  const rawCommonDirectory = commonDirectory.stdout.trim();
+  if (!rawCommonDirectory) {
+    throw new Error("proof-stats run lock resolved an empty Git common directory");
+  }
+  const absoluteCommonDirectory = realpathSync(resolve(cwd, rawCommonDirectory));
+  const hostScope = createHash("sha256")
+    .update(hostname())
+    .digest("hex")
+    .slice(0, 16);
+  return join(
+    absoluteCommonDirectory,
+    "emilia-run-locks",
+    hostScope,
+    "proof-stats-run-v1",
+  );
+}
+
+export function acquireProofStatsRunLock({
+  cwd = process.cwd(),
+  timeoutMs = PROOF_STATS_LOCK_TIMEOUT_MS,
+  pollMs,
+}: ProofStatsRunLockOptions = {}): ProofStatsRunLock {
+  const effectivePollMs = pollMs ?? Math.min(
+    PROOF_STATS_LOCK_POLL_MS,
+    timeoutMs,
+  );
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) {
+    throw new Error("proof-stats run lock timeout must be a positive integer");
+  }
+  if (
+    !Number.isSafeInteger(effectivePollMs) ||
+    effectivePollMs < 1 ||
+    effectivePollMs > timeoutMs
+  ) {
+    throw new Error(
+      "proof-stats run lock poll interval must be a positive integer no greater than its timeout",
+    );
+  }
+
+  const queuePath = resolveProofStatsLockQueue(cwd);
+  mkdirSync(queuePath, { recursive: true, mode: 0o700 });
+  if (!lstatSync(queuePath).isDirectory()) {
+    throw new Error("proof-stats run lock queue is not a directory");
+  }
+  const versionPath = join(queuePath, ".version");
+  const versionStagingPath = join(
+    queuePath,
+    `.version-${randomBytes(16).toString("hex")}.tmp`,
+  );
+  writeFileSync(versionStagingPath, `${PROOF_STATS_LOCK_VERSION}\n`, {
+    encoding: "utf8",
+    flag: "wx",
+    mode: 0o600,
+  });
+  try {
+    linkSync(versionStagingPath, versionPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  } finally {
+    rmSync(versionStagingPath, { force: true });
+  }
+  try {
+    if (readFileSync(versionPath, "utf8") !== `${PROOF_STATS_LOCK_VERSION}\n`) {
+      throw new Error("proof-stats run lock queue has an unsupported version");
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error("proof-stats run lock queue lost its version marker");
+    }
+    throw error;
+  }
+
+  const token = randomBytes(16).toString("hex");
+  const participantPath = join(queuePath, `participant-${token}`);
+  const stagingPath = join(queuePath, `.staging-${token}`);
+  const owner: ProofStatsLockOwner = {
+    version: PROOF_STATS_LOCK_VERSION,
+    token,
+    pid: process.pid,
+    host: hostname(),
+    processIdentity: processIdentity(process.pid),
+    createdAt: new Date().toISOString(),
+    choosing: true,
+    ticket: null,
+  };
+  mkdirSync(stagingPath, { mode: 0o700 });
+  try {
+    writeLockOwner(stagingPath, owner);
+    renameSync(stagingPath, participantPath);
+  } catch (error) {
+    rmSync(stagingPath, { recursive: true, force: true });
+    throw error;
+  }
+
+  let released = false;
+  const releaseEntry = (): boolean => {
+    if (released) return false;
+    released = true;
+    process.removeListener("exit", onExit);
+    for (const [signal, listener] of signalListeners) {
+      process.removeListener(signal, listener);
+    }
+    const recorded = readLockOwner(participantPath);
+    if (recorded?.token === token) {
+      rmSync(participantPath, { recursive: true, force: true });
+    }
+    return true;
+  };
+  const onExit = (): void => {
+    const recorded = readLockOwner(participantPath);
+    if (recorded?.token === token) {
+      rmSync(participantPath, { recursive: true, force: true });
+    }
+  };
+  const signalListeners = new Map<NodeJS.Signals, () => void>();
+  for (const signal of ["SIGHUP", "SIGINT", "SIGTERM"] as NodeJS.Signals[]) {
+    const listener = (): void => {
+      releaseEntry();
+      process.exit(128 + constants.signals[signal]);
+    };
+    signalListeners.set(signal, listener);
+    process.once(signal, listener);
+  }
+  process.once("exit", onExit);
+
+  const started = process.hrtime.bigint();
+  const elapsedMs = (): number =>
+    Number((process.hrtime.bigint() - started) / 1_000_000n);
+  const describeOwner = (
+    contender: ProofStatsLockOwner | null,
+    participant: string,
+  ): string => contender
+    ? `live owner pid=${contender.pid} ticket=${contender.ticket ?? "choosing"} created_at=${contender.createdAt}`
+    : `unreadable owner entry ${participant.slice(participant.lastIndexOf("/") + 1)}`;
+
+  try {
+    let maxTicket = 0;
+    for (const participant of lockParticipants(queuePath)) {
+      if (participant === participantPath) continue;
+      const contender = readLockOwner(participant);
+      if (contender && !ownerIsLive(contender)) {
+        rmSync(participant, { recursive: true, force: true });
+        continue;
+      }
+      if (contender?.ticket) maxTicket = Math.max(maxTicket, contender.ticket);
+    }
+    if (!Number.isSafeInteger(maxTicket + 1)) {
+      throw new Error("proof-stats run lock ticket space is exhausted");
+    }
+    owner.choosing = false;
+    owner.ticket = maxTicket + 1;
+    writeLockOwner(participantPath, owner);
+
+    let blocker = "another owner";
+    while (elapsedMs() <= timeoutMs) {
+      blocker = "another owner";
+      let blocked = false;
+      for (const participant of lockParticipants(queuePath)) {
+        if (participant === participantPath) continue;
+        const contender = readLockOwner(participant);
+        if (contender && !ownerIsLive(contender)) {
+          rmSync(participant, { recursive: true, force: true });
+          continue;
+        }
+        if (!contender) {
+          blocked = true;
+          blocker = describeOwner(null, participant);
+          break;
+        }
+        if (
+          contender.choosing ||
+          contender.ticket === null ||
+          contender.ticket < owner.ticket ||
+          (contender.ticket === owner.ticket && contender.token < owner.token)
+        ) {
+          blocked = true;
+          blocker = describeOwner(contender, participant);
+          break;
+        }
+      }
+      if (!blocked) {
+        return { queuePath, release: releaseEntry };
+      }
+      const remaining = timeoutMs - elapsedMs();
+      if (remaining <= 0) break;
+      Atomics.wait(sleepArray, 0, 0, Math.min(effectivePollMs, remaining));
+    }
+    throw new Error(
+      `proof-stats run lock timed out after ${timeoutMs}ms; ${blocker}`,
+    );
+  } catch (error) {
+    releaseEntry();
+    throw error;
+  }
+}
+
+function generateProofStats(): void {
 const check: boolean = process.argv.includes("--check");
 const bootstrapDerivedEvidence: boolean = process.argv.includes(
   "--bootstrap-derived-evidence",
@@ -504,4 +828,15 @@ if (check) {
 } else {
   writeFileSync("lib/proof-stats.json", `${JSON.stringify(stats, null, 2)}\n`);
   console.log(stats);
+}
+}
+
+const scriptPath = fileURLToPath(import.meta.url);
+if (process.argv[1] && resolve(process.argv[1]) === scriptPath) {
+  const proofStatsRunLock = acquireProofStatsRunLock();
+  try {
+    generateProofStats();
+  } finally {
+    proofStatsRunLock.release();
+  }
 }
