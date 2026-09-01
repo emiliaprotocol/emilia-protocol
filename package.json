@@ -197,7 +197,7 @@
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.2",
     "@supabase/supabase-js": "^2.112.3",
-    "@xmldom/xmldom": "0.8.15",
+    "@xmldom/xmldom": "0.9.12",
     "cbor": "10.0.12",
     "cbor-x": "^1.6.4",
     "jose": "^6.2.3",
