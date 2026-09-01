@@ -6,7 +6,8 @@ import crypto from 'node:crypto';
 import test from 'node:test';
 import { digestAebTyped } from './dist/aeb-adapter-contract.js';
 import * as aicAdapterSurface from './dist/aeb-aic-crossing-adapter.js';
-import { AIC_CROSSING_MAX_STATUS_AGE_SECONDS, AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE, AIC_JWT_SVID_PROJECTION_VERSION, AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE, AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE, AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION, mapAicJwtJktBoundCrossingAuthority, mapAicX509SpkiBoundCrossingAuthority, projectAicJwtToStrictJwtSvid, } from './dist/aeb-aic-crossing-adapter.js';
+import { AIC_CROSSING_MAX_STATUS_AGE_SECONDS, AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE, AIC_JWT_SVID_PROJECTION_VERSION, AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE, AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE, AIC_X509_CREDENTIAL_BUNDLE_DIGEST_VERSION, issueAicBoundCrossingRecord, mapAicJwtJktBoundCrossingAuthority, mapAicX509SpkiBoundCrossingAuthority, projectAicJwtToStrictJwtSvid, } from './dist/aeb-aic-crossing-adapter.js';
+import { ML_DSA_65_SECRET_KEY_BYTES, ML_DSA_65_SIGNATURE_BYTES, } from './dist/pq-signature-agility.js';
 const NOW = '2026-09-01T07:00:00Z';
 const DIGEST = (octet) => `sha256:${octet.repeat(32)}`;
 const TRUST_ANCHOR = DIGEST('11');
@@ -361,6 +362,34 @@ test('bound JWT validity must equal the signed compact-token temporal envelope',
         },
     }, boundContext());
     assert.deepEqual(result, { ok: false, reason: 'aic_jwt_validity_mismatch' });
+});
+test('bound JWT expiration is exclusive while X.509 notAfter remains inclusive', () => {
+    const evaluatedAt = '2026-09-01T07:05:00Z';
+    const jwtAtExpiration = mapAicJwtJktBoundCrossingAuthority({
+        ...boundJwtInput(),
+        status: {
+            ...boundJwtInput().status,
+            checked_at: evaluatedAt,
+        },
+    }, {
+        ...boundContext(),
+        evaluated_at: evaluatedAt,
+    });
+    assert.deepEqual(jwtAtExpiration, {
+        ok: false,
+        reason: 'aic_validity_window_mismatch',
+    });
+    const x509AtNotAfter = mapAicX509SpkiBoundCrossingAuthority({
+        ...boundX509Input(),
+        status: {
+            ...boundX509Input().status,
+            checked_at: evaluatedAt,
+        },
+    }, {
+        ...boundContext(x509Policy()),
+        evaluated_at: evaluatedAt,
+    });
+    assert.equal(x509AtNotAfter.ok, true, JSON.stringify(x509AtNotAfter));
 });
 test('pure-JSON RFC 7638 jkt and X.509 SPKI remain distinct native mappings', () => {
     const jwt = mapAicJwtJktBoundCrossingAuthority(boundJwtInput(), boundContext());
@@ -730,6 +759,97 @@ test('AIC bound issuance refuses an action or boundary mismatch before signing',
         ok: false,
         reason: 'aic_crossing_issue_admission_domain_mismatch',
     });
+});
+test('AIC issuance snapshots trusted state and signing options before hostile input', async () => {
+    const mismatchContext = structuredClone(boundContext());
+    const mismatchDraft = structuredClone(boundIssueDraft());
+    mismatchDraft.boundary.relying_party_id = 'rp:other-company';
+    const mismatchOptions = { signing_keys: [] };
+    const accessorInput = structuredClone(boundJwtInput());
+    let getterCalls = 0;
+    Object.defineProperty(accessorInput, 'native_verification', {
+        enumerable: true,
+        configurable: true,
+        get() {
+            getterCalls += 1;
+            mismatchContext.admission_domain.relying_party_id =
+                mismatchDraft.boundary.relying_party_id;
+            accessorInput.request_binding.projected_admission_domain_digest =
+                digestAebTyped(mismatchContext.admission_domain, 'EP-AIC-ADMISSION-DOMAIN-v1');
+            mismatchOptions.signing_keys.length = 0;
+            return 'VERIFIED';
+        },
+    });
+    const mismatch = await issueAicBoundCrossingRecord(accessorInput, mismatchContext, mismatchDraft, mismatchOptions);
+    assert.deepEqual(mismatch, {
+        ok: false,
+        reason: 'aic_crossing_issue_admission_domain_mismatch',
+    });
+    assert.equal(getterCalls, 0, 'trusted mismatch must refuse without invoking input accessors');
+    const context = structuredClone(boundContext());
+    const draft = structuredClone(boundIssueDraft());
+    const pqPrivateKey = new Uint8Array(ML_DSA_65_SECRET_KEY_BYTES).fill(7);
+    const { privateKey: ed25519PrivateKey } = crypto.generateKeyPairSync('ed25519');
+    let backendCalls = 0;
+    let observedPrivateKeyByte = -1;
+    let observedDeterministic = false;
+    const originalBackend = {
+        sign(_message, privateKey, options) {
+            backendCalls += 1;
+            observedPrivateKeyByte = privateKey[0] ?? -1;
+            observedDeterministic = options?.extraEntropy === false;
+            return new Uint8Array(ML_DSA_65_SIGNATURE_BYTES).fill(1);
+        },
+        verify() {
+            return true;
+        },
+    };
+    const signingOptions = {
+        signing_keys: [
+            {
+                alg: 'Ed25519',
+                private_key: ed25519PrivateKey,
+                key_id: 'aic-test-ed25519',
+            },
+            {
+                alg: 'ML-DSA-65',
+                private_key: pqPrivateKey,
+                key_id: 'aic-test-ml-dsa-65',
+            },
+        ],
+        deterministic: true,
+        mldsaBackend: originalBackend,
+    };
+    let proxyTrapCalls = 0;
+    const proxiedInput = new Proxy(structuredClone(boundJwtInput()), {
+        getPrototypeOf(target) {
+            proxyTrapCalls += 1;
+            context.admission_domain.relying_party_id = 'rp:mutated-after-snapshot';
+            draft.boundary.relying_party_id = 'rp:mutated-after-snapshot';
+            pqPrivateKey.fill(9);
+            signingOptions.signing_keys.length = 0;
+            signingOptions.deterministic = false;
+            signingOptions.mldsaBackend = {
+                sign() {
+                    throw new Error('mutated backend must not run');
+                },
+                verify() {
+                    return false;
+                },
+            };
+            return Reflect.getPrototypeOf(target);
+        },
+    });
+    const issued = await issueAicBoundCrossingRecord(proxiedInput, context, draft, signingOptions);
+    assert.equal(issued.ok, true, JSON.stringify(issued));
+    if (!issued.ok)
+        return;
+    assert.ok(proxyTrapCalls > 0);
+    assert.equal(issued.record.body.boundary.relying_party_id, ADMISSION_DOMAIN.relying_party_id);
+    assert.equal(issued.record.body.action.action_digest, ACTION.action_digest);
+    assert.equal(backendCalls, 1);
+    assert.equal(observedPrivateKeyByte, 7, 'ML-DSA key bytes must be copied before input inspection');
+    assert.equal(observedDeterministic, true, 'deterministic signing option must be snapshotted');
 });
 test('native failure short-circuits carrier parsing after structural validation', () => {
     assert.deepEqual(mapAicJwtJktBoundCrossingAuthority({
