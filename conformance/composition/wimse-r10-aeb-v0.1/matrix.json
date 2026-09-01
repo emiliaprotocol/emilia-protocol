@@ -31,7 +31,7 @@
         "acting_for_principal": "absent",
         "offline_verifiability": "full_native_verification",
         "execution_time_required_evidence": "absent",
-        "monotonic_non_droppable_carriage": "undefined_extension_point",
+        "monotonic_non_droppable_carriage": "registered_constraint_definition_required",
         "at_most_once_local_admission": "explicit_side_effect_free",
         "consume_only_on_admission": "absent",
         "indeterminate_state": "binary_permit_deny",
@@ -55,13 +55,13 @@
         "acting_for_principal": "The token fields identify issuer, subject, audience, and holder. They do not define an invariant acting-for principal across the chain.",
         "offline_verifiability": "Section 6 defines deterministic offline chain verification with cached status material.",
         "execution_time_required_evidence": "The current token format defines no execution-time human-authorization designation or required evidence object.",
-        "monotonic_non_droppable_carriage": "The attenuation algorithm could host a separately specified extension, but the current draft gives required evidence no field or subsumption rule.",
+        "monotonic_non_droppable_carriage": "Section 4.2 rules 2 and 3 already require every parent constraint to remain present and narrow monotonically, while Sections 4.1 and 10 make unknown constraint types fail closed. The draft defines no R10 required-evidence constraint or its value semantics, so that definition requires an external profile.",
         "at_most_once_local_admission": "The verification algorithm is explicitly side-effect free. Holder binding mitigates theft but is not a one-use admission store.",
         "consume_only_on_admission": "No reliance-unit consumption lifecycle is defined.",
         "indeterminate_state": "The algorithm permits or denies and does not preserve a typed post-dispatch unknown state.",
         "no_blind_retry": "The draft does not bind retry behavior to an unresolved admitted operation."
       },
-      "anchors": ["Section 3", "Section 4", "Section 6", "Section 7"]
+      "anchors": ["Section 3", "Section 4", "Section 6", "Section 7", "Section 10"]
     },
     {
       "id": "HAMR-ADP-00",

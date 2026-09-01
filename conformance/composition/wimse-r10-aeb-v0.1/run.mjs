@@ -102,7 +102,7 @@ const GRADE_BY_SIGNAL = Object.freeze({
     host_required_human_evidence: 'MET',
   }),
   monotonic_non_droppable_carriage: Object.freeze({
-    undefined_extension_point: 'EXTERNAL_PROFILE_REQUIRED',
+    registered_constraint_definition_required: 'EXTERNAL_PROFILE_REQUIRED',
     closed_vocabulary: 'NOT_SUPPORTED',
     single_hop_required_reference: 'PARTIAL',
     absent: 'NOT_MET',

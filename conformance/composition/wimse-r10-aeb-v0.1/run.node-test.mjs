@@ -50,6 +50,10 @@ test('native rows keep unsupported and external-profile results visible', () => 
     asor.criteria.monotonic_non_droppable_carriage.actual,
     'EXTERNAL_PROFILE_REQUIRED',
   );
+  assert.equal(
+    asor.criteria.monotonic_non_droppable_carriage.signal,
+    'registered_constraint_definition_required',
+  );
 
   const hamr = matrixRow('HAMR-ADP-00');
   assert.equal(

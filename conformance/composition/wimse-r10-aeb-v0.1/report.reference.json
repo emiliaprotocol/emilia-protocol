@@ -11,7 +11,7 @@
   },
   "source_pins": {
     "source_lock_digest": "sha256:b60ac2ab4e58191bd189849fccdf0f325af7bf330c34918dc983955eff137721",
-    "matrix_digest": "sha256:efe2a10e05148cf8f4d0f4f361fa9ca958c31a3b2486b113bf14771a2195161b",
+    "matrix_digest": "sha256:b84093517146ac7c0c37369c4c71e854d2233ccceb56f9b5ab24e4b616e10bbb",
     "vectors_digest": "sha256:9acf7cb90be47c6aef8b37ba384a213945f3c02d233ab09fe4d26bfca9e2eaec",
     "requirements_revision": "draft-reece-wimse-cross-org-delegation-02",
     "requirements_sha256": "26dca19bc9c4c284b0c2fcdeab9f2abf9231397b9f6df87cb44f2fcc3adf5186",
@@ -79,7 +79,7 @@
             "pass": true
           },
           "monotonic_non_droppable_carriage": {
-            "signal": "undefined_extension_point",
+            "signal": "registered_constraint_definition_required",
             "expected": "EXTERNAL_PROFILE_REQUIRED",
             "actual": "EXTERNAL_PROFILE_REQUIRED",
             "pass": true
@@ -1132,5 +1132,5 @@
       }
     }
   ],
-  "report_digest": "sha256:5c0b64a3f44fec2e194e38920f4c9f7b8f85f995a64e68fdf7a6a9288f04c2b4"
+  "report_digest": "sha256:9db2c17041a17818b3facf7f2f6a443fb346cdfe7077c65868351bcf3536f4b5"
 }
