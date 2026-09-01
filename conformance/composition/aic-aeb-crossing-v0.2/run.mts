@@ -477,7 +477,6 @@ async function issue(
     { signing_keys: [...SIGNERS], deterministic: true, mldsaBackend },
   );
   assert.equal(issued.ok, true, JSON.stringify(issued));
-  if (!issued.ok) throw new Error(issued.reason);
   return issued.record;
 }
 

@@ -350,8 +350,6 @@ function crossingDraft(recordId) {
 async function issue(input, context, recordId) {
     const issued = await issueAicBoundCrossingRecord(input, context, crossingDraft(recordId), { signing_keys: [...SIGNERS], deterministic: true, mldsaBackend });
     assert.equal(issued.ok, true, JSON.stringify(issued));
-    if (!issued.ok)
-        throw new Error(issued.reason);
     return issued.record;
 }
 async function verify(value) {
