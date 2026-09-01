@@ -21,7 +21,7 @@
  * projection is never an AIC authority decision.
  */
 import crypto, { X509Certificate } from 'node:crypto';
-import { digestAebTyped, } from './aeb-adapter-contract.js';
+import { canonicalizeAeb, digestAebTyped, } from './aeb-adapter-contract.js';
 import { issueAebCrossingRecord, } from './aeb-crossing-record.js';
 export const AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE = 'EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2';
 export const AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE = 'EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2';
@@ -135,6 +135,17 @@ const PROJECTION_SOURCE_POLICY_KEYS = new Set([
     'source_verification_profile_digest',
     'trusted_issuer_trust_anchor_digests',
     'native_verifier',
+]);
+const ISSUE_OPTION_KEYS = new Set([
+    'signing_keys',
+    'mldsaBackend',
+    'mldsaBackendLoader',
+    'deterministic',
+]);
+const ISSUE_SIGNING_KEY_KEYS = new Set([
+    'alg',
+    'private_key',
+    'key_id',
 ]);
 const NATIVE_VERIFICATIONS = new Set([
     'VERIFIED',
@@ -586,11 +597,17 @@ function freshnessProfileDisposition(seconds) {
         ? null
         : 'aic_status_freshness_profile_mismatch';
 }
-function jwtValidityDisposition(input, carrier) {
+function jwtValidityDisposition(input, carrier, evaluatedAt) {
     const signedNotBefore = (carrier.notBefore ?? carrier.issuedAt) * 1_000;
+    const signedExpiration = carrier.expiresAt * 1_000;
     if (Date.parse(input.validity.not_before) !== signedNotBefore
-        || Date.parse(input.validity.not_after) !== carrier.expiresAt * 1_000) {
+        || Date.parse(input.validity.not_after) !== signedExpiration) {
         return 'aic_jwt_validity_mismatch';
+    }
+    // JWT exp is an exclusive boundary: the token is invalid at the instant
+    // represented by exp, even though X.509 notAfter remains inclusive here.
+    if (Date.parse(evaluatedAt) >= signedExpiration) {
+        return 'aic_validity_window_mismatch';
     }
     return null;
 }
@@ -714,7 +731,7 @@ export function mapAicJwtJktBoundCrossingAuthority(input, context) {
     if (carrier.presentedKeyHash !== input.principal_binding.presented_key_hash) {
         return { ok: false, reason: 'aic_principal_binding_mismatch' };
     }
-    const jwtValidity = jwtValidityDisposition(input, carrier);
+    const jwtValidity = jwtValidityDisposition(input, carrier, context.evaluated_at);
     if (jwtValidity)
         return { ok: false, reason: jwtValidity };
     if (!carrier.audiences.includes(context.admission_domain.audience)) {
@@ -807,19 +824,122 @@ function sameAdmissionDomain(left, right) {
         && left.executor_id === right.executor_id
         && left.state_domain_id === right.state_domain_id;
 }
+function snapshotAicJson(value) {
+    return JSON.parse(canonicalizeAeb(value));
+}
+function dataRecordValues(value, allowed, required) {
+    if (!isRecord(value))
+        return null;
+    const keys = Reflect.ownKeys(value);
+    if (keys.some((key) => typeof key !== 'string' || !allowed.has(key))) {
+        return null;
+    }
+    const out = {};
+    for (const key of keys) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+            return null;
+        }
+        out[key] = descriptor.value;
+    }
+    return [...required].every((key) => Object.hasOwn(out, key)) ? out : null;
+}
+function dataArrayValues(value) {
+    if (!Array.isArray(value))
+        return null;
+    const keys = Reflect.ownKeys(value);
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    if (!lengthDescriptor || !('value' in lengthDescriptor)
+        || !Number.isSafeInteger(lengthDescriptor.value)
+        || lengthDescriptor.value < 0) {
+        return null;
+    }
+    const length = Number(lengthDescriptor.value);
+    const expected = new Set([
+        'length',
+        ...Array.from({ length }, (_, index) => String(index)),
+    ]);
+    if (keys.some((key) => typeof key !== 'string' || !expected.has(key))
+        || keys.length !== expected.size) {
+        return null;
+    }
+    const out = [];
+    for (let index = 0; index < length; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+            return null;
+        }
+        out.push(descriptor.value);
+    }
+    return out;
+}
+function snapshotIssueOptions(options) {
+    const fields = dataRecordValues(options, ISSUE_OPTION_KEYS, new Set(['signing_keys']));
+    if (!fields)
+        return null;
+    const presentedKeys = dataArrayValues(fields.signing_keys);
+    if (!presentedKeys)
+        return null;
+    const signingKeys = [];
+    for (const presented of presentedKeys) {
+        const key = dataRecordValues(presented, ISSUE_SIGNING_KEY_KEYS, new Set(['alg', 'private_key']));
+        if (!key || typeof key.alg !== 'string')
+            return null;
+        const presentedPrivateKey = key.private_key;
+        let privateKey;
+        if (presentedPrivateKey instanceof Uint8Array) {
+            privateKey = new Uint8Array(presentedPrivateKey);
+        }
+        else if (typeof presentedPrivateKey === 'string'
+            || presentedPrivateKey instanceof crypto.KeyObject) {
+            privateKey = presentedPrivateKey;
+        }
+        else {
+            return null;
+        }
+        if (Object.hasOwn(key, 'key_id') && typeof key.key_id !== 'string') {
+            return null;
+        }
+        signingKeys.push({
+            alg: key.alg,
+            private_key: privateKey,
+            ...(typeof key.key_id === 'string' ? { key_id: key.key_id } : {}),
+        });
+    }
+    const snapshot = { signing_keys: signingKeys };
+    if (Object.hasOwn(fields, 'deterministic')) {
+        if (typeof fields.deterministic !== 'boolean')
+            return null;
+        snapshot.deterministic = fields.deterministic;
+    }
+    if (Object.hasOwn(fields, 'mldsaBackend')) {
+        if (fields.mldsaBackend !== null
+            && fields.mldsaBackend !== undefined
+            && typeof fields.mldsaBackend !== 'object') {
+            return null;
+        }
+        snapshot.mldsaBackend = fields.mldsaBackend;
+    }
+    if (Object.hasOwn(fields, 'mldsaBackendLoader')) {
+        if (fields.mldsaBackendLoader !== undefined
+            && typeof fields.mldsaBackendLoader !== 'function') {
+            return null;
+        }
+        snapshot.mldsaBackendLoader = fields.mldsaBackendLoader;
+    }
+    return snapshot;
+}
 /**
  * Maps a bound AIC result and issues its crossing record as one operation.
  * The caller-supplied record action and boundary must exactly match the
  * relying-party context before the generic signer is reached.
  */
 export async function issueAicBoundCrossingRecord(input, context, draft, options) {
-    let inputSnapshot;
     let contextSnapshot;
     let draftSnapshot;
     try {
-        inputSnapshot = structuredClone(input);
-        contextSnapshot = structuredClone(context);
-        draftSnapshot = structuredClone(draft);
+        contextSnapshot = snapshotAicJson(context);
+        draftSnapshot = snapshotAicJson(draft);
     }
     catch {
         return { ok: false, reason: 'aic_crossing_issue_input_invalid' };
@@ -838,6 +958,18 @@ export async function issueAicBoundCrossingRecord(input, context, draft, options
             ok: false,
             reason: 'aic_crossing_issue_admission_domain_mismatch',
         };
+    }
+    let optionsSnapshot;
+    let inputSnapshot;
+    try {
+        optionsSnapshot = snapshotIssueOptions(options);
+        inputSnapshot = snapshotAicJson(input);
+    }
+    catch {
+        return { ok: false, reason: 'aic_crossing_issue_input_invalid' };
+    }
+    if (!optionsSnapshot) {
+        return { ok: false, reason: 'aic_crossing_issue_input_invalid' };
     }
     if (!isRecord(inputSnapshot) || !isRecord(inputSnapshot.principal_binding)) {
         return { ok: false, reason: 'mapping_input_invalid' };
@@ -859,7 +991,7 @@ export async function issueAicBoundCrossingRecord(input, context, draft, options
         native_authority: mapped.authority,
         action: structuredClone(contextSnapshot.action),
         boundary: structuredClone(contextSnapshot.admission_domain),
-    }, options);
+    }, optionsSnapshot);
     return { ok: true, record };
 }
 function spiffeId(value) {
@@ -922,7 +1054,7 @@ function verifyAicJwtProjectionSource(input, context) {
             !== input.principal_binding.presented_key_hash) {
         return { ok: false, reason: 'aic_principal_binding_mismatch' };
     }
-    const jwtValidity = jwtValidityDisposition(input, carrier);
+    const jwtValidity = jwtValidityDisposition(input, carrier, context.evaluated_at);
     if (jwtValidity)
         return { ok: false, reason: jwtValidity };
     const trust = projectionSourceTrustDisposition(input, context.source_verification_policy);

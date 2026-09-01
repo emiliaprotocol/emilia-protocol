@@ -379,6 +379,30 @@ test('bound JWT expiration is exclusive while X.509 notAfter remains inclusive',
         ok: false,
         reason: 'aic_validity_window_mismatch',
     });
+    const projectionAtExpiration = projectAicJwtToStrictJwtSvid({
+        source: {
+            ...jwtInput(),
+            status: {
+                ...jwtInput().status,
+                checked_at: evaluatedAt,
+            },
+        },
+        purpose: 'WORKLOAD_IDENTITY_ONLY',
+        audience: ['spiffe://services.example/payment-gate'],
+        issued_at: 1788246000,
+        not_before: 1788245940,
+        expires_at: 1788246240,
+        token_id: 'jwt-svid-projection-source-at-expiration',
+        projected_algorithm: 'ES256',
+        projected_key_id: 'jwt-svid-key-2026-08',
+    }, {
+        ...projectionContext(),
+        evaluated_at: evaluatedAt,
+    });
+    assert.deepEqual(projectionAtExpiration, {
+        ok: false,
+        reason: 'jwt_svid_source_validity_mismatch',
+    });
     const x509AtNotAfter = mapAicX509SpkiBoundCrossingAuthority({
         ...boundX509Input(),
         status: {
