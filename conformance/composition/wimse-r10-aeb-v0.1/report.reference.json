@@ -79,7 +79,7 @@
             "pass": true
           },
           "monotonic_non_droppable_carriage": {
-            "signal": "undefined_extension_point",
+            "signal": "registered_constraint_definition_required",
             "expected": "EXTERNAL_PROFILE_REQUIRED",
             "actual": "EXTERNAL_PROFILE_REQUIRED",
             "pass": true
