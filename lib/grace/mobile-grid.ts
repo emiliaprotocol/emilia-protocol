@@ -16,7 +16,12 @@ import {
   normalizeControlledMobilePresentation,
   projectMobileAction,
 } from '../../packages/mobile/presentation.js';
-import { checkOrderWithinEnvelope, computeCompliance, runSettlementOnce } from './curtailment.js';
+import {
+  checkOrderWithinEnvelope,
+  computeCompliance,
+  isGraceCustodyStore,
+  runSettlementOnce,
+} from './curtailment.js';
 import {
   FORECAST_EVIDENCE_VERSION,
   assessForecastForGrace,
@@ -697,11 +702,27 @@ export function verifyActionStateSignedStatement(statement: any, { publicKeySpki
   }
 }
 
-export async function runCurtailmentOnce(key: string, store: any, execute: Function): Promise<any> {
-  if (typeof key !== 'string' || !key || !store || store.durable !== true
-      || store.ownershipFenced !== true || typeof store.reserve !== 'function'
+/**
+ * Physical dispatch boundary: reserve the idempotency key, curtail once, and
+ * permanently commit. The store must carry the full GRACE custody contract
+ * (durable + ownershipFenced + permanentConsumption; see isGraceCustodyStore
+ * in ./curtailment.ts). permanentConsumption was previously unchecked, so a
+ * store whose keys reopen on a TTL could dispatch the same curtailment twice.
+ * `allowEphemeralState: true` is the explicit demo/test opt-out and must never
+ * be set on a real grid dispatch.
+ */
+export async function runCurtailmentOnce(
+  key: string,
+  store: any,
+  execute: Function,
+  { allowEphemeralState = false }: { allowEphemeralState?: boolean } = {},
+): Promise<any> {
+  if (typeof key !== 'string' || !key || !store || typeof store.reserve !== 'function'
       || typeof store.commit !== 'function' || typeof execute !== 'function') {
     return { executed: false, reason: 'execution_store_missing' };
+  }
+  if (allowEphemeralState !== true && !isGraceCustodyStore(store)) {
+    return { executed: false, reason: 'execution_store_custody_insufficient' };
   }
   let reserved;
   try {
@@ -750,7 +771,18 @@ export async function executeGraceCurtailment({
   developer = 'cosa-reference-adapter/1.0',
   capsuleSigner,
   clock = () => new Date().toISOString(),
+  allowEphemeralState = false,
 }: any = {}): Promise<any> {
+  // Ephemeral consumption state is a DEMO capability. Both effects below this
+  // point are irreversible in the real world (a grid dispatch and a payout), so
+  // the opt-out is refused outright when the process says it is production.
+  if (allowEphemeralState === true && process.env.NODE_ENV === 'production') {
+    return {
+      ok: false,
+      verdict: 'refuse_ephemeral_state',
+      reason: 'ephemeral consumption state is a demo-only capability and is refused in production',
+    };
+  }
   const actionResult = actionAsEnvelopeOrder(action);
   if (!actionResult.valid) return { ok: false, verdict: 'refuse_action', reason: actionResult.reason };
   let gateAt;
@@ -834,6 +866,18 @@ export async function executeGraceCurtailment({
       || typeof settlementStore.commit !== 'function' || typeof settle !== 'function') {
     return { ok: false, verdict: 'refuse_adapter_unavailable', reason: 'pinned actuator and meter adapters are required' };
   }
+  // Both consumption stores gate an irreversible effect, so both must carry the
+  // fleet custody contract before anything is dispatched. Checked HERE, before
+  // the dispatch, so a settlement store that cannot hold custody refuses the
+  // whole run instead of surfacing after the physical curtailment already fired.
+  if (allowEphemeralState !== true
+      && (!isGraceCustodyStore(executionStore) || !isGraceCustodyStore(settlementStore))) {
+    return {
+      ok: false,
+      verdict: 'refuse_consumption_custody',
+      reason: 'execution and settlement consumption stores must be durable, ownership-fenced and permanently consuming',
+    };
+  }
   const requestBody = {
     '@version': GRACE_DISPATCH_VERSION,
     action,
@@ -849,7 +893,12 @@ export async function executeGraceCurtailment({
   const requestDigest = graceDigest(requestBody);
   let dispatched;
   try {
-    dispatched = await runCurtailmentOnce(requestBody.idempotency_key, executionStore, () => actuator.dispatch(requestBody));
+    dispatched = await runCurtailmentOnce(
+      requestBody.idempotency_key,
+      executionStore,
+      () => actuator.dispatch(requestBody),
+      { allowEphemeralState },
+    );
   } catch (error) {
     return {
       ok: false,
@@ -1022,7 +1071,7 @@ export async function executeGraceCurtailment({
     meter_window_digest: meterDigest,
   };
   const settlement = compliance.compliant && outcomeBinding.outcome === 'in_bounds'
-    ? await runSettlementOnce(settlementClaim, settlementStore, settle)
+    ? await runSettlementOnce(settlementClaim, settlementStore, settle, { allowEphemeralState })
     : { settled: false, reason: 'curtailment_under_delivered', key: null };
   const canonicalCompliance = {
     ordered_mw: Number(compliance.ordered_mw).toFixed(3),

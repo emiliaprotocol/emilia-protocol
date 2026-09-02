@@ -6,7 +6,7 @@ import { buildMobileActionIdentity, buildMobileAuthorizationContext, hashCanonic
 import { FLEX_ENVELOPE_VERSION } from "../../../lib/grace/curtailment.js";
 import { buildGraceOutcomePredictions, buildCurtailmentControlledAction, buildCurtailmentPresentation, createCurtailmentAction, executeGraceCurtailment, graceDigest, verifyGraceMobileAuthorization, } from "../../../lib/grace/mobile-grid.js";
 import { predictedEffectsDigest } from "../../../packages/verify/effect-predicates.js";
-import { createCosaReferenceActuator, createFencedMemoryStore, createReferenceMeter, } from "../../../lib/grace/reference-adapters.js";
+import { createCosaReferenceActuator, createEphemeralMemoryStore, createReferenceMeter, } from "../../../lib/grace/reference-adapters.js";
 const RP_ID = "www.emiliaprotocol.ai";
 const ORIGIN = "https://www.emiliaprotocol.ai";
 const PROFILE_HASH = `sha256:${"9".repeat(64)}`;
@@ -208,8 +208,11 @@ function runtime() {
             baselineMw: "64.000",
             clock: () => METER_TIME,
         }),
-        executionStore: createFencedMemoryStore(),
-        settlementStore: createFencedMemoryStore(),
+        // Refinement harness: process-local consumption stores that report their
+        // custody flags honestly, so every GRACE boundary below is entered with
+        // allowEphemeralState: true. Never a production configuration.
+        executionStore: createEphemeralMemoryStore(),
+        settlementStore: createEphemeralMemoryStore(),
     };
 }
 function graceProjection({ graceState, graceDispatchCount, graceMeterRecorded, graceSettlementCount, graceReplayRefused, }) {
@@ -267,6 +270,9 @@ export async function runGraceScenario(scenario) {
         actuatorTrust: state.actuatorKey.trust,
         meterTrust: state.meterKey.trust,
         settlementStore: state.settlementStore,
+        // Demo/refinement harness over the ephemeral stores above; a production
+        // GRACE deployment supplies durable, ownership-fenced custody instead.
+        allowEphemeralState: true,
         operator: "operator:us-west-dc-17",
         developer: "cosa-reference-adapter/1.0",
         capsuleSigner: state.capsuleKey,

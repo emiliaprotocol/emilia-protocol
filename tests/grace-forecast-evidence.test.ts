@@ -121,6 +121,7 @@ async function executeComposition(forecastEvidence: any, forecastTrust: any, for
     meter: state.meter,
     meterTrust: state.meterKey.trust,
     settlementStore: state.settlementStore,
+    allowEphemeralState: true,
     settle: async ({ key }) => ({ settlement_id: 'settlement:forecast-reference', entitlement_key: key }),
     operator: 'operator:us-west-dc-17',
     developer: 'cosa-reference-adapter/1.0',

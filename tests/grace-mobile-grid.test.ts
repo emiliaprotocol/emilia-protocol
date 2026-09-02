@@ -28,7 +28,7 @@ import {
 import { predictedEffectsDigest } from '../packages/verify/effect-predicates.js';
 import {
   createCosaReferenceActuator,
-  createFencedMemoryStore,
+  createEphemeralMemoryStore,
   createReferenceMeter,
   verifyReferenceMeterStatement,
 } from '../lib/grace/reference-adapters.js';
@@ -223,8 +223,8 @@ function runtime() {
       ...meterKey,
       clock: () => '2026-07-15T21:45:01.000Z',
     }),
-    executionStore: createFencedMemoryStore(),
-    settlementStore: createFencedMemoryStore(),
+    executionStore: createEphemeralMemoryStore(),
+    settlementStore: createEphemeralMemoryStore(),
   };
 }
 
@@ -246,6 +246,7 @@ async function run(overrides = {}) {
     meter: overrides.meter || state.meter,
     meterTrust: state.meterKey.trust,
     settlementStore: state.settlementStore,
+    allowEphemeralState: true,
     settle: async ({ key }) => {
       settlements += 1;
       return { settlement_id: 'settlement:reference:1', entitlement_key: key };
@@ -425,6 +426,7 @@ describe('phone to COSA to meter to Action State to settlement', () => {
       meter: state.meter,
       meterTrust: state.meterKey.trust,
       settlementStore: state.settlementStore,
+      allowEphemeralState: true,
       settle: async () => ({ settlement_id: 'must-not-run' }),
       operator: 'operator:us-west-dc-17',
       capsuleSigner: state.capsuleKey,
@@ -545,5 +547,113 @@ describe('GRACE live control-room artifact', () => {
     expect(output).toContain('SETTLEMENT  CONSUMED ONCE');
     expect(output.match(/ATTACK\s+.*REFUSED/g)).toHaveLength(3);
     expect(output).toContain('no physical grid event is claimed');
+  });
+});
+
+// ===========================================================================
+// Regression (custody): executeGraceCurtailment drives two irreversible
+// effects — a physical curtailment dispatch and a payout. It only checked that
+// the two consumption stores exposed reserve/commit. With the honest reference
+// store it now refuses the whole run BEFORE dispatching, unless the caller
+// explicitly opts into ephemeral state (demo only, refused in production).
+// ===========================================================================
+describe('GRACE consumption custody at the execution boundary', () => {
+  const durable = () => {
+    const states = new Map();
+    return {
+      durable: true,
+      ownershipFenced: true,
+      permanentConsumption: true,
+      async reserve(key) {
+        if (states.has(key)) return false;
+        states.set(key, 'reserved');
+        return true;
+      },
+      async commit(key) {
+        if (states.get(key) !== 'reserved') return false;
+        states.set(key, 'committed');
+        return true;
+      },
+    };
+  };
+
+  async function attempt(overrides) {
+    const auth = authorizationFixture();
+    const state = runtime();
+    let settlements = 0;
+    const result = await executeGraceCurtailment({
+      action,
+      envelope,
+      spent: {},
+      presentation,
+      policy,
+      authorizationEvidence: auth.evidence,
+      authorizationProfile: auth.profile,
+      executionStore: state.executionStore,
+      actuator: state.actuator,
+      actuatorTrust: state.actuatorKey.trust,
+      meter: state.meter,
+      meterTrust: state.meterKey.trust,
+      settlementStore: state.settlementStore,
+      settle: async () => { settlements += 1; return { settlement_id: 'must-not-run' }; },
+      operator: 'operator:us-west-dc-17',
+      developer: 'cosa-reference-adapter/1.0',
+      capsuleSigner: state.capsuleKey,
+      clock: () => '2026-07-15T20:15:00.000Z',
+      ...overrides,
+    });
+    return { result, state, settlements };
+  }
+
+  it('refuses ephemeral consumption stores before anything is dispatched', async () => {
+    const { result, state, settlements } = await attempt({});
+    expect(result.ok).toBe(false);
+    expect(result.verdict).toBe('refuse_consumption_custody');
+    expect(state.actuator.invocationCount()).toBe(0);
+    expect(settlements).toBe(0);
+  });
+
+  it('refuses when only the SETTLEMENT store lacks custody, without dispatching', async () => {
+    const { result, state, settlements } = await attempt({ executionStore: durable() });
+    expect(result.ok).toBe(false);
+    expect(result.verdict).toBe('refuse_consumption_custody');
+    expect(state.actuator.invocationCount()).toBe(0);
+    expect(settlements).toBe(0);
+  });
+
+  it('runs end to end when both stores carry the custody contract', async () => {
+    const { result, settlements } = await attempt({
+      executionStore: durable(),
+      settlementStore: durable(),
+    });
+    expect(result.ok).toBe(true);
+    expect(settlements).toBe(1);
+  });
+
+  it('the demo opt-out is refused outright when NODE_ENV is production', async () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      const { result, state, settlements } = await attempt({ allowEphemeralState: true });
+      expect(result.ok).toBe(false);
+      expect(result.verdict).toBe('refuse_ephemeral_state');
+      expect(state.actuator.invocationCount()).toBe(0);
+      expect(settlements).toBe(0);
+    } finally {
+      if (previous === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previous;
+    }
+  });
+
+  it('the demo harness refuses to build a reference runtime in production', async () => {
+    const { createGraceReferenceRuntime } = await import('../lib/grace/reference-scenario.js');
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      expect(() => createGraceReferenceRuntime()).toThrow(/demo-only/);
+    } finally {
+      if (previous === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previous;
+    }
   });
 });

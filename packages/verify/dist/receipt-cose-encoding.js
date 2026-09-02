@@ -332,8 +332,16 @@ function decodeItem(s, depth) {
     const { major, arg } = head;
     if (major === 0)
         return arg;
-    if (major === 1)
-        return -1 - arg;
+    if (major === 1) {
+        // -1 - (2^53 - 1) === -2^53, one past the safe-integer floor. The encoder
+        // refuses that value (unsupported_item), so accepting it here would make
+        // the decoder's domain wider than the encoder's and break the round-trip
+        // claim in conformance/encoding-equivalence.
+        const negative = -1 - arg;
+        if (!Number.isSafeInteger(negative))
+            return { refused: 'unsupported_item' };
+        return negative;
+    }
     if (major === 2) {
         if (s.offset + arg > s.bytes.length)
             return { refused: 'malformed_cbor' };
@@ -389,7 +397,17 @@ function decodeItem(s, depth) {
             if (asObject) {
                 if (typeof key !== 'string')
                     return { refused: 'unsupported_item' };
-                object[key] = val;
+                // Plain assignment is NOT an own-property write for every text key:
+                // `object.__proto__ = v` hits Object.prototype's accessor, which
+                // silently DROPS a string value and REPLACES the object's prototype
+                // for an object value. Either way two distinct deterministic CBOR
+                // inputs would decode to one canonical value, falsifying the
+                // round-trip claim in conformance/encoding-equivalence/vectors.json.
+                // defineProperty writes an own data property for any key, so decode
+                // stays lossless and no prototype is ever reachable from input.
+                Object.defineProperty(object, key, {
+                    value: val, writable: true, enumerable: true, configurable: true,
+                });
             }
             else {
                 map.set(key, val);

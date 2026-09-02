@@ -310,6 +310,73 @@ describe('fail-closed edges beyond the recorded vectors', () => {
       .toEqual({ ok: false, reason: 'unsupported_item' });
   });
 
+  // -------------------------------------------------------------------
+  // Regression: the decoder built its object with `object[key] = val`, so a
+  // text key of "__proto__" hit Object.prototype's accessor. A string value
+  // was silently DROPPED and an object value REPLACED the decoded object's
+  // prototype, so {"a":1,"__proto__":"..."} and {"a":1} - two distinct
+  // deterministic CBOR encodings - decoded to one canonical value and the
+  // round-trip claim behind conformance/encoding-equivalence/vectors.json was
+  // false. defineProperty makes every text key an own data property, so decode
+  // is lossless and no prototype is ever reachable from input.
+  // -------------------------------------------------------------------
+  it('a "__proto__" text key round-trips as an own property, not a prototype write', () => {
+    const withProto = JSON.parse('{"a":1,"__proto__":"harmless-string"}');
+    const without = JSON.parse('{"a":1}');
+
+    const encA = encodeDeterministicCbor8949(withProto);
+    const encB = encodeDeterministicCbor8949(without);
+    if (!encA.ok || !encB.ok) throw new Error('encode failed');
+    expect(Buffer.from(encA.value).toString('hex'))
+      .not.toBe(Buffer.from(encB.value).toString('hex'));
+
+    const decA = decodeDeterministicCbor8949(encA.value, { textKeysOnly: true });
+    const decB = decodeDeterministicCbor8949(encB.value, { textKeysOnly: true });
+    if (!decA.ok || !decB.ok) throw new Error('decode failed');
+
+    // Lossless: the key survives as an OWN property with its own value.
+    expect(Object.keys(decA.value as object)).toEqual(['a', '__proto__']);
+    expect(Object.getOwnPropertyDescriptor(decA.value as object, '__proto__')?.value)
+      .toBe('harmless-string');
+    // Distinct inputs stay distinct.
+    expect(canonicalize(decA.value)).not.toBe(canonicalize(decB.value));
+    // And the round trip is exact.
+    expect(canonicalize(decA.value)).toBe(canonicalize(withProto));
+  });
+
+  it('an object-valued "__proto__" key does not replace the decoded prototype', () => {
+    const enc = encodeDeterministicCbor8949(JSON.parse('{"a":1,"__proto__":{"evil":true}}'));
+    if (!enc.ok) throw new Error('encode failed');
+    const dec = decodeDeterministicCbor8949(enc.value, { textKeysOnly: true });
+    if (!dec.ok) throw new Error('decode failed');
+    expect(Object.getPrototypeOf(dec.value as object)).toBe(Object.prototype);
+    expect((dec.value as Record<string, unknown>).evil).toBeUndefined();
+    expect(({} as Record<string, unknown>).evil).toBeUndefined();
+    expect(Object.getOwnPropertyDescriptor(dec.value as object, '__proto__')?.value)
+      .toEqual({ evil: true });
+  });
+
+  // -------------------------------------------------------------------
+  // Regression: major type 1 decoded as `-1 - arg` with no bound, so
+  // 0x3b001fffffffffffff decoded to -9007199254740992 (one past the safe
+  // integer floor) while the encoder refuses that value. The decoder's domain
+  // must not be wider than the encoder's.
+  // -------------------------------------------------------------------
+  it('a negative integer outside the safe range refuses on BOTH sides', () => {
+    // 0x3b + 0x001fffffffffffff => -1 - (2^53 - 1) = -9007199254740992.
+    const outOfRange = new Uint8Array(Buffer.from('3b001fffffffffffff', 'hex'));
+    expect(decodeDeterministicCbor8949(outOfRange, { textKeysOnly: false }))
+      .toEqual({ ok: false, reason: 'unsupported_item' });
+    expect(encodeDeterministicCbor8949(-9007199254740992))
+      .toEqual({ ok: false, reason: 'unsupported_item' });
+
+    // The safe floor itself still round-trips.
+    const floor = encodeDeterministicCbor8949(Number.MIN_SAFE_INTEGER);
+    if (!floor.ok) throw new Error('encode failed');
+    expect(decodeDeterministicCbor8949(floor.value, { textKeysOnly: false }))
+      .toEqual({ ok: true, value: Number.MIN_SAFE_INTEGER });
+  });
+
   it('duplicate map keys refuse as malformed', () => {
     // {"a":1,"a":2} with identical encoded keys.
     const dup = new Uint8Array(Buffer.from('a2616101616102', 'hex'));
