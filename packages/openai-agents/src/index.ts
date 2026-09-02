@@ -185,13 +185,12 @@ function matchesPendingOccurrence(interruption: AnyRecord, pendingApproval: AnyR
  * }}
  */
 export function requireReceiptForOpenAIAgent(opts: AnyRecord = {}): AnyRecord {
+  // Destructure and discard a caller-supplied blanket action. The action is
+  // derived per interruption from the tool name, complete arguments, and
+  // callId, so an untrusted string never reaches the gate.
   const {
     actionFor,
     store = sharedStore,
-    // Destructured out and DISCARDED: the action is derived per interruption
-    // from the tool name, the complete arguments, and the callId. A caller
-    // string here would be a blanket authorization for every tool and every
-    // argument set, so it never reaches the gate.
     action: _callerSuppliedActionIgnored,
     ...gateOptions
   } = opts;
