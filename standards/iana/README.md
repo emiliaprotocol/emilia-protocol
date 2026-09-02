@@ -40,7 +40,7 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 |---|---|---|---|---|---|---|
 | 1 | `agent-action-control.json` | Well-Known URIs | draft-schrock-agent-action-manifest-00 (§3, §9) | **Requests registration** (fields in §9) | READY-ON-POST | Draft live on datatracker [verify posting after the 2026-07-06 batch upload] |
 | 2 | `authorization-evidence-required` | HTTP Problem Types | draft-schrock-ae-challenge-07 (§3, §6; published 2026-08-10) | **Requests registration** under Specification Required; reuses `application/problem+json` | CARRIED-BY-DRAFT | Continue focused HTTP and Independent Stream review; do not file a conflicting direct request |
-| 2a | `application/vnd.emilia.authorization-evidence-challenge+json` | Media Types (vendor tree) | draft-schrock-ae-challenge-07 (§2, §2.7, §2.8, §5) plus EMILIA serialization specification | **Bare object only; not the draft's HTTP carrier** | READY-FOR-IANA-FORM | Confirm public serialization-specification URL, then submit direct vendor-tree request |
+| 2a | `application/vnd.emilia.authorization-evidence-challenge+json` | Media Types (vendor tree) | EMILIA Version 1 serialization specification; draft-schrock-ae-challenge-07 is informative context only | **Bare object only; not an enclosing carrier** | IANA-TICKET-1458921 | Continue vendor-tree expert review; do not hold registration on the Internet-Draft's stream |
 | 3 | `application/ep-authorization-receipt+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-12 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
 | 4 | `application/ep-authorization-bundle+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-12 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
 | 5 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; no registration request | PROPOSED, requires draft text in next rev | Next-rev field definition + IANA request |
@@ -78,11 +78,11 @@ registry, not IANA's.
   **media-types@iana.org** mailing list for review before or alongside the
   request. For standards-tree names this review is expected; for the vendor
   request it is useful but not mandatory.
-- **AE Challenge vendor type:** file the completed direct request for
-  `application/vnd.emilia.authorization-evidence-challenge+json` only after
-  its serialization specification resolves publicly. The type labels the bare core
-  object. It does not replace the draft's `application/problem+json` HTTP
-  response, and registration would not represent IETF endorsement.
+- **AE Challenge vendor type:** IANA ticket #1458921 is under expert review.
+  The published Version 1 specification is self-contained and remains
+  maintained regardless of the related Internet-Draft's stream or fate. The
+  type labels the bare object, not an enclosing HTTP Problem Details response,
+  and registration would not represent IETF endorsement.
 - **Receipt media types:** revision -12 requests
   `application/ep-authorization-receipt+json` and
   `application/ep-authorization-bundle+json`, and carries complete templates
@@ -120,9 +120,10 @@ registry, not IANA's.
 1. Verify each backing draft is live on Datatracker before citing it to IANA.
 2. For entry 2, continue focused review of the published AE Challenge -07 and
    process the HTTP Problem Type with its publication path.
-3. For entry 2a, publish the Version 1 serialization specification, verify its exact URL,
-   and file a new vendor-tree request. Do not reopen the retired standards-tree
-   tickets or describe the vendor type as the draft's HTTP carrier.
+3. For entry 2a, continue expert review under IANA ticket #1458921 using the
+   self-contained Version 1 specification. Do not reopen the retired
+   standards-tree tickets, hold the vendor request on an Internet-Draft stream,
+   or describe the vendor type as an enclosing carrier.
 4. **File entry 1** (`agent-action-control.json`) only after re-verifying its
    current backing-draft and registry state. Optional heads-up to
    wellknown-uri-review@ietf.org first.
