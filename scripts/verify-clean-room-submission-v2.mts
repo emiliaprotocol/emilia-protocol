@@ -275,7 +275,7 @@ function validateSourceManifest(bundle: JsonObject, bytes: Buffer, manifest: any
     throw new Error('current conformance manifest canonical claim hash is invalid');
   }
   if (manifest.totals?.suites !== 21 || manifest.totals?.vectors !== 335) {
-    throw new Error('current conformance manifest is not the pinned 21-suite/332-vector set');
+    throw new Error('current conformance manifest is not the pinned 21-suite/335-vector set');
   }
   if (!Array.isArray(manifest.suites) || manifest.suites.length !== bundle.suites.length) {
     throw new Error('current conformance manifest suite list is incomplete');
@@ -878,8 +878,8 @@ export function verifyCleanRoomSubmissionV2({
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
-  if (suites.length !== 21 || vectorCount !== 332) {
-    throw new Error('external clean-room evaluation did not complete all 21 suites and 332 vectors');
+  if (suites.length !== 21 || vectorCount !== 335) {
+    throw new Error('external clean-room evaluation did not complete all 21 suites and 335 vectors');
   }
 
   const report: JsonObject = {
