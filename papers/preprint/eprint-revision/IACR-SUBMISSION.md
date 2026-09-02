@@ -146,7 +146,7 @@ archive; that status is not peer review.
 - Bytes: `173,254`
 - SHA-256: `1f0b9e220f2072f42724516b53aa169e866770bad909f9b7a4fef8e90886406b`
 - Temporary ePrint submission: `xxxx/111420`
-- Archive state: email-confirmed; awaiting editor screening
+- Archive state: rejected at editor screening on 1 September 2026; ePrint closed as a venue
 
 ## Preflight checklist
 
