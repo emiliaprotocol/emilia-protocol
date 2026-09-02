@@ -17,17 +17,20 @@ do not yet have.
 
 ## 1. application/vnd.emilia.authorization-evidence-challenge+json
 
-**Status: VENDOR-TREE REGISTRATION PACKAGE READY; NOT YET REGISTERED.**
+**Status: SUBMITTED; IANA TICKET #1458921 UNDER EXPERT REVIEW; NOT YET
+REGISTERED.**
 
 On 2026-08-29 the project intentionally reopened the vendor-tree route that
 IANA offered in ticket #1456851. This is a new request, independent of the
 closed standards-tree tickets #1456611 and #1456851. It does not revive the
 withdrawn HTTP media type and does not imply IETF review or endorsement.
 
-The vendor type labels only the bare transport-neutral AE-CHALLENGE-v1 JSON
-object under a separately specified carrier or presentation profile. It **MUST NOT** label the HTTP refusal
-defined by draft-schrock-ae-challenge-07; that response remains
-application/problem+json and nests the object in evidence_challenge.
+The vendor type labels only the bare transport-neutral `AE-CHALLENGE-v1` JSON
+object under a separately specified carrier or presentation profile. Its
+Version 1 vendor specification is complete and remains maintained regardless
+of the publication path of the related individual Internet-Draft. The type
+**MUST NOT** label an HTTP Problem Details envelope; an embedding carrier uses
+the envelope's own media type, such as `application/problem+json`.
 The stable serialization specification and live-form field map are:
 
 - standards/iana/ae-challenge-vendor-binding.md
