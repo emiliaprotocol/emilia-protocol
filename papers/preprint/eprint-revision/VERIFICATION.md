@@ -120,5 +120,5 @@ node check.mjs
 
 The v3 predecessor is published at `10.5281/zenodo.21968577`. Version 5 was
 submitted and email-confirmed as temporary IACR ePrint submission
-`xxxx/111420` on 30 August 2026. It remains awaiting editor screening and has
-not been called approved, posted, or peer reviewed.
+`xxxx/111420` on 30 August 2026. It was rejected at editor screening on 1 September 2026; the ePrint
+archive is closed as a venue for this paper (see IACR-SUBMISSION.md).

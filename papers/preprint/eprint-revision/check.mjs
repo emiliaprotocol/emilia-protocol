@@ -10,7 +10,6 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "../../..");
 const sourcePath = join(here, "main.tex");
 const pdfPath = join(here, "main.pdf");
-const deliveryPath = join(repo, "output/pdf/authorization-non-amplification-v5.pdf");
 const verificationPath = join(here, "VERIFICATION.md");
 const readmePath = join(here, "README.md");
 const submissionPath = join(here, "IACR-SUBMISSION.md");
@@ -43,7 +42,6 @@ const [
   readFile(receiptModelPath, "utf8"),
   readFile(quorumModelPath, "utf8"),
   readFile(composedSummaryPath, "utf8"),
-  readFile(deliveryPath),
 ]);
 
 const digest = (value) => createHash("sha256").update(value).digest("hex");
@@ -53,7 +51,6 @@ const records = [verification, readme, submission, zenodo];
 
 assert.equal(pdfBytes.length, 173254, "main.pdf byte count drifted");
 assert.equal(pdfDigest, "1f0b9e220f2072f42724516b53aa169e866770bad909f9b7a4fef8e90886406b");
-assert.equal(digest(deliveryBytes), pdfDigest, "delivery PDF differs from main.pdf");
 assert.equal(sourceDigest, "ebc93f0a57af389c2b9eefaa910a74ed82c50f13ae3f3d80ec8eeb313d592864");
 assert(verification.includes(sourceDigest), "verification receipt does not pin main.tex");
 for (const record of records) {
@@ -186,6 +183,8 @@ for (const text of [
   "IACR ePrint submission packet: v5",
   "Per-Issuance Authorization Non-Amplification under Chosen-Context Signature Collection",
   "Submitted and email-confirmed on 30 August 2026 as temporary Cryptology ePrint",
+  "The IACR Cryptology ePrint Archive is no longer a distribution target for this paper",
+  "No further ePrint submission will be made under any title",
   "xxxx/111420",
   "Creative Commons Attribution 4.0 International",
   "Contribution to cryptology",

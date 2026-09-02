@@ -2,17 +2,33 @@
 
 ## State
 
-Submitted and email-confirmed on 30 August 2026 as temporary Cryptology ePrint
-submission `xxxx/111420`. Awaiting editor screening; not yet approved or posted.
+Closed. The IACR Cryptology ePrint Archive is no longer a distribution target for this paper.
 
-Temporary submission `xxxx/111404` was declined because an ePrint report must
-be clear, readable, self-contained, look new and interesting, and contain
-proofs or convincing arguments for its claims. Version 5 directly addresses
-that screen. It is a substantive replacement, not a relabeling of the rejected
-PDF.
+Version 5 was Submitted and email-confirmed on 30 August 2026 as temporary Cryptology ePrint
+submission `xxxx/111420` and was rejected at editor screening on 1 September 2026 with the
+archive's acceptance-criteria note. It was the sixth and last temporary submission of this
+line of work:
 
-An ePrint posting is not peer review, IACR endorsement, or validation of a
-deployed system.
+| Temporary id | Manuscript | Submitted | Rejected | Editor note |
+|---|---|---|---|---|
+| `xxxx/110966` | ABIA long | 2026-08-06 | 2026-08-10 | lacks security proofs or convincing arguments |
+| `xxxx/111011` | ABIA long | 2026-08-10 | 2026-08-15 | acceptance-criteria template |
+| `xxxx/111097` | ABIA lean | 2026-08-15 | 2026-08-16 | unclear or insufficient contribution to cryptology |
+| `xxxx/111261` | ABIA lean | 2026-08-22 | 2026-08-22 | same; appeal of 2026-08-24 jointly reconsidered and reaffirmed 2026-08-29 |
+| `xxxx/111404` | ANA v4 | 2026-08-29 | 2026-08-30 | acceptance-criteria template |
+| `xxxx/111420` | ANA v5 | 2026-08-30 | 2026-09-01 | acceptance-criteria template |
+
+None received a permanent ePrint number. No further ePrint submission will be made under any title.
+The editors stated on 2026-08-29 that they cannot provide feedback beyond the criteria at
+https://eprint.iacr.org/operations.html.
+
+Posting on ePrint would not have been peer review, IACR endorsement, or validation of a deployed
+system. Public distribution of this manuscript is the Zenodo record under concept DOI
+`10.5281/zenodo.21520972` (see `ZENODO.md`) and the source and PDF in this directory. The
+peer-reviewed venue plan is in [`CSF-2027-SUBMISSION-PLAN.md`](CSF-2027-SUBMISSION-PLAN.md).
+
+The fields below are retained as the record of what was submitted as v5. They are not a plan for
+another submission.
 
 ## Authorized public fields
 
