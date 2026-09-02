@@ -106,7 +106,7 @@ func verifyClassAOverDigestGo(wa map[string]any, digest []byte, pubB64u string, 
 		}
 	}
 	signed := append(append([]byte{}, ad...), func() []byte { s := sha256.Sum256(cdBytes); return s[:] }()...)
-	der, err := base64.RawURLEncoding.DecodeString(b64urlPad(pubB64u))
+	der, err := b64urlDecode(pubB64u)
 	if err != nil {
 		return false
 	}

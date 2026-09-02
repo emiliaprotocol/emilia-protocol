@@ -24,8 +24,8 @@
     },
     {
       "path": "conformance/vectors/quorum.v1.json",
-      "sha256": "adb18af0146a509a445c9f7a1815f3df55f98092abac2be94246ed53f5fa373a",
-      "vectors": 16
+      "sha256": "ac0f857575ee0fd68cc526e6ac975df5d519f1e43a9a7f292f0f34c2800e44a8",
+      "vectors": 19
     },
     {
       "path": "conformance/vectors/revocation.exec.v2.json",
@@ -117,7 +117,7 @@
   ],
   "totals": {
     "suites": 21,
-    "vectors": 332,
+    "vectors": 335,
     "implementations": 3
   },
   "implementations": [
@@ -135,8 +135,8 @@
         "tree_sha256": "edd2f424249b99042764f4ade69492957aa854f4a4ff04da6dd5bfc63fa831b3"
       },
       "suites": 21,
-      "vectors": 332,
-      "normalized_results_sha256": "38576ab160cdb8e9402856731898be024de8fb0b2b560f5acecdf9f283f4a615",
+      "vectors": 335,
+      "normalized_results_sha256": "a75aff7cc4553998916ed45f36b845b49351ac99bc4fea15415c7af7065b0ff8",
       "status": "pass"
     },
     {
@@ -149,12 +149,12 @@
       },
       "source": {
         "files": 3,
-        "bytes": 234300,
-        "tree_sha256": "9ee2b5d36ce29630e21271d5a597fa8eb41c1b58c244f1b0665c958aaf9074f1"
+        "bytes": 237701,
+        "tree_sha256": "729b091ae7c31cc5fd854e766b898382eb9596c21a644f764bfc0bbd200a8100"
       },
       "suites": 21,
-      "vectors": 332,
-      "normalized_results_sha256": "dd5523cc414bfcfcc928fbfd2865316bee16c4d9d84d0d14dfe220e245e16ff3",
+      "vectors": 335,
+      "normalized_results_sha256": "8d457ed40f189f55bdb7be7497fb134a845276f622c48f613f61ddec48a23a01",
       "status": "pass"
     },
     {
@@ -167,14 +167,14 @@
       },
       "source": {
         "files": 48,
-        "bytes": 467949,
-        "tree_sha256": "29f8e36ad4aa4b80e19c402765e805fe85ed829be46a89226f76002c417dd55f"
+        "bytes": 473493,
+        "tree_sha256": "f86821c1b3c8685a03ba04a8888d3b36ee5d24a67b4bbefa00ce4120be1bb503"
       },
       "suites": 21,
-      "vectors": 332,
-      "normalized_results_sha256": "dd5523cc414bfcfcc928fbfd2865316bee16c4d9d84d0d14dfe220e245e16ff3",
+      "vectors": 335,
+      "normalized_results_sha256": "8d457ed40f189f55bdb7be7497fb134a845276f622c48f613f61ddec48a23a01",
       "status": "pass"
     }
   ],
-  "manifest_sha256": "de00937588feff870bb7b72e5f6b09549a3008142f76136dd6a1bd7cce91e71a"
+  "manifest_sha256": "05e08446913acb212cc63b374a7e6addbcfe25320b07d78ecfe64fe6c9b9ef64"
 }

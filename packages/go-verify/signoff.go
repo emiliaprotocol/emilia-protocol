@@ -7,11 +7,15 @@ package emiliaverify
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/sha256"
 	"crypto/subtle"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -107,7 +111,7 @@ func verifyWebAuthnSignoff(signoff map[string]any, approverPubKeyB64u string, rp
 		checks["rp_id_hash"] = rpOK
 	}
 	signed := append(append([]byte{}, ad...), func() []byte { s := sha256.Sum256(cdBytes); return s[:] }()...)
-	der, err := base64.RawURLEncoding.DecodeString(b64urlPad(approverPubKeyB64u))
+	der, err := b64urlDecode(approverPubKeyB64u)
 	if err == nil {
 		if pubAny, e := x509.ParsePKIXPublicKey(der); e == nil {
 			if pub, ok := pubAny.(*ecdsa.PublicKey); ok {
@@ -124,19 +128,12 @@ func verifyWebAuthnSignoff(signoff map[string]any, approverPubKeyB64u string, rp
 	return SignoffResult{valid, checks}
 }
 
-// b64urlPad normalizes a base64url string (RawURLEncoding handles no-pad; this
-// strips any padding so both forms decode).
-func b64urlPad(s string) string {
-	for len(s) > 0 && s[len(s)-1] == '=' {
-		s = s[:len(s)-1]
-	}
-	return s
-}
-
 // QuorumResult mirrors the JS verifyQuorum return.
 type QuorumResult struct {
 	Valid  bool            `json:"valid"`
 	Checks map[string]bool `json:"checks"`
+	// Reason names the first policy-level refusal (mirrors quorum.ts `reason`).
+	Reason string `json:"reason,omitempty"`
 }
 
 func parseMillis(ts string) (int64, bool) {
@@ -164,16 +161,16 @@ func verifyQuorum(quorum map[string]any, rpID string, allowedOrigins ...[]string
 		"all_signatures_valid": false, "action_binding": false, "distinct_humans": false,
 		"distinct_keys": false, "initiator_excluded": false, "roles_admitted": false,
 		"threshold_met": false, "order_satisfied": false, "chain_linked": false,
-		"within_window": false,
+		"within_window": false, "required_algorithms_satisfied": false,
 	}
 	if quorum == nil {
-		return QuorumResult{false, checks}
+		return QuorumResult{Valid: false, Checks: checks}
 	}
 	policy := getMap(quorum["policy"])
 	membersAny, _ := quorum["members"].([]any)
 	actionHash := getStr(quorum, "action_hash")
 	if policy == nil || len(membersAny) == 0 || actionHash == "" {
-		return QuorumResult{false, checks}
+		return QuorumResult{Valid: false, Checks: checks}
 	}
 	members := make([]map[string]any, len(membersAny))
 	for i, m := range membersAny {
@@ -181,7 +178,7 @@ func verifyQuorum(quorum map[string]any, rpID string, allowedOrigins ...[]string
 	}
 	mode := getStr(policy, "mode")
 	if mode != "threshold" && mode != "ordered" {
-		return QuorumResult{false, checks}
+		return QuorumResult{Valid: false, Checks: checks}
 	}
 	distinctHumans := true
 	if v, ok := policy["distinct_humans"].(bool); ok {
@@ -204,7 +201,32 @@ func verifyQuorum(quorum map[string]any, rpID string, allowedOrigins ...[]string
 		required = int(v)
 	}
 	if required <= 0 || len(eligible) == 0 || required > len(eligible) {
-		return QuorumResult{false, checks}
+		return QuorumResult{Valid: false, Checks: checks}
+	}
+
+	// Hybrid coverage policy (mirrors quorum.ts parseRequiredAlgorithms). A
+	// present-but-unparseable requirement is a named refusal, never a no-op.
+	var requiredAlgorithms []string
+	if raw, present := policy["required_algorithms"]; present && raw != nil {
+		list, ok := raw.([]any)
+		if !ok || len(list) == 0 {
+			return QuorumResult{Valid: false, Checks: checks, Reason: "required_algorithms_malformed"}
+		}
+		seenAlg := map[string]bool{}
+		for _, a := range list {
+			name, isStr := a.(string)
+			if !isStr || (name != "ES256" && name != "ML-DSA-65") {
+				return QuorumResult{Valid: false, Checks: checks, Reason: "required_algorithms_unknown:" + fmt.Sprint(a)}
+			}
+			if seenAlg[name] {
+				return QuorumResult{Valid: false, Checks: checks, Reason: "required_algorithms_duplicate:" + name}
+			}
+			seenAlg[name] = true
+			requiredAlgorithms = append(requiredAlgorithms, name)
+		}
+		if mode == "ordered" {
+			return QuorumResult{Valid: false, Checks: checks, Reason: "required_algorithms_ordered_unsupported"}
+		}
 	}
 
 	ctxOf := func(m map[string]any) map[string]any { return getMap(getMap(m["signoff"])["context"]) }
@@ -212,9 +234,11 @@ func verifyQuorum(quorum map[string]any, rpID string, allowedOrigins ...[]string
 	issued := make([]int64, len(members))
 	issuedOK := make([]bool, len(members))
 	memberValid := make([]bool, len(members))
+	memberAlg := make([]string, len(members)) // "" = no recognized algorithm
 	for i, m := range members {
 		r := verifyWebAuthnSignoff(getMap(m["signoff"]), getStr(m, "approver_public_key"), rpID, allowedOrigins...)
 		memberValid[i] = r.Valid
+		memberAlg[i] = credentialAlgorithm(getStr(m, "approver_public_key"))
 		if !r.Valid {
 			allSigs = false
 		}
@@ -358,9 +382,70 @@ func verifyQuorum(quorum map[string]any, rpID string, allowedOrigins ...[]string
 		checks["within_window"] = ok && float64(mx-mn) <= windowSec*1000
 	}
 
+	reason := ""
+	if requiredAlgorithms == nil {
+		checks["required_algorithms_satisfied"] = true // policy absent: not applicable
+	} else {
+		order := []string{}
+		algsByApprover := map[string]map[string]bool{}
+		unrecognized := false
+		for _, c := range counted {
+			alg := memberAlg[c.i]
+			if alg == "" {
+				unrecognized = true
+				continue
+			}
+			keyBytes, _ := json.Marshal(getStr(ctxOf(c.m), "approver"))
+			key := string(keyBytes)
+			if _, ok := algsByApprover[key]; !ok {
+				algsByApprover[key] = map[string]bool{}
+				order = append(order, key)
+			}
+			algsByApprover[key][alg] = true
+		}
+		missing := []string{}
+		for _, key := range order {
+			for _, alg := range requiredAlgorithms {
+				if !algsByApprover[key][alg] {
+					missing = append(missing, key+":"+alg)
+				}
+			}
+		}
+		checks["required_algorithms_satisfied"] = len(counted) > 0 && len(algsByApprover) > 0 && len(missing) == 0 && !unrecognized
+		if !checks["required_algorithms_satisfied"] {
+			switch {
+			case unrecognized:
+				reason = "required_algorithms_unrecognized_credential"
+			case len(missing) > 0:
+				reason = "required_algorithms_missing:" + strings.Join(missing, ",")
+			default:
+				reason = "required_algorithms_no_counted_members"
+			}
+		}
+	}
+
 	valid := checks["all_signatures_valid"] && checks["action_binding"] && checks["distinct_humans"] &&
 		checks["distinct_keys"] && checks["initiator_excluded"] && checks["roles_admitted"] &&
 		checks["threshold_met"] && checks["order_satisfied"] && checks["chain_linked"] &&
-		checks["within_window"]
-	return QuorumResult{valid, checks}
+		checks["within_window"] && checks["required_algorithms_satisfied"]
+	return QuorumResult{Valid: valid, Checks: checks, Reason: reason}
+}
+
+// credentialAlgorithm names the signature algorithm an enrolled Class A
+// credential is for, read from the KEY itself (canonical base64url SPKI DER),
+// never from a caller-supplied label. This runtime verifies ES256 only; any
+// other key, or a non-canonical encoding, is "" (no recognized algorithm).
+func credentialAlgorithm(spkiB64u string) string {
+	der, err := b64urlDecode(spkiB64u)
+	if err != nil {
+		return ""
+	}
+	pubAny, err := x509.ParsePKIXPublicKey(der)
+	if err != nil {
+		return ""
+	}
+	if pub, ok := pubAny.(*ecdsa.PublicKey); ok && pub.Curve == elliptic.P256() {
+		return "ES256"
+	}
+	return ""
 }

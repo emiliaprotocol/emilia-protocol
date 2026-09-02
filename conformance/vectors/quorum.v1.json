@@ -516,7 +516,7 @@
     },
     {
       "id": "reject_duplicate_human",
-      "description": "The Program Officer also signs the Inspector General slot — one human, two slots",
+      "description": "The Program Officer also signs the Inspector General slot \u2014 one human, two slots",
       "failure_class": "distinct-humans",
       "expect": {
         "valid": false
@@ -1121,7 +1121,7 @@
     },
     {
       "id": "reject_broken_chain",
-      "description": "Strong-chain ordered quorum where the final signoff commits to the wrong predecessor hash — chain_linked fails though every signature is valid",
+      "description": "Strong-chain ordered quorum where the final signoff commits to the wrong predecessor hash \u2014 chain_linked fails though every signature is valid",
       "failure_class": "chain",
       "expect": {
         "valid": false
@@ -1227,7 +1227,7 @@
     },
     {
       "id": "reject_duplicate_key",
-      "description": "Two distinct approver identities sign with the same device key — distinct_keys fails",
+      "description": "Two distinct approver identities sign with the same device key \u2014 distinct_keys fails",
       "failure_class": "distinct-keys",
       "expect": {
         "valid": false
@@ -1307,7 +1307,7 @@
     },
     {
       "id": "reject_initiator_is_approver",
-      "description": "The action initiator is also a counted approver — one party both initiates and approves (SoD violation)",
+      "description": "The action initiator is also a counted approver \u2014 one party both initiates and approves (SoD violation)",
       "failure_class": "initiator-excluded",
       "expect": {
         "valid": false
@@ -1387,7 +1387,7 @@
     },
     {
       "id": "reject_distinct_humans_false_shared_key",
-      "description": "distinct_humans:false with one device key across two seats — distinct_keys is unconditional and must still reject",
+      "description": "distinct_humans:false with one device key across two seats \u2014 distinct_keys is unconditional and must still reject",
       "failure_class": "distinct-keys",
       "expect": {
         "valid": false
@@ -1459,6 +1459,246 @@
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
                 "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiWUM0c21OYTZ3SE5xSlExWHdEM0pOYktmV2dSSTh2NlYxTHhMeTJBRjJiRSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
                 "signature": "MEUCIFzgStin-x1Qu_ni9sHVfgwWa2RRijbirXAFkaGlV3KbAiEA4O3dVdhKmGa5KrStR5zji002s-4ZE6Y-LnwrxE3zuUY"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_noncanonical_spki_second_seat",
+      "description": "One device key fills two seats: seat 2 presents the same SPKI under a non-canonical (padded) base64url encoding. Verifiers must decode canonically; a textual variant of one key is one signer, never a quorum.",
+      "failure_class": "non-canonical-key-encoding",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "threshold",
+          "required": 2,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFdW-7ut5iQFgEbY9fqy7x0ON1M3uxZRTSCz2QwQRJ_HxUQMXzeQjP1Wjy-khTRyZmfNmz0tHuIdwVkpao2CZHQ",
+            "signoff": {
+              "@type": "ep.signoff.webauthn",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_nc_1",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAA",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiUE5lYlVMT1Vyem9la0NncjdPdGlvaDRIYWY0VGRuTXdseGV4ZlRxLXBNMCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQDGl1yMvUmrx8wbGSSZ3ZBYg5Aophyafbq0FSvIUafeAAIhAN5GB2A1T8-V0SWXspuyOAz5I5fUXaijNRVNe0i_mIhQ"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFdW-7ut5iQFgEbY9fqy7x0ON1M3uxZRTSCz2QwQRJ_HxUQMXzeQjP1Wjy-khTRyZmfNmz0tHuIdwVkpao2CZHQ==",
+            "signoff": {
+              "@type": "ep.signoff.webauthn",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_nc_2",
+                "approver": "ep:approver:ig_okafor",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAAAA",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSlA4UmNza0tWT0N2OWxZM3ZtZWlOSGhPVU1weGMyZmRfZU5icC0xNjNFQSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQD2bYExFFj9QZ_J83bxxJdGEWZF7UqBKXG-S5m-5loZxAIhAKVFzYLRwreyrwMmm4VQXGidfvL-2WaQ5iQreC2wggjJ"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_required_algorithms_malformed",
+      "description": "policy.required_algorithms is present but empty; the requirement must be refused by name, never silently ignored.",
+      "failure_class": "required-algorithms",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "threshold",
+          "required": 2,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900,
+          "required_algorithms": []
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE0uxuKI6UWUk-7SVWDctaCHz1Yl1-aFoox2VtuEDmIdwoJWUGYZXQVZ7QkiKoa1golygZvl8cf4zXHpCNK7jHcw",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_52b084f4e7e47ce136671137c65f2784",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVXZSLVg0TlJKVmVVMHhrRzRhZTlnYjZnRWVnVGdQbVozOTVOVk5wVkduYyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+                "signature": "MEUCIQDy2uxXxKAM8cIszqm0HZ5O_vpZTN6NKF71JMCqenOMtQIgca2ytAYvKziF1E2HrPVMErQS97Ur4QtZxOSHMTdYuao"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmkwP9kScmIk_fthveOwAUpxOkPXMyBv5Ns_EIWNf4Ctb-zWoRHUaBklDtl6bREVecdSueIcrSMVPSGtcXpzzew",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_45e0f2ecc2eda7744ff9015c883fe2ea",
+                "approver": "ep:approver:ig_okafor",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSkgtLU1rR3h3MnpEdDZWb1czWEZsZkFHUDFCWFVSQldVNS1hMnEwSmJLMCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+                "signature": "MEYCIQDqJoA9SeyUPKJb6YEY_0K6WrHcoXoAxU-LwUtg_cVBPQIhAOw5Pq1i7IGe5-3GGupRIin_6I-ak3HJ1xNg7-IAKAsQ"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_required_algorithms_unknown",
+      "description": "policy.required_algorithms names an algorithm outside the closed set; refuse by name.",
+      "failure_class": "required-algorithms",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "threshold",
+          "required": 2,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900,
+          "required_algorithms": [
+            "RS256"
+          ]
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE0uxuKI6UWUk-7SVWDctaCHz1Yl1-aFoox2VtuEDmIdwoJWUGYZXQVZ7QkiKoa1golygZvl8cf4zXHpCNK7jHcw",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_52b084f4e7e47ce136671137c65f2784",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVXZSLVg0TlJKVmVVMHhrRzRhZTlnYjZnRWVnVGdQbVozOTVOVk5wVkduYyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+                "signature": "MEUCIQDy2uxXxKAM8cIszqm0HZ5O_vpZTN6NKF71JMCqenOMtQIgca2ytAYvKziF1E2HrPVMErQS97Ur4QtZxOSHMTdYuao"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmkwP9kScmIk_fthveOwAUpxOkPXMyBv5Ns_EIWNf4Ctb-zWoRHUaBklDtl6bREVecdSueIcrSMVPSGtcXpzzew",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_45e0f2ecc2eda7744ff9015c883fe2ea",
+                "approver": "ep:approver:ig_okafor",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSkgtLU1rR3h3MnpEdDZWb1czWEZsZkFHUDFCWFVSQldVNS1hMnEwSmJLMCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+                "signature": "MEYCIQDqJoA9SeyUPKJb6YEY_0K6WrHcoXoAxU-LwUtg_cVBPQIhAOw5Pq1i7IGe5-3GGupRIin_6I-ak3HJ1xNg7-IAKAsQ"
               }
             }
           }
