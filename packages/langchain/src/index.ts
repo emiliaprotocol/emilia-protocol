@@ -80,10 +80,16 @@ function defaultGetReceipt(input: any, config: any): any {
 }
 
 /**
- * Wrap a LangChain tool so every `.invoke()` requires a valid, action-bound
- * EMILIA receipt before the underlying tool runs. Preserves the tool's identity,
- * name, description, and schema (thin Proxy — works with StructuredTool,
- * DynamicStructuredTool, or anything exposing `.invoke(input, config)`).
+ * Wrap a LangChain tool so EVERY execution entry point requires a valid,
+ * action-bound EMILIA receipt before the underlying tool runs: `.invoke()`,
+ * `.call()`, `.batch()`, `.stream()`, and the raw `.func` / `._call` bodies.
+ * Gating `.invoke()` alone is not enough: langchain-core reaches the same
+ * effect through several Runnable methods, and any one of them left bound to
+ * the raw target is an ungated path to the tool. Every other method is bound to
+ * the proxy, so an internal `this.invoke(...)` also lands on the gate.
+ * Preserves the tool's identity, name, description, and schema (thin Proxy;
+ * works with StructuredTool, DynamicStructuredTool, or anything exposing
+ * `.invoke(input, config)`).
  *
  * @template {{invoke?: (input:any, config?:any, ...rest:any[]) => any}} T
  * @param {T} tool a tool exposing `.invoke(input, config?)`
@@ -127,27 +133,47 @@ export function requireReceiptForLangChainTool(tool: Tool, opts: Obj = {}): Tool
   const gates = new Map();
   const gateFor = (boundAction: string): any => {
     if (!gates.has(boundAction)) {
+      // gateOptions is spread FIRST: the derived exact action and the
+      // consumption store are not caller-overridable.
       gates.set(boundAction, makeReceiptGate({
-        action: boundAction,
+        ...gateOptions,
         trustedKeys,
         allowInlineKey,
         maxAgeSec,
+        action: boundAction,
         store,
-        ...gateOptions,
       }));
     }
     return gates.get(boundAction);
   };
 
-  const gatedInvoke = async (input: any, config: any, ...rest: any[]): Promise<any> => {
+  const bindingError = (): Error & { emilia?: any } => {
+    const err = new Error('EMILIA blocked tool call: action_binding_invalid') as Error & { emilia?: any };
+    err.emilia = { status: 428, reason: 'action_binding_invalid' };
+    return err;
+  };
+
+  /**
+   * The single gated execution path. Every entry point the tool exposes routes
+   * through here, so the receipt requirement cannot be sidestepped by calling a
+   * different Runnable method.
+   *
+   * @param input      the executor-side call input (hashed into the action)
+   * @param config     the RunnableConfig used to locate the receipt
+   * @param execute    runs the ORIGINAL, unproxied implementation on the exact
+   *                   snapshot that was hashed
+   */
+  const gatedExecution = async (
+    input: any,
+    config: any,
+    execute: (executionInput: any) => any,
+  ): Promise<any> => {
     const receipt = getReceipt(input, config);
     let executionInput: any;
     try {
       executionInput = snapshotToolArguments(input);
     } catch {
-      const err = new Error('EMILIA blocked tool call: action_binding_invalid') as Error & { emilia?: any };
-      err.emilia = { status: 428, reason: 'action_binding_invalid' };
-      throw err;
+      throw bindingError();
     }
     /** @type {string | null | undefined} */
     let baseAction = action;
@@ -163,14 +189,10 @@ export function requireReceiptForLangChainTool(tool: Tool, opts: Obj = {}): Tool
       if (typeof baseAction !== 'string' || !baseAction) throw new TypeError('action_binding_invalid');
       boundAction = bindToolAction(tool?.name || 'langchain.tool', executionInput, baseAction);
     } catch {
-      const err = new Error('EMILIA blocked tool call: action_binding_invalid') as Error & { emilia?: any };
-      err.emilia = { status: 428, reason: 'action_binding_invalid' };
-      throw err;
+      throw bindingError();
     }
     const gate = gateFor(boundAction);
-    const r = await gate.run(receipt, {}, async () =>
-      originalInvoke.call(tool, executionInput, config, ...rest),
-    );
+    const r = await gate.run(receipt, {}, async () => execute(executionInput));
     if (!r.ok) {
       const reason = r.body?.rejected?.reason || (r.body?.required ? 'receipt_required' : 'refused');
       const err = new Error(`EMILIA blocked "${boundAction}": ${reason}`) as Error & { emilia?: any };
@@ -180,11 +202,65 @@ export function requireReceiptForLangChainTool(tool: Tool, opts: Obj = {}): Tool
     return r.result;
   };
 
+  const gatedInvoke = async (input: any, config: any, ...rest: any[]): Promise<any> =>
+    gatedExecution(input, config, (executionInput) =>
+      originalInvoke.call(tool, executionInput, config, ...rest));
+
+  // langchain-core implements .call() as a thin wrapper over this.invoke, so it
+  // routes straight to the gated invoke: exactly one gated execution, no second
+  // trip through the raw target.
+  const gatedCall = async (input: any, config: any, ...rest: any[]): Promise<any> =>
+    gatedInvoke(input, config, ...rest);
+
+  // .batch() takes one receipt per element. LangChain accepts either one config
+  // for the whole batch or one per input; both are honored here. There is no
+  // returnExceptions escape hatch: a refusal for any element propagates, so a
+  // partially authorized batch never runs the unauthorized part silently.
+  const gatedBatch = async (inputs: any, config?: any, ...rest: any[]): Promise<any[]> => {
+    if (!Array.isArray(inputs)) throw bindingError();
+    const configFor = (i: number): any => (Array.isArray(config) ? config[i] : config);
+    return Promise.all(inputs.map((input, i) => gatedInvoke(input, configFor(i), ...rest)));
+  };
+
+  // .stream() resolves to the underlying stream only after the gate has cleared
+  // and consumed the receipt; the original (unproxied) stream then runs inside
+  // the gate, so the effect happens exactly once.
+  const gatedStream = async (input: any, config: any, ...rest: any[]): Promise<any> => {
+    const originalStream = tool.stream;
+    return gatedExecution(input, config, (executionInput) =>
+      originalStream.call(tool, executionInput, config, ...rest));
+  };
+
+  // .func / ._call are the raw tool bodies that StructuredTool and
+  // DynamicStructuredTool expose as ordinary properties. Reaching them through
+  // the proxy must not skip the gate. The original body runs inside the gate so
+  // its return shape is preserved exactly.
+  const gatedRawBody = (name: 'func' | '_call') =>
+    async (input: any, second: any, ...rest: any[]): Promise<any> => {
+      const original = tool[name];
+      return gatedExecution(input, second, (executionInput) =>
+        original.call(tool, executionInput, second, ...rest));
+    };
+
   return new Proxy(tool, {
     get(t, prop, receiver) {
+      // .invoke is required and validated above, so it is always gated.
       if (prop === 'invoke') return gatedInvoke;
+      // The remaining entry points are gated only when the target actually has
+      // them, so the proxy never invents a method and duck-typing is preserved.
+      // typeof t !== 'function' keeps Function.prototype.call out of this branch
+      // for the rare callable-with-.invoke target.
+      if (prop === 'call' && typeof t !== 'function' && typeof t.call === 'function') return gatedCall;
+      if (prop === 'batch' && typeof t.batch === 'function') return gatedBatch;
+      if (prop === 'stream' && typeof t.stream === 'function') return gatedStream;
+      if (prop === 'func' && typeof t.func === 'function') return gatedRawBody('func');
+      if (prop === '_call' && typeof t._call === 'function') return gatedRawBody('_call');
       const value = Reflect.get(t, prop, receiver);
-      return typeof value === 'function' ? value.bind(t) : value;
+      // Bind to the RECEIVER, not the raw target: any other method that reaches
+      // the effect through `this.invoke` (transform, streamEvents, streamLog,
+      // pipe outputs, ...) then resolves to the gated invoke instead of the
+      // ungated original.
+      return typeof value === 'function' ? value.bind(receiver) : value;
     },
   });
 }
@@ -200,7 +276,8 @@ export function makeLangChainReceiptGate(opts: Obj = {}): Obj {
   }
   const baseAction = typeof actionFor === 'function' ? actionFor(input) : action;
   const boundAction = bindToolAction(toolName, input, baseAction);
-  return makeReceiptGate({ action: boundAction, ...gateOptions, store });
+  // The derived exact action and the store are not caller-overridable.
+  return makeReceiptGate({ ...gateOptions, action: boundAction, store });
 }
 
 // ── (2) Legacy hosted policy gate — kept for back-compat ─────────────────────
@@ -279,11 +356,19 @@ export function withGuard(tool: Tool, opts: Obj = {}): Tool {
     throw new Error(`EMILIA blocked legacy hosted gate execution for "${action}"${suffix}; use requireReceiptForLangChainTool`);
   };
 
+  // Every entry point refuses, not just .invoke. A legacy hosted decision is
+  // never execution authority, so .call/.batch/.stream/.func/._call must not
+  // reach the raw target either.
   return new Proxy(tool, {
     get(target, prop, receiver) {
       if (prop === 'invoke') return run;
+      if (prop === 'call' && typeof target !== 'function' && typeof target.call === 'function') return run;
+      if (prop === 'batch' && typeof target.batch === 'function') return run;
+      if (prop === 'stream' && typeof target.stream === 'function') return run;
+      if (prop === 'func' && typeof target.func === 'function') return run;
+      if (prop === '_call' && typeof target._call === 'function') return run;
       const value = Reflect.get(target, prop, receiver);
-      return typeof value === 'function' ? value.bind(target) : value;
+      return typeof value === 'function' ? value.bind(receiver) : value;
     },
   });
 }

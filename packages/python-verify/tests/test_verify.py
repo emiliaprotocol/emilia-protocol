@@ -72,6 +72,27 @@ def test_canonicalize_consensus_split_edge_vector_matches_js():
     assert is_canonicalizable({"fractional": 1.25}) is False
 
 
+def test_algorithm_label_other_than_ed25519_is_refused():
+    """signature.algorithm is not covered by the signature and was only checked
+    for presence, so a receipt labelled "ML-DSA-65" or "none" carrying a valid
+    Ed25519 signature verified. Parity with the JS and Go verifiers."""
+    doc, pub = _load()
+    assert verify_receipt(doc, pub).valid is True
+    # Both shipped spellings of the ONE algorithm are accepted; the fixture
+    # itself carries the lowercase spelling from the published spec text.
+    upper = copy.deepcopy(doc)
+    upper["signature"]["algorithm"] = "Ed25519"
+    assert verify_receipt(upper, pub).valid is True
+
+    for algorithm in ("ML-DSA-65", "none", "ES256", "Ed448"):
+        bad = copy.deepcopy(doc)
+        bad["signature"]["algorithm"] = algorithm
+        r = verify_receipt(bad, pub)
+        assert r.valid is False, algorithm
+        assert r.checks["signature"] is False
+        assert "Unsupported signature algorithm" in (r.error or "")
+
+
 def test_tampered_payload_fails():
     doc, pub = _load()
     bad = copy.deepcopy(doc)

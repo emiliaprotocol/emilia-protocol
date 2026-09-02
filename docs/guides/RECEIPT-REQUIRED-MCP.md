@@ -47,6 +47,9 @@ Put this at `/.well-known/agent-actions.json`. Start with one dangerous tool.
       "receipt_required": true,
       "assurance_class": "class_a",
       "max_age_sec": 900,
+      "execution_binding": {
+        "required_fields": ["action_type", "amount_usd", "currency", "beneficiary_account_hash"]
+      },
       "quorum": { "required": false }
     }
   ]
@@ -55,6 +58,12 @@ Put this at `/.well-known/agent-actions.json`. Start with one dangerous tool.
 
 The manifest does not grant permission. It is a refusal contract: which action
 requires proof, and what proof the caller must bring.
+
+`execution_binding.required_fields` is mandatory on every guarded entry.
+Without it a receipt is bound to the action TYPE only, so a claim signed for
+"$1.00 to acct_OK" also authorizes "$999,999.99 to acct_ATTACKER". Name the
+material fields the executor reads from its system of record; the gate refuses
+unless the signed claim and the observed action agree on every one of them.
 
 ## 2. Wrap the dispatcher
 

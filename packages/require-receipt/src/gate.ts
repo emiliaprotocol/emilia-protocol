@@ -30,6 +30,43 @@ import {
 
 type AnyRecord = Record<string, any>;
 
+/**
+ * A gate refusal. `ok: false` is the discriminant, so a caller narrows with a
+ * plain `if (result.ok)` instead of reaching for a cast. The body carries only
+ * the sanitized challenge plus a `{ reason }` code.
+ */
+export type ReceiptGateRefusal = {
+  ok: false;
+  status: number;
+  body: AnyRecord;
+};
+
+/** A verified-and-reserved receipt, before the side effect runs. */
+export type ReceiptGateCheckAccepted = {
+  ok: true;
+  receiptId: string;
+  outcome: any;
+  signer?: string;
+  subject?: any;
+  boundAction: string;
+};
+
+export type ReceiptGateCheckResult = ReceiptGateCheckAccepted | ReceiptGateRefusal;
+
+/** A completed side effect whose approval has been permanently consumed. */
+export type ReceiptGateRunAccepted<T = unknown> = {
+  ok: true;
+  receiptId: string;
+  outcome: any;
+  signer?: string;
+  result: T;
+};
+
+export type ReceiptGateRunResult<T = unknown> = ReceiptGateRunAccepted<T> | ReceiptGateRefusal;
+
+/** The side effect `run()` orchestrates: verify and reserve, attempt, commit. */
+export type GateEffect<T = unknown> = (checkResult: AnyRecord) => T | Promise<T>;
+
 /** Default process-local atomic store. Fleets must pass an ownership-fenced
  * shared store implementing the same reserve/commit/release contract. */
 function inMemoryStore() {
@@ -163,7 +200,7 @@ export function makeReceiptGate(opts: AnyRecord = {}) {
   });
 
   /** @returns {{ok:false, status:number, body:any}} */
-  function refuse(boundAction: string, reason: string, actionHash?: string) {
+  function refuse(boundAction: string, reason: string, actionHash?: string): ReceiptGateRefusal {
     return {
       ok: false,
       status: statusCode,
@@ -181,7 +218,7 @@ export function makeReceiptGate(opts: AnyRecord = {}) {
   async function check(receipt: AnyRecord | null | undefined, {
     target,
     observedAction,
-  }: { target?: any; observedAction?: AnyRecord } = {}) {
+  }: { target?: any; observedAction?: AnyRecord } = {}): Promise<ReceiptGateCheckResult> {
     const boundAction = boundActionFor(target);
     let observedHash: string | undefined;
     if (observedAction !== undefined) {
@@ -258,11 +295,19 @@ export function makeReceiptGate(opts: AnyRecord = {}) {
    * Receives the check result: fn({ receiptId, outcome, signer, ... }).
    * @returns {Promise<{ok:true, receiptId, outcome, signer, result}|{ok:false, status, body}>}
    */
-  async function run(receipt: AnyRecord | null | undefined, ctx: AnyRecord | ((checkResult: AnyRecord) => unknown) = {}, fn?: (checkResult: AnyRecord) => unknown) {
-    if (typeof ctx === 'function') { fn = ctx as (checkResult: AnyRecord) => unknown; ctx = {}; }
+  async function run<T = unknown>(
+    receipt: AnyRecord | null | undefined,
+    ctx: AnyRecord | GateEffect<T> = {},
+    fn?: GateEffect<T>,
+  ): Promise<ReceiptGateRunResult<Awaited<T>>> {
+    // `AnyRecord` also admits callables, so a bare `typeof` test narrows to the
+    // structureless `Function`. Name the effect signature in a type guard so the
+    // two-argument form resolves without a cast.
+    const isEffect = (value: AnyRecord | GateEffect<T>): value is GateEffect<T> => typeof value === 'function';
+    if (isEffect(ctx)) { fn = ctx; ctx = {}; }
     if (typeof fn !== 'function') throw new Error('makeReceiptGate.run: fn is required');
     const c = await check(receipt, ctx || {});
-    if (!c.ok) return /** @type {{ok:false, status:any, body:any}} */ (c);
+    if (!c.ok) return c;
     const receiptId = c.receiptId;
     if (typeof receiptId !== 'string') throw new Error('makeReceiptGate.run: receipt id is required');
     let attempted = false;

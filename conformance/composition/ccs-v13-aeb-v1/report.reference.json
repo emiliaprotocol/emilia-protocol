@@ -60,7 +60,7 @@
           "id": "system:ccs-v13-independent-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:e8e7ca30569eecefd2e7119be4f39a6cccb1b044f20fc1e4af9eef587d1f32a2",
+        "replay_unit": "sha256:b48649177ee7f838a5b8cb949984c831a3ab6bddf82fa84afec3ff9906c9518a",
         "reasons": []
       }
     },
@@ -203,7 +203,7 @@
           "id": "system:ccs-v13-independent-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:e8e7ca30569eecefd2e7119be4f39a6cccb1b044f20fc1e4af9eef587d1f32a2",
+        "replay_unit": "sha256:b48649177ee7f838a5b8cb949984c831a3ab6bddf82fa84afec3ff9906c9518a",
         "reasons": [
           "evidence_consumed"
         ]
@@ -224,7 +224,7 @@
           "id": "system:ccs-v13-independent-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:e8e7ca30569eecefd2e7119be4f39a6cccb1b044f20fc1e4af9eef587d1f32a2",
+        "replay_unit": "sha256:b48649177ee7f838a5b8cb949984c831a3ab6bddf82fa84afec3ff9906c9518a",
         "reasons": [
           "status_unavailable"
         ]
@@ -246,7 +246,7 @@
             "id": "system:ccs-v13-independent-verifier",
             "kind": "system"
           },
-          "replay_unit": "sha256:b1d7d9500f574ae1e9bed041f07cc03b04280ee3a35217ea0679eb4604589ed0",
+          "replay_unit": "sha256:2041015def39e8dbbc06f676e7144e91b4a6e7438daac200ab3be0f2de158fcc",
           "reasons": [
             "ccs:deny"
           ]
@@ -270,5 +270,5 @@
     "The adapter verifies the Ed25519 signature. The legacy HMAC receipt field is retained as signed issuer data, not a cross-domain trust root.",
     "A passing report is a self-attested reproduction package until an external operator independently runs it."
   ],
-  "report_digest": "sha256:46345c6bbf90a440e4b48f85fc9e2e28650869c082c4a9bb8df9029477772558"
+  "report_digest": "sha256:ac60101908c6e31464d234821668c23e80c82b4e349623a67c69f3c4e1320207"
 }

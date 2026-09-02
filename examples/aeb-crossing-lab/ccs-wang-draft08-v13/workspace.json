@@ -4,7 +4,7 @@
     "id": "native:ccs-draft08-v1.3-ed25519",
     "version": "1.0.0",
     "module": "adapter.mjs",
-    "module_digest": "sha256:986a91532c333a13b27b908d282d5e45dfebee8c8280589771059c9b7e228b2a"
+    "module_digest": "sha256:d71c4c480d67de55b8d709fdbfe0f878aa0f5d88fb4acf75aaab15a21982a123"
   },
   "artifact": "artifact.json",
   "artifact_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",

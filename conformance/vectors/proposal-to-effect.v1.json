@@ -47,7 +47,7 @@
     },
     {
       "id": "authenticated_not_committed_reconciliation_releases_operation",
-      "expect": { "outcome": "NOT_COMMITTED", "state": "AVAILABLE" }
+      "expect": { "outcome": "NOT_COMMITTED", "state": "RELEASED_NOT_ENTERED" }
     },
     {
       "id": "executed_effect_commit_failure_stays_reserved",

@@ -250,7 +250,18 @@ function verifyNative(input) {
     result.reasons = ['ccs:draft08_artifact_malformed'];
     return result;
   }
-  result.replay_unit = digest({ protocol: SOURCE_LOCK, issuer: receipt.issuer, nonce: receipt.nonce });
+  // Verifier-derived from the signed authority, never from a wrapper field.
+  // receipt.action is "ccs:tool-invoke:<tool>:<sha256 of the canonical
+  // arguments>" and is cross-checked against tool and params_hash in
+  // parseReceipt. nonce is non-material: keying on it would collide two
+  // authorities that reused one nonce and split one re-issued authority into a
+  // second consumable unit.
+  result.replay_unit = digest({
+    protocol: SOURCE_LOCK,
+    issuer: receipt.issuer,
+    audience: receipt.audience,
+    action: receipt.action,
+  });
   if (!verifySignature(receipt, rawPublicKey)) {
     result.reasons = ['ccs:draft08_signature_invalid'];
     return result;

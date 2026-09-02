@@ -20,16 +20,39 @@ export const AEB_CONSUMPTION_DDL = `CREATE TABLE IF NOT EXISTS ${AEB_CONSUMPTION
   tenant_id        TEXT NOT NULL CHECK (octet_length(tenant_id) BETWEEN 1 AND 512),
   relying_party_id TEXT NOT NULL CHECK (octet_length(relying_party_id) BETWEEN 1 AND 512),
   operation_key    TEXT NOT NULL CHECK (octet_length(operation_key) BETWEEN 1 AND 4096),
-  state            TEXT NOT NULL CHECK (state IN ('RESERVED', 'CONSUMED')),
+  state            TEXT NOT NULL CHECK (state IN ('RESERVED', 'CONSUMED', 'RELEASED_NOT_ENTERED')),
   owner_token      TEXT NULL CHECK (owner_token IS NULL OR octet_length(owner_token) BETWEEN 16 AND 512),
   reserved_at      TIMESTAMPTZ NOT NULL DEFAULT transaction_timestamp(),
   consumed_at      TIMESTAMPTZ NULL,
+  released_at      TIMESTAMPTZ NULL,
   PRIMARY KEY (tenant_id, relying_party_id, operation_key),
-  CHECK (
-    (state = 'RESERVED' AND owner_token IS NOT NULL AND consumed_at IS NULL)
-    OR (state = 'CONSUMED' AND owner_token IS NULL AND consumed_at IS NOT NULL)
+  CONSTRAINT ep_aeb_consumption_operations_lifecycle_check CHECK (
+    (state = 'RESERVED' AND owner_token IS NOT NULL AND consumed_at IS NULL AND released_at IS NULL)
+    OR (state = 'CONSUMED' AND owner_token IS NULL AND consumed_at IS NOT NULL AND released_at IS NULL)
+    OR (state = 'RELEASED_NOT_ENTERED' AND owner_token IS NULL AND consumed_at IS NULL
+        AND released_at IS NOT NULL)
   )
 );
+-- Forward migration for a table created before the terminal released-not-entered
+-- state existed. Every step is idempotent, so re-running the whole DDL is safe.
+ALTER TABLE ${AEB_CONSUMPTION_OPERATION_TABLE}
+  ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ NULL;
+ALTER TABLE ${AEB_CONSUMPTION_OPERATION_TABLE}
+  DROP CONSTRAINT IF EXISTS ep_aeb_consumption_operations_state_check;
+ALTER TABLE ${AEB_CONSUMPTION_OPERATION_TABLE}
+  ADD CONSTRAINT ep_aeb_consumption_operations_state_check
+  CHECK (state IN ('RESERVED', 'CONSUMED', 'RELEASED_NOT_ENTERED'));
+ALTER TABLE ${AEB_CONSUMPTION_OPERATION_TABLE}
+  DROP CONSTRAINT IF EXISTS ep_aeb_consumption_operations_check;
+ALTER TABLE ${AEB_CONSUMPTION_OPERATION_TABLE}
+  DROP CONSTRAINT IF EXISTS ep_aeb_consumption_operations_lifecycle_check;
+ALTER TABLE ${AEB_CONSUMPTION_OPERATION_TABLE}
+  ADD CONSTRAINT ep_aeb_consumption_operations_lifecycle_check CHECK (
+    (state = 'RESERVED' AND owner_token IS NOT NULL AND consumed_at IS NULL AND released_at IS NULL)
+    OR (state = 'CONSUMED' AND owner_token IS NULL AND consumed_at IS NOT NULL AND released_at IS NULL)
+    OR (state = 'RELEASED_NOT_ENTERED' AND owner_token IS NULL AND consumed_at IS NULL
+        AND released_at IS NOT NULL)
+  );
 CREATE TABLE IF NOT EXISTS ${AEB_CONSUMPTION_REPLAY_TABLE} (
   tenant_id        TEXT NOT NULL CHECK (octet_length(tenant_id) BETWEEN 1 AND 512),
   relying_party_id TEXT NOT NULL CHECK (octet_length(relying_party_id) BETWEEN 1 AND 512),
@@ -207,6 +230,38 @@ BEGIN
     RETURNING ${AEB_CONSUMPTION_OPERATION_TABLE}.operation_key;
 END
 $fn$;
+-- Terminal released-not-entered marker. The row is kept so the byte-identical
+-- operation key can never be reserved again, the owner token is dropped so no
+-- late commit can reopen it, and the native replay fences that reference this
+-- row are kept because the ON DELETE CASCADE never fires.
+CREATE OR REPLACE FUNCTION ep_aeb_private.release_terminal_operation(
+  p_tenant_id TEXT, p_relying_party_id TEXT, p_operation_key TEXT, p_owner_token TEXT
+) RETURNS TABLE(operation_key TEXT)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $fn$
+BEGIN
+  PERFORM ep_aeb_private.assert_tenant_principal(p_tenant_id, FALSE);
+  RETURN QUERY
+    WITH transitioned AS (
+      UPDATE public.${AEB_CONSUMPTION_OPERATION_TABLE}
+        SET state = 'RELEASED_NOT_ENTERED', owner_token = NULL,
+            released_at = pg_catalog.transaction_timestamp()
+        WHERE tenant_id = p_tenant_id AND relying_party_id = p_relying_party_id
+          AND ${AEB_CONSUMPTION_OPERATION_TABLE}.operation_key = p_operation_key
+          AND state = 'RESERVED' AND owner_token = p_owner_token
+        RETURNING ${AEB_CONSUMPTION_OPERATION_TABLE}.operation_key
+    )
+    SELECT transitioned.operation_key FROM transitioned
+    UNION ALL
+    SELECT existing.operation_key
+      FROM public.${AEB_CONSUMPTION_OPERATION_TABLE} AS existing
+      WHERE NOT EXISTS (SELECT 1 FROM transitioned)
+        AND existing.tenant_id = p_tenant_id
+        AND existing.relying_party_id = p_relying_party_id
+        AND existing.operation_key = p_operation_key
+        AND existing.state = 'RELEASED_NOT_ENTERED';
+END
+$fn$;
 ALTER FUNCTION ep_aeb_private.assert_tenant_principal(TEXT, BOOLEAN)
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 ALTER FUNCTION ep_aeb_private.reserve_operation(TEXT, TEXT, TEXT, TEXT)
@@ -221,6 +276,8 @@ ALTER FUNCTION ep_aeb_private.claim_operation(TEXT, TEXT, TEXT, TEXT)
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 ALTER FUNCTION ep_aeb_private.release_operation(TEXT, TEXT, TEXT, TEXT)
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
+ALTER FUNCTION ep_aeb_private.release_terminal_operation(TEXT, TEXT, TEXT, TEXT)
+  OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA ep_aeb_private
   FROM PUBLIC, anon, authenticated, service_role;
 GRANT USAGE ON SCHEMA ep_aeb_private TO ${AEB_CONSUMPTION_EXECUTOR_ROLE}, ${AEB_CONSUMPTION_RECOVERY_ROLE};
@@ -228,7 +285,8 @@ GRANT EXECUTE ON FUNCTION ep_aeb_private.has_replay_fence(TEXT, TEXT, TEXT),
   ep_aeb_private.reserve_operation(TEXT, TEXT, TEXT, TEXT),
   ep_aeb_private.reserve_replay_keys(TEXT, TEXT, TEXT, TEXT[]),
   ep_aeb_private.commit_operation(TEXT, TEXT, TEXT, TEXT),
-  ep_aeb_private.release_operation(TEXT, TEXT, TEXT, TEXT)
+  ep_aeb_private.release_operation(TEXT, TEXT, TEXT, TEXT),
+  ep_aeb_private.release_terminal_operation(TEXT, TEXT, TEXT, TEXT)
   TO ${AEB_CONSUMPTION_EXECUTOR_ROLE};
 GRANT EXECUTE ON FUNCTION ep_aeb_private.claim_operation(TEXT, TEXT, TEXT, TEXT)
   TO ${AEB_CONSUMPTION_RECOVERY_ROLE};
@@ -241,6 +299,7 @@ export const AEB_CONSUMPTION_SQL = Object.freeze({
     commitOperation: `SELECT operation_key FROM ep_aeb_private.commit_operation($1::text, $2::text, $3::text, $4::text)`,
     claimOperation: `SELECT operation_key FROM ep_aeb_private.claim_operation($1::text, $2::text, $3::text, $4::text)`,
     releaseOperation: `SELECT operation_key FROM ep_aeb_private.release_operation($1::text, $2::text, $3::text, $4::text)`,
+    releaseTerminalOperation: `SELECT operation_key FROM ep_aeb_private.release_terminal_operation($1::text, $2::text, $3::text, $4::text)`,
 });
 const BEGIN_WRITE = 'BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE';
 const COMMIT = 'COMMIT';
@@ -333,6 +392,7 @@ export function createPostgresAebDurableConsumptionStore({ pool, recoveryPool, t
         ownershipFenced: true,
         permanentConsumption: true,
         atomicReplayFenced: true,
+        terminalRelease: true,
         recoveryClaimSupported: true,
         async hasReplayFence(replayKey) {
             assertText(replayKey, 'native replay key', 4096);
@@ -450,6 +510,23 @@ export function createPostgresAebDurableConsumptionStore({ pool, recoveryPool, t
                 ]), 'release operation');
                 if (rows > 1)
                     throw new Error('release operation: unexpected PostgreSQL row count');
+                return rows === 1;
+            });
+            ownedReservations.delete(key);
+            return changed;
+        },
+        async releaseTerminal(key) {
+            assertText(key, 'operation key', 4096);
+            const ownerToken = ownedReservations.get(key);
+            if (ownerToken === undefined)
+                return false;
+            const changed = await transaction(pool, async (client) => {
+                const rows = exactRowCount(await client.query(AEB_CONSUMPTION_SQL.releaseTerminalOperation, [
+                    tenantId, relyingPartyId, key, ownerToken,
+                ]), 'release operation terminally');
+                if (rows > 1) {
+                    throw new Error('release operation terminally: unexpected PostgreSQL row count');
+                }
                 return rows === 1;
             });
             ownedReservations.delete(key);

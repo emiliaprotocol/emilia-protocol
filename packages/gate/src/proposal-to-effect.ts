@@ -28,6 +28,7 @@ import {
   type AebDurableConsumptionStore,
   type AebEvaluationRecord,
   type AebPinnedConfig,
+  type AebReconciliationResult,
   type AebStatusInput,
   type AebVerificationOptions,
 } from '@emilia-protocol/verify/aeb-adapter-contract';
@@ -1099,8 +1100,13 @@ export function createProposalToEffect(options: ProposalToEffectOptions) {
       return refusal('consequence_attempt_store_unavailable');
     }
     if (!attemptReconciled) return refusal('consequence_attempt_not_indeterminate');
-    const reconciled = providerOutcome === 'ESCALATED'
-      ? { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'execution_escalated' }
+    const reconciled: AebReconciliationResult = providerOutcome === 'ESCALATED'
+      ? {
+        state: 'RECONCILIATION_REQUIRED',
+        retry_allowed: false,
+        retry_requires_new_instance: true,
+        reason: 'execution_escalated',
+      }
       : providerOutcome === 'COMMITTED'
         ? preTerminalAeb!
       : await reconcileAebWithRecovery(key, providerOutcome, input.aeb_recovery_authorization);
@@ -1194,7 +1200,12 @@ export function createProposalToEffect(options: ProposalToEffectOptions) {
         ok: true,
         state: 'ESCALATED',
         consequence: { state: 'ESCALATED', attempt: clone(attempt) },
-        aeb: { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'execution_escalated' },
+        aeb: {
+          state: 'RECONCILIATION_REQUIRED',
+          retry_allowed: false,
+          retry_requires_new_instance: true,
+          reason: 'execution_escalated',
+        },
       };
     }
     const key = aebReservationKey(record);
@@ -1204,7 +1215,9 @@ export function createProposalToEffect(options: ProposalToEffectOptions) {
       outcome,
       input.aeb_recovery_authorization,
     );
-    const expectedState = outcome === 'COMMITTED' ? 'CONSUMED' : 'AVAILABLE';
+    // s5.11: a repaired non-entry is terminal RELEASED_NOT_ENTERED, never a
+    // reservation handed back to the same action instance.
+    const expectedState = outcome === 'COMMITTED' ? 'CONSUMED' : 'RELEASED_NOT_ENTERED';
     if (repaired.state !== expectedState) {
       return refusal('aeb_consumption_repair_failed', {
         state: snapshot.state,

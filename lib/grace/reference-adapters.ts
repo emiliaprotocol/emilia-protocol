@@ -47,11 +47,29 @@ type ReferenceCurtailmentAction = {
   window: { not_before: string; not_after: string };
 };
 
-export function createFencedMemoryStore() {
+/**
+ * Process-local consumption store for the GRACE reference scenario.
+ *
+ * It reports durable:false / ownershipFenced:false / permanentConsumption:false
+ * because a Map inside one process is none of those things, and it is named for
+ * what it is. It was previously exported as createFencedMemoryStore() and
+ * asserted durable:true + ownershipFenced:true over the same Map, which is the
+ * exact capability pair runCurtailmentOnce() gates the physical dispatch on: two
+ * pods each held their own Map, so one idempotency key produced two curtailment
+ * dispatches and two payouts. The honest flags make that impossible; a caller
+ * that wants this store for a demo now has to say so explicitly with
+ * `allowEphemeralState: true`.
+ *
+ * Matches MemoryConsumptionStore in packages/gate/src/store.ts, which has
+ * declared the same three flags false since it shipped. Production GRACE
+ * deployments use createDurableConsumptionStore() over a shared backend.
+ */
+export function createEphemeralMemoryStore() {
   const states = new Map();
   return {
-    durable: true,
-    ownershipFenced: true,
+    durable: false,
+    ownershipFenced: false,
+    permanentConsumption: false,
     async reserve(key) {
       if (states.has(key)) return false;
       states.set(key, 'reserved');

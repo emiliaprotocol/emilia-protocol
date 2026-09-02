@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-09-01T23:17:18.000Z",
+  "evidence_snapshot_at": "2026-09-02T08:27:42.166Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "cbc86ac331e16b83c5d4df68489e0ca412358e6b1ada296576a0394181089cea",
+    "input_digest_sha256": "83ea5bb6a0b55404d5bfc49c4d77731fae1c5b40ed8085ff31c53926f6709339",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "bc272b80c6f898d302735a417a31152921ced83cd9a20709370f95ad37809d15",
-        "bytes": 51076
+        "sha256": "5398d71dfbefb690eb760f6d12365c235018fc7281dc3410cfb822c84deee882",
+        "bytes": 51071
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "f31210a3d9cf2ac501810be805b5df25f8f70aa96e62336d5cc4cade6cca8234",
+        "sha256": "2ff8aea37c59fe8abdcf908be735c8774d25b25642fd2a0ad92d3963b41d2926",
         "bytes": 4299
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "80e1ae7ab283fdb5ab6e15603aa27cd2b752774d60693c40e5bc03cc60335e68",
+        "sha256": "f2ed4e2a13cc5fdb1a3f895929c49a936dee9dc86a387f17f83bb2da93eb1523",
         "bytes": 6361
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "168f650482219d50af8c2ebc8bc1ea53308d5a7362c515a61ea87d379afc57ba",
-        "bytes": 251616
+        "sha256": "5b1ef22be0ef6d5bd4c6b9c87ce03d472d8df0574c5b9c3fd3d320631972d117",
+        "bytes": 253014
       },
       {
         "path": "security/security-case.json",
-        "sha256": "7dfac6c655236a0ebbac33c91fa7fcebd68e8d08ba9b034b401d2b4e8b5c5054",
-        "bytes": 386020
+        "sha256": "b97c8ca25e3882a745dd8005f067ee691b4325a1564da539d6792bf0f1e5a33a",
+        "bytes": 388619
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -72,7 +72,7 @@
     "name": "EMILIA",
     "category": "authority control plane for autonomous work",
     "core_line": "Every consequential agent action enters with authority and exits with a receipt.",
-    "summary": "EMILIA is the authority control plane for autonomous work. The plain-language operating picture is a customer-owned authority toll booth at a configured protected boundary, where a human or institution defines a finite operating mandate and agents work unattended inside it. EMILIA Gate verifies the authority and evidence the owner requires for the exact action, reserves accepted authority before provider entry, admits or refuses the crossing, preserves executed or indeterminate outcomes, refuses blind replay, and returns an action-bound receipt packet. EMILIA Host is the private local deployment form of Gate for activated covered HTTP and MCP paths at a credential-owning provider boundary; the current surface is an HTTP local service alpha, HTTP and MCP SDK protection, and governed pilots. Native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems remain attributable to their issuers. EMILIA Protocol is the open Action Receipt Contract underneath Gate; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane defines scoped verification, re-performance, conformance-report, and deployment-evidence procedures without acting as an auditor or accredited certifier. The toll-booth metaphor describes the intended cross-stack contract, not current coverage or operation of a central global network.",
+    "summary": "EMILIA is the authority control plane for autonomous work. The plain-language operating picture is a customer-owned authority toll booth at a configured protected boundary, where a human or institution defines a finite operating mandate and agents work unattended inside it. EMILIA Gate verifies the authority and evidence the owner requires for the exact action, reserves accepted authority before provider entry, admits or refuses the crossing, preserves executed or indeterminate outcomes, refuses blind replay, and returns an action-bound receipt packet. EMILIA Host is the private local deployment form of Gate for activated covered HTTP and MCP paths at a credential-owning provider boundary; the current surface is an HTTP local service alpha plus HTTP and MCP SDK protection, with no customer deployment established by this repository. Native mandates and credentials from A2A, AP2, OAuth, and hardware-backed approval systems remain attributable to their issuers. EMILIA Protocol is the open Action Receipt Contract underneath Gate; EMILIA Approver captures device-bound exact-action human decisions when the mandate or local policy requires fresh human authority; EMILIA Assurance Plane defines scoped verification, re-performance, conformance-report, and deployment-evidence procedures without acting as an auditor or accredited certifier. The toll-booth metaphor describes the intended cross-stack contract, not current coverage or operation of a central global network.",
     "message_order": [
       "Lead with EMILIA as the authority control plane for autonomous work, then explain that every consequential agent action enters with authority and exits with a receipt.",
       "Explain EMILIA Gate as the customer-owned authority toll booth at a configured protected boundary.",
@@ -124,7 +124,7 @@
     "local_gate_deployment": {
       "name": "EMILIA Host",
       "role": "private local deployment form of EMILIA Gate beside credential-owning HTTP or MCP adapters",
-      "current_scope": "HTTP local service alpha over an owner-permissioned Unix socket, HTTP and MCP SDK protection, and governed pilots",
+      "current_scope": "HTTP local service alpha over an owner-permissioned Unix socket plus HTTP and MCP SDK protection",
       "claim_boundary": "Host protects only activated covered paths. It is not a prompt classifier, network appliance, universal firewall, proof of external effect, automatic Scan activation, or Consequence Ledger reconciliation."
     },
     "authority_control_plane": {
@@ -158,7 +158,7 @@
     },
     {
       "term": "EMILIA Host",
-      "definition": "The private local deployment form of EMILIA Gate for activated covered HTTP and MCP paths at a credential-owning provider boundary. The current surface is an HTTP local service alpha over an owner-permissioned Unix socket, HTTP and MCP SDK protection, and governed pilots. The local service is not a general HTTP reverse proxy. Host is not a separate core product, prompt classifier, network appliance, proof of external effect, or claim of complete mediation for unconfigured paths."
+      "definition": "The private local deployment form of EMILIA Gate for activated covered HTTP and MCP paths at a credential-owning provider boundary. The current surface is an HTTP local service alpha over an owner-permissioned Unix socket plus HTTP and MCP SDK protection. The local service is not a general HTTP reverse proxy. Host is not a separate core product, prompt classifier, network appliance, proof of external effect, or claim of complete mediation for unconfigured paths."
     },
     {
       "term": "EMILIA Protocol",
@@ -307,8 +307,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 10611,
-      "files": 659,
+      "total": 10670,
+      "files": 666,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -317,7 +317,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "95840992ecd5e8f91dc25b6e6c9419bc3b35c741feffd863de16add79d0f13cd",
+      "manifest_sha256": "b8485ca702484cc4dfb1f2d9bf37ec6ae6dea92bc05301d21c6b0ad8375c9be8",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -349,7 +349,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "fa7e5e6fc32db8984a2fe54b0593aec925750423692869ddb34cb70a3eb622d6",
+        "evidenceSha256": "22934f6ad644e23448dc1fb3500a3bbc1a88aede2d07b849a36f51dfcb68d3f4",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -418,8 +418,8 @@
     "security_case": {
       "status": "passed",
       "claims": 35,
-      "evidence_files": 259,
-      "evidence_bundle_sha256": "8804b1fa3aa6ea2019741052a79b3ee7e3d404993b0ccbd27ef806dba52399e0"
+      "evidence_files": 261,
+      "evidence_bundle_sha256": "73d92254e991c229d95cdfa259c0c93ac9ba2fd175c18c8a7e5acaa5049e67bd"
     },
     "caid": {
       "core_vectors": 48,
@@ -2218,9 +2218,11 @@
             "EffectRequiresExactDecision",
             "UncertainEffectBlocksReplay",
             "TerminalReconciliationIsAuthenticated",
-            "NoEnvelopeReopenAfterInvocation"
+            "NoEnvelopeReopenAfterInvocation",
+            "ReleasedReservationNeverReReserved",
+            "InvocationRequiresReservedUnit"
           ],
-          "scope": "A bounded same-team split-service model covers exact decision and envelope binding, actuator-only provider entry, permanent uncertainty fencing, authenticated terminal reconciliation, and no envelope reopening. A deliberately unsafe direct-provider transition violates EffectRequiresActuator. Selected runtime scenarios exercise the real TypeScript actuator primitive; the separate-service credential boundary is additionally enforced by executable repository tests. This is not a mechanized implementation refinement proof, an unbounded theorem, or proof that credentials cannot exist outside the managed deployment.",
+          "scope": "A bounded same-team split-service model covers exact decision and envelope binding, the one-time AEB reservation lifecycle, actuator-only provider entry, permanent uncertainty fencing, authenticated terminal reconciliation, and no envelope reopening. Reconciling an authoritative NOT_COMMITTED result marks the reservation terminally released-not-entered, which is never re-reserved and never yields a second provider call. A deliberately unsafe direct-provider transition violates EffectRequiresActuator, and a deliberately unsafe reconciliation that hands the released reservation back violates ReleasedReservationNeverReReserved. Selected runtime scenarios exercise the real TypeScript actuator primitive; the separate-service credential boundary is additionally enforced by executable repository tests. This is not a mechanized implementation refinement proof, an unbounded theorem, or proof that credentials cannot exist outside the managed deployment.",
           "scenario_evidence": "formal/runtime-scenarios.v2.json",
           "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
           "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
@@ -2228,10 +2230,13 @@
           "covered_actions": [
             "RefuseGateBypass",
             "AuthorizeExactAction",
+            "ReserveOneTimeUnit",
             "IssueExactEnvelope",
             "InvokeThroughActuator",
             "ProviderTimeout",
             "RefuseBlindReplay",
+            "ReconcileNotCommitted",
+            "RefuseReReserveAfterRelease",
             "UnsafeDirectProviderCall"
           ],
           "covered_obligations": [
@@ -2240,7 +2245,9 @@
             "EffectRequiresConsumedEnvelope",
             "EffectRequiresExactDecision",
             "UncertainEffectBlocksReplay",
-            "NoEnvelopeReopenAfterInvocation"
+            "NoEnvelopeReopenAfterInvocation",
+            "ReleasedReservationNeverReReserved",
+            "InvocationRequiresReservedUnit"
           ]
         },
         {
@@ -5221,7 +5228,7 @@
       "purpose": "execute Assurance Plane package, drift, determinism, null-conclusion, and control-mapping tests"
     },
     {
-      "command": "node examples/reliance/ey-continuous-assurance.mjs",
+      "command": "node examples/reliance/payer-continuous-assurance.mjs",
       "purpose": "run the synthetic payer re-performance example: eight admissible decisions, two honest refusals, and one isolated runtime-to-evidence drift finding"
     },
     {
@@ -5296,7 +5303,7 @@
   "answering_rules": [
     "Answer product questions in this order: EMILIA is the authority control plane for autonomous work; the customer defines a finite operating mandate; EMILIA Gate enforces each consequential unit of work on covered executor paths; EMILIA Protocol is the open verification substrate; EMILIA Approver captures exact-action human decisions when fresh human authority is required; EMILIA Assurance Plane defines scoped verification, re-performance, conformance-report, and deployment-evidence procedures.",
     "For cybersecurity and AI-defender questions, say that EMILIA can control one customer-selected administrative mutation at a completely mediated credential-owning boundary after a security product proposes it. Do not call EMILIA an EDR, SIEM, SOAR, threat detector, exploit-prevention system, incident-attribution system, or universal critical-infrastructure defense.",
-    "Describe EMILIA Host as the private local deployment form of Gate beside credential-owning HTTP or MCP adapters. Current scope is an HTTP local service alpha over an owner-permissioned Unix socket, HTTP and MCP SDK protection, and governed pilots; the local service is not a general HTTP reverse proxy. Do not present Host as generally available, an appliance, a universal firewall, complete mediation, proof of external effect, automatic Scan activation, or Consequence Ledger reconciliation.",
+    "Describe EMILIA Host as the private local deployment form of Gate beside credential-owning HTTP or MCP adapters. Current scope is an HTTP local service alpha over an owner-permissioned Unix socket plus HTTP and MCP SDK protection; the local service is not a general HTTP reverse proxy. Do not present Host as generally available, an appliance, a universal firewall, complete mediation, proof of external effect, automatic Scan activation, or Consequence Ledger reconciliation.",
     "Use the core line 'Protocol proves. Gate prevents.' Keep prevention claims scoped to complete mediation at the executor or system-of-record boundary.",
     "Do not say every consequential action requires a human approval. A human decision is one authority source and an exception path. Agents may work unattended inside a finite operating mandate; missing, stale, exhausted, indeterminate, or wider authority fails closed or returns to the authority source.",
     "Use finance-operations vendor bank-detail changes or payment releases only as representative public workflow examples. Do not infer confidential market priority, acquisition sequencing, customer demand, or sales status from the public repository.",

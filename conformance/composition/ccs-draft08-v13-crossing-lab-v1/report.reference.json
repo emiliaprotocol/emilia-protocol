@@ -10,18 +10,18 @@
   },
   "workspace": {
     "path": "examples/aeb-crossing-lab/ccs-wang-draft08-v13",
-    "workspace_digest": "sha256:fad3b96e1b69fad30b460bd75112c018a689d6b05642497ab9b55abd5fdb9b59",
+    "workspace_digest": "sha256:8c781385454c60f5342effc90f7bb4e541ee8e10922f16d4697fc4a77a75a3da",
     "artifact_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
-    "adapter_module_digest": "sha256:986a91532c333a13b27b908d282d5e45dfebee8c8280589771059c9b7e228b2a",
+    "adapter_module_digest": "sha256:d71c4c480d67de55b8d709fdbfe0f878aa0f5d88fb4acf75aaab15a21982a123",
     "mapping_profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381"
   },
   "crossing_lab": {
     "@version": "EMILIA-CROSSING-LAB-LOCAL-REPORT-v1",
-    "workspace_digest": "sha256:fad3b96e1b69fad30b460bd75112c018a689d6b05642497ab9b55abd5fdb9b59",
+    "workspace_digest": "sha256:8c781385454c60f5342effc90f7bb4e541ee8e10922f16d4697fc4a77a75a3da",
     "adapter": {
       "id": "native:ccs-draft08-v1.3-ed25519",
       "version": "1.0.0",
-      "module_digest": "sha256:986a91532c333a13b27b908d282d5e45dfebee8c8280589771059c9b7e228b2a"
+      "module_digest": "sha256:d71c4c480d67de55b8d709fdbfe0f878aa0f5d88fb4acf75aaab15a21982a123"
     },
     "evaluated_at": "2030-09-01T00:00:20Z",
     "adapter_rows": [
@@ -64,7 +64,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
           },
-          "evidence_digest": "sha256:2b24f8bb9713a261d1ccc27615ff2aa6eff64cdf549a64c9c41bad69f7e83ebe",
+          "evidence_digest": "sha256:82bd1b5327a719f8e3084ca045db7e4cdb51026a2242ddba949d4842aa9c47e6",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -94,7 +94,7 @@
               "profile_id": "ccs-draft08-v13-tool-action",
               "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
               "reasons": [],
-              "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+              "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
               "resolver_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f",
               "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
               "subject": {
@@ -113,7 +113,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "NfifUcnHWcOf6r9BOGqAsMC0Mqi0MYuYZzVtHTsqohPnbPaOZL5heoUh7029UUwGZzMdDYEtK8WMqK0KFGX0Bg"
+            "value": "_SZ_7XS0z_L8CHF032EInxQ7apXlxjADIiO6VmHy2sTG_leDhFGKoyLtyxHhxCRzz9PoR8Htv74HL8XgEq4nDw"
           }
         }
       },
@@ -159,7 +159,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
           },
-          "evidence_digest": "sha256:3039ba1faaa383d302d5730367fc79db9d1bc76b6e7c42aaf8543a4fbbef74f4",
+          "evidence_digest": "sha256:80852eb256bc49232b7415b9291d437d2a4f6f37112e6544571569f493525145",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -191,7 +191,7 @@
               "reasons": [
                 "ccs:draft08_exact_action_projection_mismatch"
               ],
-              "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+              "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
               "resolver_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f",
               "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
               "subject": {
@@ -213,7 +213,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "LzHeUJcwFDElL9bE7LOR3Z_ydQMYhQiwPjcZkFaeI70qZyQxaqAITVMGZNs9IQQpKT0QQHPkwlQwDGQcSDpUCA"
+            "value": "ugDfz6Ekvzcm6gd4TXyBV54x2pvWknl0wDmOV1dYprWxJ6HSw0huA4Hx_GoTr-kbJZqtxGvYjNGIgzapszUaDg"
           }
         }
       },
@@ -367,7 +367,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
           },
-          "evidence_digest": "sha256:bb467ef51200724a131e141e80dfe8c68bc8159d44fb8378afc9633d785b3c3b",
+          "evidence_digest": "sha256:ef30ce5cbb347e91216a40bda7ffc21498b19d194c4b68a76a9aca18b039ab9d",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -399,7 +399,7 @@
               "reasons": [
                 "status_stale"
               ],
-              "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+              "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
               "resolver_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f",
               "status_digest": "sha256:cc8f0c6ffc3a21ead7558379921667d579c2cbd84d43a51f455c88a1828beec9",
               "subject": {
@@ -420,7 +420,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "FlzVfTkD6vxJQmJjL7cNK9mIy8LT98R5Q6CjnkviqS0mXhOGDZQNvPsnYMUyOtk7l0sRA0VX9QKWLMtCd8e2Aw"
+            "value": "fgUx9Y18E2bSkme3A-G196fuIv9QATz_Gh7acR4vq9Hlg__gMbRZ4rC1o3xiceh86A43VH20euo34l5sQwluBg"
           }
         }
       },
@@ -465,7 +465,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
           },
-          "evidence_digest": "sha256:f79f04f098de9191626b72ecf7fdb206dc0d892d4f86e3a680b9d1ada766d6ef",
+          "evidence_digest": "sha256:e4b144d44ac8350db6a0e3e50cb36eb54069e38ff4ab079606f90d53b964eab3",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -497,7 +497,7 @@
               "reasons": [
                 "status_unavailable"
               ],
-              "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+              "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
               "resolver_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f",
               "status_digest": "sha256:55fe3f1ba342e468ffcd115cf6c03ac74758ab2603d9817b26534dcdac89aba0",
               "subject": {
@@ -518,7 +518,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "5mjGZl2lxrbxRPb_cpTYOOnwxtfjG_C7aCh87JKar38C1xO8thZ-yQ_ee5i527VL3WOJRILaGXUYtRqxASdnCQ"
+            "value": "xsD0uITqjrAUjZgS3lD4V7xmxex0S3bSkB-3tBKCP7vQWEeTpKONOWC_evowtxCJ1AkSmgLozL4odN8lHkatDw"
           }
         }
       },
@@ -561,7 +561,7 @@
             "key_id": "crossing-lab:self-test",
             "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
           },
-          "evidence_digest": "sha256:b10b08333dbbb3cec57d2d77a77ac2831f8bb68dcb6dc398049f2ca6ec666970",
+          "evidence_digest": "sha256:52cd0574f1c1e748eae48445595df821393a0bf539cc91e599d8b440b3711a0b",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -591,7 +591,7 @@
               "profile_id": "ccs-draft08-v13-tool-action",
               "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
               "reasons": [],
-              "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+              "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
               "resolver_digest": "sha256:d74bad1c31c1bc43c3c5955a4de66e0829b1b6ed5861bfe556018c52b8763f7f",
               "status_digest": "sha256:49f244db101062644a2cddc3764c70322aa8efa8f482eb01a02c3568605728e9",
               "subject": {
@@ -610,7 +610,7 @@
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "y4RUZBZzAA00YzIT_m4_djEpNBzmGkaOXUIRi2js4S4_yzdJfZ1WLoairU_pSlYiRTBTZUhKynWcXaZR9yipDw"
+            "value": "MSfYXMoytCkfwT4NOUDhSYfzWEFn_u_nWK3X8ucUUTkVUY5hD9Rm4Xr4W81NQ0u3Uce3GT5Eg8S1iV0KIpDDAg"
           }
         }
       }
@@ -661,7 +661,7 @@
       "native_specification_correctness",
       "native_protocol_equivalence"
     ],
-    "report_digest": "sha256:3a7168022a7837455aa71740154deb09ad603619df6d4cb39e6bd9e0f872145a"
+    "report_digest": "sha256:e6c6e4d9d7acea567791100ad59cc386ed7a877d8e635950189a379c980d39d5"
   },
   "checks": [
     {
@@ -733,7 +733,7 @@
           "id": "system:ccs-wang-draft08-public-vector",
           "kind": "system"
         },
-        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
         "reasons": []
       }
     },
@@ -776,7 +776,7 @@
           "id": "system:ccs-wang-draft08-public-vector",
           "kind": "system"
         },
-        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
         "reasons": [
           "ccs:draft08_signature_invalid"
         ]
@@ -818,7 +818,7 @@
           "id": "system:ccs-wang-draft08-public-vector",
           "kind": "system"
         },
-        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
         "reasons": [
           "ccs:draft08_audience_mismatch"
         ]
@@ -839,7 +839,7 @@
           "id": "system:ccs-wang-draft08-public-vector",
           "kind": "system"
         },
-        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
         "reasons": [
           "ccs:draft08_signature_invalid"
         ]
@@ -860,7 +860,7 @@
           "id": "system:ccs-wang-draft08-public-vector",
           "kind": "system"
         },
-        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
         "reasons": [
           "ccs:draft08_receipt_not_fresh"
         ]
@@ -882,7 +882,7 @@
             "id": "system:ccs-wang-draft08-public-vector",
             "kind": "system"
           },
-          "replay_unit": "sha256:fa0c18e76bc0f0fdf4f83036dc51834f8455422e458e247fe27787f255487d0f",
+          "replay_unit": "sha256:d6903460ab5994339ea741fccde6c9b670b2f743946b0e5ddabb2fdb76babb13",
           "reasons": []
         },
         "mapping": {
@@ -924,7 +924,7 @@
           "id": "system:ccs-wang-draft08-public-vector",
           "kind": "system"
         },
-        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
         "reasons": [
           "status_unavailable"
         ]
@@ -945,7 +945,7 @@
           "id": "system:ccs-wang-draft08-public-vector",
           "kind": "system"
         },
-        "replay_unit": "sha256:7d9a17ec0aebd6ce3bcbd32d0ba3c1566f9b4395a1b3eb7657416682cbfe3aff",
+        "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
         "reasons": [
           "evidence_consumed"
         ]
@@ -967,7 +967,7 @@
             "id": "system:ccs-wang-draft08-public-vector",
             "kind": "system"
           },
-          "replay_unit": "sha256:7b014ed745198e7498dfe9381418b5df41640025ad083071ba6f07869fa7c3ef",
+          "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
           "reasons": [
             "ccs:deny"
           ]
@@ -997,7 +997,7 @@
           "id": "system:ccs-wang-draft08-public-vector",
           "kind": "system"
         },
-        "replay_unit": "sha256:27021bbbe0e752fc5824e67f374d1a45fc6f20cf4d5e27b36beeabea7f8c87a4",
+        "replay_unit": "sha256:9ca6b53de00ba77b31723afe452c734e15611edea37f44701780169dc6491326",
         "reasons": [
           "ccs:escalate"
         ]
@@ -1050,5 +1050,5 @@
     "A second runner reproduces the pinned report.",
     "One real system installs the profile beside its CCS verifier and Gate deployment."
   ],
-  "report_digest": "sha256:db23e097a08e32423226c70c5416600449e52931385c63206e83e030fa50a449"
+  "report_digest": "sha256:efe36d54d5379ee71c8270cb941e6f50d940a611862bf9d13030524001a225c8"
 }

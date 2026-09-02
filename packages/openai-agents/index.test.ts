@@ -426,3 +426,37 @@ test('plain-object receipt lookup ignores inherited properties', async () => {
   assert.equal(result.decisions[0].reason, 'no_receipt_for_interruption');
   assert.equal(state.approvedCalls.length, 0);
 });
+
+// ---- Red-team E-read-3: caller-supplied opts.action overrode the bound action
+// gateFor spread gateOptions AFTER `action`, and `action` was not destructured
+// out of opts, so any caller-supplied opts.action replaced the derived,
+// argument-bound action. A PoC approved a $9,999,999 wire AND a
+// delete_database call on one receipt minted for the bare string
+// 'blanket.approval', while the returned decision still reported the derived
+// action. Compare packages/langgraph createLangGraphApprovalAdapter, which has
+// always spread gateOptions first.
+test('E-read-3: opts.action cannot override the derived argument-bound action', async () => {
+  _resetConsumed();
+  const gate = requireReceiptForOpenAIAgent({
+    trustedKeys: [TRUSTED_KEY],
+    maxAgeSec: 900,
+    actionFor,
+    action: 'blanket.approval',
+  });
+
+  const wire = makeInterruption({ name: 'wire', args: { amount: 9999999, to: 'acct_ATTACKER' }, callId: 'c1' });
+  const blanket = await gate.decide(wire, mintReceipt({ action: 'blanket.approval' }));
+  assert.equal(blanket.decision, 'reject');
+  assert.equal(blanket.reason, 'action_mismatch');
+
+  // The same blanket string cannot authorize a different tool either.
+  const drop = makeInterruption({ name: 'delete_database', args: { db: 'prod' }, callId: 'c2' });
+  const blanket2 = await gate.decide(drop, mintReceipt({ action: 'blanket.approval' }));
+  assert.equal(blanket2.decision, 'reject');
+  assert.equal(blanket2.reason, 'action_mismatch');
+
+  // The correctly bound receipt still works: opts.action is ignored, not fatal.
+  const bound = await gate.decide(wire, receiptFor(wire));
+  assert.equal(bound.decision, 'approve');
+  assert.equal(bound.action, exactAction(wire));
+});

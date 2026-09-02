@@ -190,6 +190,49 @@ export function validatePackedPackageIdentity(
   };
 }
 
+const SPAWN_DIAGNOSTIC_LIMIT = 8_192;
+
+function boundedSpawnText(value: unknown): string {
+  const raw = Buffer.isBuffer(value)
+    ? value.toString('utf8')
+    : typeof value === 'string'
+      ? value
+      : value === undefined || value === null
+        ? ''
+        : String(value);
+  const redacted = raw
+    .replace(/(https?:\/\/)[^\s/:@]+:[^\s/@]+@/giu, '$1[redacted]@')
+    .replace(
+      /([?&](?:access_token|auth|credential|key|password|secret|signature|sig|token|x-amz-(?:credential|security-token|signature)|x-goog-(?:credential|signature))=)[^&\s]+/giu,
+      '$1[redacted]',
+    )
+    .replace(/\bBearer\s+[a-z0-9._~+/-]+=*/giu, 'Bearer [redacted]')
+    .replace(/\b(?:npm|gh[oprsu])_[a-z0-9]{8,}\b/giu, '[redacted-token]')
+    .replace(/((?:authorization|_authToken)\s*[:=]\s*)[^\r\n]*/giu, '$1[redacted]')
+    .replace(/((?:GH_TOKEN|GITHUB_TOKEN|NODE_AUTH_TOKEN|NPM_TOKEN)\s*=\s*)\S+/giu, '$1[redacted]');
+  if (!redacted) return '(empty)';
+  if (redacted.length <= SPAWN_DIAGNOSTIC_LIMIT) return redacted;
+  return `[truncated to last ${SPAWN_DIAGNOSTIC_LIMIT} characters]\n${
+    redacted.slice(-SPAWN_DIAGNOSTIC_LIMIT)
+  }`;
+}
+
+export function formatSpawnFailure(label: string, result: any): string {
+  const spawnError = result?.error
+    ? `${result.error.name || 'Error'}${
+      result.error.code ? ` [${result.error.code}]` : ''
+    }: ${result.error.message || String(result.error)}`
+    : '(none)';
+  return [
+    `${label} failed`,
+    `status: ${result?.status ?? 'null'}`,
+    `signal: ${result?.signal ?? 'null'}`,
+    `spawn error: ${boundedSpawnText(spawnError)}`,
+    `stdout: ${boundedSpawnText(result?.stdout)}`,
+    `stderr: ${boundedSpawnText(result?.stderr)}`,
+  ].join('\n');
+}
+
 /**
  * @param {string} [packagePath]
  * @param {{ outDir?: string | null, repositoryRoot?: string | null, reviewedCommit?: string | null }} [options]
@@ -215,6 +258,7 @@ export function verifyReproduciblePackage(
     throw new Error('package path must be a repository-relative directory');
   }
   const scratch: string = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-repro-pack-'));
+  try {
 
   function run(command: string, args: string[], label: string, options: any = {}): any {
     const result = spawnSync(command, args, {
@@ -514,9 +558,13 @@ export function verifyReproduciblePackage(
       cwd: installDirectory,
       encoding: 'utf8',
       env: isolatedEnv(`dependencies-${path.relative(dependencyTemplate, installDirectory) || 'root'}`, true, installDirectory),
+      killSignal: 'SIGTERM',
+      maxBuffer: 128 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 600_000,
     });
     if (install.status !== 0) {
-      throw new Error(`locked dependency installation failed:\n${install.stderr || install.stdout}`);
+      throw new Error(formatSpawnFailure('locked dependency installation', install));
     }
   }
 
@@ -642,7 +690,6 @@ export function verifyReproduciblePackage(
     };
   }
 
-  try {
     const first: any = pack(stageCanonicalPackage(buildPackage('first'), 'first'), 'first');
     const second: any = pack(stageCanonicalPackage(buildPackage('second'), 'second'), 'second');
     if (first.filename !== second.filename) throw new Error('pack filenames differ');

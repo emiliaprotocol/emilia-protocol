@@ -1394,7 +1394,11 @@
         { "file": "tests/aec-execution-gate.test.ts", "title": "executes a Class-A chain once and refuses replay", "runner": "vitest" },
         { "file": "tests/aec-execution-gate.test.ts", "title": "burns an indeterminate authorization after the effect starts", "runner": "vitest" },
         { "file": "packages/gate/proposal-to-effect.test.js", "title": "indeterminate effect freezes replay until authenticated provider reconciliation", "runner": "node-test" },
-        { "file": "packages/gate/proposal-to-effect.test.js", "title": "authenticated NOT_COMMITTED reconciliation permits one explicit retry", "runner": "node-test" },
+        { "file": "packages/gate/proposal-to-effect.test.js", "title": "authenticated NOT_COMMITTED reconciliation is terminal and forces a new action instance", "runner": "node-test" },
+        { "file": "packages/gate/proposal-to-effect.test.js", "title": "a released reservation refuses a late COMMITTED and stays terminal", "runner": "node-test" },
+        { "file": "packages/verify/aeb-adapter-contract.test.js", "title": "authoritative NOT_COMMITTED is terminal and never resurrects the reserved unit", "runner": "node-test" },
+        { "file": "packages/verify/aeb-adapter-contract.test.js", "title": "durable reconciliation refuses NOT_COMMITTED without a terminal released-not-entered marker", "runner": "node-test" },
+        { "file": "packages/gate/aeb-consumption-store.test.js", "title": "terminal release keeps the row and its fences so the operation is never reservable again", "runner": "node-test" },
         { "file": "packages/gate/consequence-actuator.test.js", "title": "permanently fences an indeterminate provider invocation", "runner": "node-test" },
         { "file": "apps/consequence-control-service/test/actuator-client.test.js", "title": "refuses signed evidence substituted across attempt or action bindings", "runner": "node-test" },
         { "file": "apps/consequence-actuator-service/test/production-config.test.ts", "title": "proves the exact actuator migration surface before declaring production readiness", "runner": "node-test" },
@@ -1451,9 +1455,11 @@
             "EffectRequiresExactDecision",
             "UncertainEffectBlocksReplay",
             "TerminalReconciliationIsAuthenticated",
-            "NoEnvelopeReopenAfterInvocation"
+            "NoEnvelopeReopenAfterInvocation",
+            "ReleasedReservationNeverReReserved",
+            "InvocationRequiresReservedUnit"
           ],
-          "scope": "A bounded same-team split-service model covers exact decision and envelope binding, actuator-only provider entry, permanent uncertainty fencing, authenticated terminal reconciliation, and no envelope reopening. A deliberately unsafe direct-provider transition violates EffectRequiresActuator. Selected runtime scenarios exercise the real TypeScript actuator primitive; the separate-service credential boundary is additionally enforced by executable repository tests. This is not a mechanized implementation refinement proof, an unbounded theorem, or proof that credentials cannot exist outside the managed deployment.",
+          "scope": "A bounded same-team split-service model covers exact decision and envelope binding, the one-time AEB reservation lifecycle, actuator-only provider entry, permanent uncertainty fencing, authenticated terminal reconciliation, and no envelope reopening. Reconciling an authoritative NOT_COMMITTED result marks the reservation terminally released-not-entered, which is never re-reserved and never yields a second provider call. A deliberately unsafe direct-provider transition violates EffectRequiresActuator, and a deliberately unsafe reconciliation that hands the released reservation back violates ReleasedReservationNeverReReserved. Selected runtime scenarios exercise the real TypeScript actuator primitive; the separate-service credential boundary is additionally enforced by executable repository tests. This is not a mechanized implementation refinement proof, an unbounded theorem, or proof that credentials cannot exist outside the managed deployment.",
           "scenario_evidence": "formal/runtime-scenarios.v2.json",
           "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
           "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
@@ -1461,10 +1467,13 @@
           "covered_actions": [
             "RefuseGateBypass",
             "AuthorizeExactAction",
+            "ReserveOneTimeUnit",
             "IssueExactEnvelope",
             "InvokeThroughActuator",
             "ProviderTimeout",
             "RefuseBlindReplay",
+            "ReconcileNotCommitted",
+            "RefuseReReserveAfterRelease",
             "UnsafeDirectProviderCall"
           ],
           "covered_obligations": [
@@ -1473,7 +1482,9 @@
             "EffectRequiresConsumedEnvelope",
             "EffectRequiresExactDecision",
             "UncertainEffectBlocksReplay",
-            "NoEnvelopeReopenAfterInvocation"
+            "NoEnvelopeReopenAfterInvocation",
+            "ReleasedReservationNeverReReserved",
+            "InvocationRequiresReservedUnit"
           ]
         },
         {

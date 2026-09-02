@@ -15,14 +15,33 @@ export const runtime = 'nodejs';
 const MAX_GUARDED_BYTES = 256 * 1024;
 const MAX_RECEIPT_AGE_SEC = 900;
 
+// Closed action identifier: lowercase dot-separated segments of
+// [a-z0-9_], each starting with a letter, total length bounded. This is the
+// shape every action_type in the default action-control manifest already has
+// (payment.release, gov.disbursement_release, large_payment_release, ...).
+// The parameter is caller-controlled and unauthenticated, and it reaches the
+// WWW-Authenticate challenge header and the consumption key, so it is
+// validated against a closed pattern before it is used for anything.
+const ACTION_PATTERN = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$/;
+const MAX_ACTION_LENGTH = 128;
+const DEFAULT_ACTION = 'payment.release';
+
 /**
  * POST /api/v1/guarded[?action=payment.release]
  *
- * A live reference of the DEMAND side: a protected endpoint that refuses to run
- * an irreversible action unless it arrives with a verifiable EMILIA receipt.
- * No receipt → 402 with a machine-readable challenge (so an agent self-serves
- * one and retries). This is what any counterparty drops in front of an
- * agent-facing action to start *demanding* accountability.
+ * A PUBLIC REFERENCE of the DEMAND side, deliberately unauthenticated
+ * (middleware.ts marks it useAuth:false, rate-limited under 'submit'): a
+ * protected endpoint that refuses to run an irreversible action unless it
+ * arrives with a verifiable EMILIA receipt. No receipt -> 402 with a
+ * machine-readable challenge (so an agent self-serves one and retries). This is
+ * what any counterparty drops in front of an agent-facing action to start
+ * *demanding* accountability.
+ *
+ * SCOPE, stated so nobody mistakes this for a production action endpoint: it
+ * performs NO privileged effect and mutates no business state. The only thing
+ * it writes is its own replay-defense consumption record, and a 200 here means
+ * "this receipt would have authorized this action", not that anything ran. Any
+ * real deployment puts its own authentication in front of its own action.
  *
  * Production semantics: trusted issuer keys are pinned and inline/self-asserted
  * keys are refused. The self-signed try-it flow lives under /api/demo/* only.
@@ -31,7 +50,24 @@ const MAX_RECEIPT_AGE_SEC = 900;
  * or body `{ "emilia_receipt": <doc> }`.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const action = new URL(request.url).searchParams.get('action') || 'payment.release';
+  const requestedAction = new URL(request.url).searchParams.get('action');
+  if (requestedAction !== null
+      && (requestedAction.length === 0
+        || requestedAction.length > MAX_ACTION_LENGTH
+        || !ACTION_PATTERN.test(requestedAction))) {
+    // Refuse BEFORE the challenge is built: `action` is interpolated into the
+    // WWW-Authenticate value, so an unvalidated one is caller-controlled text
+    // in a response header. No challenge header on this path.
+    return NextResponse.json({
+      ...receiptChallenge(DEFAULT_ACTION, 'Receipt rejected: action_invalid.'),
+      rejected: {
+        ok: false,
+        reason: 'action_invalid',
+        detail: 'action must be a dot-separated lowercase action identifier',
+      },
+    }, { status: 400 });
+  }
+  const action = requestedAction || DEFAULT_ACTION;
   // readLimitedJson's inferred parameter/return types don't yet reflect its
   // documented contract (JSDoc @returns above its definition in
   // lib/http/body-limit.ts) — cast at this call site rather than fight the
@@ -166,11 +202,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     await store.commit(key);
   } catch (err) {
-    // Commit failed after a successful reserve. Fail closed: the reservation
-    // already blocks replay, so refuse this attempt rather than allow an action
-    // whose consumption we couldn't durably record.
-    logger.error('[guarded] commit failed — failing closed', { message: err?.message });
-    await store.release(key).catch(() => {});
+    // Commit failed after a successful reserve. Fail closed and KEEP the
+    // reservation: it is the only thing standing between this receipt and a
+    // replay, and releasing it here re-opened exactly the window it exists to
+    // close (the next request would find the key absent and be allowed). The
+    // reserved row stays; consumption is permanent, so the receipt is spent
+    // whether or not we managed to mark it committed.
+    logger.error('[guarded] commit failed — failing closed, reservation kept', { message: err?.message });
     return NextResponse.json({
       ...receiptChallenge(action, 'Replay-defense store errored while recording consumption.'),
       rejected: { ok: false, reason: 'consumption_commit_failed' },

@@ -385,6 +385,30 @@ jobs:
           fi
           echo "Expected complete-mediation counterexample found."
 
+      - name: Prove reconciliation reuse breaks the one-time reservation
+        working-directory: formal
+        run: |
+          set +e
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_complete_mediation_reuse_unsafe.cfg \
+            ep_complete_mediation.tla \
+            > tlc-complete-mediation-reuse-unsafe-output.txt 2>&1
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Unsafe reservation-reuse mutation unexpectedly passed."
+            cat tlc-complete-mediation-reuse-unsafe-output.txt
+            exit 1
+          fi
+          if ! grep -q "Invariant ReleasedReservationNeverReReserved is violated" \
+            tlc-complete-mediation-reuse-unsafe-output.txt; then
+            echo "Unsafe reservation-reuse mutation failed for an unexpected reason."
+            cat tlc-complete-mediation-reuse-unsafe-output.txt
+            exit 1
+          fi
+          echo "Expected reservation-reuse counterexample found."
+
       - name: Run composed consequence lifecycle model
         working-directory: formal
         run: |
@@ -478,6 +502,7 @@ jobs:
             formal/tlc-consequence-attempt-unsafe-output.txt
             formal/tlc-complete-mediation-output.txt
             formal/tlc-complete-mediation-unsafe-output.txt
+            formal/tlc-complete-mediation-reuse-unsafe-output.txt
             formal/tlc-consequence-lifecycle-output.txt
             formal/tlc-composed-trust-lifecycle-output.txt
             formal/tlc-revocation-witness-output.txt

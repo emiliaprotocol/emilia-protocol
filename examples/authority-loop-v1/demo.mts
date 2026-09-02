@@ -108,9 +108,10 @@ if (!capabilityStore.registerCapability(unattended.capabilityReceipt)) {
   throw new Error('unattended capability registration failed');
 }
 
-// travel.book is guarded by the manifest without a static execution binding:
-// with a capability run, the exact-action bar is the CAID scope plus the
-// amount/currency binding checked against the observed action on every spend.
+// The reusable mandate receipt statically binds the action type. On every
+// capability run, the CAID scope plus the amount/currency budget bind the
+// exact observed booking; the reusable receipt is not relabeled as approval
+// of a particular itinerary.
 const manifest = createDefaultActionRiskManifest({
   extraActions: [{
     id: 'travel.booking',
@@ -119,6 +120,7 @@ const manifest = createDefaultActionRiskManifest({
     risk: 'high',
     receipt_required: true,
     assurance_class: 'class_a',
+    execution_binding: { required_fields: ['action_type'] },
     match: { protocol: 'mcp', tool: 'book_travel' },
     why: 'Spends the owner\'s money on external, non-reversible reservations.',
   }],

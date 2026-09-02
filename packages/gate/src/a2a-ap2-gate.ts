@@ -361,7 +361,7 @@ export class A2AAp2Gate<TResult = unknown> {
         reservationKey,
         'NOT_COMMITTED',
       );
-      if (released.state !== 'AVAILABLE') {
+      if (released.state !== 'RELEASED_NOT_ENTERED') {
         return indeterminate(record, released.reason, false, reservationKey);
       }
       return Object.freeze({

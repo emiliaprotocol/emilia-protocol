@@ -5,6 +5,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -18,6 +19,7 @@ import { gzipSync } from 'node:zlib';
 import {
   assertArtifactBytesMatch,
   canonicalizeNpmTarball,
+  formatSpawnFailure,
   validatePackedPackageIdentity,
   verifyReproduciblePackage,
 } from '../scripts/verify-reproducible-package.mjs';
@@ -42,6 +44,98 @@ describe('release byte reproducibility', () => {
     });
   };
 
+  it('reports bounded nonblank diagnostics for a failed locked install', () => {
+    const diagnostic = formatSpawnFailure('locked dependency installation', {
+      status: null,
+      signal: 'SIGTERM',
+      error: Object.assign(new Error('spawn npm ENOENT'), { code: 'ENOENT' }),
+      stdout: `begin-${'x'.repeat(20_000)}-npm_abcdefghijklmnopqrstuvwxyz-stdout-tail`,
+      stderr: [
+        'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.secret.signature',
+        'https://registry.example.test/package?token=query-secret&X-Amz-Signature=aws-secret&keep=yes',
+        'NPM_TOKEN=environment-secret',
+      ].join('\n'),
+    });
+
+    expect(diagnostic).toContain('locked dependency installation failed');
+    expect(diagnostic).toContain('status: null');
+    expect(diagnostic).toContain('signal: SIGTERM');
+    expect(diagnostic).toContain('spawn error: Error [ENOENT]: spawn npm ENOENT');
+    expect(diagnostic).toContain('stdout: [truncated to last 8192 characters]');
+    expect(diagnostic).toContain('-stdout-tail');
+    expect(diagnostic).toContain('[redacted-token]');
+    expect(diagnostic).not.toContain('npm_abcdefghijklmnopqrstuvwxyz');
+    expect(diagnostic).toContain('Authorization: [redacted]');
+    expect(diagnostic).toContain('?token=[redacted]&X-Amz-Signature=[redacted]&keep=yes');
+    expect(diagnostic).toContain('NPM_TOKEN=[redacted]');
+    expect(diagnostic).not.toContain('eyJhbGciOiJIUzI1NiJ9');
+    expect(diagnostic).not.toContain('query-secret');
+    expect(diagnostic).not.toContain('aws-secret');
+    expect(diagnostic).not.toContain('environment-secret');
+    expect(diagnostic.length).toBeLessThan(18_000);
+
+    const source = readFileSync('scripts/verify-reproducible-package.mts', 'utf8');
+    expect(source).toContain('maxBuffer: 128 * 1024 * 1024');
+    expect(source).toContain("stdio: ['ignore', 'pipe', 'pipe']");
+    expect(source).toContain('timeout: 600_000');
+  });
+
+  it('removes scratch state when verification fails before package builds', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-early-failure-'));
+    const scratchParent = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-cleanup-'));
+    const priorTmpdir = process.env.TMPDIR;
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'early-failure-fixture',
+      version: '1.0.0',
+      files: ['index.js'],
+    }));
+    writeFileSync(path.join(root, 'index.js'), 'export const value = "reviewed";\n');
+    const reviewedCommit = commitFixture(root);
+    writeFileSync(path.join(root, 'index.js'), 'export const value = "modified";\n');
+    process.env.TMPDIR = scratchParent;
+    try {
+      expect(() => verifyReproduciblePackage(root, {
+        repositoryRoot: root,
+        reviewedCommit,
+      })).toThrow(/working checkout differs from the reviewed commit/u);
+      expect(readdirSync(scratchParent)).toEqual([]);
+    } finally {
+      if (priorTmpdir === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = priorTmpdir;
+      rmSync(root, { recursive: true, force: true });
+      rmSync(scratchParent, { recursive: true, force: true });
+    }
+  });
+
+  it('removes scratch state and reports child details after a locked install fails', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-install-failure-'));
+    const scratchParent = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-install-cleanup-'));
+    const priorTmpdir = process.env.TMPDIR;
+    writeFileSync(path.join(root, 'package.json'), JSON.stringify({
+      name: 'install-failure-fixture',
+      version: '1.0.0',
+      files: ['index.js'],
+    }));
+    writeFileSync(path.join(root, 'package-lock.json'), '{not-json\n');
+    writeFileSync(path.join(root, 'index.js'), 'export const value = "reviewed";\n');
+    const reviewedCommit = commitFixture(root);
+    process.env.TMPDIR = scratchParent;
+    try {
+      expect(() => verifyReproduciblePackage(root, {
+        repositoryRoot: root,
+        reviewedCommit,
+      })).toThrow(
+        /locked dependency installation failed\nstatus: 1\nsignal: null\nspawn error: \(none\)\nstdout:/u,
+      );
+      expect(readdirSync(scratchParent)).toEqual([]);
+    } finally {
+      if (priorTmpdir === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = priorTmpdir;
+      rmSync(root, { recursive: true, force: true });
+      rmSync(scratchParent, { recursive: true, force: true });
+    }
+  });
+
   it('packs @emilia-protocol/verify twice to byte-identical tarballs', () => {
     const result = verifyReproduciblePackage('packages/verify');
     expect(result.name).toBe('@emilia-protocol/verify');
@@ -54,7 +148,7 @@ describe('release byte reproducibility', () => {
   // The locked clean install honors the repository's 600-second npm fetch
   // timeout. Keep this test's outer deadline at least as large so a slow cold
   // registry download cannot kill the byte-comparison oracle first.
-  }, 600_000);
+  }, 660_000);
 
   it('normalizes source file modes across independent package checkouts', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-modes-'));

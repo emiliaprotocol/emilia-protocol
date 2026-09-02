@@ -31,13 +31,18 @@ def _b64u(b: bytes) -> str:
     return base64.urlsafe_b64encode(b).decode().rstrip("=")
 
 
-def mint(action, outcome="allow_with_signoff", created_at=None):
+_UNSET = object()
+
+
+def mint(action, outcome="allow_with_signoff", created_at=None, expires_at=_UNSET):
     payload = {
         "receipt_id": "rcpt_" + uuid.uuid4().hex,
         "subject": "alice@futureenterprises.example",
         "created_at": created_at or datetime.now(timezone.utc).isoformat(),
         "claim": {"action_type": action, "outcome": outcome, "approver": "alice@futureenterprises.example"},
     }
+    if expires_at is not _UNSET:
+        payload["expires_at"] = expires_at
     sig = _SK.sign(canonicalize(payload).encode("utf-8"))
     return {
         "@version": "EP-RECEIPT-v1",
@@ -323,6 +328,99 @@ def test_guard_crewai_tool_duck_typed():
         out = tool._run("acct_1", 50)
     assert out == {"ok": True, "to": "acct_1", "amount": 50}
     assert FakeTool.calls == 1
+
+
+# ---- Red-team E-read-4 --------------------------------------------------
+# _verify read created_at only. A signed expires_at was never enforced, so with
+# max_age_sec=None a receipt never expired at all, and even under the default
+# relative-age policy a fresh created_at with an already-past expires_at ran.
+# The TypeScript verifier (packages/require-receipt) has always treated a signed
+# expires_at as an absolute bound; this closes the Python divergence.
+
+def _iso(delta):
+    return (datetime.now(timezone.utc) + delta).isoformat()
+
+
+def test_signed_expires_at_is_absolute_when_max_age_is_disabled():
+    g = gate(max_age_sec=None)
+    r = mint("payment.release", created_at=_iso(timedelta(days=-30)), expires_at=_iso(timedelta(days=-30)))
+    try:
+        g.run(r, lambda: "ran")
+        assert False, "an expired receipt must never run"
+    except ReceiptRequired as e:
+        assert e.reason == "receipt_expired", e.reason
+
+
+def test_signed_expires_at_is_enforced_under_the_default_age_policy():
+    g = gate()
+    r = mint("payment.release", expires_at=_iso(timedelta(seconds=-1)))
+    try:
+        g.run(r, lambda: "ran")
+        assert False, "an expired receipt must never run"
+    except ReceiptRequired as e:
+        assert e.reason == "receipt_expired", e.reason
+
+
+def test_unparseable_expires_at_fails_closed():
+    for bad in ("not-a-timestamp", "", None, 12345, "2026-13-45T99:99:99Z"):
+        g = gate()
+        r = mint("payment.release", expires_at=bad)
+        try:
+            g.run(r, lambda: "ran")
+            assert False, f"expires_at={bad!r} must fail closed"
+        except ReceiptRequired as e:
+            assert e.reason == "receipt_expired", (bad, e.reason)
+
+
+def test_unexpired_signed_expires_at_still_runs():
+    g = gate()
+    assert g.run(mint("payment.release", expires_at=_iso(timedelta(hours=1))), lambda: "ran") == "ran"
+    # No expires_at at all remains valid under the relative-age policy.
+    assert g.run(mint("payment.release"), lambda: "ran") == "ran"
+
+
+def test_assurance_verifier_must_return_an_explicit_ok():
+    # A bare string was previously read as "ok, and here is the tier", so any
+    # verifier returning a label, an error code, or an unproven tier passed.
+    for result in ("quorum", "class_a", "software", "error: could not reach HSM", 1, "1", [], object()):
+        g = gate(assurance_class="class_a", verify_assurance=lambda _r, _c, v=result: v)
+        try:
+            g.run(mint("payment.release"), lambda: "ran")
+            assert False, f"verify_assurance -> {result!r} must not authorize"
+        except ReceiptRequired as e:
+            assert e.reason == "assurance_too_low", (result, e.reason)
+
+
+def test_assurance_verifier_accepts_only_structured_or_literal_true():
+    structured = gate(
+        assurance_class="class_a",
+        verify_assurance=lambda _r, required: {"ok": True, "tier": required},
+    )
+    assert structured.run(mint("payment.release"), lambda: "ran") == "ran"
+
+    literal_true = gate(assurance_class="class_a", verify_assurance=lambda _r, _c: True)
+    assert literal_true.run(mint("payment.release"), lambda: "ran") == "ran"
+
+    # ok present but false, and ok true with a tier below the requirement.
+    denied = gate(
+        assurance_class="class_a",
+        verify_assurance=lambda _r, _c: {"ok": False, "tier": "quorum"},
+    )
+    try:
+        denied.run(mint("payment.release"), lambda: "ran")
+        assert False, "ok=False must not authorize"
+    except ReceiptRequired as e:
+        assert e.reason == "assurance_too_low", e.reason
+
+    too_low = gate(
+        assurance_class="quorum",
+        verify_assurance=lambda _r, _c: {"ok": True, "tier": "class_a"},
+    )
+    try:
+        too_low.run(mint("payment.release"), lambda: "ran")
+        assert False, "a tier below the requirement must not authorize"
+    except ReceiptRequired as e:
+        assert e.reason == "assurance_too_low", e.reason
 
 
 if __name__ == "__main__":

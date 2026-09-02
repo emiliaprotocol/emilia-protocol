@@ -1076,3 +1076,132 @@ test('production execution requires durable ownership-fenced permanent custody',
         verification: boundVerification(replayedUnderNewOperation.record), local_authorization: true, store,
     })).reason, 'native_replay_conflict');
 });
+test('authoritative NOT_COMMITTED is terminal and never resurrects the reserved unit', () => {
+    // draft-schrock-action-evidence-boundary-04 s5.11: reconciliation never
+    // resurrects the original authorization and never silently releases its
+    // one-time replay unit, so a policy-permitted later attempt has to carry a
+    // new action instance.
+    const s = setup();
+    const satisfied = evaluate(s);
+    const store = new InMemoryAebConsumptionStore();
+    const authorized = authorizeAebExecution(satisfied.record, {
+        verification: boundVerification(satisfied.record), local_authorization: true, store,
+    });
+    assert.equal(authorized.state, 'AUTHORIZED');
+    const key = authorized.reservation_key;
+    assert.equal(key, aebReservationKey(satisfied.record));
+    const reconciled = reconcileAebExecution(store, key, 'NOT_COMMITTED');
+    assert.equal(reconciled.state, 'RELEASED_NOT_ENTERED');
+    assert.equal(reconciled.retry_allowed, true);
+    assert.equal(reconciled.retry_requires_new_instance, true);
+    assert.equal(store.state(key), 'RELEASED_NOT_ENTERED');
+    // Re-presenting the same evaluation record derives the byte-identical key.
+    const blindReplay = authorizeAebExecution(satisfied.record, {
+        verification: boundVerification(satisfied.record), local_authorization: true, store,
+    });
+    assert.equal(blindReplay.state, 'REFUSED');
+    assert.equal(blindReplay.reason, 'released_not_entered_requires_new_instance');
+    assert.equal(blindReplay.invoke_allowed, false);
+    // A late COMMITTED for the released attempt stays refused.
+    const late = reconcileAebExecution(store, key, 'COMMITTED');
+    assert.equal(late.state, 'RECONCILIATION_REQUIRED');
+    assert.equal(late.reason, 'reservation_not_open');
+    assert.equal(store.state(key), 'RELEASED_NOT_ENTERED');
+    // A new operation and nonce over the SAME approvals is still refused: the
+    // released reservation keeps the native replay fences it installed.
+    const sameApprovals = evaluate(s, defaultLegs(), { operation_id: 'op-2', consumption_nonce: 'nonce-2' });
+    assert.equal(sameApprovals.record.verdict, 'SATISFIED');
+    assert.equal(authorizeAebExecution(sameApprovals.record, {
+        verification: boundVerification(sameApprovals.record), local_authorization: true, store,
+    }).reason, 'consumption_conflict');
+    // A genuinely new action instance with fresh approvals proceeds.
+    const freshLegs = [
+        leg('operator-of-record', CAID, 'artifact:operator-2'),
+        leg('human-authorization', CAID, 'artifact:human-alice-2', { id: 'human:alice', kind: 'human' }),
+        leg('human-authorization', CAID, 'artifact:human-bob-2', { id: 'human:bob', kind: 'human' }),
+    ];
+    const newInstance = evaluate(s, freshLegs, { operation_id: 'op-3', consumption_nonce: 'nonce-3' });
+    assert.equal(newInstance.record.verdict, 'SATISFIED');
+    const retried = authorizeAebExecution(newInstance.record, {
+        verification: boundVerification(newInstance.record), local_authorization: true, store,
+    });
+    assert.equal(retried.state, 'AUTHORIZED');
+    assert.notEqual(retried.reservation_key, key);
+    assert.equal(reconcileAebExecution(store, retried.reservation_key, 'COMMITTED').state, 'CONSUMED');
+});
+test('durable reconciliation refuses NOT_COMMITTED without a terminal released-not-entered marker', async () => {
+    const s = setup();
+    const satisfied = evaluate(s);
+    const states = new Map();
+    const base = {
+        durable: true,
+        ownershipFenced: true,
+        permanentConsumption: true,
+        atomicReplayFenced: true,
+        async reserve(key) {
+            if (states.has(key))
+                return 'CONSUMPTION_CONFLICT';
+            states.set(key, 'RESERVED');
+            return 'RESERVED';
+        },
+        async commit(key) {
+            if (states.get(key) !== 'RESERVED')
+                return false;
+            states.set(key, 'CONSUMED');
+            return true;
+        },
+        async release(key) {
+            if (states.get(key) !== 'RESERVED')
+                return false;
+            states.delete(key);
+            return true;
+        },
+    };
+    const authorized = await authorizeAebExecutionDurable(satisfied.record, {
+        verification: boundVerification(satisfied.record), local_authorization: true, store: base,
+    });
+    assert.equal(authorized.state, 'AUTHORIZED');
+    const key = authorized.reservation_key;
+    // A store without a permanent marker cannot release: falling back to the
+    // non-terminal release() would make the same key reservable again.
+    const refused = await reconcileAebExecutionDurable(base, key, 'NOT_COMMITTED');
+    assert.equal(refused.state, 'RECONCILIATION_REQUIRED');
+    assert.equal(refused.reason, 'terminal_release_unsupported');
+    assert.equal(refused.retry_allowed, false);
+    assert.equal(refused.retry_requires_new_instance, true);
+    assert.equal(states.get(key), 'RESERVED', 'the reservation is never handed back');
+    const terminal = {
+        ...base,
+        terminalRelease: true,
+        async releaseTerminal(key) {
+            if (states.get(key) !== 'RESERVED')
+                return false;
+            states.set(key, 'RELEASED_NOT_ENTERED');
+            return true;
+        },
+    };
+    const released = await reconcileAebExecutionDurable(terminal, key, 'NOT_COMMITTED');
+    assert.equal(released.state, 'RELEASED_NOT_ENTERED');
+    assert.equal(released.retry_requires_new_instance, true);
+    assert.equal(states.get(key), 'RELEASED_NOT_ENTERED');
+    assert.equal((await authorizeAebExecutionDurable(satisfied.record, {
+        verification: boundVerification(satisfied.record), local_authorization: true, store: terminal,
+    })).reason, 'consumption_conflict');
+    assert.equal((await reconcileAebExecutionDurable(terminal, key, 'COMMITTED')).reason, 'reservation_not_open');
+});
+test('an aborted attempt that never reached the provider keeps a non-terminal release', () => {
+    // The pre-invocation abort path is a locally observed non-entry, not an
+    // authoritative reconciliation, so it does not burn the action instance.
+    const s = setup();
+    const satisfied = evaluate(s);
+    const store = new InMemoryAebConsumptionStore();
+    const first = authorizeAebExecution(satisfied.record, {
+        verification: boundVerification(satisfied.record), local_authorization: true, store,
+    });
+    assert.equal(first.state, 'AUTHORIZED');
+    assert.equal(store.release(first.reservation_key), true);
+    assert.equal(store.state(first.reservation_key), 'AVAILABLE');
+    assert.equal(authorizeAebExecution(satisfied.record, {
+        verification: boundVerification(satisfied.record), local_authorization: true, store,
+    }).state, 'AUTHORIZED');
+});

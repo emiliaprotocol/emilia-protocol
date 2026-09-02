@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import crypto, {} from 'node:crypto';
 import test from 'node:test';
-import { digestAeb } from './aeb-adapter-contract.js';
+import { InMemoryAebConsumptionStore, aebNativeReplayKeys, digestAeb, } from './aeb-adapter-contract.js';
 import { OAUTH_TXN_CHALLENGE_AEB_ADAPTER_ID, OAUTH_TXN_CHALLENGE_AEB_ADAPTER_VERSION, OAUTH_TXN_CHALLENGE_CONFIG_VERSION, OAUTH_TXN_CHALLENGE_DRAFT_REVISION, OAUTH_TXN_CHALLENGE_MAPPING_VERSION, OAUTH_TXN_CHALLENGE_MAPPER_ID, OAUTH_TXN_CHALLENGE_TRUST_ROOT_VERSION, createOAuthTransactionChallengeActionDefinition, createOAuthTransactionChallengeAebAdapter, } from './aeb-oauth-transaction-challenge-adapter.js';
 const NOW = '2026-08-06T12:00:30Z';
 const NOW_SECONDS = Math.floor(Date.parse(NOW) / 1000);
@@ -245,4 +245,65 @@ test('OAuth transaction access token is fenced as single-use evidence', () => {
 });
 test('OAuth transaction source lock is the reviewed -00 draft', () => {
     assert.equal(OAUTH_TXN_CHALLENGE_DRAFT_REVISION, 'draft-rosomakho-oauth-txn-challenge-00');
+});
+test('a second access token for one AS transaction is one replay unit, not two', () => {
+    const fixture = makeFixture();
+    const adapter = createOAuthTransactionChallengeAebAdapter({
+        config: fixture.config,
+        trust_roots: fixture.trustRoots,
+        details_verifier: fixture.detailsVerifier,
+    });
+    // The AS mints a second access token for the SAME txn. Only jti and the
+    // signature differ, and the shipped profile declares access_token.jti
+    // non-material, so this is one authority re-presented, not a second one.
+    const reIssued = {
+        ...fixture.artifact,
+        access_token_jwt: compactEs256({ alg: 'ES256', typ: 'at+jwt', kid: 'as-es256-1' }, { ...fixture.accessClaims, jti: 'access-token-jti-2' }, fixture.asKey.privateKey),
+    };
+    assert.ok(profile().semantic_equivalence.omitted_nonmaterial_fields.includes('access_token.jti'));
+    const first = adapter.verifyNative(input(fixture));
+    const second = adapter.verifyNative(input(fixture, { artifact: reIssued, artifact_ref: 'oauth-txn:payment:test-2' }));
+    assert.equal(first.native_verification, 'VERIFIED');
+    assert.equal(second.native_verification, 'VERIFIED');
+    assert.equal(second.acceptance, 'ACCEPTED');
+    assert.notEqual(first.evidence_digest, second.evidence_digest);
+    assert.equal(second.replay_unit, first.replay_unit);
+    // At the consumption fence the second token is refused, not executed.
+    const evaluator = { id: 'rp:oauth-txn-test' };
+    const keys = (native) => aebNativeReplayKeys({ evaluator, legs: [{ replay_unit: native.replay_unit }] });
+    const store = new InMemoryAebConsumptionStore();
+    assert.equal(store.reserve('aeb:operation-1', keys(first)), true);
+    assert.equal(store.reserve('aeb:operation-2', keys(second)), false);
+});
+test('a different AS transaction is a different replay unit', () => {
+    const fixture = makeFixture();
+    const adapter = createOAuthTransactionChallengeAebAdapter({
+        config: fixture.config,
+        trust_roots: fixture.trustRoots,
+        details_verifier: fixture.detailsVerifier,
+    });
+    const otherTxn = '2b4a0a2e-64d9-4c3f-9a4a-7b1f5c9a1d20';
+    const challengeClaims = { ...fixture.challengeClaims, txn: otherTxn, jti: 'challenge-jti-2' };
+    const accessClaims = { ...fixture.accessClaims, txn: otherTxn, jti: 'access-token-jti-9' };
+    const otherArtifact = {
+        challenge_jwt: compactEs256({ alg: 'ES256', typ: 'txn-authz-challenge+jwt', kid: 'resource-es256-1' }, challengeClaims, fixture.resourceKey.privateKey),
+        access_token_jwt: compactEs256({ alg: 'ES256', typ: 'at+jwt', kid: 'as-es256-1' }, accessClaims, fixture.asKey.privateKey),
+    };
+    const otherExpected = structuredClone(fixture.expectedAction);
+    otherExpected.oauth_transaction.txn = otherTxn;
+    const first = adapter.verifyNative(input(fixture));
+    const other = adapter.verifyNative(input(fixture, {
+        artifact: otherArtifact,
+        artifact_ref: 'oauth-txn:payment:test-3',
+        expected_action: otherExpected,
+    }));
+    assert.equal(other.native_verification, 'VERIFIED');
+    assert.equal(other.acceptance, 'ACCEPTED');
+    assert.notEqual(other.replay_unit, first.replay_unit);
+    // Consuming one never denies the other.
+    const evaluator = { id: 'rp:oauth-txn-test' };
+    const keys = (native) => aebNativeReplayKeys({ evaluator, legs: [{ replay_unit: native.replay_unit }] });
+    const store = new InMemoryAebConsumptionStore();
+    assert.equal(store.reserve('aeb:operation-1', keys(first)), true);
+    assert.equal(store.reserve('aeb:operation-2', keys(other)), true);
 });

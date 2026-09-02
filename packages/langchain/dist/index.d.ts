@@ -28,10 +28,16 @@ type Tool = any;
 /** Reset consumed receipts. Test/ops helper — not a production control. */
 export declare function _resetConsumed(): void;
 /**
- * Wrap a LangChain tool so every `.invoke()` requires a valid, action-bound
- * EMILIA receipt before the underlying tool runs. Preserves the tool's identity,
- * name, description, and schema (thin Proxy — works with StructuredTool,
- * DynamicStructuredTool, or anything exposing `.invoke(input, config)`).
+ * Wrap a LangChain tool so EVERY execution entry point requires a valid,
+ * action-bound EMILIA receipt before the underlying tool runs: `.invoke()`,
+ * `.call()`, `.batch()`, `.stream()`, and the raw `.func` / `._call` bodies.
+ * Gating `.invoke()` alone is not enough: langchain-core reaches the same
+ * effect through several Runnable methods, and any one of them left bound to
+ * the raw target is an ungated path to the tool. Every other method is bound to
+ * the proxy, so an internal `this.invoke(...)` also lands on the gate.
+ * Preserves the tool's identity, name, description, and schema (thin Proxy;
+ * works with StructuredTool, DynamicStructuredTool, or anything exposing
+ * `.invoke(input, config)`).
  *
  * @template {{invoke?: (input:any, config?:any, ...rest:any[]) => any}} T
  * @param {T} tool a tool exposing `.invoke(input, config?)`

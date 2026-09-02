@@ -39,7 +39,10 @@ export const STRIPE_ACTION_PACK = Object.freeze([
         risk: 'critical', receipt_required: true, assurance_class: 'quorum',
         match: { protocol: 'stripe', tool: 'update_external_account' },
         why: 'Changes WHERE future money flows. Quorum: the classic redirect-the-payouts attack.',
-        execution_binding: { required_fields: ['action_type', 'account', 'external_account'] },
+        // default_for_currency is the material effect of this operation: it is what makes the
+        // external account the payout destination. It is bound so a receipt for "attach but do
+        // not default" cannot be replayed as "make this the default".
+        execution_binding: { required_fields: ['action_type', 'account', 'external_account', 'default_for_currency'] },
     }),
 ]);
 const OPS = {
@@ -55,8 +58,24 @@ const OPS = {
     },
     'bank_account.change': {
         selector: { protocol: 'stripe', tool: 'update_external_account' },
-        observed: (p) => ({ action_type: 'stripe.bank_account.change', account: p.account, external_account: p.external_account }),
-        perform: (stripe, p) => stripe.accounts.updateExternalAccount(p.account, p.external_account, p.update || {}),
+        // The only update field this operation forwards is default_for_currency, and only as a
+        // strict boolean. Anything else a caller puts in an `update` object never reaches Stripe:
+        // the actuator is rebuilt from the VERIFIED observed fields, never from the caller object.
+        observed: (p) => ({
+            action_type: 'stripe.bank_account.change',
+            account: p.account,
+            external_account: p.external_account,
+            ...(typeof p.default_for_currency === 'boolean' ? { default_for_currency: p.default_for_currency } : {}),
+        }),
+        actuator: (_p, observed) => ({
+            ...observed,
+            // An absent field yields an empty update; the pack's execution_binding then refuses the
+            // call before perform() because default_for_currency is a required bound field.
+            update: typeof observed.default_for_currency === 'boolean'
+                ? { default_for_currency: observed.default_for_currency }
+                : {},
+        }),
+        perform: (stripe, p) => stripe.accounts.updateExternalAccount(p.account, p.external_account, p.update),
     },
 };
 const adapter = createAdapter({ system: 'stripe', ops: OPS });

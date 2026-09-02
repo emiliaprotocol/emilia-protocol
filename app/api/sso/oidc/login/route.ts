@@ -19,9 +19,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (!tenant) return epProblem(400, 'missing_tenant', 'tenant query parameter is required');
 
   const { connection, error } = await loadConnection(tenant, 'oidc');
-  if (error) return epProblem(503, 'config_unavailable', 'Could not load SSO config');
-  if (!connection?.oidc_issuer || !connection?.oidc_client_id) {
-    return epProblem(404, 'sso_not_configured', `No OIDC connection configured for tenant ${tenant}`);
+  // Unified response for "unknown tenant", "tenant without OIDC" and "config
+  // store unavailable" so this unauthenticated endpoint can't be used as an
+  // oracle to enumerate the tenant namespace. Same status, same generic body,
+  // and the requested tenant is never echoed back. Matches the SAML ACS route
+  // (app/api/sso/saml/acs/route.ts).
+  if (error || !connection?.oidc_issuer || !connection?.oidc_client_id) {
+    if (error) logger.error('[sso/oidc/login] connection load failed:', error);
+    return epProblem(404, 'sso_not_configured', 'No OIDC connection configured');
   }
   const issuer = await validateSsoProviderUrl(connection.oidc_issuer, 'oidc_issuer');
   if (!issuer.valid) return epProblem(400, 'unsafe_sso_url', 'Configured OIDC issuer is not allowed');

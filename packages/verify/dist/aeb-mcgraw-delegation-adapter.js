@@ -419,9 +419,12 @@ function exactExpectedAction(value, config) {
     }
 }
 function fallbackNative(input, pins) {
-    const evidenceDigest = typeof input?.artifact === 'string' && canonicalB64url(input.artifact)
-        ? `sha256:${crypto.createHash('sha256').update(Buffer.from(input.artifact, 'base64url')).digest('hex')}`
-        : safeDigest(input?.artifact);
+    // The evaluator derives its own base.evidence_digest as digest(artifact) over
+    // the artifact value it hands the adapter (the base64url string), and hard
+    // fails the leg as malformed_native_result when the adapter disagrees. Digest
+    // the artifact the same way it does; digesting the decoded bytes instead made
+    // every McGraw leg unusable through evaluateAebEvidence.
+    const evidenceDigest = safeDigest(input?.artifact);
     return {
         native_verification: 'FAILED', acceptance: 'INDETERMINATE', evidence_digest: evidenceDigest,
         status_digest: statusDigest(input?.status), evidence_role: pins.config.evidence_role,
@@ -569,11 +572,20 @@ function verifyNative(input, pins) {
     if (!chain || chain.verified !== true) {
         return reject(result, `mcgraw-budget:${nonEmptyString(chain?.reason) ? chain.reason : 'chain_not_verified'}`);
     }
+    // Key the unit on the signed proof, not on the transport encoding of it. The
+    // CBOR tag 18 wrapper this adapter accepts alongside the untagged form sits
+    // outside Sig_structure, so digesting the raw artifact gave one signed
+    // delegation proof two units and two consumes. Sig_structure plus the
+    // signature is identical under both encodings.
+    const signedProofDigest = safeDigest({
+        sig_structure: sigStructure.toString('base64url'),
+        signature: signature.toString('base64url'),
+    });
     result.replay_unit = safeDigest({
         protocol: MCGRAW_BUDGET_DRAFT_REVISION,
         issuer: claims.get(2), delegated_requester: claims.get(3),
         challenge_nonce: Buffer.from(claims.get(10)).toString('base64url'),
-        proof_digest: result.evidence_digest,
+        proof_digest: signedProofDigest,
     });
     result.native_verification = 'VERIFIED';
     const status = statusDisposition(input.status, input.now, pins.config.max_status_age_seconds);

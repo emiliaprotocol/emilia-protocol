@@ -20,6 +20,18 @@ const ATTEMPT_KEYS = Object.freeze([
     'attempt_id',
     'request_digest',
 ]);
+// Reconcile and repairAeb converge durable AEB state for an attempt that was
+// already made under a live authorization; they never invoke a new effect
+// (packages/gate/src/proposal-to-effect.ts documents repairAeb as the
+// crash-window converger). Plain expiry is therefore the wrong bound -- an
+// indeterminate attempt whose proposal ages out would be strandable forever.
+// An UNBOUNDED window is equally wrong, and is what these routes had: a
+// proposal of any age could still drive a durable mutation. This is the bound:
+// recovery stays open for a fixed window past expires_at, then closes with a
+// named refusal.
+const DEFAULT_RECOVERY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const MIN_RECOVERY_WINDOW_MS = 60_000;
+const MAX_RECOVERY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 const ATTEMPT_STATES = new Set([
     'RESERVED',
     'INVOKING',
@@ -205,6 +217,27 @@ export function createConsequenceControlRuntime(config) {
             return false;
         }
     }
+    const currentTime = typeof config.now === 'function' ? config.now : Date.now;
+    const recoveryWindowMs = Number.isSafeInteger(config.recoveryWindowMs)
+        && config.recoveryWindowMs >= MIN_RECOVERY_WINDOW_MS
+        && config.recoveryWindowMs <= MAX_RECOVERY_WINDOW_MS
+        ? config.recoveryWindowMs
+        : DEFAULT_RECOVERY_WINDOW_MS;
+    /**
+     * True while a verified proposal may still drive a durable-state mutation.
+     * A proposal with no parseable expires_at carries no window to be inside of,
+     * so it is refused: the routes fail closed on an unbounded proposal rather
+     * than treating an absent bound as an open one.
+     */
+    function withinRecoveryWindow(proposal) {
+        const expiresAtMs = Date.parse(proposal?.expires_at);
+        if (!Number.isFinite(expiresAtMs))
+            return false;
+        const now = Number(currentTime());
+        if (!Number.isFinite(now))
+            return false;
+        return now < expiresAtMs + recoveryWindowMs;
+    }
     function verifiedProposal(candidate, proposalId, principal, options) {
         try {
             const verified = config.controller.verifyProposal(candidate, options);
@@ -318,6 +351,9 @@ export function createConsequenceControlRuntime(config) {
             || /[\r\n\u0000]/.test(body.poll_token)) {
             return refused(400, 'request_fields_invalid');
         }
+        // Read-only: polling an approval mutates no durable EP state, and an
+        // operator must be able to see the outcome of a request whose proposal
+        // aged out while the approver was deciding. allowExpired stays here.
         const proposal = verifiedProposal(body.proposal, proposalId, principal, { allowExpired: true });
         if (!proposal)
             return refused(404, 'proposal_not_found');
@@ -343,6 +379,8 @@ export function createConsequenceControlRuntime(config) {
         if (!identifier(proposalId) || !exactKeys(body, LOOKUP_ATTEMPT_KEYS)) {
             return refused(400, 'request_fields_invalid');
         }
+        // Read-only: attempt lookup is exactly the diagnostic an operator needs
+        // for an attempt whose proposal has expired. allowExpired stays here.
         const proposal = verifiedProposal(body.proposal, proposalId, principal, { allowExpired: true });
         if (!proposal)
             return refused(404, 'proposal_not_found');
@@ -463,9 +501,17 @@ export function createConsequenceControlRuntime(config) {
             return refused(400, 'attempt_fields_invalid');
         if (!evidenceShape(body.evidence))
             return refused(400, 'evidence_fields_invalid');
+        // allowExpired lets an ALREADY-ATTEMPTED effect be converged after its
+        // proposal ages out; withinRecoveryWindow is what keeps that from being
+        // unbounded. Both are required: without the first, an indeterminate
+        // attempt is strandable; without the second, a proposal of any age can
+        // still mutate durable AEB state.
         const proposal = verifiedProposal(body.proposal, proposalId, principal, { allowExpired: true });
         if (!proposal)
             return refused(404, 'proposal_not_found');
+        if (!withinRecoveryWindow(proposal)) {
+            return refused(409, 'proposal_recovery_window_elapsed');
+        }
         if (!await authorized(principal, proposal.profile_id, proposal.action)) {
             return refused(403, 'profile_not_authorized');
         }
@@ -524,9 +570,14 @@ export function createConsequenceControlRuntime(config) {
             return refused(400, 'attempt_fields_invalid');
         if (!evidenceShape(body.evidence))
             return refused(400, 'evidence_fields_invalid');
+        // Same bound as reconcile: repairAeb mutates durable AEB state, so an
+        // expired proposal is recoverable only inside the recovery window.
         const proposal = verifiedProposal(body.proposal, proposalId, principal, { allowExpired: true });
         if (!proposal)
             return refused(404, 'proposal_not_found');
+        if (!withinRecoveryWindow(proposal)) {
+            return refused(409, 'proposal_recovery_window_elapsed');
+        }
         if (!await authorized(principal, proposal.profile_id, proposal.action)) {
             return refused(403, 'profile_not_authorized');
         }

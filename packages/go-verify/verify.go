@@ -33,6 +33,13 @@ import (
 // SupportedVersions lists the receipt document versions this verifier accepts.
 var SupportedVersions = []string{"EP-RECEIPT-v1"}
 
+// ReceiptV1SignatureAlgorithm is the only signature algorithm EP-RECEIPT-v1
+// defines. Two spellings of that one name are accepted because both are
+// shipped: every production issuer and all conformance vectors emit
+// "Ed25519", while the published spec text (docs/trust-receipt-spec.md)
+// shows "ed25519". Any value that is not this one name is refused.
+const ReceiptV1SignatureAlgorithm = "Ed25519"
+
 const maxSafeInteger = 9007199254740991
 
 // Checks reports the outcome of each independent verification step. Anchor is
@@ -100,6 +107,13 @@ func VerifyReceipt(doc map[string]any, publicKeyBase64URL string, opts ...Option
 	sigAlg, _ := sig["algorithm"].(string)
 	if !hasPayload || payload == nil || sigValue == "" || sigAlg == "" {
 		return Result{Checks: checks, Error: "Missing payload or signature"}
+	}
+	// EP-RECEIPT-v1 is Ed25519 over JCS, and signature.algorithm is NOT covered
+	// by the signature. Checking only that the label is PRESENT let a receipt
+	// labelled "ML-DSA-65" or "none" carry an Ed25519 signature and still come
+	// back valid. The label must name the one algorithm this version verifies.
+	if !strings.EqualFold(sigAlg, ReceiptV1SignatureAlgorithm) {
+		return Result{Checks: checks, Error: "Unsupported signature algorithm '" + sigAlg + "'; EP-RECEIPT-v1 requires " + ReceiptV1SignatureAlgorithm}
 	}
 	if !IsCanonicalizable(payload) {
 		return Result{Checks: checks, Error: "Payload is outside the EP canonicalization profile; use strings or safe integers in signed material"}

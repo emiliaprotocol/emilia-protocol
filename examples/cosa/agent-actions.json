@@ -27,6 +27,7 @@
       "risk": "high",
       "receipt_required": true,
       "assurance_class": "class_a",
+      "execution_binding": { "required_fields": ["action_type", "broadcast_id", "content_digest"] },
       "max_age_sec": 900,
       "quorum": { "required": false }
     },

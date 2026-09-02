@@ -16,7 +16,8 @@ npm install @emilia-protocol/openai-guard
 import { requireReceiptForOpenAITool } from '@emilia-protocol/openai-guard';
 
 const releasePayment = requireReceiptForOpenAITool(bank.wire, {
-  actionFor: (args) => `payment.release:${args.destination}:${args.amount}`,
+  toolName: 'wire',
+  action: 'payment.release',
   trustedKeys: [ISSUER_SPKI_B64URL],
   assuranceClass: 'class_a',
   approverKeys: ENROLLED_APPROVER_KEYS,
@@ -32,15 +33,30 @@ await releasePayment({
 });
 ```
 
-`actionFor` should bind every material tool argument. The default replay store is
-process-local; production fleets must provide a shared, ownership-fenced
-`{ reserve, commit, release }` store.
+The action is ALWAYS argument-bound. Whatever base action you give, the wrapper
+appends a digest of the tool name and the exact arguments that will execute:
+
+```
+payment.release:sha256:<digest of {tool, args}>
+```
+
+Mint the receipt against that bound action (`bindToolAction` from
+`@emilia-protocol/require-receipt` computes it). A receipt for the bare string
+`payment.release` authorizes nothing, and a receipt bound to one set of
+arguments cannot be spent on another. `actionFor(args, call)` only refines the
+base action type; it cannot replace or disable the digest.
+
+Pass `toolName` explicitly when the wrapped function is anonymous or the bundle
+is minified, so the binding does not move with a local identifier. The default
+replay store is process-local; production fleets must provide a shared,
+ownership-fenced `{ reserve, commit, release }` store.
 
 ## Try it offline (~5s)
 
 ```bash
 node packages/openai-guard/example.mjs
-# 1) $200 → released   2) $82k → human signoff → released   3) sanctioned → blocked
+# 1) no receipt -> refused   2) bound receipt -> released
+# 3) same action, other args -> refused   4) replay -> refused
 ```
 
 ## Legacy hosted policy client

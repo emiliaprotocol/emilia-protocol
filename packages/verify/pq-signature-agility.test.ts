@@ -347,3 +347,59 @@ test('signAgile refuses an Ed448 private key labeled Ed25519 (never mints a misl
     /algorithm_key_mismatch/,
   );
 });
+
+// ---------------------------------------------------------------------------
+// Regression: b64urlToBytes decoded without a round-trip check. Buffer ignores
+// the slack bits in the final base64url character, so a 64-byte Ed25519
+// signature (86 characters, last one carrying 4 significant + 2 slack bits)
+// had FOUR accepted spellings that all verified. A signed artifact's bytes
+// were therefore malleable without touching the signature. Exactly one
+// encoding per byte string is accepted now, matching the receipt path
+// (src/index.ts decodeBase64url) and lib/signatures.ts decodeBase64Strict.
+// ---------------------------------------------------------------------------
+
+const B64URL_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+test('non-canonical base64url spellings of a valid signature refuse: malformed_signature', async () => {
+  const canonical = (await edSig()).sig;
+  assert.equal(canonical.length, 86);
+  const ok = await verifyAgileSignature(MESSAGE, { alg: 'Ed25519', sig: canonical }, ED_KEY);
+  assert.equal(ok.verified, true);
+
+  const lastIndex = B64URL_ALPHABET.indexOf(canonical[85]);
+  let variants = 0;
+  for (let delta = 1; delta < 4; delta += 1) {
+    const spelling = canonical.slice(0, 85)
+      + B64URL_ALPHABET[(lastIndex & 0b111100) | ((lastIndex + delta) & 0b11)];
+    if (spelling === canonical) continue;
+    variants += 1;
+    // Same bytes: only the unused slack bits differ.
+    assert.ok(Buffer.from(spelling, 'base64url').equals(Buffer.from(canonical, 'base64url')));
+    const r = await verifyAgileSignature(MESSAGE, { alg: 'Ed25519', sig: spelling }, ED_KEY);
+    assert.equal(r.verified, false);
+    assert.equal(r.reason, AGILITY_REASONS.MALFORMED_SIGNATURE);
+  }
+  assert.equal(variants, 3);
+});
+
+test('a non-canonical base64url spelling of a valid public key refuses: malformed_key', async () => {
+  const lastIndex = B64URL_ALPHABET.indexOf(edPubB64u[edPubB64u.length - 1]);
+  const spelling = edPubB64u.slice(0, -1)
+    + B64URL_ALPHABET[(lastIndex & 0b111100) | ((lastIndex + 1) & 0b11)];
+  assert.notEqual(spelling, edPubB64u);
+  assert.ok(Buffer.from(spelling, 'base64url').equals(Buffer.from(edPubB64u, 'base64url')));
+
+  const r = await verifyAgileSignature(
+    MESSAGE,
+    { alg: 'Ed25519', sig: (await edSig()).sig },
+    { alg: 'Ed25519', public_key: spelling },
+  );
+  assert.equal(r.verified, false);
+  assert.equal(r.reason, AGILITY_REASONS.MALFORMED_KEY);
+});
+
+test('a base64url string of impossible length (len % 4 === 1) refuses', async () => {
+  const r = await verifyAgileSignature(MESSAGE, { alg: 'Ed25519', sig: 'A'.repeat(85) }, ED_KEY);
+  assert.equal(r.verified, false);
+  assert.equal(r.reason, AGILITY_REASONS.MALFORMED_SIGNATURE);
+});

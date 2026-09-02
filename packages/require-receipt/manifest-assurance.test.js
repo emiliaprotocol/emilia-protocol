@@ -23,6 +23,7 @@ test('a high-risk guarded action validates on any tier (software allowed below c
     for (const tier of ['software', 'class_a', 'quorum']) {
         const r = validateActionRiskManifest(action({
             action_type: 'payment.release', risk: 'high', receipt_required: true, assurance_class: tier,
+            execution_binding: { required_fields: ['amount'] },
         }));
         assert.equal(r.ok, true, `tier ${tier} should validate at high risk, got: ${JSON.stringify(r.errors)}`);
     }
@@ -38,9 +39,44 @@ test('a critical action validates on class_a and quorum (the human tiers)', () =
     for (const tier of ['class_a', 'quorum']) {
         const r = validateActionRiskManifest(action({
             action_type: 'payment.release', risk: 'critical', receipt_required: true, assurance_class: tier,
+            execution_binding: { required_fields: ['amount'] },
         }));
         assert.equal(r.ok, true, `tier ${tier} should validate at critical risk, got: ${JSON.stringify(r.errors)}`);
     }
+});
+// EXECUTION-BINDING FLOOR. A guarded action with no required_fields is bound to
+// the action TYPE alone at enforcement time: verifyExecutionBinding() returns ok
+// on an empty field list, so a receipt signed for "$1.00 to acct_OK" authorizes
+// "$999,999.99 to acct_ATTACKER". Reject it at author time, like assurance_class.
+test('FAIL-CLOSED: a guarded action with no execution_binding is rejected', () => {
+    const r = validateActionRiskManifest(action({
+        action_type: 'payment.release', risk: 'critical', receipt_required: true,
+        assurance_class: 'class_a',
+    }));
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.includes('execution_binding.required_fields must be a non-empty array')), `expected a required-execution_binding error, got: ${JSON.stringify(r.errors)}`);
+});
+test('FAIL-CLOSED: an empty or malformed required_fields list is rejected', () => {
+    const bindings = [
+        { required_fields: [] },
+        { required_fields: 'amount' },
+        { required_fields: ['amount', ''] },
+        { required_fields: ['amount', 42] },
+        { required_fields: ['amount', 'amount'] },
+        {},
+    ];
+    for (const execution_binding of bindings) {
+        const r = validateActionRiskManifest(action({
+            action_type: 'payment.release', risk: 'critical', receipt_required: true,
+            assurance_class: 'class_a', execution_binding,
+        }));
+        assert.equal(r.ok, false, `binding must be rejected: ${JSON.stringify(execution_binding)}`);
+        assert.ok(r.errors.some((e) => e.includes('execution_binding.required_fields')), `expected an execution_binding error, got: ${JSON.stringify(r.errors)}`);
+    }
+});
+test('an UNguarded action needs no execution_binding (no over-block)', () => {
+    const r = validateActionRiskManifest(action({ receipt_required: false }));
+    assert.equal(r.ok, true, `ungated action should validate, got: ${JSON.stringify(r.errors)}`);
 });
 test('an UNguarded action needs no assurance_class (no over-block)', () => {
     const r = validateActionRiskManifest(action({ receipt_required: false }));
@@ -53,6 +89,7 @@ const guarded = (id, actionType, match) => ({
     risk: 'high',
     receipt_required: true,
     assurance_class: 'class_a',
+    execution_binding: { required_fields: ['amount'] },
 });
 test('AMBIGUITY: equal, subset, and disjoint legacy match shapes are rejected', () => {
     const cases = [

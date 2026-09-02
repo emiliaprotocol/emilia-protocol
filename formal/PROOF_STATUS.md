@@ -385,7 +385,7 @@ Alloy 6.2.0 via `formal/AlloyCheck.java` — **32/32 checks held with no counter
 earlier per-row "Alloy 6.1.0" version tag was inaccurate — no such release asset exists;
 `v6.2.0` is the version now pinned and executed.)
 
-Each assertion listed below is a direct logical consequence of one or more facts (F1-F32)
+Each assertion listed below is a direct logical consequence of one or more facts (F1-F35)
 declared in `ep_relations.als`. All 15 assertions verified with no counterexamples found.
 
 Note on F21/A8 fix (2026-04-02): The original `DelegationAcyclic` fact used

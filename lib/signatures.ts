@@ -21,7 +21,13 @@ import crypto from 'crypto';
 import { canonicalize } from './canonical-json.js';
 
 const SHA256_HEX_RE = /^[0-9a-f]{64}$/;
-const BASE64_RE = /^[A-Za-z0-9+/_-]+={0,2}$/;
+// One alphabet per value. A single class admitting `+/` AND `-_` together
+// accepted mixed-alphabet strings (e.g. "a+b_c"), which normalize to the same
+// bytes as their single-alphabet spellings, so one signature had several
+// accepted encodings. Standard and URL-safe are each still accepted, but a
+// value must be entirely one or the other.
+const BASE64_STD_RE = /^[A-Za-z0-9+/]+={0,2}$/;
+const BASE64_URL_RE = /^[A-Za-z0-9_-]+={0,2}$/;
 const AUTH_EVIDENCE_FIELDS = new Set([
   'signature',
   'public_key',
@@ -37,14 +43,21 @@ const AUTH_EVIDENCE_FIELDS = new Set([
 ]);
 
 function decodeBase64Strict(value: string, label: string): Buffer {
-  if (typeof value !== 'string' || !value || !BASE64_RE.test(value)) {
+  if (typeof value !== 'string' || !value
+      || !(BASE64_STD_RE.test(value) || BASE64_URL_RE.test(value))) {
     throw new Error(`${label} is not canonical base64/base64url`);
   }
-  const normalized = value
-    .replace(/=+$/u, '')
-    .replace(/\+/gu, '-')
-    .replace(/\//gu, '_');
+  const body = value.replace(/=+$/u, '');
+  // Padding, when present, must be exactly the amount the body requires.
+  const padding = value.length - body.length;
+  const expectedPadding = body.length % 4 === 0 ? 0 : 4 - (body.length % 4);
+  if (padding !== 0 && padding !== expectedPadding) {
+    throw new Error(`${label} is not canonical base64/base64url`);
+  }
+  const normalized = body.replace(/\+/gu, '-').replace(/\//gu, '_');
   const bytes = Buffer.from(normalized, 'base64url');
+  // Round-trip: Buffer ignores the slack bits in the final character, so
+  // without this many distinct strings decode to the same bytes.
   if (!bytes.length || bytes.toString('base64url') !== normalized) {
     throw new Error(`${label} is not canonical base64/base64url`);
   }

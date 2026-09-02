@@ -26,9 +26,9 @@
       "expect": "a refused near-miss action does not reserve or consume the valid OASNT replay unit"
     },
     {
-      "id": "not_committed_release_allows_retry",
+      "id": "not_committed_release_is_terminal",
       "section": "4.1",
-      "expect": "a reserved attempt reconciled NOT_COMMITTED releases the authority for retry"
+      "expect": "a reserved attempt reconciled NOT_COMMITTED is terminally released, so the same action instance can never reserve again"
     },
     {
       "id": "committed_admission_consumes_and_replay_refuses",

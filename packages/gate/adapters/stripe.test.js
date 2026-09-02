@@ -84,9 +84,9 @@ test('payout refuses a replayed receipt', async () => {
     assert.equal(stripe.calls.length, 1);
 });
 test('payout-destination change requires quorum', async () => {
-    const action = { action_type: 'stripe.bank_account.change', account: 'acct_x', external_account: 'ba_new' };
+    const action = { action_type: 'stripe.bank_account.change', account: 'acct_x', external_account: 'ba_new', default_for_currency: true };
     const { gate, harness, stripe } = setup(action);
-    const params = { account: 'acct_x', external_account: 'ba_new' };
+    const params = { account: 'acct_x', external_account: 'ba_new', default_for_currency: true };
     await assert.rejects(() => guardStripeMutation(gate, stripe, { op: 'bank_account.change', params, receipt: harness.mint({ outcome: 'allow_with_signoff' }) }), (e) => /assurance/.test(e.gate.reason));
     const quorum = harness.mint({ outcome: 'allow_with_signoff', quorum: { signers: ['ep:a', 'ep:b'], threshold: 2 } });
     const { result } = await guardStripeMutation(gate, stripe, { op: 'bank_account.change', params, receipt: quorum });
@@ -353,4 +353,55 @@ test('typed Stripe connector derives account identity before any action can exec
     const connector = await stripeConnector(stripe);
     assert.ok(connector);
     await assert.rejects(() => createStripeAllowanceConnector({ stripe: fakeStripe('not-an-account') }), /invalid account/);
+});
+const BANK_CHANGE = { action_type: 'stripe.bank_account.change', account: 'acct_authorized', external_account: 'ba_new', default_for_currency: true };
+test('bank_account.change forwards exactly the bound update body to Stripe', async () => {
+    const { gate, harness, stripe } = setup(BANK_CHANGE);
+    await guardStripeMutation(gate, stripe, {
+        op: 'bank_account.change',
+        params: { account: 'acct_authorized', external_account: 'ba_new', default_for_currency: true },
+        receipt: harness.mint({ outcome: 'allow_with_signoff', quorum: { signers: ['ep:a', 'ep:b'], threshold: 2 } }),
+    });
+    assert.equal(stripe.calls.length, 1);
+    assert.deepEqual(stripe.calls[0], ['ext', { acct: 'acct_authorized', ext: 'ba_new', u: { default_for_currency: true } }]);
+});
+test('bank_account.change never forwards a caller-supplied update object', async () => {
+    const { gate, harness, stripe } = setup(BANK_CHANGE);
+    await guardStripeMutation(gate, stripe, {
+        op: 'bank_account.change',
+        params: {
+            account: 'acct_authorized', external_account: 'ba_new', default_for_currency: true,
+            update: { account_holder_name: 'Mallory', default_for_currency: false, metadata: { smuggled: '1' } },
+        },
+        receipt: harness.mint({ outcome: 'allow_with_signoff', quorum: { signers: ['ep:a', 'ep:b'], threshold: 2 } }),
+    });
+    assert.equal(stripe.calls.length, 1);
+    assert.deepEqual(stripe.calls[0][1].u, { default_for_currency: true });
+});
+test('bank_account.change refuses when the receipt bound a different default_for_currency', async () => {
+    const { gate, harness, stripe } = setup({ ...BANK_CHANGE, default_for_currency: false });
+    const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: { signers: ['ep:a', 'ep:b'], threshold: 2 } }); // authorizes attach-without-default
+    await assert.rejects(() => guardStripeMutation(gate, stripe, {
+        op: 'bank_account.change',
+        params: { account: 'acct_authorized', external_account: 'ba_new', default_for_currency: true },
+        receipt,
+    }), (e) => /binding/.test(e.gate.reason));
+    assert.equal(stripe.calls.length, 0);
+});
+test('bank_account.change refuses when default_for_currency is absent or not a boolean', async () => {
+    const { gate, harness, stripe } = setup(BANK_CHANGE);
+    const receipt = harness.mint({ outcome: 'allow_with_signoff', quorum: { signers: ['ep:a', 'ep:b'], threshold: 2 } });
+    // Omitted: the pack binds default_for_currency, so the receipt cannot cover the call.
+    await assert.rejects(() => guardStripeMutation(gate, stripe, {
+        op: 'bank_account.change', params: { account: 'acct_authorized', external_account: 'ba_new' }, receipt,
+    }), (e) => /binding|required/.test(e.gate.reason));
+    // Non-boolean values are not observed as the bound field and therefore cannot satisfy it.
+    for (const value of ['true', 1]) {
+        await assert.rejects(() => guardStripeMutation(gate, stripe, {
+            op: 'bank_account.change',
+            params: { account: 'acct_authorized', external_account: 'ba_new', default_for_currency: value },
+            receipt,
+        }), (e) => /binding|required/.test(e.gate.reason));
+    }
+    assert.equal(stripe.calls.length, 0);
 });

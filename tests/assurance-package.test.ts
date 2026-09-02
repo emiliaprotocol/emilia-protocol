@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // EP-ASSURANCE-PACKAGE-v1 — bundle + independent re-performance.
-// Proves the EY-grade property: re-performance recomputes every reliance verdict
+// Proves the audit-grade property: re-performance recomputes every reliance verdict
 // from the packaged evidence and CATCHES a runtime that claimed `rely` over
 // inadmissible evidence (drift), trusting nothing the package asserts.
 import { describe, it, expect } from 'vitest';

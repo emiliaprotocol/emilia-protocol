@@ -51,11 +51,11 @@
     },
     {
       "path": "conformance/refinement/adapters/complete-mediation.mjs",
-      "sha256": "37034bb23cf7f1047820e6a29d8bc290567282b7b304adea9bdce47dbcae6bd0"
+      "sha256": "7091b0dbc3564a062bc07ac9b35ce32263ceb8d8dedbb79cd4e787361dd552c6"
     },
     {
       "path": "conformance/refinement/adapters/complete-mediation.mts",
-      "sha256": "75861fb17cc61b789a671cb4692383ca9c8278b6e0fb13c80abc9becdb753ad1"
+      "sha256": "05fbf46aecf479773513e500600ac23854e0e83a3742c88bd8aa6d9eb3c089d2"
     },
     {
       "path": "conformance/refinement/adapters/composed-trust-lifecycle.mjs",
@@ -95,11 +95,11 @@
     },
     {
       "path": "conformance/refinement/adapters/grace-curtailment.mjs",
-      "sha256": "acac8a1ebed2e7717d6d6b7fd78f09926d0578221803fad69cae1f473d5aa9d4"
+      "sha256": "1f6e9ee46523842c35b640f12aea288804b0103d59c641137d2249637777e11e"
     },
     {
       "path": "conformance/refinement/adapters/grace-curtailment.mts",
-      "sha256": "6b4d616ff81e27fce85b8a0be1b55f0728412f582c1f97c4b978116a95e06c2e"
+      "sha256": "c54a26cc2f207ae4b87a7e58e7dfc06f6af0b97851384d5a1b4b64a74a0d42f3"
     },
     {
       "path": "conformance/refinement/adapters/index.mjs",
@@ -263,11 +263,11 @@
     },
     {
       "path": "formal/ep_complete_mediation.tla",
-      "sha256": "8c7542526b355bac1d3c8bad1e97e4b3be927046d163efd0ee20d62324b02b85"
+      "sha256": "d8efcbb251466cf5283d756222feabb6bafdf3cc7dad70d612504c3d5b7a4283"
     },
     {
       "path": "formal/ep_complete_mediation_unsafe.cfg",
-      "sha256": "9c6927ac1f6f2312c6088c91272d01861122442f919d07252dc973dac39df688"
+      "sha256": "32700a57d31cc05c33369cf6e241afcf46c8b8226decff6b9e8ac0f8bf3f563c"
     },
     {
       "path": "formal/ep_composed_trust_lifecycle.cfg",
@@ -323,7 +323,7 @@
     },
     {
       "path": "formal/runtime-scenarios.v2.json",
-      "sha256": "0d21eb5c352ffe4a3c427ed4240c17d899c410d35f30d32908b845e0e758e9ab"
+      "sha256": "f02606018f2c2d9b3486bbbba6a4aed07a94a067fb8fe14cdb39751acafc5d03"
     },
     {
       "path": "formal/two-claim-assurance.model.mjs",
@@ -427,11 +427,11 @@
     },
     {
       "path": "lib/grace/curtailment.js",
-      "sha256": "5ee2b7c3b1779f762792d4b11c8dcfa468b0ce77da8c623505de563cf00e3da8"
+      "sha256": "6dabb9faa1654b7e81aaa04d3e22064f8777a76350c0bccf51802ec18fe4c820"
     },
     {
       "path": "lib/grace/curtailment.ts",
-      "sha256": "9b2d63e77426094acdf668dd3b8bd8e1e2ff5af80a98c7f8e258d6c5a70b452e"
+      "sha256": "4a9f523869167db61a7c5960933a2049564f0a9009ef01c97b931b42209eecf2"
     },
     {
       "path": "lib/grace/forecast-evidence.js",
@@ -443,19 +443,19 @@
     },
     {
       "path": "lib/grace/mobile-grid.js",
-      "sha256": "01d350e33a7ab8200d73b718f2b82a75533134f5fb23c5c7f2f401e3c90836a5"
+      "sha256": "2b7299f3c1c2568ce96b31f322c645620c12b453b868dfe773d1b1b99cf7f639"
     },
     {
       "path": "lib/grace/mobile-grid.ts",
-      "sha256": "a4d0adcc0c74f8f2d418da179f27f777756413ed71819ad8f8067dee322851b7"
+      "sha256": "f5c90ebe2e4c59aeb6a378b843026bde137274069bb95085b9d2a58a053f713d"
     },
     {
       "path": "lib/grace/reference-adapters.js",
-      "sha256": "79ec25893974fedc6026642ac58de21086f39e113a84b084a877f80e6d725645"
+      "sha256": "49e87d9897a4eda0cee61940ff0de96e7e84b7a2097fd2fa182d63ed71318c26"
     },
     {
       "path": "lib/grace/reference-adapters.ts",
-      "sha256": "02d641ca65f3543dffca2021af419ccd97a4fac6724c9493366586628d391293"
+      "sha256": "d0d2f674b972efb7a6c01ecb5a0b4ad03f8b90971cf02b87dfb1150a0c507ae4"
     },
     {
       "path": "lib/handshake/binding.js",
@@ -507,7 +507,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "75a856b7cb092b08ee8a2ead331a26e51ddaef5f2eff194122e90c9b6447851a"
+      "sha256": "62f0a9cb0f529e06dd1fa2d455c6190fc16c2c2c44f596ca5ad655aa35ac58d5"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -527,7 +527,7 @@
     },
     {
       "path": "packages/gate/dist/a2a-ap2-gate.js",
-      "sha256": "019247087d621cff2096b0629ec18a8fb3720936c26a4fd115fb9e9b0fe8e77c"
+      "sha256": "86cc9df20556a42f22a0b125256569029855b2f4b0e04ef29a23c08f159480f8"
     },
     {
       "path": "packages/gate/dist/action-control-manifest.js",
@@ -575,7 +575,7 @@
     },
     {
       "path": "packages/gate/dist/aeb-consumption-store.js",
-      "sha256": "013340d3f41951fa6431800a5671ff5f9243344d207c3529b7bba994c0c43d71"
+      "sha256": "c68c892245294e075af7c401d285a510f7168f921925eeee058ed745dee7eeb0"
     },
     {
       "path": "packages/gate/dist/aec-execution.js",
@@ -683,7 +683,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "688112ea792bcdcb1d4717cff87174f7d2a09714f05b74b8a5ccde83a7a85748"
+      "sha256": "9ceebc554c0bc7935ec630b8678817562ef2d95a3e756abd874169aa95b4b422"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -723,7 +723,7 @@
     },
     {
       "path": "packages/gate/dist/proposal-to-effect.js",
-      "sha256": "5d3bf24ceafaee60a4556a126df915763fc7017d47a781d3632e08507d715641"
+      "sha256": "6c1433e430cfd70451ba65e4967223e75226225e3aeff6b3e0052e63a9a4939b"
     },
     {
       "path": "packages/gate/dist/protected-action-registry.js",
@@ -859,7 +859,7 @@
     },
     {
       "path": "packages/gate/src/aeb-consumption-store.ts",
-      "sha256": "e55405c9b031ff0ef5038b4bfed717d712684d8e19c40602b8de2be072b74960"
+      "sha256": "077c52aae193aed6467a302b2098d2be628ff6e08b00ba9fc89bd0bc8f1e803c"
     },
     {
       "path": "packages/gate/src/aec-execution.ts",
@@ -891,7 +891,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "87823e363d1273b9d8c7918e56b3b30a80e05f2d524eca985eb0fde57b512fcd"
+      "sha256": "a07c9b6889fe0a58437fc8b518f2a4cd30694b1fa1d4437f99c316857bfbe599"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -899,7 +899,7 @@
     },
     {
       "path": "packages/gate/src/proposal-to-effect.ts",
-      "sha256": "ee30da8e0b58111d7951e920bd9413f8f19db14f0b757b0287e33f925ed969b4"
+      "sha256": "00c174e896dae4a297b5ee727cfc7895bed42f7bc6b0f5833234a49a27d45edd"
     },
     {
       "path": "packages/gate/src/receipt-program.ts",
@@ -995,11 +995,11 @@
     },
     {
       "path": "packages/require-receipt/dist/gate.js",
-      "sha256": "bd1a69b37730484eb800c7e32772349f8703e75ae43b780c2913149aba83af52"
+      "sha256": "fe41f7a75f2d974537005159ac74b84302222a2f868d7ef7d93745873757e7dd"
     },
     {
       "path": "packages/require-receipt/dist/index.js",
-      "sha256": "0c2fca8daf4b89a373c835f2e5be6b50e6d2de9d648814d38a8c32ff3c99c77a"
+      "sha256": "fa50e18bd80d74b5795d68eff8c42c7b218c2777ca91a0b28d78905ed4cf43d7"
     },
     {
       "path": "packages/require-receipt/dist/jws.js",
@@ -1051,7 +1051,11 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "19f4ad5c4cad003f7955cebdd1f8675d85941f75ac6ffc168f6a296897704668"
+      "sha256": "252891f826856a8782dd01538caeb37cde0198e2d78827ea5a910be8b1dac4f7"
+    },
+    {
+      "path": "packages/verify/dist/aeb-aic-crossing-adapter.js",
+      "sha256": "e752a52fdb2e261fb539c090380ad4f4c2f9631adb1155aebf725e55b7386c94"
     },
     {
       "path": "packages/verify/dist/aeb-aps-adapter.js",
@@ -1079,7 +1083,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-mcgraw-delegation-adapter.js",
-      "sha256": "ae3a10fd676fbd2f64ed1085de432167dd1eb2d90f4d5decbae5475739e85c54"
+      "sha256": "2bdabd215c6f2d0d1d16c3435b138125dfe33a381386249cfd19b92f7a884fd5"
     },
     {
       "path": "packages/verify/dist/aeb-native-adapters.js",
@@ -1091,7 +1095,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-oauth-transaction-challenge-adapter.js",
-      "sha256": "fc42257cb8aad944089ceb6ecd4d67f3f07b040723a9faff8ca3d8e5d7caa068"
+      "sha256": "a3d3a193214a0e310eebc6fac38af3d6bff5915feaeb9db2151b665d6ddc6c85"
     },
     {
       "path": "packages/verify/dist/aeb-psea-adapter.js",
@@ -1191,7 +1195,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "24a38bfeb2eb98bf2f6d4f47000265efc9c97ab71a50bd0a92e5e03ccf805a86"
+      "sha256": "9d129fa6be776e209d674b91ebab2bf1a94a8d751e1f9c9f4628f1fa2d2ac2f5"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1227,7 +1231,7 @@
     },
     {
       "path": "packages/verify/dist/pq-signature-agility.js",
-      "sha256": "5cfdfb256e5682ee20b3f6a9f1d52c616dcc6f2f4bd4b11696d31032cae04018"
+      "sha256": "bc4184a507c1e403e32e9534525bac3293296150ff827b0469037803618c96f8"
     },
     {
       "path": "packages/verify/dist/provenance.js",
@@ -1239,7 +1243,7 @@
     },
     {
       "path": "packages/verify/dist/receipt-cose-encoding.js",
-      "sha256": "1ab1437f26d16a48623cc04d6effa961d8a3dafd13b3db3f5ae2ad36e9f1e0f9"
+      "sha256": "16f3fa4a6443d432990d08242b36807d269de209d701a4a2d01d1351761f5703"
     },
     {
       "path": "packages/verify/dist/receipt-hybrid.js",
@@ -1327,7 +1331,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "8b69f50cc4708dc42fec576d66b23f8a05645a2afa094e36463bbd282deabe10"
+      "sha256": "d2f4923aa1ba816b0a4500c7ecd19577728d689ec1316e8b1cd370756e6de161"
     },
     {
       "path": "packages/verify/src/authority-program.ts",
@@ -1339,7 +1343,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "b98f02b992726287f0a692845991035ec203693e8dbd2e8a53009164ae21705d"
+      "sha256": "7f6eda3cf0359120f1a7ae6eaaa810090418e6e36e18307c4080a93a6eddffad"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",
@@ -1367,7 +1371,7 @@
     },
     {
       "path": "scripts/build-standalone-runtimes.mjs",
-      "sha256": "02f128f0021416f56af26f5a073eca6e3ed9ee4ca91446d90e20b5eff453031d"
+      "sha256": "952a80c74014e2202cee6e8f4f5492b137e5433309c07f91941ba504dc5018ec"
     },
     {
       "path": "scripts/check-formal-runtime-traces.mjs",
@@ -2128,8 +2132,11 @@
           "envelope",
           "providerCaller",
           "providerCalls",
+          "reReserveRefused",
           "reconciliationAuthenticated",
           "replayRefused",
+          "reservation",
+          "reservationReleased",
           "staleRefused"
         ],
         "formal_projection": {
@@ -2142,6 +2149,9 @@
           "providerCalls": 0,
           "reconciliationAuthenticated": false,
           "replayRefused": false,
+          "reReserveRefused": false,
+          "reservation": "NONE",
+          "reservationReleased": false,
           "staleRefused": false
         },
         "runtime_projection": {
@@ -2154,6 +2164,9 @@
           "providerCalls": 0,
           "reconciliationAuthenticated": false,
           "replayRefused": false,
+          "reReserveRefused": false,
+          "reservation": "NONE",
+          "reservationReleased": false,
           "staleRefused": false
         },
         "shared_input": {
@@ -2179,6 +2192,9 @@
               "providerCalls": 0,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "NONE",
+              "reservationReleased": false,
               "staleRefused": false
             }
           }
@@ -2208,32 +2224,41 @@
           "envelope",
           "providerCaller",
           "providerCalls",
+          "reReserveRefused",
           "reconciliationAuthenticated",
           "replayRefused",
+          "reservation",
+          "reservationReleased",
           "staleRefused"
         ],
         "formal_projection": {
           "binding": "EXACT",
           "bypassRefused": true,
           "decision": "ALLOWED",
-          "effect": "INDETERMINATE",
+          "effect": "NOT_COMMITTED",
           "envelope": "CONSUMED",
           "providerCaller": "ACTUATOR",
           "providerCalls": 1,
-          "reconciliationAuthenticated": false,
+          "reconciliationAuthenticated": true,
           "replayRefused": true,
+          "reReserveRefused": true,
+          "reservation": "RELEASED_NOT_ENTERED",
+          "reservationReleased": true,
           "staleRefused": false
         },
         "runtime_projection": {
           "binding": "EXACT",
           "bypassRefused": true,
           "decision": "ALLOWED",
-          "effect": "INDETERMINATE",
+          "effect": "NOT_COMMITTED",
           "envelope": "CONSUMED",
           "providerCaller": "ACTUATOR",
           "providerCalls": 1,
-          "reconciliationAuthenticated": false,
+          "reconciliationAuthenticated": true,
           "replayRefused": true,
+          "reReserveRefused": true,
+          "reservation": "RELEASED_NOT_ENTERED",
+          "reservationReleased": true,
           "staleRefused": false
         },
         "shared_input": {
@@ -2252,6 +2277,9 @@
             "bypass": "malformed_envelope",
             "expiry": "envelope_expired",
             "indeterminate": "provider_outcome_indeterminate",
+            "late_commit_after_release": "reservation_not_open",
+            "re_reserve_after_release": false,
+            "reconciled_non_entry": "execution_not_committed",
             "replay": "envelope_replayed",
             "signed_body_substitution": "signature_invalid",
             "target_substitution": "target_mismatch"
@@ -2275,6 +2303,9 @@
               "providerCalls": 0,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "NONE",
+              "reservationReleased": false,
               "staleRefused": false
             }
           },
@@ -2291,6 +2322,28 @@
               "providerCalls": 0,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "NONE",
+              "reservationReleased": false,
+              "staleRefused": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReserveOneTimeUnit",
+            "projection": {
+              "binding": "NONE",
+              "bypassRefused": true,
+              "decision": "ALLOWED",
+              "effect": "NONE",
+              "envelope": "NONE",
+              "providerCaller": "NONE",
+              "providerCalls": 0,
+              "reconciliationAuthenticated": false,
+              "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "RESERVED",
+              "reservationReleased": false,
               "staleRefused": false
             }
           },
@@ -2307,6 +2360,9 @@
               "providerCalls": 0,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "RESERVED",
+              "reservationReleased": false,
               "staleRefused": false
             }
           },
@@ -2323,6 +2379,9 @@
               "providerCalls": 1,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "RESERVED",
+              "reservationReleased": false,
               "staleRefused": false
             }
           },
@@ -2339,6 +2398,9 @@
               "providerCalls": 1,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "RESERVED",
+              "reservationReleased": false,
               "staleRefused": false
             }
           },
@@ -2355,6 +2417,47 @@
               "providerCalls": 1,
               "reconciliationAuthenticated": false,
               "replayRefused": true,
+              "reReserveRefused": false,
+              "reservation": "RESERVED",
+              "reservationReleased": false,
+              "staleRefused": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReconcileNotCommitted",
+            "projection": {
+              "binding": "EXACT",
+              "bypassRefused": true,
+              "decision": "ALLOWED",
+              "effect": "NOT_COMMITTED",
+              "envelope": "CONSUMED",
+              "providerCaller": "ACTUATOR",
+              "providerCalls": 1,
+              "reconciliationAuthenticated": true,
+              "replayRefused": true,
+              "reReserveRefused": false,
+              "reservation": "RELEASED_NOT_ENTERED",
+              "reservationReleased": true,
+              "staleRefused": false
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseReReserveAfterRelease",
+            "projection": {
+              "binding": "EXACT",
+              "bypassRefused": true,
+              "decision": "ALLOWED",
+              "effect": "NOT_COMMITTED",
+              "envelope": "CONSUMED",
+              "providerCaller": "ACTUATOR",
+              "providerCalls": 1,
+              "reconciliationAuthenticated": true,
+              "replayRefused": true,
+              "reReserveRefused": true,
+              "reservation": "RELEASED_NOT_ENTERED",
+              "reservationReleased": true,
               "staleRefused": false
             }
           }

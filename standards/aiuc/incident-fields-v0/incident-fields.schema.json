@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:incident-action-authorization-field-group:v0.1",
+  "$id": "urn:emilia:aiuc:incident-action-authorization-field-group:v0.1",
   "title": "Incident Action Authorization Field Group v0.1",
   "description": "Unsubmitted, implementation-neutral proposal for coding one AI-agent action in an incident.",
   "type": "object",

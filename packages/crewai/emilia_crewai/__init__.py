@@ -298,6 +298,16 @@ class ReceiptGate:
             if age > self._max_age:
                 return (False, "receipt_expired", None)
 
+        # A signed terminal expiry is an ABSOLUTE validity boundary, independent
+        # of the relative-age policy. Turning max_age_sec off must never revive a
+        # receipt past its own signed expires_at. Present-but-unparseable counts
+        # as expired (fail-closed), matching verifyEmiliaReceipt in
+        # packages/require-receipt.
+        if "expires_at" in payload:
+            expires = _parse_iso_epoch(payload.get("expires_at"))
+            if expires is None or _now() >= expires:
+                return (False, "receipt_expired", None)
+
         if claim.get("action_type") != bound_action:
             return (False, "action_mismatch", None)
 
@@ -311,11 +321,18 @@ class ReceiptGate:
                 result = self._verify_assurance(receipt, self._assurance_class)
             except Exception:
                 return (False, "assurance_verification_failed", None)
-            if isinstance(result, str):
-                have, assurance_ok = result, True
-            elif isinstance(result, dict):
+            # Only an EXPLICIT affirmative counts. A bare string was previously
+            # read as "ok, and here is the tier", so any verifier that returned
+            # a diagnostic label, an error code, or a tier it had NOT actually
+            # proven was treated as a pass. The verifier must now say so:
+            # either {"ok": True, "tier": ...} or a literal True.
+            if isinstance(result, dict):
                 have = result.get("tier") or result.get("have") or result.get("assurance_class")
                 assurance_ok = result.get("ok") is True
+                if not isinstance(have, str):
+                    have = None
+            elif result is True:
+                have, assurance_ok = self._assurance_class, True
             else:
                 have, assurance_ok = None, False
             rank = {"software": 0, "class_a": 1, "quorum": 2}

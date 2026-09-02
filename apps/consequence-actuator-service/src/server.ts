@@ -33,6 +33,25 @@ export function createHttpServer(runtime: any) {
   });
 }
 
+// Bind the loopback interface unless the operator names an interface, and
+// validate what they name. `??` (not `||`) so an explicitly empty HOST is a
+// configuration error rather than a silent widening to every interface: this
+// service owns provider credentials, and a reachable-by-default bind is not a
+// posture it should fall into by accident. Matches gate-service/src/server.ts
+// and consequence-control-service/src/server.ts.
+export function listenSettings(environment: NodeJS.ProcessEnv | Record<string, any>) {
+  const host = (environment as Record<string, any>).HOST ?? '127.0.0.1';
+  const port = Number((environment as Record<string, any>).PORT ?? '8080');
+  if (typeof host !== 'string' || host.length === 0 || host.length > 253
+      || /[\r\n]/.test(host)) {
+    throw new Error('listen_host_invalid');
+  }
+  if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
+    throw new Error('listen_port_invalid');
+  }
+  return { host, port };
+}
+
 export async function startServer({
   environment = process.env,
 }: { environment?: NodeJS.ProcessEnv } = {}) {
@@ -44,11 +63,7 @@ export async function startServer({
     throw new Error('consequence_actuator_startup_not_ready');
   }
   const server = createHttpServer(runtime);
-  const host = environment.HOST || '0.0.0.0';
-  const port = Number(environment.PORT || 8080);
-  if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
-    throw new Error('PORT_invalid');
-  }
+  const { host, port } = listenSettings(environment);
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, host, resolve);
@@ -73,4 +88,4 @@ if (process.argv[1]
   });
 }
 
-export default Object.freeze({ createHttpServer, startServer });
+export default Object.freeze({ createHttpServer, listenSettings, startServer });

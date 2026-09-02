@@ -161,6 +161,20 @@ function decodeBase64url(value: any): Buffer {
 // =============================================================================
 
 const SUPPORTED_VERSIONS = ['EP-RECEIPT-v1'];
+/**
+ * The only signature algorithm EP-RECEIPT-v1 defines. Two spellings of that one
+ * name are accepted because both are shipped: every production issuer and all
+ * conformance vectors emit 'Ed25519', while the published spec text
+ * (docs/trust-receipt-spec.md and app/spec/trust-receipt/page.tsx) shows
+ * 'ed25519', so an implementer following the spec emits lowercase. Any value
+ * that is not this one name, in either spelling, is refused.
+ */
+const RECEIPT_V1_SIGNATURE_ALGORITHM = 'Ed25519';
+
+function isReceiptV1Algorithm(value: unknown): boolean {
+  return typeof value === 'string'
+    && value.toLowerCase() === RECEIPT_V1_SIGNATURE_ALGORITHM.toLowerCase();
+}
 const SUPPORTED_PROOF_VERSIONS = ['EP-PROOF-v1'];
 
 // =============================================================================
@@ -423,6 +437,18 @@ export function verifyReceipt(doc: any, publicKeyBase64url: string, opts: any = 
 
   if (!doc.payload || !doc.signature?.value || !doc.signature?.algorithm) {
     return { valid: false, checks, error: 'Missing payload or signature' };
+  }
+  // EP-RECEIPT-v1 is Ed25519 over JCS, and signature.algorithm is NOT covered
+  // by the signature. Checking only that the label is PRESENT let a receipt
+  // labelled 'ML-DSA-65' or 'none' carry an Ed25519 signature and still come
+  // back valid:true, which other modules then branch on. The label must name
+  // the one algorithm this version verifies, or the receipt is refused.
+  if (!isReceiptV1Algorithm(doc.signature.algorithm)) {
+    return {
+      valid: false,
+      checks,
+      error: `Unsupported signature algorithm '${doc.signature.algorithm}'; EP-RECEIPT-v1 requires ${RECEIPT_V1_SIGNATURE_ALGORITHM}`,
+    };
   }
   if (!isCanonicalizable(doc.payload)) {
     return {
@@ -2384,6 +2410,22 @@ export {
   mapWimseOAuthCrossingAuthority,
   verifyAebCrossingRecord,
 } from './aeb-crossing-record.js';
+
+// Native AIC crossing mappings preserve the pure-JSON RFC 7638 JKT and
+// X.509 SPKI cases as separate authority systems. The JWT-SVID helper emits a
+// new-signature-required identity projection and never authorizes an action.
+export {
+  AIC_CROSSING_MAX_STATUS_AGE_SECONDS,
+  AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE,
+  AIC_JWT_SVID_PROJECTION_VERSION,
+  AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE,
+  AIC_ADMISSION_DOMAIN_VERSION,
+  AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE,
+  mapAicJwtJktBoundCrossingAuthority,
+  mapAicX509SpkiBoundCrossingAuthority,
+  issueAicBoundCrossingRecord,
+  projectAicJwtToStrictJwtSvid,
+} from './aeb-aic-crossing-adapter.js';
 
 // EP-AEC-v1 is available through the explicit `./evidence-chain` package subpath.
 // It is not re-exported here because evidence-chain.js composes this module and a

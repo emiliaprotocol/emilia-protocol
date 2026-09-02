@@ -36,10 +36,16 @@ function mint(privateKey, payload) {
 }
 const HASH_FOR = (action) => crypto.createHash('sha256').update(canon({ action_type: action }), 'utf8').digest('hex');
 let n = 0;
+// The guarded fixture action pins `amount` as its material field (a guarded
+// entry that pins none is refused by validateActionRiskManifest), so every
+// receipt signs the amount and every guarded call observes it.
+const FIXTURE_AMOUNT = 40000;
+const FIXTURE_OBSERVED = Object.freeze({ amount: FIXTURE_AMOUNT });
 function receipt(privateKey, { action = 'payment.release', outcome = 'allow', quorum = false } = {}) {
   const payload = {
     receipt_id: `rcpt_${++n}`, subject: 'agent:test', issuer: 'ep:org:test',
-    created_at: new Date().toISOString(), claim: { action_type: action, outcome },
+    created_at: new Date().toISOString(),
+    claim: { action_type: action, outcome, amount: FIXTURE_AMOUNT },
   };
   if (quorum) {
     payload.quorum = mintQuorumEvidence({ actionHash: HASH_FOR(action), threshold: 2 });
@@ -54,7 +60,7 @@ function receipt(privateKey, { action = 'payment.release', outcome = 'allow', qu
 const MANIFEST = {
   '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
   actions: [
-    { id: 'pay', action_type: 'payment.release', receipt_required: true, risk: 'critical', assurance_class: 'class_a', match: { protocol: 'mcp', tool: 'release_payment' } },
+    { id: 'pay', action_type: 'payment.release', receipt_required: true, risk: 'critical', assurance_class: 'class_a', execution_binding: { required_fields: ['amount'] }, match: { protocol: 'mcp', tool: 'release_payment' } },
     { id: 'read', action_type: 'read.balance', receipt_required: false, match: { protocol: 'mcp', tool: 'read_balance' } },
   ],
 };
@@ -119,11 +125,11 @@ async function realGateEntries() {
   const r = receipt(privateKey, { outcome: 'allow_with_signoff' });
   const passthrough = await g.check({ selector: READ });
   assert.equal(passthrough.reason, 'not_guarded');
-  const allowed = await g.check({ selector: PAY, receipt: r });
+  const allowed = await g.check({ selector: PAY, receipt: r, observedAction: FIXTURE_OBSERVED });
   assert.equal(allowed.allow, true, allowed.reason);
-  const replayed = await g.check({ selector: PAY, receipt: r });
+  const replayed = await g.check({ selector: PAY, receipt: r, observedAction: FIXTURE_OBSERVED });
   assert.equal(replayed.reason, 'replay_refused');
-  const missing = await g.check({ selector: PAY });
+  const missing = await g.check({ selector: PAY, observedAction: FIXTURE_OBSERVED });
   assert.equal(missing.reason, 'receipt_required');
   return { entries: log.all(), pub, privateKey };
 }

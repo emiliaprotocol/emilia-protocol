@@ -312,12 +312,31 @@ function verifySeedManifest(seedRoot, seed) {
     }
 }
 function validateWorkspace(workspace) {
-    if (!isObject(workspace) || !exactKeys(workspace, [
+    const requiredKeys = [
         '@version', 'adapter', 'artifact', 'artifact_digest', 'config', 'evaluated_at',
         'evaluation', 'expected_action', 'expected_action_digest',
         'hostile_expected_action', 'hostile_expected_action_digest',
-    ]) || workspace['@version'] !== CROSSING_LAB_WORKSPACE_VERSION)
+    ];
+    // replay_probe is optional so workspaces authored against the original
+    // schema stay loadable. It is not optional in effect: when a workspace
+    // supplies it, it is pin-checked, required to be non-vacuous, and produces
+    // two adapter rows that must pass for the Lab to pass.
+    const allowedKeys = isObject(workspace) && Object.hasOwn(workspace, 'replay_probe')
+        ? [...requiredKeys, 'replay_probe']
+        : requiredKeys;
+    if (!isObject(workspace) || !exactKeys(workspace, allowedKeys)
+        || workspace['@version'] !== CROSSING_LAB_WORKSPACE_VERSION)
         throw new TypeError('invalid Crossing Lab workspace schema');
+    if (Object.hasOwn(workspace, 'replay_probe')) {
+        const probe = workspace.replay_probe;
+        if (!isObject(probe) || !exactKeys(probe, [
+            'distinct_authority_artifact', 'distinct_authority_artifact_digest',
+            're_presented_artifact', 're_presented_artifact_digest',
+        ])
+            || !DIGEST_RE.test(probe.re_presented_artifact_digest ?? '')
+            || !DIGEST_RE.test(probe.distinct_authority_artifact_digest ?? ''))
+            throw new TypeError('invalid replay probe');
+    }
     if (!isObject(workspace.adapter) || !exactKeys(workspace.adapter, ['id', 'module', 'module_digest', 'version'])
         || !ID_RE.test(workspace.adapter.id ?? '') || !ID_RE.test(workspace.adapter.version ?? '')
         || !FILE_RE.test(workspace.adapter.module ?? '') || !DIGEST_RE.test(workspace.adapter.module_digest ?? ''))
@@ -360,6 +379,21 @@ function workspacePinErrors(workspace, artifact, adapterBytes) {
         reasons.push('hostile_action_not_distinct');
     if (digestAeb(normalizeStatusInput(workspace.evaluation.status)) !== workspace.evaluation.status_digest)
         reasons.push('status_pin_drift');
+    if (isObject(workspace.replay_probe)) {
+        const probe = workspace.replay_probe;
+        if (digestAeb(probe.re_presented_artifact) !== probe.re_presented_artifact_digest)
+            reasons.push('re_presented_artifact_pin_drift');
+        if (digestAeb(probe.distinct_authority_artifact) !== probe.distinct_authority_artifact_digest)
+            reasons.push('distinct_authority_artifact_pin_drift');
+        // A probe that re-presents the byte-identical artifact, or calls the same
+        // artifact a distinct authority, proves nothing. Refuse it up front rather
+        // than emitting two rows that pass vacuously.
+        if (probe.re_presented_artifact_digest === workspace.artifact_digest)
+            reasons.push('re_presented_artifact_not_distinct');
+        if (probe.distinct_authority_artifact_digest === workspace.artifact_digest
+            || probe.distinct_authority_artifact_digest === probe.re_presented_artifact_digest)
+            reasons.push('distinct_authority_artifact_not_distinct');
+    }
     const adapterPin = workspace.config?.adapters?.[workspace.adapter.id];
     if (!adapterPin || adapterPin.version !== workspace.adapter.version)
         reasons.push('adapter_identity_not_pinned');
@@ -557,11 +591,21 @@ const EXPECTATIONS = {
         rule: 'REWRAPPED_REPLAY_IDENTITY_STABLE',
         description: 'a wrapper-only reference change preserves a valid positive evaluation and the native replay unit',
     },
+    RE_PRESENTED_REPLAY_IDENTITY_STABLE: {
+        rule: 'RE_PRESENTED_REPLAY_IDENTITY_STABLE',
+        description: 'the same native authority in a second valid native encoding keeps one replay unit, so it cannot be consumed twice',
+    },
+    DISTINCT_AUTHORITY_REPLAY_IDENTITY_SEPARATE: {
+        rule: 'DISTINCT_AUTHORITY_REPLAY_IDENTITY_SEPARATE',
+        description: 'a distinct native authority gets its own replay unit, so consuming one never denies the other',
+    },
 };
 function expectationPassed(rule, actual) {
     switch (rule) {
         case 'POSITIVE_SATISFIED':
         case 'REWRAPPED_REPLAY_IDENTITY_STABLE':
+        case 'RE_PRESENTED_REPLAY_IDENTITY_STABLE':
+        case 'DISTINCT_AUTHORITY_REPLAY_IDENTITY_SEPARATE':
             return actual.native_verification === 'VERIFIED'
                 && actual.acceptance === 'ACCEPTED'
                 && actual.mapping === 'MATCH'
@@ -688,6 +732,37 @@ export function runCrossingLab(workspaceDirectory) {
         replayRow.reasons = [...new Set([...replayRow.reasons, 'replay_unit_changed_across_wrapper'])].sort();
     }
     adapterRows.push(replayRow);
+    // The row above only re-labels the artifact_ref, so an adapter that keys its
+    // replay unit on a wrapper field still passes it. These two rows are the real
+    // probe: a second valid native encoding of the SAME authority must land on
+    // one unit, and a DISTINCT authority must land on its own.
+    if (isObject(workspace.replay_probe)) {
+        const probe = workspace.replay_probe;
+        const rePresented = evaluate(workspace, probe.re_presented_artifact, adapter, {
+            artifactRef: `${workspace.evaluation.artifact_ref}:re-presented`,
+        });
+        const rePresentedRow = adapterRow('replay-identity-survives-re-presentation', 'hostile', 'RE_PRESENTED_REPLAY_IDENTITY_STABLE', rePresented);
+        const rePresentedLeg = rePresented.record.legs[0];
+        if (!positiveReplayUnit || rePresentedLeg?.replay_unit !== positiveReplayUnit) {
+            rePresentedRow.passed = false;
+            rePresentedRow.reasons = [...new Set([...rePresentedRow.reasons, 'replay_unit_changed_across_re_presentation'])].sort();
+        }
+        if (!rePresentedLeg || rePresentedLeg.evidence_digest === positive.record.legs[0]?.evidence_digest) {
+            rePresentedRow.passed = false;
+            rePresentedRow.reasons = [...new Set([...rePresentedRow.reasons, 're_presented_artifact_not_a_second_encoding'])].sort();
+        }
+        adapterRows.push(rePresentedRow);
+        const distinct = evaluate(workspace, probe.distinct_authority_artifact, adapter, {
+            artifactRef: `${workspace.evaluation.artifact_ref}:distinct-authority`,
+        });
+        const distinctRow = adapterRow('distinct-authority-is-a-distinct-replay-unit', 'hostile', 'DISTINCT_AUTHORITY_REPLAY_IDENTITY_SEPARATE', distinct);
+        const distinctLeg = distinct.record.legs[0];
+        if (!distinctLeg?.replay_unit || distinctLeg.replay_unit === positiveReplayUnit) {
+            distinctRow.passed = false;
+            distinctRow.reasons = [...new Set([...distinctRow.reasons, 'distinct_authorities_share_one_replay_unit'])].sort();
+        }
+        adapterRows.push(distinctRow);
+    }
     const selfTests = harnessSelfTests(workspace, artifact, adapterBytes);
     const body = {
         '@version': CROSSING_LAB_REPORT_VERSION,
@@ -771,7 +846,11 @@ function normalizedStatus(status) {
   };
 }
 function nativeBody(artifact) {
-  const { signature, ...body } = artifact;
+  // presentation_id is a transport wrapper carried outside the signature, the
+  // way an access token jti or a COSE tag is. It is not part of the approval
+  // the issuer signed, so it never enters the replay unit: the same signed
+  // approval presented twice is one authority and one consume.
+  const { signature, presentation_id, ...body } = artifact;
   return body;
 }
 
@@ -936,9 +1015,27 @@ export function initCrossingLab(targetDirectory) {
         subject_id: 'human:alice',
         action,
     };
+    const signBody = (body) => crypto.sign(null, Buffer.from(canonicalizeCrossingLab(body), 'utf8'), SAMPLE_NATIVE_PRIVATE).toString('base64url');
+    const nativeSignature = signBody(nativeBody);
     const artifact = {
         ...nativeBody,
-        signature: crypto.sign(null, Buffer.from(canonicalizeCrossingLab(nativeBody), 'utf8'), SAMPLE_NATIVE_PRIVATE).toString('base64url'),
+        presentation_id: 'presentation:example:001',
+        signature: nativeSignature,
+    };
+    // The same signed approval handed over under a second transport wrapper.
+    // Different bytes, different evidence digest, one authority.
+    const rePresentedArtifact = {
+        ...nativeBody,
+        presentation_id: 'presentation:example:002',
+        signature: nativeSignature,
+    };
+    // A genuinely different approval for the same exact action. It must get its
+    // own replay unit, or consuming one would permanently deny the other.
+    const distinctAuthorityBody = { ...nativeBody, native_id: 'approval:example:002' };
+    const distinctAuthorityArtifact = {
+        ...distinctAuthorityBody,
+        presentation_id: 'presentation:example:003',
+        signature: signBody(distinctAuthorityBody),
     };
     const status = {
         checked_at: '2027-01-15T07:59:00Z',
@@ -977,6 +1074,12 @@ export function initCrossingLab(targetDirectory) {
         expected_action_digest: digestAeb(action),
         hostile_expected_action: hostileExpectedAction,
         hostile_expected_action_digest: digestAeb(hostileExpectedAction),
+        replay_probe: {
+            re_presented_artifact: rePresentedArtifact,
+            re_presented_artifact_digest: digestAeb(rePresentedArtifact),
+            distinct_authority_artifact: distinctAuthorityArtifact,
+            distinct_authority_artifact_digest: digestAeb(distinctAuthorityArtifact),
+        },
     };
     writeFileSync(resolve(target, 'adapter.mjs'), SAMPLE_ADAPTER, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
     writeFileSync(resolve(target, 'artifact.json'), `${JSON.stringify(artifact, null, 2)}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
@@ -1113,6 +1216,12 @@ export function sealCrossingLab(workspaceDirectory) {
     workspace.hostile_expected_action_digest = digestAeb(workspace.hostile_expected_action);
     workspace.evaluation.status = normalizeStatusInput(workspace.evaluation.status);
     workspace.evaluation.status_digest = digestAeb(workspace.evaluation.status);
+    if (isObject(workspace.replay_probe)) {
+        workspace.replay_probe.re_presented_artifact_digest = digestAeb(workspace.replay_probe.re_presented_artifact);
+        workspace.replay_probe.distinct_authority_artifact_digest = digestAeb(workspace.replay_probe.distinct_authority_artifact);
+    }
+    // Re-pinning never launders a vacuous probe: workspacePinErrors still
+    // refuses one whose artifacts are not genuinely distinct.
     const pinErrors = workspacePinErrors(workspace, artifact, adapterBytes);
     if (pinErrors.length > 0)
         throw new TypeError(`refusing to seal invalid workspace: ${pinErrors.join(',')}`);

@@ -277,17 +277,60 @@ export function checkSettlementConsumption(claim: any, consumedKeys: Set<string>
 }
 
 /**
+ * Custody contract required by any GRACE boundary that causes a permanent
+ * external effect (a physical dispatch, a payout). Identical to the predicate
+ * the Model-to-Matter executor enforces (lib/frontier/model-to-matter.ts) and
+ * to Gate's isSecureConsumptionStore (packages/gate/src/store.ts):
+ *
+ *  - durable               state survives the process and is SHARED, so a key
+ *                          consumed on one pod cannot be re-consumed on another
+ *  - ownershipFenced       only the holder of a reservation can commit or
+ *                          release it, so a delayed worker cannot stamp over a
+ *                          newer worker's reservation
+ *  - permanentConsumption  a consumed key never reopens on a TTL; a crash after
+ *                          an effect began is indeterminate, and reopening the
+ *                          key would permit a duplicate effect
+ *
+ * These are SELF-ASSERTED capability flags, not proofs. This predicate is the
+ * boundary refusing to fire an irreversible effect over a store that does not
+ * even claim fleet custody; it cannot detect a store that lies about itself.
+ */
+export function isGraceCustodyStore(store: any): boolean {
+  return Boolean(store)
+    && typeof store === 'object'
+    && store.durable === true
+    && store.ownershipFenced === true
+    && store.permanentConsumption === true
+    && typeof store.reserve === 'function'
+    && typeof store.commit === 'function';
+}
+
+/**
  * Production settlement boundary. Atomically reserve the entitlement across a
  * fleet, invoke the financial settlement once, and permanently commit the key
  * after any invocation attempt. An exception is an indeterminate effect and
  * therefore burns the entitlement instead of permitting a duplicate payout.
+ *
+ * "Across a fleet" is a claim about the STORE, so the store must carry the
+ * custody flags above. Without that check a process-local Map satisfied the
+ * money path, and two pods each paid out once for a single
+ * {entitlement_id, event_id, meter_window_digest}. `allowEphemeralState: true`
+ * is the explicit demo/test opt-out; it must never be set on a real payout.
  */
-export async function runSettlementOnce(claim: any, store: any, settle: any): Promise<Record<string, any>> {
+export async function runSettlementOnce(
+  claim: any,
+  store: any,
+  settle: any,
+  { allowEphemeralState = false }: { allowEphemeralState?: boolean } = {},
+): Promise<Record<string, any>> {
   if (!claim || typeof claim !== 'object') return { settled: false, key: null, reason: 'claim_missing' };
   const { key, reason } = settlementEntitlementKey(claim);
   if (key === null) return { settled: false, key: null, reason };
   if (!store || typeof store.reserve !== 'function' || typeof store.commit !== 'function') {
     return { settled: false, key, reason: 'consumption_registry_missing' };
+  }
+  if (allowEphemeralState !== true && !isGraceCustodyStore(store)) {
+    return { settled: false, key, reason: 'settlement_store_custody_insufficient' };
   }
   if (typeof settle !== 'function') return { settled: false, key, reason: 'settlement_effect_missing' };
 
