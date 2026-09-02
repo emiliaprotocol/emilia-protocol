@@ -48,7 +48,17 @@ const TARGETS = companionSources(fsSync, repositoryRoot).map((relativeSource) =>
   };
 });
 
-async function renderRuntime({ relativeSource, sourcePath, banner }) {
+// Package test companions are discovered by `node --test` on Node 20, which
+// loads the generated .js, so their imports must resolve without TypeScript.
+const PACKAGE_TEST_COMPANION = /^packages\/[^/]+\/.*\.test\.m?ts$/;
+// Packages that publish compiled output at <package>/dist, so a companion's
+// ./src import is redirected there.
+const DIST_REDIRECTED_PACKAGE = /^packages\/(?:gate|verify)\//;
+const SRC_IMPORT_GLOBAL = /(\bfrom\s+['"])\.\/src\//g;
+// Non-global twin: a /g regex carries lastIndex across .test() calls.
+const SRC_IMPORT_PROBE = /\bfrom\s+['"]\.\/src\//;
+
+export async function renderRuntime({ relativeSource, sourcePath, banner }) {
   const source = await readFile(sourcePath, 'utf8');
   const result = ts.transpileModule(source, {
     compilerOptions: {
@@ -87,9 +97,9 @@ async function renderRuntime({ relativeSource, sourcePath, banner }) {
   // JavaScript tests must load compiled package output. The TypeScript sources
   // keep importing ./src for source-level coverage; only their standalone
   // runtime companions are redirected to ./dist.
-  if (/^packages\/(?:gate|verify)\//.test(relativeSource)
-    && /\.test\.m?ts$/.test(relativeSource)) {
-    outputText = outputText.replace(/(\bfrom\s+['"])\.\/src\//g, '$1./dist/');
+  const isPackageTestCompanion = PACKAGE_TEST_COMPANION.test(relativeSource);
+  if (isPackageTestCompanion && DIST_REDIRECTED_PACKAGE.test(relativeSource)) {
+    outputText = outputText.replace(SRC_IMPORT_GLOBAL, '$1./dist/');
   }
   let shebangMatch = outputText.match(/^#!.*\n/);
   let afterShebang = shebangMatch ? outputText.slice(shebangMatch[0].length) : outputText;
@@ -103,14 +113,33 @@ async function renderRuntime({ relativeSource, sourcePath, banner }) {
     shebangMatch = outputText.match(/^#!.*\n/);
     afterShebang = shebangMatch ? outputText.slice(shebangMatch[0].length) : outputText;
   }
+  // Banner insertion happens on `outputText` on every path. Reading back
+  // `result.outputText` here instead would silently discard the ./src ->
+  // ./dist redirect above (and any SPDX restoration) for every source whose
+  // header is not an anchorable SPDX line comment.
+  let rendered;
   if (outputText.includes(spdxLine)) {
-    return outputText.replace(spdxLine, `${spdxLine}${banner}`);
+    rendered = outputText.replace(spdxLine, `${spdxLine}${banner}`);
+  } else if (shebangMatch) {
+    // No SPDX line comment to anchor on (e.g. a JSDoc @license block
+    // instead): insert the banner right after the shebang.
+    rendered = `${shebangMatch[0]}${banner}${afterShebang}`;
+  } else {
+    rendered = `${banner}${outputText}`;
   }
-  // No SPDX line comment to anchor on (e.g. a JSDoc @license block instead):
-  // insert the banner right after the shebang, or at the very top otherwise.
-  return shebangMatch
-    ? `${shebangMatch[0]}${banner}${afterShebang}`
-    : `${banner}${result.outputText}`;
+  // Loud guard: a package test companion that still imports ./src is not
+  // loadable by `node --test` on Node 20 (the specifier points at TypeScript
+  // that was never compiled to that path), and the failure mode it replaces
+  // was a silent one. Fail the build naming the file instead of writing it.
+  if (isPackageTestCompanion && SRC_IMPORT_PROBE.test(rendered)) {
+    throw new Error(
+      `${relativeSource}: generated Node 20 companion still imports ./src; the`
+      + ` ./src -> ./dist rewrite did not apply. Add the package to`
+      + ` DIST_REDIRECTED_PACKAGE in ${SCRIPT_NAME}, or stop generating a`
+      + ` companion for this source.`,
+    );
+  }
+  return rendered;
 }
 
 // .gitattributes carries a linguist-generated entry per companion (between the
