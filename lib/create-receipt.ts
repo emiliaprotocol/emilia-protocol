@@ -313,13 +313,6 @@ export async function createReceipt(params: CreateReceiptParams): Promise<Create
     idempotencyKey: callerIdempotencyKey = null,
   } = params;
 
-  // === IDEMPOTENCY KEY ===
-  // If the caller supplies one, use it. Otherwise generate deterministically
-  // from the triple (submitter.id, transactionRef, transactionType) so that
-  // machine-originated writes are automatically idempotent.
-  const idempotencyKey = callerIdempotencyKey ||
-    `ep_idem_${crypto.createHash('sha256').update(`${submitter.id}:${transactionRef}:${transactionType}`).digest('hex')}`;
-
   const supabase = getServiceClient();
 
   // === RESOLVE TARGET ENTITY ===
@@ -340,6 +333,37 @@ export async function createReceipt(params: CreateReceiptParams): Promise<Create
   }
 
   const targetEntityId = targetEntity.id;
+
+  // === IDEMPOTENCY KEY ===
+  // If the caller supplies one, use it. Otherwise generate deterministically
+  // so that machine-originated writes are automatically idempotent.
+  //
+  // v2 (ep_idem2_) fixes two defects in the v1 (ep_idem_) derivation, which
+  // hashed `${submitter.id}:${transactionRef}:${transactionType}`:
+  //  1. ':' is a legal character inside transactionRef and transactionType, so
+  //     the delimiter was ambiguous. {ref:'inv-9:refund', type:'settlement'}
+  //     and {ref:'inv-9', type:'refund:settlement'} hashed to ONE key, and the
+  //     second submission silently returned the first one's receipt with
+  //     deduplicated:true.
+  //  2. the target entity was not an input at all, so the same
+  //     (submitter, ref, type) about two DIFFERENT entities collapsed to one
+  //     key. Two receipts about different counterparties are not the same
+  //     write, and one of them was silently dropped.
+  // Fields are NUL-joined after length-prefixing (the discipline already used
+  // by lib/agent-mailbox.ts and lib/works/demand-service.ts), so no field
+  // value can impersonate a delimiter. The prefix is versioned so a v2 key can
+  // never collide with a v1 key already stored under the old derivation.
+  const idempotencyFields = [
+    String(submitter.id ?? ''),
+    String(targetEntityId),
+    String(transactionRef ?? ''),
+    String(transactionType ?? ''),
+  ];
+  const idempotencyInput = idempotencyFields
+    .map((field) => `${Buffer.byteLength(field, 'utf8')}:${field}`)
+    .join('\0');
+  const idempotencyKey = callerIdempotencyKey ||
+    `ep_idem2_${crypto.createHash('sha256').update(idempotencyInput, 'utf8').digest('hex')}`;
 
   // === SELF-SCORE CHECK ===
   if (targetEntityId === submitter.id) {

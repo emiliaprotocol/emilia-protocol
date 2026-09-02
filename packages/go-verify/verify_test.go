@@ -75,6 +75,39 @@ func TestValidReceiptFromJS(t *testing.T) {
 	}
 }
 
+// TestAlgorithmLabelOtherThanEd25519Fails proves the unauthenticated
+// signature.algorithm label must name Ed25519. It is not covered by the
+// signature and was only checked for presence, so a receipt labelled
+// "ML-DSA-65" or "none" carrying a valid Ed25519 signature verified.
+func TestAlgorithmLabelOtherThanEd25519Fails(t *testing.T) {
+	data, pub := load(t)
+	if r := VerifyReceiptJSON(data, pub); !r.Valid {
+		t.Fatalf("fixture must verify before mutation: %+v", r)
+	}
+	// Both shipped spellings of the ONE algorithm are accepted; the fixture
+	// itself carries the lowercase spelling from the published spec text.
+	upper := decodeT(t, data)
+	upper["signature"].(map[string]any)["algorithm"] = "Ed25519"
+	if r := VerifyReceipt(upper, pub); !r.Valid {
+		t.Fatalf("Ed25519 spelling must verify: %+v", r)
+	}
+
+	for _, alg := range []string{"ML-DSA-65", "none", "ES256", "Ed448"} {
+		doc := decodeT(t, data)
+		doc["signature"].(map[string]any)["algorithm"] = alg
+		r := VerifyReceipt(doc, pub)
+		if r.Valid {
+			t.Fatalf("algorithm %q must not verify", alg)
+		}
+		if r.Checks.Signature {
+			t.Fatalf("algorithm %q: expected signature=false", alg)
+		}
+		if !strings.Contains(r.Error, "Unsupported signature algorithm") {
+			t.Fatalf("algorithm %q: unexpected error %q", alg, r.Error)
+		}
+	}
+}
+
 // TestTamperedPayloadFails proves a single changed field breaks the signature.
 func TestTamperedPayloadFails(t *testing.T) {
 	data, pub := load(t)

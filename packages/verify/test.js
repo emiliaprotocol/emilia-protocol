@@ -201,6 +201,32 @@ test('verifyReceipt: rejects unsupported version', () => {
   assert.equal(r.valid, false);
 });
 
+// Regression: signature.algorithm is NOT covered by the signature, and the
+// verifier only checked that the label was PRESENT. A receipt labelled
+// 'ML-DSA-65' or 'none' carrying a valid Ed25519 signature came back
+// valid:true, and other modules branch on that label.
+test('verifyReceipt: rejects a signature.algorithm other than Ed25519', () => {
+  const { privateKey, publicKeyBase64url } = makeKeypair();
+  const payload = { entity_id: 'ep_alg_label', action: { action_type: 'payment.release.1' } };
+  const value = signWithRecursiveCanonical(payload, privateKey);
+  const good = { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value } };
+  assert.equal(verifyReceipt(good, publicKeyBase64url).valid, true);
+
+  // Both shipped spellings of the ONE algorithm are accepted: production
+  // issuers and every conformance vector emit 'Ed25519', the published spec
+  // text (docs/trust-receipt-spec.md) shows 'ed25519'.
+  const lower = { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'ed25519', value } };
+  assert.equal(verifyReceipt(lower, publicKeyBase64url).valid, true);
+
+  for (const algorithm of ['ML-DSA-65', 'none', 'ES256', 'Ed25519 ', 'Ed448']) {
+    const doc = { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm, value } };
+    const r = verifyReceipt(doc, publicKeyBase64url);
+    assert.equal(r.valid, false, `algorithm ${algorithm} must not verify`);
+    assert.equal(r.checks.signature, false);
+    assert.match(r.error, /Unsupported signature algorithm/);
+  }
+});
+
 test('verifyReceipt: rejects missing payload or signature', () => {
   assert.equal(verifyReceipt({ '@version': 'EP-RECEIPT-v1' }, 'fake').valid, false);
   assert.equal(verifyReceipt({ '@version': 'EP-RECEIPT-v1', payload: {} }, 'fake').valid, false);

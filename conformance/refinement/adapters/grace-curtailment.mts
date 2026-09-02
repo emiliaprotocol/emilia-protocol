@@ -19,7 +19,7 @@ import {
 import { predictedEffectsDigest } from "../../../packages/verify/effect-predicates.js";
 import {
   createCosaReferenceActuator,
-  createFencedMemoryStore,
+  createEphemeralMemoryStore,
   createReferenceMeter,
 } from "../../../lib/grace/reference-adapters.js";
 import type { RuntimeScenarioResult } from "../types.mjs";
@@ -252,8 +252,11 @@ function runtime() {
       baselineMw: "64.000",
       clock: () => METER_TIME,
     }),
-    executionStore: createFencedMemoryStore(),
-    settlementStore: createFencedMemoryStore(),
+    // Refinement harness: process-local consumption stores that report their
+    // custody flags honestly, so every GRACE boundary below is entered with
+    // allowEphemeralState: true. Never a production configuration.
+    executionStore: createEphemeralMemoryStore(),
+    settlementStore: createEphemeralMemoryStore(),
   };
 }
 
@@ -334,6 +337,9 @@ export async function runGraceScenario(
     actuatorTrust: state.actuatorKey.trust,
     meterTrust: state.meterKey.trust,
     settlementStore: state.settlementStore,
+    // Demo/refinement harness over the ephemeral stores above; a production
+    // GRACE deployment supplies durable, ownership-fenced custody instead.
+    allowEphemeralState: true,
     operator: "operator:us-west-dc-17",
     developer: "cosa-reference-adapter/1.0",
     capsuleSigner: state.capsuleKey,

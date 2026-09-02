@@ -377,3 +377,63 @@ describe('buildIdentifiedSubmissionDigest — non-circular exact binding', () =>
     }
   });
 });
+
+// ===========================================================================
+// Regression (encoding canonicality): decodeBase64Strict admitted a single
+// character class of [A-Za-z0-9+/_-], so a MIXED-alphabet string (some standard
+// '+/', some URL-safe '-_') passed the shape check and then normalized to the
+// same bytes as its single-alphabet spellings. One signature therefore had
+// several accepted encodings. A value must now be entirely standard base64 or
+// entirely base64url, with correct padding and an exact round trip.
+// ===========================================================================
+describe('verifyReceiptSignature — one encoding per signature', () => {
+  function signedFixture() {
+    const { privateKey, publicKey } = generateKeypair();
+    const hash = makeFakeHash();
+    const sigStd = crypto.sign(null, Buffer.from(hash, 'hex'), privateKey).toString('base64');
+    return { hash, sigStd, pub: exportPublicKeyBase64(publicKey) };
+  }
+
+  it('accepts each single-alphabet spelling but refuses a mixed one', () => {
+    // Retry until the signature actually contains both '+/'-class characters,
+    // so the mixed spelling below is a genuinely different string.
+    let fixture = signedFixture();
+    for (let i = 0; i < 200 && !/\+/.test(fixture.sigStd); i += 1) fixture = signedFixture();
+    expect(/\+/.test(fixture.sigStd)).toBe(true);
+
+    const { hash, sigStd, pub } = fixture;
+    const sigUrl = sigStd.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    expect(verifyReceiptSignature(hash, sigStd, pub).valid).toBe(true);
+    expect(verifyReceiptSignature(hash, sigUrl, pub).valid).toBe(true);
+
+    // Mixed alphabet: URL-safe body with a single standard '+' reintroduced.
+    const mixed = sigUrl.replace('-', '+');
+    expect(mixed).not.toBe(sigUrl);
+    expect(mixed).not.toBe(sigStd);
+    const r = verifyReceiptSignature(hash, mixed, pub);
+    expect(r.valid).toBe(false);
+    expect(r.reason).toMatch(/canonical base64/);
+  });
+
+  it('refuses a non-canonical final character (unused slack bits set)', () => {
+    const { hash, sigStd, pub } = signedFixture();
+    const url = sigStd.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    const last = alphabet.indexOf(url[url.length - 1]);
+    const slack = url.slice(0, -1) + alphabet[(last & 0b111100) | ((last + 1) & 0b11)];
+    expect(slack).not.toBe(url);
+    // Same bytes, different spelling.
+    expect(Buffer.from(slack, 'base64url').equals(Buffer.from(url, 'base64url'))).toBe(true);
+    const r = verifyReceiptSignature(hash, slack, pub);
+    expect(r.valid).toBe(false);
+    expect(r.reason).toMatch(/canonical base64/);
+  });
+
+  it('refuses padding that does not match the body length', () => {
+    const { hash, sigStd, pub } = signedFixture();
+    const body = sigStd.replace(/=+$/, '');
+    // A 64-byte signature is 86 characters plus 2 pad characters.
+    expect(verifyReceiptSignature(hash, `${body}=`, pub).valid).toBe(false);
+    expect(verifyReceiptSignature(hash, `${body}==`, pub).valid).toBe(true);
+  });
+});

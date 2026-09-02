@@ -137,9 +137,17 @@ function whenQuery(table, filters, data) {
   _mockResults[key] = data;
 }
 
-/** Compute the deterministic idempotency key that createReceipt would generate. */
-function deterministicKey(submitterId, txRef, txType) {
-  return `ep_idem_${crypto.createHash('sha256').update(`${submitterId}:${txRef}:${txType}`).digest('hex')}`;
+/**
+ * Compute the deterministic idempotency key that createReceipt would generate
+ * (EP idempotency key v2). Fields are length-prefixed and NUL-joined so no
+ * field value can impersonate a delimiter, and the resolved target entity id
+ * is an input so two receipts about different entities never share a key.
+ */
+function deterministicKey(submitterId, targetEntityId, txRef, txType) {
+  const input = [submitterId, targetEntityId, txRef, txType]
+    .map((field) => `${Buffer.byteLength(field, 'utf8')}:${field}`)
+    .join('\0');
+  return `ep_idem2_${crypto.createHash('sha256').update(input, 'utf8').digest('hex')}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -223,26 +231,81 @@ describe('Deterministic idempotency_key generation', () => {
 
     const result = await createReceipt(params);
 
-    const expectedKey = deterministicKey(SUBMITTER_ID, txRef, txType);
+    const expectedKey = deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, txRef, txType);
     expect(result.receipt.idempotency_key).toBe(expectedKey);
   });
 
   it('same inputs produce same deterministic key (reproducible)', () => {
-    const k1 = deterministicKey(SUBMITTER_ID, 'tx_abc', 'purchase');
-    const k2 = deterministicKey(SUBMITTER_ID, 'tx_abc', 'purchase');
+    const k1 = deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, 'tx_abc', 'purchase');
+    const k2 = deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, 'tx_abc', 'purchase');
     expect(k1).toBe(k2);
   });
 
   it('different inputs produce different deterministic keys', () => {
-    const k1 = deterministicKey(SUBMITTER_ID, 'tx_abc', 'purchase');
-    const k2 = deterministicKey(SUBMITTER_ID, 'tx_abc', 'service');
+    const k1 = deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, 'tx_abc', 'purchase');
+    const k2 = deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, 'tx_abc', 'service');
     expect(k1).not.toBe(k2);
   });
 
-  it('deterministic key starts with ep_idem_ prefix', async () => {
+  it('deterministic key starts with the versioned ep_idem2_ prefix', async () => {
     const params = makeParams({ transactionRef: 'tx_prefix_test', transactionType: 'delivery' });
     const result = await createReceipt(params);
-    expect(result.receipt.idempotency_key).toMatch(/^ep_idem_[a-f0-9]{64}$/);
+    expect(result.receipt.idempotency_key).toMatch(/^ep_idem2_[a-f0-9]{64}$/);
+  });
+
+  // ---------------------------------------------------------------------
+  // Regression: the v1 derivation hashed
+  // `${submitter.id}:${transactionRef}:${transactionType}`. ':' is legal
+  // inside both a transactionRef and a transactionType, so the delimiter was
+  // ambiguous and two DIFFERENT submissions hashed to one key; the second was
+  // silently returned the first one's receipt with deduplicated:true.
+  // ---------------------------------------------------------------------
+  it('the ambiguous-delimiter pair collided under v1 and does not under v2', () => {
+    const v1 = (ref, type) =>
+      `ep_idem_${crypto.createHash('sha256').update(`${SUBMITTER_ID}:${ref}:${type}`).digest('hex')}`;
+    // The exact collision the old derivation produced.
+    expect(v1('inv-9:refund', 'settlement')).toBe(v1('inv-9', 'refund:settlement'));
+
+    const a = deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, 'inv-9:refund', 'settlement');
+    const b = deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, 'inv-9', 'refund:settlement');
+    expect(a).not.toBe(b);
+  });
+
+  it('a NUL byte inside a field cannot impersonate the v2 delimiter', () => {
+    const a = deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, 'inv-9\u0000settlement', 'x');
+    const b = deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, 'inv-9', 'settlement\u0000x');
+    expect(a).not.toBe(b);
+  });
+
+  // ---------------------------------------------------------------------
+  // Regression: targetEntitySlug was not an input to the v1 key at all, so the
+  // same (submitter, ref, type) about two DIFFERENT entities collapsed to one
+  // key and one of the two receipts was silently dropped.
+  // ---------------------------------------------------------------------
+  it('the same submission about a different entity yields a different key', () => {
+    const OTHER_ENTITY_ID = 'cccccccc-1111-2222-3333-444444444444';
+    const a = deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, 'tx_same', 'purchase');
+    const b = deterministicKey(SUBMITTER_ID, OTHER_ENTITY_ID, 'tx_same', 'purchase');
+    expect(a).not.toBe(b);
+  });
+
+  it('createReceipt derives the key over the RESOLVED target entity id', async () => {
+    const OTHER_ENTITY_ID = 'cccccccc-1111-2222-3333-444444444444';
+    whenQuery('entities', { entity_id: 'other-entity' }, { id: OTHER_ENTITY_ID, entity_id: 'other-entity' });
+    whenQuery('entities', { id: OTHER_ENTITY_ID }, { emilia_score: 55, total_receipts: 10 });
+
+    const first = await createReceipt(makeParams({
+      transactionRef: 'tx_cross_entity', transactionType: 'purchase',
+    }));
+    const second = await createReceipt(makeParams({
+      targetEntitySlug: 'other-entity', transactionRef: 'tx_cross_entity', transactionType: 'purchase',
+    }));
+
+    expect(first.receipt.idempotency_key)
+      .toBe(deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, 'tx_cross_entity', 'purchase'));
+    expect(second.receipt.idempotency_key)
+      .toBe(deterministicKey(SUBMITTER_ID, OTHER_ENTITY_ID, 'tx_cross_entity', 'purchase'));
+    expect(first.receipt.idempotency_key).not.toBe(second.receipt.idempotency_key);
   });
 });
 
@@ -326,6 +389,6 @@ describe('idempotency_key in insert payload', () => {
 
     const insertCall = _queryLog.find(q => q.op === 'insert');
     expect(insertCall).toBeDefined();
-    expect(insertCall.row.idempotency_key).toBe(deterministicKey(SUBMITTER_ID, txRef, txType));
+    expect(insertCall.row.idempotency_key).toBe(deterministicKey(SUBMITTER_ID, TARGET_ENTITY_ID, txRef, txType));
   });
 });

@@ -48,6 +48,12 @@ __all__ = [
 ]
 
 SUPPORTED_VERSIONS = ("EP-RECEIPT-v1",)
+#: The only signature algorithm EP-RECEIPT-v1 defines. Two spellings of that one
+#: name are accepted because both are shipped: every production issuer and all
+#: conformance vectors emit "Ed25519", while the published spec text
+#: (docs/trust-receipt-spec.md) shows "ed25519". Any value that is not this one
+#: name is refused.
+RECEIPT_V1_SIGNATURE_ALGORITHM = "Ed25519"
 _SAFE_INT = 2 ** 53 - 1
 
 
@@ -208,6 +214,19 @@ def verify_receipt(
     sig = doc.get("signature") or {}
     if not doc.get("payload") or not sig.get("value") or not sig.get("algorithm"):
         return VerifyResult(False, checks, "Missing payload or signature")
+    # EP-RECEIPT-v1 is Ed25519 over JCS, and signature.algorithm is NOT covered
+    # by the signature. Checking only that the label is PRESENT let a receipt
+    # labelled "ML-DSA-65" or "none" carry an Ed25519 signature and still come
+    # back valid. The label must name the one algorithm this version verifies.
+    _alg = sig.get("algorithm")
+    if not isinstance(_alg, str) \
+            or _alg.lower() != RECEIPT_V1_SIGNATURE_ALGORITHM.lower():
+        return VerifyResult(
+            False,
+            checks,
+            f"Unsupported signature algorithm '{sig.get('algorithm')}'; "
+            f"EP-RECEIPT-v1 requires {RECEIPT_V1_SIGNATURE_ALGORITHM}",
+        )
     if not is_canonicalizable(doc["payload"]):
         return VerifyResult(
             False,

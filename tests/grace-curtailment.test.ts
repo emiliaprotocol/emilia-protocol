@@ -6,8 +6,10 @@ import { fileURLToPath } from 'node:url';
 import {
   FLEX_ENVELOPE_VERSION, CURTAILMENT_SETTLEMENT_POLICY, SETTLEMENT_CONSUMPTION_PROFILE,
   checkOrderWithinEnvelope, computeCompliance, buildRefusalStatement,
-  settlementEntitlementKey, checkSettlementConsumption, runSettlementOnce,
+  settlementEntitlementKey, checkSettlementConsumption, runSettlementOnce, isGraceCustodyStore,
 } from '../lib/grace/curtailment.js';
+import { runCurtailmentOnce } from '../lib/grace/mobile-grid.js';
+import { createEphemeralMemoryStore } from '../lib/grace/reference-adapters.js';
 import {
   verifyConsumptionProof, ReferenceConsumptionTree,
 } from '../packages/verify/consumption-proof.js';
@@ -202,6 +204,7 @@ describe('GRACE — one-time settlement consumption (the same event can never se
     const store = {
       durable: true,
       ownershipFenced: true,
+      permanentConsumption: true,
       async reserve(key) {
         if (states.has(key)) return false;
         states.set(key, 'reserved');
@@ -243,10 +246,13 @@ describe('GRACE — one-time settlement consumption (the same event can never se
         return true;
       },
     };
+    // These fixtures deliberately declare no custody flags: they exercise the
+    // burn/outage behaviour, not the custody gate, so they opt out explicitly.
+    const demo = { allowEphemeralState: true };
     await expect(runSettlementOnce(claim, store, async () => {
       throw new Error('bank response lost');
-    })).rejects.toThrow('bank response lost');
-    expect(await runSettlementOnce(claim, store, async () => {})).toMatchObject({
+    }, demo)).rejects.toThrow('bank response lost');
+    expect(await runSettlementOnce(claim, store, async () => {}, demo)).toMatchObject({
       settled: false,
       reason: 'settlement_already_consumed',
     });
@@ -254,7 +260,7 @@ describe('GRACE — one-time settlement consumption (the same event can never se
     const outage = await runSettlementOnce(claim, {
       async reserve() { throw new Error('db down'); },
       async commit() { return true; },
-    }, async () => {});
+    }, async () => {}, demo);
     expect(outage).toMatchObject({ settled: false, reason: 'consumption_registry_unavailable' });
   });
 
@@ -314,5 +320,124 @@ describe('GRACE — the full proof-of-curtailment vector', () => {
     // OK line goes to stderr; execFileSync throws on nonzero exit — reaching
     // here means every assertion in the vector (positive + negatives) held.
     expect(true).toBe(true);
+  });
+});
+
+// ===========================================================================
+// Regression (custody): runSettlementOnce is the money path. Its docstring
+// promised to "atomically reserve across a fleet", but it only checked that
+// reserve/commit were functions. The GRACE reference adapter meanwhile
+// exported createFencedMemoryStore(), which asserted durable:true and
+// ownershipFenced:true over a process-local Map. Two pods each held their own
+// Map, so a single {entitlement_id, event_id, meter_window_digest} produced
+// TWO payouts. The store now reports its flags honestly and both boundaries
+// require the full custody contract.
+// ===========================================================================
+describe('GRACE — consumption custody is required before any irreversible effect', () => {
+  const claim = {
+    entitlement_id: 'sha256:' + 'e'.repeat(64),
+    event_id: 'ercot-2026-07-15-0001',
+    meter_window_digest: 'sha256:' + 'd'.repeat(64),
+  };
+
+  function durableStore() {
+    const states = new Map();
+    return {
+      durable: true,
+      ownershipFenced: true,
+      permanentConsumption: true,
+      async reserve(key) {
+        if (states.has(key)) return false;
+        states.set(key, 'reserved');
+        return true;
+      },
+      async commit(key) {
+        if (states.get(key) !== 'reserved') return false;
+        states.set(key, 'committed');
+        return true;
+      },
+    };
+  }
+
+  it('the reference memory store reports its custody flags honestly', () => {
+    const store = createEphemeralMemoryStore();
+    expect(store.durable).toBe(false);
+    expect(store.ownershipFenced).toBe(false);
+    expect(store.permanentConsumption).toBe(false);
+    expect(isGraceCustodyStore(store)).toBe(false);
+    expect(isGraceCustodyStore(durableStore())).toBe(true);
+  });
+
+  it('each of the three custody flags is load-bearing on its own', () => {
+    for (const missing of ['durable', 'ownershipFenced', 'permanentConsumption']) {
+      const store = durableStore();
+      store[missing] = false;
+      expect(isGraceCustodyStore(store)).toBe(false);
+    }
+  });
+
+  it('a payout over an ephemeral store is refused with a named reason and never fires', async () => {
+    let payouts = 0;
+    const settle = async () => { payouts += 1; return { paid_usd: 25000 }; };
+    const result = await runSettlementOnce(claim, createEphemeralMemoryStore(), settle);
+    expect(result).toMatchObject({ settled: false, reason: 'settlement_store_custody_insufficient' });
+    expect(result.key).toContain(SETTLEMENT_CONSUMPTION_PROFILE);
+    expect(payouts).toBe(0);
+  });
+
+  it('two pods with separate ephemeral stores cannot double-pay one entitlement', async () => {
+    let payouts = 0;
+    const settle = async () => { payouts += 1; return { paid_usd: 25000 }; };
+    const podA = await runSettlementOnce(claim, createEphemeralMemoryStore(), settle);
+    const podB = await runSettlementOnce(claim, createEphemeralMemoryStore(), settle);
+    expect(podA.settled).toBe(false);
+    expect(podB.settled).toBe(false);
+    expect(payouts).toBe(0);
+  });
+
+  it('a dispatch over an ephemeral store is refused, with a reason distinct from a missing store', async () => {
+    let dispatches = 0;
+    const dispatch = async () => { dispatches += 1; return { ack: 'dispatched' }; };
+    expect(await runCurtailmentOnce('grace:k1', createEphemeralMemoryStore(), dispatch))
+      .toMatchObject({ executed: false, reason: 'execution_store_custody_insufficient' });
+    expect(await runCurtailmentOnce('grace:k1', null, dispatch))
+      .toMatchObject({ executed: false, reason: 'execution_store_missing' });
+    expect(dispatches).toBe(0);
+  });
+
+  it('permanentConsumption alone decides a TTL-reopening store, on both boundaries', async () => {
+    const settlement = durableStore();
+    settlement.permanentConsumption = false;
+    expect(await runSettlementOnce(claim, settlement, async () => ({})))
+      .toMatchObject({ settled: false, reason: 'settlement_store_custody_insufficient' });
+
+    const execution = durableStore();
+    execution.permanentConsumption = false;
+    expect(await runCurtailmentOnce('grace:k2', execution, async () => ({})))
+      .toMatchObject({ executed: false, reason: 'execution_store_custody_insufficient' });
+  });
+
+  it('a store with full custody still settles once and refuses the replay', async () => {
+    const store = durableStore();
+    let payouts = 0;
+    const settle = async () => { payouts += 1; return { paid_usd: 25000 }; };
+    expect(await runSettlementOnce(claim, store, settle)).toMatchObject({ settled: true });
+    expect(await runSettlementOnce(claim, store, settle))
+      .toMatchObject({ settled: false, reason: 'settlement_already_consumed' });
+    expect(payouts).toBe(1);
+  });
+
+  it('the explicit demo opt-out is the ONLY way past the gate', async () => {
+    let payouts = 0;
+    const settle = async () => { payouts += 1; return { paid_usd: 1 }; };
+    expect(await runSettlementOnce(claim, createEphemeralMemoryStore(), settle, {
+      allowEphemeralState: true,
+    })).toMatchObject({ settled: true });
+    expect(payouts).toBe(1);
+    // Only the literal true opts out; a truthy value does not.
+    expect(await runSettlementOnce(claim, createEphemeralMemoryStore(), settle, {
+      allowEphemeralState: 'yes' as any,
+    })).toMatchObject({ settled: false, reason: 'settlement_store_custody_insufficient' });
+    expect(payouts).toBe(1);
   });
 });

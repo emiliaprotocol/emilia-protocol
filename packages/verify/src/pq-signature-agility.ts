@@ -329,10 +329,24 @@ async function resolveAgilityBackend(options: AgilityOptions): Promise<AgilityMl
 
 const B64URL_RE = /^[A-Za-z0-9_-]+$/;
 
+/**
+ * Decode unpadded base64url, CANONICALLY. Buffer.from(..., 'base64url') ignores
+ * the slack bits in the final character, so without the round-trip check below
+ * many distinct strings decode to the same bytes: a 64-byte Ed25519 signature
+ * is 86 characters whose last character carries 4 significant bits and 2 slack
+ * bits, so 4 encodings of every signature would verify. That makes a signed
+ * document's serialized bytes malleable without touching the signature itself.
+ * Re-encoding and comparing pins exactly one encoding per byte string, and
+ * matches the receipt path (packages/verify/src/index.ts decodeBase64url) and
+ * lib/signatures.ts decodeBase64Strict.
+ */
 function b64urlToBytes(s: unknown): Uint8Array | null {
   if (typeof s !== 'string' || s.length === 0 || !B64URL_RE.test(s)) return null;
+  if (s.length % 4 === 1) return null;
   try {
-    return Buffer.from(s, 'base64url');
+    const b = Buffer.from(s, 'base64url');
+    if (b.length === 0 || b.toString('base64url') !== s) return null;
+    return b;
   } catch {
     return null;
   }

@@ -17,7 +17,7 @@ import {
 import { predictedEffectsDigest } from '../../packages/verify/effect-predicates.js';
 import {
   createCosaReferenceActuator,
-  createFencedMemoryStore,
+  createEphemeralMemoryStore,
   createReferenceMeter,
   verifyReferenceMeterStatement,
 } from './reference-adapters.js';
@@ -180,8 +180,22 @@ export function createGraceReferenceInput() {
   };
 }
 
-/** Create fresh, process-local reference adapters for one synthetic run. */
+/**
+ * Create fresh, process-local reference adapters for one synthetic run.
+ *
+ * DEMO ONLY. The consumption stores are process-local Maps that report their
+ * custody flags honestly as false, so every boundary they feed must be entered
+ * with `allowEphemeralState: true`. Refused outright in production: this
+ * scenario must never be the store behind a real grid dispatch or payout.
+ */
 export function createGraceReferenceRuntime() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'createGraceReferenceRuntime is a demo-only harness over process-local consumption '
+      + 'state and is refused in production; supply a durable, ownership-fenced, '
+      + 'permanently-consuming store instead',
+    );
+  }
   const actuatorKey = ed25519('ep:key:cosa-reference');
   const meterKey = ed25519('ep:key:meter-reference');
   const capsuleKey = ed25519('ep:key:action-state-reference');
@@ -198,8 +212,10 @@ export function createGraceReferenceRuntime() {
       baselineMw: '64.000',
       clock: () => '2026-07-15T21:45:01.000Z',
     }),
-    executionStore: createFencedMemoryStore(),
-    settlementStore: createFencedMemoryStore(),
+    simulation: true,
+    allowEphemeralState: true,
+    executionStore: createEphemeralMemoryStore(),
+    settlementStore: createEphemeralMemoryStore(),
   };
 }
 
@@ -217,6 +233,9 @@ export async function executeGraceReferenceInput(
     meter: overrides.meter || state.meter,
     meterTrust: state.meterKey.trust,
     settlementStore: state.settlementStore,
+    // Demo harness: the stores above are honest about being ephemeral, so the
+    // custody gate has to be opted out of explicitly. Never set in production.
+    allowEphemeralState: true,
     settle: async ({ key }) => ({ settlement_id: 'settlement:reference:0042', entitlement_key: key }),
     operator: 'operator:us-west-dc-17',
     developer: 'cosa-reference-adapter/1.0',

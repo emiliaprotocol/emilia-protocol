@@ -82,6 +82,19 @@ function decodeBase64url(value) {
 // CONSTANTS
 // =============================================================================
 const SUPPORTED_VERSIONS = ['EP-RECEIPT-v1'];
+/**
+ * The only signature algorithm EP-RECEIPT-v1 defines. Two spellings of that one
+ * name are accepted because both are shipped: every production issuer and all
+ * conformance vectors emit 'Ed25519', while the published spec text
+ * (docs/trust-receipt-spec.md and app/spec/trust-receipt/page.tsx) shows
+ * 'ed25519', so an implementer following the spec emits lowercase. Any value
+ * that is not this one name, in either spelling, is refused.
+ */
+const RECEIPT_V1_SIGNATURE_ALGORITHM = 'Ed25519';
+function isReceiptV1Algorithm(value) {
+    return typeof value === 'string'
+        && value.toLowerCase() === RECEIPT_V1_SIGNATURE_ALGORITHM.toLowerCase();
+}
 const SUPPORTED_PROOF_VERSIONS = ['EP-PROOF-v1'];
 // =============================================================================
 // PRIMITIVES
@@ -256,6 +269,18 @@ export function verifyReceipt(doc, publicKeyBase64url, opts = {}) {
     checks.version = true;
     if (!doc.payload || !doc.signature?.value || !doc.signature?.algorithm) {
         return { valid: false, checks, error: 'Missing payload or signature' };
+    }
+    // EP-RECEIPT-v1 is Ed25519 over JCS, and signature.algorithm is NOT covered
+    // by the signature. Checking only that the label is PRESENT let a receipt
+    // labelled 'ML-DSA-65' or 'none' carry an Ed25519 signature and still come
+    // back valid:true, which other modules then branch on. The label must name
+    // the one algorithm this version verifies, or the receipt is refused.
+    if (!isReceiptV1Algorithm(doc.signature.algorithm)) {
+        return {
+            valid: false,
+            checks,
+            error: `Unsupported signature algorithm '${doc.signature.algorithm}'; EP-RECEIPT-v1 requires ${RECEIPT_V1_SIGNATURE_ALGORITHM}`,
+        };
     }
     if (!isCanonicalizable(doc.payload)) {
         return {
