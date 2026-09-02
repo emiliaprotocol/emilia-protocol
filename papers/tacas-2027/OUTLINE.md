@@ -116,7 +116,7 @@ The submission artifact should be frozen from a clean public revision and contai
 - exact TLA+, CFG, Alloy, Tamarin, runner, and result files;
 - an immutable manifest with SHA-256 hashes and tool/container versions;
 - one command per model and one aggregate command;
-- the 332-vector conformance manifest and all three port runners;
+- the 335-vector conformance manifest and all three port runners;
 - raw outputs plus a script that regenerates every table number;
 - `CLAIM-EVIDENCE.md`, a minimal `README`, license, data-availability statement, and `CITATION.cff`;
 - a clean-machine smoke test and expected resource envelope.
