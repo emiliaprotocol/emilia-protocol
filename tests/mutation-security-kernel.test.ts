@@ -33,6 +33,8 @@ function token(prefix = 'owner') {
   return () => `${prefix}-${String(++n).padStart(24, '0')}`;
 }
 
+const FIXTURE_VENDOR_ID = 'V-88012';
+
 function mintSoftwareReceipt(actionType, createdAt = new Date().toISOString()) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const payload = {
@@ -40,7 +42,10 @@ function mintSoftwareReceipt(actionType, createdAt = new Date().toISOString()) {
     subject: 'agent:mutation-test',
     issuer: 'ep:org:mutation-test',
     created_at: createdAt,
-    claim: { action_type: actionType, outcome: 'allow' },
+    // The guarded fixture action pins `vendor_id` as its material field: a
+    // guarded manifest entry that pins none binds a receipt to the action TYPE
+    // alone, and validateActionRiskManifest now refuses it at author time.
+    claim: { action_type: actionType, outcome: 'allow', vendor_id: FIXTURE_VENDOR_ID },
   };
   const value = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
   return {
@@ -420,6 +425,7 @@ describe('mutation oracles for Gate admission inputs', () => {
       receipt_required: true,
       risk: 'critical',
       assurance_class: 'class_a',
+      execution_binding: { required_fields: ['vendor_id'] },
       match: { protocol: 'mcp', tool: 'release_payment' },
     }],
   };

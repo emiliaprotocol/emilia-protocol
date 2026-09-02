@@ -17,7 +17,28 @@ import {
   mintQuorumEvidence,
 } from './index.js';
 
-const createGate = (opts = {}) => createGateCore({ allowEphemeralStore: true, ...opts });
+// A guarded manifest entry must pin the material fields the executor observes
+// from its system of record: without them the gate binds a receipt to the action
+// TYPE alone, so a receipt signed for one payload authorizes any other.
+// validateActionRiskManifest now refuses such a manifest at author time, so the
+// fixtures below pin `amount`, every minted receipt carries it in the signed
+// claim, and every gate call is handed the matching observed action. A call that
+// names its own observedAction keeps it.
+const FIXTURE_AMOUNT = 40000;
+const FIXTURE_OBSERVED = Object.freeze({ amount: FIXTURE_AMOUNT });
+function withFixtureObservedAction(gate) {
+  const fill = (input) => (input && typeof input === 'object' && !Array.isArray(input)
+    && input.observedAction === undefined
+    ? { ...input, observedAction: FIXTURE_OBSERVED }
+    : input);
+  return {
+    ...gate,
+    check: (input = {}, ...rest) => gate.check(fill(input), ...rest),
+    run: (input = {}, ...rest) => gate.run(fill(input), ...rest),
+    guard: (fn, opts = {}) => gate.guard(fn, fill(opts)),
+  };
+}
+const createGate = (opts = {}) => withFixtureObservedAction(createGateCore({ allowEphemeralStore: true, ...opts }));
 const createTrustedActionFirewall = (opts = {}) => createTrustedActionFirewallCore({
   allowEphemeralStore: true,
   ...opts,
@@ -69,7 +90,7 @@ let n = 0;
 // Gate no longer credits a bare outcome string). When quorum:true, embed a real
 // EP-QUORUM-v1 doc.
 function receipt(privateKey, { action = 'payment.release', outcome = 'allow', extra = {}, quorum = false } = {}) {
-  const claim = { action_type: action, outcome, ...extra };
+  const claim = { action_type: action, outcome, amount: FIXTURE_AMOUNT, ...extra };
   const payload = {
     receipt_id: `rcpt_${++n}`, subject: 'agent:test', issuer: 'ep:org:test',
     created_at: new Date().toISOString(), claim,
@@ -103,7 +124,7 @@ function gateOpts(opts = {}) {
 const MANIFEST = {
   '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
   actions: [
-    { id: 'pay', action_type: 'payment.release', receipt_required: true, risk: 'critical', assurance_class: 'class_a', match: { protocol: 'mcp', tool: 'release_payment' } },
+    { id: 'pay', action_type: 'payment.release', receipt_required: true, risk: 'critical', assurance_class: 'class_a', execution_binding: { required_fields: ['amount'] }, match: { protocol: 'mcp', tool: 'release_payment' } },
     { id: 'read', action_type: 'read.balance', receipt_required: false, match: { protocol: 'mcp', tool: 'read_balance' } },
   ],
 };
@@ -179,6 +200,7 @@ test('one-time consumption is tenant-scoped: same receipt_id across tenants cann
       created_at: new Date().toISOString(),
       claim: {
         action_type: 'payment.release', outcome: 'allow_with_signoff',
+        amount: FIXTURE_AMOUNT,
         ...(tenant ? { tenant_id: tenant } : {}),
       },
       signoff: s.signoff, approver_public_key: s.approver_public_key,
@@ -267,7 +289,9 @@ test('guard() wrapper throws when refused, runs when allowed', async () => {
 test('guard() awaits async selector, receipt, and observed-action providers', async () => {
   const { pub, privateKey } = makeKey();
   const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
-  const receiptDoc = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
+  const receiptDoc = receipt(privateKey, {
+    action: 'payment.release', outcome: 'allow_with_signoff', extra: { amount: 100 },
+  });
   let executions = 0;
   const release = g.guard(async (amount) => {
     executions++;
@@ -568,7 +592,7 @@ test('reliance refuses when execution proof observes a different material action
 const QUORUM_MANIFEST = {
   '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
   actions: [
-    { id: 'grant_admin', action_type: 'permission.admin.change', receipt_required: true, risk: 'critical', assurance_class: 'quorum', match: { protocol: 'mcp', tool: 'grant_admin' } },
+    { id: 'grant_admin', action_type: 'permission.admin.change', receipt_required: true, risk: 'critical', assurance_class: 'quorum', execution_binding: { required_fields: ['amount'] }, match: { protocol: 'mcp', tool: 'grant_admin' } },
   ],
 };
 const GRANT = { protocol: 'mcp', tool: 'grant_admin' };
@@ -710,7 +734,7 @@ test('AUDIT: a PINNED embedded approver key elevates the tier without a blanket 
   const payload = {
     receipt_id: `rcpt_pinned_${Date.now()}`, subject: 'agent:test', issuer: 'ep:org:test',
     created_at: new Date().toISOString(),
-    claim: { action_type: 'payment.release', outcome: 'allow_with_signoff' },
+    claim: { action_type: 'payment.release', outcome: 'allow_with_signoff', amount: FIXTURE_AMOUNT },
     signoff: s.signoff, approver_public_key: s.approver_public_key,
   };
   const r = mint(privateKey, payload);

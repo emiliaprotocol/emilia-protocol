@@ -21,6 +21,37 @@
  */
 import { receiptAssuranceTier } from './index.js';
 type AnyRecord = Record<string, any>;
+/**
+ * A gate refusal. `ok: false` is the discriminant, so a caller narrows with a
+ * plain `if (result.ok)` instead of reaching for a cast. The body carries only
+ * the sanitized challenge plus a `{ reason }` code.
+ */
+export type ReceiptGateRefusal = {
+    ok: false;
+    status: number;
+    body: AnyRecord;
+};
+/** A verified-and-reserved receipt, before the side effect runs. */
+export type ReceiptGateCheckAccepted = {
+    ok: true;
+    receiptId: string;
+    outcome: any;
+    signer?: string;
+    subject?: any;
+    boundAction: string;
+};
+export type ReceiptGateCheckResult = ReceiptGateCheckAccepted | ReceiptGateRefusal;
+/** A completed side effect whose approval has been permanently consumed. */
+export type ReceiptGateRunAccepted<T = unknown> = {
+    ok: true;
+    receiptId: string;
+    outcome: any;
+    signer?: string;
+    result: T;
+};
+export type ReceiptGateRunResult<T = unknown> = ReceiptGateRunAccepted<T> | ReceiptGateRefusal;
+/** The side effect `run()` orchestrates: verify and reserve, attempt, commit. */
+export type GateEffect<T = unknown> = (checkResult: AnyRecord) => T | Promise<T>;
 export { receiptAssuranceTier };
 /**
  * Build a hardened Receipt-Required gate for one action type.
@@ -62,108 +93,10 @@ export declare function makeReceiptGate(opts?: AnyRecord): {
     check: (receipt: AnyRecord | null | undefined, { target, observedAction, }?: {
         target?: any;
         observedAction?: AnyRecord;
-    }) => Promise<{
-        ok: boolean;
-        status: any;
-        body: {
-            type: string;
-            title: string;
-            status: any;
-            detail: string;
-            required: {
-                action: string | null;
-                action_hash: any;
-                manifest: any;
-                status: any;
-                challenge_header: string;
-                proof_header: any;
-                header: string;
-                acceptable_issuers: any;
-                assurance_class: any;
-                quorum: any;
-                max_age_sec: any;
-                authorization: {
-                    authorization_endpoint: string;
-                    flow: typeof import("./acquisition.js").EP_APPROVAL_FLOW;
-                } | null;
-                required_fields: string[] | null;
-                caid_selector: {
-                    field: string;
-                } | null;
-                how: string;
-                learn_more: string;
-            };
-        };
-        receiptId?: undefined;
-        outcome?: undefined;
-        signer?: undefined;
-        subject?: undefined;
-        boundAction?: undefined;
-    } | {
-        ok: boolean;
-        receiptId: string;
-        outcome: any;
-        signer: string | undefined;
-        subject: any;
-        boundAction: string;
-        status?: undefined;
-        body?: undefined;
-    }>;
+    }) => Promise<ReceiptGateCheckResult>;
     commit: (receiptId: string) => Promise<void>;
     release: (receiptId: string) => Promise<void>;
-    run: (receipt: AnyRecord | null | undefined, ctx?: AnyRecord | ((checkResult: AnyRecord) => unknown), fn?: (checkResult: AnyRecord) => unknown) => Promise<{
-        ok: boolean;
-        status: any;
-        body: {
-            type: string;
-            title: string;
-            status: any;
-            detail: string;
-            required: {
-                action: string | null;
-                action_hash: any;
-                manifest: any;
-                status: any;
-                challenge_header: string;
-                proof_header: any;
-                header: string;
-                acceptable_issuers: any;
-                assurance_class: any;
-                quorum: any;
-                max_age_sec: any;
-                authorization: {
-                    authorization_endpoint: string;
-                    flow: typeof import("./acquisition.js").EP_APPROVAL_FLOW;
-                } | null;
-                required_fields: string[] | null;
-                caid_selector: {
-                    field: string;
-                } | null;
-                how: string;
-                learn_more: string;
-            };
-        };
-        receiptId?: undefined;
-        outcome?: undefined;
-        signer?: undefined;
-        subject?: undefined;
-        boundAction?: undefined;
-    } | {
-        ok: boolean;
-        receiptId: string;
-        outcome: any;
-        signer: string | undefined;
-        subject: any;
-        boundAction: string;
-        status?: undefined;
-        body?: undefined;
-    } | {
-        ok: boolean;
-        receiptId: string;
-        outcome: any;
-        signer: string | undefined;
-        result: unknown;
-    }>;
+    run: <T = unknown>(receipt: AnyRecord | null | undefined, ctx?: AnyRecord | GateEffect<T>, fn?: GateEffect<T>) => Promise<ReceiptGateRunResult<Awaited<T>>>;
     boundActionFor: (target: any) => string;
 };
 //# sourceMappingURL=gate.d.ts.map

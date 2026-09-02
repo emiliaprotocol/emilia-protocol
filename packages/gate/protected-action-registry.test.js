@@ -25,13 +25,17 @@ function signer() {
         publicKey: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
     };
 }
+// The guarded fixture action pins the payee fields the executor observes from
+// its system of record. validateActionRiskManifest refuses a guarded entry that
+// pins none, because such an entry binds a receipt to the action TYPE alone.
+const PAYEE_MATERIAL = Object.freeze({ vendor_id: 'vendor-1', account_digest: 'sha256:abc' });
 function receipt(privateKey, action, id) {
     const payload = {
         receipt_id: id,
         subject: 'agent:test',
         issuer: 'ep:org:test',
         created_at: new Date().toISOString(),
-        claim: { action_type: action, outcome: 'allow' },
+        claim: { action_type: action, outcome: 'allow', ...PAYEE_MATERIAL },
     };
     const value = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
     return {
@@ -49,6 +53,7 @@ const MANIFEST = {
             receipt_required: true,
             risk: 'high',
             assurance_class: 'software',
+            execution_binding: { required_fields: ['vendor_id', 'account_digest'] },
             match: { protocol: 'mcp', tool: 'change_payee' },
         },
         {

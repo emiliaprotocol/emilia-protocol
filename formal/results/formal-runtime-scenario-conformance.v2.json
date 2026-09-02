@@ -683,7 +683,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "688112ea792bcdcb1d4717cff87174f7d2a09714f05b74b8a5ccde83a7a85748"
+      "sha256": "9ceebc554c0bc7935ec630b8678817562ef2d95a3e756abd874169aa95b4b422"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -891,7 +891,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "87823e363d1273b9d8c7918e56b3b30a80e05f2d524eca985eb0fde57b512fcd"
+      "sha256": "a07c9b6889fe0a58437fc8b518f2a4cd30694b1fa1d4437f99c316857bfbe599"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -995,11 +995,11 @@
     },
     {
       "path": "packages/require-receipt/dist/gate.js",
-      "sha256": "bd1a69b37730484eb800c7e32772349f8703e75ae43b780c2913149aba83af52"
+      "sha256": "fe41f7a75f2d974537005159ac74b84302222a2f868d7ef7d93745873757e7dd"
     },
     {
       "path": "packages/require-receipt/dist/index.js",
-      "sha256": "0c2fca8daf4b89a373c835f2e5be6b50e6d2de9d648814d38a8c32ff3c99c77a"
+      "sha256": "fa50e18bd80d74b5795d68eff8c42c7b218c2777ca91a0b28d78905ed4cf43d7"
     },
     {
       "path": "packages/require-receipt/dist/jws.js",

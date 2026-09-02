@@ -32,7 +32,7 @@ import { verifyWebAuthnSignoff, verifyQuorum } from '@emilia-protocol/verify';
 import { MemoryConsumptionStore, isSecureConsumptionStore } from './store.js';
 import { canonicalEvidenceJson, createAtomicEvidenceLog, createEvidenceLog, createMemoryAtomicEvidenceBackend, } from './evidence.js';
 import { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest } from './action-packs.js';
-import { canonicalize as canonicalizeExecutionBinding, hashCanonical, verifyExecutionBinding } from './execution-binding.js';
+import { canonicalize as canonicalizeExecutionBinding, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
 import { buildReliancePacket, ADMISSIBILITY_VERDICTS } from './reliance-packet.js';
 import { claimAssuranceResultCandidate, validateClaimAssuranceAdmissibilityResult, } from './claim-assurance-result.js';
 import { createEg1Harness, makeGateInvoke, runEg1, EG1_DEFAULT_SELECTOR } from './eg1-conformance.js';
@@ -1108,10 +1108,28 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         const effectiveKeys = registry
             ? registry.keysValidAt(receipt?.payload?.created_at)
             : trustedKeys;
-        const observedActionHash = usesActionControlManifest && observed
+        // A legacy EP-ACTION-RISK-MANIFEST-v0.1 entry that declares no
+        // execution_binding.required_fields leaves verifyExecutionBinding() with an
+        // empty field list, which returns ok. Before this fallback, a guarded action
+        // under such a manifest was bound to the action TYPE alone: a receipt signed
+        // for "$1.00 to acct_OK" authorized "$999,999.99 to acct_ATTACKER". When the
+        // executor has supplied an observed action from its system of record, bind
+        // the receipt to that canonical action hash instead of leaving it unbound.
+        // validateActionRiskManifest now rejects such a manifest at author time;
+        // this is the enforcement-time floor for a manifest loaded without
+        // re-validation. A receipt that carries no signed canonical_action fails
+        // closed here rather than authorizing an unconstrained mutation.
+        const legacyUnboundGuardedAction = !usesActionControlManifest
+            && Boolean(observed)
+            && Boolean(requirement)
+            && requirement?.receipt_required !== false
+            && materialFieldsFor(requirement).length === 0;
+        const bindsObservedAction = Boolean(observed)
+            && (usesActionControlManifest || legacyUnboundGuardedAction);
+        const observedActionHash = bindsObservedAction
             ? safeCanonicalHash(observed)
             : null;
-        if (usesActionControlManifest && observed && !observedActionHash) {
+        if (bindsObservedAction && !observedActionHash) {
             return decide(false, RECEIPT_REQUIRED_STATUS, 'observed_action_invalid');
         }
         const v = verifyEmiliaReceipt(receipt, {
@@ -1120,10 +1138,15 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
             action,
             maxAgeSec,
             now,
-            ...(usesActionControlManifest && observed ? {
+            ...(bindsObservedAction ? {
                 actionHash: `sha256:${observedActionHash}`,
-                requiredFields: requirement?.execution_binding?.required_fields,
-                caidSelector: requirement?.caid_selector || undefined,
+                // The declared field list and CAID selector remain an Action Control
+                // v0.2 contract; the legacy fallback binds the whole canonical observed
+                // action and asserts nothing the legacy manifest did not declare.
+                ...(usesActionControlManifest ? {
+                    requiredFields: requirement?.execution_binding?.required_fields,
+                    caidSelector: requirement?.caid_selector || undefined,
+                } : {}),
             } : {}),
         });
         if (!v.ok) {
