@@ -512,8 +512,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // from the environment and NEVER from the request body, so a caller cannot
     // opt out of it. An action is "critical" (fails closed once
     // enforce_critical is on) when the guard requires a named human (Class-A
-    // assurance) or any signoff. Under 'shadow' (the default) nothing is
-    // blocked — the verdict is bound + logged only.
+    // assurance) or any signoff. The default is 'enforce_default': every
+    // non-authorized verdict fails closed, including registry_unavailable and a
+    // revoked authority. 'shadow' and 'warn' bind + log only and are an
+    // explicit, non-production opt-out.
     const authorityMode = authorityEnforcementMode();
     const isCriticalAction = decision.requiredAssurance === 'A' || decision.signoffRequired === true;
     const authorityEnforcement = applyAuthorityEnforcement({

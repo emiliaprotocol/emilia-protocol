@@ -114,19 +114,24 @@ observe. Authority must not inherit that hole.
 shadow  →  warn  →  enforce_critical  →  enforce_default
 ```
 
-- **shadow** (default) — resolve, bind into the receipt, and log what *would*
-  have been denied. Never blocks. Behavior is identical to before the registry
-  existed, which is what makes it safe to ship ahead of a fully-populated
-  registry.
+- **shadow** — resolve, bind into the receipt, and log what *would* have been
+  denied. Never blocks. An explicit opt-out for populating a registry, and not a
+  supported production configuration: a deployment that sets it is declaring
+  that unauthorized actions may proceed.
 - **warn** — same, surfaced to the caller as a warning. Never blocks.
 - **enforce_critical** — critical actions (money movement, payee change, the
   Class-A set — anything the guard escalates to a named human or signoff) **fail
   closed** on a non-`authorized` verdict. Non-critical actions still only warn.
-- **enforce_default** — every action fails closed on a non-`authorized` verdict.
+- **enforce_default** (default) — every action fails closed on a
+  non-`authorized` verdict, including `registry_unavailable` and a revoked
+  authority. An unset or unrecognized `EP_AUTHORITY_ENFORCEMENT` resolves here,
+  so a missing or misspelled variable cannot silently disable enforcement.
 
-The rollout discipline: advance the mode only after the shadow logs
-(`rules-engine.v0.shadow` and `guard.authority.denied` events) show the registry
-denies nothing legitimate.
+The rollout discipline runs the other way: a deployment that is still populating
+its registry sets `shadow` or `warn` deliberately, reads the
+`rules-engine.v0.shadow` and `guard.authority.denied` events until the registry
+denies nothing legitimate, and then removes the variable to return to the
+fail-closed default.
 
 ## Portable proof
 

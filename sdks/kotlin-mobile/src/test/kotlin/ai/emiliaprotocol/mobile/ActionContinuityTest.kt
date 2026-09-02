@@ -192,6 +192,29 @@ class ActionContinuityTest {
         assertFalse(action.canDecideSafely)
     }
 
+    @Test
+    fun retrySafetyIsNeverInferredFromAnAbsentStatement() {
+        // Absent continuity block: no statement about retry safety at all.
+        val noContinuity = action(status = "pending", continuity = null)
+        assertFalse(noContinuity.canDecideSafely)
+
+        // Continuity present, retry_safe absent from the wire: still not a
+        // statement that a second decision is safe. Matches the Swift SDK,
+        // which decodes an absent retry_safe as false.
+        val decoded = json.decodeFromString<EmiliaMobileContinuity>(
+            """{"state": "AWAITING_DECISION"}""",
+        )
+        assertFalse(decoded.retrySafe)
+        assertFalse(action(status = "pending", continuity = decoded).canDecideSafely)
+
+        // An explicit retry_safe: true is the only thing that unlocks it.
+        val explicit = json.decodeFromString<EmiliaMobileContinuity>(
+            """{"state": "AWAITING_DECISION", "retry_safe": true}""",
+        )
+        assertTrue(explicit.retrySafe)
+        assertTrue(action(status = "pending", continuity = explicit).canDecideSafely)
+    }
+
     private fun action(
         status: String?,
         continuity: EmiliaMobileContinuity?,

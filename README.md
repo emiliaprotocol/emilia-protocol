@@ -22,7 +22,9 @@ At a configured protected boundary, Gate verifies the authority the owner
 requires for the exact action, reserves that authority before provider entry, permits one admitted
 provider attempt for the covered authorization instance within its durable authority domain, and
 leaves portable evidence of what the protected path admitted and later observed. When the result is
-unknown, it requires reconciliation instead of a blind retry. **Protocol proves. Gate prevents.**
+unknown, it requires reconciliation instead of a blind retry. **Protocol proves. Gate prevents**
+on the covered paths a deployment completely mediates; it constrains no path that bypasses the
+enforcement point.
 
 "Universal" describes the intended cross-stack contract, not current coverage or adoption. EMILIA
 does not operate a central global network today. The toll booth repeats at customer-owned protected
@@ -59,10 +61,11 @@ older reservation from entering after the control epoch changes. If provider ent
 the operation remains consumed and must be reconciled; restore advances the epoch again and does not
 revive old authority.
 
-This guarantee requires complete mediation and authoritative shared state. It does not stop the agent,
-undo an entered effect, or provide instant freeze across a disconnected leased domain. The current
-reference implementation covers the local in-memory and PostgreSQL control domain; leased-edge
-propagation and portable signed freeze-event evidence remain explicit implementation gaps.
+This property holds only under complete mediation and authoritative shared state, and two gaps remain
+(below). It does not stop the agent, undo an entered effect, or provide instant freeze across a
+disconnected leased domain. The current reference implementation covers the local in-memory and
+PostgreSQL control domain; leased-edge propagation and portable signed freeze-event evidence remain
+explicit implementation gaps.
 
 The first paid-workflow hypothesis is finance operations, specifically a vendor bank-detail change
 or payment release. The agent may prepare the action. On the configured path, Gate checks the exact

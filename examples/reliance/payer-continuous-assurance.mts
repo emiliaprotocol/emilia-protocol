@@ -2,7 +2,7 @@
 //
 // EP-ASSURANCE-PACKAGE-v1 — continuous assurance over agentic prior authorization.
 //
-//   node examples/reliance/ey-continuous-assurance.mjs
+//   node examples/reliance/payer-continuous-assurance.mjs
 //
 // The independent-assurer story, run offline. A payer operates automated specialty
 // prior auth. Its runtime records, for each PA, the reliance verdict it acted on.

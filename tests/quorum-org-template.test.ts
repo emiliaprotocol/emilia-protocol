@@ -17,7 +17,20 @@
 //   2. consume refuses a stored quorum_policy weaker than the org template
 //   3. an out-of-roster approver is rejected against the org template
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
+
+// This suite mocks Supabase with no authority registry, so every
+// resolveAuthority() call returns registry_unavailable. Authority enforcement
+// defaults to enforce_default (fail closed), which would refuse every mint here
+// for a reason these cases are not about. Pin the observe-only mode for this
+// suite rather than weakening the shipped default.
+const previousAuthorityEnforcement = process.env.EP_AUTHORITY_ENFORCEMENT;
+process.env.EP_AUTHORITY_ENFORCEMENT = 'shadow';
+afterAll(() => {
+  if (previousAuthorityEnforcement === undefined) delete process.env.EP_AUTHORITY_ENFORCEMENT;
+  else process.env.EP_AUTHORITY_ENFORCEMENT = previousAuthorityEnforcement;
+});
+
 
 // ─── Mocks (mirror tests/v1-api.test.js boundaries) ─────────────────────────
 

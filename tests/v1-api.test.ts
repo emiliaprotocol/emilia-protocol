@@ -17,8 +17,20 @@
  *   POST   /api/v1/signoffs/:id/reject       reject (happy)
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import crypto from 'node:crypto';
+
+// These integration cases use a mocked Supabase with no authority registry, so
+// every resolveAuthority() call returns registry_unavailable. Authority
+// enforcement now defaults to enforce_default (fail closed), which would refuse
+// every mint here for a reason these cases are not about. Pin the observe-only
+// mode explicitly for this suite rather than weakening the shipped default.
+const previousAuthorityEnforcement = process.env.EP_AUTHORITY_ENFORCEMENT;
+process.env.EP_AUTHORITY_ENFORCEMENT = 'shadow';
+afterAll(() => {
+  if (previousAuthorityEnforcement === undefined) delete process.env.EP_AUTHORITY_ENFORCEMENT;
+  else process.env.EP_AUTHORITY_ENFORCEMENT = previousAuthorityEnforcement;
+});
 
 // ─── Mocks ────────────────────────────────────────────────────────────────
 

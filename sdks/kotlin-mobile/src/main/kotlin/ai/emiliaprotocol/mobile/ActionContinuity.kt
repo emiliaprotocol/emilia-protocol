@@ -74,7 +74,9 @@ data class EmiliaMobileQuorum(
 @Serializable
 data class EmiliaMobileContinuity(
     val state: String = EmiliaMobileLifecycleState.AWAITING_DECISION.wireValue,
-    @SerialName("retry_safe") val retrySafe: Boolean = true,
+    // Fail closed, and match the Swift SDK: a server that does not say an
+    // action is retry-safe has not said it is. Absent means not retry-safe.
+    @SerialName("retry_safe") val retrySafe: Boolean = false,
     val quorum: EmiliaMobileQuorum? = null,
 )
 
@@ -145,7 +147,10 @@ data class EmiliaMobileAction(
             val state = lifecycleState
             if (state != EmiliaMobileLifecycleState.AWAITING_DECISION
                 && state != EmiliaMobileLifecycleState.QUORUM_PENDING) return false
-            return continuity?.retrySafe != false
+            // An absent continuity block is an absent statement about retry
+            // safety, not a positive one. Only an explicit retry_safe: true
+            // makes a second decision safe to send.
+            return continuity?.retrySafe == true
         }
 
     fun expectedChallengeIdentity(): EmiliaMobileExpectedActionIdentity? {
