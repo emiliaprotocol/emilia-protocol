@@ -2175,6 +2175,10 @@ export { verifyQuorum } from './quorum.js';
 // crossed one relying-party boundary under one verified native authority
 // instance. Verification is evidence-only and never authorizes another entry.
 export { AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS, AEB_CROSSING_RECORD_VERSION, BCR_CROSSING_ADAPTER, BCR_CROSSING_MAPPING_PROFILE, WIMSE_OAUTH_CROSSING_ADAPTER, WIMSE_OAUTH_CROSSING_MAPPING_PROFILE, crossingRecordContractDigest, crossingRecordDigest, crossingRecordSignedBytes, issueAebCrossingRecord, mapBcrCrossingAuthority, mapWimseOAuthCrossingAuthority, verifyAebCrossingRecord, } from './aeb-crossing-record.js';
+// Native AIC crossing mappings preserve the pure-JSON RFC 7638 JKT and
+// X.509 SPKI cases as separate authority systems. The JWT-SVID helper emits a
+// new-signature-required identity projection and never authorizes an action.
+export { AIC_CROSSING_MAX_STATUS_AGE_SECONDS, AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE, AIC_JWT_SVID_PROJECTION_VERSION, AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE, AIC_ADMISSION_DOMAIN_VERSION, AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE, mapAicJwtJktBoundCrossingAuthority, mapAicX509SpkiBoundCrossingAuthority, issueAicBoundCrossingRecord, projectAicJwtToStrictJwtSvid, } from './aeb-aic-crossing-adapter.js';
 // EP-AEC-v1 is available through the explicit `./evidence-chain` package subpath.
 // It is not re-exported here because evidence-chain.js composes this module and a
 // main-entry re-export would create a circular initialization path.

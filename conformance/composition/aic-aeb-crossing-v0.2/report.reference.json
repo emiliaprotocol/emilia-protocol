@@ -1,0 +1,439 @@
+{
+  "@version": "AIC-AEB-CROSSING-REFERENCE-REPORT-v0.2",
+  "action_projection": {
+    "committed_members": [
+      "requested_capability_digest",
+      "caid",
+      "action_digest"
+    ],
+    "id": "AIC-EXACT-ACTION-PROJECTION-v1",
+    "required_relation": "EXACT_MATCH",
+    "unknown_scheme": "REFUSE",
+    "unmapped_material_parameter": "REFUSE"
+  },
+  "admission_domain": {
+    "committed_members": [
+      "relying_party_id",
+      "audience",
+      "executor_id",
+      "state_domain_id"
+    ],
+    "id": "EP-AIC-ADMISSION-DOMAIN-v1",
+    "required_relation": "EXACT_MATCH"
+  },
+  "cases": [
+    {
+      "category": "positive",
+      "expected": "RFC7638 jkt maps, receipt verifies, and remains non-authorizing",
+      "id": "AIC-JWT-JKT-CROSSING",
+      "observed": {
+        "algorithms": [
+          "Ed25519",
+          "ML-DSA-65"
+        ],
+        "execution_authorizing": false,
+        "mapping_profile": "EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2",
+        "verified": true
+      },
+      "passed": true
+    },
+    {
+      "category": "positive",
+      "expected": "X.509 SPKI maps, receipt verifies, and remains non-authorizing",
+      "id": "AIC-X509-SPKI-CROSSING",
+      "observed": {
+        "algorithms": [
+          "Ed25519",
+          "ML-DSA-65"
+        ],
+        "execution_authorizing": false,
+        "mapping_profile": "EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2",
+        "verified": true
+      },
+      "passed": true
+    },
+    {
+      "category": "mapping",
+      "expected": "RFC7638 jkt and X.509 SPKI are separate native profiles and instances",
+      "id": "NATIVE-BINDINGS-REMAIN-DISTINCT",
+      "observed": {
+        "instances_differ": true,
+        "jkt_profile": "EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2",
+        "profiles_differ": true,
+        "x509_profile": "EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2"
+      },
+      "passed": true
+    },
+    {
+      "category": "mapping",
+      "expected": "exact DER fixes replay identity while authenticated wrapper metadata remains instance-bound",
+      "id": "X509-DER-REPLAY-IDENTITY-STABLE",
+      "observed": {
+        "artifact_instance_changed": true,
+        "artifact_replay_stable": true,
+        "issuer_instance_changed": true,
+        "issuer_replay_stable": true
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "JWT-origin synthesized X.509 refuses the native X.509 path and remains JWT/JKT",
+      "id": "SYNTHESIZED-X509-CARRIER-CONFUSION-REFUSED",
+      "observed": {
+        "jwt_path_ok": true,
+        "x509_path_ok": false,
+        "x509_path_reason": "aic_carrier_provenance_unverifiable"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_principal_binding_mismatch",
+      "id": "PRINCIPAL-BINDING-MISMATCH",
+      "observed": {
+        "ok": false,
+        "reason": "aic_principal_binding_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "native result cannot carry or replace relying-party trust pins",
+      "id": "RP-POLICY-SELF-PIN-REFUSED",
+      "observed": {
+        "self_pin": "mapping_input_invalid",
+        "untrusted": "aic_issuer_untrusted"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_carrier_provenance_unverifiable",
+      "id": "NATIVE-TYPE-CONFUSION",
+      "observed": {
+        "ok": false,
+        "reason": "aic_carrier_provenance_unverifiable"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "FAILED and INDETERMINATE both refuse",
+      "id": "NATIVE-VERIFICATION-REFUSAL",
+      "observed": {
+        "failed": "aic_native_verification_failed",
+        "indeterminate": "aic_native_verification_indeterminate"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_action_projection_mismatch",
+      "id": "EXACT-ACTION-SUBSTITUTION-REFUSED",
+      "observed": {
+        "ok": false,
+        "reason": "aic_action_projection_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_requested_capability_mismatch",
+      "id": "REQUEST-CAPABILITY-SUBSTITUTION-REFUSED",
+      "observed": {
+        "ok": false,
+        "reason": "aic_requested_capability_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_admission_domain_mismatch",
+      "id": "RELYING-PARTY-DOMAIN-SUBSTITUTION-REFUSED",
+      "observed": {
+        "ok": false,
+        "reason": "aic_admission_domain_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_audience_mismatch",
+      "id": "JWT-AUDIENCE-SUBSTITUTION-REFUSED",
+      "observed": {
+        "ok": false,
+        "reason": "aic_audience_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "signed compact-token iat/nbf/exp must exactly bind wrapper validity",
+      "id": "JWT-TEMPORAL-RELABELING-REFUSED",
+      "observed": {
+        "ok": false,
+        "reason": "aic_jwt_validity_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "stale and future observations both refuse",
+      "id": "STATUS-OBSERVATION-TIME-REFUSALS",
+      "observed": {
+        "future": "aic_status_observation_future",
+        "stale": "aic_status_observation_stale"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "the fixed 60-second v0.2 freshness profile cannot be widened by a caller",
+      "id": "STATUS-FRESHNESS-PROFILE-WIDENING-REFUSED",
+      "observed": {
+        "bound_jwt": "aic_status_freshness_profile_mismatch",
+        "bound_x509": "aic_status_freshness_profile_mismatch",
+        "jwt_svid_projection": "aic_status_freshness_profile_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "revoked and unavailable source status both refuse",
+      "id": "NON-CURRENT-SOURCE-STATUS-REFUSED",
+      "observed": {
+        "revoked": "aic_status_not_current",
+        "unavailable": "aic_status_not_current"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_validity_window_mismatch",
+      "id": "NATIVE-VALIDITY-WINDOW-REFUSED",
+      "observed": {
+        "ok": false,
+        "reason": "aic_validity_window_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "aic_crossing_issue_admission_domain_mismatch",
+      "id": "AIC-ISSUER-DOMAIN-MISMATCH-REFUSED-BEFORE-SIGNING",
+      "observed": {
+        "ok": false,
+        "reason": "aic_crossing_issue_admission_domain_mismatch"
+      },
+      "passed": true
+    },
+    {
+      "category": "boundary",
+      "expected": "signature_invalid",
+      "id": "SIGNED-BODY-RP-SUBSTITUTION-REFUSED",
+      "observed": {
+        "reason": "signature_invalid",
+        "verified": false
+      },
+      "passed": true
+    }
+  ],
+  "crossing_record_version": "EP-AEB-CROSSING-RECORD-v1",
+  "known_limits": [
+    "This run exercises the EMILIA reference adapter and crossing-record implementation; it is not an independent implementation of AIC-JWT or AIC-X509.",
+    "The adapter consumes a native verifier result; it does not reimplement AIC signature, certificate-path, delegation, capability, constraint, status, or proof-of-possession validation.",
+    "This deterministic suite stipulates native VERIFIED results to test the adapter boundary. Its JWT signature is a placeholder and its parseable X.509 certificates are not AIC credential-bundle fixtures, so it does not claim the pinned upstream verifiers accepted them.",
+    "The relying party pins the exact requested-capability digest and action-projection profile. Production integration must also provide an authenticated native result proving that the same capability request was evaluated; the pinned gateway bearer helper does not set RequestCapability.",
+    "The adapter checks a supplied capability-to-action projection for exact equality; it does not produce that projection. Unknown schemes, ambiguous mappings, and unmapped material parameters must refuse upstream.",
+    "The bound authority commits one exact action and one relying-party admission domain. The AIC-specific issue helper compares both against the record draft before signing; changing the action, relying party, audience, executor, or state domain requires a new evaluation.",
+    "EP-AEB-CROSSING-RECORD-v1 commits the bound authority's opaque instance, replay, and constraints digests but does not directly commit relying_party_id in its contract digest. The generic issuer cannot recompute the AIC context, so it is not the AIC issuance API. A versioned crossing-record v2 is required for generic recomputable admission-domain binding.",
+    "status.checked_at is the explicit source-status observation time. The v0.2 runtime accepts exactly a 60-second maximum age; a caller cannot widen it. CURRENT status is accepted only within that fixed freshness limit and native validity window; revoked, unavailable, stale, future, or otherwise non-current observations refuse.",
+    "The native verifier result and relying-party policy are structurally separate. Trusted anchors and expected verifier, mapping-profile, and action-projection pins come only from relying-party policy, never from the presented native result.",
+    "The relying party supplies and authenticates mapping-profile provenance and its digest. This reusable adapter enforces the profile identifier and fixed freshness rule but does not load or recompute the checked-in mapping-profile JSON.",
+    "RFC 7638 JWK thumbprints and X.509 SHA-256 SPKI hashes remain separate native mappings and are never treated as interchangeable proof. The JWT path derives the presented JWK thumbprint but does not prove possession of that key.",
+    "The JWT/JKT mapping requires the original compact token, derives its audience, issuer/JTI replay identity, and signed iat/nbf/exp envelope, requires exact agreement with wrapper validity, and requires explicit public JWK material. A bare X.509 object synthesized from a verified AIC-JWT has no native bundle DER and cannot enter the native X.509/SPKI mapping.",
+    "The X.509 path derives replay identity, bundle digest, serial, and principal SHA-256 SPKI from DER. Issuer, subject, status, validity, constraints, trust-anchor selection, and verification evidence remain authenticated native-wrapper outputs, not facts derived by this adapter from the leaf DER.",
+    "Raw-carrier fingerprints are derived from the bytes supplied to this adapter. They do not prove that the native verifier saw those same bytes unless an authenticated wrapper binds the verifier result to them.",
+    "JWT-SVID workload projection uses a private source verifier that emits no crossing authority. The projection digest commits the accepted source evaluation, including verifier, source-policy, evidence, trust-anchor, status, validity, and freshness inputs.",
+    "The local raw-source boundary does not authenticate a verifier result crossing an untrusted Go or JSON boundary. Integration still requires a tagged or authenticated verifier-result wrapper; the pinned gateway bearer helper sets neither ExpectedAudience, RequestCapability, PrincipalMaterial, nor PresenterKey, and no non-test VerifyBearer wiring was observed.",
+    "A verified crossing record is evidence of one past relying-party boundary decision and never authorizes another action.",
+    "Passing these checks does not establish IETF adoption, certification, production deployment, independent interoperability, or employer endorsement."
+  ],
+  "mapping_profile_digest": "sha256:cda0f113627b79e7dcd79e9181f4cf3fd2d3136bdbb016cf4c19d1370bcffb98",
+  "mappings": [
+    "EP-AEB-CROSSING-AIC-JWT-JKT-BOUND-v2",
+    "EP-AEB-CROSSING-AIC-X509-SPKI-BOUND-v2"
+  ],
+  "native_verification_fixture": {
+    "execution": "STIPULATED_NOT_EXECUTED",
+    "jwt_signature": "PLACEHOLDER",
+    "upstream_native_acceptance_claimed": false,
+    "x509_aic_and_principal_authorization_extensions": "ABSENT"
+  },
+  "passed": true,
+  "profile": "EP-AIC-AEB-CROSSING-COMPOSITION-v0.2",
+  "required_algorithms": [
+    "Ed25519",
+    "ML-DSA-65"
+  ],
+  "results_digest": "sha256:1eac98d86ccc496938ba9c7efd006b047d4bc3216ed7b651f3a8bd2630751ebf",
+  "source_lock": {
+    "@version": "AIC-AEB-CROSSING-SOURCE-LOCK-v0.2",
+    "drafts": [
+      {
+        "bounded_sections": [
+          "5 AIC-JWT Token Format",
+          "9 Principal Key Binding",
+          "11 Validation Algorithm",
+          "16 Compatibility with the Varwof Unified JWT Profile"
+        ],
+        "name": "draft-wei-aic-jwt-00",
+        "sha256": "c103cb5d4c541c7aa30ee49e0c36d56ad3ac76f50ce73a39fd0be1109781bd3c",
+        "url": "https://www.ietf.org/archive/id/draft-wei-aic-jwt-00.txt"
+      },
+      {
+        "bounded_sections": [
+          "5 AI Agent Identity Certificate Extension",
+          "8 Agent Authentication and Authorization",
+          "9 Security Considerations"
+        ],
+        "name": "draft-wei-aic-identity-cert-00",
+        "sha256": "169d2f4ae37b3448e955d8a0e0fde04ef43855b93e7aa1e8e3021fb4eba73b2e",
+        "url": "https://www.ietf.org/archive/id/draft-wei-aic-identity-cert-00.txt"
+      }
+    ],
+    "inspection": {
+      "gateway_bearer_bridge": {
+        "authenticated_original_carrier_provenance_returned": false,
+        "gateway_module_manifest_path": "go.mod",
+        "gateway_types_module_revision": "76f725ffc375ae7fda1f0255ea3e12a0074f6c4c",
+        "gateway_types_module_version": "v0.4.0",
+        "jwt_mapping_requires_original_compact_token": true,
+        "local_boundary": "The synthesized object is not admissible to the native X.509/SPKI mapping; JWT/JKT mapping requires the original compact token",
+        "local_mapping_derives_compact_token_audience": true,
+        "local_mapping_derives_presented_jwk_thumbprint": true,
+        "local_mapping_proves_presenter_key_possession": false,
+        "non_test_verify_bearer_call_sites_observed": false,
+        "path": "jwt.go",
+        "separate_authenticated_capability_evaluation_required": true,
+        "synthesized_certificate_admissible_to_native_x509_mapping": false,
+        "synthesized_certificate_sets_public_key": false,
+        "synthesized_certificate_sets_raw_der": false,
+        "synthesized_certificate_sets_raw_spki": false,
+        "verified_behavior": "VerifyBearer validates the compact AIC-JWT, then returns a bare synthesized *x509.Certificate plus parsed outer claims",
+        "verify_bearer_returns_outer_claims": true,
+        "verify_bearer_returns_synthesized_certificate": true,
+        "verify_bearer_sets_expected_audience": false,
+        "verify_bearer_sets_presenter_key": false,
+        "verify_bearer_sets_principal_material": false,
+        "verify_bearer_sets_request_capability": false
+      },
+      "native_x509_bundle": {
+        "compares_principal_key_hash_to_principal_certificate_spki": true,
+        "enforces_distinct_agent_and_principal_leaf_der": false,
+        "local_boundary": "Native X.509 mapping requires exact agent and principal certificate DER and derives the bundle digest, agent serial, and principal SPKI hash from those bytes",
+        "local_mapping_requires_distinct_agent_and_principal_der": true,
+        "local_mapping_requires_exact_certificate_der": true,
+        "path": "credential_bundle.go",
+        "principal_spki_hash_algorithm": "sha-256",
+        "requires_nonempty_agent_and_principal_chains": true,
+        "verified_behavior": "VerifyBundle requires nonempty agent and principal chain slots, verifies both chains, and compares the AIC principal key hash with the principal certificate SHA-256 SPKI"
+      },
+      "scope": {
+        "repository": "https://github.com/varwof/gateway-core",
+        "revision": "718d42ecdaf90a11ad882b5651fffdd2aeaeb417"
+      },
+      "upstream_wiring": {
+        "cross_process_authenticated_provenance_wrapper_required": true,
+        "deployed_wiring_verified": false,
+        "limit": "A tagged or authenticated verifier-result wrapper is still required to preserve carrier provenance across a Go or JSON process boundary"
+      }
+    },
+    "varwof": {
+      "repositories": [
+        {
+          "inspected_files": [
+            {
+              "path": "ts/aicjwt.ts",
+              "sha256": "2e5c59b60ce86a309003be8f6e5df8aaeae96e81027b0c3a7cba9e561545c097",
+              "url": "https://raw.githubusercontent.com/varwof/aic-jwt/a3499b07bbe858a79d95ab98f9134f44238cb8cf/ts/aicjwt.ts"
+            }
+          ],
+          "repository": "https://github.com/varwof/aic-jwt",
+          "revision": "a3499b07bbe858a79d95ab98f9134f44238cb8cf"
+        },
+        {
+          "inspected_files": [
+            {
+              "path": "aicjwt/validate.go",
+              "sha256": "9d85b2212d1ffbc4f76fc7d300d764f93845d6ced35636687619b476b742c9e3",
+              "url": "https://raw.githubusercontent.com/varwof/types/683520cd8ae8596a297c24187d0137efe2b263fe/aicjwt/validate.go"
+            },
+            {
+              "path": "aicjwt/keyhash.go",
+              "sha256": "e2fc32c4b17dc49323b92425484a808c19353f12a2554a1ed50f034fd433134e",
+              "url": "https://raw.githubusercontent.com/varwof/types/683520cd8ae8596a297c24187d0137efe2b263fe/aicjwt/keyhash.go"
+            },
+            {
+              "path": "aicjwt/certjwk.go",
+              "sha256": "20bd28626f1559c50a0683ded84f9425504d50a5775d538156965be2628cb3ed",
+              "url": "https://raw.githubusercontent.com/varwof/types/683520cd8ae8596a297c24187d0137efe2b263fe/aicjwt/certjwk.go"
+            }
+          ],
+          "repository": "https://github.com/varwof/types",
+          "revision": "683520cd8ae8596a297c24187d0137efe2b263fe"
+        },
+        {
+          "inspected_files": [
+            {
+              "path": "credential_bundle.go",
+              "sha256": "4c69c00e4e3f8f9ad8c7082f61b6bcee4ddb68ec250cef3eafce49fbc1bd4edc",
+              "url": "https://raw.githubusercontent.com/varwof/gateway-core/718d42ecdaf90a11ad882b5651fffdd2aeaeb417/credential_bundle.go"
+            },
+            {
+              "path": "jwt.go",
+              "sha256": "d2ab9d638f8383aebc06c6244eb9451c23dfc8134450995582bae6f0a8cf3d9a",
+              "url": "https://raw.githubusercontent.com/varwof/gateway-core/718d42ecdaf90a11ad882b5651fffdd2aeaeb417/jwt.go"
+            },
+            {
+              "path": "go.mod",
+              "sha256": "23e8b43e0ecbf537f273ded9558e9888425455d00272fe36c42436b3003eef2c",
+              "url": "https://raw.githubusercontent.com/varwof/gateway-core/718d42ecdaf90a11ad882b5651fffdd2aeaeb417/go.mod"
+            }
+          ],
+          "repository": "https://github.com/varwof/gateway-core",
+          "revision": "718d42ecdaf90a11ad882b5651fffdd2aeaeb417"
+        },
+        {
+          "consumed_by": "https://github.com/varwof/gateway-core@718d42ecdaf90a11ad882b5651fffdd2aeaeb417",
+          "inspected_files": [
+            {
+              "path": "aicjwt/validate.go",
+              "sha256": "9d85b2212d1ffbc4f76fc7d300d764f93845d6ced35636687619b476b742c9e3",
+              "url": "https://raw.githubusercontent.com/varwof/types/76f725ffc375ae7fda1f0255ea3e12a0074f6c4c/aicjwt/validate.go"
+            },
+            {
+              "path": "aicjwt/keyhash.go",
+              "sha256": "e2fc32c4b17dc49323b92425484a808c19353f12a2554a1ed50f034fd433134e",
+              "url": "https://raw.githubusercontent.com/varwof/types/76f725ffc375ae7fda1f0255ea3e12a0074f6c4c/aicjwt/keyhash.go"
+            }
+          ],
+          "repository": "https://github.com/varwof/types",
+          "resolved_module_version": "v0.4.0",
+          "revision": "76f725ffc375ae7fda1f0255ea3e12a0074f6c4c"
+        }
+      ]
+    }
+  },
+  "source_lock_digest": "sha256:4db4c7e1db99663caecc82887cbf60c826725383b9e0e01f186a08fc105e0f4a",
+  "source_status": {
+    "future_observation": "REFUSE",
+    "maximum_age_seconds": 60,
+    "missing_or_non_current": "REFUSE",
+    "observation_member": "status.checked_at",
+    "outside_native_validity": "REFUSE",
+    "required_value": "CURRENT",
+    "source_head_member": "status.source_head_digest"
+  }
+}
