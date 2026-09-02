@@ -34,7 +34,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.8.1  ·  content-sha256:5914e89bed5100c4
+//   source: @emilia-protocol/require-receipt@0.8.1  ·  content-sha256:24bb7b57e4bbb6aa
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -1894,7 +1894,11 @@ export function makeReceiptGate(opts = {}) {
      * @returns {Promise<{ok:true, receiptId, outcome, signer, result}|{ok:false, status, body}>}
      */
     async function run(receipt, ctx = {}, fn) {
-        if (typeof ctx === 'function') {
+        // `AnyRecord` also admits callables, so a bare `typeof` test narrows to the
+        // structureless `Function`. Name the effect signature in a type guard so the
+        // two-argument form resolves without a cast.
+        const isEffect = (value) => typeof value === 'function';
+        if (isEffect(ctx)) {
             fn = ctx;
             ctx = {};
         }
@@ -1902,7 +1906,7 @@ export function makeReceiptGate(opts = {}) {
             throw new Error('makeReceiptGate.run: fn is required');
         const c = await check(receipt, ctx || {});
         if (!c.ok)
-            return /** @type {{ok:false, status:any, body:any}} */ (c);
+            return c;
         const receiptId = c.receiptId;
         if (typeof receiptId !== 'string')
             throw new Error('makeReceiptGate.run: receipt id is required');
