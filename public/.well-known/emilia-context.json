@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-01T23:17:18.000Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "efddea9c94e567218590a29dfbd7824d115f48abad10aa636ac6d05e3dd49fdd",
+    "input_digest_sha256": "a928e421a3dced154d83dcd869a65abca2587298df6e1f71592be5d4ae28be06",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -22,7 +22,7 @@
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "1f0f5a06b90faabab4c4eada8a87380d94a8f0d872af0a56b9391287a83bc3f2",
+        "sha256": "8b7311e838ac23af75ea75d1b2da7cbeb6cd7188f92994078e62eaa7973d5474",
         "bytes": 6361
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "168f650482219d50af8c2ebc8bc1ea53308d5a7362c515a61ea87d379afc57ba",
-        "bytes": 251616
+        "sha256": "5b1ef22be0ef6d5bd4c6b9c87ce03d472d8df0574c5b9c3fd3d320631972d117",
+        "bytes": 253014
       },
       {
         "path": "security/security-case.json",
-        "sha256": "c068ea00b3d264f6d2d9cdc7883c7f9302c4008529c2d1190cfabafd5c1ee455",
-        "bytes": 386020
+        "sha256": "854dfb7ec8dcb23a44aaddf0cc7eae8a4ec7d11d40470dd164d4ba7d53f30241",
+        "bytes": 388619
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -317,7 +317,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "de00937588feff870bb7b72e5f6b09549a3008142f76136dd6a1bd7cce91e71a",
+      "manifest_sha256": "4afa9da6d688757142929251c386747dffd3034a1ba2d09b41695bf9f003f918",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -418,8 +418,8 @@
     "security_case": {
       "status": "passed",
       "claims": 35,
-      "evidence_files": 259,
-      "evidence_bundle_sha256": "947a0f8612dcc9a67520637a100d9ca3137193d5db78b882e3bbf98b82528880"
+      "evidence_files": 261,
+      "evidence_bundle_sha256": "54807744f9d4c9c70c9545d2e38e801c2aa92c3a7c66fb754a74ec459bc7a79f"
     },
     "caid": {
       "core_vectors": 48,
@@ -2218,9 +2218,11 @@
             "EffectRequiresExactDecision",
             "UncertainEffectBlocksReplay",
             "TerminalReconciliationIsAuthenticated",
-            "NoEnvelopeReopenAfterInvocation"
+            "NoEnvelopeReopenAfterInvocation",
+            "ReleasedReservationNeverReReserved",
+            "InvocationRequiresReservedUnit"
           ],
-          "scope": "A bounded same-team split-service model covers exact decision and envelope binding, actuator-only provider entry, permanent uncertainty fencing, authenticated terminal reconciliation, and no envelope reopening. A deliberately unsafe direct-provider transition violates EffectRequiresActuator. Selected runtime scenarios exercise the real TypeScript actuator primitive; the separate-service credential boundary is additionally enforced by executable repository tests. This is not a mechanized implementation refinement proof, an unbounded theorem, or proof that credentials cannot exist outside the managed deployment.",
+          "scope": "A bounded same-team split-service model covers exact decision and envelope binding, the one-time AEB reservation lifecycle, actuator-only provider entry, permanent uncertainty fencing, authenticated terminal reconciliation, and no envelope reopening. Reconciling an authoritative NOT_COMMITTED result marks the reservation terminally released-not-entered, which is never re-reserved and never yields a second provider call. A deliberately unsafe direct-provider transition violates EffectRequiresActuator, and a deliberately unsafe reconciliation that hands the released reservation back violates ReleasedReservationNeverReReserved. Selected runtime scenarios exercise the real TypeScript actuator primitive; the separate-service credential boundary is additionally enforced by executable repository tests. This is not a mechanized implementation refinement proof, an unbounded theorem, or proof that credentials cannot exist outside the managed deployment.",
           "scenario_evidence": "formal/runtime-scenarios.v2.json",
           "scenario_runner": "scripts/check-formal-runtime-traces.mjs",
           "conformance_evidence": "formal/results/formal-runtime-scenario-conformance.v2.json",
@@ -2228,10 +2230,13 @@
           "covered_actions": [
             "RefuseGateBypass",
             "AuthorizeExactAction",
+            "ReserveOneTimeUnit",
             "IssueExactEnvelope",
             "InvokeThroughActuator",
             "ProviderTimeout",
             "RefuseBlindReplay",
+            "ReconcileNotCommitted",
+            "RefuseReReserveAfterRelease",
             "UnsafeDirectProviderCall"
           ],
           "covered_obligations": [
@@ -2240,7 +2245,9 @@
             "EffectRequiresConsumedEnvelope",
             "EffectRequiresExactDecision",
             "UncertainEffectBlocksReplay",
-            "NoEnvelopeReopenAfterInvocation"
+            "NoEnvelopeReopenAfterInvocation",
+            "ReleasedReservationNeverReReserved",
+            "InvocationRequiresReservedUnit"
           ]
         },
         {
