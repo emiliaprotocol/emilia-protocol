@@ -10,13 +10,15 @@
     "20260826140000",
     "20260826150000",
     "20260826160000",
-    "20260826170000"
+    "20260826170000",
+    "20260901190000"
   ],
   "deployment_sequence": [
     "20260826140000",
     "20260826150000",
     "20260826160000",
-    "20260826170000"
+    "20260826170000",
+    "20260901190000"
   ],
   "requires_include_all": false,
   "remote_versions": [
@@ -432,6 +434,7 @@
     "20260826140000_strix_rls_and_lifecycle_fortress_db_security_invariants.sql": "49a8e46f48a6728898fb5ff937b29ba3b738dcc8e38851779ed8e057e4cabd2a",
     "20260826150000_identity_proof_and_mobile_pairing_closure.sql": "eed7f69bf6f0139ad727c0c208d9c35959fcbd36611052a6860f4d5c14637549",
     "20260826160000_continuity_and_pairing_residual_closure.sql": "60a2c0571620db6fc7f8e4e69288866ad3a9dfbd4e18124b7dc4f9a05d864d86",
-    "20260826170000_identity_runtime_residual_closure.sql": "b211532e1e33923a34f0c9a998704244eae78ee083b7dce503934133ac140b91"
+    "20260826170000_identity_runtime_residual_closure.sql": "b211532e1e33923a34f0c9a998704244eae78ee083b7dce503934133ac140b91",
+    "20260901190000_aeb_released_not_entered.sql": "8d724cbea15c8a4a4b76aace1d21ab1f8f7f3bb16e195c7c9ccd79fac7d7c31c"
   }
 }

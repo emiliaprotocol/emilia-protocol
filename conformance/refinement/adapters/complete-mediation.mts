@@ -12,6 +12,10 @@ import {
   type ConsequenceExecutionEnvelopePayload,
   type SignedConsequenceExecutionEnvelope,
 } from "../../../packages/gate/consequence-actuator.js";
+import {
+  InMemoryAebConsumptionStore,
+  reconcileAebExecution,
+} from "../../../packages/verify/aeb-adapter-contract.js";
 import type {
   Projection,
   RuntimeScenarioResult,
@@ -77,6 +81,9 @@ function initialProjection(overrides: Projection = {}): Projection {
     staleRefused: false,
     replayRefused: false,
     reconciliationAuthenticated: false,
+    reservation: "NONE",
+    reservationReleased: false,
+    reReserveRefused: false,
     ...overrides,
   };
 }
@@ -185,11 +192,23 @@ async function runSoundScenario(
     },
   });
 
+  // The AEB one-time unit for this action instance, exercised through the
+  // shipped reference store rather than a projection-only stand-in.
+  const consumption = new InMemoryAebConsumptionStore();
+  const RESERVATION_KEY = `aeb:${"e".repeat(64)}`;
+  const REPLAY_UNIT = `aeb-native:${"f".repeat(64)}`;
+
   const bypass = await actuator.execute(executionInput(null));
   requireRefusal(bypass, "malformed_envelope", false);
   requireCondition(
     providerCalls === 0 && store.size === 0,
     "unsigned bypass reached the provider or replay store",
+  );
+
+  requireCondition(
+    consumption.reserve(RESERVATION_KEY, [REPLAY_UNIT]) === true &&
+      consumption.state(RESERVATION_KEY) === "RESERVED",
+    "the one-time AEB unit was not reserved before the envelope was issued",
   );
 
   const exactEnvelope = signConsequenceExecutionEnvelope(payload(), {
@@ -309,16 +328,50 @@ async function runSoundScenario(
     "indeterminate envelope replay reopened provider entry",
   );
 
+  // draft-schrock-action-evidence-boundary-04 s5.11: the authoritative
+  // non-entry is terminal. The unit is never handed back, and re-presenting the
+  // same action instance derives the byte-identical key, which is refused.
+  const reconciled = reconcileAebExecution(
+    consumption,
+    RESERVATION_KEY,
+    "NOT_COMMITTED",
+  );
+  requireCondition(
+    reconciled.state === "RELEASED_NOT_ENTERED" &&
+      reconciled.retry_requires_new_instance === true &&
+      consumption.state(RESERVATION_KEY) === "RELEASED_NOT_ENTERED",
+    "reconciled non-entry did not become terminal released-not-entered",
+  );
+  const reReserve = consumption.reserve(RESERVATION_KEY, [REPLAY_UNIT]);
+  const lateCommit = reconcileAebExecution(
+    consumption,
+    RESERVATION_KEY,
+    "COMMITTED",
+  );
+  requireCondition(
+    reReserve === false &&
+      lateCommit.state === "RECONCILIATION_REQUIRED" &&
+      consumption.state(RESERVATION_KEY) === "RELEASED_NOT_ENTERED" &&
+      providerCalls === 1,
+    "a released reservation was resurrected or reached the provider twice",
+  );
+
   const bypassProjection = initialProjection({ bypassRefused: true });
   const authorizedProjection = initialProjection({
     decision: "ALLOWED",
     bypassRefused: true,
+  });
+  const reservedProjection = initialProjection({
+    decision: "ALLOWED",
+    bypassRefused: true,
+    reservation: "RESERVED",
   });
   const issuedProjection = initialProjection({
     decision: "ALLOWED",
     envelope: "FRESH",
     binding: "EXACT",
     bypassRefused: true,
+    reservation: "RESERVED",
   });
   const invokingProjection = initialProjection({
     decision: "ALLOWED",
@@ -328,6 +381,7 @@ async function runSoundScenario(
     providerCalls: 1,
     providerCaller: "ACTUATOR",
     bypassRefused: true,
+    reservation: "RESERVED",
   });
   const indeterminateProjection = initialProjection({
     decision: "ALLOWED",
@@ -337,10 +391,22 @@ async function runSoundScenario(
     providerCalls: 1,
     providerCaller: "ACTUATOR",
     bypassRefused: true,
+    reservation: "RESERVED",
   });
   const replayRefusedProjection = initialProjection({
     ...indeterminateProjection,
     replayRefused: true,
+  });
+  const releasedProjection = initialProjection({
+    ...replayRefusedProjection,
+    effect: "NOT_COMMITTED",
+    reconciliationAuthenticated: true,
+    reservation: "RELEASED_NOT_ENTERED",
+    reservationReleased: true,
+  });
+  const reReserveRefusedProjection = initialProjection({
+    ...releasedProjection,
+    reReserveRefused: true,
   });
 
   return {
@@ -355,6 +421,11 @@ async function runSoundScenario(
         operator: "AuthorizeExactAction",
         accepted: true,
         projection: authorizedProjection,
+      },
+      {
+        operator: "ReserveOneTimeUnit",
+        accepted: true,
+        projection: reservedProjection,
       },
       {
         operator: "IssueExactEnvelope",
@@ -375,6 +446,16 @@ async function runSoundScenario(
         operator: "RefuseBlindReplay",
         accepted: false,
         projection: replayRefusedProjection,
+      },
+      {
+        operator: "ReconcileNotCommitted",
+        accepted: true,
+        projection: releasedProjection,
+      },
+      {
+        operator: "RefuseReReserveAfterRelease",
+        accepted: false,
+        projection: reReserveRefusedProjection,
       },
     ],
     relation: relation(
@@ -397,10 +478,13 @@ async function runSoundScenario(
           signed_body_substitution: tampered.reason,
           indeterminate: indeterminate.reason,
           replay: replay.reason,
+          reconciled_non_entry: reconciled.reason,
+          re_reserve_after_release: reReserve,
+          late_commit_after_release: lateCommit.reason,
         },
       },
-      replayRefusedProjection,
-      replayRefusedProjection,
+      reReserveRefusedProjection,
+      reReserveRefusedProjection,
     ),
   };
 }

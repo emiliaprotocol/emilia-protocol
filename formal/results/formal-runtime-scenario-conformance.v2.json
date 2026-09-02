@@ -51,11 +51,11 @@
     },
     {
       "path": "conformance/refinement/adapters/complete-mediation.mjs",
-      "sha256": "37034bb23cf7f1047820e6a29d8bc290567282b7b304adea9bdce47dbcae6bd0"
+      "sha256": "7091b0dbc3564a062bc07ac9b35ce32263ceb8d8dedbb79cd4e787361dd552c6"
     },
     {
       "path": "conformance/refinement/adapters/complete-mediation.mts",
-      "sha256": "75861fb17cc61b789a671cb4692383ca9c8278b6e0fb13c80abc9becdb753ad1"
+      "sha256": "05fbf46aecf479773513e500600ac23854e0e83a3742c88bd8aa6d9eb3c089d2"
     },
     {
       "path": "conformance/refinement/adapters/composed-trust-lifecycle.mjs",
@@ -263,11 +263,11 @@
     },
     {
       "path": "formal/ep_complete_mediation.tla",
-      "sha256": "8c7542526b355bac1d3c8bad1e97e4b3be927046d163efd0ee20d62324b02b85"
+      "sha256": "d8efcbb251466cf5283d756222feabb6bafdf3cc7dad70d612504c3d5b7a4283"
     },
     {
       "path": "formal/ep_complete_mediation_unsafe.cfg",
-      "sha256": "9c6927ac1f6f2312c6088c91272d01861122442f919d07252dc973dac39df688"
+      "sha256": "32700a57d31cc05c33369cf6e241afcf46c8b8226decff6b9e8ac0f8bf3f563c"
     },
     {
       "path": "formal/ep_composed_trust_lifecycle.cfg",
@@ -323,7 +323,7 @@
     },
     {
       "path": "formal/runtime-scenarios.v2.json",
-      "sha256": "0d21eb5c352ffe4a3c427ed4240c17d899c410d35f30d32908b845e0e758e9ab"
+      "sha256": "f02606018f2c2d9b3486bbbba6a4aed07a94a067fb8fe14cdb39751acafc5d03"
     },
     {
       "path": "formal/two-claim-assurance.model.mjs",
@@ -527,7 +527,7 @@
     },
     {
       "path": "packages/gate/dist/a2a-ap2-gate.js",
-      "sha256": "019247087d621cff2096b0629ec18a8fb3720936c26a4fd115fb9e9b0fe8e77c"
+      "sha256": "86cc9df20556a42f22a0b125256569029855b2f4b0e04ef29a23c08f159480f8"
     },
     {
       "path": "packages/gate/dist/action-control-manifest.js",
@@ -575,7 +575,7 @@
     },
     {
       "path": "packages/gate/dist/aeb-consumption-store.js",
-      "sha256": "013340d3f41951fa6431800a5671ff5f9243344d207c3529b7bba994c0c43d71"
+      "sha256": "b3109b96a5dee95999b330e6a974d6a1740a6427bfc56a5a7b9c4d10e69099e4"
     },
     {
       "path": "packages/gate/dist/aec-execution.js",
@@ -723,7 +723,7 @@
     },
     {
       "path": "packages/gate/dist/proposal-to-effect.js",
-      "sha256": "5d3bf24ceafaee60a4556a126df915763fc7017d47a781d3632e08507d715641"
+      "sha256": "6c1433e430cfd70451ba65e4967223e75226225e3aeff6b3e0052e63a9a4939b"
     },
     {
       "path": "packages/gate/dist/protected-action-registry.js",
@@ -859,7 +859,7 @@
     },
     {
       "path": "packages/gate/src/aeb-consumption-store.ts",
-      "sha256": "e55405c9b031ff0ef5038b4bfed717d712684d8e19c40602b8de2be072b74960"
+      "sha256": "ee3998d09930b5ce610ec733c0333b21c3b0203433a3b87a07fa1d49da24b1d6"
     },
     {
       "path": "packages/gate/src/aec-execution.ts",
@@ -899,7 +899,7 @@
     },
     {
       "path": "packages/gate/src/proposal-to-effect.ts",
-      "sha256": "ee30da8e0b58111d7951e920bd9413f8f19db14f0b757b0287e33f925ed969b4"
+      "sha256": "00c174e896dae4a297b5ee727cfc7895bed42f7bc6b0f5833234a49a27d45edd"
     },
     {
       "path": "packages/gate/src/receipt-program.ts",
@@ -1051,7 +1051,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "19f4ad5c4cad003f7955cebdd1f8675d85941f75ac6ffc168f6a296897704668"
+      "sha256": "252891f826856a8782dd01538caeb37cde0198e2d78827ea5a910be8b1dac4f7"
     },
     {
       "path": "packages/verify/dist/aeb-aps-adapter.js",
@@ -1327,7 +1327,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "8b69f50cc4708dc42fec576d66b23f8a05645a2afa094e36463bbd282deabe10"
+      "sha256": "d2f4923aa1ba816b0a4500c7ecd19577728d689ec1316e8b1cd370756e6de161"
     },
     {
       "path": "packages/verify/src/authority-program.ts",
@@ -2128,8 +2128,11 @@
           "envelope",
           "providerCaller",
           "providerCalls",
+          "reReserveRefused",
           "reconciliationAuthenticated",
           "replayRefused",
+          "reservation",
+          "reservationReleased",
           "staleRefused"
         ],
         "formal_projection": {
@@ -2142,6 +2145,9 @@
           "providerCalls": 0,
           "reconciliationAuthenticated": false,
           "replayRefused": false,
+          "reReserveRefused": false,
+          "reservation": "NONE",
+          "reservationReleased": false,
           "staleRefused": false
         },
         "runtime_projection": {
@@ -2154,6 +2160,9 @@
           "providerCalls": 0,
           "reconciliationAuthenticated": false,
           "replayRefused": false,
+          "reReserveRefused": false,
+          "reservation": "NONE",
+          "reservationReleased": false,
           "staleRefused": false
         },
         "shared_input": {
@@ -2179,6 +2188,9 @@
               "providerCalls": 0,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "NONE",
+              "reservationReleased": false,
               "staleRefused": false
             }
           }
@@ -2208,32 +2220,41 @@
           "envelope",
           "providerCaller",
           "providerCalls",
+          "reReserveRefused",
           "reconciliationAuthenticated",
           "replayRefused",
+          "reservation",
+          "reservationReleased",
           "staleRefused"
         ],
         "formal_projection": {
           "binding": "EXACT",
           "bypassRefused": true,
           "decision": "ALLOWED",
-          "effect": "INDETERMINATE",
+          "effect": "NOT_COMMITTED",
           "envelope": "CONSUMED",
           "providerCaller": "ACTUATOR",
           "providerCalls": 1,
-          "reconciliationAuthenticated": false,
+          "reconciliationAuthenticated": true,
           "replayRefused": true,
+          "reReserveRefused": true,
+          "reservation": "RELEASED_NOT_ENTERED",
+          "reservationReleased": true,
           "staleRefused": false
         },
         "runtime_projection": {
           "binding": "EXACT",
           "bypassRefused": true,
           "decision": "ALLOWED",
-          "effect": "INDETERMINATE",
+          "effect": "NOT_COMMITTED",
           "envelope": "CONSUMED",
           "providerCaller": "ACTUATOR",
           "providerCalls": 1,
-          "reconciliationAuthenticated": false,
+          "reconciliationAuthenticated": true,
           "replayRefused": true,
+          "reReserveRefused": true,
+          "reservation": "RELEASED_NOT_ENTERED",
+          "reservationReleased": true,
           "staleRefused": false
         },
         "shared_input": {
@@ -2252,6 +2273,9 @@
             "bypass": "malformed_envelope",
             "expiry": "envelope_expired",
             "indeterminate": "provider_outcome_indeterminate",
+            "late_commit_after_release": "reservation_not_open",
+            "re_reserve_after_release": false,
+            "reconciled_non_entry": "execution_not_committed",
             "replay": "envelope_replayed",
             "signed_body_substitution": "signature_invalid",
             "target_substitution": "target_mismatch"
@@ -2275,6 +2299,9 @@
               "providerCalls": 0,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "NONE",
+              "reservationReleased": false,
               "staleRefused": false
             }
           },
@@ -2291,6 +2318,28 @@
               "providerCalls": 0,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "NONE",
+              "reservationReleased": false,
+              "staleRefused": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReserveOneTimeUnit",
+            "projection": {
+              "binding": "NONE",
+              "bypassRefused": true,
+              "decision": "ALLOWED",
+              "effect": "NONE",
+              "envelope": "NONE",
+              "providerCaller": "NONE",
+              "providerCalls": 0,
+              "reconciliationAuthenticated": false,
+              "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "RESERVED",
+              "reservationReleased": false,
               "staleRefused": false
             }
           },
@@ -2307,6 +2356,9 @@
               "providerCalls": 0,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "RESERVED",
+              "reservationReleased": false,
               "staleRefused": false
             }
           },
@@ -2323,6 +2375,9 @@
               "providerCalls": 1,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "RESERVED",
+              "reservationReleased": false,
               "staleRefused": false
             }
           },
@@ -2339,6 +2394,9 @@
               "providerCalls": 1,
               "reconciliationAuthenticated": false,
               "replayRefused": false,
+              "reReserveRefused": false,
+              "reservation": "RESERVED",
+              "reservationReleased": false,
               "staleRefused": false
             }
           },
@@ -2355,6 +2413,47 @@
               "providerCalls": 1,
               "reconciliationAuthenticated": false,
               "replayRefused": true,
+              "reReserveRefused": false,
+              "reservation": "RESERVED",
+              "reservationReleased": false,
+              "staleRefused": false
+            }
+          },
+          {
+            "accepted": true,
+            "operator": "ReconcileNotCommitted",
+            "projection": {
+              "binding": "EXACT",
+              "bypassRefused": true,
+              "decision": "ALLOWED",
+              "effect": "NOT_COMMITTED",
+              "envelope": "CONSUMED",
+              "providerCaller": "ACTUATOR",
+              "providerCalls": 1,
+              "reconciliationAuthenticated": true,
+              "replayRefused": true,
+              "reReserveRefused": false,
+              "reservation": "RELEASED_NOT_ENTERED",
+              "reservationReleased": true,
+              "staleRefused": false
+            }
+          },
+          {
+            "accepted": false,
+            "operator": "RefuseReReserveAfterRelease",
+            "projection": {
+              "binding": "EXACT",
+              "bypassRefused": true,
+              "decision": "ALLOWED",
+              "effect": "NOT_COMMITTED",
+              "envelope": "CONSUMED",
+              "providerCaller": "ACTUATOR",
+              "providerCalls": 1,
+              "reconciliationAuthenticated": true,
+              "replayRefused": true,
+              "reReserveRefused": true,
+              "reservation": "RELEASED_NOT_ENTERED",
+              "reservationReleased": true,
               "staleRefused": false
             }
           }

@@ -11,7 +11,7 @@ import {
   createPostgresAebDurableConsumptionStore,
 } from './aeb-consumption-store.js';
 
-type OperationState = 'RESERVED' | 'CONSUMED';
+type OperationState = 'RESERVED' | 'CONSUMED' | 'RELEASED_NOT_ENTERED';
 type OperationRow = {
   tenantId: string;
   relyingPartyId: string;
@@ -165,6 +165,18 @@ function createDeterministicFakePool() {
             transaction.operations.set(id, { ...row, ownerToken });
             return { rowCount: 1, rows: [{ operation_key: operationKey }] };
           }
+          if (text === AEB_CONSUMPTION_SQL.releaseTerminalOperation) {
+            const [tenantId, relyingPartyId, operationKey, ownerToken] = params as string[];
+            const id = operationId(tenantId, relyingPartyId, operationKey);
+            const row = transaction.operations.get(id);
+            if (!row || row.state !== 'RESERVED' || row.ownerToken !== ownerToken) {
+              return { rowCount: 0, rows: [] };
+            }
+            // The row is kept and the replay fences are untouched, so the
+            // ON DELETE CASCADE never fires for a terminal non-entry.
+            transaction.operations.set(id, { ...row, state: 'RELEASED_NOT_ENTERED', ownerToken: null });
+            return { rowCount: 1, rows: [{ operation_key: operationKey }] };
+          }
           if (text === AEB_CONSUMPTION_SQL.releaseOperation) {
             const [tenantId, relyingPartyId, operationKey, ownerToken] = params as string[];
             const id = operationId(tenantId, relyingPartyId, operationKey);
@@ -233,7 +245,14 @@ test('DDL creates namespaced operation and native replay tables with permanent f
   assert.match(AEB_CONSUMPTION_DDL, /PRIMARY KEY \(tenant_id, relying_party_id, replay_key\)/);
   assert.match(AEB_CONSUMPTION_DDL, /FOREIGN KEY \(tenant_id, relying_party_id, operation_key\)/);
   assert.match(AEB_CONSUMPTION_DDL, /ON DELETE CASCADE/);
-  assert.match(AEB_CONSUMPTION_DDL, /state IN \('RESERVED', 'CONSUMED'\)/);
+  assert.match(AEB_CONSUMPTION_DDL, /state IN \('RESERVED', 'CONSUMED', 'RELEASED_NOT_ENTERED'\)/);
+  assert.match(AEB_CONSUMPTION_DDL, /CREATE OR REPLACE FUNCTION ep_aeb_private\.release_terminal_operation/);
+  assert.match(AEB_CONSUMPTION_DDL, /SET state = 'RELEASED_NOT_ENTERED', owner_token = NULL/);
+  assert.match(AEB_CONSUMPTION_DDL, /ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ NULL/);
+  assert.match(
+    AEB_CONSUMPTION_DDL,
+    /GRANT EXECUTE ON FUNCTION[\s\S]+release_terminal_operation\(TEXT, TEXT, TEXT, TEXT\)\n  TO ep_aeb_executor;/,
+  );
   assert.match(AEB_CONSUMPTION_DDL, /CREATE ROLE ep_aeb_executor NOLOGIN/);
   assert.match(AEB_CONSUMPTION_DDL, /CREATE ROLE ep_aeb_recovery NOLOGIN/);
   assert.match(AEB_CONSUMPTION_DDL, /CREATE ROLE ep_aeb_store_owner NOLOGIN/);
@@ -531,4 +550,40 @@ test('database errors propagate and never become an available or successful verd
   await assert.rejects(() => store.reserve('operation-error', ['native-error']), /pg_unavailable/);
   assert.equal(pool.operation('tenant-a', 'rp-a', 'operation-error'), undefined);
   assert.equal(pool.replay('tenant-a', 'rp-a', 'native-error'), undefined);
+});
+
+test('terminal release keeps the row and its fences so the operation is never reservable again', async () => {
+  const pool = createDeterministicFakePool();
+  const store = makeStore(pool);
+  assert.equal(store.terminalRelease, true);
+  assert.equal(await store.reserve('op-terminal', ['replay-terminal']), 'RESERVED');
+  assert.equal(await store.releaseTerminal('op-terminal'), true);
+
+  const row = pool.operation('tenant-a', 'rp-a', 'op-terminal');
+  assert.equal(row?.state, 'RELEASED_NOT_ENTERED');
+  assert.equal(row?.ownerToken, null);
+  assert.ok(pool.replay('tenant-a', 'rp-a', 'replay-terminal'), 'native replay fence survives');
+
+  // No re-reservation, no late commit, no second terminal release.
+  assert.equal(await store.reserve('op-terminal', ['replay-terminal']), 'CONSUMPTION_CONFLICT');
+  assert.equal(await store.commit('op-terminal'), false);
+  assert.equal(await store.releaseTerminal('op-terminal'), false);
+  assert.equal(await store.release('op-terminal'), false);
+  assert.equal(pool.operation('tenant-a', 'rp-a', 'op-terminal')?.state, 'RELEASED_NOT_ENTERED');
+
+  // A restarted instance cannot claim a terminally released reservation.
+  const restarted = makeStore(pool, { tokenPrefix: 'restarted' });
+  assert.equal(await restarted.claimReservation('op-terminal', 'authorized'), false);
+});
+
+test('a terminal release by a stale owner is refused', async () => {
+  const pool = createDeterministicFakePool();
+  const owner = makeStore(pool);
+  assert.equal(await owner.reserve('op-stale-terminal', []), 'RESERVED');
+  const recovered = makeStore(pool, { tokenPrefix: 'recovered' });
+  assert.equal(await recovered.claimReservation('op-stale-terminal', 'authorized'), true);
+  assert.equal(await owner.releaseTerminal('op-stale-terminal'), false);
+  assert.equal(pool.operation('tenant-a', 'rp-a', 'op-stale-terminal')?.state, 'RESERVED');
+  assert.equal(await recovered.releaseTerminal('op-stale-terminal'), true);
+  assert.equal(pool.operation('tenant-a', 'rp-a', 'op-stale-terminal')?.state, 'RELEASED_NOT_ENTERED');
 });

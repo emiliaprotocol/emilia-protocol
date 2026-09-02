@@ -51,11 +51,20 @@ function registryEntry(entryId: string, kind: string, version: string, definitio
   return entry;
 }
 
+// One evaluator identity shared by every action instance in a fixture, so two
+// instances pin the byte-identical AEB configuration and differ only in the
+// operation, the consumption nonce, and the human approval they carry.
+const EVALUATOR_KEY_PAIR = crypto.generateKeyPairSync('ed25519');
+
 function aebFixture(
   action: Record<string, unknown>,
   overrides: Record<string, unknown> = {},
   executorId = SERVER_CONTEXT.executor_id,
+  instance = 1,
 ) {
+  const operationId = `operation:release-${instance}`;
+  const artifactRef = `artifact:human-approval-${instance}`;
+  const approvalId = `approval-${instance}`;
   const adapter = {
     id: 'test:human',
     version: '1',
@@ -76,6 +85,7 @@ function aebFixture(
         replay_unit: digestAeb({
           root: artifact.root,
           caid: artifact.caid,
+          approval_id: artifact.approval_id,
           subject: 'human:alice',
         }),
         evidence_role: 'human-authorization',
@@ -138,7 +148,7 @@ function aebFixture(
     max_status_age_sec: 300,
   };
   pin.config_digest = adapterPinDigest('test:human', pin);
-  const evaluator = crypto.generateKeyPairSync('ed25519');
+  const evaluator = EVALUATOR_KEY_PAIR;
   const evaluatorPublicKey = evaluator.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const config: any = {
     '@version': 'AEB-ADAPTER-v1',
@@ -163,6 +173,7 @@ function aebFixture(
   const artifact = {
     root: 'root:test',
     caid: CAID,
+    approval_id: approvalId,
     action,
   };
   const status = {
@@ -176,9 +187,9 @@ function aebFixture(
   const evaluated = evaluateAebEvidence({
     config,
     adapters: { 'test:human': adapter },
-    operation_id: 'operation:release-1',
+    operation_id: operationId,
     consumption_nonce: proposalToEffectConsumptionNonce(
-      'operation:release-1',
+      operationId,
       pinnedConfigDigest(config),
     ),
     initiator_id: 'agent:buyer',
@@ -189,7 +200,7 @@ function aebFixture(
     legs: [{
       adapter_id: 'test:human',
       profile_id: 'payment-release',
-      artifact_ref: 'artifact:human-approval',
+      artifact_ref: artifactRef,
       artifact,
       status,
     }],
@@ -198,21 +209,24 @@ function aebFixture(
   });
   return {
     adapters: { 'test:human': adapter },
-    artifacts: { 'artifact:human-approval': artifact },
-    current_statuses: { 'artifact:human-approval': status },
+    artifacts: { [artifactRef]: artifact },
+    current_statuses: { [artifactRef]: status },
+    artifact_ref: artifactRef,
+    operation_id: operationId,
     config,
     evaluation: evaluated.record,
   };
 }
 
 function durableStore() {
-  const states = new Map<string, 'RESERVED' | 'CONSUMED'>();
+  const states = new Map<string, 'RESERVED' | 'CONSUMED' | 'RELEASED_NOT_ENTERED'>();
   const replayOwners = new Map<string, string>();
   return {
     durable: true as const,
     ownershipFenced: true as const,
     permanentConsumption: true as const,
     atomicReplayFenced: true as const,
+    terminalRelease: true as const,
     states,
     async reserve(key: string, replayKeys: readonly string[]) {
       if (states.has(key)) return false;
@@ -232,6 +246,13 @@ function durableStore() {
       for (const [replayKey, owner] of replayOwners) {
         if (owner === key) replayOwners.delete(replayKey);
       }
+      return true;
+    },
+    // Mirrors ep_aeb_private.release_terminal_operation: the row is kept, so
+    // the key is unreservable forever and its replay fences stay installed.
+    async releaseTerminal(key: string) {
+      if (states.get(key) !== 'RESERVED') return false;
+      states.set(key, 'RELEASED_NOT_ENTERED');
       return true;
     },
   };
@@ -344,6 +365,9 @@ function fixture({
 } = {}) {
   const harness = createEg1Harness({ now });
   const aeb = aebFixture(harness.action as Record<string, unknown>, status, aeb_executor_id);
+  // A second action instance over the same pinned config: new operation, new
+  // consumption nonce, and a fresh human approval with its own replay unit.
+  const aebNext = aebFixture(harness.action as Record<string, unknown>, status, aeb_executor_id, 2);
   const aebStore = durableStore();
   const attemptStore = consequenceAttemptStore();
   const queuedAttemptIds = [...attempt_ids];
@@ -384,9 +408,9 @@ function fixture({
       config: aeb.config,
       adapters: aeb.adapters,
       store: aebStore,
-      resolve_artifacts: async () => aeb.artifacts,
+      resolve_artifacts: async () => ({ ...aeb.artifacts, ...aebNext.artifacts }),
       currentStatusResolver: async ({ leg }: any) => current_status
-        ?? aeb.current_statuses[leg.artifact_ref],
+        ?? { ...aeb.current_statuses, ...aebNext.current_statuses }[leg.artifact_ref],
       statusVerifier: async ({ status_artifact }: any) => {
         if (!status_artifact || status_artifact.unavailable === true) {
           return { valid: false, outcome: 'indeterminate', reason: 'status_unavailable' };
@@ -433,24 +457,49 @@ function fixture({
   const proposal = controller.prepare({
     proposal_id: 'proposal:release-1',
     profile_id: 'payment-release',
-    operation_id: 'operation:release-1',
+    operation_id: aeb.operation_id,
     initiator_id: 'agent:buyer',
     action: harness.action,
   });
-  return { aeb, aebStore, attemptStore, controller, gate, harness, proposal };
+  const proposalNext = controller.prepare({
+    proposal_id: 'proposal:release-2',
+    profile_id: 'payment-release',
+    operation_id: aebNext.operation_id,
+    initiator_id: 'agent:buyer',
+    action: harness.action,
+  });
+  return {
+    aeb, aebNext, aebStore, attemptStore, controller, gate, harness, proposal, proposalNext,
+  };
 }
 
 function attemptEntry(store: ReturnType<typeof consequenceAttemptStore>, attempt: any) {
   return store.entries.get(`${attempt.tenant_id}\0${attempt.attempt_id}`);
 }
 
+async function enterIndeterminateNext(
+  f: ReturnType<typeof fixture>,
+  message = 'provider response lost',
+) {
+  return enterIndeterminateFor(f, f.proposalNext, f.aebNext.evaluation, message);
+}
+
 async function enterIndeterminate(f: ReturnType<typeof fixture>, message = 'provider response lost') {
+  return enterIndeterminateFor(f, f.proposal, f.aeb.evaluation, message);
+}
+
+async function enterIndeterminateFor(
+  f: ReturnType<typeof fixture>,
+  proposal: any,
+  evaluation: any,
+  message: string,
+) {
   let attempt: any = null;
   await assert.rejects(
     f.controller.execute({
-      proposal: f.proposal,
+      proposal,
       receipt: f.harness.mint(),
-      evaluation: f.aeb.evaluation,
+      evaluation,
     }, async () => {
       throw new Error(message);
     }),
@@ -746,7 +795,8 @@ test('repairAeb converges legacy terminal consequence states without invoking an
     attempt: releasedPublic,
   });
   assert.equal(released.ok, true, JSON.stringify(released));
-  assert.equal(released.aeb.state, 'AVAILABLE');
+  assert.equal(released.aeb.state, 'RELEASED_NOT_ENTERED');
+  assert.equal(released.aeb.retry_requires_new_instance, true);
 });
 
 test('stale AEB evidence fails closed before Gate reservation and effect', async () => {
@@ -840,7 +890,7 @@ test('indeterminate effect freezes replay until authenticated provider reconcili
   assert.deepEqual([...f.aebStore.states.values()], ['CONSUMED']);
 });
 
-test('authenticated NOT_COMMITTED reconciliation permits one explicit retry', async () => {
+test('authenticated NOT_COMMITTED reconciliation is terminal and forces a new action instance', async () => {
   const f = fixture();
   let effects = 0;
   let firstAttempt: any = null;
@@ -865,9 +915,14 @@ test('authenticated NOT_COMMITTED reconciliation permits one explicit retry', as
   });
   assert.equal(reconciled.ok, true);
   assert.equal(reconciled.state, 'RELEASED');
+  assert.equal(reconciled.aeb.state, vector('authenticated_not_committed_reconciliation_releases_operation').expect.state);
+  assert.equal(reconciled.aeb.retry_requires_new_instance, true);
   assert.equal(attemptEntry(f.attemptStore, firstAttempt).state, 'RELEASED');
 
-  const retried = await f.controller.execute({
+  // draft-schrock-action-evidence-boundary-04 s5.11: re-presenting the SAME
+  // evaluation record derives the byte-identical reservation key, which the
+  // terminal marker refuses. One reconciled attempt, one provider invocation.
+  const blindRetry = await f.controller.execute({
     proposal: f.proposal,
     receipt: f.harness.mint(),
     evaluation: f.aeb.evaluation,
@@ -875,11 +930,48 @@ test('authenticated NOT_COMMITTED reconciliation permits one explicit retry', as
     effects += 1;
     return { released: true };
   });
-  assert.equal(retried.ok, true);
+  assert.equal(blindRetry.ok, false);
+  assert.equal(blindRetry.reason, 'aeb_consumption_conflict');
+  assert.equal(effects, 1, 'a released attempt must never resurrect its own AEB replay unit');
+
+  // A policy-permitted later attempt carries a new operation, a new consumption
+  // nonce, and a fresh human approval, so it reserves a different key.
+  const retried = await f.controller.execute({
+    proposal: f.proposalNext,
+    receipt: f.harness.mint(),
+    evaluation: f.aebNext.evaluation,
+  }, async () => {
+    effects += 1;
+    return { released: true };
+  });
+  assert.equal(retried.ok, true, JSON.stringify(retried));
   assert.equal(effects, 2);
   assert.notEqual(retried.consequence.attempt.attempt_id, firstAttempt.attempt_id);
   assert.equal(attemptEntry(f.attemptStore, retried.consequence.attempt).state, 'COMMITTED');
-  assert.deepEqual([...f.aebStore.states.values()], ['CONSUMED']);
+  assert.deepEqual([...f.aebStore.states.values()].sort(), ['CONSUMED', 'RELEASED_NOT_ENTERED']);
+});
+
+test('a released reservation refuses a late COMMITTED and stays terminal', async () => {
+  const f = fixture();
+  const attempt = await enterIndeterminate(f);
+  const released = await f.controller.reconcile({
+    proposal: f.proposal,
+    evaluation: f.aeb.evaluation,
+    attempt,
+    provider_evidence: providerEvidence(f.proposal, attempt, 'NOT_COMMITTED'),
+  });
+  assert.equal(released.ok, true);
+  assert.deepEqual([...f.aebStore.states.values()], ['RELEASED_NOT_ENTERED']);
+
+  const late = await f.controller.reconcile({
+    proposal: f.proposal,
+    evaluation: f.aeb.evaluation,
+    attempt,
+    provider_evidence: providerEvidence(f.proposal, attempt, 'COMMITTED'),
+  });
+  assert.equal(late.ok, false);
+  assert.equal(late.reason, 'aeb_consumption_reconciliation_failed');
+  assert.deepEqual([...f.aebStore.states.values()], ['RELEASED_NOT_ENTERED']);
 });
 
 test('NOT_COMMITTED reconciliation cannot run concurrently with an invoking effect', async () => {
@@ -969,11 +1061,13 @@ test('attempt-1 evidence and delayed owner transitions cannot mutate attempt-2 o
   });
   assert.equal(released.state, 'RELEASED');
 
-  const attempt2 = await enterIndeterminate(f, 'attempt 2 response lost');
+  // Attempt 2 is a new action instance, because the released attempt-1
+  // reservation is terminal and can never be reserved again.
+  const attempt2 = await enterIndeterminateNext(f, 'attempt 2 response lost');
   assert.notEqual(attempt2.attempt_id, attempt1.attempt_id);
   const replayed = await f.controller.reconcile({
-    proposal: f.proposal,
-    evaluation: f.aeb.evaluation,
+    proposal: f.proposalNext,
+    evaluation: f.aebNext.evaluation,
     attempt: attempt2,
     provider_evidence: evidence1,
   });
@@ -982,15 +1076,17 @@ test('attempt-1 evidence and delayed owner transitions cannot mutate attempt-2 o
   assert.equal(attemptEntry(f.attemptStore, attempt2).state, 'INDETERMINATE');
 
   const wrongOwner = await f.controller.reconcile({
-    proposal: f.proposal,
-    evaluation: f.aeb.evaluation,
+    proposal: f.proposalNext,
+    evaluation: f.aebNext.evaluation,
     attempt: { ...attempt2, owner: attempt1.owner },
-    provider_evidence: providerEvidence(f.proposal, attempt2, 'NOT_COMMITTED'),
+    provider_evidence: providerEvidence(f.proposalNext, attempt2, 'NOT_COMMITTED'),
   });
   assert.equal(wrongOwner.ok, false);
   assert.equal(wrongOwner.reason, 'consequence_attempt_not_indeterminate');
   assert.equal(attemptEntry(f.attemptStore, attempt2).state, 'INDETERMINATE');
 
+  // Attempt 1 is terminally released, so its delayed COMMITTED can neither
+  // reopen attempt 1 nor reach attempt 2's still-open reservation.
   const delayed = await f.controller.reconcile({
     proposal: f.proposal,
     evaluation: f.aeb.evaluation,
@@ -998,9 +1094,13 @@ test('attempt-1 evidence and delayed owner transitions cannot mutate attempt-2 o
     provider_evidence: providerEvidence(f.proposal, attempt1, 'COMMITTED'),
   });
   assert.equal(delayed.ok, false);
-  assert.equal(delayed.reason, 'consequence_attempt_not_indeterminate');
+  assert.equal(delayed.reason, 'aeb_consumption_reconciliation_failed');
   assert.equal(attemptEntry(f.attemptStore, attempt1).state, 'RELEASED');
   assert.equal(attemptEntry(f.attemptStore, attempt2).state, 'INDETERMINATE');
+  assert.deepEqual(
+    [...f.aebStore.states.values()].sort(),
+    ['RELEASED_NOT_ENTERED', 'RESERVED'],
+  );
 });
 
 test('a duck-typed Gate that invokes the callback then returns refusal freezes custody', async () => {

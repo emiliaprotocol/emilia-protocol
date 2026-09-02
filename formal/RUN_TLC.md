@@ -13,6 +13,7 @@ This document reproduces the pinned TLC checks for:
 - `ep_consequence_attempt_unsafe.tla` (deliberately unsafe negative control)
 - `ep_complete_mediation.tla`
 - `ep_complete_mediation_unsafe.cfg` (deliberately unsafe negative control)
+- `ep_complete_mediation_reuse_unsafe.cfg` (deliberately unsafe negative control)
 - `ep_consequence_lifecycle.tla`
 - `ep_composed_trust_lifecycle.tla`
 - `ep_revocation_witness.tla`
@@ -153,6 +154,22 @@ if [ "$unsafe_status" -eq 0 ] ||
     tlc-complete-mediation-unsafe-output.txt; then
   echo "The direct-provider mutation did not produce its expected counterexample."
   cat tlc-complete-mediation-unsafe-output.txt
+  exit 1
+fi
+
+set +e
+java -Xmx2G -jar ../tla2tools.jar \
+  -workers auto \
+  -config ep_complete_mediation_reuse_unsafe.cfg \
+  ep_complete_mediation.tla \
+  > tlc-complete-mediation-reuse-unsafe-output.txt 2>&1
+reuse_status=$?
+set -e
+if [ "$reuse_status" -eq 0 ] ||
+  ! grep -q "Invariant ReleasedReservationNeverReReserved is violated" \
+    tlc-complete-mediation-reuse-unsafe-output.txt; then
+  echo "The reservation-reuse mutation did not produce its expected counterexample."
+  cat tlc-complete-mediation-reuse-unsafe-output.txt
   exit 1
 fi
 

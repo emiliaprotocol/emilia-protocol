@@ -49,7 +49,7 @@ local-authorization, provider-entry, or execution-outcome verdict.
 The checked-in positive controls are:
 
 - `near_miss_refusal_preserves_authority`;
-- `not_committed_release_allows_retry`; and
+- `not_committed_release_is_terminal`; and
 - `committed_admission_consumes_and_replay_refuses`.
 
 ## Executor-owned dual-profile join

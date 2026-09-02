@@ -366,20 +366,58 @@ export interface AebExecutionDecision {
 export interface AebConsumptionStore {
     reserve(key: string, replayKeys: readonly string[]): boolean;
     commit(key: string): boolean;
+    /**
+     * NON-TERMINAL abort for an attempt that provably never reached the
+     * provider, observed locally before any invocation (a refused gate decision,
+     * an unavailable attempt store). The action instance is untouched, so the
+     * same evaluation record may be presented again.
+     */
     release(key: string): boolean;
-    state(key: string): 'AVAILABLE' | 'RESERVED' | 'CONSUMED';
+    /**
+     * TERMINAL released-not-entered marker for an AUTHORITATIVE serialized
+     * non-entry. draft-schrock-action-evidence-boundary-04 s5.11: reconciliation
+     * never resurrects the original authorization and never silently releases its
+     * one-time replay unit, so the key stays permanently unreservable and
+     * uncommittable and the native replay fences it installed stay installed. A
+     * later attempt permitted by policy MUST carry a new action instance.
+     */
+    releaseTerminal(key: string): boolean;
+    state(key: string): AebConsumptionState;
 }
+export type AebConsumptionState = 'AVAILABLE' | 'RESERVED' | 'CONSUMED' | 'RELEASED_NOT_ENTERED';
 /** Fleet-safe store contract implemented by @emilia-protocol/gate durable stores. */
 export interface AebDurableConsumptionStore {
     durable: true;
     ownershipFenced: true;
     permanentConsumption: true;
     atomicReplayFenced: true;
+    /**
+     * Declares that releaseTerminal() installs a permanent released-not-entered
+     * marker. A store that does not declare it cannot reconcile an authoritative
+     * NOT_COMMITTED result at all: reconcileAebExecutionDurable() refuses rather
+     * than falling back to the non-terminal release() that would hand the same
+     * one-time unit back to the same action instance.
+     */
+    terminalRelease?: true;
     reserve(key: string, replayKeys: readonly string[]): Promise<boolean | AebReservationResult>;
     commit(key: string): Promise<boolean>;
     release(key: string): Promise<boolean>;
+    releaseTerminal?(key: string): Promise<boolean>;
 }
 export type AebReservationResult = 'RESERVED' | 'CONSUMPTION_CONFLICT' | 'NATIVE_REPLAY_CONFLICT';
+/**
+ * Outcome of reconciling one reservation against an authenticated provider
+ * result. `retry_requires_new_instance` is unconditionally true: no
+ * reconciliation outcome ever re-authorizes the action instance that was
+ * already presented, so a policy-permitted later attempt has to carry a new
+ * consumption nonce and operation identifier, which derives a new key.
+ */
+export interface AebReconciliationResult {
+    state: 'CONSUMED' | 'RELEASED_NOT_ENTERED' | 'RECONCILIATION_REQUIRED';
+    retry_allowed: boolean;
+    retry_requires_new_instance: true;
+    reason: string;
+}
 /** Small synchronous reference store. Production stores must provide an atomic equivalent. */
 export declare class InMemoryAebConsumptionStore implements AebConsumptionStore {
     private readonly entries;
@@ -387,7 +425,8 @@ export declare class InMemoryAebConsumptionStore implements AebConsumptionStore 
     reserve(key: string, replayKeys?: readonly string[]): boolean;
     commit(key: string): boolean;
     release(key: string): boolean;
-    state(key: string): 'AVAILABLE' | 'RESERVED' | 'CONSUMED';
+    releaseTerminal(key: string): boolean;
+    state(key: string): AebConsumptionState;
 }
 declare function canonicalize(value: unknown): string;
 declare function digest(value: unknown): AebDigest;
@@ -423,11 +462,17 @@ export declare function authorizeAebExecution(record: AebEvaluationRecord, optio
 export declare function aebNativeReplayKeys(record: Pick<AebEvaluationRecord, 'evaluator' | 'legs'>): string[];
 /** Collision-resistant, tenant-scoped key used by both reference and durable stores. */
 export declare function aebReservationKey(record: Pick<AebEvaluationRecord, 'evaluator' | 'composition' | 'caid' | 'operation_id' | 'consumption_nonce'>): string;
-export declare function reconcileAebExecution(store: AebConsumptionStore, reservationKey: string, outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'INDETERMINATE'): {
-    state: 'CONSUMED' | 'AVAILABLE' | 'RECONCILIATION_REQUIRED';
-    retry_allowed: boolean;
-    reason: string;
-};
+/**
+ * Reconcile one reservation against an authenticated provider outcome.
+ *
+ * draft-schrock-action-evidence-boundary-04 s5.10 and s5.11 govern this
+ * function. An INDETERMINATE outcome preserves the reservation and refuses a
+ * blind replay. An authoritative NOT_COMMITTED outcome does not hand the
+ * one-time replay unit back: it marks the reservation permanently
+ * RELEASED_NOT_ENTERED, so the same authorization and operation identifier can
+ * never be reserved again and a late COMMITTED for that attempt stays refused.
+ */
+export declare function reconcileAebExecution(store: AebConsumptionStore, reservationKey: string, outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'INDETERMINATE'): AebReconciliationResult;
 /** Production authorization path for shared Postgres/Redis/DynamoDB-backed custody. */
 export declare function authorizeAebExecutionDurable(record: AebEvaluationRecord, options: {
     verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing' | 'record_digest'>;
@@ -438,11 +483,8 @@ export declare function authorizeAebExecutionDurable(record: AebEvaluationRecord
     /** Extra profile replay identities reserved atomically with native evidence. */
     additional_replay_keys?: readonly string[];
 }): Promise<AebExecutionDecision>;
-export declare function reconcileAebExecutionDurable(store: unknown, reservationKey: string, outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'INDETERMINATE'): Promise<{
-    state: 'CONSUMED' | 'AVAILABLE' | 'RECONCILIATION_REQUIRED';
-    retry_allowed: boolean;
-    reason: string;
-}>;
+/** Production reconciliation path. Same s5.10/s5.11 semantics as the reference path. */
+export declare function reconcileAebExecutionDurable(store: unknown, reservationKey: string, outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'INDETERMINATE'): Promise<AebReconciliationResult>;
 export { canonicalize as canonicalizeAeb, digest as digestAeb, typedDigest as digestAebTyped };
 /**
  * SCOPE. This migrates the ONE signature surface in this module that EP owns
