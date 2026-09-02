@@ -370,7 +370,7 @@ export const contract = {
         ep_gate_allowance_status: ['allowance_profile_id', 'allowance_digest', 'revision',
             'status_epoch', 'status_head_digest', 'status', 'updated_at'],
         ep_aeb_consumption_operations: ['tenant_id', 'relying_party_id', 'operation_key',
-            'state', 'owner_token', 'reserved_at', 'consumed_at'],
+            'state', 'owner_token', 'reserved_at', 'consumed_at', 'released_at'],
         ep_aeb_consumption_replay_fences: ['tenant_id', 'relying_party_id', 'replay_key',
             'operation_key', 'reserved_at'],
         ep_remedy_case_sets: ['tenant_id', 'case_set_id', 'revision', 'status',

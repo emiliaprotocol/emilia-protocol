@@ -247,6 +247,7 @@ test('DDL creates namespaced operation and native replay tables with permanent f
   assert.match(AEB_CONSUMPTION_DDL, /ON DELETE CASCADE/);
   assert.match(AEB_CONSUMPTION_DDL, /state IN \('RESERVED', 'CONSUMED', 'RELEASED_NOT_ENTERED'\)/);
   assert.match(AEB_CONSUMPTION_DDL, /CREATE OR REPLACE FUNCTION ep_aeb_private\.release_terminal_operation/);
+  assert.match(AEB_CONSUMPTION_DDL, /SET state = 'RELEASED_NOT_ENTERED', owner_token = NULL/);
   assert.match(AEB_CONSUMPTION_DDL, /ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ NULL/);
   assert.match(
     AEB_CONSUMPTION_DDL,

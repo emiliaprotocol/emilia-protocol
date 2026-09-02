@@ -11,6 +11,11 @@ const migration = readFileSync(
   'utf8',
 );
 
+const terminalReleaseMigration = readFileSync(
+  new URL('../supabase/migrations/20260901190000_aeb_released_not_entered.sql', import.meta.url),
+  'utf8',
+);
+
 describe('AEB consumption production migration', () => {
   for (const table of [AEB_CONSUMPTION_OPERATION_TABLE, AEB_CONSUMPTION_REPLAY_TABLE]) {
     it(`${table} is RPC-only and forced-RLS protected`, () => {
@@ -64,5 +69,36 @@ describe('AEB consumption production migration', () => {
     expect(migration).toContain('PRIMARY KEY (tenant_id, relying_party_id, replay_key)');
     expect(migration).toContain('FOREIGN KEY (tenant_id, relying_party_id, operation_key)');
     expect(migration).toContain('ON DELETE CASCADE');
+  });
+});
+
+describe('AEB terminal released-not-entered migration', () => {
+  it('keeps the released row and exposes only an executor-scoped terminal release', () => {
+    expect(terminalReleaseMigration).toContain(
+      'ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ NULL',
+    );
+    expect(terminalReleaseMigration).toContain(
+      "CHECK (state IN ('RESERVED', 'CONSUMED', 'RELEASED_NOT_ENTERED'))",
+    );
+    expect(terminalReleaseMigration).toContain(
+      'CREATE OR REPLACE FUNCTION ep_aeb_private.release_terminal_operation',
+    );
+    expect(terminalReleaseMigration).toMatch(
+      /LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''/,
+    );
+    // The terminal release is an UPDATE, never a DELETE: the row and its
+    // replay fences have to survive so the key stays unreservable.
+    expect(terminalReleaseMigration).toContain(
+      "SET state = 'RELEASED_NOT_ENTERED',",
+    );
+    expect(terminalReleaseMigration).not.toMatch(
+      /release_terminal_operation[\s\S]+DELETE FROM/,
+    );
+    expect(terminalReleaseMigration).toContain(
+      'GRANT EXECUTE ON FUNCTION ep_aeb_private.release_terminal_operation(TEXT, TEXT, TEXT, TEXT)\n  TO ep_aeb_executor;',
+    );
+    expect(terminalReleaseMigration).not.toMatch(
+      /GRANT (?:ALL|EXECUTE)[\s\S]*release_terminal_operation[\s\S]*service_role/,
+    );
   });
 });
