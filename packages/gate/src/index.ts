@@ -216,6 +216,7 @@ export {
 export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
 export { RELIANCE_PACKET_VERSION, ADMISSIBILITY_VERDICTS, buildReliancePacket } from './reliance-packet.js';
 export * from './claim-assurance-result.js';
+export * from './provider-replay-key.js';
 export {
   EXTERNAL_VERIFICATION_STATEMENT_VERSION,
   EXTERNAL_VERIFICATION_DOMAIN,

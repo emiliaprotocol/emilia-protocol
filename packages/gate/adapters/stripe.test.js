@@ -6,8 +6,31 @@ import assert from 'node:assert/strict';
 import { createGate, createEg1Harness } from '../index.js';
 import { createStripeManifest, createStripeAllowanceConnector, guardStripeAllowanceMutation, guardStripeMutation, STRIPE_OPS, } from './stripe.js';
 import { allowanceDigest, issueGateAllowance, } from '../allowance.js';
+import { PROVIDER_SLOT_SPECS, authorizationInstanceDigest, deriveProviderReplayKey, } from '../provider-replay-key.js';
 import { createMemoryCapabilityStore } from '../capability-receipt.js';
 import { generateKeyPairSync } from 'node:crypto';
+/**
+ * Recompute the Stripe Idempotency-Key the adapter must have derived: the
+ * allowance artifact bound to this one material payout. The test recomputes it
+ * rather than hard-coding one, which is the reconciler's job in miniature.
+ */
+function expectedStripeReplayKey(allowance, material, connectorId, attemptGroup = '1') {
+    const instance = authorizationInstanceDigest({
+        authorization_digest: allowanceDigest(allowance),
+        profile: 'stripe.payout.create',
+        material_action: { action_type: 'stripe.payout.create', ...material },
+    });
+    assert.equal(instance.ok, true, JSON.stringify(instance));
+    const derived = deriveProviderReplayKey({
+        authorization_digest: instance.digest,
+        caid: 'stripe.payout.create',
+        provider_env: connectorId,
+        attempt_group: attemptGroup,
+        slot_spec: PROVIDER_SLOT_SPECS['stripe.idempotency-key'],
+    });
+    assert.equal(derived.ok, true, JSON.stringify(derived));
+    return derived.key;
+}
 function fakeStripe(accountId = 'acct_authorized') {
     const calls = [];
     return {
@@ -171,10 +194,18 @@ test('typed Stripe payout allowance keeps the client local and executes in-envel
     });
     assert.equal(result.ok, true);
     assert.equal(result.result.id, 'po_1');
+    const derivedKey = expectedStripeReplayKey(issued.allowance, { amount: 4_000, currency: 'USD', destination: 'acct_known' }, 'stripe:acct_authorized');
+    assert.match(derivedKey, /^ep1_[A-Za-z0-9]{43}$/);
+    assert.notEqual(derivedKey, 'stripe:payout:01');
     assert.deepEqual(stripe.calls, [[
             'payout',
-            { amount: 4_000, currency: 'USD', destination: 'acct_known' },
-            { idempotencyKey: 'stripe:payout:01' },
+            {
+                amount: 4_000,
+                currency: 'USD',
+                destination: 'acct_known',
+                metadata: { ep_replay_key: derivedKey },
+            },
+            { idempotencyKey: derivedKey },
         ]]);
 });
 test('typed Stripe payout executes the immutable verified action when caller params mutate during verification', async () => {
@@ -259,10 +290,16 @@ test('typed Stripe payout executes the immutable verified action when caller par
         now: Date.parse('2026-07-30T18:00:00.000Z'),
     });
     assert.equal(result.ok, true, JSON.stringify(result));
+    const mutationKey = expectedStripeReplayKey(issued.allowance, { amount: 4_000, currency: 'USD', destination: 'acct_known' }, 'stripe:acct_authorized');
     assert.deepEqual(stripe.calls, [[
             'payout',
-            { amount: 4_000, currency: 'USD', destination: 'acct_known' },
-            { idempotencyKey: 'stripe:payout:mutation' },
+            {
+                amount: 4_000,
+                currency: 'USD',
+                destination: 'acct_known',
+                metadata: { ep_replay_key: mutationKey },
+            },
+            { idempotencyKey: mutationKey },
         ]]);
 });
 test('typed Stripe payout refuses cross-protocol and cross-account connector substitution', async () => {

@@ -18,7 +18,8 @@
  *   });
  */
 import { canonicalActuatorObject, createAdapter, manifestFromPack } from './_kit.js';
-import { executeWithGateAllowance } from '../allowance.js';
+import { allowanceDigest, executeWithGateAllowance } from '../allowance.js';
+import { PROVIDER_SLOT_SPECS, authorizationInstanceDigest, deriveProviderReplayKey, } from '../provider-replay-key.js';
 export const STRIPE_ACTION_PACK = Object.freeze([
     Object.freeze({
         id: 'stripe.payout.create', label: 'Stripe payout', action_type: 'stripe.payout.create',
@@ -122,7 +123,7 @@ export async function createStripeAllowanceConnector({ stripe, } = {}) {
  * adapter constructs the exact closed action that the signed allowance names;
  * generic Stripe methods are deliberately not exposed through this path.
  */
-export function guardStripeAllowanceMutation({ connector, params, operationId, ...allowanceOptions }) {
+export function guardStripeAllowanceMutation({ connector, params, operationId, attemptGroup = '1', ...allowanceOptions }) {
     const configured = stripeAllowanceConnectors.get(connector);
     if (!configured)
         throw new TypeError('guardStripeAllowanceMutation requires a configured Stripe allowance connector');
@@ -142,6 +143,63 @@ export function guardStripeAllowanceMutation({ connector, params, operationId, .
         destination: input.destination,
         operation_id: operationId,
     };
+    // The Stripe Idempotency-Key is no longer the caller-supplied operation id.
+    // It is derived from the authorization instance: this allowance artifact
+    // bound to this one material payout. Consequences of that, stated plainly:
+    //
+    //  - A retry of the SAME payout under a NEW operation id sends the SAME
+    //    Idempotency-Key, so Stripe returns its stored result instead of paying
+    //    twice. Under the old behaviour a retry with a fresh operation id was a
+    //    fresh Stripe request.
+    //  - A DIFFERENT payout under the same allowance (different amount, currency
+    //    or destination) derives a different key, so the allowance's aggregate
+    //    budget still works.
+    //  - Two IDENTICAL payouts under one allowance derive the same key. The Gate
+    //    already refuses that: the capability action fence is unique on
+    //    (operation_namespace, action_fence_digest) for live operations, and
+    //    allowanceActionFenceDigest deliberately excludes the operation id field.
+    //    So the derived key follows the fence the Gate already enforces rather
+    //    than opening a hole. An operator who genuinely needs a second identical
+    //    payout supplies a different attemptGroup, which is an explicit act that
+    //    releases the provider-side fence for that authorization.
+    //  - Stripe prunes keys after at least 24 hours. Beyond that window Stripe
+    //    stops being a second consumer of this authorization and the fence is
+    //    ours alone. See PROVIDER_KEY_RETENTION_MEASUREMENT.
+    //
+    // The operation id keeps its existing role unchanged: it is still the
+    // allowance's operation binding (action[operation_id_field] === operationId)
+    // and still the capability ledger's operation key. Only the value handed to
+    // Stripe changes.
+    let allowanceArtifactDigest;
+    try {
+        allowanceArtifactDigest = allowanceDigest(allowanceOptions.allowance);
+    }
+    catch {
+        return Promise.resolve({ ok: false, reason: 'allowance_action_shape_invalid' });
+    }
+    const instance = authorizationInstanceDigest({
+        authorization_digest: allowanceArtifactDigest,
+        profile: 'stripe.payout.create',
+        material_action: {
+            action_type: action.action_type,
+            amount: action.amount,
+            currency: action.currency,
+            destination: action.destination,
+        },
+    });
+    if (instance.ok !== true) {
+        return Promise.resolve({ ok: false, reason: `provider_replay_key_${instance.reason}` });
+    }
+    const replayKey = deriveProviderReplayKey({
+        authorization_digest: instance.digest,
+        caid: 'stripe.payout.create',
+        provider_env: connectorInstanceId,
+        attempt_group: typeof attemptGroup === 'string' ? attemptGroup : '',
+        slot_spec: PROVIDER_SLOT_SPECS['stripe.idempotency-key'],
+    });
+    if (replayKey.ok !== true) {
+        return Promise.resolve({ ok: false, reason: `provider_replay_key_${replayKey.reason}` });
+    }
     return executeWithGateAllowance({
         ...allowanceOptions,
         expected: {
@@ -150,11 +208,29 @@ export function guardStripeAllowanceMutation({ connector, params, operationId, .
         },
         action,
         operationId,
-        executeAction: (verifiedAction) => stripe.payouts.create({
-            amount: verifiedAction.amount,
-            currency: verifiedAction.currency,
-            destination: verifiedAction.destination,
-        }, { idempotencyKey: verifiedAction.operation_id }),
+        executeAction: (verifiedAction) => {
+            // Invariant guard, not an input path. executeWithGateAllowance has
+            // already required the verified action's field set to equal the
+            // allowance's material_fields exactly, so this can only fire if that
+            // contract changes underneath. If it ever does, no money moves.
+            if (verifiedAction.amount !== action.amount
+                || verifiedAction.currency !== action.currency
+                || verifiedAction.destination !== action.destination
+                || verifiedAction.action_type !== action.action_type) {
+                throw new Error('stripe_replay_key_binding_mismatch');
+            }
+            return stripe.payouts.create({
+                amount: verifiedAction.amount,
+                currency: verifiedAction.currency,
+                destination: verifiedAction.destination,
+                // Echoed into metadata as well as the header because Stripe's own
+                // signed webhook events carry metadata and do not carry the
+                // Idempotency-Key. This is the recomputable join key inside Stripe's
+                // authenticated record. It is not a Stripe attestation about the
+                // authorization; Stripe stores an opaque string it was handed.
+                metadata: { ep_replay_key: replayKey.key },
+            }, { idempotencyKey: replayKey.key });
+        },
     });
 }
 export default {

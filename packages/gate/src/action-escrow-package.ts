@@ -14,6 +14,7 @@ import {
   ACTION_ESCROW_STATE_VERSION,
   ACTION_ESCROW_STATES,
   ACTION_ESCROW_TRANSITIONS,
+  computeActionEscrowProviderReplayKey,
   computeActionEscrowReleaseBindingMomentDigest,
   computeActionEscrowResolutionNonce,
 } from './action-escrow.js';
@@ -1056,15 +1057,12 @@ function validateRelease(record) {
     release_action_digest: record.release_action_digest,
     profile_digest: record.profile_digest,
   })}`;
-  const expectedProviderKey = `ep-ae-release:${hashCanonical({
-    '@version': 'EP-ACTION-ESCROW-PROVIDER-IDEMPOTENCY-v1',
-    agreement_digest: record.agreement_digest,
-    document_action_binding_digest: record.document_action_binding_digest,
-    milestone_id: record.milestone_id,
-    release_action_digest: record.release_action_digest,
-    profile_digest: record.profile_digest,
-  })}`;
-  if (release.release_key !== expectedReleaseKey
+  // Recomputed through the shared provider replay-key derivation, the same
+  // function the kernel mints with. A mismatch here means the packaged record
+  // does not carry the key this authorization instance derives to.
+  const expectedProviderKey = computeActionEscrowProviderReplayKey(record);
+  if (typeof expectedProviderKey !== 'string'
+    || release.release_key !== expectedReleaseKey
     || release.provider_idempotency_key !== expectedProviderKey) {
     fail('release reservation key mismatch');
   }

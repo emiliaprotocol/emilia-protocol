@@ -33,6 +33,34 @@ export declare function computeActionEscrowReleaseBindingMomentDigest(input: any
  * evidence change, and is consumed by the durable approval CAS.
  */
 export declare function computeActionEscrowResolutionNonce(input: any, partyId: any): string | null;
+/**
+ * The escrow release's provider-facing replay key.
+ *
+ * Derived through the shared provider replay-key rule so this key and the key
+ * an adapter puts in a third-party slot (a Stripe Idempotency-Key, an ERC-3009
+ * nonce, an ISO 20022 EndToEndId) are produced by ONE versioned derivation.
+ * The tuple it commits to is unchanged from EP-ACTION-ESCROW-PROVIDER-
+ * IDEMPOTENCY-v1: agreement, document-action binding, milestone, release
+ * action and profile. The output shape is unchanged too:
+ * `ep-ae-release:<64 lowercase hex>`.
+ *
+ * The attempt group is the constant '1'. Escrow releases one milestone once;
+ * there is no second attempt group, and introducing one would release the
+ * provider-side fence for an already-authorized release.
+ *
+ * Returns null when the context cannot produce a key. Every caller here has
+ * already validated the context, so a null is a programming error rather than
+ * an input refusal; the callers convert it into their own stated failure.
+ *
+ * BREAKING for records reserved before this change. The tuple is the same but
+ * the derivation is not, so the emitted VALUE differs from the one
+ * EP-ACTION-ESCROW-PROVIDER-IDEMPOTENCY-v1 produced. A release record already
+ * in `release_reserved` under the old derivation fails the key check and
+ * reports `release_binding_corrupt`. Drain reserved releases before upgrading;
+ * do not accept both derivations, because a verifier that accepts two keys for
+ * one release no longer proves which one the provider saw.
+ */
+export declare function computeActionEscrowProviderReplayKey(context: any): string | null;
 type ActionEscrowVerifierFn = (artifact: any, expected: any) => any;
 type ActionEscrowKernelOptions = {
     store?: Record<string, any>;

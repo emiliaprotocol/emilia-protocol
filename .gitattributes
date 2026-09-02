@@ -599,6 +599,7 @@ packages/gate/protected-action-registry.test.js linguist-generated=true
 packages/gate/protection-activation.test.js linguist-generated=true
 packages/gate/protection-cli.test.js linguist-generated=true
 packages/gate/provider-entry.test.js linguist-generated=true
+packages/gate/provider-replay-key.test.js linguist-generated=true
 packages/gate/receipt-program-fips.test.js linguist-generated=true
 packages/gate/receipt-program-v2.test.js linguist-generated=true
 packages/gate/receipt-program.test.js linguist-generated=true

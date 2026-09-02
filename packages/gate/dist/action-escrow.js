@@ -9,6 +9,7 @@
  */
 import { canonicalize, hashCanonical } from './execution-binding.js';
 import { ACTION_ESCROW_CONTRACTOR_TEMPLATE_VERSION, validateActionEscrowReleaseTemplate, } from './action-escrow-verifiers.js';
+import { PROVIDER_SLOT_SPECS, authorizationInstanceDigest, deriveProviderReplayKey, } from './provider-replay-key.js';
 export const ACTION_ESCROW_STATE_VERSION = 'EP-ACTION-ESCROW-STATE-v1';
 export const ACTION_ESCROW_OUTCOME_VERSION = 'EP-ACTION-ESCROW-OUTCOME-v1';
 export const ACTION_ESCROW_PROFILE_VERSION = 'EP-ACTION-ESCROW-PROFILE-v1';
@@ -438,15 +439,60 @@ function releaseReservationKey(context) {
         profile_digest: context.profile_digest,
     })}`;
 }
+/**
+ * The escrow release's provider-facing replay key.
+ *
+ * Derived through the shared provider replay-key rule so this key and the key
+ * an adapter puts in a third-party slot (a Stripe Idempotency-Key, an ERC-3009
+ * nonce, an ISO 20022 EndToEndId) are produced by ONE versioned derivation.
+ * The tuple it commits to is unchanged from EP-ACTION-ESCROW-PROVIDER-
+ * IDEMPOTENCY-v1: agreement, document-action binding, milestone, release
+ * action and profile. The output shape is unchanged too:
+ * `ep-ae-release:<64 lowercase hex>`.
+ *
+ * The attempt group is the constant '1'. Escrow releases one milestone once;
+ * there is no second attempt group, and introducing one would release the
+ * provider-side fence for an already-authorized release.
+ *
+ * Returns null when the context cannot produce a key. Every caller here has
+ * already validated the context, so a null is a programming error rather than
+ * an input refusal; the callers convert it into their own stated failure.
+ *
+ * BREAKING for records reserved before this change. The tuple is the same but
+ * the derivation is not, so the emitted VALUE differs from the one
+ * EP-ACTION-ESCROW-PROVIDER-IDEMPOTENCY-v1 produced. A release record already
+ * in `release_reserved` under the old derivation fails the key check and
+ * reports `release_binding_corrupt`. Drain reserved releases before upgrading;
+ * do not accept both derivations, because a verifier that accepts two keys for
+ * one release no longer proves which one the provider saw.
+ */
+export function computeActionEscrowProviderReplayKey(context) {
+    const instance = authorizationInstanceDigest({
+        authorization_digest: context.agreement_digest,
+        profile: 'ep.action-escrow.release',
+        material_action: {
+            document_action_binding_digest: context.document_action_binding_digest,
+            milestone_id: context.milestone_id,
+            profile_digest: context.profile_digest,
+            release_action_digest: context.release_action_digest,
+        },
+    });
+    if (instance.ok !== true)
+        return null;
+    const derived = deriveProviderReplayKey({
+        authorization_digest: instance.digest,
+        caid: 'payment.release.1',
+        // The provider identity is already committed inside profile_digest, so the
+        // environment tag is a constant here. Interpolating a caller-supplied
+        // provider_id would let an out-of-charset identifier refuse the derivation.
+        provider_env: 'ep-action-escrow',
+        attempt_group: '1',
+        slot_spec: PROVIDER_SLOT_SPECS['ep.action-escrow.release'],
+    });
+    return derived.ok === true ? derived.key : null;
+}
 function providerIdempotencyKey(context) {
-    return `ep-ae-release:${hashCanonical({
-        '@version': 'EP-ACTION-ESCROW-PROVIDER-IDEMPOTENCY-v1',
-        agreement_digest: context.agreement_digest,
-        document_action_binding_digest: context.document_action_binding_digest,
-        milestone_id: context.milestone_id,
-        release_action_digest: context.release_action_digest,
-        profile_digest: context.profile_digest,
-    })}`;
+    return computeActionEscrowProviderReplayKey(context);
 }
 function expectedBindings(context) {
     return {
@@ -2204,6 +2250,12 @@ export function createActionEscrowKernel(options = {}) {
                     });
                 }
                 const request = providerRequestFor(record);
+                if (typeof request.idempotency_key !== 'string' || request.idempotency_key.length === 0) {
+                    // The shared replay-key derivation refused. Reserve nothing and
+                    // dispatch nothing: without a provider replay key there is no
+                    // provider-side fence on this release.
+                    return outcome({ code: 'release_binding_corrupt', operation, record });
+                }
                 const finalized = finalizeMutation(record, normalized, operation, 'release_reserved', at, (next) => {
                     next.state = 'release_reserved';
                     next.release = {

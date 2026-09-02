@@ -77,12 +77,16 @@ export declare function createStripeAllowanceConnector({ stripe, }?: {
  * adapter constructs the exact closed action that the signed allowance names;
  * generic Stripe methods are deliberately not exposed through this path.
  */
-export declare function guardStripeAllowanceMutation({ connector, params, operationId, ...allowanceOptions }: {
+export declare function guardStripeAllowanceMutation({ connector, params, operationId, attemptGroup, ...allowanceOptions }: {
     [x: string]: any;
     connector: any;
     params: any;
     operationId: any;
-}): Promise<import("../reliance-risk-crypto.js").RiskRecord>;
+    attemptGroup?: string | undefined;
+}): Promise<import("../reliance-risk-crypto.js").RiskRecord> | Promise<{
+    ok: boolean;
+    reason: string;
+}>;
 declare const _default: {
     STRIPE_ACTION_PACK: readonly (Readonly<{
         id: "stripe.payout.create";

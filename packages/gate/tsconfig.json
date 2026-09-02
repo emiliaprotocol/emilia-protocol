@@ -48,6 +48,7 @@
     "src/action-escrow-state.ts",
     "src/action-escrow-verifiers.ts",
     "src/execution-binding.ts",
+    "src/provider-replay-key.ts",
     "src/strict-json.ts",
     "src/capability-receipt.ts",
     "src/allowance.ts",

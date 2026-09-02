@@ -60,6 +60,7 @@ export { ACTION_CONTROL_MANIFEST_VERSION, ACTION_CONTROL_SCHEMA_URL, ACTION_CONT
 export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
 export { RELIANCE_PACKET_VERSION, ADMISSIBILITY_VERDICTS, buildReliancePacket } from './reliance-packet.js';
 export * from './claim-assurance-result.js';
+export * from './provider-replay-key.js';
 export { EXTERNAL_VERIFICATION_STATEMENT_VERSION, EXTERNAL_VERIFICATION_DOMAIN, externalVerificationDigest, signExternalVerificationStatement, verifyExternalVerificationStatement, } from './reports/external-verification.js';
 export { EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR, createEg1Harness, makeGateInvoke, runEg1, mintDeviceSignoff, mintQuorumEvidence, } from './eg1-conformance.js';
 export { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
