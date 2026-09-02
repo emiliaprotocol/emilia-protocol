@@ -167,19 +167,19 @@ test('(b) REFUSED: a non-Ed25519 pinned key (P-256) is rejected fail-closed', as
   assert.equal(r.valid, false);
   assert.match(r.error || '', /Unsupported issuer key type|not canonical|Signature verification failed/);
 });
-test('(b) DOCUMENTED (not a forgery): signature.algorithm value is ignored; crypto is pinned to Ed25519 by key type', async () => {
-  // alg:"none"/"RS256" cannot downgrade anything — a VALID Ed25519 signature over
-  // the exact payload by the pinned key is still required. Declaring a bogus alg
-  // does NOT bypass verification (unlike JWT alg:none). This asserts the receipt
-  // still fails without a valid signature, regardless of the declared algorithm.
+test('(b) REFUSED: an unregistered signature.algorithm cannot relabel an Ed25519 signature', async () => {
+  // alg:"none"/"RS256" cannot downgrade anything. Both verifiers pin the v1
+  // label as well as the key type, so neither an invalid nor a valid Ed25519
+  // signature can be relabelled as another algorithm.
   const k = ed();
   const payload = { action_type: 'x' };
   const bad = { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'none', value: signEdOverCanon({ action_type: 'y' }, k.privateKey) } };
   assert.equal(verifyReceipt(bad, k.pub).valid, false);
   assert.equal((await web.verifyReceipt(bad, k.pub)).valid, false);
-  // and a correct signature with a bogus alg string still verifies (alg is not load-bearing)
+  // A correct Ed25519 signature with a bogus label must also fail closed.
   const okDoc = { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'not-a-real-alg', value: signEdOverCanon(payload, k.privateKey) } };
-  assert.equal(verifyReceipt(okDoc, k.pub).valid, true);
+  assert.equal(verifyReceipt(okDoc, k.pub).valid, false);
+  assert.equal((await web.verifyReceipt(okDoc, k.pub)).valid, false);
 });
 test('(b) REFUSED: trust-receipt Class-A pinned key cannot be downgraded to a bare Ed25519 signoff', () => {
   // Attacker declares key_class:'B' and supplies a raw signature for a pinned Class-A key.

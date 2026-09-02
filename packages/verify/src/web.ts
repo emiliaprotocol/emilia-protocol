@@ -42,7 +42,13 @@ function bufferSource(bytes: Uint8Array): BufferSource {
 }
 
 const SUPPORTED_VERSIONS = ['EP-RECEIPT-v1'];
+const RECEIPT_V1_SIGNATURE_ALGORITHM = 'Ed25519';
 const SUPPORTED_PROOF_VERSIONS = ['EP-PROOF-v1'];
+
+function isReceiptV1Algorithm(value: unknown): boolean {
+  return typeof value === 'string'
+    && value.toLowerCase() === RECEIPT_V1_SIGNATURE_ALGORITHM.toLowerCase();
+}
 
 const subtle = globalThis.crypto?.subtle;
 
@@ -201,6 +207,17 @@ export async function verifyReceipt(doc: JsonObject, publicKeyBase64url: string,
 
   if (!doc.payload || !doc.signature?.value || !doc.signature?.algorithm) {
     return { valid: false, checks, error: 'Missing payload or signature' };
+  }
+  // Match the Node verifier's closed EP-RECEIPT-v1 algorithm registry. Web
+  // Crypto is explicitly invoked as Ed25519 below, but accepting a conflicting
+  // caller-controlled label would still let downstream code interpret one
+  // verified object under two different algorithms.
+  if (!isReceiptV1Algorithm(doc.signature.algorithm)) {
+    return {
+      valid: false,
+      checks,
+      error: `Unsupported signature algorithm '${doc.signature.algorithm}'; EP-RECEIPT-v1 requires ${RECEIPT_V1_SIGNATURE_ALGORITHM}`,
+    };
   }
   if (!isStrictCanonicalJson(doc.payload)) {
     return {
