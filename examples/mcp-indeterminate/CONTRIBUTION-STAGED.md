@@ -1,24 +1,22 @@
 # CONTRIBUTION, STAGED AND UNSENT
 
-Nothing in this file has been sent, posted, filed, or opened as a pull request
-or discussion anywhere. Sending it is the founder's call. It is checked in
-here so the text and the code it points at are reviewed together.
+**REWRITTEN 2026-09-02 after the refuters.** The original text offered an
+outcome vocabulary. SEP-2848 already has one. This is now a contribution
+*into* SEP-2848, offering the two things that survived: the derived replay
+unit its own Limitations section says is missing, and the executed
+demonstration. Read `PRIOR-WORK.md` first. Do not send the version below
+without re-reading it; every quote in `PRIOR-WORK.md` and `README.md` was
+verified on 2026-09-02 and goes stale when those files move.
 
-**Intended venue:** the Model Context Protocol community, as a comment on the
-existing "Tool result shape" work under Improved Primitives in
-`docs/development/roadmap.mdx` (Core Primitives WG, described there as
-forming), and on the Tasks extension SEP-2663.
+**Intended venue, corrected:** the SEP-2848 pull request thread
+(`modelcontextprotocol/modelcontextprotocol` PR 2848), not the roadmap and
+not the Tasks extension in isolation.
 
-**Explicitly not:** a competing SEP, a schema pull request, or a proposal to
-change `CallToolResult`. Ownership of MCP stays where it is. This is a
-vocabulary carried in `_meta` plus a runnable pair and a vector pack, offered
-for the maintainers to take, reshape, or decline.
-
-**Before this is sent, re-read:** the schema and SEP-2663 digests in
-`README.md` section 1 are from 2026-09-02. If they have moved, the quotes go
-stale and the note has to be re-derived.
+**Explicitly not:** a competing SEP, a schema pull request, or a claim that
+the outcome vocabulary is ours.
 
 ---
+
 
 ## Draft text
 

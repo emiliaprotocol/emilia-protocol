@@ -15,10 +15,15 @@ node --test examples/mcp-indeterminate/run.test.mjs       # 13 tests
 node examples/mcp-indeterminate/generate-vectors.mjs --check
 ```
 
-Nothing here is a proposed change to MCP's schema. Nothing here is a SEP. It
-is a vocabulary carried in `_meta`, a field MCP already defines, published so
-that the outcome axis that every agent-gate draft already carries has one
-wire home instead of one per draft.
+Nothing here is a proposed change to MCP's schema. Nothing here is a SEP.
+
+**Read `PRIOR-WORK.md` before this file.** SEP-2848 (open in the MCP
+repository since 2026-06-03) already defines the outcome values
+`outcome-unknown` and `execution-error`, so the outcome half of this example
+is superseded and is retained only as a mapping onto that SEP. What remains
+ours to offer is the derived replay unit, which SEP-2848's own Limitations
+section says MCP lacks and that it would adopt if one existed, and the
+executed demonstration below.
 
 ---
 
