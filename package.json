@@ -137,6 +137,7 @@
     "conformance:aeb-crossing-lifecycle": "node --test conformance/composition/aeb-crossing-lifecycle-v1/run.node-test.mjs && node conformance/composition/aeb-crossing-lifecycle-v1/run.mjs",
     "conformance:grace-consequence-boundary": "node --test conformance/composition/grace-consequence-boundary-v1/run.node-test.mjs && node conformance/composition/grace-consequence-boundary-v1/run.mjs",
     "caid:conformance": "node caid/conformance/run.mjs",
+    "caid:resolution": "node --test caid/resolution/resolve-before-approve.test.mjs && node caid/resolution/run-vectors.mjs && node caid/resolution/mutation-check.mjs",
     "m2m:conformance": "node conformance/run-model-to-matter.mjs",
     "memory-projection:conformance": "node interop/apertomemory-emilia/generate-memory-projection-v1.mjs --check && node --test packages/verify/memory-projection.test.js interop/apertomemory-emilia/verify.test.mjs packages/gate/trusted-context.test.js conformance/trusted-context-pack.test.js",
     "mobile:conformance": "node mobile/conformance/run.mjs",

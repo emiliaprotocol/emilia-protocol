@@ -133,6 +133,11 @@ export default defineConfig({
       'conformance/composition/ccs-draft08-v13-crossing-lab-v1/run.test.mjs',
       'conformance/composition/cedulon-aeb-crossing-v0.1/run.test.mjs',
       'conformance/composition/pinto-cbap1-aeb-v0.1/run.test.mjs',
+      // The resolve-before-approve suite is a portable node:test program so
+      // the reference-resolution guards can be re-run next to the CAID
+      // reference implementation without adopting Vitest. CI executes it
+      // through `npm run caid:resolution`.
+      'caid/resolution/*.test.mjs',
       // The public forgery corpus deliberately uses node:test so the pinned
       // bounty command runs without Vitest. CI executes it explicitly below.
       'tests/verifier-forgery/**',

@@ -1,0 +1,524 @@
+{
+ "suite_note": "Hostile vectors for the resolve-before-approve reference profile. Each vector is hermetic: resolvers are table lookups over a declared world, so no vector touches the filesystem or the network. The corpus tests reference resolution and dispatch-time re-resolution ONLY. It establishes nothing about identity, authority, authorization, or execution; a divergence refusal says the resolved target changed, never who was at fault.",
+ "profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+ "version": 1,
+ "digest_note": "identity_digest is sha256 over the UTF-8 preimage \"EP-RESOLVE-BEFORE-APPROVE-v1\\n<kind>\\n<identity>\". Every expected digest below is a frozen literal, recomputable by hand: printf 'EP-RESOLVE-BEFORE-APPROVE-v1\\nbeneficiary-label\\nACCT-1111' | shasum -a 256.",
+ "world_note": "world maps a reference kind to reference -> resolver outcome. A string is a stable resolved identity. An array is an unstable resolver returning its entries on successive calls. The literal \"__throw__\" is a resolver that throws. A reference absent from the table resolves as a failure.",
+ "vectors": [
+  {
+   "id": "capture-happy-three-kinds",
+   "kind": "capture",
+   "description": "All three reference types resolve; the resolved identity digests are frozen into the observed action before the Action Object is formed.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [
+     {"field": "target_path", "kind": "filesystem-path"},
+     {"field": "callback_url", "kind": "url-origin"},
+     {"field": "beneficiary_label", "kind": "beneficiary-label"}
+    ]
+   },
+   "world": {
+    "filesystem-path": {"/srv/export/report.csv": "/srv/export/report.csv#66306:914431"},
+    "url-origin": {"https://pay.example.test/hook": "https://pay.example.test"},
+    "beneficiary-label": {"Acme Supplies": "ACCT-1111"}
+   },
+   "input": {
+    "arguments": {
+     "target_path": "/srv/export/report.csv",
+     "callback_url": "https://pay.example.test/hook",
+     "beneficiary_label": "Acme Supplies",
+     "amount": "250.00"
+    }
+   },
+   "expect": {
+    "ok": true,
+    "observed": {
+     "amount": "250.00",
+     "beneficiary_label": "Acme Supplies",
+     "callback_url": "https://pay.example.test/hook",
+     "resolved_references": {
+      "beneficiary_label": {"identity_digest": "sha256:3839990f1d77c8ebe52f4fc425d308ace46471c3350772d456e33d766c8a71ca", "kind": "beneficiary-label"},
+      "callback_url": {"identity_digest": "sha256:e8ec42e93476859a3361fbefdcb24410066fcb661494b144d1ac78aa634a98bd", "kind": "url-origin"},
+      "target_path": {"identity_digest": "sha256:46cd680f5fcbc8e9aa4476fd8bbad7861c2ede2a1b244e48b49678c6a4c4fbf0", "kind": "filesystem-path"}
+     },
+     "target_path": "/srv/export/report.csv"
+    }
+   }
+  },
+  {
+   "id": "capture-arguments-reordered-is-identical",
+   "kind": "capture",
+   "description": "Reordering the supplied arguments is not an attack and MUST be a no-op: same observed action, same digests, therefore same CAID.",
+   "same_observed_as": "capture-happy-three-kinds",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [
+     {"field": "target_path", "kind": "filesystem-path"},
+     {"field": "callback_url", "kind": "url-origin"},
+     {"field": "beneficiary_label", "kind": "beneficiary-label"}
+    ]
+   },
+   "world": {
+    "filesystem-path": {"/srv/export/report.csv": "/srv/export/report.csv#66306:914431"},
+    "url-origin": {"https://pay.example.test/hook": "https://pay.example.test"},
+    "beneficiary-label": {"Acme Supplies": "ACCT-1111"}
+   },
+   "input": {
+    "arguments": {
+     "amount": "250.00",
+     "beneficiary_label": "Acme Supplies",
+     "target_path": "/srv/export/report.csv",
+     "callback_url": "https://pay.example.test/hook"
+    }
+   },
+   "expect": {"ok": true}
+  },
+  {
+   "id": "capture-spec-order-does-not-change-observed",
+   "kind": "capture",
+   "description": "Reordering the reference declarations in the spec MUST NOT change the observed action; the binding is keyed by field name, not by position.",
+   "same_observed_as": "capture-happy-three-kinds",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [
+     {"field": "beneficiary_label", "kind": "beneficiary-label"},
+     {"field": "target_path", "kind": "filesystem-path"},
+     {"field": "callback_url", "kind": "url-origin"}
+    ]
+   },
+   "world": {
+    "filesystem-path": {"/srv/export/report.csv": "/srv/export/report.csv#66306:914431"},
+    "url-origin": {"https://pay.example.test/hook": "https://pay.example.test"},
+    "beneficiary-label": {"Acme Supplies": "ACCT-1111"}
+   },
+   "input": {
+    "arguments": {
+     "target_path": "/srv/export/report.csv",
+     "callback_url": "https://pay.example.test/hook",
+     "beneficiary_label": "Acme Supplies",
+     "amount": "250.00"
+    }
+   },
+   "expect": {"ok": true}
+  },
+  {
+   "id": "capture-cross-kind-identity-is-domain-separated",
+   "kind": "capture",
+   "description": "Two reference fields of different kinds whose resolvers return the SAME identity string MUST NOT produce the same identity digest. Without domain separation a beneficiary directory could be made to speak for a filesystem target.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [
+     {"field": "target_path", "kind": "filesystem-path"},
+     {"field": "beneficiary_label", "kind": "beneficiary-label"}
+    ]
+   },
+   "world": {
+    "filesystem-path": {"/x": "COLLIDE"},
+    "beneficiary-label": {"L": "COLLIDE"}
+   },
+   "input": {"arguments": {"target_path": "/x", "beneficiary_label": "L"}},
+   "expect": {"ok": true, "distinct_identity_digests": ["target_path", "beneficiary_label"]}
+  },
+  {
+   "id": "capture-missing-argument",
+   "kind": "capture",
+   "description": "A declared reference argument is absent. Refuse with a reason; never resolve a field that was not supplied.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "target_path", "kind": "filesystem-path"}]
+   },
+   "world": {"filesystem-path": {"/srv/export/report.csv": "/srv/export/report.csv#66306:914431"}},
+   "input": {"arguments": {"amount": "250.00"}},
+   "expect": {"ok": false, "refusals": ["missing_reference_field:target_path"]}
+  },
+  {
+   "id": "capture-mistyped-argument",
+   "kind": "capture",
+   "description": "A reference argument that is not a non-empty string cannot be resolved. Refuse rather than coerce.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "target_path", "kind": "filesystem-path"}]
+   },
+   "world": {"filesystem-path": {}},
+   "input": {"arguments": {"target_path": 17}},
+   "expect": {"ok": false, "refusals": ["mistyped_reference_field:target_path"]}
+  },
+  {
+   "id": "capture-empty-reference-argument",
+   "kind": "capture",
+   "description": "An empty string is not a reference.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "target_path", "kind": "filesystem-path"}]
+   },
+   "world": {"filesystem-path": {}},
+   "input": {"arguments": {"target_path": ""}},
+   "expect": {"ok": false, "refusals": ["mistyped_reference_field:target_path"]}
+  },
+  {
+   "id": "capture-resolution-fails",
+   "kind": "capture",
+   "description": "Resolution itself fails (the reference names nothing the resolver can resolve). The failure is a stated refusal, not an approval of the unresolved reference.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "target_path", "kind": "filesystem-path"}]
+   },
+   "world": {"filesystem-path": {}},
+   "input": {"arguments": {"target_path": "/srv/export/missing.csv"}},
+   "expect": {"ok": false, "refusals": ["resolution_failed:target_path"]}
+  },
+  {
+   "id": "capture-resolver-throws",
+   "kind": "capture",
+   "description": "A resolver that throws must surface as a refusal with a reason, never as an exception escaping the profile.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "target_path", "kind": "filesystem-path"}]
+   },
+   "world": {"filesystem-path": {"/srv/export/report.csv": "__throw__"}},
+   "input": {"arguments": {"target_path": "/srv/export/report.csv"}},
+   "expect": {"ok": false, "refusals": ["resolution_failed:target_path"]}
+  },
+  {
+   "id": "capture-resolution-unstable",
+   "kind": "capture",
+   "description": "The reference re-resolves differently within the capture itself. Freezing either answer would freeze a coin flip, so refuse.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "target_path", "kind": "filesystem-path"}]
+   },
+   "world": {"filesystem-path": {"/srv/export/report.csv": ["/a#1:1", "/b#1:2"]}},
+   "input": {"arguments": {"target_path": "/srv/export/report.csv"}},
+   "expect": {"ok": false, "refusals": ["resolution_unstable:target_path"]}
+  },
+  {
+   "id": "capture-preexisting-binding-refused",
+   "kind": "capture",
+   "description": "Caller-supplied arguments already carrying a resolution binding would let the caller state its own resolved identity. Refuse.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "target_path", "kind": "filesystem-path"}]
+   },
+   "world": {"filesystem-path": {"/srv/export/report.csv": "/srv/export/report.csv#66306:914431"}},
+   "input": {
+    "arguments": {
+     "target_path": "/srv/export/report.csv",
+     "resolved_references": {"target_path": {"kind": "filesystem-path", "identity_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"}}
+    }
+   },
+   "expect": {"ok": false, "refusals": ["resolution_binding_preexisting"]}
+  },
+  {
+   "id": "capture-invalid-spec-unknown-kind",
+   "kind": "capture",
+   "description": "An unregistered reference kind cannot be resolved under this profile.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "target_path", "kind": "dns-name"}]
+   },
+   "world": {},
+   "input": {"arguments": {"target_path": "/srv/export/report.csv"}},
+   "expect": {"ok": false, "refusals": ["invalid_resolution_spec"]}
+  },
+  {
+   "id": "capture-invalid-spec-duplicate-field",
+   "kind": "capture",
+   "description": "One field cannot carry two resolved identities.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [
+     {"field": "target_path", "kind": "filesystem-path"},
+     {"field": "target_path", "kind": "url-origin"}
+    ]
+   },
+   "world": {},
+   "input": {"arguments": {"target_path": "/srv/export/report.csv"}},
+   "expect": {"ok": false, "refusals": ["invalid_resolution_spec"]}
+  },
+  {
+   "id": "capture-invalid-spec-binds-the-binding-field",
+   "kind": "capture",
+   "description": "The binding field itself is not a reference field.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "resolved_references", "kind": "filesystem-path"}]
+   },
+   "world": {},
+   "input": {"arguments": {"resolved_references": "/x"}},
+   "expect": {"ok": false, "refusals": ["invalid_resolution_spec"]}
+  },
+  {
+   "id": "capture-resolver-missing-for-declared-kind",
+   "kind": "capture",
+   "description": "No resolver was supplied for a declared kind. Fail closed instead of skipping the field.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "callback_url", "kind": "url-origin"}]
+   },
+   "world": {},
+   "omit_resolvers": ["url-origin"],
+   "input": {"arguments": {"callback_url": "https://pay.example.test/hook"}},
+   "expect": {"ok": false, "refusals": ["resolver_missing:url-origin"]}
+  },
+  {
+   "id": "capture-refusals-are-in-spec-order",
+   "kind": "capture",
+   "description": "Two fields fail for different reasons; the refusal list is deterministic in spec declaration order.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [
+     {"field": "target_path", "kind": "filesystem-path"},
+     {"field": "beneficiary_label", "kind": "beneficiary-label"}
+    ]
+   },
+   "world": {"filesystem-path": {}, "beneficiary-label": {}},
+   "input": {"arguments": {"target_path": "/gone", "beneficiary_label": 5}},
+   "expect": {"ok": false, "refusals": ["resolution_failed:target_path", "mistyped_reference_field:beneficiary_label"]}
+  },
+  {
+   "id": "dispatch-unchanged-world-accepts",
+   "kind": "capture-then-dispatch",
+   "description": "Nothing re-resolved differently between approval and dispatch: the executor proceeds.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [
+     {"field": "target_path", "kind": "filesystem-path"},
+     {"field": "callback_url", "kind": "url-origin"},
+     {"field": "beneficiary_label", "kind": "beneficiary-label"}
+    ]
+   },
+   "world": {
+    "filesystem-path": {"/srv/export/report.csv": "/srv/export/report.csv#66306:914431"},
+    "url-origin": {"https://pay.example.test/hook": "https://pay.example.test"},
+    "beneficiary-label": {"Acme Supplies": "ACCT-1111"}
+   },
+   "world_at_dispatch": {
+    "filesystem-path": {"/srv/export/report.csv": "/srv/export/report.csv#66306:914431"},
+    "url-origin": {"https://pay.example.test/hook": "https://pay.example.test"},
+    "beneficiary-label": {"Acme Supplies": "ACCT-1111"}
+   },
+   "input": {
+    "arguments": {
+     "target_path": "/srv/export/report.csv",
+     "callback_url": "https://pay.example.test/hook",
+     "beneficiary_label": "Acme Supplies"
+    }
+   },
+   "expect": {"capture_ok": true, "dispatch": {"ok": true}}
+  },
+  {
+   "id": "dispatch-symlink-swapped-between-approval-and-dispatch",
+   "kind": "capture-then-dispatch",
+   "description": "The approved path is a symlink that is re-pointed at a different file after approval. The path argument is byte-identical, so the CAID over the raw arguments is unchanged; only the frozen resolved identity catches it.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "target_path", "kind": "filesystem-path"}]
+   },
+   "world": {"filesystem-path": {"/srv/export/current.csv": "/srv/export/2026-09-approved.csv#66306:914431"}},
+   "world_at_dispatch": {"filesystem-path": {"/srv/export/current.csv": "/srv/secrets/payroll.csv#66306:551002"}},
+   "input": {"arguments": {"target_path": "/srv/export/current.csv"}},
+   "expect": {"capture_ok": true, "dispatch": {"ok": false, "refusals": ["resolved_reference_diverged:target_path"]}}
+  },
+  {
+   "id": "dispatch-url-redirects-to-a-different-origin",
+   "kind": "capture-then-dispatch",
+   "description": "The approved URL now redirects to a different origin. The literal URL string never changed.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "callback_url", "kind": "url-origin"}]
+   },
+   "world": {"url-origin": {"https://pay.example.test/hook": "https://pay.example.test"}},
+   "world_at_dispatch": {"url-origin": {"https://pay.example.test/hook": "https://collector.attacker.test"}},
+   "input": {"arguments": {"callback_url": "https://pay.example.test/hook"}},
+   "expect": {"capture_ok": true, "dispatch": {"ok": false, "refusals": ["resolved_reference_diverged:callback_url"]}}
+  },
+  {
+   "id": "dispatch-beneficiary-label-remapped-to-another-account",
+   "kind": "capture-then-dispatch",
+   "description": "The human approved a payee LABEL. The directory now maps that label to a different account identifier.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "beneficiary_label", "kind": "beneficiary-label"}]
+   },
+   "world": {"beneficiary-label": {"Acme Supplies": "ACCT-1111"}},
+   "world_at_dispatch": {"beneficiary-label": {"Acme Supplies": "ACCT-9999"}},
+   "input": {"arguments": {"beneficiary_label": "Acme Supplies", "amount": "250.00"}},
+   "expect": {"capture_ok": true, "dispatch": {"ok": false, "refusals": ["resolved_reference_diverged:beneficiary_label"]}}
+  },
+  {
+   "id": "dispatch-divergences-reported-in-spec-order",
+   "kind": "capture-then-dispatch",
+   "description": "Two references diverge at once; both are reported, in spec declaration order.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [
+     {"field": "target_path", "kind": "filesystem-path"},
+     {"field": "beneficiary_label", "kind": "beneficiary-label"}
+    ]
+   },
+   "world": {
+    "filesystem-path": {"/srv/export/current.csv": "/a#1:1"},
+    "beneficiary-label": {"Acme Supplies": "ACCT-1111"}
+   },
+   "world_at_dispatch": {
+    "filesystem-path": {"/srv/export/current.csv": "/b#1:2"},
+    "beneficiary-label": {"Acme Supplies": "ACCT-9999"}
+   },
+   "input": {"arguments": {"target_path": "/srv/export/current.csv", "beneficiary_label": "Acme Supplies"}},
+   "expect": {
+    "capture_ok": true,
+    "dispatch": {"ok": false, "refusals": ["resolved_reference_diverged:target_path", "resolved_reference_diverged:beneficiary_label"]}
+   }
+  },
+  {
+   "id": "dispatch-resolution-fails-at-dispatch",
+   "kind": "capture-then-dispatch",
+   "description": "The reference resolved at approval and cannot be resolved at dispatch. Absence of an answer is not agreement.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "target_path", "kind": "filesystem-path"}]
+   },
+   "world": {"filesystem-path": {"/srv/export/current.csv": "/a#1:1"}},
+   "world_at_dispatch": {"filesystem-path": {}},
+   "input": {"arguments": {"target_path": "/srv/export/current.csv"}},
+   "expect": {"capture_ok": true, "dispatch": {"ok": false, "refusals": ["resolution_failed:target_path"]}}
+  },
+  {
+   "id": "dispatch-arguments-reordered-accepts",
+   "kind": "dispatch",
+   "description": "Re-serializing the observed action with different key order is not divergence.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "beneficiary_label", "kind": "beneficiary-label"}]
+   },
+   "world": {"beneficiary-label": {"Acme Supplies": "ACCT-1111"}},
+   "input": {
+    "observed": {
+     "resolved_references": {"beneficiary_label": {"kind": "beneficiary-label", "identity_digest": "PLACEHOLDER:beneficiary-label:ACCT-1111"}},
+     "amount": "250.00",
+     "beneficiary_label": "Acme Supplies"
+    }
+   },
+   "expect": {"ok": true}
+  },
+  {
+   "id": "dispatch-binding-absent",
+   "kind": "dispatch",
+   "description": "An observed action with no resolution binding was never resolved before approval. Refuse; do not resolve it now and proceed.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "beneficiary_label", "kind": "beneficiary-label"}]
+   },
+   "world": {"beneficiary-label": {"Acme Supplies": "ACCT-1111"}},
+   "input": {"observed": {"beneficiary_label": "Acme Supplies"}},
+   "expect": {"ok": false, "refusals": ["resolution_binding_absent"]}
+  },
+  {
+   "id": "dispatch-binding-field-dropped",
+   "kind": "dispatch",
+   "description": "A bound field was removed from the binding. Refuse rather than silently checking fewer references than the spec declares.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [
+     {"field": "beneficiary_label", "kind": "beneficiary-label"},
+     {"field": "target_path", "kind": "filesystem-path"}
+    ]
+   },
+   "world": {
+    "beneficiary-label": {"Acme Supplies": "ACCT-1111"},
+    "filesystem-path": {"/x": "/x#1:1"}
+   },
+   "input": {
+    "observed": {
+     "beneficiary_label": "Acme Supplies",
+     "target_path": "/x",
+     "resolved_references": {"beneficiary_label": {"kind": "beneficiary-label", "identity_digest": "PLACEHOLDER:beneficiary-label:ACCT-1111"}}
+    }
+   },
+   "expect": {"ok": false, "refusals": ["resolution_binding_mismatch"]}
+  },
+  {
+   "id": "dispatch-binding-extra-field",
+   "kind": "dispatch",
+   "description": "A binding entry the spec does not declare. Refuse.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "beneficiary_label", "kind": "beneficiary-label"}]
+   },
+   "world": {"beneficiary-label": {"Acme Supplies": "ACCT-1111"}},
+   "input": {
+    "observed": {
+     "beneficiary_label": "Acme Supplies",
+     "resolved_references": {
+      "beneficiary_label": {"kind": "beneficiary-label", "identity_digest": "PLACEHOLDER:beneficiary-label:ACCT-1111"},
+      "shadow_field": {"kind": "filesystem-path", "identity_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"}
+     }
+    }
+   },
+   "expect": {"ok": false, "refusals": ["resolution_binding_mismatch"]}
+  },
+  {
+   "id": "dispatch-binding-kind-swapped",
+   "kind": "dispatch",
+   "description": "The binding entry claims a different reference kind than the spec declares, which would re-resolve the field under the wrong resolver.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "beneficiary_label", "kind": "beneficiary-label"}]
+   },
+   "world": {"beneficiary-label": {"Acme Supplies": "ACCT-1111"}},
+   "input": {
+    "observed": {
+     "beneficiary_label": "Acme Supplies",
+     "resolved_references": {"beneficiary_label": {"kind": "url-origin", "identity_digest": "PLACEHOLDER:beneficiary-label:ACCT-1111"}}
+    }
+   },
+   "expect": {"ok": false, "refusals": ["resolution_binding_mismatch:beneficiary_label"]}
+  },
+  {
+   "id": "dispatch-binding-digest-malformed",
+   "kind": "dispatch",
+   "description": "A binding digest that is not sha256:<64 lowercase hex> cannot be compared. Refuse.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "beneficiary_label", "kind": "beneficiary-label"}]
+   },
+   "world": {"beneficiary-label": {"Acme Supplies": "ACCT-1111"}},
+   "input": {
+    "observed": {
+     "beneficiary_label": "Acme Supplies",
+     "resolved_references": {"beneficiary_label": {"kind": "beneficiary-label", "identity_digest": "sha256:NOTHEX"}}
+    }
+   },
+   "expect": {"ok": false, "refusals": ["resolution_binding_mismatch:beneficiary_label"]}
+  },
+  {
+   "id": "dispatch-reference-argument-removed",
+   "kind": "dispatch",
+   "description": "The reference argument itself was removed from the observed action after approval.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "beneficiary_label", "kind": "beneficiary-label"}]
+   },
+   "world": {"beneficiary-label": {"Acme Supplies": "ACCT-1111"}},
+   "input": {
+    "observed": {
+     "amount": "250.00",
+     "resolved_references": {"beneficiary_label": {"kind": "beneficiary-label", "identity_digest": "PLACEHOLDER:beneficiary-label:ACCT-1111"}}
+    }
+   },
+   "expect": {"ok": false, "refusals": ["missing_reference_field:beneficiary_label"]}
+  },
+  {
+   "id": "dispatch-observed-not-an-object",
+   "kind": "dispatch",
+   "description": "Junk in place of the observed action fails closed with a reason.",
+   "spec": {
+    "@profile": "EP-RESOLVE-BEFORE-APPROVE-v1",
+    "references": [{"field": "beneficiary_label", "kind": "beneficiary-label"}]
+   },
+   "world": {"beneficiary-label": {"Acme Supplies": "ACCT-1111"}},
+   "input": {"observed": "not-an-object"},
+   "expect": {"ok": false, "refusals": ["invalid_arguments"]}
+  }
+ ]
+}
