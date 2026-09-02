@@ -43,16 +43,28 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $fn$
 BEGIN
   PERFORM ep_aeb_private.assert_tenant_principal(p_tenant_id, FALSE);
-  RETURN QUERY UPDATE public.ep_aeb_consumption_operations
-    SET state = 'RELEASED_NOT_ENTERED',
-        owner_token = NULL,
-        released_at = pg_catalog.transaction_timestamp()
-    WHERE tenant_id = p_tenant_id
-      AND relying_party_id = p_relying_party_id
-      AND ep_aeb_consumption_operations.operation_key = p_operation_key
-      AND state = 'RESERVED'
-      AND owner_token = p_owner_token
-    RETURNING ep_aeb_consumption_operations.operation_key;
+  RETURN QUERY
+    WITH transitioned AS (
+      UPDATE public.ep_aeb_consumption_operations
+        SET state = 'RELEASED_NOT_ENTERED',
+            owner_token = NULL,
+            released_at = pg_catalog.transaction_timestamp()
+        WHERE tenant_id = p_tenant_id
+          AND relying_party_id = p_relying_party_id
+          AND ep_aeb_consumption_operations.operation_key = p_operation_key
+          AND state = 'RESERVED'
+          AND owner_token = p_owner_token
+        RETURNING ep_aeb_consumption_operations.operation_key
+    )
+    SELECT transitioned.operation_key FROM transitioned
+    UNION ALL
+    SELECT existing.operation_key
+      FROM public.ep_aeb_consumption_operations AS existing
+      WHERE NOT EXISTS (SELECT 1 FROM transitioned)
+        AND existing.tenant_id = p_tenant_id
+        AND existing.relying_party_id = p_relying_party_id
+        AND existing.operation_key = p_operation_key
+        AND existing.state = 'RELEASED_NOT_ENTERED';
 END
 $fn$;
 

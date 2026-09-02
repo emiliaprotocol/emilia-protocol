@@ -95,11 +95,11 @@
     },
     {
       "path": "conformance/refinement/adapters/grace-curtailment.mjs",
-      "sha256": "acac8a1ebed2e7717d6d6b7fd78f09926d0578221803fad69cae1f473d5aa9d4"
+      "sha256": "1f6e9ee46523842c35b640f12aea288804b0103d59c641137d2249637777e11e"
     },
     {
       "path": "conformance/refinement/adapters/grace-curtailment.mts",
-      "sha256": "6b4d616ff81e27fce85b8a0be1b55f0728412f582c1f97c4b978116a95e06c2e"
+      "sha256": "c54a26cc2f207ae4b87a7e58e7dfc06f6af0b97851384d5a1b4b64a74a0d42f3"
     },
     {
       "path": "conformance/refinement/adapters/index.mjs",
@@ -427,11 +427,11 @@
     },
     {
       "path": "lib/grace/curtailment.js",
-      "sha256": "5ee2b7c3b1779f762792d4b11c8dcfa468b0ce77da8c623505de563cf00e3da8"
+      "sha256": "6dabb9faa1654b7e81aaa04d3e22064f8777a76350c0bccf51802ec18fe4c820"
     },
     {
       "path": "lib/grace/curtailment.ts",
-      "sha256": "9b2d63e77426094acdf668dd3b8bd8e1e2ff5af80a98c7f8e258d6c5a70b452e"
+      "sha256": "4a9f523869167db61a7c5960933a2049564f0a9009ef01c97b931b42209eecf2"
     },
     {
       "path": "lib/grace/forecast-evidence.js",
@@ -443,19 +443,19 @@
     },
     {
       "path": "lib/grace/mobile-grid.js",
-      "sha256": "01d350e33a7ab8200d73b718f2b82a75533134f5fb23c5c7f2f401e3c90836a5"
+      "sha256": "2b7299f3c1c2568ce96b31f322c645620c12b453b868dfe773d1b1b99cf7f639"
     },
     {
       "path": "lib/grace/mobile-grid.ts",
-      "sha256": "a4d0adcc0c74f8f2d418da179f27f777756413ed71819ad8f8067dee322851b7"
+      "sha256": "f5c90ebe2e4c59aeb6a378b843026bde137274069bb95085b9d2a58a053f713d"
     },
     {
       "path": "lib/grace/reference-adapters.js",
-      "sha256": "79ec25893974fedc6026642ac58de21086f39e113a84b084a877f80e6d725645"
+      "sha256": "49e87d9897a4eda0cee61940ff0de96e7e84b7a2097fd2fa182d63ed71318c26"
     },
     {
       "path": "lib/grace/reference-adapters.ts",
-      "sha256": "02d641ca65f3543dffca2021af419ccd97a4fac6724c9493366586628d391293"
+      "sha256": "d0d2f674b972efb7a6c01ecb5a0b4ad03f8b90971cf02b87dfb1150a0c507ae4"
     },
     {
       "path": "lib/handshake/binding.js",
@@ -575,7 +575,7 @@
     },
     {
       "path": "packages/gate/dist/aeb-consumption-store.js",
-      "sha256": "b3109b96a5dee95999b330e6a974d6a1740a6427bfc56a5a7b9c4d10e69099e4"
+      "sha256": "c68c892245294e075af7c401d285a510f7168f921925eeee058ed745dee7eeb0"
     },
     {
       "path": "packages/gate/dist/aec-execution.js",
@@ -859,7 +859,7 @@
     },
     {
       "path": "packages/gate/src/aeb-consumption-store.ts",
-      "sha256": "ee3998d09930b5ce610ec733c0333b21c3b0203433a3b87a07fa1d49da24b1d6"
+      "sha256": "077c52aae193aed6467a302b2098d2be628ff6e08b00ba9fc89bd0bc8f1e803c"
     },
     {
       "path": "packages/gate/src/aec-execution.ts",
@@ -1083,7 +1083,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-mcgraw-delegation-adapter.js",
-      "sha256": "ae3a10fd676fbd2f64ed1085de432167dd1eb2d90f4d5decbae5475739e85c54"
+      "sha256": "2bdabd215c6f2d0d1d16c3435b138125dfe33a381386249cfd19b92f7a884fd5"
     },
     {
       "path": "packages/verify/dist/aeb-native-adapters.js",
@@ -1095,7 +1095,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-oauth-transaction-challenge-adapter.js",
-      "sha256": "fc42257cb8aad944089ceb6ecd4d67f3f07b040723a9faff8ca3d8e5d7caa068"
+      "sha256": "a3d3a193214a0e310eebc6fac38af3d6bff5915feaeb9db2151b665d6ddc6c85"
     },
     {
       "path": "packages/verify/dist/aeb-psea-adapter.js",
@@ -1195,7 +1195,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "a365d26932aad41a9830a86652e9fe87f263c43a74cb1fd228c6c8ff52c98655"
+      "sha256": "9d129fa6be776e209d674b91ebab2bf1a94a8d751e1f9c9f4628f1fa2d2ac2f5"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1231,7 +1231,7 @@
     },
     {
       "path": "packages/verify/dist/pq-signature-agility.js",
-      "sha256": "5cfdfb256e5682ee20b3f6a9f1d52c616dcc6f2f4bd4b11696d31032cae04018"
+      "sha256": "bc4184a507c1e403e32e9534525bac3293296150ff827b0469037803618c96f8"
     },
     {
       "path": "packages/verify/dist/provenance.js",
@@ -1243,7 +1243,7 @@
     },
     {
       "path": "packages/verify/dist/receipt-cose-encoding.js",
-      "sha256": "1ab1437f26d16a48623cc04d6effa961d8a3dafd13b3db3f5ae2ad36e9f1e0f9"
+      "sha256": "16f3fa4a6443d432990d08242b36807d269de209d701a4a2d01d1351761f5703"
     },
     {
       "path": "packages/verify/dist/receipt-hybrid.js",
@@ -1343,7 +1343,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "7b188727aaf526a9bff1f4677c2037b60fda1755d83e29e3b64d2972b246b2b4"
+      "sha256": "7f6eda3cf0359120f1a7ae6eaaa810090418e6e36e18307c4080a93a6eddffad"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

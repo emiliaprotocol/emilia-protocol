@@ -246,13 +246,25 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $fn$
 BEGIN
   PERFORM ep_aeb_private.assert_tenant_principal(p_tenant_id, FALSE);
-  RETURN QUERY UPDATE public.${AEB_CONSUMPTION_OPERATION_TABLE}
-    SET state = 'RELEASED_NOT_ENTERED', owner_token = NULL,
-        released_at = pg_catalog.transaction_timestamp()
-    WHERE tenant_id = p_tenant_id AND relying_party_id = p_relying_party_id
-      AND ${AEB_CONSUMPTION_OPERATION_TABLE}.operation_key = p_operation_key
-      AND state = 'RESERVED' AND owner_token = p_owner_token
-    RETURNING ${AEB_CONSUMPTION_OPERATION_TABLE}.operation_key;
+  RETURN QUERY
+    WITH transitioned AS (
+      UPDATE public.${AEB_CONSUMPTION_OPERATION_TABLE}
+        SET state = 'RELEASED_NOT_ENTERED', owner_token = NULL,
+            released_at = pg_catalog.transaction_timestamp()
+        WHERE tenant_id = p_tenant_id AND relying_party_id = p_relying_party_id
+          AND ${AEB_CONSUMPTION_OPERATION_TABLE}.operation_key = p_operation_key
+          AND state = 'RESERVED' AND owner_token = p_owner_token
+        RETURNING ${AEB_CONSUMPTION_OPERATION_TABLE}.operation_key
+    )
+    SELECT transitioned.operation_key FROM transitioned
+    UNION ALL
+    SELECT existing.operation_key
+      FROM public.${AEB_CONSUMPTION_OPERATION_TABLE} AS existing
+      WHERE NOT EXISTS (SELECT 1 FROM transitioned)
+        AND existing.tenant_id = p_tenant_id
+        AND existing.relying_party_id = p_relying_party_id
+        AND existing.operation_key = p_operation_key
+        AND existing.state = 'RELEASED_NOT_ENTERED';
 END
 $fn$;
 ALTER FUNCTION ep_aeb_private.assert_tenant_principal(TEXT, BOOLEAN)
@@ -342,6 +354,8 @@ export interface PostgresAebDurableConsumptionStore extends AebDurableConsumptio
    * Mark an owned RESERVED row permanently RELEASED_NOT_ENTERED after an
    * authoritative serialized non-entry. The row is never deleted, so the same
    * operation key is unreservable forever and its native replay fences survive.
+   * A retry converges to true when the exact row is already terminal, covering
+   * a committed transaction whose acknowledgement was lost.
    */
   releaseTerminal(key: string): Promise<boolean>;
   /**

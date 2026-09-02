@@ -395,11 +395,16 @@ describe('verifyReceiptSignature — one encoding per signature', () => {
   }
 
   it('accepts each single-alphabet spelling but refuses a mixed one', () => {
-    // Retry until the signature actually contains both '+/'-class characters,
-    // so the mixed spelling below is a genuinely different string.
+    // Retry until the signature contains both standard-only characters. The
+    // mixed spelling below must retain one URL-only character after a single
+    // standard character is reintroduced; otherwise an input containing only
+    // `+` is simply a valid unpadded standard-base64 spelling.
     let fixture = signedFixture();
-    for (let i = 0; i < 200 && !/\+/.test(fixture.sigStd); i += 1) fixture = signedFixture();
+    for (let i = 0; i < 200 && (!/\+/.test(fixture.sigStd) || !/\//.test(fixture.sigStd)); i += 1) {
+      fixture = signedFixture();
+    }
     expect(/\+/.test(fixture.sigStd)).toBe(true);
+    expect(/\//.test(fixture.sigStd)).toBe(true);
 
     const { hash, sigStd, pub } = fixture;
     const sigUrl = sigStd.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -408,6 +413,7 @@ describe('verifyReceiptSignature — one encoding per signature', () => {
 
     // Mixed alphabet: URL-safe body with a single standard '+' reintroduced.
     const mixed = sigUrl.replace('-', '+');
+    expect(mixed).toContain('_');
     expect(mixed).not.toBe(sigUrl);
     expect(mixed).not.toBe(sigStd);
     const r = verifyReceiptSignature(hash, mixed, pub);

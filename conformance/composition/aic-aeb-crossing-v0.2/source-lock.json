@@ -6,20 +6,20 @@
       "url": "https://www.ietf.org/archive/id/draft-wei-aic-jwt-00.txt",
       "sha256": "c103cb5d4c541c7aa30ee49e0c36d56ad3ac76f50ce73a39fd0be1109781bd3c",
       "bounded_sections": [
-        "5 AIC-JWT Token Format",
-        "9 Principal Key Binding",
-        "11 Validation Algorithm",
+        "5 Claims",
+        "9 Credential Bundle (Optional)",
+        "11 Validation Pipeline",
         "16 Compatibility with the Varwof Unified JWT Profile"
       ]
     },
     {
-      "name": "draft-wei-aic-identity-cert-00",
-      "url": "https://www.ietf.org/archive/id/draft-wei-aic-identity-cert-00.txt",
-      "sha256": "169d2f4ae37b3448e955d8a0e0fde04ef43855b93e7aa1e8e3021fb4eba73b2e",
+      "name": "draft-wei-aic-identity-cert-01",
+      "url": "https://www.ietf.org/archive/id/draft-wei-aic-identity-cert-01.txt",
+      "sha256": "dfada282a41c62baeb5bcbe57a01661d37f28baaca3de43521e1d526d04f3830",
       "bounded_sections": [
-        "5 AI Agent Identity Certificate Extension",
-        "8 Agent Authentication and Authorization",
-        "9 Security Considerations"
+        "5 Validation Procedure",
+        "8 Extensibility Framework",
+        "9 Privacy Considerations (GDPR / Right to Erasure)"
       ]
     }
   ],

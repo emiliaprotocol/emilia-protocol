@@ -91,6 +91,12 @@ describe('AEB terminal released-not-entered migration', () => {
     expect(terminalReleaseMigration).toContain(
       "SET state = 'RELEASED_NOT_ENTERED',",
     );
+    expect(terminalReleaseMigration).toContain(
+      "existing.state = 'RELEASED_NOT_ENTERED'",
+    );
+    expect(terminalReleaseMigration).toContain(
+      'WHERE NOT EXISTS (SELECT 1 FROM transitioned)',
+    );
     expect(terminalReleaseMigration).not.toMatch(
       /release_terminal_operation[\s\S]+DELETE FROM/,
     );

@@ -277,15 +277,15 @@
     "Ed25519",
     "ML-DSA-65"
   ],
-  "results_digest": "sha256:1eac98d86ccc496938ba9c7efd006b047d4bc3216ed7b651f3a8bd2630751ebf",
+  "results_digest": "sha256:4a63c9133bc93d5cc282874c0a437f1eb8e9b9557eeda3a2fa98345e098426e0",
   "source_lock": {
     "@version": "AIC-AEB-CROSSING-SOURCE-LOCK-v0.2",
     "drafts": [
       {
         "bounded_sections": [
-          "5 AIC-JWT Token Format",
-          "9 Principal Key Binding",
-          "11 Validation Algorithm",
+          "5 Claims",
+          "9 Credential Bundle (Optional)",
+          "11 Validation Pipeline",
           "16 Compatibility with the Varwof Unified JWT Profile"
         ],
         "name": "draft-wei-aic-jwt-00",
@@ -294,13 +294,13 @@
       },
       {
         "bounded_sections": [
-          "5 AI Agent Identity Certificate Extension",
-          "8 Agent Authentication and Authorization",
-          "9 Security Considerations"
+          "5 Validation Procedure",
+          "8 Extensibility Framework",
+          "9 Privacy Considerations (GDPR / Right to Erasure)"
         ],
-        "name": "draft-wei-aic-identity-cert-00",
-        "sha256": "169d2f4ae37b3448e955d8a0e0fde04ef43855b93e7aa1e8e3021fb4eba73b2e",
-        "url": "https://www.ietf.org/archive/id/draft-wei-aic-identity-cert-00.txt"
+        "name": "draft-wei-aic-identity-cert-01",
+        "sha256": "dfada282a41c62baeb5bcbe57a01661d37f28baaca3de43521e1d526d04f3830",
+        "url": "https://www.ietf.org/archive/id/draft-wei-aic-identity-cert-01.txt"
       }
     ],
     "inspection": {
@@ -426,7 +426,7 @@
       ]
     }
   },
-  "source_lock_digest": "sha256:4db4c7e1db99663caecc82887cbf60c826725383b9e0e01f186a08fc105e0f4a",
+  "source_lock_digest": "sha256:3b6a73f084fc7def6bd52992c92840f081c7af6be9cd89e46f4e2ed4baa7ed8e",
   "source_status": {
     "future_observation": "REFUSE",
     "maximum_age_seconds": 60,
