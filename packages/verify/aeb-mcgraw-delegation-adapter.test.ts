@@ -4,7 +4,31 @@ import crypto from 'node:crypto';
 import test from 'node:test';
 import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
 
-import { digestAeb, type AebAdapterInput, type AebPinnedProfile } from './aeb-adapter-contract.js';
+// The CAID reference implementation intentionally has no TypeScript surface.
+// @ts-expect-error -- the runtime result is checked before use.
+import { computeCaid } from './vendor/caid.mjs';
+
+import {
+  AEB_ADAPTER_VERSION,
+  AEB_REGISTRY_VERSION,
+  AEB_REQUIREMENT_VERSION,
+  InMemoryAebConsumptionStore,
+  adapterPinDigest,
+  aebNativeReplayKeys,
+  authorizeAebExecution,
+  digestAeb,
+  evaluateAebEvidence,
+  mappingProfileDigest,
+  registryEntryDigest,
+  unifiedRegistryDigest,
+  verifyAebEvaluation,
+  type AebAdapterInput,
+  type AebEvaluationRecord,
+  type AebPinnedAdapter,
+  type AebPinnedConfig,
+  type AebPinnedProfile,
+  type AebRegistryEntry,
+} from './aeb-adapter-contract.js';
 import {
   MCGRAW_BUDGET_AEB_ADAPTER_ID,
   MCGRAW_BUDGET_AEB_ADAPTER_VERSION,
@@ -82,12 +106,11 @@ function makeFixture(): Obj {
     'Signature1', protectedBytes, Buffer.alloc(0), payloadBytes,
   ]);
   const signature = Buffer.from(ml_dsa65.sign(sigStructure, keypair.secretKey));
-  const cose = encodeDeterministicCbor(tagDeterministicCbor(18, [
-    protectedBytes,
-    new Map(),
-    payloadBytes,
-    signature,
-  ]));
+  const coseParts = [protectedBytes, new Map(), payloadBytes, signature];
+  // RFC 9052 allows COSE_Sign1 tagged (tag 18) or untagged. The tag sits
+  // outside Sig_structure, so both carry the exact same signed proof.
+  const cose = encodeDeterministicCbor(tagDeterministicCbor(18, coseParts));
+  const untaggedCose = encodeDeterministicCbor(coseParts);
   const chainVerifierDescriptor = {
     id: 'test:mcgraw-budget-chain',
     version: '1',
@@ -149,6 +172,7 @@ function makeFixture(): Obj {
     chainVerifier,
     mldsaVerifier,
     artifact: cose.toString('base64url'),
+    untaggedArtifact: untaggedCose.toString('base64url'),
   };
 }
 
@@ -280,4 +304,171 @@ test('deterministic CBOR map order is RFC 8949 bytewise, not RFC 7049 length-fir
   // realignment changes no bytes for well-formed McGraw artifacts.
   const labels = encodeDeterministicCbor(new Map<any, any>([[4, 'k'], [1, -49], [3, 'ct']]));
   assert.equal(labels.toString('hex'), 'a30138300362637404616b');
+});
+
+test('one signed delegation proof is one replay unit whether COSE-tagged or untagged', () => {
+  const fixture = makeFixture();
+  const adapter = createMcGrawBudgetAebAdapter({
+    config: fixture.config,
+    trust_roots: fixture.trustRoots,
+    chain_verifier: fixture.chainVerifier,
+    mldsa_verifier: fixture.mldsaVerifier,
+  });
+  const tagged = adapter.verifyNative(input(fixture));
+  const untagged = adapter.verifyNative(input(fixture, {
+    artifact: fixture.untaggedArtifact,
+    artifact_ref: 'delegation:budget:test-1:untagged',
+  }));
+  assert.equal(tagged.native_verification, 'VERIFIED');
+  assert.equal(tagged.acceptance, 'ACCEPTED');
+  assert.equal(untagged.native_verification, 'VERIFIED');
+  assert.equal(untagged.acceptance, 'ACCEPTED');
+  assert.notEqual(tagged.evidence_digest, untagged.evidence_digest);
+  assert.equal(untagged.replay_unit, tagged.replay_unit);
+
+  const keys = (native: { replay_unit: string }): string[] => aebNativeReplayKeys({
+    evaluator: { id: 'rp:mcgraw-test' } as AebEvaluationRecord['evaluator'],
+    legs: [{ replay_unit: native.replay_unit } as AebEvaluationRecord['legs'][number]],
+  });
+  const store = new InMemoryAebConsumptionStore();
+  assert.equal(store.reserve('aeb:operation-1', keys(untagged)), true);
+  assert.equal(store.reserve('aeb:operation-2', keys(tagged)), false);
+});
+
+test('a distinct signed delegation proof keeps its own replay unit', () => {
+  const first = makeFixture();
+  const second = makeFixture();
+  const adapterFor = (fixture: Obj) => createMcGrawBudgetAebAdapter({
+    config: fixture.config,
+    trust_roots: fixture.trustRoots,
+    chain_verifier: fixture.chainVerifier,
+    mldsa_verifier: fixture.mldsaVerifier,
+  });
+  const a = adapterFor(first).verifyNative(input(first));
+  const b = adapterFor(second).verifyNative(input(second));
+  assert.equal(a.acceptance, 'ACCEPTED');
+  assert.equal(b.acceptance, 'ACCEPTED');
+  assert.notEqual(b.replay_unit, a.replay_unit);
+});
+
+test('a McGraw leg reaches ACCEPTED and AUTHORIZED through evaluateAebEvidence', () => {
+  const fixture = makeFixture();
+  const adapter = createMcGrawBudgetAebAdapter({
+    config: fixture.config,
+    trust_roots: fixture.trustRoots,
+    chain_verifier: fixture.chainVerifier,
+    mldsa_verifier: fixture.mldsaVerifier,
+  });
+  // The evaluator derives base.evidence_digest itself and hard fails the leg on
+  // any disagreement, so the adapter must use the same convention.
+  assert.equal(adapter.verifyNative(input(fixture)).evidence_digest, digestAeb(fixture.artifact));
+
+  const mapping = profile();
+  mapping.profile_digest = mappingProfileDigest('mcgraw-budget', mapping);
+  const pin: AebPinnedAdapter = {
+    version: MCGRAW_BUDGET_AEB_ADAPTER_VERSION,
+    trust_roots: fixture.trustRoots,
+    config: fixture.config,
+    config_digest: digestAeb(null),
+    max_status_age_sec: 120,
+  };
+  pin.config_digest = adapterPinDigest(MCGRAW_BUDGET_AEB_ADAPTER_ID, pin);
+  const entry = (id: string, kind: AebRegistryEntry['kind'], definition: unknown): AebRegistryEntry => {
+    const value = { kind, version: '1', status: 'active' as const, definition } as AebRegistryEntry;
+    value.definition_digest = registryEntryDigest(id, value);
+    return value;
+  };
+  const registry = {
+    '@version': AEB_REGISTRY_VERSION,
+    registry_id: 'registry:mcgraw-budget-test',
+    epoch: 1,
+    entries: {
+      'mapping:mcgraw-budget-dataset-export': entry(
+        'mapping:mcgraw-budget-dataset-export', 'mapping-profile', { profile_digest: mapping.profile_digest },
+      ),
+      'role:delegated-authority': entry(
+        'role:delegated-authority', 'evidence-role', { role: 'delegated-authority', subject_kinds: ['workload'] },
+      ),
+    },
+    registry_digest: digestAeb(null),
+  };
+  registry.registry_digest = unifiedRegistryDigest(registry);
+  const evaluatorKey = crypto.generateKeyPairSync('ed25519');
+  const config: AebPinnedConfig = {
+    '@version': AEB_ADAPTER_VERSION,
+    relying_party_id: 'rp:mcgraw-budget-test',
+    evaluator_keys: {
+      'evaluator:mcgraw': {
+        public_key: evaluatorKey.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+      },
+    },
+    registry,
+    accepted_mappers: [MCGRAW_BUDGET_MAPPER_ID],
+    adapters: { [MCGRAW_BUDGET_AEB_ADAPTER_ID]: pin },
+    profiles: { 'mcgraw-budget': mapping },
+    requirements: {
+      'requirement:delegated': {
+        '@version': AEB_REQUIREMENT_VERSION,
+        all_of: ['delegated-authority'],
+        terms: [{ type: 'one-time-consumption' }],
+      },
+    },
+  };
+  const adapters = { [MCGRAW_BUDGET_AEB_ADAPTER_ID]: adapter };
+  const expectedCaid = computeCaid(fixture.expectedAction, {
+    suite: 'jcs-sha256',
+    definitions: (mapping.definition as Obj).definitions,
+  }).caid as string;
+  const base = input(fixture);
+  const store = new InMemoryAebConsumptionStore();
+  const run = (artifact: unknown, artifactRef: string, operationId: string) => {
+    const evaluation = evaluateAebEvidence({
+      config,
+      adapters,
+      operation_id: operationId,
+      consumption_nonce: `nonce:${operationId}`,
+      initiator_id: 'workload:export-agent-caller',
+      executor_id: 'workload:gate',
+      requirement_ref: 'requirement:delegated',
+      caid: expectedCaid,
+      expected_action: fixture.expectedAction,
+      evaluated_at: NOW,
+      signer: { key_id: 'evaluator:mcgraw', private_key: evaluatorKey.privateKey },
+      legs: [{
+        adapter_id: MCGRAW_BUDGET_AEB_ADAPTER_ID,
+        profile_id: 'mcgraw-budget',
+        artifact_ref: artifactRef,
+        artifact,
+        status: base.status,
+      }],
+    });
+    const verification = verifyAebEvaluation(evaluation.record, {
+      config,
+      adapters,
+      artifacts: { [artifactRef]: artifact },
+      mode: 'execution',
+      now: NOW,
+      expected_action: fixture.expectedAction,
+      current_statuses: { [artifactRef]: base.status },
+    });
+    return {
+      evaluation,
+      decision: authorizeAebExecution(evaluation.record, {
+        verification,
+        local_authorization: true,
+        store,
+      }),
+    };
+  };
+
+  const untagged = run(fixture.untaggedArtifact, 'delegation:budget:proof-1', 'operation-1');
+  assert.deepEqual(untagged.evaluation.record.legs[0].reasons, []);
+  assert.equal(untagged.evaluation.record.legs[0].acceptance, 'ACCEPTED');
+  assert.equal(untagged.decision.state, 'AUTHORIZED');
+
+  // The same proof re-presented under the COSE tag is refused, not executed.
+  const retagged = run(fixture.artifact, 'delegation:budget:proof-1:retagged', 'operation-2');
+  assert.equal(retagged.evaluation.record.legs[0].acceptance, 'ACCEPTED');
+  assert.equal(retagged.decision.state, 'REFUSED');
+  assert.equal(retagged.decision.reason, 'consumption_conflict');
 });

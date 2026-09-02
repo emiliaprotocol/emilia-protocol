@@ -149,7 +149,7 @@
           "id": "system:ccs-reference-verifier",
           "kind": "system"
         },
-        "replay_unit": "sha256:457a759cdddbe6b27663d26876b4a6fc676dd86ac47be0f0b7d4568525ee07ec",
+        "replay_unit": "sha256:e198083934df893aaae6f41978d5e8da258f49669416aab5046aedb9bd40b37d",
         "reasons": [
           "status_unavailable"
         ]
@@ -165,5 +165,5 @@
     "A passing report reproduces the EMILIA reference adapter and is not independent implementation, deployment, certification, IETF adoption, or endorsement."
   ],
   "implementation_status_markdown": "The runner reproduced 8/8 source-locked CCS 1.1.20 to AEB checks. It verified the pinned Ed25519 L1 receipt and mapped its signed action, tool, and full argument digest to one executor-constructed CAID. This is a reproduction of the EMILIA reference adapter, not an independent implementation or IETF endorsement.",
-  "report_digest": "sha256:5ba22b1d2fe2b1ca2209546454fa3ba124478a3e4d0acbae8fc871ea2bf7e454"
+  "report_digest": "sha256:a4a511c360dfe80a91a6b70d4f523180b3dd380aaf99d30987d98db66ca3c0c6"
 }

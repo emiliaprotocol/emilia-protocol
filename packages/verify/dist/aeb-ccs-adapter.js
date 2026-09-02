@@ -809,14 +809,20 @@ function verifyL1Artifact(value, pins, now) {
         ok: true,
         value: {
             receipt,
+            // Same rule as the v1.3 unit above: derive from the signed authority, not
+            // from the wrapper. L1 binds the exact call through (action, tool,
+            // args_digest), all covered by the Ed25519 signature and cross-checked in
+            // mapAction. nonce and sequence are declared non-material by the shipped
+            // L1 profile and the signature is a per-issuance wrapper value, so none of
+            // the three may discriminate the unit.
             replayUnit: digestAeb({
                 source: CCS_L1_PYPI_SOURCE_LOCK,
                 issuer: receipt.issuer,
                 audience: receipt.audience,
                 public_key_fingerprint: receipt.public_key_fingerprint,
-                nonce: receipt.nonce,
-                sequence: receipt.sequence,
-                signature: receipt.signature,
+                action: receipt.action,
+                tool: receipt.tool,
+                args_digest: receipt.args_digest,
             }),
         },
     };
@@ -1193,7 +1199,20 @@ function verifyV13Artifact(value, pins, now) {
         ok: true,
         value: {
             receipt,
-            replayUnit: digestAeb({ source: CCS_V13_SOURCE_LOCK, issuer: receipt.issuer, nonce: receipt.nonce }),
+            // Verifier-derived from the native authority the issuer signed: the
+            // (issuer, audience) trust pair plus receipt.action, which is
+            // "ccs:tool-invoke:<tool>:<sha256 of the canonical arguments>" and is
+            // cross-checked against tool and params_hash in parseV13Receipt. nonce
+            // and sequence are declared non-material by the shipped profile, so they
+            // must not discriminate the unit: keying on nonce both collided distinct
+            // authorities that reused one nonce and split one authority re-issued
+            // under a fresh nonce into a second consumable unit.
+            replayUnit: digestAeb({
+                source: CCS_V13_SOURCE_LOCK,
+                issuer: receipt.issuer,
+                audience: receipt.audience,
+                action: receipt.action,
+            }),
         },
     };
 }

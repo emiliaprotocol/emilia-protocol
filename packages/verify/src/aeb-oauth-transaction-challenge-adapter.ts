@@ -410,11 +410,16 @@ function verifyNative(input: Omit<AebAdapterInput, 'profile'>, pins: ParsedPins)
   if (!details || details.verified !== true) {
     return reject(result, `oauth-txn:${nonEmptyString(details?.reason) ? details.reason : 'authorization_details_not_verified'}`);
   }
+  // The replay unit is derived from the native AUTHORIZATION the AS granted
+  // (issuer, audience, transaction), never from the access token that carries
+  // it. access_token.jti is a wrapper field the mapping profile itself declares
+  // non-material, so a second access token minted for the same txn MUST land on
+  // the same unit and be refused at the consumption fence.
   result.replay_unit = safeDigest({
     protocol: OAUTH_TXN_CHALLENGE_DRAFT_REVISION,
     authorization_server: accessClaims.iss,
+    audience: accessClaims.aud,
     transaction: accessClaims.txn,
-    access_token_jti: accessClaims.jti,
   });
   result.native_verification = 'VERIFIED';
   const status = statusDisposition(input.status, input.now, pins.config.max_status_age_seconds);
