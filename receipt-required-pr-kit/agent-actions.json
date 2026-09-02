@@ -11,7 +11,16 @@
       "receipt_required": true,
       "assurance_class": "class_a",
       "max_age_sec": 900,
+      "execution_binding": { "required_fields": ["table"] },
       "quorum": { "required": false }
+    },
+    {
+      "id": "mcp.list_tables",
+      "description": "Read-only: lists table names. Reversible, so no receipt is demanded — and this entry is what makes that an author's decision on record rather than an absence the dispatcher has to guess about.",
+      "match": { "protocol": "mcp", "tool": "list_tables" },
+      "action_type": "db.tables.list",
+      "risk": "low",
+      "receipt_required": false
     }
   ]
 }

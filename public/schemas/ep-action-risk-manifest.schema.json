@@ -72,10 +72,13 @@
         },
         "execution_binding": {
           "type": "object",
-          "description": "Fields of the executed action that must byte-match the fields the human authorized.",
+          "description": "Fields of the executed action that must byte-match the fields the human authorized. Required when receipt_required is true: without it the gate binds a receipt to the action type alone, so a claim signed for one payload authorizes any other.",
+          "required": ["required_fields"],
           "properties": {
             "required_fields": {
               "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
               "items": { "type": "string", "minLength": 1 },
               "description": "Field names bound between authorization and execution, e.g. [\"action_type\", \"amount_usd\", \"beneficiary_account_hash\"]."
             }
@@ -87,8 +90,20 @@
         {
           "if": { "properties": { "receipt_required": { "const": true } }, "required": ["receipt_required"] },
           "then": {
-            "required": ["action_type", "risk"],
+            "required": ["action_type", "risk", "assurance_class", "execution_binding"],
             "properties": { "risk": { "enum": ["medium", "high", "critical"] } }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "receipt_required": { "const": true },
+              "risk": { "const": "critical" }
+            },
+            "required": ["receipt_required", "risk"]
+          },
+          "then": {
+            "properties": { "assurance_class": { "enum": ["class_a", "quorum"] } }
           }
         }
       ],

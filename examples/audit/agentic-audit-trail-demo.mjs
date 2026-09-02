@@ -85,12 +85,17 @@ const SYSTEM = 'meridian-payments-agent (demo)';
 const MANIFEST = {
     '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
     actions: [
-        { id: 'pay', action_type: 'payment.release', receipt_required: true, risk: 'critical', assurance_class: 'class_a', match: { protocol: 'mcp', tool: 'release_payment' } },
-        { id: 'wipe', action_type: 'infra.delete_production_db', receipt_required: true, risk: 'critical', assurance_class: 'quorum', match: { protocol: 'mcp', tool: 'delete_production_db' } },
+        { id: 'pay', action_type: 'payment.release', receipt_required: true, risk: 'critical', assurance_class: 'class_a', execution_binding: { required_fields: ['amount_usd', 'currency', 'payment_instruction_id'] }, match: { protocol: 'mcp', tool: 'release_payment' } },
+        { id: 'wipe', action_type: 'infra.delete_production_db', receipt_required: true, risk: 'critical', assurance_class: 'quorum', execution_binding: { required_fields: ['database', 'change_ticket'] }, match: { protocol: 'mcp', tool: 'delete_production_db' } },
         { id: 'read', action_type: 'read.balance', receipt_required: false, match: { protocol: 'mcp', tool: 'read_balance' } },
     ],
 };
 const SEL_PAY = { protocol: 'mcp', tool: 'release_payment' };
+// Each guarded action pins the material fields the executor must observe from
+// its system of record, so a signed claim cannot authorize a different mutation.
+const PAY_48500 = { amount_usd: 48500, currency: 'USD', payment_instruction_id: 'pi_demo_48500' };
+const PAY_950 = { amount_usd: 950, currency: 'USD', payment_instruction_id: 'pi_demo_950' };
+const WIPE_PROD = { database: 'prod-ledger-eu-1', change_ticket: 'CHG-88121' };
 const SEL_WIPE = { protocol: 'mcp', tool: 'delete_production_db' };
 const SEL_READ = { protocol: 'mcp', tool: 'read_balance' };
 /* ------------------------------------- main ------------------------------------- */
@@ -180,9 +185,9 @@ async function main() {
         actionType: 'payment.release',
         subject: 'agent:ap-clerk-7',
         approver: 'ep:approver:cfo',
-        claimExtra: { amount_usd: 48500, currency: 'USD', payment_instruction_id: 'pi_demo_48500' },
+        claimExtra: { ...PAY_48500 },
     });
-    const act1 = await present(payReceipt, { selector: SEL_PAY });
+    const act1 = await present(payReceipt, { selector: SEL_PAY, observedAction: { ...PAY_48500 } });
     assert.equal(act1.allow, true, `ACT 1 expected allow, got ${act1.reason}`);
     assert.equal(act1.reason, 'allow');
     assert.equal(act1.evidence.have_tier, 'class_a');
@@ -196,9 +201,9 @@ async function main() {
         actionType: 'infra.delete_production_db',
         subject: 'agent:infra-bot-2',
         tier: 'quorum',
-        claimExtra: { database: 'prod-ledger-eu-1', change_ticket: 'CHG-88121' },
+        claimExtra: { ...WIPE_PROD },
     });
-    const act2 = await present(wipeReceipt, { selector: SEL_WIPE });
+    const act2 = await present(wipeReceipt, { selector: SEL_WIPE, observedAction: { ...WIPE_PROD } });
     assert.equal(act2.allow, true, `ACT 2 expected allow, got ${act2.reason}`);
     assert.equal(act2.evidence.have_tier, 'quorum');
     const exec2 = await gate.recordExecution({ authorization: act2, outcome: 'executed', detail: 'decommission completed' });
@@ -207,7 +212,7 @@ async function main() {
     advance();
     /* ACT 3 — the agent tries the payment again with NO receipt. Deny-by-default:
      * 428 + a machine-readable Receipt-Required challenge. */
-    const act3 = await gate.check({ selector: SEL_PAY });
+    const act3 = await gate.check({ selector: SEL_PAY, observedAction: { ...PAY_48500 } });
     assert.equal(act3.allow, false);
     assert.equal(act3.status, 428);
     assert.equal(act3.reason, 'receipt_required');
@@ -219,7 +224,7 @@ async function main() {
     advance();
     /* ACT 4 — replay. Act 1's receipt was consumed on use; presenting the same
      * receipt again must be refused, not double-spent. */
-    const act4 = await present(payReceipt, { selector: SEL_PAY });
+    const act4 = await present(payReceipt, { selector: SEL_PAY, observedAction: { ...PAY_48500 } });
     assert.equal(act4.allow, false);
     assert.equal(act4.reason, 'replay_refused');
     say(`ACT 4    — replay of already-consumed receipt ${payReceipt.payload.receipt_id}                        → REFUSED (replay_refused)`);
@@ -230,10 +235,10 @@ async function main() {
         actionType: 'payment.release',
         subject: 'agent:ap-clerk-7',
         approver: 'ep:approver:cfo',
-        claimExtra: { amount_usd: 950, currency: 'USD', payment_instruction_id: 'pi_demo_950' },
+        claimExtra: { ...PAY_950 },
     });
     tamperedReceipt.payload.claim.amount_usd = 999999; // mutate a signed field
-    const act5 = await present(tamperedReceipt, { selector: SEL_PAY });
+    const act5 = await present(tamperedReceipt, { selector: SEL_PAY, observedAction: { ...PAY_950 } });
     assert.equal(act5.allow, false);
     assert.match(act5.reason, /^receipt_rejected:/);
     say(`ACT 5    — tampered receipt ${tamperedReceipt.payload.receipt_id} (amount 950 → 999,999 after signing)     → REFUSED (${act5.reason})`);

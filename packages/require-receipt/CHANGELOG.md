@@ -3,6 +3,20 @@
 
 All notable changes to `@emilia-protocol/require-receipt` are documented here.
 
+## Unreleased
+
+### Security
+
+- `validateActionRiskManifest` now requires a non-empty
+  `execution_binding.required_fields` on every entry with
+  `receipt_required: true`, the same author-time floor already applied to
+  `assurance_class`. Without it the enforcement point binds a receipt to the
+  action TYPE alone (an empty field list makes execution binding a no-op), so a
+  claim signed for one payload authorizes any other under the same type.
+  Compatibility note: an existing guarded manifest that declares no
+  `execution_binding` is now invalid and must name the material fields the
+  executor observes from its system of record.
+
 ## 0.8.1 (2026-08-30)
 
 ### Security

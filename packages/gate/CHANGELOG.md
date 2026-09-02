@@ -5,6 +5,17 @@
 
 ### Security
 
+- Bind the canonical observed action for a legacy
+  `EP-ACTION-RISK-MANIFEST-v0.1` entry that is `receipt_required` but declares
+  no `execution_binding.required_fields`. Such an entry previously left the
+  receipt bound to the action TYPE alone even though the executor had supplied
+  system-of-record fields, so a receipt signed for a $1.00 payout to one
+  account authorized a $999,999.99 payout to another. `validateActionRiskManifest`
+  now refuses that manifest at author time; this is the enforcement-time floor
+  for a manifest loaded without re-validation. A receipt carrying no signed
+  `canonical_action` fails closed instead of authorizing an unconstrained
+  mutation.
+
 - Validate and bound provider-entry guard evidence as a plain finite-canonical
   JSON object before any provider effect, preserve accepted or refusing guard
   evidence through capability results and internal Gate records, and propagate

@@ -557,6 +557,9 @@ describe('Gate construction guards fail closed without a runtime monitor', () =>
       receipt_required: true,
       risk: 'critical',
       assurance_class: 'class_a',
+      // A guarded entry must pin the material fields the executor observes;
+      // without them the gate binds a receipt to the action TYPE alone.
+      execution_binding: { required_fields: ['vendor_id'] },
       match: { protocol: 'mcp', tool: 'release_payment' },
     }],
   };

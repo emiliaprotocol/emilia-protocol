@@ -34,7 +34,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.8.1  ·  content-sha256:cb7fa44346e071e1
+//   source: @emilia-protocol/require-receipt@0.8.1  ·  content-sha256:5914e89bed5100c4
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
@@ -1456,6 +1456,25 @@ export function validateActionRiskManifest(manifest) {
         }
         if (action.assurance_class && !['software', 'class_a', 'quorum'].includes(action.assurance_class)) {
             errors.push(`${p}.assurance_class must be software, class_a, or quorum`);
+        }
+        if (action.receipt_required) {
+            // AUTHOR-TIME EXECUTION-BINDING FLOOR. Without required_fields the gate
+            // binds a receipt to the action TYPE only: a signed "$1.00 to acct_OK"
+            // receipt authorizes "$999,999.99 to acct_ATTACKER" under the same type,
+            // because verifyExecutionBinding() returns ok when the field list is
+            // empty. Name the material fields the executor must observe from the
+            // system of record, the same way assurance_class is required above.
+            const binding = action.execution_binding;
+            const fields = isObject(binding) ? binding.required_fields : undefined;
+            if (!isObject(binding) || !Array.isArray(fields) || fields.length === 0) {
+                errors.push(`${p}.execution_binding.required_fields must be a non-empty array of material field names when receipt_required is true`);
+            }
+            else if (fields.some((field) => typeof field !== 'string' || field.length === 0)) {
+                errors.push(`${p}.execution_binding.required_fields entries must be non-empty strings`);
+            }
+            else if (new Set(fields).size !== fields.length) {
+                errors.push(`${p}.execution_binding.required_fields entries must be unique`);
+            }
         }
         if (action.receipt_required && action.risk === 'critical' && action.assurance_class === 'software') {
             // A critical (typically irreversible) action must be bound to a human key,

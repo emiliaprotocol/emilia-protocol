@@ -477,6 +477,7 @@ cli/lib/client.mjs linguist-generated=true
 cli/test/cli.node.mjs linguist-generated=true
 integrations/claude-code-plugin/hooks/guard.mjs linguist-generated=true
 actions/verify-receipt/verify.mjs linguist-generated=true
+receipt-required-pr-kit/demo-approver.js linguist-generated=true
 receipt-required-pr-kit/example-dangerous-action.js linguist-generated=true
 receipt-required-pr-kit/receipt-required.test.js linguist-generated=true
 ml/risk-eval/classifiers/heuristic.mjs linguist-generated=true
