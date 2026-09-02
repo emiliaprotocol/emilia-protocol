@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Attachment of gen_ai.tool.authorization.* to the tool-execution span.
+#
+# Layout mirrors the upstream repository: this file corresponds to
+# model/gen-ai/spans.yaml. The attribute group below would be added there, and
+# the single `ref_group` line added to the existing
+# `gen_ai.execute_tool.internal` span definition and to the MCP client and
+# server tools/call spans, rather than duplicating the refs at each site.
+#
+# Every attribute is opt_in. This group asks nothing of a producer that has no
+# authorization step to describe, and nothing of a consumer that does not want
+# it. A producer that has an approval slot and says nothing about it is the
+# status quo; the point of the group is that saying something costs one
+# attribute map.
+
+file_format: definition/2
+attribute_groups:
+  - id: attributes.gen_ai.tool.authorization
+    visibility: internal
+    brief: >
+      Whether an authorization step resolved for this tool call, on what class of
+      evidence, and against which action and policy.
+    attributes:
+      - ref: gen_ai.tool.authorization.status
+        requirement_level: opt_in
+      - ref: gen_ai.tool.authorization.evidence.grade
+        requirement_level:
+          conditionally_required: >
+            If `gen_ai.tool.authorization.status` is present. A status without a
+            grade cannot be told apart from a status a third party can check,
+            which is the distinction this group exists to carry.
+      - ref: gen_ai.tool.authorization.evidence.digest
+        requirement_level:
+          conditionally_required: >
+            If `gen_ai.tool.authorization.evidence.grade` is
+            `independently_verifiable`.
+      - ref: gen_ai.tool.authorization.evidence.format
+        requirement_level:
+          conditionally_required: >
+            If `gen_ai.tool.authorization.evidence.grade` is
+            `independently_verifiable`.
+      - ref: gen_ai.tool.authorization.evidence.locator
+        requirement_level:
+          conditionally_required: >
+            If `gen_ai.tool.authorization.evidence.grade` is
+            `independently_verifiable`.
+      - ref: gen_ai.tool.authorization.action.digest
+        requirement_level: opt_in
+      - ref: gen_ai.tool.authorization.policy.digest
+        requirement_level: opt_in
+
+# The diff against the existing span definition is one line. Reproduced here so
+# a reviewer can see the whole change without leaving this file.
+#
+#   - type: gen_ai.execute_tool.internal
+#     ...
+#     attributes:
+#       - ref_group: attributes.gen_ai.error
+#       - ref_group: attributes.gen_ai.execute_tool.common
+# +     - ref_group: attributes.gen_ai.tool.authorization
+#       - ref: gen_ai.operation.name
+#         requirement_level: required
+#         sampling_relevant: true
+#       ...
+#
+# The same `ref_group` line applies to the MCP `tools/call` client and server
+# spans, where an approval decision is equally available to the producer.

@@ -1,0 +1,78 @@
+Recorded output of `node standards/staged/otel-genai-authorization/examples/run.mjs`.
+Run 2026-09-02 on Node v26.5.0, exit code 0.
+
+The ed25519 keypair, receipt ids and receipt content digests are freshly
+generated on every run, so those values differ between runs. Everything else
+below is stable: the four statuses, the four grades, the action digests, the
+filter result and every fail-closed refusal reason.
+
+$ node standards/staged/otel-genai-authorization/examples/run.mjs
+gen_ai.tool.authorization.* - worked examples
+Attributes marked * were set by the adapter under test.
+Vendor-prefixed namespace (emilia.tool.authorization.*) is the default
+until the group is accepted upstream. Nothing has been submitted upstream.
+
+[1] openai-agents  decision=approve reason=valid_action_bound_receipt
+[2] langgraph      decision=resume reason=fresh_authority_for_edited_action
+[3] langchain      threw=true reason=receipt_required
+[4] ungated call   status=no_authorization_step grade=self_attested
+
+--- TRACE ---
+
+  span: execute_tool send_payment
+    gen_ai.operation.name = "execute_tool"
+    gen_ai.provider.name = "openai"
+    gen_ai.tool.name = "send_payment"
+    gen_ai.tool.call.id = "call_openai_1"
+    gen_ai.tool.type = "function"
+  * emilia.tool.authorization.status = "authorized_in_scope"
+  * emilia.tool.authorization.evidence.grade = "independently_verifiable"
+  * emilia.tool.authorization.evidence.digest = "receipt:sha256:4fe2051729ae15e0c05e736dbf4554fae535d83cc4de6202030cea3119c622a5"
+  * emilia.tool.authorization.evidence.format = "application/vnd.emilia.receipt.v1+json"
+  * emilia.tool.authorization.evidence.locator = "emilia-receipt:rcpt_ad287c2e-5b40-4f8c-a25e-3b61db3c0295"
+  * emilia.tool.authorization.action.digest = "openai.tool.send_payment:sha256:90fd78fa593e3f90dac61287fa5ef3dd4ff9512b537b379f299f8ea072e7df5f"
+
+  span: execute_tool delete_records
+    gen_ai.operation.name = "execute_tool"
+    gen_ai.tool.name = "delete_records"
+    gen_ai.tool.call.id = "call_langgraph_1"
+    gen_ai.tool.type = "function"
+  * emilia.tool.authorization.status = "edited_then_approved"
+  * emilia.tool.authorization.evidence.grade = "independently_verifiable"
+  * emilia.tool.authorization.evidence.digest = "receipt:sha256:7d0bc15e2bd0efade1bf05ded2b87740c61806f95ea9531933d330d900a36f92"
+  * emilia.tool.authorization.evidence.format = "application/vnd.emilia.receipt.v1+json"
+  * emilia.tool.authorization.evidence.locator = "emilia-receipt:rcpt_31f19a59-acc8-461b-a505-2dd10924403d"
+  * emilia.tool.authorization.action.digest = "langgraph.action.delete_records:sha256:d790f3cdf8d29a258f9aa3edfffb81b7cf4708385e1bab77c6c1319e16562cee"
+
+  span: execute_tool rotate_credentials
+    gen_ai.operation.name = "execute_tool"
+    gen_ai.tool.name = "rotate_credentials"
+    gen_ai.tool.call.id = "call_langchain_1"
+    gen_ai.tool.type = "function"
+  * emilia.tool.authorization.status = "rejected"
+  * emilia.tool.authorization.evidence.grade = "self_attested"
+  * emilia.tool.authorization.action.digest = "rotate_credentials:sha256:47c572e952cf2fb5e503437089e4eec1f5c5370604a5c9a5bd66980da980eb16"
+
+  span: execute_tool drop_table
+    gen_ai.operation.name = "execute_tool"
+    gen_ai.tool.name = "drop_table"
+    gen_ai.tool.call.id = "call_ungated_1"
+    gen_ai.tool.type = "function"
+    gen_ai.tool.risk.level = "critical"
+  * emilia.tool.authorization.status = "no_authorization_step"
+  * emilia.tool.authorization.evidence.grade = "self_attested"
+
+--- FILTER ---
+  gen_ai.operation.name = "execute_tool"
+  AND emilia.tool.authorization.status = "no_authorization_step"
+  AND gen_ai.tool.risk.level IN ("high", "critical")
+
+  matched 1 of 4 spans:
+    execute_tool drop_table  (tool.call.id=call_ungated_1)
+
+--- FAIL-CLOSED CHECK ---
+  refused  status the runtime cannot support: unknown_status_value
+  refused  grade with nothing to check: independently_verifiable_without_evidence_digest
+  refused  payload smuggled into a digest: evidence_digest_not_a_scoped_opaque_reference
+  refused  newline in a locator: evidence_locator_not_printable_ascii
+  refused  not an object: input_not_an_object

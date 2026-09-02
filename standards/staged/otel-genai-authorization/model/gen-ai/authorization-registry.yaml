@@ -1,0 +1,241 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Attribute registry for gen_ai.tool.authorization.*
+#
+# Staged for open-telemetry/semantic-conventions-genai as the concrete fill for
+# issue #95 ("GenAI Sem Conv enhancement to capture MCP Tool approval"). Not
+# submitted. See ../../UPSTREAM-PR-STAGED.md.
+#
+# Layout mirrors the upstream repository: this file corresponds to
+# model/gen-ai/registry.yaml and would be merged into it, not added beside it.
+#
+# Scope boundary the SIG thread asked for and this group keeps:
+#   - Every value is an enum member or an opaque, payload-free reference.
+#   - No prompt, argument object, policy body, evidence record or approver
+#     identity appears in any attribute.
+#   - The span OBSERVES a decision. It is not the authorization, and a consumer
+#     that reads these attributes learns what the producer asserted, not what is
+#     true. `evidence.grade` exists precisely so a self-attested assertion looks
+#     self-attested to the backend that indexes it.
+
+file_format: definition/2
+attributes:
+  - key: gen_ai.tool.authorization.status
+    type:
+      members:
+        - id: authorized_in_scope
+          value: "authorized_in_scope"
+          stability: development
+          brief: >
+            An authorization step resolved for this call and the executed
+            action falls inside what was authorized.
+        - id: authorized_out_of_scope
+          value: "authorized_out_of_scope"
+          stability: development
+          brief: >
+            An authorization step resolved, but the executed action falls
+            outside what was authorized. Typically an argument, target or
+            amount changed after the decision.
+        - id: authorized_without_standing
+          value: "authorized_without_standing"
+          stability: development
+          brief: >
+            A party authorized the call who did not hold the standing
+            authority to authorize it.
+        - id: standing_preauthorization
+          value: "standing_preauthorization"
+          stability: development
+          brief: >
+            No per-call step ran; the call proceeded under a prior standing
+            grant that covers it.
+        - id: no_authorization_step
+          value: "no_authorization_step"
+          stability: development
+          brief: >
+            No authorization step existed for this call. The producer is
+            reporting an absence it observed, not a failure to record.
+        - id: step_bypassed
+          value: "step_bypassed"
+          stability: development
+          brief: >
+            An authorization step existed for this call and execution was
+            reached without completing it.
+        - id: auto_approved
+          value: "auto_approved"
+          stability: development
+          brief: >
+            A non-human rule allowed the call. No human saw it. This is the
+            honest value for a runtime whose approval slot is a boolean and
+            that has no record of who set it.
+        - id: rejected
+          value: "rejected"
+          stability: development
+          brief: >
+            The call was refused before execution. A rejected call SHOULD NOT
+            have a successful downstream execution span for the same
+            `gen_ai.tool.call.id`.
+        - id: edited_then_approved
+          value: "edited_then_approved"
+          stability: development
+          brief: >
+            A human changed the call's arguments and authorized the changed
+            call. The authorized action is the edited one.
+    stability: development
+    brief: >
+      The observed outcome of the authorization step for this tool call.
+    note: |
+      This attribute records what the producer observed about its own
+      decision. It is not an authorization, it is not verified by the
+      telemetry pipeline, and a consumer MUST NOT treat it as authority.
+      Whether an approval was valid, current, in scope, or already consumed
+      stays with the system that made the decision.
+
+      `no_authorization_step` and `step_bypassed` are the values that carry
+      the operational signal: together with a producer-assessed risk band
+      (`gen_ai.tool.risk.level`, proposed separately in
+      open-telemetry/semantic-conventions-genai#373) they make
+      "an irreversible tool ran with no human step" a query rather than an
+      investigation.
+
+      Producers SHOULD NOT report a value the runtime cannot support. A
+      boolean approval slot with no approver, no scope and no artifact
+      supports `auto_approved` and `rejected`; it does not support
+      `authorized_in_scope`, which asserts a scope the boolean never carried.
+      A step that is still pending is not a status: producers SHOULD omit the
+      attribute rather than record an unresolved step as approved.
+    examples: ["authorized_in_scope", "no_authorization_step", "rejected"]
+
+  - key: gen_ai.tool.authorization.evidence.grade
+    type:
+      members:
+        - id: self_attested
+          value: "self_attested"
+          stability: development
+          brief: >
+            The emitting runtime asserts the status. There is no artifact
+            another party can re-check.
+        - id: third_party_logged
+          value: "third_party_logged"
+          stability: development
+          brief: >
+            A party other than the emitting runtime recorded the decision and
+            the record is retrievable by reference. Re-reading it requires
+            trusting that party's store.
+        - id: independently_verifiable
+          value: "independently_verifiable"
+          stability: development
+          brief: >
+            The producer names a digest, a format and a locator for an
+            artifact that a party other than the producer can check on its
+            own, without trusting the producer's runtime or storage.
+    stability: development
+    brief: >
+      The producer's own classification of the evidence behind
+      `gen_ai.tool.authorization.status`.
+    note: |
+      The grade is a claim about evidence, not a verification of it. Nothing
+      in the telemetry path checks it, and a consumer MUST NOT read
+      `independently_verifiable` as "verified". It means the producer says an
+      artifact exists that someone else could check, and it names enough to
+      try.
+
+      This attribute is the reason the group is safe to accept without
+      importing any trust: it makes a self-attested status LOOK self-attested
+      to the backend that indexes it, rather than looking the same as a
+      status a third party can check. A consumer that treats every status as
+      equally reliable is not helped by the group; a consumer that filters on
+      the grade is.
+
+      Producers emitting `independently_verifiable` SHOULD also emit
+      `evidence.digest`, `evidence.format` and `evidence.locator`. A grade
+      above `self_attested` with nothing named to check is not meaningful.
+    examples: ["self_attested", "independently_verifiable"]
+
+  - key: gen_ai.tool.authorization.evidence.digest
+    type: string
+    stability: development
+    brief: >
+      Opaque content digest of the authorization evidence artifact, in
+      `<algorithm>:<value>` form.
+    note: |
+      A digest, never the artifact. The referenced record stays out of
+      telemetry: no approval payload, no prompt, no argument object, no
+      approver identity.
+
+      Its purpose is substitution resistance. A locator alone tells a reader
+      where to look; a locator plus a digest tells the reader whether the
+      artifact they found is the artifact this call was decided on.
+
+      Bounded cardinality is not claimed: this is span material, not a metric
+      label.
+    examples: ["sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"]
+
+  - key: gen_ai.tool.authorization.evidence.format
+    type: string
+    stability: development
+    brief: >
+      Media type or format identifier of the evidence artifact named by
+      `evidence.digest` and `evidence.locator`.
+    note: >
+      A format token only. It tells a consumer what kind of thing the digest
+      covers so it can decide whether it has a reader for it; it does not
+      endorse any format and the convention defines none.
+    examples:
+      - "application/vnd.emilia.receipt.v1+json"
+      - "application/cose"
+      - "application/json"
+
+  - key: gen_ai.tool.authorization.evidence.locator
+    type: string
+    stability: development
+    brief: >
+      Opaque, producer-defined reference to where the evidence artifact can
+      be retrieved.
+    note: |
+      A handle, resolved out of band by whoever holds the record. Producers
+      MUST NOT place credentials, personal data, or an approver's identity in
+      this value, and SHOULD prefer an identifier the producer resolves over
+      a URL that embeds context.
+
+      Same intent as the opaque governance reference proposed in
+      open-telemetry/semantic-conventions-genai#239; a producer that already
+      emits `gen_ai.agent.governance.ref` MAY use the same handle here.
+    examples: ["emilia-receipt:rcp_01J8ZC4W6H", "urn:example:approval:8f21"]
+
+  - key: gen_ai.tool.authorization.action.digest
+    type: string
+    stability: development
+    brief: >
+      Opaque digest of the exact action the authorization covers, in a
+      scoped `<scope>:<algorithm>:<value>` form.
+    note: |
+      The join key. Two records that name the same action digest are about
+      the same action; two that do not, are not. This is what lets a consumer
+      answer the question `gen_ai.tool.call.id` cannot: whether the action
+      that executed is the action that was decided on, when the decision and
+      the execution were recorded by different systems, or when arguments
+      changed between them.
+
+      It is a digest of the action, never the action's arguments in the
+      clear. A producer that has no canonical action derivation SHOULD omit
+      this attribute rather than invent one.
+    examples:
+      - "send_payment:sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+      - "caid:v1:tool.call.1:sha256:LNJrRmj_xo_5m0U8HTBBNBNCLXBkg7-g-YpeiGJm564"
+
+  - key: gen_ai.tool.authorization.policy.digest
+    type: string
+    stability: development
+    brief: >
+      Opaque digest of the policy or permission configuration in force when
+      the authorization decision was made.
+    note: |
+      Answers "under which rules", without carrying the rules. A changed
+      digest tells a consumer the policy changed between two calls; equal
+      digests across producers do not imply equal policies, since each
+      producer digests its own artifact.
+
+      The policy body itself MUST NOT appear in telemetry. Producers SHOULD
+      use a stable derivation so the value is comparable across calls from
+      the same producer.
+    examples: ["sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"]

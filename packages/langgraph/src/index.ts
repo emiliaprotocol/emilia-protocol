@@ -12,7 +12,18 @@
  * `reauthorize` until a fresh receipt bound to A-prime is supplied.
  */
 import { makeReceiptGate } from '../../require-receipt/gate.js';
-import { bindToolAction, snapshotToolArguments } from '../../require-receipt/index.js';
+import { bindExecutorAction, bindToolAction, snapshotToolArguments } from '../../require-receipt/index.js';
+// Optional OpenTelemetry emission, loaded LAZILY and never declared as a
+// dependency. Resolution failure turns telemetry off; it never breaks the
+// authorization path.
+type OtelAuthorizationModule = typeof import('../../otel-authorization/index.js');
+let otelAuthorizationModule: Promise<OtelAuthorizationModule | null> | null = null;
+function loadOtelAuthorization(): Promise<OtelAuthorizationModule | null> {
+  if (!otelAuthorizationModule) {
+    otelAuthorizationModule = import('../../otel-authorization/index.js').catch(() => null);
+  }
+  return otelAuthorizationModule;
+}
 
 type AnyRecord = Record<string, any>;
 
@@ -179,7 +190,7 @@ export function bindLangGraphAction(
 }
 
 export function createLangGraphApprovalAdapter(opts: AnyRecord = {}): AnyRecord {
-  const { actionFor, store = localStore, ...gateOptions } = opts;
+  const { actionFor, store = localStore, otelAuthorization, ...gateOptions } = opts;
   if (actionFor !== undefined && typeof actionFor !== 'function') {
     throw new TypeError('createLangGraphApprovalAdapter: actionFor must be a function');
   }
@@ -198,7 +209,7 @@ export function createLangGraphApprovalAdapter(opts: AnyRecord = {}): AnyRecord 
    * Resolve one documented Agent Inbox response. Only `resume` carries execution
    * authority. `pass` is non-authorizing conversation/control flow.
    */
-  async function resolve(
+  async function resolveInner(
     interruptInput: unknown,
     responseInput: unknown,
     receipt: AnyRecord | null | undefined,
@@ -299,6 +310,66 @@ export function createLangGraphApprovalAdapter(opts: AnyRecord = {}): AnyRecord 
       subject: checked.subject,
       response: authorizedResponse,
     };
+  }
+
+  /**
+   * Emit gen_ai.tool.authorization.* for one resolved interrupt, then hand the
+   * caller the unchanged decision.
+   *
+   * LangGraph's HumanInTheLoopMiddleware slot is the richest of the four this
+   * repository adapts: the human's response type distinguishes `accept` from
+   * `edit`, which is the only place `edited_then_approved` can be reported
+   * honestly rather than inferred. `ignore` and free-text `response` are
+   * non-authorizing, so they are reported as no_authorization_step, not as an
+   * approval.
+   *
+   * Emission never changes the decision and never throws into the graph.
+   */
+  async function resolve(
+    interruptInput: unknown,
+    responseInput: unknown,
+    receipt: AnyRecord | null | undefined,
+    occurrence: LangGraphOccurrence,
+  ): Promise<AnyRecord> {
+    const decision = await resolveInner(interruptInput, responseInput, receipt, occurrence);
+    if (!otelAuthorization) return decision;
+    const otel = await loadOtelAuthorization();
+    if (!otel) return decision;
+
+    const responseType = decision?.response?.type
+      ?? (responseInput && typeof responseInput === 'object'
+        ? (responseInput as AnyRecord).type
+        : undefined);
+
+    let receiptDigest: string | null = null;
+    if (decision?.decision === 'resume' && receipt) {
+      try { receiptDigest = bindExecutorAction('receipt', receipt); } catch { receiptDigest = null; }
+    }
+
+    const evidence: AnyRecord = {
+      action_digest: typeof decision?.action === 'string' ? decision.action : null,
+    };
+    if (receiptDigest && typeof decision?.receipt_id === 'string' && decision.receipt_id !== '') {
+      evidence.evidence_digest = receiptDigest;
+      evidence.evidence_format = 'application/vnd.emilia.receipt.v1+json';
+      evidence.evidence_locator = `emilia-receipt:${decision.receipt_id}`;
+    }
+
+    try {
+      await otel.emitToolAuthorization(
+        otelAuthorization,
+        otel.mapLangGraphDecision(decision?.decision, responseType, evidence as any),
+        {
+          runtime: 'langgraph',
+          decision: decision?.decision,
+          reason: decision?.reason,
+          response_type: responseType,
+        },
+      );
+    } catch {
+      // Telemetry failure is never an authorization failure.
+    }
+    return decision;
   }
 
   return { resolve };

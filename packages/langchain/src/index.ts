@@ -29,7 +29,18 @@
 // npm, the published build resolves the bare "@emilia-protocol/require-receipt"
 // specifier; both point at the same canonical makeReceiptGate.
 import { makeReceiptGate } from '../../require-receipt/gate.js';
-import { bindToolAction, snapshotToolArguments } from '../../require-receipt/index.js';
+import { bindExecutorAction, bindToolAction, snapshotToolArguments } from '../../require-receipt/index.js';
+// Optional OpenTelemetry emission, loaded LAZILY and never declared as a
+// dependency. Resolution failure turns telemetry off; it never breaks the
+// authorization path.
+type OtelAuthorizationModule = typeof import('../../otel-authorization/index.js');
+let otelAuthorizationModule: Promise<OtelAuthorizationModule | null> | null = null;
+function loadOtelAuthorization(): Promise<OtelAuthorizationModule | null> {
+  if (!otelAuthorizationModule) {
+    otelAuthorizationModule = import('../../otel-authorization/index.js').catch(() => null);
+  }
+  return otelAuthorizationModule;
+}
 
 type Obj = Record<string, any>;
 type Tool = any;
@@ -117,6 +128,7 @@ export function requireReceiptForLangChainTool(tool: Tool, opts: Obj = {}): Tool
     maxAgeSec = 900,
     getReceipt = defaultGetReceipt,
     store = sharedStore,
+    otelAuthorization,
     ...gateOptions
   } = opts;
 
@@ -145,6 +157,53 @@ export function requireReceiptForLangChainTool(tool: Tool, opts: Obj = {}): Tool
       }));
     }
     return gates.get(boundAction);
+  };
+
+  /**
+   * Emit gen_ai.tool.authorization.* for one gated LangChain tool execution.
+   *
+   * LangChain 1.0's HumanInTheLoopMiddleware slot is a boolean: the wrapped tool
+   * either runs or refuses, and no approver, signature or scope travels with the
+   * decision. This wrapper drives that boolean from an action-bound
+   * EP-RECEIPT-v1, so an allow backed by a consumed receipt is
+   * authorized_in_scope at grade independently_verifiable, and every other
+   * outcome is self_attested.
+   *
+   * Emission never changes the wrapper's behaviour: a refusal is still thrown,
+   * an allow still returns the tool's result.
+   */
+  const emitAuthorizationAttributes = async (
+    allowed: boolean,
+    receiptBound: boolean,
+    boundAction: string,
+    consumed: { receiptId?: string; receipt?: any } | null,
+    reason: string,
+  ): Promise<void> => {
+    if (!otelAuthorization) return;
+    const otel = await loadOtelAuthorization();
+    if (!otel) return;
+    const evidence: Obj = { action_digest: boundAction };
+    if (receiptBound && consumed?.receipt && typeof consumed.receiptId === 'string' && consumed.receiptId !== '') {
+      let receiptDigest: string | null = null;
+      try { receiptDigest = bindExecutorAction('receipt', consumed.receipt); } catch { receiptDigest = null; }
+      if (receiptDigest) {
+        evidence.evidence_digest = receiptDigest;
+        evidence.evidence_format = 'application/vnd.emilia.receipt.v1+json';
+        evidence.evidence_locator = `emilia-receipt:${consumed.receiptId}`;
+      }
+    }
+    // Without a digest there is nothing another party can check, so the honest
+    // report is auto_approved at self_attested rather than a grade we cannot back.
+    const bound = receiptBound && typeof evidence.evidence_digest === 'string';
+    try {
+      await otel.emitToolAuthorization(
+        otelAuthorization,
+        otel.mapLangChainDecision(allowed, bound, evidence as any),
+        { runtime: 'langchain', tool_name: tool?.name, action: boundAction, reason },
+      );
+    } catch {
+      // Telemetry failure is never an authorization failure.
+    }
   };
 
   const bindingError = (): Error & { emilia?: any } => {
@@ -195,10 +254,12 @@ export function requireReceiptForLangChainTool(tool: Tool, opts: Obj = {}): Tool
     const r = await gate.run(receipt, {}, async () => execute(executionInput));
     if (!r.ok) {
       const reason = r.body?.rejected?.reason || (r.body?.required ? 'receipt_required' : 'refused');
+      await emitAuthorizationAttributes(false, false, boundAction, null, reason);
       const err = new Error(`EMILIA blocked "${boundAction}": ${reason}`) as Error & { emilia?: any };
       err.emilia = { status: r.status, reason, body: r.body };
       throw err;
     }
+    await emitAuthorizationAttributes(true, true, boundAction, { receiptId: r.receiptId, receipt }, 'valid_action_bound_receipt');
     return r.result;
   };
 

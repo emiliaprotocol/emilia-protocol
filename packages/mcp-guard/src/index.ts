@@ -53,6 +53,22 @@ import {
 // hoisted beside it, which under a strict layout (pnpm, Yarn PnP) resolves to
 // nothing at all.
 } from '@emilia-protocol/require-receipt';
+// Optional OpenTelemetry emission, loaded LAZILY and never declared as a
+// dependency. The specifier escapes this package's root, exactly as the note
+// above warns, so under a strict node_modules layout (pnpm, Yarn PnP) it
+// resolves to nothing. That is contained rather than fatal here: the import is
+// dynamic and a resolution failure turns telemetry off without touching the
+// guard's authorization path. It must become the bare
+// '@emilia-protocol/otel-authorization' specifier, with a declared dependency
+// and a release-registry entry, before mcp-guard ships telemetry to npm.
+type OtelAuthorizationModule = typeof import('../../otel-authorization/index.js');
+let otelAuthorizationModule: Promise<OtelAuthorizationModule | null> | null = null;
+function loadOtelAuthorization(): Promise<OtelAuthorizationModule | null> {
+  if (!otelAuthorizationModule) {
+    otelAuthorizationModule = import('../../otel-authorization/index.js').catch(() => null);
+  }
+  return otelAuthorizationModule;
+}
 
 type AnyRecord = Record<string, any>;
 
@@ -745,6 +761,7 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
     issueReceipt,
     enforceDemand = true,
     store = inMemoryConsumptionStore(),
+    otelAuthorization,
   } = options;
   const suppliedLedger = options.ledger;
   if (suppliedLedger !== undefined && !(suppliedLedger instanceof ProvenanceLedger)) {
@@ -799,7 +816,12 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
     });
   };
 
-  const guarded = async function guardedDispatch(name: string, args: AnyRecord = {}, extra: AnyRecord = {}): Promise<any> {
+  const guardedDispatch = async function guardedDispatch(
+    name: string,
+    args: AnyRecord = {},
+    extra: AnyRecord = {},
+    telemetry: AnyRecord = {},
+  ): Promise<any> {
     const ann = resolveAnnotations(name);
     const { irreversible } = classifyToolCall(name, args, {
       annotations: { [name]: ann },
@@ -807,6 +829,7 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
       defaultIrreversible,
       trustReadOnlyHints,
     });
+    telemetry.irreversible = irreversible;
 
     // Reversible / read-only → pass straight through. Zero added trust surface.
     if (!irreversible) return handler(name, args, extra);
@@ -835,6 +858,10 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
       if (carriesReceipt) {
         const doc = extractReceipt(args, meta) as AnyRecord;
         const run = await gateFor(action, requiredTier).run(doc, {}, async (verified: AnyRecord) => {
+          telemetry.receiptConsumed = true;
+          telemetry.receiptId = verified.receiptId;
+          telemetry.receiptHash = receiptHashOf(doc);
+          telemetry.action = action;
           await ledger.append({
             tool: name,
             action,
@@ -937,6 +964,11 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
     // effect, and commit after any invocation attempt. The newly issued receipt
     // cannot later be replayed through Path A.
     const run = await gateFor(action, requiredTier).run(doc, {}, async (verified: AnyRecord) => {
+      telemetry.guardDecision = GUARD_DECISIONS.ALLOW_WITH_SIGNOFF;
+      telemetry.receiptConsumed = true;
+      telemetry.receiptId = issued.receipt_id || verified.receiptId;
+      telemetry.receiptHash = receiptHashOf(doc);
+      telemetry.action = action;
       await ledger.append({
         tool: name,
         action,
@@ -963,6 +995,83 @@ export function withMcpGuard(handler: (...args: any[]) => any, options: AnyRecor
       });
     }
     return run.result;
+  };
+
+  /**
+   * Emit gen_ai.tool.authorization.* for one guarded MCP tool call, then return
+   * the guard's own result unchanged.
+   *
+   * MCP's approval slot (2026-07-28 MRTR, and the elicitation flows hosts build
+   * on it) is a boolean per call. This guard holds more than the boolean: it
+   * knows whether it classified the call irreversible, whether an EP-RECEIPT-v1
+   * was actually consumed, and whether the effect was refused. That is what the
+   * status values are read off, and nothing is inferred beyond it:
+   *
+   *   refused                                  -> rejected           (self_attested)
+   *   allowed, receipt consumed                -> authorized_in_scope (independently_verifiable)
+   *   allowed, signoff path but no consumption -> step_bypassed      (self_attested)
+   *   allowed, irreversible, no receipt        -> no_authorization_step (self_attested)
+   *   allowed, reversible                      -> auto_approved      (self_attested)
+   *
+   * The fourth line is the one that matters: an irreversible tool that executed
+   * with no authorization step is the query this attribute group exists to make
+   * answerable, and this guard reports it about itself.
+   */
+  const guarded = async function guardedWithAuthorizationTelemetry(
+    name: string,
+    args: AnyRecord = {},
+    extra: AnyRecord = {},
+  ): Promise<any> {
+    const telemetry: AnyRecord = {
+      irreversible: true,
+      receiptConsumed: false,
+      guardDecision: GUARD_DECISIONS.ALLOW,
+    };
+    let result: any;
+    let thrown: any;
+    let threw = false;
+    try {
+      result = await guardedDispatch(name, args, extra, telemetry);
+    } catch (error) {
+      threw = true;
+      thrown = error;
+    }
+
+    const otel = otelAuthorization ? await loadOtelAuthorization() : null;
+    if (otelAuthorization && otel) {
+      const refused = threw || (result && typeof result === 'object' && result.ep_refused === true);
+      const guardDecision = refused ? GUARD_DECISIONS.DENY : telemetry.guardDecision;
+      const evidence: AnyRecord = {};
+      if (typeof telemetry.action === 'string' && telemetry.action !== '') {
+        evidence.action_digest = telemetry.action;
+      }
+      if (!refused && telemetry.receiptConsumed
+          && typeof telemetry.receiptHash === 'string' && telemetry.receiptHash !== ''
+          && typeof telemetry.receiptId === 'string' && telemetry.receiptId !== '') {
+        evidence.evidence_digest = telemetry.receiptHash;
+        evidence.evidence_format = 'application/vnd.emilia.receipt.v1+json';
+        evidence.evidence_locator = `emilia-receipt:${telemetry.receiptId}`;
+      }
+      const consumedWithEvidence = !refused
+        && telemetry.receiptConsumed === true
+        && typeof evidence.evidence_digest === 'string';
+      try {
+        await otel.emitToolAuthorization(
+          otelAuthorization,
+          otel.mapMcpGuardDecision(
+            guardDecision,
+            { irreversible: telemetry.irreversible === true, receipt_consumed: consumedWithEvidence },
+            evidence as any,
+          ),
+          { runtime: 'mcp-guard', tool_name: name, guard_decision: guardDecision },
+        );
+      } catch {
+        // Telemetry failure is never an authorization failure.
+      }
+    }
+
+    if (threw) throw thrown;
+    return result;
   };
 
   // Expose the ledger so the host can persist / re-verify it.

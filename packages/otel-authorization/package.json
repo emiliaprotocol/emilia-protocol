@@ -1,0 +1,54 @@
+{
+  "name": "@emilia-protocol/otel-authorization",
+  "version": "0.1.0",
+  "description": "Build the gen_ai.tool.authorization.* OpenTelemetry attribute group for an execute_tool span from a runtime's own approval decision. Zero dependencies; @opentelemetry/api is an optional peer.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "dist/",
+    "src/",
+    "tsconfig.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "keywords": [
+    "emilia-protocol",
+    "opentelemetry",
+    "semantic-conventions",
+    "gen-ai",
+    "execute-tool",
+    "human-in-the-loop",
+    "tool-approval",
+    "observability"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@opentelemetry/api": {
+      "optional": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/otel-authorization"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

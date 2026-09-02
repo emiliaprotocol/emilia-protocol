@@ -32,8 +32,56 @@ const ORG_ID = process.env.EP_ORG_ID || '';
 const requestedTimeout = Number(process.env.EP_SIGNOFF_TIMEOUT_S);
 const TIMEOUT_S = Math.min(Number.isFinite(requestedTimeout) && requestedTimeout > 0 ? requestedTimeout : 30, 60);
 const POLL_MS = 3000;
+// ── authorization telemetry ─────────────────────────────────────────────────
+// A PreToolUse hook is a separate short-lived process. It has no handle on the
+// execute_tool span the host may be recording, and starting an OpenTelemetry SDK
+// here to create one would be a new runtime dependency this hook does not take.
+// So this integration CANNOT set attributes on a span. What it can do without a
+// dependency is write the same attribute map as one structured stderr line, for
+// a collector or log pipeline to lift onto the call.
+//
+// Off by default: set EP_OTEL_AUTHORIZATION=1 to enable. stdout stays the hook
+// protocol and is never touched by this.
+//
+// The hook's own vocabulary is 'ask' | 'deny' and it never emits 'allow'. 'ask'
+// is NOT an authorization status: the decision has been handed to a human who
+// has not answered. Recording that as auto_approved would be the exact false
+// negative this attribute group exists to expose, so 'ask' emits nothing.
+const OTEL_AUTHORIZATION_ENABLED = process.env.EP_OTEL_AUTHORIZATION === '1';
+const AUTHORIZATION_ATTRIBUTE_KEYS = {
+    status: 'emilia.tool.authorization.status',
+    evidenceGrade: 'emilia.tool.authorization.evidence.grade',
+    evidenceFormat: 'emilia.tool.authorization.evidence.format',
+    evidenceLocator: 'emilia.tool.authorization.evidence.locator',
+};
+function writeAuthorizationTelemetry(decision, receiptId) {
+    if (!OTEL_AUTHORIZATION_ENABLED)
+        return;
+    if (decision !== 'deny' && decision !== 'allow')
+        return; // 'ask' is unresolved
+    const attributes = {
+        [AUTHORIZATION_ATTRIBUTE_KEYS.status]: decision === 'deny' ? 'rejected' : 'auto_approved',
+        // This hook is a heuristic classifier. Whatever it says about the call is
+        // its own assertion, so the grade is self_attested and nothing above it.
+        [AUTHORIZATION_ATTRIBUTE_KEYS.evidenceGrade]: 'self_attested',
+    };
+    if (typeof receiptId === 'string' && receiptId !== '') {
+        attributes[AUTHORIZATION_ATTRIBUTE_KEYS.evidenceFormat] = 'application/vnd.emilia.receipt.v1+json';
+        attributes[AUTHORIZATION_ATTRIBUTE_KEYS.evidenceLocator] = `emilia-receipt:${receiptId}`;
+    }
+    try {
+        process.stderr.write(`${JSON.stringify({
+            emilia_tool_authorization: attributes,
+            tool_name: typeof tool === 'string' ? tool : null,
+        })}\n`);
+    }
+    catch {
+        // Telemetry never breaks the hook.
+    }
+}
 // ── decision emitters ───────────────────────────────────────────────────────
-function emit(decision, reason) {
+function emit(decision, reason, receiptId) {
+    writeAuthorizationTelemetry(decision, receiptId);
     process.stdout.write(JSON.stringify({
         hookSpecificOutput: {
             hookEventName: 'PreToolUse',
@@ -166,7 +214,7 @@ try {
         },
     });
     if (mint.decision === 'deny') {
-        emit('deny', `EMILIA — BLOCKED by policy: ${(mint.reasons || []).join('; ') || 'denied'}. receipt ${mint.receipt_id}. Do not proceed.`);
+        emit('deny', `EMILIA — BLOCKED by policy: ${(mint.reasons || []).join('; ') || 'denied'}. receipt ${mint.receipt_id}. Do not proceed.`, mint.receipt_id);
     }
     if (!mint.signoff_required) {
         emit('ask', `EMILIA recorded the heuristic projection but this hook cannot authorize the exact provider action. receipt ${mint.receipt_id}. Confirm the actual command and arguments at the credential-owning boundary.`);
@@ -185,7 +233,7 @@ try {
             emit('ask', `EMILIA received a named-human approval for the heuristic projection. receipt ${mint.receipt_id}. Review the exact command and arguments before proceeding; exact authorization must be enforced at the credential-owning boundary.`);
         }
         if (['denied', 'rejected', 'revoked'].includes(st)) {
-            emit('deny', `EMILIA — a named human REJECTED this action. receipt ${mint.receipt_id}. Do not proceed.`);
+            emit('deny', `EMILIA — a named human REJECTED this action. receipt ${mint.receipt_id}. Do not proceed.`, mint.receipt_id);
         }
     }
     emit('ask', `EMILIA — signoff timed out after ${TIMEOUT_S}s. Approve at ${url}, or confirm manually. Failing closed.`);

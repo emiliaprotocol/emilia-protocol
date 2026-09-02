@@ -43,8 +43,21 @@
 // The canonical makeReceiptGate encodes verify + target binding + reserve→
 // commit/release replay safety + sanitized {reason} rejections in one place.
 import { makeReceiptGate } from '../../require-receipt/gate.js';
-import { bindToolAction, snapshotToolArguments } from '../../require-receipt/index.js';
+import { bindExecutorAction, bindToolAction, snapshotToolArguments } from '../../require-receipt/index.js';
 import { strictJsonGate } from '../../require-receipt/strict-json.js';
+// Optional OpenTelemetry emission, loaded LAZILY and never declared as a
+// dependency. The sibling module has no dependencies of its own and never
+// imports @opentelemetry/api statically. Resolution failure (a published tarball
+// installed without the sibling package) turns telemetry off; it never breaks
+// this adapter's authorization path.
+type OtelAuthorizationModule = typeof import('../../otel-authorization/index.js');
+let otelAuthorizationModule: Promise<OtelAuthorizationModule | null> | null = null;
+function loadOtelAuthorization(): Promise<OtelAuthorizationModule | null> {
+  if (!otelAuthorizationModule) {
+    otelAuthorizationModule = import('../../otel-authorization/index.js').catch(() => null);
+  }
+  return otelAuthorizationModule;
+}
 
 type AnyRecord = Record<string, any>;
 
@@ -192,6 +205,7 @@ export function requireReceiptForOpenAIAgent(opts: AnyRecord = {}): AnyRecord {
     actionFor,
     store = sharedStore,
     action: _callerSuppliedActionIgnored,
+    otelAuthorization,
     ...gateOptions
   } = opts;
 
@@ -220,6 +234,46 @@ export function requireReceiptForOpenAIAgent(opts: AnyRecord = {}): AnyRecord {
   // Track the reservation a decide() approval holds, so resolve() can commit it
   // (on a driven approve) or release it (rollback) — keyed by receipt_id.
   const pending = new Map();
+
+  /**
+   * Emit gen_ai.tool.authorization.* for one finished decision.
+   *
+   * The OpenAI Agents approval slot is a boolean: `needsApproval` marks the tool
+   * and `state.approve` / `state.reject` resolves it, carrying no approver, no
+   * signature and no scope. This adapter drives that boolean from an
+   * action-bound EP-RECEIPT-v1, so an approve here has an artifact behind it and
+   * is emitted as authorized_in_scope at grade independently_verifiable with the
+   * receipt id as the evidence locator. A reject is emitted as rejected at grade
+   * self_attested: the refusal is this adapter's own assertion.
+   *
+   * `evidence_format` and `evidence_locator` are opaque references. No receipt
+   * body, no arguments and no approver identity are placed on the span.
+   */
+  const emitAuthorizationAttributes = async (d: AnyRecord): Promise<void> => {
+    if (!otelAuthorization) return;
+    const otel = await loadOtelAuthorization();
+    if (!otel) return;
+    const bound = d.decision === 'approve'
+      && typeof d.receipt_id === 'string' && d.receipt_id !== ''
+      && typeof d.receipt_digest === 'string' && d.receipt_digest !== '';
+    const evidence = bound
+      ? {
+        evidence_digest: d.receipt_digest,
+        evidence_format: 'application/vnd.emilia.receipt.v1+json',
+        evidence_locator: `emilia-receipt:${d.receipt_id}`,
+        action_digest: typeof d.action === 'string' ? d.action : null,
+      }
+      : { action_digest: typeof d.action === 'string' ? d.action : null };
+    // An approve with no receipt id never happens on this path, but if the
+    // adapter is ever driven without one the honest report is auto_approved at
+    // self_attested, not a grade the runtime cannot support.
+    const decision = d.decision === 'approve' ? (bound ? 'approve' : 'approve_no_receipt') : 'reject';
+    await otel.emitToolAuthorization(
+      otelAuthorization,
+      otel.mapOpenAIAgentsDecision(decision, evidence as any),
+      { runtime: 'openai-agents', tool_name: d.toolName, tool_call_id: d.callId, decision: d.decision, reason: d.reason },
+    );
+  };
 
   /**
    * Decide a single interruption against a single receipt.
@@ -323,11 +377,24 @@ export function requireReceiptForOpenAIAgent(opts: AnyRecord = {}): AnyRecord {
       }
     }
 
+    // A content digest of the receipt document that drove this approval. It is
+    // an opaque reference, never the receipt body: a third party holding the
+    // receipt can recompute it and see whether the artifact it has is the
+    // artifact this call was approved on. Failure to digest is not an
+    // authorization failure, so it degrades the telemetry, not the decision.
+    let receiptDigest: string | null = null;
+    try {
+      receiptDigest = bindExecutorAction('receipt', receipt);
+    } catch {
+      receiptDigest = null;
+    }
+
     return {
       decision: 'approve',
       ...base,
       reason: 'valid_action_bound_receipt',
       receipt_id: c.receiptId,
+      receipt_digest: receiptDigest,
       subject: c.subject,
     };
   }
@@ -460,6 +527,11 @@ export function requireReceiptForOpenAIAgent(opts: AnyRecord = {}): AnyRecord {
           await state.reject(interruption, { message: `EMILIA: ${d.reason}` });
         }
       }
+
+      // OpenTelemetry emission, after the decision is final. This is an
+      // observation of what this adapter did; it is not part of the decision and
+      // cannot change it. A refusal from the mapper leaves the span untouched.
+      await emitAuthorizationAttributes(d);
     }
 
     return { approved, rejected, decisions };

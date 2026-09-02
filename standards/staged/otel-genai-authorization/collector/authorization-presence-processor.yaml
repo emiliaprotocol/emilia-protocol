@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# OpenTelemetry Collector configuration turning the attribute group from an
+# emission convention into an operational control.
+#
+# The convention says a producer MAY describe its authorization decision. This
+# config lets an operator say it MUST: any execute_tool span that arrives
+# without the group is marked, and can be routed to an alerting pipeline or
+# dropped outright.
+#
+# UNVERIFIED: this config has NOT been run against a real Collector. It is
+# written against the documented transform and filter processor syntax and is
+# offered as a starting point, not as a tested artifact. Validate it with
+# `otelcol validate --config` before deploying.
+#
+# Uses the vendor-prefixed names, which is what producers emit today. Change the
+# prefix to gen_ai. if and when the group is accepted upstream.
+
+processors:
+  # 1. Mark every tool-execution span that says nothing about authorization.
+  #    A missing group is the interesting case: it is a tool call nobody can
+  #    account for, and today it is indistinguishable from a tool call nobody
+  #    bothered to instrument.
+  transform/authorization_presence:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - >-
+            set(attributes["emilia.tool.authorization.missing"], true)
+            where attributes["gen_ai.operation.name"] == "execute_tool"
+            and attributes["emilia.tool.authorization.status"] == nil
+
+  # 2. Mark the case an operator actually pages on: an irreversible tool call
+  #    that either ran with no authorization step or reached execution without
+  #    completing one.
+  #
+  #    gen_ai.tool.risk.level is proposed separately in
+  #    open-telemetry/semantic-conventions-genai#373. Substitute your own
+  #    irreversibility signal if you do not emit it.
+  transform/unauthorized_irreversible:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - >-
+            set(attributes["emilia.tool.authorization.alert"], "irreversible_without_human_step")
+            where attributes["gen_ai.operation.name"] == "execute_tool"
+            and (attributes["emilia.tool.authorization.status"] == "no_authorization_step"
+                 or attributes["emilia.tool.authorization.status"] == "step_bypassed")
+            and (attributes["gen_ai.tool.risk.level"] == "high"
+                 or attributes["gen_ai.tool.risk.level"] == "critical")
+
+  # 3. OPTIONAL and off by default: refuse to accept tool-execution spans that
+  #    carry no authorization status at all.
+  #
+  #    Read this before enabling it. Dropping telemetry destroys the evidence
+  #    that the call happened. An operator who drops here can no longer tell an
+  #    uninstrumented tool call apart from one that never ran, which is the
+  #    exact confusion the convention exists to remove. Alerting on
+  #    emilia.tool.authorization.missing is almost always the better control;
+  #    dropping is for a tenant that has contractually required full coverage
+  #    and wants a hard enforcement point.
+  #
+  #    filter/require_authorization:
+  #      error_mode: ignore
+  #      traces:
+  #        span:
+  #          - >-
+  #            attributes["gen_ai.operation.name"] == "execute_tool"
+  #            and attributes["emilia.tool.authorization.status"] == nil
+
+service:
+  pipelines:
+    traces:
+      processors:
+        - transform/authorization_presence
+        - transform/unauthorized_irreversible
+        # - filter/require_authorization
