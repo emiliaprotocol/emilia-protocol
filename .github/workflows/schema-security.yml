@@ -18,7 +18,7 @@ name: schema-security
 #   service-role key is NOT in CI.
 #
 # To make this a true deploy gate: require the unique
-# `emilia-production-schema-contract` GitHub check on main and configure the
+# `emilia-production-schema-contract-v2` GitHub check on main and configure the
 # external Vercel deployment check documented in docs/operations/DEPLOYMENT.md.
 
 env:
@@ -131,7 +131,7 @@ jobs:
         run: npm run schema:reconcile
 
   schema-contract:
-    name: emilia-production-schema-contract
+    name: emilia-production-schema-contract-v2
     if: always()
     needs: [candidate-reconciliation, live-schema-contract]
     runs-on: ubuntu-latest
@@ -158,4 +158,4 @@ jobs:
               exit 1
             }
           fi
-          echo '"emilia-production-schema-contract" is satisfied.'
+          echo '"emilia-production-schema-contract-v2" is satisfied.'

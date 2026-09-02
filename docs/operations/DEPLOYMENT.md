@@ -191,7 +191,7 @@ forward and prevents a new application from reaching RPCs that are not live yet.
 `vercel.json` cannot register project Deployment Checks. Production aliasing
 remains unsafe until this external check exists in the linked Vercel project.
 The GitHub Actions check-run name is intentionally unique and stable:
-`emilia-production-schema-contract`. Do not rename it without replacing the
+`emilia-production-schema-contract-v2`. Do not rename it without replacing the
 Vercel configuration and branch-protection requirement in the same controlled
 change.
 
@@ -202,11 +202,12 @@ then add exactly one blocking production check:
 vercel project inspect
 vercel project checks --format json
 vercel project checks add \
-  --check-name "emilia-production-schema-contract" \
+  --check-name "emilia-production-schema-contract-v2" \
   --requires build-ready \
   --blocks deployment-alias \
   --targets production \
-  --source '{"kind":"git-provider","provider":"github","externalCheckName":"emilia-production-schema-contract"}' \
+  --timeout 5000 \
+  --source '{"kind":"git-provider","provider":"github","externalCheckName":"emilia-production-schema-contract-v2"}' \
   --format json
 vercel project checks --blocks deployment-alias --format json
 ```
@@ -220,14 +221,15 @@ curl --fail-with-body --request POST \
   --header "Authorization: Bearer ${VERCEL_TOKEN}" \
   --header "Content-Type: application/json" \
   --data '{
-    "name": "emilia-production-schema-contract",
+    "name": "emilia-production-schema-contract-v2",
     "requires": "build-ready",
     "blocks": "deployment-alias",
     "targets": ["production"],
+    "timeout": 5000,
     "source": {
       "kind": "git-provider",
       "provider": "github",
-      "externalCheckName": "emilia-production-schema-contract"
+      "externalCheckName": "emilia-production-schema-contract-v2"
     }
   }'
 ```
@@ -236,10 +238,37 @@ Use the CLI path when possible because it resolves the already-linked project
 and scope. Never paste token values into the command or repository. If creation
 returns an ambiguous error, list checks before retrying so a duplicate is not
 created. The resulting object must have `requires=build-ready`,
-`blocks=deployment-alias`, `targets=["production"]`, and the exact GitHub source
-above. Also require `emilia-production-schema-contract` in GitHub rules for
-`main`. A Vercel `Force Promote` bypasses Deployment Checks and requires an
-explicit incident decision; it is not a normal release path.
+`blocks=deployment-alias`, `targets=["production"]`, `timeout=5000`, and the
+exact GitHub source above. Also require
+`emilia-production-schema-contract-v2` in GitHub rules for `main`. A Vercel
+`Force Promote` bypasses Deployment Checks and requires an explicit incident
+decision; it is not a normal release path.
+
+GitHub Actions reruns retain the failed check run and create another attempt.
+Vercel can therefore bind a redeploy of the same commit to the historical
+failure even after the rerun succeeds. Preserve both results as audit evidence:
+do not delete the Actions run or bypass the deployment check. Release a new
+reviewed commit, or rotate this exact external check name together with the
+workflow, Vercel project configuration, and GitHub rule.
+
+Rotate the name fail-closed. Add the new Vercel check while the old check still
+blocks production aliasing. Merge the reviewed workflow rename under the old
+GitHub requirement; the first new production deployment may remain deliberately
+unaliased. After the new check succeeds on `main`, replace the GitHub required
+context with the v2 name, remove the old Vercel check by its inspected id, and
+redeploy that exact reviewed commit so only the successful v2 verdict controls
+aliasing:
+
+```bash
+vercel project checks --format json
+vercel project checks remove "${OLD_VERCEL_CHECK_ID}"
+vercel redeploy "${REVIEWED_DEPLOYMENT_ID}" --target production
+vercel project checks --blocks deployment-alias --format json
+```
+
+Never delete the historical GitHub Actions run. If the GitHub rule cannot be
+updated, keep the old Vercel check in place and leave the deployment unaliased;
+do not create an unguarded transition window.
 
 ```bash
 # Build

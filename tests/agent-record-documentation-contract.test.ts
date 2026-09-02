@@ -166,14 +166,22 @@ describe('Agent Record documentation and OpenAPI lifecycle contract', () => {
   });
 
   it('pins one unique GitHub check name and exact external Vercel alias gate', () => {
-    expect(schemaWorkflow).toContain('name: emilia-production-schema-contract');
-    expect(schemaWorkflow.match(/name: emilia-production-schema-contract/g)).toHaveLength(1);
-    expect(deploymentDocs).toContain('--check-name "emilia-production-schema-contract"');
+    expect(schemaWorkflow).toContain('name: emilia-production-schema-contract-v2');
+    expect(schemaWorkflow.match(/name: emilia-production-schema-contract-v2/g)).toHaveLength(1);
+    expect(deploymentDocs).toContain('--check-name "emilia-production-schema-contract-v2"');
     expect(deploymentDocs).toContain('--requires build-ready');
     expect(deploymentDocs).toContain('--blocks deployment-alias');
     expect(deploymentDocs).toContain('--targets production');
+    expect(deploymentDocs).toContain('--timeout 5000');
     expect(deploymentDocs).toContain(
-      '"externalCheckName":"emilia-production-schema-contract"',
+      '"externalCheckName":"emilia-production-schema-contract-v2"',
+    );
+    expect(deploymentDocs).toContain('"timeout": 5000');
+    expect(deploymentDocs).toContain(
+      'vercel project checks remove "${OLD_VERCEL_CHECK_ID}"',
+    );
+    expect(deploymentDocs.replace(/\s+/g, ' ')).toContain(
+      'replace the GitHub required context with the v2 name',
     );
     expect(deploymentDocs).toContain(
       'POST /v2/projects/{projectIdOrName}/checks',
