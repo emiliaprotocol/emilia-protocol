@@ -12,7 +12,12 @@
 --
 -- Mirrors AEB_CONSUMPTION_DDL in packages/gate/src/aeb-consumption-store.ts.
 
-GRANT ep_aeb_store_owner TO CURRENT_USER;
+-- Production already owns the table and private schema through this NOLOGIN
+-- role. PostgreSQL 17 can retain an older membership with SET/INHERIT disabled,
+-- so a plain GRANT does not make the owner assumable by the migration runner.
+GRANT ep_aeb_store_owner TO CURRENT_USER
+  WITH INHERIT FALSE, SET TRUE;
+SET ROLE ep_aeb_store_owner;
 
 ALTER TABLE ep_aeb_consumption_operations
   ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ NULL;
@@ -79,4 +84,5 @@ GRANT EXECUTE ON FUNCTION ep_aeb_private.release_terminal_operation(TEXT, TEXT, 
 COMMENT ON COLUMN ep_aeb_consumption_operations.released_at IS
   'Set when an authoritative non-entry made the reservation terminally RELEASED_NOT_ENTERED. The row is never deleted, so the operation key stays unreservable.';
 
+RESET ROLE;
 REVOKE ep_aeb_store_owner FROM CURRENT_USER;

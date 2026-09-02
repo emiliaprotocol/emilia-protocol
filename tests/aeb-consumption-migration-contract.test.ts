@@ -73,6 +73,15 @@ describe('AEB consumption production migration', () => {
 });
 
 describe('AEB terminal released-not-entered migration', () => {
+  it('assumes the existing no-login owner with explicit PostgreSQL 17 membership options', () => {
+    expect(terminalReleaseMigration).toContain(
+      'GRANT ep_aeb_store_owner TO CURRENT_USER\n  WITH INHERIT FALSE, SET TRUE;\nSET ROLE ep_aeb_store_owner;',
+    );
+    expect(terminalReleaseMigration).toContain(
+      'RESET ROLE;\nREVOKE ep_aeb_store_owner FROM CURRENT_USER;',
+    );
+  });
+
   it('keeps the released row and exposes only an executor-scoped terminal release', () => {
     expect(terminalReleaseMigration).toContain(
       'ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ NULL',
