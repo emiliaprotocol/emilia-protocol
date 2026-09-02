@@ -242,8 +242,8 @@ runtimeTest('scaffold evaluates every positive, hostile, and boundary row determ
   const second = runCrossingLab(root);
   assert.deepEqual(first, second);
   assert.equal(first['@version'], CROSSING_LAB_REPORT_VERSION);
-  assert.equal(first.summary.adapter_rows, 6);
-  assert.equal(first.summary.passed, 6);
+  assert.equal(first.summary.adapter_rows, 8);
+  assert.equal(first.summary.passed, 8);
   assert.equal(first.summary.failed, 0);
   assert.equal(first.summary.harness_passed, 4);
   assert.equal(first.summary.harness_failed, 0);
@@ -467,6 +467,77 @@ runtimeTest('module-local state cannot evade the same-process determinism check'
   assert.ok(report.adapter_rows[0].reasons.includes('adapter_evaluation_error'));
 });
 
+runtimeTest('the replay probe catches an adapter that keys its unit on a wrapper field', () => {
+  const root = freshWorkspace();
+  const adapterPath = join(root, 'adapter.mjs');
+  // presentation_id sits outside the native signature and is the sample
+  // protocol's wrapper. An adapter that lets it discriminate the unit hands
+  // one signed approval two consumes; the probe must say so.
+  writeFileSync(adapterPath, readFileSync(adapterPath, 'utf8').replace(
+    "replay_unit: digest({ protocol: 'example-native', native_id: input.artifact.native_id }),",
+    "replay_unit: digest({ protocol: 'example-native', native_id: input.artifact.native_id, presentation_id: input.artifact.presentation_id }),",
+  ));
+  sealCrossingLab(root);
+  const report = runCrossingLab(root);
+  assert.equal(report.lab_passed, false);
+  const rows = Object.fromEntries(report.adapter_rows.map((entry) => [entry.id, entry]));
+  assert.equal(rows['replay-identity-survives-re-presentation'].passed, false);
+  assert.ok(rows['replay-identity-survives-re-presentation'].reasons.includes('replay_unit_changed_across_re_presentation'));
+  // The artifact_ref-only row cannot see this at all, which is why it is not
+  // sufficient on its own.
+  assert.equal(rows['replay-identity-is-wrapper-independent'].passed, true);
+  assert.equal(rows['distinct-authority-is-a-distinct-replay-unit'].passed, true);
+});
+
+runtimeTest('the replay probe catches an adapter that collapses distinct authorities', () => {
+  const root = freshWorkspace();
+  const adapterPath = join(root, 'adapter.mjs');
+  writeFileSync(adapterPath, readFileSync(adapterPath, 'utf8').replace(
+    "replay_unit: digest({ protocol: 'example-native', native_id: input.artifact.native_id }),",
+    "replay_unit: digest({ protocol: 'example-native' }),",
+  ));
+  sealCrossingLab(root);
+  const report = runCrossingLab(root);
+  assert.equal(report.lab_passed, false);
+  const rows = Object.fromEntries(report.adapter_rows.map((entry) => [entry.id, entry]));
+  assert.equal(rows['distinct-authority-is-a-distinct-replay-unit'].passed, false);
+  assert.ok(rows['distinct-authority-is-a-distinct-replay-unit'].reasons.includes('distinct_authorities_share_one_replay_unit'));
+  assert.equal(rows['replay-identity-survives-re-presentation'].passed, true);
+});
+
+runtimeTest('a vacuous replay probe is refused instead of passing', () => {
+  for (const mutate of [
+    (workspace: any) => { workspace.replay_probe.re_presented_artifact = structuredClone(workspace.replay_probe.distinct_authority_artifact); },
+    (workspace: any) => { workspace.replay_probe.distinct_authority_artifact = structuredClone(workspace.replay_probe.re_presented_artifact); },
+  ]) {
+    const root = freshWorkspace();
+    const workspace = readWorkspace(root);
+    mutate(workspace);
+    writeWorkspace(root, workspace);
+    assert.throws(() => sealCrossingLab(root), /not_distinct/);
+  }
+});
+
+runtimeTest('a workspace authored without a replay probe still loads', () => {
+  const root = freshWorkspace();
+  const workspace = readWorkspace(root);
+  delete workspace.replay_probe;
+  writeWorkspace(root, workspace);
+  sealCrossingLab(root);
+  const report = runCrossingLab(root);
+  assert.equal(report.lab_passed, true);
+  assert.equal(report.summary.adapter_rows, 6);
+  assert.equal(report.adapter_rows.some((row) => row.id === 'replay-identity-survives-re-presentation'), false);
+});
+
+runtimeTest('a replay probe artifact cannot drift from its pin', () => {
+  const root = freshWorkspace();
+  const workspace = readWorkspace(root);
+  workspace.replay_probe.re_presented_artifact_digest = `sha256:${'0'.repeat(64)}`;
+  writeWorkspace(root, workspace);
+  assert.throws(() => runCrossingLab(root), /re_presented_artifact_pin_drift/);
+});
+
 runtimeTest('seal normalizes an omitted optional unavailable status field', () => {
   const root = freshWorkspace();
   const workspace = readWorkspace(root);
@@ -487,6 +558,8 @@ runtimeTest('the sample mapper refuses mistyped CAID material after native verif
   const action = { ...artifact.action, amount: 500 };
   const nativeBody = { ...artifact, action };
   delete nativeBody.signature;
+  // presentation_id is the sample protocol's out-of-signature wrapper.
+  delete nativeBody.presentation_id;
   const signedArtifact = {
     ...nativeBody,
     signature: crypto.sign(
@@ -499,6 +572,14 @@ runtimeTest('the sample mapper refuses mistyped CAID material after native verif
     .export({ type: 'spki', format: 'der' }).toString('base64url');
   workspace.expected_action = action;
   workspace.hostile_expected_action = { ...action, amount: 501 };
+  // The replay probe rides the same trust root, so it moves to the new key too.
+  const distinctBody = { ...nativeBody, native_id: 'approval:example:002' };
+  workspace.replay_probe.re_presented_artifact = { ...signedArtifact, presentation_id: 'presentation:example:002' };
+  workspace.replay_probe.distinct_authority_artifact = {
+    ...distinctBody,
+    presentation_id: 'presentation:example:003',
+    signature: crypto.sign(null, Buffer.from(canonicalizeCrossingLab(distinctBody), 'utf8'), privateKey).toString('base64url'),
+  };
   writeFileSync(artifactPath, `${JSON.stringify(signedArtifact, null, 2)}\n`);
   writeWorkspace(root, workspace);
   sealCrossingLab(root);
@@ -528,7 +609,7 @@ runtimeTest('CLI init and run work offline and preserve exit semantics', () => {
   assert.match(sealed, /local pins updated/i);
   const report = JSON.parse(execFileSync(process.execPath, [CLI, 'crossing-lab', 'run', target], { encoding: 'utf8' }));
   assert.equal(report.lab_passed, true);
-  assert.equal(report.summary.passed, 6);
+  assert.equal(report.summary.passed, 8);
 });
 
 runtimeTest('packed package carries the CLI, Crossing Lab library, worker, and declarations', () => {

@@ -8,7 +8,8 @@ import test from 'node:test';
 // The CAID reference implementation intentionally has no TypeScript surface.
 // @ts-expect-error -- independently cross-checked in this test.
 import { computeCaid } from './vendor/caid.mjs';
-import { AEB_ADAPTER_VERSION, AEB_REGISTRY_VERSION, AEB_REQUIREMENT_VERSION, InMemoryAebConsumptionStore, adapterPinDigest, authorizeAebExecution, digestAeb, evaluateAebEvidence, mappingProfileDigest, reconcileAebExecution, registryEntryDigest, unifiedRegistryDigest, verifyAebEvaluation, } from './aeb-adapter-contract.js';
+import { canonicalizeFiniteJson } from './strict-json.js';
+import { AEB_ADAPTER_VERSION, AEB_REGISTRY_VERSION, AEB_REQUIREMENT_VERSION, InMemoryAebConsumptionStore, adapterPinDigest, aebNativeReplayKeys, authorizeAebExecution, digestAeb, evaluateAebEvidence, mappingProfileDigest, reconcileAebExecution, registryEntryDigest, unifiedRegistryDigest, verifyAebEvaluation, } from './aeb-adapter-contract.js';
 import { CCS_AEB_ADAPTER_ID, CCS_AEB_ADAPTER_VERSION, CCS_AEB_CONFIG_VERSION, CCS_AEB_TRUST_ROOT_VERSION, CCS_CAID_MAPPER_ID, CCS_CAID_MAPPING_VERSION, CCS_PYPI_ARTIFACT_VERSION, CCS_PYPI_DISTRIBUTION_VERSION, CCS_PYPI_RUNTIME_VERSION, CCS_L1_AEB_ADAPTER_ID, CCS_L1_AEB_ADAPTER_VERSION, CCS_L1_AEB_CONFIG_VERSION, CCS_L1_AEB_TRUST_ROOT_VERSION, CCS_L1_CAID_MAPPER_ID, CCS_L1_CAID_MAPPING_VERSION, CCS_L1_PYPI_DISTRIBUTION_VERSION, CCS_L1_PYPI_SDIST_SHA256, CCS_L1_PYPI_SOURCE_LOCK, CCS_L1_PYPI_WHEEL_SHA256, CCS_L1_REFERENCE_VECTOR_SHA256, CCS_L1_UPSTREAM_COMMIT_SHA, CCS_L1_UPSTREAM_REPOSITORY, CCS_L1_UPSTREAM_TAG, CCS_L1_UPSTREAM_TAG_GPG_SIGNED, CCS_L1_UPSTREAM_TAG_KIND, CCS_L1_UPSTREAM_TAG_OBJECT_SHA, CCS_V13_AEB_ADAPTER_ID, CCS_V13_AEB_CONFIG_VERSION, CCS_V13_AEB_TRUST_ROOT_VERSION, CCS_V13_CAID_MAPPER_ID, CCS_V13_CAID_MAPPING_VERSION, CCS_V13_DRAFT_SHA256, CCS_V13_SOURCE_LOCK, createCcsV13AebActionDefinition, createCcsV13AebAdapter, createCcsL1AebActionDefinition, createCcsPyPiL1AebAdapter, createCcsAebActionDefinition, createCcsNativeActionDefinition, createCcsPyPiHmacAebAdapter, } from './aeb-ccs-adapter.js';
 const NOW = '2026-08-10T19:00:00Z';
 const NOW_SECONDS = Date.parse(NOW) / 1000;
@@ -395,7 +396,7 @@ const V13_PUBLIC_RAW = V13_PUBLIC_KEY.export({ type: 'spki', format: 'der' }).su
 function v13Hash(value) {
     return crypto.createHash('sha256').update(canonicalPythonSubset(value), 'utf8').digest('hex');
 }
-function mintV13Receipt(params = { left: 19, right: 23 }) {
+function mintV13Receipt(params = { left: 19, right: 23 }, overrides = {}) {
     const fullParamsHash = v13Hash(params);
     const unsigned = {
         trace_id: '0123456789abcdef',
@@ -426,9 +427,10 @@ function mintV13Receipt(params = { left: 19, right: 23 }) {
         expires_at: 1_914_451_260,
         max_clock_skew: 5,
     };
+    const body = { ...unsigned, ...overrides };
     return {
-        ...unsigned,
-        signature: crypto.sign(null, Buffer.from(canonicalPythonSubset(unsigned), 'utf8'), V13_PRIVATE_KEY).toString('hex'),
+        ...body,
+        signature: crypto.sign(null, Buffer.from(canonicalPythonSubset(body), 'utf8'), V13_PRIVATE_KEY).toString('hex'),
     };
 }
 function v13Profile(actionType = ACTION_TYPE) {
@@ -855,4 +857,128 @@ test('a fresh CCS receipt cannot replay the same execution authority after an in
     });
     assert.equal(replay.state, 'REFUSED');
     assert.equal(replay.reason, 'consumption_conflict');
+});
+function ccsReplayKeys(replayUnit) {
+    return aebNativeReplayKeys({
+        evaluator: { id: 'rp:ccs-replay-test' },
+        legs: [{ replay_unit: replayUnit }],
+    });
+}
+test('CCS-05 v1.3 re-issuing one authority under a fresh nonce is one replay unit', () => {
+    const f = v13Fixture();
+    // nonce and sequence are declared non-material by the shipped profile, so a
+    // re-issued receipt for the same signed action is the same authority.
+    const nonMaterial = v13Profile().semantic_equivalence.omitted_nonmaterial_fields;
+    assert.ok(nonMaterial.includes('nonce'));
+    assert.ok(nonMaterial.includes('sequence'));
+    const reIssued = mintV13Receipt({ left: 19, right: 23 }, {
+        trace_id: 'fedcba9876543210',
+        nonce: 'ffeeddccbbaa99887766554433221100',
+        sequence: 2,
+        receipt: 'aabbccddeeff00112233445566778899',
+    });
+    const first = f.adapter.verifyNative(f.input);
+    const second = f.adapter.verifyNative({ ...f.input, artifact: reIssued, artifact_ref: 'ccs:v13:live-sum-002' });
+    assert.equal(first.acceptance, 'ACCEPTED');
+    assert.equal(second.acceptance, 'ACCEPTED');
+    assert.notEqual(first.evidence_digest, second.evidence_digest);
+    assert.equal(second.replay_unit, first.replay_unit);
+    const store = new InMemoryAebConsumptionStore();
+    assert.equal(store.reserve('aeb:operation-1', ccsReplayKeys(first.replay_unit)), true);
+    assert.equal(store.reserve('aeb:operation-2', ccsReplayKeys(second.replay_unit)), false);
+});
+test('CCS-05 v1.3 two distinct authorities sharing one nonce keep distinct replay units', () => {
+    const f = v13Fixture();
+    const otherParams = { left: 1, right: 2 };
+    // Same issuer, same audience, deliberately the SAME nonce, different signed
+    // action. Colliding these would permanently deny the second call.
+    const other = mintV13Receipt(otherParams, { nonce: '00112233445566778899aabbccddeeff' });
+    assert.equal(other.nonce, f.input.artifact.nonce);
+    const otherAction = {
+        action_type: ACTION_TYPE,
+        parameters: { tool: 'sum', arguments: otherParams },
+    };
+    const first = f.adapter.verifyNative(f.input);
+    const second = f.adapter.verifyNative({
+        ...f.input,
+        artifact: other,
+        artifact_ref: 'ccs:v13:live-sum-003',
+        expected_action: otherAction,
+    });
+    assert.equal(second.acceptance, 'ACCEPTED');
+    assert.notEqual(second.replay_unit, first.replay_unit);
+    assert.equal(f.adapter.mapAction({ ...f.input, artifact: other, expected_action: otherAction, profile: v13Profile(), native: second }).mapping, 'MATCH');
+    const store = new InMemoryAebConsumptionStore();
+    assert.equal(store.reserve('aeb:operation-1', ccsReplayKeys(first.replay_unit)), true);
+    assert.equal(store.reserve('aeb:operation-2', ccsReplayKeys(second.replay_unit)), true);
+});
+const L1_TEST_KEY = crypto.generateKeyPairSync('ed25519');
+const L1_TEST_RAW = L1_TEST_KEY.publicKey.export({ type: 'spki', format: 'der' }).subarray(-32);
+const L1_TEST_FINGERPRINT = crypto.createHash('sha256').update(L1_TEST_RAW).digest('hex').slice(0, 16);
+function mintL1Receipt(overrides = {}) {
+    const body = {
+        ...structuredClone(L1_VECTOR.receipt),
+        public_key: L1_TEST_RAW.toString('base64'),
+        public_key_fingerprint: L1_TEST_FINGERPRINT,
+        ...overrides,
+    };
+    delete body.signature;
+    return {
+        ...body,
+        signature: crypto.sign(null, Buffer.from(canonicalizeFiniteJson(body), 'utf8'), L1_TEST_KEY.privateKey).toString('base64'),
+    };
+}
+function l1TestFixture() {
+    const base = l1Fixture();
+    const root = {
+        ...base.root,
+        public_key_raw_base64: L1_TEST_RAW.toString('base64'),
+        public_key_fingerprint_sha256_16: L1_TEST_FINGERPRINT,
+    };
+    const adapter = createCcsPyPiL1AebAdapter({ config: base.config, trust_roots: [root] });
+    const artifact = mintL1Receipt();
+    return {
+        ...base,
+        root,
+        adapter,
+        input: { ...base.input, artifact, trust_roots: [root] },
+    };
+}
+test('CCS 1.1.20 L1 re-issuing one authority under a fresh nonce is one replay unit', () => {
+    const f = l1TestFixture();
+    const nonMaterial = l1Profile().semantic_equivalence.omitted_nonmaterial_fields;
+    assert.ok(nonMaterial.includes('nonce'));
+    assert.ok(nonMaterial.includes('sequence'));
+    const reIssued = mintL1Receipt({
+        trace_id: 'ref-vector-002',
+        nonce: 'reference-nonce-002',
+        sequence: 1,
+        tool_call_id: 'call-002',
+        latency_us: 17,
+    });
+    const first = f.adapter.verifyNative(f.input);
+    const second = f.adapter.verifyNative({ ...f.input, artifact: reIssued, artifact_ref: 'ccs:l1:reference-signed-002' });
+    assert.equal(first.acceptance, 'ACCEPTED');
+    assert.equal(second.acceptance, 'ACCEPTED');
+    assert.notEqual(first.evidence_digest, second.evidence_digest);
+    assert.equal(second.replay_unit, first.replay_unit);
+    const store = new InMemoryAebConsumptionStore();
+    assert.equal(store.reserve('aeb:operation-1', ccsReplayKeys(first.replay_unit)), true);
+    assert.equal(store.reserve('aeb:operation-2', ccsReplayKeys(second.replay_unit)), false);
+});
+test('CCS 1.1.20 L1 a different signed call is a different replay unit', () => {
+    const f = l1TestFixture();
+    // Same issuer, audience, key, action, and tool; different arguments. The
+    // signed args_digest is what separates them.
+    const other = mintL1Receipt({
+        args_digest: 'b'.repeat(64),
+        nonce: 'reference-nonce-001',
+    });
+    const first = f.adapter.verifyNative(f.input);
+    const second = f.adapter.verifyNative({ ...f.input, artifact: other, artifact_ref: 'ccs:l1:reference-signed-003' });
+    assert.equal(second.acceptance, 'ACCEPTED');
+    assert.notEqual(second.replay_unit, first.replay_unit);
+    const store = new InMemoryAebConsumptionStore();
+    assert.equal(store.reserve('aeb:operation-1', ccsReplayKeys(first.replay_unit)), true);
+    assert.equal(store.reserve('aeb:operation-2', ccsReplayKeys(second.replay_unit)), true);
 });
