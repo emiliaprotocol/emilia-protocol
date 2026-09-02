@@ -208,7 +208,7 @@ export function buildCleanRoomKitV2({ ref = 'HEAD', output, } = {}) {
                 conformance_manifest_claim_sha256: bundle.source_manifest.manifest_sha256,
                 authority_document_execution_companion_sha256: authority.execution_sha256,
                 suites: 21,
-                vectors: 332,
+                vectors: 335,
             },
             archive: {
                 file: path.basename(target),

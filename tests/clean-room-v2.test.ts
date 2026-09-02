@@ -324,7 +324,7 @@ describe('current-bundle clean-room v2', () => {
       expect(report.conformance).toMatchObject({
         status: 'pass',
         suites: 21,
-        vectors: 332,
+        vectors: 335,
       });
       expect(report.acceptance).toMatchObject({
         accepted: true,
