@@ -186,8 +186,8 @@ export function validateBundleDefinitionV2(bundle: any): void {
   }
 
   exactKeys(bundle.totals, ['suites', 'vectors'], ['suites', 'vectors'], 'bundle.totals');
-  if (bundle.totals.suites !== 21 || bundle.totals.vectors !== 332) {
-    throw new Error('bundle must pin exactly 21 suites and 332 vectors');
+  if (bundle.totals.suites !== 21 || bundle.totals.vectors !== 335) {
+    throw new Error('bundle must pin exactly 21 suites and 335 vectors');
   }
   if (!Array.isArray(bundle.suites) || bundle.suites.length !== 21) {
     throw new Error('bundle must contain exactly 21 suites');
@@ -231,8 +231,8 @@ export function validateBundleDefinitionV2(bundle: any): void {
       authorityCompanion = executionHash;
     }
   }
-  if (vectorCount !== 332 || vectorCount !== bundle.totals.vectors) {
-    throw new Error('bundle suite total is not exactly 332 vectors');
+  if (vectorCount !== 335 || vectorCount !== bundle.totals.vectors) {
+    throw new Error('bundle suite total is not exactly 335 vectors');
   }
   if (authorityCompanion !== EXPECTED_AUTHORITY_COMPANION_SHA256) {
     throw new Error('bundle Authority Document execution companion hash is not pinned');
@@ -274,7 +274,7 @@ function validateSourceManifest(bundle: JsonObject, bytes: Buffer, manifest: any
   if (canonicalDigest(unsigned) !== manifest.manifest_sha256) {
     throw new Error('current conformance manifest canonical claim hash is invalid');
   }
-  if (manifest.totals?.suites !== 21 || manifest.totals?.vectors !== 332) {
+  if (manifest.totals?.suites !== 21 || manifest.totals?.vectors !== 335) {
     throw new Error('current conformance manifest is not the pinned 21-suite/332-vector set');
   }
   if (!Array.isArray(manifest.suites) || manifest.suites.length !== bundle.suites.length) {
