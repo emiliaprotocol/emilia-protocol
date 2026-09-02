@@ -1,0 +1,474 @@
+{
+  "@version": "EP-MCP-OUTCOME-v1",
+  "generated_by": "examples/mcp-indeterminate/generate-vectors.mts",
+  "what_this_is": "A mapping of draft-schrock-action-evidence-boundary-04 sections 5.10 and 5.11 onto a three-field group carried in MCP _meta. Not an MCP protocol change and not a SEP.",
+  "mcp": {
+    "schema_revision_read": "2026-07-28",
+    "call_tool_result_fields_today": [
+      "content",
+      "structuredContent",
+      "isError"
+    ],
+    "tasks_extension_statuses_today": [
+      "working",
+      "input_required",
+      "completed",
+      "failed",
+      "cancelled"
+    ],
+    "meta_prefix_used": "ai.emiliaprotocol/",
+    "meta_prefix_note": "A prefix whose second label is modelcontextprotocol or mcp is reserved for MCP use; ai.emiliaprotocol/ is not reserved, per the MetaObject key rules in schema.ts."
+  },
+  "field_group": {
+    "replay_unit": {
+      "meta_key": "ai.emiliaprotocol/replay-unit",
+      "supplied_by": "the caller",
+      "derivation": "SHA-256(\"EP-MCP-REPLAY-UNIT-v1\" || \" \" || authority_instance_digest || \" \" || caid)",
+      "never": "chosen by the model, and never minted by the server"
+    },
+    "outcome": {
+      "meta_key": "ai.emiliaprotocol/outcome",
+      "values": [
+        "executed",
+        "failed",
+        "indeterminate"
+      ]
+    },
+    "retry": {
+      "values": [
+        "not_applicable",
+        "refuse",
+        "requires_new_admission"
+      ]
+    },
+    "reconciliation": {
+      "values": [
+        "not_applicable",
+        "required",
+        "applied",
+        "refused"
+      ]
+    },
+    "reconcile_handle": {
+      "shape": {
+        "method": "tools/call",
+        "tool": "reconcile_effect",
+        "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790"
+      },
+      "rule": "the handle MUST carry the same replay unit as the envelope that contains it"
+    }
+  },
+  "aeb_mapping": [
+    {
+      "aeb_state": "EXECUTED",
+      "aeb_locator": "draft-schrock-action-evidence-boundary-04 section 5.10, anchor \"outcome\"",
+      "outcome": "executed",
+      "retry": "not_applicable",
+      "reconciliation": "not_applicable",
+      "note": "An authoritative response matched to the exact action, operation identifier, provider environment and audience. The replay unit is spent."
+    },
+    {
+      "aeb_state": "EXECUTED",
+      "aeb_locator": "draft-schrock-action-evidence-boundary-04 section 5.11, anchor \"reconcile\" (\"Reconciliation MAY move INDETERMINATE to EXECUTED\")",
+      "outcome": "executed",
+      "retry": "not_applicable",
+      "reconciliation": "applied",
+      "note": "Reached through authenticated reconciliation rather than on the original call. Same terminal state, different arrival path; the replay unit stays spent."
+    },
+    {
+      "aeb_state": "FAILED",
+      "aeb_locator": "draft-schrock-action-evidence-boundary-04 section 5.10, anchor \"outcome\"",
+      "outcome": "failed",
+      "retry": "requires_new_admission",
+      "reconciliation": "not_applicable",
+      "note": "Authoritative evidence that the operation did not cause the protected effect, observed directly on the call. A local timeout, connection loss or process crash is not by itself such evidence."
+    },
+    {
+      "aeb_state": "INDETERMINATE",
+      "aeb_locator": "draft-schrock-action-evidence-boundary-04 section 5.10, anchor \"outcome\"",
+      "outcome": "indeterminate",
+      "retry": "refuse",
+      "reconciliation": "required",
+      "note": "Invocation may have reached the effecting system and the available evidence establishes neither EXECUTED nor FAILED. Blind replay is prohibited."
+    },
+    {
+      "aeb_state": "REQUIRES_NEW_ADMISSION",
+      "aeb_locator": "draft-schrock-action-evidence-boundary-04 section 5.11, anchor \"reconcile\"; referee retry axis in packages/verify/src/aeb-crossing-record.ts",
+      "outcome": "failed",
+      "retry": "requires_new_admission",
+      "reconciliation": "applied",
+      "note": "Reconciliation moved INDETERMINATE to FAILED. Reconciliation MUST NOT resurrect the original authorization or release its one-time replay unit; a later attempt is a new action instance under a new admission."
+    }
+  ],
+  "worked_example": {
+    "authority_instance_digest": "sha256:11ac1caa1b6f24e2f4b0e6a5f9a1a2c3d4e5f60718293a4b5c6d7e8f90a1b2c3",
+    "action": {
+      "action_type": "payment.release.1",
+      "amount": "82000.00",
+      "currency": "USD",
+      "beneficiary_account": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "payment_instruction_id": "pi-2026-09-02-0001"
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha256:yfDuAnQWP2ZrOxYQjETOp2hkRUoF4Op1_fWE-K01eK8",
+    "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790",
+    "operation_id": "op-54572b4fe47f"
+  },
+  "vectors": [
+    {
+      "id": "EPMCP-01-executed",
+      "aeb_state": "EXECUTED",
+      "aeb_locator": "draft-schrock-action-evidence-boundary-04 section 5.10",
+      "summary": "The clean path. An authoritative response matched to the exact action. The replay unit is spent and no retry is invited.",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "release_payment",
+          "arguments": {
+            "amount": "82000.00",
+            "currency": "USD",
+            "beneficiary_account": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+            "payment_instruction_id": "pi-2026-09-02-0001"
+          },
+          "_meta": {
+            "ai.emiliaprotocol/authority": {
+              "instance_digest": "sha256:11ac1caa1b6f24e2f4b0e6a5f9a1a2c3d4e5f60718293a4b5c6d7e8f90a1b2c3"
+            },
+            "ai.emiliaprotocol/replay-unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790"
+          }
+        }
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "released 82000.00 USD (operation op-54572b4fe47f)"
+          }
+        ],
+        "structuredContent": {
+          "version": "EP-MCP-OUTCOME-v1",
+          "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790",
+          "outcome": "executed",
+          "retry": "not_applicable",
+          "reconciliation": "not_applicable",
+          "reason_codes": [],
+          "operation_id": "op-54572b4fe47f",
+          "caid": "caid:1:payment.release.1:jcs-sha256:yfDuAnQWP2ZrOxYQjETOp2hkRUoF4Op1_fWE-K01eK8"
+        },
+        "_meta": {
+          "ai.emiliaprotocol/outcome": {
+            "version": "EP-MCP-OUTCOME-v1",
+            "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790",
+            "outcome": "executed",
+            "retry": "not_applicable",
+            "reconciliation": "not_applicable",
+            "reason_codes": [],
+            "operation_id": "op-54572b4fe47f",
+            "caid": "caid:1:payment.release.1:jcs-sha256:yfDuAnQWP2ZrOxYQjETOp2hkRUoF4Op1_fWE-K01eK8"
+          }
+        }
+      },
+      "host_obligation": "Stop. The action is complete."
+    },
+    {
+      "id": "EPMCP-02-indeterminate",
+      "aeb_state": "INDETERMINATE",
+      "aeb_locator": "draft-schrock-action-evidence-boundary-04 section 5.10, restart promotion of a DISPATCH_PENDING record with no authoritative terminal record",
+      "summary": "The state MCP cannot express today. The server restarted holding a dispatch record with no terminal record, so it cannot establish that dispatch did not begin. isError is false: the call did not fail, the OUTCOME is unknown.",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "release_payment",
+          "arguments": {
+            "amount": "82000.00",
+            "currency": "USD",
+            "beneficiary_account": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+            "payment_instruction_id": "pi-2026-09-02-0001"
+          },
+          "_meta": {
+            "ai.emiliaprotocol/authority": {
+              "instance_digest": "sha256:11ac1caa1b6f24e2f4b0e6a5f9a1a2c3d4e5f60718293a4b5c6d7e8f90a1b2c3"
+            },
+            "ai.emiliaprotocol/replay-unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790"
+          }
+        }
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "outcome is indeterminate: this replay unit has a dispatch with no terminal record. Do not retry. Reconcile."
+          }
+        ],
+        "structuredContent": {
+          "version": "EP-MCP-OUTCOME-v1",
+          "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790",
+          "outcome": "indeterminate",
+          "retry": "refuse",
+          "reconciliation": "required",
+          "reason_codes": [
+            "stranded_dispatch_pending_promoted_on_restart"
+          ],
+          "reconcile": {
+            "method": "tools/call",
+            "tool": "reconcile_effect",
+            "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790"
+          },
+          "operation_id": "op-54572b4fe47f",
+          "caid": "caid:1:payment.release.1:jcs-sha256:yfDuAnQWP2ZrOxYQjETOp2hkRUoF4Op1_fWE-K01eK8"
+        },
+        "_meta": {
+          "ai.emiliaprotocol/outcome": {
+            "version": "EP-MCP-OUTCOME-v1",
+            "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790",
+            "outcome": "indeterminate",
+            "retry": "refuse",
+            "reconciliation": "required",
+            "reason_codes": [
+              "stranded_dispatch_pending_promoted_on_restart"
+            ],
+            "reconcile": {
+              "method": "tools/call",
+              "tool": "reconcile_effect",
+              "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790"
+            },
+            "operation_id": "op-54572b4fe47f",
+            "caid": "caid:1:payment.release.1:jcs-sha256:yfDuAnQWP2ZrOxYQjETOp2hkRUoF4Op1_fWE-K01eK8"
+          }
+        }
+      },
+      "host_obligation": "MUST NOT call release_payment again for a second effect. MUST call the tool named in the reconcile handle with the identical replay unit."
+    },
+    {
+      "id": "EPMCP-03-failed-requires-new-admission",
+      "aeb_state": "REQUIRES_NEW_ADMISSION",
+      "aeb_locator": "draft-schrock-action-evidence-boundary-04 section 5.11: reconciliation MUST NOT resurrect the original authorization or silently release its one-time replay unit",
+      "summary": "Reconciliation moved INDETERMINATE to FAILED. The absence of a provider entry is authoritative only because the provider stated a completeness watermark covering the dispatch window. Retry is permitted by policy only as a new action instance.",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {
+          "name": "reconcile_effect",
+          "arguments": {
+            "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790"
+          }
+        }
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "reconciled: no effect landed, and the provider record is complete through this window. A later attempt is a new action instance under a new admission."
+          }
+        ],
+        "structuredContent": {
+          "version": "EP-MCP-OUTCOME-v1",
+          "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790",
+          "outcome": "failed",
+          "retry": "requires_new_admission",
+          "reconciliation": "applied",
+          "reason_codes": [
+            "provider_record_absent_under_complete_watermark"
+          ],
+          "operation_id": "op-54572b4fe47f",
+          "caid": "caid:1:payment.release.1:jcs-sha256:yfDuAnQWP2ZrOxYQjETOp2hkRUoF4Op1_fWE-K01eK8"
+        },
+        "_meta": {
+          "ai.emiliaprotocol/outcome": {
+            "version": "EP-MCP-OUTCOME-v1",
+            "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790",
+            "outcome": "failed",
+            "retry": "requires_new_admission",
+            "reconciliation": "applied",
+            "reason_codes": [
+              "provider_record_absent_under_complete_watermark"
+            ],
+            "operation_id": "op-54572b4fe47f",
+            "caid": "caid:1:payment.release.1:jcs-sha256:yfDuAnQWP2ZrOxYQjETOp2hkRUoF4Op1_fWE-K01eK8"
+          }
+        }
+      },
+      "host_obligation": "MUST NOT reuse this replay unit or this authorization. A later attempt is a new action instance that completes the authorization lifecycle again."
+    },
+    {
+      "id": "EPMCP-04-reconciliation-inconclusive",
+      "aeb_state": "INDETERMINATE",
+      "aeb_locator": "draft-schrock-action-evidence-boundary-04 section 5.11: missing, stale, conflicting, unauthenticated or action-mismatched observations MUST leave the operation INDETERMINATE",
+      "summary": "Reconciliation ran and did not settle anything: the provider saw no entry but its completeness watermark does not cover the dispatch window. Absence is not evidence. The operation stays indeterminate, which is a correct answer, not a failure.",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+          "name": "reconcile_effect",
+          "arguments": {
+            "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790"
+          }
+        }
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "reconciliation inconclusive; the operation stays indeterminate"
+          }
+        ],
+        "structuredContent": {
+          "version": "EP-MCP-OUTCOME-v1",
+          "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790",
+          "outcome": "indeterminate",
+          "retry": "refuse",
+          "reconciliation": "required",
+          "reason_codes": [
+            "provider_watermark_does_not_cover_dispatch_window"
+          ],
+          "reconcile": {
+            "method": "tools/call",
+            "tool": "reconcile_effect",
+            "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790"
+          },
+          "operation_id": "op-54572b4fe47f",
+          "caid": "caid:1:payment.release.1:jcs-sha256:yfDuAnQWP2ZrOxYQjETOp2hkRUoF4Op1_fWE-K01eK8"
+        },
+        "_meta": {
+          "ai.emiliaprotocol/outcome": {
+            "version": "EP-MCP-OUTCOME-v1",
+            "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790",
+            "outcome": "indeterminate",
+            "retry": "refuse",
+            "reconciliation": "required",
+            "reason_codes": [
+              "provider_watermark_does_not_cover_dispatch_window"
+            ],
+            "reconcile": {
+              "method": "tools/call",
+              "tool": "reconcile_effect",
+              "replay_unit": "sha256:54572b4fe47fd4165209c356f9c62bf37b04440005d44aa6e9122546e8ef7790"
+            },
+            "operation_id": "op-54572b4fe47f",
+            "caid": "caid:1:payment.release.1:jcs-sha256:yfDuAnQWP2ZrOxYQjETOp2hkRUoF4Op1_fWE-K01eK8"
+          }
+        }
+      },
+      "host_obligation": "MUST NOT retry. MAY reconcile again later. MUST surface to an operator."
+    },
+    {
+      "id": "EPMCP-05-naive-retry-duplicate",
+      "aeb_state": "NOT REPRESENTABLE IN MCP TODAY",
+      "aeb_locator": "no MCP field carries this; see the transcript in README.md",
+      "summary": "The harm, demonstrated. Two tools/call exchanges exactly as MCP defines them today, with the crash injected between the effect and the response on the first. The result the host never received and the result it did receive are both here, and so is the provider ledger afterwards: one authorization, two settled payments.",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "release_payment",
+          "arguments": {
+            "amount": "82000.00",
+            "currency": "USD",
+            "beneficiary_account": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+            "payment_instruction_id": "pi-2026-09-02-0001"
+          }
+        }
+      },
+      "first_attempt": {
+        "note": "The server applied the effect and then the process died. No JSON-RPC result was ever written. The host observes a transport error, which is all MCP gives it.",
+        "observed_by_host": {
+          "error": {
+            "code": -32000,
+            "message": "Connection closed"
+          }
+        }
+      },
+      "retry_attempt": {
+        "note": "The host reconnects and re-issues the call. Nothing on the wire forbids this.",
+        "request": {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "method": "tools/call",
+          "params": {
+            "name": "release_payment",
+            "arguments": {
+              "amount": "82000.00",
+              "currency": "USD",
+              "beneficiary_account": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+              "payment_instruction_id": "pi-2026-09-02-0001"
+            }
+          }
+        },
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "released 82000.00 USD (operation op-legacy-2)"
+            }
+          ]
+        }
+      },
+      "provider_record_after": [
+        {
+          "seq": 1,
+          "operation_id": "op-legacy-1",
+          "caid": "caid:1:payment.release.1:jcs-sha256:yfDuAnQWP2ZrOxYQjETOp2hkRUoF4Op1_fWE-K01eK8",
+          "amount": "82000.00",
+          "currency": "USD",
+          "beneficiary_account": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+        },
+        {
+          "seq": 2,
+          "operation_id": "op-legacy-2",
+          "caid": "caid:1:payment.release.1:jcs-sha256:yfDuAnQWP2ZrOxYQjETOp2hkRUoF4Op1_fWE-K01eK8",
+          "amount": "82000.00",
+          "currency": "USD",
+          "beneficiary_account": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+        }
+      ],
+      "host_obligation": "None available. The host behaved correctly given the vocabulary it has. That is the point: the gap is in the wire, not in the host."
+    },
+    {
+      "id": "EPMCP-06-model-chosen-replay-unit-refused",
+      "aeb_state": "REFUSED BEFORE DISPATCH",
+      "aeb_locator": "draft-schrock-action-evidence-boundary-04 section 5.8: the key MUST be derived from verified evidence or the executor-owned observed action and operation identifier, never from a presenter-selected decoy",
+      "summary": "A replay unit that is not the derivation over the authority and the frozen action. The server recomputes and refuses before any effect. This is what makes the unit caller-supplied-but-not-model-chosen enforceable rather than advisory.",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "release_payment",
+          "arguments": {
+            "amount": "82000.00",
+            "currency": "USD",
+            "beneficiary_account": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+            "payment_instruction_id": "pi-2026-09-02-0001"
+          },
+          "_meta": {
+            "ai.emiliaprotocol/authority": {
+              "instance_digest": "sha256:11ac1caa1b6f24e2f4b0e6a5f9a1a2c3d4e5f60718293a4b5c6d7e8f90a1b2c3"
+            },
+            "ai.emiliaprotocol/replay-unit": "sha256:abababababababababababababababababababababababababababababababab"
+          }
+        }
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "refused: replay_unit_not_derived_from_authority_and_action"
+          }
+        ],
+        "isError": true,
+        "structuredContent": {
+          "refusals": [
+            "replay_unit_not_derived_from_authority_and_action"
+          ]
+        }
+      },
+      "host_obligation": "Stop. No effect occurred and no replay unit was consumed."
+    }
+  ]
+}
