@@ -606,8 +606,9 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
     checks = {"all_signatures_valid": False, "action_binding": False, "distinct_humans": False,
               "distinct_keys": False, "initiator_excluded": False, "roles_admitted": False,
               "threshold_met": False, "order_satisfied": False, "chain_linked": False,
-              "within_window": False}
+              "within_window": False, "required_algorithms_satisfied": False}
     members_out = []
+    reason = None
     try:
         policy = quorum.get("policy") if isinstance(quorum, dict) else None
         members = quorum.get("members") if isinstance(quorum, dict) else None
@@ -634,6 +635,28 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
                 or required > len(eligible)):
             return {"valid": False, "checks": checks, "members": members_out}
 
+        # Hybrid coverage policy (mirrors quorum.ts parseRequiredAlgorithms). A
+        # present-but-unparseable requirement is a named refusal, never a no-op.
+        required_algorithms = None
+        if "required_algorithms" in policy and policy.get("required_algorithms") is not None:
+            raw = policy.get("required_algorithms")
+            if not isinstance(raw, list) or len(raw) == 0:
+                return {"valid": False, "checks": checks, "members": members_out,
+                        "reason": "required_algorithms_malformed"}
+            seen_alg = []
+            for alg in raw:
+                if not isinstance(alg, str) or alg not in ("ES256", "ML-DSA-65"):
+                    return {"valid": False, "checks": checks, "members": members_out,
+                            "reason": f"required_algorithms_unknown:{alg}"}
+                if alg in seen_alg:
+                    return {"valid": False, "checks": checks, "members": members_out,
+                            "reason": f"required_algorithms_duplicate:{alg}"}
+                seen_alg.append(alg)
+            required_algorithms = seen_alg
+            if mode == "ordered":
+                return {"valid": False, "checks": checks, "members": members_out,
+                        "reason": "required_algorithms_ordered_unsupported"}
+
         import datetime as _dt
         def _parse(ts):
             try:
@@ -641,9 +664,10 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
             except Exception:
                 return None
 
-        all_sigs, all_bound, issued = True, True, []
+        all_sigs, all_bound, issued, member_alg = True, True, [], []
         for m in members:
             r = verify_webauthn_signoff(m.get("signoff"), m.get("approver_public_key"), opts)
+            member_alg.append(_credential_algorithm(m.get("approver_public_key")))
             ctx = (m.get("signoff") or {}).get("context") or {}
             members_out.append({"approver": ctx.get("approver"), "role": m.get("role"), "valid": bool(r["valid"])})
             if not r["valid"]:
@@ -710,13 +734,50 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
             checks["chain_linked"] = True
         ts = [issued[i] for i, _ in counted if issued[i] is not None]
         checks["within_window"] = len(ts) == len(counted) and len(counted) > 0 and (max(ts) - min(ts)) <= window_sec * 1000
+        if required_algorithms is None:
+            checks["required_algorithms_satisfied"] = True  # policy absent: not applicable
+        else:
+            algs_by_approver: dict = {}
+            unrecognized = False
+            for i, m in counted:
+                alg = member_alg[i]
+                if alg is None:
+                    unrecognized = True
+                    continue
+                key = json.dumps(((m.get("signoff") or {}).get("context") or {}).get("approver"))
+                algs_by_approver.setdefault(key, set()).add(alg)
+            missing = [f"{key}:{alg}" for key, algs in algs_by_approver.items()
+                       for alg in required_algorithms if alg not in algs]
+            checks["required_algorithms_satisfied"] = (len(counted) > 0 and len(algs_by_approver) > 0
+                                                       and not missing and not unrecognized)
+            if not checks["required_algorithms_satisfied"]:
+                reason = ("required_algorithms_unrecognized_credential" if unrecognized
+                          else f"required_algorithms_missing:{','.join(missing)}" if missing
+                          else "required_algorithms_no_counted_members")
     except Exception:
         return {"valid": False, "checks": checks, "members": members_out}
     valid = all([checks["all_signatures_valid"], checks["action_binding"], checks["distinct_humans"],
                  checks["distinct_keys"], checks["initiator_excluded"], checks["roles_admitted"],
                  checks["threshold_met"], checks["order_satisfied"], checks["chain_linked"],
-                 checks["within_window"]])
-    return {"valid": valid, "checks": checks, "members": members_out}
+                 checks["within_window"], checks["required_algorithms_satisfied"]])
+    out = {"valid": valid, "checks": checks, "members": members_out}
+    if reason is not None:
+        out["reason"] = reason
+    return out
+
+
+def _credential_algorithm(spki_b64u: Any) -> Optional[str]:
+    """Name the signature algorithm an enrolled Class A credential is for, read
+    from the KEY itself (canonical base64url SPKI DER), never from a label.
+    This runtime verifies ES256 only; anything else, or a non-canonical
+    encoding, is None (no recognized algorithm)."""
+    try:
+        pub = load_der_public_key(_b64url_decode(spki_b64u))
+        if isinstance(pub, _ec.EllipticCurvePublicKey) and isinstance(pub.curve, _ec.SECP256R1):
+            return "ES256"
+    except Exception:
+        return None
+    return None
 
 
 # ── EP-REVOCATION-v1 + EP-TIME-ATTESTATION-v1 (mirror packages/verify) ────────

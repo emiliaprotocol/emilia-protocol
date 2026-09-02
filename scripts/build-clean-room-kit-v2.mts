@@ -259,7 +259,7 @@ export function buildCleanRoomKitV2({
         authority_document_execution_companion_sha256:
           authority.execution_sha256,
         suites: 21,
-        vectors: 332,
+        vectors: 335,
       },
       archive: {
         file: path.basename(target),

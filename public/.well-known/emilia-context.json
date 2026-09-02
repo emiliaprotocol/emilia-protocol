@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-01T23:17:18.000Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "efddea9c94e567218590a29dfbd7824d115f48abad10aa636ac6d05e3dd49fdd",
+    "input_digest_sha256": "cbc86ac331e16b83c5d4df68489e0ca412358e6b1ada296576a0394181089cea",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "624600ef43ee9aff335159ba9d3d626da44553c7d6268806f2fbfb3bc77d1e50",
+        "sha256": "f31210a3d9cf2ac501810be805b5df25f8f70aa96e62336d5cc4cade6cca8234",
         "bytes": 4299
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "1f0f5a06b90faabab4c4eada8a87380d94a8f0d872af0a56b9391287a83bc3f2",
+        "sha256": "80e1ae7ab283fdb5ab6e15603aa27cd2b752774d60693c40e5bc03cc60335e68",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "c068ea00b3d264f6d2d9cdc7883c7f9302c4008529c2d1190cfabafd5c1ee455",
+        "sha256": "7dfac6c655236a0ebbac33c91fa7fcebd68e8d08ba9b034b401d2b4e8b5c5054",
         "bytes": 386020
       },
       {
@@ -313,11 +313,11 @@
     },
     "cross_language_conformance": {
       "suites": 21,
-      "vectors": 332,
+      "vectors": 335,
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "de00937588feff870bb7b72e5f6b09549a3008142f76136dd6a1bd7cce91e71a",
+      "manifest_sha256": "95840992ecd5e8f91dc25b6e6c9419bc3b35c741feffd863de16add79d0f13cd",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -419,7 +419,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 259,
-      "evidence_bundle_sha256": "947a0f8612dcc9a67520637a100d9ca3137193d5db78b882e3bbf98b82528880"
+      "evidence_bundle_sha256": "8804b1fa3aa6ea2019741052a79b3ee7e3d404993b0ccbd27ef806dba52399e0"
     },
     "caid": {
       "core_vectors": 48,
@@ -476,7 +476,7 @@
       "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
       "scope": "time_pinned_vector_set",
       "relation_to_current_bundle": "time_pinned_prior_vector_set",
-      "current_vectors": 332
+      "current_vectors": 335
     },
     "hostility": {
       "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",

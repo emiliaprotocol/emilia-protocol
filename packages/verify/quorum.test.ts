@@ -38,6 +38,9 @@ const predicateFor = {
   reject_wrong_role: 'roles_admitted',
   reject_broken_chain: 'chain_linked',
   reject_duplicate_key: 'distinct_keys',
+  reject_noncanonical_spki_second_seat: 'all_signatures_valid',
+  reject_required_algorithms_malformed: 'required_algorithms_satisfied',
+  reject_required_algorithms_unknown: 'required_algorithms_satisfied',
 };
 test('EP-QUORUM-v1: each negative fails on its targeted predicate', () => {
   for (const [id, predicate] of Object.entries(predicateFor)) {
