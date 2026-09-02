@@ -261,10 +261,16 @@ describe('EP-AUTHORITY-REGISTRY-v1 unit invariants', () => {
     expect(authorityAdmissibilityCode('authorized')).toBe('admissible');
   });
 
-  it('invalid enforcement mode falls back to shadow (never accidentally enforces)', () => {
+  it('invalid enforcement mode falls back to enforce_default (never silently observes)', () => {
     const e = applyAuthorityEnforcement({ verdict: 'unknown_authority', isCritical: true, mode: 'bogus' });
-    expect(e.mode).toBe('shadow');
-    expect(e.block).toBe(false);
+    expect(e.mode).toBe('enforce_default');
+    expect(e.block).toBe(true);
+    expect(e.admissibility).toBe('not_admissible');
+    // A non-critical action gets the same treatment: an unreadable rollout
+    // setting is never a licence to proceed without authority.
+    expect(
+      applyAuthorityEnforcement({ verdict: 'registry_unavailable', isCritical: false, mode: undefined }).block,
+    ).toBe(true);
   });
 
   it('a null-scope grant does not fail wrong_scope (unscoped), but a present scope must contain the action', () => {

@@ -5,7 +5,7 @@
 
 The reliance kernel decides one action. The assurance package is what an audit
 firm, a regulator, or an insurer takes to independently re-perform a whole
-population of automated decisions. It is EY-shaped: the missing machine-verifiable
+population of automated decisions. It is audit-firm-shaped: the missing machine-verifiable
 evidence substrate under "transferable confidence."
 
 ## Two halves
@@ -87,5 +87,5 @@ evidence (`--strict`: on any drift), so it drops into an audit or CI pipeline.
 `tests/assurance-package.test.ts`: bundling, the drift catch (a runtime claiming
 `rely` over an over-ceiling authorization is caught), deterministic
 re-performance, null-conclusion enforcement, and full verdict→control coverage.
-`examples/reliance/ey-continuous-assurance.mjs` runs the end-to-end story over a
+`examples/reliance/payer-continuous-assurance.mjs` runs the end-to-end story over a
 synthetic month of prior-auth decisions.

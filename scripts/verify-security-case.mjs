@@ -13,6 +13,7 @@
 import "./ts-loader/register.mjs";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -145,6 +146,43 @@ function hasNamedDeclaration(source, language, symbol) {
 function hasExactTestTitle(source, title) {
     const name = escaped(title);
     return new RegExp(`(?:test|it)\\s*\\(\\s*(['\"\`])${name}\\1`).test(source);
+}
+// Return the callback body of the exactly titled test, skipping any options
+// object argument (`test(title, { skip }, async () => { ... })`). Returns null
+// when the title is absent or its callback body cannot be delimited.
+function testCallbackBody(source, title) {
+    const declaration = new RegExp(`(?:test|it)\\s*\\(\\s*(['\"\`])${escaped(title)}\\1`).exec(source);
+    if (!declaration)
+        return null;
+    const bodyStart = /=>\s*\{|function\b[^(){}]*\([^()]*\)\s*\{/g;
+    bodyStart.lastIndex = declaration.index + declaration[0].length;
+    if (!bodyStart.exec(source))
+        return null;
+    const open = bodyStart.lastIndex - 1;
+    let depth = 0;
+    for (let index = open; index < source.length; index += 1) {
+        const character = source[index];
+        if (character === "{")
+            depth += 1;
+        else if (character === "}") {
+            depth -= 1;
+            if (depth === 0)
+                return source.slice(open + 1, index);
+        }
+    }
+    return null;
+}
+// A named evidence test whose body has been emptied still carries its title and
+// still reports green, so title presence alone is not evidence of anything. The
+// body must contain at least one call expression once comments are removed.
+function hasExecutableTestBody(source, title) {
+    const body = testCallbackBody(source, title);
+    if (body === null)
+        return false;
+    const stripped = body
+        .replace(/\/\*[\s\S]*?\*\//g, " ")
+        .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+    return /[A-Za-z_$][\w$]*\s*\(/.test(stripped);
 }
 function hasFormalLemma(source, lemma) {
     return new RegExp(`^lemma\\s+${escaped(lemma)}\\s*:`, "m").test(source);
@@ -336,6 +374,9 @@ function planTest(id, executionSpec, suitePath = null) {
         if (!suiteDriven)
             fail(id, `${executionSpec.file} has no exact or suite-driven test title: ${executionSpec.title}`);
     }
+    else if (!hasExecutableTestBody(source, executionSpec.title)) {
+        fail(id, `${executionSpec.file} names ${executionSpec.title} but its body executes nothing`);
+    }
     const key = `${executionSpec.runner}\0${executionSpec.file}`;
     const planned = executionPlan.get(key) ?? {
         runner: executionSpec.runner,
@@ -364,23 +405,103 @@ function runChecked(command, commandArgs, options, label) {
     }
     return run.stdout;
 }
+// Running a whole test file and calling every planned title "passed" is not a
+// binding: a renamed, removed, or never-registered evidence test leaves the file
+// green. Both observers below run one file per process (so the runtime stays
+// close to the previous whole-file execution) but return the machine-readable
+// per-test outcome the runner actually reported, keyed by test title.
+function observeVitestFile(file) {
+    const reportDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "ep-security-case-"));
+    const reportFile = path.join(reportDirectory, "vitest.json");
+    try {
+        runChecked("npm", [
+            "exec",
+            "vitest",
+            "--",
+            "run",
+            file,
+            "--reporter=json",
+            "--outputFile",
+            reportFile,
+        ], {}, `vitest ${file}`);
+        if (!fs.existsSync(reportFile))
+            throw new Error(`vitest ${file} produced no machine-readable report`);
+        let report;
+        try {
+            report = JSON.parse(fs.readFileSync(reportFile, "utf8"));
+        }
+        catch (error) {
+            throw new Error(`vitest ${file} report is unreadable: ${error.message}`);
+        }
+        const observed = new Map();
+        for (const suite of report.testResults ?? [])
+            for (const assertion of suite.assertionResults ?? []) {
+                if (nonEmpty(assertion.title))
+                    observed.set(assertion.title, assertion.status);
+                if (nonEmpty(assertion.fullName))
+                    observed.set(assertion.fullName, assertion.status);
+            }
+        return observed;
+    }
+    finally {
+        fs.rmSync(reportDirectory, { recursive: true, force: true });
+    }
+}
+function observeNodeTestFile(file) {
+    const stdout = runChecked(process.execPath, [
+        "--import",
+        path.join(ROOT, "scripts", "ts-loader", "register.mjs"),
+        "--test",
+        "--test-reporter=tap",
+        file,
+    ], {}, `node:test ${file}`);
+    const observed = new Map();
+    for (const line of stdout.split("\n")) {
+        const point = /^\s*(not )?ok\s+\d+\s+-\s+(.*)$/.exec(line);
+        if (!point)
+            continue;
+        let name = point[2];
+        let status = point[1] ? "failed" : "passed";
+        const directive = /\s+#\s+(SKIP|TODO)\b.*$/i.exec(name);
+        if (directive) {
+            name = name.slice(0, directive.index);
+            status = directive[1].toUpperCase() === "SKIP" ? "skipped" : "todo";
+        }
+        observed.set(name.trim().replace(/\\([\\#])/g, "$1"), status);
+    }
+    return observed;
+}
 function executePlannedTests() {
     for (const planned of [...executionPlan.values()].sort((a, b) => a.file.localeCompare(b.file))) {
-        if (planned.runner === "vitest") {
-            runChecked("npm", ["exec", "vitest", "--", "run", planned.file, "--reporter=dot"], {}, `vitest ${planned.file}`);
+        const observed = planned.runner === "vitest"
+            ? observeVitestFile(planned.file)
+            : observeNodeTestFile(planned.file);
+        const titles = [...planned.titles].sort();
+        const unexecuted = [];
+        const notPassed = [];
+        const skipped = [];
+        for (const title of titles) {
+            const status = observed.get(title);
+            if (status === undefined)
+                unexecuted.push(title);
+            else if (status === "skipped" || status === "pending" || status === "todo")
+                skipped.push(`${title} (${status})`);
+            else if (status !== "passed")
+                notPassed.push(`${title} (${status})`);
         }
-        else {
-            runChecked(process.execPath, [
-                "--import",
-                path.join(ROOT, "scripts", "ts-loader", "register.mjs"),
-                "--test",
-                planned.file,
-            ], {}, `node:test ${planned.file}`);
-        }
+        if (unexecuted.length)
+            throw new Error(`${planned.runner} ${planned.file}: the run reported no test with these exact evidence titles, so the claim is unbound:\n  - ${unexecuted.join("\n  - ")}`);
+        if (notPassed.length)
+            throw new Error(`${planned.runner} ${planned.file}: named evidence tests did not pass:\n  - ${notPassed.join("\n  - ")}`);
+        // Runner-level skips are environment gated (for example an absent Postgres
+        // URL). They are reported so a reviewer can see which named evidence did
+        // not execute in this environment.
+        if (skipped.length)
+            console.error(`SECURITY CASE: WARNING ${planned.runner} ${planned.file} skipped named evidence:\n  - ${skipped.join("\n  - ")}`);
         executionEvidence.push({
             runner: planned.runner,
             file: planned.file,
-            titles: [...planned.titles].sort(),
+            titles,
             result: "passed",
         });
     }
