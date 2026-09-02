@@ -372,7 +372,7 @@ verification are the analyzed core. A host-record binding profile and
 evidence-sufficiency graph are secondary compositions and are not
 claimed as new cryptographic primitives.</li>
 <li><strong>Bounded validation.</strong> The reference implementation,
-21-suite/332-vector conformance battery, and separately authored Rust
+21-suite/335-vector conformance battery, and separately authored Rust
 verifier validate encoding and interoperability. They are not presented
 as independent security proofs.</li>
 </ul>
@@ -1379,7 +1379,7 @@ deployment topologies or components it does not model.</p>
 Conformance</h2>
 <p>A reference implementation of the receipt, quorum, evidence-chain,
 binding, and evidence-graph layers is published under Apache-2.0. The
-conformance battery (21 suites, 332 vectors) is self-contained: each
+conformance battery (21 suites, 335 vectors) is self-contained: each
 vector carries its own public key and document, requiring no server or
 shared state. The conformance battery of 21 suites comprising 332
 vectors is adversarial (reject vectors each pin one invariant: tampered
@@ -1397,7 +1397,7 @@ head, and an independent RFC 3161 timestamp-proof profile.</p>
 <p>The implementation status is stated precisely, because it is the most
 tempting place to overclaim. The JavaScript, Python, and Go reference
 verifiers live in <em>one repository</em>: they are same-team ports
-whose agreement across all 332 current vectors is cross-language
+whose agreement across all 335 current vectors is cross-language
 consistency evidence, not three independent implementations. A
 historical Ed25519-signed
 <code>EP-EXTERNAL-VERIFICATION-STATEMENT-v1</code> from COSA / J Diesel
@@ -1653,7 +1653,7 @@ and Alloy models with checked configurations and a proof-status ledger
 that keeps <em>specified</em> and <em>verified</em> separate; the
 reference implementation (receipt, quorum, evidence-chain, host-record
 binding, and evidence-graph layers, with JavaScript, Python, and Go
-same-team ports); the 21-suite / 332-vector conformance battery with
+same-team ports); the 21-suite / 335-vector conformance battery with
 deterministic regeneration scripts; the pinned external Rust source and
 evaluator; the 359-case hostility campaign; the aggregate conformance
 case; the historical third-party reproduction statement; and the worked
