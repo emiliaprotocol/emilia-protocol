@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { _resetConsumed, guardAction, requireReceiptForOpenAITool, runToolCalls, withGuard, } from './index.js';
 import { mintReceipt as hostedMintReceipt } from './receipt.js';
+import { bindToolAction } from '../require-receipt/index.js';
 test('package metadata pins the current optional verifier release line', () => {
     const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
     assert.equal(packageJson.version, '0.5.0');
@@ -79,6 +80,12 @@ test('legacy signoff callback requires an explicit approved result', async () =>
     assert.equal(await withGuard(fn, { ...common, onSignoff: async () => ({ approved: true }) })({}), 'ran');
     assert.equal(runs, 1);
 });
+// The action the guard derives: the base action string PLUS a digest of the
+// tool name and the exact executor arguments (the __ep receipt envelope is
+// stripped before hashing, because it is not part of the effect).
+function boundAction(toolName, args, base) {
+    return bindToolAction(toolName, args, base);
+}
 test('offline tool gate binds material arguments and consumes a receipt once', async () => {
     _resetConsumed();
     let runs = 0;
@@ -87,15 +94,80 @@ test('offline tool gate binds material arguments and consumes a receipt once', a
         assert.equal(args.__ep, undefined);
         return args.amount;
     }, {
+        toolName: 'pay',
         actionFor: (args) => `payment.release:${args.destination}:${args.amount}`,
         trustedKeys: [trustedKey],
     });
-    const authorization = receipt('payment.release:acct_vendor:25');
-    assert.equal(await guarded({ destination: 'acct_vendor', amount: 25, __ep: { receipt: authorization } }), 25);
-    await assert.rejects(guarded({ destination: 'acct_vendor', amount: 25, __ep: { receipt: authorization } }), /replay_refused/);
-    const wrongAmount = receipt('payment.release:acct_vendor:25');
+    const args = { destination: 'acct_vendor', amount: 25 };
+    const authorization = receipt(boundAction('pay', args, 'payment.release:acct_vendor:25'));
+    assert.equal(await guarded({ ...args, __ep: { receipt: authorization } }), 25);
+    await assert.rejects(guarded({ ...args, __ep: { receipt: authorization } }), /replay_refused/);
+    const wrongAmount = receipt(boundAction('pay', args, 'payment.release:acct_vendor:25'));
     await assert.rejects(guarded({ destination: 'acct_vendor', amount: 250000, __ep: { receipt: wrongAmount } }), /action_mismatch/);
     assert.equal(runs, 1);
+});
+// Red-team E-2: the documented simple `action: 'payment.release'` form was NOT
+// argument-bound, so one receipt for payment.release authorized ANY arguments.
+// A PoC executed a $9,999,999 transfer to an attacker account on a receipt
+// minted for $100 to an approved account.
+test('E-2: the simple action form is argument-bound; one receipt cannot move the arguments', async () => {
+    _resetConsumed();
+    const payouts = [];
+    const guarded = requireReceiptForOpenAITool(async (args) => {
+        payouts.push(args);
+        return { ok: true, ...args };
+    }, {
+        toolName: 'pay',
+        action: 'payment.release',
+        trustedKeys: [trustedKey],
+    });
+    const approved = { amount: 100, to: 'acct_OK' };
+    const bound = boundAction('pay', approved, 'payment.release');
+    assert.deepEqual(await guarded(approved, { receipt: receipt(bound) }), { ok: true, amount: 100, to: 'acct_OK' });
+    // A freshly minted receipt for the same bound action, spent on other arguments.
+    await assert.rejects(guarded({ amount: 9999999, to: 'acct_ATTACKER' }, { receipt: receipt(bound) }), /action_mismatch/);
+    // The bare base action alone is no longer sufficient for anything.
+    await assert.rejects(guarded(approved, { receipt: receipt('payment.release') }), /action_mismatch/);
+    // Replay of a correctly bound receipt is still refused.
+    const once = receipt(boundAction('pay', approved, 'payment.release'));
+    await guarded(approved, { receipt: once });
+    await assert.rejects(guarded(approved, { receipt: once }), /replay_refused/);
+    assert.equal(payouts.length, 2);
+    assert.deepEqual(payouts, [approved, approved]);
+});
+// Red-team E-2 (second half): the guard hashed `snapshot` (which still carried
+// the __ep receipt envelope) but executed `executionArgs` (with __ep stripped).
+// The digest must cover exactly what runs.
+test('E-2: the digest covers the arguments that execute, not the receipt envelope', async () => {
+    _resetConsumed();
+    let seen = null;
+    const guarded = requireReceiptForOpenAITool(async (args) => { seen = args; return 'ran'; }, {
+        toolName: 'pay',
+        action: 'payment.release',
+        trustedKeys: [trustedKey],
+    });
+    const args = { amount: 100, to: 'acct_OK' };
+    // Minted against the digest of the EXECUTED arguments only.
+    const authorization = receipt(boundAction('pay', args, 'payment.release'));
+    assert.equal(await guarded({ ...args, __ep: { receipt: authorization } }), 'ran');
+    assert.deepEqual(seen, args);
+});
+// runToolCalls binds to the tool name the model actually called, so the digest
+// does not move with a local function identifier (or a minified one).
+test('E-2: the tool-call loop binds the model-supplied tool name and exact arguments', async () => {
+    _resetConsumed();
+    const executed = [];
+    const tools = {
+        pay: { action: 'payment.release', fn: async (args) => { executed.push(args); return 'sent'; } },
+    };
+    const approvedArgs = { amount: 100, to: 'acct_OK' };
+    const bound = boundAction('pay', approvedArgs, 'payment.release');
+    const allowed = await runToolCalls([{ id: 'call_1', function: { name: 'pay', arguments: JSON.stringify(approvedArgs) } }], tools, { trustedKeys: [trustedKey], receipts: { call_1: receipt(bound) } });
+    assert.equal(allowed[0].content, 'sent');
+    // Same action string, different arguments, fresh receipt -> refused.
+    const substituted = await runToolCalls([{ id: 'call_2', function: { name: 'pay', arguments: JSON.stringify({ amount: 9999999, to: 'acct_ATTACKER' }) } }], tools, { trustedKeys: [trustedKey], receipts: { call_2: receipt(bound) } });
+    assert.match(substituted[0].content, /action_mismatch/);
+    assert.deepEqual(executed, [approvedArgs]);
 });
 test('tool-loop defaults to gated, requires explicit read-only, and refuses duplicate JSON', async () => {
     let mutatingRuns = 0;

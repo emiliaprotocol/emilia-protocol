@@ -20,6 +20,13 @@ never replaces — your tool's own checks.
 > The base gate proves a pinned issuer signed an action-bound authorization claim.
 > For a human-presence claim, require `assurance_class="class_a"` and supply an
 > independent assurance verifier pinned to the relying party's keys, RP, and origins.
+> `verify_assurance` must return an EXPLICIT affirmative: `{"ok": True, "tier": ...}`
+> or the literal `True`. Anything else, a bare tier string included, is refused.
+
+A signed `expires_at` on the receipt payload is an absolute validity boundary.
+It is enforced independently of `max_age_sec`, so setting `max_age_sec=None`
+does not revive a receipt past its own expiry, and an unparseable `expires_at`
+fails closed.
 
 ## Install
 

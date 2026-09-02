@@ -10,7 +10,7 @@
  * The offline receipt path is the production default. The hosted policy client
  * remains for compatibility and accepts only an explicit, durable allow.
  */
-import { isCanonicalizable } from '../../require-receipt/index.js';
+import { bindToolAction, isCanonicalizable } from '../../require-receipt/index.js';
 import { makeReceiptGate } from '../../require-receipt/gate.js';
 import { strictJsonGate } from '../../require-receipt/strict-json.js';
 const DEFAULT_GATE = 'https://www.emiliaprotocol.ai/api/trust/gate';
@@ -136,28 +136,56 @@ export async function guardAction({ actor, entityId, action, context = {}, apiKe
 }
 /**
  * Production path: require a pinned, exact-action receipt before one OpenAI-style
- * tool implementation runs. `actionFor` should include every material argument.
+ * tool implementation runs.
+ *
+ * The action is ALWAYS argument-bound: whatever base action you supply (the
+ * simple `action: 'payment.release'` form included), the wrapper appends a
+ * digest of the tool name and the exact arguments that will execute, via the
+ * same `bindToolAction` the LangChain and OpenAI-Agents adapters use. Without
+ * that, one receipt for 'payment.release' would authorize a release of ANY
+ * amount to ANY destination.
+ *
+ * `actionFor(args, call)` may only REFINE the base action type. It cannot
+ * replace the argument digest, and it cannot disable the binding.
  */
 export function requireReceiptForOpenAITool(fn, opts = {}) {
     if (typeof fn !== 'function')
         throw new TypeError('requireReceiptForOpenAITool: fn must be a function');
-    const { action, actionFor, getReceipt = (args, call = {}) => call.receipt ?? args?.__ep?.receipt ?? null, store = processLocalStore, ...gateOptions } = opts;
+    const { action, actionFor, toolName, getReceipt = (args, call = {}) => call.receipt ?? args?.__ep?.receipt ?? null, store = processLocalStore, ...gateOptions } = opts;
     if (typeof actionFor !== 'function' && (typeof action !== 'string' || !action)) {
         throw new TypeError('requireReceiptForOpenAITool: provide opts.action or opts.actionFor');
     }
+    // The tool identity folded into the digest. Pass opts.toolName explicitly when
+    // the wrapped function is anonymous or the bundle is minified, so the binding
+    // does not move with a local variable name.
+    const boundToolName = (typeof toolName === 'string' && toolName)
+        || (typeof fn.name === 'string' && fn.name)
+        || 'openai.tool';
     const gates = new Map();
     const gateFor = (boundAction) => {
         if (!gates.has(boundAction)) {
-            gates.set(boundAction, makeReceiptGate({ action: boundAction, store, ...gateOptions }));
+            // gateOptions spread FIRST: the bound action and store are not
+            // caller-overridable.
+            gates.set(boundAction, makeReceiptGate({ ...gateOptions, action: boundAction, store }));
         }
         return gates.get(boundAction);
     };
     return async function receiptGuarded(args = {}, call = {}) {
         let snapshot;
+        let executionArgs;
         let boundAction;
         try {
             snapshot = snapshotJson(args);
-            boundAction = typeof actionFor === 'function' ? actionFor(snapshot, call) : action;
+            // Strip the receipt envelope BEFORE hashing, so the digest covers exactly
+            // the arguments that execute. Hashing `snapshot` while executing
+            // `executionArgs` would bind something other than the effect.
+            executionArgs = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)
+                ? Object.fromEntries(Object.entries(snapshot).filter(([key]) => key !== '__ep'))
+                : snapshot;
+            const baseAction = typeof actionFor === 'function' ? actionFor(snapshot, call) : action;
+            if (typeof baseAction !== 'string' || !baseAction)
+                throw new TypeError('action_binding_invalid');
+            boundAction = bindToolAction(boundToolName, executionArgs, baseAction);
         }
         catch {
             boundAction = null;
@@ -166,9 +194,6 @@ export function requireReceiptForOpenAITool(fn, opts = {}) {
             throw new Error('EMILIA blocked tool call: action_binding_invalid');
         }
         const receipt = getReceipt(snapshot, call);
-        const executionArgs = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)
-            ? Object.fromEntries(Object.entries(snapshot).filter(([key]) => key !== '__ep'))
-            : snapshot;
         const result = await gateFor(boundAction).run(receipt, {}, () => fn(executionArgs));
         if (!result.ok) {
             const reason = result.body?.rejected?.reason || (result.body?.required ? 'receipt_required' : 'refused');
@@ -315,6 +340,9 @@ export async function runToolCalls(toolCalls = [], tools = {}, opts = {}) {
                     ...opts,
                     action: t.action,
                     actionFor: t.actionFor,
+                    // Bind to the tool name the model actually called, not the local
+                    // function's name.
+                    toolName: name,
                     getReceipt: () => receipt,
                 });
                 content = await guarded(args, { toolCall: tc, receipt });

@@ -28,7 +28,17 @@ export declare function _resetConsumed(): void;
 export declare function guardAction({ actor, entityId, action, context, apiKey, gateUrl, fetchImpl, allowInsecureHttp, }?: AnyRecord): Promise<AnyRecord>;
 /**
  * Production path: require a pinned, exact-action receipt before one OpenAI-style
- * tool implementation runs. `actionFor` should include every material argument.
+ * tool implementation runs.
+ *
+ * The action is ALWAYS argument-bound: whatever base action you supply (the
+ * simple `action: 'payment.release'` form included), the wrapper appends a
+ * digest of the tool name and the exact arguments that will execute, via the
+ * same `bindToolAction` the LangChain and OpenAI-Agents adapters use. Without
+ * that, one receipt for 'payment.release' would authorize a release of ANY
+ * amount to ANY destination.
+ *
+ * `actionFor(args, call)` may only REFINE the base action type. It cannot
+ * replace the argument digest, and it cannot disable the binding.
  */
 export declare function requireReceiptForOpenAITool(fn: ToolFunction, opts?: AnyRecord): ToolFunction;
 /**

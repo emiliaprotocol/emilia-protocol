@@ -188,6 +188,11 @@ export function requireReceiptForOpenAIAgent(opts: AnyRecord = {}): AnyRecord {
   const {
     actionFor,
     store = sharedStore,
+    // Destructured out and DISCARDED: the action is derived per interruption
+    // from the tool name, the complete arguments, and the callId. A caller
+    // string here would be a blanket authorization for every tool and every
+    // argument set, so it never reaches the gate.
+    action: _callerSuppliedActionIgnored,
     ...gateOptions
   } = opts;
 
@@ -205,7 +210,9 @@ export function requireReceiptForOpenAIAgent(opts: AnyRecord = {}): AnyRecord {
   const gateFor = (action: string): any => {
     let gate = gates.get(action);
     if (!gate) {
-      gate = makeReceiptGate({ action, ...gateOptions, store });
+      // gateOptions is spread FIRST: the derived exact action and the
+      // consumption store are not caller-overridable.
+      gate = makeReceiptGate({ ...gateOptions, action, store });
       gates.set(action, gate);
     }
     return gate;

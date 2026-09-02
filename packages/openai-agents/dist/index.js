@@ -177,7 +177,12 @@ function matchesPendingOccurrence(interruption, pendingApproval) {
  * }}
  */
 export function requireReceiptForOpenAIAgent(opts = {}) {
-    const { actionFor, store = sharedStore, ...gateOptions } = opts;
+    const { actionFor, store = sharedStore, 
+    // Destructured out and DISCARDED: the action is derived per interruption
+    // from the tool name, the complete arguments, and the callId. A caller
+    // string here would be a blanket authorization for every tool and every
+    // argument set, so it never reaches the gate.
+    action: _callerSuppliedActionIgnored, ...gateOptions } = opts;
     if (actionFor !== undefined && typeof actionFor !== 'function') {
         throw new TypeError('requireReceiptForOpenAIAgent: opts.actionFor must be a function when provided');
     }
@@ -191,7 +196,9 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
     const gateFor = (action) => {
         let gate = gates.get(action);
         if (!gate) {
-            gate = makeReceiptGate({ action, ...gateOptions, store });
+            // gateOptions is spread FIRST: the derived exact action and the
+            // consumption store are not caller-overridable.
+            gate = makeReceiptGate({ ...gateOptions, action, store });
             gates.set(action, gate);
         }
         return gate;
