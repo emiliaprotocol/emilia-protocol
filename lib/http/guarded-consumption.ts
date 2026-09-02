@@ -10,6 +10,10 @@
 //   commit(key)  → mark consumed after the action is authorized
 //   release(key) → undo a reservation if the action ends up refused
 //
+// The guarded route deliberately does NOT release on a failed commit: the
+// reservation is what blocks a replay, and dropping it would re-open the window
+// it exists to close.
+//
 // Production posture (FAIL CLOSED): if the durable backend is unconfigured or a
 // consumption operation errors, reserve() throws — the route MUST refuse rather
 // than allow a possibly-replayed receipt. Development falls back to an in-memory
@@ -85,14 +89,22 @@ let _memoryStore: ReturnType<typeof createDurableConsumptionStore> | null = null
  * - Production: durable Supabase-backed store. Throws if Supabase is
  *   unconfigured (the route treats a construction failure as fail-closed).
  * - Dev/test: process-memory store (single-process replay defense only).
+ *
+ * CONSUMPTION HERE IS PERMANENT. The store was previously constructed with
+ * `{ ttlSeconds: 900 }`, which sets permanentConsumption:false and advertises a
+ * 900-second retention (packages/gate/src/store.ts). Nothing honored it: the
+ * backend above inserts only (consume_key, state), writes no expiry column, and
+ * no job reaps the table -- so the advertised retention described a reaper that
+ * does not exist, while the rows lived forever. The rows living forever is the
+ * behavior we want (a consumed receipt id must never become replayable again);
+ * the TTL was the false half, so it is gone. Reintroduce it only together with
+ * a real expiry column AND a reaper, so the claim and the storage agree.
  */
 export async function getGuardedConsumptionStore() {
   if (isProduction()) {
     const { getServiceClient } = await import('@/lib/supabase');
     const supabase = getServiceClient(); // throws if env is missing → fail closed
-    // TTL matches the guarded route's max receipt age so consumed ids can be
-    // reaped by an operator job without ever re-opening a replay window.
-    return createDurableConsumptionStore(createSupabaseBackend(supabase), { ttlSeconds: 900 });
+    return createDurableConsumptionStore(createSupabaseBackend(supabase));
   }
   if (!_memoryStore) _memoryStore = createDurableConsumptionStore(createMemoryBackend());
   return _memoryStore;

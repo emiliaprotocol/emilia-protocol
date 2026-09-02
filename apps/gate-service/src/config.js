@@ -157,15 +157,21 @@ export function validateGateServiceConfig(input) {
     if (rpId !== null && (typeof rpId !== 'string' || rpId.length === 0 || rpId.length > 253)) {
         errors.push('rp_id_invalid');
     }
-    if (verifyAssurance === null) {
-        if (!isObject(approverKeys) || Object.keys(approverKeys).length === 0) {
-            errors.push('pinned_approver_keys_required');
-        }
-        if (rpId === null)
-            errors.push('rp_id_invalid');
-        if (Array.isArray(allowedOrigins) && allowedOrigins.length === 0) {
-            errors.push('allowed_origins_invalid');
-        }
+    // The pinned inputs are what make a human-assurance claim CHECKABLE: pinned
+    // approver keys say whose signature counts, rpId and allowedOrigins say which
+    // relying party and origin a WebAuthn assertion had to be scoped to. Gating
+    // them on `verifyAssurance === null` meant that supplying any function -- a
+    // `() => true` in a config module included -- silently dropped all three, and
+    // the service would then start with nothing pinned to verify against. Require
+    // them unconditionally: a custom verifier may CHANGE how the pins are checked,
+    // never whether they exist.
+    if (!isObject(approverKeys) || Object.keys(approverKeys).length === 0) {
+        errors.push('pinned_approver_keys_required');
+    }
+    if (rpId === null)
+        errors.push('rp_id_invalid');
+    if (Array.isArray(allowedOrigins) && allowedOrigins.length === 0) {
+        errors.push('allowed_origins_invalid');
     }
     const maxAgeSec = boundedInteger(input.maxAgeSec, 900, 1, 86_400, 'max_age_sec', errors);
     const maxBodyBytes = boundedInteger(input.maxBodyBytes, DEFAULT_MAX_BODY_BYTES, 256, 16 * 1024, 'max_body_bytes', errors);

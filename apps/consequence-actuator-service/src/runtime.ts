@@ -551,17 +551,33 @@ export function createConsequenceActuatorRuntime(
     execute,
     observe,
     live: () => response(200, { status: 'ok' }),
+    // Readiness is a PROOF, not a default. A config with no probe has told us
+    // nothing about the durable dependencies this service owns credentials for,
+    // so it is NOT ready: answering 200 here would make the startup gate in
+    // server.ts (which only checks `status !== 200`) pass vacuously and would
+    // let an orchestrator route traffic to a service that never proved its
+    // store, role membership, or stored procedures exist. Every branch below
+    // carries a named reason so an operator can tell the three cases apart.
     ready: async () => {
       if (typeof config.readiness !== 'function') {
-        return response(200, { status: 'ok' });
+        return response(503, {
+          status: 'unavailable',
+          reason: 'readiness_probe_not_configured',
+        });
       }
       try {
         const ready = await config.readiness();
         return ready?.ok === true
           ? response(200, { status: 'ok' })
-          : response(503, { status: 'unavailable' });
+          : response(503, {
+            status: 'unavailable',
+            reason: 'readiness_probe_refused',
+          });
       } catch {
-        return response(503, { status: 'unavailable' });
+        return response(503, {
+          status: 'unavailable',
+          reason: 'readiness_probe_failed',
+        });
       }
     },
     close: async () => {

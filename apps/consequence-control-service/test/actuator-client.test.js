@@ -471,9 +471,18 @@ describe('decision-plane actuator client', () => {
       keyId: 'actuator-evidence-key',
     });
 
+    // Pin the envelope the observation names, so this case reaches the OUTCOME
+    // check rather than stopping at the envelope-binding requirement: what is
+    // under test here is that a signed INDETERMINATE is nonterminal, not that
+    // an unpinned observation is refused (covered separately below).
     const verified = await fixture.value.verifyProviderEvidence({
       evidence,
-      expected: EXPECTED,
+      expected: {
+        ...EXPECTED,
+        nonce: Buffer.alloc(24, 7).toString('base64url'),
+        envelope_digest: `sha256:${'c'.repeat(64)}`,
+        provider_attribution_digest: `sha256:${'d'.repeat(64)}`,
+      },
       action: ACTION,
     });
 
@@ -686,5 +695,110 @@ describe('decision-plane actuator client', () => {
       provider.fetchIdToken('https://different-service.run.app'),
       /actuator_identity_audience_mismatch/,
     );
+  });
+});
+
+describe('directly presented actuator observation binding', () => {
+  const NONCE = Buffer.alloc(24, 7).toString('base64url');
+  const ENVELOPE_DIGEST = `sha256:${'c'.repeat(64)}`;
+  const ATTRIBUTION_DIGEST = `sha256:${'d'.repeat(64)}`;
+
+  function committedObservation(evidenceSigner, overrides = {}) {
+    return signActuatorResponseObservation({
+      payload: {
+        '@version': 'EP-CONSEQUENCE-ACTUATOR-OBSERVATION-v1',
+        issuer_id: 'consequence-actuator',
+        tenant_id: ATTEMPT.tenant_id,
+        request_digest: ATTEMPT.request_digest,
+        environment: ATTEMPT.environment,
+        attempt_id: ATTEMPT.attempt_id,
+        action_digest: ACTION_DIGEST,
+        caid: CAID,
+        provider_id: ATTEMPT.provider_id,
+        provider_account_id: ATTEMPT.provider_account_id,
+        target_digest: TARGET_DIGEST,
+        operation: ACTION.action_type,
+        idempotency_key: PROPOSAL.operation_id,
+        nonce: NONCE,
+        envelope_digest: ENVELOPE_DIGEST,
+        provider_attribution_digest: ATTRIBUTION_DIGEST,
+        outcome: 'COMMITTED',
+        observed_at: new Date(NOW).toISOString(),
+        reason: 'github_exact_attempt_committed',
+        provider_reference: 'github:issue:emiliaprotocol/gate-smoke-target#1',
+        provider_result_digest: null,
+        ...overrides,
+      },
+      privateKey: evidenceSigner.privateKey,
+      keyId: 'actuator-evidence-key',
+    });
+  }
+
+  function offlineClient(evidenceSigner) {
+    return client(async () => {
+      throw new Error('directly presented evidence must not re-observe');
+    }, { evidenceSigner });
+  }
+
+  it('refuses a directly presented observation when expected pins no envelope', async () => {
+    // The only production caller (packages/gate/src/proposal-to-effect.ts:1020)
+    // builds `expected` from the nine reconciliation keys, so nonce,
+    // envelope_digest and provider_attribution_digest were never present and
+    // their checks never ran. Those three are what tie an observation to ONE
+    // execution envelope; without them any signed observation carrying the same
+    // attempt/action bindings is replayable across envelopes.
+    const evidenceSigner = crypto.generateKeyPairSync('ed25519');
+    const fixture = offlineClient(evidenceSigner);
+
+    const verified = await fixture.value.verifyProviderEvidence({
+      evidence: committedObservation(evidenceSigner),
+      expected: EXPECTED,
+      action: ACTION,
+    });
+
+    assert.equal(verified.valid, false);
+    assert.equal(verified.reason, 'provider_evidence_envelope_binding_absent');
+  });
+
+  it('accepts a directly presented observation bound to the pinned envelope', async () => {
+    const evidenceSigner = crypto.generateKeyPairSync('ed25519');
+    const fixture = offlineClient(evidenceSigner);
+
+    const verified = await fixture.value.verifyProviderEvidence({
+      evidence: committedObservation(evidenceSigner),
+      expected: {
+        ...EXPECTED,
+        nonce: NONCE,
+        envelope_digest: ENVELOPE_DIGEST,
+        provider_attribution_digest: ATTRIBUTION_DIGEST,
+      },
+      action: ACTION,
+    });
+
+    assert.equal(verified.valid, true);
+    assert.equal(verified.outcome, 'COMMITTED');
+  });
+
+  it('refuses a signed observation replayed from another envelope of the same attempt', async () => {
+    const evidenceSigner = crypto.generateKeyPairSync('ed25519');
+    for (const drift of [
+      { nonce: Buffer.alloc(24, 9).toString('base64url') },
+      { envelope_digest: `sha256:${'e'.repeat(64)}` },
+      { provider_attribution_digest: `sha256:${'f'.repeat(64)}` },
+    ]) {
+      const fixture = offlineClient(evidenceSigner);
+      const verified = await fixture.value.verifyProviderEvidence({
+        evidence: committedObservation(evidenceSigner, drift),
+        expected: {
+          ...EXPECTED,
+          nonce: NONCE,
+          envelope_digest: ENVELOPE_DIGEST,
+          provider_attribution_digest: ATTRIBUTION_DIGEST,
+        },
+        action: ACTION,
+      });
+      assert.equal(verified.valid, false);
+      assert.equal(verified.reason, 'provider_evidence_binding_mismatch');
+    }
   });
 });

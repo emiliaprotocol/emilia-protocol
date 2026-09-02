@@ -9,6 +9,7 @@ import {
 
 const PRINCIPAL = Object.freeze({ id: 'principal:operator' });
 const OTHER_PRINCIPAL = Object.freeze({ id: 'principal:other' });
+const NOW = Date.parse('2026-07-25T12:00:00.000Z');
 
 function proposal(overrides = {}) {
   return {
@@ -16,6 +17,12 @@ function proposal(overrides = {}) {
     proposal_id: 'proposal:0000000000000001',
     operation_id: 'operation:0000000000000001',
     initiator_id: PRINCIPAL.id,
+    // The real controller refuses a proposal without a canonical
+    // created_at/expires_at pair (packages/gate/src/proposal-to-effect.ts),
+    // so the fixture carries them too: the recovery-window bound below reads
+    // expires_at off the verified proposal.
+    created_at: new Date(NOW - 600_000).toISOString(),
+    expires_at: new Date(NOW + 600_000).toISOString(),
     profile_id: 'github.repo.delete.v1',
     action: {
       action_type: 'github.repo.delete',
@@ -56,8 +63,8 @@ function evidence() {
 function fixture(overrides = {}) {
   const calls = [];
   const controller = {
-    verifyProposal(candidate) {
-      calls.push(['verifyProposal', candidate]);
+    verifyProposal(candidate, options) {
+      calls.push(['verifyProposal', candidate, options]);
       if (candidate?.['@version'] !== 'EMILIA-PROPOSAL-TO-EFFECT-v1') {
         throw new Error('proposal_shape_invalid');
       }
@@ -126,6 +133,7 @@ function fixture(overrides = {}) {
     },
     readiness: async () => ({ ok: true }),
     idFactory: () => 'proposal:0000000000000001',
+    now: () => NOW,
     ...overrides,
   };
   return { runtime: createConsequenceControlRuntime(config), calls, controller, config };
@@ -523,4 +531,113 @@ test('readiness fails closed when a dependency is unavailable', async () => {
   const result = await runtime.ready();
   assert.equal(result.status, 503);
   assert.equal(result.body.status, 'unavailable');
+});
+
+// ── Expired-proposal handling on the durable-state routes ────────────────────
+//
+// Four of six lifecycle routes passed { allowExpired: true } straight through
+// to the controller. On pollApproval and lookupAttempt that is correct and
+// stays: both are read-only and an operator must be able to inspect an expired
+// proposal. On reconcile and repairAeb it left the mutating paths with NO time
+// bound at all, so a proposal of any age could still drive durable AEB state.
+// The bound below is a RECOVERY WINDOW rather than plain expiry, because both
+// routes exist to converge state for an attempt that already happened and
+// refusing them outright would strand an indeterminate attempt forever.
+
+function reconcileBody(proposalOverrides = {}) {
+  return {
+    proposal: proposal(proposalOverrides),
+    evaluation: { verdict: 'SATISFIED' },
+    attempt: publicAttempt(),
+    provider_evidence: { outcome: 'COMMITTED' },
+    evidence: evidence(),
+  };
+}
+
+function repairBody(proposalOverrides = {}) {
+  return {
+    proposal: proposal(proposalOverrides),
+    evaluation: { verdict: 'SATISFIED' },
+    attempt: publicAttempt(),
+    evidence: evidence(),
+  };
+}
+
+const EXPIRED_INSIDE_WINDOW = {
+  created_at: new Date(NOW - 4_200_000).toISOString(),
+  expires_at: new Date(NOW - 600_000).toISOString(),
+};
+const EXPIRED_BEYOND_WINDOW = {
+  created_at: new Date(NOW - 90 * 86_400_000).toISOString(),
+  expires_at: new Date(NOW - 89 * 86_400_000).toISOString(),
+};
+
+test('reconcile refuses a proposal whose recovery window has elapsed', async () => {
+  const { runtime, calls } = fixture();
+  const result = await runtime.reconcile({
+    principal: PRINCIPAL,
+    proposalId: 'proposal:0000000000000001',
+    body: reconcileBody(EXPIRED_BEYOND_WINDOW),
+  });
+
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error.code, 'proposal_recovery_window_elapsed');
+  assert.equal(calls.some(([name]) => name === 'reconcile'), false);
+  assert.equal(calls.some(([name]) => name === 'withEvidenceContext'), false);
+});
+
+test('repair refuses a proposal whose recovery window has elapsed', async () => {
+  const { runtime, calls } = fixture();
+  const result = await runtime.repair({
+    principal: PRINCIPAL,
+    proposalId: 'proposal:0000000000000001',
+    body: repairBody(EXPIRED_BEYOND_WINDOW),
+  });
+
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error.code, 'proposal_recovery_window_elapsed');
+  assert.equal(calls.some(([name]) => name === 'repairAeb'), false);
+});
+
+test('reconcile and repair still converge a recently expired proposal', async () => {
+  const reconciled = await fixture().runtime.reconcile({
+    principal: PRINCIPAL,
+    proposalId: 'proposal:0000000000000001',
+    body: reconcileBody(EXPIRED_INSIDE_WINDOW),
+  });
+  assert.equal(reconciled.status, 200);
+
+  const repaired = await fixture().runtime.repair({
+    principal: PRINCIPAL,
+    proposalId: 'proposal:0000000000000001',
+    body: repairBody(EXPIRED_INSIDE_WINDOW),
+  });
+  assert.equal(repaired.status, 200);
+});
+
+test('mutating routes refuse a proposal that carries no expiry at all', async () => {
+  const { runtime, calls } = fixture();
+  const undated = reconcileBody();
+  delete undated.proposal.expires_at;
+  const result = await runtime.reconcile({
+    principal: PRINCIPAL,
+    proposalId: 'proposal:0000000000000001',
+    body: undated,
+  });
+
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error.code, 'proposal_recovery_window_elapsed');
+  assert.equal(calls.some(([name]) => name === 'reconcile'), false);
+});
+
+test('read-only routes still inspect an expired proposal', async () => {
+  const { runtime, calls } = fixture();
+  const found = await runtime.lookupAttempt({
+    principal: PRINCIPAL,
+    proposalId: 'proposal:0000000000000001',
+    body: { proposal: proposal(EXPIRED_BEYOND_WINDOW) },
+  });
+  assert.equal(found.status, 200);
+  const verified = calls.filter(([name]) => name === 'verifyProposal');
+  assert.deepEqual(verified.at(-1)[2], { allowExpired: true });
 });

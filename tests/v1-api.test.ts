@@ -2550,14 +2550,57 @@ describe('POST /api/v1/trust-receipts/:id/execution', () => {
     expect(body.execution_binding_check.mismatched_fields).toContain('amount');
   });
 
-  it('records EXECUTION DRIFT when the executed action differs from approved', async () => {
+  it('refuses and records EXECUTION DRIFT when the executed action differs from approved', async () => {
+    // A hash mismatch is never a successful execution record. The refusal used
+    // to be gated on `execution_binding.required === true`, so a receipt with
+    // no binding contract -- the common case -- had its drift written as
+    // `guard.trust_receipt.executed` with binding_status 'drift' and answered
+    // 201. That contradicts the `execution_drift_refused` conformance check
+    // this project publishes in public/.well-known/agent-action-control.json.
+    authedAs('sys');
+    const inserted: any[] = [];
+    mockGetGuardedClient.mockReturnValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      from: vi.fn(() => {
+        const chain: any = {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          order: vi.fn().mockReturnThis(),
+          insert: vi.fn(async (row: any) => {
+            inserted.push(row);
+            return { data: null, error: null };
+          }),
+          then: (resolve: any) => Promise.resolve({
+            data: [
+              created({ after_state: { action_hash: 'sha256:not-the-executed-action' } }),
+              { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+            ],
+            error: null,
+          }).then(resolve),
+        };
+        return chain;
+      }),
+    });
+
+    const res = await attestExecution(req({ executed_action: EXECUTED, executing_system: 's' }), P);
+
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.type).toContain('execution_action_drift');
+    expect(body.binding_status).toBe('drift');
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0].event_type).toBe('guard.trust_receipt.execution_drift');
+    expect(inserted[0].after_state.binding_status).toBe('drift');
+  });
+
+  it('refuses a drifting execution even when no execution binding is required', async () => {
     authedAs('sys');
     timeline([
-      created({ after_state: { action_hash: 'sha256:not-the-executed-action' } }),
+      created({ after_state: { action_hash: 'sha256:not-the-executed-action', execution_binding: null } }),
       { event_type: 'guard.trust_receipt.consumed', after_state: {} },
     ]);
     const res = await attestExecution(req({ executed_action: EXECUTED, executing_system: 's' }), P);
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(409);
     expect((await res.json()).binding_status).toBe('drift');
   });
 
