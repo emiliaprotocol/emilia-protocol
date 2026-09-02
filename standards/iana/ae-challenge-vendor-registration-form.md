@@ -1,6 +1,6 @@
 # IANA vendor media-type request: live-form field map
 
-Status: Complete for registrant review and IANA form entry. Not submitted.
+Status: Submitted to IANA as ticket #1458921; designated-expert review pending.
 
 Leave the form's humanity-check field blank.
 
@@ -61,7 +61,7 @@ on replay-store uncertainty. Action and policy digests do not hide low-entropy
 values and do not prove business correctness or execution. Confidentiality
 appropriate to the deployment is required when the challenge exposes sensitive
 action, policy, identity, or routing information. See RFC 8259 Section 12 and
-Sections 2.2--2.8 and 5 of draft-schrock-ae-challenge-07.
+the complete Security Considerations in the Version 1 published specification.
 
 ## Interoperability Considerations
 
@@ -73,8 +73,8 @@ unsupported `@version` and duplicate members; nested core objects are closed;
 bare core object, not an RFC 9457 Problem Details wrapper. It does not select a
 canonicalization profile; every carrier binding or presentation profile must
 define the complete-body digest and representation, issuer identity, audience,
-replay domain, time, and return-path semantics required by the underlying data
-model.
+replay domain, time, and return-path semantics required by this Version 1
+specification.
 
 ## Published specification
 
@@ -82,19 +82,13 @@ EMILIA bare AE Challenge media-type serialization specification, Version 1:
 
 https://github.com/emiliaprotocol/emilia-protocol/blob/main/standards/iana/ae-challenge-vendor-binding.md
 
-Underlying data model, work in progress:
-
-https://www.ietf.org/archive/id/draft-schrock-ae-challenge-07.html
-
-Relevant sections: 2, 2.7, 2.8, and 5. This registration defines the vendor
-media type for the bare JSON serialization. It is not the HTTP carrier in
-Section 3.
-
 ## Application Usage
 
 This media type is intended for use by EMILIA product implementations and
 compatible presenters that exchange a bare `AE-CHALLENGE-v1` object through a
 separately specified carrier or presentation profile.
+
+This applications list is not exhaustive.
 
 ## Fragment Identifier Considerations
 
@@ -104,11 +98,12 @@ defines none.
 
 ## Restrictions on Usage
 
-This type labels only the bare `AE-CHALLENGE-v1` core object. It **MUST NOT** be
-used as the `Content-Type` of the HTTP refusal response defined by Section 3 of
-draft-schrock-ae-challenge-07, which remains `application/problem+json` and
-carries the core object in `evidence_challenge`. Any carrier or presentation
-profile must satisfy the applicable requirements in Sections 2 and 2.8.
+This type labels only the bare `AE-CHALLENGE-v1` object. It **MUST NOT** label
+an HTTP Problem Details envelope. A carrier that embeds the object in such an
+envelope uses the envelope's media type, such as `application/problem+json`,
+and separately defines the embedding member and its semantics. Any carrier or
+presentation profile must satisfy the requirements in the Version 1 published
+specification.
 
 Provisional Registration: No
 
@@ -134,9 +129,12 @@ Additional information: N/A
 
 This is a vendor-tree product registration for the bare `AE-CHALLENGE-v1` JSON
 object. It does not request a standards-tree allocation and does not change the
-HTTP carrier in draft-schrock-ae-challenge-07, which uses
-`application/problem+json`. The vendor designation `emilia` refers to EMILIA
-Protocol, Inc.
+media type of an enclosing carrier. The vendor designation `emilia` refers to
+EMILIA Protocol, Inc.
+
+Informative protocol context, not required to parse or process this media type:
+
+https://www.ietf.org/archive/id/draft-schrock-ae-challenge-07.html
 
 ## Contact Person
 
@@ -159,6 +157,5 @@ EMILIA Protocol, Inc. <team@emiliaprotocol.ai>.
 - Select No for provisional registration.
 - Do not use IETF as change controller.
 - Do not claim deployment, IETF review, or standards endorsement.
-- Confirm the serialization-specification URL resolves publicly on the exact
-  submitted commit.
-- Preserve the IANA confirmation or ticket number after submission.
+- Keep the serialization-specification URL public and stable throughout review.
+- Preserve IANA ticket #1458921 and record the final registry outcome.
