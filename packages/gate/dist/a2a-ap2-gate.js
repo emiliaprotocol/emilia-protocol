@@ -259,7 +259,7 @@ export class A2AAp2Gate {
                 return indeterminate(record, actuatorReason(effect), true, reservationKey);
             }
             const released = await reconcileAebExecutionDurable(this.#options.aeb_store, reservationKey, 'NOT_COMMITTED');
-            if (released.state !== 'AVAILABLE') {
+            if (released.state !== 'RELEASED_NOT_ENTERED') {
                 return indeterminate(record, released.reason, false, reservationKey);
             }
             return Object.freeze({

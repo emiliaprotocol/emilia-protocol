@@ -412,7 +412,7 @@ const lifecycleVectorHandlers: Record<string, () => void> = {
     assert.equal(legitimate.state, 'AUTHORIZED');
     assert.equal(legitimate.invoke_allowed, true);
   },
-  not_committed_release_allows_retry() {
+  not_committed_release_is_terminal() {
     const { acceptanceProfile, evaluation, verification } = buildFixture();
     const store = new InMemoryAebConsumptionStore();
     const first = applyAebAcceptanceProfile(acceptanceProfile, evaluation.record, {
@@ -424,7 +424,10 @@ const lifecycleVectorHandlers: Record<string, () => void> = {
     });
     assert.equal(first.state, 'AUTHORIZED');
     assert.ok(first.reservation_key);
-    assert.equal(reconcileAebExecution(store, first.reservation_key!, 'NOT_COMMITTED').state, 'AVAILABLE');
+    const reconciled = reconcileAebExecution(store, first.reservation_key!, 'NOT_COMMITTED');
+    assert.equal(reconciled.state, 'RELEASED_NOT_ENTERED');
+    assert.equal(reconciled.retry_requires_new_instance, true);
+    assert.equal(store.state(first.reservation_key!), 'RELEASED_NOT_ENTERED');
     const retry = applyAebAcceptanceProfile(acceptanceProfile, evaluation.record, {
       mode: 'enforce',
       expected_profile_digest: acceptanceProfile.profile_digest,
@@ -432,8 +435,9 @@ const lifecycleVectorHandlers: Record<string, () => void> = {
       local_authorization: true,
       store,
     });
-    assert.equal(retry.state, 'AUTHORIZED');
-    assert.equal(retry.invoke_allowed, true);
+    assert.equal(retry.state, 'REFUSED');
+    assert.equal(retry.invoke_allowed, false);
+    assert.equal(retry.reason, 'released_not_entered_requires_new_instance');
   },
   committed_admission_consumes_and_replay_refuses() {
     const { acceptanceProfile, evaluation, verification } = buildFixture();

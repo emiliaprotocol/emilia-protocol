@@ -149,7 +149,10 @@
         "bypassRefused",
         "staleRefused",
         "replayRefused",
-        "reconciliationAuthenticated"
+        "reconciliationAuthenticated",
+        "reservation",
+        "reservationReleased",
+        "reReserveRefused"
       ],
       "projections": {
         "decision": "decision",
@@ -161,7 +164,10 @@
         "bypassRefused": "bypassRefused",
         "staleRefused": "staleRefused",
         "replayRefused": "replayRefused",
-        "reconciliationAuthenticated": "reconciliationAuthenticated"
+        "reconciliationAuthenticated": "reconciliationAuthenticated",
+        "reservation": "reservation",
+        "reservationReleased": "reservationReleased",
+        "reReserveRefused": "reReserveRefused"
       },
       "actions": {
         "RefuseGateBypass": "RefuseGateBypass",
@@ -170,7 +176,10 @@
         "InvokeThroughActuator": "InvokeThroughActuator",
         "ProviderTimeout": "ProviderTimeout",
         "RefuseBlindReplay": "RefuseBlindReplay",
-        "UnsafeDirectProviderCall": "UnsafeDirectProviderCall"
+        "UnsafeDirectProviderCall": "UnsafeDirectProviderCall",
+        "ReserveOneTimeUnit": "ReserveOneTimeUnit",
+        "ReconcileNotCommitted": "ReconcileNotCommitted",
+        "RefuseReReserveAfterRelease": "RefuseReReserveAfterRelease"
       }
     },
     "formal/ep_consequence_lifecycle.tla": {
@@ -648,52 +657,82 @@
         {
           "operator": "BindExactCAID",
           "accepted": true,
-          "projection": { "phase": "CAID_BOUND", "caid": "caid:action" }
+          "projection": {
+            "phase": "CAID_BOUND",
+            "caid": "caid:action"
+          }
         },
         {
           "operator": "VerifyAEB",
           "accepted": true,
-          "projection": { "phase": "AEB_VERIFIED", "aebState": "VERIFIED_ACCEPTED" }
+          "projection": {
+            "phase": "AEB_VERIFIED",
+            "aebState": "VERIFIED_ACCEPTED"
+          }
         },
         {
           "operator": "SatisfyExactAEC",
           "accepted": true,
-          "projection": { "phase": "AEC_SATISFIED", "aecState": "MACHINE_AND_HUMAN" }
+          "projection": {
+            "phase": "AEC_SATISFIED",
+            "aecState": "MACHINE_AND_HUMAN"
+          }
         },
         {
           "operator": "CaptureApproval",
           "accepted": true,
-          "projection": { "phase": "APPROVED", "approvalBound": true }
+          "projection": {
+            "phase": "APPROVED",
+            "approvalBound": true
+          }
         },
         {
           "operator": "ClearActionEscrow",
           "accepted": true,
-          "projection": { "phase": "ACTION_ESCROW_CLEAR", "actionEscrowClear": true }
+          "projection": {
+            "phase": "ACTION_ESCROW_CLEAR",
+            "actionEscrowClear": true
+          }
         },
         {
           "operator": "ClearModelToMatter",
           "accepted": true,
-          "projection": { "phase": "MODEL_TO_MATTER_CLEAR", "modelToMatterClear": true }
+          "projection": {
+            "phase": "MODEL_TO_MATTER_CLEAR",
+            "modelToMatterClear": true
+          }
         },
         {
           "operator": "ClearGRACE",
           "accepted": true,
-          "projection": { "phase": "GRACE_CLEAR", "graceClear": true }
+          "projection": {
+            "phase": "GRACE_CLEAR",
+            "graceClear": true
+          }
         },
         {
           "operator": "ClearMobileContinuity",
           "accepted": true,
-          "projection": { "phase": "MOBILE_CONTINUITY_CLEAR", "mobileContinuityClear": true }
+          "projection": {
+            "phase": "MOBILE_CONTINUITY_CLEAR",
+            "mobileContinuityClear": true
+          }
         },
         {
           "operator": "ClearMobileEnrollment",
           "accepted": true,
-          "projection": { "phase": "MOBILE_ENROLLMENT_CLEAR", "mobileEnrollmentClear": true }
+          "projection": {
+            "phase": "MOBILE_ENROLLMENT_CLEAR",
+            "mobileEnrollmentClear": true
+          }
         },
         {
           "operator": "AcceptFreshStatus",
           "accepted": true,
-          "projection": { "phase": "STATUS_FRESH", "statusState": "FRESH_NOT_REVOKED" }
+          "projection": {
+            "phase": "STATUS_FRESH",
+            "statusState": "FRESH_NOT_REVOKED"
+          }
         },
         {
           "operator": "AcceptCleanWitness",
@@ -707,17 +746,26 @@
         {
           "operator": "ReserveEscrow",
           "accepted": true,
-          "projection": { "phase": "RESERVED", "escrowState": "RESERVED" }
+          "projection": {
+            "phase": "RESERVED",
+            "escrowState": "RESERVED"
+          }
         },
         {
           "operator": "InvokeProvider",
           "accepted": true,
-          "projection": { "phase": "INVOKING", "providerCalls": 1 }
+          "projection": {
+            "phase": "INVOKING",
+            "providerCalls": 1
+          }
         },
         {
           "operator": "MarkIndeterminate",
           "accepted": true,
-          "projection": { "phase": "INDETERMINATE", "originalEffect": "INDETERMINATE" }
+          "projection": {
+            "phase": "INDETERMINATE",
+            "originalEffect": "INDETERMINATE"
+          }
         },
         {
           "operator": "RefuseBlindReplay",
@@ -750,7 +798,10 @@
         {
           "operator": "OpenDispute",
           "accepted": true,
-          "projection": { "phase": "DISPUTED", "disputeOpen": true }
+          "projection": {
+            "phase": "DISPUTED",
+            "disputeOpen": true
+          }
         },
         {
           "operator": "AuthorizeSeparateRemedy",
@@ -764,7 +815,10 @@
         {
           "operator": "InvokeRemedy",
           "accepted": true,
-          "projection": { "phase": "REMEDY_INVOKING", "remedyCalls": 1 }
+          "projection": {
+            "phase": "REMEDY_INVOKING",
+            "remedyCalls": 1
+          }
         },
         {
           "operator": "MarkRemedyIndeterminate",
@@ -806,8 +860,13 @@
         "packages/verify/src/evidence-chain.ts",
         "packages/gate/src/aec-execution.ts"
       ],
-      "obligations": ["ExactAECRoles"],
-      "formal_prefix": ["BindExactCAID", "VerifyAEB"],
+      "obligations": [
+        "ExactAECRoles"
+      ],
+      "formal_prefix": [
+        "BindExactCAID",
+        "VerifyAEB"
+      ],
       "steps": [
         {
           "operator": "PresentSubstitutedAECRole",
@@ -830,13 +889,21 @@
         "packages/verify/src/evidence-chain.ts",
         "packages/gate/src/aec-execution.ts"
       ],
-      "obligations": ["ExactAECRoles"],
-      "formal_prefix": ["BindExactCAID", "VerifyAEB"],
+      "obligations": [
+        "ExactAECRoles"
+      ],
+      "formal_prefix": [
+        "BindExactCAID",
+        "VerifyAEB"
+      ],
       "steps": [
         {
           "operator": "UnsafeRoleSubstitution",
           "accepted": false,
-          "projection": { "phase": "AEB_VERIFIED", "aecState": "UNSATISFIED" }
+          "projection": {
+            "phase": "AEB_VERIFIED",
+            "aecState": "UNSATISFIED"
+          }
         }
       ],
       "mutation": {
@@ -856,7 +923,9 @@
         "packages/verify/src/aeb-adapter-contract.ts",
         "packages/gate/src/proposal-to-effect.ts"
       ],
-      "obligations": ["ReservationRequiresTrust"],
+      "obligations": [
+        "ReservationRequiresTrust"
+      ],
       "formal_prefix": [
         "BindExactCAID",
         "VerifyAEB",
@@ -903,7 +972,10 @@
         "packages/gate/src/network-witness.ts",
         "packages/gate/src/witness-postgres.ts"
       ],
-      "obligations": ["ReservationRequiresTrust", "WitnessPoisonPermanent"],
+      "obligations": [
+        "ReservationRequiresTrust",
+        "WitnessPoisonPermanent"
+      ],
       "formal_prefix": [
         "BindExactCAID",
         "VerifyAEB",
@@ -1001,7 +1073,9 @@
         "packages/verify/src/revocation.ts",
         "packages/gate/src/proposal-to-effect.ts"
       ],
-      "obligations": ["RevokedBeforeExecutionCannotInvoke"],
+      "obligations": [
+        "RevokedBeforeExecutionCannotInvoke"
+      ],
       "formal_prefix": [
         "BindExactCAID",
         "VerifyAEB",
@@ -1051,7 +1125,9 @@
         "packages/gate/src/proposal-to-effect.ts",
         "packages/gate/src/aeb-consumption-store.ts"
       ],
-      "obligations": ["ProviderAtMostOnce"],
+      "obligations": [
+        "ProviderAtMostOnce"
+      ],
       "formal_prefix": [
         "BindExactCAID",
         "VerifyAEB",
@@ -1095,7 +1171,9 @@
         "packages/gate/src/proposal-to-effect.ts",
         "packages/gate/src/aec-execution.ts"
       ],
-      "obligations": ["AuthenticatedReconciliation"],
+      "obligations": [
+        "AuthenticatedReconciliation"
+      ],
       "formal_prefix": [
         "BindExactCAID",
         "VerifyAEB",
@@ -1137,8 +1215,12 @@
       "adapter": "composed-trust-lifecycle",
       "scenario": "composed-original-authority-remedy-mutation",
       "kind": "paired_negative_control",
-      "runtime_sources": ["packages/gate/src/remedy-program.ts"],
-      "obligations": ["SeparateRemedyAuthority"],
+      "runtime_sources": [
+        "packages/gate/src/remedy-program.ts"
+      ],
+      "obligations": [
+        "SeparateRemedyAuthority"
+      ],
       "formal_prefix": [
         "BindExactCAID",
         "VerifyAEB",
@@ -1183,8 +1265,12 @@
       "adapter": "composed-trust-lifecycle",
       "scenario": "composed-remedy-blind-replay-mutation",
       "kind": "paired_negative_control",
-      "runtime_sources": ["packages/gate/src/remedy-program.ts"],
-      "obligations": ["RemedyAtMostOnce"],
+      "runtime_sources": [
+        "packages/gate/src/remedy-program.ts"
+      ],
+      "obligations": [
+        "RemedyAtMostOnce"
+      ],
       "formal_prefix": [
         "BindExactCAID",
         "VerifyAEB",
@@ -1241,7 +1327,9 @@
         "EffectRequiresConsumedEnvelope",
         "EffectRequiresExactDecision",
         "UncertainEffectBlocksReplay",
-        "NoEnvelopeReopenAfterInvocation"
+        "NoEnvelopeReopenAfterInvocation",
+        "ReleasedReservationNeverReReserved",
+        "InvocationRequiresReservedUnit"
       ],
       "steps": [
         {
@@ -1257,7 +1345,10 @@
             "bypassRefused": true,
             "staleRefused": false,
             "replayRefused": false,
-            "reconciliationAuthenticated": false
+            "reconciliationAuthenticated": false,
+            "reservation": "NONE",
+            "reservationReleased": false,
+            "reReserveRefused": false
           }
         },
         {
@@ -1273,7 +1364,29 @@
             "bypassRefused": true,
             "staleRefused": false,
             "replayRefused": false,
-            "reconciliationAuthenticated": false
+            "reconciliationAuthenticated": false,
+            "reservation": "NONE",
+            "reservationReleased": false,
+            "reReserveRefused": false
+          }
+        },
+        {
+          "operator": "ReserveOneTimeUnit",
+          "accepted": true,
+          "projection": {
+            "decision": "ALLOWED",
+            "envelope": "NONE",
+            "binding": "NONE",
+            "effect": "NONE",
+            "providerCalls": 0,
+            "providerCaller": "NONE",
+            "bypassRefused": true,
+            "staleRefused": false,
+            "replayRefused": false,
+            "reconciliationAuthenticated": false,
+            "reservation": "RESERVED",
+            "reservationReleased": false,
+            "reReserveRefused": false
           }
         },
         {
@@ -1289,7 +1402,10 @@
             "bypassRefused": true,
             "staleRefused": false,
             "replayRefused": false,
-            "reconciliationAuthenticated": false
+            "reconciliationAuthenticated": false,
+            "reservation": "RESERVED",
+            "reservationReleased": false,
+            "reReserveRefused": false
           }
         },
         {
@@ -1305,7 +1421,10 @@
             "bypassRefused": true,
             "staleRefused": false,
             "replayRefused": false,
-            "reconciliationAuthenticated": false
+            "reconciliationAuthenticated": false,
+            "reservation": "RESERVED",
+            "reservationReleased": false,
+            "reReserveRefused": false
           }
         },
         {
@@ -1321,7 +1440,10 @@
             "bypassRefused": true,
             "staleRefused": false,
             "replayRefused": false,
-            "reconciliationAuthenticated": false
+            "reconciliationAuthenticated": false,
+            "reservation": "RESERVED",
+            "reservationReleased": false,
+            "reReserveRefused": false
           }
         },
         {
@@ -1337,7 +1459,48 @@
             "bypassRefused": true,
             "staleRefused": false,
             "replayRefused": true,
-            "reconciliationAuthenticated": false
+            "reconciliationAuthenticated": false,
+            "reservation": "RESERVED",
+            "reservationReleased": false,
+            "reReserveRefused": false
+          }
+        },
+        {
+          "operator": "ReconcileNotCommitted",
+          "accepted": true,
+          "projection": {
+            "decision": "ALLOWED",
+            "envelope": "CONSUMED",
+            "binding": "EXACT",
+            "effect": "NOT_COMMITTED",
+            "providerCalls": 1,
+            "providerCaller": "ACTUATOR",
+            "bypassRefused": true,
+            "staleRefused": false,
+            "replayRefused": true,
+            "reconciliationAuthenticated": true,
+            "reservation": "RELEASED_NOT_ENTERED",
+            "reservationReleased": true,
+            "reReserveRefused": false
+          }
+        },
+        {
+          "operator": "RefuseReReserveAfterRelease",
+          "accepted": false,
+          "projection": {
+            "decision": "ALLOWED",
+            "envelope": "CONSUMED",
+            "binding": "EXACT",
+            "effect": "NOT_COMMITTED",
+            "providerCalls": 1,
+            "providerCaller": "ACTUATOR",
+            "bypassRefused": true,
+            "staleRefused": false,
+            "replayRefused": true,
+            "reconciliationAuthenticated": true,
+            "reservation": "RELEASED_NOT_ENTERED",
+            "reservationReleased": true,
+            "reReserveRefused": true
           }
         }
       ]
@@ -1370,7 +1533,10 @@
             "bypassRefused": false,
             "staleRefused": false,
             "replayRefused": false,
-            "reconciliationAuthenticated": false
+            "reconciliationAuthenticated": false,
+            "reservation": "NONE",
+            "reservationReleased": false,
+            "reReserveRefused": false
           }
         }
       ],
@@ -1443,7 +1609,9 @@
         "packages/gate/src/execution-binding.ts",
         "packages/gate/dist/execution-binding.js"
       ],
-      "obligations": ["ActionEscrowSingleRelease"],
+      "obligations": [
+        "ActionEscrowSingleRelease"
+      ],
       "steps": [
         {
           "operator": "SubmitExactMilestone",
@@ -1504,17 +1672,23 @@
         "packages/verify/dist/evidence-chain.js",
         "packages/verify/src/evidence-chain.ts"
       ],
-      "obligations": ["AecRoleNonSubstitution"],
+      "obligations": [
+        "AecRoleNonSubstitution"
+      ],
       "steps": [
         {
           "operator": "PresentExactAecRoles",
           "accepted": true,
-          "projection": { "aecState": "exact_roles_presented" }
+          "projection": {
+            "aecState": "exact_roles_presented"
+          }
         },
         {
           "operator": "AcceptAec",
           "accepted": true,
-          "projection": { "aecState": "accepted" }
+          "projection": {
+            "aecState": "accepted"
+          }
         }
       ]
     },
@@ -1530,17 +1704,23 @@
         "packages/verify/dist/evidence-chain.js",
         "packages/verify/src/evidence-chain.ts"
       ],
-      "obligations": ["AecRoleNonSubstitution"],
+      "obligations": [
+        "AecRoleNonSubstitution"
+      ],
       "steps": [
         {
           "operator": "PresentSubstitutedAecRole",
           "accepted": true,
-          "projection": { "aecState": "substitution_presented" }
+          "projection": {
+            "aecState": "substitution_presented"
+          }
         },
         {
           "operator": "RefuseAec",
           "accepted": false,
-          "projection": { "aecState": "refused" }
+          "projection": {
+            "aecState": "refused"
+          }
         }
       ],
       "mutation": {
@@ -1638,7 +1818,9 @@
         "packages/mobile/index.js",
         "packages/mobile/dist/index.js"
       ],
-      "obligations": ["GraceSingleDispatch"],
+      "obligations": [
+        "GraceSingleDispatch"
+      ],
       "steps": [
         {
           "operator": "AuthorizeGrace",
@@ -1801,7 +1983,9 @@
         "apps/secure-app/lib/security-boundary.mjs",
         "apps/secure-app/lib/session.ts"
       ],
-      "obligations": ["MobileTimeoutFence"],
+      "obligations": [
+        "MobileTimeoutFence"
+      ],
       "steps": [
         {
           "operator": "ReserveMobileAction",
@@ -1945,7 +2129,9 @@
         "apps/secure-app/lib/secure-key.ts",
         "apps/secure-app/lib/security-boundary.mjs"
       ],
-      "obligations": ["MobileEnrollmentRequiresBothRows"],
+      "obligations": [
+        "MobileEnrollmentRequiresBothRows"
+      ],
       "steps": [
         {
           "operator": "VerifyWebAuthnEnrollment",
@@ -2041,7 +2227,9 @@
         "packages/gate/dist/store.js",
         "packages/gate/src/store.ts"
       ],
-      "obligations": ["ModelToMatterExactCaid"],
+      "obligations": [
+        "ModelToMatterExactCaid"
+      ],
       "steps": [
         {
           "operator": "PresentMismatchedLeg",
@@ -2079,32 +2267,45 @@
         "packages/gate/src/network-witness.ts",
         "packages/gate/dist/network-witness.js"
       ],
-      "obligations": ["ModelShape", "WitnessHeadSound"],
+      "obligations": [
+        "ModelShape",
+        "WitnessHeadSound"
+      ],
       "steps": [
         {
           "operator": "AcceptWitness(WitnessASeq1)",
           "accepted": true,
-          "projection": { "acceptedStreamCount": 1 }
+          "projection": {
+            "acceptedStreamCount": 1
+          }
         },
         {
           "operator": "AcceptWitness(WitnessTenantBSeq1)",
           "accepted": true,
-          "projection": { "acceptedStreamCount": 2 }
+          "projection": {
+            "acceptedStreamCount": 2
+          }
         },
         {
           "operator": "AcceptWitness(WitnessGateBSeq1)",
           "accepted": true,
-          "projection": { "acceptedStreamCount": 3 }
+          "projection": {
+            "acceptedStreamCount": 3
+          }
         },
         {
           "operator": "AcceptWitness(WitnessBSeq1)",
           "accepted": true,
-          "projection": { "acceptedStreamCount": 4 }
+          "projection": {
+            "acceptedStreamCount": 4
+          }
         },
         {
           "operator": "AcceptWitness(WitnessCaptureBSeq1)",
           "accepted": true,
-          "projection": { "acceptedStreamCount": 5 }
+          "projection": {
+            "acceptedStreamCount": 5
+          }
         }
       ]
     },
@@ -2238,7 +2439,9 @@
         "packages/gate/src/network-witness.ts",
         "packages/gate/dist/network-witness.js"
       ],
-      "obligations": ["PoisonIrreversibilityState"],
+      "obligations": [
+        "PoisonIrreversibilityState"
+      ],
       "steps": [
         {
           "operator": "AcceptWitness(WitnessASeq1)",
@@ -2354,7 +2557,9 @@
         "packages/verify/index.js",
         "packages/verify/dist/index.js"
       ],
-      "obligations": ["TerminalRevocationStateSound"],
+      "obligations": [
+        "TerminalRevocationStateSound"
+      ],
       "steps": [
         {
           "operator": "AdvanceTimeToOne",
@@ -2583,7 +2788,9 @@
         "packages/verify/src/aeb-adapter-contract.ts",
         "packages/verify/aeb-adapter-contract.js"
       ],
-      "obligations": ["InvokeAtMostOnce"],
+      "obligations": [
+        "InvokeAtMostOnce"
+      ],
       "steps": [
         {
           "operator": "RefuseInvalidAdmission(AdmissionWrongCAID)",
@@ -2831,18 +3038,20 @@
         "ObservationWindowIsBound",
         "OutcomeSourceQuorumIsSatisfied"
       ],
-      "steps": [{
-        "operator": "VerifyIndependentCurrentOutcomeSources",
-        "accepted": true,
-        "projection": {
-          "outcomeState": "reconciled",
-          "sourceKeysDistinct": true,
-          "controlDomainsDistinct": true,
-          "sourceKeyCurrent": true,
-          "observationWindowValid": true,
-          "sourceQuorumMet": true
+      "steps": [
+        {
+          "operator": "VerifyIndependentCurrentOutcomeSources",
+          "accepted": true,
+          "projection": {
+            "outcomeState": "reconciled",
+            "sourceKeysDistinct": true,
+            "controlDomainsDistinct": true,
+            "sourceKeyCurrent": true,
+            "observationWindowValid": true,
+            "sourceQuorumMet": true
+          }
         }
-      }]
+      ]
     },
     {
       "id": "outcome-sources-reused-key-refused",
@@ -2851,21 +3060,33 @@
       "adapter": "outcome-binding-sources",
       "scenario": "outcome-sources-reused-key-refused",
       "kind": "paired_negative_control",
-      "runtime_sources": ["formal/outcome-authority-join.model.mjs", "packages/verify/src/outcome-binding.ts", "conformance/vectors/outcome-binding.sources.v1.json"],
-      "obligations": ["IndependentObserverKeyIsDistinct"],
-      "steps": [{
-        "operator": "RefuseReusedIndependentObserverKey",
-        "accepted": false,
-        "projection": {
-          "outcomeState": "indeterminate",
-          "sourceKeysDistinct": false,
-          "controlDomainsDistinct": true,
-          "sourceKeyCurrent": true,
-          "observationWindowValid": true,
-          "sourceQuorumMet": true
+      "runtime_sources": [
+        "formal/outcome-authority-join.model.mjs",
+        "packages/verify/src/outcome-binding.ts",
+        "conformance/vectors/outcome-binding.sources.v1.json"
+      ],
+      "obligations": [
+        "IndependentObserverKeyIsDistinct"
+      ],
+      "steps": [
+        {
+          "operator": "RefuseReusedIndependentObserverKey",
+          "accepted": false,
+          "projection": {
+            "outcomeState": "indeterminate",
+            "sourceKeysDistinct": false,
+            "controlDomainsDistinct": true,
+            "sourceKeyCurrent": true,
+            "observationWindowValid": true,
+            "sourceQuorumMet": true
+          }
         }
-      }],
-      "mutation": { "operator": "IgnoreIndependentObserverKeyReuse", "defined_in_model": true, "obligation": "IndependentObserverKeyIsDistinct" }
+      ],
+      "mutation": {
+        "operator": "IgnoreIndependentObserverKeyReuse",
+        "defined_in_model": true,
+        "obligation": "IndependentObserverKeyIsDistinct"
+      }
     },
     {
       "id": "outcome-sources-shared-domain-refused",
@@ -2874,21 +3095,33 @@
       "adapter": "outcome-binding-sources",
       "scenario": "outcome-sources-shared-domain-refused",
       "kind": "paired_negative_control",
-      "runtime_sources": ["formal/outcome-authority-join.model.mjs", "packages/verify/src/outcome-binding.ts", "conformance/vectors/outcome-binding.sources.v1.json"],
-      "obligations": ["IndependentObserverControlDomainIsDistinct"],
-      "steps": [{
-        "operator": "RefuseSharedObserverControlDomain",
-        "accepted": false,
-        "projection": {
-          "outcomeState": "indeterminate",
-          "sourceKeysDistinct": true,
-          "controlDomainsDistinct": false,
-          "sourceKeyCurrent": true,
-          "observationWindowValid": true,
-          "sourceQuorumMet": true
+      "runtime_sources": [
+        "formal/outcome-authority-join.model.mjs",
+        "packages/verify/src/outcome-binding.ts",
+        "conformance/vectors/outcome-binding.sources.v1.json"
+      ],
+      "obligations": [
+        "IndependentObserverControlDomainIsDistinct"
+      ],
+      "steps": [
+        {
+          "operator": "RefuseSharedObserverControlDomain",
+          "accepted": false,
+          "projection": {
+            "outcomeState": "indeterminate",
+            "sourceKeysDistinct": true,
+            "controlDomainsDistinct": false,
+            "sourceKeyCurrent": true,
+            "observationWindowValid": true,
+            "sourceQuorumMet": true
+          }
         }
-      }],
-      "mutation": { "operator": "IgnoreSharedObserverControlDomain", "defined_in_model": true, "obligation": "IndependentObserverControlDomainIsDistinct" }
+      ],
+      "mutation": {
+        "operator": "IgnoreSharedObserverControlDomain",
+        "defined_in_model": true,
+        "obligation": "IndependentObserverControlDomainIsDistinct"
+      }
     },
     {
       "id": "outcome-sources-noncurrent-key-refused",
@@ -2897,21 +3130,33 @@
       "adapter": "outcome-binding-sources",
       "scenario": "outcome-sources-noncurrent-key-refused",
       "kind": "paired_negative_control",
-      "runtime_sources": ["formal/outcome-authority-join.model.mjs", "packages/verify/src/outcome-binding.ts", "conformance/vectors/outcome-binding.sources.v1.json"],
-      "obligations": ["OutcomeSourceKeyIsCurrent"],
-      "steps": [{
-        "operator": "RefuseNoncurrentOutcomeSourceKey",
-        "accepted": false,
-        "projection": {
-          "outcomeState": "indeterminate",
-          "sourceKeysDistinct": true,
-          "controlDomainsDistinct": true,
-          "sourceKeyCurrent": false,
-          "observationWindowValid": false,
-          "sourceQuorumMet": false
+      "runtime_sources": [
+        "formal/outcome-authority-join.model.mjs",
+        "packages/verify/src/outcome-binding.ts",
+        "conformance/vectors/outcome-binding.sources.v1.json"
+      ],
+      "obligations": [
+        "OutcomeSourceKeyIsCurrent"
+      ],
+      "steps": [
+        {
+          "operator": "RefuseNoncurrentOutcomeSourceKey",
+          "accepted": false,
+          "projection": {
+            "outcomeState": "indeterminate",
+            "sourceKeysDistinct": true,
+            "controlDomainsDistinct": true,
+            "sourceKeyCurrent": false,
+            "observationWindowValid": false,
+            "sourceQuorumMet": false
+          }
         }
-      }],
-      "mutation": { "operator": "IgnoreOutcomeSourceKeyStatus", "defined_in_model": true, "obligation": "OutcomeSourceKeyIsCurrent" }
+      ],
+      "mutation": {
+        "operator": "IgnoreOutcomeSourceKeyStatus",
+        "defined_in_model": true,
+        "obligation": "OutcomeSourceKeyIsCurrent"
+      }
     },
     {
       "id": "outcome-sources-window-substitution-refused",
@@ -2920,21 +3165,33 @@
       "adapter": "outcome-binding-sources",
       "scenario": "outcome-sources-window-substitution-refused",
       "kind": "paired_negative_control",
-      "runtime_sources": ["formal/outcome-authority-join.model.mjs", "packages/verify/src/outcome-binding.ts", "conformance/vectors/outcome-binding.sources.v1.json"],
-      "obligations": ["ObservationWindowIsBound"],
-      "steps": [{
-        "operator": "RefuseUnboundObservationWindow",
-        "accepted": false,
-        "projection": {
-          "outcomeState": "indeterminate",
-          "sourceKeysDistinct": true,
-          "controlDomainsDistinct": true,
-          "sourceKeyCurrent": true,
-          "observationWindowValid": false,
-          "sourceQuorumMet": true
+      "runtime_sources": [
+        "formal/outcome-authority-join.model.mjs",
+        "packages/verify/src/outcome-binding.ts",
+        "conformance/vectors/outcome-binding.sources.v1.json"
+      ],
+      "obligations": [
+        "ObservationWindowIsBound"
+      ],
+      "steps": [
+        {
+          "operator": "RefuseUnboundObservationWindow",
+          "accepted": false,
+          "projection": {
+            "outcomeState": "indeterminate",
+            "sourceKeysDistinct": true,
+            "controlDomainsDistinct": true,
+            "sourceKeyCurrent": true,
+            "observationWindowValid": false,
+            "sourceQuorumMet": true
+          }
         }
-      }],
-      "mutation": { "operator": "IgnoreObservationWindowBinding", "defined_in_model": true, "obligation": "ObservationWindowIsBound" }
+      ],
+      "mutation": {
+        "operator": "IgnoreObservationWindowBinding",
+        "defined_in_model": true,
+        "obligation": "ObservationWindowIsBound"
+      }
     },
     {
       "id": "outcome-sources-insufficient-quorum-refused",
@@ -2943,21 +3200,33 @@
       "adapter": "outcome-binding-sources",
       "scenario": "outcome-sources-insufficient-quorum-refused",
       "kind": "paired_negative_control",
-      "runtime_sources": ["formal/outcome-authority-join.model.mjs", "packages/verify/src/outcome-binding.ts", "conformance/vectors/outcome-binding.sources.v1.json"],
-      "obligations": ["OutcomeSourceQuorumIsSatisfied"],
-      "steps": [{
-        "operator": "RefuseInsufficientOutcomeSourceQuorum",
-        "accepted": false,
-        "projection": {
-          "outcomeState": "indeterminate",
-          "sourceKeysDistinct": true,
-          "controlDomainsDistinct": true,
-          "sourceKeyCurrent": true,
-          "observationWindowValid": true,
-          "sourceQuorumMet": false
+      "runtime_sources": [
+        "formal/outcome-authority-join.model.mjs",
+        "packages/verify/src/outcome-binding.ts",
+        "conformance/vectors/outcome-binding.sources.v1.json"
+      ],
+      "obligations": [
+        "OutcomeSourceQuorumIsSatisfied"
+      ],
+      "steps": [
+        {
+          "operator": "RefuseInsufficientOutcomeSourceQuorum",
+          "accepted": false,
+          "projection": {
+            "outcomeState": "indeterminate",
+            "sourceKeysDistinct": true,
+            "controlDomainsDistinct": true,
+            "sourceKeyCurrent": true,
+            "observationWindowValid": true,
+            "sourceQuorumMet": false
+          }
         }
-      }],
-      "mutation": { "operator": "IgnoreOutcomeSourceQuorum", "defined_in_model": true, "obligation": "OutcomeSourceQuorumIsSatisfied" }
+      ],
+      "mutation": {
+        "operator": "IgnoreOutcomeSourceQuorum",
+        "defined_in_model": true,
+        "obligation": "OutcomeSourceQuorumIsSatisfied"
+      }
     },
     {
       "id": "authority-document-newest-key-accept",
@@ -3848,7 +4117,9 @@
         "formal/reliance-pinned-profile.model.mjs",
         "packages/verify/src/reliance.ts"
       ],
-      "obligations": ["PinnedProfileRequired"],
+      "obligations": [
+        "PinnedProfileRequired"
+      ],
       "steps": [
         {
           "operator": "RefuseUnpinnedProfile",
@@ -3876,7 +4147,9 @@
         "formal/reliance-pinned-profile.model.mjs",
         "packages/verify/src/reliance.ts"
       ],
-      "obligations": ["SignedMaterialRequired"],
+      "obligations": [
+        "SignedMaterialRequired"
+      ],
       "steps": [
         {
           "operator": "RefuseUnsignedMaterial",
@@ -3904,7 +4177,9 @@
         "formal/reliance-pinned-profile.model.mjs",
         "packages/verify/src/reliance.ts"
       ],
-      "obligations": ["AssuranceRequired"],
+      "obligations": [
+        "AssuranceRequired"
+      ],
       "steps": [
         {
           "operator": "RefuseInsufficientAssurance",
@@ -3932,7 +4207,9 @@
         "formal/reliance-pinned-profile.model.mjs",
         "packages/verify/src/reliance.ts"
       ],
-      "obligations": ["OrganizationAuthorityRequired"],
+      "obligations": [
+        "OrganizationAuthorityRequired"
+      ],
       "steps": [
         {
           "operator": "RefuseOrganizationAuthorityMismatch",
@@ -3960,7 +4237,9 @@
         "formal/reliance-pinned-profile.model.mjs",
         "packages/verify/src/reliance.ts"
       ],
-      "obligations": ["ExactRegistryHeadRequired"],
+      "obligations": [
+        "ExactRegistryHeadRequired"
+      ],
       "steps": [
         {
           "operator": "RefuseRegistryHeadMismatch",
@@ -3988,7 +4267,9 @@
         "formal/reliance-pinned-profile.model.mjs",
         "packages/verify/src/reliance.ts"
       ],
-      "obligations": ["RegistryEpochFloorOrdered"],
+      "obligations": [
+        "RegistryEpochFloorOrdered"
+      ],
       "steps": [
         {
           "operator": "RefuseRegistryEpochRollback",
@@ -4016,7 +4297,9 @@
         "formal/reliance-pinned-profile.model.mjs",
         "packages/verify/src/reliance.ts"
       ],
-      "obligations": ["PolicyRequired"],
+      "obligations": [
+        "PolicyRequired"
+      ],
       "steps": [
         {
           "operator": "RefuseUnpinnedPolicy",
@@ -4044,7 +4327,9 @@
         "formal/reliance-pinned-profile.model.mjs",
         "packages/verify/src/reliance.ts"
       ],
-      "obligations": ["AuthenticatedRevocationRequired"],
+      "obligations": [
+        "AuthenticatedRevocationRequired"
+      ],
       "steps": [
         {
           "operator": "RefuseUnauthenticatedRevocationState",
@@ -4072,7 +4357,9 @@
         "formal/reliance-pinned-profile.model.mjs",
         "packages/verify/src/reliance.ts"
       ],
-      "obligations": ["FreshRevocationRequired"],
+      "obligations": [
+        "FreshRevocationRequired"
+      ],
       "steps": [
         {
           "operator": "RefuseStaleRevocationState",
@@ -4100,7 +4387,9 @@
         "formal/reliance-pinned-profile.model.mjs",
         "packages/verify/src/reliance.ts"
       ],
-      "obligations": ["IssuerRequired"],
+      "obligations": [
+        "IssuerRequired"
+      ],
       "steps": [
         {
           "operator": "RefuseUnpinnedIssuer",
@@ -4128,7 +4417,9 @@
         "formal/reliance-pinned-profile.model.mjs",
         "packages/verify/src/reliance.ts"
       ],
-      "obligations": ["UnconsumedStateRequired"],
+      "obligations": [
+        "UnconsumedStateRequired"
+      ],
       "steps": [
         {
           "operator": "RefuseConsumedAuthorization",

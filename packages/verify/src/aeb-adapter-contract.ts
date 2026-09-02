@@ -438,9 +438,30 @@ function executionConditionsRefusal(
 export interface AebConsumptionStore {
   reserve(key: string, replayKeys: readonly string[]): boolean;
   commit(key: string): boolean;
+  /**
+   * NON-TERMINAL abort for an attempt that provably never reached the
+   * provider, observed locally before any invocation (a refused gate decision,
+   * an unavailable attempt store). The action instance is untouched, so the
+   * same evaluation record may be presented again.
+   */
   release(key: string): boolean;
-  state(key: string): 'AVAILABLE' | 'RESERVED' | 'CONSUMED';
+  /**
+   * TERMINAL released-not-entered marker for an AUTHORITATIVE serialized
+   * non-entry. draft-schrock-action-evidence-boundary-04 s5.11: reconciliation
+   * never resurrects the original authorization and never silently releases its
+   * one-time replay unit, so the key stays permanently unreservable and
+   * uncommittable and the native replay fences it installed stay installed. A
+   * later attempt permitted by policy MUST carry a new action instance.
+   */
+  releaseTerminal(key: string): boolean;
+  state(key: string): AebConsumptionState;
 }
+
+export type AebConsumptionState =
+  | 'AVAILABLE'
+  | 'RESERVED'
+  | 'CONSUMED'
+  | 'RELEASED_NOT_ENTERED';
 
 /** Fleet-safe store contract implemented by @emilia-protocol/gate durable stores. */
 export interface AebDurableConsumptionStore {
@@ -448,16 +469,39 @@ export interface AebDurableConsumptionStore {
   ownershipFenced: true;
   permanentConsumption: true;
   atomicReplayFenced: true;
+  /**
+   * Declares that releaseTerminal() installs a permanent released-not-entered
+   * marker. A store that does not declare it cannot reconcile an authoritative
+   * NOT_COMMITTED result at all: reconcileAebExecutionDurable() refuses rather
+   * than falling back to the non-terminal release() that would hand the same
+   * one-time unit back to the same action instance.
+   */
+  terminalRelease?: true;
   reserve(key: string, replayKeys: readonly string[]): Promise<boolean | AebReservationResult>;
   commit(key: string): Promise<boolean>;
   release(key: string): Promise<boolean>;
+  releaseTerminal?(key: string): Promise<boolean>;
 }
 
 export type AebReservationResult = 'RESERVED' | 'CONSUMPTION_CONFLICT' | 'NATIVE_REPLAY_CONFLICT';
 
+/**
+ * Outcome of reconciling one reservation against an authenticated provider
+ * result. `retry_requires_new_instance` is unconditionally true: no
+ * reconciliation outcome ever re-authorizes the action instance that was
+ * already presented, so a policy-permitted later attempt has to carry a new
+ * consumption nonce and operation identifier, which derives a new key.
+ */
+export interface AebReconciliationResult {
+  state: 'CONSUMED' | 'RELEASED_NOT_ENTERED' | 'RECONCILIATION_REQUIRED';
+  retry_allowed: boolean;
+  retry_requires_new_instance: true;
+  reason: string;
+}
+
 /** Small synchronous reference store. Production stores must provide an atomic equivalent. */
 export class InMemoryAebConsumptionStore implements AebConsumptionStore {
-  private readonly entries = new Map<string, 'RESERVED' | 'CONSUMED'>();
+  private readonly entries = new Map<string, 'RESERVED' | 'CONSUMED' | 'RELEASED_NOT_ENTERED'>();
   private readonly replayOwners = new Map<string, string>();
 
   reserve(key: string, replayKeys: readonly string[] = []): boolean {
@@ -483,7 +527,17 @@ export class InMemoryAebConsumptionStore implements AebConsumptionStore {
     return true;
   }
 
-  state(key: string): 'AVAILABLE' | 'RESERVED' | 'CONSUMED' {
+  releaseTerminal(key: string): boolean {
+    if (this.entries.get(key) !== 'RESERVED') return false;
+    // The entry is kept, not deleted, so reserve() keeps refusing this key
+    // forever. The native replay fences this reservation installed are kept
+    // for the same reason: a later attempt has to carry fresh evidence, not
+    // the human approvals the refused attempt already spent.
+    this.entries.set(key, 'RELEASED_NOT_ENTERED');
+    return true;
+  }
+
+  state(key: string): AebConsumptionState {
     return this.entries.get(key) ?? 'AVAILABLE';
   }
 }
@@ -1769,7 +1823,12 @@ export function authorizeAebExecution(
     ...aebNativeReplayKeys(record),
     ...(options.additional_replay_keys ?? []),
   ]))) {
-    return decision('REFUSED', 'consumption_conflict');
+    return decision(
+      'REFUSED',
+      options.store.state(reservationKey) === 'RELEASED_NOT_ENTERED'
+        ? 'released_not_entered_requires_new_instance'
+        : 'consumption_conflict',
+    );
   }
   return decision('AUTHORIZED', 'reserved_for_execution', reservationKey);
 }
@@ -1795,22 +1854,47 @@ export function aebReservationKey(record: Pick<AebEvaluationRecord,
   })}`;
 }
 
+/**
+ * Reconcile one reservation against an authenticated provider outcome.
+ *
+ * draft-schrock-action-evidence-boundary-04 s5.10 and s5.11 govern this
+ * function. An INDETERMINATE outcome preserves the reservation and refuses a
+ * blind replay. An authoritative NOT_COMMITTED outcome does not hand the
+ * one-time replay unit back: it marks the reservation permanently
+ * RELEASED_NOT_ENTERED, so the same authorization and operation identifier can
+ * never be reserved again and a late COMMITTED for that attempt stays refused.
+ */
 export function reconcileAebExecution(
   store: AebConsumptionStore,
   reservationKey: string,
   outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'INDETERMINATE',
-): { state: 'CONSUMED' | 'AVAILABLE' | 'RECONCILIATION_REQUIRED'; retry_allowed: boolean; reason: string } {
+): AebReconciliationResult {
   if (outcome === 'COMMITTED') {
     return store.commit(reservationKey)
-      ? { state: 'CONSUMED', retry_allowed: false, reason: 'execution_committed' }
-      : { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'reservation_not_open' };
+      ? {
+        state: 'CONSUMED', retry_allowed: false, retry_requires_new_instance: true, reason: 'execution_committed',
+      }
+      : {
+        state: 'RECONCILIATION_REQUIRED', retry_allowed: false, retry_requires_new_instance: true, reason: 'reservation_not_open',
+      };
   }
   if (outcome === 'NOT_COMMITTED') {
-    return store.release(reservationKey)
-      ? { state: 'AVAILABLE', retry_allowed: true, reason: 'execution_not_committed' }
-      : { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'reservation_not_open' };
+    if (typeof store.releaseTerminal !== 'function') {
+      return {
+        state: 'RECONCILIATION_REQUIRED', retry_allowed: false, retry_requires_new_instance: true, reason: 'terminal_release_unsupported',
+      };
+    }
+    return store.releaseTerminal(reservationKey)
+      ? {
+        state: 'RELEASED_NOT_ENTERED', retry_allowed: true, retry_requires_new_instance: true, reason: 'execution_not_committed',
+      }
+      : {
+        state: 'RECONCILIATION_REQUIRED', retry_allowed: false, retry_requires_new_instance: true, reason: 'reservation_not_open',
+      };
   }
-  return { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'execution_outcome_indeterminate' };
+  return {
+    state: 'RECONCILIATION_REQUIRED', retry_allowed: false, retry_requires_new_instance: true, reason: 'execution_outcome_indeterminate',
+  };
 }
 
 function secureDurableStore(store: unknown): store is AebDurableConsumptionStore {
@@ -1896,24 +1980,38 @@ export async function authorizeAebExecutionDurable(
   return decision('AUTHORIZED', 'reserved_for_execution', reservationKey);
 }
 
+/** Production reconciliation path. Same s5.10/s5.11 semantics as the reference path. */
 export async function reconcileAebExecutionDurable(
   store: unknown,
   reservationKey: string,
   outcome: 'COMMITTED' | 'NOT_COMMITTED' | 'INDETERMINATE',
-): Promise<{ state: 'CONSUMED' | 'AVAILABLE' | 'RECONCILIATION_REQUIRED'; retry_allowed: boolean; reason: string }> {
-  if (!secureDurableStore(store)) return { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'secure_consumption_store_required' };
-  if (outcome === 'INDETERMINATE') return { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'execution_outcome_indeterminate' };
+): Promise<AebReconciliationResult> {
+  const refused = (reason: string): AebReconciliationResult => ({
+    state: 'RECONCILIATION_REQUIRED', retry_allowed: false, retry_requires_new_instance: true, reason,
+  });
+  if (!secureDurableStore(store)) return refused('secure_consumption_store_required');
+  if (outcome === 'INDETERMINATE') return refused('execution_outcome_indeterminate');
   try {
     if (outcome === 'COMMITTED') {
       return await store.commit(reservationKey) === true
-        ? { state: 'CONSUMED', retry_allowed: false, reason: 'execution_committed' }
-        : { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'reservation_not_open' };
+        ? {
+          state: 'CONSUMED', retry_allowed: false, retry_requires_new_instance: true, reason: 'execution_committed',
+        }
+        : refused('reservation_not_open');
     }
-    return await store.release(reservationKey) === true
-      ? { state: 'AVAILABLE', retry_allowed: true, reason: 'execution_not_committed' }
-      : { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'reservation_not_open' };
+    // Fail closed rather than degrading to release(): a store without a
+    // permanent released-not-entered marker would make the byte-identical key
+    // reservable again, which is exactly the resurrection s5.11 forbids.
+    if (store.terminalRelease !== true || typeof store.releaseTerminal !== 'function') {
+      return refused('terminal_release_unsupported');
+    }
+    return await store.releaseTerminal(reservationKey) === true
+      ? {
+        state: 'RELEASED_NOT_ENTERED', retry_allowed: true, retry_requires_new_instance: true, reason: 'execution_not_committed',
+      }
+      : refused('reservation_not_open');
   } catch {
-    return { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'consumption_store_unavailable' };
+    return refused('consumption_store_unavailable');
   }
 }
 

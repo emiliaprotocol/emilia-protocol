@@ -145,8 +145,29 @@ execution gate:
 4. freezes an `INDETERMINATE` evaluation for authenticated reconciliation.
 
 An indeterminate invocation outcome remains reserved until reconciliation
-proves either `COMMITTED` or `NOT_COMMITTED`. The reference in-memory store
-is for tests and examples. The production API requires a durable,
+proves either `COMMITTED` or `NOT_COMMITTED`.
+
+Reconciliation is terminal in both directions. `COMMITTED` consumes the
+reservation. An authoritative `NOT_COMMITTED` does not hand the one-time unit
+back: it marks the reservation `RELEASED_NOT_ENTERED`, which is permanent. The
+byte-identical reservation key can never be reserved again, the native replay
+fences that reservation installed stay installed, and a late `COMMITTED` for
+the released attempt is refused. This is
+`draft-schrock-action-evidence-boundary-04` s5.11: reconciliation never
+resurrects the original authorization and never silently releases its one-time
+replay unit, so a later attempt permitted by policy has to carry a new action
+instance, meaning a new operation identifier, a new consumption nonce, and
+fresh evidence. The reconciliation result says so explicitly through
+`retry_requires_new_instance`, which is true for every outcome.
+
+A durable store must declare terminal-release support and implement
+`releaseTerminal()`. Reconciling `NOT_COMMITTED` against a store that does not
+fails closed with `terminal_release_unsupported` rather than degrading to the
+non-terminal `release()`. `release()` remains the abort primitive for an
+attempt that provably never reached the provider, observed locally before any
+invocation; that path never burns the action instance.
+
+The reference in-memory store is for tests and examples. The production API requires a durable,
 ownership-fenced, permanent-consumption store and is compatible with the
 durable store contract in `@emilia-protocol/gate`. Reservation keys are hashed
 over relying-party identity, pinned-config digest, CAID, normalized-action

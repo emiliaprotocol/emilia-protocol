@@ -87,6 +87,16 @@ export class InMemoryAebConsumptionStore {
         }
         return true;
     }
+    releaseTerminal(key) {
+        if (this.entries.get(key) !== 'RESERVED')
+            return false;
+        // The entry is kept, not deleted, so reserve() keeps refusing this key
+        // forever. The native replay fences this reservation installed are kept
+        // for the same reason: a later attempt has to carry fresh evidence, not
+        // the human approvals the refused attempt already spent.
+        this.entries.set(key, 'RELEASED_NOT_ENTERED');
+        return true;
+    }
     state(key) {
         return this.entries.get(key) ?? 'AVAILABLE';
     }
@@ -1404,7 +1414,9 @@ export function authorizeAebExecution(record, options) {
         ...aebNativeReplayKeys(record),
         ...(options.additional_replay_keys ?? []),
     ]))) {
-        return decision('REFUSED', 'consumption_conflict');
+        return decision('REFUSED', options.store.state(reservationKey) === 'RELEASED_NOT_ENTERED'
+            ? 'released_not_entered_requires_new_instance'
+            : 'consumption_conflict');
     }
     return decision('AUTHORIZED', 'reserved_for_execution', reservationKey);
 }
@@ -1426,18 +1438,43 @@ export function aebReservationKey(record) {
         consumption_nonce: record.consumption_nonce,
     })}`;
 }
+/**
+ * Reconcile one reservation against an authenticated provider outcome.
+ *
+ * draft-schrock-action-evidence-boundary-04 s5.10 and s5.11 govern this
+ * function. An INDETERMINATE outcome preserves the reservation and refuses a
+ * blind replay. An authoritative NOT_COMMITTED outcome does not hand the
+ * one-time replay unit back: it marks the reservation permanently
+ * RELEASED_NOT_ENTERED, so the same authorization and operation identifier can
+ * never be reserved again and a late COMMITTED for that attempt stays refused.
+ */
 export function reconcileAebExecution(store, reservationKey, outcome) {
     if (outcome === 'COMMITTED') {
         return store.commit(reservationKey)
-            ? { state: 'CONSUMED', retry_allowed: false, reason: 'execution_committed' }
-            : { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'reservation_not_open' };
+            ? {
+                state: 'CONSUMED', retry_allowed: false, retry_requires_new_instance: true, reason: 'execution_committed',
+            }
+            : {
+                state: 'RECONCILIATION_REQUIRED', retry_allowed: false, retry_requires_new_instance: true, reason: 'reservation_not_open',
+            };
     }
     if (outcome === 'NOT_COMMITTED') {
-        return store.release(reservationKey)
-            ? { state: 'AVAILABLE', retry_allowed: true, reason: 'execution_not_committed' }
-            : { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'reservation_not_open' };
+        if (typeof store.releaseTerminal !== 'function') {
+            return {
+                state: 'RECONCILIATION_REQUIRED', retry_allowed: false, retry_requires_new_instance: true, reason: 'terminal_release_unsupported',
+            };
+        }
+        return store.releaseTerminal(reservationKey)
+            ? {
+                state: 'RELEASED_NOT_ENTERED', retry_allowed: true, retry_requires_new_instance: true, reason: 'execution_not_committed',
+            }
+            : {
+                state: 'RECONCILIATION_REQUIRED', retry_allowed: false, retry_requires_new_instance: true, reason: 'reservation_not_open',
+            };
     }
-    return { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'execution_outcome_indeterminate' };
+    return {
+        state: 'RECONCILIATION_REQUIRED', retry_allowed: false, retry_requires_new_instance: true, reason: 'execution_outcome_indeterminate',
+    };
 }
 function secureDurableStore(store) {
     return isObject(store) && store.durable === true && store.ownershipFenced === true
@@ -1514,23 +1551,37 @@ export async function authorizeAebExecutionDurable(record, options) {
     }
     return decision('AUTHORIZED', 'reserved_for_execution', reservationKey);
 }
+/** Production reconciliation path. Same s5.10/s5.11 semantics as the reference path. */
 export async function reconcileAebExecutionDurable(store, reservationKey, outcome) {
+    const refused = (reason) => ({
+        state: 'RECONCILIATION_REQUIRED', retry_allowed: false, retry_requires_new_instance: true, reason,
+    });
     if (!secureDurableStore(store))
-        return { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'secure_consumption_store_required' };
+        return refused('secure_consumption_store_required');
     if (outcome === 'INDETERMINATE')
-        return { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'execution_outcome_indeterminate' };
+        return refused('execution_outcome_indeterminate');
     try {
         if (outcome === 'COMMITTED') {
             return await store.commit(reservationKey) === true
-                ? { state: 'CONSUMED', retry_allowed: false, reason: 'execution_committed' }
-                : { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'reservation_not_open' };
+                ? {
+                    state: 'CONSUMED', retry_allowed: false, retry_requires_new_instance: true, reason: 'execution_committed',
+                }
+                : refused('reservation_not_open');
         }
-        return await store.release(reservationKey) === true
-            ? { state: 'AVAILABLE', retry_allowed: true, reason: 'execution_not_committed' }
-            : { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'reservation_not_open' };
+        // Fail closed rather than degrading to release(): a store without a
+        // permanent released-not-entered marker would make the byte-identical key
+        // reservable again, which is exactly the resurrection s5.11 forbids.
+        if (store.terminalRelease !== true || typeof store.releaseTerminal !== 'function') {
+            return refused('terminal_release_unsupported');
+        }
+        return await store.releaseTerminal(reservationKey) === true
+            ? {
+                state: 'RELEASED_NOT_ENTERED', retry_allowed: true, retry_requires_new_instance: true, reason: 'execution_not_committed',
+            }
+            : refused('reservation_not_open');
     }
     catch {
-        return { state: 'RECONCILIATION_REQUIRED', retry_allowed: false, reason: 'consumption_store_unavailable' };
+        return refused('consumption_store_unavailable');
     }
 }
 export { canonicalize as canonicalizeAeb, digest as digestAeb, typedDigest as digestAebTyped };
