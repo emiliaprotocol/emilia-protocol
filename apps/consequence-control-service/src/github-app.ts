@@ -681,6 +681,23 @@ export function createConsequenceActuatorClient({
     if (!payload) {
       return { valid: false, reason: 'provider_evidence_signature_invalid' };
     }
+    // nonce, envelope_digest and provider_attribution_digest are the three
+    // fields that tie an observation to ONE execution envelope. Checking them
+    // only `if (expected.X !== undefined)` meant they were never checked at
+    // all: the sole production caller builds `expected` from the nine
+    // reconciliation keys (packages/gate/src/proposal-to-effect.ts), so a
+    // signed observation from any other envelope of the same attempt satisfied
+    // every remaining binding. Require the pins, the way the reconciliation
+    // branch above requires exactKeys(expected, RECONCILIATION_EXPECTED_KEYS),
+    // and name the refusal so an absent pin is not mistaken for a mismatch.
+    if (typeof expected.nonce !== 'string'
+        || !DIGEST.test(expected.envelope_digest)
+        || !DIGEST.test(expected.provider_attribution_digest)) {
+      return {
+        valid: false,
+        reason: 'provider_evidence_envelope_binding_absent',
+      };
+    }
     const observedAtMs = Date.parse(payload.observed_at);
     if (payload.tenant_id !== expected.tenant_id
         || payload.request_digest !== expected.request_digest
@@ -694,13 +711,10 @@ export function createConsequenceActuatorClient({
         || payload.target_digest !== targetDigest
         || payload.operation !== configuredOperation
         || payload.idempotency_key !== expected.operation_id
-        || (expected.nonce !== undefined
-          && payload.nonce !== expected.nonce)
-        || (expected.envelope_digest !== undefined
-          && payload.envelope_digest !== expected.envelope_digest)
-        || (expected.provider_attribution_digest !== undefined
-          && payload.provider_attribution_digest
-            !== expected.provider_attribution_digest)
+        || payload.nonce !== expected.nonce
+        || payload.envelope_digest !== expected.envelope_digest
+        || payload.provider_attribution_digest
+          !== expected.provider_attribution_digest
         || !Number.isFinite(observedAtMs)
         || observedAtMs > Number(now())) {
       return { valid: false, reason: 'provider_evidence_binding_mismatch' };

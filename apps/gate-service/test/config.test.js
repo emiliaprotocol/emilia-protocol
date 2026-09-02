@@ -115,3 +115,35 @@ test('configuration rejects inline receipt keys and unknown secret-bearing short
     (error) => error.reasons.includes('unknown_config_key:githubToken'),
   );
 });
+
+test('a supplied verifyAssurance never relaxes the pinned human-assurance inputs', () => {
+  // A verifyAssurance function used to make approverKeys, rpId and
+  // allowedOrigins all optional, so a config module could substitute
+  // `() => true` for human-assurance verification and the validator would
+  // accept it with nothing pinned to check against. The pins are what make an
+  // assurance claim checkable, so they are required either way.
+  const base = () => ({ ...validConfig(), verifyAssurance: () => true });
+
+  assert.doesNotThrow(() => validateGateServiceConfig(base()));
+
+  const noApprovers = base();
+  noApprovers.approverKeys = {};
+  assert.throws(
+    () => validateGateServiceConfig(noApprovers),
+    (error) => error.reasons.includes('pinned_approver_keys_required'),
+  );
+
+  const noRpId = base();
+  delete noRpId.rpId;
+  assert.throws(
+    () => validateGateServiceConfig(noRpId),
+    (error) => error.reasons.includes('rp_id_invalid'),
+  );
+
+  const noOrigins = base();
+  noOrigins.allowedOrigins = [];
+  assert.throws(
+    () => validateGateServiceConfig(noOrigins),
+    (error) => error.reasons.includes('allowed_origins_invalid'),
+  );
+});

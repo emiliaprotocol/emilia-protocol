@@ -9,10 +9,13 @@
 //      authorized. This endpoint is half 2.
 //
 // It refuses to attest an execution for a receipt that was never consumed
-// (you cannot have legitimately executed an unauthorized action), and it records
-// EXECUTION DRIFT (executed_action_hash != approved action_hash) as evidence
-// rather than hiding it — the receipt proves what was authorized, the attestation
-// proves what executed, and a verifier can detect any gap.
+// (you cannot have legitimately executed an unauthorized action), and it REFUSES
+// -- while recording EXECUTION DRIFT as evidence rather than hiding it -- when
+// executed_action_hash != the approved action_hash, or when a required
+// execution-binding contract does not hold. The receipt proves what was
+// authorized, the attestation proves what executed, and a drift is a refusal
+// with a named reason plus a durable `guard.trust_receipt.execution_drift`
+// event, never a 201 'executed' record carrying binding_status 'drift'.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateGuardRequest, isCloudGuardPrincipal } from '@/lib/guard-auth.js';
@@ -135,7 +138,25 @@ export async function POST(
       executedAction: body.executed_action,
     });
 
-    if (executionBinding?.required === true && (attestation.binding_status !== 'match' || !bindingCheck.ok)) {
+    // A hash mismatch is NEVER a successful execution record. Gating this on
+    // `executionBinding?.required === true` meant a receipt with no binding
+    // contract -- the common case -- had its drift written as
+    // `guard.trust_receipt.executed` with binding_status 'drift' and answered
+    // 201 with only a logger.warn: the audit trail then read "executed" for an
+    // action that is not the action the receipt authorized, and the
+    // `execution_drift_refused` conformance check this project publishes in
+    // public/.well-known/agent-action-control.json was not what the route did.
+    // Refuse on either failure, regardless of the required flag: a re-derived
+    // hash mismatch (binding_status 'drift') or a failed high-risk
+    // observed-field contract. Both record the drift as evidence first.
+    const driftRefused = attestation.binding_status !== 'match' || !bindingCheck.ok;
+    if (driftRefused) {
+      const driftCode = attestation.binding_status !== 'match'
+        ? 'execution_action_drift'
+        : 'execution_binding_mismatch';
+      const driftDetail = attestation.binding_status !== 'match'
+        ? 'The executed action does not hash to the action the receipt authorized'
+        : 'Observed high-risk execution fields do not match the authorized receipt';
       const { error: driftErr } = await supabase.from('audit_events').insert({
         event_type: 'guard.trust_receipt.execution_drift',
         actor_id: authEntityId(auth),
@@ -159,11 +180,11 @@ export async function POST(
         logger.error('[guard] execution: drift audit insert failed:', driftErr);
         return epProblem(500, 'internal_error', 'Failed to record execution drift');
       }
-      logger.warn(`[guard] execution: DRIFT on receipt ${receiptId} — observed high-risk fields do not match authorized action`);
+      logger.warn(`[guard] execution: DRIFT refused on receipt ${receiptId} (${driftCode})`);
       return epProblem(
         409,
-        'execution_binding_mismatch',
-        'Observed high-risk execution fields do not match the authorized receipt',
+        driftCode,
+        driftDetail,
         {
           binding_status: attestation.binding_status,
           execution_binding_check: bindingCheck,
@@ -198,10 +219,6 @@ export async function POST(
       }
       logger.error('[guard] execution: audit insert failed:', insertErr);
       return epProblem(500, 'internal_error', 'Failed to record execution attestation');
-    }
-
-    if (attestation.binding_status === 'drift') {
-      logger.warn(`[guard] execution: DRIFT on receipt ${receiptId} — executed action does not match approved action_hash`);
     }
 
     return NextResponse.json({

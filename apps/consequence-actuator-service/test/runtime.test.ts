@@ -174,9 +174,13 @@ async function harness({
     },
     provider_observation_digest: `sha256:${'b'.repeat(64)}`,
   }),
+  // `null` means "config supplies no probe at all" -- an `undefined` default
+  // would be filled in by this destructure and could never express that case.
+  readiness = async () => ({ ok: true }),
 }: {
   perform?: (binding: Readonly<ConsequenceExecutionEnvelopePayload>) => Promise<unknown>;
   observeProvider?: () => Promise<Record<string, unknown>>;
+  readiness?: (() => Promise<{ ok: boolean }>) | null;
 } = {}) {
   const envelopeSigner = crypto.generateKeyPairSync('ed25519');
   const evidenceSigner = crypto.generateKeyPairSync('ed25519');
@@ -218,7 +222,7 @@ async function harness({
     },
     observeProvider,
     authenticateRequest: async () => true,
-    readiness: async () => ({ ok: true }),
+    ...(readiness === null ? {} : { readiness }),
     now: () => NOW,
   });
   return {
@@ -472,5 +476,40 @@ describe('hostile actuator execution boundary', () => {
     assert.equal(result.status, 503);
     assert.equal(result.body.reason, 'provider_observation_unavailable');
     assert.equal(Object.hasOwn(result.body, 'outcome'), false);
+  });
+});
+
+describe('actuator readiness and bind defaults', () => {
+  it('refuses readiness with a named reason when no probe is configured', async () => {
+    // A config that omits the readiness probe proves nothing about the durable
+    // dependencies, so /v1/ready must refuse rather than answer 200 and let the
+    // startup gate in server.ts (which only checks `status !== 200`) pass
+    // vacuously.
+    const fixture = await harness({ readiness: null });
+    const result = await fixture.runtime.ready();
+    assert.equal(result.status, 503);
+    assert.equal(result.body.status, 'unavailable');
+    assert.equal(result.body.reason, 'readiness_probe_not_configured');
+  });
+
+  it('answers ready only when the configured probe says ok', async () => {
+    const ok = await harness({ readiness: async () => ({ ok: true }) });
+    assert.equal((await ok.runtime.ready()).status, 200);
+    const notOk = await harness({ readiness: async () => ({ ok: false }) });
+    const refusedResult = await notOk.runtime.ready();
+    assert.equal(refusedResult.status, 503);
+    assert.equal(refusedResult.body.reason, 'readiness_probe_refused');
+  });
+
+  it('binds the loopback interface by default and never 0.0.0.0 for HOST=""', async () => {
+    const { listenSettings } = await import('../src/server.ts');
+    assert.equal(listenSettings({}).host, '127.0.0.1');
+    assert.equal(listenSettings({}).port, 8080);
+    // `||` turned an explicitly empty HOST into a bind on every interface.
+    // An empty HOST is a configuration error, not a widening.
+    assert.throws(() => listenSettings({ HOST: '' }), /listen_host_invalid/);
+    assert.equal(listenSettings({ HOST: '0.0.0.0' }).host, '0.0.0.0');
+    assert.throws(() => listenSettings({ HOST: 'bad\nhost' }), /listen_host_invalid/);
+    assert.throws(() => listenSettings({ PORT: '0' }), /listen_port_invalid/);
   });
 });
