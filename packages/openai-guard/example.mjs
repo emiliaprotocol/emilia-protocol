@@ -1,50 +1,94 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// EMILIA × OpenAI-compatible tool calls — guard an irreversible tool.
-// Runs offline (a local stand-in for the gate) so you see all three outcomes:
+// EMILIA x OpenAI-compatible tool calls - guard an irreversible tool.
+// Runs fully offline (a demo issuer signs the receipts) so you see every
+// outcome in one go:
 //   node packages/openai-guard/example.mjs
 //
-// For real use: pass { apiKey: process.env.EP_API_KEY }, delete fetchImpl, and
-// feed your model's real `message.tool_calls` (from OpenAI, xAI Grok, …) in.
+// For real use: delete the demo issuer, pin YOUR issuer's public key in
+// trustedKeys, and feed your model's real `message.tool_calls` (from OpenAI,
+// xAI Grok, ...) in.
 
+import crypto from 'node:crypto';
 import { runToolCalls } from './index.js';
+import { bindToolAction } from '../require-receipt/index.js';
 
-// A local stand-in for the EMILIA gate, so this file runs with zero setup.
-const fakeGate = (policy) => async (_url, { body }) => ({ json: async () => policy(JSON.parse(body).context) });
-const demoPolicy = ({ amount = 0, destination = '' }) => {
-  if (String(destination).includes('sanctioned')) return { decision: 'deny', reason: 'destination on blocklist' };
-  if (amount >= 50000) return { decision: 'allow_with_signoff', reason: 'large payment release >= $50k' };
-  return { decision: 'allow' };
-};
+// ---- A demo issuer. In production this is your approval service, and you
+// ---- only ever hold its PUBLIC key.
+const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+const ISSUER_KEY = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
 
-// Your tool implementations. Tools with an `action` are irreversible → gated.
+function canonicalize(v) {
+  if (v === null || v === undefined) return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(canonicalize).join(',')}]`;
+  if (typeof v === 'object') {
+    return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`;
+  }
+  return JSON.stringify(v);
+}
+
+function mintReceipt(action) {
+  const payload = {
+    receipt_id: 'rcpt_' + crypto.randomUUID(),
+    subject: 'cfo@example.com',
+    created_at: new Date().toISOString(),
+    claim: { action_type: action, outcome: 'allow_with_signoff', approver: 'cfo@example.com' },
+  };
+  return {
+    '@version': 'EP-RECEIPT-v1',
+    payload,
+    signature: {
+      algorithm: 'Ed25519',
+      value: crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url'),
+    },
+  };
+}
+
+// Your tool implementations. A tool with an `action` is irreversible -> gated.
 const tools = {
-  lookup_invoice: { fn: async ({ id }) => ({ id, amount_due: 82000, vendor: 'acct_new' }) }, // read-only → ungated
+  lookup_invoice: { readOnly: true, fn: async ({ id }) => ({ id, amount_due: 82000 }) },
   release_payment: {
     action: 'payment.release',
-    context: (a) => ({ amount: a.amount, destination: a.destination }),
     fn: async ({ amount, destination }) => ({ status: 'released', amount, destination }),
   },
 };
 
-// Simulated model output — exactly the shape Grok/OpenAI return in message.tool_calls.
-const toolCalls = [
-  { id: 'a', function: { name: 'release_payment', arguments: JSON.stringify({ amount: 200, destination: 'acct_known' }) } },
-  { id: 'b', function: { name: 'release_payment', arguments: JSON.stringify({ amount: 82000, destination: 'acct_new' }) } },
-  { id: 'c', function: { name: 'release_payment', arguments: JSON.stringify({ amount: 1000, destination: 'acct_sanctioned' }) } },
-];
+// The action a receipt must be minted against: the base action PLUS a digest of
+// the tool name and the exact arguments that will execute.
+const approved = { amount: 82000, destination: 'acct_new' };
+const approvedAction = bindToolAction('release_payment', approved, 'payment.release');
 
-const results = await runToolCalls(toolCalls, tools, {
-  actor: 'grok-agent',
-  onSignoff: async (d) => {
-    console.log(`   signoff required (${d.reason}) — simulating a named human approving…`);
-    return true; // return false to reject
-  },
-  fetchImpl: fakeGate(demoPolicy),
+// Simulated model output - exactly the shape Grok/OpenAI return.
+const call = (id, args) => ({
+  id,
+  function: { name: 'release_payment', arguments: JSON.stringify(args) },
 });
 
-console.log('EMILIA x OpenAI-compatible tool calls — one helper guards the whole loop:\n');
-console.log('  1) $200 to known acct      ->', results[0].content);
-console.log('  2) $82,000 (>= $50k)       ->', results[1].content);
-console.log('  3) $1,000 to sanctioned    ->', results[2].content);
-console.log('\nReal use: { apiKey: process.env.EP_API_KEY } + your model\'s real tool_calls. Same helper.\n');
+const authorized = mintReceipt(approvedAction);
+const results = await runToolCalls(
+  [
+    call('a', approved),                                        // no receipt
+    call('b', approved),                                        // the approved call
+    call('c', { amount: 9999999, destination: 'acct_attacker' }), // substituted args
+    call('d', approved),                                        // replay
+  ],
+  tools,
+  {
+    trustedKeys: [ISSUER_KEY],
+    receipts: {
+      b: authorized,
+      // A freshly signed receipt for the SAME bound action, spent on other
+      // arguments. The digest does not match, so it buys nothing.
+      c: mintReceipt(approvedAction),
+      d: authorized,
+    },
+  },
+);
+
+console.log('EMILIA x OpenAI-compatible tool calls - one helper guards the whole loop:\n');
+console.log('  1) no receipt              ->', results[0].content);
+console.log('  2) receipt bound to $82k   ->', results[1].content);
+console.log('  3) same action, other args ->', results[2].content);
+console.log('  4) replay of receipt 2     ->', results[3].content);
+console.log('\nThe action a receipt authorizes is:\n  ' + approvedAction);
+console.log('\nReal use: pin your issuer in trustedKeys and pass your model\'s real tool_calls.\n');
