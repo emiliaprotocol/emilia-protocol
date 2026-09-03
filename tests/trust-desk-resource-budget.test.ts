@@ -15,6 +15,7 @@ import { answerAll } from '../lib/trust-desk/answerer.js';
 afterEach(() => {
   delete process.env.OPENAI_API_KEY;
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe('Trust Desk questionnaire resource budget', () => {
@@ -115,23 +116,78 @@ describe('Trust Desk questionnaire resource budget', () => {
     expect(budget.snapshot().remainingMs).toBe(0);
   });
 
-  it('aborts an in-flight provider at the remaining shared deadline', async () => {
+  it('classifies its own in-flight abort as deadline even when the budget clock still has time', async () => {
     process.env.OPENAI_API_KEY = 'test-only-key';
     const provider = vi.fn((_url, init) => new Promise((_resolve, reject) => {
       init.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
     }));
     vi.stubGlobal('fetch', provider);
 
+    const frozenNow = 1_000;
     const budget = createTrustDeskLlmBudget({
       maxCalls: 5,
       maxEstimatedTokens: 10_000,
       maxWallClockMs: 20,
+      now: () => frozenNow,
     });
     const started = Date.now();
     const result = await llmJSON({ system: 'Return JSON.', user: 'Question?', maxTokens: 10, budget });
 
     expect(Date.now() - started).toBeLessThan(500);
     expect(result).toMatchObject({ ok: false, reason: 'budget_exhausted:llm_deadline' });
+    expect(budget.remainingMs()).toBe(20);
+    expect(provider).toHaveBeenCalledOnce();
+  });
+
+  it('preserves an unrelated provider AbortError while budget time remains', async () => {
+    process.env.OPENAI_API_KEY = 'test-only-key';
+    const provider = vi.fn().mockRejectedValue(new DOMException('Provider aborted', 'AbortError'));
+    vi.stubGlobal('fetch', provider);
+
+    const budget = createTrustDeskLlmBudget({
+      maxCalls: 5,
+      maxEstimatedTokens: 10_000,
+      maxWallClockMs: 1_000,
+      now: () => 1_000,
+    });
+    const result = await llmJSON({ system: 'Return JSON.', user: 'Question?', maxTokens: 10, budget });
+
+    expect(result).toMatchObject({ ok: false, reason: 'provider_error: Provider aborted' });
+    expect(budget.remainingMs()).toBe(1_000);
+    expect(provider).toHaveBeenCalledOnce();
+  });
+
+  it('does not report the provider call cap as shared-budget exhaustion', async () => {
+    vi.useFakeTimers();
+    process.env.OPENAI_API_KEY = 'test-only-key';
+    let now = 1_000;
+    const provider = vi.fn((_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => {
+        // Even if the budget clock reaches its deadline before the rejection
+        // is observed, this timer was selected as the independent provider cap.
+        now = 51_000;
+        reject(new DOMException('Aborted', 'AbortError'));
+      });
+    }));
+    vi.stubGlobal('fetch', provider);
+
+    const budget = createTrustDeskLlmBudget({
+      maxCalls: 5,
+      maxEstimatedTokens: 10_000,
+      maxWallClockMs: 50_000,
+      now: () => now,
+    });
+    const resultPromise = llmJSON({
+      system: 'Return JSON.',
+      user: 'Question?',
+      maxTokens: 10,
+      budget,
+    });
+
+    await vi.advanceTimersByTimeAsync(45_000);
+
+    expect(await resultPromise).toMatchObject({ ok: false, reason: 'provider_error: Aborted' });
+    expect(budget.remainingMs()).toBe(0);
     expect(provider).toHaveBeenCalledOnce();
   });
 
