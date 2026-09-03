@@ -27,6 +27,16 @@ const OPENAI_MODEL = process.env.TRUST_DESK_OPENAI_MODEL || 'gpt-4o';
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 
+class LlmOwnedTimeoutError extends Error {
+  enforcesBudgetDeadline: boolean;
+
+  constructor(enforcesBudgetDeadline: boolean, cause: unknown) {
+    super(cause instanceof Error ? cause.message : 'provider call timed out');
+    this.name = 'LlmOwnedTimeoutError';
+    this.enforcesBudgetDeadline = enforcesBudgetDeadline;
+  }
+}
+
 /** @returns {boolean} whether any provider key is configured. */
 export function llmAvailable() {
   return Boolean(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
@@ -79,18 +89,28 @@ export async function llmJSON({
   if (!reservation.ok) {
     return { ok: false, reason: `budget_exhausted:${reservation.reason}`, provider };
   }
-  const callTimeoutMs = Math.max(1, Math.min(DEFAULT_TIMEOUT_MS, budget.remainingMs()));
+  const remainingBudgetMs = budget.remainingMs();
+  const callTimeout = {
+    ms: Math.max(1, Math.min(DEFAULT_TIMEOUT_MS, remainingBudgetMs)),
+    enforcesBudgetDeadline: remainingBudgetMs <= DEFAULT_TIMEOUT_MS,
+  };
 
   let raw;
   let usage;
   try {
     if (provider === 'anthropic') {
-      ({ raw, usage } = await callAnthropic({ system, user, maxTokens, temperature, timeoutMs: callTimeoutMs }));
+      ({ raw, usage } = await callAnthropic({ system, user, maxTokens, temperature, timeout: callTimeout }));
     } else {
-      ({ raw, usage } = await callOpenAI({ system, user, maxTokens, temperature, timeoutMs: callTimeoutMs }));
+      ({ raw, usage } = await callOpenAI({ system, user, maxTokens, temperature, timeout: callTimeout }));
     }
   } catch (err) {
     logger.warn('trust-desk llm: provider call failed', { provider, error: err.message });
+    if (err instanceof LlmOwnedTimeoutError) {
+      if (!err.enforcesBudgetDeadline) {
+        return { ok: false, reason: `provider_error: ${err.message}`, provider };
+      }
+      return { ok: false, reason: 'budget_exhausted:llm_deadline', provider };
+    }
     if (budget.remainingMs() <= 0) {
       return { ok: false, reason: 'budget_exhausted:llm_deadline', provider };
     }
@@ -109,10 +129,10 @@ export async function llmJSON({
 
 // ── Providers ───────────────────────────────────────────────────────────────
 
-async function callAnthropic({ system, user, maxTokens, temperature, timeoutMs }) {
+async function callAnthropic({ system, user, maxTokens, temperature, timeout }) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('anthropic key unavailable');
-  return withAbortTimeout(timeoutMs, async (signal) => {
+  return withAbortTimeout(timeout, async (signal) => {
     const res = await fetch(ANTHROPIC_URL, {
       method: 'POST',
       headers: {
@@ -138,10 +158,10 @@ async function callAnthropic({ system, user, maxTokens, temperature, timeoutMs }
   });
 }
 
-async function callOpenAI({ system, user, maxTokens, temperature, timeoutMs }) {
+async function callOpenAI({ system, user, maxTokens, temperature, timeout }) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('openai key unavailable');
-  return withAbortTimeout(timeoutMs, async (signal) => {
+  return withAbortTimeout(timeout, async (signal) => {
     const res = await fetch(OPENAI_URL, {
       method: 'POST',
       headers: {
@@ -169,14 +189,23 @@ async function callOpenAI({ system, user, maxTokens, temperature, timeoutMs }) {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-async function withAbortTimeout(timeoutMs, operation) {
+async function withAbortTimeout(timeout, operation) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let deadlineElapsed = false;
+  const timer = setTimeout(() => {
+    deadlineElapsed = true;
+    controller.abort();
+  }, timeout.ms);
   try {
     // The timer covers headers, error-body reads, JSON-body reads, and parsing.
     // Clearing it when fetch() returns headers would let a slow/dripping body
     // escape the shared request deadline.
     return await operation(controller.signal);
+  } catch (err) {
+    // Carry this timer's preselected classification across the asynchronous
+    // abort rejection. An unrelated provider AbortError receives no marker.
+    if (deadlineElapsed) throw new LlmOwnedTimeoutError(timeout.enforcesBudgetDeadline, err);
+    throw err;
   } finally {
     clearTimeout(timer);
   }
