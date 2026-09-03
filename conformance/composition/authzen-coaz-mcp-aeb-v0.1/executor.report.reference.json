@@ -1,0 +1,96 @@
+{
+  "profile": "AUTHZEN-COAZ-LOCAL-EXECUTOR-v0.1",
+  "implementation": {
+    "scope": "ONE_LIVE_EXECUTOR_INSTANCE",
+    "independent_implementation": false,
+    "real_pdp": false,
+    "real_provider": false,
+    "durable_store": false,
+    "distributed_store": false,
+    "physical_truth_proven": false,
+    "human_authorization_proven": false
+  },
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0
+  },
+  "cases": [
+    {
+      "id": "executor_exact_allow_invokes_once",
+      "passed": true,
+      "observed": {
+        "admitted": true,
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "named_human_authorization_proven": false,
+        "provider_evidence": "VERIFIED",
+        "reservation": {
+          "state": "COMMITTED",
+          "entered_at": 1788436800000,
+          "evidence_digest": "sha256:52210491fda50339512d5d6db5f85aad3dec1af9d65c26b0e88ca4031af7cdb2"
+        },
+        "provider_invocations": 1,
+        "reconciliation_calls": 0,
+        "callback_calls": 1
+      }
+    },
+    {
+      "id": "executor_changed_beneficiary_refused_before_entry",
+      "passed": true,
+      "observed": {
+        "admitted": false,
+        "reason": "material_action_mismatch",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "named_human_authorization_proven": false,
+        "reservation": {
+          "state": "UNUSED"
+        },
+        "provider_invocations": 0,
+        "reconciliation_calls": 0,
+        "callback_calls": 0
+      }
+    },
+    {
+      "id": "executor_concurrent_replay_has_one_provider_entry",
+      "passed": true,
+      "observed": {
+        "admitted_attempts": 1,
+        "refused_attempts": 1,
+        "provider_invocations": 1,
+        "reconciliation_calls": 0,
+        "callback_calls": 1
+      }
+    },
+    {
+      "id": "executor_timeout_preserved_then_authenticated_reconciliation",
+      "passed": true,
+      "observed": {
+        "first_state": "INDETERMINATE",
+        "replay_refused": true,
+        "wrong_provider_refused": true,
+        "final_state": "COMMITTED",
+        "provider_invocations": 1,
+        "reconciliation_calls": 2,
+        "callback_calls": 1
+      }
+    },
+    {
+      "id": "executor_source_pin_substitution_refused",
+      "passed": true,
+      "observed": {
+        "constructed": false,
+        "callback_calls": 0
+      }
+    },
+    {
+      "id": "executor_transaction_configuration_spoof_refused",
+      "passed": true,
+      "observed": {
+        "reason": "unexpected_or_missing_field",
+        "callback_calls": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,1665 @@
+{
+  "@version": "AUTHZEN-COAZ-MCP-AEB-REPORT-v0.1",
+  "profile": "AUTHZEN-COAZ-MCP-AEB-CONSEQUENCE-v0.1",
+  "executed_at": "2026-08-31T19:00:00Z",
+  "implementation": {
+    "owner": "EMILIA Protocol",
+    "revision": "v0.1",
+    "independent_implementation": false,
+    "production_mediation": false
+  },
+  "source_pins": {
+    "source_lock_digest": "sha256:b2dbc336d2318f0373b5ee446500553f6367738ae4ea564dc015442ed4d8c71b",
+    "inherited_profile": "EP-COAZ-TRANSLATION-VECTOR-v0.1",
+    "authzen_repository_commit": "e287920eed842b227e38531c1735b712337ca44d",
+    "authzen_authorization_api_sha256": "f0ee89cc4a688f9f409dc323c8342579d74c45dc776a6b04a622ba9738de82bc",
+    "mapping_profile_digest": "sha256:6fad7e8cae40b978b880acc2762134ba939f8ffcf56b50f11f6e8a9491b90368",
+    "evidence_evaluator_version": "AEB-EVALUATION-v1",
+    "evidence_evaluator_sha256": "252891f826856a8782dd01538caeb37cde0198e2d78827ea5a910be8b1dac4f7",
+    "native_attestation_bridge_version": "EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v1",
+    "native_attestation_bridge_sha256": "252891f826856a8782dd01538caeb37cde0198e2d78827ea5a910be8b1dac4f7",
+    "aeb_kernel_sha256": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f"
+  },
+  "claim_scope": {
+    "authzen_result_role": "LOCAL_MACHINE_POLICY_INPUT",
+    "aeb_atomicity": {
+      "profile": "local_atomic",
+      "guarantees": [
+        "one_linearizable_local_admission_domain",
+        "operation_and_native_replay_reserved_before_invocation",
+        "execution_authority_consumed_before_provider_entry"
+      ],
+      "exclusions": [
+        "remote_atomicity",
+        "federated_atomicity",
+        "provider_commitment",
+        "observed_effect_truth",
+        "downstream_exactly_once"
+      ]
+    },
+    "lifecycle_evidence": "PURE_STATE_MODEL_WITH_SUPPLIED_AUTHENTICATION_FACTS",
+    "guarantees": [
+      "signed_local_pep_observation_evaluated_under_relying_party_pins",
+      "exact_action_checked_before_admission",
+      "preflight_lifecycle_axes_remain_unestablished",
+      "local_atomic_reservation_before_provider_entry",
+      "blind_retry_refused_while_indeterminate",
+      "authenticated_exact_binding_required_for_reconciliation"
+    ],
+    "exclusions": [
+      "authzen_signed_receipt",
+      "authzen_signature_on_local_pep_observation",
+      "named_human_authorization_from_authzen_allow",
+      "execution_proof_from_authzen_allow",
+      "authorization_api_replay_semantics",
+      "unsigned_evaluation_as_credential",
+      "preflight_reservation_or_provider_entry",
+      "verifier_runtime_measurement",
+      "remote_or_federated_atomicity",
+      "provider_or_effect_truth_before_reconciliation",
+      "independent_implementation",
+      "production_mediation",
+      "openid_working_group_acceptance",
+      "ietf_adoption"
+    ]
+  },
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0
+  },
+  "cases": [
+    {
+      "id": "allow_exact_call_admitted",
+      "description": "Exact MCP call plus toy AuthZEN allow reaches AEB admission under local atomic reservation.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "reservation": "RESERVED",
+        "custody": "RESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "ADMIT",
+        "reasons": [],
+        "provider_entry": "AUTHORIZED_NOT_OBSERVED",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "observed": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "reservation": "RESERVED",
+        "custody": "RESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "ADMIT",
+        "reasons": [],
+        "provider_entry": "AUTHORIZED_NOT_OBSERVED",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "details": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "material_action": "MATCH",
+        "material_reason": null,
+        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
+        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "policy_input_matches_verified_observation": true,
+        "local_pep_attestation": {
+          "signer": "test-verifier:authzen-local-pep:v0.1",
+          "signer_scope": "LOCAL_PEP_TEST_HARNESS",
+          "authzen_signature_claimed": false,
+          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+        },
+        "local_pep_preflight": {
+          "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
+          "evaluation": {
+            "record": {
+              "@type": "AEB-EVALUATION-v1",
+              "authority_constraints": {
+                "distinct_human_quorum": true,
+                "executor_exclusion": true,
+                "initiator_exclusion": true,
+                "one_time_consumption": true
+              },
+              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "composition": {
+                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "engine": "EP-AEC-v1",
+                "requirement_expression": "machine-policy-input",
+                "satisfied": true
+              },
+              "consumption_nonce": "authzen-local-pep-preflight:v0.1",
+              "evaluated_at": "2026-08-31T19:00:00Z",
+              "evaluator": {
+                "id": "rp:emilia:authzen-coaz-mcp-aeb-v0.1",
+                "key_id": "",
+                "pinned_config_digest": "sha256:596d6395eefcfa8f4e69c5c2327ef6f49adeb46383d37d86c1c960877e0844b8"
+              },
+              "evidence_digest": "sha256:ad1c074e08e5e1b7a04b05bcdf40b1f0c05ef56be28462efd597ff4255a4087e",
+              "executor_id": "executor:mcp-gate",
+              "initiator_id": "agent:accounting",
+              "legs": [
+                {
+                  "acceptance": "ACCEPTED",
+                  "action_digest": "sha256:2507c2208b00e768a3afb7366d6640049d6aa3797a0be4932d29a33a388bb60d",
+                  "adapter_id": "bridge:authzen-local-pep-observation-envelope",
+                  "adapter_version": "1",
+                  "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:allow_exact_call_admitted",
+                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "evidence_role": "machine-policy-input",
+                  "freshness": {
+                    "age_seconds": 60,
+                    "checked_at": "2026-08-31T18:59:00Z",
+                    "consumed": false,
+                    "expires_at": "2026-08-31T19:05:00Z",
+                    "fresh": true,
+                    "revocation_checked": true,
+                    "revoked": false,
+                    "unavailable": false
+                  },
+                  "mapper_id": "mapper:emilia:authzen-coaz-mcp:v0.1",
+                  "mapping": "MATCH",
+                  "native_verification": "VERIFIED",
+                  "profile_digest": "sha256:869ea2ace9255cda5853f4d662af1075033dbd39f76439d518b738e5c5dc7cdf",
+                  "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
+                  "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
+                  "reasons": [],
+                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
+                  "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
+                  "subject": {
+                    "id": "pdp:authzen:local-toy",
+                    "kind": "system"
+                  },
+                  "verdict": "SATISFIED"
+                }
+              ],
+              "operation_id": "authzen-local-pep-preflight",
+              "reasons": [
+                "evaluation_signature_required"
+              ],
+              "registry_digest": "sha256:1f6d7207fe6c6b1ed485c98263d1757e2a5c725357ef6271e7e5794a747b63fa",
+              "requirement_digest": "sha256:a94eead58be150af3bb1368dbc6527b7f3438cb29cd715653baf3752d3eb2dfd",
+              "requirement_ref": "requirement:authzen-machine-policy",
+              "verdict": "SATISFIED"
+            },
+            "valid": false,
+            "reasons": [
+              "evaluation_signature_required"
+            ]
+          },
+          "native_replay_keys": [
+            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+          ],
+          "policy_input": "ALLOW",
+          "local_authorization": "NOT_EVALUATED",
+          "lifecycle": {
+            "reservation": "NOT_EVALUATED",
+            "consumption": "NOT_EVALUATED",
+            "provider_entry": "NOT_ESTABLISHED",
+            "provider_outcome": "NOT_ESTABLISHED",
+            "observed_effect": "NOT_ESTABLISHED",
+            "retry": "NOT_EVALUATED",
+            "reconciliation": "NOT_EVALUATED"
+          },
+          "portable_credential": false,
+          "local_authorization_established": false
+        },
+        "aeb_input_digest": "sha256:6a4f5b9ba40f3cd3b5f1777dabff3df51866756c225038cccb927a046bb69509",
+        "aeb": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "RESERVED",
+          "custody": "RESERVED",
+          "provider_outcome": "NOT_INVOKED",
+          "effect_relation": "NOT_OBSERVED",
+          "retry": "NOT_APPLICABLE",
+          "reconciliation": "NOT_APPLICABLE",
+          "decision": "ADMIT",
+          "reasons": []
+        },
+        "reasons": [],
+        "provider_entry": "AUTHORIZED_NOT_OBSERVED"
+      }
+    },
+    {
+      "id": "allow_changed_beneficiary_refused",
+      "description": "Toy PDP still allows the projected tuple, while exact-action checks refuse the changed beneficiary.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MISMATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MISMATCH",
+        "evidence_satisfaction": "UNSATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "reasons": [
+          "exact_action_mismatch",
+          "normalized_action_mismatch"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "observed": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MISMATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MISMATCH",
+        "evidence_satisfaction": "UNSATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "reasons": [
+          "exact_action_mismatch",
+          "normalized_action_mismatch"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "details": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "material_action": "MISMATCH",
+        "material_reason": "caid_mismatch:beneficiary_account",
+        "request_digest": "sha256:95ae9f09e1bcce18325d4198176a66475a9ac2d3ae4d1222b50d1aa332d18336",
+        "local_pep_observation_digest": "sha256:b930fa54e0f12b208a8547ef56a12cd4c7d546554fbd15feb0b2bdd8b8aa4c96",
+        "policy_input_matches_verified_observation": true,
+        "local_pep_attestation": {
+          "signer": "test-verifier:authzen-local-pep:v0.1",
+          "signer_scope": "LOCAL_PEP_TEST_HARNESS",
+          "authzen_signature_claimed": false,
+          "envelope_digest": "sha256:de71d5fe075d252112580c20cd886a5d3f5ccf02cfd0d048b674f8df8db4387d"
+        },
+        "local_pep_preflight": {
+          "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
+          "evaluation": {
+            "record": {
+              "@type": "AEB-EVALUATION-v1",
+              "authority_constraints": {
+                "distinct_human_quorum": true,
+                "executor_exclusion": true,
+                "initiator_exclusion": true,
+                "one_time_consumption": true
+              },
+              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "composition": {
+                "action_digest": "sha256:8628c1ead211487f38ad9b357dae3964b7bc75b909587049f657c7a1f0c5e216",
+                "engine": "EP-AEC-v1",
+                "requirement_expression": "machine-policy-input",
+                "satisfied": false
+              },
+              "consumption_nonce": "authzen-local-pep-preflight:v0.1",
+              "evaluated_at": "2026-08-31T19:00:00Z",
+              "evaluator": {
+                "id": "rp:emilia:authzen-coaz-mcp-aeb-v0.1",
+                "key_id": "",
+                "pinned_config_digest": "sha256:596d6395eefcfa8f4e69c5c2327ef6f49adeb46383d37d86c1c960877e0844b8"
+              },
+              "evidence_digest": "sha256:1abc7d68931d0b7603fc65520a4be92e46487640476f8d874fff3e52cb60e94b",
+              "executor_id": "executor:mcp-gate",
+              "initiator_id": "agent:accounting",
+              "legs": [
+                {
+                  "acceptance": "ACCEPTED",
+                  "action_digest": "sha256:c38e769263941916b876481ce9d1c8ed3d030de3ca8b36fb825b39163de914ba",
+                  "adapter_id": "bridge:authzen-local-pep-observation-envelope",
+                  "adapter_version": "1",
+                  "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:allow_changed_beneficiary_refused",
+                  "caid": "caid:1:payment.release.1:jcs-sha256:w452kmOUGRa4dkgc6dHI7T0DDePKizb7gls5Fj3pFLo",
+                  "evidence_digest": "sha256:de71d5fe075d252112580c20cd886a5d3f5ccf02cfd0d048b674f8df8db4387d",
+                  "evidence_role": "machine-policy-input",
+                  "freshness": {
+                    "age_seconds": 60,
+                    "checked_at": "2026-08-31T18:59:00Z",
+                    "consumed": false,
+                    "expires_at": "2026-08-31T19:05:00Z",
+                    "fresh": true,
+                    "revocation_checked": true,
+                    "revoked": false,
+                    "unavailable": false
+                  },
+                  "mapper_id": "mapper:emilia:authzen-coaz-mcp:v0.1",
+                  "mapping": "MISMATCH",
+                  "native_verification": "VERIFIED",
+                  "profile_digest": "sha256:869ea2ace9255cda5853f4d662af1075033dbd39f76439d518b738e5c5dc7cdf",
+                  "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
+                  "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
+                  "reasons": [
+                    "expected_action_digest_mismatch",
+                    "normalized_action_digest_mismatch"
+                  ],
+                  "replay_unit": "sha256:0b2f7b181bc5c2ba752e47fa2ec21b49664a94208e72a0b06260c766fb18eb98",
+                  "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
+                  "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
+                  "subject": {
+                    "id": "pdp:authzen:local-toy",
+                    "kind": "system"
+                  },
+                  "verdict": "UNSATISFIED"
+                }
+              ],
+              "operation_id": "authzen-local-pep-preflight",
+              "reasons": [
+                "evaluation_signature_required",
+                "expected_action_digest_mismatch",
+                "normalized_action_digest_mismatch",
+                "requirement not satisfied: \"machine-policy-input\" over {∅}"
+              ],
+              "registry_digest": "sha256:1f6d7207fe6c6b1ed485c98263d1757e2a5c725357ef6271e7e5794a747b63fa",
+              "requirement_digest": "sha256:a94eead58be150af3bb1368dbc6527b7f3438cb29cd715653baf3752d3eb2dfd",
+              "requirement_ref": "requirement:authzen-machine-policy",
+              "verdict": "UNSATISFIED"
+            },
+            "valid": false,
+            "reasons": [
+              "evaluation_signature_required",
+              "expected_action_digest_mismatch",
+              "normalized_action_digest_mismatch",
+              "requirement not satisfied: \"machine-policy-input\" over {∅}"
+            ]
+          },
+          "native_replay_keys": [
+            "aeb-native:sha256:195f5b76d5e8d6e92a5074661dbbf782b9b2e4b30371f30005fca0b2d47d580c"
+          ],
+          "policy_input": "ALLOW",
+          "local_authorization": "NOT_EVALUATED",
+          "lifecycle": {
+            "reservation": "NOT_EVALUATED",
+            "consumption": "NOT_EVALUATED",
+            "provider_entry": "NOT_ESTABLISHED",
+            "provider_outcome": "NOT_ESTABLISHED",
+            "observed_effect": "NOT_ESTABLISHED",
+            "retry": "NOT_EVALUATED",
+            "reconciliation": "NOT_EVALUATED"
+          },
+          "portable_credential": false,
+          "local_authorization_established": false
+        },
+        "aeb_input_digest": "sha256:63be1744362d50536229881805e40ad81e6e4b1ce43d3af8a26798ec0199d54d",
+        "aeb": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MISMATCH",
+          "satisfaction": "UNSATISFIED",
+          "authorization": "NOT_AUTHORIZED",
+          "reservation": "NOT_ATTEMPTED",
+          "custody": "UNRESERVED",
+          "provider_outcome": "NOT_INVOKED",
+          "effect_relation": "NOT_OBSERVED",
+          "retry": "NOT_APPLICABLE",
+          "reconciliation": "NOT_APPLICABLE",
+          "decision": "REFUSE",
+          "reasons": [
+            "exact_action_mismatch",
+            "normalized_action_mismatch"
+          ]
+        },
+        "reasons": [
+          "exact_action_mismatch",
+          "normalized_action_mismatch"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      }
+    },
+    {
+      "id": "deny_does_not_admit",
+      "description": "A false AuthZEN decision remains a local policy deny and cannot admit the action.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "DENY",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "reasons": [
+          "local_policy_denied"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "observed": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "DENY",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "reasons": [
+          "local_policy_denied"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "details": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "DENY",
+        "material_action": "MATCH",
+        "material_reason": null,
+        "request_digest": "sha256:2886c4296b1ab3d766abc3301aeb9e0e5d9397645ae2af636a46b9435e0a171d",
+        "local_pep_observation_digest": "sha256:5b11032d9287ac5820f48d3fc0a96477d9b87b9e6d83373026ae6e68683d0a36",
+        "policy_input_matches_verified_observation": true,
+        "local_pep_attestation": {
+          "signer": "test-verifier:authzen-local-pep:v0.1",
+          "signer_scope": "LOCAL_PEP_TEST_HARNESS",
+          "authzen_signature_claimed": false,
+          "envelope_digest": "sha256:13b53dcd6dc1ab83deb4fbffa9a6efdaf82167d51d2ca8df5849d3c2c003c740"
+        },
+        "local_pep_preflight": {
+          "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
+          "evaluation": {
+            "record": {
+              "@type": "AEB-EVALUATION-v1",
+              "authority_constraints": {
+                "distinct_human_quorum": true,
+                "executor_exclusion": true,
+                "initiator_exclusion": true,
+                "one_time_consumption": true
+              },
+              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "composition": {
+                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "engine": "EP-AEC-v1",
+                "requirement_expression": "machine-policy-input",
+                "satisfied": true
+              },
+              "consumption_nonce": "authzen-local-pep-preflight:v0.1",
+              "evaluated_at": "2026-08-31T19:00:00Z",
+              "evaluator": {
+                "id": "rp:emilia:authzen-coaz-mcp-aeb-v0.1",
+                "key_id": "",
+                "pinned_config_digest": "sha256:596d6395eefcfa8f4e69c5c2327ef6f49adeb46383d37d86c1c960877e0844b8"
+              },
+              "evidence_digest": "sha256:a1dcf0f053d711a83b165bd5b95cb7fe23a1b950b8c80a67fb457f083059520b",
+              "executor_id": "executor:mcp-gate",
+              "initiator_id": "agent:accounting",
+              "legs": [
+                {
+                  "acceptance": "ACCEPTED",
+                  "action_digest": "sha256:2507c2208b00e768a3afb7366d6640049d6aa3797a0be4932d29a33a388bb60d",
+                  "adapter_id": "bridge:authzen-local-pep-observation-envelope",
+                  "adapter_version": "1",
+                  "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:deny_does_not_admit",
+                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:13b53dcd6dc1ab83deb4fbffa9a6efdaf82167d51d2ca8df5849d3c2c003c740",
+                  "evidence_role": "machine-policy-input",
+                  "freshness": {
+                    "age_seconds": 60,
+                    "checked_at": "2026-08-31T18:59:00Z",
+                    "consumed": false,
+                    "expires_at": "2026-08-31T19:05:00Z",
+                    "fresh": true,
+                    "revocation_checked": true,
+                    "revoked": false,
+                    "unavailable": false
+                  },
+                  "mapper_id": "mapper:emilia:authzen-coaz-mcp:v0.1",
+                  "mapping": "MATCH",
+                  "native_verification": "VERIFIED",
+                  "profile_digest": "sha256:869ea2ace9255cda5853f4d662af1075033dbd39f76439d518b738e5c5dc7cdf",
+                  "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
+                  "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
+                  "reasons": [],
+                  "replay_unit": "sha256:f06a4e8b19f8609073e2e3cc9e22c297c5c69b160dd084c9f10ceab3f9d34b17",
+                  "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
+                  "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
+                  "subject": {
+                    "id": "pdp:authzen:local-toy",
+                    "kind": "system"
+                  },
+                  "verdict": "SATISFIED"
+                }
+              ],
+              "operation_id": "authzen-local-pep-preflight",
+              "reasons": [
+                "evaluation_signature_required"
+              ],
+              "registry_digest": "sha256:1f6d7207fe6c6b1ed485c98263d1757e2a5c725357ef6271e7e5794a747b63fa",
+              "requirement_digest": "sha256:a94eead58be150af3bb1368dbc6527b7f3438cb29cd715653baf3752d3eb2dfd",
+              "requirement_ref": "requirement:authzen-machine-policy",
+              "verdict": "SATISFIED"
+            },
+            "valid": false,
+            "reasons": [
+              "evaluation_signature_required"
+            ]
+          },
+          "native_replay_keys": [
+            "aeb-native:sha256:e9084a0cb771130a969ecc39741c03477cccffca203f011a55d57f930a61a2ac"
+          ],
+          "policy_input": "DENY",
+          "local_authorization": "NOT_EVALUATED",
+          "lifecycle": {
+            "reservation": "NOT_EVALUATED",
+            "consumption": "NOT_EVALUATED",
+            "provider_entry": "NOT_ESTABLISHED",
+            "provider_outcome": "NOT_ESTABLISHED",
+            "observed_effect": "NOT_ESTABLISHED",
+            "retry": "NOT_EVALUATED",
+            "reconciliation": "NOT_EVALUATED"
+          },
+          "portable_credential": false,
+          "local_authorization_established": false
+        },
+        "aeb_input_digest": "sha256:7acee8700a13cf64c95efdd48aa66cb44123ed5308a8df1a5b1dd83bfab98f33",
+        "aeb": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "NOT_AUTHORIZED",
+          "reservation": "NOT_ATTEMPTED",
+          "custody": "UNRESERVED",
+          "provider_outcome": "NOT_INVOKED",
+          "effect_relation": "NOT_OBSERVED",
+          "retry": "NOT_APPLICABLE",
+          "reconciliation": "NOT_APPLICABLE",
+          "decision": "REFUSE",
+          "reasons": [
+            "local_policy_denied"
+          ]
+        },
+        "reasons": [
+          "local_policy_denied"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      }
+    },
+    {
+      "id": "allow_does_not_fill_named_human_role",
+      "description": "A machine-policy allow cannot satisfy a separately required named-human authorization role.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "UNSATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "reasons": [
+          "required_role_unsatisfied"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "observed": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "UNSATISFIED",
+        "local_authorization": "NOT_AUTHORIZED",
+        "reservation": "NOT_ATTEMPTED",
+        "custody": "UNRESERVED",
+        "provider_outcome": "NOT_INVOKED",
+        "effect_relation": "NOT_OBSERVED",
+        "retry": "NOT_APPLICABLE",
+        "reconciliation": "NOT_APPLICABLE",
+        "aeb_decision": "REFUSE",
+        "reasons": [
+          "required_role_unsatisfied"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "details": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "material_action": "MATCH",
+        "material_reason": null,
+        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
+        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "policy_input_matches_verified_observation": true,
+        "local_pep_attestation": {
+          "signer": "test-verifier:authzen-local-pep:v0.1",
+          "signer_scope": "LOCAL_PEP_TEST_HARNESS",
+          "authzen_signature_claimed": false,
+          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+        },
+        "local_pep_preflight": {
+          "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
+          "evaluation": {
+            "record": {
+              "@type": "AEB-EVALUATION-v1",
+              "authority_constraints": {
+                "distinct_human_quorum": true,
+                "executor_exclusion": true,
+                "initiator_exclusion": true,
+                "one_time_consumption": true
+              },
+              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "composition": {
+                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "engine": "EP-AEC-v1",
+                "requirement_expression": "machine-policy-input AND named-human-authorization",
+                "satisfied": false
+              },
+              "consumption_nonce": "authzen-local-pep-preflight:v0.1",
+              "evaluated_at": "2026-08-31T19:00:00Z",
+              "evaluator": {
+                "id": "rp:emilia:authzen-coaz-mcp-aeb-v0.1",
+                "key_id": "",
+                "pinned_config_digest": "sha256:7a5551dfa64ff675cb58e4f492cbcce8dc9753701bfb010bfdbc329384fc590a"
+              },
+              "evidence_digest": "sha256:71c5b4a3dc3072e78f1c9f737de3aceb85a9f065ade3dd3c06fc875f7e6c31c9",
+              "executor_id": "executor:mcp-gate",
+              "initiator_id": "agent:accounting",
+              "legs": [
+                {
+                  "acceptance": "ACCEPTED",
+                  "action_digest": "sha256:2507c2208b00e768a3afb7366d6640049d6aa3797a0be4932d29a33a388bb60d",
+                  "adapter_id": "bridge:authzen-local-pep-observation-envelope",
+                  "adapter_version": "1",
+                  "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:allow_does_not_fill_named_human_role",
+                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "evidence_role": "machine-policy-input",
+                  "freshness": {
+                    "age_seconds": 60,
+                    "checked_at": "2026-08-31T18:59:00Z",
+                    "consumed": false,
+                    "expires_at": "2026-08-31T19:05:00Z",
+                    "fresh": true,
+                    "revocation_checked": true,
+                    "revoked": false,
+                    "unavailable": false
+                  },
+                  "mapper_id": "mapper:emilia:authzen-coaz-mcp:v0.1",
+                  "mapping": "MATCH",
+                  "native_verification": "VERIFIED",
+                  "profile_digest": "sha256:869ea2ace9255cda5853f4d662af1075033dbd39f76439d518b738e5c5dc7cdf",
+                  "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
+                  "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
+                  "reasons": [],
+                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
+                  "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
+                  "subject": {
+                    "id": "pdp:authzen:local-toy",
+                    "kind": "system"
+                  },
+                  "verdict": "SATISFIED"
+                }
+              ],
+              "operation_id": "authzen-local-pep-preflight",
+              "reasons": [
+                "evaluation_signature_required",
+                "requirement not satisfied: \"machine-policy-input AND named-human-authorization\" over {machine-policy-input}"
+              ],
+              "registry_digest": "sha256:1f6d7207fe6c6b1ed485c98263d1757e2a5c725357ef6271e7e5794a747b63fa",
+              "requirement_digest": "sha256:32662ee71e4e1e43d5a63df29b0511b3f297d1d4d67fbc3cd8be69aea6c65a2f",
+              "requirement_ref": "requirement:authzen-machine-policy-plus-named-human",
+              "verdict": "UNSATISFIED"
+            },
+            "valid": false,
+            "reasons": [
+              "evaluation_signature_required",
+              "requirement not satisfied: \"machine-policy-input AND named-human-authorization\" over {machine-policy-input}"
+            ]
+          },
+          "native_replay_keys": [
+            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+          ],
+          "policy_input": "ALLOW",
+          "local_authorization": "NOT_EVALUATED",
+          "lifecycle": {
+            "reservation": "NOT_EVALUATED",
+            "consumption": "NOT_EVALUATED",
+            "provider_entry": "NOT_ESTABLISHED",
+            "provider_outcome": "NOT_ESTABLISHED",
+            "observed_effect": "NOT_ESTABLISHED",
+            "retry": "NOT_EVALUATED",
+            "reconciliation": "NOT_EVALUATED"
+          },
+          "portable_credential": false,
+          "local_authorization_established": false
+        },
+        "aeb_input_digest": "sha256:0ed1cbd473f9fa4a14bf15c5fa1c4e4532f1821c545c01822745c5ff47ce32cb",
+        "aeb": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "UNSATISFIED",
+          "authorization": "NOT_AUTHORIZED",
+          "reservation": "NOT_ATTEMPTED",
+          "custody": "UNRESERVED",
+          "provider_outcome": "NOT_INVOKED",
+          "effect_relation": "NOT_OBSERVED",
+          "retry": "NOT_APPLICABLE",
+          "reconciliation": "NOT_APPLICABLE",
+          "decision": "REFUSE",
+          "reasons": [
+            "required_role_unsatisfied"
+          ]
+        },
+        "reasons": [
+          "required_role_unsatisfied"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      }
+    },
+    {
+      "id": "timeout_after_dispatch_indeterminate",
+      "description": "A response timeout after dispatch keeps provider outcome and effect indeterminate.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "aeb_decision": "INDETERMINATE",
+        "reasons": [
+          "timeout_after_dispatch"
+        ],
+        "provider_entry": "DISPATCHED_OUTCOME_UNKNOWN",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "observed": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "aeb_decision": "INDETERMINATE",
+        "reasons": [
+          "timeout_after_dispatch"
+        ],
+        "provider_entry": "DISPATCHED_OUTCOME_UNKNOWN",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "details": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "material_action": "MATCH",
+        "material_reason": null,
+        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
+        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "policy_input_matches_verified_observation": true,
+        "local_pep_attestation": {
+          "signer": "test-verifier:authzen-local-pep:v0.1",
+          "signer_scope": "LOCAL_PEP_TEST_HARNESS",
+          "authzen_signature_claimed": false,
+          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+        },
+        "local_pep_preflight": {
+          "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
+          "evaluation": {
+            "record": {
+              "@type": "AEB-EVALUATION-v1",
+              "authority_constraints": {
+                "distinct_human_quorum": true,
+                "executor_exclusion": true,
+                "initiator_exclusion": true,
+                "one_time_consumption": true
+              },
+              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "composition": {
+                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "engine": "EP-AEC-v1",
+                "requirement_expression": "machine-policy-input",
+                "satisfied": true
+              },
+              "consumption_nonce": "authzen-local-pep-preflight:v0.1",
+              "evaluated_at": "2026-08-31T19:00:00Z",
+              "evaluator": {
+                "id": "rp:emilia:authzen-coaz-mcp-aeb-v0.1",
+                "key_id": "",
+                "pinned_config_digest": "sha256:596d6395eefcfa8f4e69c5c2327ef6f49adeb46383d37d86c1c960877e0844b8"
+              },
+              "evidence_digest": "sha256:6f71358d0b2442ad961e1c9877c929c0a8a4ec4bd4db3d03d0711e15d42b80d8",
+              "executor_id": "executor:mcp-gate",
+              "initiator_id": "agent:accounting",
+              "legs": [
+                {
+                  "acceptance": "ACCEPTED",
+                  "action_digest": "sha256:2507c2208b00e768a3afb7366d6640049d6aa3797a0be4932d29a33a388bb60d",
+                  "adapter_id": "bridge:authzen-local-pep-observation-envelope",
+                  "adapter_version": "1",
+                  "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:timeout_after_dispatch_indeterminate",
+                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "evidence_role": "machine-policy-input",
+                  "freshness": {
+                    "age_seconds": 60,
+                    "checked_at": "2026-08-31T18:59:00Z",
+                    "consumed": false,
+                    "expires_at": "2026-08-31T19:05:00Z",
+                    "fresh": true,
+                    "revocation_checked": true,
+                    "revoked": false,
+                    "unavailable": false
+                  },
+                  "mapper_id": "mapper:emilia:authzen-coaz-mcp:v0.1",
+                  "mapping": "MATCH",
+                  "native_verification": "VERIFIED",
+                  "profile_digest": "sha256:869ea2ace9255cda5853f4d662af1075033dbd39f76439d518b738e5c5dc7cdf",
+                  "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
+                  "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
+                  "reasons": [],
+                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
+                  "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
+                  "subject": {
+                    "id": "pdp:authzen:local-toy",
+                    "kind": "system"
+                  },
+                  "verdict": "SATISFIED"
+                }
+              ],
+              "operation_id": "authzen-local-pep-preflight",
+              "reasons": [
+                "evaluation_signature_required"
+              ],
+              "registry_digest": "sha256:1f6d7207fe6c6b1ed485c98263d1757e2a5c725357ef6271e7e5794a747b63fa",
+              "requirement_digest": "sha256:a94eead58be150af3bb1368dbc6527b7f3438cb29cd715653baf3752d3eb2dfd",
+              "requirement_ref": "requirement:authzen-machine-policy",
+              "verdict": "SATISFIED"
+            },
+            "valid": false,
+            "reasons": [
+              "evaluation_signature_required"
+            ]
+          },
+          "native_replay_keys": [
+            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+          ],
+          "policy_input": "ALLOW",
+          "local_authorization": "NOT_EVALUATED",
+          "lifecycle": {
+            "reservation": "NOT_EVALUATED",
+            "consumption": "NOT_EVALUATED",
+            "provider_entry": "NOT_ESTABLISHED",
+            "provider_outcome": "NOT_ESTABLISHED",
+            "observed_effect": "NOT_ESTABLISHED",
+            "retry": "NOT_EVALUATED",
+            "reconciliation": "NOT_EVALUATED"
+          },
+          "portable_credential": false,
+          "local_authorization_established": false
+        },
+        "aeb_input_digest": "sha256:5bfdb34dff0ce5fe1e5ab3973216f4c34d82890a1269b32421201256be62286c",
+        "aeb": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "CONSUMED",
+          "custody": "INVOKING",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REQUIRED",
+          "decision": "INDETERMINATE",
+          "reasons": [
+            "timeout_after_dispatch"
+          ]
+        },
+        "reasons": [
+          "timeout_after_dispatch"
+        ],
+        "provider_entry": "DISPATCHED_OUTCOME_UNKNOWN"
+      }
+    },
+    {
+      "id": "blind_retry_refused",
+      "description": "An unresolved operation cannot be blindly re-entered at the provider.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "reservation": "OPERATION_REPLAY",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "aeb_decision": "REFUSE",
+        "reasons": [
+          "blind_retry_refused"
+        ],
+        "provider_entry": "REENTRY_REFUSED",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "observed": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "reservation": "OPERATION_REPLAY",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REQUIRED",
+        "aeb_decision": "REFUSE",
+        "reasons": [
+          "blind_retry_refused"
+        ],
+        "provider_entry": "REENTRY_REFUSED",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "details": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "material_action": "MATCH",
+        "material_reason": null,
+        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
+        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "policy_input_matches_verified_observation": true,
+        "local_pep_attestation": {
+          "signer": "test-verifier:authzen-local-pep:v0.1",
+          "signer_scope": "LOCAL_PEP_TEST_HARNESS",
+          "authzen_signature_claimed": false,
+          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+        },
+        "local_pep_preflight": {
+          "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
+          "evaluation": {
+            "record": {
+              "@type": "AEB-EVALUATION-v1",
+              "authority_constraints": {
+                "distinct_human_quorum": true,
+                "executor_exclusion": true,
+                "initiator_exclusion": true,
+                "one_time_consumption": true
+              },
+              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "composition": {
+                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "engine": "EP-AEC-v1",
+                "requirement_expression": "machine-policy-input",
+                "satisfied": true
+              },
+              "consumption_nonce": "authzen-local-pep-preflight:v0.1",
+              "evaluated_at": "2026-08-31T19:00:00Z",
+              "evaluator": {
+                "id": "rp:emilia:authzen-coaz-mcp-aeb-v0.1",
+                "key_id": "",
+                "pinned_config_digest": "sha256:596d6395eefcfa8f4e69c5c2327ef6f49adeb46383d37d86c1c960877e0844b8"
+              },
+              "evidence_digest": "sha256:fa7df1537b767a15a31eafd13a31c4768e257a43af6e9ed1c1fd43db316fb443",
+              "executor_id": "executor:mcp-gate",
+              "initiator_id": "agent:accounting",
+              "legs": [
+                {
+                  "acceptance": "ACCEPTED",
+                  "action_digest": "sha256:2507c2208b00e768a3afb7366d6640049d6aa3797a0be4932d29a33a388bb60d",
+                  "adapter_id": "bridge:authzen-local-pep-observation-envelope",
+                  "adapter_version": "1",
+                  "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:blind_retry_refused",
+                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "evidence_role": "machine-policy-input",
+                  "freshness": {
+                    "age_seconds": 60,
+                    "checked_at": "2026-08-31T18:59:00Z",
+                    "consumed": false,
+                    "expires_at": "2026-08-31T19:05:00Z",
+                    "fresh": true,
+                    "revocation_checked": true,
+                    "revoked": false,
+                    "unavailable": false
+                  },
+                  "mapper_id": "mapper:emilia:authzen-coaz-mcp:v0.1",
+                  "mapping": "MATCH",
+                  "native_verification": "VERIFIED",
+                  "profile_digest": "sha256:869ea2ace9255cda5853f4d662af1075033dbd39f76439d518b738e5c5dc7cdf",
+                  "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
+                  "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
+                  "reasons": [],
+                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
+                  "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
+                  "subject": {
+                    "id": "pdp:authzen:local-toy",
+                    "kind": "system"
+                  },
+                  "verdict": "SATISFIED"
+                }
+              ],
+              "operation_id": "authzen-local-pep-preflight",
+              "reasons": [
+                "evaluation_signature_required"
+              ],
+              "registry_digest": "sha256:1f6d7207fe6c6b1ed485c98263d1757e2a5c725357ef6271e7e5794a747b63fa",
+              "requirement_digest": "sha256:a94eead58be150af3bb1368dbc6527b7f3438cb29cd715653baf3752d3eb2dfd",
+              "requirement_ref": "requirement:authzen-machine-policy",
+              "verdict": "SATISFIED"
+            },
+            "valid": false,
+            "reasons": [
+              "evaluation_signature_required"
+            ]
+          },
+          "native_replay_keys": [
+            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+          ],
+          "policy_input": "ALLOW",
+          "local_authorization": "NOT_EVALUATED",
+          "lifecycle": {
+            "reservation": "NOT_EVALUATED",
+            "consumption": "NOT_EVALUATED",
+            "provider_entry": "NOT_ESTABLISHED",
+            "provider_outcome": "NOT_ESTABLISHED",
+            "observed_effect": "NOT_ESTABLISHED",
+            "retry": "NOT_EVALUATED",
+            "reconciliation": "NOT_EVALUATED"
+          },
+          "portable_credential": false,
+          "local_authorization_established": false
+        },
+        "aeb_input_digest": "sha256:592b16d8c9d85d4cf39da43b75d44c064b71ed23a4ce8898dd8dcd138cc8853a",
+        "aeb": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "OPERATION_REPLAY",
+          "custody": "INVOKING",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REQUIRED",
+          "decision": "REFUSE",
+          "reasons": [
+            "blind_retry_refused"
+          ]
+        },
+        "reasons": [
+          "blind_retry_refused"
+        ],
+        "provider_entry": "REENTRY_REFUSED"
+      }
+    },
+    {
+      "id": "authenticated_exact_reconciliation_accepted",
+      "description": "Authenticated same-provider and same-action evidence reconciles without re-execution.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "TERMINAL",
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "OBSERVED_AS_REQUESTED",
+        "retry": "REFUSED",
+        "reconciliation": "ACCEPTED",
+        "aeb_decision": "RECONCILED",
+        "reasons": [
+          "authenticated_reconciliation"
+        ],
+        "provider_entry": "NO_REEXECUTION_RECONCILED",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "observed": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "TERMINAL",
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "OBSERVED_AS_REQUESTED",
+        "retry": "REFUSED",
+        "reconciliation": "ACCEPTED",
+        "aeb_decision": "RECONCILED",
+        "reasons": [
+          "authenticated_reconciliation"
+        ],
+        "provider_entry": "NO_REEXECUTION_RECONCILED",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "details": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "material_action": "MATCH",
+        "material_reason": null,
+        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
+        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "policy_input_matches_verified_observation": true,
+        "local_pep_attestation": {
+          "signer": "test-verifier:authzen-local-pep:v0.1",
+          "signer_scope": "LOCAL_PEP_TEST_HARNESS",
+          "authzen_signature_claimed": false,
+          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+        },
+        "local_pep_preflight": {
+          "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
+          "evaluation": {
+            "record": {
+              "@type": "AEB-EVALUATION-v1",
+              "authority_constraints": {
+                "distinct_human_quorum": true,
+                "executor_exclusion": true,
+                "initiator_exclusion": true,
+                "one_time_consumption": true
+              },
+              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "composition": {
+                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "engine": "EP-AEC-v1",
+                "requirement_expression": "machine-policy-input",
+                "satisfied": true
+              },
+              "consumption_nonce": "authzen-local-pep-preflight:v0.1",
+              "evaluated_at": "2026-08-31T19:00:00Z",
+              "evaluator": {
+                "id": "rp:emilia:authzen-coaz-mcp-aeb-v0.1",
+                "key_id": "",
+                "pinned_config_digest": "sha256:596d6395eefcfa8f4e69c5c2327ef6f49adeb46383d37d86c1c960877e0844b8"
+              },
+              "evidence_digest": "sha256:e68e25dbb715ef6a5c7c52c0876d610ea4b2f4355a0be0e044ead29ffc934020",
+              "executor_id": "executor:mcp-gate",
+              "initiator_id": "agent:accounting",
+              "legs": [
+                {
+                  "acceptance": "ACCEPTED",
+                  "action_digest": "sha256:2507c2208b00e768a3afb7366d6640049d6aa3797a0be4932d29a33a388bb60d",
+                  "adapter_id": "bridge:authzen-local-pep-observation-envelope",
+                  "adapter_version": "1",
+                  "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:authenticated_exact_reconciliation_accepted",
+                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "evidence_role": "machine-policy-input",
+                  "freshness": {
+                    "age_seconds": 60,
+                    "checked_at": "2026-08-31T18:59:00Z",
+                    "consumed": false,
+                    "expires_at": "2026-08-31T19:05:00Z",
+                    "fresh": true,
+                    "revocation_checked": true,
+                    "revoked": false,
+                    "unavailable": false
+                  },
+                  "mapper_id": "mapper:emilia:authzen-coaz-mcp:v0.1",
+                  "mapping": "MATCH",
+                  "native_verification": "VERIFIED",
+                  "profile_digest": "sha256:869ea2ace9255cda5853f4d662af1075033dbd39f76439d518b738e5c5dc7cdf",
+                  "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
+                  "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
+                  "reasons": [],
+                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
+                  "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
+                  "subject": {
+                    "id": "pdp:authzen:local-toy",
+                    "kind": "system"
+                  },
+                  "verdict": "SATISFIED"
+                }
+              ],
+              "operation_id": "authzen-local-pep-preflight",
+              "reasons": [
+                "evaluation_signature_required"
+              ],
+              "registry_digest": "sha256:1f6d7207fe6c6b1ed485c98263d1757e2a5c725357ef6271e7e5794a747b63fa",
+              "requirement_digest": "sha256:a94eead58be150af3bb1368dbc6527b7f3438cb29cd715653baf3752d3eb2dfd",
+              "requirement_ref": "requirement:authzen-machine-policy",
+              "verdict": "SATISFIED"
+            },
+            "valid": false,
+            "reasons": [
+              "evaluation_signature_required"
+            ]
+          },
+          "native_replay_keys": [
+            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+          ],
+          "policy_input": "ALLOW",
+          "local_authorization": "NOT_EVALUATED",
+          "lifecycle": {
+            "reservation": "NOT_EVALUATED",
+            "consumption": "NOT_EVALUATED",
+            "provider_entry": "NOT_ESTABLISHED",
+            "provider_outcome": "NOT_ESTABLISHED",
+            "observed_effect": "NOT_ESTABLISHED",
+            "retry": "NOT_EVALUATED",
+            "reconciliation": "NOT_EVALUATED"
+          },
+          "portable_credential": false,
+          "local_authorization_established": false
+        },
+        "aeb_input_digest": "sha256:3e4bdb42ee1b11ba5bc396004be573ad44ad622aeca1bd9f5a5965ae3969d659",
+        "aeb": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "CONSUMED",
+          "custody": "TERMINAL",
+          "provider_outcome": "COMMITTED",
+          "effect_relation": "OBSERVED_AS_REQUESTED",
+          "retry": "REFUSED",
+          "reconciliation": "ACCEPTED",
+          "decision": "RECONCILED",
+          "reasons": [
+            "authenticated_reconciliation"
+          ]
+        },
+        "reasons": [
+          "authenticated_reconciliation"
+        ],
+        "provider_entry": "NO_REEXECUTION_RECONCILED"
+      }
+    },
+    {
+      "id": "mismatched_provider_and_action_reconciliation_refused",
+      "description": "Authenticated evidence for another provider and action cannot reconcile this operation.",
+      "passed": true,
+      "expected": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REFUSED",
+        "aeb_decision": "REFUSE",
+        "reasons": [
+          "reconciliation_binding_mismatch"
+        ],
+        "provider_entry": "NO_REEXECUTION_RECONCILIATION_REFUSED",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "observed": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": "MATCH",
+        "native_verification": "VERIFIED",
+        "rp_acceptance": "ACCEPTED",
+        "action_match": "MATCH",
+        "evidence_satisfaction": "SATISFIED",
+        "local_authorization": "AUTHORIZED",
+        "reservation": "CONSUMED",
+        "custody": "INVOKING",
+        "provider_outcome": "INDETERMINATE",
+        "effect_relation": "INDETERMINATE",
+        "retry": "REFUSED",
+        "reconciliation": "REFUSED",
+        "aeb_decision": "REFUSE",
+        "reasons": [
+          "reconciliation_binding_mismatch"
+        ],
+        "provider_entry": "NO_REEXECUTION_RECONCILIATION_REFUSED",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "details": {
+        "preflight": "PASS",
+        "translation": "CONSTRUCTED",
+        "pdp_decision": "ALLOW",
+        "material_action": "MATCH",
+        "material_reason": null,
+        "request_digest": "sha256:1fd071f3860abe758897d7a8c16345b9c7e62ebc3be94d872bac77987ae0d16a",
+        "local_pep_observation_digest": "sha256:b62da03bb2bd18c46f0f86c7f0d184b864f7742c6fd7ad7cc5add35f78becacc",
+        "policy_input_matches_verified_observation": true,
+        "local_pep_attestation": {
+          "signer": "test-verifier:authzen-local-pep:v0.1",
+          "signer_scope": "LOCAL_PEP_TEST_HARNESS",
+          "authzen_signature_claimed": false,
+          "envelope_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689"
+        },
+        "local_pep_preflight": {
+          "@version": "AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1",
+          "evaluation": {
+            "record": {
+              "@type": "AEB-EVALUATION-v1",
+              "authority_constraints": {
+                "distinct_human_quorum": true,
+                "executor_exclusion": true,
+                "initiator_exclusion": true,
+                "one_time_consumption": true
+              },
+              "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+              "composition": {
+                "action_digest": "sha256:597b71b77b1898479ed74b6a6027ce939196202ca38bcf2e711c508dd2df200f",
+                "engine": "EP-AEC-v1",
+                "requirement_expression": "machine-policy-input",
+                "satisfied": true
+              },
+              "consumption_nonce": "authzen-local-pep-preflight:v0.1",
+              "evaluated_at": "2026-08-31T19:00:00Z",
+              "evaluator": {
+                "id": "rp:emilia:authzen-coaz-mcp-aeb-v0.1",
+                "key_id": "",
+                "pinned_config_digest": "sha256:596d6395eefcfa8f4e69c5c2327ef6f49adeb46383d37d86c1c960877e0844b8"
+              },
+              "evidence_digest": "sha256:b2e3299beab78eb7e7a4347c45b7fb41043bbee14f92b4cd17f3345668dd621f",
+              "executor_id": "executor:mcp-gate",
+              "initiator_id": "agent:accounting",
+              "legs": [
+                {
+                  "acceptance": "ACCEPTED",
+                  "action_digest": "sha256:2507c2208b00e768a3afb7366d6640049d6aa3797a0be4932d29a33a388bb60d",
+                  "adapter_id": "bridge:authzen-local-pep-observation-envelope",
+                  "adapter_version": "1",
+                  "artifact_ref": "urn:emilia:wrapper:authzen-local-pep:mismatched_provider_and_action_reconciliation_refused",
+                  "caid": "caid:1:payment.release.1:jcs-sha256:JQfCIIsA52ijr7c2bWZABJ1qo3l6C-STLSmjOjiLtg0",
+                  "evidence_digest": "sha256:602d7cdcfbfb419f09812e338657bb1b83724bec46aa2786953dead4aeca2689",
+                  "evidence_role": "machine-policy-input",
+                  "freshness": {
+                    "age_seconds": 60,
+                    "checked_at": "2026-08-31T18:59:00Z",
+                    "consumed": false,
+                    "expires_at": "2026-08-31T19:05:00Z",
+                    "fresh": true,
+                    "revocation_checked": true,
+                    "revoked": false,
+                    "unavailable": false
+                  },
+                  "mapper_id": "mapper:emilia:authzen-coaz-mcp:v0.1",
+                  "mapping": "MATCH",
+                  "native_verification": "VERIFIED",
+                  "profile_digest": "sha256:869ea2ace9255cda5853f4d662af1075033dbd39f76439d518b738e5c5dc7cdf",
+                  "profile_id": "profile:authzen-coaz-mcp-release-payment-v0.1",
+                  "profile_version": "AUTHZEN-COAZ-MCP-AEB-MAPPING-v0.1",
+                  "reasons": [],
+                  "replay_unit": "sha256:69b567b6798a1514d9b3a821694c5760f2f89fa22ee23c7f71f77af4d1c424db",
+                  "resolver_digest": "sha256:9a548783e9063312a45db1a2089e133d775fd8d849124fb265fb8272d7242c4e",
+                  "status_digest": "sha256:a7052c8c94f3cc56d48dd935104e88c3d9cfc8b2165fe3b3c49cf633bba7396b",
+                  "subject": {
+                    "id": "pdp:authzen:local-toy",
+                    "kind": "system"
+                  },
+                  "verdict": "SATISFIED"
+                }
+              ],
+              "operation_id": "authzen-local-pep-preflight",
+              "reasons": [
+                "evaluation_signature_required"
+              ],
+              "registry_digest": "sha256:1f6d7207fe6c6b1ed485c98263d1757e2a5c725357ef6271e7e5794a747b63fa",
+              "requirement_digest": "sha256:a94eead58be150af3bb1368dbc6527b7f3438cb29cd715653baf3752d3eb2dfd",
+              "requirement_ref": "requirement:authzen-machine-policy",
+              "verdict": "SATISFIED"
+            },
+            "valid": false,
+            "reasons": [
+              "evaluation_signature_required"
+            ]
+          },
+          "native_replay_keys": [
+            "aeb-native:sha256:bbaa6777c0368f7ce7094d648329bdd675af3e24629e7e6a49bbf8be403345fa"
+          ],
+          "policy_input": "ALLOW",
+          "local_authorization": "NOT_EVALUATED",
+          "lifecycle": {
+            "reservation": "NOT_EVALUATED",
+            "consumption": "NOT_EVALUATED",
+            "provider_entry": "NOT_ESTABLISHED",
+            "provider_outcome": "NOT_ESTABLISHED",
+            "observed_effect": "NOT_ESTABLISHED",
+            "retry": "NOT_EVALUATED",
+            "reconciliation": "NOT_EVALUATED"
+          },
+          "portable_credential": false,
+          "local_authorization_established": false
+        },
+        "aeb_input_digest": "sha256:43023f612023741af01ef14e0c0b511d83334534484225edc22dba0fef50f546",
+        "aeb": {
+          "verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "action_match": "MATCH",
+          "satisfaction": "SATISFIED",
+          "authorization": "AUTHORIZED",
+          "reservation": "CONSUMED",
+          "custody": "INVOKING",
+          "provider_outcome": "INDETERMINATE",
+          "effect_relation": "INDETERMINATE",
+          "retry": "REFUSED",
+          "reconciliation": "REFUSED",
+          "decision": "REFUSE",
+          "reasons": [
+            "reconciliation_binding_mismatch"
+          ]
+        },
+        "reasons": [
+          "reconciliation_binding_mismatch"
+        ],
+        "provider_entry": "NO_REEXECUTION_RECONCILIATION_REFUSED"
+      }
+    },
+    {
+      "id": "mapping_profile_pin_change_refused",
+      "description": "A changed mapping-profile digest refuses before translation or policy evaluation.",
+      "passed": true,
+      "expected": {
+        "preflight": "REFUSE_MAPPING_PROFILE_PIN_MISMATCH",
+        "translation": "NOT_ATTEMPTED",
+        "pdp_decision": null,
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": null,
+        "native_verification": null,
+        "rp_acceptance": null,
+        "action_match": null,
+        "evidence_satisfaction": null,
+        "local_authorization": null,
+        "reservation": null,
+        "custody": null,
+        "provider_outcome": null,
+        "effect_relation": null,
+        "retry": null,
+        "reconciliation": null,
+        "aeb_decision": null,
+        "reasons": [
+          "mapping_profile_pin_mismatch"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "observed": {
+        "preflight": "REFUSE_MAPPING_PROFILE_PIN_MISMATCH",
+        "translation": "NOT_ATTEMPTED",
+        "pdp_decision": null,
+        "authzen_role": "MACHINE_POLICY_INPUT",
+        "material_action": null,
+        "native_verification": null,
+        "rp_acceptance": null,
+        "action_match": null,
+        "evidence_satisfaction": null,
+        "local_authorization": null,
+        "reservation": null,
+        "custody": null,
+        "provider_outcome": null,
+        "effect_relation": null,
+        "retry": null,
+        "reconciliation": null,
+        "aeb_decision": null,
+        "reasons": [
+          "mapping_profile_pin_mismatch"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY",
+        "named_human_authorization_proven": false,
+        "execution_proven_by_authzen": false
+      },
+      "details": {
+        "preflight": "REFUSE_MAPPING_PROFILE_PIN_MISMATCH",
+        "translation": "NOT_ATTEMPTED",
+        "pdp_decision": null,
+        "material_action": null,
+        "material_reason": null,
+        "request_digest": null,
+        "local_pep_observation_digest": null,
+        "policy_input_matches_verified_observation": null,
+        "local_pep_preflight": null,
+        "aeb_input_digest": null,
+        "aeb": null,
+        "reasons": [
+          "mapping_profile_pin_mismatch"
+        ],
+        "provider_entry": "REFUSED_BEFORE_ENTRY"
+      }
+    }
+  ],
+  "report_digest": "sha256:c51d04ae9ec14c679b9527d26adefdd67dcd62215ed0b4c5e95bc3cf3a5ace89"
+}
