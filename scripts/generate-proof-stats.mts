@@ -266,9 +266,6 @@ export function acquireProofStatsRunLock({
   }
   process.once("exit", onExit);
 
-  const started = process.hrtime.bigint();
-  const elapsedMs = (): number =>
-    Number((process.hrtime.bigint() - started) / 1_000_000n);
   const describeOwner = (
     contender: ProofStatsLockOwner | null,
     participant: string,
@@ -295,7 +292,8 @@ export function acquireProofStatsRunLock({
     writeLockOwner(participantPath, owner);
 
     let blocker = "another owner";
-    while (elapsedMs() <= timeoutMs) {
+    let blockedSince: bigint | null = null;
+    while (true) {
       blocker = "another owner";
       let blocked = false;
       for (const participant of lockParticipants(queuePath)) {
@@ -324,7 +322,11 @@ export function acquireProofStatsRunLock({
       if (!blocked) {
         return { queuePath, release: releaseEntry };
       }
-      const remaining = timeoutMs - elapsedMs();
+      if (blockedSince === null) blockedSince = process.hrtime.bigint();
+      const elapsedBlockedMs = Number(
+        (process.hrtime.bigint() - blockedSince) / 1_000_000n,
+      );
+      const remaining = timeoutMs - elapsedBlockedMs;
       if (remaining <= 0) break;
       Atomics.wait(sleepArray, 0, 0, Math.min(effectivePollMs, remaining));
     }
