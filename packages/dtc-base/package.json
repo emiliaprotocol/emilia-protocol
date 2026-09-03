@@ -57,7 +57,7 @@
   "overrides": {
     "adm-zip": "0.6.0",
     "diff": "8.0.3",
-    "fast-uri": "3.1.5",
+    "fast-uri": "3.1.6",
     "serialize-javascript": "7.0.7",
     "tmp": "0.2.7",
     "undici": "6.28.0",

@@ -11,19 +11,19 @@
     },
     {
       "package": "expo-asset",
-      "accepted_spec": "~57.0.13",
-      "accepted_version": "57.0.13",
-      "doctor_required_version": "57.0.15",
-      "required_version_published_at": "2026-08-26T20:01:59.848Z",
-      "eligible_at": "2026-09-02T20:01:59.848Z"
+      "accepted_spec": "~57.0.15",
+      "accepted_version": "57.0.15",
+      "doctor_required_version": "57.0.16",
+      "required_version_published_at": "2026-09-01T16:19:09.931Z",
+      "eligible_at": "2026-09-08T16:19:09.931Z"
     },
     {
       "package": "expo-secure-store",
-      "accepted_spec": "~57.0.1",
-      "accepted_version": "57.0.1",
-      "doctor_required_version": "57.0.2",
-      "required_version_published_at": "2026-08-26T19:59:00.097Z",
-      "eligible_at": "2026-09-02T19:59:00.097Z"
+      "accepted_spec": "~57.0.2",
+      "accepted_version": "57.0.2",
+      "doctor_required_version": "57.0.3",
+      "required_version_published_at": "2026-09-01T16:21:09.874Z",
+      "eligible_at": "2026-09-08T16:21:09.874Z"
     }
   ]
 }
