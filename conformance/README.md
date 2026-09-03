@@ -47,6 +47,22 @@ A green run establishes agreement with the expected results for this current
 corpus. It does not establish independent implementation, production
 deployment, complete mediation, or fitness for a particular relying party.
 
+## Expectation-separated clean-room evaluation
+
+New external evaluations should use the versioned v3 evaluator described in
+[`docs/conformance/CLEAN-ROOM-V3.md`](../docs/conformance/CLEAN-ROOM-V3.md).
+The published v2 evaluator remains historical, but it exposed catalogue IDs
+and expected results to the submitted runner and therefore cannot by itself
+exclude an expectation-copy implementation. V3 keeps those values evaluator-
+side, uses fresh run-scoped handles, and adds a post-build canonicalization
+challenge.
+
+V3 is an evaluation-protocol repair, not a new interoperability result. It has
+not changed the 21-suite/335-vector corpus or upgraded the pinned Rust claim.
+Its ordinary local process is not a network or filesystem sandbox, and its
+fresh challenge covers canonicalization only. This partial repair does not
+close issue #250's runner-isolation gate.
+
 ## External Rust evidence
 
 The external Rust verifier is not a fourth row in the current same-team
