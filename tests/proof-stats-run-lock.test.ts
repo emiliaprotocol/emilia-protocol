@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   acquireProofStatsRunLock,
@@ -251,11 +251,26 @@ describe('proof-stats run serialization', () => {
     expect(readFileSync(path.join(queue, '.version'), 'utf8')).toBe('1\n');
   });
 
-  it('releases its own entry on normal exit', () => {
+  it('acquires uncontended before consulting the timeout clock and releases its entry', () => {
     const { root } = makeWorktreeFixture();
-    const lock = acquireProofStatsRunLock({ cwd: root, timeoutMs: 100 });
-    expect(lock.queuePath).toBe(resolveProofStatsLockQueue(root));
-    lock.release();
+    const start = 1_000_000_000n;
+    const clock = vi.spyOn(process.hrtime, 'bigint')
+      .mockReturnValueOnce(start)
+      .mockReturnValue(start + 101_000_000n);
+    let lock: ReturnType<typeof acquireProofStatsRunLock>;
+    try {
+      lock = acquireProofStatsRunLock({ cwd: root, timeoutMs: 100 });
+      expect(clock).not.toHaveBeenCalled();
+    } finally {
+      clock.mockRestore();
+    }
+    let released = false;
+    try {
+      expect(lock.queuePath).toBe(resolveProofStatsLockQueue(root));
+    } finally {
+      released = lock.release();
+    }
+    expect(released).toBe(true);
     expect(lock.release()).toBe(false);
   });
 });

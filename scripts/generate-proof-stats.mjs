@@ -201,8 +201,6 @@ export function acquireProofStatsRunLock({ cwd = process.cwd(), timeoutMs = PROO
         process.once(signal, listener);
     }
     process.once("exit", onExit);
-    const started = process.hrtime.bigint();
-    const elapsedMs = () => Number((process.hrtime.bigint() - started) / 1000000n);
     const describeOwner = (contender, participant) => contender
         ? `live owner pid=${contender.pid} ticket=${contender.ticket ?? "choosing"} created_at=${contender.createdAt}`
         : `unreadable owner entry ${participant.slice(participant.lastIndexOf("/") + 1)}`;
@@ -226,7 +224,8 @@ export function acquireProofStatsRunLock({ cwd = process.cwd(), timeoutMs = PROO
         owner.ticket = maxTicket + 1;
         writeLockOwner(participantPath, owner);
         let blocker = "another owner";
-        while (elapsedMs() <= timeoutMs) {
+        let blockedSince = null;
+        while (true) {
             blocker = "another owner";
             let blocked = false;
             for (const participant of lockParticipants(queuePath)) {
@@ -254,7 +253,10 @@ export function acquireProofStatsRunLock({ cwd = process.cwd(), timeoutMs = PROO
             if (!blocked) {
                 return { queuePath, release: releaseEntry };
             }
-            const remaining = timeoutMs - elapsedMs();
+            if (blockedSince === null)
+                blockedSince = process.hrtime.bigint();
+            const elapsedBlockedMs = Number((process.hrtime.bigint() - blockedSince) / 1000000n);
+            const remaining = timeoutMs - elapsedBlockedMs;
             if (remaining <= 0)
                 break;
             Atomics.wait(sleepArray, 0, 0, Math.min(effectivePollMs, remaining));
