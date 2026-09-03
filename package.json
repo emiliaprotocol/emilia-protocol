@@ -170,6 +170,10 @@
     "conformance:clean-room:v2:verify": "node scripts/verify-clean-room-submission-v2.mjs",
     "conformance:external:v2:evaluate": "node scripts/evaluate-external-implementation-v2.mjs",
     "conformance:clean-room:v2:selftest": "vitest run tests/clean-room-v2.test.ts",
+    "conformance:clean-room:v3:kit": "node scripts/build-clean-room-kit-v3.mjs",
+    "conformance:clean-room:v3:verify": "node scripts/verify-clean-room-submission-v3.mjs",
+    "conformance:external:v3:evaluate": "node scripts/evaluate-external-implementation-v3.mjs",
+    "conformance:clean-room:v3:selftest": "vitest run tests/clean-room-v3.test.ts",
     "conformance:signoffs": "node conformance/run-signoffs.mjs",
     "conformance:federation": "node conformance/federation.mjs",
     "conformance:operator2": "node conformance/operator2/verify-live.mjs"

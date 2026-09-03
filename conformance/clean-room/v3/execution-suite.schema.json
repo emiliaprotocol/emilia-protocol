@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/clean-room/execution-suite.v3.schema.json",
+  "title": "EMILIA expectation-separated execution suite v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "runner_protocol",
+    "run_id",
+    "suite",
+    "vectors"
+  ],
+  "properties": {
+    "@version": {
+      "const": "EP-CLEAN-ROOM-EXECUTION-SUITE-v3"
+    },
+    "runner_protocol": {
+      "const": "EP-CONFORMANCE-FILE-RUNNER-v3"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run_[A-Za-z0-9_-]{32}$"
+    },
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "vectors_version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "vectors_version": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "algorithm": {},
+        "common": {
+          "type": "object"
+        }
+      }
+    },
+    "vectors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "handle",
+          "input"
+        ],
+        "properties": {
+          "handle": {
+            "type": "string",
+            "pattern": "^cr3_[A-Za-z0-9_-]{32}$"
+          },
+          "input": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "nonEmpty": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

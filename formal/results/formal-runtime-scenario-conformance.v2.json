@@ -507,7 +507,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "e41bedfa65944423f74c791793bcfd5dc0a39d9d545691e259991972e4eee9a1"
+      "sha256": "2ab8e668549ac910fce81e00a6ee39248926551973cd6b4ca3ec30969a93a5ed"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1383,7 +1383,7 @@
     },
     {
       "path": "scripts/standalone-runtime-targets.mjs",
-      "sha256": "bb20a6cdce39ab518a5b0e967c49bec5d3ba59c9d40cba62610cfa33e6623c99"
+      "sha256": "afeea9917739872c1ae1605a191b33011f8c57b5f0ea39d23d75642b01257477"
     }
   ],
   "limitations": [
