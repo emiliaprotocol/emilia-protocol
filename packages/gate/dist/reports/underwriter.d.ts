@@ -1,15 +1,15 @@
 /**
  * EMILIA Gate — underwriter control attestation (AI-liability loss-run analogue).
  *
- * The artifact an AI-liability underwriter prices premium credit against — the
- * MFA-for-cyber analogue: evidence that a deny-by-default authorization control
- * was IN FORCE and OPERATING over the policy period, computed from the gate's
- * tamper-evident evidence log. Pure function: same entries + same options in,
+ * A candidate artifact for carrier evaluation: evidence that a deny-by-default
+ * authorization control was in force and operating over the stated period,
+ * computed from the Gate's tamper-evident evidence log. No carrier acceptance
+ * or premium effect is claimed. Pure function: same entries + same options in,
  * identical JSON out (pin `now` for a byte-stable artifact).
  *
  * HONESTY BOUNDARY (carried inside the artifact): this attests CONTROL
  * OPERATION only. It does not attest the business correctness of any authorized
- * action, and it is not an insurance document until adopted by the carrier.
+ * action, and it is not an insurance document.
  * Near-miss / remediation narrative belongs to the broker — the builder emits
  * those fields as null and NEVER fabricates prose.
  *
