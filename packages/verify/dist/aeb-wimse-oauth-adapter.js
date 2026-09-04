@@ -448,9 +448,9 @@ function canonicalizeAeb(value) {
     return canonicalizeStrictJson(value);
 }
 function digestAeb(value) {
-    return `sha256:${crypto.createHash('sha256')
-        .update(Buffer.from(canonicalizeAeb(value), 'utf8'))
-        .digest('hex')}`;
+    // Compatibility-frozen protocol content commitment, not password storage.
+    // codeql[js/insufficient-password-hash]
+    return `sha256:${crypto.createHash('sha256').update(Buffer.from(canonicalizeAeb(value), 'utf8')).digest('hex')}`;
 }
 const INVALID_EVIDENCE_DIGEST = digestAeb({ invalid_wimse_oauth_spt_value: true });
 const INVALID_STATUS_DIGEST = digestAeb({ invalid_wimse_oauth_spt_status: true });

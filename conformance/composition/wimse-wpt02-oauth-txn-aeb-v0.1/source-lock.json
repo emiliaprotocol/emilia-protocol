@@ -90,8 +90,8 @@
   "local_artifacts": [
     {
       "path": "packages/verify/src/aeb-wimse-oauth-adapter.ts",
-      "bytes": 68960,
-      "sha256": "923ab076a5be2f50b6cb0907032866d575e0ae367f4b86b60901b8fa94494787"
+      "bytes": 69070,
+      "sha256": "a2b29e3e9b43f8d2404f4ee76689bad6403f828fafddbfe0971383a888af7b1b"
     },
     {
       "path": "packages/verify/aeb-wimse-oauth-adapter.js",
@@ -100,8 +100,8 @@
     },
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
-      "bytes": 66093,
-      "sha256": "930158c2e19a25a80290846a21c30c9fefdeac5c6c6f81e4e6165b1c06c5f3d4"
+      "bytes": 66199,
+      "sha256": "1512b1fd04fd2261c7b9a224eb01544e8ebd40bdc053b3f81a8d909d37e051d0"
     },
     {
       "path": "packages/verify/aeb-adapter-contract.js",
@@ -125,8 +125,8 @@
     },
     {
       "path": "conformance/composition/wimse-wpt02-oauth-txn-aeb-v0.1/run.mjs",
-      "bytes": 38791,
-      "sha256": "5ec90fbe16c065c9ccb70674bc45a3957fefd6ca1c30a66bc575e73dc2cd3aa8"
+      "bytes": 39027,
+      "sha256": "ac16084dc9f7397bbe4450dfea4f955fc19592fd699f3385f5e2740806c08a5f"
     },
     {
       "path": "conformance/composition/wimse-wpt02-oauth-txn-aeb-v0.1/vectors.json",

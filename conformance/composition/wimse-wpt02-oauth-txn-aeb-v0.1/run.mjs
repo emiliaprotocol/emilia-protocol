@@ -111,10 +111,14 @@ function decodeClaims(token) {
 }
 
 function sha256Base64url(value) {
+  // WPT token-binding commitment over exact token bytes, not password storage.
+  // codeql[js/insufficient-password-hash]
   return crypto.createHash('sha256').update(Buffer.from(value, 'ascii')).digest('base64url');
 }
 
 function sha256Hex(value) {
+  // Protocol content commitment, not password or credential storage.
+  // codeql[js/insufficient-password-hash]
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
