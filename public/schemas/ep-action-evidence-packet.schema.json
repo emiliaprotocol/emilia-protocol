@@ -1,0 +1,316 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/ep-action-evidence-packet.schema.json",
+  "title": "EP Action Evidence Packet v1",
+  "description": "Closed, content-addressed container joining technical evidence for one exact action. Schema validity does not verify an attachment, satisfy an outcome-source quorum, establish insurance coverage, adjudicate a claim, allocate liability, prove causation, or prove payment.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["@version", "manifest", "manifest_digest", "attachments"],
+  "properties": {
+    "@version": { "const": "EP-ACTION-EVIDENCE-PACKET-v1" },
+    "manifest": { "$ref": "#/$defs/manifest" },
+    "manifest_digest": { "$ref": "#/$defs/digest" },
+    "attachments": {
+      "description": "Canonical JSON artifacts keyed by their recomputed digest. Runtime verification also rejects missing, unreferenced, duplicate-role, and digest-mismatched artifacts.",
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": { "$ref": "#/$defs/digest" },
+      "additionalProperties": {
+        "type": ["object", "array", "string", "number", "integer", "boolean", "null"]
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_.@/+\\-]{0,511}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "caid": {
+      "type": "string",
+      "pattern": "^caid:1:[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)*\\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$"
+    },
+    "instant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "providerContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version",
+        "tenant_id",
+        "admission_id",
+        "operation_id",
+        "snapshot_digest",
+        "caid",
+        "action_digest",
+        "effect_request_digest",
+        "provider",
+        "account",
+        "environment",
+        "adapter_id",
+        "idempotency_key",
+        "outcome",
+        "observed_at"
+      ],
+      "properties": {
+        "@version": { "const": "EP-PROVIDER-OUTCOME-CONTEXT-v1" },
+        "tenant_id": { "$ref": "#/$defs/identifier" },
+        "admission_id": { "$ref": "#/$defs/identifier" },
+        "operation_id": { "$ref": "#/$defs/identifier" },
+        "snapshot_digest": { "$ref": "#/$defs/digest" },
+        "caid": { "$ref": "#/$defs/caid" },
+        "action_digest": { "$ref": "#/$defs/digest" },
+        "effect_request_digest": { "$ref": "#/$defs/digest" },
+        "provider": { "$ref": "#/$defs/identifier" },
+        "account": { "$ref": "#/$defs/identifier" },
+        "environment": { "$ref": "#/$defs/identifier" },
+        "adapter_id": { "$ref": "#/$defs/identifier" },
+        "idempotency_key": { "$ref": "#/$defs/identifier" },
+        "outcome": {
+          "enum": ["COMMITTED", "PROVEN_NOT_COMMITTED", "INDETERMINATE"]
+        },
+        "observed_at": {
+          "description": "Shared provider-event time signed through the provider-context digest. Each outcome source retains its own observation interval.",
+          "$ref": "#/$defs/instant"
+        }
+      }
+    },
+    "artifactReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_digest", "expected_state"],
+      "properties": {
+        "artifact_digest": { "$ref": "#/$defs/digest" },
+        "expected_state": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "nullableArtifactReference": {
+      "oneOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        { "type": "null" }
+      ]
+    },
+    "aebReference": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        { "properties": { "expected_state": { "const": "SATISFIED" } } }
+      ]
+    },
+    "snapshotReference": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        { "properties": { "expected_state": { "const": "IMMUTABLE" } } }
+      ]
+    },
+    "admissionDecisionReference": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        { "properties": { "expected_state": { "const": "ALLOW" } } }
+      ]
+    },
+    "qualificationStatementReference": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        { "properties": { "expected_state": { "const": "QUALIFIED" } } }
+      ]
+    },
+    "qualificationStatusReference": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        { "properties": { "expected_state": { "const": "CURRENT" } } }
+      ]
+    },
+    "openExposureCeilingReference": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        { "properties": { "expected_state": { "const": "ACTIVE" } } }
+      ]
+    },
+    "openExposureTerminalReference": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        {
+          "properties": {
+            "expected_state": {
+              "enum": [
+                "CLOSED_COMMITTED",
+                "CLOSED_PROVEN_NOT_COMMITTED",
+                "INDETERMINATE"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "effectRelationReference": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        {
+          "properties": {
+            "expected_state": {
+              "enum": ["OBSERVED_AS_REQUESTED", "DIVERGED", "INDETERMINATE"]
+            }
+          }
+        }
+      ]
+    },
+    "coverageSurfaceReference": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        {
+          "properties": {
+            "expected_state": {
+              "enum": ["gated", "witness_only", "ungated", "stale", "unknown"]
+            }
+          }
+        }
+      ]
+    },
+    "refusalProbeReference": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        {
+          "properties": {
+            "expected_state": {
+              "enum": [
+                "blocked_without_receipt",
+                "executed_without_receipt",
+                "indeterminate"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "populationReportReference": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactReference" },
+        {
+          "properties": {
+            "expected_state": { "const": "VERIFIED_SUPPLIED_POPULATION" }
+          }
+        }
+      ]
+    },
+    "components": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "aeb",
+        "admission_snapshot",
+        "admission_decision",
+        "qualification_statement",
+        "qualification_status_head",
+        "open_exposure_ceiling",
+        "open_exposure_record",
+        "open_exposure_history",
+        "observed_effect_relation",
+        "coverage_surface",
+        "refusal_probe",
+        "supplied_population_report",
+        "loss_report",
+        "recourse",
+        "loss_allocation"
+      ],
+      "properties": {
+        "aeb": { "$ref": "#/$defs/aebReference" },
+        "admission_snapshot": { "$ref": "#/$defs/snapshotReference" },
+        "admission_decision": { "$ref": "#/$defs/admissionDecisionReference" },
+        "qualification_statement": { "$ref": "#/$defs/qualificationStatementReference" },
+        "qualification_status_head": { "$ref": "#/$defs/qualificationStatusReference" },
+        "open_exposure_ceiling": { "$ref": "#/$defs/openExposureCeilingReference" },
+        "open_exposure_record": { "$ref": "#/$defs/openExposureTerminalReference" },
+        "open_exposure_history": { "$ref": "#/$defs/openExposureTerminalReference" },
+        "observed_effect_relation": { "$ref": "#/$defs/effectRelationReference" },
+        "coverage_surface": { "$ref": "#/$defs/coverageSurfaceReference" },
+        "refusal_probe": { "$ref": "#/$defs/refusalProbeReference" },
+        "supplied_population_report": { "$ref": "#/$defs/populationReportReference" },
+        "loss_report": { "$ref": "#/$defs/nullableArtifactReference" },
+        "recourse": { "$ref": "#/$defs/nullableArtifactReference" },
+        "loss_allocation": { "$ref": "#/$defs/nullableArtifactReference" }
+      }
+    },
+    "scheduleReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_digest", "evaluation"],
+      "properties": {
+        "artifact_digest": { "$ref": "#/$defs/digest" },
+        "evaluation": {
+          "enum": ["ELIGIBLE", "NOT_ELIGIBLE", "INDETERMINATE"]
+        }
+      }
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "source_id", "source_class"],
+      "properties": {
+        "role": {
+          "enum": ["executor", "system_of_record", "independent_observer"]
+        },
+        "source_id": { "$ref": "#/$defs/identifier" },
+        "source_class": { "$ref": "#/$defs/identifier" },
+        "facility_id": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "providerOutcomeReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binding_artifact_digest",
+        "outcome_observation_artifact_digest",
+        "expected_source"
+      ],
+      "properties": {
+        "binding_artifact_digest": { "$ref": "#/$defs/digest" },
+        "outcome_observation_artifact_digest": { "$ref": "#/$defs/digest" },
+        "expected_source": { "$ref": "#/$defs/sourceIdentity" }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "@version",
+        "packet_id",
+        "assembled_at",
+        "subject",
+        "subject_digest",
+        "schedule",
+        "components",
+        "provider_outcomes",
+        "claim_boundary"
+      ],
+      "properties": {
+        "@version": { "const": "EP-ACTION-EVIDENCE-MANIFEST-v1" },
+        "packet_id": { "$ref": "#/$defs/identifier" },
+        "assembled_at": {
+          "description": "Internal chronology only. Content addressing does not authenticate the assembler or make this a security freshness signal.",
+          "$ref": "#/$defs/instant"
+        },
+        "subject": { "$ref": "#/$defs/providerContext" },
+        "subject_digest": { "$ref": "#/$defs/digest" },
+        "schedule": { "$ref": "#/$defs/scheduleReference" },
+        "components": { "$ref": "#/$defs/components" },
+        "provider_outcomes": {
+          "description": "Independent, complete Outcome Observation v2 references. Runtime verification applies the source set, quorum, window, and control-domain rule returned from the verified schedule.",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/providerOutcomeReference" }
+        },
+        "claim_boundary": {
+          "const": "technical_evidence_join_for_one_exact_action_not_insurance_coverage_not_claim_adjudication_not_causation_not_liability_not_payment"
+        }
+      }
+    }
+  }
+}

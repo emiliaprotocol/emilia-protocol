@@ -7,6 +7,11 @@ import { styles, cta, color, font } from '@/lib/tokens';
 
 const ARTIFACTS = [
   {
+    label: 'Control contract',
+    title: 'Action-risk control schedule',
+    body: 'A relying party pins the action class and CAID profile, provider boundary, control digests, qualification source, exposure ceilings, mediation evidence, and uncertainty handling. The schedule specifies outcome-source roles, classes, quorum, and timing requirements. Its result is technical eligibility only. It never authorizes the action or creates coverage.',
+  },
+  {
     label: 'RP policy',
     title: 'Loss-allocation schedule',
     body: 'The relying party pins separately signed responsibility terms to the exact Reliance Program. Verification establishes the signed bytes, issuer, status, and program binding—not legal enforceability, coverage, solvency, or payment.',
@@ -30,6 +35,11 @@ const ARTIFACTS = [
     label: 'Portfolio evidence',
     title: 'Receipt census + loss feed',
     body: 'The census emits governed aggregate buckets with coarse primary suppression. The signed loss feed preserves external provenance and correction lineage; its observations are not verified or adjudicated losses.',
+  },
+  {
+    label: 'Action packet',
+    title: 'Re-performable evidence join',
+    body: 'A content-addressed packet joins the native artifacts for one exact action and calls the relying party\'s chosen native verifiers. Those callbacks are trust inputs and must independently validate each artifact. Complete, incomplete, conflicted, and indeterminate are technical packet results, not claim or coverage decisions.',
   },
 ];
 
@@ -58,8 +68,8 @@ const FAQ = [
     'No. It signs the supplied inventory roots and conserving counts for a bounded period. Completeness needs separate system-of-record evidence. The receipt census also uses only coarse primary suppression, not differential privacy.',
   ],
   [
-    'Can a carrier verify the artifacts without an EMILIA callback?',
-    'Yes. The formats, verifier, vectors, and exact executable claim are public. The current stateful risk-plane and signed risk-artifact implementation is JavaScript; no insurer adoption or external deployment is claimed.',
+    'Can a carrier independently verify the packet?',
+    'A carrier can run the public schedule and packet code with its own trust pins and native artifact verifiers. The packet module orchestrates those verifiers; it does not ship production adapters or make a callback trustworthy. The current implementation is JavaScript, and no insurer adoption or external deployment is claimed.',
   ],
 ];
 
@@ -80,15 +90,15 @@ export default function InsurancePage() {
       <SiteNav activePage="Insurance" />
       <main style={styles.page}>
         <section style={{ ...styles.sectionWide, paddingTop: 80, paddingBottom: 56 }}>
-          <div style={styles.eyebrow}>RELIANCE RISK PLANE · GATE 0.20.0</div>
+          <div style={styles.eyebrow}>RELIANCE RISK PLANE · EMILIA GATE</div>
           <h1 style={{ ...styles.h1Large, maxWidth: 900 }}>
             Technical evidence for reliance decisions. Not an insurance decision.
           </h1>
           <p style={{ ...styles.body, maxWidth: 780, marginTop: 18, fontSize: 18 }}>
-            Gate 0.20.0 adds a bounded risk plane around the exact authorization lifecycle:
-            customer-owned responsibility terms, declared open-exposure custody, signed technical
-            refusals, period population reconciliation, aggregate receipt census, and externally
-            reported loss experience with correction lineage.
+            EMILIA Gate adds a bounded risk plane around the exact authorization lifecycle:
+            a carrier-readable control schedule, customer-owned responsibility terms, declared
+            open-exposure custody, signed technical refusals, provider-outcome evidence, period
+            population reconciliation, and one re-performable action packet.
           </p>
           <p style={{ ...styles.body, maxWidth: 760, marginTop: 8 }}>
             An insurer, auditor, or customer can re-perform those artifacts under independently
@@ -96,7 +106,7 @@ export default function InsurancePage() {
             completeness, solvency, adjudication, or payment conclusion.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 30, flexWrap: 'wrap' }}>
-            <a href="/gate/consequence-coverage" style={cta.primary}>Run the coverage lab</a>
+            <a href="/gate/consequence-coverage" style={cta.primary}>Run the reconciliation lab</a>
             <a href="/proof#reliance-risk-plane" style={cta.primary}>Inspect the shipped proof</a>
             <a href="/pilot?v=insurance" style={cta.secondary}>Scope one protected workflow</a>
           </div>
@@ -105,7 +115,7 @@ export default function InsurancePage() {
         <section style={styles.sectionWide}>
           <div style={styles.eyebrow}>WHAT SHIPPED</div>
           <h2 style={{ ...styles.h2, maxWidth: 760 }}>
-            Five evidence surfaces. None can authorize an action by itself.
+            Seven evidence surfaces. None can authorize an action by itself.
           </h2>
           <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
             {ARTIFACTS.map((artifact) => (
@@ -139,6 +149,17 @@ export default function InsurancePage() {
               style={{ fontFamily: font.mono, color: color.gold }}
             >
               read the architecture contract
+            </a>.
+          </p>
+          <p style={{ ...styles.body, maxWidth: 760, marginTop: 8, fontSize: 15, color: color.t2 }}>
+            A synthetic payment-release pilot shows the complete and hostile paths:{' '}
+            <a
+              href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/examples/carrier-action-pilot"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontFamily: font.mono, color: color.gold }}
+            >
+              inspect the runnable example
             </a>.
           </p>
         </section>

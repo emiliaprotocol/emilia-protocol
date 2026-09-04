@@ -391,6 +391,18 @@
       "types": "./dist/loss-allocation-schedule.d.ts",
       "import": "./loss-allocation-schedule.js"
     },
+    "./action-risk-control-schedule": {
+      "types": "./dist/action-risk-control-schedule.d.ts",
+      "import": "./action-risk-control-schedule.js"
+    },
+    "./provider-outcome-binding": {
+      "types": "./dist/provider-outcome-binding.d.ts",
+      "import": "./provider-outcome-binding.js"
+    },
+    "./action-evidence-packet": {
+      "types": "./dist/action-evidence-packet.d.ts",
+      "import": "./action-evidence-packet.js"
+    },
     "./action-refusal-statement": {
       "types": "./dist/action-refusal-statement.d.ts",
       "import": "./action-refusal-statement.js"
@@ -547,6 +559,9 @@
     "referee.js",
     "referee-runner.js",
     "loss-allocation-schedule.js",
+    "action-risk-control-schedule.js",
+    "provider-outcome-binding.js",
+    "action-evidence-packet.js",
     "action-refusal-statement.js",
     "action-refusal-postgres.js",
     "reliance-refusal-bridge.js",
