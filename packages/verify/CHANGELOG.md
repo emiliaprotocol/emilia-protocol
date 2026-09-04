@@ -5,6 +5,13 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- **Source candidate only; not cleared for a 3.x npm release.** The existing
+  `./aeb-wimse-oauth-adapter` subpath now implements the receiver-scoped v3
+  profile and no longer accepts its published v1 constructor or artifacts.
+  A package release must either preserve v1 under its current subpath and add
+  v3 separately, or use a new major version. Existing v1 artifacts require the
+  frozen v1 verifier or reissuance and verification under v3.
+
 ## 3.21.0 (2026-08-30)
 
 - Added the AEB Crossing Lab local adapter workbench. It scaffolds, seals, and
