@@ -64,6 +64,12 @@ describe('public product naming and navigation contract', () => {
     expect(redirects).toContain("source: '/amelia-i', destination: '/signal'");
   });
 
+  it('retires legacy insurance PDFs into the honest insurance boundary page', () => {
+    const redirects = read('next.config.js');
+    expect(redirects).toContain("source: '/briefs/emilia-insurance-onepager.pdf', destination: '/insurance'");
+    expect(redirects).toContain("source: '/briefs/emilia-underwriter-brief.pdf', destination: '/insurance'");
+  });
+
   it('does not expose the retired Amelia I or Amelia Grip names in buyer-facing source', () => {
     const buyerFacing = [
       'app/HomePageClient.tsx',

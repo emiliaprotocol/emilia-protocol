@@ -507,7 +507,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "2ab8e668549ac910fce81e00a6ee39248926551973cd6b4ca3ec30969a93a5ed"
+      "sha256": "36e9cd9396d5cb5463167d82a3a8c0f2b456e3bebc74aff1f14c3ea56555caf3"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -550,6 +550,10 @@
       "sha256": "f109f68329f8ff6fe82a86127ea657dac945f6b0d19871a345a6ca706ecc7e5c"
     },
     {
+      "path": "packages/gate/dist/action-evidence-packet.js",
+      "sha256": "8cfe8d7868e76b5cc56e16d1fef821e8c05eedde26d36522e4103b8b1508db32"
+    },
+    {
       "path": "packages/gate/dist/action-packs.js",
       "sha256": "81c37ab9dc6286cf0f2bb6d519641c9c2d964108b12fcd9a95b62b6ba5df786f"
     },
@@ -560,6 +564,10 @@
     {
       "path": "packages/gate/dist/action-refusal-statement.js",
       "sha256": "694ca5aa76029afcacf6509890d482e852fb7de7e81c18404e5dfc3a85104d8f"
+    },
+    {
+      "path": "packages/gate/dist/action-risk-control-schedule.js",
+      "sha256": "61a185e3e99fd025e7606f7b7e8807f5ddc5f8bd4c0b5f47644299068f307f8f"
     },
     {
       "path": "packages/gate/dist/adapter-manifest.js",
@@ -683,7 +691,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "9ceebc554c0bc7935ec630b8678817562ef2d95a3e756abd874169aa95b4b422"
+      "sha256": "84ccfbab79618586ff9d677dd539921b379b94541ac9d175c42a651c20f4221f"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -740,6 +748,10 @@
     {
       "path": "packages/gate/dist/provider-entry.js",
       "sha256": "d9e273b3833239d375477a43cd23986dcb8de27afd4af243f6f229608c719b73"
+    },
+    {
+      "path": "packages/gate/dist/provider-outcome-binding.js",
+      "sha256": "009d0a42f5d6559d7e671d48ad4061cec1c46c0cf4b429dabf2f6b423f328c31"
     },
     {
       "path": "packages/gate/dist/receipt-census.js",
@@ -891,7 +903,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "a07c9b6889fe0a58437fc8b518f2a4cd30694b1fa1d4437f99c316857bfbe599"
+      "sha256": "0fe4f32d25eb2eae159a0936b8a2ef02408947598c3d4657d3fa51a9ea3e5cf7"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -1316,6 +1328,10 @@
     {
       "path": "packages/verify/index.js",
       "sha256": "f386e365a9998f08ea4947ffd415ca353c0a82766677a8e0cf3117909cccee24"
+    },
+    {
+      "path": "packages/verify/outcome-binding.js",
+      "sha256": "87955ae85a628cb75fc986f98d342496f0ae8c174c7f31567bda654760221b2c"
     },
     {
       "path": "packages/verify/pq-signature-agility.js",
