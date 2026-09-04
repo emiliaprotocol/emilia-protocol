@@ -12,10 +12,11 @@
  * headers and claims never select verification keys or broaden those pins.
  *
  * Source lock:
- *   draft-ietf-wimse-http-signature-03
- *   draft-ietf-wimse-workload-creds-01
- *   draft-ietf-wimse-wpt-01
- *   draft-ietf-oauth-transaction-tokens-08
+ *   draft-ietf-wimse-http-signature-06
+ *   draft-ietf-wimse-workload-creds-02
+ *   draft-ietf-wimse-identifier-02
+ *   draft-ietf-wimse-wpt-02
+ *   draft-ietf-oauth-transaction-tokens-11
  *   draft-coetzee-oauth-spt-txn-tokens-03
  *
  * SPT-Txn-03 leaves the exact full-chain parent and transaction-context-hash
@@ -29,39 +30,101 @@ import crypto, { type KeyObject } from 'node:crypto';
 // TypeScript declaration surface in this repository.
 // @ts-expect-error -- checked at runtime and narrowed below.
 import { computeCaid } from '../vendor/caid.mjs';
-import {
-  canonicalizeAeb,
-  digestAeb,
-  type Acceptance,
-  type AebAdapter,
-  type AebAdapterInput,
-  type AebDigest,
-  type AebEvidenceSubject,
-  type AebMappingResult,
-  type AebNativeResult,
-  type AebPinnedProfile,
-  type AebStatusInput,
+import type {
+  Acceptance,
+  AebAdapter,
+  AebAdapterInput,
+  AebDigest,
+  AebEvidenceSubject,
+  AebMappingResult,
+  AebNativeResult,
+  AebPinnedProfile,
+  AebStatusInput,
 } from './aeb-adapter-contract.js';
-import { strictJsonGate } from './strict-json.js';
+import { canonicalizeStrictJson, strictJsonGate } from './strict-json.js';
 
 type Obj = Record<string, unknown>;
 
 export const WIMSE_OAUTH_SPT_AEB_ADAPTER_ID = 'native:wimse-http-signature-oauth-txn-spt-intent';
-export const WIMSE_OAUTH_SPT_AEB_ADAPTER_VERSION = '1';
-export const WIMSE_OAUTH_SPT_AEB_CONFIG_VERSION = 'AEB-WIMSE-OAUTH-SPT-CONFIG-v1';
+export const WIMSE_OAUTH_SPT_AEB_ADAPTER_VERSION = '3';
+export const WIMSE_OAUTH_SPT_AEB_CONFIG_VERSION = 'AEB-WIMSE-OAUTH-SPT-CONFIG-v3';
 export const WIMSE_OAUTH_SPT_TRUST_ROOT_VERSION = 'AEB-WIMSE-OAUTH-SPT-ED25519-ROOT-v1';
-export const WIMSE_OAUTH_SPT_CAID_MAPPING_VERSION = 'AEB-WIMSE-OAUTH-SPT-CAID-MAPPING-v1';
-export const WIMSE_OAUTH_SPT_CAID_MAPPER_ID = 'mapper:wimse-oauth-spt-exact-request-v1';
+export const WIMSE_OAUTH_SPT_CAID_MAPPING_VERSION = 'AEB-WIMSE-OAUTH-SPT-CAID-MAPPING-v2';
+export const WIMSE_OAUTH_SPT_CAID_MAPPER_ID = 'mapper:wimse-oauth-spt-exact-request-v2';
+export const WIMSE_OAUTH_SPT_MAPPING_PROFILE_ID = 'wimse-oauth-spt-exact-request-v2';
+export const WIMSE_OAUTH_SPT_MAPPING_REGISTRY_REF = 'mapping:wimse-oauth-spt-exact-request-v2';
+export const WIMSE_OAUTH_SPT_OMITTED_NONMATERIAL_FIELDS = Object.freeze([
+  'wit.token_bytes',
+  'wit.header.alg',
+  'wit.header.typ',
+  'wit.header.kid',
+  'wit.iss',
+  'wit.sub',
+  'wit.iat',
+  'wit.nbf',
+  'wit.exp',
+  'wit.jti',
+  'wit.cnf',
+  'oauth.token_bytes',
+  'oauth.header.alg',
+  'oauth.header.typ',
+  'oauth.header.kid',
+  'oauth.iss',
+  'oauth.aud',
+  'oauth.sub',
+  'oauth.txn',
+  'oauth.req_wl',
+  'oauth.iat',
+  'oauth.nbf',
+  'oauth.exp',
+  'wpt.token_bytes',
+  'wpt.header.alg',
+  'wpt.header.typ',
+  'wpt.aud',
+  'wpt.jti',
+  'wpt.wth',
+  'wpt.tth',
+  'wpt.oth',
+  'wpt.iat',
+  'wpt.nbf',
+  'wpt.exp',
+  'http.body_bytes',
+  'http.signature_input.components',
+  'http_signature.created',
+  'http_signature.expires',
+  'http_signature.nonce',
+  'http_signature.tag',
+  'http_signature.signature_bytes',
+  'oauth_transaction_challenge.token_bytes',
+  'oauth_transaction_access_token.token_bytes',
+  'spt.token_bytes',
+  'spt.header.alg',
+  'spt.header.kid',
+  'spt.iss',
+  'spt.sub',
+  'spt.aud',
+  'spt.iat',
+  'spt.nbf',
+  'spt.exp',
+  'spt.jti',
+  'spt.txn_token_type',
+  'spt.human_anchor',
+  'spt.holder_key',
+  'spt.spt_intent_digest',
+]);
 
-export const WIMSE_HTTP_SIGNATURE_REVISION = 'draft-ietf-wimse-http-signature-03';
-export const WIMSE_WORKLOAD_CREDS_REVISION = 'draft-ietf-wimse-workload-creds-01';
-export const WIMSE_WPT_REVISION = 'draft-ietf-wimse-wpt-01';
-export const OAUTH_TRANSACTION_TOKENS_REVISION = 'draft-ietf-oauth-transaction-tokens-08';
+export const WIMSE_HTTP_SIGNATURE_REVISION = 'draft-ietf-wimse-http-signature-06';
+export const WIMSE_WORKLOAD_CREDS_REVISION = 'draft-ietf-wimse-workload-creds-02';
+export const WIMSE_WORKLOAD_IDENTIFIER_REVISION = 'draft-ietf-wimse-identifier-02';
+export const WIMSE_WPT_REVISION = 'draft-ietf-wimse-wpt-02';
+export const OAUTH_TRANSACTION_TOKENS_REVISION = 'draft-ietf-oauth-transaction-tokens-11';
 export const SPT_TRANSACTION_TOKENS_REVISION = 'draft-coetzee-oauth-spt-txn-tokens-03';
+export const OAUTH_TRANSACTION_TOKEN_REPLAY_NAMESPACE = 'oauth-transaction-token:trust-domain-receiving-workload-txn';
 
 const SOURCE_REVISIONS = Object.freeze([
   WIMSE_HTTP_SIGNATURE_REVISION,
   WIMSE_WORKLOAD_CREDS_REVISION,
+  WIMSE_WORKLOAD_IDENTIFIER_REVISION,
   WIMSE_WPT_REVISION,
   OAUTH_TRANSACTION_TOKENS_REVISION,
   SPT_TRANSACTION_TOKENS_REVISION,
@@ -79,12 +142,24 @@ const CONTENT_DIGEST_RE = /^sha-256=:([A-Za-z0-9+/]+={0,2}):$/;
 const WORKLOAD_SUBJECT_RE = /^([a-z][a-z0-9+.-]*):\/\/([^/?#]+)(\/[^?#]*)$/;
 const WORKLOAD_PATH_SEGMENT_RE = /^[A-Za-z0-9._~-]+$/;
 const MAX_WORKLOAD_SUBJECT_OCTETS = 2_048;
+const MAX_REQUEST_METHOD_OCTETS = 32;
+const MAX_REQUEST_TARGET_OCTETS = 8_192;
+const MAX_REQUEST_BODY_OCTETS = 262_144;
+const MAX_REQUEST_HEADER_COUNT = 32;
+const MAX_REQUEST_HEADER_NAME_OCTETS = 256;
+const MAX_REQUEST_HEADER_VALUE_OCTETS = 131_072;
+const MAX_REQUEST_HEADER_SECTION_OCTETS = 262_144;
+const MAX_SIGNATURE_COMPONENT_COUNT = 9;
+const MAX_ARTIFACT_NODES = 10_000;
+const MAX_ARTIFACT_STRING_OCTETS = 786_432;
 
 const CONFIG_KEYS = new Set([
   '@version',
   'evidence_role',
   'subject',
   'trust_domain',
+  'receiving_workload',
+  'oauth_requesting_workload',
   'wimse_audience',
   'oauth_audience',
   'oauth_subject',
@@ -92,6 +167,7 @@ const CONFIG_KEYS = new Set([
   'spt_audience',
   'spt_subject',
   'spt_holder_key',
+  'other_token_headers',
   'action_type',
   'clock_skew_seconds',
   'max_age_seconds',
@@ -104,6 +180,10 @@ const MAX_AGE_KEYS = new Set([
   'spt_txn',
   'http_signature',
   'status',
+]);
+const MAPPING_PROFILE_KEYS = new Set([
+  'version', 'definition', 'registry_entry_ref', 'mapper_id', 'resolver',
+  'semantic_equivalence', 'profile_digest',
 ]);
 const ISSUER_ROOT_KEYS = new Set([
   '@version', 'use', 'issuer', 'key_id', 'algorithm', 'public_key',
@@ -131,6 +211,28 @@ const REQUIRED_HTTP_COMPONENTS = Object.freeze([
   'content-digest',
   'txn-token',
   'workload-identity-token',
+]);
+const REQUIRED_REQUEST_HEADER_NAMES = Object.freeze([
+  'authorization',
+  'content-digest',
+  'content-type',
+  'signature',
+  'signature-input',
+  'txn-token',
+  'workload-identity-token',
+]);
+const RESERVED_OTHER_TOKEN_HEADERS = new Set([
+  'authorization',
+  'content-digest',
+  'content-type',
+  'signature',
+  'signature-input',
+  'txn-token',
+  'workload-identity-token',
+]);
+const PROFILE_OTHER_TOKEN_HEADERS = Object.freeze([
+  'oauth-transaction-access-token',
+  'oauth-transaction-challenge',
 ]);
 const SIGNATURE_PARAMETER_KEYS = new Set([
   'created', 'expires', 'nonce', 'tag', 'wimse-aud',
@@ -179,7 +281,17 @@ export interface WimseOAuthSptAdapterConfig {
     native_id: string;
   };
   trust_domain: string;
-  /** Exact -03 `wimse-aud` signature parameter and WPT audience. */
+  /**
+   * Constructor-pinned logical workload that receives and locally consumes
+   * this Txn-Token. This is relying-party state, not a presenter claim.
+   */
+  receiving_workload: string;
+  /**
+   * Constructor-pinned original workload named by the Txn-Token `req_wl`
+   * claim. It can differ from the immediate WIT sender at a later hop.
+   */
+  oauth_requesting_workload: string;
+  /** Exact -06 `wimse-aud` signature parameter and WPT audience. */
   wimse_audience: string;
   /** Exact OAuth Txn-Token trust-domain audience. */
   oauth_audience: string;
@@ -190,6 +302,14 @@ export interface WimseOAuthSptAdapterConfig {
   spt_subject: string;
   /** Opaque -03 holder_key value pinned to the workload-holder key. */
   spt_holder_key: string;
+  /**
+   * Fixed v3 lower-case candidate token-header set. Both fields must be
+   * present, single occurrence, and bound by the WPT `oth` claim. Callers
+   * cannot use this field to reclassify provider-semantic headers as evidence.
+   * WPT remains a proof-of-possession and token-binding artifact; this list
+   * does not make either token authoritative.
+   */
+  other_token_headers: string[];
   action_type: string;
   clock_skew_seconds: number;
   max_age_seconds: {
@@ -238,6 +358,8 @@ interface ParsedCompactJws {
 interface NormalizedRequest {
   method: string;
   targetUri: string;
+  /** Canonical HTTP target URI with query removed; fragments are rejected. */
+  targetAudience: string;
   requestTarget: string;
   headers: Map<string, string>;
   body: string;
@@ -266,6 +388,15 @@ interface NativeFailure {
 interface StatusDisposition {
   acceptance: Acceptance;
   reasons: string[];
+}
+
+export interface WimseWpt02TokenBindingResult {
+  verification: 'VERIFIED' | 'FAILED';
+  /** Whether the request contains a Txn-Token header. */
+  transaction_token: 'PRESENT' | 'ABSENT';
+  /** Exact understood `oth` header set, sorted independently of JSON order. */
+  other_token_headers: string[];
+  reason: string | null;
 }
 
 function isRecord(value: unknown): value is Obj {
@@ -309,6 +440,171 @@ function safeDigest(value: unknown): AebDigest {
   }
 }
 
+function tryDigest(value: unknown): AebDigest | null {
+  try {
+    return digestAeb(value);
+  } catch {
+    return null;
+  }
+}
+
+function hasUnpairedUtf16Surrogate(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+      index += 1;
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function boundedUtf8String(value: unknown, maxOctets: number): value is string {
+  if (typeof value !== 'string'
+      // Every UTF-16 code unit contributes at least one UTF-8 octet. This
+      // constant-time check prevents allocating or scanning a giant string.
+      || value.length > maxOctets
+      || hasUnpairedUtf16Surrogate(value)) return false;
+  return Buffer.byteLength(value, 'utf8') <= maxOctets;
+}
+
+interface CanonicalBudget {
+  nodes: number;
+  stringOctets: number;
+  ancestors: Set<object>;
+}
+
+function withinCanonicalBudget(
+  value: unknown,
+  budget: CanonicalBudget,
+  depth = 0,
+): boolean {
+  budget.nodes += 1;
+  if (budget.nodes > MAX_ARTIFACT_NODES || depth > 64) return false;
+  if (value === null || typeof value === 'boolean') return true;
+  if (typeof value === 'number') return Number.isSafeInteger(value);
+  if (typeof value === 'string') {
+    const remaining = MAX_ARTIFACT_STRING_OCTETS - budget.stringOctets;
+    if (!boundedUtf8String(value, remaining)) return false;
+    budget.stringOctets += Buffer.byteLength(value, 'utf8');
+    return true;
+  }
+  if (typeof value !== 'object'
+      || (!isRecord(value) && !Array.isArray(value))) return false;
+  const object = value as object;
+  if (budget.ancestors.has(object)) return false;
+  budget.ancestors.add(object);
+  try {
+    if (Array.isArray(value)) {
+      if (value.length > MAX_ARTIFACT_NODES - budget.nodes) return false;
+      for (let index = 0; index < value.length; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || !('value' in descriptor)
+            || !withinCanonicalBudget(descriptor.value, budget, depth + 1)) return false;
+      }
+      return true;
+    }
+    let members = 0;
+    for (const key in value) {
+      members += 1;
+      if (members > MAX_ARTIFACT_NODES - budget.nodes || !Object.hasOwn(value, key)) return false;
+      const remaining = MAX_ARTIFACT_STRING_OCTETS - budget.stringOctets;
+      if (!boundedUtf8String(key, remaining)) return false;
+      budget.stringOctets += Buffer.byteLength(key, 'utf8');
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)
+          || !withinCanonicalBudget(descriptor.value, budget, depth + 1)) return false;
+    }
+    return true;
+  } finally {
+    budget.ancestors.delete(object);
+  }
+}
+
+function inputWithinCanonicalBudget(value: unknown): boolean {
+  return withinCanonicalBudget(value, {
+    nodes: 0,
+    stringOctets: 0,
+    ancestors: new Set(),
+  });
+}
+
+function boundedDigest(value: unknown): AebDigest | null {
+  return inputWithinCanonicalBudget(value) ? tryDigest(value) : null;
+}
+
+function enumerableDataRecordWithinKeys(
+  value: unknown,
+  allowed: ReadonlySet<string>,
+  exact: boolean,
+): value is Obj {
+  if (!isRecord(value)) return false;
+  let count = 0;
+  for (const key in value) {
+    count += 1;
+    if (count > allowed.size || !allowed.has(key) || !Object.hasOwn(value, key)) return false;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) return false;
+  }
+  return exact ? count === allowed.size : true;
+}
+
+function ownDataValue(value: Obj, key: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  return descriptor && descriptor.enumerable === true && 'value' in descriptor
+    ? descriptor.value
+    : undefined;
+}
+
+function artifactWithinResourceLimits(value: unknown): value is Obj {
+  if (!enumerableDataRecordWithinKeys(value, ARTIFACT_KEYS, false)
+      || !Object.hasOwn(value, 'wit')
+      || !Object.hasOwn(value, 'wpt')
+      || !Object.hasOwn(value, 'txn_token')
+      || !Object.hasOwn(value, 'request')) return false;
+  for (const key of ['wit', 'wpt', 'txn_token', 'spt_txn']) {
+    if (Object.hasOwn(value, key)
+        && !boundedUtf8String(ownDataValue(value, key), 65_536)) return false;
+  }
+  const request = ownDataValue(value, 'request');
+  if (!enumerableDataRecordWithinKeys(request, REQUEST_KEYS, true)) return false;
+  const method = ownDataValue(request, 'method');
+  const targetUri = ownDataValue(request, 'target_uri');
+  const body = ownDataValue(request, 'body');
+  const headerValue = ownDataValue(request, 'headers');
+  if (!boundedUtf8String(method, MAX_REQUEST_METHOD_OCTETS)
+      || !boundedUtf8String(targetUri, MAX_REQUEST_TARGET_OCTETS)
+      || !boundedUtf8String(body, MAX_REQUEST_BODY_OCTETS)
+      || !isRecord(headerValue)) return false;
+  let headerCount = 0;
+  let headerSectionOctets = 0;
+  for (const name in headerValue) {
+    headerCount += 1;
+    if (headerCount > MAX_REQUEST_HEADER_COUNT
+        || !Object.hasOwn(headerValue, name)
+        || !boundedUtf8String(name, MAX_REQUEST_HEADER_NAME_OCTETS)) return false;
+    const descriptor = Object.getOwnPropertyDescriptor(headerValue, name);
+    if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)
+        || !boundedUtf8String(descriptor.value, MAX_REQUEST_HEADER_VALUE_OCTETS)) return false;
+    headerSectionOctets += Buffer.byteLength(name, 'utf8')
+      + Buffer.byteLength(descriptor.value, 'utf8');
+    if (headerSectionOctets > MAX_REQUEST_HEADER_SECTION_OCTETS) return false;
+  }
+  return inputWithinCanonicalBudget(value);
+}
+
+function statusWithinResourceLimits(value: unknown): value is Obj {
+  if (!enumerableDataRecordWithinKeys(value, STATUS_KEYS, false)) return false;
+  for (const key of ['checked_at', 'expires_at']) {
+    if (Object.hasOwn(value, key)
+        && !boundedUtf8String(ownDataValue(value, key), 64)) return false;
+  }
+  return inputWithinCanonicalBudget(value);
+}
+
 function sameDigest(left: unknown, right: unknown): boolean {
   try {
     return digestAeb(left) === digestAeb(right);
@@ -328,6 +624,22 @@ function safeEqualString(left: unknown, right: unknown): boolean {
 function sha256Base64url(value: string | Buffer): string {
   return crypto.createHash('sha256').update(value).digest('base64url');
 }
+
+// Keep the WIMSE adapter's small runtime closure independent of the broad AEB
+// contract entry point. These bytes are the compatibility-frozen AEB digest:
+// SHA-256 over the shared strict canonical JSON representation, with no prefix.
+function canonicalizeAeb(value: unknown): string {
+  return canonicalizeStrictJson(value);
+}
+
+function digestAeb(value: unknown): AebDigest {
+  return `sha256:${crypto.createHash('sha256')
+    .update(Buffer.from(canonicalizeAeb(value), 'utf8'))
+    .digest('hex')}`;
+}
+
+const INVALID_EVIDENCE_DIGEST = digestAeb({ invalid_wimse_oauth_spt_value: true });
+const INVALID_STATUS_DIGEST = digestAeb({ invalid_wimse_oauth_spt_status: true });
 
 function canonicalSpki(value: unknown): KeyObject | null {
   if (typeof value !== 'string' || !B64URL_RE.test(value) || value.length % 4 === 1) return null;
@@ -369,6 +681,73 @@ function absoluteHttpsUrl(value: unknown): boolean {
 }
 
 /**
+ * Closed audience comparison rule for the WPT-02 profile. Both the pinned
+ * audience and received target URI must already be in WHATWG URL serialized
+ * form. The pinned audience has no query. A request query is ignored exactly
+ * as WPT-02 requires; no authority or path alias is accepted.
+ */
+function canonicalWimseAudience(value: unknown): boolean {
+  if (!nonEmptyString(value)) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:'
+      && parsed.username === ''
+      && parsed.password === ''
+      && parsed.hostname.length > 0
+      && parsed.search === ''
+      && parsed.hash === ''
+      && parsed.href === value;
+  } catch {
+    return false;
+  }
+}
+
+function wptTargetAudience(value: unknown): string | null {
+  if (!nonEmptyString(value)) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:'
+        || parsed.username !== ''
+        || parsed.password !== ''
+        || parsed.hostname.length === 0
+        || parsed.hash !== ''
+        || parsed.href !== value) return null;
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Stable single-spend identity for one receiving logical workload's use of a
+ * native Txn-Token transaction. Transaction Tokens -11 carries one `txn`
+ * through a call chain and scopes its optional single-use check to the same
+ * receiving workload. Including that constructor-pinned receiver keeps a
+ * shared store from treating legitimate use at another workload as replay.
+ * The draft revision and optional `iss` are verification metadata, not
+ * replay-key material.
+ */
+export function deriveOAuthTransactionTokenReplayUnit(
+  trustDomain: unknown,
+  receivingWorkload: unknown,
+  transactionId: unknown,
+): AebDigest {
+  if (!nonEmptyString(trustDomain)
+      || !TRUST_DOMAIN_RE.test(trustDomain)
+      || trustDomain !== trustDomain.toLowerCase()
+      || !canonicalWorkloadSubject(receivingWorkload, trustDomain)
+      || !nonEmptyString(transactionId)) {
+    throw new TypeError('invalid OAuth Transaction Token replay identity');
+  }
+  return digestAeb({
+    native_namespace: OAUTH_TRANSACTION_TOKEN_REPLAY_NAMESPACE,
+    trust_domain: trustDomain,
+    receiving_workload: receivingWorkload,
+    txn: transactionId,
+  });
+}
+
+/**
  * Conservative relying-party profile for the generic WIMSE Workload
  * Identifier URI. The scheme remains deployment-selected, including `spiffe`,
  * while the exact spelling accepted by this adapter has one comparison form.
@@ -385,6 +764,20 @@ function canonicalWorkloadSubject(value: unknown, trustDomain: string): boolean 
       && WORKLOAD_PATH_SEGMENT_RE.test(segment));
 }
 
+function normalizedOtherTokenHeaders(value: unknown): string[] | null {
+  if (!Array.isArray(value) || value.length > 32) return null;
+  const headers: string[] = [];
+  for (const candidate of value) {
+    if (typeof candidate !== 'string'
+        || candidate !== candidate.toLowerCase()
+        || !HEADER_NAME_RE.test(candidate)
+        || RESERVED_OTHER_TOKEN_HEADERS.has(candidate)
+        || headers.includes(candidate)) return null;
+    headers.push(candidate);
+  }
+  return headers.sort();
+}
+
 function parseConfig(value: unknown): WimseOAuthSptAdapterConfig | null {
   if (!isRecord(value)
       || !exactKeys(value, CONFIG_KEYS)
@@ -399,8 +792,11 @@ function parseConfig(value: unknown): WimseOAuthSptAdapterConfig | null {
       || !nonEmptyString(value.trust_domain)
       || !TRUST_DOMAIN_RE.test(value.trust_domain)
       || value.trust_domain !== value.trust_domain.toLowerCase()
-      || !absoluteHttpsUrl(value.wimse_audience)
+      || !canonicalWorkloadSubject(value.receiving_workload, value.trust_domain)
+      || !canonicalWorkloadSubject(value.oauth_requesting_workload, value.trust_domain)
+      || !canonicalWimseAudience(value.wimse_audience)
       || !nonEmptyString(value.oauth_audience)
+      || value.oauth_audience !== value.trust_domain
       || !nonEmptyString(value.oauth_subject)
       || !nonEmptyString(value.oauth_scope)
       || !absoluteHttpsUrl(value.spt_audience)
@@ -416,8 +812,18 @@ function parseConfig(value: unknown): WimseOAuthSptAdapterConfig | null {
       || Object.values(value.max_age_seconds).some((age) => Number(age) > 86_400)) {
     return null;
   }
+  const otherTokenHeaders = normalizedOtherTokenHeaders(value.other_token_headers);
+  if (otherTokenHeaders === null
+      || !Array.isArray(value.other_token_headers)
+      || value.other_token_headers.some((header, index) => header !== otherTokenHeaders[index])
+      || otherTokenHeaders.length !== PROFILE_OTHER_TOKEN_HEADERS.length
+      || otherTokenHeaders.some((header, index) => header !== PROFILE_OTHER_TOKEN_HEADERS[index])) {
+    return null;
+  }
   if (!canonicalWorkloadSubject(value.subject.native_id, value.trust_domain)) return null;
-  return structuredClone(value) as unknown as WimseOAuthSptAdapterConfig;
+  const config = structuredClone(value) as unknown as WimseOAuthSptAdapterConfig;
+  config.other_token_headers = otherTokenHeaders;
+  return config;
 }
 
 function parseTrustRoots(
@@ -465,7 +871,9 @@ function parseTrustRoots(
 }
 
 function parseConstructorPins(value: WimseOAuthSptConstructorPins): ParsedPins {
-  if (!isRecord(value) || !exactKeys(value, new Set(['config', 'trust_roots']))) {
+  if (!inputWithinCanonicalBudget(value)
+      || !isRecord(value)
+      || !exactKeys(value, new Set(['config', 'trust_roots']))) {
     throw new TypeError('invalid WIMSE/OAuth/SPT constructor pins');
   }
   const config = parseConfig(value.config);
@@ -574,29 +982,161 @@ function timeFailure(
   return null;
 }
 
+function wptTimeFailure(
+  claims: Obj,
+  nowSeconds: number,
+  maxAgeSeconds: number,
+  skewSeconds: number,
+): string | null {
+  if (!safeInteger(claims.exp)) return 'wpt_exp_missing_or_invalid';
+  const expires = Number(claims.exp);
+  if (expires <= nowSeconds - skewSeconds) return 'wpt_expired';
+  if (expires > nowSeconds + maxAgeSeconds + skewSeconds) return 'wpt_max_age_exceeded';
+  if (Object.hasOwn(claims, 'iat')) {
+    if (!safeInteger(claims.iat)) return 'wpt_iat_invalid';
+    const issuedAt = Number(claims.iat);
+    if (issuedAt > nowSeconds + skewSeconds) return 'wpt_issued_in_future';
+    if (expires <= issuedAt || expires - issuedAt > maxAgeSeconds) {
+      return 'wpt_invalid_time_window';
+    }
+  }
+  if (Object.hasOwn(claims, 'nbf')) {
+    if (!safeInteger(claims.nbf)) return 'wpt_nbf_invalid';
+    const notBefore = Number(claims.nbf);
+    if (notBefore > nowSeconds + skewSeconds) return 'wpt_not_yet_valid';
+    if (expires <= notBefore) return 'wpt_invalid_time_window';
+  }
+  return null;
+}
+
+function normalizedHeaderMap(value: unknown): Map<string, string> | null {
+  if (!isRecord(value)) return null;
+  const headers = new Map<string, string>();
+  let sectionOctets = 0;
+  let headerCount = 0;
+  for (const rawName in value) {
+    headerCount += 1;
+    if (headerCount > MAX_REQUEST_HEADER_COUNT || !Object.hasOwn(value, rawName)) return null;
+    const descriptor = Object.getOwnPropertyDescriptor(value, rawName);
+    if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) return null;
+    const rawValue = descriptor.value;
+    if (!HEADER_NAME_RE.test(rawName)
+        || typeof rawValue !== 'string'
+        || /[\r\n\u0000]/.test(rawValue)
+        || hasUnpairedUtf16Surrogate(rawValue)
+        || Buffer.byteLength(rawName, 'utf8') > MAX_REQUEST_HEADER_NAME_OCTETS
+        || Buffer.byteLength(rawValue, 'utf8') > MAX_REQUEST_HEADER_VALUE_OCTETS) return null;
+    const name = rawName.toLowerCase();
+    if (headers.has(name)) return null;
+    const normalizedValue = rawValue.replace(/^[\t ]+|[\t ]+$/g, '');
+    sectionOctets += Buffer.byteLength(name, 'utf8')
+      + Buffer.byteLength(normalizedValue, 'utf8');
+    if (sectionOctets > MAX_REQUEST_HEADER_SECTION_OCTETS) return null;
+    headers.set(name, normalizedValue);
+  }
+  return headers;
+}
+
+function asciiTokenHash(value: unknown): string | null {
+  if (typeof value !== 'string'
+      || value.length === 0
+      || !/^[\x09\x20-\x7e]+$/.test(value)) return null;
+  return sha256Base64url(Buffer.from(value, 'ascii'));
+}
+
+function verifyWpt02TokenBindings(
+  claims: Obj,
+  headers: Map<string, string>,
+  understoodOtherTokenHeaders: readonly string[],
+): WimseWpt02TokenBindingResult {
+  const failed = (reason: string): WimseWpt02TokenBindingResult => ({
+    verification: 'FAILED',
+    transaction_token: headers.has('txn-token') ? 'PRESENT' : 'ABSENT',
+    other_token_headers: [...understoodOtherTokenHeaders].sort(),
+    reason,
+  });
+  const txnToken = headers.get('txn-token');
+  if (txnToken === undefined) {
+    if (Object.hasOwn(claims, 'tth')) return failed('unexpected_tth_without_txn_token');
+  } else {
+    const expected = asciiTokenHash(txnToken);
+    if (expected === null || !safeEqualString(claims.tth, expected)) {
+      return failed('tth_missing_or_mismatch');
+    }
+  }
+
+  const expectedHeaders = [...understoodOtherTokenHeaders].sort();
+  if (expectedHeaders.length === 0) {
+    if (Object.hasOwn(claims, 'oth')) return failed('unexpected_oth_without_understood_tokens');
+  } else {
+    if (!isRecord(claims.oth)
+        || !exactKeys(claims.oth, new Set(expectedHeaders))) {
+      return failed('oth_header_set_mismatch');
+    }
+    for (const header of expectedHeaders) {
+      const expected = asciiTokenHash(headers.get(header));
+      if (expected === null || !safeEqualString(claims.oth[header], expected)) {
+        return failed(`oth_hash_mismatch:${header}`);
+      }
+    }
+  }
+  return {
+    verification: 'VERIFIED',
+    transaction_token: txnToken === undefined ? 'ABSENT' : 'PRESENT',
+    other_token_headers: expectedHeaders,
+    reason: null,
+  };
+}
+
+/**
+ * Reperform only the `tth` and `oth` byte-binding rules from WPT-02.
+ * This function does not verify a WPT signature, authenticate a workload,
+ * authorize a request, reserve an operation, or establish an external effect.
+ */
+export function verifyWimseWpt02TokenBindingClaims(
+  wptClaims: unknown,
+  requestHeaders: unknown,
+  understoodOtherTokenHeaders: readonly string[],
+): WimseWpt02TokenBindingResult {
+  const headers = normalizedHeaderMap(requestHeaders);
+  const understood = normalizedOtherTokenHeaders(understoodOtherTokenHeaders);
+  if (!inputWithinCanonicalBudget(wptClaims)
+      || !isRecord(wptClaims)
+      || !headers
+      || !understood) {
+    return {
+      verification: 'FAILED',
+      transaction_token: 'ABSENT',
+      other_token_headers: [],
+      reason: 'binding_input_malformed',
+    };
+  }
+  return verifyWpt02TokenBindings(wptClaims, headers, understood);
+}
+
 function normalizeRequest(value: unknown): NormalizedRequest | null {
   if (!isRecord(value)
       || !exactKeys(value, REQUEST_KEYS)
       || typeof value.method !== 'string'
       || !METHOD_RE.test(value.method)
+      || Buffer.byteLength(value.method, 'utf8') > MAX_REQUEST_METHOD_OCTETS
       || typeof value.target_uri !== 'string'
-      || !absoluteHttpsUrl(value.target_uri)
+      || hasUnpairedUtf16Surrogate(value.target_uri)
+      || Buffer.byteLength(value.target_uri, 'utf8') > MAX_REQUEST_TARGET_OCTETS
       || !isRecord(value.headers)
       || typeof value.body !== 'string'
-      || value.body.includes('\ufffd')) return null;
+      || value.body.includes('\ufffd')
+      || hasUnpairedUtf16Surrogate(value.body)
+      || Buffer.byteLength(value.body, 'utf8') > MAX_REQUEST_BODY_OCTETS) return null;
+  const targetAudience = wptTargetAudience(value.target_uri);
+  if (targetAudience === null) return null;
   const target = new URL(value.target_uri);
-  const headers = new Map<string, string>();
-  for (const [rawName, rawValue] of Object.entries(value.headers)) {
-    if (!HEADER_NAME_RE.test(rawName)
-        || typeof rawValue !== 'string'
-        || /[\r\n\u0000]/.test(rawValue)) return null;
-    const name = rawName.toLowerCase();
-    if (headers.has(name)) return null;
-    headers.set(name, rawValue.replace(/^[\t ]+|[\t ]+$/g, ''));
-  }
+  const headers = normalizedHeaderMap(value.headers);
+  if (!headers) return null;
   return {
     method: value.method,
     targetUri: value.target_uri,
+    targetAudience,
     requestTarget: `${target.pathname}${target.search}`,
     headers,
     body: value.body,
@@ -641,7 +1181,9 @@ function parseSignatureInput(value: unknown): ParsedSignatureInput | null {
     if (componentText[componentOffset] !== ' ') return null;
     componentOffset += 1;
   }
-  if (components.length === 0 || new Set(components).size !== components.length) return null;
+  if (components.length === 0
+      || components.length > MAX_SIGNATURE_COMPONENT_COUNT
+      || new Set(components).size !== components.length) return null;
 
   const parameters = new Map<string, string | number>();
   let offset = close + 1;
@@ -714,6 +1256,13 @@ function verifyHttpSignature(
   const parsedInput = parseSignatureInput(request.headers.get('signature-input'));
   const signature = parseSignatureField(request.headers.get('signature'));
   if (!parsedInput || !signature) return null;
+  const allowedComponents = new Set([
+    ...REQUIRED_HTTP_COMPONENTS,
+    'content-type',
+    'authorization',
+    ...config.other_token_headers,
+  ]);
+  if (parsedInput.components.some((component) => !allowedComponents.has(component))) return null;
   for (const required of REQUIRED_HTTP_COMPONENTS) {
     if (!parsedInput.components.includes(required)) return null;
   }
@@ -739,6 +1288,18 @@ function verifyHttpSignature(
     holder.key,
     signature,
   ) ? parsedInput : null;
+}
+
+function exactRequestHeaderSet(
+  request: NormalizedRequest,
+  understoodOtherTokenHeaders: readonly string[],
+): boolean {
+  const expected = new Set([
+    ...REQUIRED_REQUEST_HEADER_NAMES,
+    ...understoodOtherTokenHeaders,
+  ]);
+  return request.headers.size === expected.size
+    && [...request.headers.keys()].every((name) => expected.has(name));
 }
 
 function validContentDigest(request: NormalizedRequest): boolean {
@@ -816,11 +1377,11 @@ function sptIntentDigest(intent: Obj): string | null {
   }
 }
 
-function bearerToken(request: NormalizedRequest): string | null {
+function wptCredential(request: NormalizedRequest): string | null {
   const authorization = request.headers.get('authorization');
   if (authorization === undefined) return null;
-  const match = /^Bearer ([^\s,]+)$/.exec(authorization);
-  return match?.[1] ?? '';
+  const match = /^WPT +([^\s,]+)$/i.exec(authorization);
+  return match?.[1] ?? null;
 }
 
 function failure(reason: string, acceptance: Acceptance = 'REJECTED'): NativeFailure {
@@ -848,14 +1409,17 @@ function verifyArtifact(
   }
   const request = normalizeRequest(artifact.request);
   if (!request) return failure('request_malformed');
+  if (request.targetAudience !== pins.config.wimse_audience) {
+    return failure('request_target_audience_mismatch');
+  }
   if (request.headers.get('workload-identity-token') !== artifact.wit
-      || request.headers.get('workload-proof-token') !== artifact.wpt
+      || wptCredential(request) !== artifact.wpt
       || request.headers.get('txn-token') !== artifact.txn_token) {
     return failure('native_header_value_mismatch');
   }
   if (!validContentDigest(request)) return failure('content_digest_mismatch');
 
-  // -03 requires validating the WIT before the request signature.
+  // -06 requires validating the WIT before the request signature.
   const wit = verifyCompactJws(artifact.wit, pins.witIssuer, WIT_HEADER_KEYS, 'wit+jwt');
   if (!wit) return failure('wit_signature_or_header_invalid');
   const witTime = timeFailure(
@@ -891,38 +1455,41 @@ function verifyArtifact(
   if (oauthTime) return failure(oauthTime);
   if (!claimsIssuerSubject(oauth.claims, pins.oauthIssuer.issuer, pins.config.oauth_subject)
       || oauth.claims.aud !== pins.config.oauth_audience
-      || oauth.claims.req_wl !== pins.config.subject.native_id
+      || oauth.claims.req_wl !== pins.config.oauth_requesting_workload
       || oauth.claims.scope !== pins.config.oauth_scope
       || !nonEmptyString(oauth.claims.txn)
       || !isRecord(oauth.claims.tctx)
       || !validateJcsValue(oauth.claims.tctx)) {
     return failure('oauth_txn_claims_mismatch');
   }
+  if (Object.hasOwn(oauth.claims, 'rctx')) {
+    return failure('oauth_txn_rctx_unsupported');
+  }
 
   const wpt = verifyCompactJws(artifact.wpt, pins.holder, WPT_HEADER_KEYS, 'wpt+jwt', false);
   if (!wpt) return failure('wpt_signature_or_header_invalid');
-  const wptTime = timeFailure(
+  const wptTime = wptTimeFailure(
     wpt.claims,
     nowSeconds,
     pins.config.max_age_seconds.wpt,
     pins.config.clock_skew_seconds,
-    'wpt',
   );
   if (wptTime) return failure(wptTime);
   if (wpt.claims.aud !== pins.config.wimse_audience
       || !nonEmptyString(wpt.claims.jti)
-      || !safeEqualString(wpt.claims.wth, sha256Base64url(Buffer.from(String(artifact.wit), 'ascii')))
-      || !safeEqualString(wpt.claims.tth, sha256Base64url(Buffer.from(String(artifact.txn_token), 'ascii')))) {
-    return failure('wpt_audience_wth_or_tth_mismatch');
+      || asciiTokenHash(artifact.wit) === null
+      || !safeEqualString(wpt.claims.wth, asciiTokenHash(artifact.wit))) {
+    return failure('wpt_audience_or_wth_mismatch');
   }
-  const bearer = bearerToken(request);
-  if (bearer === '') return failure('authorization_header_malformed');
-  if (bearer === null) {
-    if (Object.hasOwn(wpt.claims, 'ath')) return failure('unexpected_wpt_ath');
-  } else if (!safeEqualString(wpt.claims.ath, sha256Base64url(Buffer.from(bearer, 'ascii')))) {
-    return failure('wpt_ath_mismatch');
+  if (Object.hasOwn(wpt.claims, 'ath')) return failure('unexpected_wpt_ath');
+  const tokenBindings = verifyWpt02TokenBindings(
+    wpt.claims,
+    request.headers,
+    pins.config.other_token_headers,
+  );
+  if (tokenBindings.verification !== 'VERIFIED') {
+    return failure(`wpt_token_binding_failed:${tokenBindings.reason}`);
   }
-  if (Object.hasOwn(wpt.claims, 'oth')) return failure('unsupported_wpt_oth', 'INDETERMINATE');
 
   const httpSignature = verifyHttpSignature(
     request,
@@ -931,6 +1498,12 @@ function verifyArtifact(
     nowSeconds,
   );
   if (!httpSignature) return failure('http_signature_invalid_or_incomplete');
+  // This experimental profile maps an exact provider request. Refuse headers
+  // outside the closed profile rather than silently dropping a field that may
+  // alter provider semantics (for example method overrides or preconditions).
+  if (!exactRequestHeaderSet(request, pins.config.other_token_headers)) {
+    return failure('request_header_set_mismatch');
+  }
 
   let sptIntent: Obj | null = null;
   if (hasSptToken) {
@@ -973,17 +1546,18 @@ function verifyArtifact(
     http: {
       method: request.method,
       request_target: request.requestTarget,
+      content_type: request.headers.get('content-type'),
       content_digest: request.headers.get('content-digest'),
       wimse_audience: httpSignature.audience,
     },
     transaction,
   };
   if (sptIntent !== null) action.spt_intent = sptIntent;
-  const replayUnit = digestAeb({
-    native_protocol: OAUTH_TRANSACTION_TOKENS_REVISION,
-    trust_domain: oauth.claims.aud,
-    txn: oauth.claims.txn,
-  });
+  const replayUnit = deriveOAuthTransactionTokenReplayUnit(
+    oauth.claims.aud,
+    pins.config.receiving_workload,
+    oauth.claims.txn,
+  );
   return { action, replayUnit };
 }
 
@@ -1045,7 +1619,7 @@ function fallbackNative(
   input: Omit<AebAdapterInput, 'profile'>,
   pins: ParsedPins,
 ): AebNativeResult {
-  const evidenceDigest = safeDigest(input?.artifact);
+  const evidenceDigest = INVALID_EVIDENCE_DIGEST;
   const subject: AebEvidenceSubject = {
     id: pins.config.subject.id,
     kind: 'workload',
@@ -1054,7 +1628,7 @@ function fallbackNative(
     native_verification: 'FAILED',
     acceptance: 'INDETERMINATE',
     evidence_digest: evidenceDigest,
-    status_digest: statusDigest(input?.status),
+    status_digest: INVALID_STATUS_DIGEST,
     evidence_role: pins.config.evidence_role,
     subject,
     replay_unit: evidenceDigest,
@@ -1067,8 +1641,24 @@ function verifyNative(
   pins: ParsedPins,
 ): AebNativeResult {
   const result = fallbackNative(input, pins);
-  if (safeDigest(input?.adapter_config) !== pins.configDigest
-      || safeDigest(input?.trust_roots) !== pins.rootsDigest) {
+  if (!statusWithinResourceLimits(input?.status)) {
+    result.reasons = ['wimse-oauth-spt:status_resource_or_shape_invalid'];
+    return result;
+  }
+  result.status_digest = statusDigest(input.status);
+  if (!artifactWithinResourceLimits(input?.artifact)) {
+    result.acceptance = 'REJECTED';
+    result.reasons = ['wimse-oauth-spt:artifact_resource_or_shape_invalid'];
+    return result;
+  }
+  const evidenceDigest = tryDigest(input?.artifact);
+  if (evidenceDigest === null) {
+    result.reasons = ['wimse-oauth-spt:artifact_outside_canonical_domain'];
+    return result;
+  }
+  result.evidence_digest = evidenceDigest;
+  if (boundedDigest(input?.adapter_config) !== pins.configDigest
+      || boundedDigest(input?.trust_roots) !== pins.rootsDigest) {
     result.reasons = ['wimse-oauth-spt:constructor_pin_mismatch'];
     return result;
   }
@@ -1112,27 +1702,54 @@ export function createWimseOAuthSptActionDefinition(actionType: string): Obj {
   };
 }
 
+function wimseMappingProfileDigest(
+  profile: Omit<AebPinnedProfile, 'profile_digest'>,
+): AebDigest {
+  return digestAeb({
+    profile_id: WIMSE_OAUTH_SPT_MAPPING_PROFILE_ID,
+    version: profile.version,
+    definition: profile.definition ?? null,
+    registry_entry_ref: profile.registry_entry_ref,
+    mapper_id: profile.mapper_id,
+    resolver: profile.resolver,
+    semantic_equivalence: profile.semantic_equivalence,
+  });
+}
+
+/** Build the only mapping profile accepted by adapter v3 for this action type. */
+export function createWimseOAuthSptMappingProfile(actionType: string): AebPinnedProfile {
+  const profile: Omit<AebPinnedProfile, 'profile_digest'> = {
+    version: WIMSE_OAUTH_SPT_CAID_MAPPING_VERSION,
+    definition: createWimseOAuthSptActionDefinition(actionType),
+    registry_entry_ref: WIMSE_OAUTH_SPT_MAPPING_REGISTRY_REF,
+    mapper_id: WIMSE_OAUTH_SPT_CAID_MAPPER_ID,
+    resolver: {
+      id: WIMSE_OAUTH_SPT_CAID_MAPPER_ID,
+      version: '2',
+      implementation_digest: digestAeb({
+        implementation: WIMSE_OAUTH_SPT_CAID_MAPPER_ID,
+        version: '2',
+      }),
+    },
+    semantic_equivalence: {
+      assertion: 'EQUIVALENT_UNDER_PROFILE',
+      loss_policy: 'NO_MATERIAL_FIELD_LOSS',
+      omitted_material_fields: [],
+      omitted_nonmaterial_fields: [...WIMSE_OAUTH_SPT_OMITTED_NONMATERIAL_FIELDS],
+    },
+  };
+  return { ...profile, profile_digest: wimseMappingProfileDigest(profile) };
+}
+
 function validMappingProfile(
   profile: AebPinnedProfile,
   actionType: string,
 ): { definition: Obj; definitions: unknown[] } | null {
-  if (!isRecord(profile)
-      || profile.version !== WIMSE_OAUTH_SPT_CAID_MAPPING_VERSION
-      || profile.mapper_id !== WIMSE_OAUTH_SPT_CAID_MAPPER_ID
-      || !isRecord(profile.resolver)
-      || profile.resolver.id !== WIMSE_OAUTH_SPT_CAID_MAPPER_ID
-      || profile.resolver.version !== '1'
-      || typeof profile.resolver.implementation_digest !== 'string'
-      || !DIGEST_RE.test(profile.resolver.implementation_digest)
-      || !isRecord(profile.semantic_equivalence)
-      || profile.semantic_equivalence.assertion !== 'EQUIVALENT_UNDER_PROFILE'
-      || profile.semantic_equivalence.loss_policy !== 'NO_MATERIAL_FIELD_LOSS'
-      || !Array.isArray(profile.semantic_equivalence.omitted_material_fields)
-      || profile.semantic_equivalence.omitted_material_fields.length !== 0
-      || !Array.isArray(profile.semantic_equivalence.omitted_nonmaterial_fields)
-      || !isRecord(profile.definition)) return null;
-  const expected = createWimseOAuthSptActionDefinition(actionType);
-  if (!sameDigest(profile.definition, expected)) return null;
+  if (!inputWithinCanonicalBudget(profile)
+      || !isRecord(profile)
+      || !exactKeys(profile, MAPPING_PROFILE_KEYS)) return null;
+  const expected = createWimseOAuthSptMappingProfile(actionType);
+  if (!sameDigest(profile, expected) || !isRecord(profile.definition)) return null;
   const definitions = profile.definition.definitions;
   return Array.isArray(definitions)
     ? { definition: profile.definition, definitions }
@@ -1147,7 +1764,7 @@ function exactExpectedActionShape(value: unknown, hasSptIntent: boolean): value 
   if (!exactKeys(value, expectedTop)
       || !isRecord(value.http)
       || !exactKeys(value.http, new Set([
-        'method', 'request_target', 'content_digest', 'wimse_audience',
+        'method', 'request_target', 'content_type', 'content_digest', 'wimse_audience',
       ]))
       || !Object.values(value.http).every(nonEmptyString)
       || !isRecord(value.transaction)
@@ -1171,8 +1788,41 @@ function mapAction(
       reasons: ['native_acceptance_required'],
     };
   }
-  if (safeDigest(input.adapter_config) !== pins.configDigest
-      || safeDigest(input.trust_roots) !== pins.rootsDigest) {
+  const evidenceDigest = artifactWithinResourceLimits(input.artifact)
+    ? tryDigest(input.artifact)
+    : null;
+  if (evidenceDigest === null || evidenceDigest !== input.native.evidence_digest) {
+    return {
+      mapping: 'INDETERMINATE',
+      caid: null,
+      action_digest: null,
+      reasons: ['native_evidence_digest_mismatch'],
+    };
+  }
+  if (!statusWithinResourceLimits(input.status)
+      || statusDigest(input.status) !== input.native.status_digest) {
+    return {
+      mapping: 'INDETERMINATE',
+      caid: null,
+      action_digest: null,
+      reasons: ['native_status_digest_mismatch'],
+    };
+  }
+  const currentStatus = statusDisposition(
+    input.status,
+    input.now,
+    pins.config.max_age_seconds.status,
+  );
+  if (currentStatus.acceptance !== 'ACCEPTED') {
+    return {
+      mapping: 'INDETERMINATE',
+      caid: null,
+      action_digest: null,
+      reasons: ['native_status_not_accepted', ...currentStatus.reasons],
+    };
+  }
+  if (boundedDigest(input.adapter_config) !== pins.configDigest
+      || boundedDigest(input.trust_roots) !== pins.rootsDigest) {
     return {
       mapping: 'INDETERMINATE',
       caid: null,
@@ -1199,7 +1849,8 @@ function mapAction(
     };
   }
   const hasSptIntent = Object.hasOwn(detail.action, 'spt_intent');
-  if (!exactExpectedActionShape(input.expected_action, hasSptIntent)
+  if (!inputWithinCanonicalBudget(input.expected_action)
+      || !exactExpectedActionShape(input.expected_action, hasSptIntent)
       || input.expected_action.action_type !== pins.config.action_type) {
     return {
       mapping: 'INDETERMINATE',
