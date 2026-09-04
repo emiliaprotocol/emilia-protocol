@@ -8,9 +8,12 @@ const source = readFileSync(
 );
 
 describe('security-case Node test runner', () => {
-  it('loads TypeScript-migrated sources in every child node:test process', () => {
+  it('loads TypeScript sources and budgets every child test process', () => {
     expect(source).toMatch(
       /process\.execPath,[\s\S]+--import[\s\S]+scripts", "ts-loader", "register\.mjs"[\s\S]+--test/,
+    );
+    expect(source).toMatch(
+      /"run",[\s\S]+file,[\s\S]+"--testTimeout=60000",[\s\S]+"--hookTimeout=60000",[\s\S]+"--reporter=json"/,
     );
   });
 });

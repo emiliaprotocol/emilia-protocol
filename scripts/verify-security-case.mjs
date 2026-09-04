@@ -420,6 +420,12 @@ function observeVitestFile(file) {
             "--",
             "run",
             file,
+            // Security-case evidence includes process, archive, and clean-room
+            // integration tests. Keep the per-test budget aligned with the full
+            // proof census so host I/O cannot revive Vitest's five-second unit
+            // default inside this otherwise ten-minute bounded child process.
+            "--testTimeout=60000",
+            "--hookTimeout=60000",
             "--reporter=json",
             "--outputFile",
             reportFile,
