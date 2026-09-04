@@ -1,0 +1,36 @@
+{
+  "@version": "EMILIA-CEDULON-MIZAN-SOURCE-LOCK-v0.1",
+  "repository": "https://github.com/dogrucanemek-alt/cedulon.git",
+  "commit": "06c3119badc269ef5d6d3596ea3b3d48219d6ba4",
+  "fixture": "interop/mizan-ig/fixtures/leaked-refusal",
+  "files": {
+    "policy": {
+      "path": "interop/mizan-ig/fixtures/leaked-refusal/policy.txt",
+      "bytes": 16,
+      "git_blob_sha1": "a8cebe51982fe6af61051086339e8df87b935449",
+      "sha256": "41d79f176661c3ac24181dae71506e8d5738f0470102d9cdda1dd9222cfe0805"
+    },
+    "decisions": {
+      "path": "interop/mizan-ig/fixtures/leaked-refusal/decisions.jsonl",
+      "bytes": 122,
+      "git_blob_sha1": "6097a346e194ead4439989e6e83dd61bce35c59b",
+      "sha256": "2db5f0a8491aa34031223d9d4e732620a1df86bb37747972fa86e9095dd48d72"
+    },
+    "sent": {
+      "path": "interop/mizan-ig/fixtures/leaked-refusal/sent.jsonl",
+      "bytes": 86,
+      "git_blob_sha1": "30d74774566f71a3cedac8c85a4aaef3146d8fed",
+      "sha256": "cfd9037ef183c04364d2c32951b108be2740d4b75bdd2f9cb83dc1ac7fd5d131"
+    }
+  },
+  "upstream_mapping": {
+    "path": "interop/mizan-ig/ig-adapter.mjs",
+    "git_blob_sha1": "ea1cab2c3c5b97af73669a76ca255ed4f5c66111",
+    "sha256": "3d9a710cab9121f7a78f9a8443568cd4fd1b3388e5fe6b27480512fef2f22d05"
+  },
+  "decision_profile": {
+    "path": "spec/draft-dogru-cedulon-decision-profile-01.txt",
+    "git_blob_sha1": "0ecbfa4513278071c0060498e4bae4d45674cd15",
+    "sha256": "555d2fe2294670d49140af1f54c39ca61865488dc6e07f7971b9a7386a227116"
+  }
+}
