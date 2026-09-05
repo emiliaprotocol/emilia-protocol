@@ -30,6 +30,13 @@ create, extend, or reimplement any AIC or EMILIA mechanism.
 
 1. Native verification is authoritative: FAILED/INDETERMINATE are
    refused before any mapping.
+
+Native AIC verification establishes scope membership within the
+principal-signed delegation ceiling; the relying-party-owned EMILIA
+crossing separately constructs exact-action equality by binding that
+verified result to the RP-pinned `caid`, `action_digest`, and
+admission domain, without itself establishing one-time consumption,
+execution, or finality.
 2. Relying-party policy is structurally separate from the presented
    result: mapping profile, action-projection profile, native verifier
    descriptor, and issuer trust anchors are pinned by RP policy; the
