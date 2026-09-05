@@ -277,7 +277,7 @@
     "Ed25519",
     "ML-DSA-65"
   ],
-  "results_digest": "sha256:4a63c9133bc93d5cc282874c0a437f1eb8e9b9557eeda3a2fa98345e098426e0",
+  "results_digest": "sha256:1b8246859a1e165f6fef501e0a203ef6d64bda4de7be5f5615a02ce2c929dec9",
   "source_lock": {
     "@version": "AIC-AEB-CROSSING-SOURCE-LOCK-v0.2",
     "drafts": [
@@ -296,7 +296,8 @@
         "bounded_sections": [
           "5 Validation Procedure",
           "8 Extensibility Framework",
-          "9 Privacy Considerations (GDPR / Right to Erasure)"
+          "9 Privacy Considerations (GDPR / Right to Erasure)",
+          "10 Security Considerations"
         ],
         "name": "draft-wei-aic-identity-cert-01",
         "sha256": "dfada282a41c62baeb5bcbe57a01661d37f28baaca3de43521e1d526d04f3830",
@@ -426,7 +427,7 @@
       ]
     }
   },
-  "source_lock_digest": "sha256:3b6a73f084fc7def6bd52992c92840f081c7af6be9cd89e46f4e2ed4baa7ed8e",
+  "source_lock_digest": "sha256:8526f9504d582fc401964879dd362693701c8a006efd7886fc1d0b764a65dfd3",
   "source_status": {
     "future_observation": "REFUSE",
     "maximum_age_seconds": 60,
