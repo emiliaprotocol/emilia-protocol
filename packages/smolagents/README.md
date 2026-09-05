@@ -33,6 +33,7 @@ unzip it, and open a terminal in the extracted folder:
 shasum -a 256 -c SHA256SUMS
 python3 -m venv .venv
 . .venv/bin/activate
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python app.py
 ```
@@ -50,6 +51,7 @@ Python 3.10+ environment and install the three local packages together:
 ```bash
 python -m venv .venv
 . .venv/bin/activate
+python -m pip install --upgrade pip
 python -m pip install ./packages/python-verify ./packages/crewai ./packages/smolagents
 ```
 

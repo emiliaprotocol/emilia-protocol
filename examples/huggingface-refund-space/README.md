@@ -21,6 +21,7 @@ Use Python 3.10 or later. From the repository root:
 ```sh
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip
 python -m pip install ./packages/python-verify ./packages/crewai ./packages/smolagents 'gradio==6.26.0'
 python examples/huggingface-refund-space/demo.py
 python examples/huggingface-refund-space/app.py
@@ -61,6 +62,7 @@ To validate that folder separately:
 cd /tmp/emilia-refund-space
 shasum -a 256 -c SHA256SUMS
 python3 -m venv /tmp/emilia-refund-space-venv
+/tmp/emilia-refund-space-venv/bin/python -m pip install --upgrade pip
 /tmp/emilia-refund-space-venv/bin/python -m pip install -r requirements.txt
 /tmp/emilia-refund-space-venv/bin/python demo.py
 ```

@@ -66,7 +66,7 @@ def bundle(output):
         "The three included EMILIA wheels were built from the checkout recorded in BUNDLE.json. "
         "They include source fixes that may not yet be on PyPI; do not replace them with older registry versions. "
         "SHA256SUMS identifies the exact files in this bundle.\n\n"
-        "To run locally, verify the hashes, create a Python virtual environment, "
+        "To run locally, verify the hashes, create a Python virtual environment, upgrade pip, "
         "install `requirements.txt`, and run `python app.py`. The adapter and demo are free "
         "and open source under Apache-2.0.\n\n"
         "See ADAPTER.md for local use, receipt transport, and production boundaries. The native wrapper "
