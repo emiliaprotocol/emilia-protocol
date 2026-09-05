@@ -22,7 +22,8 @@
         { "language": "javascript", "file": "app/api/v1/signoffs/[signoffId]/approve-webauthn/route.ts", "symbol": "POST", "exported": true },
         { "language": "javascript", "file": "lib/guard-signoff.ts", "symbol": "handleSignoffDecision", "exported": true },
         { "language": "javascript", "file": "lib/signoff/decision-evidence.ts", "symbol": "buildPortableSignoffDecision", "exported": true },
-        { "language": "javascript", "file": "packages/verify/src/index.ts", "symbol": "verifyWebAuthnSignoff", "exported": true }
+        { "language": "javascript", "file": "packages/verify/src/index.ts", "symbol": "verifyWebAuthnSignoff", "exported": true },
+        { "language": "javascript", "file": "packages/require-receipt/src/index.ts", "symbol": "evaluateReceiptAssurance", "exported": true }
       ],
       "implementations": [
         { "language": "javascript", "file": "lib/signoff/decision-evidence.ts", "export": "buildPortableSignoffDecision" },
@@ -43,7 +44,10 @@
         { "file": "tests/v1-api.test.ts", "title": "exports a bound Class-A denial as portable EP-SIGNOFF-v1 evidence", "runner": "vitest" },
         { "file": "tests/webauthn-approve-route.test.ts", "title": "refuses to relabel a device-signed denial as approval", "runner": "vitest" },
         { "file": "tests/v1-api.test.ts", "title": "returns 403 when bearer-key rejection attempts a Class-A-required receipt", "runner": "vitest" },
-        { "file": "tests/webauthn-lib.test.ts", "title": "treats a matching rejection as equally terminal", "runner": "vitest" }
+        { "file": "tests/webauthn-lib.test.ts", "title": "treats a matching rejection as equally terminal", "runner": "vitest" },
+        { "file": "packages/require-receipt/security-profile.test.js", "title": "embedded Class-A approved decision admits one provider call and refuses replay", "runner": "node-test" },
+        { "file": "packages/require-receipt/security-profile.test.js", "title": "a genuinely signed embedded denial cannot admit a provider call", "runner": "node-test" },
+        { "file": "packages/require-receipt/security-profile.test.js", "title": "changing a signed denied decision to approved does not create valid Class-A proof", "runner": "node-test" }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "TLA+ and Alloy model rejection terminality, but the exact decision-in-WebAuthn-challenge bytes, API alias mapping, and bearer-path assurance gate are executable properties rather than a composed formal proof." }
@@ -1391,6 +1395,9 @@
       "tests": [
         { "file": "packages/gate/gate.test.js", "title": "run() commits a successful effect and permanently refuses replay", "runner": "node-test" },
         { "file": "packages/gate/gate.test.js", "title": "run() consumes an indeterminate attempt when the executor throws", "runner": "node-test" },
+        { "file": "packages/gate/receipt-provider-entry-freshness.test.js", "title": "expiry after provider entry never restores authority when the response is lost", "runner": "node-test" },
+        { "file": "packages/gate/receipt-provider-entry-freshness.test.js", "title": "a failed pre-entry release remains held and reports its uncertainty", "runner": "node-test" },
+        { "file": "packages/gate/receipt-provider-entry-freshness.test.js", "title": "a still-valid receipt executes once and replay never releases committed authority", "runner": "node-test" },
         { "file": "tests/aec-execution-gate.test.ts", "title": "executes a Class-A chain once and refuses replay", "runner": "vitest" },
         { "file": "tests/aec-execution-gate.test.ts", "title": "burns an indeterminate authorization after the effect starts", "runner": "vitest" },
         { "file": "packages/gate/proposal-to-effect.test.js", "title": "indeterminate effect freezes replay until authenticated provider reconciliation", "runner": "node-test" },

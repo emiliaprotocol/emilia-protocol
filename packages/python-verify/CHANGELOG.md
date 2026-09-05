@@ -3,6 +3,12 @@
 
 ## Unreleased
 
+### Security
+
+- Refuse malformed nested payload, signature, and anchor fields through a
+  structured verification result. Unencodable Merkle-proof hash text now fails
+  verification instead of raising an exception.
+
 ## 2.8.4 (2026-08-30)
 
 ### Changed

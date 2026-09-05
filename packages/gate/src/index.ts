@@ -1219,6 +1219,10 @@ interface CreateGateOptions {
   providerEntryGuard?: ProviderEntryGuard | null;
 }
 export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, capabilityStore = null, capabilityTrustedIssuerKeys = [], capabilityCaidResolver = null, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, allowedOrigins = [], quorumPolicy = null, quorumPolicies = {}, requiredAdmissibilityProfile = null, verifyAdmissibilityPacket = null, requiredFieldOriginProfile = null, fieldOriginTrustedKeys = {}, fieldOriginExecutionProgram = null, allowEmbeddedApproverKeys = false, runtimeMonitor = createRuntimeMonitor({ now }), providerEntryGuard = null }: CreateGateOptions = {}) {
+  // Keep provider-entry revalidation private and tied to the exact verified
+  // receipt. Neither returned evidence nor an awaited integration hook can
+  // replace these signed bytes with a different, later-expiring authorization.
+  const providerEntryReceiptChecks = new WeakMap<object, () => ReturnType<typeof verifyEmiliaReceipt>>();
   const configuredRequiredAdmissibilityProfile = pinRequiredAdmissibilityProfile(
     requiredAdmissibilityProfile,
   );
@@ -1458,6 +1462,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     selector?: any; receipt?: any; observedAction?: any; consumptionMode?: string;
     fieldOriginEvidence?: any; admissibilityProfile?: any; reliancePacket?: any; admissibility?: any; capability?: any;
   } = {}) {
+    let revalidateReceipt: (() => ReturnType<typeof verifyEmiliaReceipt>) | null = null;
     const requirement = /** @type {any} */ (resolveRequirement(selector));
     const action = requirement?.action_type || selector.action_type || selector.action || null;
     const guarded = Boolean(requirement && requirement.receipt_required !== false);
@@ -1553,6 +1558,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         // cycle is open; declared here so callers that read it stay type-checked.
         _runtime_cycle_id?: any;
       } = { allow, status, reason, action, requirement, evidence: record };
+      if (allow && revalidateReceipt) providerEntryReceiptChecks.set(out, revalidateReceipt);
       if (runtimeCycleId) Object.defineProperty(out, '_runtime_cycle_id', {
         value: runtimeCycleId,
         enumerable: false,
@@ -1658,6 +1664,23 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!v.ok) {
       return decide(false, RECEIPT_REQUIRED_STATUS, `receipt_rejected:${v.reason}`, { rejected: v });
     }
+    const verifiedReceipt = structuredClone({
+      '@version': receipt['@version'],
+      payload: receipt.payload,
+      signature: { algorithm: receipt.signature.algorithm, value: receipt.signature.value },
+      ...(allowInlineKey ? { public_key: receipt.public_key } : {}),
+    });
+    // Later policy and recording stages must also refer to the verified
+    // receipt, not a caller-owned object changed while reservation is pending.
+    receipt = {
+      ...receipt,
+      payload: structuredClone(verifiedReceipt.payload),
+      signature: structuredClone(verifiedReceipt.signature),
+    };
+    const verifiedKeys = [...effectiveKeys];
+    revalidateReceipt = () => verifyEmiliaReceipt(verifiedReceipt, {
+      trustedKeys: verifiedKeys, allowInlineKey, action, maxAgeSec, now,
+    });
     // Assurance tier. CRYPTOGRAPHICALLY VERIFIED — never inferred from
     // self-asserted payload fields. The credited tier is the HIGHER of two
     // independent proof paths:
@@ -2172,6 +2195,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
 
     let authorization: any = null;
     let effectError: unknown = null;
+    let providerEntryReceiptReason: string | null = null;
     let providerCallbackInvoked = false;
     const capabilityGate = {
       check: (input = {}) => check({
@@ -2193,6 +2217,15 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         const error = new Error(`EMILIA Gate runtime monitor refused capability execution (${runtimeStart.reason})`) as Error & { code?: string };
         error.code = 'EMILIA_RUNTIME_MONITOR_REFUSED';
         throw error;
+      }
+      const entryReceipt = providerEntryReceiptChecks.get(authorization)?.();
+      if (entryReceipt && !entryReceipt.ok) {
+        // The capability store has already durably entered its provider phase.
+        // Do not invoke fn with expired base authority, and do not reopen that
+        // phase: the capability executor will preserve an indeterminate spend.
+        providerEntryReceiptReason = `receipt_rejected:${entryReceipt.reason}`;
+        runtimeMonitor?.effectFailed(runtimeCycleId);
+        throw new Error(`EMILIA Gate ${providerEntryReceiptReason}`);
       }
       try {
         providerCallbackInvoked = true;
@@ -2285,6 +2318,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
               code: providerCallbackInvoked
                 ? 'effect_attempted_outcome_unknown'
                 : 'provider_entry_committed_effect_not_invoked',
+              ...(providerEntryReceiptReason
+                ? { receipt_revalidation_reason: providerEntryReceiptReason }
+                : {}),
               capability: { ...capabilitySummary(context, operationId), outcome: 'indeterminate' },
               ...(capabilityHasProviderEntryEvidence
                 ? { provider_entry_evidence: capabilityResult.provider_entry_evidence }
@@ -2396,7 +2432,49 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     // records produced before the composite keyspace existed.
     const consumptionKey = authorization.evidence?.consumption_key ?? receiptId;
     const runtimeCycleId = authorization._runtime_cycle_id;
-    const entryVerdict = await providerEntryVerdict({ authorization, selector, observedAction, capability: null });
+    let entryVerdict = await providerEntryVerdict({ authorization, selector, observedAction, capability: null });
+    const providerEntryEvidence = providerEntryGuard !== null
+      ? entryVerdict.evidence ?? null
+      : undefined;
+    if (entryVerdict.ok && runtimeMonitor && runtimeCycleId) {
+      const runtimeStart = runtimeMonitor.beginExecution(runtimeCycleId, authorization) as
+        { ok: true } | { ok: false; reason: string; event: any };
+      if (!runtimeStart.ok) {
+        const error = new Error(`EMILIA Gate runtime monitor refused execution (${runtimeStart.reason})`) as Error & { code?: string };
+        error.code = 'EMILIA_RUNTIME_MONITOR_REFUSED';
+        const terminal = gateOutcomeError(error, {
+          outcome: 'refused',
+          reason: runtimeStart.reason,
+          authorization,
+          execution: null,
+          result: { runtime_monitor: runtimeStart.event },
+          providerEntryEvidence,
+        });
+        // Preserve the established runtime-monitor error code while adding the
+        // structured terminal metadata required to retain guard evidence.
+        terminal.code = error.code;
+        throw terminal;
+      }
+    }
+    // check() may await admissibility, reservation, and durable logging; the
+    // entry guard may await another system and monitor setup may take time.
+    // Recheck the original signed receipt after all integration callbacks.
+    // No further callback or asynchronous work runs before fn() on acceptance.
+    if (entryVerdict.ok) {
+      const entryReceipt = providerEntryReceiptChecks.get(authorization)?.();
+      if (entryReceipt && !entryReceipt.ok) {
+        entryVerdict = {
+          ok: false,
+          reason: `receipt_rejected:${entryReceipt.reason}`,
+          status: RECEIPT_REQUIRED_STATUS,
+          reservation: 'release',
+          evidence: {
+            receipt_revalidation: entryReceipt,
+            provider_entry_guard: entryVerdict.evidence ?? null,
+          },
+        };
+      }
+    }
     if (!entryVerdict.ok) {
       // A missing disposition is uncertainty. Never restore one-time authority
       // unless the guard explicitly proves provider entry did not occur.
@@ -2439,7 +2517,10 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
           providerEntryEvidence: entryVerdict.evidence ?? null,
         });
       }
-      runtimeMonitor?.providerEntryRefused?.(runtimeCycleId);
+      // beginExecution prepares the monitor before fn() is called. This branch
+      // proves non-entry even if that preparation already completed; it is not
+      // recovery from an attempted provider effect.
+      runtimeMonitor?.providerEntryRefused?.(runtimeCycleId, { providerNotInvoked: true });
       const publicRefusalEvidence = refusalEvidence && typeof refusalEvidence === 'object'
         ? Object.fromEntries(
             Object.entries(refusalEvidence).filter(([field]) => field !== 'guard_evidence'),
@@ -2472,29 +2553,6 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         authorization: refusal,
         provider_entry_evidence: entryVerdict.evidence ?? null,
       };
-    }
-    const providerEntryEvidence = providerEntryGuard !== null
-      ? entryVerdict.evidence ?? null
-      : undefined;
-    if (runtimeMonitor && runtimeCycleId) {
-      const runtimeStart = runtimeMonitor.beginExecution(runtimeCycleId, authorization) as
-        { ok: true } | { ok: false; reason: string; event: any };
-      if (!runtimeStart.ok) {
-        const error = new Error(`EMILIA Gate runtime monitor refused execution (${runtimeStart.reason})`) as Error & { code?: string };
-        error.code = 'EMILIA_RUNTIME_MONITOR_REFUSED';
-        const terminal = gateOutcomeError(error, {
-          outcome: 'refused',
-          reason: runtimeStart.reason,
-          authorization,
-          execution: null,
-          result: { runtime_monitor: runtimeStart.event },
-          providerEntryEvidence,
-        });
-        // Preserve the established runtime-monitor error code while adding the
-        // structured terminal metadata required to retain guard evidence.
-        terminal.code = error.code;
-        throw terminal;
-      }
     }
     let phase = 'reserved';
     let consumptionCommitted = false;

@@ -4,6 +4,12 @@
 
 ### Security
 
+- Recheck receipt validity after blocking assurance and reservation work, before
+  invoking the provider. Snapshot signed input so callbacks cannot replace it.
+- Reject async and generator tools before reservation. Refuse lazy results from
+  synchronous tools while keeping the attempted receipt consumed.
+- Return a closed refusal for malformed nested receipt fields instead of raising
+  an attribute-access error.
 - Enforce a signed `expires_at` as an absolute validity boundary, mirroring
   `verifyEmiliaReceipt` in `packages/require-receipt`. It was never read, so a
   gate built with `max_age_sec=None` accepted a receipt that expired 30 days
