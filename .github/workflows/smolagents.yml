@@ -1,0 +1,47 @@
+name: smolagents adapter
+
+on:
+  pull_request:
+    paths:
+      - 'packages/smolagents/**'
+      - 'packages/crewai/**'
+      - 'packages/python-verify/**'
+      - 'examples/huggingface-refund-space/**'
+      - 'conformance/vectors/tool-call-binding.v1.json'
+      - '.github/workflows/smolagents.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install the source packages with the tested Hugging Face APIs
+        run: |
+          python -m pip install ./packages/python-verify ./packages/crewai './packages/smolagents[test]' 'smolagents==1.26.0' 'gradio==6.26.0' 'ruff==0.16.6'
+      - name: Lint and test the adapter and synthetic demo
+        run: |
+          ruff check packages/smolagents examples/huggingface-refund-space
+          python -m pytest packages/smolagents/tests packages/crewai/tests examples/huggingface-refund-space/test_demo.py -q
+          python examples/huggingface-refund-space/demo.py
+      - name: Build and test the exact Space wheels in a clean environment
+        run: |
+          python examples/huggingface-refund-space/bundle_space.py --output "$RUNNER_TEMP/emilia-refund-space"
+          python -m venv "$RUNNER_TEMP/emilia-space-venv"
+          cd "$RUNNER_TEMP/emilia-refund-space"
+          sha256sum -c SHA256SUMS
+          "$RUNNER_TEMP/emilia-space-venv/bin/python" -m pip install -r requirements.txt 'pytest==9.1.1'
+          "$RUNNER_TEMP/emilia-space-venv/bin/python" -c "import emilia_smolagents; assert 'site-packages' in emilia_smolagents.__file__, emilia_smolagents.__file__"
+          "$RUNNER_TEMP/emilia-space-venv/bin/python" -m pytest --import-mode=importlib "$GITHUB_WORKSPACE/packages/smolagents/tests" "$GITHUB_WORKSPACE/packages/crewai/tests" test_demo.py -q
+          "$RUNNER_TEMP/emilia-space-venv/bin/python" demo.py
