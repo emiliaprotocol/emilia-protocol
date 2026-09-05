@@ -1,5 +1,7 @@
 # EMILIA for smolagents
 
+**Let your agent prepare the action. Decide what it may execute.**
+
 Give a Hugging Face agent access to a consequential tool without letting the
 model supply its own authorization. This adapter wraps a native `smolagents.Tool`
 and checks an offline-verifiable EMILIA receipt before calling the tool.
@@ -20,9 +22,29 @@ code or a process owner from using another credential or calling an unwrapped
 tool. For a non-bypassable boundary, put enforcement beside the credential-owning
 provider and mediate every protected path.
 
+## Try the downloadable demo
+
+The community release includes a self-contained refund demo and the three required
+EMILIA wheels. Download `EMILIA-Hugging-Face-Space.zip` from the
+[release page](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/smolagents-preview-v0.1.0),
+unzip it, and open a terminal in the extracted folder:
+
+```bash
+shasum -a 256 -c SHA256SUMS
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python app.py
+```
+
+The demo uses synthetic refunds. No model token, payment account, or money is
+involved. The adapter and demo are free and open source under Apache-2.0.
+
 ## Install from this checkout
 
-This package is not yet published. From the repository root, use an isolated
+A standalone PyPI release is separate from this source and bundled-wheel release.
+Do not install older dependency versions in place of the included wheels.
+From the repository root, use an isolated
 Python 3.10+ environment and install the three local packages together:
 
 ```bash
@@ -119,3 +141,14 @@ The tests use real Ed25519 signatures and a local fake provider. They make no
 network calls and do not move money. The shared tool-call binding vectors pin
 agreement with EMILIA's other adapters; they are same-team consistency evidence,
 not independent interoperability or adoption evidence.
+
+## Protect one tool you already use
+
+Start with a tool whose effect matters: issuing a refund, changing a record, or
+releasing a deployment. Keep the approval lookup under the host's control, bind
+the full arguments, and test a changed argument and repeated receipt before
+connecting any real credentials. The synthetic demo is a starting point, not a
+production deployment checklist.
+
+If you try an integration, [tell us what you protected and what got in the way](https://github.com/emiliaprotocol/emilia-protocol/issues/new).
+Do not post credentials, receipts containing private data, or customer details.

@@ -5,6 +5,15 @@ example approves $42 to Alice, then tries the exact refund, a changed amount,
 a changed recipient, no approval, a repeated call, and a lost provider response.
 No model, payment account, or API key is needed. No money moves.
 
+**Let your agent prepare the action. Decide what it may execute.**
+
+For a ready-to-run folder, download `EMILIA-Hugging-Face-Space.zip` from the
+[community release](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/smolagents-preview-v0.1.0).
+Unzip it, verify `SHA256SUMS`, then install `requirements.txt` in a fresh virtual
+environment and run `python app.py`. The included wheels avoid waiting for the
+separate PyPI releases. This is free, Apache-2.0 source and a synthetic demo, not a
+hosted production Gate.
+
 ## Run it from this checkout
 
 Use Python 3.10 or later. From the repository root:

@@ -9,6 +9,8 @@ on:
       - 'examples/huggingface-refund-space/**'
       - 'conformance/vectors/tool-call-binding.v1.json'
       - '.github/workflows/smolagents.yml'
+      - '.github/workflows/publish-smolagents.yml'
+      - '.github/workflow-requirements/smolagents-test.*'
   workflow_dispatch:
 
 permissions:
