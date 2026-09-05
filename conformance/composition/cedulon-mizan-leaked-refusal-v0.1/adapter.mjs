@@ -14,7 +14,6 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  MERKLE_V2_ALG,
   actionHash,
   buildReceiptAnchorV2,
   canonicalize,
@@ -103,7 +102,11 @@ function checkedBytes(name, supplied) {
   return bytes;
 }
 
-/** Load and authenticate the exact raw fixture before parsing either JSONL. */
+/**
+ * Load and authenticate the exact raw fixture before parsing either JSONL.
+ *
+ * @param {{raw?: {policy?: Uint8Array, decisions?: Uint8Array, sent?: Uint8Array}}} [options]
+ */
 export function loadPinnedFixture({ raw } = {}) {
   const sourceRaw = {
     policy: checkedBytes('policy', raw?.policy),
@@ -285,7 +288,7 @@ async function buildFixtureTrustReceipt(fixture, projection) {
     tree_size: 1,
     root_hash: `sha256:${anchor.merkle_root}`,
     log_key_id: FIXTURE_LOG_KEY_ID,
-    merkle_alg: MERKLE_V2_ALG,
+    merkle_alg: anchor.alg,
   };
   const checkpointDigest = crypto.createHash('sha256')
     .update(canonicalize(checkpoint), 'utf8').digest();
@@ -293,7 +296,7 @@ async function buildFixtureTrustReceipt(fixture, projection) {
   return {
     ...receipt,
     log_proof: {
-      alg: MERKLE_V2_ALG,
+      alg: anchor.alg,
       leaf_hash: `sha256:${anchor.leaf_hash}`,
       leaf_index: 0,
       inclusion_path: anchor.merkle_proof,
