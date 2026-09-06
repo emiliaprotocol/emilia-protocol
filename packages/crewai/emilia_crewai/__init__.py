@@ -21,7 +21,7 @@ This mirrors, in Python, the canonical @emilia-protocol/require-receipt
   * SANITIZED REASON — refusals expose only a reason code, never signer detail.
 
 CrewAI is an OPTIONAL peer: the gate and decorator are pure Python and work with
-any callable; ``guard_crewai_tool`` duck-types a BaseTool's ``_run``.
+synchronous, non-generator callables; ``guard_crewai_tool`` duck-types a BaseTool's ``_run``.
 
 License: Apache-2.0
 See: draft-schrock-ep-authorization-receipts, draft-schrock-ep-enforcement-point
@@ -36,6 +36,7 @@ import inspect
 import json
 import re
 import threading
+from collections.abc import AsyncIterator, Iterator
 from datetime import datetime, timezone
 from typing import Any, Callable, Iterable, Optional
 
@@ -203,6 +204,17 @@ def _snapshot_invocation(
     return arguments, bound.args, bound.kwargs
 
 
+def _require_synchronous(fn):
+    candidates = (fn, getattr(fn, "__call__", None))
+    if not callable(fn) or any(
+        inspect.iscoroutinefunction(candidate)
+        or inspect.isasyncgenfunction(candidate)
+        or inspect.isgeneratorfunction(candidate)
+        for candidate in candidates
+    ):
+        raise TypeError("ReceiptGate supports only synchronous, non-generator callables")
+
+
 class ReceiptGate:
     """Offline Receipt-Required gate for one action type.
 
@@ -259,8 +271,10 @@ class ReceiptGate:
         if (
             not isinstance(receipt, dict)
             or receipt.get("@version") != RECEIPT_VERSION
-            or not receipt.get("payload")
-            or not (receipt.get("signature") or {}).get("value")
+            or not isinstance(receipt.get("payload"), dict)
+            or not isinstance(receipt.get("signature"), dict)
+            or not receipt["signature"].get("value")
+            or not isinstance(receipt["payload"].get("claim"), dict)
         ):
             return (False, "malformed_receipt", None)
 
@@ -288,25 +302,9 @@ class ReceiptGate:
         if not isinstance(receipt_id, str) or not receipt_id:
             return (False, "receipt_id_required", None)
 
-        if self._max_age is not None:
-            created = _parse_iso_epoch(payload.get("created_at"))
-            if created is None:
-                return (False, "receipt_timestamp_invalid", None)
-            age = _now() - created
-            if age < -self._max_future_skew:
-                return (False, "receipt_from_future", None)
-            if age > self._max_age:
-                return (False, "receipt_expired", None)
-
-        # A signed terminal expiry is an ABSOLUTE validity boundary, independent
-        # of the relative-age policy. Turning max_age_sec off must never revive a
-        # receipt past its own signed expires_at. Present-but-unparseable counts
-        # as expired (fail-closed), matching verifyEmiliaReceipt in
-        # packages/require-receipt.
-        if "expires_at" in payload:
-            expires = _parse_iso_epoch(payload.get("expires_at"))
-            if expires is None or _now() >= expires:
-                return (False, "receipt_expired", None)
+        freshness_reason = self._freshness_reason(payload)
+        if freshness_reason is not None:
+            return (False, freshness_reason, None)
 
         if claim.get("action_type") != bound_action:
             return (False, "action_mismatch", None)
@@ -318,14 +316,9 @@ class ReceiptGate:
             if not callable(self._verify_assurance):
                 return (False, "assurance_verifier_required", None)
             try:
-                result = self._verify_assurance(receipt, self._assurance_class)
+                result = self._verify_assurance(json.loads(canonicalize(receipt)), self._assurance_class)
             except Exception:
                 return (False, "assurance_verification_failed", None)
-            # Only an EXPLICIT affirmative counts. A bare string was previously
-            # read as "ok, and here is the tier", so any verifier that returned
-            # a diagnostic label, an error code, or a tier it had NOT actually
-            # proven was treated as a pass. The verifier must now say so:
-            # either {"ok": True, "tier": ...} or a literal True.
             if isinstance(result, dict):
                 have = result.get("tier") or result.get("have") or result.get("assurance_class")
                 assurance_ok = result.get("ok") is True
@@ -341,13 +334,40 @@ class ReceiptGate:
 
         return (True, None, receipt_id)
 
+    def _freshness_reason(self, payload: dict) -> Optional[str]:
+        """Check the signed validity interval using a fresh trusted clock read."""
+        if self._max_age is not None:
+            created = _parse_iso_epoch(payload.get("created_at"))
+            if created is None:
+                return "receipt_timestamp_invalid"
+            age = _now() - created
+            if age < -self._max_future_skew:
+                return "receipt_from_future"
+            if age > self._max_age:
+                return "receipt_expired"
+
+        # A signed terminal expiry is an ABSOLUTE validity boundary, independent
+        # of the relative-age policy. Turning max_age_sec off must never revive a
+        # receipt past its own signed expires_at. Present-but-unparseable counts
+        # as expired (fail-closed), matching verifyEmiliaReceipt in
+        # packages/require-receipt.
+        if "expires_at" in payload:
+            expires = _parse_iso_epoch(payload.get("expires_at"))
+            if expires is None or _now() >= expires:
+                return "receipt_expired"
+        return None
+
     def check(self, receipt: Any, target: Any = None) -> dict:
-        """Verify + reserve a receipt WITHOUT consuming it. On ok, the caller MUST
-        later call commit(receipt_id) on success or release(receipt_id) on failure.
+        """Verify and reserve. Commit after any provider attempt; release only
+        when the caller proves execution never began. Prefer ``run``.
         """
         bound = self.bound_action_for(target)
         if receipt is None:
             return {"ok": False, "reason": "receipt_required", "action": bound}
+        try:
+            receipt = json.loads(canonicalize(receipt))
+        except Exception:
+            return {"ok": False, "reason": "malformed_receipt", "action": bound}
         ok, reason, receipt_id = self._verify(receipt, bound)
         if not ok:
             return {"ok": False, "reason": reason, "action": bound}
@@ -357,6 +377,15 @@ class ReceiptGate:
             return {"ok": False, "reason": "consumption_store_unavailable", "action": bound}
         if reserved is not True:
             return {"ok": False, "reason": "replay_refused", "action": bound}
+        # Assurance verification and reservation may block. Their latency does
+        # not extend the signed validity window. No provider has been entered.
+        freshness_reason = self._freshness_reason(receipt["payload"])
+        if freshness_reason is not None:
+            try:
+                self.release(receipt_id)
+            except Exception:
+                return {"ok": False, "reason": "consumption_store_unavailable", "action": bound}
+            return {"ok": False, "reason": freshness_reason, "action": bound}
         return {"ok": True, "receipt_id": receipt_id, "action": bound}
 
     def commit(self, receipt_id: str) -> None:
@@ -384,11 +413,18 @@ class ReceiptGate:
         response was lost, so the receipt is burned rather than retried. Raises
         ReceiptRequired on a refused or missing receipt.
         """
+        _require_synchronous(fn)
         c = self.check(receipt, target)
         if not c["ok"]:
             raise ReceiptRequired(c["reason"], c["action"])
         try:
             result = fn()
+            if inspect.isawaitable(result) or isinstance(result, (Iterator, AsyncIterator)):
+                # Native unopened coroutines/generators can be closed without
+                # advancing them. The admitted attempt remains consumed.
+                if inspect.iscoroutine(result) or inspect.isgenerator(result):
+                    result.close()
+                raise TypeError("ReceiptGate does not support lazy or asynchronous results")
         except BaseException as effect_error:
             try:
                 self.commit(c["receipt_id"])
@@ -421,6 +457,7 @@ def require_receipt(
     may add a semantic selector, but cannot disable exact argument binding.
     """
     def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
+        _require_synchronous(fn)
         gate = ReceiptGate(
             lambda target: target,
             trusted_keys=trusted_keys,
@@ -473,6 +510,7 @@ def guard_crewai_tool(
     original = getattr(tool, "_run", None)
     if not callable(original):
         raise TypeError("guard_crewai_tool: tool must expose a callable `_run`")
+    _require_synchronous(original)
     gate = ReceiptGate(
         lambda target: target,
         trusted_keys=trusted_keys,

@@ -177,7 +177,12 @@ def verify_merkle_anchor(leaf_hash: Any, proof: Any, expected_root: Any, v2: boo
         pos = step.get("position")
         if pos not in ("left", "right"):
             return False
-        current = pair(step["hash"], current) if pos == "left" else pair(current, step["hash"])
+        try:
+            current = pair(step["hash"], current) if pos == "left" else pair(current, step["hash"])
+        except UnicodeError:
+            # Escaped lone surrogates are legal JSON decoder output, but not
+            # encodable hash material. Refuse without leaking an exception.
+            return False
     return current == expected_root
 
 
@@ -211,7 +216,9 @@ def verify_receipt(
         return VerifyResult(False, checks, f"Unsupported version: {version}")
     checks["version"] = True
 
-    sig = doc.get("signature") or {}
+    sig = doc.get("signature")
+    if not isinstance(doc.get("payload"), dict) or not isinstance(sig, dict):
+        return VerifyResult(False, checks, "Payload and signature must be objects")
     if not doc.get("payload") or not sig.get("value") or not sig.get("algorithm"):
         return VerifyResult(False, checks, "Missing payload or signature")
     # EP-RECEIPT-v1 is Ed25519 over JCS, and signature.algorithm is NOT covered
@@ -227,7 +234,11 @@ def verify_receipt(
             f"Unsupported signature algorithm '{sig.get('algorithm')}'; "
             f"EP-RECEIPT-v1 requires {RECEIPT_V1_SIGNATURE_ALGORITHM}",
         )
-    if not is_canonicalizable(doc["payload"]):
+    try:
+        canonicalizable = is_canonicalizable(doc["payload"])
+    except (RecursionError, TypeError, ValueError):
+        canonicalizable = False
+    if not canonicalizable:
         return VerifyResult(
             False,
             checks,
@@ -247,7 +258,12 @@ def verify_receipt(
     except Exception as e:  # noqa: BLE001 - report any decode/key error as a failed check
         return VerifyResult(False, checks, f"Signature verification failed: {e}")
 
-    anchor = doc.get("anchor") or {}
+    anchor = doc.get("anchor")
+    if anchor is None:
+        anchor = {}
+    if not isinstance(anchor, dict):
+        checks["anchor"] = False
+        return VerifyResult(False, checks, "Anchor must be an object")
     # Empty proof arrays are valid for a one-leaf Merkle tree. Do not use
     # truthiness here: JavaScript treats [] as truthy, Python as false, and that
     # split would silently skip anchor verification for single-leaf receipts.

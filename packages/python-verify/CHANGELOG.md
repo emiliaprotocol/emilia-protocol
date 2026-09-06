@@ -1,14 +1,24 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-## Unreleased
+## 2.8.5 (2026-09-05)
 
-## 2.8.4 (2026-08-30)
+- Pin wheel and source-distribution metadata to version 2.4, which the pinned
+  release checker supports. The 2.8.4 release failed this check before upload.
+- Carry the 2.8.4 security fixes unchanged under a fresh immutable release tag.
+
+## 2.8.4 (2026-09-05)
+
+### Security
+
+- Refuse malformed nested payload, signature, and anchor fields through a
+  structured verification result. Unencodable Merkle-proof hash text now fails
+  verification instead of raising an exception.
 
 ### Changed
 
 - Publish the corrected installation guidance with the current reproducible
-  Python release toolchain. Verifier behavior and public APIs are unchanged.
+  Python release toolchain.
 - Set the supported Python floor to 3.10 so runtime metadata and the pinned
   build toolchain describe the same supported interpreter line.
 - Parse the full one-through-nine-digit RFC 3339 fractional-second profile on
