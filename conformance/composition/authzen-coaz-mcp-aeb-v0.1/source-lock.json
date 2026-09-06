@@ -182,7 +182,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
-      "sha256": "1d87c764a932439af2a5e38e61ec0ddd2438fe91aae8919dbcd53c896f6a7b9f"
+      "sha256": "1512b1fd04fd2261c7b9a224eb01544e8ebd40bdc053b3f81a8d909d37e051d0"
     },
     {
       "path": "packages/verify/dist/agent-edge-continuity.js",
@@ -430,7 +430,7 @@
     },
     {
       "path": "packages/verify/src/aeb-wimse-oauth-adapter.ts",
-      "sha256": "0a22bcc8d2af5b40c1a0cb4b46cc4af65dc8e65465b95d2e082dcfa85b0ced70"
+      "sha256": "a2b29e3e9b43f8d2404f4ee76689bad6403f828fafddbfe0971383a888af7b1b"
     },
     {
       "path": "packages/verify/src/agent-edge-continuity.ts",
