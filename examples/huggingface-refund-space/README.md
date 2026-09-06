@@ -52,8 +52,9 @@ python examples/huggingface-refund-space/bundle_space.py --output /tmp/emilia-re
 ```
 
 Choose a new output directory. The script refuses to overwrite an existing one.
-It builds the three local EMILIA wheels, copies the app and documentation, adds
-Space metadata, and records the source commit and file hashes. It does **not**
+It builds the three local EMILIA wheels, copies the app, demo tests, Dockerfile,
+and documentation, adds Docker Space metadata, and records the source commit and
+file hashes. It does **not**
 create an account, upload files, or publish anything.
 
 To validate that folder separately:
@@ -67,8 +68,28 @@ python3 -m venv /tmp/emilia-refund-space-venv
 /tmp/emilia-refund-space-venv/bin/python demo.py
 ```
 
-After reviewing it, the folder can be uploaded to a Gradio Space. Use the included
-wheels: the adapter requires `emilia-crewai>=0.3.4` and `emilia-verify>=2.8.4`.
+To test the same folder as a container:
+
+```sh
+docker build -t emilia-refund-space .
+docker run --rm -p 127.0.0.1:7860:7860 emilia-refund-space
+```
+
+After reviewing it, upload the folder to a
+[Docker Space](https://huggingface.co/docs/hub/spaces-sdks-docker). The generated
+README sets `sdk: docker` and `app_port: 7860`; this also changes an existing
+Space to the Docker builder. The app itself is still Gradio. Its managed Gradio
+builder installs `requirements.txt` before copying the app, so the included
+`./wheels/` paths are not available at that point. The Dockerfile copies those
+wheels before installation and verifies every file listed in `SHA256SUMS`.
+
+The container uses the pinned official Python 3.12.14 slim image, a dedicated
+virtual environment, and an unprivileged UID 1000. It installs dependencies at
+build time and serves on port 7860 without model credentials or runtime package
+installation. The local Python commands above remain supported.
+
+Use the included wheels: the adapter requires `emilia-crewai>=0.3.4` and
+`emilia-verify>=2.8.4`.
 Those source versions include required security fixes and were not yet published
 on PyPI when this example was built. No standalone `pip install emilia-smolagents`
 release is claimed here.

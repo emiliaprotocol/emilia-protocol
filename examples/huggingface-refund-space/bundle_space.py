@@ -50,13 +50,13 @@ def bundle(output):
         *(f"./wheels/{wheel.name}" for wheel in artifacts),
     ]
     (output / "requirements.txt").write_text("\n".join(requirements) + "\n")
-    for name in ("app.py", "demo.py", "test_demo.py"):
+    for name in ("app.py", "demo.py", "test_demo.py", "Dockerfile"):
         shutil.copy2(EXAMPLE / name, output / name)
     shutil.copy2(ROOT / "LICENSE", output / "LICENSE")
     shutil.copy2(ROOT / "packages/smolagents/README.md", output / "ADAPTER.md")
     (output / "README.md").write_text(
         "---\ntitle: EMILIA Refund Tool Demo\nemoji: 🛂\ncolorFrom: green\ncolorTo: blue\n"
-        "sdk: gradio\nsdk_version: 6.26.0\npython_version: '3.12'\napp_file: app.py\n"
+        "sdk: docker\napp_port: 7860\n"
         "pinned: false\nlicense: apache-2.0\ntags:\n- smolagents\n- agent-tools\n- authorization\n---\n\n"
         "# One approval, one exact refund\n\n"
         "**Let your agent prepare the action. Decide what it may execute.**\n\n"
@@ -66,9 +66,16 @@ def bundle(output):
         "The three included EMILIA wheels were built from the checkout recorded in BUNDLE.json. "
         "They include source fixes that may not yet be on PyPI; do not replace them with older registry versions. "
         "SHA256SUMS identifies the exact files in this bundle.\n\n"
+        "This is a Docker Space running the same Gradio app. Its Dockerfile copies the included "
+        "wheels before installing requirements, verifies the bundled file hashes, and runs as "
+        "an unprivileged user on port 7860. The managed Gradio builder installs requirements "
+        "before copying app files, so it cannot install these bundled wheel paths.\n\n"
         "To run locally, verify the hashes, create a Python virtual environment, upgrade pip, "
         "install `requirements.txt`, and run `python app.py`. The adapter and demo are free "
         "and open source under Apache-2.0.\n\n"
+        "To test the container locally, run `docker build -t emilia-refund-space .` and "
+        "`docker run --rm -p 127.0.0.1:7860:7860 emilia-refund-space`. No runtime package "
+        "installation or model credentials are needed.\n\n"
         "See ADAPTER.md for local use, receipt transport, and production boundaries. The native wrapper "
         "is an EMILIA community integration, not a Hugging Face endorsement.\n"
     )

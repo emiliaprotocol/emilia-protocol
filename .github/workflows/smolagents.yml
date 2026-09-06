@@ -35,7 +35,7 @@ jobs:
       - name: Lint and test the adapter and synthetic demo
         run: |
           ruff check packages/smolagents examples/huggingface-refund-space
-          python -m pytest packages/smolagents/tests packages/crewai/tests examples/huggingface-refund-space/test_demo.py -q
+          python -m pytest packages/smolagents/tests packages/crewai/tests examples/huggingface-refund-space -q
           python examples/huggingface-refund-space/demo.py
       - name: Build and test the exact Space wheels in a clean environment
         run: |
