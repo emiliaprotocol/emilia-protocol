@@ -10,8 +10,9 @@
  *
  * This is ADDITIVE over EP-SIGNOFF-v1: it composes the frozen single-signoff
  * verifier (verifyWebAuthnSignoff) once per member and then applies the quorum
- * predicate. No new cryptography and no new trust primitive are introduced —
- * which keeps the existing formal-verification and conformance story intact.
+ * predicate. The completed-signoff chain is a new versioned composition of
+ * existing primitives. Prior symbolic models do not prove that construction;
+ * its current evidence is the named regression and cross-language vector set.
  *
  * FAIL-CLOSED by construction: the quorum is `valid: true` only when EVERY
  * predicate holds. Any missing field, parse error, or unmet predicate yields

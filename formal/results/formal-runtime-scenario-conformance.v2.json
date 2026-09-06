@@ -1239,7 +1239,7 @@
     },
     {
       "path": "packages/verify/dist/quorum.js",
-      "sha256": "024078388c570ed730ac2f401792ea878582d3e064c094d70de1bf17c8dac292"
+      "sha256": "a7d1eee553a107562ea36a01520788ccf1f7586066782b915e77525f75a4f44f"
     },
     {
       "path": "packages/verify/dist/receipt-cose-encoding.js",
