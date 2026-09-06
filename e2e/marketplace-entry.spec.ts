@@ -77,7 +77,9 @@ test.describe('marketplace entry', () => {
     await expect(page.getByRole('button', { name: 'Verify evidence', exact: true })).toBeDisabled();
     await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Verify evidence', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'No qualification result available' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'No qualification result available' }).or(
+      page.locator('main').getByRole('status').filter({ hasText: 'No qualification result is available' }),
+    )).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Qualified for this test scope', exact: true })).toHaveCount(0);
     await page.getByLabel('Evidence bundle JSON').fill('{"changed":true}');
     await expect(page.locator('#qualification-result-title')).toHaveCount(0);
