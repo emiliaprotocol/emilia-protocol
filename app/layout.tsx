@@ -11,12 +11,12 @@ import './ep.css';
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.emiliaprotocol.ai'),
   title: {
-    default: 'EMILIA | Your AI Workforce Needs Management',
+    default: 'EMILIA | Build Your AI Workforce',
     template: '%s',
   },
   description:
-    'Give every agent a job, set its authority, and know what happened. EMILIA is building '
-    + 'the workforce workspace on authorization infrastructure for agentic AI.',
+    'Find specialized agents or bring your own. Give them a job, set their limits and review the work. '
+    + 'EMILIA is building the operating home for your AI workforce.',
   applicationName: 'EMILIA',
   authors: [{ name: 'EMILIA', url: 'https://www.emiliaprotocol.ai' }],
   creator: 'EMILIA',
@@ -26,23 +26,23 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://www.emiliaprotocol.ai',
     siteName: 'EMILIA',
-    title: 'EMILIA | Your AI Workforce Needs Management',
+    title: 'EMILIA | Build Your AI Workforce',
     description:
-      'Give every agent a job, set its authority, and know what happened. A private local alpha with Gate enforcing limits on configured paths and an open protocol underneath.',
+      'Find specialized agents or bring your own. Explore the marketplace and a private local workforce alpha, with Gate enforcing limits on configured paths.',
     images: [
       {
         url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'EMILIA: Your AI workforce needs management. Give every agent a job, set its authority, and know what happened.',
+        alt: 'EMILIA: Build your AI workforce. Find specialized agents or bring your own.',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EMILIA | Your AI Workforce Needs Management',
+    title: 'EMILIA | Build Your AI Workforce',
     description:
-      'Give every agent a job, set its authority, and know what happened. Explore the private-local-alpha workforce product and its open protocol foundation.',
+      'Find specialized agents or bring your own. Give them a job, set their limits and review the work. Workforce workspace: private local alpha.',
     images: ['/twitter-image'],
   },
   robots: {
@@ -84,8 +84,8 @@ const ORGANIZATION_JSONLD = {
   },
   email: ENTITY.email,
   description:
-    'EMILIA is building an AI workforce management workspace on authorization infrastructure for agentic AI. '
-    + 'The commercial Gate product enforces customer limits on configured execution paths. EMILIA Protocol is its open foundation.',
+    'EMILIA is building an AI workforce business, connecting a builder marketplace to employer-owned jobs, limits and work records. '
+    + 'Gate enforces customer authority on configured execution paths. The workforce workspace is a private local alpha; EMILIA Protocol is its open foundation.',
   foundingDate: '2026-06-03',
   sameAs: [
     'https://github.com/emiliaprotocol',

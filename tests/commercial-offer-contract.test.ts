@@ -97,7 +97,7 @@ describe('commercial offer contract', () => {
     expect(home).toContain('<WorkforceIntroduction />');
     expect(home).toContain('<WorkforceNextStep />');
     expect(home).toContain('private local alpha using synthetic refunds');
-    expect(workforce).toContain('Your AI workforce<br />needs management.');
+    expect(workforce).toContain('Build your<br />AI workforce.');
     expect(workforce).toContain('refunds workflow, a named owner and agreed acceptance criteria');
     expect(workforce).toContain('The external evaluation team and provider are not yet selected. Terms are not yet set.');
     expect(workforce).toContain('href="/contact#workforce"');

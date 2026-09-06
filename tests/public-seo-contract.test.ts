@@ -97,7 +97,8 @@ describe('public SEO source contract', () => {
       expect(imageSource).toContain(`export const size = { width: ${width}, height: ${height} }`);
       expect(imageSource).toContain("export const contentType = 'image/png'");
       expect(imageSource).toContain('new ImageResponse(<SocialCard />, size)');
-      expect(imageSource).toContain('Your AI workforce needs management.');
+      expect(imageSource).toContain('Build your AI workforce.');
+      expect(read('app/_social/SocialCard.tsx')).toContain('Build your AI workforce.');
     }
     for (const relativePath of ['app/layout.tsx', 'app/page.tsx']) {
       const source = read(relativePath);

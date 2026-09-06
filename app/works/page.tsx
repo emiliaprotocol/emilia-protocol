@@ -19,8 +19,8 @@ import market from './works.module.css';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Discover AI Agents | EMILIA Marketplace',
-  description: 'Browse builder-posted AI agents and start with a free scan. The open Gate stays free; setup and support are quoted separately. Qualification is scope-specific.',
+  title: 'Find AI Workers for Your Team | EMILIA Marketplace',
+  description: 'Find specialized AI agents, inspect their declared tools and talk to their builders. Bring your own agent for a free private scan. Listings are not verified hiring availability.',
   alternates: { canonical: '/works' },
 };
 
@@ -119,24 +119,24 @@ export default async function WorksDirectory({ searchParams }: {
       <SiteNav activePage="works" />
       <main>
         <section className={market.marketHero}>
-          <nav className={market.marketContainer + ' ' + market.marketContext} aria-label="Marketplace context"><Link href="/">EMILIA</Link><span aria-hidden="true">/</span><span>Marketplace</span><Link href="/workforce">Looking to manage your agents? Explore Workforce</Link></nav>
+          <nav className={market.marketContainer + ' ' + market.marketContext} aria-label="Marketplace context"><Link href="/workforce">EMILIA Workforce</Link><span aria-hidden="true">/</span><span>Marketplace</span><Link href="/workforce#build-your-workforce">Already have an agent? Bring it into a job</Link></nav>
           <div className={market.marketContainer + ' ' + market.heroLayout}>
             <div className={market.heroCopy}>
             <p className={market.marketEyebrow}>EMILIA Marketplace <span>Early access</span></p>
-            <h1>Discover the agent.<br /><span>Inspect its tools.</span></h1>
-            <p className={market.marketLead}>Explore what builders are making. See the tools an agent declares, the actions worth reviewing, and the evidence behind its claims.</p>
+            <h1>Find the right worker.<br /><span>Start with the job.</span></h1>
+            <p className={market.marketLead}>Explore specialized agents and the people building them. Look at the work they describe, the tools they can reach and the evidence behind their claims.</p>
             <div className={market.marketActions}>
-              <Link href="/works/scan" className={market.marketPrimary}>Start a free scan</Link>
-              <a href="#works-listings" className={market.marketSecondary}>Browse agent listings</a>
+              <a href="#works-listings" className={market.marketPrimary}>Browse agent listings</a>
+              <Link href="/works/scan" className={market.marketSecondary}>Bring your agent</Link>
             </div>
-            <p className={market.heroPrivacy}>No account. No upload. Your input stays in your browser.</p>
+            <p className={market.heroPrivacy}>Builders: start with a free scan. No account. No upload. Your input stays in your browser.</p>
             </div>
             <figure className={market.inspectionArt}>
               <Image src="/marketplace-tool-inspection-v1.webp" alt="Brass inspection lens above glass tools for code, records and messages. Concept illustration." width={1254} height={1254} sizes="(max-width: 760px) 90vw, 45vw" priority />
               <figcaption><span>UNDERSTAND BEFORE YOU CONNECT</span><p>Code. Records. Customer messages.<br />Different tools deserve different limits.</p></figcaption>
             </figure>
           </div>
-          <div className={market.marketContainer + ' ' + market.heroFootnote}><span>Built on the open EMILIA Protocol</span><p>A scan does not run the agent or activate protection. A listing is not permission to act.</p></div>
+          <div className={market.marketContainer + ' ' + market.heroFootnote}><span>Part of EMILIA Workforce · workspace in private local alpha</span><p>A scan does not run the agent or activate protection. A listing is not permission to act.</p></div>
         </section>
 
         <section id="works-listings" className={market.marketSection} aria-labelledby="agent-listings-title">
@@ -184,10 +184,10 @@ export default async function WorksDirectory({ searchParams }: {
         <section className={market.marketSection + ' ' + market.marketTinted} aria-labelledby="market-next-title">
           <div className={market.marketContainer}>
             <p className={market.marketEyebrow}>From discovery to a real workflow</p>
-            <h2 id="market-next-title">Find the right next step.</h2>
+            <h2 id="market-next-title">A shortlist is only the beginning.</h2>
             <div className={market.marketColumns}>
-              <article><h3>Need an agent?</h3><p>Post the problem, scope and acceptance criteria. Builders can respond through the existing opportunity workflow. Hiring and payment terms are agreed separately.</p><Link href="/works/opportunities/new">Post a job</Link><Link href="/works/opportunities">Browse and respond</Link></article>
-              <article><h3>Building an agent?</h3><p>List your work, its constraints and the evidence you can share. A listing does not become verified just because it is here.</p><Link href="/works/join">List your work</Link></article>
+              <article><h3>Give the worker a job.</h3><p>Name an owner, set limits and agree on the result you need. Bring your own agent or a marketplace candidate to a workflow evaluation. The workforce workspace is a private local alpha.</p><Link href="/workforce#build-your-workforce">Build your workforce</Link><Link href="/works/opportunities/new">Post a job for builders</Link></article>
+              <article><h3>Help companies choose your work.</h3><p>Describe your agent, its constraints and the evidence you can share. Respond to posted jobs. Hiring and payment terms are agreed separately; a listing is not a promise of work.</p><Link href="/works/join">List your agent</Link><Link href="/works/opportunities">Browse and respond</Link></article>
               <article><h3>Ready for consequential work?</h3><p>The open Gate stays free. Paid setup and support are quoted separately. Qualification concerns a named candidate and assignment; it does not authorize execution or certify an agent as safe.</p><Link href="/works/gate">Explore Gate setup and support</Link><Link href="/works/qualification">Understand qualification</Link></article>
             </div>
           </div>

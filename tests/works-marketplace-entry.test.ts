@@ -68,7 +68,7 @@ describe('marketplace storefront entry', () => {
     expect(listPublicAuthorityRecords).not.toHaveBeenCalled();
   });
 
-  it('leads with free scan and counts only explicitly non-example active agents', async () => {
+  it('connects directory browsing and a free builder scan, counting only explicitly non-example active agents', async () => {
     listings = [
       listing('real-agent'), listing('example-agent', { example: true }),
       listing('example-app', { kind: 'app', example: true }),
@@ -77,12 +77,14 @@ describe('marketplace storefront entry', () => {
       listing('unmarked-agent', { example: undefined }),
     ];
     const html = await directory();
-    expect(html).toContain('Discover the agent.<br/><span>Inspect its tools.</span>');
+    expect(html).toContain('Find the right worker.<br/><span>Start with the job.</span>');
     expect(html).toContain('marketplace-tool-inspection-v1.webp');
-    expect(html).toContain('Looking to manage your agents? Explore Workforce');
+    expect(html).toContain('Already have an agent? Bring it into a job');
     expect(html).not.toContain('FIELD NOTE');
     expect(html).toContain('href="/works/scan"');
-    expect(html.indexOf('Start a free scan')).toBeLessThan(html.indexOf('Browse agent listings'));
+    expect(html.indexOf('Browse agent listings')).toBeLessThan(html.indexOf('Bring your agent'));
+    expect(html).toContain('Builders: start with a free scan.');
+    expect(html).toContain('The workforce workspace is a private local alpha.');
     const agents = section(html, 'works-listings');
     expect(agents).toContain('1 of 1 active agent listings · examples excluded');
     expect(agents).toContain('href="/works/listings/real-agent"');

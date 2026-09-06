@@ -158,8 +158,8 @@ describe('Works self-service UI and copy contract', () => {
     const discipline = read('app/works/ui.tsx');
     const combined = `${directory}\n${opportunities}\n${discipline}`;
 
-    expect(directory).toContain('Discover the agent.<br /><span>Inspect its tools.</span>');
-    expect(directory).toContain('Looking to manage your agents? Explore Workforce');
+    expect(directory).toContain('Find the right worker.<br /><span>Start with the job.</span>');
+    expect(directory).toContain('Already have an agent? Bring it into a job');
     expect(combined.toLowerCase()).not.toContain('verified market');
     expect(discipline).toContain('Capability, funding, authority, and eligibility statements');
     expect(directory).toContain('href="/works/join"');
