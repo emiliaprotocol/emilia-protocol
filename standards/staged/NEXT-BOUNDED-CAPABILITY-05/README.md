@@ -1,6 +1,6 @@
 # Bounded Capability Receipts -05 staging packet
 
-Upload only:
+Submitted XML:
 
 `UPLOAD-THIS/draft-schrock-ep-bounded-capability-receipts-05.xml`
 
@@ -32,4 +32,4 @@ cutoff. Direct-mode descendant independence is preserved. Those additional
 revocation rechecks are specified but not implemented by the current runtime;
 the implementation-status section states that limitation explicitly.
 
-This packet is staged only. It has not been submitted to the Datatracker.
+Published September 6, 2026. Author confirmation completed; public IETF XML matches this packet exactly. Retained for publication provenance, not re-upload.

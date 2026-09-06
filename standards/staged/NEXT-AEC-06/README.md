@@ -1,6 +1,6 @@
 # Authorization Evidence Chains -06 staging packet
 
-Upload only `UPLOAD-THIS/draft-schrock-ep-authorization-evidence-chain-06.xml`.
+Submitted XML: `UPLOAD-THIS/draft-schrock-ep-authorization-evidence-chain-06.xml`.
 
 This maintenance revision distinguishes the pre-execution Authorization Bundle
 from the terminal Trust Receipt and updates implementation status for the
@@ -10,4 +10,4 @@ receipt envelope, authorize an action, or claim independent interoperability.
 The legacy string-requirement API remains separate. The structured evaluator
 captures relying-party configuration before evaluating native evidence.
 
-Staged only. No Datatracker submission or acceptance is recorded here.
+Published September 6, 2026. Author confirmation completed; public IETF XML matches this packet exactly. Retained for publication provenance, not re-upload.

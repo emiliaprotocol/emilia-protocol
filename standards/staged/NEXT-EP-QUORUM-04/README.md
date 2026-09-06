@@ -1,8 +1,8 @@
 # Quorum -04 maintenance packet
 
-Staged only. No upload or public revision is claimed.
+Published September 6, 2026. Author confirmation completed; public IETF XML matches this packet exactly. Retained for publication provenance, not re-upload.
 
-Upload `UPLOAD-THIS/draft-schrock-ep-quorum-04.xml`. It is
+Submitted XML: `UPLOAD-THIS/draft-schrock-ep-quorum-04.xml`. It is
 dated 6 September 2026, an individual IETF Internet-Draft with informational
 category. TXT and HTML are in `RENDERS`; exact digests are in `SHA256SUMS.txt`.
 The pre-existing `THRESHOLD-SIGNATURES.md` is a separate proposal and has not
