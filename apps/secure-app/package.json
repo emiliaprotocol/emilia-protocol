@@ -25,7 +25,7 @@
   "dependencies": {
     "@noble/curves": "2.3.0",
     "@noble/hashes": "2.3.0",
-    "expo": "~57.0.15",
+    "expo": "~57.0.18",
     "expo-asset": "~57.0.15",
     "expo-local-authentication": "~57.0.2",
     "expo-screen-capture": "~57.0.2",
