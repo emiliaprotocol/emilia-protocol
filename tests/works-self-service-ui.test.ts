@@ -111,19 +111,55 @@ describe('Works self-service payloads', () => {
 });
 
 describe('Works self-service UI and copy contract', () => {
-  it('keeps the join flow flag-gated and uses the one-time key across both Works writes', () => {
+  it('keeps join flag-gated, previews before consent, and uses existing or one-time keys only for publication', () => {
     const page = read('app/works/join/page.tsx');
     const form = read('app/works/JoinForm.tsx');
 
     expect(page).toContain('isWorksV0Enabled()');
     expect(page).toContain('notFound()');
+    expect(page).toContain('const registrationEnabled = isPublicEntityRegistrationEnabled();');
+    expect(page).toContain('registrationEnabled={registrationEnabled}');
+    expect(page).toContain('Publishing requires an existing EMILIA entity key.');
+    expect(page).toContain('Scan privately first');
+    expect(page).toContain('Create a public listing, not a checkout.');
     expect(form).toContain("fetch('/api/entities/register'");
     expect(form).toContain("postWorksRecord('builders'");
     expect(form).toContain("postWorksRecord('listings'");
     expect(form).toContain('One-time API key');
     expect(form).toContain('Retry Works setup');
+    expect(form).toContain("accessMode === 'existing'");
+    expect(form).toContain("accessMode === 'new' && !registrationEnabled");
+    expect(form).toContain('name="existingKey" type="password"');
+    expect(form).toContain('Your existing key is held only in this page for retries.');
+    expect(form).toContain('if (!draft || !publicConsent)');
+    expect(form).toContain('name="publicConsent" type="checkbox"');
+    expect(form).toContain('setPublicConsent(false)');
+    expect(form).toContain('Preview my listing');
+    expect(form).toContain('Nothing is sent or published when you preview.');
+    expect(form).toContain('Review every public field');
+    expect(form).toContain('function preparePreview');
+    const preparePreview = form.slice(form.indexOf('function preparePreview'), form.indexOf('async function handlePublish'));
+    expect(preparePreview).not.toContain('fetch(');
+    expect(preparePreview).toContain('setDraft(buildJoinPayloads(input))');
+    expect(form).toContain('keyCreatedHere: false');
+    expect(form).toContain('keyCreatedHere: true');
+    expect(form).toContain('if (!next.builderCreated)');
+    expect(form).toContain('if (!next.listingCreated)');
+    expect(form).toContain('activeRequest.current?.abort()');
+    expect(form).toContain('if (inFlight.current) return;');
+    expect(form).toContain('No payment is taken here.');
     expect(form).not.toContain('localStorage');
     expect(form).not.toContain('sessionStorage');
+    expect(form).not.toContain('URLSearchParams');
+    const slugPattern = form.match(/pattern="([^"]+)"/)?.[1];
+    expect(slugPattern).toBeTruthy();
+    const slug = new RegExp(`^(?:${slugPattern})$`, 'v');
+    expect(slug.test('ledger-assistant')).toBe(true);
+    expect(slug.test('bad ID')).toBe(false);
+    const css = read('app/works/join/join.module.css');
+    expect(css).toContain('font-size:18px');
+    expect(css).toContain('@media(max-width:650px)');
+    expect(css).toContain('focus-visible');
   });
 
   it('keeps opportunity claims bounded and proposal publication explicit', () => {
@@ -158,8 +194,8 @@ describe('Works self-service UI and copy contract', () => {
     const discipline = read('app/works/ui.tsx');
     const combined = `${directory}\n${opportunities}\n${discipline}`;
 
-    expect(directory).toContain('Find the right worker.<br /><span>Start with the job.</span>');
-    expect(directory).toContain('Already have an agent? Bring it into a job');
+    expect(directory).toContain('What would you<br />like <em>taken care of?</em>');
+    expect(directory).toContain('Bring your agent');
     expect(combined.toLowerCase()).not.toContain('verified market');
     expect(discipline).toContain('Capability, funding, authority, and eligibility statements');
     expect(directory).toContain('href="/works/join"');

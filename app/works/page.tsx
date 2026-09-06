@@ -6,6 +6,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import Form from 'next/form';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { isWorksV0Enabled } from '@/lib/works/env';
@@ -14,7 +15,8 @@ import { createSupabaseAuthorityRecordStore } from '@/lib/works/authority-record
 import { listPublicAuthorityRecords } from '@/lib/works/authority-record-service';
 import type { ActivityRecord, BuilderRecord, CapabilityCardRecord, ListingRecord } from '@/lib/works/model';
 import { ClaimBadge, ExampleTag, Tag, WorksDisciplineNote } from './ui';
-import market from './works.module.css';
+import market from './marketplace.module.css';
+import { ShortlistProvider, ShortlistButton } from './Shortlist';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,57 +119,54 @@ export default async function WorksDirectory({ searchParams }: {
   return (
     <div className={market.marketPage}>
       <SiteNav activePage="works" />
-      <main>
+      <ShortlistProvider><main id="main-content">
         <section className={market.marketHero}>
           <nav className={market.marketContainer + ' ' + market.marketContext} aria-label="Marketplace context"><Link href="/workforce">EMILIA Workforce</Link><span aria-hidden="true">/</span><span>Marketplace</span><Link href="/workforce#build-your-workforce">Already have an agent? Bring it into a job</Link></nav>
+          <nav className={market.marketContainer + ' ' + market.marketTabs} aria-label="Marketplace"><a href="#works-listings" aria-current="page">Find agents</a><Link href="/works/join">Sell your agent&apos;s work</Link><Link href="/works/opportunities">Find jobs</Link><Link href="/works/scan">Free agent scan <span aria-hidden="true">↗</span></Link></nav>
           <div className={market.marketContainer + ' ' + market.heroLayout}>
             <div className={market.heroCopy}>
-            <p className={market.marketEyebrow}>EMILIA Marketplace <span>Early access</span></p>
-            <h1>Find the right worker.<br /><span>Start with the job.</span></h1>
-            <p className={market.marketLead}>Explore specialized agents and the people building them. Look at the work they describe, the tools they can reach and the evidence behind their claims.</p>
-            <div className={market.marketActions}>
-              <a href="#works-listings" className={market.marketPrimary}>Browse agent listings</a>
-              <Link href="/works/scan" className={market.marketSecondary}>Bring your agent</Link>
-            </div>
-            <p className={market.heroPrivacy}>Builders: start with a free scan. No account. No upload. Your input stays in your browser.</p>
+            <p className={market.marketEyebrow}>Good work. The right worker.</p>
+            <h1>What would you<br />like <em>taken care of?</em></h1>
+            <p className={market.marketLead}>Find AI agents built for the job. Meet their builders, inspect what they can do and decide what comes next.</p>
+            <a href="#works-listings" className={market.heroBrowse}>Browse agent listings <span aria-hidden="true">↓</span></a>
             </div>
             <figure className={market.inspectionArt}>
-              <Image src="/marketplace-tool-inspection-v1.webp" alt="Brass inspection lens above glass tools for code, records and messages. Concept illustration." width={1254} height={1254} sizes="(max-width: 760px) 90vw, 45vw" priority />
-              <figcaption><span>UNDERSTAND BEFORE YOU CONNECT</span><p>Code. Records. Customer messages.<br />Different tools deserve different limits.</p></figcaption>
+              <Image src="/emilia-workforce-atelier-v1.webp" alt="A human hand passes a work brief to a graphite and brass mechanical hand. Concept artwork about delegating a job." width={1672} height={941} sizes="(max-width: 760px) 90vw, 45vw" priority />
+              <figcaption><span>THE HANDOFF / CONCEPT ART</span><p>You set the job.<br />You keep the say.</p></figcaption>
             </figure>
           </div>
-          <div className={market.marketContainer + ' ' + market.heroFootnote}><span>Part of EMILIA Workforce · workspace in private local alpha</span><p>A scan does not run the agent or activate protection. A listing is not permission to act.</p></div>
         </section>
 
         <section id="works-listings" className={market.marketSection} aria-labelledby="agent-listings-title">
           <div className={market.marketContainer}>
-            <div className={market.sectionHeading}><p className={market.marketEyebrow}>01 / The directory</p><Link href="/works/join" className={market.marketSecondary}>List your agent</Link></div>
-            <h2 id="agent-listings-title">Agents for your shortlist</h2>
-            <p className={market.marketLead}>Look at the work, the tools and the evidence. Every listing starts with its builder&apos;s own description.</p>
-            <form method="get" action="/works" className={market.marketFilters}>
-              <FilterField label="Search"><input name="q" defaultValue={filters.q} placeholder="Name, task, interface" /></FilterField>
+            <h2 id="agent-listings-title" className={market.srOnly}>Agents for your shortlist</h2>
+            <Form action="/works" scroll={false} className={market.marketFilters}>
+              <div className={market.searchRow}><FilterField label="What work do you need done?"><input key={filters.q} name="q" defaultValue={filters.q} placeholder="Try research, refunds or customer support" type="search" maxLength={200} /></FilterField><button type="submit" className={market.marketPrimary}>Find agents <span aria-hidden="true">↗</span></button></div>
+              <div className={market.searchSuggestions}><span>Explore by task</span>{[['Research', 'research'], ['Finance', 'finance'], ['Customer support', 'support'], ['Engineering', 'code']].map(([name, query]) => <Link key={query} href={`/works?q=${query}#works-listings`}>{name}</Link>)}</div>
+              <details className={market.filterDisclosure} open={Boolean(filters.task || filters.iface || filters.license || filters.activity)}><summary>Refine by task, interface or license</summary><div className={market.advancedFilters}>
               <FilterSelect label="Task" name="task" value={filters.task} options={allTasks} />
               <FilterSelect label="Interface" name="interface" value={filters.iface} options={allInterfaces} />
               <FilterSelect label="License" name="license" value={filters.license} options={allLicenses} />
               <FilterSelect label="Activity" name="activity" value={filters.activity} options={allActivityTypes} />
               <button type="submit" className={market.marketPrimary}>Filter listings</button>
-            </form>
+              </div></details>
+            </Form>
 
             {!listingsRes.ok ? (
               <p className={market.marketEmpty} role="status">The listing directory is unavailable right now. We cannot confirm the number of agents. Please try again later.</p>
             ) : (
               <>
-                <p className={market.marketCount}>{visibleAgents.length} of {agents.length} active agent listings · examples excluded</p>
+                <div className={market.sectionHeading}><p className={market.marketCount}>{visibleAgents.length} of {agents.length} active agent listings · examples excluded</p>{filtersActive ? <Link href="/works#works-listings">Reset filters</Link> : <span className={market.marketNote}>Builder-supplied listings</span>}</div>
                 <p className={market.marketNote}>“Active” is the poster&apos;s listing status, not verified availability for hire. Apps, projects and paused or archived work are listed separately below.</p>
                 <div className={market.marketListingList}>{visibleAgents.map(renderListing)}</div>
                 {visibleAgents.length === 0 ? (
                   <div className={market.marketEmpty}>
-                    <h3>{agents.length === 0 ? 'No active agent listings yet.' : 'No active agents match these filters.'}</h3>
-                    <p>{agents.length === 0 ? 'The directory is open for builders. Example records below show the format; they are not available agents.' : 'Try a different task or interface, or tell builders what you need.'}</p>
+                    <div><p className={market.marketEyebrow}>{agents.length === 0 ? 'The first good match starts here' : 'Make room for a different match'}</p><h3>{agents.length === 0 ? 'No active agent listings yet.' : 'No active agents match these filters.'}</h3>
+                    <p>{agents.length === 0 ? 'Tell builders what you need done, or bring the agent you have built. We are opening the directory one real listing at a time.' : 'Try a different task or interface, or tell builders what you need.'}</p>
                     <div className={market.marketActions}>
+                      <Link href="/works/opportunities/new" className={market.marketPrimary}>Post a job</Link>
                       <Link href="/works/join" className={market.marketSecondary}>List your agent</Link>
-                      <Link href="/works/opportunities/new" className={market.marketSecondary}>Post a job</Link>
-                    </div>
+                    </div></div><aside className={market.emptyAside}><span className={market.marketEyebrow}>Want to look around first?</span><p>Explore the example directory.<br />See what a useful listing includes.</p><a href="#example-listings">See the examples <span aria-hidden="true">↗</span></a><small>Examples show the format. They are not available agents.</small></aside>
                   </div>
                 ) : null}
                 {filtersActive && visible.length === 0 ? (
@@ -180,6 +179,8 @@ export default async function WorksDirectory({ searchParams }: {
             ) : null}
           </div>
         </section>
+
+        <section className={market.builderBand} aria-labelledby="builder-band-title"><div className={market.marketContainer + ' ' + market.builderLayout}><div><p className={market.marketEyebrow}>For the people building the workers</p><h2 id="builder-band-title">You built it.<br /><em>Help someone put it to work.</em></h2><p>Show the job your agent does, the systems it needs and where its limits are. Start a conversation with a company that needs that work.</p><div className={market.marketActions}><Link href="/works/join" className={market.marketPrimary}>List your agent</Link><Link href="/works/opportunities" className={market.marketSecondary}>Find jobs for your agent</Link></div><p className={market.marketNote}>Listing and introductions today. Pricing, payment and delivery are agreed directly; EMILIA does not process agent sales.</p></div><aside className={market.scanInvitation}><p className={market.marketEyebrow}>Free, private agent scan</p><h3>Know what you are<br />asking someone to trust.</h3><p>Inspect declared tools. Flag possible money movement, access changes and other consequential actions before connecting a system.</p><Link href="/works/scan" className={market.marketSecondary}>Bring your agent <span aria-hidden="true">↗</span></Link><p className={market.marketNote}>Builders: start with a free scan. No account. No upload. Your input stays in your browser. Declarations only, not a security audit.</p></aside></div></section>
 
         <section className={market.marketSection + ' ' + market.marketTinted} aria-labelledby="market-next-title">
           <div className={market.marketContainer}>
@@ -231,7 +232,7 @@ export default async function WorksDirectory({ searchParams }: {
           <WorksDisciplineNote />
           </details>
         </div></section>
-      </main>
+      </main></ShortlistProvider>
       <SiteFooter />
     </div>
   );
@@ -242,7 +243,7 @@ function ListingPreview({ listing, builder, cards }: {
 }) {
   return <article className={market.marketListing}>
     <div className={market.marketListingHeading}>
-      <div><div className={market.marketTitleRow}>
+      <div><span className={market.monogram} aria-hidden="true">{listing.name.slice(0, 2).toUpperCase()}</span><div className={market.marketTitleRow}>
         <h3><Link href={`/works/listings/${listing.listing_id}`}>{listing.name}</Link></h3>
         {listing.example ? <ExampleTag /> : null}
       </div>
@@ -251,15 +252,15 @@ function ListingPreview({ listing, builder, cards }: {
     </div>
     <p className={market.marketListingSummary}>{listing.summary}</p>
     <div className={market.marketPills}>{listing.supported_tasks.map(task => <Tag key={`t-${task}`}>{task}</Tag>)}{listing.interfaces.map(iface => <Tag key={`i-${iface}`}>{iface}</Tag>)}</div>
-    {cards.slice(0, 2).map(card => <div key={card.card_id} className={market.marketClaim}>
+    {cards.length > 0 ? <details className={market.evidenceDisclosure}><summary>Read the evidence <span>{cards.length > 2 ? `First 2 of ${cards.length} statements` : `${cards.length} ${cards.length === 1 ? 'statement' : 'statements'}`}</span></summary>{cards.slice(0, 2).map(card => <div key={card.card_id} className={market.marketClaim}>
       <div className={market.marketTitleRow}><ClaimBadge claim={card.claim} /><span>Statement evidence</span></div>
       <p>{card.claim.statement}</p>
       <p className={market.marketNote}>Scope: {card.claim.scope} · Observed {card.claim.observed_at.slice(0, 10)}</p>
       <p className={market.marketNote}>Source: {card.claim.source?.reference || 'none recorded'}</p>
       <p className={market.marketNote}>Limitations: {card.claim.limitations || 'not specified by the poster'}</p>
-    </div>)}
+    </div>)}</details> : null}
     {cards.length === 0 ? <p className={market.marketNote}>No capability evidence is displayed for this listing.</p> : null}
-    <Link href={`/works/listings/${listing.listing_id}`} className={market.marketListingLink}>Inspect listing and evidence</Link>
+    <div className={market.cardFooter}><Link href={`/works/listings/${listing.listing_id}`} className={market.marketListingLink}>Inspect listing and evidence <span aria-hidden="true">↗</span></Link>{isActiveAgent(listing) && <ShortlistButton item={{ id: listing.listing_id, name: listing.name, builder: builder?.name || 'Builder unknown', summary: listing.summary, tasks: listing.supported_tasks, interfaces: listing.interfaces, constraints: listing.operating_constraints, license: listing.license || 'Not specified' }} />}</div>
   </article>;
 }
 
@@ -270,5 +271,5 @@ function FilterField({ label, children }: { label: string; children: React.React
 function FilterSelect({ label, name, value, options }: {
   label: string; name: string; value: string; options: string[];
 }) {
-  return <FilterField label={label}><select name={name} defaultValue={value}><option value="">All</option>{options.map(option => <option key={option} value={option}>{option}</option>)}</select></FilterField>;
+  return <FilterField label={label}><select key={value} name={name} defaultValue={value}><option value="">All</option>{options.map(option => <option key={option} value={option}>{option}</option>)}</select></FilterField>;
 }
