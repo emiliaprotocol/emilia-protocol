@@ -26,7 +26,7 @@ provider and mediate every protected path.
 
 The community release includes a self-contained refund demo and the three required
 EMILIA wheels. Download `EMILIA-Hugging-Face-Space.zip` from the
-[release page](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/smolagents-preview-v0.1.0),
+[release page](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/smolagents-v0.1.1),
 unzip it, and open a terminal in the extracted folder:
 
 ```bash
@@ -41,12 +41,20 @@ python app.py
 The demo uses synthetic refunds. No model token, payment account, or money is
 involved. The adapter and demo are free and open source under Apache-2.0.
 
-## Install from this checkout
+## Install the adapter
 
-A standalone PyPI release is separate from this source and bundled-wheel release.
-Do not install older dependency versions in place of the included wheels.
-From the repository root, use an isolated
-Python 3.10+ environment and install the three local packages together:
+Use an isolated Python 3.10+ environment:
+
+```bash
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install emilia-smolagents==0.1.1
+```
+
+### Install from this checkout
+
+To work from source instead, run these commands from the repository root:
 
 ```bash
 python -m venv .venv
