@@ -592,6 +592,48 @@ def test_receipt_expiring_while_waiting_for_setup_lock_never_runs_setup(monkeypa
     assert raw.calls == []
 
 
+@pytest.mark.parametrize("slow_verification", [2, 3])
+@pytest.mark.parametrize("validity", ["signed_expiry", "maximum_age"])
+def test_slow_assurance_recheck_cannot_extend_provider_entry_validity(
+    monkeypatch, slow_verification, validity
+):
+    now = [datetime.now(timezone.utc).timestamp()]
+    monkeypatch.setattr(emilia_crewai, "_now", lambda: now[0])
+    verification_count = 0
+
+    def verify_assurance(receipt, required):
+        nonlocal verification_count
+        verification_count += 1
+        if verification_count == slow_verification:
+            now[0] += 120
+        return {"ok": True, "tier": required}
+
+    raw = RefundTool()
+    guarded = wrap(
+        raw,
+        max_age_sec=60 if validity == "maximum_age" else None,
+        assurance_class="class_a",
+        verify_assurance=verify_assurance,
+    )
+    receipt = mint(
+        guarded.bound_action_for(**ARGS),
+        created_at=datetime.fromtimestamp(now[0], timezone.utc).isoformat(),
+        expires_at=(
+            datetime.fromtimestamp(now[0] + 60, timezone.utc).isoformat()
+            if validity == "signed_expiry"
+            else None
+        ),
+    )
+    with using_receipt(receipt), pytest.raises(ToolExecutionIndeterminate) as caught:
+        guarded(**ARGS)
+    assert caught.value.reason == "receipt_expired_after_admission"
+    assert raw.calls == []
+    assert raw.setup_calls == (1 if slow_verification == 3 else 0)
+    # Move only this test clock back to verify admission remains consumed.
+    now[0] -= 120
+    assert_refused(guarded, "replay_refused", receipt=receipt)
+
+
 @pytest.mark.parametrize("kind", ["async", "generator", "async_generator"])
 def test_declared_async_and_generator_tools_rejected_before_entry(kind):
     raw = RefundTool()

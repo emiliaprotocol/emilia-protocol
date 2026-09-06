@@ -184,10 +184,11 @@ class GuardedTool(Tool):
             verify_assurance=verify_assurance,
             max_future_skew_sec=max_future_skew_sec,
         )
-        # Reuse the same verifier for a freshness check after waiting/setup.
-        # _verify is the shared gate's non-reserving primitive; the dependency
-        # is bounded to the tested minor version and regression-tested here.
+        # Reuse the non-reserving verifier after waiting/setup, then check the
+        # clock again after any blocking assurance callback. The dependency is
+        # bounded to the tested minor version and regression-tested here.
         self._reverify = self._gate._verify
+        self._freshness_reason = self._gate._freshness_reason
         super().__init__()
         self._frozen = True
 
@@ -265,6 +266,9 @@ class GuardedTool(Tool):
         def recheck():
             ok, reason, _ = self._reverify(receipt, exact_action)
             if not ok:
+                raise _RecheckRefused(reason)
+            reason = self._freshness_reason(receipt["payload"])
+            if reason is not None:
                 raise _RecheckRefused(reason)
 
         def invoke():
