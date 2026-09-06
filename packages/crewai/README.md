@@ -27,6 +27,10 @@ A signed `expires_at` on the receipt payload is an absolute validity boundary.
 It is enforced independently of `max_age_sec`, so setting `max_age_sec=None`
 does not revive a receipt past its own expiry, and an unparseable `expires_at`
 fails closed.
+The gate checks time again after assurance verification and reservation, just
+before calling the tool. A slow verifier or store does not extend the receipt's
+validity. If it expires before entry, the gate refuses the call and releases only
+its unused reservation. A failed release remains a closed, uncertain state.
 
 ## Install
 
@@ -87,6 +91,12 @@ the external effect may have happened before its response was lost. Production
 fleets must pass an atomic, ownership-fenced `{reserve, commit, release}` store;
 the default is process-local. Call `release()` only when you can prove execution
 never began.
+
+This adapter supports synchronous, non-generator tools. It rejects known async
+or generator functions before reserving authority. If a synchronous function
+returns an awaitable or iterator, `run()` raises `TypeError` and keeps the receipt
+consumed: it cannot safely hand delayed execution back to the caller. Do not wrap
+an async tool in a synchronous lambda to bypass this restriction.
 
 ## Multi-agent / quorum
 

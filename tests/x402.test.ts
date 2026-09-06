@@ -24,7 +24,7 @@ function canon(v) {
 function mintReceipt(action, outcome, kp) {
   const payload = { receipt_id: 'r_test', subject: 'agent:demo', created_at: new Date().toISOString(), claim: { action_type: action, outcome } };
   const sig = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), kp.privateKey).toString('base64url');
-  return { '@version': 'EP-RECEIPT-v1', payload, signature: { value: sig }, public_key: kp.publicKeyB64u };
+  return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value: sig }, public_key: kp.publicKeyB64u };
 }
 const b64 = (o) => Buffer.from(JSON.stringify(o), 'utf8').toString('base64');
 

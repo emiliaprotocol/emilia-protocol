@@ -1,15 +1,17 @@
 # EMILIA — framework integration examples
 
-Guard an irreversible agent action behind EMILIA in every major agent framework. Same idea
-everywhere: the high-risk tool/function routes through the trust gate first —
-**allow → run, deny → throw, signoff_required → wait for a named human, then run.**
-Each example runs offline (a local policy stub), so you see all three outcomes immediately.
+These examples show where to check authority before a tool runs. The Python policy demos
+allow a small simulated payment, refuse a blocked destination, and hold a large payment
+because no verified human evidence is available. A callback saying "approved" is not proof
+of approval. The Python demos run offline and never move money; other examples state their
+own dependencies and evidence scope.
 
 | Framework | Example | Run |
 |---|---|---|
 | LangChain.js | [`../packages/langchain/example.mjs`](../packages/langchain/example.mjs) | `node packages/langchain/example.mjs` |
 | CrewAI (Python) | [`crewai_guard.py`](crewai_guard.py) | `python examples/crewai_guard.py` |
 | AutoGen (Python) | [`autogen_guard.py`](autogen_guard.py) | `python examples/autogen_guard.py` |
+| OpenAI Agents SDK (Python) | [`openai_agents_guard.py`](openai_agents_guard.py) | `python examples/openai_agents_guard.py` |
 | xAI Grok — **live** | [`grok-guard.mjs`](grok-guard.mjs) | `XAI_API_KEY=… node examples/grok-guard.mjs` |
 | Multi-handshake quorum (protocol) | [`multi-handshake/`](multi-handshake/) | `node examples/multi-handshake/compose-and-verify.mjs` |
 | Model-to-Matter frontier-science clearance | [`model-to-matter/`](model-to-matter/) | `node examples/model-to-matter/demo.mjs` |
@@ -19,9 +21,53 @@ Each example runs offline (a local policy stub), so you see all three outcomes i
 | Native government mobile approval | [`mobile-government/`](mobile-government/) | `npm run mobile:conformance` |
 | Regulatory mobile oversight export | [`regulatory-mobile-oversight/`](regulatory-mobile-oversight/) | `npm run mobile:regulator-demo` |
 
-Shared Python helper: [`emilia_guard.py`](emilia_guard.py) — `guard_action()` and the `guard`
-decorator. HTTP is dependency-injected: pass a `fetch` callable (requests/httpx) for live calls;
-the examples pass a local `demo_policy` stub so they run with zero setup and zero network.
+Shared Python policy helper: [`emilia_guard.py`](emilia_guard.py). Its `fetch` callback is
+configured by the application, not the model. Responses must name `allow`, `deny`,
+`allow_with_signoff`, or `signoff_required` in `decision` or the legacy `verdict` field.
+Optional `allowed` and `signoff_required` booleans must agree; `reason` is a string or null.
+Unknown fields, conflicting values, malformed responses, and fetch errors refuse execution.
+
+For signoff, `on_signoff(decision, arguments)` only obtains evidence. A separately configured
+`verify_signoff(evidence, action, arguments)` must verify it and return literal `True`.
+The verifier receives the exact action and full, detached tool arguments, including defaults.
+Each callback gets its own argument copy. Without a verifier, signoff stays blocked.
+This stdlib helper does not supply receipt cryptography, freshness checks, or replay storage.
+
+### Python receipt enforcement
+
+Use [`emilia_crewai.require_receipt`](../packages/crewai/) for real receipt-backed tools.
+Despite the package name, this decorator also wraps plain synchronous functions and does not
+require CrewAI. Configure it at the credential-owning executor:
+
+```python
+from emilia_crewai import require_receipt, using_receipt
+
+@require_receipt(
+    "payment.release",
+    trusted_keys=TRUSTED_ISSUER_KEYS,
+    store=CONSUMPTION_STORE,
+    assurance_class="class_a",
+    verify_assurance=verify_human_receipt,
+)
+def release_payment(amount, destination):
+    return provider.release(amount=amount, destination=destination)
+
+# The application obtains the receipt outside the model's tool arguments.
+with using_receipt(receipt):
+    release_payment(amount=50000, destination="acct_known")
+```
+
+This is a configuration sketch, not a ready-to-run payment integration.
+`TRUSTED_ISSUER_KEYS` and the independent `verify_human_receipt` implementation must be pinned
+by the executor. The human verifier must check genuine signed affirmative Class-A evidence,
+the exact action, enrolled approver and relying-party context; an operator's approval label
+does not establish a human ceremony. `CONSUMPTION_STORE` must provide atomic, persistent
+reserve/commit/release operations. The core binds the function name and complete arguments
+into the receipt action, verifies issuer signature and freshness, and consumes accepted
+authority once. Configure the issuer to use the same `bind_call_action` contract.
+
+An in-process wrapper only protects calls routed through it. Keep provider credentials out
+of the agent process and mediate every protected execution path for a non-bypassable boundary.
 
 ## xAI Grok — live demo
 
