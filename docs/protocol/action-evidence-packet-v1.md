@@ -65,7 +65,7 @@ The packet verifier derives the allowed interval from those values. Every counte
 
 Freshness is measured from each source's signed `observed_until`. The schedule's `max_observation_age_sec` is the ceiling. A caller may supply a lower maximum age, but a larger value cannot widen the signed schedule.
 
-`assembled_at` is not a security clock. The manifest is content-addressed, not signed by the assembler, so that field provides internal chronology only. Schedule currentness, source currentness, and native-artifact currentness come from their verified artifacts and external trust inputs. A deployment that needs assembler identity or packet-level non-repudiation should place the complete packet digest in a separately signed envelope.
+`assembled_at` is not a security clock. The manifest is content-addressed, not signed by the assembler, so that field provides internal chronology only. Schedule currentness, source currentness, and native-artifact currentness come from their verified artifacts and external trust inputs. A deployment that needs assembler identity, or a packet-level signature attributable to the assembler under a pinned key, should place the complete packet digest in a separately signed envelope.
 
 ## Native component adapters
 

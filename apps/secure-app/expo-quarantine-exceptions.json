@@ -3,11 +3,11 @@
   "entries": [
     {
       "package": "expo",
-      "accepted_spec": "~57.0.15",
-      "accepted_version": "57.0.15",
-      "doctor_required_version": "57.0.18",
-      "required_version_published_at": "2026-08-28T10:48:19.967Z",
-      "eligible_at": "2026-09-04T10:48:19.967Z"
+      "accepted_spec": "~57.0.18",
+      "accepted_version": "57.0.18",
+      "doctor_required_version": "57.0.20",
+      "required_version_published_at": "2026-09-04T07:46:21.211Z",
+      "eligible_at": "2026-09-11T07:46:21.211Z"
     },
     {
       "package": "expo-asset",
