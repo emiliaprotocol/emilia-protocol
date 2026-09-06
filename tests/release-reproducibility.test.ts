@@ -445,7 +445,9 @@ describe('release byte reproducibility', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  // This integration fixture performs real Git snapshot and independent npm
+  // build/pack operations; allow the same 60-second budget as the mode fixture.
+  }, 60_000);
 
   it('rejects a reviewed Git tree containing a symlink', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-source-symlink-'));

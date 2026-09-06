@@ -12,8 +12,10 @@ describe('security-case Node test runner', () => {
     expect(source).toMatch(
       /process\.execPath,[\s\S]+--import[\s\S]+scripts", "ts-loader", "register\.mjs"[\s\S]+--test/,
     );
-    expect(source).toMatch(
-      /"run",[\s\S]+file,[\s\S]+"--testTimeout=60000",[\s\S]+"--hookTimeout=60000",[\s\S]+"--reporter=json"/,
-    );
+    // The per-test budget moved to tests/security-case-vitest-runner-contract.ts
+    // when main narrowed it to tests/release-reproducibility.test.ts, the one
+    // file doing real Git and npm work. Every other evidence file keeps the
+    // outer 600-second deadline and Vitest's own defaults, which that suite
+    // asserts. Nothing is checked here so the two contracts cannot disagree.
   });
 });
