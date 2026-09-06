@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-09-06T02:26:36.702Z",
+  "evidence_snapshot_at": "2026-09-06T06:14:08.152Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "6c8324ba98cff1d79e0eef1d922429f57275066dfee750eef897d2f4f403222a",
+    "input_digest_sha256": "c41d11e96103267a575f43bbdf702b921b5660e02b677e734d7f4a2d8dbc18ce",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "b63cfe20c3b48cfd1ebff58b1286b7cb17a4a0af51f485eb4f35d8905c9e5c1a",
+        "sha256": "afddd645e138a90707cf7b6e5efa756230e374cdc02a60300a1078f3a73a7c2c",
         "bytes": 4299
       },
       {
@@ -349,7 +349,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "7ba567cd53860ad712b60f281bf03cb15af207377dcaf18d5e491a10151e2214",
+        "evidenceSha256": "62a973fafff4f491a3513a4dad7dce18720d6553f60a64df9fcce2ca696d0cad",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
