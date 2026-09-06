@@ -15,16 +15,16 @@
 .marketTabs a[aria-current] { border-bottom-color: var(--gold); color: var(--ink); }
 .marketTabs a:last-child { margin-left: auto; gap: 18px; }
 .marketTabs a:hover { color: var(--gold); }
-.heroLayout { display: grid; grid-template-columns: 1.12fr 1fr; align-items: center; gap: 60px; padding-block: 48px 28px; }
+.heroLayout { display: grid; grid-template-columns: 1fr 1.12fr; align-items: center; gap: 48px; padding-block: 48px 28px; }
 .marketEyebrow { color: var(--gold); margin: 0 0 18px; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
 .marketHero h1 { margin: 0 0 22px; font-size: clamp(44px, 4.7vw, 70px); line-height: 1.04; letter-spacing: -.05em; font-weight: 500; }
 .marketHero h1 em, .builderBand h2 em { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; letter-spacing: -.045em; color: var(--gold); }
 .marketLead { font-size: 19px; line-height: 1.6; color: var(--muted); max-width: 730px; margin: 0 0 20px; }
 .heroBrowse { color: var(--ink); display: inline-flex; align-items: center; gap: 24px; padding-block: 8px; font-size: 16px; }
 .inspectionArt { margin: 0; align-self: center; }
-.inspectionArt img { display: block; width: 100%; height: auto; mix-blend-mode: multiply; }
-.inspectionArt figcaption { display: flex; justify-content: space-between; align-items: start; gap: 18px; border-top: 1px solid var(--rule); padding-top: 14px; font-size: 14px; color: var(--muted); }
-.inspectionArt figcaption > span { font-size: 10px; letter-spacing: .1em; }
+.inspectionArt img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; object-position: 52% center; border-radius: 5px; }
+.inspectionArt figcaption { display: flex; justify-content: space-between; align-items: end; gap: 18px; padding-top: 14px; font-size: 15px; color: var(--muted); }
+.inspectionArt figcaption > span { font-size: 12px; }
 .inspectionArt figcaption p { margin: 0; color: var(--ink); }
 .marketSection { padding-block: 58px; border-top: 1px solid var(--rule); scroll-margin-top: 100px; }
 .marketSection:first-of-type { border: 0; }
@@ -143,10 +143,10 @@
   .heroLayout { grid-template-columns: 1fr; padding-block: 32px 22px; gap: 16px; }
   .marketHero h1 { font-size: clamp(41px, 8.8vw, 62px); }
   .marketLead { font-size: 18px; }
-  .inspectionArt { max-width: 500px; margin-inline: auto; }
-  .inspectionArt img { max-height: 210px; object-fit: contain; }
-  .inspectionArt figcaption { font-size: 12px; }
-  .inspectionArt figcaption > span { font-size: 9px; }
+  .inspectionArt { width: 100%; max-width: 560px; margin-inline: auto; }
+  .inspectionArt img { aspect-ratio: 16 / 9; object-fit: cover; }
+  .inspectionArt figcaption { font-size: 14px; }
+  .inspectionArt figcaption > span { font-size: 12px; }
   .searchRow { padding: 12px; flex-wrap: wrap; gap: 12px; }
   .searchRow .marketFilterField { flex-basis: 100%; }
   .searchRow input { font-size: 16px !important; }

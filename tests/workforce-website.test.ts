@@ -31,6 +31,9 @@ describe('workforce website story and public claim boundaries', () => {
     expect(introduction).toContain('href="#build-your-workforce"');
     expect(introduction).toContain('Build your workforce');
     expect(introduction).toContain('Bring your agent');
+    expect(introduction).toContain('emilia-workforce-coastal-path-v1.webp');
+    expect(introduction).toContain('AI-generated landscape.');
+    expect(introduction).not.toMatch(/mechanical hand|emilia-workforce-atelier-v1/);
     expect(text).toContain('Help builders earn work, help companies delegate it, and make every completed assignment improve the next decision.');
     vi.stubEnv('WORKS_V0', '0');
     const disabled = renderToStaticMarkup(createElement(WorkforceIntroduction));

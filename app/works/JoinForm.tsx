@@ -5,12 +5,15 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { buildJoinPayloads, type JoinFormInput, type JoinPayloads } from './form-payloads';
+import { validWorksId, type BuilderRecord } from '@/lib/works/model';
+import { publishRecordWithRecovery, readOwnedRecord } from './join/owned-record';
 import formStyles from './join/join.module.css';
 
 type RegistrationResponse = { api_key?: string; owner_id?: string };
 type JoinProgress = {
   apiKey: string; keyCreatedHere: boolean; ownerId: string; payloads: JoinPayloads;
   builderCreated: boolean; listingCreated: boolean;
+  reuseBuilder: boolean;
   failureStage: 'builder' | 'listing' | null; failureMessage: string;
 };
 
@@ -25,11 +28,7 @@ async function responseError(response: Response, fallback: string): Promise<stri
 }
 
 async function postWorksRecord(collection: 'builders' | 'listings', apiKey: string, record: unknown, signal: AbortSignal): Promise<void> {
-  const response = await fetch(`/api/works/${collection}`, {
-    method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify(record), signal,
-  });
-  if (!response.ok) throw new Error(await responseError(response, `The ${collection} write could not be confirmed.`));
+  return publishRecordWithRecovery(collection, apiKey, record as JoinPayloads['builder'] | JoinPayloads['listing'], signal);
 }
 
 export default function JoinForm({ registrationEnabled = false }: { registrationEnabled?: boolean }) {
@@ -38,12 +37,15 @@ export default function JoinForm({ registrationEnabled = false }: { registration
   const [draft, setDraft] = useState<JoinPayloads | null>(null);
   const [publicConsent, setPublicConsent] = useState(false);
   const [accessMode, setAccessMode] = useState<'existing' | 'new'>('existing');
+  const [profileMode, setProfileMode] = useState<'new' | 'existing'>('new');
+  const [ownedBuilder, setOwnedBuilder] = useState<{ record: BuilderRecord; apiKey: string } | null>(null);
   const [progress, setProgress] = useState<JoinProgress | null>(null);
   const [copyStatus, setCopyStatus] = useState('');
   const generation = useRef(0);
   const activeRequest = useRef<AbortController | null>(null);
   const inFlight = useRef(false);
   const previewHeading = useRef<HTMLHeadingElement | null>(null);
+  const intakeForm = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => () => { generation.current++; activeRequest.current?.abort(); }, []);
   useEffect(() => { if (draft && !progress) previewHeading.current?.focus(); }, [draft, progress]);
@@ -59,8 +61,30 @@ export default function JoinForm({ registrationEnabled = false }: { registration
 
   function clearKey() {
     generation.current++; activeRequest.current?.abort(); inFlight.current = false;
-    setProgress(null); setCopyStatus(''); setBusy(false); setPublicConsent(false);
+    setProgress(null); setOwnedBuilder(null); setCopyStatus(''); setBusy(false); setPublicConsent(false);
+    if (profileMode === 'existing') setDraft(null);
     setError('Key cleared from this page. This does not undo a published record. If a request was still running, check the profile and listing before starting again.');
+  }
+
+  function resetOwnedBuilder() {
+    generation.current++; activeRequest.current?.abort(); inFlight.current = false;
+    setOwnedBuilder(null); setPublicConsent(false); setBusy(false);
+  }
+
+  async function loadMyBuilder() {
+    if (inFlight.current || !intakeForm.current) return;
+    const data = new FormData(intakeForm.current);
+    const id = value(data, 'builderId'); const apiKey = value(data, 'profileKey');
+    if (!validWorksId(id) || !apiKey) { setError('Enter your builder profile ID and its existing EMILIA key.'); return; }
+    const request = beginRequest(); setBusy(true); setError(''); setOwnedBuilder(null);
+    try {
+      const record = await readOwnedRecord('builders', id, apiKey, request.signal) as BuilderRecord;
+      if (!request.isCurrent()) return;
+      setOwnedBuilder({ record, apiKey }); setAccessMode('existing'); setPublicConsent(false);
+      const input = intakeForm.current?.elements.namedItem('profileKey');
+      if (input instanceof HTMLInputElement) input.value = '';
+    } catch (caught) { if (request.isCurrent()) setError(caught instanceof Error ? caught.message : 'Builder ownership could not be checked.'); }
+    finally { if (request.isCurrent()) { inFlight.current = false; setBusy(false); } }
   }
 
   async function publishWorks(start: JoinProgress, request: ReturnType<typeof beginRequest>) {
@@ -90,29 +114,39 @@ export default function JoinForm({ registrationEnabled = false }: { registration
 
   function preparePreview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (inFlight.current) return;
     const data = new FormData(event.currentTarget);
     const input = Object.fromEntries([
       'builderId', 'builderKind', 'builderName', 'builderSummary', 'contactRoute', 'affiliationName', 'affiliationRelation',
       'listingId', 'listingKind', 'listingName', 'listingSummary', 'repositoryUrl', 'serviceUrl', 'license',
       'supportedTasks', 'interfaces', 'operatingConstraints',
     ].map(name => [name, value(data, name)])) as JoinFormInput;
-    if (Boolean(input.affiliationName) !== Boolean(input.affiliationRelation)) {
+    if (profileMode === 'existing' && (!ownedBuilder || input.builderId !== ownedBuilder.record.builder_id)) {
+      setError('Load the profile owned by your key before previewing this listing.'); return;
+    }
+    if (profileMode === 'new' && Boolean(input.affiliationName) !== Boolean(input.affiliationRelation)) {
       setError('Enter both affiliation name and relationship, or leave both blank.'); return;
     }
-    if (!/^(https:\/\/|mailto:)/i.test(input.contactRoute)) {
+    if (profileMode === 'new' && !/^(https:\/\/|mailto:)/i.test(input.contactRoute)) {
       setError('Use an https:// or mailto: contact route. This contact will be public.'); return;
     }
     if ([input.repositoryUrl, input.serviceUrl].some(url => url && !/^https:\/\//i.test(url))) {
       setError('Repository and service links must start with https://.'); return;
     }
-    setError(''); setPublicConsent(false); setDraft(buildJoinPayloads(input));
+    const payloads = buildJoinPayloads(input);
+    if (profileMode === 'existing' && ownedBuilder) payloads.builder = ownedBuilder.record;
+    setError(''); setPublicConsent(false); setDraft(payloads);
   }
 
   async function handlePublish(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current) return;
     if (!draft || !publicConsent) { setError('Review the preview and explicitly agree to public publication first.'); return; }
-    const existingKey = value(new FormData(event.currentTarget), 'existingKey');
+    const reuseBuilder = profileMode === 'existing';
+    if (reuseBuilder && (!ownedBuilder || ownedBuilder.record.builder_id !== draft.builder.builder_id)) {
+      setError('Reload your owned builder profile before publishing.'); return;
+    }
+    const existingKey = reuseBuilder ? ownedBuilder!.apiKey : value(new FormData(event.currentTarget), 'existingKey');
     if (accessMode === 'existing' && !existingKey) { setError('Enter your existing EMILIA API key to publish.'); return; }
     if (accessMode === 'new' && !registrationEnabled) { setError('New registration is not available. Use an existing key or request builder access.'); return; }
     const request = beginRequest(); setBusy(true); setError(''); setCopyStatus('');
@@ -120,7 +154,7 @@ export default function JoinForm({ registrationEnabled = false }: { registration
     try {
       if (accessMode === 'existing') {
         await publishWorks({ apiKey: existingKey, keyCreatedHere: false, ownerId: '', payloads,
-          builderCreated: false, listingCreated: false, failureStage: null, failureMessage: '' }, request);
+          builderCreated: reuseBuilder, reuseBuilder, listingCreated: false, failureStage: null, failureMessage: '' }, request);
         return;
       }
       const response = await fetch('/api/entities/register', {
@@ -135,7 +169,7 @@ export default function JoinForm({ registrationEnabled = false }: { registration
       if (!request.isCurrent()) return;
       if (!body.api_key) { setError('Registration returned without an API key. Publication could not continue. Do not assume registration failed.'); return; }
       const registered: JoinProgress = { apiKey: body.api_key, keyCreatedHere: true, ownerId: body.owner_id || '', payloads,
-        builderCreated: false, listingCreated: false, failureStage: null, failureMessage: '' };
+        builderCreated: false, reuseBuilder: false, listingCreated: false, failureStage: null, failureMessage: '' };
       setProgress(registered); await publishWorks(registered, request);
     } catch {
       if (request.isCurrent()) setError('We could not confirm registration, and no API key reached this page. The IDs may already exist. Request help before registering again.');
@@ -162,8 +196,8 @@ export default function JoinForm({ registrationEnabled = false }: { registration
     const complete = progress.builderCreated && progress.listingCreated;
     return <div className={formStyles.result}>
       <p className={formStyles.eyebrow}>{complete ? 'Published' : busy ? 'Publishing' : 'Needs attention'}</p>
-      <h2>{complete ? 'Your agent has a place to be found.' : progress.builderCreated ? 'Profile published. Listing not yet confirmed.' : 'Profile publication is not yet confirmed.'}</h2>
-      <p>{complete ? 'Your profile and listing are live. Companies can use your public contact route to discuss the work. No sale, payment or customer assignment has been created.'
+      <h2>{complete ? 'Your agent has a place to be found.' : progress.builderCreated ? progress.reuseBuilder ? 'Existing profile ready. Listing not yet confirmed.' : 'Profile published. Listing not yet confirmed.' : 'Profile publication is not yet confirmed.'}</h2>
+      <p>{complete ? progress.reuseBuilder ? 'Your new listing is live under your existing builder profile. The profile was not changed. No sale, payment or customer assignment has been created.' : 'Your profile and listing are live. Companies can use your public contact route to discuss the work. No sale, payment or customer assignment has been created.'
         : progress.keyCreatedHere ? 'Entity registration succeeded. Do not register again. Save the key, then retry only the unfinished Works step.'
           : 'No new account or key was created. We used the key you supplied. Check the error, then retry the unfinished step.'}</p>
       {progress.failureMessage ? <p className={formStyles.error} role="alert">{progress.failureMessage}</p> : null}
@@ -189,7 +223,7 @@ export default function JoinForm({ registrationEnabled = false }: { registration
   }
 
   return <div className={formStyles.intake}>
-    <form onSubmit={preparePreview} hidden={Boolean(draft)} className={formStyles.form}>
+    <form ref={intakeForm} onSubmit={preparePreview} hidden={Boolean(draft)} className={formStyles.form}>
       <div className={formStyles.sectionHeading}><span>01</span><div><h2>Start with the work.</h2><p>Be specific enough for a company to know when to contact you.</p></div></div>
       <fieldset className={formStyles.fields}><legend className={formStyles.srOnly}>Agent listing details</legend>
         <Field label="Agent or product name"><input name="listingName" required maxLength={200} placeholder="e.g. Ledger assistant" /></Field>
@@ -205,32 +239,39 @@ export default function JoinForm({ registrationEnabled = false }: { registration
       </fieldset>
       <div className={formStyles.sectionHeading}><span>02</span><div><h2>Put a person behind it.</h2><p>Give customers a clear way to reach the accountable builder.</p></div></div>
       <fieldset className={formStyles.fields}><legend className={formStyles.srOnly}>Accountable builder details</legend>
-        <div className={formStyles.gridTwo}><Field label="Accountable name"><input name="builderName" required maxLength={200} autoComplete="name" placeholder="Your name or legal entity" /></Field><Field label="Public contact route" hint="Use a mailto: or https:// address. Customers discuss price and terms here."><input name="contactRoute" required maxLength={600} placeholder="mailto:hello@example.com" autoComplete="url" /></Field></div>
-        <div className={formStyles.gridTwo}><Field label="Builder profile ID" hint="Your public URL. 3–64 lowercase letters, numbers or hyphens."><input name="builderId" required minLength={3} maxLength={64} pattern="[a-z0-9](?:[a-z0-9]|-){2,63}" placeholder="your-studio" autoComplete="off" /></Field><Field label="Listing ID" hint="The agent’s public URL. Choose an unused ID."><input name="listingId" required minLength={3} maxLength={64} pattern="[a-z0-9](?:[a-z0-9]|-){2,63}" placeholder="ledger-assistant" autoComplete="off" /></Field></div>
-        <details className={formStyles.advanced}><summary>More about the builder <span>Optional</span></summary><div className={formStyles.gridTwo}>
+        <fieldset className={formStyles.accessChoice} disabled={busy}><legend>Builder profile</legend><label><input type="radio" name="profileMode" value="new" checked={profileMode === 'new'} onChange={() => { resetOwnedBuilder(); setProfileMode('new'); }} /> Create a profile</label><label><input type="radio" name="profileMode" value="existing" checked={profileMode === 'existing'} onChange={() => { resetOwnedBuilder(); setProfileMode('existing'); setAccessMode('existing'); }} /> Use my existing profile</label></fieldset>
+        {profileMode === 'new' ? <div className={formStyles.gridTwo}><Field label="Accountable name"><input name="builderName" required maxLength={200} autoComplete="name" placeholder="Your name or legal entity" /></Field><Field label="Public contact route" hint="Use a mailto: or https:// address. Customers discuss price and terms here."><input name="contactRoute" required maxLength={600} placeholder="mailto:hello@example.com" autoComplete="url" /></Field></div> : null}
+        <div className={formStyles.gridTwo}><Field label="Builder profile ID" hint="Your public URL. 3–64 lowercase letters, numbers or hyphens."><input name="builderId" required minLength={3} maxLength={64} pattern="[a-z0-9](?:[a-z0-9]|-){2,63}" placeholder="your-studio" autoComplete="off" onChange={resetOwnedBuilder} /></Field><Field label="Listing ID" hint="The agent’s public URL. Choose an unused ID."><input name="listingId" required minLength={3} maxLength={64} pattern="[a-z0-9](?:[a-z0-9]|-){2,63}" placeholder="ledger-assistant" autoComplete="off" /></Field></div>
+        {profileMode === 'existing' ? <div>
+          <Field label="Key for your existing profile" hint="We check ownership with EMILIA. A public profile or matching name is not enough."><input name="profileKey" type="password" required={!ownedBuilder} maxLength={256} autoComplete="off" spellCheck={false} data-1p-ignore data-lpignore="true" onChange={resetOwnedBuilder} /></Field>
+          <div className={formStyles.actions}><button type="button" className={formStyles.secondary} onClick={loadMyBuilder} disabled={busy}>{busy ? 'Checking ownership…' : 'Load my profile'}</button></div>
+          {ownedBuilder ? <p role="status" className={formStyles.note}><strong>{ownedBuilder.record.name}</strong> is owned by this key. Its public contact is {ownedBuilder.record.contact_route}. We will reuse this profile without changing it.</p> : <p className={formStyles.note}>Only the new listing will be published. Your existing profile, contact route and previous listings stay unchanged.</p>}
+        </div> : null}
+        {profileMode === 'new' ? <details className={formStyles.advanced}><summary>More about the builder <span>Optional</span></summary><div className={formStyles.gridTwo}>
           <Field label="Profile type"><select name="builderKind" defaultValue="person"><option value="person">Person</option><option value="legal_entity">Legal entity</option></select></Field>
           <Field label="Builder summary"><textarea name="builderSummary" maxLength={2000} placeholder="Who builds and supports the agent?" /></Field>
           <Field label="Affiliation" hint="If supplied, include the relationship too."><input name="affiliationName" maxLength={200} placeholder="Organization" /></Field><Field label="Relationship"><input name="affiliationRelation" maxLength={200} placeholder="Employee, sponsor, independent builder" /></Field>
-        </div></details>
+        </div></details> : null}
       </fieldset>
-      <div className={formStyles.actions}><button type="submit" className={formStyles.primary}>Preview my listing</button><Link href="/works" className={formStyles.textButton}>Back to marketplace</Link></div>
-      <p className={formStyles.note}>Nothing is sent or published when you preview. Leave or reload this page and the draft is lost.</p>
+      <div className={formStyles.actions}><button type="submit" className={formStyles.primary} disabled={busy || (profileMode === 'existing' && !ownedBuilder)}>Preview my listing</button><Link href="/works" className={formStyles.textButton}>Back to marketplace</Link></div>
+      <p className={formStyles.note}>Nothing is sent or published when you preview. Loading an existing profile is a separate authenticated read. Leave or reload this page and the draft and key are lost.</p>
     </form>
     {draft ? <section className={formStyles.preview} aria-labelledby="listing-preview-title">
       <div className={formStyles.sectionHeading}><span>03</span><div><h2 id="listing-preview-title" ref={previewHeading} tabIndex={-1}>This is what you’ll publish.</h2><p>Review the public details before your key is used.</p></div></div>
       <div className={formStyles.previewSheet}><p className={formStyles.eyebrow}>Listing preview · Builder-supplied information</p><h3>{draft.listing.name}</h3><p className={formStyles.previewByline}>By {draft.builder.name}</p><p>{draft.listing.summary}</p>
         <dl><div><dt>Specialized tasks</dt><dd>{draft.listing.supported_tasks.join(', ')}</dd></div><div><dt>Interfaces</dt><dd>{draft.listing.interfaces.join(', ')}</dd></div><div><dt>Limits & requirements</dt><dd>{draft.listing.operating_constraints.join('\n')}</dd></div><div><dt>Public contact</dt><dd>{draft.builder.contact_route}</dd></div></dl>
-        <details className={formStyles.advanced}><summary>Review every public field</summary><pre>{JSON.stringify({ ...(accessMode === 'new' ? { entity: draft.entity } : {}), builder: draft.builder, listing: draft.listing }, null, 2)}</pre></details>
+        {profileMode === 'existing' ? <p className={formStyles.note}>Existing builder profile, unchanged. You are publishing only the new listing below.</p> : null}
+        <details className={formStyles.advanced}><summary>Review every public field</summary><pre>{JSON.stringify({ ...(accessMode === 'new' ? { entity: draft.entity } : {}), ...(profileMode === 'existing' ? { existing_builder_unchanged: draft.builder } : { builder: draft.builder }), listing: draft.listing }, null, 2)}</pre></details>
       </div>
       <p className={formStyles.note}>This is a builder-supplied listing, not a safety certification, verified capability or promise of paid work. It does not publish your private scan or create an Authority Record.</p>
       <form className={formStyles.accessForm} onSubmit={handlePublish}>
         <h3>Publish with your builder access.</h3>
-        {!registrationEnabled ? <p className={formStyles.note}>New self-service registration is currently closed. Existing EMILIA entity keys can publish. <a href="mailto:team@emiliaprotocol.ai?subject=EMILIA%20Marketplace%20builder%20access">Request builder access</a> if you do not have one.</p>
+        {profileMode === 'existing' ? <p className={formStyles.note}>Using the key that loaded your owned profile. It remains only in this page and is not displayed here.</p> : !registrationEnabled ? <p className={formStyles.note}>New self-service registration is currently closed. Existing EMILIA entity keys can publish. <a href="mailto:team@emiliaprotocol.ai?subject=EMILIA%20Marketplace%20builder%20access">Request builder access</a> if you do not have one.</p>
           : <fieldset className={formStyles.accessChoice} disabled={busy}><legend>Choose access</legend><label><input type="radio" name="accessMode" value="existing" checked={accessMode === 'existing'} onChange={() => { setAccessMode('existing'); setPublicConsent(false); }} /> Use an existing key</label><label><input type="radio" name="accessMode" value="new" checked={accessMode === 'new'} onChange={() => { setAccessMode('new'); setPublicConsent(false); }} /> Register a new entity</label></fieldset>}
-        {accessMode === 'existing' ? <Field label="Existing EMILIA API key" hint="Used only for these publication requests. Held in this page for retries, never saved in browser storage or the URL."><input name="existingKey" type="password" required maxLength={256} autoComplete="off" spellCheck={false} data-1p-ignore data-lpignore="true" placeholder="Your existing EMILIA API key" /></Field>
+        {profileMode === 'existing' ? null : accessMode === 'existing' ? <Field label="Existing EMILIA API key" hint="Used only for these publication requests. Held in this page for retries, never saved in browser storage or the URL."><input name="existingKey" type="password" required maxLength={256} autoComplete="off" spellCheck={false} data-1p-ignore data-lpignore="true" placeholder="Your existing EMILIA API key" /></Field>
           : <p className={formStyles.note}>Registration will create the public entity shown in the preview and return a one-time key. Save that key before leaving this page.</p>}
-        <label className={formStyles.consent}><input name="publicConsent" type="checkbox" checked={publicConsent} disabled={busy} onChange={event => setPublicConsent(event.target.checked)} required /><span>I am authorized to publish these details. Make this builder profile, listing and contact route public{accessMode === 'new' ? ', and register the new entity shown above' : ''}.</span></label>
-        <div className={formStyles.actions}><button type="submit" disabled={busy || !publicConsent} className={formStyles.primary}>{busy ? 'Publishing…' : 'Publish profile and listing'}</button><button type="button" className={formStyles.textButton} disabled={busy} onClick={() => { setDraft(null); setPublicConsent(false); setError(''); }}>Edit details</button></div>
+        <label className={formStyles.consent}><input name="publicConsent" type="checkbox" checked={publicConsent} disabled={busy} onChange={event => setPublicConsent(event.target.checked)} required /><span>{profileMode === 'existing' ? 'I am authorized to publish this new listing under my existing builder profile. Keep that profile unchanged.' : <>I am authorized to publish these details. Make this builder profile, listing and contact route public{accessMode === 'new' ? ', and register the new entity shown above' : ''}.</>}</span></label>
+        <div className={formStyles.actions}><button type="submit" disabled={busy || !publicConsent} className={formStyles.primary}>{busy ? 'Publishing…' : profileMode === 'existing' ? 'Publish new listing' : 'Publish profile and listing'}</button><button type="button" className={formStyles.textButton} disabled={busy} onClick={() => { setDraft(null); setPublicConsent(false); setError(''); }}>Edit details</button></div>
         <p className={formStyles.note}>No payment is taken here. You and the customer agree on the work and commercial terms directly.</p>
       </form>
     </section> : null}

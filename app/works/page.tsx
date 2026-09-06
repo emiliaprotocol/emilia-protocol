@@ -131,8 +131,8 @@ export default async function WorksDirectory({ searchParams }: {
             <a href="#works-listings" className={market.heroBrowse}>Browse agent listings <span aria-hidden="true">↓</span></a>
             </div>
             <figure className={market.inspectionArt}>
-              <Image src="/emilia-workforce-atelier-v1.webp" alt="A human hand passes a work brief to a graphite and brass mechanical hand. Concept artwork about delegating a job." width={1672} height={941} sizes="(max-width: 760px) 90vw, 45vw" priority />
-              <figcaption><span>THE HANDOFF / CONCEPT ART</span><p>You set the job.<br />You keep the say.</p></figcaption>
+              <Image src="/emilia-workforce-coastal-path-v1.webp" alt="A sunlit coastal path winds through soft grasses toward the ocean, shaded by mature trees." width={1672} height={941} sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1432px) 45vw, 672px" loading="eager" />
+              <figcaption><p>You choose the work.<br />You set the direction.</p><span>AI-generated landscape</span></figcaption>
             </figure>
           </div>
         </section>

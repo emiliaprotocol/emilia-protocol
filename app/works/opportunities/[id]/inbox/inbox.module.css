@@ -1,0 +1,30 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+.page { min-height: 100vh; background: #FAFAF9; color: #0C0A09; font-family: 'IBM Plex Sans', -apple-system, sans-serif; }
+.page *, .page *::before, .page *::after { box-sizing: border-box; }
+.main { max-width: 960px; margin: 0 auto; padding: 62px 28px 80px; }
+.main h1 { font-size: clamp(36px, 5vw, 54px); line-height: 1.12; font-weight: 550; letter-spacing: -.035em; margin: 20px 0 38px; overflow-wrap: anywhere; }
+.main h2 { font-size: 28px; line-height: 1.25; margin: 0 0 20px; font-weight: 550; }
+.main p { font-size: 18px; line-height: 1.65; margin: 0 0 20px; }
+.main a { color: #0C0A09; text-underline-offset: 4px; font-size: 17px; overflow-wrap: anywhere; }
+.main .eyebrow { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin-top: 35px; color: #595b51; }
+.main .note { font-size: 16px; line-height: 1.65; color: #595b51; }
+.inbox { padding-top: 28px; border-top: 1px solid #c9c6b8; }
+.form { margin: 28px 0; display: flex; flex-direction: column; gap: 12px; }
+.form label { font-size: 18px; font-weight: 600; }
+.form input { width: 100%; min-width: 0; font: inherit; font-size: 18px; padding: 14px; border: 1px solid #929989; border-radius: 4px; color: #20231f; background: #fff; }
+.actions { display: flex; flex-wrap: wrap; gap: 16px; }
+.actions button { min-height: 48px; padding: 12px 22px; font: inherit; font-size: 17px; border: 1px solid #20231f; border-radius: 3px; color: #fff; background: #20231f; cursor: pointer; }
+.actions button:disabled { opacity: .55; cursor: not-allowed; }
+.actions .secondary { background: transparent; color: #20231f; }
+.page a:focus-visible, .page input:focus-visible, .page button:focus-visible { outline: 3px solid #986d0f; outline-offset: 4px; }
+.notice { border-left: 3px solid #986d0f; padding: 12px 18px; }
+.results { margin-top: 42px; padding-top: 26px; border-top: 1px solid #c9c6b8; }
+.proposal { padding: 26px 0; border-bottom: 1px solid #c9c6b8; }
+.proposal h3 { font-size: 24px; margin: 10px 0 18px; overflow-wrap: anywhere; }
+.proposal h3 a { font-size: inherit; }
+.proposal .meta { font-size: 14px; color: #595b51; overflow-wrap: anywhere; }
+.proposalText { white-space: pre-wrap; overflow-wrap: anywhere; }
+.candidateLinks { display: flex; flex-wrap: wrap; gap: 14px 28px; padding: 8px 0; }
+.candidateLinks a { display: inline-flex; align-items: center; min-height: 44px; }
+.nextStep { margin-top: 28px !important; padding: 20px 0; border-top: 2px solid #B08D35; }
+@media (max-width: 600px) { .main { padding: 40px 20px 60px; } .actions { flex-direction: column; } }
