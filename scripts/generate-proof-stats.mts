@@ -339,6 +339,18 @@ export function acquireProofStatsRunLock({
   }
 }
 
+export function securityCaseExecutionArgs(check: boolean): string[] {
+  return [
+    "--import",
+    "./scripts/ts-loader/register.mjs",
+    "scripts/verify-security-case.mjs",
+    "--execute",
+    // The writer resolves the case from this same live execution before using
+    // it for counts. Check mode never rewrites evidence to make a check pass.
+    ...(!check ? ["--emit", "security/security-case.json"] : []),
+  ];
+}
+
 function generateProofStats(): void {
 const check: boolean = process.argv.includes("--check");
 const bootstrapDerivedEvidence: boolean = process.argv.includes(
@@ -443,12 +455,7 @@ if (bootstrapDerivedEvidence) {
 if (!securityCasePreverified) {
   const liveSecurityCase = spawnSync(
     process.execPath,
-    [
-      "--import",
-      "./scripts/ts-loader/register.mjs",
-      "scripts/verify-security-case.mjs",
-      "--execute",
-    ],
+    securityCaseExecutionArgs(check),
     {
       encoding: "utf8",
       maxBuffer: 1e9,

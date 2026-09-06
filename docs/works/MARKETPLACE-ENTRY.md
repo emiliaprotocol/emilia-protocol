@@ -89,3 +89,10 @@ including its synthetic example, malformed input, editing after a result, clear,
 download and no input-bearing network requests. Exercise qualification with
 missing operator configuration and hostile evidence. Keep source, tests,
 deployment, payment and qualified evidence as separate release states.
+
+Commit the reviewed source before running `npm run sync:proof-stats`, because
+package reproducibility requires a clean reviewed checkout. The writer runs the
+full test suite and emits the security case from its live execution before
+updating the counts. `npm run check:proof-stats` remains read-only and rejects
+stale evidence. Regenerate and check the LLM context after a successful refresh;
+do not publish partially regenerated artifacts from a failed command.
