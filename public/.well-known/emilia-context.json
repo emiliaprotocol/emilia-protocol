@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-09-06T01:29:39.271Z",
+  "evidence_snapshot_at": "2026-09-06T02:26:36.702Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "143d7e0ed255eba887825309f7b9b8c5f4c3bc546aa50d9d492e6a074403bcb7",
+    "input_digest_sha256": "d9a23c4324858fab45eff2a1d3954e9dd06d38558ec358b5c7c58012043d1ab6",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "0ae8d08bebe1eeaf0fbf39c0bbb62817b63e0f6bf5455a725b2d53b163250a3e",
+        "sha256": "b63cfe20c3b48cfd1ebff58b1286b7cb17a4a0af51f485eb4f35d8905c9e5c1a",
         "bytes": 4299
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "e7fe4e721c3ba9a878523cbdf846691ce3f4499a0e10a0f09361c3cfef1c112c",
+        "sha256": "2c233a90262d0ed3de804d832e8317540e707d1c08f1c92d00ae896febfe39d4",
         "bytes": 391522
       },
       {
@@ -419,7 +419,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 264,
-      "evidence_bundle_sha256": "6605294159195498f72958fdc27b553f402cfee0274a315a33a38f7e632114b7"
+      "evidence_bundle_sha256": "964886e1eea9b8779d7be451e817fa4df9705ab5509719588aac2252ea75df6c"
     },
     "caid": {
       "core_vectors": 48,
