@@ -1,21 +1,20 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Contact — Pilot, Partnership, and Press Inquiries',
+  title: 'Contact EMILIA | Discuss Your AI Workflow',
   description:
-    'Reach EMILIA Protocol for pilot programs, integration partnerships, ' +
-    'security disclosures, press, and procurement conversations.',
+    'Discuss one AI workflow with EMILIA: the job, its owner, the authority it needs and how you will review the work. Workforce evaluations, integrations and inquiries.',
   alternates: { canonical: '/contact' },
   openGraph: {
-    title: 'Contact EMILIA Protocol',
+    title: 'Discuss Your AI Workflow with EMILIA',
     description:
-      'Pilot, partnership, security, and procurement contact channels.',
+      'Start with one workflow and a named owner. The workforce product is a private local alpha; scope and production readiness are agreed separately.',
     url: 'https://www.emiliaprotocol.ai/contact',
     type: 'website',
   },
   keywords: [
     'EMILIA Protocol contact',
-    'pilot inquiry',
+    'AI workforce evaluation',
     'partnership inquiry',
     'security disclosure',
   ],

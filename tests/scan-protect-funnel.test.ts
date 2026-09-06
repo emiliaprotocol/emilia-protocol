@@ -19,11 +19,14 @@ describe('scan to protected MCP boundary funnel', () => {
   const protectionBuilder = read('app/protect/ProtectionBuilder.tsx');
   const sitemap = read('app/sitemap.ts');
 
-  it('starts with a passive local scan and offers one bounded protection step', () => {
-    expect(homepage).toContain('href="/scan#run-local"');
-    expect(homepage).toContain('Map and prepare one action');
-    expect(homepage).toContain('PRODUCT_STORIES');
-    expect(homepage).toContain('Protect one workflow');
+  it('keeps the passive local scanner accessible from the shared workforce story', () => {
+    const story = read('components/workforce/WorkforceStory.tsx');
+    expect(homepage).toContain('<WorkforceNextStep />');
+    expect(story).toContain('href="/scan#run-local"');
+    expect(story).toContain('Map my agent');
+    expect(story).toContain('href="/contact#workforce"');
+    expect(story).toContain('Discuss your workflow');
+    expect(story).toContain('It maps supported declared actions; it does not activate enforcement.');
   });
 
   it('routes a scan result into Agent Guard and then the MCP integration', () => {

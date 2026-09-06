@@ -123,6 +123,9 @@ const ROUTE_POLICIES = {
   'POST /api/works/authority-records/*/billing/checkout':  { rateCategory: 'submit', useAuth: false },
   'POST /api/works/authority-records/*/billing/reconcile': { rateCategory: 'submit', useAuth: false },
   'POST /api/works/billing/webhook':                       { rateCategory: 'submit', useAuth: false },
+  // Stateless, scoped evidence verification. Trusted policy and current status
+  // come from the operator, never from a scan, payment or caller-supplied keys.
+  'POST /api/works/qualification':                        { rateCategory: 'mcp_tool_call', useAuth: false },
   'POST /api/works/*':                       { rateCategory: 'submit', useAuth: true },
   'PATCH /api/works/*/*':                    { rateCategory: 'submit', useAuth: true },
 
