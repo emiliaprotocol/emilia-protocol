@@ -78,11 +78,11 @@
     },
     {
       "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/check.mjs",
-      "sha256": "36dab1c03189798d3cc5bf9937579bf31d758ba1a211e52957fba4bd8c2e62c0"
+      "sha256": "20e13af0f5cac628eeff09c20ce1dd93a90f6dc725a08bbfd2a6819d88ebc4bc"
     },
     {
       "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/executor-profile.mjs",
-      "sha256": "1a7aba9de368a6075a98a3b1dcaf7f2b5d15faaf01cd9c80c4a3d29325dd3b61"
+      "sha256": "194ea08a601a7108db3d1b1d089c9744c8f7e8cac37f1144912ac2e9da9af89e"
     },
     {
       "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/executor-profile.node-test.mjs",
@@ -94,7 +94,7 @@
     },
     {
       "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/run.mjs",
-      "sha256": "19a0bbf4040ac1678e98d872c2073e5a1d50eede944028def0210e85eb02d024"
+      "sha256": "abc95f1f06ae86e4eeff7daa2259dd6419385558e882f4a61aacdd4d1904bd12"
     },
     {
       "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/run.node-test.mjs",

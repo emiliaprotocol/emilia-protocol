@@ -49,7 +49,9 @@ function integer(value) {
 
 function bytes(value) {
   const result = canonicalBytes(value);
-  if (!result.ok) throw new Error('not_canonicalizable');
+  // canonicalBytes returns a refusal shape with no `canonical` field, so the
+  // string check is the narrowing, not a restatement of `ok`.
+  if (!result.ok || typeof result.canonical !== 'string') throw new Error('not_canonicalizable');
   return Buffer.from(result.canonical, 'utf8');
 }
 
@@ -255,10 +257,16 @@ export function TEST_ONLY_keyPair(label) {
   return { privateKey, publicKey: crypto.createPublicKey(privateKey).export({ type: 'spki', format: 'pem' }) };
 }
 
+/** @typedef {{ body: any, signature: string }} SignedEnvelope */
+
+/** @returns {SignedEnvelope} */
 export function TEST_ONLY_sign(body, privateKey) {
   return { body: structuredClone(body), signature: crypto.sign(null, bytes(body), privateKey).toString('base64url') };
 }
 
+/**
+ * @param {{ mode?: string, mutateSource?: (body: Record<string, any>) => void }} [options]
+ */
 export function TEST_ONLY_fixture({ mode = 'success', mutateSource } = {}) {
   const sourceKeys = TEST_ONLY_keyPair('source'); const providerKeys = TEST_ONLY_keyPair('provider');
   let time = Date.parse('2026-09-03T12:00:00Z');
@@ -274,6 +282,10 @@ export function TEST_ONLY_fixture({ mode = 'success', mutateSource } = {}) {
   if (mutateSource) mutateSource(sourceBody);
   const record = TEST_ONLY_sign(sourceBody, sourceKeys.privateKey);
   let calls = 0; let reads = 0; let lastRequest;
+  /**
+   * Test knobs the cases below set after construction.
+   * @type {{ mode: string, evidence: SignedEnvelope | undefined, onInvoke: ((request: any) => void) | undefined }}
+   */
   const control = { mode, evidence: undefined, onInvoke: undefined };
   const providerResult = (changes = {}, key = providerKeys.privateKey) => TEST_ONLY_sign({
     profile: PROVIDER_PROFILE, provider_id: 'test:payment-provider', key_id: 'test:provider-key', audience: 'test:executor',

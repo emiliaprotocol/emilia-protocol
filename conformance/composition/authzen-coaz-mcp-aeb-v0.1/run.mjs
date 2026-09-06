@@ -45,6 +45,24 @@ import {
   unifiedRegistryDigest,
 } from '../../../packages/verify/dist/aeb-adapter-contract.js';
 
+/** @typedef {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebDigest} AebDigest */
+/** @typedef {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebPinnedAdapter} AebPinnedAdapter */
+/** @typedef {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebPinnedProfile} AebPinnedProfile */
+/** @typedef {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebRegistryEntry} AebRegistryEntry */
+/** @typedef {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebRegistryEntryKind} AebRegistryEntryKind */
+/** @typedef {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebUnifiedRegistry} AebUnifiedRegistry */
+/** @typedef {import('../../../packages/verify/dist/aeb-consequence-conformance.js').AebConsequenceCase} AebConsequenceCase */
+/** @typedef {import('../../../packages/verify/dist/aeb-consequence-conformance.js').AebConsequencePriorOperation} AebConsequencePriorOperation */
+/** @typedef {import('../../../packages/verify/dist/aeb-consequence-conformance.js').AebConsequenceRequirement} AebConsequenceRequirement */
+
+/**
+ * Placeholder for a digest field that the pin helpers themselves compute. Every
+ * *Digest helper excludes its own digest field from the canonical input, so the
+ * value seeded here cannot change the digest that overwrites it. Using a real
+ * digest rather than an empty string keeps the AebDigest type honest.
+ */
+const UNSET_DIGEST = digestAeb(null);
+
 export const PROFILE = 'AUTHZEN-COAZ-MCP-AEB-CONSEQUENCE-v0.1';
 export const REPORT_VERSION = 'AUTHZEN-COAZ-MCP-AEB-REPORT-v0.1';
 export const PREFLIGHT_VERSION = 'AUTHZEN-LOCAL-PEP-PREFLIGHT-v0.1';
@@ -108,10 +126,15 @@ const PEP_TEST_PUBLIC_KEY = crypto.createPublicKey(PEP_TEST_PRIVATE_KEY)
   .export({ type: 'spki', format: 'der' })
   .toString('base64url');
 
+/**
+ * @param {Buffer} bytes
+ * @returns {AebDigest}
+ */
 function sha256Bytes(bytes) {
   return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
 }
 
+/** @returns {AebDigest} */
 function digestJson(value) {
   return sha256Bytes(Buffer.from(canonicalizeAebConsequenceConformance(value), 'utf8'));
 }
@@ -153,13 +176,20 @@ function substitutedBinding() {
 const APPROVED = approvedBinding();
 const SUBSTITUTED = substitutedBinding();
 
+/**
+ * @param {string} id
+ * @param {AebRegistryEntryKind} kind
+ * @param {unknown} definition
+ * @returns {AebRegistryEntry}
+ */
 function registryEntry(id, kind, definition) {
+  /** @type {AebRegistryEntry} */
   const entry = {
     kind,
     version: '1',
     status: 'active',
     definition,
-    definition_digest: '',
+    definition_digest: UNSET_DIGEST,
   };
   entry.definition_digest = registryEntryDigest(id, entry);
   return entry;
@@ -176,7 +206,9 @@ function preflightRequirement(requireNamedHuman) {
   };
 }
 
+/** @returns {AebPinnedProfile} */
 function preflightMappingProfile() {
+  /** @type {AebPinnedProfile} */
   const profile = {
     version: PEP_PROFILE_VERSION,
     definition: {
@@ -204,7 +236,7 @@ function preflightMappingProfile() {
       omitted_material_fields: [],
       omitted_nonmaterial_fields: [],
     },
-    profile_digest: '',
+    profile_digest: UNSET_DIGEST,
   };
   profile.profile_digest = mappingProfileDigest(PEP_PROFILE_ID, profile);
   return profile;
@@ -454,6 +486,7 @@ export function buildAuthzenPreflightFixture({
     id: PEP_ADAPTER_ID,
     version: PEP_ADAPTER_VERSION,
   });
+  /** @type {AebPinnedAdapter} */
   const adapterPin = {
     version: PEP_ADAPTER_VERSION,
     trust_roots: [{ key_id: PEP_VERIFIER_KEY_ID, public_key: PEP_TEST_PUBLIC_KEY }],
@@ -462,7 +495,7 @@ export function buildAuthzenPreflightFixture({
       accepted_protocols: [PEP_OBSERVATION_PROTOCOL_ID],
     },
     max_status_age_sec: 360,
-    config_digest: '',
+    config_digest: UNSET_DIGEST,
   };
   adapterPin.config_digest = adapterPinDigest(PEP_ADAPTER_ID, adapterPin);
   const requirement = preflightRequirement(require_named_human);
@@ -483,12 +516,13 @@ export function buildAuthzenPreflightFixture({
       { role: 'named-human-authorization', subject_kinds: ['human'] },
     ),
   };
+  /** @type {AebUnifiedRegistry} */
   const registry = {
     '@version': 'EP-EVIDENCE-REGISTRY-v1',
     registry_id: 'registry:authzen-coaz-mcp-aeb-v0.1',
     epoch: 1,
     entries,
-    registry_digest: '',
+    registry_digest: UNSET_DIGEST,
   };
   registry.registry_digest = unifiedRegistryDigest(registry);
   const requirementRef = require_named_human
@@ -580,6 +614,7 @@ export function evaluateAuthzenPreflight(input) {
   };
 }
 
+/** @returns {AebConsequenceRequirement} */
 function machinePolicyRequirement() {
   return {
     role: 'machine-policy-input',
@@ -591,6 +626,7 @@ function machinePolicyRequirement() {
   };
 }
 
+/** @returns {AebConsequenceRequirement} */
 function humanRequirement() {
   return {
     role: 'named-human-authorization',
@@ -602,6 +638,7 @@ function humanRequirement() {
   };
 }
 
+/** @returns {AebConsequencePriorOperation} */
 function priorOperation(operation) {
   return {
     operation_id: operation.operation_id,
@@ -676,6 +713,7 @@ function buildAebCase(entry, localPolicyDecision, preflight) {
     ],
   };
 
+  /** @type {AebConsequenceCase} */
   const input = {
     '@version': AEB_CONSEQUENCE_CASE_VERSION,
     id: entry.id,
@@ -956,6 +994,7 @@ export function runSuite() {
 }
 
 function parseArgs(argv) {
+  /** @type {{ check: boolean, emit: boolean, output: string | null }} */
   const options = { check: false, emit: false, output: null };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -986,7 +1025,9 @@ if (isMain) {
       `${PROFILE}: ${report.summary.passed}/${report.summary.total} cases passed; reference matched\n`,
     );
   } else if (options.emit) {
-    writeFileSync(resolve(options.output), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+    const output = options.output;
+    assert.ok(output, '--emit requires --output');
+    writeFileSync(resolve(output), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   } else {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   }
