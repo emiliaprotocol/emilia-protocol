@@ -3,11 +3,16 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useRef, useState, type FormEvent } from 'react';
+import { useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { color, cta, styles } from '@/lib/tokens';
 import { validWorksId } from '@/lib/works/model';
 import { buildSubmissionPayload, type SubmissionFormInput, type SubmissionPayload } from './form-payloads';
 import formStyles from './works.module.css';
+
+// The server and first hydration render keep sensitive controls disabled.
+const subscribeToHydration = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 
 type SubmissionFormProps = {
   opportunityId: string;
@@ -71,6 +76,7 @@ export default function SubmissionForm({
   sponsorContactRoute,
 }: SubmissionFormProps) {
   const router = useRouter();
+  const ready = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const [busy, setBusy] = useState(false);
   const [publishPublicly, setPublishPublicly] = useState(false);
   const [message, setMessage] = useState('');
@@ -83,6 +89,7 @@ export default function SubmissionForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!ready) return;
     if (inFlight.current) return;
     inFlight.current = true;
     const form = event.currentTarget;
@@ -151,8 +158,9 @@ export default function SubmissionForm({
         </p>
       </div>
 
-      <form className={formStyles.form} onSubmit={handleSubmit}>
-        <fieldset disabled={busy} className={formStyles.fieldset} style={{ border: 0 }}>
+      <noscript><p>This private form needs JavaScript. You can use the sponsor’s contact route instead. Do not send your API key to the sponsor.</p></noscript>
+      <form method="post" className={formStyles.form} onSubmit={handleSubmit}>
+        <fieldset disabled={!ready || busy} className={formStyles.fieldset} style={{ border: 0 }}>
         <div className={formStyles.gridTwo}>
           <Field label="EMILIA API key">
             <input className="ep-input" style={styles.input} name="apiKey" type="password" required
@@ -199,7 +207,7 @@ export default function SubmissionForm({
         </div> : null}
 
         <div className={formStyles.actions}>
-          <button type="submit" disabled={busy} style={busy ? cta.disabled : cta.primary} className={busy ? undefined : 'ep-cta'}>
+          <button type="submit" disabled={!ready || busy} style={!ready || busy ? cta.disabled : cta.primary} className={!ready || busy ? undefined : 'ep-cta'}>
             {busy ? 'Sending…' : publishPublicly ? 'Publish response' : 'Send private response'}
           </button>
         </div>

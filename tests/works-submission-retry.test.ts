@@ -88,11 +88,15 @@ describe('stable submission identity after response loss', () => {
     }));
     expect(html).toContain('Private responses can be read by you, the opportunity owner and authorized administrators');
     expect(html).not.toContain('shared only with the opportunity owner');
+    expect(html).toContain('method="post"');
+    expect(html).toContain('<fieldset disabled=""');
     const source = readFileSync(new URL('../app/works/SubmissionForm.tsx', import.meta.url), 'utf8');
     expect(source).toContain('Start a separate response');
     expect(source).toContain('already have been recorded');
     expect(source).toContain('matchesSubmissionAttempt(body.record, payload)');
     expect(source).toContain('if (inFlight.current) return');
+    expect(source).toContain('if (!ready) return');
+    expect(source).toContain('disabled={!ready || busy}');
     expect(source).not.toMatch(/localStorage|sessionStorage/);
   });
 });

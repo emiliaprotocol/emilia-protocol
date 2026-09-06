@@ -2,11 +2,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { createInboxRequestFence, loadOpportunityInbox, type InboxPageResult } from './inbox-client';
 import styles from './inbox.module.css';
 
+const subscribeToHydration = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
+
 export default function ProposalInbox({ opportunityId }: { opportunityId: string }) {
+  const ready = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const [apiKey, setApiKey] = useState('');
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState('');
@@ -42,6 +47,7 @@ export default function ProposalInbox({ opportunityId }: { opportunityId: string
 
   async function load(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!ready) return;
     const key = apiKey.trim();
     clear(false);
     const request = fence.current!.begin();
@@ -67,7 +73,9 @@ export default function ProposalInbox({ opportunityId }: { opportunityId: string
     <h2>Open your private proposal inbox.</h2>
     <p>See who has responded, read their approach and open the proposed agent’s listing. Use the EMILIA API key that posted this opportunity.</p>
     <p className={styles.note}>The server checks that the key belongs to the opportunity owner or an authorized administrator before returning proposals. A proposal is not an agreed assignment or a payment.</p>
-    <form onSubmit={load} className={styles.form}>
+    <noscript><p>The private inbox needs JavaScript to keep credentials out of page navigation. Enable it before entering a key.</p></noscript>
+    <form method="post" onSubmit={load} className={styles.form}>
+      <fieldset disabled={!ready}>
       <label htmlFor="proposal-inbox-key">EMILIA API key</label>
       <input id="proposal-inbox-key" type="password" autoComplete="off" spellCheck={false} maxLength={512}
         value={apiKey} onChange={(event) => { clear(false); setApiKey(event.target.value); }} required
@@ -76,9 +84,10 @@ export default function ProposalInbox({ opportunityId }: { opportunityId: string
       <p id="proposal-key-help" className={styles.note}>Your key goes only to this site’s API, in an authentication header. It is not saved and clears after you request the inbox. Editing the key, clearing this view or leaving the tab hides the proposals.</p>
       {offset > 0 ? <p className={styles.note}>Page {offset / 50 + 1}. Enter your posting key again to load this page.</p> : null}
       <div className={styles.actions}>
-        <button type="submit" disabled={pending || !apiKey.trim()}>{pending ? 'Loading…' : 'Load responses'}</button>
+        <button type="submit" disabled={!ready || pending || !apiKey.trim()}>{pending ? 'Loading…' : 'Load responses'}</button>
         <button type="button" onClick={() => clear()} className={styles.secondary}>Clear private view</button>
       </div>
+      </fieldset>
     </form>
     <p className={styles.note}>This inbox does not send email notifications. Check it directly for new responses.</p>
     <div aria-live="polite">

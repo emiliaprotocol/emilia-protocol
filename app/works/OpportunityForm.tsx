@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useState, useSyncExternalStore, type FormEvent } from 'react';
 import { color, cta, styles } from '@/lib/tokens';
 import {
   buildOpportunityPayload,
@@ -11,6 +11,10 @@ import {
   type SponsorClaimInput,
 } from './form-payloads';
 import formStyles from './works.module.css';
+
+const subscribeToHydration = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 
 function value(data: FormData, name: string): string {
   return String(data.get(name) || '').trim();
@@ -34,12 +38,14 @@ function claimInput(data: FormData, prefix: string): SponsorClaimInput {
 }
 
 export default function OpportunityForm() {
+  const ready = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [postedId, setPostedId] = useState('');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!ready || busy) return;
     setBusy(true);
     setError('');
 
@@ -73,6 +79,7 @@ export default function OpportunityForm() {
           authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify(payload),
+        cache: 'no-store', credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer',
       });
       if (!response.ok) {
         setError(await responseError(response));
@@ -108,8 +115,9 @@ export default function OpportunityForm() {
   }
 
   return (
-    <form className={formStyles.form} onSubmit={handleSubmit}>
-      <fieldset className={formStyles.fieldset} style={styles.card}>
+    <form method="post" className={formStyles.form} onSubmit={handleSubmit}>
+      <noscript><p>JavaScript is required to post a job securely. The form stays disabled until it is ready.</p></noscript>
+      <fieldset disabled={!ready || busy} className={formStyles.fieldset} style={styles.card}>
         <legend className={formStyles.legend}>Sponsor and opportunity</legend>
         <div className={formStyles.gridTwo}>
           <Field label="EMILIA API key" hint="Used for this request only; it is not saved in the browser.">
@@ -118,7 +126,7 @@ export default function OpportunityForm() {
           </Field>
           <Field label="Opportunity ID" hint="3–64 lowercase letters, numbers, and hyphens.">
             <input className="ep-input" style={styles.input} name="opportunityId" required minLength={3} maxLength={64}
-              pattern="[a-z0-9][a-z0-9-]{2,63}" placeholder="bounded-research-challenge" autoComplete="off" />
+              pattern="[a-z0-9](?:[a-z0-9]|-){2,63}" placeholder="bounded-research-challenge" autoComplete="off" />
           </Field>
           <Field label="Sponsor name" hint="The authenticated entity display name is authoritative and may replace this value.">
             <input className="ep-input" style={styles.input} name="postedBy" required maxLength={200}
@@ -150,7 +158,7 @@ export default function OpportunityForm() {
         </div>
       </fieldset>
 
-      <fieldset className={formStyles.fieldset} style={styles.card}>
+      <fieldset disabled={!ready || busy} className={formStyles.fieldset} style={styles.card}>
         <legend className={formStyles.legend}>Evidence-status statements</legend>
         <p style={{ ...styles.cardBody, margin: '0 0 20px' }}>
           ASSERTED means the sponsor is the source of the statement. UNKNOWN means no supporting
@@ -180,7 +188,7 @@ export default function OpportunityForm() {
       </fieldset>
 
       <div className={formStyles.actions}>
-        <button type="submit" disabled={busy} style={busy ? cta.disabled : cta.primary} className={busy ? undefined : 'ep-cta'}>
+        <button type="submit" disabled={!ready || busy} style={!ready || busy ? cta.disabled : cta.primary} className={!ready || busy ? undefined : 'ep-cta'}>
           {busy ? 'Posting…' : 'Post opportunity'}
         </button>
         <Link href="/works/opportunities" style={cta.ghost} className="ep-cta-ghost">Cancel</Link>

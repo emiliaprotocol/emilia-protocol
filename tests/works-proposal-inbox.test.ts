@@ -98,6 +98,8 @@ describe('proposal inbox page and copy', () => {
     expect(store.get).toHaveBeenCalledExactlyOnceWith('opportunities', 'refund-job');
     expect(html).toContain('Open your private proposal inbox');
     expect(html).toContain('type="password"');
+    expect(html).toContain('method="post"');
+    expect(html).toContain('<fieldset disabled=""');
     expect(html).not.toContain('A private proposal for the named job');
   });
 
@@ -119,6 +121,7 @@ describe('proposal inbox page and copy', () => {
     const source = readFileSync(new URL('../app/works/opportunities/[id]/inbox/ProposalInbox.tsx', import.meta.url), 'utf8');
     expect(source).not.toMatch(/localStorage|sessionStorage|console\.|searchParams|useSearchParams/);
     expect(source).toContain('if (!request.isCurrent()) return');
+    expect(source).toContain('if (!ready) return');
     expect(source).toContain('onChange={(event) => { clear(false); setApiKey(event.target.value); }}');
     expect(source).toContain("document.visibilityState === 'hidden'");
   });

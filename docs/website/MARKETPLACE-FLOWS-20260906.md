@@ -49,6 +49,11 @@ certification is inferred from a listing, scan, proposal or contact click.
 
 ## Verification boundaries
 
+Credential and private-input forms remain disabled until their client handlers
+are attached. Their native fallback is POST, not GET, so pre-hydration navigation
+cannot serialize an API key or private work email into the URL. This is checked
+with JavaScript disabled as well as through the normal interactive flows.
+
 Tests exercise authorization refusal, mixed-opportunity payload rejection,
 private-result clearing and publication retry behavior. Browser checks use
 synthetic records and intercepted writes, not customer adoption or transactions.

@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from 'react';
 import { buildJoinPayloads, type JoinFormInput, type JoinPayloads } from './form-payloads';
 import { validWorksId, type BuilderRecord } from '@/lib/works/model';
 import { publishRecordWithRecovery, readOwnedRecord } from './join/owned-record';
@@ -16,6 +16,9 @@ type JoinProgress = {
   reuseBuilder: boolean;
   failureStage: 'builder' | 'listing' | null; failureMessage: string;
 };
+const subscribeToHydration = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 
 function value(data: FormData, name: string): string { return String(data.get(name) || '').trim(); }
 
@@ -32,6 +35,7 @@ async function postWorksRecord(collection: 'builders' | 'listings', apiKey: stri
 }
 
 export default function JoinForm({ registrationEnabled = false }: { registrationEnabled?: boolean }) {
+  const ready = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState<JoinPayloads | null>(null);
@@ -72,7 +76,7 @@ export default function JoinForm({ registrationEnabled = false }: { registration
   }
 
   async function loadMyBuilder() {
-    if (inFlight.current || !intakeForm.current) return;
+    if (!ready || inFlight.current || !intakeForm.current) return;
     const data = new FormData(intakeForm.current);
     const id = value(data, 'builderId'); const apiKey = value(data, 'profileKey');
     if (!validWorksId(id) || !apiKey) { setError('Enter your builder profile ID and its existing EMILIA key.'); return; }
@@ -114,7 +118,7 @@ export default function JoinForm({ registrationEnabled = false }: { registration
 
   function preparePreview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (inFlight.current) return;
+    if (!ready || inFlight.current) return;
     const data = new FormData(event.currentTarget);
     const input = Object.fromEntries([
       'builderId', 'builderKind', 'builderName', 'builderSummary', 'contactRoute', 'affiliationName', 'affiliationRelation',
@@ -140,6 +144,7 @@ export default function JoinForm({ registrationEnabled = false }: { registration
 
   async function handlePublish(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!ready) return;
     if (inFlight.current) return;
     if (!draft || !publicConsent) { setError('Review the preview and explicitly agree to public publication first.'); return; }
     const reuseBuilder = profileMode === 'existing';
@@ -223,7 +228,10 @@ export default function JoinForm({ registrationEnabled = false }: { registration
   }
 
   return <div className={formStyles.intake}>
-    <form ref={intakeForm} onSubmit={preparePreview} hidden={Boolean(draft)} className={formStyles.form}>
+    {!ready ? <p className={formStyles.note} role="status">This form needs JavaScript to handle your key privately. Wait for it to finish loading before entering any details.</p> : null}
+    <form method="post" ref={intakeForm} onSubmit={preparePreview} hidden={Boolean(draft)} className={formStyles.form}>
+      <fieldset disabled={!ready || busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+      <legend className={formStyles.srOnly}>Prepare your listing</legend>
       <div className={formStyles.sectionHeading}><span>01</span><div><h2>Start with the work.</h2><p>Be specific enough for a company to know when to contact you.</p></div></div>
       <fieldset className={formStyles.fields}><legend className={formStyles.srOnly}>Agent listing details</legend>
         <Field label="Agent or product name"><input name="listingName" required maxLength={200} placeholder="e.g. Ledger assistant" /></Field>
@@ -255,6 +263,7 @@ export default function JoinForm({ registrationEnabled = false }: { registration
       </fieldset>
       <div className={formStyles.actions}><button type="submit" className={formStyles.primary} disabled={busy || (profileMode === 'existing' && !ownedBuilder)}>Preview my listing</button><Link href="/works" className={formStyles.textButton}>Back to marketplace</Link></div>
       <p className={formStyles.note}>Nothing is sent or published when you preview. Loading an existing profile is a separate authenticated read. Leave or reload this page and the draft and key are lost.</p>
+      </fieldset>
     </form>
     {draft ? <section className={formStyles.preview} aria-labelledby="listing-preview-title">
       <div className={formStyles.sectionHeading}><span>03</span><div><h2 id="listing-preview-title" ref={previewHeading} tabIndex={-1}>This is what you’ll publish.</h2><p>Review the public details before your key is used.</p></div></div>
@@ -264,7 +273,9 @@ export default function JoinForm({ registrationEnabled = false }: { registration
         <details className={formStyles.advanced}><summary>Review every public field</summary><pre>{JSON.stringify({ ...(accessMode === 'new' ? { entity: draft.entity } : {}), ...(profileMode === 'existing' ? { existing_builder_unchanged: draft.builder } : { builder: draft.builder }), listing: draft.listing }, null, 2)}</pre></details>
       </div>
       <p className={formStyles.note}>This is a builder-supplied listing, not a safety certification, verified capability or promise of paid work. It does not publish your private scan or create an Authority Record.</p>
-      <form className={formStyles.accessForm} onSubmit={handlePublish}>
+      <form method="post" className={formStyles.accessForm} onSubmit={handlePublish}>
+        <fieldset disabled={!ready || busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+        <legend className={formStyles.srOnly}>Authorize listing publication</legend>
         <h3>Publish with your builder access.</h3>
         {profileMode === 'existing' ? <p className={formStyles.note}>Using the key that loaded your owned profile. It remains only in this page and is not displayed here.</p> : !registrationEnabled ? <p className={formStyles.note}>New self-service registration is currently closed. Existing EMILIA entity keys can publish. <a href="mailto:team@emiliaprotocol.ai?subject=EMILIA%20Marketplace%20builder%20access">Request builder access</a> if you do not have one.</p>
           : <fieldset className={formStyles.accessChoice} disabled={busy}><legend>Choose access</legend><label><input type="radio" name="accessMode" value="existing" checked={accessMode === 'existing'} onChange={() => { setAccessMode('existing'); setPublicConsent(false); }} /> Use an existing key</label><label><input type="radio" name="accessMode" value="new" checked={accessMode === 'new'} onChange={() => { setAccessMode('new'); setPublicConsent(false); }} /> Register a new entity</label></fieldset>}
@@ -273,6 +284,7 @@ export default function JoinForm({ registrationEnabled = false }: { registration
         <label className={formStyles.consent}><input name="publicConsent" type="checkbox" checked={publicConsent} disabled={busy} onChange={event => setPublicConsent(event.target.checked)} required /><span>{profileMode === 'existing' ? 'I am authorized to publish this new listing under my existing builder profile. Keep that profile unchanged.' : <>I am authorized to publish these details. Make this builder profile, listing and contact route public{accessMode === 'new' ? ', and register the new entity shown above' : ''}.</>}</span></label>
         <div className={formStyles.actions}><button type="submit" disabled={busy || !publicConsent} className={formStyles.primary}>{busy ? 'Publishing…' : profileMode === 'existing' ? 'Publish new listing' : 'Publish profile and listing'}</button><button type="button" className={formStyles.textButton} disabled={busy} onClick={() => { setDraft(null); setPublicConsent(false); setError(''); }}>Edit details</button></div>
         <p className={formStyles.note}>No payment is taken here. You and the customer agree on the work and commercial terms directly.</p>
+        </fieldset>
       </form>
     </section> : null}
     <div className={formStyles.error} role={error ? 'alert' : undefined} aria-live="polite">{error}</div>

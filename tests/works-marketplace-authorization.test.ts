@@ -5,6 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import OpportunityForm from '../app/works/OpportunityForm';
+import RequestAuthorityRecord from '../app/works/records/[recordId]/RequestAuthorityRecord';
+import QualificationForm from '../app/works/qualification/QualificationForm';
 
 const auth = vi.hoisted(() => ({ authenticate: vi.fn() }));
 vi.mock('@/lib/supabase', async importOriginal => {
@@ -225,6 +230,23 @@ describe('owner-only listing/profile recovery', () => {
     const response = await owned('builders', 'security-builder', 'seller');
     expect(response.status).toBe(503); privateHeaders(response);
     expect(await response.text()).not.toContain('PRIVATE_BACKEND_AUTH_DETAIL');
+  });
+});
+
+describe('private forms before hydration', () => {
+  it('renders sponsor keys, requester email and evidence controls disabled with a native POST fallback', () => {
+    for (const element of [
+      createElement(OpportunityForm),
+      createElement(RequestAuthorityRecord, { recordId: 'record-under-review', verifiedRequesters: 0, verifiedOrganizations: 0 }),
+      createElement(QualificationForm),
+    ]) {
+      const html = renderToStaticMarkup(element);
+      expect(html).toMatch(/<form[^>]*method="post"/);
+      expect(html).toMatch(/<fieldset[^>]*disabled=""/);
+      expect(html).toMatch(/<button(?=[^>]*type="submit")(?=[^>]*disabled="")[^>]*>/);
+      expect(html).toContain('JavaScript is required');
+      expect(html).not.toMatch(/<form[^>]*method="get"/);
+    }
   });
 });
 

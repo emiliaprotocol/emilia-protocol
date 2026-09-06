@@ -63,6 +63,7 @@ const AUTHZ_SIGNALS = [
   'authorizeAgentAdoptionRequest', // bearer-or-HttpOnly recovery capability with exact-origin mutation guard
   'revokeAgentRecord',      // record-specific owner capability is hashed and checked inside the store RPC
   'authenticateWorksRead',  // Works helper: optional public projection plus owner/opportunity-owner private access
+  'getOwnedWorksRecord',    // Works store checks the stored owner UUID against the authenticated entity; independent foreign-key refusal tests
   'ownerBearer',           // Authority Record helper: hashes and checks the exact record-owner capability in the service RPC
 ];
 
