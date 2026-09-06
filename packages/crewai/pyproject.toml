@@ -18,7 +18,7 @@ classifiers = [
   "Topic :: Security",
 ]
 dependencies = [
-  "emilia-verify>=2.7.0",
+  "emilia-verify>=2.8.4,<3",
 ]
 
 [project.optional-dependencies]

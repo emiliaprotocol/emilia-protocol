@@ -120,25 +120,43 @@ jobs:
           python -m venv "$TEST_ROOT/venv"
           "$TEST_ROOT/venv/bin/python" -m pip install --require-hashes \
             -r "$GITHUB_WORKSPACE/.github/workflow-requirements/release.txt"
+          # Replace the tooling lock's verifier with the repaired same-source wheel.
+          # This dependency wheel is a fixture, not an artifact published by this job.
+          python -m build --no-isolation --wheel packages/python-verify --outdir "$TEST_ROOT/dependencies"
           "$TEST_ROOT/venv/bin/python" -m pip install \
-            --no-deps --force-reinstall "${{ steps.build.outputs.wheel }}"
+            --no-deps --force-reinstall \
+            "$TEST_ROOT"/dependencies/*.whl "${{ steps.build.outputs.wheel }}"
+          "$TEST_ROOT/venv/bin/python" -m pip check
           cp -R packages/crewai/tests "$TEST_ROOT/tests"
           "$TEST_ROOT/venv/bin/python" - <<'PY'
           import os
+          import sysconfig
           from pathlib import Path
           import emilia_crewai
+          import emilia_verify
 
-          origin = Path(emilia_crewai.__file__).resolve()
           workspace = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
-          if origin.is_relative_to(workspace):
-              raise SystemExit(f"refusing source-tree CrewAI import: {origin}")
-          print(f"testing installed CrewAI wheel from {origin}")
+          site_packages = {Path(sysconfig.get_paths()[key]).resolve() for key in ("purelib", "platlib")}
+          for module in (emilia_crewai, emilia_verify):
+              origin = Path(module.__file__).resolve()
+              if origin.is_relative_to(workspace) or not any(origin.is_relative_to(path) for path in site_packages):
+                  raise SystemExit(f"refusing non-installed wheel import: {origin}")
+              print(f"testing installed wheel from {origin}")
           PY
           (
             cd "$TEST_ROOT"
             PATH="$TEST_ROOT/venv/bin:$PATH" python -m pytest \
               --import-mode=importlib tests -q
           )
+
+      - name: Require published runtime dependencies
+        run: |
+          # The release must resolve its repaired verifier from the public registry.
+          # This clean environment contains neither the tooling lock nor local fixtures.
+          python -m venv "$RUNNER_TEMP/crewai-registry-install"
+          "$RUNNER_TEMP/crewai-registry-install/bin/python" -m pip install \
+            --index-url https://pypi.org/simple "${{ steps.build.outputs.wheel }}"
+          "$RUNNER_TEMP/crewai-registry-install/bin/python" -m pip check
 
       - name: Check exact distributions
         run: python -m twine check "${{ steps.build.outputs.wheel }}" "${{ steps.build.outputs.sdist }}"
