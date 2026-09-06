@@ -77,13 +77,19 @@ release identity.
 
 ### PyPI
 
-The release registry currently declares five PyPI projects: `emilia-crewai`,
-`ep-verify`, `emilia-verify`, `emilia-protocol`, and `langchain-emilia`. Add the
-matching GitHub trusted publisher named in each entry's workflow under the
-project's Publishing settings. Set its environment to
-`registry-publishing-approval`, matching the OIDC-bearing publish job. Live
+Use the PyPI entries in `release/release-packages.v1.json` for the current
+project and workflow inventory, including `emilia-smolagents`. Add the matching
+GitHub trusted publisher under each project's Publishing settings. For a new
+project, configure a pending publisher under the owner's account first. Set its
+environment to `registry-publishing-approval`, matching the OIDC-bearing publish job. Live
 activation and first-release proof are tracked in
 GitHub issue #251.
+
+Before publishing `emilia-smolagents`, publish the required verifier and shared
+Python Gate versions from the reviewed release revision. Its publisher checks a
+clean installation against PyPI and refuses if those dependency versions are
+not available. Bundled-wheel previews do not establish registry publication or
+OIDC release provenance.
 
 ## Core verifier release
 

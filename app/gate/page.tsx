@@ -5,6 +5,7 @@
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { ProductStoryHero } from '@/components/product-story/ProductStory';
+import { WorkforceEntry } from '@/components/workforce/WorkforceStory';
 import { GATE_QUALIFICATION } from '@/lib/commercial-offer';
 import { styles, cta, color, font } from '@/lib/tokens';
 
@@ -138,6 +139,7 @@ export default function GatePage() {
     <>
       <SiteNav activePage="Gate" />
       <main style={styles.page}>
+        <WorkforceEntry />
         <ProductStoryHero product="gate" />
 
         {/* The one line */}

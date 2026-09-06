@@ -51,6 +51,13 @@ mandate and detached receipt to the exact base and head commits before a protect
 passes. It is preventive only when the repository makes the check required and closes alternate
 merge paths. This is a product and distribution experiment, not evidence of external adoption.
 
+Using Hugging Face smolagents? [Wrap a tool you already use](packages/smolagents/README.md)
+and [try the synthetic refund demo](examples/huggingface-refund-space/README.md). The
+integration is free and open source. The host supplies approval for the exact call;
+the wrapper refuses missing, changed, or reused authority on that covered path.
+It is not a sandbox: production enforcement still needs credentials outside the
+agent and shared, durable consumption state behind Gate.
+
 ### The agent may keep running. Its authority stops.
 
 Continuous and self-improving agents create a control problem that process termination alone cannot

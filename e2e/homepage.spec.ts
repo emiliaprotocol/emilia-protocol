@@ -13,6 +13,7 @@ test.describe('Homepage', () => {
     // Hero heading exists
     const h1 = page.locator('h1').first();
     await expect(h1).toBeVisible();
+    await expect(h1).toHaveText('Your AI workforceneeds management.');
 
     // Navigation bar is present
     const nav = page.getByRole('navigation', { name: 'Primary' });
@@ -33,15 +34,45 @@ test.describe('Homepage', () => {
     await expect(page).toHaveURL(/\/protocol/);
   });
 
-  test('technical foundation and enforcement invariant are visible', async ({ page }) => {
+  test('workforce story and the unchanged allowance are visible', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: 'Protected crossings require authority before action, then preserve what happened.' })).toBeVisible({
+    await expect(page.locator('#workforce-title')).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByText('Required evidence verifies, or the mutation stays locked.', { exact: true })).toBeVisible({
+    await expect(page.locator('#the-handover').getByText('$6,600', { exact: true })).toHaveCount(2);
+    await expect(page.getByText('Private local alpha. Evaluations by arrangement, not a hosted service.', { exact: true })).toBeVisible({
       timeout: 10_000,
     });
+  });
+
+  test('workforce navigation and inquiry path work without a signup promise', async ({ page }) => {
+    await page.goto('/workforce');
+    await expect(page).toHaveTitle('Manage Your AI Workforce | EMILIA');
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://www.emiliaprotocol.ai/workforce');
+    await expect(page.getByText(/no high availability or rollback resistance/)).toBeVisible();
+    await page.getByRole('link', { name: 'Discuss your workflow', exact: true }).first().click();
+    await expect(page).toHaveURL(/\/contact#workforce$/);
+    await expect(page.locator('#workforce')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Email us about your workflow' })).toHaveAttribute('href', /mailto:team@emiliaprotocol.ai\?subject=EMILIA%20workforce%20evaluation/);
+  });
+
+  test('workforce stays readable on desktop and a narrow phone', async ({ page }) => {
+    for (const width of [1440, 375]) {
+      await page.setViewportSize({ width, height: 950 });
+      await page.goto('/workforce');
+      await expect(page.locator('#workforce-title')).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await page.screenshot({ path: `test-results/workforce-${width}.png` });
+      await page.locator('#the-handover').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: `test-results/workforce-handover-${width}.png` });
+      if (width === 375) {
+        await page.getByRole('button', { name: 'Open menu' }).click();
+        await expect(page.getByRole('navigation', { name: 'Mobile primary' }).getByRole('link', { name: 'Workforce', exact: true })).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('button', { name: 'Open menu' })).toBeFocused();
+      }
+    }
   });
 
   test('footer is present', async ({ page }) => {
