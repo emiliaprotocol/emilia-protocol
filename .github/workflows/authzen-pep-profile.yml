@@ -1,0 +1,39 @@
+name: AuthZEN PEP reference profile
+
+on:
+  pull_request:
+    paths:
+      - 'conformance/composition/authzen-coaz-mcp-aeb-v0.1/**'
+      - 'conformance/composition/coaz-translation-v0.1/**'
+      - 'packages/verify/**'
+      - '.github/workflows/authzen-pep-profile.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'conformance/composition/authzen-coaz-mcp-aeb-v0.1/**'
+      - 'conformance/composition/coaz-translation-v0.1/**'
+      - 'packages/verify/**'
+      - '.github/workflows/authzen-pep-profile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reference-profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        node: [24, 26]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '${{ matrix.node }}'
+      - name: Execute focused adversarial tests
+        run: node --test conformance/composition/authzen-coaz-mcp-aeb-v0.1/run.node-test.mjs conformance/composition/authzen-coaz-mcp-aeb-v0.1/executor-profile.node-test.mjs
+      - name: Verify pinned files and deterministic reports without regeneration
+        run: node conformance/composition/authzen-coaz-mcp-aeb-v0.1/check.mjs
