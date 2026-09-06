@@ -137,6 +137,7 @@ export function createRuntimeMonitor({
       effect_attempted: ['authorized'],
       effect_returned: ['effect_attempted'],
       effect_failed: ['effect_attempted', 'effect_returned'],
+      provider_entry_refused: ['authorized', 'effect_attempted'],
       capability_refused: ['authorized'],
       consumed: ['effect_returned', 'effect_failed'],
       execution_recorded: ['consumed'],
@@ -152,7 +153,7 @@ export function createRuntimeMonitor({
     }
     cycle.phase = event;
     if (event === 'consumed') cycle.consumed = true;
-    if (event === 'execution_recorded') cycle.complete = true;
+    if (event === 'execution_recorded' || event === 'provider_entry_refused') cycle.complete = true;
     return { ok: true };
   }
 
@@ -184,7 +185,18 @@ export function createRuntimeMonitor({
     },
     effectReturned(cycleId) { return transition(cycleId, 'effect_returned'); },
     effectFailed(cycleId) { return transition(cycleId, 'effect_failed'); },
-    providerEntryRefused(cycleId) { return transition(cycleId, 'capability_refused'); },
+    providerEntryRefused(cycleId, { providerNotInvoked = false }: { providerNotInvoked?: boolean } = {}) {
+      // beginExecution prepares the monitor before Gate calls the provider.
+      // Only Gate's explicit non-entry assertion can close that prepared
+      // phase. Never use this as recovery after a returned or unknown effect;
+      // the transition table refuses those states and changes no store state.
+      const cycle = cycles.get(cycleId);
+      if (cycle?.phase === 'effect_attempted' && providerNotInvoked !== true) {
+        return fail(cycle, RUNTIME_INVARIANTS.WRITE_BYPASS,
+          'explicit pre-provider non-entry', 'non-entry not established');
+      }
+      return transition(cycleId, 'provider_entry_refused');
+    },
     capabilityRefused(cycleId) { return transition(cycleId, 'capability_refused'); },
     consumptionCommitted(cycleId) { return transition(cycleId, 'consumed'); },
     executionRecorded(cycleId) { return transition(cycleId, 'execution_recorded'); },
