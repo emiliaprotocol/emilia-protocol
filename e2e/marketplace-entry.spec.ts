@@ -126,6 +126,10 @@ test.describe('marketplace entry', () => {
     }
     await page.getByRole('button', { name: 'Preview my listing' }).click();
     await expect(page.getByRole('heading', { name: 'This is what you’ll publish.' })).toBeVisible();
+    if (await page.getByText('New self-service registration is currently closed.', { exact: false }).count() > 0) {
+      // The access requirement belongs ahead of the form, not only at publish.
+      await expect(page.getByText('You can prepare a listing below without an account.', { exact: false })).toBeVisible();
+    }
     expect(writes).toEqual([]);
     await page.locator('[name="existingKey"]').fill('e2e-only-marketplace-key');
     await expect(page.getByRole('button', { name: 'Publish profile and listing' })).toBeDisabled();
