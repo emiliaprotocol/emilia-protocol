@@ -102,6 +102,15 @@ describe('marketplace qualification trust boundary', () => {
 });
 
 describe('qualification display lifetime and copy', () => {
+  it('renders unknown proxy reason keys as plain result codes, never object properties', () => {
+    for (const reason of ['__proto__', 'constructor', 'toString']) {
+      const response = { ...evaluateMarketplaceQualification(request(), null), reason };
+      const html = renderToStaticMarkup(createElement(QualificationResult, { response, remaining: 0 }));
+      expect(html).toContain('No qualification result available');
+      expect(html).toContain('The verifier did not establish a current qualification');
+      expect(html).toContain(`<code>${reason}</code>`);
+    }
+  });
   it('expires across foreground device sleep and wall-clock rollback without relying on clock accuracy', () => {
     const window = { deadline: 30_100, monotonicStartedAt: 100, wallStartedAt: 1_000_000 };
     expect(qualificationWindowRemaining(window, 1100, 1_001_000)).toBe(29);

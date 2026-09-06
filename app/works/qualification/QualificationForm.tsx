@@ -184,7 +184,7 @@ export function QualificationResult({ response, remaining }: { response: Marketp
         <div><dt>Signed statement</dt><dd>{response.display.qualification_statement_digest}</dd></div>
         <div><dt>Observed status head</dt><dd>{response.display.qualification_status_head_digest}</dd></div>
       </dl>
-    </> : <p>{reasonText[response.reason] || 'The verifier did not establish a current qualification for this exact candidate, assignment and policy. Review the result below with your verifier operator.'}</p>}
+    </> : <p>{Object.hasOwn(reasonText, response.reason) ? reasonText[response.reason] : 'The verifier did not establish a current qualification for this exact candidate, assignment and policy. Review the result below with your verifier operator.'}</p>}
     {response.result ? <dl className={styles.dimensions}>{DIMENSIONS.map(([key, label]) =>
       <div key={key}><dt>{label}</dt><dd>{response.result![key].replaceAll('_', ' ')}</dd></div>)}</dl> : null}
     {!qualified ? <p className={styles.help}>Result code: <code>{response.reason}</code></p> : null}
