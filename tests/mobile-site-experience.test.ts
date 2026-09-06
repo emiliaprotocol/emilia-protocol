@@ -37,11 +37,13 @@ describe('mobile public-site experience contract', () => {
     expect(homepage).toContain('<WorkforceHandover />');
     expect(story).toContain('Your AI workforce<br />needs management.');
     expect(story).toContain('aria-label="Illustrative refunds job before and after replacement"');
-    expect(css).toContain('font-size: clamp(44px, 6.6vw, 82px)');
+    expect(css).toContain('font-size: clamp(44px, 4.45vw, 62px)');
+    expect(story).toContain('role="group" aria-label="Illustrative refunds job before and after replacement"');
+    expect(story).toContain('/emilia-authority-tollbooth-v1.png');
     expect(css).toContain('min-height: 48px');
     expect(css).toContain('@media (max-width: 760px)');
     expect(css).toContain('@media (max-width: 390px)');
-    expect(css).toContain('.handover { grid-template-columns: 1fr; }');
+    expect(css).toContain('.handoverLayout { grid-template-columns: 1fr; gap: 28px; }');
     expect(css).toContain('.primary:focus-visible');
   });
 });
