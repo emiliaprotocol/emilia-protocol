@@ -8,11 +8,17 @@ No model, payment account, or API key is needed. No money moves.
 **Let your agent prepare the action. Decide what it may execute.**
 
 For a ready-to-run folder, download `EMILIA-Hugging-Face-Space.zip` from the
-[community release](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/smolagents-preview-v0.1.0).
+[community release](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/smolagents-v0.1.1).
 Unzip it, verify `SHA256SUMS`, then install `requirements.txt` in a fresh virtual
-environment and run `python app.py`. The included wheels avoid waiting for the
-separate PyPI releases. This is free, Apache-2.0 source and a synthetic demo, not a
-hosted production Gate.
+environment and run `python app.py`. The bundle includes the three required
+EMILIA wheels. This is free, Apache-2.0 source and a synthetic demo, not a hosted
+production Gate.
+
+To install just the adapter in your own Python 3.10+ environment:
+
+```sh
+python -m pip install emilia-smolagents==0.1.1
+```
 
 ## Run it from this checkout
 
@@ -88,11 +94,9 @@ virtual environment, and an unprivileged UID 1000. It installs dependencies at
 build time and serves on port 7860 without model credentials or runtime package
 installation. The local Python commands above remain supported.
 
-Use the included wheels: the adapter requires `emilia-crewai>=0.3.4` and
-`emilia-verify>=2.8.4`.
-Those source versions include required security fixes and were not yet published
-on PyPI when this example was built. No standalone `pip install emilia-smolagents`
-release is claimed here.
+Use the included wheels: the adapter requires `emilia-crewai>=0.3.5` and
+`emilia-verify>=2.8.5`. These minimum versions include required security fixes;
+do not substitute older wheels.
 
 ## Use it in an agent
 

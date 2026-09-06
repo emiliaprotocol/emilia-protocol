@@ -12,7 +12,16 @@ describe('CrewAI fixed-verifier release contract', () => {
   it('requires the repaired verifier and excludes an unreviewed major version', () => {
     const metadata = readFileSync('packages/crewai/pyproject.toml', 'utf8');
     const dependencies = metadata.match(/^dependencies = \[([\s\S]*?)\]/m)?.[1];
-    expect(dependencies).toContain('"emilia-verify>=2.8.4,<3"');
+    expect(dependencies).toContain('"emilia-verify>=2.8.5,<3"');
+    // Hatch's default can advance beyond the pinned Twine metadata parser.
+    // Keep both artifact formats compatible across this dependency chain.
+    for (const packageName of ['python-verify', 'crewai', 'smolagents']) {
+      const pyproject = readFileSync(`packages/${packageName}/pyproject.toml`, 'utf8');
+      for (const target of ['wheel', 'sdist']) {
+        const section = pyproject.split(`[tool.hatch.build.targets.${target}]`)[1]?.split('\n[')[0];
+        expect(section, `${packageName} ${target} metadata`).toMatch(/^core-metadata-version = "2\.4"$/m);
+      }
+    }
   });
 
   it('replaces the tooling-lock verifier with the same-source wheel before installed tests', () => {

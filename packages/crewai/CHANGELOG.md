@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5 (2026-09-05)
+
+- Require `emilia-verify>=2.8.5,<3`, including its packaging correction and
+  existing security fixes. Gate behavior is unchanged from 0.3.4.
+- Use a fresh release version so the existing 0.3.4 source tag stays immutable.
+
 ## 0.3.4 (2026-09-05)
 
 ### Security
