@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-06T02:26:36.702Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "d9a23c4324858fab45eff2a1d3954e9dd06d38558ec358b5c7c58012043d1ab6",
+    "input_digest_sha256": "1320ceb13cee88dcdf9b03a0741f4281b71561a4964aab7c2eef3c7ec28e7b5a",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "2c233a90262d0ed3de804d832e8317540e707d1c08f1c92d00ae896febfe39d4",
+        "sha256": "fafa2df29df549adefce637b6d055e295326cf0be11ba8025c19eb24e9939145",
         "bytes": 391522
       },
       {
@@ -419,7 +419,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 264,
-      "evidence_bundle_sha256": "964886e1eea9b8779d7be451e817fa4df9705ab5509719588aac2252ea75df6c"
+      "evidence_bundle_sha256": "a65a5f9914cca99d463ee24568fd98362b7aa43c659df4d3314d00348cca3008"
     },
     "caid": {
       "core_vectors": 48,
