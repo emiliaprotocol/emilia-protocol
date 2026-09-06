@@ -5,11 +5,11 @@ listed below. These pins move only when the current manifest changes; an
 immutable source commit is supplied separately when the kit is built:
 
 - 21 counted suites;
-- 335 counted vectors;
+- 340 counted vectors;
 - current manifest byte SHA-256
-  `375e96ecf7dfc21ce0d890c2ec1165fd53593c03db44b8fc46881e6409996971`;
+  `d8260f6cb1e664717641ab560ef09e45e3105390b68e60f07f3912f1422ff6bf`;
 - current manifest canonical claim SHA-256
-  `e1ae7d70f442201a2f42d439aa082dcae1cbf1d2771beef12e79282041af609c`;
+  `c3e067557d68aaab9203122456cdffa3dbbc8968040682fb94781077b693063a`;
   and
 - Authority Document execution companion SHA-256
   `121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959`.
