@@ -1,0 +1,216 @@
+name: Publish smolagents Adapter
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact tag, for example smolagents-v0.1.0
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH emilia-smolagents@<version>
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  publish:
+    name: Publish emilia-smolagents
+    runs-on: ubuntu-latest
+    env:
+      TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
+    environment: registry-publishing-approval
+    concurrency:
+      group: registry-publish-pypi-emilia-smolagents
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Setup Java for the pinned formal-methods oracle
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download the pinned TLA+ model checker
+        env:
+          TLA_VERSION: v1.7.4
+          TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+        run: |
+          curl --fail --location --silent --show-error \
+            -o tla2tools.jar \
+            "https://github.com/tlaplus/tlaplus/releases/download/${TLA_VERSION}/tla2tools.jar"
+          echo "${TLA_SHA256}  tla2tools.jar" | sha256sum -c -
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.0"
+
+      - name: Install hash-locked build and test tooling
+        run: python -m pip install --require-hashes -r .github/workflow-requirements/release.txt
+
+      - name: Install locked repository tooling
+        run: npm ci --ignore-scripts
+
+      - name: Require owner approval bound to tag, package, version, and main
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('packages/smolagents/pyproject.toml','rb'))['project']['version'])")
+          node scripts/require-release-approval.mjs \
+            --allowed-actor FutureEnterprises \
+            --tag "$RELEASE_TAG" \
+            --tag-prefix smolagents-v \
+            --package emilia-smolagents \
+            --version "$VERSION" \
+            --confirmation "$RELEASE_CONFIRMATION"
+
+      - name: Execute security and conformance evidence
+        run: |
+          npm run security-case:emit
+          npm run conformance:manifest
+
+      - name: Build twice and retain exact reproducible artifacts
+        id: build
+        run: |
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
+          node scripts/verify-reproducible-wheel.mjs packages/smolagents \
+            --emit release-artifacts/smolagents-reproducible.json \
+            --outdir release-artifacts
+          WHEEL=$(find release-artifacts/smolagents -maxdepth 1 -name '*.whl' -print -quit)
+          SDIST=$(find release-artifacts/smolagents -maxdepth 1 -name '*.tar.gz' -print -quit)
+          test -n "$WHEEL" && test -n "$SDIST"
+          echo "wheel=$WHEEL" >> "$GITHUB_OUTPUT"
+          echo "sdist=$SDIST" >> "$GITHUB_OUTPUT"
+
+      - name: Test the exact wheel in an isolated environment
+        run: |
+          TEST_ROOT="$RUNNER_TEMP/smolagents-wheel-test"
+          python -m venv "$TEST_ROOT/venv"
+          "$TEST_ROOT/venv/bin/python" -m pip install --require-hashes \
+            -r "$GITHUB_WORKSPACE/.github/workflow-requirements/smolagents-test.txt"
+          # Test against the fixed shared Gate and verifier from this exact revision.
+          # These dependency wheels are fixtures, not artifacts published by this job.
+          python -m build --no-isolation --wheel packages/python-verify --outdir "$TEST_ROOT/dependencies"
+          python -m build --no-isolation --wheel packages/crewai --outdir "$TEST_ROOT/dependencies"
+          "$TEST_ROOT/venv/bin/python" -m pip install --no-deps \
+            "$TEST_ROOT"/dependencies/*.whl "${{ steps.build.outputs.wheel }}"
+          "$TEST_ROOT/venv/bin/python" -m pip check
+          mkdir -p "$TEST_ROOT/repository/packages/smolagents" "$TEST_ROOT/repository/packages/crewai"
+          cp -R packages/smolagents/tests "$TEST_ROOT/repository/packages/smolagents/tests"
+          cp -R packages/crewai/tests "$TEST_ROOT/repository/packages/crewai/tests"
+          cp -R conformance "$TEST_ROOT/repository/conformance"
+          "$TEST_ROOT/venv/bin/python" - <<'PY'
+          import os
+          from pathlib import Path
+          import emilia_smolagents
+          import emilia_crewai
+          import emilia_verify
+
+          workspace = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
+          for module in (emilia_smolagents, emilia_crewai, emilia_verify):
+              origin = Path(module.__file__).resolve()
+              if origin.is_relative_to(workspace):
+                  raise SystemExit(f"refusing source-tree import: {origin}")
+              print(f"testing installed wheel from {origin}")
+          PY
+          (
+            cd "$TEST_ROOT/repository"
+            PATH="$TEST_ROOT/venv/bin:$PATH" python -m pytest \
+              --import-mode=importlib packages/smolagents/tests packages/crewai/tests -q
+          )
+
+      - name: Require published runtime dependencies
+        run: |
+          # A registry release must be installable without private or local wheels.
+          # This clean resolver fails closed until both dependency floors are public.
+          python -m venv "$RUNNER_TEMP/smolagents-registry-install"
+          "$RUNNER_TEMP/smolagents-registry-install/bin/python" -m pip install \
+            --index-url https://pypi.org/simple "${{ steps.build.outputs.wheel }}"
+          "$RUNNER_TEMP/smolagents-registry-install/bin/python" -m pip check
+
+      - name: Check exact distributions
+        run: python -m twine check "${{ steps.build.outputs.wheel }}" "${{ steps.build.outputs.sdist }}"
+
+      - name: Attest exact wheel
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.build.outputs.wheel }}
+
+      - name: Attest exact source distribution
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.build.outputs.sdist }}
+
+      - name: Attest conformance and security manifests
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            security/security-case.json
+            conformance/conformance-manifest.json
+            release-artifacts/smolagents-reproducible.json
+
+      - name: Upload exact release evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: smolagents-release-${{ inputs.release_tag }}
+          path: |
+            release-artifacts/smolagents/
+            release-artifacts/smolagents-reproducible.json
+            security/security-case.json
+            conformance/conformance-manifest.json
+          retention-days: 90
+
+      - name: Publish through PyPI Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: release-artifacts/smolagents/
+          skip-existing: true
+
+      - name: Verify PyPI bytes match the attested artifacts
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('packages/smolagents/pyproject.toml','rb'))['project']['version'])")
+          mkdir -p registry-copy
+          for _attempt in {1..36}; do
+            if python -m pip download --no-cache-dir --no-deps --only-binary=:all: --dest registry-copy "emilia-smolagents==$VERSION" \
+              && python -m pip download --no-cache-dir --no-deps --no-binary=:all: --no-build-isolation --dest registry-copy "emilia-smolagents==$VERSION"; then
+              break
+            fi
+            sleep 5
+          done
+          REGISTRY_WHEEL=$(find registry-copy -maxdepth 1 -name '*.whl' -print -quit)
+          REGISTRY_SDIST=$(find registry-copy -maxdepth 1 -name '*.tar.gz' -print -quit)
+          test -n "$REGISTRY_WHEEL" && test -n "$REGISTRY_SDIST"
+          cmp "${{ steps.build.outputs.wheel }}" "$REGISTRY_WHEEL"
+          cmp "${{ steps.build.outputs.sdist }}" "$REGISTRY_SDIST"

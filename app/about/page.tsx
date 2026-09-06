@@ -24,25 +24,39 @@ export default function AboutPage() {
 
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56 }}>
         <div className="ep-tag ep-hero-badge">About</div>
-        <h1 className="ep-hero-text" style={styles.h1}>The team behind EMILIA Protocol</h1>
+        <h1 className="ep-hero-text" style={styles.h1}>The company behind the work</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          EMILIA is building the universal authority toll booth for autonomous action. At configured protected boundaries, every consequential agent action enters with authority and exits with a receipt. EMILIA Protocol is the open Action Receipt Contract underneath Gate, published as active individual IETF Internet-Drafts. The protocol is formally analyzed: 26 TLA+ invariants are checked by TLC and 35 Alloy facts run in CI on every change. The reference runtime is Apache 2.0. Below are the people responsible for it, the advisors guiding it, and the entity behind it.
+          Your AI workforce needs management. Someone has to define each job, decide
+          what the agent may do, and review its work. EMILIA is building that workspace,
+          with authorization infrastructure for agentic AI underneath it.
         </p>
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 72 }}>
-        <h2 className="ep-reveal" style={styles.h2}>Mission</h2>
+        <h2 className="ep-reveal" style={styles.h2}>The agent can change. The job carries on.</h2>
         <p className="ep-reveal" style={styles.body}>
-          For consequential actions such as wire transfers, benefit redirects, infrastructure changes, and agent-issued operations, session-level and scope-level authorization stop short of what the action itself needs. We build the layer that binds the exact action to the customer's current mandate and required native evidence, so a configured protected path refuses work that cannot establish authority. A named human decision is one possible authority source, not a requirement on every action.
+          Replacing an agent should not reset its allowance or lose track of unfinished
+          work. The job needs a named owner, limits that stay accounted for, and a
+          record of what happened. That is the problem we are working on.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          We treat this as standards work, not platform work. The protocol is open. The reference implementation is open. The conformance suite is open. The trust layer for AI-era infrastructure has to be inspectable, or it isn't trust.
+          EMILIA is the company. EMILIA Gate is the commercial product: the workforce
+          workspace organizes jobs and assignments around Gate, which enforces the
+          customer&rsquo;s authority on configured execution paths. The customer owns
+          the limits, credentials and acceptance criteria.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          Which is also why a lean team is a feature here, not a risk. EMILIA&rsquo;s core safety
-          guarantees are machine-checked — 26 invariants TLC re-checks on every change —
-          not vouched for by headcount. You don&rsquo;t have to trust how many people work here. You
-          can check the math yourself.
+          EMILIA Protocol is the open foundation. Its formats, verifiers, reference
+          code and conformance artifacts are available without buying from us.
+          Individual Internet-Drafts are proposals, not RFCs or IETF endorsement.
+          You can <a href="/proof" style={{ color: color.blue }}>inspect the engineering evidence</a>.
+        </p>
+        <p className="ep-reveal" style={styles.body}>
+          The workforce workspace is an implemented private local alpha. It is not
+          a hosted service or a customer deployment, and we have not measured customer
+          ROI. We are seeking one finance team to evaluate a refunds workflow with a
+          named owner and a clear acceptance test. Production credential custody,
+          recovery and coverage need a separate deployment review.
         </p>
       </section>
 
@@ -56,10 +70,10 @@ export default function AboutPage() {
             background: '#FAFAF9',
           }}>
             <p style={{ ...styles.body, marginBottom: 12 }}>
-              The team behind EMILIA Protocol is intentionally not yet listed publicly on this page. Open-source contributors are visible on GitHub at <a href="https://github.com/emiliaprotocol/emilia-protocol/graphs/contributors" target="_blank" rel="noopener noreferrer" style={{ color: color.blue }}>github.com/emiliaprotocol/emilia-protocol</a> with signed commits.
+              Team biographies are not yet listed on this page. You can see the open-source contributors on <a href="https://github.com/emiliaprotocol/emilia-protocol/graphs/contributors" target="_blank" rel="noopener noreferrer" style={{ color: color.blue }}>GitHub</a>.
             </p>
             <p style={{ ...styles.body, marginBottom: 0 }}>
-              For pilot, procurement, or partnership conversations we make introductions on signed NDA. Reach <a href={`mailto:${ENTITY.email}`} style={{ color: color.blue }}>{ENTITY.email}</a>.
+              For workflow evaluations, procurement or partnership conversations, reach <a href={`mailto:${ENTITY.email}`} style={{ color: color.blue }}>{ENTITY.email}</a>.
             </p>
           </div>
         ) : (
@@ -113,7 +127,9 @@ export default function AboutPage() {
         <h2 className="ep-reveal" style={styles.h2}>Advisors</h2>
         {ADVISORS.length === 0 ? (
           <p className="ep-reveal" style={styles.body}>
-            We are actively recruiting an advisory board across formal methods, federal regulatory, and financial-fraud-defense expertise. We will name advisors on this page only after each individual has confirmed engagement; an empty advisor list is more credible than a fabricated one. If you are a former OCC / FDIC / Federal Reserve examiner, a former Treasury / FinCEN / CISA official, a bank or credit-union CISO or fraud lead, or an academic cryptographer interested in this category, we would value the conversation. Reach <a href={`mailto:${ENTITY.email}`} style={{ color: color.blue }}>{ENTITY.email}</a>.
+            We welcome potential advisors in formal methods, financial controls
+            and agent operations. Advisors will be listed after their
+            engagement is confirmed. Contact <a href={`mailto:${ENTITY.email}`} style={{ color: color.blue }}>{ENTITY.email}</a>.
           </p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
@@ -159,10 +175,10 @@ export default function AboutPage() {
       </section>
 
       <section className="ep-reveal" style={{ ...styles.section, paddingTop: 0, paddingBottom: 96 }}>
-        <h2 style={styles.h2}>Read the work</h2>
+        <h2 style={styles.h2}>Start with one real job</h2>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <a href="/protocol" className="ep-cta" style={cta.primary}>Read the protocol</a>
-          <a href="/spec" className="ep-cta-secondary" style={cta.secondary}>Read the spec</a>
+          <a href="/contact#workforce" className="ep-cta" style={cta.primary}>Discuss your workflow</a>
+          <a href="/workforce" className="ep-cta-secondary" style={cta.secondary}>See the workforce product</a>
           <a href="/security" className="ep-cta-ghost" style={cta.ghost}>Trust & security →</a>
         </div>
       </section>

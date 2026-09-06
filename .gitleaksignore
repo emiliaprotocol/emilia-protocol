@@ -1,0 +1,11 @@
+# Exact historical copies of the static OAuth transaction-challenge JWT fixture.
+# The entire file equals native-fixture.json in
+# conformance/composition/oauth-txn-challenge-aeb-v0.1 at commit
+# 3dc3c9b06349551ca50e1bfdd83b7e5298b9e53e, whose path is already scoped to
+# the jwt-token allowlist in .gitleaks.toml. Both copies have Git blob
+# 5b800b80afc4143251d36407e66360426ba268a5; all three stored SHA-256 values
+# and Ed25519 signatures verify against the checked-in public fixture keys.
+# Suppress only these commit/path/rule/line fingerprints, not the path itself.
+9b61615e277f19f3e233cc9e80326636132faea0:conformance/composition/wimse-wpt02-oauth-txn-aeb-v0.1/oauth-txn-challenge-native-fixture.json:jwt-token:6
+9b61615e277f19f3e233cc9e80326636132faea0:conformance/composition/wimse-wpt02-oauth-txn-aeb-v0.1/oauth-txn-challenge-native-fixture.json:jwt-token:7
+9b61615e277f19f3e233cc9e80326636132faea0:conformance/composition/wimse-wpt02-oauth-txn-aeb-v0.1/oauth-txn-challenge-native-fixture.json:jwt-token:8
