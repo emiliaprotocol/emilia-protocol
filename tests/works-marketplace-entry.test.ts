@@ -77,7 +77,10 @@ describe('marketplace storefront entry', () => {
       listing('unmarked-agent', { example: undefined }),
     ];
     const html = await directory();
-    expect(html).toContain('Find an AI worker.<br/>Know what it can do.');
+    expect(html).toContain('Discover the agent.<br/><span>Inspect its tools.</span>');
+    expect(html).toContain('marketplace-tool-inspection-v1.webp');
+    expect(html).toContain('Looking to manage your agents? Explore Workforce');
+    expect(html).not.toContain('FIELD NOTE');
     expect(html).toContain('href="/works/scan"');
     expect(html.indexOf('Start a free scan')).toBeLessThan(html.indexOf('Browse agent listings'));
     const agents = section(html, 'works-listings');

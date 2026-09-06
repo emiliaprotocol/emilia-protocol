@@ -13,7 +13,6 @@ export default function HomePage(): React.ReactElement {
         <WorkforceIntroduction />
         <WorkforceHandover />
         <WorkforceResponsibilities />
-        <WorkforceMarketplace />
         <WorkforceFoundation />
         <section className={workforce.section + ' ' + workforce.tinted} aria-labelledby="evidence-title">
           <div className={workforce.container}>
@@ -28,6 +27,7 @@ export default function HomePage(): React.ReactElement {
             </div>
           </div>
         </section>
+        <WorkforceMarketplace />
         <WorkforceNextStep />
       </main>
       <SiteFooter />

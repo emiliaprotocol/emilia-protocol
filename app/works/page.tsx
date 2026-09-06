@@ -5,6 +5,7 @@
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { isWorksV0Enabled } from '@/lib/works/env';
@@ -18,7 +19,7 @@ import market from './works.module.css';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Find an AI Worker | EMILIA Marketplace',
+  title: 'Discover AI Agents | EMILIA Marketplace',
   description: 'Browse builder-posted AI agents and start with a free scan. The open Gate stays free; setup and support are quoted separately. Qualification is scope-specific.',
   alternates: { canonical: '/works' },
 };
@@ -118,24 +119,31 @@ export default async function WorksDirectory({ searchParams }: {
       <SiteNav activePage="works" />
       <main>
         <section className={market.marketHero}>
-          <div className={market.marketContainer}>
-            <p className={market.marketEyebrow}>EMILIA Marketplace · Private beta</p>
-            <h1>Find an AI worker.<br />Know what it can do.</h1>
-            <p className={market.marketPromise}>Find a candidate for your job. Inspect its claims before you give it authority.</p>
-            <p className={market.marketLead}>Start with a free scan of declared tools and permissions. The open Gate is free to run. If you want help enforcing limits on your workflow, setup and support are quoted separately.</p>
+          <nav className={market.marketContainer + ' ' + market.marketContext} aria-label="Marketplace context"><Link href="/">EMILIA</Link><span aria-hidden="true">/</span><span>Marketplace</span><Link href="/workforce">Looking to manage your agents? Explore Workforce</Link></nav>
+          <div className={market.marketContainer + ' ' + market.heroLayout}>
+            <div className={market.heroCopy}>
+            <p className={market.marketEyebrow}>EMILIA Marketplace <span>Early access</span></p>
+            <h1>Discover the agent.<br /><span>Inspect its tools.</span></h1>
+            <p className={market.marketLead}>Explore what builders are making. See the tools an agent declares, the actions worth reviewing, and the evidence behind its claims.</p>
             <div className={market.marketActions}>
               <Link href="/works/scan" className={market.marketPrimary}>Start a free scan</Link>
               <a href="#works-listings" className={market.marketSecondary}>Browse agent listings</a>
             </div>
-            <p className={market.marketNote}>A scan does not run the agent or activate protection. Listing an agent is not hiring it, endorsing it or granting it permission to act.</p>
+            <p className={market.heroPrivacy}>No account. No upload. Your input stays in your browser.</p>
+            </div>
+            <figure className={market.inspectionArt}>
+              <Image src="/marketplace-tool-inspection-v1.webp" alt="Brass inspection lens above glass tools for code, records and messages. Concept illustration." width={1254} height={1254} sizes="(max-width: 760px) 90vw, 45vw" priority />
+              <figcaption><span>UNDERSTAND BEFORE YOU CONNECT</span><p>Code. Records. Customer messages.<br />Different tools deserve different limits.</p></figcaption>
+            </figure>
           </div>
+          <div className={market.marketContainer + ' ' + market.heroFootnote}><span>Built on the open EMILIA Protocol</span><p>A scan does not run the agent or activate protection. A listing is not permission to act.</p></div>
         </section>
 
         <section id="works-listings" className={market.marketSection} aria-labelledby="agent-listings-title">
           <div className={market.marketContainer}>
-            <p className={market.marketEyebrow}>Browse listings</p>
+            <div className={market.sectionHeading}><p className={market.marketEyebrow}>01 / The directory</p><Link href="/works/join" className={market.marketSecondary}>List your agent</Link></div>
             <h2 id="agent-listings-title">Agents for your shortlist</h2>
-            <p className={market.marketLead}>A market for autonomous work you can inspect. Builders describe the work, interfaces and operating constraints. Check the exact scope and source behind each statement.</p>
+            <p className={market.marketLead}>Look at the work, the tools and the evidence. Every listing starts with its builder&apos;s own description.</p>
             <form method="get" action="/works" className={market.marketFilters}>
               <FilterField label="Search"><input name="q" defaultValue={filters.q} placeholder="Name, task, interface" /></FilterField>
               <FilterSelect label="Task" name="task" value={filters.task} options={allTasks} />
@@ -175,7 +183,8 @@ export default async function WorksDirectory({ searchParams }: {
 
         <section className={market.marketSection + ' ' + market.marketTinted} aria-labelledby="market-next-title">
           <div className={market.marketContainer}>
-            <h2 id="market-next-title">Bring the job.<br />Set the terms before work starts.</h2>
+            <p className={market.marketEyebrow}>From discovery to a real workflow</p>
+            <h2 id="market-next-title">Find the right next step.</h2>
             <div className={market.marketColumns}>
               <article><h3>Need an agent?</h3><p>Post the problem, scope and acceptance criteria. Builders can respond through the existing opportunity workflow. Hiring and payment terms are agreed separately.</p><Link href="/works/opportunities/new">Post a job</Link><Link href="/works/opportunities">Browse and respond</Link></article>
               <article><h3>Building an agent?</h3><p>List your work, its constraints and the evidence you can share. A listing does not become verified just because it is here.</p><Link href="/works/join">List your work</Link></article>
@@ -186,7 +195,7 @@ export default async function WorksDirectory({ searchParams }: {
 
         <section id="authority-records" className={market.marketSection} aria-labelledby="authority-records-title">
           <div className={market.marketContainer}>
-            <p className={market.marketEyebrow}>Owner-claimed · version-pinned</p>
+            <p className={market.marketEyebrow}>03 / Owner-claimed · version-pinned</p>
             <h2 id="authority-records-title">Inspect an Authority Record</h2>
             <p className={market.marketLead}>Public records appear only after the named repository proves control and its owner approves the exact current bytes. Private scans never appear here without that separate approval.</p>
             <p className={market.marketNote}>Payment can buy monitoring and freshness, never a favorable result. These records are not counted as available agent listings.</p>
@@ -215,10 +224,12 @@ export default async function WorksDirectory({ searchParams }: {
           <p className={market.marketEyebrow}>Read-only examples · not marketplace supply</p>
           <h2 id="example-listings-title">See how a listing works</h2>
           <p className={market.marketLead}>These example agents, apps and projects show the record format. They are not available workers, customer deployments or proof of marketplace adoption.</p>
+          <details className={market.examplesDisclosure}><summary>Open the example directory</summary>
           <div className={market.marketListingList}>{visibleExamples.map(renderListing)}</div>
           {listingsRes.ok && visibleExamples.length === 0 ? <p className={market.marketNote}>No example listings match these filters.</p> : null}
           <p className={market.marketNote}><strong>Read the statement, not just the badge.</strong> VERIFIED describes source-backed evidence for that claim and scope, not universal agent trust. ASSERTED is a poster&apos;s statement. UNKNOWN means the evidence is missing or no longer current.</p>
           <WorksDisciplineNote />
+          </details>
         </div></section>
       </main>
       <SiteFooter />
