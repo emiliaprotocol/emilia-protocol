@@ -1,8 +1,14 @@
 # Current-bundle clean-room kit v2
 
 This directory defines a source-free, byte-pinned challenge over the exact
-21-suite, 332-vector conformance manifest at the immutable source commit
+21-suite, 340-vector conformance manifest at the immutable source commit
 recorded in each generated kit report.
+
+The September 6 repair updates the input pins for the completed-signoff Quorum
+profile and its five additional cases. Earlier kits and reports remain bound
+to their original commit and hashes; no external result is upgraded by this
+change. V2 exposes expected results to runners and is retained for compatibility,
+not as evidence of independent computation. Use the v3 evaluator for new runs.
 
 The kit separates three results:
 

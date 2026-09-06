@@ -1,11 +1,11 @@
 # Expectation-separated clean-room evaluator v3
 
-Version 3 fixes an integrity defect in the published v2 evaluator without
-changing v2 bytes or reinterpreting any v2 result. The v2 evaluator handed the
+Version 3 fixes an integrity defect in the v2 evaluator without
+reinterpreting any historical v2 result. The v2 evaluator handed the
 runner each complete vector, including `id`, `description`, and `expect`. A
 runner could therefore pass by copying `expect` without implementing EMILIA.
 
-V3 keeps the exact v2 21-suite, 335-vector corpus but changes the evaluation
+V3 uses the same current 21-suite, 340-vector corpus as the v2 input kit but changes the evaluation
 protocol:
 
 - expectations and original vector IDs stay in evaluator memory;
@@ -80,6 +80,11 @@ identity, source commit, corpus pins, and construction claim. A v2 runner or v2
 submission is not accepted by the v3 evaluator.
 
 ## Boundaries
+
+The September 6 corpus refresh includes the completed-signoff Quorum profile
+and five additional cases. Existing external reports and construction
+attestations remain bound to their original corpus hashes, not this refresh.
+The repository's fixture runs do not establish an independent implementation.
 
 This evaluator checks the runner entrypoint before and after every invocation
 and checks that each read-only execution input was not changed. Those checks
