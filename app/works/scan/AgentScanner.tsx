@@ -74,17 +74,19 @@ export default function AgentScanner() {
 
   return (
     <main id="main-content" className={styles.page}>
-      <header className={styles.hero}>
-        <a className={styles.back} href="/works">← EMILIA Marketplace</a>
+      <div className={styles.topline}>
+        <a className={styles.back} href="/works">EMILIA Marketplace</a>
         <p className={styles.eyebrow}>Free tool · no account</p>
-        <h1>What does your agent<br className={styles.desktopBreak} /> say it can do?</h1>
+      </div>
+      <header className={styles.hero}>
+        <h1>What does your agent<br className={styles.desktopBreak} /> <em>say it can do?</em></h1>
         <p className={styles.lead}>Inspect its declared tools before giving it a job. Find actions that may move money, change access or affect real systems, and see what still needs review.</p>
-        <p className={styles.privacy}>Your input stays in this browser tab. This tool does not upload it, run your agent or publish findings.</p>
       </header>
+      <p className={styles.privacy}><span className={styles.privacyLabel}>Browser-only scan</span><span>Your input stays in this browser tab. This tool does not upload it, run your agent or publish findings.</span></p>
 
       <section className={styles.workspace} aria-labelledby="input-heading">
         <div className={styles.editor}>
-          <h2 id="input-heading">Start with the tool declarations.</h2>
+          <div className={styles.editorHeading}><span className={styles.sectionNumber} aria-hidden="true">01</span><h2 id="input-heading">Start with the tool declarations.</h2></div>
           <p>MCP tools/list, an actions array or OpenAPI JSON. Up to 1 MiB and 500 actions. No API keys needed.</p>
           <div className={styles.toolbar}>
             <label className={styles.fileButton}>Choose JSON file
@@ -107,7 +109,7 @@ export default function AgentScanner() {
           </details>
         </div>
         <aside className={styles.scope}>
-          <p className={styles.eyebrow}>Know what this tells you</p>
+          <p className={styles.eyebrow}><span aria-hidden="true">02 / </span>Know what this tells you</p>
           <h2>Declarations are a starting point. Not proof.</h2>
           <p>A tool named “read account” may still change it. This scan uses the existing EMILIA action classifier to flag declared signals, including conflicts between descriptions and read-only hints.</p>
           <p>It cannot tell you what code actually runs, which credentials an agent holds or whether every consequential call passes through a Gate.</p>
@@ -145,8 +147,8 @@ export default function AgentScanner() {
       <section className={styles.next} aria-labelledby="next-heading">
         <h2 id="next-heading">Give the agent a clear next step.</h2>
         <div className={styles.nextLinks}>
-          <div><h3>Share what you have built.</h3><p>A listing is separate from this private scan. Choose what you want to publish.</p><a href="/works/join">List your agent →</a><a href="/works/claim">Claim an Authority Record →</a></div>
-          <div><h3>Review a specific deployment.</h3><p>Qualification checks a defined scope. Gate deployment is a separate step for enforcing authority on covered calls.</p><a href="/works/qualification">Explore scoped qualification →</a><a href="/works/gate">Explore Gate deployment →</a></div>
+          <div><h3>Share what you have built.</h3><p>A listing is separate from this private scan. Choose what you want to publish.</p><a href="/works/join">List your agent</a><a href="/works/claim">Claim an Authority Record</a></div>
+          <div><h3>Review a specific deployment.</h3><p>Qualification checks a defined scope. Gate deployment is a separate step for enforcing authority on covered calls.</p><a href="/works/qualification">Explore scoped qualification</a><a href="/works/gate">Explore Gate deployment</a></div>
         </div>
       </section>
     </main>
