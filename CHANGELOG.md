@@ -8,6 +8,21 @@ Historical entries below retain the labels used when they were written.
 
 ## [Unreleased] — source baseline 2026-08-26 (`5d474fd240bc764fa41951c05c39130e38afa7ff`)
 
+### September 5 security review repairs
+
+- Require the embedded Class-A decision to be `approved`; a valid signature on
+  a denial cannot supply approval assurance to the demand verifier.
+- Enforce the EP-RECEIPT-v1 Ed25519 algorithm and issuer-key profile in the demand
+  verifier, matching the core verifier.
+- Recheck receipt validity at provider entry after asynchronous or blocking
+  work in the JavaScript Gate and synchronous Python adapter. Preserve consumed
+  authority after ambiguous entry or response loss.
+- Reject unsupported async and lazy Python tool execution, and return closed
+  verification results for malformed nested receipt fields.
+- Make the legacy Python examples fail closed on unknown policy responses.
+  Acquiring signoff evidence no longer substitutes for separately configured,
+  exact-action verification. The production recommendation remains ReceiptGate.
+
 ### Authority operations
 
 - **Evidence-derived Authority Inbox** — the connected Cloud prototype now

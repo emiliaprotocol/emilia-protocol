@@ -313,6 +313,12 @@ function verifyEmbeddedClassASignoff(doc: AnyRecord, opts: AssuranceOptions = {}
       || signoff.context?.action_hash !== sourceHash) {
     return { ok: false, tier: 'software', reason: 'assurance_context_mismatch' };
   }
+  // The outer issuer's allow_with_signoff is not the human's decision.
+  // EP-APPROVAL-v1 binds the terminal decision inside the WebAuthn context;
+  // only its explicit affirmative value can supply approval assurance.
+  if (signoff.context?.decision !== 'approved') {
+    return { ok: false, tier: 'software', reason: 'assurance_decision_not_approved' };
+  }
   try {
     const digest = sha256Bytes(canonicalize(signoff.context));
     const valid = verifyWebAuthnDigest(signoff.webauthn, digest, entry.public_key, opts);
@@ -558,6 +564,12 @@ export function verifyEmiliaReceipt(doc: any, opts: VerifyOptions = {}) {
   if (!doc || doc['@version'] !== 'EP-RECEIPT-v1' || !doc.payload || !doc.signature?.value) {
     return { ok: false, reason: 'malformed_receipt' };
   }
+  // This unsigned label must name the only algorithm EP-RECEIPT-v1 defines.
+  // Match the core verifier's case-insensitive Ed25519 spelling policy.
+  if (typeof doc.signature.algorithm !== 'string'
+      || doc.signature.algorithm.toLowerCase() !== 'ed25519') {
+    return { ok: false, reason: 'unsupported_signature_algorithm' };
+  }
   const payload = doc.payload;
   if (!isCanonicalizable(payload)) {
     return { ok: false, reason: 'payload_outside_ijson_profile' };
@@ -574,7 +586,9 @@ export function verifyEmiliaReceipt(doc: any, opts: VerifyOptions = {}) {
   let signer = null;
   for (const k of candidates) {
     const pub = parseSpkiKey(k); // cached parse — avoids per-call DER parsing + the timing variance it adds
-    if (!pub) continue;
+    // crypto.verify(null, ...) dispatches on the key type; accepting another
+    // key would silently verify a different algorithm from this profile.
+    if (!pub || pub.asymmetricKeyType !== 'ed25519') continue;
     try {
       if (crypto.verify(null, data, pub, sig)) { signer = k; break; }
     } catch { /* try next key */ }

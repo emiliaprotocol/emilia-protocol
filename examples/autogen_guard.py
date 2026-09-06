@@ -3,40 +3,36 @@
 
 Runs offline with a local policy stub:  python examples/autogen_guard.py
 
-For real AutoGen, wrap the callable, then register it as usual — AutoGen calls
-the guarded function normally; EMILIA runs first:
+For receipt-backed AutoGen tools, wrap the callable with the receipt-enforcing
+package, then register it as usual:
 
-    import requests
-    def post(body):
-        return requests.post("https://www.emiliaprotocol.ai/api/trust/gate",
-                             data=body, headers={"content-type": "application/json"}).json()
+    from emilia_crewai import require_receipt
 
-    guarded = guard("payment.release",
-                    context_fn=lambda kw: {"amount": kw["amount"], "destination": kw["destination"]},
-                    fetch=post, on_signoff=wait_for_human)(wire_transfer)
+    guarded = require_receipt("payment.release", trusted_keys=TRUSTED_ISSUER_KEYS,
+                              store=CONSUMPTION_STORE, assurance_class="class_a",
+                              verify_assurance=verify_human_receipt)(wire_transfer)
     user_proxy.register_function(function_map={"wire_transfer": guarded})
+
+The pins, durable store, and independent human-evidence verifier are deployment
+configuration. See examples/README.md. This offline demo has no human verifier,
+so its large payment remains blocked. It never moves money.
 """
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from emilia_guard import guard, demo_policy  # noqa: E402
-
-
-def approve(decision, _kwargs):
-    print(f"   signoff required ({decision['reason']}) — simulating approver…")
+from emilia_guard import demo_policy, guard
 
 
 def wire_transfer(amount, destination):
-    """AutoGen-registered function: release a wire transfer."""
-    return f"wired ${amount:,} to {destination}"
+    """AutoGen function shape: simulate a payment without moving funds."""
+    return f"simulated ${amount:,} payment to {destination}"
 
 
 guarded_wire_transfer = guard(
     "payment.release",
     context_fn=lambda kw: {"amount": kw["amount"], "destination": kw["destination"]},
     fetch=demo_policy,
-    on_signoff=approve,
 )(wire_transfer)
 
 
@@ -51,6 +47,6 @@ def run(label, **kw):
 if __name__ == "__main__":
     print("EMILIA x AutoGen — guard a registered function")
     run("1) small payment -> allowed", amount=200, destination="acct_known")
-    run("2) large payment -> human signoff -> released", amount=50000, destination="acct_new")
+    run("2) large payment -> blocked pending verified human evidence", amount=50000, destination="acct_new")
     run("3) blocked destination -> denied", amount=1000, destination="acct_sanctioned")
-    print("\nRegister `guarded_wire_transfer` instead of the raw function.\n")
+    print("\nOffline policy demo. Register the receipt-enforced function for protected tools.\n")

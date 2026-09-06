@@ -66,6 +66,7 @@ function signedReceipt(claimOverrides = {}) {
       '@version': 'EP-RECEIPT-v1',
       payload,
       signature: {
+        algorithm: 'Ed25519',
         value: crypto.sign(null, Buffer.from(canonicalize(payload)), privateKey).toString('base64url'),
       },
     },
