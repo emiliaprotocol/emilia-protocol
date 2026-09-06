@@ -66,7 +66,7 @@
 import crypto from 'node:crypto';
 import {
   verifyWebAuthnSignoff,
-  contextChainHash,
+  canonicalize,
   webauthnSignatureAlgorithm,
   WEBAUTHN_SIGNATURE_ALGORITHMS,
 } from './index.js';
@@ -77,6 +77,7 @@ interface QuorumContext {
   issued_at?: unknown;
   initiator?: unknown;
   prev_context_hash?: unknown;
+  prev_signoff_hash?: unknown;
   [key: string]: unknown;
 }
 interface QuorumMember {
@@ -92,6 +93,7 @@ interface QuorumPolicy {
   distinct_humans?: unknown;
   window_sec?: unknown;
   ordered_chain?: unknown;
+  ordered_chain_profile?: unknown;
   /**
    * HYBRID HUMAN AUTHORIZATION (opt-in, absent = OFF). See the module header.
    * Each counted approver must produce a valid signoff under EVERY algorithm
@@ -107,6 +109,18 @@ interface QuorumDocument {
   [key: string]: unknown;
 }
 interface MemberResult { approver: unknown; role: unknown; valid: boolean }
+
+export const SIGNOFF_CHAIN_PROFILE = 'EP-QUORUM-SIGNOFF-CHAIN-v1';
+
+/** Commits to the completed native signoff, including its signature bytes.
+ * Unlike a precomputable context hash, this establishes a dependency on a
+ * prior proof. It does not establish trusted wall-clock time or comprehension.
+ */
+export function completedSignoffHash(signoff: unknown): string {
+  return crypto.createHash('sha256')
+    .update(`${SIGNOFF_CHAIN_PROFILE}\0`, 'utf8')
+    .update(canonicalize(signoff), 'utf8').digest('hex');
+}
 
 function rosterSlotKey(role: unknown, approver: unknown): string {
   return JSON.stringify([role, approver]);
@@ -162,7 +176,9 @@ function spkiFingerprint(value: unknown): string | null {
  *     },
  *     members: [{ role: string, approver_public_key: string, signoff: {context, webauthn} }],
  *   }
- * @param {object} [opts]  Passed through to each per-signer verify (e.g. { rpId }).
+ * @param {object} [opts]  Per-signer options plus expectedPolicy: the complete
+ *   out-of-band policy pin. Without a pin, valid means internal consistency,
+ *   not that the artifact met the relying party's required approval floor.
  * @returns {{ valid: boolean, checks: object, members: Array<{approver:string|null, role:string|null, valid:boolean}> }}
  */
 export function verifyQuorum(quorum: QuorumDocument | null | undefined, opts: Record<string, unknown> = {}) {
@@ -188,6 +204,14 @@ export function verifyQuorum(quorum: QuorumDocument | null | undefined, opts: Re
     const actionHash = quorum?.action_hash;
     if (!policy || !members || members.length === 0 || typeof actionHash !== 'string' || !actionHash) {
       return { valid: false, checks, members: memberResults };
+    }
+
+    if (Object.hasOwn(opts, 'expectedPolicy')) {
+      const expected = opts.expectedPolicy;
+      if (!expected || typeof expected !== 'object' || Array.isArray(expected)
+          || canonicalize(expected) !== canonicalize(policy)) {
+        return { valid: false, checks, members: memberResults, reason: 'quorum_policy_mismatch' };
+      }
     }
 
     const mode = policy.mode;
@@ -356,20 +380,20 @@ export function verifyQuorum(quorum: QuorumDocument | null | undefined, opts: Re
       checks.order_satisfied = true; // not applicable in threshold mode
     }
 
-    // 6b. Cryptographic ordering chain (STRONG ordered mode, policy.ordered_chain
-    //     === true): each signoff after the first commits, INSIDE its own signed
-    //     context, to the hash of its predecessor's context (prev_context_hash).
-    //     Order is then proven by the signatures themselves, not by operator-
-    //     asserted timestamps. The first signoff MUST carry no predecessor. When
-    //     the policy does not request it, this is not applicable (true).
+    // 6b. Strong ordering requires the versioned completed-signoff profile.
+    // Context-only links can all be prepared before anyone signs and cannot
+    // establish this dependency. Do not silently accept legacy or mixed links.
     if (mode === 'ordered' && policy.ordered_chain === true) {
       const seq = members;
-      let linked = seq.length >= required && seq.length <= eligible.length;
+      let linked = policy.ordered_chain_profile === SIGNOFF_CHAIN_PROFILE
+        && seq.length >= required && seq.length <= eligible.length;
       for (let idx = 0; idx < seq.length; idx++) {
-        const prev = seq[idx]?.signoff?.context?.prev_context_hash;
+        const context = seq[idx]?.signoff?.context ?? {};
+        const prev = context.prev_signoff_hash;
+        if (Object.hasOwn(context, 'prev_context_hash')) linked = false;
         if (idx === 0) {
-          if (prev !== undefined && prev !== null) linked = false;
-        } else if (prev !== contextChainHash(seq[idx - 1]?.signoff?.context ?? {})) {
+          if (Object.hasOwn(context, 'prev_signoff_hash')) linked = false;
+        } else if (prev !== completedSignoffHash(seq[idx - 1]?.signoff)) {
           linked = false;
         }
       }

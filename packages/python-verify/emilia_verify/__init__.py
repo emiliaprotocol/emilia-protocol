@@ -650,6 +650,11 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
         action_hash = quorum.get("action_hash") if isinstance(quorum, dict) else None
         if not policy or not isinstance(members, list) or not members or not isinstance(action_hash, str) or not action_hash:
             return {"valid": False, "checks": checks, "members": members_out}
+        if "expectedPolicy" in opts:
+            expected = opts["expectedPolicy"]
+            if not isinstance(expected, dict) or canonicalize(expected) != canonicalize(policy):
+                return {"valid": False, "checks": checks, "members": members_out,
+                        "reason": "quorum_policy_mismatch"}
         mode = policy.get("mode")
         if mode not in ("ordered", "threshold"):
             return {"valid": False, "checks": checks, "members": members_out}
@@ -754,15 +759,19 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
             checks["order_satisfied"] = True
         if mode == "ordered" and policy.get("ordered_chain") is True:
             seq = members
-            linked = len(seq) >= required and len(seq) <= len(eligible)
+            linked = (policy.get("ordered_chain_profile") == "EP-QUORUM-SIGNOFF-CHAIN-v1"
+                      and len(seq) >= required and len(seq) <= len(eligible))
             for idx, mem in enumerate(seq):
-                prev = ((mem.get("signoff") or {}).get("context") or {}).get("prev_context_hash")
+                context = ((mem.get("signoff") or {}).get("context") or {})
+                prev = context.get("prev_signoff_hash")
+                if "prev_context_hash" in context:
+                    linked = False
                 if idx == 0:
-                    if prev is not None:
+                    if "prev_signoff_hash" in context:
                         linked = False
                 else:
-                    prev_ctx = (seq[idx - 1].get("signoff") or {}).get("context") or {}
-                    if prev != _sha256_hex(canonicalize(prev_ctx)):
+                    previous_signoff = seq[idx - 1].get("signoff")
+                    if prev != _sha256_hex("EP-QUORUM-SIGNOFF-CHAIN-v1\x00" + canonicalize(previous_signoff)):
                         linked = False
             checks["chain_linked"] = linked
         else:

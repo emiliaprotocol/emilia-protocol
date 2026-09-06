@@ -16,8 +16,12 @@ import { canonicalize, verifyWebAuthnSignoff } from './verify-web.js';
 
 const utf8 = (value) => new TextEncoder().encode(value);
 
-async function contextChainHash(context) {
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', utf8(canonicalize(context))));
+export const SIGNOFF_CHAIN_PROFILE = 'EP-QUORUM-SIGNOFF-CHAIN-v1';
+
+/** Hash the completed proof, not its precomputable challenge context. */
+export async function completedSignoffHash(signoff) {
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256',
+    utf8(`${SIGNOFF_CHAIN_PROFILE}\0${canonicalize(signoff)}`)));
   return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
@@ -39,7 +43,7 @@ async function canonicalKeyFingerprint(spkiB64u) {
   }
 }
 
-export async function verifyQuorum(quorum, opts = {}) {
+export async function verifyQuorum(quorum, opts: Record<string, unknown> = {}) {
   const checks = {
     all_signatures_valid: false,
     action_binding: false,
@@ -60,6 +64,14 @@ export async function verifyQuorum(quorum, opts = {}) {
     const actionHash = quorum?.action_hash;
     if (!policy || !members || members.length === 0 || typeof actionHash !== 'string' || !actionHash) {
       return { valid: false, checks, members: memberResults };
+    }
+
+    if (Object.hasOwn(opts, 'expectedPolicy')) {
+      const expected = opts.expectedPolicy;
+      if (!expected || typeof expected !== 'object' || Array.isArray(expected)
+          || canonicalize(expected) !== canonicalize(policy)) {
+        return { valid: false, checks, members: memberResults, reason: 'quorum_policy_mismatch' };
+      }
     }
 
     const mode = policy.mode;
@@ -84,10 +96,8 @@ export async function verifyQuorum(quorum, opts = {}) {
     const distinctHumans = policy.distinct_humans !== false;
     const windowSec = Number.isFinite(policy.window_sec) ? policy.window_sec : 900;
     const eligible = Array.isArray(policy.approvers) ? policy.approvers : [];
-    const required = mode === 'ordered'
-      ? eligible.length
-      : (Number.isInteger(policy.required) && policy.required > 0 ? policy.required : NaN);
-    if (!Number.isInteger(required) || required <= 0 || eligible.length === 0) {
+    const required = Number.isInteger(policy.required) && policy.required > 0 ? policy.required : NaN;
+    if (!Number.isInteger(required) || required <= 0 || eligible.length === 0 || required > eligible.length) {
       return { valid: false, checks, members: memberResults };
     }
 
@@ -142,23 +152,26 @@ export async function verifyQuorum(quorum, opts = {}) {
     checks.threshold_met = distinctEligible.size >= required;
 
     if (mode === 'ordered') {
-      const seqRolesOk = eligible.every((e, idx) => members[idx]?.role === e.role
-        && members[idx]?.signoff?.context?.approver === e.approver);
-      const times = issuedAts.slice(0, eligible.length);
+      const seqRolesOk = members.length <= eligible.length && members.every((m, idx) => m?.role === eligible[idx]?.role
+        && m?.signoff?.context?.approver === eligible[idx]?.approver);
+      const times = issuedAts.slice(0, members.length);
       const timesOk = times.every((t, idx) => t !== null && (idx === 0 || t > (times[idx - 1] as number)));
-      checks.order_satisfied = members.length >= eligible.length && seqRolesOk && timesOk;
+      checks.order_satisfied = members.length >= required && seqRolesOk && timesOk;
     } else {
       checks.order_satisfied = true;
     }
 
     if (mode === 'ordered' && policy.ordered_chain === true) {
-      const sequence = members.slice(0, eligible.length);
-      let linked = sequence.length === eligible.length;
+      const sequence = members;
+      let linked = policy.ordered_chain_profile === SIGNOFF_CHAIN_PROFILE
+        && sequence.length >= required && sequence.length <= eligible.length;
       for (let index = 0; index < sequence.length; index++) {
-        const predecessor = sequence[index]?.signoff?.context?.prev_context_hash;
+        const context = sequence[index]?.signoff?.context ?? {};
+        const predecessor = context.prev_signoff_hash;
+        if (Object.hasOwn(context, 'prev_context_hash')) linked = false;
         if (index === 0) {
-          if (predecessor !== undefined && predecessor !== null) linked = false;
-        } else if (predecessor !== await contextChainHash(sequence[index - 1]?.signoff?.context ?? {})) {
+          if (Object.hasOwn(context, 'prev_signoff_hash')) linked = false;
+        } else if (predecessor !== await completedSignoffHash(sequence[index - 1]?.signoff)) {
           linked = false;
         }
       }

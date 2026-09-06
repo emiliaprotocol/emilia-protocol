@@ -11,7 +11,7 @@
       consequential action without obtaining a new human approval for every
       operation. A signed token alone cannot enforce a shared budget across
       replicas, survive retries safely, or distinguish an operation that never
-      crossed an effect boundary from one whose outcome is unknown.
+      crossed an effect boundary from one whose outcome is unknown. 
        This document defines a bounded capability receipt and a durable
       reserve-admit-reconcile protocol. The receipt binds an issuance
       authorization, a closed action scope, a budget with explicit units, a
@@ -28,7 +28,7 @@
       consequence admission, and evidence interfaces. It does not make a
       bearer token into human approval, does not provide cross-domain or
       offline global double-spend prevention, and does not claim that an
-      authorized action was safe, lawful, or successfully executed.
+      authorized action was safe, lawful, or successfully executed. 
     " name="description">
 <meta content="xml2rfc 3.34.0" name="generator">
 <meta content="agent authorization" name="keyword">
@@ -253,7 +253,7 @@ dl > dt {
   float: left;
   margin-right: 1em;
 }
-/*
+/* 
 dl.nohang > dt {
   float: none;
 }
@@ -1240,11 +1240,11 @@ li > p:last-of-type:only-child {
 <thead><tr>
 <td class="left">Internet-Draft</td>
 <td class="center">EP Bounded Capabilities</td>
-<td class="right">August 2026</td>
+<td class="right">September 2026</td>
 </tr></thead>
 <tfoot><tr>
 <td class="left">Schrock</td>
-<td class="center">Expires 13 February 2027</td>
+<td class="center">Expires 10 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1257,12 +1257,12 @@ li > p:last-of-type:only-child {
 <dd class="internet-draft">draft-schrock-ep-bounded-capability-receipts-05</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-08-12" class="published">12 August 2026</time>
+<time datetime="2026-09-06" class="published">6 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Experimental</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-02-13">13 February 2027</time></dd>
+<dd class="expires"><time datetime="2027-03-10">10 March 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1317,7 +1317,7 @@ li > p:last-of-type:only-child {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 13 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 10 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -2273,7 +2273,11 @@ remaining = total - consumed - reserved
       <span class="bcp14">MUST</span> atomically verify reservation ownership, verify that
       its authoritative transaction time is earlier than the recorded
       provider-entry deadline, and recheck current capability and applicable
-      allowance state. When the admission-control epoch profile is enabled,
+      allowance state. This check <span class="bcp14">MUST</span> recheck direct revocation
+      and every authority-bearing cascade-mode ancestor in the same atomic
+      state domain, as specified in <a href="#delegation-revocation" class="auto internal xref">Section 12.1</a>.
+      A reservation does not freeze revocation status. When the
+      admission-control epoch profile is enabled,
       the same transaction <span class="bcp14">MUST</span> require domain status
       <code>active</code> and equality between the current epoch and the epoch
       captured at reservation. On success, that transaction
@@ -2310,9 +2314,19 @@ remaining = total - consumed - reserved
         became consumed at provider entry.<a href="#section-10.3-1" class="pilcrow">¶</a></p>
 <p id="section-10.3-2">A <code>delegated</code> operation does not enter an external effect
         adapter. Its atomic terminal transition verifies ownership and state
-        <code>reserved</code>, decreases <code>reserved</code>, increases
+        <code>reserved</code>, rechecks the funding capability's direct revocation
+        and every authority-bearing cascade-mode ancestor, decreases
+        <code>reserved</code>, increases
         <code>consumed</code> by the same amount, and binds the child registration
-        described in <a href="#delegation" class="auto internal xref">Section 12</a>.<a href="#section-10.3-2" class="pilcrow">¶</a></p>
+        described in <a href="#delegation" class="auto internal xref">Section 12</a>. This funding commitment is
+        the authority-transfer cutoff for a delegated operation. If applicable
+        revocation commits first, the store <span class="bcp14">MUST</span> refuse the
+        transfer and may release the reservation only after authenticating
+        its owner and proving that no child authority was committed. If the
+        funding commitment commits first, its debit remains consumed;
+        subsequent child use follows the signed direct or cascade mode.
+        Retrying child registration for that same committed transfer does
+        not create another allocation or reopen the parent debit.<a href="#section-10.3-2" class="pilcrow">¶</a></p>
 <p id="section-10.3-3">A repeated commit, wrong reservation token, or external-effect
         commit against an operation not in <code>provider_entered</code>
           <span class="bcp14">MUST</span> refuse. A caller timeout
@@ -2501,29 +2515,40 @@ remaining = total - consumed - reserved
         the same authoritative atomic state domain used for the descendant
         reservation. A cached status value or eventually consistent
         notification does not establish immediate cascade revocation.<a href="#section-12.1-3" class="pilcrow">¶</a></p>
-<p id="section-12.1-4">The ancestor revocation transition and a descendant reservation
-        <span class="bcp14">MUST</span> be serialized in that state domain. If revocation
-        commits first, the descendant request <span class="bcp14">MUST</span> refuse. If
-        the reservation commits first, the revocation is late for that
-        operation and prevents later authority claims; it <span class="bcp14">MUST NOT</span> retroactively release the reservation, relabel an effect,
-        or authorize a retry. Any operation whose effect outcome is unresolved
-        remains subject to the reconciliation rules in
-        <a href="#reconciliation" class="auto internal xref">Section 10.4</a>.<a href="#section-12.1-4" class="pilcrow">¶</a></p>
-<p id="section-12.1-5">If complete current ancestor state cannot be established before
-        reservation, the request <span class="bcp14">MUST</span> refuse without entering
-        the effect adapter. This is a pre-effect status failure, not evidence
-        that an external effect is indeterminate. A deployment using separate
+<p id="section-12.1-4">Direct revocation of the exercised capability and revocation of
+        every authority-bearing cascade-mode ancestor <span class="bcp14">MUST</span>
+        serialize with both reservation and provider entry in that state
+        domain. Revocation that commits first prevents a new reservation.
+        Revocation that commits after reservation but before provider entry
+        <span class="bcp14">MUST</span> prevent entry. Only the authenticated reservation
+        owner may establish <code>not_entered</code>, release the held amount,
+        and retain the replay tombstone under <a href="#execute" class="auto internal xref">Section 10.2</a>.
+        If provider entry commits first, later revocation prevents new
+        authority claims but <span class="bcp14">MUST NOT</span> release consumed
+        authority, relabel an effect, or authorize a retry. An unresolved
+        effect remains subject to <a href="#reconciliation" class="auto internal xref">Section 10.4</a>.<a href="#section-12.1-4" class="pilcrow">¶</a></p>
+<p id="section-12.1-5">This entry-time rule does not change direct-mode descendant
+        independence. Revocation of a direct-mode ancestor alone does not
+        invalidate a previously registered descendant; the descendant's own
+        revocation and every cascade-mode ancestor still apply.<a href="#section-12.1-5" class="pilcrow">¶</a></p>
+<p id="section-12.1-6">If complete current ancestor state cannot be established before
+        reservation or provider entry, the request <span class="bcp14">MUST</span> refuse
+        without entering the effect adapter. Missing status alone does not
+        authorize release of an existing reservation; retain it for
+        authenticated recovery unless the store separately proves non-entry.
+        This is a pre-effect status failure, not evidence that an external
+        effect is indeterminate. A deployment using separate
         state domains or freshness-bounded status distribution
         <span class="bcp14">MUST NOT</span> claim immediate cascade revocation across
-        those domains.<a href="#section-12.1-5" class="pilcrow">¶</a></p>
-<p id="section-12.1-6">Neither mode grants a grace period after revocation. Continued or
+        those domains.<a href="#section-12.1-6" class="pilcrow">¶</a></p>
+<p id="section-12.1-7">Neither mode grants a grace period after revocation. Continued or
         wind-down authority <span class="bcp14">MUST</span> be established by a separate
         authorization with its own exact scope, budget, holder, and validity
         interval; it <span class="bcp14">MUST NOT</span> be inferred from an in-flight
         delegation. This document defines the consequence of an authenticated
         revocation within one state domain. It does not define who is entitled
         to revoke, how revocation is distributed, or how independently
-        operated domains transfer exclusive admission ownership.<a href="#section-12.1-6" class="pilcrow">¶</a></p>
+        operated domains transfer exclusive admission ownership.<a href="#section-12.1-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2653,13 +2678,33 @@ remaining = total - consumed - reserved
       <code>revocation_mode</code>, refuse when required ancestor state is
       unavailable, and cover a race between ancestor revocation and descendant
       reservation in which exactly one transition commits first. A
-      reservation that commits first remains owned and reconcilable; a
-      revocation that commits first prevents the reservation.<a href="#section-15-2" class="pilcrow">¶</a></p>
-<p id="section-15-3">The conformance set <span class="bcp14">MUST</span> also include multiple executor
+      reservation that commits first remains owned pending the separate
+      provider-entry decision; a revocation that commits first prevents the
+      reservation.<a href="#section-15-2" class="pilcrow">¶</a></p>
+<div id="revocation-entry-conformance">
+<p id="section-15-3">The conformance set
+      <span class="bcp14">MUST</span> test reserve, revoke, then provider entry for both
+      direct leaf revocation and inherited cascade revocation. Both cases
+      <span class="bcp14">MUST</span> refuse entry and permit budget release only through
+      authenticated <code>not_entered</code> with a retained replay tombstone.
+      It <span class="bcp14">MUST</span> also test provider entry before revocation:
+      the amount remains consumed and outcome reconciliation remains
+      available without re-execution. A direct-mode ancestor revocation
+      alone <span class="bcp14">MUST NOT</span> refuse an otherwise valid descendant's
+      entry. Missing ancestor status and wrong-holder recovery attempts
+      <span class="bcp14">MUST NOT</span> silently release another owner's reservation.<a href="#section-15-3" class="pilcrow">¶</a></p>
+</div>
+<p id="section-15-4">The conformance set <span class="bcp14">MUST</span> also serialize applicable
+      revocation against a <code>delegated</code> funding commitment after
+      reservation. Revocation first refuses the new allocation; commitment
+      first preserves the parent debit and applies the signed revocation mode
+      to subsequent child use. Neither registration retries nor revoked
+      child use restore or duplicate the parent allocation.<a href="#section-15-4" class="pilcrow">¶</a></p>
+<p id="section-15-5">The conformance set <span class="bcp14">MUST</span> also include multiple executor
       participants sharing one domain, an independent-store state fork, and a
       scope restricted to one executor; only the shared-domain case may claim
-      one aggregate budget.<a href="#section-15-3" class="pilcrow">¶</a></p>
-<p id="section-15-4">The scope-profile conformance set <span class="bcp14">MUST</span> show exact CAID
+      one aggregate budget.<a href="#section-15-5" class="pilcrow">¶</a></p>
+<p id="section-15-6">The scope-profile conformance set <span class="bcp14">MUST</span> show exact CAID
       equality and non-strict subset attenuation, including unchanged parent
       and child sets. For a profile whose relation is mechanically checkable,
       it <span class="bcp14">MUST</span> enumerate the complete declared finite domain and
@@ -2672,8 +2717,8 @@ remaining = total - consumed - reserved
       reliance on an authenticated prior conformance run, and
       <span class="bcp14">MUST</span> refuse chain-wide promotion when that prior record is
       unavailable, invalid, or does not cover the complete declared finite
-      domain.<a href="#section-15-4" class="pilcrow">¶</a></p>
-<p id="section-15-5">The conformance set <span class="bcp14">MUST</span> include an authenticated prior
+      domain.<a href="#section-15-6" class="pilcrow">¶</a></p>
+<p id="section-15-7">The conformance set <span class="bcp14">MUST</span> include an authenticated prior
       record that differs from the current evaluation in the profile or rule
       content digest, complete-domain encoding, digest algorithm, digest or
       cardinality, or deterministic procedure identifier, version or content
@@ -2683,15 +2728,15 @@ remaining = total - consumed - reserved
       still be reported local-only. It <span class="bcp14">MUST</span> also demonstrate
       that a matching prior
       record can support chain composition without repeating the enumeration,
-      subject to relying-party policy.<a href="#section-15-5" class="pilcrow">¶</a></p>
-<p id="section-15-6">The conformance set <span class="bcp14">MUST</span> reject an establishment record
+      subject to relying-party policy.<a href="#section-15-7" class="pilcrow">¶</a></p>
+<p id="section-15-8">The conformance set <span class="bcp14">MUST</span> reject an establishment record
       from an authenticated but untrusted runner, a record using the same
       mutable version label over different profile or rule content, a chain
       value outside the mechanically enumerated domain, and a multi-hop chain
       whose adjacent comparisons use different relations that are each
       independently transitive. It <span class="bcp14">MUST</span> demonstrate that a
-      local-only multi-hop result cannot establish descendant authority.<a href="#section-15-6" class="pilcrow">¶</a></p>
-<p id="section-15-7">The conformance set <span class="bcp14">MUST</span> cover a crash between
+      local-only multi-hop result cannot establish descendant authority.<a href="#section-15-8" class="pilcrow">¶</a></p>
+<p id="section-15-9">The conformance set <span class="bcp14">MUST</span> cover a crash between
       issuance-authorization consumption and root-capability registration, an
       exact retry that resolves to the existing capability, and a conflicting
       retry that refuses. It <span class="bcp14">MUST</span> also show that authenticated
@@ -2704,8 +2749,8 @@ remaining = total - consumed - reserved
       whose provider entry was recorded beforehand. A split-domain root
       registration case <span class="bcp14">MUST</span> identify and exercise its concrete
       reconciliation profile; without one, the case
-      <span class="bcp14">MUST</span> refuse the split deployment.<a href="#section-15-7" class="pilcrow">¶</a></p>
-<p id="section-15-8">When the admission-control epoch profile is supported, the
+      <span class="bcp14">MUST</span> refuse the split deployment.<a href="#section-15-9" class="pilcrow">¶</a></p>
+<p id="section-15-10">When the admission-control epoch profile is supported, the
       conformance set <span class="bcp14">MUST</span> exercise freeze-before-reservation,
       reservation-before-freeze with provider-entry refusal,
       provider-entry-before-freeze, epoch advance on restoration,
@@ -2718,8 +2763,8 @@ remaining = total - consumed - reserved
       instance differs. It <span class="bcp14">MUST</span> also demonstrate that an exact
       retry returns the original result without a second budget consumption
       after the named authority has been consumed, while a new request
-      requires current valid authority.<a href="#section-15-8" class="pilcrow">¶</a></p>
-<p id="section-15-9">The conformance set <span class="bcp14">MUST</span> reject a holder preimage of the
+      requires current valid authority.<a href="#section-15-10" class="pilcrow">¶</a></p>
+<p id="section-15-11">The conformance set <span class="bcp14">MUST</span> reject a holder preimage of the
       wrong length or digest, and <span class="bcp14">MUST</span> demonstrate that a
       captured valid preimage does not bypass scope, budget, status, validity,
       operation replay, or provider-entry-deadline checks. It
@@ -2730,8 +2775,8 @@ remaining = total - consumed - reserved
       action digest, amount, unit, scale, audience, and state-domain digest;
       every mutation <span class="bcp14">MUST</span> refuse. It
       <span class="bcp14">MUST</span> also refuse a portable threshold other than
-      <code>m=1, n=1</code> for that method.<a href="#section-15-9" class="pilcrow">¶</a></p>
-<p id="section-15-10">The parent-over-allocation case <span class="bcp14">MUST</span> include at least
+      <code>m=1, n=1</code> for that method.<a href="#section-15-11" class="pilcrow">¶</a></p>
+<p id="section-15-12">The parent-over-allocation case <span class="bcp14">MUST</span> include at least
       three sibling child-creation attempts whose individually valid amounts
       collectively exceed the parent's available balance, with concurrent
       reservation ordering chosen by the implementation. At most a
@@ -2739,12 +2784,12 @@ remaining = total - consumed - reserved
       cover one operation identifier presented for two different child receipt
       digests and an orphaned child-registration failure after parent
       commitment. The former refuses as operation replay; the latter leaves
-      the committed parent amount consumed pending reconciliation.<a href="#section-15-10" class="pilcrow">¶</a></p>
-<p id="section-15-11">A wire-format implementation that does not implement one shared
+      the committed parent amount consumed pending reconciliation.<a href="#section-15-12" class="pilcrow">¶</a></p>
+<p id="section-15-13">A wire-format implementation that does not implement one shared
       atomic store is a receipt verifier, not a conforming spend-control
       implementation. A store implementation that accepts a capability without
       pinned issuer verification, issuance authorization, and scope matching
-      is not conforming.<a href="#section-15-11" class="pilcrow">¶</a></p>
+      is not conforming.<a href="#section-15-13" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="relationship">
@@ -2901,12 +2946,13 @@ remaining = total - consumed - reserved
 <p id="section-17-11"><strong>Revocation.</strong> Expiry and exhausted budget are not
       revocation. A deployment that requires early invalidation
       <span class="bcp14">MUST</span> consult a separately authenticated revocation or
-      status source before reservation and define its freshness policy.
+      status source before reservation and at provider entry and define its
+      freshness policy.
       Revocation inheritance is not inferred from lineage alone: the signed
       mode determines whether already transferred descendant authority
       survives. An immediate cascade claim requires the ancestor revocation
-      transition and descendant reservation to be serialized in the same
-      authoritative atomic state domain. Notification or eventual cache
+      transition, descendant reservation, and provider entry to be serialized
+      in the same authoritative atomic state domain. Notification or eventual cache
       refresh cannot supply that guarantee. Full-lineage locking can make a
       high-fan-out ancestor a contention and denial-of-service hot spot;
       deployments <span class="bcp14">MUST</span> bound lineage depth, admission work, and
@@ -3037,7 +3083,7 @@ remaining = total - consumed - reserved
       in the reservation transaction, so an ancestor revocation that commits
       first refuses the reservation, while a reservation that commits first
       remains owned and reconcilable. Missing, malformed, or migration-incomplete
-      ancestor state refuses before provider entry. The tracked migration
+      ancestor state refuses at reservation. The tracked migration
       quarantines legacy rows without an explicit mode rather than inferring
       direct or cascade. Regression cases cover the signed closed field, direct
       descendant survival, cascade refusal, unavailable ancestor state, child
@@ -3045,7 +3091,18 @@ remaining = total - consumed - reserved
       This is same-team implementation evidence inside one authoritative atomic
       state domain; it is not independent interoperability, revocation
       distribution, or cross-domain cascade enforcement.<a href="#section-19-4" class="pilcrow">¶</a></p>
-<p id="section-19-5">The -04 scope-profile contract and comparison-reporting rules are not
+<p id="section-19-5">Entry-time direct and inherited revocation revalidation is not yet
+      implemented in these reference stores. They recheck the admission-control
+      epoch, applicable allowance state, ownership, and deadline at provider
+      entry, but currently resolve direct and ancestor revocation at
+      reservation. Those results do not establish the entry-time revocation
+      rule or its new ordering cases in
+      <a href="#revocation-entry-conformance" class="auto internal xref">Section 15, Paragraph 3</a>. The implementation and
+      bounded revocation model therefore provide partial experience, not
+      conformance to that part of this revision. The delegated-commit
+      revocation recheck is also a protocol requirement, not an implementation
+      claim for the existing reservation-time revocation path.<a href="#section-19-5" class="pilcrow">¶</a></p>
+<p id="section-19-6">The -04 scope-profile contract and comparison-reporting rules are not
       yet implemented. In particular, the reference implementation does not
       yet emit per-component decidability records, relation reflexivity,
       transitivity classification or basis, mechanical-establishment
@@ -3058,15 +3115,15 @@ remaining = total - consumed - reserved
       <code>not_entered</code> behavior are implemented in the reference stores,
       but that implementation evidence does not close the other -04 gaps. The
       <code>ed25519-operation-proof</code> holder method is not yet implemented by
-      the reference capability API; no implementation claim is made for it.<a href="#section-19-5" class="pilcrow">¶</a></p>
-<p id="section-19-6">The reference implementation does reject repeated delegation identifiers,
+      the reference capability API; no implementation claim is made for it.<a href="#section-19-6" class="pilcrow">¶</a></p>
+<p id="section-19-7">The reference implementation does reject repeated delegation identifiers,
       repeated parent capability identifiers, a leaf named as its own parent,
       and increasing amounts within the delegation chain presented at mint or
       verification time. Those checks provide local simple-path and monotonic
       amount enforcement. They do not discover omitted parents or establish the
       digest-linked, graph-wide lineage required by <a href="#delegation" class="auto internal xref">Section 12</a>,
-      so they do not close the remaining conformance gap.<a href="#section-19-6" class="pilcrow">¶</a></p>
-<p id="section-19-7">The public repository contains two CI-gated bounded TLA+ models
+      so they do not close the remaining conformance gap.<a href="#section-19-7" class="pilcrow">¶</a></p>
+<p id="section-19-8">The public repository contains two CI-gated bounded TLA+ models
       relevant here. The capability-accounting model covers registration,
       reservation, commitment, delegation, replay refusal, parent-funded child
       registration, and aggregate sibling conservation. A separate -03
@@ -3078,8 +3135,8 @@ remaining = total - consumed - reserved
       refinement proofs of the TypeScript, SQL, transaction adapter,
       cryptography, lineage verification, or complete protocol defined here.
       Arbitrary implementation inputs still require the runtime traversal and
-      refusal rules in <a href="#delegation" class="auto internal xref">Section 12</a>.<a href="#section-19-7" class="pilcrow">¶</a></p>
-<p id="section-19-8">The main branch also runs a fixed-seed adversarial harness in
+      refusal rules in <a href="#delegation" class="auto internal xref">Section 12</a>.<a href="#section-19-8" class="pilcrow">¶</a></p>
+<p id="section-19-9">The main branch also runs a fixed-seed adversarial harness in
       per-push CI over the actual JavaScript in-memory capability and
       consumption stores. It includes a true-concurrency
       <code>Promise.all</code> race target and a deliberately non-atomic
@@ -3089,7 +3146,7 @@ remaining = total - consumed - reserved
       those in-process stores, not complete protocol conformance: it does not
       fuzz the PostgreSQL capability transaction path, the atomic handshake
       RPC, replica or connection failures, and no deeper nightly sweep is
-      scheduled.<a href="#section-19-8" class="pilcrow">¶</a></p>
+      scheduled.<a href="#section-19-9" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="changes-since-04">
@@ -3105,19 +3162,23 @@ remaining = total - consumed - reserved
         <li class="normal" id="section-20-1.2">Required current capability and applicable allowance state to be
         rechecked in the provider-entry transaction.<a href="#section-20-1.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-20-1.3">Defined an optional admission-control domain and monotonic epoch
-        captured at reservation and rechecked at provider entry.<a href="#section-20-1.3" class="pilcrow">¶</a>
+        <li class="normal" id="section-20-1.3">Made provider entry the cutoff for direct and inherited cascade
+        revocation, preserved direct-mode descendant independence, and added
+        explicit ordering cases and the remaining implementation limitation.<a href="#section-20-1.3" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-20-1.4">Defined serialized freeze, restoration, wrong-holder, non-entry,
+        <li class="normal" id="section-20-1.4">Defined an optional admission-control domain and monotonic epoch
+        captured at reservation and rechecked at provider entry.<a href="#section-20-1.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-20-1.5">Defined serialized freeze, restoration, wrong-holder, non-entry,
         and pre-freeze reconciliation behavior without claiming that
-        computation or already-entered effects are stopped.<a href="#section-20-1.4" class="pilcrow">¶</a>
+        computation or already-entered effects are stopped.<a href="#section-20-1.5" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-20-1.5">Bound idempotent freeze retries to the exact action and authority
+        <li class="normal" id="section-20-1.6">Bound idempotent freeze retries to the exact action and authority
         instance and made the operation identifier non-authoritative by
-        itself.<a href="#section-20-1.5" class="pilcrow">¶</a>
+        itself.<a href="#section-20-1.6" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-20-1.6">Specified the honest disconnected-edge stale-admission window and
-        added explicit receipt-absence and unsigned-event claim limits.<a href="#section-20-1.6" class="pilcrow">¶</a>
+        <li class="normal" id="section-20-1.7">Specified the honest disconnected-edge stale-admission window and
+        added explicit receipt-absence and unsigned-event claim limits.<a href="#section-20-1.7" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>

@@ -427,11 +427,11 @@
     },
     {
       "path": "lib/grace/curtailment.js",
-      "sha256": "6dabb9faa1654b7e81aaa04d3e22064f8777a76350c0bccf51802ec18fe4c820"
+      "sha256": "b9d886fc3731db946657037225a5282c71396863b53b22ca0f3a43c8f22da7b3"
     },
     {
       "path": "lib/grace/curtailment.ts",
-      "sha256": "4a9f523869167db61a7c5960933a2049564f0a9009ef01c97b931b42209eecf2"
+      "sha256": "633da4788af0ce9bc7be521fb52b0e4ff7c23986a3904a911067132cc010efe5"
     },
     {
       "path": "lib/grace/forecast-evidence.js",
@@ -1163,7 +1163,7 @@
     },
     {
       "path": "packages/verify/dist/evidence-chain.js",
-      "sha256": "46ed2fd56562abd59494e063cc61fa08bba30b312535865b321623dfbbe879ac"
+      "sha256": "33f5edc96fc57bd0a534371bcbec751a34042bfc6cab7b1c8ee4abf2ff37586e"
     },
     {
       "path": "packages/verify/dist/evidence-record.js",
@@ -1195,7 +1195,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "9d129fa6be776e209d674b91ebab2bf1a94a8d751e1f9c9f4628f1fa2d2ac2f5"
+      "sha256": "a4d1d84d1359771c3c41a90956ee432ef780f5fed099ff2b9fd03a4a82b94dc7"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1239,7 +1239,7 @@
     },
     {
       "path": "packages/verify/dist/quorum.js",
-      "sha256": "2b2d180d69190dc1794bfa73c0c8f7e47c0d4a8cccdda2bdc8a1a40de78cee01"
+      "sha256": "024078388c570ed730ac2f401792ea878582d3e064c094d70de1bf17c8dac292"
     },
     {
       "path": "packages/verify/dist/receipt-cose-encoding.js",
@@ -1339,11 +1339,11 @@
     },
     {
       "path": "packages/verify/src/evidence-chain.ts",
-      "sha256": "d6326fdb075ae15f4a3b8f410e20c722e833f0c904ede965c9c8f0832a203318"
+      "sha256": "6f99cf1b973fb417a3944a36d4ac823822e5892ad8ad8db9752bb81537c4776c"
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "7f6eda3cf0359120f1a7ae6eaaa810090418e6e36e18307c4080a93a6eddffad"
+      "sha256": "1ea3915cba41620c4e6884595b25fc8b4a61b25e491738e8ff31c262bb524a62"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

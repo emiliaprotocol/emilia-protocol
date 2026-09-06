@@ -69,12 +69,9 @@ declare const canonicalize: typeof canonicalizeStrictJson;
  */
 export declare function isCanonicalizable(value: any): boolean;
 /**
- * EP-QUORUM-v1 ordered-chain hash: the hex SHA-256 of the canonical signoff
- * context. Used to cryptographically link each ordered signoff to its
- * predecessor (context.prev_context_hash), so approval ORDER is proven by the
- * signatures themselves rather than by operator-asserted timestamps. Exported
- * for the quorum verifier; uses the same canonicalize()/sha256() as every other
- * signed-material computation in this file.
+ * Legacy context digest, retained for callers inspecting historical records.
+ * It does not prove approval order: contexts can be prepared before signing.
+ * Strong quorum ordering uses completedSignoffHash from quorum.js instead.
  */
 export declare function contextChainHash(context: any): string;
 export { canonicalize };

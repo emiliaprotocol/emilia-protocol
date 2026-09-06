@@ -695,6 +695,7 @@ packages/verify/aeb-oauth-transaction-challenge-adapter.test.js linguist-generat
 packages/verify/aeb-psea-adapter.test.js linguist-generated=true
 packages/verify/aeb-wag-adapter.test.js linguist-generated=true
 packages/verify/aeb-wimse-oauth-adapter.test.js linguist-generated=true
+packages/verify/aec-current-profile.test.js linguist-generated=true
 packages/verify/agent-binding.test.js linguist-generated=true
 packages/verify/agent-edge-continuity-v2.test.js linguist-generated=true
 packages/verify/agent-edge-continuity.test.js linguist-generated=true
