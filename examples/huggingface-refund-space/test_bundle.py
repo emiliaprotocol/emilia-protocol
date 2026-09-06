@@ -9,9 +9,9 @@ import pytest
 import yaml
 
 WHEEL_NAMES = {
-    "python-verify": "emilia_verify-2.8.4-py3-none-any.whl",
-    "crewai": "emilia_crewai-0.3.4-py3-none-any.whl",
-    "smolagents": "emilia_smolagents-0.1.0-py3-none-any.whl",
+    "python-verify": "emilia_verify-2.8.5-py3-none-any.whl",
+    "crewai": "emilia_crewai-0.3.5-py3-none-any.whl",
+    "smolagents": "emilia_smolagents-0.1.1-py3-none-any.whl",
 }
 
 
