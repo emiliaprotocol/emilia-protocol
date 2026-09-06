@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-## Unreleased
+## 2.8.4 (2026-09-05)
 
 ### Security
 
@@ -9,12 +9,10 @@
   structured verification result. Unencodable Merkle-proof hash text now fails
   verification instead of raising an exception.
 
-## 2.8.4 (2026-08-30)
-
 ### Changed
 
 - Publish the corrected installation guidance with the current reproducible
-  Python release toolchain. Verifier behavior and public APIs are unchanged.
+  Python release toolchain.
 - Set the supported Python floor to 3.10 so runtime metadata and the pinned
   build toolchain describe the same supported interpreter line.
 - Parse the full one-through-nine-digit RFC 3339 fractional-second profile on

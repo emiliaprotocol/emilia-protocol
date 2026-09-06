@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.4 (2026-09-05)
 
 ### Security
 
@@ -20,10 +20,12 @@
   label, an error code, or an unproven tier passed the assurance check. Only
   `{"ok": True, "tier": ...}` or the literal `True` now authorizes.
 
-## 0.3.4 (2026-08-30)
+### Changed
 
 - Set the supported Python floor to 3.10 so package metadata matches the
-  current reproducible build toolchain. Guard behavior is unchanged.
+  current reproducible build toolchain.
+- Require `emilia-verify>=2.8.4,<3` so installation includes the verifier's
+  malformed-receipt fixes.
 
 ## 0.3.3 (2026-08-02)
 
