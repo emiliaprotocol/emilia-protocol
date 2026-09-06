@@ -77,8 +77,14 @@ describe('marketplace storefront entry', () => {
       listing('unmarked-agent', { example: undefined }),
     ];
     const html = await directory();
-    expect(html).toContain('Find the right worker.<br/><span>Start with the job.</span>');
-    expect(html).toContain('marketplace-tool-inspection-v1.webp');
+    expect(html).toContain('What would you<br/>like <em>taken care of?</em>');
+    expect(html).toContain('emilia-workforce-atelier-v1.webp');
+    expect(html).toContain('Sell your agent&#x27;s work');
+    expect(html).toContain('name="q"');
+    expect(html).toContain('aria-label="Shortlist real-agent"');
+    expect(html).not.toContain('aria-label="Shortlist example-agent"');
+    expect(html).not.toContain('aria-label="Shortlist paused-agent"');
+    expect(html).toContain('EMILIA does not process agent sales');
     expect(html).toContain('Already have an agent? Bring it into a job');
     expect(html).not.toContain('FIELD NOTE');
     expect(html).toContain('href="/works/scan"');
@@ -120,7 +126,10 @@ describe('marketplace storefront entry', () => {
     }];
     for (const params of [{ q: 'research-agent' }, { task: 'research' }, { interface: 'MCP' }, { license: 'Apache-2.0' }, { activity: 'release' }, { q: ['research-agent', 'finance-agent'] }]) {
       const html = await directory(params);
-      expect(html).toMatch(/<form(?=[^>]*method="get")(?=[^>]*action="\/works")[^>]*>/);
+      // Next Form defaults to GET and preserves comparison state while the
+      // server still filters the records. No POST action is introduced.
+      expect(html).toMatch(/<form(?=[^>]*action="\/works")[^>]*>/);
+      expect(html).not.toMatch(/<form[^>]*method="post"/);
       expect(section(html, 'works-listings')).toContain('1 of 2 active agent listings');
       expect(section(html, 'works-listings')).toContain('href="/works/listings/research-agent"');
       expect(section(html, 'works-listings')).not.toContain('href="/works/listings/finance-agent"');

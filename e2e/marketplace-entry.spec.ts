@@ -10,6 +10,10 @@ test.describe('marketplace entry', () => {
     await page.getByRole('button', { name: 'Scan declarations, free' }).click();
     await expect(page.getByRole('heading', { name: '3 declared actions. Actual behavior unknown.' })).toBeVisible();
     await expect(page.getByText('Potential consequential action', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /^Consequential/ }).click();
+    await expect(page.getByRole('heading', { name: 'refund_payment', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'list_invoices', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: /^All:/ }).click();
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download JSON report' }).click();
     const download = await downloadPromise;
@@ -93,12 +97,48 @@ test.describe('marketplace entry', () => {
   test('marketplace, scanner, offer and qualification fit desktop and a narrow phone', async ({ page }) => {
     for (const width of [1440, 375]) {
       await page.setViewportSize({ width, height: 950 });
-      for (const path of ['/works', '/works/scan', '/works/gate', '/works/qualification']) {
+      for (const path of ['/works', '/works/join', '/works/scan', '/works/gate', '/works/qualification']) {
         await page.goto(path);
         await expect(page.locator('main h1')).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         await page.screenshot({ path: `test-results/marketplace-${path.replaceAll('/', '-')}-${width}.png` });
       }
     }
+    // Preview and consent are local; mocked publication must reuse the supplied
+    // key and retry only the unconfirmed stage, never anonymous registration.
+    await page.goto('/works/join');
+    const writes: string[] = [];
+    let listingAttempt = 0;
+    await page.route('**/api/entities/register', async route => {
+      writes.push('register'); await route.fulfill({ status: 403, json: { error: 'Registration stays closed' } });
+    });
+    await page.route('**/api/works/builders', async route => {
+      writes.push('builder');
+      expect(route.request().headers().authorization).toBe('Bearer e2e-only-marketplace-key');
+      await route.fulfill({ status: 201, json: { ok: true } });
+    });
+    await page.route('**/api/works/listings', async route => {
+      writes.push('listing'); listingAttempt++;
+      await route.fulfill({ status: listingAttempt === 1 ? 503 : 201, json: listingAttempt === 1 ? { error: 'Synthetic unavailable response' } : { ok: true } });
+    });
+    for (const [name, value] of Object.entries({ listingName: 'Browser fixture worker', listingSummary: 'Synthetic form test, never published.', supportedTasks: 'research', interfaces: 'MCP', operatingConstraints: 'No actual provider access', builderName: 'Browser fixture builder', contactRoute: 'mailto:fixture@example.com', builderId: 'browser-fixture-builder', listingId: 'browser-fixture-worker' })) {
+      await page.locator(`[name="${name}"]`).fill(value);
+    }
+    await page.getByRole('button', { name: 'Preview my listing' }).click();
+    await expect(page.getByRole('heading', { name: 'This is what you’ll publish.' })).toBeVisible();
+    expect(writes).toEqual([]);
+    await page.locator('[name="existingKey"]').fill('e2e-only-marketplace-key');
+    await expect(page.getByRole('button', { name: 'Publish profile and listing' })).toBeDisabled();
+    await page.locator('[name="publicConsent"]').check();
+    await page.getByRole('button', { name: 'Publish profile and listing' }).click();
+    await expect(page.getByRole('heading', { name: 'Profile published. Listing not yet confirmed.' })).toBeVisible();
+    await page.getByRole('button', { name: 'Retry Works setup' }).click();
+    await expect(page.getByRole('heading', { name: 'Your agent has a place to be found.' })).toBeVisible();
+    expect(writes).toEqual(['builder', 'listing', 'listing']);
+    expect(await page.locator('body').innerText()).not.toContain('e2e-only-marketplace-key');
+    expect(await page.evaluate(() => Object.values(localStorage).concat(Object.values(sessionStorage)).some(value => String(value).includes('e2e-only-marketplace-key')))).toBe(false);
+    await page.getByRole('button', { name: 'Clear key from this page' }).click();
+    await expect(page.locator('[name="existingKey"]')).toHaveValue('');
+    await expect(page.locator('[name="publicConsent"]')).not.toBeChecked();
   });
 });
