@@ -2,31 +2,31 @@ import type { Metadata } from 'next';
 import HomePageClient from './HomePageClient';
 
 export const metadata: Metadata = {
-  title: { absolute: 'Authority Toll Booth for Autonomous Work | EMILIA' },
+  title: { absolute: 'Your AI Workforce Needs Management | EMILIA' },
   description:
-    'At configured protected boundaries, consequential agent actions must present customer authority before provider entry, and the result leaves an action-bound record.',
+    'Give every agent a job, set its authority, and know what happened. EMILIA is building a workforce workspace with Gate enforcing limits on connected tools.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Authority Toll Booth for Autonomous Work | EMILIA',
+    title: 'Your AI Workforce Needs Management | EMILIA',
     description:
-      'At configured protected boundaries, EMILIA prevents agents from quietly widening authority.',
+      'Manage jobs, authority and work reviews for AI agents. Explore the private local alpha, built around EMILIA Gate and the open Protocol.',
     url: 'https://www.emiliaprotocol.ai/',
     type: 'website',
     images: [
       {
-        url: '/emilia-authority-tollbooth-v1.png',
-        width: 1717,
-        height: 916,
-        alt: 'Agent-intent paths cross a customer-owned authority checkpoint and leave with action-bound receipts',
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'EMILIA: Your AI workforce needs management. Give every agent a job, set its authority, and know what happened.',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Authority Toll Booth for Autonomous Work | EMILIA',
+    title: 'Your AI Workforce Needs Management | EMILIA',
     description:
-      'Protected crossings require authority before action, then preserve what happened.',
-    images: ['/emilia-authority-tollbooth-v1.png'],
+      'Give every agent a job, set its authority, and know what happened. Private local alpha.',
+    images: ['/twitter-image'],
   },
 };
 

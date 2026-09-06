@@ -1,24 +1,23 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'About',
+  title: 'About EMILIA | Management for Your AI Workforce',
   description:
-    'The team and advisors behind EMILIA Protocol — the open protocol for ' +
-    'verifiable pre-action authorization in AI agent and high-risk-action ' +
-    'workflows. Apache 2.0, formally verified, reference runtime.',
+    'EMILIA is building the workspace for people responsible for AI work, with Gate enforcing ' +
+    'customer authority on configured paths and an open protocol underneath.',
   alternates: { canonical: '/about' },
   openGraph: {
-    title: 'About EMILIA Protocol',
+    title: 'About EMILIA',
     description:
-      'Team, advisors, and mission of the open pre-action authorization standard.',
+      'The company, the workforce product and the open Protocol. Give every agent a job, set its authority, and know what happened.',
     url: 'https://www.emiliaprotocol.ai/about',
-    type: 'profile',
+    type: 'website',
   },
   keywords: [
     'EMILIA Protocol team',
     'EMILIA Protocol founders',
-    'AI authorization standard team',
-    'pre-action authorization team',
+    'AI workforce management',
+    'authorization infrastructure for agentic AI',
   ],
 };
 
