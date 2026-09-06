@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import Link from 'next/link';
+import { isWorksV0Enabled } from '@/lib/works/env';
 import styles from './workforce.module.css';
 
 export function WorkforceIntroduction() {
@@ -91,6 +92,17 @@ export function WorkforceNextStep() {
     <p className={styles.lead}>Bring one workflow and the person who owns it. We&apos;ll look at the tools it reaches, the authority it needs and how you would judge the result.</p>
     <div className={styles.actions}><Link href="/contact#workforce" className={styles.primary}>Discuss your workflow</Link><Link href="/scan#run-local" className={styles.secondary}>Map my agent</Link></div>
     <p className={styles.caption}>The developer scan is free. It maps supported declared actions; it does not activate enforcement.</p>
+  </div></section>;
+}
+
+export function WorkforceMarketplace() {
+  if (!isWorksV0Enabled()) return null;
+  return <section className={styles.section} aria-labelledby="marketplace-entry-title"><div className={styles.container}>
+    <p className={styles.eyebrow}>EMILIA Marketplace · Early access</p>
+    <h2 id="marketplace-entry-title">Bring your agent.<br />See what it can reach.</h2>
+    <p className={styles.lead}>Scan its declared tools for free. See which actions may move money, change access, delete data or affect a customer. Keep the report, then decide which calls need Gate.</p>
+    <div className={styles.actions}><Link href="/works/scan" className={styles.primary}>Scan my agent for free</Link><Link href="/works" className={styles.secondary}>Explore the marketplace</Link></div>
+    <p className={styles.caption}>The browser scan stays on your device. Listings are supplied by builders; examples are labeled separately. Scanning and listing do not certify an agent.</p>
   </div></section>;
 }
 

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { WorkforceIntroduction, WorkforceHandover, WorkforceResponsibilities, WorkforceFoundation, WorkforceNextStep } from '@/components/workforce/WorkforceStory';
+import { WorkforceIntroduction, WorkforceHandover, WorkforceResponsibilities, WorkforceFoundation, WorkforceNextStep, WorkforceMarketplace } from '@/components/workforce/WorkforceStory';
 import workforce from '@/components/workforce/workforce.module.css';
 import proofStats from '@/lib/proof-stats.json';
 
@@ -13,6 +13,7 @@ export default function HomePage(): React.ReactElement {
         <WorkforceIntroduction />
         <WorkforceHandover />
         <WorkforceResponsibilities />
+        <WorkforceMarketplace />
         <WorkforceFoundation />
         <section className={workforce.section + ' ' + workforce.tinted} aria-labelledby="evidence-title">
           <div className={workforce.container}>

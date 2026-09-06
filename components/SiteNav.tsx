@@ -10,7 +10,7 @@ type NavLink = [string, string];
 const NAV_LINKS: NavLink[] = [
   ['/workforce', 'Workforce'],
   ['/products', 'Products'],
-  ...(process.env.NEXT_PUBLIC_WORKS_V0 === '1' ? [['/works', 'Work'] as NavLink] : []),
+  ...(process.env.NEXT_PUBLIC_WORKS_V0 === '1' ? [['/works', 'Marketplace'] as NavLink] : []),
   ['/use-cases', 'Solutions'],
   ['/docs', 'Developers'],
   ['/proof', 'Proof'],
