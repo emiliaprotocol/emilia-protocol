@@ -35,11 +35,13 @@ describe('mobile public-site experience contract', () => {
 
     expect(homepage).toContain('<WorkforceIntroduction />');
     expect(homepage).toContain('<WorkforceHandover />');
-    expect(story).toContain('Your AI workforce<br />needs management.');
+    expect(story).toContain('Build your<br />AI workforce.');
     expect(story).toContain('aria-label="Illustrative refunds job before and after replacement"');
-    expect(css).toContain('font-size: clamp(44px, 4.45vw, 62px)');
+    expect(css).toContain('font-size: clamp(48px, 6.2vw, 82px)');
     expect(story).toContain('role="group" aria-label="Illustrative refunds job before and after replacement"');
-    expect(story).toContain('/emilia-authority-tollbooth-v1.png');
+    expect(story).toContain('/emilia-workforce-atelier-v1.webp');
+    expect(css).toContain('object-fit: contain');
+    expect(css).toContain('.journeyLayout { grid-template-columns: 1fr; gap: 36px; }');
     expect(css).toContain('min-height: 48px');
     expect(css).toContain('@media (max-width: 760px)');
     expect(css).toContain('@media (max-width: 390px)');

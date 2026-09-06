@@ -5,20 +5,22 @@ import { isWorksV0Enabled } from '@/lib/works/env';
 import styles from './workforce.module.css';
 
 export function WorkforceIntroduction() {
+  const worksEnabled = isWorksV0Enabled();
   return <section className={styles.hero} aria-labelledby="workforce-title"><div className={styles.container + ' ' + styles.heroLayout}>
     <div className={styles.heroCopy}>
-    <p className={styles.eyebrow}>EMILIA · Authorization infrastructure for agentic AI</p>
-    <h1 id="workforce-title">Your AI workforce<br />needs management.</h1>
-    <p className={styles.promise}>Give every agent a job, set its authority, and know what happened.</p>
-    <p className={styles.lead}>You choose what the agent may do and who is responsible. EMILIA is building the workspace to manage that work, with Gate enforcing your limits on the tools you connect.</p>
-    <div className={styles.actions}><Link href="/contact#workforce" className={styles.primary}>Discuss your workflow</Link><Link href="#the-handover" className={styles.secondary}>See a refunds example</Link></div>
-    <p className={styles.caption}>Private local alpha. Evaluations by arrangement, not a hosted service.</p>
+    <p className={styles.eyebrow}>AI workers. Human direction.</p>
+    <h1 id="workforce-title">Build your<br />AI workforce.</h1>
+    </div>
+    <div className={styles.heroOverview}>
+      <p className={styles.promise}>Find specialized agents or bring your own. Give them a job, set their limits and see how they perform.</p>
+      <div className={styles.actions}><Link href="#build-your-workforce" className={styles.primary}>Build your workforce</Link><Link href={worksEnabled ? '/works/scan' : '/scan#run-local'} className={styles.secondary}>Bring your agent</Link></div>
+      <p className={styles.caption}>Workforce workspace: private local alpha. Evaluations by arrangement, not a hosted service.</p>
     </div>
     <figure className={styles.heroVisual}>
       <div className={styles.heroImage}>
-        <Image src="/emilia-authority-tollbooth-v1.png" alt="Illustration of a glass and brass Gate between incoming work and connected systems." width={1717} height={916} sizes="(max-width: 860px) 100vw, 48vw" loading="eager" />
+        <Image src="/emilia-workforce-atelier-v1.webp" alt="A human hand passes a work brief to a graphite and brass mechanical hand, with finished briefs behind them. Concept illustration." width={1672} height={941} sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1304px) calc(100vw - 64px), 1240px" loading="eager" />
       </div>
-      <figcaption>Gate at the action boundary. Illustration, not a live product screen.</figcaption>
+      <figcaption><span>Software does the work. You set the direction.</span><span>Concept illustration, not a live product screen.</span></figcaption>
     </figure>
   </div></section>;
 }
@@ -50,16 +52,19 @@ export function WorkforceHandover() {
 }
 
 export function WorkforceResponsibilities() {
-  return <section className={styles.section + ' ' + styles.tinted} aria-labelledby="responsibility-title"><div className={styles.container}>
+  const worksEnabled = isWorksV0Enabled();
+  return <section id="build-your-workforce" className={styles.section + ' ' + styles.tinted} aria-labelledby="responsibility-title"><div className={styles.container + ' ' + styles.journeyLayout}>
     <div className={styles.heading}>
-      <p className={styles.eyebrow}>A familiar management job</p>
-      <h2 id="responsibility-title">Someone still owns the work.</h2>
-      <p>Think of it as HR for AI agents: a job, delegated authority, a work review and a proper handover. Agents are software. A person or institution remains accountable.</p>
+      <p className={styles.eyebrow}>For companies</p>
+      <h2 id="responsibility-title">Start with the work<br />you need done.</h2>
+      <p>Bring an agent you already use, or look for a builder who understands the job. EMILIA connects that first decision to the limits and review the assignment will need.</p>
+      <Link href="/contact#workforce" className={styles.secondary}>Discuss your workflow</Link>
+      <p className={styles.caption}>A workflow evaluation, not a hosted signup.</p>
     </div>
-    <div className={styles.editorial}>
-      <article><h3>Give the job clear limits.</h3><p>Name the owner, define the task and set an allowance. A standing instruction can let the agent work within those limits; exceptions come back to the owner.</p></article>
-      <article><h3>Change the worker, not the history.</h3><p>Assignments can change. Consumed authority and unfinished work stay with the same account. Removing an assignment stops new covered actions, not actions already underway.</p></article>
-      <article><h3>Review the result.</h3><p>Keep what Gate permitted, what the provider reported and what a reviewer accepted as separate facts. A signed receipt does not prove the job was done well.</p></article>
+    <div className={styles.journey}>
+      <article><span aria-hidden="true">01</span><div><h3>Know who you are bringing in.</h3><p>Look at the builder, the exact agent version and its declared tools. A free scan helps you spot actions that deserve limits before you connect anything.</p>{worksEnabled ? <Link href="/works">Explore the marketplace</Link> : <Link href="/scan#run-local">Map declared actions</Link>}</div></article>
+      <article><span aria-hidden="true">02</span><div><h3>Agree on the job.</h3><p>Name the owner, set the allowance and decide what a good result looks like. Gate enforces those instructions on configured tools. Exceptions return to the owner.</p><Link href="#the-handover">See a refunds example</Link></div></article>
+      <article><span aria-hidden="true">03</span><div><h3>Use the work to judge the worker.</h3><p>Keep what Gate permitted, what the provider reported and what a reviewer accepted as separate facts. A signed receipt does not prove the job was done well.</p><p className={styles.journeyNote}>The work record must name the assignment and agent version. Missing reviews stay unknown; a replacement does not inherit the old agent&apos;s score.</p></div></article>
     </div>
   </div></section>;
 }
@@ -68,15 +73,16 @@ export function WorkforceFoundation() {
   return <section className={styles.section} aria-labelledby="foundation-title"><div className={styles.container}>
     <div className={styles.heading}>
       <p className={styles.eyebrow}>The infrastructure underneath</p>
-      <h2 id="foundation-title">The workspace is where you manage.<br />Gate is where the limits take effect.</h2>
+      <h2 id="foundation-title">One workforce.<br />A clear place for every part.</h2>
       <p>A screen alone cannot stop a tool call. Gate belongs beside the credentials that let an agent issue a refund, change a record or deploy code. It checks the exact action before that connected path can run.</p>
+      <p>Agents are software. A person or institution remains accountable.</p>
     </div>
     <div className={styles.editorial}>
-      <article><h3>EMILIA is the company.</h3><p>We build the operating product and work with teams on integration and deployment. The workforce workspace is a private local alpha.</p><Link href="/about">About EMILIA</Link></article>
+      <article><h3>EMILIA is the company.</h3><p>The marketplace helps you find workers. The workspace brings their jobs, limits and work records together. We work with teams on integration and deployment.</p><Link href="/workforce">Explore the workforce product</Link></article>
       <article><h3>Gate applies your authority.</h3><p>You choose the rules and the connected paths. Alternate credentials and routes outside Gate remain outside its control.</p><Link href="/gate">How Gate works</Link></article>
       <article><h3>The Protocol stays open.</h3><p>Open formats, verifiers and reference code keep evidence portable. You can use the public protocol without buying from EMILIA.</p><Link href="/protocol">Explore the open protocol</Link></article>
     </div>
-    <p className={styles.boundary}>Enforcement requires completely mediated paths through the credential-owning Gate. It does not undo an action already entered, guarantee a provider&apos;s result or certify legal compliance.</p>
+    <p className={styles.boundary}>Enforcement requires completely mediated paths through the credential-owning Gate. Removing an assignment stops new covered actions, not actions already underway. It does not guarantee a provider&apos;s result or certify legal compliance.</p>
   </div></section>;
 }
 
@@ -98,9 +104,9 @@ export function WorkforceReadiness() {
 
 export function WorkforceNextStep() {
   return <section className={styles.section} aria-labelledby="next-step-title"><div className={styles.container}>
-    <p className={styles.eyebrow}>Start with one job</p>
-    <h2 id="next-step-title">What would you let an agent do<br />if its limits stayed in place?</h2>
-    <p className={styles.lead}>Bring one workflow and the person who owns it. We&apos;ll look at the tools it reaches, the authority it needs and how you would judge the result.</p>
+    <p className={styles.eyebrow}>Why we are building EMILIA</p>
+    <h2 id="next-step-title" className={styles.mission}>Help builders earn work, help companies delegate it, and make every completed assignment improve the next decision.</h2>
+    <p className={styles.lead}>Start with one job and the person who owns it. We&apos;ll look at the tools it reaches, the authority it needs and how you would judge the result.</p>
     <div className={styles.actions}><Link href="/contact#workforce" className={styles.primary}>Discuss your workflow</Link><Link href="/scan#run-local" className={styles.secondary}>Map my agent</Link></div>
     <p className={styles.caption}>The developer scan is free. It maps supported declared actions; it does not activate enforcement.</p>
   </div></section>;
@@ -110,12 +116,12 @@ export function WorkforceMarketplace() {
   if (!isWorksV0Enabled()) return null;
   return <section className={styles.section + ' ' + styles.marketplace} aria-labelledby="marketplace-entry-title"><div className={styles.container + ' ' + styles.marketplaceLayout}>
     <div>
-    <p className={styles.eyebrow}>EMILIA Marketplace · Early access</p>
-    <h2 id="marketplace-entry-title">Bring your agent. See what it can reach.</h2>
-    <p className={styles.lead}>Scan its declared tools for free. See which actions may move money, change access, delete data or affect a customer. Keep the report, then decide which calls need Gate.</p>
-    <p className={styles.caption}>The browser scan stays on your device. Listings are supplied by builders; examples are labeled separately. Scanning and listing do not certify an agent.</p>
+    <p className={styles.eyebrow}>For builders</p>
+    <h2 id="marketplace-entry-title">Give your agent a way to earn work.</h2>
+    <p className={styles.lead}>Show what it does, what it can reach and which version a company would be bringing in. Start with a free private scan. Then choose what to list and which jobs to respond to.</p>
+    <p className={styles.caption}>No account or upload for the browser scan. Listing is a separate step; public Authority Records require owner approval. No automatic publication, safety certification or promise of paid work.</p>
     </div>
-    <div className={styles.actions}><Link href="/works/scan" className={styles.outlined}>Scan my agent for free</Link><Link href="/works" className={styles.secondary}>Explore the marketplace</Link></div>
+    <div className={styles.actions}><Link href="/works/scan" className={styles.outlined}>Bring your agent</Link><Link href="/works/opportunities" className={styles.secondary}>Explore posted jobs</Link><Link href="/works/join" className={styles.secondary}>List your agent</Link></div>
   </div></section>;
 }
 
