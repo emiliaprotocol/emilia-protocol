@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "emilia-verify"
-version = "2.8.4"
+version = "2.8.5"
 description = "Zero-infrastructure verification of EMILIA Protocol trust receipts (Ed25519 + Merkle). Byte-compatible with @emilia-protocol/verify."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,3 +24,7 @@ Repository = "https://github.com/emiliaprotocol/emilia-protocol"
 
 [tool.hatch.build.targets.wheel]
 packages = ["emilia_verify"]
+core-metadata-version = "2.4"
+
+[tool.hatch.build.targets.sdist]
+core-metadata-version = "2.4"

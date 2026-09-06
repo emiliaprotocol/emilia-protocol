@@ -88,8 +88,8 @@ virtual environment, and an unprivileged UID 1000. It installs dependencies at
 build time and serves on port 7860 without model credentials or runtime package
 installation. The local Python commands above remain supported.
 
-Use the included wheels: the adapter requires `emilia-crewai>=0.3.4` and
-`emilia-verify>=2.8.4`.
+Use the included wheels: the adapter requires `emilia-crewai>=0.3.5` and
+`emilia-verify>=2.8.5`.
 Those source versions include required security fixes and were not yet published
 on PyPI when this example was built. No standalone `pip install emilia-smolagents`
 release is claimed here.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "emilia-smolagents"
-version = "0.1.0"
+version = "0.1.1"
 description = "Exact-action authorization receipt checks for Hugging Face smolagents tools."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,8 +12,8 @@ license = { text = "Apache-2.0" }
 authors = [{ name = "Iman Schrock", email = "team@emiliaprotocol.ai" }]
 dependencies = [
   "smolagents>=1.26.0,<1.27",
-  "emilia-crewai>=0.3.4,<0.4",
-  "emilia-verify>=2.8.4,<3",
+  "emilia-crewai>=0.3.5,<0.4",
+  "emilia-verify>=2.8.5,<3",
 ]
 
 [project.optional-dependencies]
