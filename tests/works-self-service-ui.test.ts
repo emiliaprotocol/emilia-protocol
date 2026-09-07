@@ -2,12 +2,13 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildJoinPayloads,
   buildOpportunityPayload,
   buildSubmissionPayload,
 } from '../app/works/form-payloads.ts';
+import { publishRecordWithRecovery, readOwnedRecord, samePublication } from '../app/works/join/owned-record.ts';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const read = (path: string): string => readFileSync(resolve(ROOT, path), 'utf8');
@@ -140,13 +141,27 @@ describe('Works self-service UI and copy contract', () => {
     expect(form).toContain('function preparePreview');
     const preparePreview = form.slice(form.indexOf('function preparePreview'), form.indexOf('async function handlePublish'));
     expect(preparePreview).not.toContain('fetch(');
-    expect(preparePreview).toContain('setDraft(buildJoinPayloads(input))');
+    expect(preparePreview).toContain('const payloads = buildJoinPayloads(input)');
+    expect(preparePreview).toContain('setDraft(payloads)');
+    expect(form).toContain('Use my existing profile');
+    expect(form).toContain("readOwnedRecord('builders'");
+    expect(form).toContain('builderCreated: reuseBuilder');
+    expect(form).toContain('existing_builder_unchanged: draft.builder');
+    expect(form).toContain('Publish new listing');
+    expect(form).toContain('Keep that profile unchanged.');
     expect(form).toContain('keyCreatedHere: false');
     expect(form).toContain('keyCreatedHere: true');
     expect(form).toContain('if (!next.builderCreated)');
     expect(form).toContain('if (!next.listingCreated)');
     expect(form).toContain('activeRequest.current?.abort()');
     expect(form).toContain('if (inFlight.current) return;');
+    expect(form).toContain('useSyncExternalStore(subscribeToHydration, clientReady, serverReady)');
+    expect(form).toContain('const serverReady = () => false');
+    expect(form).toContain('const clientReady = () => true');
+    expect(form.match(/<form method="post"/g)).toHaveLength(2);
+    expect(form.match(/<fieldset disabled=\{!ready \|\| busy\}/g)).toHaveLength(2);
+    expect(form).toContain('if (!ready) return;');
+    expect(form).toContain('if (!ready || inFlight.current) return;');
     expect(form).toContain('No payment is taken here.');
     expect(form).not.toContain('localStorage');
     expect(form).not.toContain('sessionStorage');
@@ -172,7 +187,16 @@ describe('Works self-service UI and copy contract', () => {
     expect(opportunityForm).toContain("value=\"ASSERTED\"");
     expect(opportunityForm).toContain("value=\"UNKNOWN\"");
     expect(opportunityForm).not.toContain("value=\"VERIFIED\"");
-    expect(submissionForm).toContain('shared only with the opportunity owner');
+    expect(opportunityForm).toContain('<form method="post"');
+    expect(opportunityForm).toContain('useSyncExternalStore(subscribeToHydration, clientReady, serverReady)');
+    expect(opportunityForm).toContain('if (!ready || busy) return;');
+    expect(opportunityForm.match(/<fieldset disabled=\{!ready \|\| busy\}/g)).toHaveLength(2);
+    expect(opportunityForm).toContain("credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer'");
+    const opportunitySlugPattern = opportunityForm.match(/pattern="([^"]+)"/)?.[1];
+    const opportunitySlug = new RegExp(`^(?:${opportunitySlugPattern})$`, 'v');
+    expect(opportunitySlug.test('real-customer-job')).toBe(true);
+    expect(opportunitySlug.test('bad ID')).toBe(false);
+    expect(submissionForm).toContain('Private responses can be read by you, the opportunity owner and authorized administrators');
     expect(submissionForm).toContain('Public publication is optional');
     expect(submissionForm).toContain('type="checkbox"');
     expect(submissionForm).toContain("useState(false)");
@@ -211,5 +235,79 @@ describe('Works self-service UI and copy contract', () => {
     expect(directory).toContain('filtersActive && visible.length === 0');
     expect(directory).toContain('href="/works"');
     expect(directory).toContain('Reset filters');
+  });
+});
+
+describe('owner-authenticated seller publication recovery', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const builder = { builder_id: 'owned-builder', kind: 'person' as const, name: 'Owned Builder', contact_route: 'mailto:owner@example.com' };
+  const listing = { listing_id: 'owned-listing', builder_id: builder.builder_id, kind: 'agent' as const,
+    name: 'Refund worker', summary: 'Prepares refund decisions.', supported_tasks: ['refund review'], interfaces: ['MCP'],
+    operating_constraints: ['Approval required'], status: 'active' as const };
+  const signal = () => new AbortController().signal;
+  const owned = (collection: string, record: unknown) => new Response(JSON.stringify({ collection, owned: true, record }), { status: 200 });
+
+  it('loads only a schema-valid owned record from the authenticated endpoint without exposing the key in its URL', async () => {
+    const request = vi.fn().mockResolvedValue(owned('builders', builder)); vi.stubGlobal('fetch', request);
+    const record = await readOwnedRecord('builders', builder.builder_id, 'ep_test_secret', signal());
+    expect(record).toMatchObject(builder);
+    const [url, options] = request.mock.calls[0];
+    expect(url).toBe('/api/works/builders/owned-builder/owned');
+    expect(url).not.toContain('ep_test_secret');
+    expect(options.headers.authorization).toBe('Bearer ep_test_secret');
+    expect(options.cache).toBe('no-store');
+    expect(options.credentials).toBe('omit');
+    expect(options.redirect).toBe('error');
+    expect(options.referrerPolicy).toBe('no-referrer');
+    expect(JSON.stringify(record)).not.toContain('ep_test_secret');
+  });
+
+  it('rejects public existence, foreign records, wrong IDs, malformed records and expired keys as ownership proof', async () => {
+    const request = vi.fn(); vi.stubGlobal('fetch', request);
+    for (const response of [
+      new Response(JSON.stringify({ collection: 'builders', record: builder }), { status: 200 }),
+      new Response('{}', { status: 404 }), new Response('{}', { status: 401 }),
+      owned('builders', { ...builder, builder_id: 'someone-else' }), owned('builders', { ...builder, contact_route: 'javascript:alert(1)' }),
+      owned('listings', listing),
+    ]) {
+      request.mockResolvedValueOnce(response);
+      await expect(readOwnedRecord('builders', builder.builder_id, 'ep_test_secret', signal())).rejects.toThrow();
+    }
+  });
+
+  it('recovers an exact prior successful listing after a lost response only through a fresh owner read', async () => {
+    const request = vi.fn().mockRejectedValueOnce(new Error('Response lost')).mockResolvedValueOnce(owned('listings', listing));
+    vi.stubGlobal('fetch', request);
+    await expect(publishRecordWithRecovery('listings', 'ep_test_secret', listing, signal())).resolves.toBeUndefined();
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(request.mock.calls[0][0]).toBe('/api/works/listings');
+    expect(request.mock.calls[1][0]).toBe('/api/works/listings/owned-listing/owned');
+    expect(request.mock.calls[1][1].headers.authorization).toBe('Bearer ep_test_secret');
+    expect(request.mock.calls.every(([url]) => !url.includes('/builders'))).toBe(true);
+  });
+
+  it('never treats a duplicate owned ID with changed content, a foreign ID or a public match as successful publication', async () => {
+    const request = vi.fn(); vi.stubGlobal('fetch', request);
+    for (const response of [
+      owned('listings', { ...listing, summary: 'Different work' }),
+      new Response('{}', { status: 404 }),
+      new Response(JSON.stringify({ collection: 'listings', record: listing }), { status: 200 }),
+    ]) {
+      request.mockResolvedValueOnce(new Response('{}', { status: 409 })).mockResolvedValueOnce(response);
+      await expect(publishRecordWithRecovery('listings', 'ep_test_secret', listing, signal())).rejects.toThrow();
+    }
+    expect(samePublication('listings', listing, { ...listing, builder_id: 'different-builder' })).toBe(false);
+    expect(samePublication('builders', builder, { ...builder, contact_route: 'mailto:other@example.com' })).toBe(false);
+  });
+
+  it('does not mask a fresh authentication refusal or resume a cancelled publication', async () => {
+    const request = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 401 })); vi.stubGlobal('fetch', request);
+    await expect(publishRecordWithRecovery('listings', 'bad-key', listing, signal())).rejects.toThrow();
+    expect(request).toHaveBeenCalledTimes(1);
+    request.mockReset();
+    const controller = new AbortController(); controller.abort();
+    request.mockRejectedValueOnce(new DOMException('Cancelled', 'AbortError'));
+    await expect(publishRecordWithRecovery('listings', 'ep_test_secret', listing, controller.signal)).rejects.toThrow();
+    expect(request).toHaveBeenCalledTimes(1);
   });
 });

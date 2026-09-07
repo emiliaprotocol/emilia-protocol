@@ -1540,6 +1540,111 @@ paths:
           $ref: '#/components/responses/WorksUnavailable'
 
   # ===========================================================================
+  # Owner-scoped marketplace reads. These do not grant execution authority.
+  # ===========================================================================
+
+  /api/works/{collection}/{id}/owned:
+    get:
+      tags: [Works]
+      operationId: getOwnedWorksRecord
+      summary: Read a builder profile or listing owned by the authenticated entity
+      description: |
+        Requires an EMILIA entity API key and compares its stable entity ID
+        with the stored record owner. Foreign, missing and example records
+        are not available. Public existence is not ownership proof. The
+        response includes only validated public record fields, not the owner
+        UUID or custody metadata. All responses are private and no-store.
+        Available only when the Works feature is enabled.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: collection
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [builders, listings]
+        - $ref: '#/components/parameters/WorksRecordId'
+      responses:
+        '200':
+          description: The current authenticated entity owns this record
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [collection, owned, record]
+                properties:
+                  collection: { type: string, enum: [builders, listings] }
+                  owned: { type: boolean, enum: [true] }
+                  record:
+                    $ref: '#/components/schemas/WorksRecord'
+        '400':
+          $ref: '#/components/responses/WorksInvalidRequest'
+        '401':
+          $ref: '#/components/responses/WorksUnauthorized'
+        '404':
+          $ref: '#/components/responses/WorksNotFoundOrDisabled'
+        '503':
+          $ref: '#/components/responses/WorksUnavailable'
+
+  /api/works/opportunities/{id}/inbox:
+    get:
+      tags: [Works]
+      operationId: listWorksOpportunityInbox
+      summary: Read proposals as the opportunity owner or authorized administrator
+      description: |
+        Checks the stored opportunity owner before reading proposals. A
+        submitter's access to their own proposal does not grant access to this
+        employer inbox. The server filters the exact opportunity and returns
+        up to 50 validated responses, newest first. All responses are private
+        and no-store. Missing, foreign and example opportunities return 404.
+        Available only when the Works feature is enabled. This read does not
+        accept a proposal, hire an agent, take payment or grant authority.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorksRecordId'
+        - name: offset
+          in: query
+          description: Page offset; new submissions may change the ordering between reads
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100000
+            multipleOf: 50
+            default: 0
+      responses:
+        '200':
+          description: A successfully read inbox page, which may be empty
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [collection, opportunity_id, access, records, offset, limit, has_more]
+                properties:
+                  collection: { type: string, enum: [submissions] }
+                  opportunity_id: { type: string }
+                  access: { type: string, enum: [owner, administrator] }
+                  records:
+                    type: array
+                    maxItems: 50
+                    items:
+                      $ref: '#/components/schemas/WorksRecord'
+                  offset: { type: integer, minimum: 0, maximum: 100000, multipleOf: 50 }
+                  limit: { type: integer, enum: [50] }
+                  has_more: { type: boolean }
+        '400':
+          $ref: '#/components/responses/WorksInvalidRequest'
+        '401':
+          $ref: '#/components/responses/WorksUnauthorized'
+        '404':
+          $ref: '#/components/responses/WorksNotFoundOrDisabled'
+        '503':
+          $ref: '#/components/responses/WorksUnavailable'
+
+  # ===========================================================================
   # Entities
   # ===========================================================================
 

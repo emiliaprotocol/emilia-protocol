@@ -89,6 +89,10 @@ export default async function OpportunityPage({ params }: {
             </>
           ) : null}
 
+          {!opportunity.example ? <div style={{ borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}`, padding: '22px 0', margin: '0 0 32px' }}>
+            <p style={{ ...styles.body, margin: '0 0 12px' }}>Did you post this opportunity? Read proposals with the same API key you used to post it.</p>
+            <Link href={`/works/opportunities/${opportunity.opportunity_id}/inbox`} style={cta.secondary} prefetch={false}>Open your private proposal inbox</Link>
+          </div> : null}
           <SectionTitle>Respond</SectionTitle>
           {opportunity.example ? (
             <div style={{ ...styles.card, marginBottom: 48 }}>

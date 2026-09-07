@@ -18,9 +18,9 @@ export function WorkforceIntroduction() {
     </div>
     <figure className={styles.heroVisual}>
       <div className={styles.heroImage}>
-        <Image src="/emilia-workforce-atelier-v1.webp" alt="A human hand passes a work brief to a graphite and brass mechanical hand, with finished briefs behind them. Concept illustration." width={1672} height={941} sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1304px) calc(100vw - 64px), 1240px" loading="eager" />
+        <Image src="/emilia-workforce-coastal-path-v1.webp" alt="A quiet path through golden coastal grasses, beneath wind-shaped trees, toward a calm ocean horizon." width={1672} height={941} sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1304px) calc(100vw - 64px), 1240px" loading="eager" />
       </div>
-      <figcaption><span>Software does the work. You set the direction.</span><span>Concept illustration, not a live product screen.</span></figcaption>
+      <figcaption><span>Software does the work. You set the direction.</span><span>AI-generated landscape.</span></figcaption>
     </figure>
   </div></section>;
 }
