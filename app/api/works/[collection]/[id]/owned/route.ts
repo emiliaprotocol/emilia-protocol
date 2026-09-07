@@ -14,7 +14,7 @@ function privateResponse(response: NextResponse): NextResponse {
   return response;
 }
 
-/** This read proves only that the current API key owns the stored profile/listing. */
+/** This read proves only that the current API key owns the stored profile, listing or job. */
 export async function GET(request: NextRequest, { params }: RouteContext) {
   try {
     if (!worksEnabled()) return privateResponse(worksDisabledProblem());

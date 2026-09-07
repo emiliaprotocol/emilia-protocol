@@ -552,7 +552,7 @@ export async function getOwnedWorksRecord(
   id: unknown,
   options: { ownerEntityId: string },
 ): Promise<StoreResult<{ record: WorksRecord }>> {
-  if (collection !== 'builders' && collection !== 'listings') return err('invalid_collection', 'unknown owned-record collection');
+  if (collection !== 'builders' && collection !== 'listings' && collection !== 'opportunities') return err('invalid_collection', 'unknown owned-record collection');
   if (!ENTITY_DB_ID.test(options?.ownerEntityId || '')) return err('owner_required', 'an authenticated entity DB id is required');
   if (!validWorksId(id)) return err('invalid_id', 'record id must match [a-z0-9-], 3-64 chars');
   if (isSeedRecordId(collection, id)) return err('not_found', 'owned record not found');

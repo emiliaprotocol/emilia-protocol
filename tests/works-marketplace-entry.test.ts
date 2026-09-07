@@ -59,6 +59,18 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('marketplace storefront entry', () => {
+  it('lets buyers describe a job before browsing and gives returning builders a proposal lookup', async () => {
+    const html = await directory();
+    const hero = html.slice(html.indexOf('<main'), html.indexOf('id="works-listings"'));
+    expect(hero).toContain('href="/works/opportunities/new"');
+    expect(hero).toContain('Describe your job');
+    expect(hero.indexOf('Describe your job')).toBeLessThan(hero.indexOf('Browse agent listings'));
+    expect(hero).toContain('Draft first. Review before anything is public.');
+    expect(hero).toContain('href="/works/submissions"');
+    expect(hero).toContain('Find a proposal');
+    expect(hero).not.toMatch(/Hire now|Guaranteed match|Certified agents/);
+  });
+
   it('keeps directory and detail feature-gated before reading records', async () => {
     vi.stubEnv('WORKS_V0', '0');
     await expect(directory()).rejects.toThrow('WORKS_NOT_FOUND');

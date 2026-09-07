@@ -191,7 +191,19 @@ describe('Works self-service UI and copy contract', () => {
     expect(opportunityForm).toContain('useSyncExternalStore(subscribeToHydration, clientReady, serverReady)');
     expect(opportunityForm).toContain('if (!ready || busy) return;');
     expect(opportunityForm.match(/<fieldset disabled=\{!ready \|\| busy\}/g)).toHaveLength(2);
-    expect(opportunityForm).toContain("credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer'");
+    expect(read('app/works/opportunity-publication.ts')).toContain("credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer'");
+    expect(opportunityForm).toContain('if (!draft || !publicConsent)');
+    expect(opportunityForm).toContain('publishOpportunityWithRecovery(requestKey, draft, controller.signal)');
+    expect(opportunityForm).toContain('if (!isCurrent()) return');
+    expect(opportunityForm).toContain("document.visibilityState === 'hidden'");
+    expect(opportunityForm).toContain("window.addEventListener('pagehide', clearPrivateState)");
+    expect(opportunityForm).toContain('if (attempted) return;');
+    expect(opportunityForm).toContain('{!attempted ? <button');
+    expect(opportunityForm).toContain('const requestKey = apiKey.trim();');
+    expect(opportunityForm).toContain("const [contactRoute, setContactRoute] = useState('');");
+    expect(opportunityForm).toContain('value={contactRoute} onChange={event => setContactRoute(event.target.value)}');
+    expect(opportunityForm).toContain('setContactRoute(preview.contact_route);');
+    expect(opportunityForm).not.toMatch(/localStorage|sessionStorage|console\./);
     const opportunitySlugPattern = opportunityForm.match(/pattern="([^"]+)"/)?.[1];
     const opportunitySlug = new RegExp(`^(?:${opportunitySlugPattern})$`, 'v');
     expect(opportunitySlug.test('real-customer-job')).toBe(true);
@@ -206,10 +218,10 @@ describe('Works self-service UI and copy contract', () => {
     expect(detailPage).toContain('<SubmissionForm');
     expect(detailPage).toContain('opportunity.example ?');
     expect(detailPage).toContain('This is a read-only example opportunity.');
-    expect(detailPage).toContain('Browse live opportunities');
-    expect(detailPage).toContain('Post a live opportunity');
+    expect(detailPage).toContain('Browse posted jobs');
+    expect(detailPage).toContain('Describe your job');
     expect(detailPage).not.toContain('POST /api/works/submissions');
-    expect(detailPage).toContain("sub.visibility === 'public' || sub.example === true");
+    expect(detailPage).toContain("sub.visibility === 'public' && sub.example === false");
   });
 
   it('uses inspectable-market wording and gives visitors direct marketplace actions', () => {
@@ -225,8 +237,9 @@ describe('Works self-service UI and copy contract', () => {
     expect(directory).toContain('href="/works/join"');
     expect(directory).toContain('href="/works/opportunities/new"');
     expect(directory).toContain('Browse agent listings');
-    expect(opportunities).toContain('Post an opportunity');
-    expect(opportunities).toContain('View and respond');
+    expect(opportunities).toContain('Describe your job');
+    expect(opportunities).toContain('View job and respond');
+    expect(opportunities).toContain('View example');
   });
 
   it('offers a clear reset when filters produce an empty directory', () => {

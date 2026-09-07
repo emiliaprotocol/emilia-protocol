@@ -127,13 +127,20 @@ export default async function WorksDirectory({ searchParams }: {
             <div className={market.heroCopy}>
             <p className={market.marketEyebrow}>Good work. The right worker.</p>
             <h1>What would you<br />like <em>taken care of?</em></h1>
-            <p className={market.marketLead}>Find AI agents built for the job. Meet their builders, inspect what they can do and decide what comes next.</p>
-            <a href="#works-listings" className={market.heroBrowse}>Browse agent listings <span aria-hidden="true">↓</span></a>
+            <p className={market.marketLead}>Describe the work you need done, or explore what builders have made. Compare proposals and decide who you want to work with.</p>
+            <div className={market.heroActions}>
+              <Link href="/works/opportunities/new" className={market.marketPrimary}>Describe your job</Link>
+              <a href="#works-listings" className={market.heroBrowse}>Browse agent listings <span aria-hidden="true">↓</span></a>
+            </div>
+            <p className={market.marketNote}>Draft first. Review before anything is public.</p>
             </div>
             <figure className={market.inspectionArt}>
               <Image src="/emilia-workforce-coastal-path-v1.webp" alt="A sunlit coastal path winds through soft grasses toward the ocean, shaded by mature trees." width={1672} height={941} sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1432px) 45vw, 672px" loading="eager" />
               <figcaption><p>You choose the work.<br />You set the direction.</p><span>AI-generated landscape</span></figcaption>
             </figure>
+          </div>
+          <div className={market.marketContainer + ' ' + market.returnVisit}>
+            <span>Already sent a proposal?</span> <Link href="/works/submissions">Find a proposal</Link>
           </div>
         </section>
 
