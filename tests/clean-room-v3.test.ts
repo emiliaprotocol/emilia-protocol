@@ -306,13 +306,14 @@ describe('clean-room evaluator v3 oracle separation', () => {
     const first = buildPostBuildChallengesV3(kit);
     const second = buildPostBuildChallengesV3(kit);
 
-    expect(first.bindings.size).toBe(64);
+    expect(first.bindings.size).toBe(80);
     expect([...first.bindings.values()].map((entry) => entry.expected.valid))
       .toContain(true);
     expect([...first.bindings.values()].map((entry) => entry.expected.valid))
       .toContain(false);
     const paired = new Map<string, boolean[]>();
     for (const vector of first.executionSuite.vectors) {
+      if (!first.bindings.get(vector.handle)!.sourceId.startsWith('post-build-canonical-pair-')) continue;
       const inputJson = vector.input.canonicalization.input_json;
       const outcomes = paired.get(inputJson) ?? [];
       outcomes.push(first.bindings.get(vector.handle)!.expected.valid);
@@ -358,6 +359,7 @@ describe('clean-room evaluator v3 oracle separation', () => {
     });
     const groups = new Map<string, any[]>();
     for (const vector of challenge.executionSuite.vectors) {
+      if (!challenge.bindings.get(vector.handle)!.sourceId.startsWith('post-build-canonical-pair-')) continue;
       const key = vector.input.canonicalization.input_json;
       const group = groups.get(key) ?? [];
       group.push(vector);
@@ -374,6 +376,13 @@ describe('clean-room evaluator v3 oracle separation', () => {
         },
       }));
     });
+    // Isolate the blind pair guess from the separately tested raw boundaries.
+    for (const vector of challenge.executionSuite.vectors) {
+      const binding = challenge.bindings.get(vector.handle)!;
+      if (binding.sourceId.startsWith('post-build-canonical-raw-')) {
+        rows.push({ handle: vector.handle, result: { valid: binding.expected.valid } });
+      }
+    }
 
     expect(() => validateResultRowsV3(challenge, rows))
       .toThrow(/post-build-canonical-pair-\d+-(?:valid|invalid)/);
@@ -438,7 +447,7 @@ describe('clean-room evaluator v3 oracle separation', () => {
         manifestPath,
         runnerPath: runner,
         allowUnsafeLocalExecution: true,
-      })).toThrow(/post-build-canonical-pair-\d+-valid/);
+      })).toThrow(/post-build-canonical-(?:pair-\d+-valid|raw-)/);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -471,15 +480,22 @@ describe('clean-room evaluator v3 oracle separation', () => {
         status: 'pass',
         suite: 'conformance/vectors/canonicalization.v1.json',
       });
-      expect(report.post_build_challenge.cases).toBe(64);
+      expect(report.post_build_challenge).toMatchObject({
+        generator: 'EP-CLEAN-ROOM-CANONICALIZATION-CHALLENGE-v2',
+        cases: 80,
+        paired_cases: 64,
+        raw_boundary_cases: 16,
+        valid_cases: 40,
+        invalid_cases: 40,
+      });
       const disclosedChallenge = Buffer.from(
         report.post_build_challenge.execution_input_base64url,
         'base64url',
       );
       expect(sha256V3(disclosedChallenge))
         .toBe(report.post_build_challenge.execution_input_sha256);
-      expect(JSON.parse(disclosedChallenge.toString('utf8')).vectors).toHaveLength(64);
-      expect(report.post_build_challenge.normalized_results).toHaveLength(64);
+      expect(JSON.parse(disclosedChallenge.toString('utf8')).vectors).toHaveLength(80);
+      expect(report.post_build_challenge.normalized_results).toHaveLength(80);
       expect(report.post_build_challenge.generator_contract.pair_count).toBe(32);
       expect(Buffer.from(report.post_build_challenge.seed_base64url, 'base64url'))
         .toHaveLength(32);
