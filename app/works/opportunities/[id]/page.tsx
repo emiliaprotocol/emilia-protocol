@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, cta, color, font, radius } from '@/lib/tokens';
+import { styles, cta, color } from '@/lib/tokens';
 import { isWorksV0Enabled } from '@/lib/works/env';
 import { getWorksRecord, listWorksRecords } from '@/lib/works/store';
 import type {
@@ -16,8 +16,9 @@ import type {
   OpportunityRecord,
   SubmissionRecord,
 } from '@/lib/works/model';
-import { ClaimCard, ExampleTag, SectionTitle, WorksDisciplineNote } from '../../ui';
+import { ClaimCard, ExampleTag, WorksDisciplineNote } from '../../ui';
 import SubmissionForm from '../../SubmissionForm';
+import jobs from '../jobs.module.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,23 @@ export default async function OpportunityPage({ params }: {
   if (!isWorksV0Enabled()) notFound();
   const { id } = await params;
   const oppRes = await getWorksRecord('opportunities', id);
-  if (!oppRes.ok) notFound();
+  if (!oppRes.ok) {
+    if (oppRes.code !== 'store_unavailable') notFound();
+    return <div style={styles.page}>
+      <SiteNav activePage="works" />
+      <main id="main-content" className={jobs.page}>
+        <header className={jobs.header} style={{ borderColor: color.border }}>
+          <h1 className={jobs.title}>This job could not be loaded right now.</h1>
+          <p className={jobs.lead}>We could not check the job record. Please reload to try again.</p>
+          <div className={jobs.actions}>
+            <a href={`/works/opportunities/${encodeURIComponent(id)}`} className={jobs.textLink}>Reload job</a>
+            <Link href="/works/opportunities" className={jobs.textLink}>Back to jobs</Link>
+          </div>
+        </header>
+      </main>
+      <SiteFooter />
+    </div>;
+  }
   const opportunity = oppRes.record as OpportunityRecord;
 
   const [subsRes, buildersRes, listingsRes] = await Promise.all([
@@ -41,7 +58,9 @@ export default async function OpportunityPage({ params }: {
   ]);
   const submissions = ((subsRes.ok ? subsRes.records : []) as VisibleSubmissionRecord[])
     .filter((sub) => sub.opportunity_id === opportunity.opportunity_id)
-    .filter((sub) => sub.visibility === 'public' || sub.example === true);
+    .filter((sub) => opportunity.example
+      ? sub.example === true
+      : sub.visibility === 'public' && sub.example === false);
   const builderById = new Map(
     ((buildersRes.ok ? buildersRes.records : []) as BuilderRecord[])
       .map((b) => [b.builder_id, b]),
@@ -53,59 +72,59 @@ export default async function OpportunityPage({ params }: {
 
   return (
     <div style={styles.page}>
-      <SiteNav />
+      <SiteNav activePage="works" />
 
-      <section style={{ borderBottom: `1px solid ${color.border}` }}>
-        <div style={{ ...styles.sectionWide, paddingTop: 64, paddingBottom: 48 }}>
-          <div style={styles.eyebrow}>
-            <Link href="/works/opportunities" style={{ color: color.t3, textDecoration: 'none' }}>
-              Opportunities
-            </Link>
-            {` / ${opportunity.kind.replace(/_/g, ' ')}`}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <h1 style={{ ...styles.h1, marginBottom: 0, maxWidth: 820 }}>{opportunity.title}</h1>
+      <main id="main-content" className={jobs.page}>
+        <header className={jobs.header} style={{ borderColor: color.border }}>
+          <nav aria-label="Breadcrumb" className={jobs.breadcrumb}>
+            <Link href="/works/opportunities">Find jobs</Link>
+            <span aria-hidden="true">/</span><span>{opportunity.kind.replace(/_/g, ' ')}</span>
+          </nav>
+          <div className={jobs.jobHeading}>
+            <h1 className={jobs.title} style={{ marginBottom: 0 }}>{opportunity.title}</h1>
             {opportunity.example ? <ExampleTag /> : null}
           </div>
-          <div style={{ fontSize: 14, color: color.t3, margin: '16px 0 0' }}>
-            Posted by {opportunity.posted_by} ·{' '}
-            <a href={opportunity.contact_route} style={{ color: color.t1 }}>
+          <div className={jobs.owner} style={{ color: color.t2 }}>
+            <span>Posted by {opportunity.posted_by}</span>
+            <a href={opportunity.contact_route}>
               {opportunity.contact_route.replace(/^mailto:/, '')}
             </a>
           </div>
-        </div>
-      </section>
+        </header>
 
-      <section>
-        <div style={{ ...styles.sectionWide, paddingTop: 48, paddingBottom: 96 }}>
-          <p style={{ ...styles.body, maxWidth: 820 }}>{opportunity.description}</p>
+        <section className={jobs.section} aria-labelledby="job-brief-title">
+          <h2 id="job-brief-title" className={jobs.sectionTitle}>The job</h2>
+          <p className={jobs.brief} style={{ color: color.t2 }}>{opportunity.description}</p>
 
           {opportunity.claims.length > 0 ? (
             <>
-              <SectionTitle>Funding, authority, and eligibility</SectionTitle>
+              <h2 className={jobs.sectionTitle}>Funding and requirements</h2>
+              <p className={jobs.note} style={{ color: color.t2 }}>
+                Check who stands behind each statement and what it covers. A posted budget is not a payment held by EMILIA.
+              </p>
               <div style={{ display: 'grid', gap: 16, marginBottom: 48 }}>
                 {opportunity.claims.map((claim, index) => <ClaimCard key={index} claim={claim} />)}
               </div>
             </>
           ) : null}
 
-          {!opportunity.example ? <div style={{ borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}`, padding: '22px 0', margin: '0 0 32px' }}>
-            <p style={{ ...styles.body, margin: '0 0 12px' }}>Did you post this opportunity? Read proposals with the same API key you used to post it.</p>
-            <Link href={`/works/opportunities/${opportunity.opportunity_id}/inbox`} style={cta.secondary} prefetch={false}>Open your private proposal inbox</Link>
+          {!opportunity.example ? <div className={jobs.inbox} style={{ borderColor: color.border }}>
+            <p>Did you post this job? Read proposals with the same API key you used to post it.</p>
+            <Link href={`/works/opportunities/${opportunity.opportunity_id}/inbox`} className={jobs.button} style={cta.secondary} prefetch={false}>Open your private proposal inbox</Link>
           </div> : null}
-          <SectionTitle>Respond</SectionTitle>
+          <h2 className={jobs.sectionTitle}>{opportunity.example ? 'About this example' : 'Send a proposal'}</h2>
           {opportunity.example ? (
-            <div style={{ ...styles.card, marginBottom: 48 }}>
-              <p style={{ ...styles.body, margin: '0 0 16px' }}>
-                This is a read-only example opportunity. It demonstrates claim status and response
-                structure, but it does not accept submissions.
+            <div className={jobs.notice} style={{ borderColor: color.border }}>
+              <p>
+                This is a read-only example opportunity. It shows how a job and its proposals are presented.
+                It is not available work and does not accept proposals.
               </p>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Link href="/works/opportunities" style={cta.secondary} className="ep-cta-secondary">
-                  Browse live opportunities
+              <div className={jobs.actions}>
+                <Link href="/works/opportunities" style={cta.secondary} className={jobs.button}>
+                  Browse posted jobs
                 </Link>
-                <Link href="/works/opportunities/new" style={cta.primary} className="ep-cta">
-                  Post a live opportunity
+                <Link href="/works/opportunities/new" style={cta.primary} className={jobs.button}>
+                  Describe your job
                 </Link>
               </div>
             </div>
@@ -117,56 +136,65 @@ export default async function OpportunityPage({ params }: {
             />
           )}
 
-          <SectionTitle>Public submissions</SectionTitle>
-          <div style={{ display: 'grid', gap: 16 }}>
+        </section>
+
+        <section className={jobs.responses} aria-labelledby="job-proposals-title">
+          <h2 id="job-proposals-title" className={jobs.sectionTitle}>{opportunity.example ? 'Example proposals' : 'Public proposals'}</h2>
+          {!opportunity.example ? <p className={jobs.note} style={{ color: color.t2 }}>Private proposals do not appear on this page.</p> : null}
+          {!subsRes.ok ? (
+            <div className={jobs.notice} style={{ borderColor: color.border }} role="status">
+              <h3>{opportunity.example ? 'Example proposals are unavailable right now.' : 'Public proposals are unavailable right now.'}</h3>
+              <p>The job brief is still available. Please reload to check its proposals.</p>
+              <a href={`/works/opportunities/${opportunity.opportunity_id}`} className={jobs.textLink}>Reload proposals</a>
+            </div>
+          ) : <>
+            {submissions.length > 0 && (!buildersRes.ok || !listingsRes.ok) ? (
+              <p className={jobs.note} style={{ color: color.t2 }} role="status">
+                Some builder or agent details could not be loaded. The proposal text and recorded IDs are shown below.
+              </p>
+            ) : null}
+          <div className={jobs.list}>
             {submissions.map((sub) => {
               const builder = builderById.get(sub.builder_id);
               const listing = sub.listing_id ? listingById.get(sub.listing_id) : null;
               return (
-                <div key={sub.submission_id} style={{
-                  background: color.card, border: `1px solid ${color.border}`,
-                  borderRadius: radius.base, padding: '20px 24px',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <article key={sub.submission_id} className={jobs.proposal} style={{ background: color.card, borderColor: color.border }}>
+                  <div className={jobs.proposalHeader}>
+                    <div>
                       {builder ? (
-                        <Link href={`/works/builders/${builder.builder_id}`} style={{
-                          fontWeight: 700, fontSize: 15, color: color.t1, textDecoration: 'none',
-                        }}>
+                        <Link href={`/works/builders/${builder.builder_id}`}>
                           {builder.name}
                         </Link>
                       ) : (
-                        <span style={{ fontWeight: 700, fontSize: 15, color: color.t1 }}>{sub.builder_id}</span>
+                        <span>{sub.builder_id}</span>
                       )}
                       {sub.example ? <ExampleTag /> : null}
                     </div>
                     {listing ? (
-                      <Link href={`/works/listings/${listing.listing_id}`} style={{
-                        fontFamily: font.mono, fontSize: 12, color: color.t3, textDecoration: 'none',
-                      }}>
+                      <Link href={`/works/listings/${listing.listing_id}`}>
                         with {listing.name}
                       </Link>
-                    ) : null}
+                    ) : sub.listing_id ? <span>Agent ID: {sub.listing_id}</span> : null}
                   </div>
-                  <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, margin: 0 }}>
+                  <p style={{ color: color.t2 }}>
                     {sub.proposal}
                   </p>
                   {sub.team && sub.team.length > 0 ? (
-                    <div style={{ fontSize: 13, color: color.t3, marginTop: 10 }}>
+                    <div className={jobs.team} style={{ color: color.t2 }}>
                       Team: {sub.team.join(', ')}
                     </div>
                   ) : null}
-                </div>
+                </article>
               );
             })}
             {submissions.length === 0 ? (
-              <div style={{ fontSize: 14, color: color.t3 }}>No public submissions yet.</div>
+              <p className={jobs.note} style={{ color: color.t2 }}>{opportunity.example ? 'No example proposals recorded.' : 'No public proposals yet.'}</p>
             ) : null}
           </div>
-
-          <WorksDisciplineNote />
-        </div>
-      </section>
+          </>}
+        </section>
+        <WorksDisciplineNote />
+      </main>
 
       <SiteFooter />
     </div>

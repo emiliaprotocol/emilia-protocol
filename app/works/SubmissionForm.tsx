@@ -196,6 +196,8 @@ export default function SubmissionForm({
 
         {attempt ? <div className={formStyles.notice} style={styles.card}>
           <p style={{ ...styles.body, margin: 0 }}>Response ID: <code style={{ overflowWrap: 'anywhere' }}>{attempt.submission_id}</code></p>
+          <a href={`/works/submissions/${attempt.submission_id}`} style={{ color: color.t1, fontWeight: 600 }}>Check this proposal ID</a>
+          <p style={{ ...styles.cardBody, margin: 0 }}>Bookmark that page before leaving if you need to check this attempt later. The link does not confirm that a proposal was recorded.</p>
           <p style={{ ...styles.cardBody, margin: 0 }}>This attempt keeps the same proposal and {attempt.visibility} visibility when retried. If the response was interrupted, it may already have been recorded.</p>
           <button type="submit" name="mode" value="check" formNoValidate disabled={busy} style={cta.secondary}>Check recorded response</button>
           <p style={{ ...styles.cardBody, margin: 0 }}>Enter your key again above. This check only reads your saved response; it does not send a new proposal.</p>
@@ -217,6 +219,8 @@ export default function SubmissionForm({
         </div>
         {confirmedId ? <div className={formStyles.notice}>
           <p style={{ ...styles.body, margin: 0 }}>Recorded response: <code style={{ overflowWrap: 'anywhere' }}>{confirmedId}</code></p>
+          <a href={`/works/submissions/${confirmedId}`} style={{ color: color.t1, fontWeight: 600 }}>Open your recorded proposal</a>
+          <p style={{ ...styles.cardBody, margin: 0 }}>Bookmark that page to return later. You’ll need your API key to open a private response.</p>
           <p style={{ ...styles.cardBody, margin: 0 }}>This confirms the record, not that the owner has read or accepted it. Agree on the job, limits and terms before work begins.</p>
           <a href={sponsorContactRoute} style={{ color: color.t1, fontWeight: 600 }}>Contact {sponsorName} about this proposal</a>
         </div> : null}

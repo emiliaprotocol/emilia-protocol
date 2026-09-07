@@ -21,6 +21,10 @@
 .marketHero h1 em, .builderBand h2 em { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; letter-spacing: -.045em; color: var(--gold); }
 .marketLead { font-size: 19px; line-height: 1.6; color: var(--muted); max-width: 730px; margin: 0 0 20px; }
 .heroBrowse { color: var(--ink); display: inline-flex; align-items: center; gap: 24px; padding-block: 8px; font-size: 16px; }
+.heroActions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.heroActions .heroBrowse { min-height: 48px; }
+.returnVisit { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding-bottom: 24px; color: var(--muted); font-size: 15px; }
+.returnVisit a { color: var(--gold); min-height: 44px; display: inline-flex; align-items: center; }
 .inspectionArt { margin: 0; align-self: center; }
 .inspectionArt img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; object-position: 52% center; border-radius: 5px; }
 .inspectionArt figcaption { display: flex; justify-content: space-between; align-items: end; gap: 18px; padding-top: 14px; font-size: 15px; color: var(--muted); }
