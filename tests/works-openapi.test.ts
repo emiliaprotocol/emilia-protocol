@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import Ajv from 'ajv';
 import yaml from 'js-yaml';
 import { describe, expect, it } from 'vitest';
 
@@ -117,6 +118,53 @@ describe('Works OpenAPI contract', () => {
     }
     expect(schemas.WorksAssignmentCommandRequest.oneOf).toHaveLength(6);
     expect(schemas.WorksAssignmentCommandRequest.oneOf.every((shape: any) => shape.additionalProperties === false)).toBe(true);
+  });
+
+  it('parses response descriptions and models nullable composed objects explicitly', () => {
+    const invalidChallenge = document.paths['/api/works/account/verify'].post.responses['401'];
+    expect(Object.keys(invalidChallenge)).toEqual(['description']);
+    expect(invalidChallenge.description).toBe(
+      'Challenge, email, or code is invalid, expired, consumed, or attempt-limited',
+    );
+
+    const schemas = document.components.schemas;
+    for (const nullableObject of [
+      schemas.WorksAssignment.properties.delivery,
+      schemas.WorksAssignment.properties.outcome,
+      schemas.WorksAssignmentEvent.properties.delivery,
+    ]) {
+      expect(nullableObject.oneOf).toEqual([
+        expect.objectContaining({ $ref: expect.any(String) }),
+        { type: 'object', nullable: true, enum: [null] },
+      ]);
+    }
+
+    const delivery = schemas.WorksAssignment.properties.delivery;
+    expect(delivery.oneOf[1].enum).toContain(null);
+    expect(schemas.WorksAssignmentDelivery).toMatchObject({
+      type: 'object',
+      additionalProperties: false,
+      required: ['url', 'summary', 'submitted_at'],
+    });
+    expect(schemas.WorksAssignmentDelivery.properties.url).toMatchObject({
+      type: 'string',
+      pattern: '^https://',
+    });
+
+    const validateDelivery = new Ajv({ strict: false, validateFormats: false }).compile({
+      definitions: { WorksAssignmentDelivery: schemas.WorksAssignmentDelivery },
+      oneOf: [
+        { $ref: '#/definitions/WorksAssignmentDelivery' },
+        delivery.oneOf[1],
+      ],
+    });
+    expect(validateDelivery(null)).toBe(true);
+    expect(validateDelivery({
+      url: 'https://example.com/evidence',
+      summary: 'Evidence package',
+      submitted_at: '2026-09-07T12:00:00Z',
+    })).toBe(true);
+    expect(validateDelivery({ url: 'javascript:alert(1)' })).toBe(false);
   });
 
   it('states that marketplace coordination grants no consequential authority', () => {

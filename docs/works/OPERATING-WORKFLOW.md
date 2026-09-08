@@ -68,8 +68,8 @@ Apply these additive migrations in order before routing traffic to the new UI:
 Keep `WORKS_V0=1` and `NEXT_PUBLIC_WORKS_V0=1`. Configure the existing Supabase
 service credentials and durable rate limiter. Add `WORKS_ACCOUNT_HMAC_SECRET`
 (a random secret of at least 32 bytes) and an EMILIA-authorized `RESEND_API_KEY`.
-`WORKS_FROM_EMAIL` defaults to `EMILIA Works <works@emiliaprotocol.ai>` and must
-be permitted by the sending provider. Set `WORKS_PUBLIC_ORIGIN` to the exact
+`WORKS_FROM_EMAIL` must identify an EMILIA sender permitted by the sending
+provider. Set `WORKS_PUBLIC_ORIGIN` to the exact
 site origin, or verify its fallback to `NEXT_PUBLIC_APP_URL`,
 `NEXT_PUBLIC_SITE_URL`, then `https://www.emiliaprotocol.ai`.
 

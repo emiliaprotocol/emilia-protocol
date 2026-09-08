@@ -1713,7 +1713,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/WorksAccountSessionResponse' }
         '400': { $ref: '#/components/responses/WorksInvalidRequest' }
-        '401': { description: Challenge, email, or code is invalid, expired, consumed, or attempt-limited }
+        '401': { description: 'Challenge, email, or code is invalid, expired, consumed, or attempt-limited' }
         '403': { $ref: '#/components/responses/WorksForbidden' }
         '404': { $ref: '#/components/responses/WorksNotFoundOrDisabled' }
         '415': { description: Content-Type is not application/json }
@@ -8125,13 +8125,17 @@ components:
             job: { $ref: '#/components/schemas/WorksRecord' }
             proposal: { $ref: '#/components/schemas/WorksRecord' }
         delivery:
-          nullable: true
-          allOf:
+          oneOf:
             - $ref: '#/components/schemas/WorksAssignmentDelivery'
+            - type: object
+              nullable: true
+              enum: [null]
         outcome:
-          nullable: true
-          allOf:
+          oneOf:
             - $ref: '#/components/schemas/WorksAssignmentOutcome'
+            - type: object
+              nullable: true
+              enum: [null]
         history:
           type: array
           minItems: 1
@@ -8167,9 +8171,11 @@ components:
         summary: { type: string, nullable: true }
         reason: { type: string, nullable: true }
         delivery:
-          nullable: true
-          allOf:
+          oneOf:
             - $ref: '#/components/schemas/WorksAssignmentDelivery'
+            - type: object
+              nullable: true
+              enum: [null]
     WorksAssignmentView:
       type: object
       additionalProperties: false
