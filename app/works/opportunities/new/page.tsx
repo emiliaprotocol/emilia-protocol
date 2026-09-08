@@ -33,7 +33,7 @@ export default function NewOpportunityPage() {
           <h1 style={{ ...styles.h1, maxWidth: 800 }}>Start with the job.</h1>
           <p style={{ ...styles.body, maxWidth: 760, marginBottom: 0, fontSize: 20 }}>
             Tell builders what you need done and what a good result looks like.
-            Review your draft before publishing. You only need your account key when you are ready to post.
+            Review your draft before publishing. Sign in with email when you are ready to post.
           </p>
         </div>
       </section>

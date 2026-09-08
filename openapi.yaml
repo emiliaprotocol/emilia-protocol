@@ -1409,6 +1409,7 @@ paths:
         opportunity owned by that entity. Works does not rank or endorse records.
       security:
         - {}
+        - WorksSessionAuth: []
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/WorksCollection'
@@ -1435,9 +1436,11 @@ paths:
         writes cannot mint VERIFIED claims or server-managed examples.
         Submission visibility defaults to private.
       security:
+        - WorksSessionAuth: []
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/WorksCollection'
+        - $ref: '#/components/parameters/WorksOriginWhenCookie'
       requestBody:
         required: true
         content:
@@ -1480,6 +1483,7 @@ paths:
         submissions are indistinguishable from absent records.
       security:
         - {}
+        - WorksSessionAuth: []
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/WorksCollection'
@@ -1507,10 +1511,12 @@ paths:
         example reservation, and the ban on self-issued VERIFIED claims are
         rechecked after merging the patch.
       security:
+        - WorksSessionAuth: []
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/WorksCollection'
         - $ref: '#/components/parameters/WorksRecordId'
+        - $ref: '#/components/parameters/WorksOriginWhenCookie'
       requestBody:
         required: true
         content:
@@ -1549,13 +1555,14 @@ paths:
       operationId: getOwnedWorksRecord
       summary: Read a builder profile or listing owned by the authenticated entity
       description: |
-        Requires an EMILIA entity API key and compares its stable entity ID
-        with the stored record owner. Foreign, missing and example records
+        Requires a Works account session or EMILIA entity API key and compares
+        its server-resolved entity ID with the stored record owner. Foreign, missing and example records
         are not available. Public existence is not ownership proof. The
         response includes only validated public record fields, not the owner
         UUID or custody metadata. All responses are private and no-store.
         Available only when the Works feature is enabled.
       security:
+        - WorksSessionAuth: []
         - BearerAuth: []
       parameters:
         - name: collection
@@ -1602,6 +1609,7 @@ paths:
         Available only when the Works feature is enabled. This read does not
         accept a proposal, hire an agent, take payment or grant authority.
       security:
+        - WorksSessionAuth: []
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/WorksRecordId'
@@ -1643,6 +1651,314 @@ paths:
           $ref: '#/components/responses/WorksNotFoundOrDisabled'
         '503':
           $ref: '#/components/responses/WorksUnavailable'
+
+  /api/works/account/start:
+    post:
+      tags: [Works]
+      operationId: startWorksAccountEmailChallenge
+      summary: Email a one-time Works account code
+      description: |
+        Starts either consented account creation or recovery/sign-in. The response
+        never reveals whether an email already has an account. Codes are six
+        digits, expire after ten minutes, are attempt-limited and single-use, and
+        are stored only as keyed digests. No browser API key is created or stored.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WorksOriginRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorksAccountStartRequest' }
+      responses:
+        '202':
+          description: Challenge accepted without disclosing account existence or delivery internals
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorksAccountChallengeAccepted' }
+        '400': { $ref: '#/components/responses/WorksInvalidRequest' }
+        '403': { $ref: '#/components/responses/WorksForbidden' }
+        '404': { $ref: '#/components/responses/WorksNotFoundOrDisabled' }
+        '415': { description: Content-Type is not application/json }
+        '429': { description: Account request rate limit exceeded }
+        '503': { $ref: '#/components/responses/WorksUnavailable' }
+
+  /api/works/account/verify:
+    post:
+      tags: [Works]
+      operationId: verifyWorksAccountEmailChallenge
+      summary: Exchange a typed email code for a Works session
+      description: |
+        Atomically consumes the email-bound challenge and sets the opaque
+        HttpOnly Works session cookie. The JSON response excludes the email,
+        account UUID, entity UUID, organization metadata, and session token.
+        Email verification does not verify any organization or agent claim and
+        grants no execution, payment, Gate, or provider-entry authority.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/WorksOriginRequired'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorksAccountVerifyRequest' }
+      responses:
+        '200':
+          description: Email verified and host-only Works session cookie set
+          headers:
+            Set-Cookie:
+              description: HttpOnly, Secure, SameSite=Strict, host-only __Host-emilia_works_session cookie
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorksAccountSessionResponse' }
+        '400': { $ref: '#/components/responses/WorksInvalidRequest' }
+        '401': { description: Challenge, email, or code is invalid, expired, consumed, or attempt-limited }
+        '403': { $ref: '#/components/responses/WorksForbidden' }
+        '404': { $ref: '#/components/responses/WorksNotFoundOrDisabled' }
+        '415': { description: Content-Type is not application/json }
+        '429': { description: Account verification rate limit exceeded }
+        '503': { $ref: '#/components/responses/WorksUnavailable' }
+
+  /api/works/account/session:
+    get:
+      tags: [Works]
+      operationId: getWorksAccountSession
+      summary: Read the current Works browser session
+      description: |
+        Returns only authentication state and the non-sensitive account
+        projection. A missing or invalid cookie returns authenticated false.
+        EP bearer credentials are not accepted as Works account sessions.
+        Every response is private, no-store, and varies on Cookie.
+      security:
+        - {}
+        - WorksSessionAuth: []
+      responses:
+        '200':
+          description: Current least-disclosure account session state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorksAccountSessionResponse' }
+        '404': { $ref: '#/components/responses/WorksNotFoundOrDisabled' }
+        '503': { $ref: '#/components/responses/WorksUnavailable' }
+
+  /api/works/account/logout:
+    post:
+      tags: [Works]
+      operationId: revokeWorksAccountSession
+      summary: Revoke the current Works browser session
+      description: |
+        Revokes the server-side session before clearing the host-only cookie.
+        This endpoint uses only the Works cookie; an EP bearer is not a substitute.
+      security:
+        - {}
+        - WorksSessionAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorksOriginRequired'
+      requestBody:
+        required: false
+        description: The body may be empty, but the request must still declare application/json
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '204':
+          description: Session revoked when present and browser cookie expired
+          headers:
+            Set-Cookie:
+              description: Expired __Host-emilia_works_session cookie with the original security scope
+              schema: { type: string }
+        '403': { $ref: '#/components/responses/WorksForbidden' }
+        '404': { $ref: '#/components/responses/WorksNotFoundOrDisabled' }
+        '415': { description: Content-Type is not application/json }
+        '503': { $ref: '#/components/responses/WorksUnavailable' }
+
+  /api/works/workspace:
+    get:
+      tags: [Works]
+      operationId: getWorksWorkspace
+      summary: Read the authenticated entity's private Works workspace
+      description: |
+        Returns only the caller's profiles, listings, jobs, submitted proposals,
+        proposals received for owned jobs, assignments where the caller is a
+        party, and notifications. The projection contains no owner UUID, private
+        email, API key, session token, or authority credential. All responses are
+        private, no-store, and vary on Authorization and Cookie.
+      security:
+        - WorksSessionAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Private Works workspace
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorksWorkspace' }
+        '401': { $ref: '#/components/responses/WorksUnauthorized' }
+        '404': { $ref: '#/components/responses/WorksNotFoundOrDisabled' }
+        '503': { $ref: '#/components/responses/WorksUnavailable' }
+
+  /api/works/workspace/commands:
+    post:
+      tags: [Works]
+      operationId: commandWorksWorkspaceRecord
+      summary: Change an owned Works listing, job, or proposal state
+      description: |
+        Applies an owner-authorized, revision-checked, idempotent state command.
+        Cookie-authenticated calls require the exact configured Origin. Commands
+        coordinate marketplace records only and grant no execution authority.
+      security:
+        - WorksSessionAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorksOriginWhenCookie'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorksWorkspaceCommandRequest' }
+      responses:
+        '200':
+          description: State transition committed or exact result replayed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorksRecordCommandResult' }
+        '400': { $ref: '#/components/responses/WorksInvalidRequest' }
+        '401': { $ref: '#/components/responses/WorksUnauthorized' }
+        '403': { $ref: '#/components/responses/WorksForbidden' }
+        '404': { $ref: '#/components/responses/WorksNotFoundOrDisabled' }
+        '409': { $ref: '#/components/responses/WorksConflict' }
+        '415': { description: Content-Type is not application/json }
+        '503': { $ref: '#/components/responses/WorksUnavailable' }
+
+  /api/works/workspace/notifications/{id}/read:
+    post:
+      tags: [Works]
+      operationId: markWorksNotificationRead
+      summary: Mark an owned Works notification read
+      description: |
+        Applies an idempotent, revision-checked read transition only when the
+        authenticated entity owns the notification. Foreign and absent
+        notifications are indistinguishable. Cookie calls require exact Origin.
+      security:
+        - WorksSessionAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorksNotificationId'
+        - $ref: '#/components/parameters/WorksOriginWhenCookie'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorksNotificationReadRequest' }
+      responses:
+        '200':
+          description: Notification marked read or exact result replayed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorksNotificationReadResult' }
+        '400': { $ref: '#/components/responses/WorksInvalidRequest' }
+        '401': { $ref: '#/components/responses/WorksUnauthorized' }
+        '403': { $ref: '#/components/responses/WorksForbidden' }
+        '404': { $ref: '#/components/responses/WorksNotFoundOrDisabled' }
+        '409': { $ref: '#/components/responses/WorksConflict' }
+        '415': { description: Content-Type is not application/json }
+        '503': { $ref: '#/components/responses/WorksUnavailable' }
+
+  /api/works/assignments:
+    post:
+      tags: [Works]
+      operationId: selectWorksProposal
+      summary: Select one proposal into a frozen Works assignment
+      description: |
+        The authenticated buyer selects a submitted proposal for an owned open
+        job. Selection is atomic, single-winner, revision-checked, idempotent,
+        and freezes the accepted job, proposal, scope, criteria, and external
+        terms. It does not hire or run an agent, transfer money, or grant Gate,
+        provider-entry, or any other execution authority.
+      security:
+        - WorksSessionAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorksOriginWhenCookie'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorksSelectProposalRequest' }
+      responses:
+        '201':
+          description: Assignment created or exact selection result replayed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorksAssignmentCommandResult' }
+        '400': { $ref: '#/components/responses/WorksInvalidRequest' }
+        '401': { $ref: '#/components/responses/WorksUnauthorized' }
+        '403': { $ref: '#/components/responses/WorksForbidden' }
+        '404': { $ref: '#/components/responses/WorksNotFoundOrDisabled' }
+        '409': { $ref: '#/components/responses/WorksConflict' }
+        '415': { description: Content-Type is not application/json }
+        '503': { $ref: '#/components/responses/WorksUnavailable' }
+
+  /api/works/assignments/{id}:
+    get:
+      tags: [Works]
+      operationId: getWorksAssignment
+      summary: Read a Works assignment as its buyer or builder
+      description: |
+        Returns the frozen assignment and caller role only to one of its two
+        parties. Foreign and absent assignments are indistinguishable. The
+        projection excludes both parties' database UUIDs and authority material.
+      security:
+        - WorksSessionAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorksAssignmentId'
+      responses:
+        '200':
+          description: Party-private assignment projection
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorksAssignmentView' }
+        '401': { $ref: '#/components/responses/WorksUnauthorized' }
+        '404': { $ref: '#/components/responses/WorksNotFoundOrDisabled' }
+        '503': { $ref: '#/components/responses/WorksUnavailable' }
+
+  /api/works/assignments/{id}/commands:
+    post:
+      tags: [Works]
+      operationId: commandWorksAssignment
+      summary: Apply a role-bound Works assignment command
+      description: |
+        Applies an authenticated buyer or builder transition with row locking,
+        optimistic revision checking, and actor-bound idempotency. Delivery URLs
+        are references only. Completion records buyer acceptance of evidence but
+        does not authorize execution, provider entry, payment, or Gate use.
+      security:
+        - WorksSessionAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WorksAssignmentId'
+        - $ref: '#/components/parameters/WorksOriginWhenCookie'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorksAssignmentCommandRequest' }
+      responses:
+        '200':
+          description: Assignment transition committed or exact result replayed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorksAssignmentCommandResult' }
+        '400': { $ref: '#/components/responses/WorksInvalidRequest' }
+        '401': { $ref: '#/components/responses/WorksUnauthorized' }
+        '403': { $ref: '#/components/responses/WorksForbidden' }
+        '404': { $ref: '#/components/responses/WorksNotFoundOrDisabled' }
+        '409': { $ref: '#/components/responses/WorksConflict' }
+        '415': { description: Content-Type is not application/json }
+        '503': { $ref: '#/components/responses/WorksUnavailable' }
 
   # ===========================================================================
   # Entities
@@ -7495,6 +7811,17 @@ components:
       type: http
       scheme: bearer
       description: EP API key (ep_live_...)
+    WorksSessionAuth:
+      type: apiKey
+      in: cookie
+      name: __Host-emilia_works_session
+      description: |
+        Opaque EMILIA Works browser session set only after a typed email code is
+        verified. The cookie is HttpOnly, Secure, SameSite=Strict, host-only,
+        revocable, and stored only as a SHA-256 digest. It authorizes management
+        of the account's Works data only. It is not an EP API key, a verified
+        organization or agent claim, payment authority, Gate authority, or
+        permission for an agent to act.
     ArenaSessionAuth:
       type: http
       scheme: bearer
@@ -7636,8 +7963,394 @@ components:
       schema:
         type: string
         pattern: '^[a-z0-9][a-z0-9-]{2,63}$'
+    WorksAssignmentId:
+      name: id
+      in: path
+      required: true
+      description: Opaque Works assignment identifier
+      schema:
+        type: string
+        pattern: '^[a-z0-9][a-z0-9-]{2,63}$'
+    WorksNotificationId:
+      name: id
+      in: path
+      required: true
+      description: Opaque account-scoped Works notification identifier
+      schema:
+        type: string
+        format: uuid
+    WorksOriginRequired:
+      name: Origin
+      in: header
+      required: true
+      description: Exact server-configured Works public origin; request Host is never trusted
+      schema:
+        type: string
+        format: uri
+    WorksOriginWhenCookie:
+      name: Origin
+      in: header
+      required: false
+      description: Required and exact when WorksSessionAuth is used; legacy bearer requests do not require it
+      schema:
+        type: string
+        format: uri
 
   schemas:
+    WorksAccountPublic:
+      type: object
+      additionalProperties: false
+      required: [displayName, claimsVerified, emailNotifications]
+      properties:
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 200
+        claimsVerified:
+          type: boolean
+          enum: [false]
+          description: Email verification never verifies an organization or agent claim
+        emailNotifications:
+          type: boolean
+          description: Stored preference only; it does not promise notification-email delivery
+    WorksAccountStartRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [email]
+          properties:
+            email: { type: string, format: email, maxLength: 254 }
+        - type: object
+          additionalProperties: false
+          required: [email, name, consent]
+          properties:
+            email: { type: string, format: email, maxLength: 254 }
+            name: { type: string, minLength: 2, maxLength: 200 }
+            consent: { type: boolean, enum: [true] }
+            emailNotifications:
+              type: boolean
+              description: Optional stored preference; no delivery is promised
+    WorksAccountChallengeAccepted:
+      type: object
+      additionalProperties: false
+      required: [accepted, challengeId]
+      properties:
+        accepted: { type: boolean, enum: [true] }
+        challengeId: { type: string, format: uuid }
+    WorksAccountVerifyRequest:
+      type: object
+      additionalProperties: false
+      required: [email, challengeId, code]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        challengeId: { type: string, format: uuid }
+        code: { type: string, pattern: '^\d{6}$' }
+    WorksAccountSessionResponse:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [authenticated]
+          properties:
+            authenticated: { type: boolean, enum: [false] }
+        - type: object
+          additionalProperties: false
+          required: [authenticated, account]
+          properties:
+            authenticated: { type: boolean, enum: [true] }
+            account: { $ref: '#/components/schemas/WorksAccountPublic' }
+    WorksWorkflowState:
+      type: object
+      additionalProperties: false
+      required: [state, revision, updated_at]
+      properties:
+        state:
+          type: string
+          enum: [active, paused, archived, open, closed, assigned, submitted, declined, selected]
+        revision: { type: integer, minimum: 0 }
+        updated_at: { type: string, format: date-time, nullable: true }
+    WorksWorkspaceRecord:
+      type: object
+      additionalProperties: false
+      required: [record, workflow]
+      properties:
+        record: { $ref: '#/components/schemas/WorksRecord' }
+        workflow: { $ref: '#/components/schemas/WorksWorkflowState' }
+    WorksReceivedProposal:
+      type: object
+      additionalProperties: false
+      required: [job, record, workflow]
+      properties:
+        job: { $ref: '#/components/schemas/WorksRecord' }
+        record: { $ref: '#/components/schemas/WorksRecord' }
+        workflow: { $ref: '#/components/schemas/WorksWorkflowState' }
+    WorksAssignment:
+      type: object
+      additionalProperties: false
+      description: |
+        Frozen commercial coordination record. Selection and every later state
+        transition grant no execution, provider-entry, Gate, or payment authority.
+      required:
+        [assignment_id, job_id, proposal_id, builder_id, listing_id, state,
+         revision, scope, acceptance_criteria, terms, frozen, delivery, outcome,
+         history, created_at, updated_at]
+      properties:
+        assignment_id: { type: string, pattern: '^[a-z0-9][a-z0-9-]{2,63}$' }
+        job_id: { type: string, pattern: '^[a-z0-9][a-z0-9-]{2,63}$' }
+        proposal_id: { type: string, pattern: '^[a-z0-9][a-z0-9-]{2,63}$' }
+        builder_id: { type: string, pattern: '^[a-z0-9][a-z0-9-]{2,63}$' }
+        listing_id:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9-]{2,63}$'
+          nullable: true
+        state:
+          type: string
+          enum: [proposed, confirmed, declined, delivery_submitted, changes_requested, completed, cancelled]
+        revision: { type: integer, minimum: 0 }
+        scope: { type: string, minLength: 1, maxLength: 8000 }
+        acceptance_criteria:
+          type: array
+          minItems: 1
+          maxItems: 32
+          items: { type: string, minLength: 1, maxLength: 1000 }
+        terms:
+          type: string
+          minLength: 1
+          maxLength: 8000
+          description: Human-readable external-terms reference; not settlement or payment custody
+        frozen:
+          type: object
+          additionalProperties: false
+          required: [job, proposal]
+          properties:
+            job: { $ref: '#/components/schemas/WorksRecord' }
+            proposal: { $ref: '#/components/schemas/WorksRecord' }
+        delivery:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/WorksAssignmentDelivery'
+        outcome:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/WorksAssignmentOutcome'
+        history:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/WorksAssignmentEvent' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    WorksAssignmentDelivery:
+      type: object
+      additionalProperties: false
+      required: [url, summary, submitted_at]
+      properties:
+        url: { type: string, format: uri, pattern: '^https://' }
+        summary: { type: string, minLength: 1, maxLength: 8000 }
+        submitted_at: { type: string, format: date-time }
+    WorksAssignmentOutcome:
+      type: object
+      additionalProperties: false
+      required: [accepted_at, summary]
+      properties:
+        accepted_at: { type: string, format: date-time }
+        summary: { type: string, maxLength: 8000, nullable: true }
+    WorksAssignmentEvent:
+      type: object
+      additionalProperties: false
+      required: [actor_role, command, revision, at, summary, reason, delivery]
+      properties:
+        actor_role: { type: string, enum: [buyer, builder] }
+        command:
+          type: string
+          enum: [proposal_selected, builder_confirm, builder_decline, submit_delivery, request_changes, accept_completion, cancel]
+        revision: { type: integer, minimum: 0 }
+        at: { type: string, format: date-time }
+        summary: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
+        delivery:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/WorksAssignmentDelivery'
+    WorksAssignmentView:
+      type: object
+      additionalProperties: false
+      required: [viewer_role, assignment]
+      properties:
+        viewer_role: { type: string, enum: [buyer, builder] }
+        assignment: { $ref: '#/components/schemas/WorksAssignment' }
+    WorksNotification:
+      type: object
+      additionalProperties: false
+      required: [notification_id, kind, resource_type, resource_id, created_at, read_at, revision]
+      properties:
+        notification_id: { type: string, format: uuid }
+        kind:
+          type: string
+          enum: [proposal_received, proposal_declined, proposal_selected, assignment_confirmed, assignment_declined, delivery_submitted, changes_requested, completion_accepted, assignment_cancelled]
+        resource_type: { type: string, enum: [proposal, assignment] }
+        resource_id: { type: string, pattern: '^[a-z0-9][a-z0-9-]{2,63}$' }
+        created_at: { type: string, format: date-time }
+        read_at: { type: string, format: date-time, nullable: true }
+        revision: { type: integer, minimum: 0 }
+    WorksWorkspace:
+      type: object
+      additionalProperties: false
+      description: Private account projection with no email, database owner UUID, API key, or authority credential
+      required: [viewer, profiles, listings, jobs, submitted_proposals, received_proposals, assignments, notifications]
+      properties:
+        viewer:
+          type: object
+          additionalProperties: false
+          required: [display_name, role]
+          properties:
+            display_name: { type: string, nullable: true }
+            role: { type: string, enum: [buyer, builder, both] }
+        profiles:
+          type: array
+          items: { $ref: '#/components/schemas/WorksRecord' }
+        listings:
+          type: array
+          items: { $ref: '#/components/schemas/WorksWorkspaceRecord' }
+        jobs:
+          type: array
+          items: { $ref: '#/components/schemas/WorksWorkspaceRecord' }
+        submitted_proposals:
+          type: array
+          items: { $ref: '#/components/schemas/WorksWorkspaceRecord' }
+        received_proposals:
+          type: array
+          items: { $ref: '#/components/schemas/WorksReceivedProposal' }
+        assignments:
+          type: array
+          items: { $ref: '#/components/schemas/WorksAssignmentView' }
+        notifications:
+          type: array
+          items: { $ref: '#/components/schemas/WorksNotification' }
+    WorksCommandBase:
+      type: object
+      additionalProperties: false
+      required: [expected_revision, idempotency_key]
+      properties:
+        expected_revision: { type: integer, minimum: 0 }
+        idempotency_key:
+          type: string
+          minLength: 16
+          maxLength: 128
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$'
+    WorksWorkspaceCommandRequest:
+      type: object
+      additionalProperties: false
+      required: [command, record_id, expected_revision, idempotency_key]
+      properties:
+        command: { type: string, enum: [pause_listing, archive_listing, reactivate_listing, close_job, reopen_job, decline_proposal] }
+        record_id: { type: string, pattern: '^[a-z0-9][a-z0-9-]{2,63}$' }
+        expected_revision: { type: integer, minimum: 0 }
+        idempotency_key: { type: string, minLength: 16, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$' }
+    WorksSelectProposalRequest:
+      type: object
+      additionalProperties: false
+      required: [proposal_id, expected_revision, idempotency_key, scope, acceptance_criteria, terms]
+      properties:
+        proposal_id: { type: string, pattern: '^[a-z0-9][a-z0-9-]{2,63}$' }
+        expected_revision: { type: integer, minimum: 0 }
+        idempotency_key: { type: string, minLength: 16, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$' }
+        scope: { type: string, minLength: 1, maxLength: 8000 }
+        acceptance_criteria:
+          type: array
+          minItems: 1
+          maxItems: 32
+          items: { type: string, minLength: 1, maxLength: 1000 }
+        terms: { type: string, minLength: 1, maxLength: 8000 }
+    WorksAssignmentCommandRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [command, expected_revision, idempotency_key]
+          properties:
+            command: { type: string, enum: [builder_confirm] }
+            expected_revision: { type: integer, minimum: 0 }
+            idempotency_key: { type: string, minLength: 16, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$' }
+        - type: object
+          additionalProperties: false
+          required: [command, expected_revision, idempotency_key]
+          properties:
+            command: { type: string, enum: [builder_decline] }
+            expected_revision: { type: integer, minimum: 0 }
+            idempotency_key: { type: string, minLength: 16, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$' }
+        - type: object
+          additionalProperties: false
+          required: [command, expected_revision, idempotency_key, delivery_url, summary]
+          properties:
+            command: { type: string, enum: [submit_delivery] }
+            expected_revision: { type: integer, minimum: 0 }
+            idempotency_key: { type: string, minLength: 16, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$' }
+            delivery_url: { type: string, format: uri, pattern: '^https://' }
+            summary: { type: string, minLength: 1, maxLength: 8000 }
+        - type: object
+          additionalProperties: false
+          required: [command, expected_revision, idempotency_key, summary]
+          properties:
+            command: { type: string, enum: [request_changes] }
+            expected_revision: { type: integer, minimum: 0 }
+            idempotency_key: { type: string, minLength: 16, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$' }
+            summary: { type: string, minLength: 1, maxLength: 8000 }
+        - type: object
+          additionalProperties: false
+          required: [command, expected_revision, idempotency_key]
+          properties:
+            command: { type: string, enum: [accept_completion] }
+            expected_revision: { type: integer, minimum: 0 }
+            idempotency_key: { type: string, minLength: 16, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$' }
+            summary: { type: string, maxLength: 8000 }
+        - type: object
+          additionalProperties: false
+          required: [command, expected_revision, idempotency_key, reason]
+          properties:
+            command: { type: string, enum: [cancel] }
+            expected_revision: { type: integer, minimum: 0 }
+            idempotency_key: { type: string, minLength: 16, maxLength: 128, pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$' }
+            reason: { type: string, minLength: 1, maxLength: 2000 }
+    WorksNotificationReadRequest:
+      $ref: '#/components/schemas/WorksCommandBase'
+    WorksRecordCommandResource:
+      type: object
+      additionalProperties: false
+      required: [record_id, collection, workflow]
+      properties:
+        record_id: { type: string, pattern: '^[a-z0-9][a-z0-9-]{2,63}$' }
+        collection: { type: string, enum: [listings, opportunities, submissions] }
+        workflow: { $ref: '#/components/schemas/WorksWorkflowState' }
+    WorksNotificationReadResource:
+      type: object
+      additionalProperties: false
+      required: [notification_id, read_at, revision]
+      properties:
+        notification_id: { type: string, format: uuid }
+        read_at: { type: string, format: date-time }
+        revision: { type: integer, minimum: 1 }
+    WorksRecordCommandResult:
+      type: object
+      additionalProperties: false
+      required: [ok, replayed, resource]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        replayed: { type: boolean }
+        resource: { $ref: '#/components/schemas/WorksRecordCommandResource' }
+    WorksAssignmentCommandResult:
+      type: object
+      additionalProperties: false
+      required: [ok, replayed, resource]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        replayed: { type: boolean }
+        resource: { $ref: '#/components/schemas/WorksAssignment' }
+    WorksNotificationReadResult:
+      type: object
+      additionalProperties: false
+      required: [ok, replayed, resource]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        replayed: { type: boolean }
+        resource: { $ref: '#/components/schemas/WorksNotificationReadResource' }
     WorksRecord:
       type: object
       description: |
@@ -10364,13 +11077,13 @@ components:
           schema:
             $ref: '#/components/schemas/WorksProblem'
     WorksUnauthorized:
-      description: Missing or invalid EMILIA entity API key where authentication is required
+      description: Missing or invalid Works session or EMILIA entity API key where authentication is required
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/WorksProblem'
     WorksForbidden:
-      description: The authenticated entity does not own the record or referenced relationship
+      description: The authenticated entity does not own the resource or relationship, or a cookie mutation failed the exact-Origin check
       content:
         application/problem+json:
           schema:
@@ -10382,7 +11095,7 @@ components:
           schema:
             $ref: '#/components/schemas/WorksProblem'
     WorksConflict:
-      description: A record with the selected identifier already exists
+      description: Identifier, revision, idempotency, selection, or workflow-transition conflict
       content:
         application/problem+json:
           schema:

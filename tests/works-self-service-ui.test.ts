@@ -120,7 +120,8 @@ describe('Works self-service UI and copy contract', () => {
     expect(page).toContain('notFound()');
     expect(page).toContain('const registrationEnabled = isPublicEntityRegistrationEnabled();');
     expect(page).toContain('registrationEnabled={registrationEnabled}');
-    expect(page).toContain('Publishing requires an existing EMILIA entity key.');
+    expect(page).toContain('sign in with email to publish');
+    expect(form).toContain('useWorksAccount()');
     expect(page).toContain('Scan privately first');
     expect(page).toContain('Create a public listing, not a checkout.');
     expect(form).toContain("fetch('/api/entities/register'");
@@ -158,7 +159,7 @@ describe('Works self-service UI and copy contract', () => {
     expect(form).toContain('useSyncExternalStore(subscribeToHydration, clientReady, serverReady)');
     expect(form).toContain('const serverReady = () => false');
     expect(form).toContain('const clientReady = () => true');
-    expect(form.match(/<form method="post"/g)).toHaveLength(2);
+    expect(form.match(/<form method="post"/g)).toHaveLength(3);
     expect(form.match(/<fieldset disabled=\{!ready \|\| busy\}/g)).toHaveLength(2);
     expect(form).toContain('if (!ready) return;');
     expect(form).toContain('if (!ready || inFlight.current) return;');
@@ -191,7 +192,8 @@ describe('Works self-service UI and copy contract', () => {
     expect(opportunityForm).toContain('useSyncExternalStore(subscribeToHydration, clientReady, serverReady)');
     expect(opportunityForm).toContain('if (!ready || busy) return;');
     expect(opportunityForm.match(/<fieldset disabled=\{!ready \|\| busy\}/g)).toHaveLength(2);
-    expect(read('app/works/opportunity-publication.ts')).toContain("credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer'");
+    expect(read('app/works/opportunity-publication.ts')).toContain("credentials: auth.credentials, redirect: 'error', referrerPolicy: 'no-referrer'");
+    expect(read('app/works/session-request.ts')).toContain("credentials: 'omit'");
     expect(opportunityForm).toContain('if (!draft || !publicConsent)');
     expect(opportunityForm).toContain('publishOpportunityWithRecovery(requestKey, draft, controller.signal)');
     expect(opportunityForm).toContain('if (!isCurrent()) return');
@@ -199,7 +201,7 @@ describe('Works self-service UI and copy contract', () => {
     expect(opportunityForm).toContain("window.addEventListener('pagehide', clearPrivateState)");
     expect(opportunityForm).toContain('if (attempted) return;');
     expect(opportunityForm).toContain('{!attempted ? <button');
-    expect(opportunityForm).toContain('const requestKey = apiKey.trim();');
+    expect(opportunityForm).toContain('const requestKey = access.account ? null : apiKey.trim();');
     expect(opportunityForm).toContain("const [contactRoute, setContactRoute] = useState('');");
     expect(opportunityForm).toContain('value={contactRoute} onChange={event => setContactRoute(event.target.value)}');
     expect(opportunityForm).toContain('setContactRoute(preview.contact_route);');
@@ -315,12 +317,24 @@ describe('owner-authenticated seller publication recovery', () => {
 
   it('does not mask a fresh authentication refusal or resume a cancelled publication', async () => {
     const request = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 401 })); vi.stubGlobal('fetch', request);
-    await expect(publishRecordWithRecovery('listings', 'bad-key', listing, signal())).rejects.toThrow();
+    await expect(publishRecordWithRecovery('listings', 'invalid-key', listing, signal())).rejects.toThrow();
     expect(request).toHaveBeenCalledTimes(1);
     request.mockReset();
     const controller = new AbortController(); controller.abort();
     request.mockRejectedValueOnce(new DOMException('Cancelled', 'AbortError'));
     await expect(publishRecordWithRecovery('listings', 'ep_test_secret', listing, controller.signal)).rejects.toThrow();
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it('does not claim publication from an empty success or after abort during JSON decoding', async () => {
+    const request = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 201 }))
+      .mockResolvedValueOnce(new Response('{}', { status: 404 }));
+    vi.stubGlobal('fetch', request);
+    await expect(publishRecordWithRecovery('listings', null, listing, signal())).rejects.toThrow();
+    const controller = new AbortController();
+    request.mockReset().mockResolvedValueOnce({ ok: true, json: async () => {
+      controller.abort(); return { collection: 'listings', record: listing };
+    } });
+    await expect(publishRecordWithRecovery('listings', null, listing, controller.signal)).rejects.toThrow();
   });
 });

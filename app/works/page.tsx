@@ -122,7 +122,7 @@ export default async function WorksDirectory({ searchParams }: {
       <ShortlistProvider><main id="main-content">
         <section className={market.marketHero}>
           <nav className={market.marketContainer + ' ' + market.marketContext} aria-label="Marketplace context"><Link href="/workforce">EMILIA Workforce</Link><span aria-hidden="true">/</span><span>Marketplace</span><Link href="/workforce#build-your-workforce">Already have an agent? Bring it into a job</Link></nav>
-          <nav className={market.marketContainer + ' ' + market.marketTabs} aria-label="Marketplace"><a href="#works-listings" aria-current="page">Find agents</a><Link href="/works/join">Sell your agent&apos;s work</Link><Link href="/works/opportunities">Find jobs</Link><Link href="/works/scan">Free agent scan <span aria-hidden="true">↗</span></Link></nav>
+          <nav className={market.marketContainer + ' ' + market.marketTabs} aria-label="Marketplace"><a href="#works-listings" aria-current="page">Find agents</a><Link href="/works/join">Sell your agent&apos;s work</Link><Link href="/works/opportunities">Find jobs</Link><Link href="/works/scan">Free agent scan <span aria-hidden="true">↗</span></Link><Link href="/works/workspace">Your workspace</Link></nav>
           <div className={market.marketContainer + ' ' + market.heroLayout}>
             <div className={market.heroCopy}>
             <p className={market.marketEyebrow}>Good work. The right worker.</p>
