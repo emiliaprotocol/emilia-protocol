@@ -1,0 +1,175 @@
+{
+  "schema": "AEB-MAPPING-PROFILE-v1",
+  "status": "PINNED_BRIDGE_REVISION_2",
+  "profileName": "insight-oracle-checks-to-one-use-evm-swap-authorization",
+  "profileVersion": "0.3.0",
+  "aebReviewBase": "b03dcde235d19c898d06b02c2544cf4db891765d",
+  "authorization": {
+    "domain": {
+      "name": "Insight AEB Swap Action Authorization",
+      "version": "2",
+      "chainId": 1
+    },
+    "primaryType": "SwapActionAuthorization",
+    "types": [
+      { "name": "authorizationVersion", "type": "uint256" },
+      { "name": "subjectChainId", "type": "uint256" },
+      { "name": "executionDomain", "type": "string" },
+      { "name": "spendingWallet", "type": "address" },
+      { "name": "router", "type": "address" },
+      { "name": "calldataHash", "type": "bytes32" },
+      { "name": "nativeValue", "type": "uint256" },
+      { "name": "sourceAssetId", "type": "string" },
+      { "name": "destinationAssetId", "type": "string" },
+      { "name": "rawInputAmount", "type": "uint256" },
+      { "name": "minimumOutputAmount", "type": "uint256" },
+      { "name": "recipient", "type": "address" },
+      { "name": "deadline", "type": "uint256" },
+      { "name": "nonce", "type": "bytes32" },
+      { "name": "sourceCheckUid", "type": "bytes32" },
+      { "name": "destinationCheckUid", "type": "bytes32" },
+      { "name": "mappingProfileDigest", "type": "bytes32" }
+    ]
+  },
+  "materialFields": [
+    {
+      "target": "subjectChainId",
+      "source": "authorization.data.subjectChainId",
+      "transform": "uint256-decimal-string-exact"
+    },
+    {
+      "target": "executionDomain",
+      "source": "authorization.data.executionDomain",
+      "transform": "utf8-exact"
+    },
+    {
+      "target": "spendingWallet",
+      "source": "authorization.data.spendingWallet",
+      "transform": "evm-address-lowercase"
+    },
+    {
+      "target": "router",
+      "source": "authorization.data.router",
+      "transform": "evm-address-lowercase"
+    },
+    {
+      "target": "calldataHash",
+      "source": "keccak256(expectedAction.calldata)",
+      "transform": "bytes32-exact"
+    },
+    {
+      "target": "nativeValue",
+      "source": "authorization.data.nativeValue",
+      "transform": "uint256-decimal-string-exact"
+    },
+    {
+      "target": "sourceAssetId",
+      "source": "authorization.data.sourceAssetId",
+      "transform": "utf8-exact"
+    },
+    {
+      "target": "destinationAssetId",
+      "source": "authorization.data.destinationAssetId",
+      "transform": "utf8-exact"
+    },
+    {
+      "target": "rawInputAmount",
+      "source": "authorization.data.rawInputAmount",
+      "transform": "uint256-decimal-string-exact"
+    },
+    {
+      "target": "minimumOutputAmount",
+      "source": "authorization.data.minimumOutputAmount",
+      "transform": "uint256-decimal-string-exact"
+    },
+    {
+      "target": "recipient",
+      "source": "authorization.data.recipient",
+      "transform": "evm-address-lowercase"
+    },
+    {
+      "target": "deadline",
+      "source": "authorization.data.deadline",
+      "transform": "uint256-decimal-string-exact"
+    },
+    { "target": "nonce", "source": "authorization.data.nonce", "transform": "bytes32-exact" },
+    {
+      "target": "sourceCheckUid",
+      "source": "sourceCheck.uid",
+      "transform": "verified-eip712-uid-exact"
+    },
+    {
+      "target": "destinationCheckUid",
+      "source": "destinationCheck.uid",
+      "transform": "verified-eip712-uid-exact"
+    },
+    {
+      "target": "mappingProfileDigest",
+      "source": "authorization.data.mappingProfileDigest",
+      "transform": "keccak256-rfc8785-profile-exact"
+    }
+  ],
+  "routerSemantics": {
+    "supportedRouters": ["0xe592427a0aece92de3edee1f18e0157c05861564"],
+    "supportedFunction": "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))",
+    "requiredNativeValue": "0",
+    "decodedFieldChecks": [
+      "tokenIn == sourceAssetId ERC-20 address",
+      "tokenOut == destinationAssetId ERC-20 address",
+      "recipient == named recipient",
+      "amountIn == rawInputAmount",
+      "amountOutMinimum == minimumOutputAmount",
+      "deadline == named deadline"
+    ]
+  },
+  "evidenceComposition": {
+    "priceChecksReusableWithinPolicyWindow": true,
+    "priceChecksBecomeOneUseLegs": false,
+    "checksVerifiedAsAuthorizationInputs": true,
+    "authorizationReplayUnit": "sha256(utf8('emilia:aeb:replay-unit:v1\\0' + authorization.uid))",
+    "requiredCheckRoles": ["source", "destination"]
+  },
+  "acceptancePolicy": {
+    "allowedVerdicts": ["PASS"],
+    "requireValidPinnedPriceKey": true,
+    "requirePinnedAuthorizationKey": true,
+    "requireIndependentlyPinnedProfileDigest": true,
+    "recheckFreshnessBeforeSubmission": true,
+    "maximumCheckAgeSeconds": 300,
+    "maximumFutureClockSkewSeconds": 0,
+    "onFreshnessPolicyConflict": "REJECT",
+    "onExpiredAfterReservation": "RELEASED_NOT_ENTERED",
+    "onAmbiguousSubmission": "RESERVED_WITH_RECONCILIATION_REQUIRED",
+    "onSubmitterException": "RESERVED_WITH_RECONCILIATION_REQUIRED",
+    "blindRetry": false
+  },
+  "mappingOutput": {
+    "versionedActionType": "evm-swap-exact-input-single.1",
+    "canonicalization": "RFC8785-JCS-with-uint256-as-validated-decimal-strings",
+    "actionDigest": "sha256:<lowercase-hex-of-JCS-action-object>",
+    "caidEncoding": "caid:1:<versioned-action-type>:jcs-sha256:<unpadded-base64url-sha256>",
+    "priceCheckUidTreatment": "native EIP-712/Keccak identifiers in authorization evidence binding, not relabeled as CAIDs"
+  },
+  "adapterContract": {
+    "synchronousNativeVerification": true,
+    "nativeFields": [
+      "native_verification",
+      "acceptance",
+      "evidence_digest",
+      "status_digest",
+      "evidence_role",
+      "subject",
+      "replay_unit",
+      "reasons"
+    ],
+    "mappingFields": ["mapping", "caid", "action_digest", "reasons"],
+    "consumptionStates": ["AVAILABLE", "RESERVED", "CONSUMED", "RELEASED_NOT_ENTERED"],
+    "providerEnteredIsBookkeepingOnly": true
+  },
+  "claimsBoundary": {
+    "syntheticTransaction": true,
+    "transactionInclusion": "NOT_OBSERVED",
+    "consensusFinality": "NOT_OBSERVED",
+    "upstreamAcceptance": false
+  }
+}
