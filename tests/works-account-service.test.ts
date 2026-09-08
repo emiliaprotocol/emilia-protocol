@@ -122,4 +122,77 @@ describe('Works email account ceremony', () => {
       })).rejects.toEqual(new AccountServiceError(401, 'account_verification_failed', 'The code could not be verified. Start again and use the newest email.'));
     }
   });
+
+  it.each([
+    null,
+    'not-an-email',
+    `person@${'a'.repeat(250)}.example`,
+  ])('rejects malformed email input before storage or delivery: %s', async email => {
+    const accountStore = store();
+    const sendEmail = vi.fn();
+    await expect(startWorksAccountChallenge({
+      input: { email }, clientAddress: '203.0.113.9', secret: SECRET,
+      store: accountStore, sendEmail,
+    })).rejects.toMatchObject({ code: 'account_email_invalid', status: 400 });
+    expect(accountStore.beginChallenge).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    null,
+    ' ',
+    'Valid\u0000Name',
+    '界'.repeat(67),
+  ])('rejects unsafe signup display names before creating a challenge', async name => {
+    const accountStore = store();
+    await expect(startWorksAccountChallenge({
+      input: { email: 'new@example.com', name, consent: true },
+      clientAddress: '203.0.113.9', secret: SECRET, store: accountStore,
+      sendEmail: vi.fn(),
+    })).rejects.toMatchObject({ code: 'account_name_invalid', status: 400 });
+    expect(accountStore.beginChallenge).not.toHaveBeenCalled();
+  });
+
+  it('fails closed on a weak digest secret or unavailable challenge storage', async () => {
+    const sendEmail = vi.fn();
+    await expect(startWorksAccountChallenge({
+      input: { email: 'returning@example.com' }, clientAddress: '', secret: 'too-short',
+      store: store(), sendEmail,
+    })).rejects.toMatchObject({ code: 'account_service_unavailable', status: 503 });
+    expect(sendEmail).not.toHaveBeenCalled();
+
+    await expect(startWorksAccountChallenge({
+      input: { email: 'returning@example.com' }, clientAddress: '', secret: SECRET,
+      store: store({ beginChallenge: vi.fn(async () => ({ ok: false, code: 'store_unavailable' })) }),
+      sendEmail,
+    })).rejects.toMatchObject({ code: 'account_service_unavailable', status: 503 });
+  });
+
+  it('fails closed when delivery was accepted but could not be marked durable', async () => {
+    await expect(startWorksAccountChallenge({
+      input: { email: 'returning@example.com' }, clientAddress: '203.0.113.9', secret: SECRET,
+      store: store({ markDelivery: vi.fn(async () => ({ ok: false, code: 'challenge_unavailable' })) }),
+      sendEmail: vi.fn(async () => ({ delivered: true })),
+    })).rejects.toMatchObject({ code: 'account_delivery_unavailable', status: 503 });
+  });
+
+  it.each([
+    { challengeId: 'not-a-uuid', code: '123456' },
+    { challengeId: '11111111-1111-4111-8111-111111111111', code: 123456 },
+    { challengeId: '11111111-1111-4111-8111-111111111111', code: '12345' },
+  ])('rejects malformed verification material before exchange', async material => {
+    const accountStore = store();
+    await expect(verifyWorksAccountChallenge({
+      input: { email: 'target@example.com', ...material }, secret: SECRET, store: accountStore,
+    })).rejects.toMatchObject({ code: 'account_verification_failed', status: 401 });
+    expect(accountStore.exchangeChallenge).not.toHaveBeenCalled();
+  });
+
+  it.each(['store_unavailable', 'store_invalid'])('maps %s exchange failures to unavailable', async code => {
+    await expect(verifyWorksAccountChallenge({
+      input: { email: 'target@example.com', challengeId: '11111111-1111-4111-8111-111111111111', code: '123456' },
+      secret: SECRET,
+      store: store({ exchangeChallenge: vi.fn(async () => ({ ok: false, code })) }),
+    })).rejects.toMatchObject({ code: 'account_service_unavailable', status: 503 });
+  });
 });

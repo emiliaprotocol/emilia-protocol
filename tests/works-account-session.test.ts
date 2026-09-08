@@ -11,6 +11,7 @@ const {
   assertWorksSameOrigin,
   clearWorksSessionCookieHeader,
   getWorksSessionActor,
+  revokeWorksSession,
   serializeWorksSessionCookie,
 } = await import('../lib/works/session.ts');
 
@@ -84,5 +85,61 @@ describe('Works account session boundary', () => {
     await expect(getWorksSessionActor(request)).resolves.toBeNull();
     rpc.mockRejectedValueOnce(new Error('PRIVATE_DATABASE_DETAIL'));
     await expect(getWorksSessionActor(request)).rejects.toBeInstanceOf(WorksSessionUnavailableError);
+  });
+
+  it('revokes only one well-formed cookie and sends storage only its digest', async () => {
+    const token = `wss1_${'a'.repeat(64)}`;
+    const request = { headers: new Headers({ cookie: `${WORKS_SESSION_COOKIE_NAME}=${token}` }) };
+    const revokeSession = vi.fn(async () => ({ ok: true as const, revoked: true }));
+    await expect(revokeWorksSession(request, {
+      readSession: vi.fn(), beginChallenge: vi.fn(), markDelivery: vi.fn(), exchangeChallenge: vi.fn(), revokeSession,
+    } as any)).resolves.toBe(true);
+    expect(revokeSession).toHaveBeenCalledWith(expect.stringMatching(/^sha256:[a-f0-9]{64}$/));
+    expect(JSON.stringify(revokeSession.mock.calls)).not.toContain(token);
+
+    revokeSession.mockClear();
+    await expect(revokeWorksSession({ headers: new Headers() }, { revokeSession } as any)).resolves.toBe(false);
+    expect(revokeSession).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when session revocation storage throws or returns an error', async () => {
+    const request = { headers: new Headers({
+      cookie: `${WORKS_SESSION_COOKIE_NAME}=wss1_${'a'.repeat(64)}`,
+    }) };
+    await expect(revokeWorksSession(request, {
+      revokeSession: vi.fn(async () => { throw new Error('private transport detail'); }),
+    } as any)).rejects.toBeInstanceOf(WorksSessionUnavailableError);
+    await expect(revokeWorksSession(request, {
+      revokeSession: vi.fn(async () => ({ ok: false as const, code: 'store_unavailable' })),
+    } as any)).rejects.toBeInstanceOf(WorksSessionUnavailableError);
+  });
+
+  it('refuses malformed cookie serialization inputs', () => {
+    expect(() => serializeWorksSessionCookie('not-a-session', new Date('2026-09-08T00:00:00Z')))
+      .toThrow(WorksSessionUnavailableError);
+    expect(() => serializeWorksSessionCookie(`wss1_${'a'.repeat(64)}`, new Date('invalid')))
+      .toThrow(WorksSessionUnavailableError);
+  });
+
+  it('accepts only exact HTTPS origins or HTTP loopback development origins', () => {
+    for (const origin of ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://[::1]:3000']) {
+      vi.stubEnv('WORKS_PUBLIC_ORIGIN', origin);
+      expect(assertWorksSameOrigin({ headers: new Headers({ origin }) })).toBe(true);
+    }
+    vi.stubEnv('WORKS_PUBLIC_ORIGIN', 'https://works.emiliaprotocol.ai/path');
+    expect(assertWorksSameOrigin({ headers: new Headers({ origin: 'https://works.emiliaprotocol.ai' }) })).toBe(false);
+    vi.stubEnv('WORKS_PUBLIC_ORIGIN', 'not-a-url');
+    expect(assertWorksSameOrigin({ headers: new Headers({ origin: 'https://works.emiliaprotocol.ai' }) })).toBe(false);
+    vi.stubEnv('WORKS_PUBLIC_ORIGIN', 'https://works.emiliaprotocol.ai');
+    expect(assertWorksSameOrigin({ headers: new Headers({ origin: 'not a URL' }) })).toBe(false);
+  });
+
+  it('turns an injected session-store exception into the public unavailable error', async () => {
+    const request = { headers: new Headers({
+      cookie: `${WORKS_SESSION_COOKIE_NAME}=wss1_${'a'.repeat(64)}`,
+    }) };
+    await expect(getWorksSessionActor(request, {
+      readSession: vi.fn(async () => { throw new Error('private database detail'); }),
+    } as any)).rejects.toBeInstanceOf(WorksSessionUnavailableError);
   });
 });
