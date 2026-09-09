@@ -16,6 +16,6 @@
     "adapter-src.mjs": "sha256:ec4c6c4cf37e8ebc307247c3babc45f92e28953016f752c936d2a8f88437a31f",
     "bundle-primitives.mjs": "sha256:4d67d652bd750d3c26f11cc03cb9e0f91c465d82c77485388e265c4186269a7c",
     "package.json": "sha256:e315883437b2f3c76900c5ad4e0910dc14843bd4069206097c6a06be39fac9f8",
-    "package-lock.json": "sha256:c5c8ff2018d2c2c42dbd308927640b28e6cc99be9031669152f32978d3dc9095"
+    "package-lock.json": "sha256:f853dc4f9f1cdb30f3d21f0e06a62b7c591500e235d681e34769cfe1e148544c"
   }
 }
