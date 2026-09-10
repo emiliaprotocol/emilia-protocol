@@ -73,6 +73,25 @@ test('reference evaluator reproduces every exact expected row', () => {
   }
 });
 
+test('provider commitment does not promote an unobserved or indeterminate effect', () => {
+  for (const [effect, reason] of [
+    ['NOT_OBSERVED', 'provider_committed_effect_not_observed'],
+    ['INDETERMINATE', 'provider_committed_effect_indeterminate'],
+  ] as const) {
+    const input = structuredClone(vector('provider_committed_effect_diverged').input);
+    input.observation.effect_relation = effect;
+    const result = evaluateAebConsequenceCase(input);
+    assert.equal(result.provider_outcome, 'COMMITTED');
+    assert.equal(result.effect_relation, effect);
+    assert.equal(result.custody, 'INVOKING');
+    assert.equal(result.decision, 'INDETERMINATE');
+    assert.equal(result.reconciliation, 'REQUIRED');
+    assert.equal(result.retry, 'REFUSED');
+    assert.deepEqual(result.reasons, [reason]);
+    assert.equal(validateAebConsequenceResult(result).valid, true);
+  }
+});
+
 test('verification, action match, satisfaction, authorization, reservation, and custody remain distinct', () => {
   const happy = evaluateAebConsequenceCase(vector('authorized_admission').input);
   assert.deepEqual(happy, {

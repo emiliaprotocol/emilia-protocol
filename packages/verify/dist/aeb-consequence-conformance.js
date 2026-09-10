@@ -69,6 +69,8 @@ export const AEB_CONSEQUENCE_REASONS = Object.freeze([
     'operation_replay',
     'provider_and_effect_indeterminate',
     'provider_committed_effect_diverged',
+    'provider_committed_effect_indeterminate',
+    'provider_committed_effect_not_observed',
     'provider_committed_effect_observed',
     'provider_proven_not_committed',
     'reconciliation_binding_mismatch',
@@ -707,6 +709,10 @@ export function evaluateAebConsequenceCase(value) {
             reason = 'provider_proven_not_committed';
         else if (observation.effect_relation === 'DIVERGED')
             reason = 'provider_committed_effect_diverged';
+        else if (observation.effect_relation === 'NOT_OBSERVED')
+            reason = 'provider_committed_effect_not_observed';
+        else if (observation.effect_relation === 'INDETERMINATE')
+            reason = 'provider_committed_effect_indeterminate';
         else
             reason = 'provider_committed_effect_observed';
         return result(assessment, {
