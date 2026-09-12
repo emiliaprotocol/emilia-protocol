@@ -38,8 +38,8 @@ function resolveImplementationRoot(sourceRoot, treePath) {
     }
     return fs.realpathSync(candidate);
 }
-export function evaluateExternalImplementationV3({ manifestPath, sourcePath, runnerPath, attestationPath, trustedAttestorsPath, emitPath, allowUnsafeLocalExecution = false, }) {
-    if (allowUnsafeLocalExecution !== true) {
+export function evaluateExternalImplementationV3({ manifestPath, sourcePath, runnerPath, attestationPath, trustedAttestorsPath, emitPath, allowUnsafeLocalExecution = false, dockerImage = null, }) {
+    if (!dockerImage && allowUnsafeLocalExecution !== true) {
         throw new Error('external runner execution refused: explicit unsafe-local-execution acknowledgement is required');
     }
     const manifestAbsolute = path.resolve(manifestPath);
@@ -102,7 +102,8 @@ export function evaluateExternalImplementationV3({ manifestPath, sourcePath, run
             attestationPath: path.resolve(attestationPath),
             trustedAttestorsPath: path.resolve(trustedAttestorsPath),
             requireAcceptance: true,
-            allowUnsafeLocalExecution: true,
+            allowUnsafeLocalExecution: !dockerImage,
+            dockerImage,
         });
     }
     finally {
@@ -124,11 +125,11 @@ export function evaluateExternalImplementationV3({ manifestPath, sourcePath, run
             runner_dependency_closure_verified: false,
             fixed_argument_targets_pinned: false,
             entrypoint_path_toctou_excluded: false,
-            operator_acknowledged_unsafe_local_execution: true,
+            operator_acknowledged_unsafe_local_execution: !dockerImage,
             inherited_environment: false,
-            network_sandbox: false,
-            filesystem_read_sandbox: false,
-            system_dependency_isolation: false,
+            network_sandbox: Boolean(dockerImage),
+            filesystem_read_sandbox: Boolean(dockerImage),
+            system_dependency_isolation: Boolean(dockerImage),
         },
     };
     delete report.report_sha256;
@@ -146,6 +147,7 @@ function cliOptions(argv) {
         '--attestation',
         '--trusted-attestors',
         '--emit',
+        '--docker-image',
         '--allow-unsafe-local-execution',
     ]);
     const values = new Map();
@@ -163,11 +165,11 @@ function cliOptions(argv) {
             throw new Error(`${argument} requires a value`);
         values.set(argument, value);
     }
-    for (const key of [...allowed].filter((entry) => entry !== '--allow-unsafe-local-execution')) {
+    for (const key of [...allowed].filter((entry) => !['--allow-unsafe-local-execution', '--docker-image'].includes(entry))) {
         if (!values.get(key)) {
             throw new Error('usage: evaluate-external-implementation-v3 --manifest FILE --source CHECKOUT '
                 + '--runner EXECUTABLE --attestation FILE --trusted-attestors FILE --emit FILE '
-                + '--allow-unsafe-local-execution');
+                + '(--docker-image IMAGE@sha256:DIGEST | --allow-unsafe-local-execution)');
         }
     }
     return {
@@ -178,6 +180,7 @@ function cliOptions(argv) {
         trustedAttestorsPath: values.get('--trusted-attestors'),
         emitPath: values.get('--emit'),
         allowUnsafeLocalExecution,
+        dockerImage: values.get('--docker-image'),
     };
 }
 if (process.argv[1]

@@ -109,6 +109,27 @@ node --import ./scripts/ts-loader/register.mjs \
   --emit /tmp/evaluation.json
 ```
 
+For evaluator-controlled Docker isolation, replace the unsafe acknowledgement
+with an image reference pinned by registry digest:
+
+```sh
+node --import ./scripts/ts-loader/register.mjs \
+  scripts/verify-clean-room-submission-v3.mts \
+  --manifest /path/to/submission.json \
+  --runner /path/to/read-only-runner \
+  --docker-image runtime.example/verifier@sha256:FULL_DIGEST \
+  --emit /tmp/evaluation.json
+```
+
+The isolated mode mounts only the submitted runner and the randomized
+execution input, both read-only. It does not mount the repository, catalogue,
+expectations, or evaluator directory. The container runs without network,
+capabilities, privilege gain, or a writable root filesystem, as UID/GID
+65532, with CPU, memory, process, temporary-filesystem, timeout, and captured
+output bounds. The report binds both the requested image digest and Docker's
+resolved image ID. The pinned image must contain any interpreter or dynamic
+libraries the submitted artifact needs.
+
 Require a separately signed construction claim:
 
 ```sh
@@ -137,9 +158,10 @@ node --import ./scripts/ts-loader/register.mjs \
   --emit /tmp/external-evaluation.json
 ```
 
-Both commands default to refusing local runner execution. The acknowledgement
-flag is deliberately explicit because the runner is untrusted and no process,
-filesystem, or network sandbox is installed. It does not weaken that boundary.
+Both commands default to refusing runner execution. Use a pinned Docker image
+for bounded isolation. The unsafe acknowledgement remains available for local
+diagnostics and reports all sandbox fields as false; it does not create or
+weaken an isolation claim.
 The evaluator scrubs its inherited environment and supplies only `PATH`,
 `LANG`, `LC_ALL`, and `TZ` to the child, preventing ordinary credential
 variables from being inherited.

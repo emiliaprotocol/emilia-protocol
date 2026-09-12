@@ -485,7 +485,7 @@ function runnerEnvironment() {
         TZ: 'UTC',
     };
 }
-function executeSession(session, runner, runnerManifest, temporary, label) {
+function executeSession(session, runner, runnerManifest, temporary, label, docker) {
     verifyRunnerArtifactV2(runnerManifest, runner.path);
     const target = path.join(temporary, `${crypto.randomBytes(16).toString('hex')}.json`);
     fs.writeFileSync(target, session.executionBytes, { mode: 0o444 });
@@ -493,7 +493,20 @@ function executeSession(session, runner, runnerManifest, temporary, label) {
     let stdout = '';
     let runnerError = null;
     try {
-        stdout = execFileSync(runner.path, [...runnerManifest.fixed_arguments, target], {
+        const command = docker?.command ?? runner.path;
+        const args = docker
+            ? [
+                'run', '--rm', '--network', 'none', '--read-only',
+                '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+                '--user', '65532:65532', '--pids-limit', '128', '--memory', '512m',
+                '--cpus', '1', '--tmpfs', '/tmp:rw,noexec,nosuid,nodev,size=16m',
+                '--mount', `type=bind,src=${runner.path},dst=/runner,readonly`,
+                '--mount', `type=bind,src=${target},dst=/input.json,readonly`,
+                '--entrypoint', '/runner', docker.image,
+                ...runnerManifest.fixed_arguments, '/input.json',
+            ]
+            : [...runnerManifest.fixed_arguments, target];
+        stdout = execFileSync(command, args, {
             cwd: temporary,
             encoding: 'utf8',
             timeout: 180_000,
@@ -515,7 +528,7 @@ function executeSession(session, runner, runnerManifest, temporary, label) {
     }
     return validateResultRowsV3(session, parseRunnerOutput(stdout, label));
 }
-export function verifyCleanRoomSubmissionV3({ manifestPath, runnerPath, attestationPath, trustedAttestorsPath, emitPath, requireAcceptance = false, allowUnsafeLocalExecution = false, root = ROOT, }) {
+export function verifyCleanRoomSubmissionV3({ manifestPath, runnerPath, attestationPath, trustedAttestorsPath, emitPath, requireAcceptance = false, allowUnsafeLocalExecution = false, dockerImage = null, dockerCommand = 'docker', root = ROOT, }) {
     const kit = loadPinnedKitV3({ root });
     const { value: manifest } = readJson(path.resolve(manifestPath), 'submission manifest');
     verifySubmissionManifestV3(manifest, kit);
@@ -530,8 +543,25 @@ export function verifyCleanRoomSubmissionV3({ manifestPath, runnerPath, attestat
     if (requireAcceptance && acceptance.accepted !== true) {
         throw new Error('external clean-room acceptance refused: independent attestation is required');
     }
-    if (allowUnsafeLocalExecution !== true) {
+    if (!dockerImage && allowUnsafeLocalExecution !== true) {
         throw new Error('local runner execution refused: explicit unsafe-local-execution acknowledgement is required');
+    }
+    let docker = null;
+    if (dockerImage) {
+        if (!/@sha256:[a-f0-9]{64}$/.test(dockerImage)) {
+            throw new Error('docker isolation requires an image reference pinned by sha256 digest');
+        }
+        const inspected = execFileSync(dockerCommand, ['image', 'inspect', dockerImage, '--format', '{{.Id}}'], {
+            encoding: 'utf8',
+            timeout: 30_000,
+            maxBuffer: 1024 * 1024,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: runnerEnvironment(),
+        }).trim();
+        if (!/^sha256:[a-f0-9]{64}$/.test(inspected)) {
+            throw new Error('docker isolation could not resolve the pinned image identity');
+        }
+        docker = { command: dockerCommand, image: dockerImage, imageId: inspected };
     }
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-v3-eval-'));
     const suites = [];
@@ -544,7 +574,7 @@ export function verifyCleanRoomSubmissionV3({ manifestPath, runnerPath, attestat
         // false table fail this narrow computation challenge. This is not a claim
         // of process isolation or freedom from entrypoint-path TOCTOU races.
         const challenge = buildPostBuildChallengesV3(kit);
-        const challengeRows = executeSession(challenge, runner, manifest.runner, temporary, 'post-build canonicalization challenge');
+        const challengeRows = executeSession(challenge, runner, manifest.runner, temporary, 'post-build canonicalization challenge', docker);
         challengeReport = {
             status: 'pass',
             suite: 'conformance/vectors/canonicalization.v1.json',
@@ -571,7 +601,7 @@ export function verifyCleanRoomSubmissionV3({ manifestPath, runnerPath, attestat
             const session = buildExecutionSessionV3(contract, {
                 randomBytes: deterministicRandomBytes(randomizationSeed, SESSION_RANDOMIZER),
             });
-            const rows = executeSession(session, runner, manifest.runner, temporary, contract.path);
+            const rows = executeSession(session, runner, manifest.runner, temporary, contract.path, docker);
             vectorCount += rows.length;
             suites.push({
                 path: contract.path,
@@ -613,7 +643,30 @@ export function verifyCleanRoomSubmissionV3({ manifestPath, runnerPath, attestat
             vector_order: 'random_per_run',
             session_randomizer: sessionRandomizer,
             session_randomizer_contract_sha256: canonicalDigest(sessionRandomizer),
-            process_sandbox: false,
+            process_sandbox: docker !== null,
+            network_sandbox: docker !== null,
+            filesystem_read_sandbox: docker !== null,
+            ...(docker ? {
+                sandbox: {
+                    kind: 'docker',
+                    image: docker.image,
+                    image_id: docker.imageId,
+                    network: 'none',
+                    root_filesystem: 'read_only',
+                    mounts: ['submitted_runner:read_only', 'execution_input:read_only'],
+                    repository_mounted: false,
+                    evaluator_expectations_mounted: false,
+                    user: '65532:65532',
+                    capabilities: 'none',
+                    no_new_privileges: true,
+                    pids_limit: 128,
+                    memory_limit: '512m',
+                    cpu_limit: '1',
+                    temporary_filesystem: '16m,noexec,nosuid,nodev',
+                    output_limit_bytes: 67108864,
+                    timeout_ms: 180000,
+                },
+            } : {}),
             inherited_environment: false,
             runner_environment_variables: ['PATH', 'LANG', 'LC_ALL', 'TZ'],
         },
@@ -662,6 +715,7 @@ function cliOptions(argv) {
             '--attestation',
             '--trusted-attestors',
             '--emit',
+            '--docker-image',
         ].includes(argument)) {
             throw new Error(`unknown argument: ${argument}`);
         }
@@ -674,7 +728,7 @@ function cliOptions(argv) {
     const runnerPath = values.get('--runner');
     if (!manifestPath || !runnerPath) {
         throw new Error('usage: verify-clean-room-submission-v3 --manifest FILE --runner EXECUTABLE '
-            + '--allow-unsafe-local-execution '
+            + '(--docker-image IMAGE@sha256:DIGEST | --allow-unsafe-local-execution) '
             + '[--attestation FILE --trusted-attestors FILE] [--require-acceptance] [--emit FILE]');
     }
     return {
@@ -685,6 +739,7 @@ function cliOptions(argv) {
         emitPath: values.get('--emit'),
         requireAcceptance,
         allowUnsafeLocalExecution,
+        dockerImage: values.get('--docker-image'),
     };
 }
 if (process.argv[1]
