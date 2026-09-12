@@ -13,6 +13,9 @@
 
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { SignedXml } from 'xml-crypto';
 import { buildSamlSp, buildLoginUrl, validateSamlResponse, spMetadata } from '../lib/sso/saml.js';
 
@@ -25,8 +28,15 @@ const IDP_ENTRY = 'https://idp.example.com/sso';
 // signed positive and hostile cases. No private keys are committed.
 function genCert(): any {
   const key = execFileSync('openssl', ['genrsa', '2048'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-  const cert = execFileSync('openssl', ['req', '-new', '-x509', '-key', '/dev/stdin', '-days', '2', '-subj', '/CN=fixture-idp'], { input: key, encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
-  return { key, cert, certBody: cert.replace(/-----(BEGIN|END) CERTIFICATE-----/g, '').replace(/\s+/g, '') };
+  const fixtureDir = mkdtempSync(join(tmpdir(), 'emilia-saml-idp-'));
+  const keyPath = join(fixtureDir, 'idp.key');
+  try {
+    writeFileSync(keyPath, key, { encoding: 'utf8', mode: 0o600 });
+    const cert = execFileSync('openssl', ['req', '-new', '-x509', '-key', keyPath, '-days', '2', '-subj', '/CN=fixture-idp'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    return { key, cert, certBody: cert.replace(/-----(BEGIN|END) CERTIFICATE-----/g, '').replace(/\s+/g, '') };
+  } finally {
+    rmSync(fixtureDir, { recursive: true, force: true });
+  }
 }
 
 const idp = genCert();
