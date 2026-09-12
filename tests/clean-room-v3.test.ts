@@ -689,6 +689,54 @@ process.stdout.write(execFileSync(source('/runner'), [...fixed, source('/input.j
     }
   }, 60_000);
 
+  it('force-removes only the container recorded for a failed Docker session', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-v3-docker-cleanup-'));
+    try {
+      const runner = path.join(dir, 'runner');
+      const manifestPath = path.join(dir, 'submission.json');
+      const docker = path.join(dir, 'docker');
+      const log = path.join(dir, 'docker-args.jsonl');
+      const cid = 'c'.repeat(64);
+      buildReferenceRunner(runner, path.resolve('conformance/runners/run-js-v3.mjs'));
+      writeJson(manifestPath, submissionFor(runner));
+      fs.writeFileSync(docker, `#!/usr/bin/env node
+import fs from 'node:fs';
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + '\\n');
+if (args[0] === 'image' && args[1] === 'inspect') {
+  process.stdout.write('sha256:${'b'.repeat(64)}\\n');
+  process.exit(0);
+}
+if (args[0] === 'run') {
+  const cidfile = args[args.indexOf('--cidfile') + 1];
+  fs.writeFileSync(cidfile, ${JSON.stringify(cid)} + '\\n');
+  process.stderr.write('runner refused fixture\\n');
+  process.exit(23);
+}
+if (args[0] === 'rm') process.exit(0);
+process.exit(99);
+`);
+      fs.chmodSync(docker, 0o755);
+
+      expect(() => verifyCleanRoomSubmissionV3({
+        manifestPath,
+        runnerPath: runner,
+        dockerImage: `example.invalid/runner@sha256:${'a'.repeat(64)}`,
+        dockerCommand: docker,
+      })).toThrow(/runner refused fixture/);
+
+      const invocations = fs.readFileSync(log, 'utf8').trim().split('\n')
+        .map((line) => JSON.parse(line));
+      const run = invocations.find((args) => args[0] === 'run');
+      expect(run).toEqual(expect.arrayContaining(['--cidfile']));
+      expect(invocations.filter((args) => args[0] === 'rm')).toEqual([
+        ['rm', '--force', cid],
+      ]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   const dockerImage = process.env.EP_CLEAN_ROOM_DOCKER_IMAGE;
   (dockerImage ? it : it.skip)('executes the complete corpus in a real pinned Docker image', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-v3-real-docker-'));
