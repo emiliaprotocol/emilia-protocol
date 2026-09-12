@@ -178,6 +178,7 @@ scripts/evaluate-external-implementation-v2.mjs linguist-generated=true
 scripts/evaluate-external-implementation-v3.mjs linguist-generated=true
 scripts/gen-python-fixture.mjs linguist-generated=true
 scripts/generate-conformance-manifest.mjs linguist-generated=true
+scripts/sync-current-clean-room-pins.mjs linguist-generated=true
 scripts/generate-llm-context.mjs linguist-generated=true
 scripts/generate-proof-metrics.mjs linguist-generated=true
 scripts/generate-proof-stats.mjs linguist-generated=true
