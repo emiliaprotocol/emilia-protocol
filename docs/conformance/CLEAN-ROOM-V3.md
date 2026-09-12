@@ -179,9 +179,11 @@ variables from being inherited.
 - Only the entrypoint file and fixed-argument values are hashed. Fixed-argument
   target bytes, the interpreter, imported files, and dynamic libraries are not
   content-addressed as one dependency closure.
-- The evaluator starts a normal local process. It does not provide a network,
-  filesystem, syscall, namespace, container, or virtual-machine sandbox.
-- The pinned-tree export excludes relative untracked helpers, but a runner can
+- Unsafe local mode starts a normal process without a network, filesystem,
+  syscall, namespace, container, or virtual-machine sandbox. Docker mode applies
+  the isolation controls described above; it does not establish clean-room
+  provenance for the image contents or protect against a compromised Docker host.
+- In unsafe local mode, the pinned-tree export excludes relative untracked helpers, but a runner can
   still read or execute any absolute host path allowed to the evaluator account
   and can make network calls unless the operator supplies external isolation.
 - A verified third-party signature is a bounded attestation check, not proof

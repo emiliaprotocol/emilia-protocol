@@ -154,6 +154,7 @@
     "conformance:manifest:clean-room": "node scripts/check-frozen-clean-room.mjs",
     "conformance:manifest:clean-room:check": "node scripts/check-frozen-clean-room.mjs",
     "conformance:hostility": "node scripts/differential-hostility.mjs",
+    "conformance:hostility:current": "node scripts/differential-hostility.mjs --manifest conformance/conformance-manifest.json",
     "check:bounded-execution-artifacts": "node --import ./scripts/ts-loader/register.mjs conformance/vectors/generate-bounded-execution-program.mjs --check && node --import ./scripts/ts-loader/register.mjs conformance/vectors/generate-bounded-execution-report.mjs --check && node --import ./scripts/ts-loader/register.mjs conformance/vectors/generate-bounded-execution-acceptance.mjs --check",
     "check:public-conformance-claims": "node scripts/check-public-conformance-claims.mjs",
     "proof:gate:reference": "node scripts/run-gate-reference-proof.mjs",
