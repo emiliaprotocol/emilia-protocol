@@ -86,6 +86,10 @@ for (const { name, basename, packet } of [
 
 for (const required of [
   'admission-control domain',
+  'recheck direct revocation and every authority-bearing cascade-mode ancestor',
+  'Revocation that commits after reservation but before provider entry',
+  'revocation-entry-conformance',
+  'Entry-time direct and inherited revocation revalidation is not yet implemented',
   'captured at reservation',
   'decrease <tt>reserved</tt>, and increase <tt>consumed</tt>',
   'budget again',

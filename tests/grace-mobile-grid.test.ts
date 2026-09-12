@@ -410,6 +410,64 @@ describe('phone to COSA to meter to Action State to settlement', () => {
     expect(state.actuator.invocationCount()).toBe(0);
   });
 
+  it.each([
+    ['missing notice floor', { min_notice_minutes: undefined }],
+    ['malformed notice floor', { min_notice_minutes: 'bad' }],
+    ['null notice floor', { min_notice_minutes: null }],
+    ['zero notice floor', { min_notice_minutes: 0 }],
+    ['missing participation window', { window: undefined }],
+    ['malformed participation window', { window: { start: 'bad', end: 'bad' } }],
+    ['partial participation window', { window: { start: envelope.bounds.window.start } }],
+    ['reversed participation window', {
+      window: { start: envelope.bounds.window.end, end: envelope.bounds.window.start },
+    }],
+    ['calendar-rollover participation window', {
+      window: { start: '2026-06-31T00:00:00Z', end: envelope.bounds.window.end },
+    }],
+    ['date-only participation window', {
+      window: { start: '2026-06-01', end: envelope.bounds.window.end },
+    }],
+    ['local-time participation window', {
+      window: { start: envelope.bounds.window.start, end: '2026-09-30T23:59:59' },
+    }],
+    ['invalid-offset participation window', {
+      window: { start: '2026-06-01T00:00:00+24:00', end: envelope.bounds.window.end },
+    }],
+  ])('refuses %s before dispatch or settlement', async (_name, bounds) => {
+    const state = runtime();
+    const { result, settlements } = await run({
+      state, envelope: { ...envelope, bounds: { ...envelope.bounds, ...bounds } },
+    });
+    expect(result).toMatchObject({ ok: false, verdict: 'refuse_outside_envelope' });
+    expect(result.containment.within).toBe(false);
+    expect(state.actuator.invocationCount()).toBe(0);
+    expect(settlements).toBe(0);
+  });
+
+  it('preserves dispatch at the exact notice floor and both participation-window edges', async () => {
+    const { result, state, settlements } = await run({
+      envelope: { ...envelope, bounds: {
+        ...envelope.bounds,
+        min_notice_minutes: 15,
+        window: { start: action.window.not_before, end: action.window.not_after },
+      } },
+    });
+    expect(result.verdict).toBe('executed_measured_settled');
+    expect(state.actuator.invocationCount()).toBe(1);
+    expect(settlements).toBe(1);
+  });
+
+  it('preserves dispatch with equivalent explicit-offset participation bounds', async () => {
+    const { result, state, settlements } = await run({
+      envelope: { ...envelope, bounds: { ...envelope.bounds, window: {
+        start: '2026-07-15T13:15:00.000-07:00', end: '2026-07-15T23:45:00.000+02:00',
+      } } },
+    });
+    expect(result.verdict).toBe('executed_measured_settled');
+    expect(state.actuator.invocationCount()).toBe(1);
+    expect(settlements).toBe(1);
+  });
+
   it('refuses an inactive or expired action before touching COSA', async () => {
     const state = runtime();
     const auth = authorizationFixture();

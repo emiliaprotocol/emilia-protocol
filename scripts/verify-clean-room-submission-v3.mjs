@@ -589,8 +589,8 @@ export function verifyCleanRoomSubmissionV3({ manifestPath, runnerPath, attestat
     finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
-    if (suites.length !== 21 || vectorCount !== 335) {
-        throw new Error('external clean-room evaluation did not complete all 21 suites and 335 vectors');
+    if (suites.length !== 21 || vectorCount !== 340) {
+        throw new Error('external clean-room evaluation did not complete all 21 suites and 340 vectors');
     }
     const report = {
         '@version': 'EP-CLEAN-ROOM-EVALUATION-v3',

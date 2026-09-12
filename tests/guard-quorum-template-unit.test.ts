@@ -26,10 +26,10 @@ function mockClient(result, { throwOnFrom = false } = {}) {
 }
 
 describe('effectiveQuorumParams', () => {
-  it('ordered mode: effective threshold is the roster size', () => {
-    const p = effectiveQuorumParams({ mode: 'ordered', approvers: [{ role: 'a' }, { role: 'b' }] });
+  it('ordered mode: effective threshold is required, not the roster size', () => {
+    const p = effectiveQuorumParams({ mode: 'ordered', required: 1, approvers: [{ role: 'a' }, { role: 'b' }] });
     expect(p.mode).toBe('ordered');
-    expect(p.required).toBe(2);
+    expect(p.required).toBe(1);
   });
   it('threshold mode: uses a positive integer required', () => {
     expect(effectiveQuorumParams({ mode: 'threshold', required: 3 }).required).toBe(3);
@@ -91,6 +91,12 @@ describe('evaluateQuorumAgainstTemplate', () => {
   it('flags threshold_below_min', () => {
     const r = evaluateQuorumAgainstTemplate({ required: 1 }, normalizeQuorumTemplate({ min_required: 2 }));
     expect(r.violations).toContain('threshold_below_min');
+  });
+  it('an ordered 1-of-3 policy cannot satisfy a three-person template floor', () => {
+    const policy = { mode: 'ordered', required: 1, approvers: ['a', 'b', 'c'].map((approver) => ({ role: approver, approver })) };
+    const result = evaluateQuorumAgainstTemplate(policy, normalizeQuorumTemplate({ min_required: 3 }));
+    expect(result.ok).toBe(false);
+    expect(result.violations).toContain('threshold_below_min');
   });
   it('flags window_exceeds_max', () => {
     const r = evaluateQuorumAgainstTemplate({ required: 2, window_sec: 1000 }, normalizeQuorumTemplate({ max_window_sec: 900 }));

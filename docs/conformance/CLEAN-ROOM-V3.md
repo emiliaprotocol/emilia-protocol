@@ -1,14 +1,15 @@
 # Expectation-separated clean-room evaluation v3
 
 The v3 evaluator repairs the oracle channel in v2. It is a new protocol and
-report version; the published v2 evaluator, bundle, schemas, and prior reports
-remain historical bytes with their original meaning.
+report version. Prior published v2 artifacts and reports remain pinned to
+their original commit and hashes. The current input kits were refreshed on
+September 6 for the Quorum repair; that does not upgrade any earlier result.
 
 This is a partial integrity repair. It does not close issue #250 because it
 does not isolate the runner from evaluator files, other host paths, or the
 network.
 
-V3 evaluates the same pinned 21-suite, 335-vector corpus. Before each runner
+V3 evaluates the same pinned 21-suite, 340-vector corpus. Before each runner
 invocation it builds a new execution envelope that:
 
 1. removes `expect`, the catalogue vector ID, descriptions, failure classes,

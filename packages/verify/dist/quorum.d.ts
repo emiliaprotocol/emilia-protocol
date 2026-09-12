@@ -4,6 +4,7 @@ interface QuorumContext {
     issued_at?: unknown;
     initiator?: unknown;
     prev_context_hash?: unknown;
+    prev_signoff_hash?: unknown;
     [key: string]: unknown;
 }
 interface QuorumMember {
@@ -25,6 +26,7 @@ interface QuorumPolicy {
     distinct_humans?: unknown;
     window_sec?: unknown;
     ordered_chain?: unknown;
+    ordered_chain_profile?: unknown;
     /**
      * HYBRID HUMAN AUTHORIZATION (opt-in, absent = OFF). See the module header.
      * Each counted approver must produce a valid signoff under EVERY algorithm
@@ -44,6 +46,12 @@ interface MemberResult {
     role: unknown;
     valid: boolean;
 }
+export declare const SIGNOFF_CHAIN_PROFILE = "EP-QUORUM-SIGNOFF-CHAIN-v1";
+/** Commits to the completed native signoff, including its signature bytes.
+ * Unlike a precomputable context hash, this establishes a dependency on a
+ * prior proof. It does not establish trusted wall-clock time or comprehension.
+ */
+export declare function completedSignoffHash(signoff: unknown): string;
 /**
  * @param {object} quorum  EP-QUORUM-v1 document:
  *   {
@@ -58,7 +66,9 @@ interface MemberResult {
  *     },
  *     members: [{ role: string, approver_public_key: string, signoff: {context, webauthn} }],
  *   }
- * @param {object} [opts]  Passed through to each per-signer verify (e.g. { rpId }).
+ * @param {object} [opts]  Per-signer options plus expectedPolicy: the complete
+ *   out-of-band policy pin. Without a pin, valid means internal consistency,
+ *   not that the artifact met the relying party's required approval floor.
  * @returns {{ valid: boolean, checks: object, members: Array<{approver:string|null, role:string|null, valid:boolean}> }}
  */
 export declare function verifyQuorum(quorum: QuorumDocument | null | undefined, opts?: Record<string, unknown>): {

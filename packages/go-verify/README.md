@@ -47,6 +47,18 @@ The v2 fixed-arity `VerifyWebAuthnSignoff` and `VerifyQuorum` APIs remain
 source-compatible. Relying parties that pin browser origins use
 `VerifyWebAuthnSignoffWithOrigins` and `VerifyQuorumWithOrigins`.
 
+For an externally required quorum floor, use
+`VerifyQuorumWithPolicy(quorum, rpID, allowedOrigins, expectedPolicy)`. It compares
+the complete policy with the relying party's trusted pin before verification;
+the unpinned APIs establish internal consistency only. Strong ordered policies
+now require `ordered_chain_profile: "EP-QUORUM-SIGNOFF-CHAIN-v1"` and signed
+`prev_signoff_hash` links to completed predecessor proofs. Legacy
+`prev_context_hash` chains are refused by this profile. They cannot be upgraded
+by relabelling: collect new signatures. Plain roster ordering and threshold
+policies remain available only where the relying party permits those weaker
+requirements. The new chain proves causal proof dependence, not trusted time,
+human comprehension, or correct enrollment.
+
 `VerifyTrustReceipt` accepts pinned `approverKeys`, a trusted `logPublicKey`,
 and an optional RFC 3339 `now`. A key entry containing `compromised_at` is
 terminal regardless of the receipt's claimed `issued_at`; when `now` is

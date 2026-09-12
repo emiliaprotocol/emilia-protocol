@@ -1,5 +1,13 @@
 # Bounded Capability Receipts -05 validation
 
+6 September 2026 correction: XML parsing/rendering and idnits were rerun on
+the revised bytes. The packet checker passed with refreshed checksums. The
+protocol and repository-boundary checks were rerun successfully. The earlier
+live PostgreSQL execution described below was not repeated by this editorial
+correction. Direct and inherited revocation rechecks at entry and delegated
+funding commit remain explicitly unimplemented; the new prose is not runtime
+conformance evidence.
+
 - `xmllint --noout`: pass.
 - `xml2rfc 3.34.0`: TXT and HTML rendered successfully.
 - `idnits 3.1.0`: pass, no nit reported.
