@@ -273,6 +273,39 @@ describe('Works workflow production adapter', () => {
     }
   });
 
+  it('fails closed when typed workspace projections contain unknown enum values', async () => {
+    const malformed = [
+      workspace({ listings: [{ record: {}, workflow: { state: 'open', revision: 0, updated_at: null } }] }),
+      workspace({ jobs: [{ record: {}, workflow: { state: 'active', revision: 0, updated_at: null } }] }),
+      workspace({ submitted_proposals: [{
+        record: {}, workflow: { state: 'open', revision: 0, updated_at: null },
+      }] }),
+      workspace({ assignments: [{ viewer_role: 'buyer', assignment: assignment({
+        history: [{ actor_role: 'buyer', command: 'unknown_command', revision: 0,
+          at: '2026-09-07T22:00:00Z', summary: null, reason: null, delivery: null }],
+      }) }] }),
+      workspace({ notifications: [{
+        notification_id: '33333333-3333-4333-8333-333333333333', kind: 'unknown_kind',
+        resource_type: 'proposal', resource_id: 'proposal-one', created_at: '2026-09-07T22:00:00Z',
+        read_at: null, revision: 0,
+      }] }),
+      workspace({ notifications: [{
+        notification_id: '33333333-3333-4333-8333-333333333333', kind: 'proposal_received',
+        resource_type: 'job', resource_id: 'job-one', created_at: '2026-09-07T22:00:00Z',
+        read_at: null, revision: 0,
+      }] }),
+      workspace({ notifications: [{
+        notification_id: 'not-a-uuid', kind: 'proposal_received', resource_type: 'proposal',
+        resource_id: 'proposal-one', created_at: '2026-09-07T22:00:00Z', read_at: null, revision: 0,
+      }] }),
+    ];
+    const store = createSupabaseWorksWorkflowStore();
+    for (const projection of malformed) {
+      rpc.mockResolvedValueOnce({ data: projection, error: null });
+      await expect(store.readWorkspace(ACTOR)).resolves.toMatchObject({ ok: false, code: 'store_invalid' });
+    }
+  });
+
   it('propagates sanitized RPC failures across every workflow operation', async () => {
     const store = createSupabaseWorksWorkflowStore();
     const databaseError = { data: null, error: { code: 'EW403', message: 'private row detail' } };

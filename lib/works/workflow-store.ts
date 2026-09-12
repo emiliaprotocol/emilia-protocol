@@ -11,6 +11,12 @@ import type {
   WorksWorkspaceDto,
   WorksWriteResult,
 } from './workflow-model.js';
+import {
+  WORKS_ASSIGNMENT_STATES,
+  WORKS_JOB_STATES,
+  WORKS_LISTING_STATES,
+  WORKS_PROPOSAL_STATES,
+} from './workflow-model.js';
 
 type RpcClient = Pick<SupabaseClient, 'rpc'>;
 export type WorksWorkflowError = { ok: false; code: string; detail: string };
@@ -31,6 +37,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const PRIVATE_KEYS = new Set([
   'owner_entity_id', 'owner_tenant_id', 'buyer_entity_id', 'builder_entity_id', 'actor_entity_id',
   'idempotency_key', 'request_digest', 'email_claimed_until',
+]);
+const ASSIGNMENT_COMMANDS = new Set([
+  'proposal_selected', 'builder_confirm', 'builder_decline', 'submit_delivery',
+  'request_changes', 'accept_completion', 'cancel',
+]);
+const NOTIFICATION_KINDS = new Set([
+  'proposal_received', 'proposal_declined', 'proposal_selected', 'assignment_confirmed',
+  'assignment_declined', 'delivery_submitted', 'changes_requested', 'completion_accepted',
+  'assignment_cancelled',
 ]);
 
 function failure(code: string, detail: string): WorksWorkflowError {
@@ -79,9 +94,10 @@ function secureHttps(value: unknown): value is string {
   }
 }
 
-function workflow(value: unknown): boolean {
+function workflow(value: unknown, states?: readonly string[]): boolean {
   return object(value)
     && typeof value.state === 'string'
+    && (!states || states.includes(value.state))
     && Number.isSafeInteger(value.revision) && value.revision >= 0
     && (value.updated_at === null || timestamp(value.updated_at));
 }
@@ -91,8 +107,7 @@ function assignment(value: unknown): value is WorksAssignment {
     || !WORKS_ID.test(value.job_id || '') || !WORKS_ID.test(value.proposal_id || '')
     || !WORKS_ID.test(value.builder_id || '')
     || (value.listing_id !== null && !WORKS_ID.test(value.listing_id || ''))
-    || !['proposed', 'confirmed', 'declined', 'delivery_submitted',
-      'changes_requested', 'completed', 'cancelled'].includes(value.state)
+    || !WORKS_ASSIGNMENT_STATES.includes(value.state)
     || !Number.isSafeInteger(value.revision) || value.revision < 0
     || typeof value.scope !== 'string' || typeof value.terms !== 'string'
     || !Array.isArray(value.acceptance_criteria)
@@ -107,7 +122,7 @@ function assignment(value: unknown): value is WorksAssignment {
   let previousRevision = -1;
   const validHistory = value.history.every((event: unknown) => {
     if (!object(event) || !['buyer', 'builder'].includes(event.actor_role)
-      || typeof event.command !== 'string'
+      || typeof event.command !== 'string' || !ASSIGNMENT_COMMANDS.has(event.command)
       || !Number.isSafeInteger(event.revision) || event.revision <= previousRevision
       || event.revision > value.revision
       || !timestamp(event.at)
@@ -146,15 +161,19 @@ function workspace(value: unknown): value is WorksWorkspaceDto {
     || !Array.isArray(value.submitted_proposals) || !Array.isArray(value.received_proposals)
     || !Array.isArray(value.assignments) || !Array.isArray(value.notifications)) return false;
   if (!value.profiles.every(object)) return false;
-  if (![...value.listings, ...value.jobs, ...value.submitted_proposals]
-    .every((item: unknown) => object(item) && object(item.record) && workflow(item.workflow))) return false;
+  if (!value.listings.every((item: unknown) => object(item) && object(item.record)
+    && workflow(item.workflow, WORKS_LISTING_STATES))) return false;
+  if (!value.jobs.every((item: unknown) => object(item) && object(item.record)
+    && workflow(item.workflow, WORKS_JOB_STATES))) return false;
+  if (!value.submitted_proposals.every((item: unknown) => object(item) && object(item.record)
+    && workflow(item.workflow, WORKS_PROPOSAL_STATES))) return false;
   if (!value.received_proposals.every((item: unknown) => object(item)
-    && object(item.job) && object(item.record) && workflow(item.workflow))) return false;
+    && object(item.job) && object(item.record) && workflow(item.workflow, WORKS_PROPOSAL_STATES))) return false;
   if (!value.assignments.every((item: unknown) => object(item)
     && ['buyer', 'builder'].includes(item.viewer_role) && assignment(item.assignment))) return false;
   return value.notifications.every((item: unknown) => object(item)
-    && typeof item.notification_id === 'string' && typeof item.kind === 'string'
-    && typeof item.resource_type === 'string' && WORKS_ID.test(item.resource_id || '')
+    && UUID.test(item.notification_id || '') && NOTIFICATION_KINDS.has(item.kind)
+    && ['proposal', 'assignment'].includes(item.resource_type) && WORKS_ID.test(item.resource_id || '')
     && timestamp(item.created_at) && (item.read_at === null || timestamp(item.read_at))
     && Number.isSafeInteger(item.revision) && item.revision >= 0);
 }
