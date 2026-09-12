@@ -982,19 +982,32 @@ export async function issueAebCrossingRecordV2(
   context: AebCrossingRecordV2IssuanceContext,
   options: AebCrossingRecordIssueOptions,
 ): Promise<AebCrossingRecordV2> {
-  const partial = structuredClone(draft) as AebCrossingRecordV2Draft;
+  // Pin caller-owned expectations before inspecting an untrusted draft. The
+  // strict canonicalizer rejects accessors instead of executing them, unlike
+  // structuredClone. Neither draft getters nor proxy inspection may rewrite
+  // the expected action/domain and turn a mismatch into a signature.
+  const pinnedContext = JSON.parse(canonicalizeAeb(context)) as AebCrossingRecordV2IssuanceContext;
+  const pinnedOptions: AebCrossingRecordIssueOptions = {
+    ...options,
+    signing_keys: options?.signing_keys?.map((key) => ({
+      ...key,
+      private_key: key.private_key instanceof Uint8Array
+        ? new Uint8Array(key.private_key) : key.private_key,
+    })),
+  };
+  const partial = JSON.parse(canonicalizeAeb(draft)) as AebCrossingRecordV2Draft;
   if (
-    !isRecord(context) ||
-    !isRecord(context.action) ||
-    !exactKeys(context.action, ACTION_KEYS) ||
-    canonicalizeAeb(context.action) !== canonicalizeAeb(partial.action)
+    !isRecord(pinnedContext) ||
+    !isRecord(pinnedContext.action) ||
+    !exactKeys(pinnedContext.action, ACTION_KEYS) ||
+    canonicalizeAeb(pinnedContext.action) !== canonicalizeAeb(partial.action)
   )
     throw new CrossingRecordError("action_mismatch");
   if (
-    !isRecord(context.admission_domain) ||
-    !exactKeys(context.admission_domain, BOUNDARY_KEYS) ||
-    !Object.values(context.admission_domain).every(identifier) ||
-    canonicalizeAeb(context.admission_domain) !==
+    !isRecord(pinnedContext.admission_domain) ||
+    !exactKeys(pinnedContext.admission_domain, BOUNDARY_KEYS) ||
+    !Object.values(pinnedContext.admission_domain).every(identifier) ||
+    canonicalizeAeb(pinnedContext.admission_domain) !==
       canonicalizeAeb(partial.boundary)
   )
     throw new CrossingRecordError("admission_domain_mismatch");
@@ -1017,10 +1030,10 @@ export async function issueAebCrossingRecordV2(
   const reason = validateV2Body(body);
   if (reason) throw new CrossingRecordError(reason);
   if (
-    !Array.isArray(options?.signing_keys) ||
-    options.signing_keys.length !==
+    !Array.isArray(pinnedOptions.signing_keys) ||
+    pinnedOptions.signing_keys.length !==
       AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS.length ||
-    options.signing_keys.some(
+    pinnedOptions.signing_keys.some(
       (key, index) =>
         key.alg !== AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS[index],
     )
@@ -1028,8 +1041,8 @@ export async function issueAebCrossingRecordV2(
     throw new CrossingRecordError("algorithm_set_mismatch");
   const signatures = await signAgileSet(
     crossingRecordV2SignedBytes(body),
-    options.signing_keys,
-    options,
+    pinnedOptions.signing_keys,
+    pinnedOptions,
   );
   return { "@version": AEB_CROSSING_RECORD_V2_VERSION, body, signatures };
 }

@@ -383,6 +383,54 @@ test("v2 refuses admission-domain, action, authority, and freshness substitution
   }
 });
 
+test("v2 issuance never executes draft accessors to rewrite trusted action pins", async () => {
+  const record = await issueV2();
+  const { signature_profile, contract_digest, admission_domain_digest, ...draft } = record.body;
+  const context = { action: { ...ACTION }, admission_domain: { ...BOUNDARY } };
+  const replacement = { ...ACTION, action_digest: `sha256:${"01".repeat(32)}` };
+  let reads = 0;
+  Object.defineProperty(draft, "action", {
+    enumerable: true,
+    get() { reads++; Object.assign(context.action, replacement); return replacement; },
+  });
+  await assert.rejects(() => issueAebCrossingRecordV2(draft, context, {
+    signing_keys: [...SIGNERS], mldsaBackend,
+  }));
+  assert.equal(reads, 0);
+  assert.deepEqual(context.action, ACTION);
+});
+
+test("v2 issuance snapshots action pins before inspecting a hostile draft", async () => {
+  const record = await issueV2();
+  const { signature_profile, contract_digest, admission_domain_digest, ...draft } = record.body;
+  const context = { action: { ...ACTION }, admission_domain: { ...BOUNDARY } };
+  draft.action = { ...ACTION, action_digest: `sha256:${"01".repeat(32)}` };
+  const hostile = new Proxy(draft, {
+    ownKeys(target) { Object.assign(context.action, target.action); return Reflect.ownKeys(target); },
+  });
+  await assert.rejects(() => issueAebCrossingRecordV2(hostile, context, {
+    signing_keys: [...SIGNERS], mldsaBackend,
+  }));
+});
+
+test("v2 issuance snapshots signing keys before asynchronous signing yields", async () => {
+  const record = await issueV2();
+  const { signature_profile, contract_digest, admission_domain_digest, ...draft } = record.body;
+  const options = {
+    signing_keys: SIGNERS.map((key) => ({ ...key })),
+    mldsaBackend,
+  };
+  const pending = issueAebCrossingRecordV2(draft, {
+    action: ACTION, admission_domain: BOUNDARY,
+  }, options);
+  options.signing_keys.length = 0;
+  const result = await pending;
+  assert.equal(result.signatures.length, 2);
+  assert.equal((await verifyAebCrossingRecordV2(result, {
+    verification_keys: [...VERIFICATION_KEYS], mldsaBackend,
+  })).verified, true);
+});
+
 test("v1 and v2 reject downgrade, relabeling, and cross-version verification", async () => {
   const v1 = await issue();
   const v2 = await issueV2();
