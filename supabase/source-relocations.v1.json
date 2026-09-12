@@ -1,0 +1,12 @@
+{
+  "schema_version": "EP-MIGRATION-SOURCE-RELOCATIONS-v1",
+  "destination_repository": "emiliaprotocol/emilia-company",
+  "destination_root": "commercial/emilia-works/supabase/migrations",
+  "custody_reference": "emiliaprotocol/emilia-company#127",
+  "files": {
+    "20260809063111_works_records.sql": "1c4bc077bfa7dc4bd3cf5667169db9be91c5ac132cef9f4816e68d403de09aa7",
+    "20260814070000_works_authority_records.sql": "71e0bc908fa946c81ffa0083ab1c021bfdbb936729be4d2113470b07699824be",
+    "20260907235809_works_accounts.sql": "9f63f7bc3c8327ca5060fe906fc3bdc84278cedfa24a778fca563ca6ffbc57c2",
+    "20260907235858_works_workflow.sql": "a64b5c85e6481eabf967e70aa7bc2bcaf21b2f5462ee06a24599195d87be1350"
+  }
+}
