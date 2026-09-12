@@ -7,6 +7,30 @@ import {
 } from '../scripts/check-repository-boundary.js';
 
 describe('public/private repository boundary', () => {
+  it('keeps the operated Works app, tests and migrations in the private company repository', () => {
+    const files = [
+      'app/works/page.tsx', 'app/api/works/account/route.ts',
+      'lib/works/accounts.ts', 'docs/works/deployment.md',
+      'tests/works-account.test.ts', 'commercial/emilia-score/server.mjs',
+      'supabase/migrations/20260912000000_works_accounts.sql',
+      'e2e/marketplace-entry.spec.ts', 'scripts/prepare-works-authority-scan.mjs',
+      'scripts/verify-works-operating-postgres.mjs',
+      'public/marketplace-tool-inspection-v1.webp',
+    ];
+    expect(findRepositoryBoundaryViolations(files)).toEqual([...files].sort());
+    expect(findRepositoryBoundaryViolations(['./app/works/page.tsx', 'lib\\works\\store.ts']))
+      .toEqual(['app/works/page.tsx', 'lib/works/store.ts']);
+  });
+
+  it('allows open plugin discovery, compatibility badges and shared database safeguards', () => {
+    expect(findRepositoryBoundaryViolations([
+      '.claude-plugin/marketplace.json', 'public/badge/works-with-emilia.svg',
+      'packages/gate/index.js', 'packages/scan/index.js',
+      'supabase/migration-history.v1.json', 'scripts/db-contract.manifest.mts',
+      'components/workforce/WorkforceStory.tsx',
+    ])).toEqual([]);
+  });
+
   it('refuses canonical private paths and confidential document names', () => {
     expect(findRepositoryBoundaryViolations([
       'docs/strategy-private/buyer-map.md',

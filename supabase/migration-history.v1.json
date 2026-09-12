@@ -3,7 +3,11 @@
   "as_of": "2026-09-07",
   "remote_head": "20260907235858",
   "private_remote_versions": [
-    "20260723192504"
+    "20260723192504",
+    "20260809063111",
+    "20260814070000",
+    "20260907235809",
+    "20260907235858"
   ],
   "retroactive_pending_versions": [
     "20260826140000",
@@ -425,9 +429,7 @@
     "20260805120000_cloud_signoff_escalation_once.sql": "9b35687ab6112bd239873feaa17327220f5c3b872960377ec274c86c2fcd359b",
     "20260807010000_capability_revocation_inheritance.sql": "76bb3eef12a13b3d308de9fcdf531ab98799201fce4d874d1a78de3d084c7f9d",
     "20260808233000_github_deployment_delivery_queue.sql": "64ff2ea3e40f9c56281dd6c7d0af97cba6fa15efaeec500acbcede00541d7423",
-    "20260809063111_works_records.sql": "1c4bc077bfa7dc4bd3cf5667169db9be91c5ac132cef9f4816e68d403de09aa7",
     "20260813010000_gate_emergency_authority_freeze.sql": "e9261d3635ba1cae7e4b95ba293ce611d4cbe54b472e64444987e4f828df3658",
-    "20260814070000_works_authority_records.sql": "71e0bc908fa946c81ffa0083ab1c021bfdbb936729be4d2113470b07699824be",
     "20260818090000_approver_credential_signature_algorithm.sql": "3935b254545fc52e357e0cb3b05806cb10295dc3537c0b4ceb4cf33f67da8aba",
     "20260825130000_receipt_api_key_permissions.sql": "4d6a23bf025fc1a6ae21401fa185a5f8f406ac41f43fd3117fbcbb10e80c1f65",
     "20260826010000_pilot_observe_permission.sql": "534c56daf65a00ec2f8057a2d8f7625825b4cb92adf59ae53816fc922bd9a2b0",
@@ -437,8 +439,6 @@
     "20260826150000_identity_proof_and_mobile_pairing_closure.sql": "eed7f69bf6f0139ad727c0c208d9c35959fcbd36611052a6860f4d5c14637549",
     "20260826160000_continuity_and_pairing_residual_closure.sql": "60a2c0571620db6fc7f8e4e69288866ad3a9dfbd4e18124b7dc4f9a05d864d86",
     "20260826170000_identity_runtime_residual_closure.sql": "b211532e1e33923a34f0c9a998704244eae78ee083b7dce503934133ac140b91",
-    "20260901190000_aeb_released_not_entered.sql": "f736ca3f444d9027e110f5368fe79c060378b1da465cd4c3c7417ba7f1119f92",
-    "20260907235809_works_accounts.sql": "9f63f7bc3c8327ca5060fe906fc3bdc84278cedfa24a778fca563ca6ffbc57c2",
-    "20260907235858_works_workflow.sql": "a64b5c85e6481eabf967e70aa7bc2bcaf21b2f5462ee06a24599195d87be1350"
+    "20260901190000_aeb_released_not_entered.sql": "f736ca3f444d9027e110f5368fe79c060378b1da465cd4c3c7417ba7f1119f92"
   }
 }

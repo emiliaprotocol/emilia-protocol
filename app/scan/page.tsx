@@ -7,7 +7,6 @@ import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font, radius } from '@/lib/tokens';
 import mcpGuardPackage from '../../packages/mcp-guard/package.json';
 import scanPackage from '../../packages/scan/package.json';
-import { isWorksV0Enabled } from '@/lib/works/env';
 
 export const metadata: Metadata = {
   title: 'EMILIA Gate Starter — Map and Prepare One Agent Boundary',
@@ -143,7 +142,6 @@ export default function AuthorityScanPage(): React.ReactElement {
                 Inspect the package and run it
               </a>
               <a href="#sample" style={cta.secondary}>Try the built-in sample</a>
-              {isWorksV0Enabled() && <Link href="/works/scan" style={cta.secondary}>Scan JSON in your browser</Link>}
             </div>
             <p style={{ fontFamily: font.mono, fontSize: 11, lineHeight: 1.65, color: color.t3, maxWidth: 820, margin: '18px 0 0' }}>
               Replace sendWire with one exact name from your declared MCP surface. The command does not

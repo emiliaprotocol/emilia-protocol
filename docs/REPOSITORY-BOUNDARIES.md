@@ -30,6 +30,21 @@ The private companion repository owns:
 - customer-, prospect-, pilot-, and deployment-specific documents; and
 - internal operating decisions and submission operations.
 
+The operated Works marketplace also belongs in the private repository under
+`commercial/emilia-works`: its pages, APIs, accounts, billing, assignments,
+application services, tests, deployment instructions and database migrations.
+The newer Score application remains a separate private product. Neither belongs
+in the public protocol tree.
+
+The public repository keeps the open Gate and scan packages, neutral plugin
+discovery metadata and the `works-with-emilia` compatibility badge. Historical
+database version identifiers and shared database security checks remain here so
+that removing application source does not hide deployed schema obligations.
+Transferred migrations must not be replayed or edited in production.
+
+Moving a file does not erase its public Git history or revoke its published
+license. New company implementation work must start in the private repository.
+
 The private repository is not a protocol dependency. Public builds, tests,
 verification, conformance, and standards artifacts MUST remain reproducible
 without access to it.
