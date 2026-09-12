@@ -56,6 +56,7 @@ export function evaluateExternalImplementationV3({
   trustedAttestorsPath,
   emitPath,
   allowUnsafeLocalExecution = false,
+  dockerImage = null,
 }: {
   manifestPath: string;
   sourcePath: string;
@@ -64,8 +65,9 @@ export function evaluateExternalImplementationV3({
   trustedAttestorsPath: string;
   emitPath: string;
   allowUnsafeLocalExecution?: boolean;
+  dockerImage?: string | null;
 }): Record<string, any> {
-  if (allowUnsafeLocalExecution !== true) {
+  if (!dockerImage && allowUnsafeLocalExecution !== true) {
     throw new Error(
       'external runner execution refused: explicit unsafe-local-execution acknowledgement is required',
     );
@@ -134,7 +136,8 @@ export function evaluateExternalImplementationV3({
       attestationPath: path.resolve(attestationPath),
       trustedAttestorsPath: path.resolve(trustedAttestorsPath),
       requireAcceptance: true,
-      allowUnsafeLocalExecution: true,
+      allowUnsafeLocalExecution: !dockerImage,
+      dockerImage,
     });
   } finally {
     fs.rmSync(isolated, { recursive: true, force: true });
@@ -155,11 +158,11 @@ export function evaluateExternalImplementationV3({
       runner_dependency_closure_verified: false,
       fixed_argument_targets_pinned: false,
       entrypoint_path_toctou_excluded: false,
-      operator_acknowledged_unsafe_local_execution: true,
+      operator_acknowledged_unsafe_local_execution: !dockerImage,
       inherited_environment: false,
-      network_sandbox: false,
-      filesystem_read_sandbox: false,
-      system_dependency_isolation: false,
+      network_sandbox: Boolean(dockerImage),
+      filesystem_read_sandbox: Boolean(dockerImage),
+      system_dependency_isolation: Boolean(dockerImage),
     },
   };
   delete report.report_sha256;
@@ -178,6 +181,7 @@ function cliOptions(argv: string[]): {
   trustedAttestorsPath: string;
   emitPath: string;
   allowUnsafeLocalExecution: boolean;
+  dockerImage?: string;
 } {
   const allowed = new Set([
     '--manifest',
@@ -186,6 +190,7 @@ function cliOptions(argv: string[]): {
     '--attestation',
     '--trusted-attestors',
     '--emit',
+    '--docker-image',
     '--allow-unsafe-local-execution',
   ]);
   const values = new Map<string, string>();
@@ -202,12 +207,12 @@ function cliOptions(argv: string[]): {
     values.set(argument, value);
   }
   for (const key of [...allowed].filter((entry) =>
-    entry !== '--allow-unsafe-local-execution')) {
+    !['--allow-unsafe-local-execution', '--docker-image'].includes(entry))) {
     if (!values.get(key)) {
       throw new Error(
         'usage: evaluate-external-implementation-v3 --manifest FILE --source CHECKOUT '
         + '--runner EXECUTABLE --attestation FILE --trusted-attestors FILE --emit FILE '
-        + '--allow-unsafe-local-execution',
+        + '(--docker-image IMAGE@sha256:DIGEST | --allow-unsafe-local-execution)',
       );
     }
   }
@@ -219,6 +224,7 @@ function cliOptions(argv: string[]): {
     trustedAttestorsPath: values.get('--trusted-attestors') as string,
     emitPath: values.get('--emit') as string,
     allowUnsafeLocalExecution,
+    dockerImage: values.get('--docker-image'),
   };
 }
 
