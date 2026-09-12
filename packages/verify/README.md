@@ -796,6 +796,21 @@ native authority system. Run the deterministic hostile suite with:
 npm run conformance:composition:crossing-record
 ```
 
+### Version 2 admission-domain binding
+
+`EP-AEB-CROSSING-RECORD-v2` uses a distinct signing domain and adds a typed
+digest over `relying_party_id`, `audience`, `executor_id`, and
+`state_domain_id`. The v2 verifier recomputes that digest from the signed
+record. Generic v2 issuance also requires the evaluated action and admission
+domain as separate inputs and refuses a mismatch before signing.
+
+Use `issueAebCrossingRecordV2` and `verifyAebCrossingRecordV2` for new records
+that need this guarantee. Keep using the v1 verifier for historical v1
+records. Relabeling does not upgrade a v1 record, and neither version is an
+authorization for a later crossing. See
+[`docs/protocol/aeb-crossing-record-v2.md`](../../docs/protocol/aeb-crossing-record-v2.md)
+for migration and retirement rules.
+
 ## Reliance gap reports (acceptance preflight)
 
 `reliance-gap.js` wraps the reliance kernel (`reliance.js`) into a diagnostic:

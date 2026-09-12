@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
@@ -8,13 +9,18 @@ import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
 import {
   AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS,
   AEB_CROSSING_RECORD_VERSION,
+  AEB_CROSSING_RECORD_V2_VERSION,
   BCR_CROSSING_MAPPING_PROFILE,
   WIMSE_OAUTH_CROSSING_MAPPING_PROFILE,
   crossingRecordContractDigest,
+  crossingRecordV2AdmissionDomainDigest,
+  crossingRecordV2ContractDigest,
+  issueAebCrossingRecordV2,
   issueAebCrossingRecord,
   mapBcrCrossingAuthority,
   mapWimseOAuthCrossingAuthority,
   verifyAebCrossingRecord,
+  verifyAebCrossingRecordV2,
 } from "./dist/aeb-crossing-record.js";
 import { digestAebTyped } from "./dist/aeb-adapter-contract.js";
 import { loadDefaultAgilityMldsaBackend } from "./dist/pq-signature-agility.js";
@@ -182,6 +188,44 @@ async function verify(record: unknown) {
   });
 }
 
+async function issueV2(
+  overrides: Record<string, unknown> = {},
+  contextOverrides: Record<string, unknown> = {},
+) {
+  const draft = {
+    record_id: "crossing:finance:v2:0001",
+    operation_id: "operation:vendor-master:v2:0001",
+    issued_at: NOW,
+    native_authority: wimseAuthority(),
+    action: ACTION,
+    boundary: BOUNDARY,
+    requirements: REQUIREMENTS,
+    admission_reference: { state: "PRESENT", digest: ADMISSION_DIGEST },
+    lifecycle_records: {
+      evaluation_digest: `sha256:${"ee".repeat(32)}`,
+      consumption_digest: CONSUMPTION_DIGEST,
+      provider_entry_digest: null,
+    },
+    evaluated_evidence_digests: EVALUATED_EVIDENCE_DIGESTS,
+    configuration_digests: CONFIGURATION_DIGESTS,
+    referee: ADMIT_AXES,
+    ...overrides,
+  };
+  return issueAebCrossingRecordV2(
+    draft,
+    {
+      action: ACTION,
+      admission_domain: BOUNDARY,
+      ...contextOverrides,
+    },
+    {
+      signing_keys: [...SIGNERS],
+      deterministic: true,
+      mldsaBackend,
+    },
+  );
+}
+
 test("both native mappings emit one carrier-neutral authority contract", () => {
   const wimse = wimseAuthority();
   const bcr = bcrAuthority();
@@ -262,6 +306,129 @@ test("the v1 contract digest remains compatible across relying-party labels", ()
   assert.equal(
     finance,
     "sha256:0d17ad047e432fd235d60ae06ab6f819691d90dc3b09ecf553b33d4d2c0472fc",
+  );
+});
+
+test("v2 recomputes an explicit admission-domain commitment", async () => {
+  const record = await issueV2();
+  assert.equal(record["@version"], AEB_CROSSING_RECORD_V2_VERSION);
+  assert.equal(
+    record.body.admission_domain_digest,
+    crossingRecordV2AdmissionDomainDigest(BOUNDARY),
+  );
+  assert.equal(
+    record.body.contract_digest,
+    crossingRecordV2ContractDigest(record.body),
+  );
+  const result = await verifyAebCrossingRecordV2(record, {
+    verification_keys: [...VERIFICATION_KEYS],
+    mldsaBackend,
+  });
+  assert.equal(result.verified, true, JSON.stringify(result));
+  assert.equal(result.checks.admission_domain, true);
+  assert.equal(result.execution_authorizing, false);
+});
+
+test("generic v2 issuance refuses action and admission-domain mismatch before signing", async () => {
+  await assert.rejects(
+    () =>
+      issueV2({}, {
+        action: { ...ACTION, action_digest: `sha256:${"01".repeat(32)}` },
+      }),
+    /action_mismatch/,
+  );
+  for (const [member, value] of [
+    ["relying_party_id", "rp:other"],
+    ["audience", "erp:other"],
+    ["executor_id", "executor:other"],
+    ["state_domain_id", "state-domain:other"],
+  ] as const) {
+    await assert.rejects(
+      () =>
+        issueV2({}, {
+          admission_domain: { ...BOUNDARY, [member]: value },
+        }),
+      /admission_domain_mismatch/,
+      member,
+    );
+  }
+  await assert.rejects(
+    () =>
+      issueV2({}, {
+        admission_domain: { ...BOUNDARY, region: "us-west" },
+      }),
+    /admission_domain_mismatch/,
+  );
+});
+
+test("v2 refuses admission-domain, action, authority, and freshness substitution", async () => {
+  const record = await issueV2();
+  const mutations = [
+    (value: typeof record) => { value.body.boundary.relying_party_id = "rp:other"; },
+    (value: typeof record) => { value.body.boundary.audience = "erp:other"; },
+    (value: typeof record) => { value.body.boundary.executor_id = "executor:other"; },
+    (value: typeof record) => { value.body.boundary.state_domain_id = "state-domain:other"; },
+    (value: typeof record) => { value.body.action.action_digest = `sha256:${"01".repeat(32)}`; },
+    (value: typeof record) => { value.body.native_authority.authority_instance_digest = `sha256:${"02".repeat(32)}`; },
+    (value: typeof record) => { value.body.native_authority.status.value = "STALE"; },
+  ];
+  for (const mutate of mutations) {
+    const changed = structuredClone(record);
+    mutate(changed);
+    const result = await verifyAebCrossingRecordV2(changed, {
+      verification_keys: [...VERIFICATION_KEYS],
+      mldsaBackend,
+    });
+    assert.equal(result.verified, false);
+  }
+});
+
+test("v1 and v2 reject downgrade, relabeling, and cross-version verification", async () => {
+  const v1 = await issue();
+  const v2 = await issueV2();
+  assert.equal((await verify(v2)).verified, false);
+  assert.equal((await verifyAebCrossingRecordV2(v1, {
+    verification_keys: [...VERIFICATION_KEYS], mldsaBackend,
+  })).verified, false);
+
+  const relabeledV1 = structuredClone(v1) as any;
+  relabeledV1["@version"] = AEB_CROSSING_RECORD_V2_VERSION;
+  assert.equal((await verifyAebCrossingRecordV2(relabeledV1, {
+    verification_keys: [...VERIFICATION_KEYS], mldsaBackend,
+  })).verified, false);
+
+  const relabeledV2 = structuredClone(v2) as any;
+  relabeledV2["@version"] = AEB_CROSSING_RECORD_VERSION;
+  assert.equal((await verify(relabeledV2)).verified, false);
+});
+
+test("the committed v2 vector catalog covers the direct hostile cases", () => {
+  const vectors = JSON.parse(
+    readFileSync(
+      new URL(
+        "../../conformance/composition/aeb-crossing-record-v2/vectors.json",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  assert.equal(vectors.record_version, AEB_CROSSING_RECORD_V2_VERSION);
+  assert.deepEqual(
+    new Set(vectors.cases.map((entry: { id: string }) => entry.id)),
+    new Set([
+      "V2-VALID",
+      "V2-RELYING-PARTY-SUBSTITUTION",
+      "V2-AUDIENCE-SUBSTITUTION",
+      "V2-EXECUTOR-SUBSTITUTION",
+      "V2-STATE-DOMAIN-SUBSTITUTION",
+      "V2-ACTION-SUBSTITUTION",
+      "V2-AUTHORITY-CONTEXT-SUBSTITUTION",
+      "V2-STALE-ADMISSION",
+      "V2-AS-V1",
+      "V1-AS-V2",
+      "V1-RELABEL-V2",
+      "V2-RELABEL-V1",
+    ]),
   );
 });
 

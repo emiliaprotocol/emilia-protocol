@@ -2398,6 +2398,7 @@ export { verifyQuorum } from './quorum.js';
 export {
   AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS,
   AEB_CROSSING_RECORD_VERSION,
+  AEB_CROSSING_RECORD_V2_VERSION,
   BCR_CROSSING_ADAPTER,
   BCR_CROSSING_MAPPING_PROFILE,
   WIMSE_OAUTH_CROSSING_ADAPTER,
@@ -2405,10 +2406,16 @@ export {
   crossingRecordContractDigest,
   crossingRecordDigest,
   crossingRecordSignedBytes,
+  crossingRecordV2AdmissionDomainDigest,
+  crossingRecordV2ContractDigest,
+  crossingRecordV2Digest,
+  crossingRecordV2SignedBytes,
   issueAebCrossingRecord,
+  issueAebCrossingRecordV2,
   mapBcrCrossingAuthority,
   mapWimseOAuthCrossingAuthority,
   verifyAebCrossingRecord,
+  verifyAebCrossingRecordV2,
 } from './aeb-crossing-record.js';
 
 // Native AIC crossing mappings preserve the pure-JSON RFC 7638 JKT and
