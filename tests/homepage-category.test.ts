@@ -25,42 +25,30 @@ function compact(value) {
 }
 
 describe('homepage category contract', () => {
-  it('leads with the authority toll booth, keeps Gate customer-owned, and starts the five-product story', () => {
+  it('leads with workforce management and keeps the product, Gate and open Protocol distinct', () => {
     const page = read('app/HomePageClient.js');
-    const productStories = read('lib/product-stories.ts');
+    const story = read('components/workforce/WorkforceStory.tsx');
     const route = read('app/page.js');
-    const css = read('app/ep.css');
 
-    expect(route).toContain('Authority Toll Booth for Autonomous Work | EMILIA');
-    expect(route).toContain('At configured protected boundaries, consequential agent actions must present customer authority before provider entry');
-    expect(page).toContain('EMILIA <span>· The authority toll booth for autonomous work</span>');
-    expect(page).toContain('Protected crossings require authority before action, then preserve what happened.');
-    expect(page).toContain('EMILIA is building the universal agentic authority toll booth.');
-    expect(page).toContain('each Gate remains customer-owned and local to its configured boundary.');
-    expect(page).toContain('Even if AI writes the binary, it cannot write its own authority.');
-    expect(page).toContain('The system may change how it decides. It cannot quietly expand what it is authorized to do.');
-    expect(page).toContain('One creates intent. The other enforces authority.');
-    expect(page).toContain('Intelligence system');
-    expect(page).toContain('Authority system');
-    expect(page).toContain('Intelligence is not authority.');
-    expect(page).toContain('Mandate loaded');
-    expect(page).toContain('One admitted provider attempt or refusal');
-    expect(page).toContain('No invented certainty.');
-    expect(page).toContain('This is not proof of success.');
-    expect(page).toContain('Never retry blindly.');
-    expect(css).toContain('emilia-authority-tollbooth-v1.png');
-    expect(page).toContain('Public evidence');
-    expect(page).toContain('unsafe counterexamples');
-    expect(page).toContain("{ PRODUCT_STORIES } from '@/lib/product-stories'");
-    expect(productStories).toContain("name: 'Authority Brain'");
-    expect(productStories).toContain("name: 'EMILIA Gate'");
-    expect(productStories).toContain("name: 'EMILIA Approver'");
-    expect(productStories).toContain("name: 'EMILIA Protocol'");
-    expect(productStories).toContain("name: 'Assurance Plane'");
-    expect(page).toContain('href="/scan#run-local"');
-    expect(page).toContain('href="/pilot"');
+    expect(route).toContain('Build Your AI Workforce | EMILIA');
+    expect(route).toContain('Find specialized agents or bring your own.');
+    expect(page).toContain("from '@/components/workforce/WorkforceStory'");
+    for (const section of ['WorkforceIntroduction', 'WorkforceHandover', 'WorkforceResponsibilities', 'WorkforceFoundation', 'WorkforceNextStep']) {
+      expect(page).toContain(`<${section} />`);
+    }
+    expect(story).toContain('Build your<br />AI workforce.');
+    expect(story).toContain('The job stays. The agent can change.');
+    expect(story).toContain('EMILIA is the company.');
+    expect(story).toContain('Gate applies your authority.');
+    expect(story).toContain('The Protocol stays open.');
+    expect(story).toContain('Workforce workspace: private local alpha.');
+    expect(story).toContain('href="/contact#workforce"');
+    expect(story).toContain('href="/scan#run-local"');
+    expect(page).toContain('href="/workforce"');
     expect(page).toContain('href="/products"');
     expect(page).toContain('href="/proof"');
+    expect(page).toContain('Those are engineering results, not customer adoption or proof of a complete deployment.');
+    expect(page).toContain('No customer savings or ROI are claimed.');
     expect(page).not.toContain('<CrashTestDemo />');
     expect(page).not.toContain('emilia-sequence.mp4');
   });
@@ -124,9 +112,10 @@ describe('homepage category contract', () => {
     expect(gate).toContain('RECEIPT PROGRAMS');
     expect(gate).toContain('npm run demo:receipt-program');
     expect(gate).toContain('It is not a ZK proof, consensus result, provider attestation');
-    expect(investors).toContain('Every consequential agent action enters with authority and exits with a receipt.');
-    expect(investors).toContain('EMILIA charges where authorized intent becomes consequential action.');
-    expect(investors).toContain('Gate is the customer-owned authority toll booth.');
+    expect(investors).toContain('Your AI workforce needs management.');
+    expect(investors).toContain('Give every agent a job, set its authority, and know what happened.');
+    expect(investors).toContain('EMILIA is the company. Gate is the commercial product.');
+    expect(investors).toContain('The workforce workspace is a private local alpha.');
     expect(investors).toContain('currently claims no customer traction, recurring revenue, production deployment');
     expect(investors).toContain('certification, RFC status, or standards-body endorsement.');
     expect(productBrief).toContain('No independently administered operator has produced external witness evidence');

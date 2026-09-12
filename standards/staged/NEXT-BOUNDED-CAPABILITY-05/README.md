@@ -1,6 +1,6 @@
 # Bounded Capability Receipts -05 staging packet
 
-Upload only:
+Submitted XML:
 
 `UPLOAD-THIS/draft-schrock-ep-bounded-capability-receipts-05.xml`
 
@@ -26,4 +26,10 @@ portable signed freeze-event artifact. The included checker also runs an
 executable editorial decision model for the normative race table and pins the
 required source and hostile-test surfaces.
 
-This packet is staged only. It has not been submitted to the Datatracker.
+The September 6 correction makes direct and inherited cascade revocation
+effective until provider entry. Delegated funding has its own atomic commit
+cutoff. Direct-mode descendant independence is preserved. Those additional
+revocation rechecks are specified but not implemented by the current runtime;
+the implementation-status section states that limitation explicitly.
+
+Published September 6, 2026. Author confirmation completed; public IETF XML matches this packet exactly. Retained for publication provenance, not re-upload.

@@ -69,12 +69,9 @@ declare const canonicalize: typeof canonicalizeStrictJson;
  */
 export declare function isCanonicalizable(value: any): boolean;
 /**
- * EP-QUORUM-v1 ordered-chain hash: the hex SHA-256 of the canonical signoff
- * context. Used to cryptographically link each ordered signoff to its
- * predecessor (context.prev_context_hash), so approval ORDER is proven by the
- * signatures themselves rather than by operator-asserted timestamps. Exported
- * for the quorum verifier; uses the same canonicalize()/sha256() as every other
- * signed-material computation in this file.
+ * Legacy context digest, retained for callers inspecting historical records.
+ * It does not prove approval order: contexts can be prepared before signing.
+ * Strong quorum ordering uses completedSignoffHash from quorum.js instead.
  */
 export declare function contextChainHash(context: any): string;
 export { canonicalize };
@@ -344,6 +341,6 @@ export declare function verifyOutcomeBindingSet(receipt: any, observations: any[
 export declare function evaluateAgentBinding(context: any, opts?: Obj): Obj;
 export { resolveOperatorKeys, verifyFederatedReceiptOffline, verifyFederatedReceipt, } from './federation.js';
 export { verifyQuorum } from './quorum.js';
-export { AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS, AEB_CROSSING_RECORD_VERSION, BCR_CROSSING_ADAPTER, BCR_CROSSING_MAPPING_PROFILE, WIMSE_OAUTH_CROSSING_ADAPTER, WIMSE_OAUTH_CROSSING_MAPPING_PROFILE, crossingRecordContractDigest, crossingRecordDigest, crossingRecordSignedBytes, issueAebCrossingRecord, mapBcrCrossingAuthority, mapWimseOAuthCrossingAuthority, verifyAebCrossingRecord, } from './aeb-crossing-record.js';
+export { AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS, AEB_CROSSING_RECORD_VERSION, AEB_CROSSING_RECORD_V2_VERSION, BCR_CROSSING_ADAPTER, BCR_CROSSING_MAPPING_PROFILE, WIMSE_OAUTH_CROSSING_ADAPTER, WIMSE_OAUTH_CROSSING_MAPPING_PROFILE, crossingRecordContractDigest, crossingRecordDigest, crossingRecordSignedBytes, crossingRecordV2AdmissionDomainDigest, crossingRecordV2ContractDigest, crossingRecordV2Digest, crossingRecordV2SignedBytes, issueAebCrossingRecord, issueAebCrossingRecordV2, mapBcrCrossingAuthority, mapWimseOAuthCrossingAuthority, verifyAebCrossingRecord, verifyAebCrossingRecordV2, } from './aeb-crossing-record.js';
 export { AIC_CROSSING_MAX_STATUS_AGE_SECONDS, AIC_JWT_JKT_BOUND_CROSSING_MAPPING_PROFILE, AIC_JWT_SVID_PROJECTION_VERSION, AIC_JWT_SVID_SOURCE_VERIFICATION_PROFILE, AIC_ADMISSION_DOMAIN_VERSION, AIC_X509_SPKI_BOUND_CROSSING_MAPPING_PROFILE, mapAicJwtJktBoundCrossingAuthority, mapAicX509SpkiBoundCrossingAuthority, issueAicBoundCrossingRecord, projectAicJwtToStrictJwtSvid, } from './aeb-aic-crossing-adapter.js';
 //# sourceMappingURL=index.d.ts.map

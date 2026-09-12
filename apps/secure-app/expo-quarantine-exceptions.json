@@ -3,27 +3,43 @@
   "entries": [
     {
       "package": "expo",
-      "accepted_spec": "~57.0.15",
-      "accepted_version": "57.0.15",
-      "doctor_required_version": "57.0.18",
-      "required_version_published_at": "2026-08-28T10:48:19.967Z",
-      "eligible_at": "2026-09-04T10:48:19.967Z"
+      "accepted_spec": "57.0.20",
+      "accepted_version": "57.0.20",
+      "doctor_required_version": "57.0.22",
+      "required_version_published_at": "2026-09-11T11:34:14.200Z",
+      "eligible_at": "2026-09-18T11:34:14.200Z"
     },
     {
       "package": "expo-asset",
-      "accepted_spec": "~57.0.15",
-      "accepted_version": "57.0.15",
-      "doctor_required_version": "57.0.16",
-      "required_version_published_at": "2026-09-01T16:19:09.931Z",
-      "eligible_at": "2026-09-08T16:19:09.931Z"
+      "accepted_spec": "57.0.16",
+      "accepted_version": "57.0.16",
+      "doctor_required_version": "57.0.17",
+      "required_version_published_at": "2026-09-11T11:31:34.521Z",
+      "eligible_at": "2026-09-18T11:31:34.521Z"
     },
     {
-      "package": "expo-secure-store",
+      "package": "expo-local-authentication",
       "accepted_spec": "~57.0.2",
       "accepted_version": "57.0.2",
       "doctor_required_version": "57.0.3",
-      "required_version_published_at": "2026-09-01T16:21:09.874Z",
-      "eligible_at": "2026-09-08T16:21:09.874Z"
+      "required_version_published_at": "2026-09-11T11:29:45.465Z",
+      "eligible_at": "2026-09-18T11:29:45.465Z"
+    },
+    {
+      "package": "expo-screen-capture",
+      "accepted_spec": "~57.0.2",
+      "accepted_version": "57.0.2",
+      "doctor_required_version": "57.0.3",
+      "required_version_published_at": "2026-09-11T11:27:30.535Z",
+      "eligible_at": "2026-09-18T11:27:30.535Z"
+    },
+    {
+      "package": "expo-secure-store",
+      "accepted_spec": "57.0.3",
+      "accepted_version": "57.0.3",
+      "doctor_required_version": "57.0.4",
+      "required_version_published_at": "2026-09-11T11:29:40.940Z",
+      "eligible_at": "2026-09-18T11:29:40.940Z"
     }
   ]
 }

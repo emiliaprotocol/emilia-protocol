@@ -90,18 +90,23 @@ describe('public SEO source contract', () => {
     expect(layout.match(/href=['"]\/favicon\.svg['"]/g) ?? []).toHaveLength(0);
   });
 
-  it('declares the real dimensions of the static home social image', () => {
-    const image = readFileSync(resolve(ROOT, 'public/emilia-authority-tollbooth-v1.png'));
-    expect(image.subarray(1, 4).toString('ascii')).toBe('PNG');
-    const width = image.readUInt32BE(16);
-    const height = image.readUInt32BE(20);
-    expect({ width, height }).toEqual({ width: 1717, height: 916 });
-
+  it('keeps social metadata dimensions aligned with the generated workforce cards', () => {
+    const { width, height } = { width: 1200, height: 630 };
+    for (const imageRoute of ['app/opengraph-image.tsx', 'app/twitter-image.tsx']) {
+      const imageSource = read(imageRoute);
+      expect(imageSource).toContain(`export const size = { width: ${width}, height: ${height} }`);
+      expect(imageSource).toContain("export const contentType = 'image/png'");
+      expect(imageSource).toContain('new ImageResponse(<SocialCard />, size)');
+      expect(imageSource).toContain('Build your AI workforce.');
+      expect(read('app/_social/SocialCard.tsx')).toContain('Build your AI workforce.');
+    }
     for (const relativePath of ['app/layout.tsx', 'app/page.tsx']) {
       const source = read(relativePath);
-      expect(source).toContain("url: '/emilia-authority-tollbooth-v1.png'");
+      expect(source).toContain("url: '/opengraph-image'");
+      expect(source).toContain("images: ['/twitter-image']");
       expect(source).toContain(`width: ${width}`);
       expect(source).toContain(`height: ${height}`);
+      expect(source).not.toContain("url: '/emilia-authority-tollbooth-v1.png'");
     }
   });
 

@@ -3,11 +3,12 @@ import type { Metadata } from 'next';
 import SiteFooter from '@/components/SiteFooter';
 import SiteNav from '@/components/SiteNav';
 import { ProductStoryHub } from '@/components/product-story/ProductStory';
+import { WorkforceEntry } from '@/components/workforce/WorkforceStory';
 
 export const metadata: Metadata = {
-  title: 'EMILIA Product System: One Authority Story for Consequential AI Actions',
+  title: 'EMILIA Workforce, Gate and the Open Protocol',
   description:
-    'See how Authority Brain, EMILIA Gate, Approver, the open Protocol, and the Assurance Plane work as one system from discovery through independent re-performance.',
+    'Manage AI work through EMILIA’s workforce workspace. Explore Gate, the open Protocol and the supporting tools for mapping, approval and evidence review.',
   alternates: { canonical: '/products' },
 };
 
@@ -16,6 +17,7 @@ export default function ProductsPage(): React.ReactElement {
     <div>
       <SiteNav activePage="products" />
       <main>
+        <WorkforceEntry />
         <ProductStoryHub />
       </main>
       <SiteFooter />

@@ -13,7 +13,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="August" day="12"/>
+    <date year="2026" month="September" day="6"/>
     <area>Security</area>
     <keyword>agent authorization</keyword>
     <keyword>capability</keyword>
@@ -703,7 +703,11 @@ remaining = total - consumed - reserved
       <bcp14>MUST</bcp14> atomically verify reservation ownership, verify that
       its authoritative transaction time is earlier than the recorded
       provider-entry deadline, and recheck current capability and applicable
-      allowance state. When the admission-control epoch profile is enabled,
+      allowance state. This check <bcp14>MUST</bcp14> recheck direct revocation
+      and every authority-bearing cascade-mode ancestor in the same atomic
+      state domain, as specified in <xref target="delegation-revocation"/>.
+      A reservation does not freeze revocation status. When the
+      admission-control epoch profile is enabled,
       the same transaction <bcp14>MUST</bcp14> require domain status
       <tt>active</tt> and equality between the current epoch and the epoch
       captured at reservation. On success, that transaction
@@ -737,9 +741,19 @@ remaining = total - consumed - reserved
         became consumed at provider entry.</t>
         <t>A <tt>delegated</tt> operation does not enter an external effect
         adapter. Its atomic terminal transition verifies ownership and state
-        <tt>reserved</tt>, decreases <tt>reserved</tt>, increases
+        <tt>reserved</tt>, rechecks the funding capability's direct revocation
+        and every authority-bearing cascade-mode ancestor, decreases
+        <tt>reserved</tt>, increases
         <tt>consumed</tt> by the same amount, and binds the child registration
-        described in <xref target="delegation"/>.</t>
+        described in <xref target="delegation"/>. This funding commitment is
+        the authority-transfer cutoff for a delegated operation. If applicable
+        revocation commits first, the store <bcp14>MUST</bcp14> refuse the
+        transfer and may release the reservation only after authenticating
+        its owner and proving that no child authority was committed. If the
+        funding commitment commits first, its debit remains consumed;
+        subsequent child use follows the signed direct or cascade mode.
+        Retrying child registration for that same committed transfer does
+        not create another allocation or reopen the parent debit.</t>
         <t>A repeated commit, wrong reservation token, or external-effect
         commit against an operation not in <tt>provider_entered</tt>
         <bcp14>MUST</bcp14> refuse. A caller timeout
@@ -912,19 +926,29 @@ remaining = total - consumed - reserved
         the same authoritative atomic state domain used for the descendant
         reservation. A cached status value or eventually consistent
         notification does not establish immediate cascade revocation.</t>
-        <t>The ancestor revocation transition and a descendant reservation
-        <bcp14>MUST</bcp14> be serialized in that state domain. If revocation
-        commits first, the descendant request <bcp14>MUST</bcp14> refuse. If
-        the reservation commits first, the revocation is late for that
-        operation and prevents later authority claims; it <bcp14>MUST
-        NOT</bcp14> retroactively release the reservation, relabel an effect,
-        or authorize a retry. Any operation whose effect outcome is unresolved
-        remains subject to the reconciliation rules in
-        <xref target="reconciliation"/>.</t>
+        <t>Direct revocation of the exercised capability and revocation of
+        every authority-bearing cascade-mode ancestor <bcp14>MUST</bcp14>
+        serialize with both reservation and provider entry in that state
+        domain. Revocation that commits first prevents a new reservation.
+        Revocation that commits after reservation but before provider entry
+        <bcp14>MUST</bcp14> prevent entry. Only the authenticated reservation
+        owner may establish <tt>not_entered</tt>, release the held amount,
+        and retain the replay tombstone under <xref target="execute"/>.
+        If provider entry commits first, later revocation prevents new
+        authority claims but <bcp14>MUST NOT</bcp14> release consumed
+        authority, relabel an effect, or authorize a retry. An unresolved
+        effect remains subject to <xref target="reconciliation"/>.</t>
+        <t>This entry-time rule does not change direct-mode descendant
+        independence. Revocation of a direct-mode ancestor alone does not
+        invalidate a previously registered descendant; the descendant's own
+        revocation and every cascade-mode ancestor still apply.</t>
         <t>If complete current ancestor state cannot be established before
-        reservation, the request <bcp14>MUST</bcp14> refuse without entering
-        the effect adapter. This is a pre-effect status failure, not evidence
-        that an external effect is indeterminate. A deployment using separate
+        reservation or provider entry, the request <bcp14>MUST</bcp14> refuse
+        without entering the effect adapter. Missing status alone does not
+        authorize release of an existing reservation; retain it for
+        authenticated recovery unless the store separately proves non-entry.
+        This is a pre-effect status failure, not evidence that an external
+        effect is indeterminate. A deployment using separate
         state domains or freshness-bounded status distribution
         <bcp14>MUST NOT</bcp14> claim immediate cascade revocation across
         those domains.</t>
@@ -1019,8 +1043,26 @@ remaining = total - consumed - reserved
       <tt>revocation_mode</tt>, refuse when required ancestor state is
       unavailable, and cover a race between ancestor revocation and descendant
       reservation in which exactly one transition commits first. A
-      reservation that commits first remains owned and reconcilable; a
-      revocation that commits first prevents the reservation.</t>
+      reservation that commits first remains owned pending the separate
+      provider-entry decision; a revocation that commits first prevents the
+      reservation.</t>
+      <t anchor="revocation-entry-conformance">The conformance set
+      <bcp14>MUST</bcp14> test reserve, revoke, then provider entry for both
+      direct leaf revocation and inherited cascade revocation. Both cases
+      <bcp14>MUST</bcp14> refuse entry and permit budget release only through
+      authenticated <tt>not_entered</tt> with a retained replay tombstone.
+      It <bcp14>MUST</bcp14> also test provider entry before revocation:
+      the amount remains consumed and outcome reconciliation remains
+      available without re-execution. A direct-mode ancestor revocation
+      alone <bcp14>MUST NOT</bcp14> refuse an otherwise valid descendant's
+      entry. Missing ancestor status and wrong-holder recovery attempts
+      <bcp14>MUST NOT</bcp14> silently release another owner's reservation.</t>
+      <t>The conformance set <bcp14>MUST</bcp14> also serialize applicable
+      revocation against a <tt>delegated</tt> funding commitment after
+      reservation. Revocation first refuses the new allocation; commitment
+      first preserves the parent debit and applies the signed revocation mode
+      to subsequent child use. Neither registration retries nor revoked
+      child use restore or duplicate the parent allocation.</t>
       <t>The conformance set <bcp14>MUST</bcp14> also include multiple executor
       participants sharing one domain, an independent-store state fork, and a
       scope restricted to one executor; only the shared-domain case may claim
@@ -1261,12 +1303,13 @@ remaining = total - consumed - reserved
       <t><strong>Revocation.</strong> Expiry and exhausted budget are not
       revocation. A deployment that requires early invalidation
       <bcp14>MUST</bcp14> consult a separately authenticated revocation or
-      status source before reservation and define its freshness policy.
+      status source before reservation and at provider entry and define its
+      freshness policy.
       Revocation inheritance is not inferred from lineage alone: the signed
       mode determines whether already transferred descendant authority
       survives. An immediate cascade claim requires the ancestor revocation
-      transition and descendant reservation to be serialized in the same
-      authoritative atomic state domain. Notification or eventual cache
+      transition, descendant reservation, and provider entry to be serialized
+      in the same authoritative atomic state domain. Notification or eventual cache
       refresh cannot supply that guarantee. Full-lineage locking can make a
       high-fan-out ancestor a contention and denial-of-service hot spot;
       deployments <bcp14>MUST</bcp14> bound lineage depth, admission work, and
@@ -1391,7 +1434,7 @@ remaining = total - consumed - reserved
       in the reservation transaction, so an ancestor revocation that commits
       first refuses the reservation, while a reservation that commits first
       remains owned and reconcilable. Missing, malformed, or migration-incomplete
-      ancestor state refuses before provider entry. The tracked migration
+      ancestor state refuses at reservation. The tracked migration
       quarantines legacy rows without an explicit mode rather than inferring
       direct or cascade. Regression cases cover the signed closed field, direct
       descendant survival, cascade refusal, unavailable ancestor state, child
@@ -1399,6 +1442,17 @@ remaining = total - consumed - reserved
       This is same-team implementation evidence inside one authoritative atomic
       state domain; it is not independent interoperability, revocation
       distribution, or cross-domain cascade enforcement.</t>
+      <t>Entry-time direct and inherited revocation revalidation is not yet
+      implemented in these reference stores. They recheck the admission-control
+      epoch, applicable allowance state, ownership, and deadline at provider
+      entry, but currently resolve direct and ancestor revocation at
+      reservation. Those results do not establish the entry-time revocation
+      rule or its new ordering cases in
+      <xref target="revocation-entry-conformance"/>. The implementation and
+      bounded revocation model therefore provide partial experience, not
+      conformance to that part of this revision. The delegated-commit
+      revocation recheck is also a protocol requirement, not an implementation
+      claim for the existing reservation-time revocation path.</t>
       <t>The -04 scope-profile contract and comparison-reporting rules are not
       yet implemented. In particular, the reference implementation does not
       yet emit per-component decidability records, relation reflexivity,
@@ -1454,6 +1508,9 @@ remaining = total - consumed - reserved
         debit at outcome commit.</li>
         <li>Required current capability and applicable allowance state to be
         rechecked in the provider-entry transaction.</li>
+        <li>Made provider entry the cutoff for direct and inherited cascade
+        revocation, preserved direct-mode descendant independence, and added
+        explicit ordering cases and the remaining implementation limitation.</li>
         <li>Defined an optional admission-control domain and monotonic epoch
         captured at reservation and rechecked at provider entry.</li>
         <li>Defined serialized freeze, restoration, wrong-holder, non-entry,

@@ -89,3 +89,55 @@ test('Gate safe mode refuses pass-through and still permits only verified Class-
     assert.equal(allowed.ok, true);
     assert.equal(effects, 1);
 });
+test('Gate-proven non-entry closes a prepared execution without claiming consumption', () => {
+    const monitor = createRuntimeMonitor();
+    const cycle = monitor.beginCheck({ action: 'payment.release', receipt_id: 'rcpt_pre_entry' });
+    monitor.recordDecision(cycle, { allow: true, status: 200 });
+    monitor.beginExecution(cycle, { allow: true });
+    const result = monitor.providerEntryRefused(cycle, { providerNotInvoked: true });
+    assert.equal(result.ok, true);
+    assert.equal(monitor.getState(cycle).phase, 'provider_entry_refused');
+    assert.equal(monitor.getState(cycle).complete, true);
+    assert.equal(monitor.getState(cycle).consumed, false);
+    assert.equal(monitor.getMode(), RUNTIME_MONITOR_MODES.NORMAL);
+});
+test('prepared execution cannot claim non-entry without an explicit Gate assertion', () => {
+    const monitor = createRuntimeMonitor();
+    const cycle = monitor.beginCheck({ action: 'payment.release' });
+    monitor.recordDecision(cycle, { allow: true, status: 200 });
+    monitor.beginExecution(cycle, { allow: true });
+    assert.equal(monitor.providerEntryRefused(cycle).ok, false);
+    assert.equal(monitor.getState(cycle).phase, 'effect_attempted');
+    assert.equal(monitor.getMode(), RUNTIME_MONITOR_MODES.LOCKDOWN);
+});
+for (const phase of ['effect_returned', 'effect_failed', 'consumed', 'execution_recorded', 'complete']) {
+    test(`pre-provider refusal cannot erase ${phase}`, () => {
+        const monitor = createRuntimeMonitor();
+        const cycle = monitor.beginCheck({ action: 'payment.release' });
+        monitor.recordDecision(cycle, { allow: true, status: 200 });
+        monitor.beginExecution(cycle, { allow: true });
+        if (phase === 'effect_failed')
+            monitor.effectFailed(cycle);
+        else
+            monitor.effectReturned(cycle);
+        if (['consumed', 'execution_recorded', 'complete'].includes(phase))
+            monitor.consumptionCommitted(cycle);
+        if (phase === 'execution_recorded')
+            monitor.executionRecorded(cycle);
+        if (phase === 'complete')
+            monitor.executionSkipped(cycle);
+        const before = monitor.getState(cycle);
+        const result = monitor.providerEntryRefused(cycle, { providerNotInvoked: true });
+        assert.equal(result.ok, false);
+        assert.deepEqual(monitor.getState(cycle), before);
+        assert.equal(monitor.getMode(), RUNTIME_MONITOR_MODES.LOCKDOWN);
+    });
+}
+test('capability refusal still cannot reset a started execution', () => {
+    const monitor = createRuntimeMonitor();
+    const cycle = monitor.beginCheck({ action: 'payment.release' });
+    monitor.recordDecision(cycle, { allow: true, status: 200 });
+    monitor.beginExecution(cycle, { allow: true });
+    assert.equal(monitor.capabilityRefused(cycle).ok, false);
+    assert.equal(monitor.getState(cycle).phase, 'effect_attempted');
+});

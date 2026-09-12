@@ -214,8 +214,8 @@ describe('evaluateQuorumAgainstTemplate (pure)', () => {
     expect(r.violations).toContain('invalid_quorum_policy');
   });
 
-  it('ordered mode effective threshold is the roster size', () => {
-    const { required } = effectiveQuorumParams({ mode: 'ordered', approvers: [{}, {}] });
+  it('ordered mode requires an explicit threshold just like the runtime verifier', () => {
+    const { required } = effectiveQuorumParams({ mode: 'ordered', required: 2, approvers: [{}, {}] });
     expect(required).toBe(2);
     // A 1-slot ordered policy cannot satisfy a min_required:2 template.
     const r = evaluateQuorumAgainstTemplate(

@@ -568,19 +568,71 @@ function runChecked(
   options: any,
   label: string,
 ): string {
+  const timeoutMs: number = options.timeoutMs ?? EXECUTION_TIMEOUT_MS;
   const run = spawnSync(command, commandArgs, {
     cwd: options.cwd ?? ROOT,
     encoding: "utf8",
     env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
     maxBuffer: 32 * 1024 * 1024,
-    timeout: EXECUTION_TIMEOUT_MS,
+    timeout: timeoutMs,
   });
   if (run.status !== 0) {
+    if (options.failureOutput === "metadata-only") {
+      // Test output may contain assertion payloads or credentials. The Vitest
+      // observer reads a bounded, classified report separately before cleanup.
+      const spawnError = run.error as NodeJS.ErrnoException | undefined;
+      const spawnCode = typeof spawnError?.code === "string"
+        && /^[A-Z0-9_]{1,40}$/u.test(spawnError.code) ? spawnError.code : "none";
+      throw new Error(
+        `${label} failed (exit ${run.status ?? "null"}, signal ${run.signal ?? "none"}, spawn ${spawnCode}, deadline ${timeoutMs} ms)`,
+      );
+    }
     throw new Error(
       `${label} failed (${run.status}):\n${run.stdout || ""}${run.stderr || ""}`,
     );
   }
   return run.stdout as string;
+}
+
+function summarizeVitestFailure(reportFile: string): string {
+  if (!fs.existsSync(reportFile)) return "No machine-readable failure report was produced.";
+  let report: any;
+  try {
+    if (fs.statSync(reportFile).size > 8 * 1024 * 1024)
+      return "The machine-readable failure report is too large to inspect (8 MiB limit).";
+    report = JSON.parse(fs.readFileSync(reportFile, "utf8"));
+  } catch {
+    return "The machine-readable failure report is unreadable; raw contents suppressed.";
+  }
+  const lines: string[] = [];
+  for (const suite of Array.isArray(report?.testResults) ? report.testResults : []) {
+    for (const assertion of Array.isArray(suite?.assertionResults) ? suite.assertionResults : []) {
+      if (assertion?.status !== "failed") continue;
+      if (lines.length >= 20)
+        return `Failed evidence tests (first 20; further failures omitted):\n${lines.join("\n")}`;
+      const title = (typeof assertion.title === "string" ? assertion.title : "unnamed test")
+        .replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/gu, " ")
+        .slice(0, 240);
+      const messages = (Array.isArray(assertion.failureMessages) ? assertion.failureMessages : [])
+        .slice(0, 3).filter((value: unknown) => typeof value === "string")
+        .map((value: string) => value.slice(0, 8192)).join("\n");
+      // Classify known diagnostics, never echo actual/expected data or stacks.
+      const reason = /timed out|STACK_TRACE_ERROR/u.test(messages) ? "RUNNER_TIMEOUT"
+        : /locked dependency installation failed/u.test(messages) ? "LOCKED_DEPENDENCY_INSTALL_FAILED"
+        : /working checkout differs from the reviewed commit/u.test(messages) ? "REVIEWED_CHECKOUT_MISMATCH"
+        : /package (?:bytes|file manifests|member manifests) differ/u.test(messages) ? "PACKAGE_REPRODUCIBILITY_MISMATCH"
+        : /ERR_MODULE_NOT_FOUND|MODULE_NOT_FOUND/u.test(messages) ? "MODULE_NOT_FOUND"
+        : /AssertionError/u.test(messages) ? "ASSERTION_FAILED"
+        : "TEST_FAILED_DETAILS_SUPPRESSED";
+      const duration = typeof assertion.duration === "number"
+        && Number.isFinite(assertion.duration) && assertion.duration >= 0
+        ? `${Math.round(assertion.duration)} ms` : "duration unknown";
+      lines.push(`  - ${title}: ${reason} (${duration})`);
+    }
+  }
+  return lines.length
+    ? `Failed evidence tests:\n${lines.join("\n")}`
+    : "The failure report contains no failed test rows; runner-level details suppressed.";
 }
 
 // Running a whole test file and calling every planned title "passed" is not a
@@ -593,30 +645,43 @@ function observeVitestFile(file: string): Map<string, string> {
     path.join(os.tmpdir(), "ep-security-case-"),
   );
   const reportFile: string = path.join(reportDirectory, "vitest.json");
+  const releaseReproducibility = file === "tests/release-reproducibility.test.ts";
   try {
-    runChecked(
-      "npm",
-      [
-        "exec",
-        "vitest",
-        "--",
-        "run",
-        file,
-        "--reporter=json",
-        "--outputFile",
-        reportFile,
-      ],
-      {},
-      `vitest ${file}`,
-    );
+    try {
+      runChecked(
+        "npm",
+        [
+          "exec",
+          "vitest",
+          "--",
+          "run",
+          file,
+          // This file performs real Git/npm operations. Match the full-suite
+          // fixture budget; its explicit 960-second real-pack timeout wins.
+          ...(releaseReproducibility ? ["--testTimeout", "60000", "--hookTimeout", "60000"] : []),
+          "--reporter=json",
+          "--outputFile",
+          reportFile,
+        ],
+        {
+          // The outer process must outlive the 960-second test plus fixture
+          // work and reporting. Every other evidence command keeps 600 seconds.
+          timeoutMs: releaseReproducibility ? 1_200_000 : EXECUTION_TIMEOUT_MS,
+          failureOutput: "metadata-only",
+        },
+        `vitest ${file}`,
+      );
+    } catch (error) {
+      throw new Error(`${(error as Error).message}\n${summarizeVitestFailure(reportFile)}`);
+    }
     if (!fs.existsSync(reportFile))
       throw new Error(`vitest ${file} produced no machine-readable report`);
     let report: any;
     try {
       report = JSON.parse(fs.readFileSync(reportFile, "utf8"));
-    } catch (error) {
+    } catch {
       throw new Error(
-        `vitest ${file} report is unreadable: ${(error as any).message}`,
+        `vitest ${file} report is unreadable; raw contents suppressed`,
       );
     }
     const observed: Map<string, string> = new Map();

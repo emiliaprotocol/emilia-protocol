@@ -339,8 +339,31 @@ export function acquireProofStatsRunLock({
   }
 }
 
+export function securityCaseExecutionArgs(check: boolean): string[] {
+  return [
+    "--import",
+    "./scripts/ts-loader/register.mjs",
+    "scripts/verify-security-case.mjs",
+    "--execute",
+    // The writer resolves the case from this same live execution before using
+    // it for counts. Check mode never rewrites evidence to make a check pass.
+    ...(!check ? ["--emit", "security/security-case.json"] : []),
+  ];
+}
+
+export function proofStatsTestArgs(reportPath: string, coverage = false): string[] {
+  return [
+    'vitest', 'run', '--silent',
+    // Keep the complete inventory and existing integration budgets in both modes.
+    '--maxWorkers=4', '--testTimeout=60000', '--hookTimeout=60000',
+    '--reporter=json', `--outputFile=${reportPath}`,
+    ...(coverage ? ['--coverage'] : []),
+  ];
+}
+
 function generateProofStats(): void {
 const check: boolean = process.argv.includes("--check");
+const coverage = process.argv.includes('--coverage');
 const bootstrapDerivedEvidence: boolean = process.argv.includes(
   "--bootstrap-derived-evidence",
 );
@@ -349,6 +372,9 @@ const securityCasePreverified: boolean = process.argv.includes(
 );
 if (check && bootstrapDerivedEvidence) {
   throw new Error("bootstrap-derived-evidence cannot be used in check mode");
+}
+if (coverage && bootstrapDerivedEvidence) {
+  throw new Error('coverage requires a complete measured test run, not bootstrap mode');
 }
 if (securityCasePreverified) {
   if (!check) {
@@ -395,21 +421,7 @@ if (bootstrapDerivedEvidence) {
   const reportPath: string = join(reportDir, "vitest.json");
   const execution = spawnSync(
     "npx",
-    [
-      "vitest",
-      "run",
-      "--silent",
-      // Proof-stat measurement runs the complete integration inventory, including
-      // tests that launch real git, archive, and protocol-check subprocesses.
-      // Bound worker fan-out and give each case an explicit integration budget so
-      // CPU starvation cannot turn Vitest's five-second unit default into a false
-      // governed-evidence failure. The run still fails closed on any timeout.
-      "--maxWorkers=4",
-      "--testTimeout=60000",
-      "--hookTimeout=60000",
-      "--reporter=json",
-      `--outputFile=${reportPath}`,
-    ],
+    proofStatsTestArgs(reportPath, coverage),
     {
       encoding: "utf8",
       maxBuffer: 1e9,
@@ -443,12 +455,7 @@ if (bootstrapDerivedEvidence) {
 if (!securityCasePreverified) {
   const liveSecurityCase = spawnSync(
     process.execPath,
-    [
-      "--import",
-      "./scripts/ts-loader/register.mjs",
-      "scripts/verify-security-case.mjs",
-      "--execute",
-    ],
+    securityCaseExecutionArgs(check),
     {
       encoding: "utf8",
       maxBuffer: 1e9,

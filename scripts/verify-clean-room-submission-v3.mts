@@ -22,8 +22,19 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLE_RELATIVE_PATH = 'conformance/clean-room/v3/bundle.v3.json';
 const HANDLE_PATTERN = /^cr3_[A-Za-z0-9_-]{32}$/;
-const CHALLENGE_GENERATOR = 'EP-CLEAN-ROOM-CANONICALIZATION-CHALLENGE-v1';
+const HISTORICAL_CHALLENGE_GENERATOR = 'EP-CLEAN-ROOM-CANONICALIZATION-CHALLENGE-v1';
+const CHALLENGE_GENERATOR = 'EP-CLEAN-ROOM-CANONICALIZATION-CHALLENGE-v2';
 const CHALLENGE_PAIR_COUNT = 32;
+const CHALLENGE_RAW_CASES = [
+  ['negative-zero', true], ['negative-zero-decimal', true],
+  ['integer-exponent', true], ['max-safe-integer', true],
+  ['depth-64', true], ['surrogate-pair', true],
+  ['distinct-escaped-keys', true], ['zero-exponent', true],
+  ['unsafe-integer', false], ['fractional', false],
+  ['large-exponent', false], ['depth-65', false],
+  ['lone-high-surrogate', false], ['lone-low-surrogate', false],
+  ['duplicate-key', false], ['escaped-duplicate-key', false],
+] as const;
 const SESSION_RANDOMIZER = 'EP-CLEAN-ROOM-SESSION-RANDOMIZER-v1';
 
 type JsonObject = Record<string, any>;
@@ -241,8 +252,11 @@ function challengeGeneratorContract(): JsonObject {
     '@version': CHALLENGE_GENERATOR,
     randomizer: randomizerContract(CHALLENGE_GENERATOR),
     pair_count: CHALLENGE_PAIR_COUNT,
-    payload_per_pair:
-      '{"value":base64url(random_bytes(24)),"nested":[true,null,zero_based_pair_index]}',
+    payload_per_pair: {
+      nonce: 'base64url(random_bytes(24))',
+      template: richCanonicalizationPayload('$nonce', 0),
+      substitution: 'replace $nonce with this pair nonce and nested[2] with the zero-based pair index',
+    },
     input_json: 'JSON.stringify(payload)',
     canonicalization: 'RFC 8785 compatible canonicalizeV3(JSON.parse(input_json))',
     correct_digest: 'lowercase_hex(SHA-256(UTF8(canonicalization)))',
@@ -250,6 +264,18 @@ function challengeGeneratorContract(): JsonObject {
       'lowercase_hex(random_bytes(32)), resampled only if equal to the correct digest',
     cases_per_pair:
       'one correct-digest case and one wrong-digest case over the exact same input_json',
+    raw_case_count: CHALLENGE_RAW_CASES.length,
+    raw_cases: CHALLENGE_RAW_CASES.map(([name, valid]) => ({
+      name, valid, input_json_template: rawChallengeInput(name, '$nonce'),
+    })),
+    raw_input_json:
+      'raw JSON text preserving number tokens, surrogate escapes, duplicate decoded keys and container depth; independent 24-byte base64url nonce per case',
+    raw_digest:
+      'SHA-256 of permissive canonicalizeV3(JSON.parse(input_json)), including refusal traps; digest agreement alone does not establish validity',
+    raw_acceptance:
+      'syntax, strict parse (unique decoded keys, paired surrogates, depth <= 64), EP safe-integer and Unicode value profile, then canonical digest; these profile bounds are not general RFC 8785 requirements',
+    replay:
+      'exact generation and random-byte request order are pinned by evaluator_artifact_sha256; replayPostBuildChallengesV1 is historical only and cannot be selected for submission acceptance',
     handles: 'base64url(random_bytes(24)) prefixed with cr3_',
     run_id: 'base64url(random_bytes(24)) prefixed with run_',
     presentation_order: 'sort cases by independent random_bytes(24) values',
@@ -368,14 +394,16 @@ function canonicalizationCase(
   };
 }
 
-export function buildPostBuildChallengesV3(
+// Historical replay only. Submission acceptance always calls the current
+// generator below and exposes no version downgrade option.
+export function replayPostBuildChallengesV1(
   kit: PinnedKitV3,
-  { seed = crypto.randomBytes(32) }: { seed?: Buffer } = {},
+  { seed }: { seed: Buffer },
 ): V3ChallengeSession {
   const contract = kit.contracts.find((entry) =>
     entry.path === 'conformance/vectors/canonicalization.v1.json');
   if (!contract) throw new Error('canonicalization suite is missing from the v3 kit');
-  const randomBytes = deterministicRandomBytes(seed, CHALLENGE_GENERATOR);
+  const randomBytes = deterministicRandomBytes(seed, HISTORICAL_CHALLENGE_GENERATOR);
   const values: Array<{ sourceId: string; input: JsonObject; expected: JsonObject }> = [];
   for (let index = 0; index < CHALLENGE_PAIR_COUNT; index += 1) {
     const value = {
@@ -389,6 +417,77 @@ export function buildPostBuildChallengesV3(
     values.push({
       sourceId: `post-build-canonical-pair-${index}-invalid`,
       ...canonicalizationCase(value, false, randomBytes),
+    });
+  }
+  return {
+    ...buildSession(contract, values, randomBytes),
+    seed,
+    generator: HISTORICAL_CHALLENGE_GENERATOR,
+  };
+}
+
+function rawChallengeInput(name: typeof CHALLENGE_RAW_CASES[number][0], nonce: string): string {
+  const object = (value: string) => `{"nonce":${JSON.stringify(nonce)},"value":${value}}`;
+  switch (name) {
+    case 'negative-zero': return object('-0');
+    case 'negative-zero-decimal': return object('-0.0');
+    case 'integer-exponent': return object('1e0');
+    case 'max-safe-integer': return object('9007199254740991');
+    case 'zero-exponent': return object('0e99');
+    case 'unsafe-integer': return object('9007199254740992');
+    case 'fractional': return object('1.5');
+    case 'large-exponent': return object('1e30');
+    case 'depth-64': return '['.repeat(64) + JSON.stringify(nonce) + ']'.repeat(64);
+    case 'depth-65': return '['.repeat(65) + JSON.stringify(nonce) + ']'.repeat(65);
+    case 'surrogate-pair': return object('"\\ud83d\\ude00"');
+    case 'lone-high-surrogate': return object('"\\ud800"');
+    case 'lone-low-surrogate': return object('"\\udc00"');
+    case 'distinct-escaped-keys': return object('{"a":1,"\\u0062":2}');
+    case 'duplicate-key': return object('{"a":1,"a":2}');
+    case 'escaped-duplicate-key': return object('{"a":1,"\\u0061":2}');
+  }
+}
+
+function richCanonicalizationPayload(nonce: string, index: number): JsonObject {
+  return {
+    '\ue000': nonce,
+    '\u{1f600}': `e\u0301:${nonce}`,
+    nested: [true, null, index, {
+      '\ufffd': nonce,
+      '\u{1f600}': `e\u0301:${nonce}:\b\t\n\f\r\u000e\u001b\\\"`,
+    }],
+  };
+}
+
+export function buildPostBuildChallengesV3(
+  kit: PinnedKitV3,
+  { seed = crypto.randomBytes(32) }: { seed?: Buffer } = {},
+): V3ChallengeSession {
+  const contract = kit.contracts.find((entry) =>
+    entry.path === 'conformance/vectors/canonicalization.v1.json');
+  if (!contract) throw new Error('canonicalization suite is missing from the v3 kit');
+  const randomBytes = deterministicRandomBytes(seed, CHALLENGE_GENERATOR);
+  const values: Array<{ sourceId: string; input: JsonObject; expected: JsonObject }> = [];
+  for (let index = 0; index < CHALLENGE_PAIR_COUNT; index += 1) {
+    const nonce = randomBytes(24).toString('base64url');
+    const value = richCanonicalizationPayload(nonce, index);
+    for (const valid of [true, false]) {
+      values.push({
+        sourceId: `post-build-canonical-pair-${index}-${valid ? 'valid' : 'invalid'}`,
+        ...canonicalizationCase(value, valid, randomBytes),
+      });
+    }
+  }
+  for (const [name, valid] of CHALLENGE_RAW_CASES) {
+    const inputJson = rawChallengeInput(name, randomBytes(24).toString('base64url'));
+    // These are syntax-valid JSON texts with explicitly classified EP profile
+    // outcomes. Refusal traps intentionally have the digest a permissive
+    // parser/canonicalizer would accept, not a random mismatching digest.
+    const digest = sha256V3(Buffer.from(canonicalizeV3(JSON.parse(inputJson)), 'utf8'));
+    values.push({
+      sourceId: `post-build-canonical-raw-${name}`,
+      input: { canonicalization: { input_json: inputJson, expected_digest: digest } },
+      expected: { valid },
     });
   }
   return {
@@ -478,21 +577,40 @@ function executeSession(
   runnerManifest: JsonObject,
   temporary: string,
   label: string,
+  docker: { command: string; image: string } | null,
 ): Array<{ id: string; result: JsonObject }> {
   verifyRunnerArtifactV2(runnerManifest, runner.path);
   const target = path.join(temporary, `${crypto.randomBytes(16).toString('hex')}.json`);
   fs.writeFileSync(target, session.executionBytes, { mode: 0o444 });
   fs.chmodSync(target, 0o444);
+  const cidfile = docker
+    ? path.join(temporary, `${crypto.randomBytes(16).toString('hex')}.cid`)
+    : null;
   let stdout = '';
   let runnerError: unknown = null;
+  let cleanupError: unknown = null;
   try {
+    const command = docker?.command ?? runner.path;
+    const args = docker
+      ? [
+          'run', '--rm', '--cidfile', cidfile!, '--network', 'none', '--read-only',
+          '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+          '--user', '65532:65532', '--pids-limit', '128', '--memory', '512m',
+          '--cpus', '1', '--tmpfs', '/tmp:rw,noexec,nosuid,nodev,size=16m',
+          '--mount', `type=bind,src=${runner.path},dst=/runner,readonly`,
+          '--mount', `type=bind,src=${target},dst=/input.json,readonly`,
+          '--entrypoint', '/runner', docker.image,
+          ...runnerManifest.fixed_arguments, '/input.json',
+        ]
+      : [...runnerManifest.fixed_arguments, target];
     stdout = execFileSync(
-      runner.path,
-      [...runnerManifest.fixed_arguments, target],
+      command,
+      args,
       {
         cwd: temporary,
         encoding: 'utf8',
         timeout: 180_000,
+        killSignal: 'SIGKILL',
         maxBuffer: 64 * 1024 * 1024,
         stdio: ['ignore', 'pipe', 'pipe'],
         env: runnerEnvironment(),
@@ -500,6 +618,34 @@ function executeSession(
     );
   } catch (error) {
     runnerError = error;
+  }
+  if (runnerError && docker && cidfile) {
+    try {
+      if (fs.existsSync(cidfile)) {
+        const containerId = fs.readFileSync(cidfile, 'utf8').trim();
+        if (/^[a-f0-9]{64}$/.test(containerId)) {
+          execFileSync(docker.command, ['rm', '--force', containerId], {
+            cwd: temporary,
+            encoding: 'utf8',
+            timeout: 10_000,
+            killSignal: 'SIGKILL',
+            maxBuffer: 1024 * 1024,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: runnerEnvironment(),
+          });
+        }
+      }
+    } catch (error) {
+      cleanupError = error;
+    }
+  }
+  if (runnerError && cleanupError) {
+    const stderr = (runnerError as any)?.stderr;
+    const cleanupStderr = (cleanupError as any)?.stderr;
+    throw new Error(
+      `${label}: runner failed: ${String(stderr || errorMessage(runnerError)).trim()}; `
+      + `container cleanup failed: ${String(cleanupStderr || errorMessage(cleanupError)).trim()}`,
+    );
   }
   if (sha256V3(fs.readFileSync(target)) !== sha256V3(session.executionBytes)) {
     throw new Error(`${label}: runner mutated the execution suite`);
@@ -522,6 +668,8 @@ export function verifyCleanRoomSubmissionV3({
   emitPath,
   requireAcceptance = false,
   allowUnsafeLocalExecution = false,
+  dockerImage = null,
+  dockerCommand = 'docker',
   root = ROOT,
 }: {
   manifestPath: string;
@@ -531,6 +679,8 @@ export function verifyCleanRoomSubmissionV3({
   emitPath?: string | null;
   requireAcceptance?: boolean;
   allowUnsafeLocalExecution?: boolean;
+  dockerImage?: string | null;
+  dockerCommand?: string;
   root?: string;
 }): JsonObject {
   const kit = loadPinnedKitV3({ root });
@@ -547,10 +697,27 @@ export function verifyCleanRoomSubmissionV3({
   if (requireAcceptance && acceptance.accepted !== true) {
     throw new Error('external clean-room acceptance refused: independent attestation is required');
   }
-  if (allowUnsafeLocalExecution !== true) {
+  if (!dockerImage && allowUnsafeLocalExecution !== true) {
     throw new Error(
       'local runner execution refused: explicit unsafe-local-execution acknowledgement is required',
     );
+  }
+  let docker: { command: string; image: string; imageId: string } | null = null;
+  if (dockerImage) {
+    if (!/@sha256:[a-f0-9]{64}$/.test(dockerImage)) {
+      throw new Error('docker isolation requires an image reference pinned by sha256 digest');
+    }
+    const inspected = execFileSync(dockerCommand, ['image', 'inspect', dockerImage, '--format', '{{.Id}}'], {
+      encoding: 'utf8',
+      timeout: 30_000,
+      maxBuffer: 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: runnerEnvironment(),
+    }).trim();
+    if (!/^sha256:[a-f0-9]{64}$/.test(inspected)) {
+      throw new Error('docker isolation could not resolve the pinned image identity');
+    }
+    docker = { command: dockerCommand, image: dockerImage, imageId: inspected };
   }
 
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-v3-eval-'));
@@ -570,11 +737,14 @@ export function verifyCleanRoomSubmissionV3({
       manifest.runner,
       temporary,
       'post-build canonicalization challenge',
+      docker,
     );
     challengeReport = {
       status: 'pass',
       suite: 'conformance/vectors/canonicalization.v1.json',
       cases: challengeRows.length,
+      paired_cases: CHALLENGE_PAIR_COUNT * 2,
+      raw_boundary_cases: CHALLENGE_RAW_CASES.length,
       valid_cases: [...challenge.bindings.values()]
         .filter((entry) => entry.expected.valid === true).length,
       invalid_cases: [...challenge.bindings.values()]
@@ -603,6 +773,7 @@ export function verifyCleanRoomSubmissionV3({
         manifest.runner,
         temporary,
         contract.path,
+        docker,
       );
       vectorCount += rows.length;
       suites.push({
@@ -620,8 +791,8 @@ export function verifyCleanRoomSubmissionV3({
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
-  if (suites.length !== 21 || vectorCount !== 335) {
-    throw new Error('external clean-room evaluation did not complete all 21 suites and 335 vectors');
+  if (suites.length !== 21 || vectorCount !== 340) {
+    throw new Error('external clean-room evaluation did not complete all 21 suites and 340 vectors');
   }
 
   const report: JsonObject = {
@@ -646,7 +817,30 @@ export function verifyCleanRoomSubmissionV3({
       vector_order: 'random_per_run',
       session_randomizer: sessionRandomizer,
       session_randomizer_contract_sha256: canonicalDigest(sessionRandomizer),
-      process_sandbox: false,
+      process_sandbox: docker !== null,
+      network_sandbox: docker !== null,
+      filesystem_read_sandbox: docker !== null,
+      ...(docker ? {
+        sandbox: {
+          kind: 'docker',
+          image: docker.image,
+          image_id: docker.imageId,
+          network: 'none',
+          root_filesystem: 'read_only',
+          mounts: ['submitted_runner:read_only', 'execution_input:read_only'],
+          repository_mounted: false,
+          evaluator_expectations_mounted: false,
+          user: '65532:65532',
+          capabilities: 'none',
+          no_new_privileges: true,
+          pids_limit: 128,
+          memory_limit: '512m',
+          cpu_limit: '1',
+          temporary_filesystem: '16m,noexec,nosuid,nodev',
+          output_limit_bytes: 67108864,
+          timeout_ms: 180000,
+        },
+      } : {}),
       inherited_environment: false,
       runner_environment_variables: ['PATH', 'LANG', 'LC_ALL', 'TZ'],
     },
@@ -684,6 +878,7 @@ function cliOptions(argv: string[]): {
   emitPath?: string;
   requireAcceptance: boolean;
   allowUnsafeLocalExecution: boolean;
+  dockerImage?: string;
 } {
   const values = new Map<string, string>();
   let requireAcceptance = false;
@@ -704,6 +899,7 @@ function cliOptions(argv: string[]): {
       '--attestation',
       '--trusted-attestors',
       '--emit',
+      '--docker-image',
     ].includes(argument)) {
       throw new Error(`unknown argument: ${argument}`);
     }
@@ -716,7 +912,7 @@ function cliOptions(argv: string[]): {
   if (!manifestPath || !runnerPath) {
     throw new Error(
       'usage: verify-clean-room-submission-v3 --manifest FILE --runner EXECUTABLE '
-      + '--allow-unsafe-local-execution '
+      + '(--docker-image IMAGE@sha256:DIGEST | --allow-unsafe-local-execution) '
       + '[--attestation FILE --trusted-attestors FILE] [--require-acceptance] [--emit FILE]',
     );
   }
@@ -728,6 +924,7 @@ function cliOptions(argv: string[]): {
     emitPath: values.get('--emit'),
     requireAcceptance,
     allowUnsafeLocalExecution,
+    dockerImage: values.get('--docker-image'),
   };
 }
 

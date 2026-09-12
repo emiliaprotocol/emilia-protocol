@@ -4,8 +4,8 @@
 //
 // Keeps the /api/works/* route files thin: feature-flag gating (404 when
 // WORKS_V0 is off, so the surface is indistinguishable from absent), cloud
-// API-key authentication for create/edit (the same authenticateCloudRequest
-// gate the cloud control plane uses), and a single mapping from typed store
+// Works-scoped browser sessions or entity API keys for create/edit, and a
+// single mapping from typed store
 // error codes to RFC 7807 problem responses.
 
 import { NextResponse } from 'next/server';
@@ -31,6 +31,7 @@ const CODE_STATUS: Record<string, number> = {
   forbidden_not_owner: 403,
   seed_immutable: 403,
   already_exists: 409,
+  invalid_transition: 409,
   owner_required: 401,
   store_unavailable: 503,
 };
@@ -44,5 +45,5 @@ export function worksUnauthorized(): NextResponse {
   return epProblem(401, 'unauthorized', 'A valid Cloud API key is required');
 }
 
-/** Response headers for Works reads: public directory data, never cached. */
-export const WORKS_READ_HEADERS = { 'cache-control': 'no-store' };
+/** Reads can include private owner projections; never share them in a cache. */
+export const WORKS_READ_HEADERS = { 'cache-control': 'private, no-store', vary: 'Authorization, Cookie' };

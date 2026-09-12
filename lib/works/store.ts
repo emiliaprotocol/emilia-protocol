@@ -104,6 +104,21 @@ function fileFor(collection: WorksCollection, id: string): string {
   return path.join(collectionDir(collection), `${id}.json`);
 }
 
+function fileOpportunityWorkflowState(id: string): StoreResult<{ state: string }> {
+  const file = path.join(dataDir(), '_workflow', 'opportunities', `${id}.json`);
+  try {
+    if (!fs.existsSync(file)) return { ok: true, state: 'open' };
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!isPlainObject(parsed) || !['open', 'closed', 'assigned'].includes(String(parsed.state))
+      || !Number.isSafeInteger(parsed.revision) || Number(parsed.revision) < 0) {
+      return err('store_unavailable', 'Works workflow storage could not be read.');
+    }
+    return { ok: true, state: String(parsed.state) };
+  } catch {
+    return err('store_unavailable', 'Works workflow storage could not be read.');
+  }
+}
+
 function isoNow(): string {
   return new Date().toISOString();
 }
@@ -287,6 +302,7 @@ async function writeCreatedRecord(
       updated_at: stored.updated_at,
     });
     if (error?.code === '23505') return err('already_exists', 'a record with this id already exists');
+    if (error?.code === 'EWTRN') return err('invalid_transition', 'This job is not accepting proposals.');
     if (error) return err('store_unavailable', 'Works storage could not be written.');
     return { ok: true };
   } catch {
@@ -327,6 +343,9 @@ async function writeUpdatedRecord(
       .eq('owner_entity_id', ownerEntityId)
       .select('record_id')
       .maybeSingle();
+    if (error?.code === 'EWTRN') {
+      return err('invalid_transition', 'Listing status changes require a workflow command.');
+    }
     if (error) return err('store_unavailable', 'Works storage could not be written.');
     if (!data) return err('forbidden_not_owner', 'only the owning entity may edit this record');
     return { ok: true };
@@ -397,6 +416,72 @@ async function validateRelationships(
     if (!opportunity.ok) return opportunity;
   }
   return { ok: true };
+}
+
+/** A private employer inbox is narrower than the generic submission reader.
+ * Verify the stored opportunity owner before touching any submissions. Public
+ * visibility or authorship of one proposal does not grant employer access. */
+export async function listOpportunityInbox(
+  id: unknown,
+  options: WorksReadOptions & { offset?: number } = {},
+): Promise<StoreResult<{
+  opportunity_id: string;
+  access: 'owner' | 'administrator';
+  records: StoredRecord[];
+  offset: number;
+  limit: number;
+  has_more: boolean;
+}>> {
+  const limit = 50;
+  const offset = options.offset ?? 0;
+  if (!ENTITY_DB_ID.test(options.viewerEntityId || '')) return err('owner_required', 'An authenticated entity is required.');
+  if (!validWorksId(id) || isSeedRecordId('opportunities', id)) return err('not_found', 'Inbox not found.');
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > 100_000 || offset % limit !== 0) {
+    return err('invalid_offset', 'Choose a valid inbox page.');
+  }
+  const opportunity = await readStoredRow('opportunities', id);
+  if (!opportunity.ok) return opportunity;
+  const owner = opportunity.row?.ownerEntityId;
+  if (!opportunity.row || opportunity.row.record.example === true || !ENTITY_DB_ID.test(owner || '')
+    || (owner !== options.viewerEntityId && options.isAdmin !== true)) return err('not_found', 'Inbox not found.');
+
+  let rows: StoredRow[];
+  if (usesFileBackend()) {
+    const result = await listStoredRows('submissions', true);
+    if (!result.ok) return result;
+    rows = result.rows.filter(row => (row.record as any).opportunity_id === id && row.record.example !== true)
+      .sort((a, b) => (b.record.created_at || '').localeCompare(a.record.created_at || '')
+        || String(recordId('submissions', b.record)).localeCompare(String(recordId('submissions', a.record))))
+      .slice(offset, offset + limit + 1);
+  } else {
+    try {
+      const { data, error } = await getServiceClient().from(WORKS_TABLE)
+        .select('record, owner_entity_id, visibility')
+        .eq('collection', 'submissions').eq('record->>opportunity_id', id)
+        .order('created_at', { ascending: false }).order('record_id', { ascending: false })
+        .range(offset, offset + limit);
+      if (error || !Array.isArray(data) || data.length > limit + 1) return err('store_unavailable', 'Inbox storage could not be read.');
+      const normalized = data.map(normalizeDatabaseRow);
+      if (normalized.some(row => row === null)) return err('store_unavailable', 'Inbox storage could not be read.');
+      rows = normalized as StoredRow[];
+    } catch { return err('store_unavailable', 'Inbox storage could not be read.'); }
+  }
+
+  const records: StoredRecord[] = [];
+  const ids = new Set<string>();
+  for (const row of rows) {
+    const validated = validateSubmission(row.record);
+    if (!validated.ok || validated.record.opportunity_id !== id || validated.record.example === true
+      || ids.has(validated.record.submission_id)) return err('store_unavailable', 'Inbox storage could not be read.');
+    ids.add(validated.record.submission_id);
+    const created = row.record.created_at;
+    records.push({ ...validated.record, visibility: row.visibility,
+      ...(typeof created === 'string' && created.length <= 40 && Number.isFinite(Date.parse(created)) ? { created_at: created } : {}),
+    });
+  }
+  return { ok: true, opportunity_id: id, access: owner === options.viewerEntityId ? 'owner' : 'administrator',
+    records: records.slice(0, limit), offset, limit, has_more: records.length > limit,
+  };
 }
 
 async function canReadSubmission(
@@ -480,6 +565,25 @@ export async function getWorksRecord(
   return { ok: true, record: loaded.row.record };
 }
 
+/** Owner-only read for builder reuse and publication recovery. Public existence is not ownership. */
+export async function getOwnedWorksRecord(
+  collection: unknown,
+  id: unknown,
+  options: { ownerEntityId: string },
+): Promise<StoreResult<{ record: WorksRecord }>> {
+  if (collection !== 'builders' && collection !== 'listings' && collection !== 'opportunities') return err('invalid_collection', 'unknown owned-record collection');
+  if (!ENTITY_DB_ID.test(options?.ownerEntityId || '')) return err('owner_required', 'an authenticated entity DB id is required');
+  if (!validWorksId(id)) return err('invalid_id', 'record id must match [a-z0-9-], 3-64 chars');
+  if (isSeedRecordId(collection, id)) return err('not_found', 'owned record not found');
+  const loaded = await readStoredRow(collection, id);
+  if (!loaded.ok) return loaded;
+  if (!loaded.row || loaded.row.ownerEntityId !== options.ownerEntityId) return err('not_found', 'owned record not found');
+  const checked = VALIDATORS[collection](loaded.row.record);
+  if (!checked.ok || recordId(collection, checked.record) !== id) return err('store_unavailable', 'Owned record could not be validated.');
+  // Return only schema-approved public fields, never the custody row or owner UUID.
+  return { ok: true, record: checked.record };
+}
+
 export async function createWorksRecord(
   collection: unknown,
   input: unknown,
@@ -513,6 +617,11 @@ export async function createWorksRecord(
 
   const relationships = await validateRelationships(collection, record, options.ownerEntityId);
   if (!relationships.ok) return relationships;
+  if (collection === 'submissions' && usesFileBackend()) {
+    const target = fileOpportunityWorkflowState((record as any).opportunity_id);
+    if (!target.ok) return target;
+    if (target.state !== 'open') return err('invalid_transition', 'This job is not accepting proposals.');
+  }
 
   const now = isoNow();
   const stored: StoredRecord = {
@@ -554,6 +663,10 @@ export async function updateWorksRecord(
   if (!loaded.row) return err('not_found', 'record not found');
   if (loaded.row.ownerEntityId !== options.ownerEntityId) {
     return err('forbidden_not_owner', 'only the owning entity may edit this record');
+  }
+  if (collection === 'listings' && Object.hasOwn(patch, 'status')
+    && patch.status !== (loaded.row.record as any).status) {
+    return err('invalid_transition', 'Listing status changes require a workflow command.');
   }
 
   const visibility = requestedVisibility(collection, patch, loaded.row.visibility);

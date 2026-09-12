@@ -123,8 +123,19 @@ const ROUTE_POLICIES = {
   'POST /api/works/authority-records/*/billing/checkout':  { rateCategory: 'submit', useAuth: false },
   'POST /api/works/authority-records/*/billing/reconcile': { rateCategory: 'submit', useAuth: false },
   'POST /api/works/billing/webhook':                       { rateCategory: 'submit', useAuth: false },
-  'POST /api/works/*':                       { rateCategory: 'submit', useAuth: true },
-  'PATCH /api/works/*/*':                    { rateCategory: 'submit', useAuth: true },
+  // Stateless, scoped evidence verification. Trusted policy and current status
+  // come from the operator, never from a scan, payment or caller-supplied keys.
+  'POST /api/works/qualification':                        { rateCategory: 'mcp_tool_call', useAuth: false },
+  // Works handlers authenticate either a Works-only email session (with
+  // same-origin protection) or a legacy bearer. Neither bypasses owner checks.
+  'POST /api/works/account/start':           { rateCategory: 'register', useAuth: false },
+  'POST /api/works/account/verify':          { rateCategory: 'register', useAuth: false },
+  'POST /api/works/account/logout':          { rateCategory: 'submit', useAuth: false },
+  'POST /api/works/workspace/commands':      { rateCategory: 'submit', useAuth: false },
+  'POST /api/works/workspace/notifications/*/read': { rateCategory: 'submit', useAuth: false },
+  'POST /api/works/assignments/*/commands':  { rateCategory: 'submit', useAuth: false },
+  'POST /api/works/*':                       { rateCategory: 'submit', useAuth: false },
+  'PATCH /api/works/*/*':                    { rateCategory: 'submit', useAuth: false },
 
   // Trust evaluation. Rich evaluator/profile surfaces are auth-scoped to avoid
   // anonymous system mapping; only narrow public verification/capability surfaces

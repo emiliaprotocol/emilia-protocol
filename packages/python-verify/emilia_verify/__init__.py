@@ -177,7 +177,12 @@ def verify_merkle_anchor(leaf_hash: Any, proof: Any, expected_root: Any, v2: boo
         pos = step.get("position")
         if pos not in ("left", "right"):
             return False
-        current = pair(step["hash"], current) if pos == "left" else pair(current, step["hash"])
+        try:
+            current = pair(step["hash"], current) if pos == "left" else pair(current, step["hash"])
+        except UnicodeError:
+            # Escaped lone surrogates are legal JSON decoder output, but not
+            # encodable hash material. Refuse without leaking an exception.
+            return False
     return current == expected_root
 
 
@@ -211,7 +216,9 @@ def verify_receipt(
         return VerifyResult(False, checks, f"Unsupported version: {version}")
     checks["version"] = True
 
-    sig = doc.get("signature") or {}
+    sig = doc.get("signature")
+    if not isinstance(doc.get("payload"), dict) or not isinstance(sig, dict):
+        return VerifyResult(False, checks, "Payload and signature must be objects")
     if not doc.get("payload") or not sig.get("value") or not sig.get("algorithm"):
         return VerifyResult(False, checks, "Missing payload or signature")
     # EP-RECEIPT-v1 is Ed25519 over JCS, and signature.algorithm is NOT covered
@@ -227,7 +234,11 @@ def verify_receipt(
             f"Unsupported signature algorithm '{sig.get('algorithm')}'; "
             f"EP-RECEIPT-v1 requires {RECEIPT_V1_SIGNATURE_ALGORITHM}",
         )
-    if not is_canonicalizable(doc["payload"]):
+    try:
+        canonicalizable = is_canonicalizable(doc["payload"])
+    except (RecursionError, TypeError, ValueError):
+        canonicalizable = False
+    if not canonicalizable:
         return VerifyResult(
             False,
             checks,
@@ -247,7 +258,12 @@ def verify_receipt(
     except Exception as e:  # noqa: BLE001 - report any decode/key error as a failed check
         return VerifyResult(False, checks, f"Signature verification failed: {e}")
 
-    anchor = doc.get("anchor") or {}
+    anchor = doc.get("anchor")
+    if anchor is None:
+        anchor = {}
+    if not isinstance(anchor, dict):
+        checks["anchor"] = False
+        return VerifyResult(False, checks, "Anchor must be an object")
     # Empty proof arrays are valid for a one-leaf Merkle tree. Do not use
     # truthiness here: JavaScript treats [] as truthy, Python as false, and that
     # split would silently skip anchor verification for single-leaf receipts.
@@ -634,6 +650,11 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
         action_hash = quorum.get("action_hash") if isinstance(quorum, dict) else None
         if not policy or not isinstance(members, list) or not members or not isinstance(action_hash, str) or not action_hash:
             return {"valid": False, "checks": checks, "members": members_out}
+        if "expectedPolicy" in opts:
+            expected = opts["expectedPolicy"]
+            if not isinstance(expected, dict) or canonicalize(expected) != canonicalize(policy):
+                return {"valid": False, "checks": checks, "members": members_out,
+                        "reason": "quorum_policy_mismatch"}
         mode = policy.get("mode")
         if mode not in ("ordered", "threshold"):
             return {"valid": False, "checks": checks, "members": members_out}
@@ -738,15 +759,19 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
             checks["order_satisfied"] = True
         if mode == "ordered" and policy.get("ordered_chain") is True:
             seq = members
-            linked = len(seq) >= required and len(seq) <= len(eligible)
+            linked = (policy.get("ordered_chain_profile") == "EP-QUORUM-SIGNOFF-CHAIN-v1"
+                      and len(seq) >= required and len(seq) <= len(eligible))
             for idx, mem in enumerate(seq):
-                prev = ((mem.get("signoff") or {}).get("context") or {}).get("prev_context_hash")
+                context = ((mem.get("signoff") or {}).get("context") or {})
+                prev = context.get("prev_signoff_hash")
+                if "prev_context_hash" in context:
+                    linked = False
                 if idx == 0:
-                    if prev is not None:
+                    if "prev_signoff_hash" in context:
                         linked = False
                 else:
-                    prev_ctx = (seq[idx - 1].get("signoff") or {}).get("context") or {}
-                    if prev != _sha256_hex(canonicalize(prev_ctx)):
+                    previous_signoff = seq[idx - 1].get("signoff")
+                    if prev != _sha256_hex("EP-QUORUM-SIGNOFF-CHAIN-v1\x00" + canonicalize(previous_signoff)):
                         linked = False
             checks["chain_linked"] = linked
         else:

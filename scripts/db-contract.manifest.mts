@@ -159,6 +159,29 @@ const CONSEQUENCE_CONTROL_SECURITY_ASSERTIONS: string[] = [
   'contract:index:public.idx_receipts_single_child_per_parent:exact-unique-btree',
 ];
 
+// EMILIA Works account state is service-role policy guarded because the
+// passwordless account helpers read and update these rows directly. Operating
+// workflow state is stricter RPC-only custody: service_role may execute the
+// authorized SECURITY DEFINER commands but has no direct table grant.
+const WORKS_ACCOUNT_TABLES: string[] = [
+  'works_accounts',
+  'works_account_email_challenges',
+  'works_account_sessions',
+];
+
+const WORKS_WORKFLOW_RPC_ONLY_TABLES: string[] = [
+  'works_record_workflow',
+  'works_assignments',
+  'works_assignment_events',
+  'works_notifications',
+  'works_workflow_commands',
+];
+
+const WORKS_TABLES: string[] = [
+  ...WORKS_ACCOUNT_TABLES,
+  ...WORKS_WORKFLOW_RPC_ONLY_TABLES,
+];
+
 // Every table created in the public schema must be enrolled in the RLS
 // contract. Keep this list derived-by-test from CREATE TABLE statements so a
 // future migration cannot silently add an ungoverned Data API surface.
@@ -206,6 +229,7 @@ const PUBLIC_RLS_TABLES: string[] = [
   'works_authority_entitlements', 'works_authority_events',
   'works_authority_invitations', 'works_authority_record_versions',
   'works_authority_records', 'works_authority_stripe_events', 'works_records',
+  ...WORKS_TABLES,
   'zk_proofs',
 ];
 
@@ -306,6 +330,7 @@ export const contract: DbContract = {
     'authorities', 'commits', 'consumed_gate_refs',
     ...SERVICE_ONLY_TABLES,
     ...RELEASE_LOCK_TABLES,
+    ...WORKS_TABLES,
   ],
 
   // Private-schema objects are qualified so the live reconciliation snapshot
@@ -430,6 +455,26 @@ export const contract: DbContract = {
       'caid', 'provider_account_id', 'target_digest', 'operation',
       'idempotency_key', 'nonce', 'issued_at', 'expires_at', 'envelope_digest',
       'state', 'reserved_at', 'consumed_at', 'outcome'],
+    works_accounts: ['account_id', 'owner_entity_id', 'email_digest', 'display_name',
+      'email_verified_at', 'consent_at', 'email_notifications', 'claims_verified',
+      'status', 'created_at', 'updated_at'],
+    works_account_email_challenges: ['challenge_id', 'email_digest', 'client_digest',
+      'code_digest', 'mode', 'pending_display_name', 'consent', 'email_notifications',
+      'attempt_count', 'requested_at', 'expires_at', 'delivery_confirmed_at', 'consumed_at'],
+    works_account_sessions: ['session_token_digest', 'account_id', 'created_at',
+      'expires_at', 'revoked_at'],
+    works_record_workflow: ['collection', 'record_id', 'state', 'revision', 'updated_at'],
+    works_assignments: ['assignment_id', 'opportunity_id', 'submission_id',
+      'buyer_entity_id', 'builder_entity_id', 'builder_id', 'listing_id', 'state',
+      'revision', 'scope', 'acceptance_criteria', 'terms', 'frozen_job',
+      'frozen_proposal', 'delivery', 'outcome', 'created_at', 'updated_at'],
+    works_assignment_events: ['event_id', 'assignment_id', 'sequence', 'event_type',
+      'actor_entity_id', 'evidence', 'created_at'],
+    works_notifications: ['notification_id', 'owner_entity_id', 'kind',
+      'resource_type', 'resource_id', 'created_at', 'read_at', 'revision',
+      'email_delivered_at', 'email_claimed_until', 'email_attempts'],
+    works_workflow_commands: ['actor_entity_id', 'idempotency_key', 'request_digest',
+      'response', 'created_at'],
     // enrollment_basis records whether an approver credential was bound against
     // the org's provisioned directory or operator-attested; directory_user_id
     // pins the exact scim_users row that authorized a directory-basis enrollment.
@@ -448,6 +493,20 @@ export const contract: DbContract = {
     commits: ['idx_commits_kid'],
     partner_inquiries: ['idx_partner_inquiries_email'],
     investor_inquiries: ['idx_investor_inquiries_email'],
+    works_account_email_challenges: [
+      'works_account_challenges_email_rate_idx',
+      'works_account_challenges_client_rate_idx',
+    ],
+    works_account_sessions: [
+      'works_account_sessions_account_idx',
+      'works_account_sessions_active_expiry_idx',
+    ],
+    works_assignments: [
+      'works_assignments_one_active_job_idx',
+      'works_assignments_buyer_idx',
+      'works_assignments_builder_idx',
+    ],
+    works_notifications: ['works_notifications_owner_idx'],
   },
 
   // Tables that MUST have RLS enabled. RLS off => hard FAIL.
@@ -455,7 +514,10 @@ export const contract: DbContract = {
 
   // Existing FORCE-RLS tables remain source-governed by their dedicated
   // migration contracts; this set pins the newly closed STRIX surface.
-  forceRlsRequired: STRIX_RLS_CLOSURE_TABLES,
+  forceRlsRequired: [
+    ...STRIX_RLS_CLOSURE_TABLES,
+    ...WORKS_TABLES,
+  ],
 
   // No anon/authenticated/PUBLIC may have a SELECT (or ALL) policy on these.
   // (mig 113: api_keys + waitlist were anon-readable.) authorities = permission root.
@@ -463,6 +525,7 @@ export const contract: DbContract = {
     'waitlist', 'authorities', 'commits', 'consumed_gate_refs',
     ...SERVICE_ONLY_TABLES,
     ...RELEASE_LOCK_TABLES,
+    ...WORKS_TABLES,
   ],
 
   // Table ACLs are checked independently of RLS policies. These tables are
@@ -520,6 +583,7 @@ export const contract: DbContract = {
     'consumed_gate_refs',
     ...SERVICE_ONLY_TABLES,
     ...RELEASE_LOCK_TABLES,
+    ...WORKS_TABLES,
   ],
 
   // These four replay/revocation tables intentionally expose a service_role
@@ -529,6 +593,7 @@ export const contract: DbContract = {
     'audit_events', 'saml_consumed_assertions', 'revoked_commit_keys', 'revoked_sessions',
     'session_cutoffs', 'authority_registry_epoch', 'fraud_flags',
     'partner_inquiries', 'investor_inquiries',
+    ...WORKS_ACCOUNT_TABLES,
   ],
 
   // SECURITY DEFINER RPCs that MUST exist and MUST NOT be anon/authenticated/
@@ -573,6 +638,20 @@ export const contract: DbContract = {
     'enroll_mobile_device',
     'register_mobile_action_challenge',
     'commit_mobile_action_decision',
+    'begin_works_account_email_challenge',
+    'mark_works_account_email_delivery',
+    'exchange_works_account_email_challenge',
+    'read_works_account_session',
+    'revoke_works_account_session',
+    'command_works_record',
+    'select_works_proposal',
+    'command_works_assignment',
+    'read_works_workspace',
+    'read_works_assignment',
+    'read_works_public_workflow_states',
+    'mark_works_notification_read',
+    'lease_works_notification_email',
+    'mark_works_notification_email_delivered',
     ...RELEASE_LOCK_SERVICE_RPCS,
   ],
 

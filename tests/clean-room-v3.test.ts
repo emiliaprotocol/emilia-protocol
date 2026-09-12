@@ -306,13 +306,14 @@ describe('clean-room evaluator v3 oracle separation', () => {
     const first = buildPostBuildChallengesV3(kit);
     const second = buildPostBuildChallengesV3(kit);
 
-    expect(first.bindings.size).toBe(64);
+    expect(first.bindings.size).toBe(80);
     expect([...first.bindings.values()].map((entry) => entry.expected.valid))
       .toContain(true);
     expect([...first.bindings.values()].map((entry) => entry.expected.valid))
       .toContain(false);
     const paired = new Map<string, boolean[]>();
     for (const vector of first.executionSuite.vectors) {
+      if (!first.bindings.get(vector.handle)!.sourceId.startsWith('post-build-canonical-pair-')) continue;
       const inputJson = vector.input.canonicalization.input_json;
       const outcomes = paired.get(inputJson) ?? [];
       outcomes.push(first.bindings.get(vector.handle)!.expected.valid);
@@ -358,6 +359,7 @@ describe('clean-room evaluator v3 oracle separation', () => {
     });
     const groups = new Map<string, any[]>();
     for (const vector of challenge.executionSuite.vectors) {
+      if (!challenge.bindings.get(vector.handle)!.sourceId.startsWith('post-build-canonical-pair-')) continue;
       const key = vector.input.canonicalization.input_json;
       const group = groups.get(key) ?? [];
       group.push(vector);
@@ -374,6 +376,13 @@ describe('clean-room evaluator v3 oracle separation', () => {
         },
       }));
     });
+    // Isolate the blind pair guess from the separately tested raw boundaries.
+    for (const vector of challenge.executionSuite.vectors) {
+      const binding = challenge.bindings.get(vector.handle)!;
+      if (binding.sourceId.startsWith('post-build-canonical-raw-')) {
+        rows.push({ handle: vector.handle, result: { valid: binding.expected.valid } });
+      }
+    }
 
     expect(() => validateResultRowsV3(challenge, rows))
       .toThrow(/post-build-canonical-pair-\d+-(?:valid|invalid)/);
@@ -438,13 +447,13 @@ describe('clean-room evaluator v3 oracle separation', () => {
         manifestPath,
         runnerPath: runner,
         allowUnsafeLocalExecution: true,
-      })).toThrow(/post-build-canonical-pair-\d+-valid/);
+      })).toThrow(/post-build-canonical-(?:pair-\d+-valid|raw-)/);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it('passes an honest evaluator over 335 pinned vectors and fresh challenges', () => {
+  it('passes an honest evaluator over 340 pinned vectors and fresh challenges', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-v3-valid-'));
     try {
       const runner = path.join(dir, 'runner');
@@ -465,21 +474,28 @@ describe('clean-room evaluator v3 oracle separation', () => {
       expect(report.conformance).toMatchObject({
         status: 'pass',
         suites: 21,
-        vectors: 335,
+        vectors: 340,
       });
       expect(report.post_build_challenge).toMatchObject({
         status: 'pass',
         suite: 'conformance/vectors/canonicalization.v1.json',
       });
-      expect(report.post_build_challenge.cases).toBe(64);
+      expect(report.post_build_challenge).toMatchObject({
+        generator: 'EP-CLEAN-ROOM-CANONICALIZATION-CHALLENGE-v2',
+        cases: 80,
+        paired_cases: 64,
+        raw_boundary_cases: 16,
+        valid_cases: 40,
+        invalid_cases: 40,
+      });
       const disclosedChallenge = Buffer.from(
         report.post_build_challenge.execution_input_base64url,
         'base64url',
       );
       expect(sha256V3(disclosedChallenge))
         .toBe(report.post_build_challenge.execution_input_sha256);
-      expect(JSON.parse(disclosedChallenge.toString('utf8')).vectors).toHaveLength(64);
-      expect(report.post_build_challenge.normalized_results).toHaveLength(64);
+      expect(JSON.parse(disclosedChallenge.toString('utf8')).vectors).toHaveLength(80);
+      expect(report.post_build_challenge.normalized_results).toHaveLength(80);
       expect(report.post_build_challenge.generator_contract.pair_count).toBe(32);
       expect(Buffer.from(report.post_build_challenge.seed_base64url, 'base64url'))
         .toHaveLength(32);
@@ -607,4 +623,141 @@ describe('clean-room evaluator v3 oracle separation', () => {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   }, 60_000);
+
+  it('routes execution through the bounded Docker sandbox without mounting the repository', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-v3-docker-'));
+    try {
+      const runner = path.join(dir, 'runner');
+      const manifestPath = path.join(dir, 'submission.json');
+      const docker = path.join(dir, 'docker');
+      const log = path.join(dir, 'docker-args.jsonl');
+      buildReferenceRunner(runner, path.resolve('conformance/runners/run-js-v3.mjs'));
+      writeJson(manifestPath, submissionFor(runner));
+      fs.writeFileSync(docker, `#!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + '\\n');
+if (args[0] === 'image' && args[1] === 'inspect') {
+  process.stdout.write('sha256:${'b'.repeat(64)}\\n');
+  process.exit(0);
+}
+const mounts = args.filter((value, index) => args[index - 1] === '--mount');
+const source = (destination) => mounts.find((value) => value.includes('dst=' + destination + ','))
+  .split(',').find((value) => value.startsWith('src=')).slice(4);
+const imageIndex = args.findIndex((value) => value === 'example.invalid/runner@sha256:${'a'.repeat(64)}');
+const fixed = args.slice(imageIndex + 1, -1);
+process.stdout.write(execFileSync(source('/runner'), [...fixed, source('/input.json')], { encoding: 'utf8' }));
+`);
+      fs.chmodSync(docker, 0o755);
+
+      const report = verifyCleanRoomSubmissionV3({
+        manifestPath,
+        runnerPath: runner,
+        dockerImage: `example.invalid/runner@sha256:${'a'.repeat(64)}`,
+        dockerCommand: docker,
+      });
+      expect(report.conformance.status).toBe('pass');
+      expect(report.input_separation).toMatchObject({
+        process_sandbox: true,
+        network_sandbox: true,
+        filesystem_read_sandbox: true,
+        sandbox: {
+          image: `example.invalid/runner@sha256:${'a'.repeat(64)}`,
+          image_id: `sha256:${'b'.repeat(64)}`,
+          repository_mounted: false,
+          evaluator_expectations_mounted: false,
+          user: '65532:65532',
+        },
+      });
+      const invocations = fs.readFileSync(log, 'utf8').trim().split('\n')
+        .map((line) => JSON.parse(line));
+      const run = invocations.find((args) => args[0] === 'run');
+      expect(run).toEqual(expect.arrayContaining([
+        '--network', 'none', '--read-only', '--cap-drop', 'ALL',
+        '--security-opt', 'no-new-privileges', '--user', '65532:65532',
+        '--entrypoint', '/runner',
+      ]));
+      const mounts = run.filter((value, index) => run[index - 1] === '--mount');
+      expect(mounts).toHaveLength(2);
+      expect(mounts.every((mount) => mount.endsWith(',readonly'))).toBe(true);
+      expect(mounts.some((mount) => mount.includes('dst=/runner,'))).toBe(true);
+      expect(mounts.some((mount) => mount.includes('dst=/input.json,'))).toBe(true);
+      expect(run.join(' ')).not.toContain(path.resolve('.'));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it('force-removes only the container recorded for a failed Docker session', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-v3-docker-cleanup-'));
+    try {
+      const runner = path.join(dir, 'runner');
+      const manifestPath = path.join(dir, 'submission.json');
+      const docker = path.join(dir, 'docker');
+      const log = path.join(dir, 'docker-args.jsonl');
+      const cid = 'c'.repeat(64);
+      buildReferenceRunner(runner, path.resolve('conformance/runners/run-js-v3.mjs'));
+      writeJson(manifestPath, submissionFor(runner));
+      fs.writeFileSync(docker, `#!/usr/bin/env node
+import fs from 'node:fs';
+const args = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + '\\n');
+if (args[0] === 'image' && args[1] === 'inspect') {
+  process.stdout.write('sha256:${'b'.repeat(64)}\\n');
+  process.exit(0);
+}
+if (args[0] === 'run') {
+  const cidfile = args[args.indexOf('--cidfile') + 1];
+  fs.writeFileSync(cidfile, ${JSON.stringify(cid)} + '\\n');
+  process.stderr.write('runner refused fixture\\n');
+  process.exit(23);
+}
+if (args[0] === 'rm') process.exit(0);
+process.exit(99);
+`);
+      fs.chmodSync(docker, 0o755);
+
+      expect(() => verifyCleanRoomSubmissionV3({
+        manifestPath,
+        runnerPath: runner,
+        dockerImage: `example.invalid/runner@sha256:${'a'.repeat(64)}`,
+        dockerCommand: docker,
+      })).toThrow(/runner refused fixture/);
+
+      const invocations = fs.readFileSync(log, 'utf8').trim().split('\n')
+        .map((line) => JSON.parse(line));
+      const run = invocations.find((args) => args[0] === 'run');
+      expect(run).toEqual(expect.arrayContaining(['--cidfile']));
+      expect(invocations.filter((args) => args[0] === 'rm')).toEqual([
+        ['rm', '--force', cid],
+      ]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  const dockerImage = process.env.EP_CLEAN_ROOM_DOCKER_IMAGE;
+  (dockerImage ? it : it.skip)('executes the complete corpus in a real pinned Docker image', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-v3-real-docker-'));
+    try {
+      const runner = path.join(dir, 'runner');
+      const manifestPath = path.join(dir, 'submission.json');
+      buildReferenceRunner(runner, path.resolve('conformance/runners/run-js-v3.mjs'));
+      writeJson(manifestPath, submissionFor(runner));
+      const report = verifyCleanRoomSubmissionV3({
+        manifestPath,
+        runnerPath: runner,
+        dockerImage,
+      });
+      expect(report.conformance.status).toBe('pass');
+      expect(report.input_separation.sandbox).toMatchObject({
+        image: dockerImage,
+        repository_mounted: false,
+        evaluator_expectations_mounted: false,
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }, 180_000);
 });

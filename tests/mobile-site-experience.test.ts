@@ -28,15 +28,24 @@ describe('mobile public-site experience contract', () => {
     expect(css).toContain('.ep-protocol-detail-row');
   });
 
-  it('keeps the authority toll booth frame and Gate handoff visible on phones', () => {
+  it('keeps the workforce story readable and its handover record responsive on phones', () => {
     const homepage = read('app/HomePageClient.tsx');
-    const css = read('app/ep.css');
+    const story = read('components/workforce/WorkforceStory.tsx');
+    const css = read('components/workforce/workforce.module.css');
 
-    expect(homepage).toContain('EMILIA <span>· The authority toll booth for autonomous work</span>');
-    expect(homepage).toContain('ep-home-lede-mobile');
-    expect(homepage).toContain('One creates intent. The other enforces authority.');
-    expect(homepage).toContain('ep-home-auth-map');
-    expect(css).toContain('.ep-home-calm-kicker span');
-    expect(css).toContain('.ep-home-auth-handoff');
+    expect(homepage).toContain('<WorkforceIntroduction />');
+    expect(homepage).toContain('<WorkforceHandover />');
+    expect(story).toContain('Build your<br />AI workforce.');
+    expect(story).toContain('aria-label="Illustrative refunds job before and after replacement"');
+    expect(css).toContain('font-size: clamp(48px, 6.2vw, 82px)');
+    expect(story).toContain('role="group" aria-label="Illustrative refunds job before and after replacement"');
+    expect(story).toContain('/emilia-workforce-coastal-path-v1.webp');
+    expect(css).toContain('object-fit: contain');
+    expect(css).toContain('.journeyLayout { grid-template-columns: 1fr; gap: 36px; }');
+    expect(css).toContain('min-height: 48px');
+    expect(css).toContain('@media (max-width: 760px)');
+    expect(css).toContain('@media (max-width: 390px)');
+    expect(css).toContain('.handoverLayout { grid-template-columns: 1fr; gap: 28px; }');
+    expect(css).toContain('.primary:focus-visible');
   });
 });

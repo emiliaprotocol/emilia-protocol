@@ -1,14 +1,8 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import EuAiActBanner from '@/components/EuAiActBanner';
-import proofStats from '@/lib/proof-stats.json';
 import { ENTITY } from '@/lib/site-config';
 import './ep.css';
-
-const TEST_CASES = Number(proofStats.tests.total).toLocaleString('en-US');
-const PROOF_SUMMARY = `${proofStats.securityCase.claims} executable security claims, `
-  + `${proofStats.tamarin.verifiedObligations} composed Tamarin obligations, `
-  + `${proofStats.conformance.vectors} current conformance vectors, and ${TEST_CASES} automated tests`;
 
 // Site-wide SEO metadata. Per-page `export const metadata` overrides the
 // fields it sets and inherits the rest. Open Graph + Twitter defaults give
@@ -17,39 +11,39 @@ const PROOF_SUMMARY = `${proofStats.securityCase.claims} executable security cla
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.emiliaprotocol.ai'),
   title: {
-    default: 'EMILIA | Authority Toll Booth for Autonomous Work',
+    default: 'EMILIA | Build Your AI Workforce',
     template: '%s',
   },
   description:
-    'At protected boundaries, every consequential agent action enters with customer authority and exits '
-    + 'with an action-bound receipt.',
-  applicationName: 'EMILIA Protocol',
-  authors: [{ name: 'EMILIA Protocol', url: 'https://www.emiliaprotocol.ai' }],
-  creator: 'EMILIA Protocol',
-  publisher: 'EMILIA Protocol',
+    'Find specialized agents or bring your own. Give them a job, set their limits and review the work. '
+    + 'EMILIA is building the operating home for your AI workforce.',
+  applicationName: 'EMILIA',
+  authors: [{ name: 'EMILIA', url: 'https://www.emiliaprotocol.ai' }],
+  creator: 'EMILIA',
+  publisher: 'EMILIA',
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: 'https://www.emiliaprotocol.ai',
-    siteName: 'EMILIA Protocol',
-    title: 'EMILIA | Authority Toll Booth for Autonomous Work',
+    siteName: 'EMILIA',
+    title: 'EMILIA | Build Your AI Workforce',
     description:
-      `Every consequential agent action enters with authority and exits with a receipt. Machine-verifiable evidence: ${PROOF_SUMMARY}.`,
+      'Find specialized agents or bring your own. Explore the marketplace and a private local workforce alpha, with Gate enforcing limits on configured paths.',
     images: [
       {
-        url: '/emilia-authority-tollbooth-v1.png',
-        width: 1717,
-        height: 916,
-        alt: 'Agent-intent paths cross a customer-owned authority checkpoint and leave with action-bound receipts',
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'EMILIA: Build your AI workforce. Find specialized agents or bring your own.',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EMILIA | Authority Toll Booth for Autonomous Work',
+    title: 'EMILIA | Build Your AI Workforce',
     description:
-      `Humans define authority. Agents exercise it. EMILIA ensures the agent cannot quietly widen it. ${PROOF_SUMMARY}.`,
-    images: ['/emilia-authority-tollbooth-v1.png'],
+      'Find specialized agents or bring your own. Give them a job, set their limits and review the work. Workforce workspace: private local alpha.',
+    images: ['/twitter-image'],
   },
   robots: {
     index: true,
@@ -78,7 +72,7 @@ const ORGANIZATION_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   '@id': 'https://www.emiliaprotocol.ai/#organization',
-  name: 'EMILIA Protocol',
+  name: 'EMILIA',
   legalName: ENTITY.legalName,
   alternateName: ['EMILIA', 'Emilia Protocol', 'emiliaprotocol.ai'],
   url: 'https://www.emiliaprotocol.ai',
@@ -90,8 +84,8 @@ const ORGANIZATION_JSONLD = {
   },
   email: ENTITY.email,
   description:
-    'EMILIA is the independent authority system for autonomous work. The commercial Gate enforcement '
-    + 'product runs on the open Apache-2.0 EMILIA Protocol proof substrate.',
+    'EMILIA is building an AI workforce business, connecting a builder marketplace to employer-owned jobs, limits and work records. '
+    + 'Gate enforces customer authority on configured execution paths. The workforce workspace is a private local alpha; EMILIA Protocol is its open foundation.',
   foundingDate: '2026-06-03',
   sameAs: [
     'https://github.com/emiliaprotocol',
@@ -108,7 +102,7 @@ const WEBSITE_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   '@id': 'https://www.emiliaprotocol.ai/#website',
-  name: 'EMILIA Protocol',
+  name: 'EMILIA',
   alternateName: ['EMILIA', 'emiliaprotocol.ai'],
   url: 'https://www.emiliaprotocol.ai',
   publisher: { '@id': 'https://www.emiliaprotocol.ai/#organization' },

@@ -7,22 +7,26 @@ const ROOT = resolve(import.meta.dirname, '..');
 const read = (path: string): string => readFileSync(resolve(ROOT, path), 'utf8');
 
 describe('public product naming and navigation contract', () => {
-  it('keeps every top-navigation destination with a slash-form label', () => {
+  it('makes Workforce discoverable and uses human labels for navigation destinations', () => {
     const navigation = read('components/SiteNav.tsx');
     const expectedLinks = [
-      ['/products', '/products'],
-      ['/use-cases', '/solutions'],
-      ['/docs', '/developers'],
-      ['/proof', '/proof'],
-      ['/protocol', '/protocol'],
-      ['/pricing', '/pricing'],
+      ['/workforce', 'Workforce'],
+      ['/products', 'Products'],
+      ['/use-cases', 'Solutions'],
+      ['/docs', 'Developers'],
+      ['/proof', 'Proof'],
+      ['/protocol', 'Protocol'],
+      ['/pricing', 'Pricing'],
     ];
     for (const [href, label] of expectedLinks) {
       expect(navigation).toContain(`[\'${href}\', \'${label}\']`);
     }
     for (const promotedExperiment of ['/signal', '/assurance', '/grace', '/model-to-matter']) {
-      expect(navigation).not.toContain(`[\'${promotedExperiment}\', \'${promotedExperiment}\']`);
+      expect(navigation).not.toContain(`['${promotedExperiment}',`);
     }
+    expect(navigation).toContain('href="/contact#workforce"');
+    expect(navigation).toContain('Discuss your workflow');
+    expect(navigation).toContain('label.toLowerCase() === activeKey');
   });
 
   it('groups the buyer-facing product system under the products navigation item', () => {
@@ -62,6 +66,12 @@ describe('public product naming and navigation contract', () => {
     const redirects = read('next.config.js');
     expect(redirects).toContain("source: '/m2m', destination: '/model-to-matter'");
     expect(redirects).toContain("source: '/amelia-i', destination: '/signal'");
+  });
+
+  it('retires legacy insurance PDFs into the honest insurance boundary page', () => {
+    const redirects = read('next.config.js');
+    expect(redirects).toContain("source: '/briefs/emilia-insurance-onepager.pdf', destination: '/insurance'");
+    expect(redirects).toContain("source: '/briefs/emilia-underwriter-brief.pdf', destination: '/insurance'");
   });
 
   it('does not expose the retired Amelia I or Amelia Grip names in buyer-facing source', () => {

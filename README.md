@@ -51,6 +51,13 @@ mandate and detached receipt to the exact base and head commits before a protect
 passes. It is preventive only when the repository makes the check required and closes alternate
 merge paths. This is a product and distribution experiment, not evidence of external adoption.
 
+Using Hugging Face smolagents? [Wrap a tool you already use](packages/smolagents/README.md)
+and [try the synthetic refund demo](examples/huggingface-refund-space/README.md). The
+integration is free and open source. The host supplies approval for the exact call;
+the wrapper refuses missing, changed, or reused authority on that covered path.
+It is not a sandbox: production enforcement still needs credentials outside the
+agent and shared, durable consumption state behind Gate.
+
 ### The agent may keep running. Its authority stops.
 
 Continuous and self-improving agents create a control problem that process termination alone cannot
@@ -86,7 +93,7 @@ security claims over 259 hashed evidence files**, verifies **20 Tamarin lemmas a
 Dolev-Yao models — 17 all-traces obligations and 3 exists-trace reachability witnesses** — and
 preserves **8 deliberately weakened variants that produce concrete
 attack traces when load-bearing checks are removed**. The live same-team conformance corpus contains **21 suites and
-335 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
+340 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
 **16-suite/164-vector** bundle and a **359-case hostility campaign**. The broader suite contains
 **10,601+ automated tests across 657+ files**.
 
@@ -355,7 +362,7 @@ history. See the [standards guide](standards/README.md),
 | **MCP distribution** | npm package `@emilia-protocol/mcp-server` · official Registry publication is tracked separately in [MCP-REGISTRY.md](docs/MCP-REGISTRY.md); aggregator listings are not inferred from either state |
 | **License** | Apache-2.0 |
 
-Three same-team reference ports (JS / Python / Go) agree across all 21 suites and 335 vectors. Separately, an externally authored Rust implementation rebuilt from a pinned public source tree passes the pinned 16-suite/164-vector clean-room bundle and a 359-case hostility campaign, re-run in its own CI lane on every change. The newer AEC acceptance and four-outcome resolution suites are not attributed to Rust. That is external interoperability evidence, not strict clean-room construction acceptance; the aggregate CI case records the strict acceptance count as zero pending independent attestation. See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
+Three same-team reference ports (JS / Python / Go) agree across all 21 suites and 340 vectors. Separately, an externally authored Rust implementation rebuilt from a pinned public source tree passes the pinned 16-suite/164-vector clean-room bundle and a 359-case hostility campaign, re-run in its own CI lane on every change. The newer AEC acceptance and four-outcome resolution suites are not attributed to Rust. That is external interoperability evidence, not strict clean-room construction acceptance; the aggregate CI case records the strict acceptance count as zero pending independent attestation. See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
 
 ---
 
@@ -381,7 +388,7 @@ Three same-team reference ports (JS / Python / Go) agree across all 21 suites an
 | Red-team cases cataloged | 86 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Release security status | Repository security checks pass; every Strix finding on the audited changes is remediated with regression coverage and its review thread resolved |
 | Conformance (7/7) | `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` |
-| Cross-language conformance | 335 vectors · 21 suites: receipts · device signoffs · four-outcome resolution · multi-party quorum · revocation · Outcome Binding (semantic + real-crypto) · Authority Document/Proof issuer join · time-attestation · trust-receipt (x2 profiles) · provenance · evidence-record · canonicalization · boundary · AEC acceptance · currency · initiator-attestation · consumption-proof · witness · timestamp-proof (RFC 3161). JS / Python / Go verifiers agree (`node conformance/run.mjs`). The external Rust baseline remains 164 vectors / 16 suites. See [CONFORMANCE.md](CONFORMANCE.md). |
+| Cross-language conformance | 340 vectors · 21 suites: receipts · device signoffs · four-outcome resolution · multi-party quorum · revocation · Outcome Binding (semantic + real-crypto) · Authority Document/Proof issuer join · time-attestation · trust-receipt (x2 profiles) · provenance · evidence-record · canonicalization · boundary · AEC acceptance · currency · initiator-attestation · consumption-proof · witness · timestamp-proof (RFC 3161). JS / Python / Go verifiers agree (`node conformance/run.mjs`). The external Rust baseline remains 164 vectors / 16 suites. See [CONFORMANCE.md](CONFORMANCE.md). |
 | Handshake create p95 | 575ms at 50 VUs — [PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md) |
 
 ## Cryptographic longevity (with explicit deployment boundaries)

@@ -24,8 +24,8 @@
     },
     {
       "path": "conformance/vectors/quorum.v1.json",
-      "sha256": "ac0f857575ee0fd68cc526e6ac975df5d519f1e43a9a7f292f0f34c2800e44a8",
-      "vectors": 19
+      "sha256": "f8149c155003a2a5de7e4c1d869244d775000aa2237a9c40f0de7b7f01fea2c4",
+      "vectors": 24
     },
     {
       "path": "conformance/vectors/revocation.exec.v2.json",
@@ -117,7 +117,7 @@
   ],
   "totals": {
     "suites": 21,
-    "vectors": 335,
+    "vectors": 340,
     "implementations": 3
   },
   "implementations": [
@@ -130,13 +130,13 @@
         "sha256": "7452eb7b6b91ac9a1387a63eb8a0bc299c0597371945cb8aea0096980d039a7b"
       },
       "source": {
-        "files": 339,
-        "bytes": 6112971,
-        "tree_sha256": "688ce113c72b27abdf6f5bc9f374ab53b679513381de2bebdb725ccfbb8c1a05"
+        "files": 341,
+        "bytes": 6283778,
+        "tree_sha256": "fd8446750e2ace82d498370a2f0b2b1b9a2e5f99e77559602a35b91a04f1e39e"
       },
       "suites": 21,
-      "vectors": 335,
-      "normalized_results_sha256": "a75aff7cc4553998916ed45f36b845b49351ac99bc4fea15415c7af7065b0ff8",
+      "vectors": 340,
+      "normalized_results_sha256": "5f6a1e6b8690b6b5f8c1060c4b5580278438c5ec803f69432c6941c5aeea2c9e",
       "status": "pass"
     },
     {
@@ -149,12 +149,12 @@
       },
       "source": {
         "files": 3,
-        "bytes": 238751,
-        "tree_sha256": "aa6f7a76af8281af919cb250d648b1a051cbf81667bbf73b3cf7759be99e1eb5"
+        "bytes": 240018,
+        "tree_sha256": "0b0b29efef1acc7cb6f5e2df7aab5186fb27e694fd918d919571af8f0aab1621"
       },
       "suites": 21,
-      "vectors": 335,
-      "normalized_results_sha256": "8d457ed40f189f55bdb7be7497fb134a845276f622c48f613f61ddec48a23a01",
+      "vectors": 340,
+      "normalized_results_sha256": "ac08d6eb21ffbea816e38e64bc2b58a8811f692cef84b01a47c6127d0a27ec01",
       "status": "pass"
     },
     {
@@ -167,14 +167,14 @@
       },
       "source": {
         "files": 48,
-        "bytes": 475715,
-        "tree_sha256": "bb9bd6852c6c068810e0e9d099e82e2be1b40da5b7ecc1a4c7f48ee953a916f1"
+        "bytes": 478639,
+        "tree_sha256": "883283d829451833580d8aa9c730913bcce615cd03b71e79661664fa545bd2cc"
       },
       "suites": 21,
-      "vectors": 335,
-      "normalized_results_sha256": "8d457ed40f189f55bdb7be7497fb134a845276f622c48f613f61ddec48a23a01",
+      "vectors": 340,
+      "normalized_results_sha256": "ac08d6eb21ffbea816e38e64bc2b58a8811f692cef84b01a47c6127d0a27ec01",
       "status": "pass"
     }
   ],
-  "manifest_sha256": "b8485ca702484cc4dfb1f2d9bf37ec6ae6dea92bc05301d21c6b0ad8375c9be8"
+  "manifest_sha256": "f7c6047d39dc5a553de61901d85a42ce5a18e51289f6437d57824e81d916fe99"
 }

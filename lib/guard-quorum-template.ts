@@ -19,6 +19,9 @@
 // org template: threshold >= floor, window <= ceiling, distinct_humans not
 // disabled, and every declared approver inside the allowed roster. A creator can
 // make a quorum STRONGER than the org floor, never weaker.
+// These legacy templates constrain roster order only. They do not configure a
+// completed-signoff causal-chain floor. A caller requiring that profile must
+// pin the full trusted policy with verifyQuorum's expectedPolicy option.
 //
 // FAIL-CLOSED, with one deliberate availability carve-out. A real policy-store
 // fault on the quorum path fails closed (refuse the high-stakes action rather
@@ -41,8 +44,8 @@ function slotKey(role, approver) {
 /**
  * The effective quorum parameters a submitted policy resolves to — computed the
  * SAME way packages/verify/quorum.js computes them, so template comparison and
- * runtime verification agree on what the policy means. Ordered mode requires
- * every listed approver, so its effective threshold is the roster size.
+ * runtime verification agree on what the policy means. In ordered mode,
+ * required=k admits the first k of n roster slots, not automatically all n.
  *
  * @param {object} policy  an EP-QUORUM-v1 `policy` object
  * @returns {{ mode:string, required:number, windowSec:number, distinctHumans:boolean,
@@ -53,9 +56,7 @@ export function effectiveQuorumParams(policy) {
   const approvers = Array.isArray(policy?.approvers) ? policy.approvers : [];
   const distinctHumans = policy?.distinct_humans !== false; // default true
   const windowSec = Number.isFinite(policy?.window_sec) ? policy.window_sec : 900;
-  const required = mode === 'ordered'
-    ? approvers.length
-    : (Number.isInteger(policy?.required) && policy.required > 0 ? policy.required : NaN);
+  const required = Number.isInteger(policy?.required) && policy.required > 0 ? policy.required : NaN;
   return { mode, required, windowSec, distinctHumans, approvers };
 }
 

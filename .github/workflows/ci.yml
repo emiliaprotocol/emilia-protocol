@@ -114,6 +114,16 @@ jobs:
           node-version: 26
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: npm ci --prefix examples/aeb-crossing-lab/insight-oracle-swap-v3 --ignore-scripts
+      - name: Rebuild and verify the sealed Insight oracle-swap adapter
+        run: |
+          npm --prefix examples/aeb-crossing-lab/insight-oracle-swap-v3 run build
+          git diff --exit-code -- \
+            examples/aeb-crossing-lab/insight-oracle-swap-v3/adapter.mjs \
+            examples/aeb-crossing-lab/insight-oracle-swap-v3/adapter.sha256 \
+            examples/aeb-crossing-lab/insight-oracle-swap-v3/dependency-bundle.json
+          npm --prefix examples/aeb-crossing-lab/insight-oracle-swap-v3 test
+          node --test examples/aeb-crossing-lab/insight-oracle-swap-v3/aeb-contract-tests.test.mjs
       - name: Rebuild and run the permission-bounded Crossing Lab suite
         run: |
           npm --prefix packages/verify run build
@@ -171,6 +181,8 @@ jobs:
       - name: Run the complete Gate package suite
         working-directory: packages/gate
         run: npm test
+      - name: Run the carrier action-evidence pilot
+        run: npm run test:carrier-action-pilot
       - name: Rebuild and refuse stale checked-in package runtimes
         run: |
           npm --prefix packages/verify run build
@@ -352,6 +364,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: npm ci --prefix examples/aeb-crossing-lab/insight-oracle-swap-v3 --ignore-scripts
       - name: Type-check backend/tooling tier (checkJs)
         run: npx tsc -p tsconfig.rest.json --incremental false
 
@@ -525,6 +538,10 @@ jobs:
         env:
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
         run: npm run conformance:hostility
+      - name: Run hostility against every live conformance suite
+        env:
+          NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
+        run: npm run conformance:hostility:current
       - name: Run Model-to-Matter executor profile vectors
         env:
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
@@ -1105,6 +1122,14 @@ jobs:
         run: |
           npm run conformance:composition:scitt-statement-identity
           npm run conformance:composition:scitt-capsule-seam
+      - name: WIMSE WPT and OAuth transaction boundary conformance
+        run: npm run conformance:composition:wimse-wpt02-oauth-txn-aeb
+      - name: Crossing-record and adjacent native-authority compositions
+        run: |
+          npm run conformance:composition:crossing-record
+          npm run conformance:composition:aic-aeb-crossing
+          node --test conformance/composition/cedulon-mizan-leaked-refusal-v0.1/run.node-test.mjs
+          node conformance/composition/cedulon-mizan-leaked-refusal-v0.1/run.mjs --check
       - name: Class-A signoff conformance (EP-SIGNOFF-v1, Node + Web Crypto)
         run: node conformance/run-signoffs.mjs
       - name: TLA+-invariant conformance (JS lane drives the real store + guards)

@@ -17,6 +17,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import {
+  assertSuccessfulSpawn,
   assertArtifactBytesMatch,
   canonicalizeNpmTarball,
   formatSpawnFailure,
@@ -77,7 +78,22 @@ describe('release byte reproducibility', () => {
     const source = readFileSync('scripts/verify-reproducible-package.mts', 'utf8');
     expect(source).toContain('maxBuffer: 128 * 1024 * 1024');
     expect(source).toContain("stdio: ['ignore', 'pipe', 'pipe']");
-    expect(source).toContain('timeout: 600_000');
+    expect(source).toContain("killSignal: 'SIGKILL'");
+    expect(source).toContain('timeout: 900_000');
+  });
+
+  it('rejects a timed-out locked install even when the child later reports status zero', () => {
+    const result = {
+      status: 0,
+      signal: null,
+      error: Object.assign(new Error('spawnSync npm ETIMEDOUT'), { code: 'ETIMEDOUT' }),
+      stdout: '',
+      stderr: '',
+    };
+
+    expect(() => assertSuccessfulSpawn('locked dependency installation', result)).toThrow(
+      /locked dependency installation failed[\s\S]*status: 0[\s\S]*ETIMEDOUT/u,
+    );
   });
 
   it('removes scratch state when verification fails before package builds', () => {
@@ -145,10 +161,10 @@ describe('release byte reproducibility', () => {
     expect(result.source.commit_sha).toBe(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim());
     expect(result.recipe['@version']).toBe('EP-NPM-PACK-RECIPE-v2');
     expect(result.members).toHaveLength(result.fileCount);
-  // The locked clean install honors the repository's 600-second npm fetch
+  // The locked clean install honors the repository's 900-second npm fetch
   // timeout. Keep this test's outer deadline at least as large so a slow cold
   // registry download cannot kill the byte-comparison oracle first.
-  }, 660_000);
+  }, 960_000);
 
   it('normalizes source file modes across independent package checkouts', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-modes-'));
@@ -445,7 +461,9 @@ describe('release byte reproducibility', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  // This integration fixture performs real Git snapshot and independent npm
+  // build/pack operations; allow the same 60-second budget as the mode fixture.
+  }, 60_000);
 
   it('rejects a reviewed Git tree containing a symlink', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-source-symlink-'));

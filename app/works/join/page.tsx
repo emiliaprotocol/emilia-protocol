@@ -4,44 +4,38 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import SiteFooter from '@/components/SiteFooter';
 import SiteNav from '@/components/SiteNav';
-import { color, styles } from '@/lib/tokens';
+import { styles } from '@/lib/tokens';
+import { isPublicEntityRegistrationEnabled } from '@/lib/env';
 import { isWorksV0Enabled } from '@/lib/works/env';
 import JoinForm from '../JoinForm';
+import joinStyles from './join.module.css';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'List your work | EMILIA Works (Private Beta)',
-  description: 'Create an accountable builder profile and a first agent, app, or project listing.',
+  title: 'List your agent | EMILIA Marketplace',
+  description: 'Show companies what your agent does, who built it, and how to discuss the work. Preview your listing before publishing.',
 };
 
 export default function WorksJoinPage() {
   if (!isWorksV0Enabled()) notFound();
+  const registrationEnabled = isPublicEntityRegistrationEnabled();
 
   return (
     <div style={styles.page}>
       <SiteNav />
 
-      <section style={{ borderBottom: `1px solid ${color.border}` }}>
-        <div style={{ ...styles.sectionWide, paddingTop: 64, paddingBottom: 48 }}>
-          <div style={styles.eyebrow}>
-            <Link href="/works" style={{ color: color.t3, textDecoration: 'none' }}>Works</Link>
-            {' / List your work'}
-          </div>
-          <h1 style={{ ...styles.h1, maxWidth: 800 }}>Create your builder profile and first listing</h1>
-          <p style={{ ...styles.body, maxWidth: 760, marginBottom: 0 }}>
-            Name the accountable person or legal entity behind the work, then describe one agent,
-            app, or project. Profile and listing fields are supplied by you; they are not treated as
-            verified simply because they appear on Works.
-          </p>
-        </div>
-      </section>
-
-      <section>
-        <div style={{ ...styles.sectionWide, paddingTop: 48, paddingBottom: 96 }}>
-          <JoinForm />
-        </div>
-      </section>
+      <main className={joinStyles.page}>
+        <section className={joinStyles.hero} aria-labelledby="seller-title">
+          <div><p className={joinStyles.eyebrow}><Link href="/works">Marketplace</Link> / For builders</p>
+            <h1 id="seller-title">Built for a job?<br /><span>Help it find one.</span></h1></div>
+          <div className={joinStyles.heroAside}><p>Show companies what your agent can do, where its limits are, and how to work with you.</p>
+            <p className={joinStyles.note}>Create a public listing, not a checkout. Customers contact you to agree on scope, price and terms. A listing does not guarantee work or certify your agent.</p></div>
+        </section>
+        <p className={joinStyles.note}>Prepare your listing, review what will be public, then sign in with email to publish. Already have an EMILIA developer key? You can still use it.</p>
+        <div className={joinStyles.optionalScan}><p><strong>Want to inspect its tools first?</strong> The free scan stays in your browser. It does not run your agent or publish a result.</p><Link href="/works/scan">Scan privately first <span aria-hidden="true">↗</span></Link></div>
+        <JoinForm registrationEnabled={registrationEnabled} />
+      </main>
 
       <SiteFooter />
     </div>

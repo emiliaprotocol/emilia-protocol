@@ -5,17 +5,23 @@ listed below. These pins move only when the current manifest changes; an
 immutable source commit is supplied separately when the kit is built:
 
 - 21 counted suites;
-- 335 counted vectors;
+- 340 counted vectors;
 - current manifest byte SHA-256
-  `f2ed4e2a13cc5fdb1a3f895929c49a936dee9dc86a387f17f83bb2da93eb1523`;
+  `4d452c38a9ce9f6b78e916246a1733d56cd8ae2d0bd1123d39df329d0401d6fa`;
 - current manifest canonical claim SHA-256
-  `b8485ca702484cc4dfb1f2d9bf37ec6ae6dea92bc05301d21c6b0ad8375c9be8`;
+  `f7c6047d39dc5a553de61901d85a42ce5a18e51289f6437d57824e81d916fe99`;
   and
 - Authority Document execution companion SHA-256
   `121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959`.
 
 This is conformance and intake infrastructure. It does not assert that any
 implementation is external or independently constructed.
+
+When implementation changes alter the manifest, run `npm run conformance:manifest`
+followed by `npm run sync:clean-room-pins`. The second command re-executes and
+checks the manifest before refreshing the current v2/v3 pins and their documentation.
+It refuses changed vector content, counts, paths, or execution companions. Those
+need a separately reviewed corpus revision. The historical v1 evidence is untouched.
 
 ## Build the source-free kit
 
