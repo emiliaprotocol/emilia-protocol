@@ -93,6 +93,33 @@ describe('trusted-base candidate migration reconciliation', () => {
   it('rejects deleting a confirmed base migration', () => {
     const { base, candidate } = fixture(); fs.unlinkSync(path.join(candidate, 'supabase/migrations', baseFile));
     expect(run(base, candidate).output).toContain(`candidate deletes base migration: ${baseFile}`);
+
+    const ledger = readLedger(candidate);
+    ledger.private_remote_versions.push(applied);
+    delete ledger.public_files[baseFile];
+    writeLedger(candidate, ledger);
+    const approval = {
+      schema_version: 'EP-MIGRATION-SOURCE-RELOCATIONS-v1',
+      destination_repository: 'emiliaprotocol/emilia-company',
+      destination_root: 'commercial/emilia-works/supabase/migrations',
+      files: { [baseFile]: hash('select 1;\n') },
+    };
+    const approve = (root: string) => fs.writeFileSync(path.join(root, 'supabase/source-relocations.v1.json'), JSON.stringify(approval));
+    // Self-approval in untrusted candidate bytes must not authorize deletion.
+    approve(candidate);
+    expect(run(base, candidate).output).toContain(`candidate deletes base migration: ${baseFile}`);
+    approve(base);
+    expect(run(base, candidate).status).toBe(0);
+    // The unchanged remote journal, private classification and exact original
+    // hash remain mandatory even when the trusted base approves a relocation.
+    approval.files[baseFile] = hash('different bytes'); approve(base);
+    expect(run(base, candidate).status).not.toBe(0);
+    approval.files[baseFile] = hash('select 1;\n'); approve(base);
+    ledger.private_remote_versions = [privateVersion]; writeLedger(candidate, ledger);
+    expect(run(base, candidate).status).not.toBe(0);
+    ledger.private_remote_versions.push(applied);
+    ledger.remote_versions = [privateVersion]; writeLedger(candidate, ledger);
+    expect(run(base, candidate).status).not.toBe(0);
   });
 
   it('rejects substituting only a confirmed base ledger hash', () => {
