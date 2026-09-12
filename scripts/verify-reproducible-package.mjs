@@ -208,6 +208,11 @@ export function formatSpawnFailure(label, result) {
         `stderr: ${boundedSpawnText(result?.stderr)}`,
     ].join('\n');
 }
+export function assertSuccessfulSpawn(label, result) {
+    if (result?.error || result?.status !== 0) {
+        throw new Error(formatSpawnFailure(label, result));
+    }
+}
 /**
  * @param {string} [packagePath]
  * @param {{ outDir?: string | null, repositoryRoot?: string | null, reviewedCommit?: string | null }} [options]
@@ -483,14 +488,15 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
                 cwd: installDirectory,
                 encoding: 'utf8',
                 env: isolatedEnv(`dependencies-${path.relative(dependencyTemplate, installDirectory) || 'root'}`, true, installDirectory),
-                killSignal: 'SIGTERM',
+                // npm may leave fetch descendants holding captured pipes after SIGTERM.
+                // Force the controlled, lifecycle-disabled installer to terminate at the
+                // finite bound so a timed-out proof run cannot hang during child cleanup.
+                killSignal: 'SIGKILL',
                 maxBuffer: 128 * 1024 * 1024,
                 stdio: ['ignore', 'pipe', 'pipe'],
-                timeout: 600_000,
+                timeout: 900_000,
             });
-            if (install.status !== 0) {
-                throw new Error(formatSpawnFailure('locked dependency installation', install));
-            }
+            assertSuccessfulSpawn('locked dependency installation', install);
         }
         function isolateBuildDependencies(buildRoot, buildPackageDir) {
             const repositoryNodeModules = path.join(dependencyTemplate, 'node_modules');

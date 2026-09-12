@@ -5,6 +5,7 @@ import { authEntityObserveProfile } from '@/lib/auth-projections';
 import { epProblem } from '@/lib/errors';
 import { authenticateRequest, authEntityDbId } from '@/lib/supabase';
 import type { StoreError } from '@/lib/works/store';
+import { assertWorksSameOrigin, getWorksSessionActor } from '@/lib/works/session';
 
 const ENTITY_DB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -25,14 +26,21 @@ function authProblem(status: number | undefined, code: string | undefined): Next
     unavailable ? 'auth_service_unavailable' : (code || 'unauthorized'),
     unavailable
       ? 'Authentication service unavailable'
-      : 'A valid EMILIA entity API key is required',
+      : 'Sign in to EMILIA Works or use a valid entity API key',
   );
 }
 
 export async function authenticateWorksRead(
   request: NextRequest,
 ): Promise<{ ok: true; access: WorksReadAccess } | { ok: false; response: NextResponse }> {
-  if (!request.headers.get('authorization')) return { ok: true, access: {} };
+  if (!request.headers.has('authorization')) {
+    try {
+      const actor = await getWorksSessionActor(request);
+      if (!actor) return { ok: true, access: {} };
+      if (!ENTITY_DB_ID.test(actor.ownerEntityId)) return { ok: false, response: authProblem(401, 'invalid_actor') };
+      return { ok: true, access: { viewerEntityId: actor.ownerEntityId, isAdmin: false } };
+    } catch { return { ok: false, response: authProblem(503, 'auth_service_unavailable') }; }
+  }
   const auth = await authenticateRequest(request);
   if (auth.error) {
     return { ok: false, response: authProblem(auth.status, auth.code) };
@@ -54,6 +62,18 @@ export async function authenticateWorksRead(
 export async function authenticateWorksWrite(
   request: NextRequest,
 ): Promise<{ ok: true; actor: WorksWriteActor } | { ok: false; response: NextResponse }> {
+  // An explicit bearer selects the legacy developer identity. Never silently
+  // substitute a different ambient browser account when that bearer fails.
+  if (!request.headers.has('authorization')) {
+    try {
+      const actor = await getWorksSessionActor(request);
+      if (!actor || !ENTITY_DB_ID.test(actor.ownerEntityId)) return { ok: false, response: authProblem(401, 'unauthorized') };
+      if (!['GET', 'HEAD'].includes(request.method) && !assertWorksSameOrigin(request)) {
+        return { ok: false, response: epProblem(403, 'works_origin_refused', 'This account action must start on the EMILIA site.') };
+      }
+      return { ok: true, actor: { ownerEntityId: actor.ownerEntityId, displayName: actor.displayName } };
+    } catch { return { ok: false, response: authProblem(503, 'auth_service_unavailable') }; }
+  }
   const auth = await authenticateRequest(request);
   if (auth.error) {
     return { ok: false, response: authProblem(auth.status, auth.code) };

@@ -19,6 +19,7 @@ import type {
 import { ClaimCard, ExampleTag, WorksDisciplineNote } from '../../ui';
 import SubmissionForm from '../../SubmissionForm';
 import jobs from '../jobs.module.css';
+import { publicJobStates } from '../../public-workflow';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,8 @@ export default async function OpportunityPage({ params }: {
     </div>;
   }
   const opportunity = oppRes.record as OpportunityRecord;
+  const states = await publicJobStates(opportunity.example ? [] : [opportunity.opportunity_id]);
+  const jobState = states?.get(opportunity.opportunity_id) ?? null;
 
   const [subsRes, buildersRes, listingsRes] = await Promise.all([
     listWorksRecords('submissions'),
@@ -109,7 +112,8 @@ export default async function OpportunityPage({ params }: {
           ) : null}
 
           {!opportunity.example ? <div className={jobs.inbox} style={{ borderColor: color.border }}>
-            <p>Did you post this job? Read proposals with the same API key you used to post it.</p>
+            <p>Did you post this job? Sign in to review proposals and choose a builder in your workspace.</p>
+            <Link href="/works/workspace" className={jobs.button} style={cta.primary} prefetch={false}>Open your workspace</Link>
             <Link href={`/works/opportunities/${opportunity.opportunity_id}/inbox`} className={jobs.button} style={cta.secondary} prefetch={false}>Open your private proposal inbox</Link>
           </div> : null}
           <h2 className={jobs.sectionTitle}>{opportunity.example ? 'About this example' : 'Send a proposal'}</h2>
@@ -127,6 +131,11 @@ export default async function OpportunityPage({ params }: {
                   Describe your job
                 </Link>
               </div>
+            </div>
+          ) : jobState !== 'open' ? (
+            <div className={jobs.notice} role="status">
+              <p>{jobState === 'assigned' ? 'This job already has an assignment. It is not accepting more proposals.' : jobState === 'closed' ? 'This job is closed to new proposals.' : 'We could not check whether this job is open. Reload before sending a proposal.'}</p>
+              <Link href="/works/opportunities">Browse other jobs</Link>
             </div>
           ) : (
             <SubmissionForm

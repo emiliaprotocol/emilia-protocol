@@ -3,17 +3,21 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from 'react';
 import { buildJoinPayloads, type JoinFormInput, type JoinPayloads } from './form-payloads';
 import { validWorksId, type BuilderRecord } from '@/lib/works/model';
 import { publishRecordWithRecovery, readOwnedRecord } from './join/owned-record';
 import formStyles from './join/join.module.css';
+import WorksAccountAccess, { useWorksAccount } from './WorksAccountAccess';
+import { createWorkspaceFence, loadWorkspace, workspaceMessage } from './workspace-client';
+import { clearJoinCredentials, confirmOwnedJoinResume, selectOwnedJoinProfile } from './join-profile-selection';
 
 type RegistrationResponse = { api_key?: string; owner_id?: string };
 type JoinProgress = {
-  apiKey: string; keyCreatedHere: boolean; ownerId: string; payloads: JoinPayloads;
+  apiKey: string | null; keyCreatedHere: boolean; ownerId: string; payloads: JoinPayloads;
   builderCreated: boolean; listingCreated: boolean;
   reuseBuilder: boolean;
+  accessCheckRequired?: boolean;
   failureStage: 'builder' | 'listing' | null; failureMessage: string;
 };
 const subscribeToHydration = () => () => {};
@@ -30,11 +34,13 @@ async function responseError(response: Response, fallback: string): Promise<stri
   return fallback;
 }
 
-async function postWorksRecord(collection: 'builders' | 'listings', apiKey: string, record: unknown, signal: AbortSignal): Promise<void> {
+async function postWorksRecord(collection: 'builders' | 'listings', apiKey: string | null, record: unknown, signal: AbortSignal): Promise<void> {
   return publishRecordWithRecovery(collection, apiKey, record as JoinPayloads['builder'] | JoinPayloads['listing'], signal);
 }
 
 export default function JoinForm({ registrationEnabled = false }: { registrationEnabled?: boolean }) {
+  const access = useWorksAccount();
+  const refreshAccount = access.refresh;
   const ready = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -42,14 +48,77 @@ export default function JoinForm({ registrationEnabled = false }: { registration
   const [publicConsent, setPublicConsent] = useState(false);
   const [accessMode, setAccessMode] = useState<'existing' | 'new'>('existing');
   const [profileMode, setProfileMode] = useState<'new' | 'existing'>('new');
-  const [ownedBuilder, setOwnedBuilder] = useState<{ record: BuilderRecord; apiKey: string } | null>(null);
+  const [ownedBuilder, setOwnedBuilder] = useState<{ record: BuilderRecord; apiKey: string | null } | null>(null);
   const [progress, setProgress] = useState<JoinProgress | null>(null);
   const [copyStatus, setCopyStatus] = useState('');
+  const [accountContext, setAccountContext] = useState(access.account);
+  const [profiles, setProfiles] = useState<BuilderRecord[] | null>(null);
+  const [profilesLoading, setProfilesLoading] = useState(false);
+  const [profilesError, setProfilesError] = useState('');
+  const [profileReload, setProfileReload] = useState(0);
+  const [selectedProfileId, setSelectedProfileId] = useState('');
+  const profileRequests = useRef(createWorkspaceFence());
   const generation = useRef(0);
   const activeRequest = useRef<AbortController | null>(null);
   const inFlight = useRef(false);
   const previewHeading = useRef<HTMLHeadingElement | null>(null);
   const intakeForm = useRef<HTMLFormElement | null>(null);
+  const page = useRef<HTMLDivElement | null>(null);
+
+  // A checked account object is a new access context, even if the names match.
+  // Preserve the unsigned new-profile preview through its first email sign-in.
+  if (!access.loading && accountContext !== access.account) {
+    setAccountContext(access.account);
+    setOwnedBuilder(null); setProgress(progress ? clearJoinCredentials(progress) : null); setCopyStatus(''); setBusy(false); setPublicConsent(false);
+    setProfiles(null); setSelectedProfileId(''); setProfilesError(''); setProfilesLoading(Boolean(access.account));
+    if (accountContext || progress || profileMode === 'existing') setDraft(null);
+    setError(accountContext || progress ? 'Account access changed. Previous profile and key details were cleared. Check your workspace before restarting an interrupted publication.' : '');
+  }
+
+  useLayoutEffect(() => {
+    generation.current++; activeRequest.current?.abort(); inFlight.current = false;
+    profileRequests.current.cancel();
+    page.current?.querySelectorAll<HTMLInputElement>('input[type="password"]').forEach(input => { input.value = ''; });
+  }, [access.account]);
+
+  useEffect(() => {
+    if (!access.account) return;
+    const fence = profileRequests.current;
+    const request = fence.begin();
+    void loadWorkspace(request.signal).then(workspace => {
+      if (!request.isCurrent()) return;
+      setProfiles(workspace.profiles); setProfilesError(''); setProfilesLoading(false);
+      if (workspace.profiles.length === 1) {
+        const record = selectOwnedJoinProfile(workspace.profiles, workspace.profiles[0].builder_id);
+        setSelectedProfileId(record.builder_id); setOwnedBuilder({ record, apiKey: null });
+      }
+    }).catch(caught => {
+      if (!request.isCurrent()) return;
+      setProfilesLoading(false); setProfilesError(workspaceMessage(caught));
+    });
+    return () => fence.cancel();
+  }, [access.account, profileReload]);
+
+  useEffect(() => {
+    function clearPrivateAccess() {
+      generation.current++; activeRequest.current?.abort(); inFlight.current = false;
+      profileRequests.current.cancel();
+      page.current?.querySelectorAll<HTMLInputElement>('input[type="password"]').forEach(input => { input.value = ''; });
+      setOwnedBuilder(null); setProgress(current => current ? clearJoinCredentials(current) : null); setProfiles(null); setSelectedProfileId(''); setCopyStatus(''); setBusy(false); setPublicConsent(false);
+      setDraft(null);
+      setError('Private access details were cleared when you left this tab. If publication was interrupted, check your workspace before posting again.');
+    }
+    function visibilityChanged() {
+      if (document.visibilityState === 'hidden') clearPrivateAccess();
+      else void refreshAccount();
+    }
+    document.addEventListener('visibilitychange', visibilityChanged);
+    window.addEventListener('pagehide', clearPrivateAccess);
+    return () => {
+      document.removeEventListener('visibilitychange', visibilityChanged);
+      window.removeEventListener('pagehide', clearPrivateAccess);
+    };
+  }, [refreshAccount]);
 
   useEffect(() => () => { generation.current++; activeRequest.current?.abort(); }, []);
   useEffect(() => { if (draft && !progress) previewHeading.current?.focus(); }, [draft, progress]);
@@ -65,7 +134,7 @@ export default function JoinForm({ registrationEnabled = false }: { registration
 
   function clearKey() {
     generation.current++; activeRequest.current?.abort(); inFlight.current = false;
-    setProgress(null); setOwnedBuilder(null); setCopyStatus(''); setBusy(false); setPublicConsent(false);
+    setProgress(current => current ? clearJoinCredentials(current) : null); setOwnedBuilder(null); setCopyStatus(''); setBusy(false); setPublicConsent(false);
     if (profileMode === 'existing') setDraft(null);
     setError('Key cleared from this page. This does not undo a published record. If a request was still running, check the profile and listing before starting again.');
   }
@@ -75,18 +144,42 @@ export default function JoinForm({ registrationEnabled = false }: { registration
     setOwnedBuilder(null); setPublicConsent(false); setBusy(false);
   }
 
+  function chooseProfile(id: string) {
+    resetOwnedBuilder(); setSelectedProfileId(id); setError('');
+    if (!id) return;
+    try {
+      const record = selectOwnedJoinProfile(profiles, id);
+      setOwnedBuilder({ record, apiKey: null }); setAccessMode('existing');
+    } catch { setError('Choose a profile belonging to this signed-in account.'); }
+  }
+
+  function changeProfileMode(mode: 'new' | 'existing') {
+    resetOwnedBuilder(); setProfileMode(mode); setError('');
+    if (mode === 'existing') {
+      setAccessMode('existing');
+      if (access.account && profiles?.length === 1) chooseProfile(profiles[0].builder_id);
+      else setSelectedProfileId('');
+    }
+  }
+
+  function reloadProfiles() {
+    resetOwnedBuilder(); setProfiles(null); setSelectedProfileId(''); setProfilesError(''); setProfilesLoading(true);
+    setProfileReload(current => current + 1);
+  }
+
   async function loadMyBuilder() {
     if (!ready || inFlight.current || !intakeForm.current) return;
+    if (access.loading || access.account) return;
     const data = new FormData(intakeForm.current);
-    const id = value(data, 'builderId'); const apiKey = value(data, 'profileKey');
-    if (!validWorksId(id) || !apiKey) { setError('Enter your builder profile ID and its existing EMILIA key.'); return; }
+    const id = value(data, 'builderId'); const apiKey = access.account ? null : value(data, 'profileKey');
+    if (!validWorksId(id) || apiKey === '') { setError('Enter your builder profile ID, then sign in or use its existing key.'); return; }
     const request = beginRequest(); setBusy(true); setError(''); setOwnedBuilder(null);
+    const keyInput = intakeForm.current.elements.namedItem('profileKey');
+    if (keyInput instanceof HTMLInputElement) keyInput.value = '';
     try {
       const record = await readOwnedRecord('builders', id, apiKey, request.signal) as BuilderRecord;
       if (!request.isCurrent()) return;
       setOwnedBuilder({ record, apiKey }); setAccessMode('existing'); setPublicConsent(false);
-      const input = intakeForm.current?.elements.namedItem('profileKey');
-      if (input instanceof HTMLInputElement) input.value = '';
     } catch (caught) { if (request.isCurrent()) setError(caught instanceof Error ? caught.message : 'Builder ownership could not be checked.'); }
     finally { if (request.isCurrent()) { inFlight.current = false; setBusy(false); } }
   }
@@ -126,7 +219,11 @@ export default function JoinForm({ registrationEnabled = false }: { registration
       'supportedTasks', 'interfaces', 'operatingConstraints',
     ].map(name => [name, value(data, name)])) as JoinFormInput;
     if (profileMode === 'existing' && (!ownedBuilder || input.builderId !== ownedBuilder.record.builder_id)) {
-      setError('Load the profile owned by your key before previewing this listing.'); return;
+      setError('Choose your owned builder profile before previewing this listing.'); return;
+    }
+    if (profileMode === 'existing' && access.account) {
+      try { selectOwnedJoinProfile(profiles, input.builderId); }
+      catch { setError('Reload your profiles, then choose one belonging to this account.'); return; }
     }
     if (profileMode === 'new' && Boolean(input.affiliationName) !== Boolean(input.affiliationRelation)) {
       setError('Enter both affiliation name and relationship, or leave both blank.'); return;
@@ -146,18 +243,20 @@ export default function JoinForm({ registrationEnabled = false }: { registration
     event.preventDefault();
     if (!ready) return;
     if (inFlight.current) return;
+    if (access.loading || document.visibilityState === 'hidden') return;
     if (!draft || !publicConsent) { setError('Review the preview and explicitly agree to public publication first.'); return; }
     const reuseBuilder = profileMode === 'existing';
     if (reuseBuilder && (!ownedBuilder || ownedBuilder.record.builder_id !== draft.builder.builder_id)) {
       setError('Reload your owned builder profile before publishing.'); return;
     }
-    const existingKey = reuseBuilder ? ownedBuilder!.apiKey : value(new FormData(event.currentTarget), 'existingKey');
-    if (accessMode === 'existing' && !existingKey) { setError('Enter your existing EMILIA API key to publish.'); return; }
+    const existingKey = reuseBuilder ? ownedBuilder!.apiKey : access.account ? null : value(new FormData(event.currentTarget), 'existingKey');
+    if (accessMode === 'existing' && existingKey === '') { setError('Sign in with email, or enter your existing key, to publish.'); return; }
     if (accessMode === 'new' && !registrationEnabled) { setError('New registration is not available. Use an existing key or request builder access.'); return; }
     const request = beginRequest(); setBusy(true); setError(''); setCopyStatus('');
+    event.currentTarget.querySelectorAll<HTMLInputElement>('input[type="password"]').forEach(input => { input.value = ''; });
     const payloads = draft;
     try {
-      if (accessMode === 'existing') {
+      if (accessMode === 'existing' || access.account) {
         await publishWorks({ apiKey: existingKey, keyCreatedHere: false, ownerId: '', payloads,
           builderCreated: reuseBuilder, reuseBuilder, listingCreated: false, failureStage: null, failureMessage: '' }, request);
         return;
@@ -184,14 +283,30 @@ export default function JoinForm({ registrationEnabled = false }: { registration
   }
 
   async function retryWorks() {
-    if (!progress || inFlight.current) return;
+    if (!progress || progress.accessCheckRequired || inFlight.current || access.loading || document.visibilityState === 'hidden') return;
     const request = beginRequest(); setBusy(true); setError('');
     try { await publishWorks(progress, request); }
     finally { if (request.isCurrent()) { inFlight.current = false; setBusy(false); } }
   }
 
+  async function restorePublicationAccess(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!progress || !publicConsent || inFlight.current || access.loading || document.visibilityState === 'hidden') return;
+    const apiKey = access.account ? null : value(new FormData(event.currentTarget), 'retryKey');
+    if (apiKey === '') { setError('Sign in or enter the developer key for this publication.'); return; }
+    event.currentTarget.querySelectorAll<HTMLInputElement>('input[type="password"]').forEach(input => { input.value = ''; });
+    const request = beginRequest(); setBusy(true); setError('');
+    try {
+      await confirmOwnedJoinResume(progress, apiKey, request.signal);
+      if (!request.isCurrent()) return;
+      await publishWorks({ ...progress, apiKey, accessCheckRequired: false }, request);
+    } catch (caught) {
+      if (request.isCurrent()) setError(caught instanceof Error ? caught.message : 'This access could not be confirmed. The original publication details are unchanged.');
+    } finally { if (request.isCurrent()) { inFlight.current = false; setBusy(false); } }
+  }
+
   async function copyKey() {
-    if (!progress?.keyCreatedHere) return;
+    if (!progress?.keyCreatedHere || !progress.apiKey) return;
     const current = generation.current;
     try { await navigator.clipboard.writeText(progress.apiKey); if (current === generation.current) setCopyStatus('Copied. Store it in your secret manager now.'); }
     catch { if (current === generation.current) setCopyStatus('Copy failed. Select the key and copy it manually.'); }
@@ -199,15 +314,27 @@ export default function JoinForm({ registrationEnabled = false }: { registration
 
   if (progress) {
     const complete = progress.builderCreated && progress.listingCreated;
-    return <div className={formStyles.result}>
+    return <div ref={page} className={formStyles.result}>
       <p className={formStyles.eyebrow}>{complete ? 'Published' : busy ? 'Publishing' : 'Needs attention'}</p>
       <h2>{complete ? 'Your agent has a place to be found.' : progress.builderCreated ? progress.reuseBuilder ? 'Existing profile ready. Listing not yet confirmed.' : 'Profile published. Listing not yet confirmed.' : 'Profile publication is not yet confirmed.'}</h2>
       <p>{complete ? progress.reuseBuilder ? 'Your new listing is live under your existing builder profile. The profile was not changed. No sale, payment or customer assignment has been created.' : 'Your profile and listing are live. Companies can use your public contact route to discuss the work. No sale, payment or customer assignment has been created.'
         : progress.keyCreatedHere ? 'Entity registration succeeded. Do not register again. Save the key, then retry only the unfinished Works step.'
-          : 'No new account or key was created. We used the key you supplied. Check the error, then retry the unfinished step.'}</p>
+          : progress.apiKey === null ? 'Your signed-in account is being used. Check the error, then retry the unfinished step with the same details.' : 'No new account or key was created. We used the key you supplied. Check the error, then retry the unfinished step.'}</p>
       {progress.failureMessage ? <p className={formStyles.error} role="alert">{progress.failureMessage}</p> : null}
       {!complete && !busy ? <p className={formStyles.note}>A lost response can leave a record published without confirmation here. A duplicate-ID error is not proof that you own that record; check it before choosing a different ID.</p> : null}
-      <div className={formStyles.keyPanel}>
+      {progress.accessCheckRequired ? <section className={formStyles.keyPanel}>
+        <h3>{complete ? 'Access details cleared.' : 'Continue with the original publication.'}</h3>
+        <p className={formStyles.note}>The key was removed from this page. Your original public details and publication IDs are unchanged. This does not undo a published record.</p>
+        {!complete ? <>
+          <WorksAccountAccess access={access} />
+          <details className={formStyles.advanced}><summary>Review the original public details</summary><pre>{JSON.stringify({ builder: progress.payloads.builder, listing: progress.payloads.listing }, null, 2)}</pre></details>
+          <form method="post" onSubmit={restorePublicationAccess}>
+            {!access.account ? <Field label="Developer key for this publication"><input name="retryKey" type="password" disabled={busy} maxLength={512} autoComplete="off" spellCheck={false} data-1p-ignore data-lpignore="true" onChange={() => setPublicConsent(false)} /></Field> : null}
+            <label className={formStyles.consent}><input type="checkbox" checked={publicConsent} required disabled={busy} onChange={event => setPublicConsent(event.target.checked)} /><span>Use this account access to check and retry the original publication. Keep all public details and IDs unchanged.</span></label>
+            <button type="submit" className={formStyles.primary} disabled={busy || access.loading || !publicConsent}>{busy ? 'Checking publication…' : 'Check and retry original publication'}</button>
+          </form>
+        </> : null}
+      </section> : progress.apiKey !== null ? <div className={formStyles.keyPanel}>
         <h3>{progress.keyCreatedHere ? 'One-time API key' : 'Your existing key stays private'}</h3>
         {progress.keyCreatedHere ? <><p className={formStyles.note}>This key is kept only in this open page. Save it before leaving or reloading; it cannot be retrieved here afterward.</p><code className={formStyles.keyValue}>{progress.apiKey}</code></>
           : <p className={formStyles.note}>Your existing key is held only in this page for retries. It is not displayed here or saved in browser storage.</p>}
@@ -218,16 +345,18 @@ export default function JoinForm({ registrationEnabled = false }: { registration
           {!complete ? <button type="button" onClick={retryWorks} disabled={busy} className={formStyles.primary}>{busy ? 'Publishing…' : 'Retry Works setup'}</button> : null}
         </div>
         <p className={formStyles.note} aria-live="polite">{copyStatus}</p>
-      </div>
+      </div> : <div className={formStyles.actions}>{!complete ? <button type="button" onClick={retryWorks} disabled={busy} className={formStyles.primary}>Check and retry publication</button> : null}<Link href="/works/workspace" className={formStyles.primary}>Open your workspace</Link></div>}
       <div className={formStyles.actions}>
         <Link href={`/works/builders/${progress.payloads.builder.builder_id}`} className={formStyles.secondary}>{complete ? 'View profile' : 'Check profile'}</Link>
         <Link href={`/works/listings/${progress.payloads.listing.listing_id}`} className={formStyles.secondary}>{complete ? 'View listing' : 'Check listing'}</Link>
         {complete ? <Link href="/works/opportunities" className={formStyles.textButton}>Browse posted work</Link> : null}
       </div>
+      {error ? <p className={formStyles.error} role="alert">{error}</p> : null}
     </div>;
   }
 
-  return <div className={formStyles.intake}>
+  return <div ref={page} className={formStyles.intake}>
+    <WorksAccountAccess access={access} />
     {!ready ? <p className={formStyles.note} role="status">This form needs JavaScript to handle your key privately. Wait for it to finish loading before entering any details.</p> : null}
     <form method="post" ref={intakeForm} onSubmit={preparePreview} hidden={Boolean(draft)} className={formStyles.form}>
       <fieldset disabled={!ready || busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
@@ -247,13 +376,24 @@ export default function JoinForm({ registrationEnabled = false }: { registration
       </fieldset>
       <div className={formStyles.sectionHeading}><span>02</span><div><h2>Put a person behind it.</h2><p>Give customers a clear way to reach the accountable builder.</p></div></div>
       <fieldset className={formStyles.fields}><legend className={formStyles.srOnly}>Accountable builder details</legend>
-        <fieldset className={formStyles.accessChoice} disabled={busy}><legend>Builder profile</legend><label><input type="radio" name="profileMode" value="new" checked={profileMode === 'new'} onChange={() => { resetOwnedBuilder(); setProfileMode('new'); }} /> Create a profile</label><label><input type="radio" name="profileMode" value="existing" checked={profileMode === 'existing'} onChange={() => { resetOwnedBuilder(); setProfileMode('existing'); setAccessMode('existing'); }} /> Use my existing profile</label></fieldset>
+        <fieldset className={formStyles.accessChoice} disabled={busy}><legend>Builder profile</legend><label><input type="radio" name="profileMode" value="new" checked={profileMode === 'new'} onChange={() => changeProfileMode('new')} /> Create a profile</label><label><input type="radio" name="profileMode" value="existing" checked={profileMode === 'existing'} onChange={() => changeProfileMode('existing')} /> Use my existing profile</label></fieldset>
         {profileMode === 'new' ? <div className={formStyles.gridTwo}><Field label="Accountable name"><input name="builderName" required maxLength={200} autoComplete="name" placeholder="Your name or legal entity" /></Field><Field label="Public contact route" hint="Use a mailto: or https:// address. Customers discuss price and terms here."><input name="contactRoute" required maxLength={600} placeholder="mailto:hello@example.com" autoComplete="url" /></Field></div> : null}
-        <div className={formStyles.gridTwo}><Field label="Builder profile ID" hint="Your public URL. 3–64 lowercase letters, numbers or hyphens."><input name="builderId" required minLength={3} maxLength={64} pattern="[a-z0-9](?:[a-z0-9]|-){2,63}" placeholder="your-studio" autoComplete="off" onChange={resetOwnedBuilder} /></Field><Field label="Listing ID" hint="The agent’s public URL. Choose an unused ID."><input name="listingId" required minLength={3} maxLength={64} pattern="[a-z0-9](?:[a-z0-9]|-){2,63}" placeholder="ledger-assistant" autoComplete="off" /></Field></div>
+        <div className={formStyles.gridTwo}>
+          {profileMode === 'existing' && access.account ? <Field label="Your builder profile" hint="Only profiles belonging to your signed-in account appear here.">
+            <select name="builderId" required value={selectedProfileId} disabled={profilesLoading || !profiles?.length} onChange={event => chooseProfile(event.target.value)}>
+              <option value="">{profilesLoading ? 'Loading your profiles…' : 'Choose your profile'}</option>
+              {profiles?.map(profile => <option value={profile.builder_id} key={profile.builder_id}>{profile.name}</option>)}
+            </select>
+          </Field> : <Field label="Builder profile ID" hint="Your public URL. 3–64 lowercase letters, numbers or hyphens."><input name="builderId" required minLength={3} maxLength={64} pattern="[a-z0-9](?:[a-z0-9]|-){2,63}" placeholder="your-studio" autoComplete="off" onChange={resetOwnedBuilder} /></Field>}
+          <Field label="Listing ID" hint="The agent’s public URL. Choose an unused ID."><input name="listingId" required minLength={3} maxLength={64} pattern="[a-z0-9](?:[a-z0-9]|-){2,63}" placeholder="ledger-assistant" autoComplete="off" /></Field>
+        </div>
         {profileMode === 'existing' ? <div>
-          <Field label="Key for your existing profile" hint="We check ownership with EMILIA. A public profile or matching name is not enough."><input name="profileKey" type="password" required={!ownedBuilder} maxLength={256} autoComplete="off" spellCheck={false} data-1p-ignore data-lpignore="true" onChange={resetOwnedBuilder} /></Field>
-          <div className={formStyles.actions}><button type="button" className={formStyles.secondary} onClick={loadMyBuilder} disabled={busy}>{busy ? 'Checking ownership…' : 'Load my profile'}</button></div>
-          {ownedBuilder ? <p role="status" className={formStyles.note}><strong>{ownedBuilder.record.name}</strong> is owned by this key. Its public contact is {ownedBuilder.record.contact_route}. We will reuse this profile without changing it.</p> : <p className={formStyles.note}>Only the new listing will be published. Your existing profile, contact route and previous listings stay unchanged.</p>}
+          {!access.account ? <Field label="Key for your existing profile" hint="Sign in above, or use the key that owns this profile."><input name="profileKey" type="password" required={!ownedBuilder} maxLength={256} autoComplete="off" spellCheck={false} data-1p-ignore data-lpignore="true" onChange={resetOwnedBuilder} /></Field> : null}
+          {access.account ? <>
+            {profilesError ? <p role="alert" className={formStyles.error}>{profilesError}</p> : profiles && !profiles.length ? <p className={formStyles.note}>This account does not have a builder profile yet. Choose “Create a profile” above to make one with this listing.</p> : null}
+            <div className={formStyles.actions}><button type="button" className={formStyles.textButton} onClick={reloadProfiles} disabled={profilesLoading || busy}>Reload my profiles</button></div>
+          </> : <div className={formStyles.actions}><button type="button" className={formStyles.secondary} onClick={loadMyBuilder} disabled={busy || access.loading}>{busy ? 'Checking ownership…' : 'Load my profile'}</button></div>}
+          {ownedBuilder ? <p role="status" className={formStyles.note}><strong>{ownedBuilder.record.name}</strong> belongs to your account. Its public contact is {ownedBuilder.record.contact_route}. We will reuse this profile without changing it.</p> : <p className={formStyles.note}>Only the new listing will be published. Your existing profile, contact route and previous listings stay unchanged.</p>}
         </div> : null}
         {profileMode === 'new' ? <details className={formStyles.advanced}><summary>More about the builder <span>Optional</span></summary><div className={formStyles.gridTwo}>
           <Field label="Profile type"><select name="builderKind" defaultValue="person"><option value="person">Person</option><option value="legal_entity">Legal entity</option></select></Field>
@@ -262,11 +402,11 @@ export default function JoinForm({ registrationEnabled = false }: { registration
         </div></details> : null}
       </fieldset>
       <div className={formStyles.actions}><button type="submit" className={formStyles.primary} disabled={busy || (profileMode === 'existing' && !ownedBuilder)}>Preview my listing</button><Link href="/works" className={formStyles.textButton}>Back to marketplace</Link></div>
-      <p className={formStyles.note}>Nothing is sent or published when you preview. Loading an existing profile is a separate authenticated read. Leave or reload this page and the draft and key are lost.</p>
+      <p className={formStyles.note}>Nothing is sent or published when you preview. Loading an existing profile is a separate authenticated read. Private access and confirmation details clear when you leave this tab. Reloading the page also clears the draft.</p>
       </fieldset>
     </form>
     {draft ? <section className={formStyles.preview} aria-labelledby="listing-preview-title">
-      <div className={formStyles.sectionHeading}><span>03</span><div><h2 id="listing-preview-title" ref={previewHeading} tabIndex={-1}>This is what you’ll publish.</h2><p>Review the public details before your key is used.</p></div></div>
+      <div className={formStyles.sectionHeading}><span>03</span><div><h2 id="listing-preview-title" ref={previewHeading} tabIndex={-1}>This is what you’ll publish.</h2><p>Review the public details before anything goes live.</p></div></div>
       <div className={formStyles.previewSheet}><p className={formStyles.eyebrow}>Listing preview · Builder-supplied information</p><h3>{draft.listing.name}</h3><p className={formStyles.previewByline}>By {draft.builder.name}</p><p>{draft.listing.summary}</p>
         <dl><div><dt>Specialized tasks</dt><dd>{draft.listing.supported_tasks.join(', ')}</dd></div><div><dt>Interfaces</dt><dd>{draft.listing.interfaces.join(', ')}</dd></div><div><dt>Limits & requirements</dt><dd>{draft.listing.operating_constraints.join('\n')}</dd></div><div><dt>Public contact</dt><dd>{draft.builder.contact_route}</dd></div></dl>
         {profileMode === 'existing' ? <p className={formStyles.note}>Existing builder profile, unchanged. You are publishing only the new listing below.</p> : null}
@@ -277,9 +417,9 @@ export default function JoinForm({ registrationEnabled = false }: { registration
         <fieldset disabled={!ready || busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <legend className={formStyles.srOnly}>Authorize listing publication</legend>
         <h3>Publish with your builder access.</h3>
-        {profileMode === 'existing' ? <p className={formStyles.note}>Using the key that loaded your owned profile. It remains only in this page and is not displayed here.</p> : !registrationEnabled ? <p className={formStyles.note}>New self-service registration is currently closed. Existing EMILIA entity keys can publish. <a href="mailto:team@emiliaprotocol.ai?subject=EMILIA%20Marketplace%20builder%20access">Request builder access</a> if you do not have one.</p>
+        {access.account ? <p className={formStyles.note}>Publish as {access.account.displayName}. Email verification confirms access to your account, not your agent’s capabilities.</p> : profileMode === 'existing' ? <p className={formStyles.note}>Using the key that loaded your owned profile. It remains only in this page and is not displayed here.</p> : !registrationEnabled ? <p className={formStyles.note}>Create a free account or sign in with email above. Existing developer accounts can use an API key below.</p>
           : <fieldset className={formStyles.accessChoice} disabled={busy}><legend>Choose access</legend><label><input type="radio" name="accessMode" value="existing" checked={accessMode === 'existing'} onChange={() => { setAccessMode('existing'); setPublicConsent(false); }} /> Use an existing key</label><label><input type="radio" name="accessMode" value="new" checked={accessMode === 'new'} onChange={() => { setAccessMode('new'); setPublicConsent(false); }} /> Register a new entity</label></fieldset>}
-        {profileMode === 'existing' ? null : accessMode === 'existing' ? <Field label="Existing EMILIA API key" hint="Used only for these publication requests. Held in this page for retries, never saved in browser storage or the URL."><input name="existingKey" type="password" required maxLength={256} autoComplete="off" spellCheck={false} data-1p-ignore data-lpignore="true" placeholder="Your existing EMILIA API key" /></Field>
+        {profileMode === 'existing' || access.account ? null : accessMode === 'existing' ? <details><summary>Use an existing API key instead</summary><Field label="Existing EMILIA API key" hint="Used only for these publication requests. Held in this page for retries, never saved in browser storage or the URL."><input name="existingKey" type="password" maxLength={256} autoComplete="off" spellCheck={false} data-1p-ignore data-lpignore="true" placeholder="Your existing EMILIA API key" onChange={() => setPublicConsent(false)} /></Field></details>
           : <p className={formStyles.note}>Registration will create the public entity shown in the preview and return a one-time key. Save that key before leaving this page.</p>}
         <label className={formStyles.consent}><input name="publicConsent" type="checkbox" checked={publicConsent} disabled={busy} onChange={event => setPublicConsent(event.target.checked)} required /><span>{profileMode === 'existing' ? 'I am authorized to publish this new listing under my existing builder profile. Keep that profile unchanged.' : <>I am authorized to publish these details. Make this builder profile, listing and contact route public{accessMode === 'new' ? ', and register the new entity shown above' : ''}.</>}</span></label>
         <div className={formStyles.actions}><button type="submit" disabled={busy || !publicConsent} className={formStyles.primary}>{busy ? 'Publishing…' : profileMode === 'existing' ? 'Publish new listing' : 'Publish profile and listing'}</button><button type="button" className={formStyles.textButton} disabled={busy} onClick={() => { setDraft(null); setPublicConsent(false); setError(''); }}>Edit details</button></div>

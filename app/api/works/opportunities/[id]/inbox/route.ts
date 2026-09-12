@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 function privateResponse(response: NextResponse) {
   response.headers.set('cache-control', 'private, no-store');
-  response.headers.set('vary', 'Authorization');
+  response.headers.set('vary', 'Authorization, Cookie');
   response.headers.set('x-robots-tag', 'noindex, nofollow');
   return response;
 }

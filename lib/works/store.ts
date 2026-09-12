@@ -104,6 +104,21 @@ function fileFor(collection: WorksCollection, id: string): string {
   return path.join(collectionDir(collection), `${id}.json`);
 }
 
+function fileOpportunityWorkflowState(id: string): StoreResult<{ state: string }> {
+  const file = path.join(dataDir(), '_workflow', 'opportunities', `${id}.json`);
+  try {
+    if (!fs.existsSync(file)) return { ok: true, state: 'open' };
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!isPlainObject(parsed) || !['open', 'closed', 'assigned'].includes(String(parsed.state))
+      || !Number.isSafeInteger(parsed.revision) || Number(parsed.revision) < 0) {
+      return err('store_unavailable', 'Works workflow storage could not be read.');
+    }
+    return { ok: true, state: String(parsed.state) };
+  } catch {
+    return err('store_unavailable', 'Works workflow storage could not be read.');
+  }
+}
+
 function isoNow(): string {
   return new Date().toISOString();
 }
@@ -287,6 +302,7 @@ async function writeCreatedRecord(
       updated_at: stored.updated_at,
     });
     if (error?.code === '23505') return err('already_exists', 'a record with this id already exists');
+    if (error?.code === 'EWTRN') return err('invalid_transition', 'This job is not accepting proposals.');
     if (error) return err('store_unavailable', 'Works storage could not be written.');
     return { ok: true };
   } catch {
@@ -327,6 +343,9 @@ async function writeUpdatedRecord(
       .eq('owner_entity_id', ownerEntityId)
       .select('record_id')
       .maybeSingle();
+    if (error?.code === 'EWTRN') {
+      return err('invalid_transition', 'Listing status changes require a workflow command.');
+    }
     if (error) return err('store_unavailable', 'Works storage could not be written.');
     if (!data) return err('forbidden_not_owner', 'only the owning entity may edit this record');
     return { ok: true };
@@ -598,6 +617,11 @@ export async function createWorksRecord(
 
   const relationships = await validateRelationships(collection, record, options.ownerEntityId);
   if (!relationships.ok) return relationships;
+  if (collection === 'submissions' && usesFileBackend()) {
+    const target = fileOpportunityWorkflowState((record as any).opportunity_id);
+    if (!target.ok) return target;
+    if (target.state !== 'open') return err('invalid_transition', 'This job is not accepting proposals.');
+  }
 
   const now = isoNow();
   const stored: StoredRecord = {
@@ -639,6 +663,10 @@ export async function updateWorksRecord(
   if (!loaded.row) return err('not_found', 'record not found');
   if (loaded.row.ownerEntityId !== options.ownerEntityId) {
     return err('forbidden_not_owner', 'only the owning entity may edit this record');
+  }
+  if (collection === 'listings' && Object.hasOwn(patch, 'status')
+    && patch.status !== (loaded.row.record as any).status) {
+    return err('invalid_transition', 'Listing status changes require a workflow command.');
   }
 
   const visibility = requestedVisibility(collection, patch, loaded.row.visibility);

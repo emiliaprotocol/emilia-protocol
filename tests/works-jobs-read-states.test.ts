@@ -6,8 +6,10 @@ import OpportunitiesPage from '@/app/works/opportunities/page';
 import OpportunityPage from '@/app/works/opportunities/[id]/page';
 import { getWorksRecord, listWorksRecords } from '@/lib/works/store';
 import type { OpportunityRecord, SubmissionRecord } from '@/lib/works/model';
+import { getWorksPublicWorkflowStates } from '@/lib/works/workflow-store';
 
 vi.mock('@/lib/works/store', () => ({ getWorksRecord: vi.fn(), listWorksRecords: vi.fn() }));
+vi.mock('@/lib/works/workflow-store', () => ({ getWorksPublicWorkflowStates: vi.fn() }));
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('WORKS_NOT_FOUND'); } }));
 vi.mock('@/app/works/SubmissionForm', () => ({
   default: ({ opportunityId }: { opportunityId: string }) => createElement('div', { 'data-proposal-form': opportunityId }),
@@ -36,6 +38,7 @@ beforeEach(() => {
   jobs = [job('refund-job')];
   proposals = [];
   failedCollections = [];
+  vi.mocked(getWorksPublicWorkflowStates).mockImplementation(async (_collection, ids) => ({ ok: true, states: ids.map(record_id => ({ record_id, workflow: { state: 'open', revision: 0, updated_at: null } })) }));
   vi.mocked(listWorksRecords).mockImplementation(async (collection) => failedCollections.includes(collection)
     ? unavailable
     : { ok: true, records: collection === 'opportunities' ? jobs : collection === 'submissions' ? proposals : [] });
@@ -47,6 +50,18 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('public marketplace job read states', () => {
+  it('does not invite a proposal when the current job is closed, assigned or unknown', async () => {
+    for (const state of ['closed', 'assigned']) {
+      vi.mocked(getWorksPublicWorkflowStates).mockResolvedValue({ ok: true, states: [{ record_id: 'refund-job', workflow: { state, revision: 1, updated_at: null } }] });
+      expect(await detail()).not.toContain('data-proposal-form=');
+      expect(await board()).not.toContain('View job and respond');
+    }
+    vi.mocked(getWorksPublicWorkflowStates).mockResolvedValue(unavailable);
+    expect(await detail()).toContain('We could not check whether this job is open.');
+    expect(await detail()).not.toContain('data-proposal-form=');
+    expect(await board()).toContain('Availability unknown');
+  });
+
   it('checks the feature gate before reading the board or a job', async () => {
     vi.stubEnv('WORKS_V0', '0');
     await expect(board()).rejects.toThrow('WORKS_NOT_FOUND');

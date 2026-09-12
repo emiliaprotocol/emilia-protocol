@@ -1,0 +1,63 @@
+.page{max-width:1240px;margin:0 auto;padding:48px 44px 100px;color:#201c17;font-size:18px;line-height:1.6}
+.header{padding:12px 0 34px;border-bottom:1px solid #ded9cf}
+.header h1{font-family:Georgia,serif;font-size:clamp(40px,5vw,66px);font-weight:400;line-height:1.07;letter-spacing:-.045em;margin:0 0 20px}
+.breadcrumb{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:15px;color:#696257;margin-bottom:30px}
+.breadcrumb a,.textLink{color:#6f5724;text-decoration:underline;text-underline-offset:4px}
+.eyebrow{font-size:13px;letter-spacing:.13em;text-transform:uppercase;font-weight:650;color:#806220;margin:0 0 16px}
+.lead{max-width:720px;font-size:21px;line-height:1.55;color:#605b53;margin:0}
+.welcome{padding:40px 0;max-width:720px}
+.welcome h2,.sectionHeading h2,.review h2{font-size:29px;line-height:1.2;letter-spacing:-.025em;font-weight:550;margin:0 0 14px}
+.welcome p{margin:0 0 20px}
+.note{font-size:16px;line-height:1.6;color:#696257;margin:10px 0 0;overflow-wrap:anywhere}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;padding:20px 0}
+.toolbar p{margin:0;font-size:16px;color:#696257}
+.actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:22px}
+.button,.secondary,.quiet{display:inline-flex;align-items:center;justify-content:center;min-height:46px;max-width:100%;padding:11px 19px;border-radius:6px;box-sizing:border-box;font:inherit;font-size:16px;font-weight:550;line-height:1.4;text-decoration:none;cursor:pointer;overflow-wrap:anywhere}
+.button{background:#806220;border:1px solid #806220;color:#fff}
+.secondary{background:#fff;border:1px solid #cfc8bc;color:#2e281f}
+.quiet{border:0;background:transparent;color:#6f5724;text-decoration:underline;text-underline-offset:4px;padding-left:0;padding-right:0}
+.button:disabled,.secondary:disabled,.quiet:disabled{opacity:.55;cursor:wait}
+.page a:focus-visible,.page button:focus-visible,.page input:focus-visible,.page textarea:focus-visible{outline:3px solid #806220;outline-offset:4px}
+.tabs{display:flex;gap:8px;overflow-x:auto;border-bottom:1px solid #ded9cf;margin:0 0 32px;padding:0 0 0}
+.tab{background:transparent;border:0;border-bottom:3px solid transparent;color:#605b53;white-space:nowrap;min-height:56px;padding:12px 19px;font:inherit;font-size:17px;cursor:pointer}
+.tab[aria-pressed=true]{color:#211c15;border-bottom-color:#806220;font-weight:650}
+.tab span{font-size:13px;color:#696257;margin-left:8px}
+.sectionHeading{display:flex;justify-content:space-between;align-items:flex-start;gap:22px;margin-bottom:22px}
+.sectionHeading p{margin:0;max-width:650px;font-size:17px;color:#696257}
+.sectionHeading .actions{margin:0}
+.list{display:grid;gap:0;border-top:1px solid #ded9cf}
+.row{padding:26px 0;border-bottom:1px solid #ded9cf;overflow-wrap:anywhere}
+.rowHeader{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.row h3{font-size:23px;font-weight:550;letter-spacing:-.02em;line-height:1.3;margin:0 0 8px}
+.row h3 a{color:inherit;text-decoration:none}
+.row p{margin:0 0 10px;max-width:840px}
+.row .actions{margin-top:14px}
+.meta{font-size:16px;color:#696257}
+.status{display:inline-flex;align-items:center;font-size:14px;text-transform:uppercase;letter-spacing:.05em;line-height:1.4;padding:6px 10px;border:1px solid #d4cec2;border-radius:5px;color:#5b5143;background:#f5f2eb;white-space:nowrap}
+.notificationActions .note{margin:0}
+.empty{padding:32px 0 46px;border-top:1px solid #ded9cf;max-width:760px}
+.empty h3{font-size:25px;letter-spacing:-.025em;font-weight:500;margin:0 0 12px}
+.empty p{color:#696257;margin:0 0 18px}
+.notice{padding:18px 22px;background:#f2eee4;border-left:3px solid #806220;border-radius:4px;font-size:17px;line-height:1.55;margin:24px 0;color:#4d412a;overflow-wrap:anywhere}
+.error{background:#fff1eb;border-color:#a45134;color:#713822}
+.review{background:#fff;border:1px solid #d8cfbf;border-radius:10px;padding:32px;margin:30px 0;scroll-margin-top:100px;overflow-wrap:anywhere}
+.review .actions{margin-top:26px}
+.reviewText{white-space:pre-wrap;font-size:18px;line-height:1.65}
+.fields{display:grid;gap:22px;border:0;margin:24px 0 0;padding:0;min-width:0}
+.field{display:grid;gap:9px;font-size:17px;font-weight:550;min-width:0}
+.field input,.field textarea{box-sizing:border-box;width:100%;min-height:50px;padding:13px 15px;font:inherit;font-size:18px;font-weight:400;line-height:1.5;border:1px solid #c6beaf;background:#fff;color:#211c15;border-radius:6px}
+.field textarea{resize:vertical;min-height:112px}
+.consent{display:flex;align-items:flex-start;gap:13px;font-size:17px;line-height:1.55;max-width:850px}
+.consent input{flex:0 0 22px;width:22px;height:22px;margin-top:3px;accent-color:#806220}
+.facts{display:grid;gap:18px;margin:24px 0;padding:24px 0;border-top:1px solid #ded9cf;border-bottom:1px solid #ded9cf}
+.facts div{display:grid;grid-template-columns:170px minmax(0,1fr);gap:18px}
+.facts dt{font-size:16px;color:#696257}
+.facts dd{margin:0;white-space:pre-wrap;font-size:18px;line-height:1.65;overflow-wrap:anywhere}
+.boundary{padding-top:26px;margin-top:40px;border-top:1px solid #ded9cf;font-size:16px;color:#696257;max-width:950px}
+.timeline{padding-left:24px;border-left:1px solid #d9d0c1;margin:26px 0;list-style:none}
+.timeline li{padding:0 0 28px;position:relative}
+.timeline li:before{content:'';width:7px;height:7px;position:absolute;left:-28px;top:10px;background:#806220;border-radius:50%}
+.timeline h3{font-size:20px;margin:0 0 8px;font-weight:550}
+.timeline p{margin:0 0 8px;white-space:pre-wrap}
+.srOnly{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:700px){.page{padding:26px 20px 64px}.header{padding-bottom:28px}.lead{font-size:19px}.tabs{margin-bottom:24px}.tab{padding:12px 13px}.sectionHeading,.rowHeader{display:block}.status{margin:8px 0 12px}.sectionHeading .actions{margin-top:18px}.review{padding:24px 19px}.facts div{grid-template-columns:1fr;gap:5px}.button,.secondary{min-height:48px}.review .actions>*{width:100%}.row h3{font-size:22px}.notificationActions{display:grid;grid-template-columns:1fr}.notificationActions>*{width:100%}}

@@ -33,10 +33,29 @@ describe('pilot observe permission forward migration', () => {
     const history = JSON.parse(readFileSync(historyUrl, 'utf8'));
     const hash = crypto.createHash('sha256').update(migrationBytes).digest('hex');
 
-    expect(history.as_of).toBe('2026-08-26');
-    expect(history.remote_head).toBe('20260826130000');
+    // Later confirmed deployments may advance the registry without changing
+    // this pilot migration's identity, contents, or applied status.
+    expect(history.as_of).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const observedDate = Date.parse(`${history.as_of}T00:00:00.000Z`);
+    expect(Number.isFinite(observedDate)).toBe(true);
+    expect(new Date(observedDate).toISOString().slice(0, 10)).toBe(history.as_of);
+    expect(observedDate).toBeGreaterThanOrEqual(Date.parse('2026-08-26T00:00:00.000Z'));
+
+    expect(history.remote_head).toMatch(/^\d{14}$/);
+    expect(BigInt(history.remote_head)).toBeGreaterThanOrEqual(20260826130000n);
+    expect(Array.isArray(history.remote_versions)).toBe(true);
+    const remoteVersions = history.remote_versions as string[];
+    expect(remoteVersions.length).toBeGreaterThan(0);
+    for (const version of remoteVersions) expect(version).toMatch(/^\d+$/);
+    // Legacy versions are short numeric IDs, so compare numerically rather
+    // than assuming every remote migration has a fourteen-digit timestamp.
+    const largestRemoteVersion = remoteVersions.reduce((largest, version) =>
+      BigInt(version) > BigInt(largest) ? version : largest);
+    expect(history.remote_head).toBe(largestRemoteVersion);
+    expect(history.remote_versions).toContain(history.remote_head);
     expect(history.remote_versions).toContain('20260826010000');
     expect(history.forward_pending_versions).not.toContain('20260826010000');
+    expect(history.retroactive_pending_versions).not.toContain('20260826010000');
     expect(history.deployment_sequence).not.toContain('20260826010000');
     expect(history.public_files['20260826010000_pilot_observe_permission.sql']).toBe(hash);
   });
