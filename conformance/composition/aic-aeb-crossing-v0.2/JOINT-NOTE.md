@@ -1,15 +1,16 @@
-# Joint Note — AIC × EMILIA Exact-Action Binding Crossing
+# Proposed Joint Note — AIC × EMILIA Exact-Action Binding Crossing
 
 Date: 2026-09-03
-Participants: Jijie Wei (author of draft-wei-aic-identity-cert and
+Proposed participants: Jijie Wei (author of draft-wei-aic-identity-cert and
 draft-wei-aic-jwt, Varwof); Iman Schrock (EMILIA Protocol)
 
 ## 1. Purpose
 
-This note records the agreed semantics of the AIC-to-AEB exact-action
+This note proposes a shared record of the semantics of the AIC-to-AEB exact-action
 binding crossing merged in emiliaprotocol/emilia-protocol PR #685, and
 the boundary it establishes between the two projects. It serves as the
-joint consistency statement referenced during review. It does not
+consistency statement referenced during review. It becomes a joint note only
+if both named participants confirm it. It does not
 create, extend, or reimplement any AIC or EMILIA mechanism.
 
 ## 2. Anchors
