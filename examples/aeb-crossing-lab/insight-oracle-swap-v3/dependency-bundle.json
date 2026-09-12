@@ -1,0 +1,21 @@
+{
+  "@version": "INSIGHT-AEB-PINNED-DEPENDENCY-BUNDLE-v1",
+  "bundle": "adapter.mjs",
+  "bundle_digest": "sha256:c82f8f623a826cb0f17ca9012e63636919715ae30f27cc3074d5e913a67d55c8",
+  "bundle_bytes": 101244,
+  "build": "npm ci && npm run build",
+  "lockfile": "package-lock.json",
+  "dependencies": {
+    "@noble/curves": "1.9.7",
+    "canonicalize": "4.0.0",
+    "verify-insight-receipt": "0.2.0",
+    "viem": "2.56.3",
+    "esbuild": "0.28.1"
+  },
+  "source_digests": {
+    "adapter-src.mjs": "sha256:ec4c6c4cf37e8ebc307247c3babc45f92e28953016f752c936d2a8f88437a31f",
+    "bundle-primitives.mjs": "sha256:4d67d652bd750d3c26f11cc03cb9e0f91c465d82c77485388e265c4186269a7c",
+    "package.json": "sha256:e315883437b2f3c76900c5ad4e0910dc14843bd4069206097c6a06be39fac9f8",
+    "package-lock.json": "sha256:f853dc4f9f1cdb30f3d21f0e06a62b7c591500e235d681e34769cfe1e148544c"
+  }
+}

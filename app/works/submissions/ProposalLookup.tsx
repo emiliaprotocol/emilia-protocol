@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } fro
 import { validWorksId } from '@/lib/works/model';
 import { createProposalRequestFence, type ProposalResult } from './proposal-client';
 import styles from './proposal.module.css';
+import WorksAccountAccess, { useWorksAccount } from '../WorksAccountAccess';
 
 const subscribeToHydration = () => () => {};
 const clientReady = () => true;
@@ -25,7 +26,7 @@ export function ProposalFinder() {
     router.push(`/works/submissions/${id}`);
   }
   return <section className={styles.panel}>
-    <p>Enter the proposal ID shown after you sent a response. You’ll enter your API key on the next page.</p>
+    <p>Enter the proposal ID shown after you sent a response. Sign in on the next page to open a private proposal.</p>
     <form method="post" onSubmit={open} className={styles.form}>
       <fieldset disabled={!ready}>
         <label htmlFor="find-proposal-id">Proposal ID</label>
@@ -43,6 +44,7 @@ export function ProposalFinder() {
 }
 
 export default function ProposalLookup({ submissionId }: { submissionId: string }) {
+  const access = useWorksAccount();
   const ready = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const [apiKey, setApiKey] = useState('');
   const [pending, setPending] = useState(false);
@@ -76,7 +78,7 @@ export default function ProposalLookup({ submissionId }: { submissionId: string 
   async function load(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!ready || document.visibilityState === 'hidden') return;
-    const key = apiKey.trim();
+    const key = access.account ? null : apiKey.trim();
     clear();
     const request = fence.current!.begin();
     setPending(true);
@@ -102,15 +104,16 @@ export default function ProposalLookup({ submissionId }: { submissionId: string 
     <p>You can bookmark this page. The link contains only the proposal ID; it doesn’t grant access to a private response.</p>
     <p className={styles.note}>For a private response, the server checks that your key belongs to the proposal author, the job owner or an authorized administrator. A public proposal remains publicly available.</p>
     <noscript><p>This view needs JavaScript to keep your key out of page navigation. Enable it before entering a key.</p></noscript>
+    <WorksAccountAccess access={access} />
     <form method="post" onSubmit={load} className={styles.form}>
       <fieldset disabled={!ready}>
-        <label htmlFor="proposal-lookup-key">EMILIA API key</label>
+        {!access.account ? <><label htmlFor="proposal-lookup-key">Existing API key (or sign in above)</label>
         <input id="proposal-lookup-key" type="password" autoComplete="off" spellCheck={false} autoCapitalize="off"
-          value={apiKey} onChange={(event) => { clear(); setApiKey(event.target.value); }} required maxLength={512}
-          data-1p-ignore data-lpignore="true" placeholder="Your author or job-owner key" aria-describedby="proposal-lookup-help" />
+          value={apiKey} onChange={(event) => { clear(); setApiKey(event.target.value); }} maxLength={512}
+          data-1p-ignore data-lpignore="true" placeholder="Your author or job-owner key" aria-describedby="proposal-lookup-help" /></> : null}
         <p id="proposal-lookup-help" className={styles.note}>Your key goes only to this site’s API in an authentication header. It is not saved and clears after each request. Editing the key, clearing this view or leaving the tab hides the proposal.</p>
         <div className={styles.actions}>
-          <button type="submit" disabled={!ready || pending || !apiKey.trim()}>{pending ? 'Opening…' : 'Open proposal'}</button>
+          <button type="submit" disabled={!ready || pending || (!access.account && !apiKey.trim())}>{pending ? 'Opening…' : 'Open proposal'}</button>
           <button type="button" onClick={clear} className={styles.secondary}>Clear private view</button>
         </div>
       </fieldset>

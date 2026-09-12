@@ -1,5 +1,12 @@
 # EMILIA Protocol Architecture -03 validation
 
+6 September 2026 correction: current references and the AuthZEN comparison
+were corrected. XML rendering, idnits (no nits), packet checksums, the shared
+packet checker, protocol discipline and repository boundaries were checked
+again. The PostgreSQL evidence below is prior evidence, not a new runtime run
+performed for this editorial correction. Referenced AEC-06 and Quorum-04 are
+coordinated corrective packets, not assertions of working-group adoption.
+
 - `xmllint --noout`: pass.
 - `xml2rfc 3.34.0`: TXT and HTML rendered successfully.
 - `idnits 3.1.0`: pass, no nit reported.

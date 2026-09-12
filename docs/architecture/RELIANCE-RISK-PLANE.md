@@ -137,6 +137,36 @@ therefore produce at most one accepted current successor. Loss-experience
 records still carry externally reported facts and provenance; EMILIA does not
 infer causation, coverage, adjudication, or amount.
 
+## Carrier-readable action composition
+
+The risk-plane components stay separate, but a reviewer needs one bounded way
+to ask whether the required technical evidence exists for one exact action.
+Two additive artifacts provide that view without creating insurance semantics:
+
+1. `EP-ACTION-RISK-CONTROL-SCHEDULE-v1` is a separately signed technical
+   requirements schedule. It pins the action class, CAID profile, and provider
+   path, qualification
+   freshness, control-program digests, complete-mediation evidence references,
+   exposure ceilings, reconciliation authority, outcome-source requirements,
+   and treatment of divergent or indeterminate results. Its only evaluation
+   values are `ELIGIBLE`, `NOT_ELIGIBLE`, and `INDETERMINATE`.
+2. `EP-ACTION-EVIDENCE-PACKET-v1` is a content-addressed manifest for one
+   action. It binds the schedule evaluation to the supplied qualification,
+   authorization, admission, exposure, provider, observed-effect, population,
+   and optional loss or recourse artifacts. The verifier recomputes attachment
+   digests and orchestrates the relying party's chosen native verifiers. Those
+   callbacks are trust inputs and must independently validate digest, subject,
+   state, and currentness; an echo callback is not evidence. Its only
+   conclusions are `TECHNICALLY_COMPLETE`, `INCOMPLETE`, `CONFLICTED`, and
+   `INDETERMINATE`.
+
+The v1 schedule pins its issuer and qualification-status authority. Native and
+provider trust roots, current status, source independence, and verifier choices
+come separately from the reviewer. A packet cannot make its own signer trusted
+or establish schedule-to-adapter key agreement. A complete packet does not
+establish population completeness, physical-world causation, legal liability,
+policy coverage, claim acceptance, solvency, or payment.
+
 ## Rollout and blast radius
 
 A production Reliance Program version needs an explicit canary cohort,

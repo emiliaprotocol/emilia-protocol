@@ -1,14 +1,15 @@
 # Expectation-separated clean-room evaluation v3
 
 The v3 evaluator repairs the oracle channel in v2. It is a new protocol and
-report version; the published v2 evaluator, bundle, schemas, and prior reports
-remain historical bytes with their original meaning.
+report version. Prior published v2 artifacts and reports remain pinned to
+their original commit and hashes. The current input kits were refreshed on
+September 6 for the Quorum repair; that does not upgrade any earlier result.
 
 This is a partial integrity repair. It does not close issue #250 because it
 does not isolate the runner from evaluator files, other host paths, or the
 network.
 
-V3 evaluates the same pinned 21-suite, 335-vector corpus. Before each runner
+V3 evaluates the same pinned 21-suite, 340-vector corpus. Before each runner
 invocation it builds a new execution envelope that:
 
 1. removes `expect`, the catalogue vector ID, descriptions, failure classes,
@@ -108,6 +109,27 @@ node --import ./scripts/ts-loader/register.mjs \
   --emit /tmp/evaluation.json
 ```
 
+For evaluator-controlled Docker isolation, replace the unsafe acknowledgement
+with an image reference pinned by registry digest:
+
+```sh
+node --import ./scripts/ts-loader/register.mjs \
+  scripts/verify-clean-room-submission-v3.mts \
+  --manifest /path/to/submission.json \
+  --runner /path/to/read-only-runner \
+  --docker-image runtime.example/verifier@sha256:FULL_DIGEST \
+  --emit /tmp/evaluation.json
+```
+
+The isolated mode mounts only the submitted runner and the randomized
+execution input, both read-only. It does not mount the repository, catalogue,
+expectations, or evaluator directory. The container runs without network,
+capabilities, privilege gain, or a writable root filesystem, as UID/GID
+65532, with CPU, memory, process, temporary-filesystem, timeout, and captured
+output bounds. The report binds both the requested image digest and Docker's
+resolved image ID. The pinned image must contain any interpreter or dynamic
+libraries the submitted artifact needs.
+
 Require a separately signed construction claim:
 
 ```sh
@@ -136,9 +158,10 @@ node --import ./scripts/ts-loader/register.mjs \
   --emit /tmp/external-evaluation.json
 ```
 
-Both commands default to refusing local runner execution. The acknowledgement
-flag is deliberately explicit because the runner is untrusted and no process,
-filesystem, or network sandbox is installed. It does not weaken that boundary.
+Both commands default to refusing runner execution. Use a pinned Docker image
+for bounded isolation. The unsafe acknowledgement remains available for local
+diagnostics and reports all sandbox fields as false; it does not create or
+weaken an isolation claim.
 The evaluator scrubs its inherited environment and supplies only `PATH`,
 `LANG`, `LC_ALL`, and `TZ` to the child, preventing ordinary credential
 variables from being inherited.
@@ -156,9 +179,11 @@ variables from being inherited.
 - Only the entrypoint file and fixed-argument values are hashed. Fixed-argument
   target bytes, the interpreter, imported files, and dynamic libraries are not
   content-addressed as one dependency closure.
-- The evaluator starts a normal local process. It does not provide a network,
-  filesystem, syscall, namespace, container, or virtual-machine sandbox.
-- The pinned-tree export excludes relative untracked helpers, but a runner can
+- Unsafe local mode starts a normal process without a network, filesystem,
+  syscall, namespace, container, or virtual-machine sandbox. Docker mode applies
+  the isolation controls described above; it does not establish clean-room
+  provenance for the image contents or protect against a compromised Docker host.
+- In unsafe local mode, the pinned-tree export excludes relative untracked helpers, but a runner can
   still read or execute any absolute host path allowed to the evaluator account
   and can make network calls unless the operator supplies external isolation.
 - A verified third-party signature is a bounded attestation check, not proof

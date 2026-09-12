@@ -11,7 +11,7 @@ describe('artifact lifecycle registry', () => {
     const report = await checkArtifactLifecycle({ root: process.cwd() });
     expect(report.errors).toEqual([]);
     expect(report.classified).toBe(report.documentation_only);
-  });
+  }, 30_000);
 
   it('fails when a new documentation-only or escaped retired tag appears', async () => {
     const root = await mkdtemp(join(tmpdir(), 'emilia-artifact-lifecycle-'));

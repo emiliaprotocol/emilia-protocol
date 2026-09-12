@@ -201,7 +201,7 @@
     "@remotion/player": "^4.0.520",
     "@sentry/nextjs": "10.73.0",
     "@simplewebauthn/browser": "^13.3.0",
-    "@simplewebauthn/server": "^13.3.2",
+    "@simplewebauthn/server": "^13.3.3",
     "@supabase/supabase-js": "^2.115.0",
     "@xmldom/xmldom": "0.8.15",
     "cbor": "10.0.12",

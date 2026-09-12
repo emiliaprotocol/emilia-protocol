@@ -99,3 +99,43 @@ func TestRequiredAlgorithmsRefusedByName(t *testing.T) {
 		t.Fatalf("expected %d required_algorithms vectors, found %d", len(want), seen)
 	}
 }
+
+func TestQuorumExpectedPolicyRejectsStrippingAndMutation(t *testing.T) {
+	for _, vector := range loadQuorumSuite(t).Vectors {
+		if vector.ID != "accept_ordered_3of3" {
+			continue
+		}
+		q := vector.Quorum
+		policy := getMap(q["policy"])
+		opts := []string{"https://www.emiliaprotocol.ai"}
+		if !VerifyQuorumWithPolicy(q, "emiliaprotocol.ai", opts, policy).Valid {
+			t.Fatal("exact pinned policy should accept")
+		}
+		for _, mutation := range []string{"strip", "threshold", "profile"} {
+			altered := make(map[string]any, len(policy))
+			for k, v := range policy {
+				altered[k] = v
+			}
+			switch mutation {
+			case "strip":
+				delete(altered, "ordered_chain")
+				delete(altered, "ordered_chain_profile")
+			case "threshold":
+				altered["required"] = float64(2)
+			case "profile":
+				altered["ordered_chain_profile"] = "unknown"
+			}
+			q["policy"] = altered
+			result := VerifyQuorumWithPolicy(q, "emiliaprotocol.ai", opts, policy)
+			if result.Valid || result.Reason != "quorum_policy_mismatch" {
+				t.Fatalf("%s downgrade accepted or wrong refusal: %#v", mutation, result)
+			}
+		}
+		q["policy"] = policy
+		if VerifyQuorumWithPolicy(q, "emiliaprotocol.ai", opts, nil).Valid {
+			t.Fatal("nil pin accepted")
+		}
+		return
+	}
+	t.Fatal("ordered vector not found")
+}

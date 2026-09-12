@@ -18,12 +18,20 @@ const option = (name: string): string | null => {
 };
 const emitPath: string | null = option('--emit');
 if (argv.includes('--emit') && !emitPath) throw new Error('--emit requires a path');
-const BUNDLE: any = JSON.parse(fs.readFileSync(path.join(ROOT, 'conformance/clean-room/bundle.v1.json'), 'utf8'));
+const manifestOption: string | null = option('--manifest');
+if (argv.includes('--manifest') && !manifestOption) throw new Error('--manifest requires a path');
+const liveManifestPath: string | null = manifestOption ? path.resolve(manifestOption) : null;
+const sourceBytes: Buffer = fs.readFileSync(liveManifestPath
+  ?? path.join(ROOT, 'conformance/clean-room/bundle.v1.json'));
+const BUNDLE: any = JSON.parse(sourceBytes.toString('utf8'));
+const liveManifestMode: boolean = liveManifestPath !== null;
 const PRIMARY_FIELDS: string[] = [
   'document', 'signoff', 'quorum', 'revocation', 'time_attestation',
   'trust_receipt', 'provenance_chain', 'evidence_record', 'canonicalization',
   'currency', 'initiator_attestation', 'consumption_proof', 'witness_quorum',
   'timestamp_proof',
+  'resolution_receipt', 'resolution_authorization', 'predicted_effects',
+  'attestation', 'aec_chain', 'proof',
 ];
 const destructiveValues: any[] = [null, {}, [], '', true, 9007199254740992];
 const timestampNames: RegExp = /^(?:issued_at|expires_at|signed_at|revoked_at|checked_at|valid_from|valid_to|gen_time|now|not_before|not_after)$/i;
@@ -97,10 +105,20 @@ function reverseObjectOrder(value: any): any {
   return out;
 }
 
+function stableJson(value: any): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key: string) =>
+      `${JSON.stringify(key)}:${stableJson(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
 const cases: any[] = [];
 const expectations: Map<string, any> = new Map();
 const caseSuites: Map<string, string> = new Map();
 const categoryCounts: Map<string, number> = new Map();
+const coveredSuites: any[] = [];
 function addCase(value: any, category: string, expectation: any, suite: string): void {
   cases.push(value);
   expectations.set(value.id, expectation);
@@ -109,12 +127,41 @@ function addCase(value: any, category: string, expectation: any, suite: string):
 }
 
 for (const suiteRef of BUNDLE.suites) {
-  const suite: any = JSON.parse(fs.readFileSync(path.join(ROOT, suiteRef.path), 'utf8'));
+  const cataloguePath: string = path.join(ROOT, suiteRef.path);
+  const catalogueBytes: Buffer = fs.readFileSync(cataloguePath);
+  if (liveManifestMode) {
+    const actualHash: string = crypto.createHash('sha256').update(catalogueBytes).digest('hex');
+    if (actualHash !== suiteRef.sha256) throw new Error(`live manifest suite hash mismatch: ${suiteRef.path}`);
+  }
+  const executionRelativePath: string = liveManifestMode
+    ? (suiteRef.execution_path || suiteRef.path)
+    : suiteRef.path;
+  const executionBytes: Buffer = fs.readFileSync(path.join(ROOT, executionRelativePath));
+  if (liveManifestMode && suiteRef.execution_path) {
+    const actualExecutionHash: string = crypto.createHash('sha256').update(executionBytes).digest('hex');
+    if (actualExecutionHash !== suiteRef.execution_sha256) {
+      throw new Error(`live manifest execution suite hash mismatch: ${executionRelativePath}`);
+    }
+  }
+  const suite: any = JSON.parse(executionBytes.toString('utf8'));
+  if (liveManifestMode && suite.vectors.length !== suiteRef.vectors) {
+    throw new Error(`live manifest vector count mismatch: ${suiteRef.path}`);
+  }
+  coveredSuites.push({
+    path: suiteRef.path,
+    sha256: suiteRef.sha256,
+    vectors: suiteRef.vectors,
+    execution_path: executionRelativePath,
+    ...(suiteRef.execution_sha256 ? { execution_sha256: suiteRef.execution_sha256 } : {}),
+  });
   const selected: any[] = [];
   const positive: any = suite.vectors.find((vector: any) => vector.expect?.valid === true);
   const negative: any = suite.vectors.find((vector: any) => vector.expect?.valid === false);
   if (positive) selected.push(positive);
   if (negative && negative !== positive) selected.push(negative);
+  if (liveManifestMode && selected.length === 0) {
+    selected.push(...suite.vectors.slice(0, Math.min(2, suite.vectors.length)));
+  }
 
   for (const source of selected) {
     const prefix: string = `${path.basename(suiteRef.path, '.json')}_${source.id}`.replace(/[^a-zA-Z0-9_.-]/g, '_');
@@ -124,17 +171,35 @@ for (const suiteRef of BUNDLE.suites) {
     const inert = clone(source);
     inert.id = `${prefix}__unknown_wrapper`;
     inert._ep_hostility = { ignored: true, unicode: 'replacement-�-astral-🙂' };
-    addCase(inert, 'unknown-wrapper', { kind: 'metamorphic', expected: source.expect.valid }, suite.suite);
+    const hasSimpleValidExpectation: boolean = source.expect
+      && Object.hasOwn(source.expect, 'valid')
+      && !Object.hasOwn(source.expect, 'result_digest');
+    addCase(inert, 'unknown-wrapper', hasSimpleValidExpectation
+      ? { kind: 'metamorphic', expected: source.expect.valid }
+      : { kind: 'consensus' }, suite.suite);
 
     const unicode = clone(source);
     unicode.id = `${prefix}__unicode_aliases`;
     unicode._ep_hostility = { 'caf\u00e9': 'caf\u00e9', 'cafe\u0301': 'cafe\u0301', bidi: '\u202ereliance' };
-    addCase(unicode, 'unicode', { kind: 'metamorphic', expected: source.expect.valid }, suite.suite);
+    addCase(unicode, 'unicode', hasSimpleValidExpectation
+      ? { kind: 'metamorphic', expected: source.expect.valid }
+      : { kind: 'consensus' }, suite.suite);
 
     const permuted = reverseObjectOrder(source);
     permuted.id = `${prefix}__object_permutation`;
-    addCase(permuted, 'action-permutation', { kind: 'metamorphic', expected: source.expect.valid }, suite.suite);
+    addCase(permuted, 'action-permutation', hasSimpleValidExpectation
+      ? { kind: 'metamorphic', expected: source.expect.valid }
+      : { kind: 'consensus' }, suite.suite);
 
+    if (liveManifestMode && (
+      !Object.hasOwn(source.expect || {}, 'valid')
+      || Object.hasOwn(source.expect || {}, 'result_digest')
+    )) continue;
+
+    // Exact-result suites often hash a typed substructure before they can
+    // return a verdict. Keep their live-manifest coverage metamorphic and add
+    // targeted, semantically specified mutations below instead of treating a
+    // thrown canonical-domain error as a valid refusal.
     for (let i = 0; i < destructiveValues.length; i += 1) {
       const hostile = clone(source);
       hostile.id = `${prefix}__type_${i}`;
@@ -166,9 +231,41 @@ for (const suiteRef of BUNDLE.suites) {
   }
 }
 
+if (liveManifestMode) {
+  const uniquePaths: Set<string> = new Set(coveredSuites.map((entry: any) => entry.path));
+  const coveredVectors: number = coveredSuites.reduce(
+    (sum: number, entry: any) => sum + entry.vectors,
+    0,
+  );
+  if (uniquePaths.size !== coveredSuites.length) {
+    throw new Error('live manifest contains duplicate suite paths');
+  }
+  if (coveredSuites.length !== BUNDLE.totals?.suites
+      || coveredVectors !== BUNDLE.totals?.vectors) {
+    throw new Error('live manifest totals do not match its exact suite revisions');
+  }
+}
+
+if (liveManifestMode) {
+  const outcomeSuiteRef: any = BUNDLE.suites.find((entry: any) =>
+    entry.path === 'conformance/vectors/outcome-binding.v1.json');
+  if (!outcomeSuiteRef) throw new Error('live manifest omits outcome-binding.v1');
+  const outcomeSuite: any = JSON.parse(fs.readFileSync(path.join(ROOT, outcomeSuiteRef.path), 'utf8'));
+  const source: any = outcomeSuite.vectors.find((vector: any) =>
+    vector.kind === 'predicate' && Array.isArray(vector.predicted_effects));
+  if (!source) throw new Error('outcome-binding.v1 has no predicted_effects regression seed');
+  const malformed: any = clone(source);
+  malformed.id = 'current_outcome_binding__malformed_predicted_effects_object';
+  malformed.predicted_effects = {};
+  addCase(malformed, 'malformed-predicted-effects', {
+    kind: 'typed-result',
+    expected: { outcome: 'incomparable' },
+  }, outcomeSuite.suite);
+}
+
 const corpus = {
-  suite: 'EP-DIFFERENTIAL-HOSTILITY-v2',
-  seed: 'ep-hostility-v2-fixed',
+  suite: liveManifestMode ? 'EP-DIFFERENTIAL-HOSTILITY-v3' : 'EP-DIFFERENTIAL-HOSTILITY-v2',
+  seed: liveManifestMode ? 'ep-hostility-v3-current-manifest' : 'ep-hostility-v2-fixed',
   vectors: cases,
 };
 const corpusBytes = Buffer.from(`${JSON.stringify(corpus)}\n`);
@@ -283,6 +380,19 @@ function writeReport(status: string, divergences: any[]): void {
       structured_cases: cases.length,
       raw_parser_cases: rawParserCases.length,
       categories: Object.fromEntries([...categoryCounts.entries()].sort()),
+      ...(liveManifestMode ? {
+        source_manifest: {
+          path: path.relative(ROOT, liveManifestPath as string),
+          sha256: crypto.createHash('sha256').update(sourceBytes).digest('hex'),
+          suites: BUNDLE.totals?.suites,
+          vectors: BUNDLE.totals?.vectors,
+        },
+        covered_suites: coveredSuites,
+        required_regressions: [{
+          id: 'current_outcome_binding__malformed_predicted_effects_object',
+          expected: { outcome: 'incomparable' },
+        }],
+      } : {}),
     },
     implementations: implementations.map((implementation: Implementation) => ({
       name: implementation.name,
@@ -320,7 +430,7 @@ try {
     }
   }
 
-  const outputs: Map<string, Map<string, boolean>> = new Map();
+  const outputs: Map<string, Map<string, any>> = new Map();
   for (const implementation of implementations) {
     let parsed: any[];
     if (implementation.dispatch === 'suite') {
@@ -363,30 +473,42 @@ try {
     } else {
       parsed = executeCorpus(implementation, corpusPath, cases.length, 'hostile mixed-suite corpus');
     }
-    const map: Map<string, boolean> = new Map();
+    const map: Map<string, any> = new Map();
     for (const result of parsed) {
-      if (map.has(result.id) || typeof result.valid !== 'boolean') throw new Error(`${implementation.name} emitted malformed or duplicate result ${result.id}`);
-      map.set(result.id, result.valid);
+      if (map.has(result.id) || typeof result?.id !== 'string') throw new Error(`${implementation.name} emitted malformed or duplicate result ${result?.id}`);
+      const normalized: any = { ...result };
+      delete normalized.id;
+      if (!liveManifestMode && typeof normalized.valid !== 'boolean') throw new Error(`${implementation.name} emitted malformed or duplicate result ${result.id}`);
+      map.set(result.id, normalized);
     }
     outputs.set(implementation.name, map);
   }
 
   for (const hostile of cases) {
     if (implementations.some((implementation: Implementation) => (executionFailures.get(implementation.name) as Set<string>).has(hostile.id))) continue;
-    const values: boolean[] = implementations.map((implementation: Implementation) => outputs.get(implementation.name)!.get(hostile.id) as boolean);
-    if (values.some((value: boolean) => typeof value !== 'boolean')) {
+    const values: any[] = implementations.map((implementation: Implementation) => outputs.get(implementation.name)!.get(hostile.id));
+    if (values.some((value: any) => value === undefined)) {
       divergences.push({ id: hostile.id, reason: 'missing_result', values });
       continue;
     }
-    if (!values.every((value) => value === values[0])) {
+    const encodedValues: string[] = values.map((value: any) => stableJson(value));
+    if (!encodedValues.every((value: string) => value === encodedValues[0])) {
       divergences.push({ id: hostile.id, reason: 'cross_language_divergence', values });
       continue;
     }
     const expected: any = expectations.get(hostile.id);
-    if (expected.kind === 'metamorphic' && values[0] !== expected.expected) {
+    const valid: any = values[0]?.valid;
+    if (expected.kind === 'metamorphic' && valid !== expected.expected) {
       divergences.push({ id: hostile.id, reason: 'metamorphic_verdict_changed', expected: expected.expected, values });
-    } else if (expected.kind === 'reject' && values[0] !== false) {
+    } else if (expected.kind === 'reject' && valid !== false && values[0]?.outcome !== 'incomparable') {
       divergences.push({ id: hostile.id, reason: 'hostile_input_accepted', values });
+    } else if (expected.kind === 'typed-result') {
+      for (const [field, value] of Object.entries(expected.expected)) {
+        if (values[0]?.[field] !== value) {
+          divergences.push({ id: hostile.id, reason: 'required_regression_not_refused', expected: expected.expected, values });
+          break;
+        }
+      }
     }
   }
   if (divergences.length) {

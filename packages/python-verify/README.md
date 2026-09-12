@@ -38,6 +38,17 @@ trusted `logPublicKey`, and an optional RFC 3339 `now`. A key entry containing
 when `now` is supplied, issuance more than five minutes in the future is
 refused. Omitting `now` retains offline historical verification.
 
+For a quorum, call `verify_quorum(quorum, {"expectedPolicy": trusted_policy,
+"rpId": rp_id, "allowedOrigins": origins})`. `expectedPolicy` pins the entire
+policy; without it, a valid result means internal consistency, not satisfaction
+of the relying party's required floor. Strong ordered policies require
+`ordered_chain_profile: "EP-QUORUM-SIGNOFF-CHAIN-v1"` and signed
+`prev_signoff_hash` links to completed predecessor proofs. Legacy context-only
+chains are refused and need new signatures, not relabelling. Plain roster
+ordering and threshold policies remain available where explicitly permitted.
+The new chain proves causal proof dependence, not trusted time, human
+comprehension, or correct enrollment.
+
 ## Why this exists
 A trust receipt is only as useful as the number of places that can check it. Shipping a
 verifier in the Python agent ecosystem (LangChain, CrewAI, AutoGen, LlamaIndex) means a

@@ -1,0 +1,24 @@
+.page{max-width:980px;margin:0 auto;padding:48px 32px 90px;color:#201c17;font-size:18px;line-height:1.6}
+.breadcrumb,.legal{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:16px;color:#696257}
+.breadcrumb a,.legal a,.notice a{color:#6f5724;text-decoration:underline;text-underline-offset:4px}
+.header{padding:28px 0 32px;border-bottom:1px solid #ded9cf;margin-bottom:30px}
+.header h1{font-family:Georgia,serif;font-size:clamp(40px,6vw,64px);font-weight:400;line-height:1.1;letter-spacing:-.045em;margin:0 0 20px}
+.header p{max-width:740px;margin:0;font-size:20px;color:#605b53}
+.header .eyebrow,.eyebrow{font-size:13px;letter-spacing:.12em;text-transform:uppercase;font-weight:650;color:#806220;margin:0 0 14px}
+.session{margin:28px 0;padding:0;overflow-wrap:anywhere}
+.session h2,.notice h2{font-size:28px;font-weight:550;line-height:1.25;letter-spacing:-.025em;margin:0 0 16px}
+.session p{margin:0 0 16px}
+.notice{padding:22px 24px;background:#f2eee4;border-left:3px solid #806220;border-radius:5px;margin:24px 0;color:#4d412a;overflow-wrap:anywhere}
+.notice p{margin:0}
+.notice h2{font-size:23px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0}
+.primary,.secondary,.textButton{font:inherit;font-size:17px;font-weight:550;line-height:1.4;min-height:48px;max-width:100%;box-sizing:border-box;border-radius:6px;padding:12px 20px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;overflow-wrap:anywhere;text-decoration:none}
+.primary{background:#806220;border:1px solid #806220;color:#fff}
+.secondary{background:#fff;border:1px solid #cfc8bc;color:#2e281f}
+.textButton{background:transparent;border:0;padding-left:0;padding-right:0;color:#6f5724;text-decoration:underline;text-underline-offset:4px}
+.primary:disabled,.secondary:disabled,.textButton:disabled{opacity:.55;cursor:wait}
+.note{font-size:16px;color:#696257;line-height:1.6;max-width:820px}
+.error{color:#713822;background:#fff1eb;border-left:3px solid #a45134;border-radius:4px;padding:16px 20px;font-size:17px;overflow-wrap:anywhere}
+.legal{padding-top:28px;margin-top:36px;border-top:1px solid #ded9cf}
+.page a:focus-visible,.page button:focus-visible{outline:3px solid #806220;outline-offset:4px}
+@media(max-width:650px){.page{padding:28px 20px 64px}.header p{font-size:19px}.actions{display:grid;grid-template-columns:1fr}.actions>*{width:100%}.notice{padding:20px 18px}.session h2{font-size:25px}}

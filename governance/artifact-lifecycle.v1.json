@@ -13,16 +13,6 @@
       "evidence_paths": ["standards/staged/NEXT-ACTION-EVIDENCE-BOUNDARY-04/UPLOAD-THIS/draft-schrock-action-evidence-boundary-04.xml"]
     },
     {
-      "tag": "EP-AEC-REPLAY-v1",
-      "status": "spec_only",
-      "evidence_paths": ["standards/staged/RENDERS/draft-schrock-ep-authorization-evidence-chain-05.txt"]
-    },
-    {
-      "tag": "EP-AEC-REQUIREMENT-v1",
-      "status": "spec_only",
-      "evidence_paths": ["standards/staged/RENDERS/draft-schrock-ep-authorization-evidence-chain-05.txt"]
-    },
-    {
       "tag": "EP-ART14-CHECKLIST-v1",
       "status": "document_only",
       "evidence_paths": ["docs/ART14-EVIDENCE-CHECKLIST.md"]

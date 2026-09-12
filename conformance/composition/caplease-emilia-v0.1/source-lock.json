@@ -23,11 +23,11 @@
     "runtime_files": [
       {
         "path": "packages/gate/src/capability-receipt.ts",
-        "sha256": "cf4576e6c1178013291bd22e8d54ab34545de8c5760f7ecdfab150893015f7cb"
+        "sha256": "f010ab760509eff4b47e304b071e8327c9b3228ee0ea5e18b6ce66c3854e13de"
       },
       {
         "path": "packages/gate/dist/capability-receipt.js",
-        "sha256": "db693d826bf7b0faca9faba0a7c38a4398ef58ca922a607edd812ea224a8abf3"
+        "sha256": "965752764b5ac6978818dd086f9f608f8bf80c4eac04eba5916e5c85dd6c3724"
       },
       {
         "path": "packages/gate/capability-receipt.js",

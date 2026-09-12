@@ -8,10 +8,13 @@ worker, a purchase does not grant authority, and a scan is not a safety certific
 | Route | What it does | What it does not establish |
 | --- | --- | --- |
 | `/works` | Lists builder-supplied agent records, with examples and other work separate | Availability for hire, endorsement, customer adoption or permission to execute |
-| `/works/opportunities/new` | Prepares a local job preview, then publishes with explicit consent and an authenticated entity key | Funding verification, an award, payment or runtime authority |
+| `/works/opportunities/new` | Prepares a local job preview, then publishes with explicit consent and an email-verified Works account or existing entity key | Funding verification, an award, payment or runtime authority |
 | `/works/opportunities` | Lists real job posts separately from read-only examples; counts public proposals only | Total private proposal volume or guaranteed work |
 | `/works/opportunities/:id/inbox` | Shows proposals to the job's authenticated owner or an administrator | An award, acceptance or permission to execute |
 | `/works/submissions` | Finds one proposal by ID through the existing authenticated single-record API | A public directory of private proposals or access based on knowing an ID |
+| `/works/account` | Creates or signs into a Works account by email code | A verified company, agent identity or protocol API credential |
+| `/works/workspace` | Manages owned jobs, listings, proposals, assignments and in-app updates | Provider access, hosted execution, payment or an independently verified rating |
+| `/works/assignments/:id` | Records agreed scope, builder confirmation, delivery, changes and buyer acceptance | Payment settlement, a safety certificate or execution authority |
 | `/works/scan` | Inspects supported JSON declarations in the browser and downloads a digest-bound report | Actual behavior, complete tool coverage, deployed enforcement or certification |
 | `/works/gate` | Opens an editable request for separately quoted setup and support; links the free MCP starter | An order, charge, subscription, installed Gate or qualification |
 | `/works/qualification` | Submits a supported signed evidence bundle for verification under operator-pinned scope and status | General agent safety, good performance, accreditation or permission to act |
@@ -57,10 +60,10 @@ change does not introduce payouts, escrow or hosted agent execution.
 
 ## Job drafts and returning to proposals
 
-Buyers can describe a job and review its public fields before entering an API
-key. Previewing makes no network request and does not save a draft to browser
+Buyers can describe a job and review its public fields before signing in.
+Previewing makes no network request and does not save a draft to browser
 storage. Keep a separate copy if the draft must survive closing the page.
-Publishing requires an existing entity key and explicit consent. The server
+Publishing requires a verified Works session or existing entity key and explicit consent. The server
 sets the poster name from that authenticated account. Sponsor statements remain
 assertions or unknowns, not independently verified facts.
 
@@ -69,10 +72,10 @@ when retried. A lost response or duplicate ID is checked through the exact
 owner-authenticated record route; finding the ID in a public list is not proof
 that this account published this draft. Changed content or an unconfirmed owner
 must not produce a success message. A confirmed post links directly to its
-proposal inbox and public brief.
+workspace and public brief.
 
 Builders receive a link back to their proposal. The link contains only its ID;
-it does not carry access. The lookup asks for a key again, retrieves one record
+it does not carry access. The lookup uses the signed-in account or an explicitly supplied key, retrieves one record
 through the existing API, validates the returned record and ID, and offers a
 clear action to hide it. The author, job owner and administrator retain their
 existing access; public visibility still requires the author's separate opt-in.
@@ -82,6 +85,12 @@ the view cancels the request and prevents an older response from restoring it.
 The jobs board distinguishes a successful empty result from an unavailable
 store. Public proposal counts never imply that private proposals are absent.
 Read-only examples are not counted as real jobs and do not invite responses.
+
+The [operating workflow](OPERATING-WORKFLOW.md) adds selection, confirmation,
+delivery and owner review. Updates are in-app; notification email is not enabled.
+Commercial payment remains directly between the parties. Production readiness
+requires the account provider, migrations, durable rate limiter and deployed
+routes, not only a successful source build.
 
 ## Paid Gate work
 

@@ -8,6 +8,7 @@
 // genuine ordered trail and never satisfies a tampered one.
 import { describe, it, expect } from 'vitest';
 import { canAccept, quorumGate, evaluateTrail } from '../lib/signoff/quorum-session.js';
+import { readFileSync } from 'node:fs';
 
 const HOST = 'emiliaprotocol.ai';
 const utf8 = (s) => new TextEncoder().encode(s);
@@ -39,6 +40,16 @@ let ACTION;
 const OPTS = { rpId: HOST, allowedOrigins: [`https://${HOST}`] };
 
 describe('lib/signoff/quorum-session.js — trail-of-signatories enforcement', () => {
+  it('admits a completed-proof chain and refuses context-only links at admission', () => {
+    const vectors = JSON.parse(readFileSync(new URL('../conformance/vectors/quorum.v1.json', import.meta.url), 'utf8')).vectors;
+    const good = vectors.find((v) => v.id === 'accept_ordered_3of3').quorum;
+    const bad = vectors.find((v) => v.id === 'reject_reverse_context_chain_profile').quorum;
+    const opts = { rpId: HOST, allowedOrigins: ['https://www.emiliaprotocol.ai'] };
+    expect(evaluateTrail(good.policy, good.action_hash, good.members, opts).satisfied).toBe(true);
+    expect(canAccept(bad.policy, bad.action_hash, [bad.members[0]], bad.members[1], opts))
+      .toMatchObject({ ok: false, reason: 'broken_chain' });
+    expect(canAccept({ ...good.policy, ordered_chain_profile: 'unknown' }, good.action_hash, [], good.members[0], opts).ok).toBe(false);
+  });
   it('accepts a valid ordered trail and gates satisfied', async () => {
     ACTION = Array.from(await sha(utf8(canon({ a: 'release' }))), (x) => x.toString(16).padStart(2, '0')).join('');
     const m0 = await mkMember(...PO, 1), m1 = await mkMember(...AO, 2), m2 = await mkMember(...IG, 3);

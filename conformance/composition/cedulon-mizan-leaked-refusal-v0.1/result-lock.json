@@ -1,0 +1,10 @@
+{
+  "@version": "EMILIA-CEDULON-MIZAN-LEAKED-REFUSAL-RESULT-LOCK-v0.1",
+  "expected": {
+    "valid": false,
+    "lifecycle_state": "reconciled",
+    "outcome": "divergent"
+  },
+  "outcome_binding_result_digest": "sha256:80d9c6f5f2c6fd57eb0931044fc8d530c3fc34fbe11d8611c14aee9145486a15",
+  "report_digest": "sha256:56eeb27a388ce7dbf7515cc85ec5bccb29a643ef097fb0d02b0385d26c8f8b37"
+}

@@ -28,6 +28,8 @@ import {
 
 export const AEB_CROSSING_RECORD_VERSION = "EP-AEB-CROSSING-RECORD-v1";
 export const AEB_CROSSING_RECORD_DOMAIN = `${AEB_CROSSING_RECORD_VERSION}\0`;
+export const AEB_CROSSING_RECORD_V2_VERSION = "EP-AEB-CROSSING-RECORD-v2";
+export const AEB_CROSSING_RECORD_V2_DOMAIN = `${AEB_CROSSING_RECORD_V2_VERSION}\0`;
 export const AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS = Object.freeze([
   "Ed25519",
   "ML-DSA-65",
@@ -147,6 +149,33 @@ export interface AebCrossingRecord {
   signatures: AgileSignature[];
 }
 
+export interface CrossingAdmissionDomain {
+  relying_party_id: string;
+  audience: string;
+  executor_id: string;
+  state_domain_id: string;
+}
+
+export interface AebCrossingRecordV2Body extends AebCrossingRecordBody {
+  admission_domain_digest: AebDigest;
+}
+
+export interface AebCrossingRecordV2 {
+  "@version": typeof AEB_CROSSING_RECORD_V2_VERSION;
+  body: AebCrossingRecordV2Body;
+  signatures: AgileSignature[];
+}
+
+export type AebCrossingRecordV2Draft = Omit<
+  AebCrossingRecordV2Body,
+  "signature_profile" | "admission_domain_digest" | "contract_digest"
+>;
+
+export interface AebCrossingRecordV2IssuanceContext {
+  action: AebCrossingRecordBody["action"];
+  admission_domain: CrossingAdmissionDomain;
+}
+
 export type AebCrossingRecordDraft = Omit<
   AebCrossingRecordBody,
   "signature_profile" | "contract_digest"
@@ -173,6 +202,13 @@ export interface AebCrossingRecordVerifyResult {
     admission_reference: boolean | null;
     semantics: boolean | null;
     signature_set: boolean | null;
+  };
+}
+
+export interface AebCrossingRecordV2VerifyResult
+  extends AebCrossingRecordVerifyResult {
+  checks: AebCrossingRecordVerifyResult["checks"] & {
+    admission_domain: boolean | null;
   };
 }
 
@@ -320,6 +356,7 @@ const BODY_KEYS = new Set([
   "configuration_digests",
   "referee",
 ]);
+const V2_BODY_KEYS = new Set([...BODY_KEYS, "admission_domain_digest"]);
 const SIGNATURE_PROFILE_KEYS = new Set(["id", "required_algorithms"]);
 const AUTHORITY_KEYS = new Set([
   "adapter_id",
@@ -553,6 +590,51 @@ export function crossingRecordContractDigest(
   );
 }
 
+export function crossingRecordV2AdmissionDomainDigest(
+  boundary: CrossingAdmissionDomain,
+): AebDigest {
+  return digestAebTyped(
+    {
+      relying_party_id: boundary.relying_party_id,
+      audience: boundary.audience,
+      executor_id: boundary.executor_id,
+      state_domain_id: boundary.state_domain_id,
+    },
+    `${AEB_CROSSING_RECORD_V2_VERSION}:admission-domain`,
+  );
+}
+
+export function crossingRecordV2ContractDigest(
+  body: Pick<
+    AebCrossingRecordV2Body,
+    | "native_authority"
+    | "action"
+    | "requirements"
+    | "admission_domain_digest"
+  >,
+): AebDigest {
+  return digestAebTyped(
+    {
+      action: body.action,
+      native_authority: {
+        native_profile: body.native_authority.native_profile,
+        issuer: body.native_authority.issuer,
+        subject: body.native_authority.subject,
+        authority_instance_digest:
+          body.native_authority.authority_instance_digest,
+        replay_unit: body.native_authority.replay_unit,
+        mapping_profile_id: body.native_authority.mapping_profile_id,
+        mapping_profile_digest: body.native_authority.mapping_profile_digest,
+        constraints_digest: body.native_authority.constraints_digest,
+        validity: body.native_authority.validity,
+      },
+      requirement_profile: body.requirements.admission_digest,
+      admission_domain_digest: body.admission_domain_digest,
+    },
+    `${AEB_CROSSING_RECORD_V2_VERSION}:contract`,
+  );
+}
+
 export function crossingRecordSignedBytes(
   body: AebCrossingRecordBody,
 ): Uint8Array {
@@ -564,6 +646,21 @@ export function crossingRecordSignedBytes(
 
 export function crossingRecordDigest(body: AebCrossingRecordBody): AebDigest {
   return digestAebTyped(body, `${AEB_CROSSING_RECORD_VERSION}:record`);
+}
+
+export function crossingRecordV2SignedBytes(
+  body: AebCrossingRecordV2Body,
+): Uint8Array {
+  return Buffer.from(
+    `${AEB_CROSSING_RECORD_V2_DOMAIN}${canonicalizeAeb(body)}`,
+    "utf8",
+  );
+}
+
+export function crossingRecordV2Digest(
+  body: AebCrossingRecordV2Body,
+): AebDigest {
+  return digestAebTyped(body, `${AEB_CROSSING_RECORD_V2_VERSION}:record`);
 }
 
 function validateBody(body: unknown): string | null {
@@ -689,6 +786,29 @@ function validateBody(body: unknown): string | null {
   }
   if (referee.status !== "CURRENT" && referee.admission === "ADMIT")
     return "status_inconsistent";
+  return null;
+}
+
+function validateV2Body(body: unknown): string | null {
+  if (!isRecord(body) || !exactKeys(body, V2_BODY_KEYS))
+    return "malformed_record";
+  const { admission_domain_digest: admissionDomainDigest, ...v1Shape } = body;
+  if (!digest(admissionDomainDigest)) return "malformed_record";
+  const v1Reason = validateBody({
+    ...v1Shape,
+    contract_digest: crossingRecordContractDigest(
+      v1Shape as unknown as AebCrossingRecordBody,
+    ),
+  });
+  if (v1Reason) return v1Reason;
+  const typed = body as unknown as AebCrossingRecordV2Body;
+  if (
+    crossingRecordV2AdmissionDomainDigest(typed.boundary) !==
+    typed.admission_domain_digest
+  )
+    return "admission_domain_mismatch";
+  if (crossingRecordV2ContractDigest(typed) !== typed.contract_digest)
+    return "contract_digest_mismatch";
   return null;
 }
 
@@ -857,6 +977,76 @@ export async function issueAebCrossingRecord(
   };
 }
 
+export async function issueAebCrossingRecordV2(
+  draft: AebCrossingRecordV2Draft,
+  context: AebCrossingRecordV2IssuanceContext,
+  options: AebCrossingRecordIssueOptions,
+): Promise<AebCrossingRecordV2> {
+  // Pin caller-owned expectations before inspecting an untrusted draft. The
+  // strict canonicalizer rejects accessors instead of executing them, unlike
+  // structuredClone. Neither draft getters nor proxy inspection may rewrite
+  // the expected action/domain and turn a mismatch into a signature.
+  const pinnedContext = JSON.parse(canonicalizeAeb(context)) as AebCrossingRecordV2IssuanceContext;
+  const pinnedOptions: AebCrossingRecordIssueOptions = {
+    ...options,
+    signing_keys: options?.signing_keys?.map((key) => ({
+      ...key,
+      private_key: key.private_key instanceof Uint8Array
+        ? new Uint8Array(key.private_key) : key.private_key,
+    })),
+  };
+  const partial = JSON.parse(canonicalizeAeb(draft)) as AebCrossingRecordV2Draft;
+  if (
+    !isRecord(pinnedContext) ||
+    !isRecord(pinnedContext.action) ||
+    !exactKeys(pinnedContext.action, ACTION_KEYS) ||
+    canonicalizeAeb(pinnedContext.action) !== canonicalizeAeb(partial.action)
+  )
+    throw new CrossingRecordError("action_mismatch");
+  if (
+    !isRecord(pinnedContext.admission_domain) ||
+    !exactKeys(pinnedContext.admission_domain, BOUNDARY_KEYS) ||
+    !Object.values(pinnedContext.admission_domain).every(identifier) ||
+    canonicalizeAeb(pinnedContext.admission_domain) !==
+      canonicalizeAeb(partial.boundary)
+  )
+    throw new CrossingRecordError("admission_domain_mismatch");
+
+  const admissionDomainDigest = crossingRecordV2AdmissionDomainDigest(
+    partial.boundary,
+  );
+  const bodyWithoutContract = {
+    ...partial,
+    signature_profile: {
+      id: SIGNATURE_AGILITY_VERSION,
+      required_algorithms: [...AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS],
+    } as AebCrossingRecordBody["signature_profile"],
+    admission_domain_digest: admissionDomainDigest,
+  };
+  const body: AebCrossingRecordV2Body = {
+    ...bodyWithoutContract,
+    contract_digest: crossingRecordV2ContractDigest(bodyWithoutContract),
+  };
+  const reason = validateV2Body(body);
+  if (reason) throw new CrossingRecordError(reason);
+  if (
+    !Array.isArray(pinnedOptions.signing_keys) ||
+    pinnedOptions.signing_keys.length !==
+      AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS.length ||
+    pinnedOptions.signing_keys.some(
+      (key, index) =>
+        key.alg !== AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS[index],
+    )
+  )
+    throw new CrossingRecordError("algorithm_set_mismatch");
+  const signatures = await signAgileSet(
+    crossingRecordV2SignedBytes(body),
+    pinnedOptions.signing_keys,
+    pinnedOptions,
+  );
+  return { "@version": AEB_CROSSING_RECORD_V2_VERSION, body, signatures };
+}
+
 function refusal(
   reason: string,
   checks: AebCrossingRecordVerifyResult["checks"],
@@ -971,5 +1161,122 @@ export async function verifyAebCrossingRecord(
     };
   } catch {
     return refusal("malformed_record", checks);
+  }
+}
+
+export async function verifyAebCrossingRecordV2(
+  value: unknown,
+  options: AebCrossingRecordVerifyOptions,
+): Promise<AebCrossingRecordV2VerifyResult> {
+  const checks: AebCrossingRecordV2VerifyResult["checks"] = {
+    schema: false,
+    algorithm_set: null,
+    authority: null,
+    contract_digest: null,
+    admission_domain: null,
+    admission_reference: null,
+    semantics: null,
+    signature_set: null,
+  };
+  const refuse = (
+    reason: string,
+    recordDigest: AebDigest | null = null,
+  ): AebCrossingRecordV2VerifyResult => ({
+    verified: false,
+    reason,
+    execution_authorizing: false,
+    record_digest: recordDigest,
+    checks,
+  });
+  try {
+    if (
+      !isRecord(value) ||
+      !exactKeys(value, DOCUMENT_KEYS) ||
+      value["@version"] !== AEB_CROSSING_RECORD_V2_VERSION ||
+      !isRecord(value.body)
+    )
+      return refuse("malformed_record");
+    checks.schema = true;
+    if (
+      !isRecord(value.body.signature_profile) ||
+      !algorithmSetMatches(value.body.signature_profile.required_algorithms)
+    ) {
+      checks.algorithm_set = false;
+      return refuse("algorithm_set_mismatch");
+    }
+    checks.algorithm_set = true;
+    const structural = validateV2Body(value.body);
+    if (structural) {
+      if (
+        ["native_authority_invalid", "authority_axis_mismatch"].includes(
+          structural,
+        )
+      )
+        checks.authority = false;
+      if (structural === "contract_digest_mismatch")
+        checks.contract_digest = false;
+      if (structural === "admission_domain_mismatch")
+        checks.admission_domain = false;
+      if (structural === "admission_reference_invalid")
+        checks.admission_reference = false;
+      if (
+        [
+          "authority_broadened",
+          "status_inconsistent",
+          "custody_inconsistent",
+          "consumption_record_required",
+        ].includes(structural)
+      )
+        checks.semantics = false;
+      return refuse(structural);
+    }
+    checks.authority = true;
+    checks.contract_digest = true;
+    checks.admission_domain = true;
+    checks.admission_reference = true;
+    checks.semantics = true;
+    const body = value.body as AebCrossingRecordV2Body;
+    const bodyDigest = crossingRecordV2Digest(body);
+    if (!signatureArray(value.signatures)) {
+      checks.signature_set = false;
+      const algorithms = Array.isArray(value.signatures)
+        ? value.signatures.map((signature: any) => signature?.alg)
+        : [];
+      return refuse(
+        algorithms.length < AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS.length
+          ? "hybrid_leg_missing"
+          : "signature_invalid",
+        bodyDigest,
+      );
+    }
+    const result = await verifyAgileSignatureSet(
+      crossingRecordV2SignedBytes(body),
+      value.signatures,
+      options?.verification_keys,
+      {
+        ...options,
+        policy: "hybrid_all",
+        requiredAlgorithms: [...AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS],
+      },
+    );
+    if (result.verified !== true) {
+      checks.signature_set = false;
+      return refuse(
+        result.reason === "missing_required_algorithm"
+          ? "hybrid_leg_missing"
+          : "signature_invalid",
+        bodyDigest,
+      );
+    }
+    checks.signature_set = true;
+    return {
+      verified: true,
+      reason: null,
+      execution_authorizing: false,
+      record_digest: bodyDigest,
+      checks,
+    };
+  } catch {
+    return refuse("malformed_record");
   }
 }

@@ -106,6 +106,112 @@ describe('GRACE — envelope budget edge cases fail closed', () => {
   });
 });
 
+describe('GRACE — notice and participation-window bounds fail closed', () => {
+  it.each([
+    ['missing', undefined], ['null', null], ['not numeric', 'bad'],
+    ['empty string', ''], ['whitespace', ' '], ['zero', 0], ['negative', -1],
+    ['NaN', NaN], ['infinite', Infinity], ['boolean', true],
+    ['array', [10]], ['object', {}],
+  ])('refuses a %s notice floor instead of dropping the constraint', (_name, value) => {
+    const result = checkOrderWithinEnvelope(order, {
+      ...envelope, bounds: { ...envelope.bounds, min_notice_minutes: value },
+    });
+    expect(result.within).toBe(false);
+    expect(result.violations.join(' ')).toContain('min_notice_minutes');
+  });
+
+  it.each([
+    ['missing', undefined], ['null', null], ['empty', {}],
+    ['missing start', { end: envelope.bounds.window.end }],
+    ['missing end', { start: envelope.bounds.window.start }],
+    ['unparseable start', { ...envelope.bounds.window, start: 'bad' }],
+    ['unparseable end', { ...envelope.bounds.window, end: 'bad' }],
+    ['non-string start', { ...envelope.bounds.window, start: 2020 }],
+    ['non-string end', { ...envelope.bounds.window, end: [2030] }],
+    ['calendar rollover start', { ...envelope.bounds.window, start: '2026-06-31T00:00:00Z' }],
+    ['calendar rollover end', { ...envelope.bounds.window, end: '2026-09-31T23:59:59Z' }],
+    ['date-only start', { ...envelope.bounds.window, start: '2026-06-01' }],
+    ['date-only end', { ...envelope.bounds.window, end: '2026-09-30' }],
+    ['local-time start', { ...envelope.bounds.window, start: '2026-06-01T00:00:00' }],
+    ['local-time end', { ...envelope.bounds.window, end: '2026-09-30T23:59:59' }],
+    ['rolled-over hour', { ...envelope.bounds.window, start: '2026-06-01T24:00:00Z' }],
+    ['invalid offset hour', { ...envelope.bounds.window, start: '2026-06-01T00:00:00+24:00' }],
+    ['invalid offset minute', { ...envelope.bounds.window, end: '2026-09-30T23:59:59+00:60' }],
+    ['reversed', { start: envelope.bounds.window.end, end: envelope.bounds.window.start }],
+    ['zero length', { start: order.window.start, end: order.window.start }],
+  ])('refuses a %s participation window with a named envelope violation', (_name, window) => {
+    const result = checkOrderWithinEnvelope(order, {
+      ...envelope, bounds: { ...envelope.bounds, window },
+    });
+    expect(result.within).toBe(false);
+    expect(result.violations.join(' ')).toContain('envelope: invalid participation window');
+  });
+
+  it('accepts equality at both window edges and the notice floor', () => {
+    const exact = { ...envelope, bounds: { ...envelope.bounds, window: { ...order.window } } };
+    expect(checkOrderWithinEnvelope({ ...order, notice_minutes: 10 }, exact).within).toBe(true);
+    expect(checkOrderWithinEnvelope({ ...order, notice_minutes: 9.999 }, exact).within).toBe(false);
+    expect(checkOrderWithinEnvelope(order, {
+      ...exact, bounds: { ...exact.bounds, min_notice_minutes: '30' },
+    }).within).toBe(true);
+  });
+
+  it.each([
+    [{ start: '2026-07-15T15:00:00.001Z', end: order.window.end }],
+    [{ start: order.window.start, end: '2026-07-15T18:59:59.999Z' }],
+  ])('refuses an order one millisecond outside a participation boundary', (window) => {
+    const result = checkOrderWithinEnvelope(order, { ...envelope, bounds: { ...envelope.bounds, window } });
+    expect(result.within).toBe(false);
+    expect(result.violations).toContain('order: window outside envelope participation window');
+  });
+
+  describe.each(['start', 'end'])('strict order %s instant', (endpoint) => {
+    it.each([
+      ['calendar rollover', '2026-06-31T15:00:00Z'],
+      ['non-leap-day rollover', '2026-02-29T15:00:00Z'],
+      ['date-only', '2026-07-15'],
+      ['local time', '2026-07-15T15:00:00'],
+      ['rolled-over hour', '2026-07-15T24:00:00Z'],
+      ['invalid offset hour', '2026-07-15T15:00:00+24:00'],
+      ['invalid offset minute', '2026-07-15T15:00:00+00:60'],
+    ])('refuses %s instead of allowing Date.parse normalization', (_name, instant) => {
+      // Keep the other endpoint four hours away from Date.parse's result so
+      // rollover/local-time acceptance cannot hide behind an unrelated bound.
+      const parsed = Date.parse(instant);
+      const anchor = Number.isFinite(parsed) ? parsed : Date.parse(order.window[endpoint]);
+      const window = endpoint === 'start'
+        ? { start: instant, end: new Date(anchor + 4 * 3600000).toISOString() }
+        : { start: new Date(anchor - 4 * 3600000).toISOString(), end: instant };
+      const result = checkOrderWithinEnvelope({ ...order, window }, {
+        ...envelope, bounds: { ...envelope.bounds, window: {
+          start: '2026-01-01T00:00:00Z', end: '2026-12-31T23:59:59Z',
+        } },
+      });
+      expect(result.within).toBe(false);
+      expect(result.violations).toContain('order: invalid window');
+    });
+  });
+
+  it.each([
+    ['Z', { start: '2026-07-15T15:00:00.000Z', end: '2026-07-15T19:00:00.000Z' }],
+    ['positive offset', { start: '2026-07-15T17:00:00+02:00', end: '2026-07-15T21:00:00+02:00' }],
+    ['negative offset', { start: '2026-07-15T08:00:00-07:00', end: '2026-07-15T12:00:00-07:00' }],
+  ])('compares valid %s window instants at exactly equal boundaries', (_name, window) => {
+    const exact = { ...envelope, bounds: { ...envelope.bounds, window: { ...order.window } } };
+    expect(checkOrderWithinEnvelope({ ...order, window }, exact).within).toBe(true);
+    expect(checkOrderWithinEnvelope(order, {
+      ...envelope, bounds: { ...envelope.bounds, window },
+    }).within).toBe(true);
+  });
+
+  it('accepts a real leap day without calendar normalization', () => {
+    const window = { start: '2028-02-29T15:00:00Z', end: '2028-02-29T19:00:00Z' };
+    expect(checkOrderWithinEnvelope({ ...order, window }, {
+      ...envelope, bounds: { ...envelope.bounds, window },
+    }).within).toBe(true);
+  });
+});
+
 describe('GRACE — a refusal is signed evidence, not silence', () => {
   it('builds a refusal statement binding the refused order digest, the failing predicate, and the time', () => {
     const bad = checkOrderWithinEnvelope({ ...order, mw: '99.0' }, envelope);
