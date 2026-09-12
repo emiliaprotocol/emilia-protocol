@@ -657,16 +657,16 @@ function observeVitestFile(file: string): Map<string, string> {
           "run",
           file,
           // This file performs real Git/npm operations. Match the full-suite
-          // fixture budget; its explicit 660-second real-pack timeout wins.
+          // fixture budget; its explicit 960-second real-pack timeout wins.
           ...(releaseReproducibility ? ["--testTimeout", "60000", "--hookTimeout", "60000"] : []),
           "--reporter=json",
           "--outputFile",
           reportFile,
         ],
         {
-          // The outer process must outlive the 660-second test plus fixture
+          // The outer process must outlive the 960-second test plus fixture
           // work and reporting. Every other evidence command keeps 600 seconds.
-          timeoutMs: releaseReproducibility ? 900_000 : EXECUTION_TIMEOUT_MS,
+          timeoutMs: releaseReproducibility ? 1_200_000 : EXECUTION_TIMEOUT_MS,
           failureOutput: "metadata-only",
         },
         `vitest ${file}`,

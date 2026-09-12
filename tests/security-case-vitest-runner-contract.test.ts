@@ -37,11 +37,11 @@ function observer({ status = 0, signal = null, report, rawOutput = '', reportByt
 }
 
 describe('security-case Vitest subprocess contract', () => {
-  it('gives release reproducibility enough outer time for its 660-second test plus fixtures', () => {
+  it('gives release reproducibility enough outer time for its 960-second test plus fixtures', () => {
     const runner = observer({ report: { testResults: [] } });
     runner.run('tests/release-reproducibility.test.ts');
     const [, args, options] = runner.spawnSync.mock.calls[0];
-    expect(options.timeout).toBe(900_000);
+    expect(options.timeout).toBe(1_200_000);
     expect(args).toEqual(expect.arrayContaining(['--testTimeout', '60000', '--hookTimeout', '60000']));
     expect(args).not.toEqual(expect.arrayContaining(['--testNamePattern', '--exclude', '--passWithNoTests']));
     expect(runner.fs.rmSync).toHaveBeenCalledOnce();
@@ -89,7 +89,7 @@ describe('security-case Vitest subprocess contract', () => {
 
   it('still fails closed if killed before producing JSON', () => {
     const runner = observer({ status: 143, signal: 'SIGTERM', rawOutput: 'private stdout' });
-    expect(() => runner.run('tests/release-reproducibility.test.ts')).toThrow(/143[\s\S]*SIGTERM[\s\S]*900000/);
+    expect(() => runner.run('tests/release-reproducibility.test.ts')).toThrow(/143[\s\S]*SIGTERM[\s\S]*1200000/);
     expect(() => runner.run('tests/release-reproducibility.test.ts')).toThrow(/no machine-readable failure report/i);
     expect(runner.fs.readFileSync).not.toHaveBeenCalled();
   });

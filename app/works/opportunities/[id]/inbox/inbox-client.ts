@@ -57,12 +57,12 @@ export function projectInboxRecords(value: unknown, opportunityId: string): Inbo
   return records;
 }
 
-export async function loadOpportunityInbox(opportunityId: string, apiKey: string, signal: AbortSignal, offset = 0): Promise<InboxPageResult> {
-  if (!validWorksId(opportunityId) || !/^[A-Za-z0-9_-]{8,512}$/.test(apiKey)
+export async function loadOpportunityInbox(opportunityId: string, apiKey: string | null, signal: AbortSignal, offset = 0): Promise<InboxPageResult> {
+  if (!validWorksId(opportunityId) || (apiKey !== null && !/^[A-Za-z0-9_-]{8,512}$/.test(apiKey))
     || !Number.isSafeInteger(offset) || offset < 0 || offset > 100_000 || offset % 50 !== 0) throw new Error('inbox_input_invalid');
   const response = await fetch(`/api/works/opportunities/${opportunityId}/inbox?offset=${offset}`, {
-    method: 'GET', headers: { authorization: `Bearer ${apiKey}` },
-    cache: 'no-store', credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal,
+    method: 'GET', headers: apiKey === null ? {} : { authorization: `Bearer ${apiKey}` },
+    cache: 'no-store', credentials: apiKey === null ? 'same-origin' : 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal,
   });
   if (!response.ok) {
     if (response.status === 401 || response.status === 403 || response.status === 404) throw new Error('inbox_access_refused');

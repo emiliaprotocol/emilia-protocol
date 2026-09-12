@@ -8,7 +8,7 @@ import { authenticateWorksWrite } from '../../../_write-auth';
 
 export const dynamic = 'force-dynamic';
 type RouteContext = { params: Promise<{ collection: string; id: string }> };
-const HEADERS = { 'cache-control': 'private, no-store', vary: 'Authorization' };
+const HEADERS = { 'cache-control': 'private, no-store', vary: 'Authorization, Cookie' };
 function privateResponse(response: NextResponse): NextResponse {
   for (const [name, value] of Object.entries(HEADERS)) response.headers.set(name, value);
   return response;

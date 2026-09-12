@@ -117,7 +117,8 @@ describe('proposal inbox page and copy', () => {
   it('shows access limits and clears private state on edits, clear and backgrounding', () => {
     const html = renderToStaticMarkup(createElement(ProposalInbox, { opportunityId: 'refund-job' }));
     expect(html).toContain('server checks that the key belongs to the opportunity owner');
-    expect(html).toContain('does not send email notifications');
+    expect(html).toContain('Open your workspace');
+    expect(html).toContain('select or decline a proposal');
     const source = readFileSync(new URL('../app/works/opportunities/[id]/inbox/ProposalInbox.tsx', import.meta.url), 'utf8');
     expect(source).not.toMatch(/localStorage|sessionStorage|console\.|searchParams|useSearchParams/);
     expect(source).toContain('if (!request.isCurrent()) return');

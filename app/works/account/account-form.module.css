@@ -1,0 +1,160 @@
+.account,
+.confirmed {
+  border: 1px solid #d8cfbf;
+  border-radius: 10px;
+  background: #fff;
+  color: #201c17;
+  font-size: 18px;
+  line-height: 1.6;
+  padding: clamp(1rem, 3vw, 1.5rem);
+}
+
+.heading {
+  align-items: start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.heading h3,
+.confirmed h3 {
+  font-size: clamp(1.25rem, 3vw, 1.7rem);
+  margin: 0.2rem 0 0;
+}
+
+.eyebrow {
+  color: #806220;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.switcher {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.switcher button,
+.secondary {
+  background: transparent;
+  border: 1px solid #cfc8bc;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 16px;
+  min-height: 48px;
+  padding: 0.55rem 0.8rem;
+}
+
+.switcher button[aria-pressed='true'] {
+  background: #f2eee4;
+  border-color: #806220;
+}
+
+.form {
+  margin-top: 1.2rem;
+}
+
+.form fieldset {
+  border: 0;
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.form label:not(.check) {
+  display: grid;
+  font-weight: 650;
+  gap: 0.42rem;
+}
+
+.form input[type='text'],
+.form input[type='email'],
+.form input:not([type]) {
+  background: #fff;
+  border: 1px solid #c6beaf;
+  border-radius: 6px;
+  color: #211c15;
+  font: inherit;
+  font-size: 18px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.78rem 0.85rem;
+}
+
+.check {
+  align-items: start;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: auto 1fr;
+  line-height: 1.45;
+}
+
+.primary {
+  background: #806220;
+  border: 1px solid #806220;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 550;
+  font-size: 17px;
+  min-height: 48px;
+  justify-self: start;
+  padding: 0.7rem 1rem;
+}
+
+.primary:disabled,
+.form fieldset:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.error {
+  color: #713822;
+  background: #fff1eb;
+  border-left: 3px solid #a45134;
+  padding: 14px 18px;
+  margin: 1rem 0 0;
+}
+
+.note {
+  color: #696257;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 1rem 0 0;
+}
+
+.account button:focus-visible,
+.account input:focus-visible {
+  outline: 3px solid #806220;
+  outline-offset: 4px;
+}
+
+.check input {
+  width: 22px;
+  height: 22px;
+  accent-color: #806220;
+}
+
+@media (max-width: 650px) {
+  .heading { display: grid; }
+  .switcher { display: grid; grid-template-columns: 1fr 1fr; }
+  .actions { display: grid; grid-template-columns: 1fr; }
+  .primary, .actions > * { width: 100%; box-sizing: border-box; }
+}
