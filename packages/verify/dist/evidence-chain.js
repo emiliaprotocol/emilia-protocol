@@ -33,7 +33,8 @@
 import crypto from 'node:crypto';
 import { canonicalize, verifyTrustReceipt, verifyQuorum } from './index.js';
 import { EP_PLATFORM_ATTESTATION_COMPONENT, verifyPlatformAttestation, } from './platform-attestation.js';
-import { strictJsonGate } from './strict-json.js';
+import { strictJsonGate, canonicalizeStrictJson } from './strict-json.js';
+import { verifyAuthorizationBundle } from './authorization-bundle.js';
 export const AEC_VERSION = 'EP-AEC-v1';
 const MAX_COMPONENTS = 64;
 const MAX_REQUIREMENT_LENGTH = 4096;
@@ -46,11 +47,21 @@ const MAX_JSON_STRING_BYTES = 1024 * 1024;
 const RESERVED_COMPONENT_TYPES = new Set(['ep-quorum', 'ep-receipt', EP_PLATFORM_ATTESTATION_COMPONENT]);
 const IDENT_CHAR = /[A-Za-z0-9_.:-]/;
 const IDENT = /^[A-Za-z0-9_.:-]+$/;
-const HEX_256 = /^[0-9a-f]{64}$/;
-const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
-const isRecord = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
-const own = (obj, key) => isRecord(obj) && Object.prototype.hasOwnProperty.call(obj, key);
-const sha256hex = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
+function isHex256(value) {
+    return /^[0-9a-f]{64}$/.test(value);
+}
+function rfc3339Match(value) {
+    return value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/);
+}
+function isRecord(v) {
+    return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+function own(obj, key) {
+    return isRecord(obj) && Object.prototype.hasOwnProperty.call(obj, key);
+}
+function sha256hex(s) {
+    return crypto.createHash('sha256').update(s, 'utf8').digest('hex');
+}
 /** Canonical action digest (hex). NOTE: uses EP's canonicalize(); see the JCS
  *  conformance note in the spec — the shared substrate MUST be true RFC 8785. */
 export function actionDigest(action) {
@@ -61,12 +72,12 @@ function normDigest(d) {
     if (typeof d !== 'string')
         return null;
     const bare = d.replace(/^sha256:/i, '').toLowerCase();
-    return HEX_256.test(bare) ? bare : null;
+    return isHex256(bare) ? bare : null;
 }
 function strictInstantMs(value) {
     if (typeof value !== 'string')
         return NaN;
-    const match = value.match(RFC3339_INSTANT);
+    const match = rfc3339Match(value);
     if (!match)
         return NaN;
     const [, y, mo, d, h, mi, s, , oh, om] = match;
@@ -295,6 +306,7 @@ function builtinVerifiers() {
             const r = /** @type {{valid?:boolean, checks?:any}} */ (verifyQuorum(evidence, {
                 rpId: profile.rp_id,
                 allowedOrigins: [...allowedOrigins],
+                expectedPolicy: profile.policy,
             }) || {});
             return { valid: !!r.valid, action_digest: r.valid ? (evidence?.action_hash ?? null) : null, detail: r.checks };
         },
@@ -449,6 +461,8 @@ function evalRequirement(expr, satisfied) {
     }
 }
 /**
+ * LEGACY expression-only API, not the structured AEC-05 requirement/replay
+ * contract. Current-profile users must construct createAuthorizationChainEvaluator.
  * Verify an Authorization Evidence Chain. FAIL-CLOSED: anything missing,
  * malformed, unverifiable, or binding a different action yields satisfied=false.
  *
@@ -638,6 +652,458 @@ export function verifyAuthorizationChain(aec, opts = {}) {
             requirement_source: requirementSource,
         };
     }
+}
+// ---------------------------------------------------------------------------
+// Structured AEC-05 evaluation contract. No stateful authorization is performed.
+// The optional ep-authorization-bundle role is an explicit AEC-06 addition;
+// it is never aliased to the terminal ep-receipt / Trust Receipt role.
+// ---------------------------------------------------------------------------
+export const AEC_REQUIREMENT_VERSION = 'EP-AEC-REQUIREMENT-v1';
+export const AEC_REPLAY_VERSION = 'EP-AEC-REPLAY-v1';
+export const AEC_EVALUATOR_REVISION = 'EP-AEC-EVALUATOR-05-v1';
+export const AEC_BUNDLE_COMPONENT = 'ep-authorization-bundle';
+const AEC_LIMITS = Object.freeze({
+    maxDepth: 64, maxNodes: 50000, maxStringBytes: 1024 * 1024,
+    maxWireBytes: 2 * 1024 * 1024, maxComponents: 64, maxBindings: 64,
+    maxSubjects: 64, maxVerifierDurationMs: 1000,
+});
+const AEC_DIGEST = /^sha256:[0-9a-f]{64}$/;
+const AEC_CAID = /^caid:1:[a-z][a-z0-9.-]*\.[1-9][0-9]*:jcs-sha256:[A-Za-z0-9_-]{43}$/;
+const structuredReserved = new Set([...RESERVED_COMPONENT_TYPES, AEC_BUNDLE_COMPONENT]);
+const textValue = (v, maximum = 2048) => typeof v === 'string' && v.length > 0 && v.length <= maximum && !/[\u0000-\u001f\u007f]/.test(v);
+const typeValue = (v) => textValue(v, 128) && IDENT.test(v);
+const digestValue = (v) => typeof v === 'string' && AEC_DIGEST.test(v);
+function closedKeys(v, required, optional = []) {
+    return isRecord(v) && required.every(k => own(v, k))
+        && Object.keys(v).every(k => required.includes(k) || optional.includes(k));
+}
+function deepFreezeAec(value) {
+    if (value !== null && typeof value === 'object') {
+        for (const child of Object.values(value))
+            deepFreezeAec(child);
+        Object.freeze(value);
+    }
+    return value;
+}
+function strictSnapshot(value, limits) {
+    return deepFreezeAec(JSON.parse(canonicalizeStrictJson(value, limits)));
+}
+function aecDigest(value) {
+    return `sha256:${sha256hex(canonicalizeStrictJson(value))}`;
+}
+function validateAecRequirement(value, limits) {
+    const r = strictSnapshot(value, limits);
+    if (!closedKeys(r, ['@version', 'requirement_id', 'expression'], ['purpose', 'freshness_sec', 'status_required', 'role_constraints', 'required_bindings'])
+        || r['@version'] !== AEC_REQUIREMENT_VERSION || !textValue(r.requirement_id)
+        || (own(r, 'purpose') && typeof r.purpose !== 'string')
+        || !evalRequirement(r.expression, new Set()).valid)
+        throw new TypeError('aec_requirement_invalid');
+    if (own(r, 'freshness_sec') && (!isRecord(r.freshness_sec)
+        || Object.keys(r.freshness_sec).length > limits.maxComponents
+        || Object.entries(r.freshness_sec).some(([key, age]) => !typeValue(key) || !Number.isSafeInteger(age) || Number(age) < 0))) {
+        throw new TypeError('aec_freshness_requirement_invalid');
+    }
+    if (own(r, 'status_required') && (!Array.isArray(r.status_required)
+        || r.status_required.length > limits.maxComponents
+        || r.status_required.some((t) => !typeValue(t))
+        || new Set(r.status_required).size !== r.status_required.length))
+        throw new TypeError('aec_status_requirement_invalid');
+    if (own(r, 'role_constraints') && (!Array.isArray(r.role_constraints)
+        || r.role_constraints.length > limits.maxBindings
+        || r.role_constraints.some((c) => !closedKeys(c, ['type', 'component_type', 'threshold', 'subject_id_source'])
+            || c.type !== 'distinct-subject-quorum' || !typeValue(c.component_type)
+            || !Number.isSafeInteger(c.threshold) || c.threshold <= 1
+            || c.subject_id_source !== 'native-verifier')))
+        throw new TypeError('aec_role_constraint_invalid');
+    if (own(r, 'required_bindings') && (!Array.isArray(r.required_bindings)
+        || r.required_bindings.length > limits.maxBindings
+        || r.required_bindings.some((b) => !closedKeys(b, ['from_type', 'relation', 'to_type'])
+            || !typeValue(b.from_type) || !typeValue(b.to_type) || !textValue(b.relation, 128)))) {
+        throw new TypeError('aec_required_binding_invalid');
+    }
+    return r;
+}
+/** Aggregate only fields already verified by the native human verifier. The
+ * oldest issuance and earliest expiry conservatively enforce every signoff's
+ * window. No label, key encoding or unsigned subject becomes an identity. */
+function humanNativeFacts(result, contexts, revision) {
+    if (!result.valid || contexts.length === 0)
+        return { valid: false, reason: 'native_human_evidence_invalid' };
+    const times = contexts.map(c => ({ issued: strictInstantMs(c.issued_at), expires: strictInstantMs(c.expires_at) }));
+    if (times.some(t => !Number.isFinite(t.issued) || !Number.isFinite(t.expires)))
+        return { valid: false };
+    return {
+        valid: true, format_revision: revision, action_digest: result.action_digest,
+        issued_at: new Date(Math.min(...times.map(t => t.issued))).toISOString(),
+        expires_at: new Date(Math.min(...times.map(t => t.expires))).toISOString(),
+        subject_ids: [...new Set(contexts.map(c => c.approver).filter(v => textValue(v)))],
+        bindings: [],
+    };
+}
+function structuredBuiltin(type, trust, hooks) {
+    if (type === AEC_BUNDLE_COMPONENT)
+        return (evidence, ctx) => {
+            const ev = evidence;
+            const result = verifyAuthorizationBundle(evidence, {
+                ...trust, ...hooks, now: ctx.verification_time, expectedAction: ctx.action,
+            });
+            if (result.verdict !== 'SATISFIED')
+                return { valid: false, reason: 'native_bundle_refused' };
+            // Only SIGNED contexts contribute subjects. The bundle can contain a
+            // wider selected roster than the actual threshold of completed signoffs.
+            const signedDigests = new Set(ev.signoffs.map((s) => s.context_hash));
+            const contexts = ev.contexts.filter((c) => signedDigests.has(aecDigest(c)));
+            const native = humanNativeFacts({ valid: true, action_digest: ev.action_hash }, contexts, 'EP-AUTHORIZATION-BUNDLE-v1');
+            if (trust.requireCurrentStatus === true && result.checks.current_status === true && isRecord(trust.currentStatus)) {
+                native.status = { authenticated: true, status: 'active', snapshot_digest: aecDigest(trust.currentStatus),
+                    checked_at: trust.currentStatus.checked_at, expires_at: trust.currentStatus.expires_at };
+            }
+            return native;
+        };
+    const built = builtinVerifiers()[type];
+    return (evidence, ctx) => {
+        const profile = trust.policy;
+        const result = built(evidence, {
+            keysByType: { [type]: trust.keys ?? {} }, policiesByType: { [type]: profile },
+            verificationTime: ctx.verification_time, action: ctx.action,
+        });
+        if (result.valid !== true)
+            return { valid: false, reason: 'native_builtin_refused' };
+        const ev = evidence;
+        if (type === EP_PLATFORM_ATTESTATION_COMPONENT) {
+            // Decode only AFTER the closed native JWT verifier accepted the bytes.
+            const payload = JSON.parse(Buffer.from(ev.token.split('.')[1], 'base64url').toString('utf8'));
+            return { valid: true, format_revision: ctx.profile.native_format_revision,
+                action_digest: result.action_digest, issuer: payload.iss, audience: payload.aud,
+                issued_at: new Date(payload.iat * 1000).toISOString(), expires_at: new Date(payload.exp * 1000).toISOString(),
+                subject_ids: [], bindings: [] };
+        }
+        // A terminal receipt may log selected contexts without completed signoffs.
+        // Inclusion is not human authorization: only contexts authenticated by the
+        // successfully verified human signoffs can supply subjects or time claims.
+        const signedDigests = type === 'ep-receipt'
+            ? new Set(ev.signoffs.map((s) => normDigest(s.context_hash))) : null;
+        const contexts = type === 'ep-quorum' ? ev.members.map((m) => m.signoff.context)
+            : ev.contexts.filter((c) => signedDigests.has(sha256hex(canonicalize(c))));
+        const native = humanNativeFacts(result, contexts, ctx.profile.native_format_revision);
+        if (native.valid && freshRegistrySnapshot(profile, ctx.verification_time)) {
+            native.status = { authenticated: true, status: 'active', snapshot_digest: aecDigest(profile),
+                checked_at: profile.registry_checked_at,
+                expires_at: new Date(strictInstantMs(profile.registry_checked_at) + profile.max_registry_age_sec * 1000).toISOString() };
+        }
+        return native;
+    };
+}
+/** Constructor-owned trust boundary for the structured current profile.
+ * Callbacks are trusted native implementations, not code supplied by the
+ * presentation. Input/work count is bounded and asynchronous work has an abort
+ * deadline. Synchronous hostile code cannot be preempted by this process: host
+ * untrusted verifier code in a worker/process with its own execution deadline.
+ * A callback exceeding the deadline is refused even if it eventually returns.
+ */
+export function createAuthorizationChainEvaluator(configuration) {
+    if (!closedKeys(configuration, ['requirement', 'nativeVerifiers'], ['limits']))
+        throw new TypeError('aec_configuration_invalid');
+    const suppliedLimits = configuration.limits ?? {};
+    if (!isRecord(suppliedLimits) || Object.keys(suppliedLimits).some(k => !own(AEC_LIMITS, k)))
+        throw new TypeError('aec_limits_invalid');
+    const limits = Object.freeze({ ...AEC_LIMITS, ...suppliedLimits });
+    for (const [key, value] of Object.entries(limits)) {
+        if (!Number.isSafeInteger(value) || value < 1 || value > AEC_LIMITS[key])
+            throw new TypeError('aec_limits_invalid');
+    }
+    const requirement = validateAecRequirement(configuration.requirement, limits);
+    const requirementDigest = aecDigest(requirement);
+    if (!isRecord(configuration.nativeVerifiers) || Object.keys(configuration.nativeVerifiers).length > MAX_COMPONENTS)
+        throw new TypeError('aec_native_configuration_invalid');
+    const nativeVerifiers = new Map();
+    for (const [type, registration] of Object.entries(configuration.nativeVerifiers)) {
+        if (!typeValue(type) || !closedKeys(registration, ['profile', 'trustSnapshot'], ['verify', 'mapping', 'statusMaxAgeSec', 'bundleHooks']))
+            throw new TypeError('aec_native_configuration_invalid');
+        const profile = strictSnapshot(registration.profile, limits);
+        const trust = strictSnapshot(registration.trustSnapshot, limits);
+        if (!isRecord(profile) || !textValue(profile.id) || !textValue(profile.revision)
+            || !textValue(profile.native_format_revision) || !isRecord(trust))
+            throw new TypeError('aec_native_profile_invalid');
+        const hooks = {};
+        if (registration.bundleHooks !== undefined) {
+            if (type !== AEC_BUNDLE_COMPONENT || !closedKeys(registration.bundleHooks, [], ['verifyClassASignoff', 'verifyKeyProofs', 'verifyPresentationEvidence']))
+                throw new TypeError('aec_native_hooks_invalid');
+            for (const [name, hook] of Object.entries(registration.bundleHooks)) {
+                if (typeof hook !== 'function')
+                    throw new TypeError('aec_native_hooks_invalid');
+                hooks[name] = hook;
+            }
+        }
+        if (structuredReserved.has(type) && registration.verify !== undefined)
+            throw new TypeError('aec_builtin_override_refused');
+        const verify = structuredReserved.has(type) ? structuredBuiltin(type, trust, Object.freeze(hooks)) : registration.verify;
+        if (typeof verify !== 'function')
+            throw new TypeError('aec_native_verifier_missing');
+        let mapping = null;
+        if (registration.mapping !== undefined) {
+            if (!closedKeys(registration.mapping, ['profile', 'map']) || typeof registration.mapping.map !== 'function')
+                throw new TypeError('aec_mapping_invalid');
+            const mappingProfile = strictSnapshot(registration.mapping.profile, limits);
+            if (!isRecord(mappingProfile) || !textValue(mappingProfile.id) || !textValue(mappingProfile.revision))
+                throw new TypeError('aec_mapping_invalid');
+            mapping = Object.freeze({ profile: mappingProfile, map: registration.mapping.map });
+        }
+        const statusMaxAgeSec = registration.statusMaxAgeSec ?? null;
+        if (statusMaxAgeSec !== null && (!Number.isSafeInteger(statusMaxAgeSec) || statusMaxAgeSec < 0))
+            throw new TypeError('aec_status_configuration_invalid');
+        nativeVerifiers.set(type, Object.freeze({ profile, trust, profileDigest: aecDigest(profile), trustDigest: aecDigest(trust),
+            verify, mapping, mappingDigest: mapping ? aecDigest(mapping.profile) : null, statusMaxAgeSec }));
+    }
+    const evaluatorProfileDigest = aecDigest({ algorithm_revision: AEC_EVALUATOR_REVISION, limits,
+        verifiers: Object.fromEntries([...nativeVerifiers].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([type, v]) => [type, {
+                native_verifier_profile_digest: v.profileDigest, trust_snapshot_digest: v.trustDigest,
+                mapping_profile_digest: v.mappingDigest, status_max_age_sec: v.statusMaxAgeSec,
+            }])) });
+    async function boundedInvoke(fn) {
+        const controller = new AbortController();
+        const started = performance.now();
+        let timer;
+        try {
+            const timeout = new Promise((_, reject) => {
+                timer = setTimeout(() => { controller.abort(); reject(new Error('aec_native_deadline')); }, limits.maxVerifierDurationMs);
+            });
+            const result = await Promise.race([Promise.resolve().then(() => fn(controller.signal)), timeout]);
+            if (performance.now() - started >= limits.maxVerifierDurationMs)
+                throw new Error('aec_native_deadline');
+            return result;
+        }
+        finally {
+            if (timer)
+                clearTimeout(timer);
+            controller.abort();
+        }
+    }
+    async function evaluate(input, acceptance) {
+        const replay = {
+            '@version': AEC_REPLAY_VERSION, algorithm_revision: AEC_EVALUATOR_REVISION,
+            evaluator_profile_digest: evaluatorProfileDigest, aec_digest: null,
+            expected_action_digest: null, expected_caid: null,
+            requirement_profile_digest: requirementDigest, verification_time: null,
+            facts: [], satisfied: false, reasons: [],
+        };
+        const finish = (reason) => {
+            if (reason)
+                replay.reasons.push(reason);
+            // Bounds apply to the aggregate replay, not just to each native result.
+            // Canonicalize before freezing: a failed serialization must not leave a
+            // frozen partial-success record that the fail-closed handler cannot fix.
+            let replayBytes;
+            try {
+                replayBytes = canonicalizeStrictJson(replay, limits);
+                if (Buffer.byteLength(replayBytes, 'utf8') > limits.maxWireBytes)
+                    throw new Error('replay_size_limit');
+            }
+            catch {
+                replay.satisfied = false;
+                replay.facts = [];
+                replay.reasons = ['aec_replay_resource_limit'];
+                // The constant-size refusal envelope contains only fixed-length
+                // digests and bounded metadata, not any oversized native output.
+                replayBytes = canonicalizeStrictJson(replay);
+            }
+            const frozenReplay = deepFreezeAec(replay);
+            return Object.freeze({ satisfied: replay.satisfied, allow: replay.satisfied,
+                authorization_decision: false, requirement_source: 'relying_party',
+                replay: frozenReplay, replay_digest: `sha256:${sha256hex(replayBytes)}`, reasons: replay.reasons });
+        };
+        try {
+            if (typeof input === 'string') {
+                if (Buffer.byteLength(input, 'utf8') > limits.maxWireBytes || !strictJsonGate(input).ok)
+                    return finish('aec_wire_json_invalid');
+                input = JSON.parse(input);
+            }
+            const chain = strictSnapshot(input, limits);
+            replay.aec_digest = aecDigest(chain);
+            if (!closedKeys(chain, ['@version', 'action', 'components'], ['action_digest', 'action_caid', 'requirement'])
+                || chain['@version'] !== AEC_VERSION || !isRecord(chain.action)
+                || (own(chain, 'requirement') && typeof chain.requirement !== 'string')
+                || !Array.isArray(chain.components) || chain.components.length < 1
+                || chain.components.length > limits.maxComponents)
+                return finish('aec_chain_invalid');
+            const boundary = strictSnapshot(acceptance, limits);
+            if (!closedKeys(boundary, ['verificationTime'], ['expectedAction', 'expectedActionDigest', 'expectedCaid'])
+                || !Number.isFinite(strictInstantMs(boundary.verificationTime)))
+                return finish('aec_acceptance_inputs_invalid');
+            replay.verification_time = boundary.verificationTime;
+            let expected = null;
+            if (own(boundary, 'expectedAction')) {
+                if (!isRecord(boundary.expectedAction))
+                    return finish('aec_expected_action_invalid');
+                expected = aecDigest(boundary.expectedAction);
+            }
+            if (own(boundary, 'expectedActionDigest')) {
+                if (!digestValue(boundary.expectedActionDigest) || (expected && expected !== boundary.expectedActionDigest))
+                    return finish('aec_expected_action_invalid');
+                expected = boundary.expectedActionDigest;
+            }
+            replay.expected_action_digest = expected;
+            if (!expected || expected !== aecDigest(chain.action)
+                || (own(chain, 'action_digest') && chain.action_digest !== expected))
+                return finish('aec_action_mismatch');
+            if (own(boundary, 'expectedCaid')) {
+                if (typeof boundary.expectedCaid !== 'string' || !AEC_CAID.test(boundary.expectedCaid))
+                    return finish('aec_expected_caid_invalid');
+                replay.expected_caid = boundary.expectedCaid;
+            }
+            if (own(chain, 'action_caid') && (typeof chain.action_caid !== 'string' || !AEC_CAID.test(chain.action_caid)
+                || (replay.expected_caid !== null && chain.action_caid !== replay.expected_caid)))
+                return finish('aec_caid_mismatch');
+            for (let index = 0; index < chain.components.length; index++) {
+                const component = chain.components[index];
+                const type = isRecord(component) && typeValue(component.type) ? component.type : null;
+                const verifier = type ? nativeVerifiers.get(type) : undefined;
+                const fact = {
+                    component_index: index, type, evidence_digest: null,
+                    native_verifier_profile_digest: verifier?.profileDigest ?? null,
+                    trust_snapshot_digest: verifier?.trustDigest ?? null,
+                    mapping_profile_digest: verifier?.mappingDigest ?? null,
+                    native_valid: false, native_action_digest: null, format_revision: null,
+                    issuer: null, audience: null, mapping_verdict: 'INDETERMINATE',
+                    freshness: { result: 'NOT_REQUIRED', issued_at: null, expires_at: null },
+                    status: { result: 'NOT_REQUIRED', snapshot_digest: null, checked_at: null, expires_at: null },
+                    subject_ids: [], bindings: [], eligible: false, reasons: [],
+                };
+                replay.facts.push(fact);
+                if (!closedKeys(component, ['type', 'evidence'], ['label', 'evidence_digest']) || !type
+                    || (own(component, 'label') && typeof component.label !== 'string')) {
+                    fact.reasons.push('component_shape_invalid');
+                    continue;
+                }
+                fact.evidence_digest = aecDigest(component.evidence);
+                if (own(component, 'evidence_digest') && component.evidence_digest !== fact.evidence_digest) {
+                    fact.reasons.push('evidence_digest_mismatch');
+                    continue;
+                }
+                if (!verifier) {
+                    fact.reasons.push('native_verifier_unavailable');
+                    continue;
+                }
+                const context = (signal) => Object.freeze({
+                    action: chain.action, expected_action_digest: expected, expected_caid: replay.expected_caid,
+                    verification_time: boundary.verificationTime, profile: verifier.profile,
+                    trust_snapshot: verifier.trust, signal,
+                });
+                let native;
+                try {
+                    native = strictSnapshot(await boundedInvoke(signal => verifier.verify(component.evidence, context(signal))), limits);
+                }
+                catch {
+                    fact.reasons.push('native_verifier_error_or_deadline');
+                    continue;
+                }
+                if (!closedKeys(native, ['valid'], ['reason', 'format_revision', 'action_digest', 'native_payload', 'issued_at', 'expires_at', 'issuer', 'audience', 'subject_ids', 'bindings', 'status'])
+                    || native.valid !== true || native.format_revision !== verifier.profile.native_format_revision
+                    || (native.action_digest != null && !digestValue(native.action_digest))
+                    || (native.issuer != null && !textValue(native.issuer))
+                    || (native.audience != null && !(textValue(native.audience) || (Array.isArray(native.audience) && native.audience.length <= limits.maxSubjects && native.audience.every((v) => textValue(v)))))) {
+                    fact.reasons.push('native_verification_failed');
+                    continue;
+                }
+                const subjects = native.subject_ids ?? [];
+                const bindings = native.bindings ?? [];
+                if (!Array.isArray(subjects) || subjects.length > limits.maxSubjects || subjects.some((v) => !textValue(v))
+                    || !Array.isArray(bindings) || bindings.length > limits.maxBindings
+                    || bindings.some((b) => !closedKeys(b, ['relation', 'target_evidence_digest']) || !textValue(b.relation, 128) || !digestValue(b.target_evidence_digest))) {
+                    fact.reasons.push('native_fact_shape_invalid');
+                    continue;
+                }
+                fact.native_valid = true;
+                fact.native_action_digest = native.action_digest ?? null;
+                fact.format_revision = native.format_revision;
+                fact.issuer = native.issuer ?? null;
+                fact.audience = native.audience ?? null;
+                fact.subject_ids = [...new Set(subjects)].sort();
+                fact.bindings = bindings;
+                if (native.action_digest != null)
+                    fact.mapping_verdict = native.action_digest === expected ? 'MATCH' : 'NOT_EQUIVALENT';
+                else if (verifier.mapping && replay.expected_caid && own(native, 'native_payload')) {
+                    try {
+                        const mapped = strictSnapshot(await boundedInvoke(signal => verifier.mapping.map(native, context(signal))), limits);
+                        if (closedKeys(mapped, ['verdict', 'caid']) && mapped.verdict === 'EQUIVALENT_UNDER_PROFILE'
+                            && mapped.caid === replay.expected_caid)
+                            fact.mapping_verdict = 'EQUIVALENT_UNDER_PROFILE';
+                        else if (mapped.verdict === 'NOT_EQUIVALENT')
+                            fact.mapping_verdict = 'NOT_EQUIVALENT';
+                    }
+                    catch {
+                        fact.reasons.push('mapping_error_or_deadline');
+                    }
+                }
+                if (!['MATCH', 'EQUIVALENT_UNDER_PROFILE'].includes(fact.mapping_verdict))
+                    fact.reasons.push('material_action_not_matched');
+                if (own(requirement.freshness_sec, type)) {
+                    const at = strictInstantMs(boundary.verificationTime);
+                    const issued = strictInstantMs(native.issued_at), expires = strictInstantMs(native.expires_at);
+                    const fresh = Number.isFinite(issued) && Number.isFinite(expires) && issued <= at && at < expires
+                        && (at - issued) / 1000 <= requirement.freshness_sec[type];
+                    fact.freshness = { result: fresh ? 'FRESH' : 'REFUSED', issued_at: typeof native.issued_at === 'string' ? native.issued_at : null, expires_at: typeof native.expires_at === 'string' ? native.expires_at : null };
+                    if (!fresh)
+                        fact.reasons.push('freshness_requirement_failed');
+                }
+                if (requirement.status_required?.includes(type)) {
+                    const status = native.status;
+                    const at = strictInstantMs(boundary.verificationTime);
+                    const checked = strictInstantMs(status?.checked_at), expires = strictInstantMs(status?.expires_at);
+                    const validShape = closedKeys(status, ['authenticated', 'status', 'snapshot_digest', 'checked_at', 'expires_at']);
+                    const fresh = validShape && status.authenticated === true && status.status === 'active'
+                        && digestValue(status.snapshot_digest) && verifier.statusMaxAgeSec !== null
+                        && Number.isFinite(checked) && Number.isFinite(expires) && checked <= at && at < expires
+                        && (at - checked) / 1000 <= verifier.statusMaxAgeSec;
+                    fact.status = { result: fresh ? 'CURRENT' : 'REFUSED',
+                        snapshot_digest: digestValue(status?.snapshot_digest) ? status.snapshot_digest : null,
+                        checked_at: typeof status?.checked_at === 'string' ? status.checked_at : null,
+                        expires_at: typeof status?.expires_at === 'string' ? status.expires_at : null };
+                    if (!fresh)
+                        fact.reasons.push('status_requirement_failed');
+                }
+                fact.eligible = fact.reasons.length === 0;
+            }
+            const eligible = replay.facts.filter(f => f.eligible);
+            const types = new Set(eligible.map(f => f.type));
+            if (!evalRequirement(requirement.expression, types).value)
+                replay.reasons.push('expression_unsatisfied');
+            for (let i = 0; i < (requirement.role_constraints?.length ?? 0); i++) {
+                const constraint = requirement.role_constraints[i];
+                const subjects = new Set(eligible.filter(f => f.type === constraint.component_type).flatMap(f => f.subject_ids));
+                if (subjects.size < constraint.threshold)
+                    replay.reasons.push(`role_constraint_unsatisfied:${i}`);
+            }
+            for (let i = 0; i < (requirement.required_bindings?.length ?? 0); i++) {
+                const binding = requirement.required_bindings[i];
+                const targets = new Set(eligible.filter(f => f.type === binding.to_type).map(f => f.evidence_digest));
+                if (!eligible.some(f => f.type === binding.from_type && f.bindings.some((b) => b.relation === binding.relation && targets.has(b.target_evidence_digest))))
+                    replay.reasons.push(`required_binding_unsatisfied:${i}`);
+            }
+            replay.satisfied = replay.reasons.length === 0;
+            return finish();
+        }
+        catch {
+            replay.satisfied = false;
+            return finish('aec_invalid_input_or_evaluation_error');
+        }
+    }
+    return Object.freeze({
+        requirement_profile_digest: requirementDigest, evaluator_profile_digest: evaluatorProfileDigest,
+        evaluate,
+        /** Reverify original evidence under this constructor's pins. A presenter
+         * cannot turn serialized facts or a previously true Boolean into evidence. */
+        async replay(chain, recorded, inputs) {
+            const result = await evaluate(chain, inputs);
+            let claimedDigest = null;
+            try {
+                claimedDigest = aecDigest(strictSnapshot(recorded, limits));
+            }
+            catch { /* refused below */ }
+            return Object.freeze({ matches: claimedDigest !== null && claimedDigest === result.replay_digest,
+                claimed_replay_digest: claimedDigest, result });
+        },
+    });
 }
 // Mutation and differential-test surface. These helpers are not protocol API;
 // exporting them keeps boundary tests from reimplementing the acceptance math.

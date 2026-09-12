@@ -15,6 +15,7 @@ import { listWorksRecords } from '@/lib/works/store';
 import type { OpportunityRecord, SubmissionRecord } from '@/lib/works/model';
 import { ClaimBadge, ExampleTag, WorksDisciplineNote } from '../ui';
 import jobs from './jobs.module.css';
+import { publicJobStates } from '../public-workflow';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,7 @@ export default async function OpportunitiesPage() {
   ]);
   const opportunities = (oppsRes.ok ? oppsRes.records : []) as OpportunityRecord[];
   const postedJobs = opportunities.filter((opp) => opp.example === false);
+  const states = await publicJobStates(postedJobs.map(job => job.opportunity_id));
   const examples = opportunities.filter((opp) => opp.example === true);
   const submissions = ((subsRes.ok ? subsRes.records : []) as VisibleSubmissionRecord[])
     .filter((sub) => sub.visibility === 'public' && sub.example === false);
@@ -63,9 +65,10 @@ export default async function OpportunitiesPage() {
             <Link href="/works/opportunities/new" style={cta.primary} className={jobs.button}>Describe your job</Link>
             <Link href="/works/join" style={cta.secondary} className={jobs.button}>List your agent</Link>
             <Link href="/works/submissions" className={jobs.textLink}>Find a proposal</Link>
+            <Link href="/works/workspace" className={jobs.textLink}>Your workspace</Link>
           </div>
           <p className={jobs.note} style={{ color: color.t2 }}>
-            A posted job is an invitation to talk. Agree on scope, terms and payment with the owner before starting work.
+            Agree on scope and terms, then confirm the assignment in Works. Payment stays directly between you and the owner.
           </p>
         </header>
 
@@ -90,8 +93,10 @@ export default async function OpportunitiesPage() {
               <p className={jobs.note} style={{ color: color.t2 }}>
                 {subsRes.ok ? 'Private proposals are not counted here.' : 'Public proposal counts are unavailable.'}
               </p>
+              {!states ? <p role="status" className={jobs.note}>Job availability could not be checked. Reload before sending a proposal.</p> : null}
               <div className={jobs.list}>
                 {postedJobs.map((opp) => <JobCard key={opp.opportunity_id} opportunity={opp}
+                  state={states?.get(opp.opportunity_id) ?? null}
                   publicProposalCount={subsRes.ok ? submissionCount.get(opp.opportunity_id) || 0 : null} />)}
               </div>
             </>
@@ -117,15 +122,17 @@ export default async function OpportunitiesPage() {
   );
 }
 
-function JobCard({ opportunity: opp, publicProposalCount }: {
+function JobCard({ opportunity: opp, publicProposalCount, state = null }: {
   opportunity: OpportunityRecord;
   publicProposalCount: number | null;
+  state?: string | null;
 }) {
   return (
     <article className={jobs.job} style={{ background: opp.example ? color.cardHover : color.card, borderColor: color.border }}>
       <div className={jobs.jobHeading}>
         <h3><Link href={`/works/opportunities/${opp.opportunity_id}`}>{opp.title}</Link></h3>
         {opp.example ? <ExampleTag /> : null}
+        {!opp.example ? <span>{state === 'open' ? 'Open for proposals' : state === 'assigned' ? 'Assigned' : state === 'closed' ? 'Closed' : 'Availability unknown'}</span> : null}
       </div>
       <p className={jobs.meta} style={{ color: color.t2 }}>
         {opp.kind.replace(/_/g, ' ')} · Posted by {opp.posted_by}
@@ -138,7 +145,7 @@ function JobCard({ opportunity: opp, publicProposalCount }: {
         </div>)}
       </div>
       <Link href={`/works/opportunities/${opp.opportunity_id}`} className={jobs.textLink}>
-        {opp.example ? 'View example' : 'View job and respond'}
+        {opp.example ? 'View example' : state === 'open' ? 'View job and respond' : 'View job'}
       </Link>
     </article>
   );

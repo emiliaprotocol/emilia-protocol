@@ -5,8 +5,9 @@
 **Status:** Experimental, additive profile. This document does not change the
 frozen EP-RECEIPT-v1 or EP-SIGNOFF-v1 formats. It supplies a concrete durable
 resolution object for the transient `binding_moment` defined by
-`draft-morrison-binding-moment-envelope-01`, an active individual Internet-Draft
-and work in progress.
+`draft-morrison-binding-moment-envelope-02`, an active individual Internet-Draft
+and work in progress. Revision -02 was the current published revision when this
+document was checked on 2026-09-11.
 
 Implementation: `packages/verify/resolution.js` (JavaScript),
 `packages/python-verify/emilia_verify/__init__.py` (Python), and
@@ -21,6 +22,14 @@ returned resolution to distinguish option selection, answer-space revision, and
 question-space rejection, and defines the returned resolution object. It does
 not define EP's durable device-signed evidence record or a native `declined`
 resolution distinct from option selection.
+
+The published -02 keeps the -01 option shape: each option has `label` and
+`reasoning`, but no `action_digest`. It also keeps the three-way resolution
+`option | answer | question`; it does not publish native `declined`. Candidate
+text posted in emiliaprotocol/emilia-protocol issue #380 proposed both changes,
+but candidate issue text is not a wire specification. This profile therefore
+continues to verify the published -02 grammar and does not silently admit those
+members under the -02 name.
 
 EP-RESOLUTION-v1 owns the durable evidence: which role-pinned principal key
 resolved the exact envelope, for which exact action, under which WebAuthn RP ID,
@@ -119,7 +128,7 @@ For an approval to set `authorizes_action: true`, the relying party must also
 provide `expectedSelectedOption`, `expectedNonce`, `expectedInitiator`, and an
 `evaluationTime` inside the signed validity window. The verifier checks that the
 signed `selected_option` equals that local mapping. This is load-bearing:
-`draft-morrison-binding-moment-envelope-01` has human-readable option labels but
+`draft-morrison-binding-moment-envelope-02` has human-readable option labels but
 no normative option-to-action digest map. A valid signature over "Hold" must
 never silently authorize "Release."
 
@@ -184,3 +193,27 @@ under relying-party-pinned trust inputs. It does not prove:
 Display attestation, trusted time, revocation currency, quorum, and one-time
 consumption remain separate EP evidence or enforcement layers. They compose;
 this profile does not collapse them into the resolution record.
+
+## 8. Upstream candidate and version gate
+
+Issue #380 records candidate upstream text that adds an `action_digest` to each
+option and a bare `declined` resolution. The candidate would let a verifier
+compare the selected option's digest directly with the exact action under
+consideration, without trusting `expectedSelectedOption`. That is the intended
+replacement for the interim local option map.
+
+The candidate is not present in published binding-moment-envelope -02. Until a
+published revision, or a separately named and versioned interoperability
+profile, defines that wire shape, implementations of EP-RESOLUTION-v1 MUST keep
+the local `expectedSelectedOption` check and MUST reject `action_digest` as an
+unknown option member under the -02 grammar. Native `declined` in
+EP-RESOLUTION-v1 remains an EMILIA durable-evidence outcome; it MUST NOT be
+described as a native -02 envelope resolution.
+
+When an upstream revision publishes the candidate shape, migration requires a
+new explicit source-envelope revision or profile identifier, positive and
+negative vectors across all supported verifiers, and refusal of cross-version
+downgrade. At minimum, the negative cases must cover a missing option digest, a
+malformed digest, a substituted digest, and a selected index whose option
+digest differs from the action the executor is about to perform. Publishing the
+upstream draft and implementing that new local profile remain separate gates.

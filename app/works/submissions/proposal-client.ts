@@ -40,11 +40,11 @@ export function projectProposal(value: unknown, submissionId: string): ProposalR
   };
 }
 
-export async function loadProposal(submissionId: string, apiKey: string, signal: AbortSignal): Promise<ProposalResult> {
-  if (!validWorksId(submissionId) || !/^[A-Za-z0-9_-]{8,512}$/.test(apiKey)) throw new Error('proposal_input_invalid');
+export async function loadProposal(submissionId: string, apiKey: string | null, signal: AbortSignal): Promise<ProposalResult> {
+  if (!validWorksId(submissionId) || (apiKey !== null && !/^[A-Za-z0-9_-]{8,512}$/.test(apiKey))) throw new Error('proposal_input_invalid');
   const response = await fetch(`/api/works/submissions/${submissionId}`, {
-    method: 'GET', headers: { authorization: `Bearer ${apiKey}` },
-    cache: 'no-store', credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal,
+    method: 'GET', headers: apiKey === null ? {} : { authorization: `Bearer ${apiKey}` },
+    cache: 'no-store', credentials: apiKey === null ? 'same-origin' : 'omit', redirect: 'error', referrerPolicy: 'no-referrer', signal,
   });
   if (!response.ok) {
     if (response.status === 401 || response.status === 403 || response.status === 404) throw new Error('proposal_access_refused');
@@ -75,7 +75,7 @@ export function createProposalRequestFence() {
       return {
         signal: next.signal,
         isCurrent,
-        async load(submissionId: string, apiKey: string): Promise<ProposalResult | null> {
+        async load(submissionId: string, apiKey: string | null): Promise<ProposalResult | null> {
           try {
             const result = await loadProposal(submissionId, apiKey, next.signal);
             return isCurrent() ? result : null;

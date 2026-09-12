@@ -1,0 +1,19 @@
+{
+  "@version": "EP-AEB-CROSSING-RECORD-CASE-CATALOG-v2",
+  "record_version": "EP-AEB-CROSSING-RECORD-v2",
+  "cases": [
+    { "id": "V2-VALID", "expected": "verified" },
+    { "id": "V2-RELYING-PARTY-SUBSTITUTION", "expected": "admission_domain_mismatch" },
+    { "id": "V2-AUDIENCE-SUBSTITUTION", "expected": "admission_domain_mismatch" },
+    { "id": "V2-EXECUTOR-SUBSTITUTION", "expected": "admission_domain_mismatch" },
+    { "id": "V2-STATE-DOMAIN-SUBSTITUTION", "expected": "admission_domain_mismatch" },
+    { "id": "V2-ACTION-SUBSTITUTION", "expected": "contract_digest_mismatch" },
+    { "id": "V2-AUTHORITY-CONTEXT-SUBSTITUTION", "expected": "contract_digest_mismatch" },
+    { "id": "V2-STALE-ADMISSION", "expected": "status_inconsistent" },
+    { "id": "V2-AS-V1", "expected": "malformed_record" },
+    { "id": "V1-AS-V2", "expected": "malformed_record" },
+    { "id": "V1-RELABEL-V2", "expected": "malformed_record" },
+    { "id": "V2-RELABEL-V1", "expected": "malformed_record" }
+  ],
+  "claim_boundary": "A verified record is historical evidence and never authorizes another crossing. V1 records retain only v1 semantics."
+}

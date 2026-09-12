@@ -60,7 +60,7 @@
   },
   "aeb_kernel": {
     "path": "packages/verify/dist/aeb-consequence-conformance.js",
-    "sha256": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f",
+    "sha256": "8baacf30ca25232f644eb7bff642ace40634587edec036ea552f119b818ad83d",
     "claim_scope": "local_atomic"
   },
   "local_files": [
@@ -146,11 +146,11 @@
     },
     {
       "path": "packages/verify/dist/aeb-consequence-conformance.js",
-      "sha256": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f"
+      "sha256": "8baacf30ca25232f644eb7bff642ace40634587edec036ea552f119b818ad83d"
     },
     {
       "path": "packages/verify/dist/aeb-crossing-record.js",
-      "sha256": "da5192549826461030bb977983823d01979342625de5508970a664a8e60ed650"
+      "sha256": "0a53b830915134e84c7a06cc7fa8e84c97d92b7c705004aba95d5fdd2e50efd7"
     },
     {
       "path": "packages/verify/dist/aeb-discovery-permit-adapter.js",
@@ -234,7 +234,7 @@
     },
     {
       "path": "packages/verify/dist/evidence-chain.js",
-      "sha256": "46ed2fd56562abd59494e063cc61fa08bba30b312535865b321623dfbbe879ac"
+      "sha256": "4ac3b63363b6848bc8d63fd6609ce66037cea59902cc9a3312213e661bae487a"
     },
     {
       "path": "packages/verify/dist/evidence-record.js",
@@ -266,7 +266,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "9d129fa6be776e209d674b91ebab2bf1a94a8d751e1f9c9f4628f1fa2d2ac2f5"
+      "sha256": "772ba039e5be6396426c1a2cecb7c0164886b2902ef6d2e733f344b1eb54062f"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -310,7 +310,7 @@
     },
     {
       "path": "packages/verify/dist/quorum.js",
-      "sha256": "2b2d180d69190dc1794bfa73c0c8f7e47c0d4a8cccdda2bdc8a1a40de78cee01"
+      "sha256": "a7d1eee553a107562ea36a01520788ccf1f7586066782b915e77525f75a4f44f"
     },
     {
       "path": "packages/verify/dist/receipt-cose-encoding.js",
@@ -394,11 +394,11 @@
     },
     {
       "path": "packages/verify/src/aeb-consequence-conformance.ts",
-      "sha256": "03556de560f14f64705116b94b78e733f5e9a6f90d671131f5a98ac0169c4590"
+      "sha256": "45114fe390a2e6270868d5d817571fb8ceaa7f259ed9040b20e6da05a73cd6cd"
     },
     {
       "path": "packages/verify/src/aeb-crossing-record.ts",
-      "sha256": "4e8d1c63418a7a6e7fde6e3fa26f0c182a6b3cd679a7210ffebcebc7e5dc76e4"
+      "sha256": "95d1f05187322c7ff4cf0fb7c40e0b2f2f2c135db1aff2a9964b2a17dcc4f9b2"
     },
     {
       "path": "packages/verify/src/aeb-discovery-permit-adapter.ts",
@@ -482,7 +482,7 @@
     },
     {
       "path": "packages/verify/src/evidence-chain.ts",
-      "sha256": "d6326fdb075ae15f4a3b8f410e20c722e833f0c904ede965c9c8f0832a203318"
+      "sha256": "8539bfde0d37b443b28942ed91a0acee4fdb5ae4ca30acf2e3a39fe5d50f27e2"
     },
     {
       "path": "packages/verify/src/evidence-record.ts",
@@ -514,7 +514,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "7f6eda3cf0359120f1a7ae6eaaa810090418e6e36e18307c4080a93a6eddffad"
+      "sha256": "7224edf2c9f7e88619371a06852bf477d8542a7de98779ab4d477fa22b9017f1"
     },
     {
       "path": "packages/verify/src/initiator-attestation.ts",
@@ -558,7 +558,7 @@
     },
     {
       "path": "packages/verify/src/quorum.ts",
-      "sha256": "0de52508abffa39b2d82766cc9f42131641008c2a3ffcf5d888f532fef108ff9"
+      "sha256": "0c157cd2fd6fc71c86bde6df8f3f6765238321e59467c6dc92182e171cdee2a5"
     },
     {
       "path": "packages/verify/src/receipt-cose-encoding.ts",

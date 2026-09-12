@@ -7,6 +7,7 @@ import type { OpportunityRecord } from '@/lib/works/model';
 import type { OpportunityFormInput, SponsorClaimInput } from './form-payloads';
 import { prepareOpportunityDraft, publishOpportunityWithRecovery } from './opportunity-publication';
 import formStyles from './opportunity-form.module.css';
+import WorksAccountAccess, { useWorksAccount } from './WorksAccountAccess';
 
 const subscribeToHydration = () => () => {};
 const clientReady = () => true;
@@ -21,6 +22,7 @@ function claimInput(data: FormData, prefix: string): SponsorClaimInput {
 }
 
 export default function OpportunityForm() {
+  const access = useWorksAccount();
   const ready = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -82,8 +84,8 @@ export default function OpportunityForm() {
     event.preventDefault();
     if (!ready || inFlight.current) return;
     if (!draft || !publicConsent) { setError('Review the preview and agree to make these details public first.'); return; }
-    if (!apiKey.trim()) { setError('Enter your EMILIA key to publish, or request access below.'); return; }
-    const requestKey = apiKey.trim();
+    if (!access.account && !apiKey.trim()) { setError('Sign in with email, or enter an existing EMILIA key, to publish.'); return; }
+    const requestKey = access.account ? null : apiKey.trim();
     setApiKey(''); setPublicConsent(false);
     inFlight.current = true; setBusy(true); setAttempted(true); setError('');
     const current = ++generation.current;
@@ -103,12 +105,12 @@ export default function OpportunityForm() {
   if (posted) return <section className={formStyles.result} aria-labelledby="opportunity-posted">
     <p className={formStyles.eyebrow}>Published</p>
     <h2 id="opportunity-posted" ref={previewHeading} tabIndex={-1}>Your job is ready for proposals.</h2>
-    <p><strong>{posted.title}</strong> is public under {posted.posted_by}. Share the job link with builders, then check your proposal inbox with the same account key.</p>
+    <p><strong>{posted.title}</strong> is public under {posted.posted_by}. Share the job link with builders, then review proposals in your workspace.</p>
     <div className={formStyles.actions}>
-      <Link href={`/works/opportunities/${posted.opportunity_id}/inbox`} className={formStyles.primary}>Open proposal inbox</Link>
+      <Link href="/works/workspace" className={formStyles.primary}>Open your workspace</Link>
       <Link href={`/works/opportunities/${posted.opportunity_id}`} className={formStyles.secondary}>View and share job</Link>
     </div>
-    <p className={formStyles.note}>No one has been hired and no payment has been taken. Works does not send email notifications for proposals. Your key has been cleared from this page.</p>
+    <p className={formStyles.note}>No one has been hired and no payment has been taken. New proposals appear in your workspace. Any API key has been cleared from this page.</p>
   </section>;
 
   return <div className={formStyles.intake}>
@@ -154,17 +156,18 @@ export default function OpportunityForm() {
         {claim.source ? <p className={formStyles.note}>Source: {claim.source.reference}</p> : null}
         <p className={formStyles.note}>Recorded for this preview: {claim.observed_at}</p>
       </div>)}</div>
+      <WorksAccountAccess access={access} />
       <form method="post" onSubmit={handlePublish} className={formStyles.publishForm}>
         <fieldset disabled={!ready || busy} className={formStyles.fields}>
           <legend className={formStyles.srOnly}>Publish the reviewed job</legend>
-          <Field label="EMILIA API key" hint="Used to publish under your account and check an interrupted request. Never put this key in the job description."><input name="apiKey" type="password" required maxLength={256} autoComplete="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={apiKey} onChange={event => { clearKey(); setApiKey(event.target.value); }} /></Field>
-          <p className={formStyles.note}>Publishing requires an existing EMILIA entity key. <a href="mailto:team@emiliaprotocol.ai?subject=EMILIA%20Marketplace%20job%20posting%20access">Request posting access</a> if you do not have one. No new account is created here.</p>
+          {!access.account ? <details><summary>Use an existing API key instead</summary><Field label="EMILIA API key" hint="For existing developer accounts. Never put this key in the job description."><input name="apiKey" type="password" maxLength={256} autoComplete="off" spellCheck={false} data-1p-ignore data-lpignore="true" value={apiKey} onChange={event => { clearKey(); setApiKey(event.target.value); }} /></Field></details> : null}
+          <p className={formStyles.note}>Publishing uses your signed-in account or the existing key you supply. Your email is not added to the job; only the public contact route you reviewed is published.</p>
           <label className={formStyles.consent}><input name="publicConsent" type="checkbox" required checked={publicConsent} onChange={event => setPublicConsent(event.target.checked)} /><span>I have reviewed the job, statements and contact route above. I agree to publish them with my authenticated account name.</span></label>
           <div className={formStyles.actions}><button type="submit" disabled={!ready || busy} className={formStyles.primary}>{busy ? 'Confirming publication…' : attempted ? 'Check and retry this job' : 'Publish job'}</button>{!attempted ? <button type="button" className={formStyles.secondary} onClick={() => { clearKey(); setDraft(null); setError(''); }}>Edit preview</button> : null}</div>
         </fieldset>
       </form>
       {apiKey || busy ? <button type="button" className={formStyles.textLink} onClick={clearKey}>Clear key from this page</button> : null}
-      {attempted ? <p className={formStyles.note}>An interrupted request may already have published this job. Editing is paused while publication is unresolved. Re-enter your key and retry the same preview to check ownership. Do not start another post for this job.</p> : null}
+      {attempted ? <p className={formStyles.note}>An interrupted request may already have published this job. Editing is paused while publication is unresolved. Use the same account and retry this preview to check ownership. Do not start another post for this job.</p> : null}
       <p className={formStyles.note}>The key stays only in this page and clears when you leave the tab. Posting is an invitation for proposals, not a hire or a payment.</p>
     </section> : null}
     {error ? <p className={formStyles.error} role="alert">{error}</p> : null}

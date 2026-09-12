@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { validateOpportunity, type OpportunityRecord } from '@/lib/works/model';
 import { buildOpportunityPayload, type OpportunityFormInput } from './form-payloads';
+import { worksRequestAuth } from './session-request';
 
 /** Kept only in the open page. The authenticated server replaces the poster name. */
 export function prepareOpportunityDraft(input: OpportunityFormInput, observedAt = new Date().toISOString()): OpportunityRecord {
@@ -32,20 +33,21 @@ function responseRecord(value: unknown, requireOwner: boolean): OpportunityRecor
 }
 
 /** A lost response can be confirmed only by an exact authenticated owner read, never a public GET. */
-export async function publishOpportunityWithRecovery(apiKey: string, draft: OpportunityRecord, signal: AbortSignal): Promise<OpportunityRecord> {
+export async function publishOpportunityWithRecovery(apiKey: string | null, draft: OpportunityRecord, signal: AbortSignal): Promise<OpportunityRecord> {
   const checked = validateOpportunity(draft);
-  if (!apiKey || apiKey.length > 256 || /[\s\x00-\x1f\x7f]/.test(apiKey) || !checked.ok
+  if ((apiKey !== null && (!apiKey || apiKey.length > 256 || /[\s\x00-\x1f\x7f]/.test(apiKey))) || !checked.ok
       || checked.record.example || checked.record.claims.some(claim => claim.status === 'VERIFIED')) {
     throw new Error('Check the job preview and enter a valid EMILIA key.');
   }
+  const auth = worksRequestAuth(apiKey);
   signal.throwIfAborted();
   let failure = 'Job publication could not be confirmed. Keep this preview and retry the same job; it may already be public.';
   let recover = false;
   try {
     const response = await fetch('/api/works/opportunities', {
-      method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+      method: 'POST', headers: { 'content-type': 'application/json', ...auth.headers },
       body: JSON.stringify(draft), signal,
-      cache: 'no-store', credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer',
+      cache: 'no-store', credentials: auth.credentials, redirect: 'error', referrerPolicy: 'no-referrer',
     });
     signal.throwIfAborted();
     if (response.ok) {
@@ -67,8 +69,8 @@ export async function publishOpportunityWithRecovery(apiKey: string, draft: Oppo
     signal.throwIfAborted();
     try {
       const response = await fetch(`/api/works/opportunities/${encodeURIComponent(draft.opportunity_id)}/owned`, {
-        method: 'GET', headers: { authorization: `Bearer ${apiKey}` }, signal,
-        cache: 'no-store', credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer',
+        method: 'GET', headers: auth.headers, signal,
+        cache: 'no-store', credentials: auth.credentials, redirect: 'error', referrerPolicy: 'no-referrer',
       });
       signal.throwIfAborted();
       const record = response.ok ? responseRecord(await response.json().catch(() => null), true) : null;

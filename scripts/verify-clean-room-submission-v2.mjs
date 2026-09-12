@@ -11,8 +11,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLE_RELATIVE_PATH = 'conformance/clean-room/v2/bundle.v2.json';
-const EXPECTED_MANIFEST_SHA256 = '375e96ecf7dfc21ce0d890c2ec1165fd53593c03db44b8fc46881e6409996971';
-const EXPECTED_MANIFEST_CLAIM_SHA256 = 'e1ae7d70f442201a2f42d439aa082dcae1cbf1d2771beef12e79282041af609c';
+const EXPECTED_MANIFEST_SHA256 = '4d452c38a9ce9f6b78e916246a1733d56cd8ae2d0bd1123d39df329d0401d6fa';
+const EXPECTED_MANIFEST_CLAIM_SHA256 = 'f7c6047d39dc5a553de61901d85a42ce5a18e51289f6437d57824e81d916fe99';
 const EXPECTED_AUTHORITY_COMPANION_SHA256 = '121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959';
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const GIT_OID_PATTERN = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
@@ -134,8 +134,8 @@ export function validateBundleDefinitionV2(bundle) {
         throw new Error('bundle runner protocol is not the strict v2 typed-result protocol');
     }
     exactKeys(bundle.totals, ['suites', 'vectors'], ['suites', 'vectors'], 'bundle.totals');
-    if (bundle.totals.suites !== 21 || bundle.totals.vectors !== 335) {
-        throw new Error('bundle must pin exactly 21 suites and 335 vectors');
+    if (bundle.totals.suites !== 21 || bundle.totals.vectors !== 340) {
+        throw new Error('bundle must pin exactly 21 suites and 340 vectors');
     }
     if (!Array.isArray(bundle.suites) || bundle.suites.length !== 21) {
         throw new Error('bundle must contain exactly 21 suites');
@@ -174,8 +174,8 @@ export function validateBundleDefinitionV2(bundle) {
             authorityCompanion = executionHash;
         }
     }
-    if (vectorCount !== 335 || vectorCount !== bundle.totals.vectors) {
-        throw new Error('bundle suite total is not exactly 335 vectors');
+    if (vectorCount !== 340 || vectorCount !== bundle.totals.vectors) {
+        throw new Error('bundle suite total is not exactly 340 vectors');
     }
     if (authorityCompanion !== EXPECTED_AUTHORITY_COMPANION_SHA256) {
         throw new Error('bundle Authority Document execution companion hash is not pinned');
@@ -213,8 +213,8 @@ function validateSourceManifest(bundle, bytes, manifest) {
     if (canonicalDigest(unsigned) !== manifest.manifest_sha256) {
         throw new Error('current conformance manifest canonical claim hash is invalid');
     }
-    if (manifest.totals?.suites !== 21 || manifest.totals?.vectors !== 335) {
-        throw new Error('current conformance manifest is not the pinned 21-suite/335-vector set');
+    if (manifest.totals?.suites !== 21 || manifest.totals?.vectors !== 340) {
+        throw new Error('current conformance manifest is not the pinned 21-suite/340-vector set');
     }
     if (!Array.isArray(manifest.suites) || manifest.suites.length !== bundle.suites.length) {
         throw new Error('current conformance manifest suite list is incomplete');
@@ -668,8 +668,8 @@ export function verifyCleanRoomSubmissionV2({ manifestPath, runnerPath, attestat
     finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
-    if (suites.length !== 21 || vectorCount !== 335) {
-        throw new Error('external clean-room evaluation did not complete all 21 suites and 335 vectors');
+    if (suites.length !== 21 || vectorCount !== 340) {
+        throw new Error('external clean-room evaluation did not complete all 21 suites and 340 vectors');
     }
     const report = {
         '@version': 'EP-CLEAN-ROOM-EVALUATION-v2',

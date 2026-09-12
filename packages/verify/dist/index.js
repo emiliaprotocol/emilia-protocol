@@ -123,12 +123,9 @@ export function isCanonicalizable(value) {
     return isStrictCanonicalJson(value);
 }
 /**
- * EP-QUORUM-v1 ordered-chain hash: the hex SHA-256 of the canonical signoff
- * context. Used to cryptographically link each ordered signoff to its
- * predecessor (context.prev_context_hash), so approval ORDER is proven by the
- * signatures themselves rather than by operator-asserted timestamps. Exported
- * for the quorum verifier; uses the same canonicalize()/sha256() as every other
- * signed-material computation in this file.
+ * Legacy context digest, retained for callers inspecting historical records.
+ * It does not prove approval order: contexts can be prepared before signing.
+ * Strong quorum ordering uses completedSignoffHash from quorum.js instead.
  */
 export function contextChainHash(context) {
     return sha256(canonicalize(context));
@@ -1441,7 +1438,8 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     const { approverKeys = {}, logPublicKey } = opts;
     const contexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
     const signoffs = Array.isArray(receipt.signoffs) ? receipt.signoffs : [];
-    decisionScope.quorum_ordering.presented = contexts.some((context) => context && typeof context === 'object' && Object.hasOwn(context, 'prev_context_hash'));
+    decisionScope.quorum_ordering.presented = contexts.some((context) => context && typeof context === 'object'
+        && (Object.hasOwn(context, 'prev_context_hash') || Object.hasOwn(context, 'prev_signoff_hash')));
     if (!receipt.action || !receipt.action_hash)
         return fail('Missing action or action_hash');
     if (contexts.length === 0 || signoffs.length === 0)
@@ -2174,7 +2172,7 @@ export { verifyQuorum } from './quorum.js';
 // EP-AEB-CROSSING-RECORD-v1 — carrier-neutral evidence that one exact action
 // crossed one relying-party boundary under one verified native authority
 // instance. Verification is evidence-only and never authorizes another entry.
-export { AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS, AEB_CROSSING_RECORD_VERSION, BCR_CROSSING_ADAPTER, BCR_CROSSING_MAPPING_PROFILE, WIMSE_OAUTH_CROSSING_ADAPTER, WIMSE_OAUTH_CROSSING_MAPPING_PROFILE, crossingRecordContractDigest, crossingRecordDigest, crossingRecordSignedBytes, issueAebCrossingRecord, mapBcrCrossingAuthority, mapWimseOAuthCrossingAuthority, verifyAebCrossingRecord, } from './aeb-crossing-record.js';
+export { AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS, AEB_CROSSING_RECORD_VERSION, AEB_CROSSING_RECORD_V2_VERSION, BCR_CROSSING_ADAPTER, BCR_CROSSING_MAPPING_PROFILE, WIMSE_OAUTH_CROSSING_ADAPTER, WIMSE_OAUTH_CROSSING_MAPPING_PROFILE, crossingRecordContractDigest, crossingRecordDigest, crossingRecordSignedBytes, crossingRecordV2AdmissionDomainDigest, crossingRecordV2ContractDigest, crossingRecordV2Digest, crossingRecordV2SignedBytes, issueAebCrossingRecord, issueAebCrossingRecordV2, mapBcrCrossingAuthority, mapWimseOAuthCrossingAuthority, verifyAebCrossingRecord, verifyAebCrossingRecordV2, } from './aeb-crossing-record.js';
 // Native AIC crossing mappings preserve the pure-JSON RFC 7638 JKT and
 // X.509 SPKI cases as separate authority systems. The JWT-SVID helper emits a
 // new-signature-required identity projection and never authorizes an action.

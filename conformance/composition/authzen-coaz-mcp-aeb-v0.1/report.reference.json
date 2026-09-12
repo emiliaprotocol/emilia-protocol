@@ -9,7 +9,7 @@
     "production_mediation": false
   },
   "source_pins": {
-    "source_lock_digest": "sha256:d7377ee17f83a44c3f3c8e4575deb8493fc0d23abb066659bdd4988299f7b037",
+    "source_lock_digest": "sha256:185f06221863ea0d0dd3354b7d415b9419ea9752006c8f1c0eb80f7c15f0d544",
     "inherited_profile": "EP-COAZ-TRANSLATION-VECTOR-v0.1",
     "authzen_repository_commit": "e287920eed842b227e38531c1735b712337ca44d",
     "authzen_authorization_api_sha256": "f0ee89cc4a688f9f409dc323c8342579d74c45dc776a6b04a622ba9738de82bc",
@@ -18,7 +18,7 @@
     "evidence_evaluator_sha256": "252891f826856a8782dd01538caeb37cde0198e2d78827ea5a910be8b1dac4f7",
     "native_attestation_bridge_version": "EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v1",
     "native_attestation_bridge_sha256": "252891f826856a8782dd01538caeb37cde0198e2d78827ea5a910be8b1dac4f7",
-    "aeb_kernel_sha256": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f"
+    "aeb_kernel_sha256": "8baacf30ca25232f644eb7bff642ace40634587edec036ea552f119b818ad83d"
   },
   "claim_scope": {
     "authzen_result_role": "LOCAL_MACHINE_POLICY_INPUT",
@@ -1661,5 +1661,5 @@
       }
     }
   ],
-  "report_digest": "sha256:4d6f5f266be19047a7a1a7c67f09f24d606ce46676dd5d340a1c805cdd4fa4c0"
+  "report_digest": "sha256:0269064cf752fc181ee4dfe9d42e2da460448da77797a6c3fff4c7cec0548fc7"
 }

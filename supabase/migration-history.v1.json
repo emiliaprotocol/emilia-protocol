@@ -1,18 +1,18 @@
 {
   "schema_version": "EP-MIGRATION-HISTORY-v1",
-  "as_of": "2026-08-26",
-  "remote_head": "20260826130000",
+  "as_of": "2026-09-07",
+  "remote_head": "20260907235858",
   "private_remote_versions": [
     "20260723192504"
   ],
-  "retroactive_pending_versions": [],
-  "forward_pending_versions": [
+  "retroactive_pending_versions": [
     "20260826140000",
     "20260826150000",
     "20260826160000",
     "20260826170000",
     "20260901190000"
   ],
+  "forward_pending_versions": [],
   "deployment_sequence": [
     "20260826140000",
     "20260826150000",
@@ -20,7 +20,7 @@
     "20260826170000",
     "20260901190000"
   ],
-  "requires_include_all": false,
+  "requires_include_all": true,
   "remote_versions": [
     "001",
     "002",
@@ -225,7 +225,9 @@
     "20260825130000",
     "20260826010000",
     "20260826120000",
-    "20260826130000"
+    "20260826130000",
+    "20260907235809",
+    "20260907235858"
   ],
   "public_files": {
     "001_emilia_core_schema.sql": "f5e3c6c40fdaf54fbfc7a986f1b7cb021bfa8bee21a81bac39fe2da15f654060",
@@ -435,6 +437,8 @@
     "20260826150000_identity_proof_and_mobile_pairing_closure.sql": "eed7f69bf6f0139ad727c0c208d9c35959fcbd36611052a6860f4d5c14637549",
     "20260826160000_continuity_and_pairing_residual_closure.sql": "60a2c0571620db6fc7f8e4e69288866ad3a9dfbd4e18124b7dc4f9a05d864d86",
     "20260826170000_identity_runtime_residual_closure.sql": "b211532e1e33923a34f0c9a998704244eae78ee083b7dce503934133ac140b91",
-    "20260901190000_aeb_released_not_entered.sql": "f736ca3f444d9027e110f5368fe79c060378b1da465cd4c3c7417ba7f1119f92"
+    "20260901190000_aeb_released_not_entered.sql": "f736ca3f444d9027e110f5368fe79c060378b1da465cd4c3c7417ba7f1119f92",
+    "20260907235809_works_accounts.sql": "9f63f7bc3c8327ca5060fe906fc3bdc84278cedfa24a778fca563ca6ffbc57c2",
+    "20260907235858_works_workflow.sql": "a64b5c85e6481eabf967e70aa7bc2bcaf21b2f5462ee06a24599195d87be1350"
   }
 }

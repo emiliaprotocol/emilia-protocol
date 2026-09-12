@@ -79,7 +79,7 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
         { order: 1, draft: 'draft-schrock-ep-authorization-receipts', revision: '12' },
         { order: 2, draft: 'draft-schrock-human-authorization-binding', revision: '00' },
         { order: 3, draft: 'draft-schrock-ep-authority-introduction', revision: '03' },
-        { order: 4, draft: 'draft-schrock-ep-authorization-evidence-chain', revision: '05' },
+        { order: 4, draft: 'draft-schrock-ep-authorization-evidence-chain', revision: '06' },
       ],
     });
     expect(llmsFull).toContain('## Canonical Four-Document Reading Path');

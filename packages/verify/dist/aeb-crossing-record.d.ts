@@ -14,6 +14,8 @@ import { type AebDigest } from "./aeb-adapter-contract.js";
 import { SIGNATURE_AGILITY_VERSION, type AgileSignature, type AgileSigningKey, type AgileVerificationKey, type AgilityOptions } from "./pq-signature-agility.js";
 export declare const AEB_CROSSING_RECORD_VERSION = "EP-AEB-CROSSING-RECORD-v1";
 export declare const AEB_CROSSING_RECORD_DOMAIN = "EP-AEB-CROSSING-RECORD-v1\0";
+export declare const AEB_CROSSING_RECORD_V2_VERSION = "EP-AEB-CROSSING-RECORD-v2";
+export declare const AEB_CROSSING_RECORD_V2_DOMAIN = "EP-AEB-CROSSING-RECORD-v2\0";
 export declare const AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS: readonly ["Ed25519", "ML-DSA-65"];
 export declare const WIMSE_OAUTH_CROSSING_MAPPING_PROFILE = "EP-AEB-CROSSING-WIMSE-OAUTH-v1";
 export declare const BCR_CROSSING_MAPPING_PROFILE = "EP-AEB-CROSSING-BCR-v1";
@@ -112,6 +114,25 @@ export interface AebCrossingRecord {
     body: AebCrossingRecordBody;
     signatures: AgileSignature[];
 }
+export interface CrossingAdmissionDomain {
+    relying_party_id: string;
+    audience: string;
+    executor_id: string;
+    state_domain_id: string;
+}
+export interface AebCrossingRecordV2Body extends AebCrossingRecordBody {
+    admission_domain_digest: AebDigest;
+}
+export interface AebCrossingRecordV2 {
+    "@version": typeof AEB_CROSSING_RECORD_V2_VERSION;
+    body: AebCrossingRecordV2Body;
+    signatures: AgileSignature[];
+}
+export type AebCrossingRecordV2Draft = Omit<AebCrossingRecordV2Body, "signature_profile" | "admission_domain_digest" | "contract_digest">;
+export interface AebCrossingRecordV2IssuanceContext {
+    action: AebCrossingRecordBody["action"];
+    admission_domain: CrossingAdmissionDomain;
+}
 export type AebCrossingRecordDraft = Omit<AebCrossingRecordBody, "signature_profile" | "contract_digest">;
 export interface AebCrossingRecordIssueOptions extends AgilityOptions {
     signing_keys: AgileSigningKey[];
@@ -132,6 +153,11 @@ export interface AebCrossingRecordVerifyResult {
         admission_reference: boolean | null;
         semantics: boolean | null;
         signature_set: boolean | null;
+    };
+}
+export interface AebCrossingRecordV2VerifyResult extends AebCrossingRecordVerifyResult {
+    checks: AebCrossingRecordVerifyResult["checks"] & {
+        admission_domain: boolean | null;
     };
 }
 export type CrossingAuthorityMappingResult = {
@@ -173,12 +199,18 @@ export interface AebCrossingAuthorityAdapter<T> {
     map(input: T): CrossingAuthorityMappingResult;
 }
 export declare function crossingRecordContractDigest(body: Pick<AebCrossingRecordBody, "native_authority" | "action" | "boundary" | "requirements">): AebDigest;
+export declare function crossingRecordV2AdmissionDomainDigest(boundary: CrossingAdmissionDomain): AebDigest;
+export declare function crossingRecordV2ContractDigest(body: Pick<AebCrossingRecordV2Body, "native_authority" | "action" | "requirements" | "admission_domain_digest">): AebDigest;
 export declare function crossingRecordSignedBytes(body: AebCrossingRecordBody): Uint8Array;
 export declare function crossingRecordDigest(body: AebCrossingRecordBody): AebDigest;
+export declare function crossingRecordV2SignedBytes(body: AebCrossingRecordV2Body): Uint8Array;
+export declare function crossingRecordV2Digest(body: AebCrossingRecordV2Body): AebDigest;
 export declare function mapWimseOAuthCrossingAuthority(input: WimseOAuthCrossingInput): CrossingAuthorityMappingResult;
 export declare function mapBcrCrossingAuthority(input: BcrCrossingInput): CrossingAuthorityMappingResult;
 export declare const WIMSE_OAUTH_CROSSING_ADAPTER: AebCrossingAuthorityAdapter<WimseOAuthCrossingInput>;
 export declare const BCR_CROSSING_ADAPTER: AebCrossingAuthorityAdapter<BcrCrossingInput>;
 export declare function issueAebCrossingRecord(draft: AebCrossingRecordDraft, options: AebCrossingRecordIssueOptions): Promise<AebCrossingRecord>;
+export declare function issueAebCrossingRecordV2(draft: AebCrossingRecordV2Draft, context: AebCrossingRecordV2IssuanceContext, options: AebCrossingRecordIssueOptions): Promise<AebCrossingRecordV2>;
 export declare function verifyAebCrossingRecord(value: unknown, options: AebCrossingRecordVerifyOptions): Promise<AebCrossingRecordVerifyResult>;
+export declare function verifyAebCrossingRecordV2(value: unknown, options: AebCrossingRecordVerifyOptions): Promise<AebCrossingRecordV2VerifyResult>;
 //# sourceMappingURL=aeb-crossing-record.d.ts.map

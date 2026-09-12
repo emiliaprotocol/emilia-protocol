@@ -707,6 +707,8 @@ export function evaluateAebConsequenceCase(value) {
             reason = 'provider_proven_not_committed';
         else if (observation.effect_relation === 'DIVERGED')
             reason = 'provider_committed_effect_diverged';
+        else if (observation.effect_relation !== 'OBSERVED_AS_REQUESTED')
+            reason = 'blind_retry_refused';
         else
             reason = 'provider_committed_effect_observed';
         return result(assessment, {

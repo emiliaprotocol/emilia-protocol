@@ -18,6 +18,9 @@ const ACTION = crypto.createHash('sha256')
     .update(canon({ amount: 40_000_000, currency: 'USD', target: 'program/aegis-1' }), 'utf8')
     .digest('hex');
 const chainHash = (ctx) => crypto.createHash('sha256').update(canon(ctx), 'utf8').digest('hex');
+const CHAIN_PROFILE = 'EP-QUORUM-SIGNOFF-CHAIN-v1';
+const signoffHash = (signoff) => crypto.createHash('sha256')
+    .update(`${CHAIN_PROFILE}\0`, 'utf8').update(canon(signoff), 'utf8').digest('hex');
 // Mint one real member assertion. Bend exactly one thing per negative vector.
 // prevContextHash !== null  -> bind this signoff to its predecessor (ordered chain).
 // sharedSigner provided      -> reuse a device key across slots (distinct-keys negative).
@@ -27,10 +30,10 @@ const chainHash = (ctx) => crypto.createHash('sha256').update(canon(ctx), 'utf8'
  *   sharedSigner?: { publicKey: import('node:crypto').KeyObject, privateKey: import('node:crypto').KeyObject }|null,
  *   initiator?: string, crossOrigin?: boolean }} params
  */
-function member({ role, approver, issuedAt, actionHash = ACTION, wrongKey = false, malformSig = false, prevContextHash = null, sharedSigner = null, initiator = 'ent_agent_7', crossOrigin = false, } = {}) {
+function member({ role, approver, issuedAt, actionHash = ACTION, wrongKey = false, malformSig = false, prevContextHash = null, prevSignoffHash = null, contextOverride = null, sharedSigner = null, initiator = 'ent_agent_7', crossOrigin = false, } = {}) {
     const signer = sharedSigner || crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
     const verifierKey = wrongKey ? crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' }).publicKey : signer.publicKey;
-    const context = {
+    const context = contextOverride || {
         ep_version: '1.0', context_type: 'ep.signoff.v1',
         action_hash: actionHash,
         policy: 'policy_aegis_quorum',
@@ -40,6 +43,8 @@ function member({ role, approver, issuedAt, actionHash = ACTION, wrongKey = fals
     };
     if (prevContextHash !== null)
         context.prev_context_hash = prevContextHash;
+    if (prevSignoffHash !== null)
+        context.prev_signoff_hash = prevSignoffHash;
     const challenge = crypto.createHash('sha256').update(canon(context), 'utf8').digest().toString('base64url');
     const clientData = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: 'https://www.emiliaprotocol.ai', crossOrigin }), 'utf8');
     const authData = Buffer.concat([
@@ -68,24 +73,24 @@ const IG = { role: 'inspector_general', approver: 'ep:approver:ig_okafor' };
 const ROSTER = [PO, AO, IG];
 const t = (s) => `2026-06-11T00:0${s}:00.000Z`; // 0..5 minutes
 const orderedPolicy = { mode: 'ordered', required: 3, approvers: ROSTER, distinct_humans: true, window_sec: 900 };
-// STRONG ordered mode: order proven by a cryptographic chain (prev_context_hash),
-// not by operator-asserted timestamps.
-const orderedChainPolicy = { ...orderedPolicy, ordered_chain: true };
+// Causal dependency on the completed predecessor proof, not trusted wall-clock.
+const orderedChainPolicy = { ...orderedPolicy, ordered_chain: true, ordered_chain_profile: CHAIN_PROFILE };
 const thresholdPolicy = { mode: 'threshold', required: 2, approvers: ROSTER, distinct_humans: true, window_sec: 900 };
-const orderedTwoOfThreePolicy = { ...orderedPolicy, required: 2, ordered_chain: true };
+const orderedTwoOfThreePolicy = { ...orderedChainPolicy, required: 2 };
 const V = [];
 const add = (id, description, failure_class, valid, quorum) => V.push({ id, description, failure_class, expect: { valid }, quorum });
 // Build an ordered member list where each signoff cryptographically commits, in
-// its own signed context, to the hash of its predecessor's context — so order is
-// proven by the signatures, not by timestamps. The first member carries no
+// its own signed context, to the hash of its predecessor's completed signoff.
+// The hash includes the actual signature, so it cannot be precomputed from
+// public challenge contexts. The first member carries no
 // predecessor.
 function chained(specs) {
     const out = [];
     let prev = null;
     for (const s of specs) {
-        const m = member({ ...s, prevContextHash: prev });
+        const m = member({ ...s, prevSignoffHash: prev });
         out.push(m);
-        prev = chainHash(m.signoff.context);
+        prev = signoffHash(m.signoff);
     }
     return out;
 }
@@ -186,8 +191,8 @@ add('reject_wrong_role', 'A signer whose (role, approver) is not an eligible quo
 // are correct, but the final signoff commits (inside its signed context) to the
 // WRONG predecessor hash — so the cryptographic order chain does not link.
 const bc0 = member({ ...PO, issuedAt: t(1) });
-const bc1 = member({ ...AO, issuedAt: t(2), prevContextHash: chainHash(bc0.signoff.context) });
-const bc2 = member({ ...IG, issuedAt: t(3), prevContextHash: '0'.repeat(64) }); // not the hash of bc1
+const bc1 = member({ ...AO, issuedAt: t(2), prevSignoffHash: signoffHash(bc0.signoff) });
+const bc2 = member({ ...IG, issuedAt: t(3), prevSignoffHash: '0'.repeat(64) }); // not the hash of bc1
 add('reject_broken_chain', 'Strong-chain ordered quorum where the final signoff commits to the wrong predecessor hash — chain_linked fails though every signature is valid', 'chain', false, {
     '@type': 'ep.quorum', action_hash: ACTION, policy: orderedChainPolicy,
     members: [bc0, bc1, bc2],
@@ -232,11 +237,55 @@ add('reject_distinct_humans_false_shared_key', 'distinct_humans:false with one d
         member({ ...IG, issuedAt: t(2), sharedSigner: sharedNoDistinct }),
     ],
 });
+// Preserve the key-encoding and algorithm-floor regressions in the generator.
+const noncanonical = structuredClone(V.find((v) => v.id === 'reject_duplicate_key').quorum);
+noncanonical.members[1].approver_public_key += '=';
+add('reject_noncanonical_spki_second_seat', 'One key fills two seats under a padded base64url SPKI spelling; canonical decoding must refuse', 'non-canonical-key-encoding', false, noncanonical);
+for (const [suffix, algorithms] of [['malformed', []], ['unknown', ['RS256']]]) {
+    const q = structuredClone(V.find((v) => v.id === 'accept_threshold_2of3').quorum);
+    q.policy.required_algorithms = algorithms;
+    add(`reject_required_algorithms_${suffix}`, 'A malformed or unknown algorithm requirement is never silently ignored', 'required-algorithms', false, q);
+}
+// All contexts are precomputed, then real signatures are made IG -> AO -> PO.
+// Presentation is PO -> AO -> IG. Legacy context hashes cannot prove causality.
+const reverseContexts = [];
+for (let i = 0; i < ROSTER.length; i++) {
+    const context = {
+        ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash: ACTION,
+        policy: 'policy_aegis_quorum', nonce: `reverse_${i}`,
+        approver: ROSTER[i].approver, initiator: 'ent_agent_7',
+        issued_at: t(i + 1), expires_at: '2026-06-11T01:00:00.000Z',
+    };
+    if (i > 0)
+        context.prev_context_hash = chainHash(reverseContexts[i - 1]);
+    reverseContexts.push(context);
+}
+const reverseMembers = [];
+for (let i = ROSTER.length - 1; i >= 0; i--) {
+    reverseMembers[i] = member({ ...ROSTER[i], contextOverride: reverseContexts[i] });
+}
+for (const withProfile of [false, true]) {
+    add(`reject_reverse_context_chain_${withProfile ? 'profile' : 'legacy'}`, 'Real signatures made in reverse order over precomputable context links must not satisfy a causal-chain policy', 'chain', false, { '@type': 'ep.quorum', action_hash: ACTION,
+        policy: withProfile ? orderedChainPolicy : { ...orderedPolicy, ordered_chain: true }, members: reverseMembers });
+}
+for (const [suffix, profile] of [['missing', undefined], ['unknown', 'EP-QUORUM-SIGNOFF-CHAIN-v999']]) {
+    const q = structuredClone(V[0].quorum);
+    if (profile === undefined)
+        delete q.policy.ordered_chain_profile;
+    else
+        q.policy.ordered_chain_profile = profile;
+    add(`reject_chain_profile_${suffix}`, 'Strong-chain profile must be present and recognized', 'chain', false, q);
+}
+const mixedFirst = member({ ...PO, issuedAt: t(1), contextOverride: {
+        ...reverseContexts[0], prev_signoff_hash: null,
+    } });
+const mixed = [mixedFirst, member({ ...AO, issuedAt: t(2), prevSignoffHash: signoffHash(mixedFirst.signoff) })];
+add('reject_first_predecessor_null', 'The first member must omit the predecessor field, not supply null', 'chain', false, { '@type': 'ep.quorum', action_hash: ACTION, policy: orderedTwoOfThreePolicy, members: mixed });
 const suite = {
     suite: 'EP-QUORUM-v1',
     profile: 'Multi-party (M-of-N / ordered) human approval over EP-SIGNOFF-v1 members',
-    vectors_version: '1.0.0',
-    description: 'Adversarial conformance vectors for EP multi-party quorum approval. Each member is a real Class-A WebAuthn assertion; the quorum predicate (all-signatures-valid, action-binding, distinct-humans, distinct-keys, roles-admitted, threshold, order, chain-linked, window) is fail-closed. Ordered quorums chain each signoff to its predecessor (prev_context_hash) so order is proven cryptographically, not by timestamps. A conformant verifier MUST return expect.valid for every vector.',
+    vectors_version: '1.1.0',
+    description: 'Adversarial quorum vectors with real WebAuthn assertions. The EP-QUORUM-SIGNOFF-CHAIN-v1 profile binds each successor context to the domain-separated hash of its completed predecessor signoff, including signature bytes. Legacy context-only links cannot satisfy this profile. This establishes causal proof dependence, not trusted wall-clock time or human comprehension. A conformant verifier MUST return expect.valid for every vector.',
     count: V.length,
     vectors: V,
 };

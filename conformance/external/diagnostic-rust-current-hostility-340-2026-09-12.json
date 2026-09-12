@@ -1,0 +1,1588 @@
+{
+  "@version": "EP-DIFFERENTIAL-HOSTILITY-REPORT-v1",
+  "status": "fail",
+  "corpus": {
+    "suite": "EP-DIFFERENTIAL-HOSTILITY-v3",
+    "seed": "ep-hostility-v3-current-manifest",
+    "sha256": "d7dc50bc255b4b4720910abe1c72f18563728a45a391b3feb46b74db2bc49e53",
+    "structured_cases": 402,
+    "raw_parser_cases": 6,
+    "categories": {
+      "action-permutation": 41,
+      "evidence-graph": 9,
+      "hostile-type": 198,
+      "malformed-predicted-effects": 1,
+      "nested-leaf": 31,
+      "spki": 26,
+      "timestamp": 14,
+      "unicode": 41,
+      "unknown-wrapper": 41
+    },
+    "source_manifest": {
+      "path": "conformance/conformance-manifest.json",
+      "sha256": "4d452c38a9ce9f6b78e916246a1733d56cd8ae2d0bd1123d39df329d0401d6fa",
+      "suites": 21,
+      "vectors": 340
+    },
+    "covered_suites": [
+      {
+        "path": "conformance/vectors/receipts.v1.json",
+        "sha256": "e27b31759c9c901f5cd6e2986758a249175ea14dbc818e401d42fb71280aa83b",
+        "vectors": 14,
+        "execution_path": "conformance/vectors/receipts.v1.json"
+      },
+      {
+        "path": "conformance/vectors/signoffs.v1.json",
+        "sha256": "1bb0f771be5e66e4a9de9733ea6507e650dd685db7a5a1c6cc46046dcaa8114d",
+        "vectors": 13,
+        "execution_path": "conformance/vectors/signoffs.v1.json"
+      },
+      {
+        "path": "conformance/vectors/resolution.v1.json",
+        "sha256": "3d89e9f624e8c7058876ae404c7ec1e76293b4ef178bb8901ec31e72e44b5c5c",
+        "vectors": 33,
+        "execution_path": "conformance/vectors/resolution.v1.json"
+      },
+      {
+        "path": "conformance/vectors/quorum.v1.json",
+        "sha256": "f8149c155003a2a5de7e4c1d869244d775000aa2237a9c40f0de7b7f01fea2c4",
+        "vectors": 24,
+        "execution_path": "conformance/vectors/quorum.v1.json"
+      },
+      {
+        "path": "conformance/vectors/revocation.exec.v2.json",
+        "sha256": "84df5f5a9057878f77a556faccfb0a4fb45f92f87edd02dc679294fa8367f115",
+        "vectors": 19,
+        "execution_path": "conformance/vectors/revocation.exec.v2.json"
+      },
+      {
+        "path": "conformance/vectors/outcome-binding.v1.json",
+        "sha256": "c549c9fc53eab2e716dfb0f20957a84dd80f8cf263f8b3d8a51d86f5f3ed8152",
+        "vectors": 35,
+        "execution_path": "conformance/vectors/outcome-binding.v1.json"
+      },
+      {
+        "path": "conformance/vectors/outcome-binding.exec.v1.json",
+        "sha256": "64f759bf8004812f3521df5dc0a0f4108ccf7746fe9fbdb326ab1ac1142a25f1",
+        "vectors": 10,
+        "execution_path": "conformance/vectors/outcome-binding.exec.v1.json"
+      },
+      {
+        "path": "conformance/vectors/authority-document-proof-join.v1.json",
+        "sha256": "7cee9a124ba5860805a08fc7e04a7c1a2448b0c3084725d4c8aa65a83355b73e",
+        "vectors": 26,
+        "execution_path": "conformance/vectors/authority-document-proof-join.exec.v1.json",
+        "execution_sha256": "121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959"
+      },
+      {
+        "path": "conformance/vectors/time-attestation.v2.json",
+        "sha256": "4c2ae6f3bc7727a5944277c3af5c3e318398d558e647afd5c30cbf565c71551e",
+        "vectors": 6,
+        "execution_path": "conformance/vectors/time-attestation.v2.json"
+      },
+      {
+        "path": "conformance/vectors/trust-receipt.exec.v1.json",
+        "sha256": "f7c88e60ebfa21788700485d72573506b824d315c8acf5a10751acb106700bcc",
+        "vectors": 16,
+        "execution_path": "conformance/vectors/trust-receipt.exec.v1.json"
+      },
+      {
+        "path": "conformance/vectors/trust-receipt.timestamp-forms.v2.json",
+        "sha256": "3b3540180ab0ee47beeb488ea026ce5ed4ba9b9efa95b8eb1d60ca0255ce779c",
+        "vectors": 7,
+        "execution_path": "conformance/vectors/trust-receipt.timestamp-forms.v2.json"
+      },
+      {
+        "path": "conformance/vectors/provenance.exec.v1.json",
+        "sha256": "5bbd268183f12950e7466f999bf3aa16412d10d50286a25146ae708e67933c53",
+        "vectors": 14,
+        "execution_path": "conformance/vectors/provenance.exec.v1.json"
+      },
+      {
+        "path": "conformance/vectors/evidence-record.v1.json",
+        "sha256": "946550657c4dbc0375aa6f55f95301cfd43878113e1c7bcc4436db301f6de46a",
+        "vectors": 5,
+        "execution_path": "conformance/vectors/evidence-record.v1.json"
+      },
+      {
+        "path": "conformance/vectors/canonicalization.v1.json",
+        "sha256": "d72a1de506def5b5dcc20f60301987654ef5b5bb6ea476af926054f300c2eee2",
+        "vectors": 35,
+        "execution_path": "conformance/vectors/canonicalization.v1.json"
+      },
+      {
+        "path": "conformance/vectors/boundary.v1.json",
+        "sha256": "5a7bec6ed7446fadf898c5e943336c64d3a7568dc2806fe47180a18d126d5507",
+        "vectors": 5,
+        "execution_path": "conformance/vectors/boundary.v1.json"
+      },
+      {
+        "path": "conformance/vectors/aec-role.v1.json",
+        "sha256": "b0f286cab68c22b608ece3af46174fbd66e27b893b4762d12fa320ea596353f2",
+        "vectors": 30,
+        "execution_path": "conformance/vectors/aec-role.v1.json"
+      },
+      {
+        "path": "conformance/vectors/currency.v2.json",
+        "sha256": "226a9e01be6186b1abca7cdb5eda713b522c87c8c66e893ba203c9e05aa97dde",
+        "vectors": 12,
+        "execution_path": "conformance/vectors/currency.v2.json"
+      },
+      {
+        "path": "conformance/vectors/initiator-attestation.v1.json",
+        "sha256": "2274dded455f289e36ad4c9bb2225708ff8bfd66edd034b99ed98298484073e6",
+        "vectors": 11,
+        "execution_path": "conformance/vectors/initiator-attestation.v1.json"
+      },
+      {
+        "path": "conformance/vectors/consumption-proof.v1.json",
+        "sha256": "9b0ff706a2c77262131f2658e81d448a7755ba0e466405259590e8faff3f4115",
+        "vectors": 6,
+        "execution_path": "conformance/vectors/consumption-proof.v1.json"
+      },
+      {
+        "path": "conformance/vectors/witness.v1.json",
+        "sha256": "4a226aa0605701eb7f148d6303bc6a0796bce9e8ef5343cb5f53ebd395554673",
+        "vectors": 6,
+        "execution_path": "conformance/vectors/witness.v1.json"
+      },
+      {
+        "path": "conformance/vectors/timestamp-proof.v1.json",
+        "sha256": "b07944ca95931e20ff92f15a7830972a013812ea739cc29ff9b36adfd4ffa791",
+        "vectors": 13,
+        "execution_path": "conformance/vectors/timestamp-proof.v1.json"
+      }
+    ],
+    "required_regressions": [
+      {
+        "id": "current_outcome_binding__malformed_predicted_effects_object",
+        "expected": {
+          "outcome": "incomparable"
+        }
+      }
+    ]
+  },
+  "implementations": [
+    {
+      "name": "javascript",
+      "relationship": "one-team-port",
+      "dispatch": "mixed"
+    },
+    {
+      "name": "python",
+      "relationship": "one-team-port",
+      "dispatch": "mixed"
+    },
+    {
+      "name": "go",
+      "relationship": "one-team-port",
+      "dispatch": "mixed"
+    },
+    {
+      "name": "jdieselny-rust-current-probe",
+      "relationship": "external-submission",
+      "dispatch": "suite",
+      "binary_sha256": "96bb373649fc65e812565d52e9d71157dd703fe7b5e6320784078c65f3ea3472",
+      "runner_wrapper_sha256": "42feec42d184f5761edbd6fae1af825ad1c251f01b1e89c6c865e5d14b63edc0",
+      "diagnostic_only": true
+    }
+  ],
+  "divergences": [
+    {
+      "id": "resolution.v1_accept_approved__unknown_wrapper",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "resolution.v1_accept_approved__unicode_aliases",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "resolution.v1_accept_approved__object_permutation",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "quorum.v1_accept_ordered_3of3__unknown_wrapper",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "quorum.v1_accept_ordered_3of3__unicode_aliases",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "quorum.v1_accept_ordered_3of3__object_permutation",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "quorum.v1_accept_ordered_3of3__nested_leaf",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "quorum.v1_reject_unknown_policy_mode__unknown_wrapper",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "quorum.v1_reject_unknown_policy_mode__unicode_aliases",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "quorum.v1_reject_unknown_policy_mode__object_permutation",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "quorum.v1_reject_unknown_policy_mode__nested_leaf",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "revocation.exec.v2_accept_pinned_exact_binding__unknown_wrapper",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": true,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "effective_at_or_before_T": true,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:d4a8c743dfc52d6c7265c02d1aaf84a4dd11344bf77e24c6f7f2c8c2fa46f454",
+          "result_digest": "sha256:c6e6b9b4e1384b203cb9f10ab782d05be5b1523907c427a0f649804d4e297994"
+        },
+        {
+          "valid": true,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": true,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "revoker_signature_valid": true,
+            "effective_at_or_before_T": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:d4a8c743dfc52d6c7265c02d1aaf84a4dd11344bf77e24c6f7f2c8c2fa46f454",
+          "result_digest": "sha256:c6e6b9b4e1384b203cb9f10ab782d05be5b1523907c427a0f649804d4e297994"
+        },
+        {
+          "checks": {
+            "effective_at_or_before_T": true,
+            "revoked_at_present": true,
+            "revoker_key_bound": true,
+            "revoker_key_pinned": true,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true,
+            "structure": true,
+            "target_bound": true,
+            "version": true
+          },
+          "reasons": [],
+          "result_digest": "sha256:c6e6b9b4e1384b203cb9f10ab782d05be5b1523907c427a0f649804d4e297994",
+          "revocation_digest": "sha256:d4a8c743dfc52d6c7265c02d1aaf84a4dd11344bf77e24c6f7f2c8c2fa46f454",
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "valid": true
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "revocation.exec.v2_accept_pinned_exact_binding__unicode_aliases",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": true,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "effective_at_or_before_T": true,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:d4a8c743dfc52d6c7265c02d1aaf84a4dd11344bf77e24c6f7f2c8c2fa46f454",
+          "result_digest": "sha256:c6e6b9b4e1384b203cb9f10ab782d05be5b1523907c427a0f649804d4e297994"
+        },
+        {
+          "valid": true,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": true,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "revoker_signature_valid": true,
+            "effective_at_or_before_T": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:d4a8c743dfc52d6c7265c02d1aaf84a4dd11344bf77e24c6f7f2c8c2fa46f454",
+          "result_digest": "sha256:c6e6b9b4e1384b203cb9f10ab782d05be5b1523907c427a0f649804d4e297994"
+        },
+        {
+          "checks": {
+            "effective_at_or_before_T": true,
+            "revoked_at_present": true,
+            "revoker_key_bound": true,
+            "revoker_key_pinned": true,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true,
+            "structure": true,
+            "target_bound": true,
+            "version": true
+          },
+          "reasons": [],
+          "result_digest": "sha256:c6e6b9b4e1384b203cb9f10ab782d05be5b1523907c427a0f649804d4e297994",
+          "revocation_digest": "sha256:d4a8c743dfc52d6c7265c02d1aaf84a4dd11344bf77e24c6f7f2c8c2fa46f454",
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "valid": true
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "revocation.exec.v2_accept_pinned_exact_binding__object_permutation",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": true,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "effective_at_or_before_T": true,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:d4a8c743dfc52d6c7265c02d1aaf84a4dd11344bf77e24c6f7f2c8c2fa46f454",
+          "result_digest": "sha256:c6e6b9b4e1384b203cb9f10ab782d05be5b1523907c427a0f649804d4e297994"
+        },
+        {
+          "valid": true,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": true,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "revoker_signature_valid": true,
+            "effective_at_or_before_T": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:d4a8c743dfc52d6c7265c02d1aaf84a4dd11344bf77e24c6f7f2c8c2fa46f454",
+          "result_digest": "sha256:c6e6b9b4e1384b203cb9f10ab782d05be5b1523907c427a0f649804d4e297994"
+        },
+        {
+          "checks": {
+            "effective_at_or_before_T": true,
+            "revoked_at_present": true,
+            "revoker_key_bound": true,
+            "revoker_key_pinned": true,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true,
+            "structure": true,
+            "target_bound": true,
+            "version": true
+          },
+          "reasons": [],
+          "result_digest": "sha256:c6e6b9b4e1384b203cb9f10ab782d05be5b1523907c427a0f649804d4e297994",
+          "revocation_digest": "sha256:d4a8c743dfc52d6c7265c02d1aaf84a4dd11344bf77e24c6f7f2c8c2fa46f454",
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "valid": true
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "revocation.exec.v2_reject_unpinned_revoker__unknown_wrapper",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": false,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": false,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "effective_at_or_before_T": true,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [
+            "revoker_key_pinned"
+          ],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:2f0a9447be1aa83a8cb18806641c16177eaf7d8999e089e23c7ff4c948bbc0b8",
+          "result_digest": "sha256:98b9b159b3cb295412c9e2e0a2875e7d769f2a46f30de8062d5a36602d108e4b"
+        },
+        {
+          "valid": false,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": false,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "revoker_signature_valid": true,
+            "effective_at_or_before_T": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [
+            "revoker_key_pinned"
+          ],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:2f0a9447be1aa83a8cb18806641c16177eaf7d8999e089e23c7ff4c948bbc0b8",
+          "result_digest": "sha256:98b9b159b3cb295412c9e2e0a2875e7d769f2a46f30de8062d5a36602d108e4b"
+        },
+        {
+          "checks": {
+            "effective_at_or_before_T": true,
+            "revoked_at_present": true,
+            "revoker_key_bound": true,
+            "revoker_key_pinned": false,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true,
+            "structure": true,
+            "target_bound": true,
+            "version": true
+          },
+          "reasons": [
+            "revoker_key_pinned"
+          ],
+          "result_digest": "sha256:98b9b159b3cb295412c9e2e0a2875e7d769f2a46f30de8062d5a36602d108e4b",
+          "revocation_digest": "sha256:2f0a9447be1aa83a8cb18806641c16177eaf7d8999e089e23c7ff4c948bbc0b8",
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "valid": false
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "revocation.exec.v2_reject_unpinned_revoker__unicode_aliases",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": false,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": false,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "effective_at_or_before_T": true,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [
+            "revoker_key_pinned"
+          ],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:2f0a9447be1aa83a8cb18806641c16177eaf7d8999e089e23c7ff4c948bbc0b8",
+          "result_digest": "sha256:98b9b159b3cb295412c9e2e0a2875e7d769f2a46f30de8062d5a36602d108e4b"
+        },
+        {
+          "valid": false,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": false,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "revoker_signature_valid": true,
+            "effective_at_or_before_T": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [
+            "revoker_key_pinned"
+          ],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:2f0a9447be1aa83a8cb18806641c16177eaf7d8999e089e23c7ff4c948bbc0b8",
+          "result_digest": "sha256:98b9b159b3cb295412c9e2e0a2875e7d769f2a46f30de8062d5a36602d108e4b"
+        },
+        {
+          "checks": {
+            "effective_at_or_before_T": true,
+            "revoked_at_present": true,
+            "revoker_key_bound": true,
+            "revoker_key_pinned": false,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true,
+            "structure": true,
+            "target_bound": true,
+            "version": true
+          },
+          "reasons": [
+            "revoker_key_pinned"
+          ],
+          "result_digest": "sha256:98b9b159b3cb295412c9e2e0a2875e7d769f2a46f30de8062d5a36602d108e4b",
+          "revocation_digest": "sha256:2f0a9447be1aa83a8cb18806641c16177eaf7d8999e089e23c7ff4c948bbc0b8",
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "valid": false
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "revocation.exec.v2_reject_unpinned_revoker__object_permutation",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": false,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": false,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "effective_at_or_before_T": true,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [
+            "revoker_key_pinned"
+          ],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:2f0a9447be1aa83a8cb18806641c16177eaf7d8999e089e23c7ff4c948bbc0b8",
+          "result_digest": "sha256:98b9b159b3cb295412c9e2e0a2875e7d769f2a46f30de8062d5a36602d108e4b"
+        },
+        {
+          "valid": false,
+          "checks": {
+            "version": true,
+            "structure": true,
+            "target_bound": true,
+            "revoker_key_pinned": false,
+            "revoker_key_bound": true,
+            "revoked_at_present": true,
+            "revoker_signature_valid": true,
+            "effective_at_or_before_T": true,
+            "signature_binds_statement": true
+          },
+          "reasons": [
+            "revoker_key_pinned"
+          ],
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "revocation_digest": "sha256:2f0a9447be1aa83a8cb18806641c16177eaf7d8999e089e23c7ff4c948bbc0b8",
+          "result_digest": "sha256:98b9b159b3cb295412c9e2e0a2875e7d769f2a46f30de8062d5a36602d108e4b"
+        },
+        {
+          "checks": {
+            "effective_at_or_before_T": true,
+            "revoked_at_present": true,
+            "revoker_key_bound": true,
+            "revoker_key_pinned": false,
+            "revoker_signature_valid": true,
+            "signature_binds_statement": true,
+            "structure": true,
+            "target_bound": true,
+            "version": true
+          },
+          "reasons": [
+            "revoker_key_pinned"
+          ],
+          "result_digest": "sha256:98b9b159b3cb295412c9e2e0a2875e7d769f2a46f30de8062d5a36602d108e4b",
+          "revocation_digest": "sha256:2f0a9447be1aa83a8cb18806641c16177eaf7d8999e089e23c7ff4c948bbc0b8",
+          "target_digest": "sha256:a575168bd231dd291fba548b2d8d28faeb71c0ca6279082391e0934b5d74c41a",
+          "valid": false
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "outcome-binding.v1_in_bounds_mixed_ops_pass__unknown_wrapper",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "outcome-binding.v1_in_bounds_mixed_ops_pass__unicode_aliases",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "outcome-binding.v1_in_bounds_mixed_ops_pass__object_permutation",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "outcome-binding.v1_eq_pass__unknown_wrapper",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "outcome-binding.v1_eq_pass__unicode_aliases",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "outcome-binding.v1_eq_pass__object_permutation",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "outcome": "in_bounds"
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "authority-document-proof-join.v1_accept_anchored_document_key_at_issuance__unknown_wrapper",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "verified": true,
+          "issuer_accepted": true,
+          "accepted": true,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": true,
+            "organization_binding": true,
+            "proof_document_binding": true,
+            "registry_issuer_binding": true,
+            "issuer_key_resolved": true,
+            "issuer_key_usage": true,
+            "proof_signature": true,
+            "proof_time_anchor": true,
+            "registry_head": true,
+            "epoch_fresh": true
+          },
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "proof_document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "registry_issuer_id": "ep:authority-registry:acme-payments",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:d0af1863986a0c44c605ccb44cefdb78cb6fb1b4fd6f3fc46a0a8958a0963965"
+        },
+        {
+          "verified": true,
+          "issuer_accepted": true,
+          "accepted": true,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": true,
+            "organization_binding": true,
+            "proof_document_binding": true,
+            "registry_issuer_binding": true,
+            "issuer_key_resolved": true,
+            "issuer_key_usage": true,
+            "proof_signature": true,
+            "proof_time_anchor": true,
+            "registry_head": true,
+            "epoch_fresh": true
+          },
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "proof_document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "registry_issuer_id": "ep:authority-registry:acme-payments",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:d0af1863986a0c44c605ccb44cefdb78cb6fb1b4fd6f3fc46a0a8958a0963965"
+        },
+        {
+          "accepted": true,
+          "authority_evaluated": false,
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "checks": {
+            "continuity": true,
+            "document_anchor": true,
+            "document_chain": true,
+            "epoch_fresh": true,
+            "issuer_key_resolved": true,
+            "issuer_key_usage": true,
+            "organization_binding": true,
+            "proof_document_binding": true,
+            "proof_signature": true,
+            "proof_time_anchor": true,
+            "registry_head": true,
+            "registry_issuer_binding": true
+          },
+          "delegation_evaluated": false,
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "issuer_accepted": true,
+          "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "proof_document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "registry_issuer_id": "ep:authority-registry:acme-payments",
+          "result_digest": "sha256:d0af1863986a0c44c605ccb44cefdb78cb6fb1b4fd6f3fc46a0a8958a0963965",
+          "verified": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "authority-document-proof-join.v1_accept_anchored_document_key_at_issuance__unicode_aliases",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "verified": true,
+          "issuer_accepted": true,
+          "accepted": true,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": true,
+            "organization_binding": true,
+            "proof_document_binding": true,
+            "registry_issuer_binding": true,
+            "issuer_key_resolved": true,
+            "issuer_key_usage": true,
+            "proof_signature": true,
+            "proof_time_anchor": true,
+            "registry_head": true,
+            "epoch_fresh": true
+          },
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "proof_document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "registry_issuer_id": "ep:authority-registry:acme-payments",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:d0af1863986a0c44c605ccb44cefdb78cb6fb1b4fd6f3fc46a0a8958a0963965"
+        },
+        {
+          "verified": true,
+          "issuer_accepted": true,
+          "accepted": true,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": true,
+            "organization_binding": true,
+            "proof_document_binding": true,
+            "registry_issuer_binding": true,
+            "issuer_key_resolved": true,
+            "issuer_key_usage": true,
+            "proof_signature": true,
+            "proof_time_anchor": true,
+            "registry_head": true,
+            "epoch_fresh": true
+          },
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "proof_document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "registry_issuer_id": "ep:authority-registry:acme-payments",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:d0af1863986a0c44c605ccb44cefdb78cb6fb1b4fd6f3fc46a0a8958a0963965"
+        },
+        {
+          "accepted": true,
+          "authority_evaluated": false,
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "checks": {
+            "continuity": true,
+            "document_anchor": true,
+            "document_chain": true,
+            "epoch_fresh": true,
+            "issuer_key_resolved": true,
+            "issuer_key_usage": true,
+            "organization_binding": true,
+            "proof_document_binding": true,
+            "proof_signature": true,
+            "proof_time_anchor": true,
+            "registry_head": true,
+            "registry_issuer_binding": true
+          },
+          "delegation_evaluated": false,
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "issuer_accepted": true,
+          "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "proof_document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "registry_issuer_id": "ep:authority-registry:acme-payments",
+          "result_digest": "sha256:d0af1863986a0c44c605ccb44cefdb78cb6fb1b4fd6f3fc46a0a8958a0963965",
+          "verified": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "authority-document-proof-join.v1_accept_anchored_document_key_at_issuance__object_permutation",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "verified": true,
+          "issuer_accepted": true,
+          "accepted": true,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": true,
+            "organization_binding": true,
+            "proof_document_binding": true,
+            "registry_issuer_binding": true,
+            "issuer_key_resolved": true,
+            "issuer_key_usage": true,
+            "proof_signature": true,
+            "proof_time_anchor": true,
+            "registry_head": true,
+            "epoch_fresh": true
+          },
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "proof_document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "registry_issuer_id": "ep:authority-registry:acme-payments",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:d0af1863986a0c44c605ccb44cefdb78cb6fb1b4fd6f3fc46a0a8958a0963965"
+        },
+        {
+          "verified": true,
+          "issuer_accepted": true,
+          "accepted": true,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": true,
+            "organization_binding": true,
+            "proof_document_binding": true,
+            "registry_issuer_binding": true,
+            "issuer_key_resolved": true,
+            "issuer_key_usage": true,
+            "proof_signature": true,
+            "proof_time_anchor": true,
+            "registry_head": true,
+            "epoch_fresh": true
+          },
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "proof_document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "registry_issuer_id": "ep:authority-registry:acme-payments",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:d0af1863986a0c44c605ccb44cefdb78cb6fb1b4fd6f3fc46a0a8958a0963965"
+        },
+        {
+          "accepted": true,
+          "authority_evaluated": false,
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "checks": {
+            "continuity": true,
+            "document_anchor": true,
+            "document_chain": true,
+            "epoch_fresh": true,
+            "issuer_key_resolved": true,
+            "issuer_key_usage": true,
+            "organization_binding": true,
+            "proof_document_binding": true,
+            "proof_signature": true,
+            "proof_time_anchor": true,
+            "registry_head": true,
+            "registry_issuer_binding": true
+          },
+          "delegation_evaluated": false,
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "issuer_accepted": true,
+          "key_id": "ep:authority-issuer-key:sha256:c4fdbf2b8efcd92e78052c680524a357e0d913ba1c24c53b1c42eaad7fa6b39f",
+          "proof_digest": "sha256:de36180193e36e9dec27c59243a8c25cf23b5e4d93986d73df90703b9c01b6bd",
+          "proof_document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "registry_issuer_id": "ep:authority-registry:acme-payments",
+          "result_digest": "sha256:d0af1863986a0c44c605ccb44cefdb78cb6fb1b4fd6f3fc46a0a8958a0963965",
+          "verified": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "authority-document-proof-join.v1_reject_no_document_anchor__unknown_wrapper",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "verified": true,
+          "issuer_accepted": false,
+          "accepted": false,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": false,
+            "organization_binding": false,
+            "proof_document_binding": false,
+            "registry_issuer_binding": false,
+            "issuer_key_resolved": false,
+            "issuer_key_usage": false,
+            "proof_signature": true,
+            "proof_time_anchor": false,
+            "registry_head": false,
+            "epoch_fresh": false
+          },
+          "reason": "authority_document_anchor_required",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:c9cec4fd97b1d9b5032c3c2ff209317446e428f1be746d114a1859bd2d31ede1"
+        },
+        {
+          "verified": true,
+          "issuer_accepted": false,
+          "accepted": false,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": false,
+            "organization_binding": false,
+            "proof_document_binding": false,
+            "registry_issuer_binding": false,
+            "issuer_key_resolved": false,
+            "issuer_key_usage": false,
+            "proof_signature": true,
+            "proof_time_anchor": false,
+            "registry_head": false,
+            "epoch_fresh": false
+          },
+          "reason": "authority_document_anchor_required",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:c9cec4fd97b1d9b5032c3c2ff209317446e428f1be746d114a1859bd2d31ede1"
+        },
+        {
+          "accepted": false,
+          "authority_evaluated": false,
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "checks": {
+            "continuity": true,
+            "document_anchor": false,
+            "document_chain": true,
+            "epoch_fresh": false,
+            "issuer_key_resolved": false,
+            "issuer_key_usage": false,
+            "organization_binding": false,
+            "proof_document_binding": false,
+            "proof_signature": true,
+            "proof_time_anchor": false,
+            "registry_head": false,
+            "registry_issuer_binding": false
+          },
+          "delegation_evaluated": false,
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "issuer_accepted": false,
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "reason": "authority_document_anchor_required",
+          "result_digest": "sha256:c9cec4fd97b1d9b5032c3c2ff209317446e428f1be746d114a1859bd2d31ede1",
+          "verified": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "authority-document-proof-join.v1_reject_no_document_anchor__unicode_aliases",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "verified": true,
+          "issuer_accepted": false,
+          "accepted": false,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": false,
+            "organization_binding": false,
+            "proof_document_binding": false,
+            "registry_issuer_binding": false,
+            "issuer_key_resolved": false,
+            "issuer_key_usage": false,
+            "proof_signature": true,
+            "proof_time_anchor": false,
+            "registry_head": false,
+            "epoch_fresh": false
+          },
+          "reason": "authority_document_anchor_required",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:c9cec4fd97b1d9b5032c3c2ff209317446e428f1be746d114a1859bd2d31ede1"
+        },
+        {
+          "verified": true,
+          "issuer_accepted": false,
+          "accepted": false,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": false,
+            "organization_binding": false,
+            "proof_document_binding": false,
+            "registry_issuer_binding": false,
+            "issuer_key_resolved": false,
+            "issuer_key_usage": false,
+            "proof_signature": true,
+            "proof_time_anchor": false,
+            "registry_head": false,
+            "epoch_fresh": false
+          },
+          "reason": "authority_document_anchor_required",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:c9cec4fd97b1d9b5032c3c2ff209317446e428f1be746d114a1859bd2d31ede1"
+        },
+        {
+          "accepted": false,
+          "authority_evaluated": false,
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "checks": {
+            "continuity": true,
+            "document_anchor": false,
+            "document_chain": true,
+            "epoch_fresh": false,
+            "issuer_key_resolved": false,
+            "issuer_key_usage": false,
+            "organization_binding": false,
+            "proof_document_binding": false,
+            "proof_signature": true,
+            "proof_time_anchor": false,
+            "registry_head": false,
+            "registry_issuer_binding": false
+          },
+          "delegation_evaluated": false,
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "issuer_accepted": false,
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "reason": "authority_document_anchor_required",
+          "result_digest": "sha256:c9cec4fd97b1d9b5032c3c2ff209317446e428f1be746d114a1859bd2d31ede1",
+          "verified": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "authority-document-proof-join.v1_reject_no_document_anchor__object_permutation",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "verified": true,
+          "issuer_accepted": false,
+          "accepted": false,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": false,
+            "organization_binding": false,
+            "proof_document_binding": false,
+            "registry_issuer_binding": false,
+            "issuer_key_resolved": false,
+            "issuer_key_usage": false,
+            "proof_signature": true,
+            "proof_time_anchor": false,
+            "registry_head": false,
+            "epoch_fresh": false
+          },
+          "reason": "authority_document_anchor_required",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:c9cec4fd97b1d9b5032c3c2ff209317446e428f1be746d114a1859bd2d31ede1"
+        },
+        {
+          "verified": true,
+          "issuer_accepted": false,
+          "accepted": false,
+          "authority_evaluated": false,
+          "delegation_evaluated": false,
+          "checks": {
+            "document_chain": true,
+            "continuity": true,
+            "document_anchor": false,
+            "organization_binding": false,
+            "proof_document_binding": false,
+            "registry_issuer_binding": false,
+            "issuer_key_resolved": false,
+            "issuer_key_usage": false,
+            "proof_signature": true,
+            "proof_time_anchor": false,
+            "registry_head": false,
+            "epoch_fresh": false
+          },
+          "reason": "authority_document_anchor_required",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "result_digest": "sha256:c9cec4fd97b1d9b5032c3c2ff209317446e428f1be746d114a1859bd2d31ede1"
+        },
+        {
+          "accepted": false,
+          "authority_evaluated": false,
+          "bootstrap_digest": "sha256:bb4ed138e48b2fd1714e049916b10729ddc15cb81720c8ff85bd498f3b238717",
+          "checks": {
+            "continuity": true,
+            "document_anchor": false,
+            "document_chain": true,
+            "epoch_fresh": false,
+            "issuer_key_resolved": false,
+            "issuer_key_usage": false,
+            "organization_binding": false,
+            "proof_document_binding": false,
+            "proof_signature": true,
+            "proof_time_anchor": false,
+            "registry_head": false,
+            "registry_issuer_binding": false
+          },
+          "delegation_evaluated": false,
+          "document_chain_digest": "sha256:e03237515f70e6c0d1da632ca178e3e60e9f22c84f6f9c012c68de37de540719",
+          "document_head": "sha256:3966fdb572548de40739efebd0ae9647f27e73428acf3dc30b501f519cd001ce",
+          "issuer_accepted": false,
+          "proof_input_digest": "sha256:6783ab048a8b3be182c777c86ecfb7648edc10a25ec6d51cd1076c180c364986",
+          "reason": "authority_document_anchor_required",
+          "result_digest": "sha256:c9cec4fd97b1d9b5032c3c2ff209317446e428f1be746d114a1859bd2d31ede1",
+          "verified": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "trust-receipt.exec.v1_reject_terminal_compromised_key__unknown_wrapper",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "trust-receipt.exec.v1_reject_terminal_compromised_key__unicode_aliases",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "trust-receipt.exec.v1_reject_terminal_compromised_key__object_permutation",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": false
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "aec-role.v1_accept_pinned_human_receipt__unknown_wrapper",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "aec-role.v1_accept_pinned_human_receipt__unicode_aliases",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "aec-role.v1_accept_pinned_human_receipt__object_permutation",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": true
+        },
+        {
+          "valid": false
+        }
+      ]
+    },
+    {
+      "id": "current_outcome_binding__malformed_predicted_effects_object",
+      "reason": "cross_language_divergence",
+      "values": [
+        {
+          "outcome": "incomparable"
+        },
+        {
+          "outcome": "incomparable"
+        },
+        {
+          "outcome": "incomparable"
+        },
+        {
+          "valid": false
+        }
+      ]
+    }
+  ],
+  "report_sha256": "719889e1ac519745c60b58dca1ad9f361beea65b8ec9eab0eb72fcf03cd15d8f"
+}

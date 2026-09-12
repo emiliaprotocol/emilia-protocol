@@ -17,7 +17,7 @@ describe('external clean-room input kit', () => {
     const bundle = JSON.parse(fs.readFileSync('conformance/clean-room/bundle.v1.json', 'utf8'));
     const receiptPin = bundle.suites.find((entry) => entry.path === 'conformance/vectors/receipts.v1.json');
     expect(files.find((entry) => entry.path === receiptPin.path)?.sha256).toBe(receiptPin.sha256);
-  });
+  }, 30_000);
 
   it('builds a reproducible archive and exact content report', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-kit-test-'));

@@ -441,11 +441,24 @@ action is currently authorized or unused.
 
 `verifyTrustReceipt` authenticates each presented Authorization Context, but it
 does not evaluate the companion EP-QUORUM set-level policy. Its always-present
-`decision_scope.quorum_ordering` reports whether a `prev_context_hash` was
+`decision_scope.quorum_ordering` reports whether a `prev_context_hash` or
+`prev_signoff_hash` was
 present and names `verifyQuorum` as the required verifier. A green base receipt
 result MUST NOT be described as proof of threshold, roster order, or ordered
 chain linkage unless `verifyQuorum` also accepts the exact members and pinned
 policy.
+
+The strong ordered profile is `EP-QUORUM-SIGNOFF-CHAIN-v1`. Set
+`ordered_chain: true`, pin that exact `ordered_chain_profile`, and pass the
+entire trusted policy as `verifyQuorum(document, { expectedPolicy, ...opts })`.
+Each successor's signed `prev_signoff_hash` is lowercase SHA-256 over
+`UTF8("EP-QUORUM-SIGNOFF-CHAIN-v1") || 0x00 || UTF8(JCS(previous.signoff))`.
+The first context omits that field, and every context omits `prev_context_hash`.
+`completedSignoffHash` is exported from the quorum subpath for producers.
+Legacy context-only chains cannot satisfy the new strong profile and require
+fresh signatures. The result proves dependency on completed prior proofs,
+not trusted wall-clock time or human comprehension. Unpinned verification
+establishes only internal consistency; a supplied policy is not its own authority.
 
 `valid_from` / `valid_to` express ordinary issuance and rotation windows.
 `compromised_at` is different: its presence is a terminal relying-party directory
@@ -796,6 +809,21 @@ native authority system. Run the deterministic hostile suite with:
 npm run conformance:composition:crossing-record
 ```
 
+### Version 2 admission-domain binding
+
+`EP-AEB-CROSSING-RECORD-v2` uses a distinct signing domain and adds a typed
+digest over `relying_party_id`, `audience`, `executor_id`, and
+`state_domain_id`. The v2 verifier recomputes that digest from the signed
+record. Generic v2 issuance also requires the evaluated action and admission
+domain as separate inputs and refuses a mismatch before signing.
+
+Use `issueAebCrossingRecordV2` and `verifyAebCrossingRecordV2` for new records
+that need this guarantee. Keep using the v1 verifier for historical v1
+records. Relabeling does not upgrade a v1 record, and neither version is an
+authorization for a later crossing. See
+[`docs/protocol/aeb-crossing-record-v2.md`](../../docs/protocol/aeb-crossing-record-v2.md)
+for migration and retirement rules.
+
 ## Reliance gap reports (acceptance preflight)
 
 `reliance-gap.js` wraps the reliance kernel (`reliance.js`) into a diagnostic:
@@ -849,6 +877,31 @@ repository root. A single gap report is the per-action preflight;
 EP-ASSURANCE-PACKAGE-v1 (`packages/gate/reports/assurance-package.js`)
 bundles a population of such reliance decisions so an independent assurer can
 re-perform every verdict offline.
+
+## Structured Authorization Evidence Chains
+
+Import `createAuthorizationChainEvaluator` from
+`@emilia-protocol/verify/evidence-chain`. Construct it with a closed
+`EP-AEC-REQUIREMENT-v1` requirement and receiver-owned `nativeVerifiers`.
+Each registration pins its native profile, trust snapshot and optional
+mapping. These inputs must not come from the presented chain.
+
+Call `evaluate(chain, { expectedAction, verificationTime })` using the
+executor's expected action and trusted explicit time. The result reports
+`satisfied`, `authorization_decision: false`, and an `EP-AEC-REPLAY-v1`
+record. `replay(chain, recordedReplay, inputs)` re-verifies the original
+evidence under the constructor's pins; a saved positive result is not trusted
+evidence. Required subject thresholds count only native-verified identities,
+and required relations must bind the target evidence digest.
+
+The older `verifyAuthorizationChain` string-requirement API is a separate
+legacy interface, not the complete structured AEC-05 contract. The explicit
+`ep-authorization-bundle` role is an additive AEC-06 profile; it must not be
+substituted for the terminal `ep-receipt` role. Neither evaluator reserves
+authority or authorizes execution. Custom native verification and mapping
+callbacks are trusted code; isolate untrusted synchronous code in a worker
+or process. See `aec-current-profile.test.ts` for executable configurations
+and refusal cases.
 
 ## License
 
