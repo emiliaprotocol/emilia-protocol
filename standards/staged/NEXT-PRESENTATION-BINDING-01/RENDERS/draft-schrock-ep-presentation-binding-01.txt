@@ -81,31 +81,31 @@ Table of Contents
    2.  The Deterministic Renderer  . . . . . . . . . . . . . . . . .   3
    3.  The Display Attestation . . . . . . . . . . . . . . . . . . .   4
    4.  Composition with the Evidence Layers  . . . . . . . . . . . .   4
-   5.  Residual Risk: WYSIWYS Is Not Solved  . . . . . . . . . . . .   5
+   5.  Residual Risk: WYSIWYS Is Not Solved  . . . . . . . . . . . .   4
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
      6.1.  Receipt and Presentation Evidence Remain Distinct . . . .   5
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   6
-   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   6
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
+   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   5
      8.1.  Normative References  . . . . . . . . . . . . . . . . . .   6
      8.2.  Informative References  . . . . . . . . . . . . . . . . .   6
-   Appendix A.  Implementation Status  . . . . . . . . . . . . . . .   7
+   Appendix A.  Implementation Status  . . . . . . . . . . . . . . .   6
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   7
 
 1.  Introduction
 
-   The hard part of human authorization was never the signature.  It is
-   the question a relying party's counsel asks first: a receipt of WHAT?
-   An enrolled key signed a digest; the digest commits to an action; but
-   the human did not see the digest; they saw a screen, and the screen
-   was drawn by software.  If that software rendered "approve invoice,
-   $1.00" while committing "wire $82,000 to account X", the receipt is
-   perfect and the authority is fabricated.  Every downstream layer —
-   composition, sufficiency, recourse — inherits this weakness: they
-   compose and grade a receipt whose meaning was set by an unattested
-   rendering step.
+   Signature verification alone does not establish what an approver was
+   shown.  An enrolled key signed a digest; the digest commits to an
+   action; but the human did not see the digest; they saw a screen, and
+   the screen was drawn by software.  If that software rendered "approve
+   invoice, $1.00" while committing "wire $82,000 to account X", the
+   receipt is perfect and the authority is fabricated.  Every downstream
+   layer — composition, sufficiency, recourse — inherits this weakness:
+   they compose and grade a receipt whose meaning was set by an
+   unattested rendering step.
 
-
-
+   Two observations make the problem tractable without overclaiming.
+   One presentation-attack pattern is a RENDERING mismatch: the surface
+   computes the display from something other than the signed action.  A
 
 
 
@@ -114,9 +114,6 @@ Schrock                   Expires 15 March 2027                 [Page 2]
 Internet-Draft            Presentation Binding            September 2026
 
 
-   Two observations make the problem tractable without overclaiming.
-   First, most presentation attacks are RENDERING attacks: the surface
-   computed the display from something other than the signed action.  A
    verifier can detect that mismatch when the submitted rendering or
    attestation records it, because a rendering can be made a PURE
    FUNCTION of the signed action and re-derived by any verifier.
@@ -155,11 +152,14 @@ Internet-Draft            Presentation Binding            September 2026
    and the signed action verifiable; it does not establish what an
    untrusted surface actually displayed.
 
-
-
-
-
-
+   Handling untrusted content is normative: values that can carry
+   display-manipulating characters (bidirectional overrides, control
+   characters, homoglyph-bearing runs, or excessive length) MUST be
+   neutralized by a specified, deterministic transformation before
+   rendering, and a value that cannot be safely rendered MUST cause the
+   renderer to refuse rather than emit a misleading line.  The
+   neutralization is itself part of the pure function, so the verifier
+   re-derives the same neutralized rendering.
 
 
 
@@ -169,15 +169,6 @@ Schrock                   Expires 15 March 2027                 [Page 3]
 
 Internet-Draft            Presentation Binding            September 2026
 
-
-   Handling untrusted content is normative: values that can carry
-   display-manipulating characters (bidirectional overrides, control
-   characters, homoglyph-bearing runs, or excessive length) MUST be
-   neutralized by a specified, deterministic transformation before
-   rendering, and a value that cannot be safely rendered MUST cause the
-   renderer to refuse rather than emit a misleading line.  The
-   neutralization is itself part of the pure function, so the verifier
-   re-derives the same neutralized rendering.
 
 3.  The Display Attestation
 
@@ -215,17 +206,6 @@ Internet-Draft            Presentation Binding            September 2026
    attested display bytes under relying-party-selected trust inputs.  It
    does not prove what the human perceived.
 
-
-
-
-
-
-
-Schrock                   Expires 15 March 2027                 [Page 4]
-
-Internet-Draft            Presentation Binding            September 2026
-
-
 5.  Residual Risk: WYSIWYS Is Not Solved
 
    This profile narrows the presentation-attack surface; it does not
@@ -237,17 +217,27 @@ Internet-Draft            Presentation Binding            September 2026
    residue are operational and hardware-rooted (trusted display paths,
    out-of-band confirmation of material fields, secure enclaves) and are
    out of scope here, though supported devices running Android 9 and
-   later can offer Protected Confirmation as one separately profiled
-   mechanism.  It renders the prompt text in a protected path; a relying
-   party using it must verify the attestation's trusted-confirmation
-   requirement and bind the exact prompt text, because extra data is not
-   displayed.  This document does not define that profile.  This
-   document makes a mismatch between the signed action and the submitted
-   deterministic rendering detectable.  A malicious client can still
-   attest the expected bytes while displaying different content, so that
-   attack can remain cheap and scalable.  The relying party therefore
-   has to evaluate the client and display-path trust inputs and account
-   for the residual risk.
+   later can offer Android Protected Confirmation
+
+
+
+Schrock                   Expires 15 March 2027                 [Page 4]
+
+Internet-Draft            Presentation Binding            September 2026
+
+
+   (https://developer.android.com/reference/android/security/
+   ConfirmationPrompt) as one separately profiled mechanism.  It renders
+   the prompt text in a protected path; a relying party using it must
+   verify the attestation's trusted-confirmation requirement and bind
+   the exact prompt text, because extra data is not displayed.  This
+   document does not define that profile.  This document makes a
+   mismatch between the signed action and the submitted deterministic
+   rendering detectable.  A malicious client can still attest the
+   expected bytes while displaying different content, so that attack can
+   remain cheap and scalable.  The relying party therefore has to
+   evaluate the client and display-path trust inputs and account for the
+   residual risk.
 
 6.  Security Considerations
 
@@ -269,19 +259,6 @@ Internet-Draft            Presentation Binding            September 2026
    cannot prove that an uncompromised human perceived those bytes or
    that a compromised physical display path showed them faithfully.
 
-
-
-
-
-
-
-
-
-Schrock                   Expires 15 March 2027                 [Page 5]
-
-Internet-Draft            Presentation Binding            September 2026
-
-
    A relying party MUST evaluate receipt verification and presentation-
    evidence verification as separate results under independently
    selected trust inputs.  A valid receipt MUST NOT be promoted to
@@ -296,6 +273,14 @@ Internet-Draft            Presentation Binding            September 2026
    future revision.
 
 8.  References
+
+
+
+
+Schrock                   Expires 15 March 2027                 [Page 5]
+
+Internet-Draft            Presentation Binding            September 2026
+
 
 8.1.  Normative References
 
@@ -330,14 +315,6 @@ Internet-Draft            Presentation Binding            September 2026
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-receipts/>.
 
-
-
-
-Schrock                   Expires 15 March 2027                 [Page 6]
-
-Internet-Draft            Presentation Binding            September 2026
-
-
    [I-D.schrock-human-authorization-binding]
               Schrock, I., "Binding Named-Human Authorization Evidence
               into Agent-Action Records", Work in Progress, Internet-
@@ -353,6 +330,14 @@ Appendix A.  Implementation Status
    with conformance vectors and a test suite, including negative
    vectors: a rendering that does not re-derive from its action is
    rejected, and hostile display content (bidirectional overrides,
+
+
+
+Schrock                   Expires 15 March 2027                 [Page 6]
+
+Internet-Draft            Presentation Binding            September 2026
+
+
    control characters, over-length values) is neutralized or refused
    rather than rendered misleadingly.
 
@@ -362,6 +347,21 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

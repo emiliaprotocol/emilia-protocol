@@ -1401,9 +1401,8 @@ li > p:last-of-type:only-child {
       <h2 id="name-introduction">
 <a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
       </h2>
-<p id="section-1-1">The hard part of human authorization was never the signature.
-      It is the question a relying party's counsel asks first: a receipt
-      of WHAT? An enrolled key signed a digest; the digest commits to an
+<p id="section-1-1">Signature verification alone does not establish what an approver was
+      shown. An enrolled key signed a digest; the digest commits to an
       action; but the human did not see the digest; they saw a screen,
       and the screen was drawn by software. If that software rendered
       "approve invoice, $1.00" while committing "wire $82,000 to account
@@ -1412,8 +1411,8 @@ li > p:last-of-type:only-child {
       this weakness: they compose and grade a receipt whose meaning was
       set by an unattested rendering step.<a href="#section-1-1" class="pilcrow">¶</a></p>
 <p id="section-1-2">Two observations make the problem tractable without
-      overclaiming. First, most presentation attacks are RENDERING
-      attacks: the surface computed the display from something other
+      overclaiming. One presentation-attack pattern is a RENDERING
+      mismatch: the surface computes the display from something other
       than the signed action. A verifier can detect that mismatch when
       the submitted rendering or attestation records it, because a rendering
       can be made a PURE FUNCTION of the signed action and re-derived by
@@ -1528,8 +1527,9 @@ li > p:last-of-type:only-child {
       approver). Defenses against that residue are operational and
       hardware-rooted (trusted display paths, out-of-band confirmation
       of material fields, secure enclaves) and are out of scope here,
-      though supported devices running Android 9 and later can offer Protected
-      Confirmation as one separately profiled mechanism. It renders the
+      though supported devices running Android 9 and later can offer
+      <a href="https://developer.android.com/reference/android/security/ConfirmationPrompt">Android Protected Confirmation</a>
+      as one separately profiled mechanism. It renders the
       prompt text in a protected path; a relying party using it must verify
       the attestation's trusted-confirmation requirement and bind the exact
       prompt text, because extra data is not displayed. This document does
