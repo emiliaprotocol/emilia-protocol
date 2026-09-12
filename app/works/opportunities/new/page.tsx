@@ -11,8 +11,8 @@ import OpportunityForm from '../../OpportunityForm';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Post an opportunity | EMILIA Works (Private Beta)',
-  description: 'Post an inspectable opportunity with bounded funding and authority statements.',
+  title: 'Post a job | EMILIA Marketplace',
+  description: 'Describe the work, review your public job post and invite builders to propose an approach.',
 };
 
 export default function NewOpportunityPage() {
@@ -21,19 +21,19 @@ export default function NewOpportunityPage() {
   return (
     <div style={styles.page}>
       <SiteNav />
-
+      <main id="main-content">
       <section style={{ borderBottom: `1px solid ${color.border}` }}>
         <div style={{ ...styles.sectionWide, paddingTop: 64, paddingBottom: 48 }}>
           <div style={styles.eyebrow}>
             <Link href="/works/opportunities" style={{ color: color.t3, textDecoration: 'none' }}>
-              Opportunities
+              Jobs
             </Link>
             {' / Post'}
           </div>
-          <h1 style={{ ...styles.h1, maxWidth: 800 }}>Post an opportunity</h1>
-          <p style={{ ...styles.body, maxWidth: 760, marginBottom: 0 }}>
-            Describe the work and identify the sponsor. Funding and authority statements are recorded
-            only as sponsor-ASSERTED or UNKNOWN here. This form cannot award VERIFIED status.
+          <h1 style={{ ...styles.h1, maxWidth: 800 }}>Start with the job.</h1>
+          <p style={{ ...styles.body, maxWidth: 760, marginBottom: 0, fontSize: 20 }}>
+            Tell builders what you need done and what a good result looks like.
+            Review your draft before publishing. You only need your account key when you are ready to post.
           </p>
         </div>
       </section>
@@ -43,7 +43,7 @@ export default function NewOpportunityPage() {
           <OpportunityForm />
         </div>
       </section>
-
+      </main>
       <SiteFooter />
     </div>
   );

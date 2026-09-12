@@ -14,6 +14,7 @@ const navigation = readFileSync(resolve(ROOT, 'components/SiteNav.tsx'), 'utf8')
 const govGuard = readFileSync(resolve(ROOT, 'app/govguard/page.tsx'), 'utf8');
 const finGuard = readFileSync(resolve(ROOT, 'app/finguard/page.tsx'), 'utf8');
 const home = readFileSync(resolve(ROOT, 'app/HomePageClient.tsx'), 'utf8');
+const workforce = readFileSync(resolve(ROOT, 'components/workforce/WorkforceStory.tsx'), 'utf8');
 const assuranceBrief = readFileSync(resolve(ROOT, 'docs/EMILIA-ASSURANCE-PRODUCT-BRIEF.md'), 'utf8');
 const trustedContextPack = readFileSync(resolve(ROOT, 'docs/protocol/trusted-context-pack-v1.md'), 'utf8');
 const programIntegrity = readFileSync(
@@ -38,7 +39,7 @@ describe('commercial offer contract', () => {
     expect(pricing).not.toContain('Gate Cloud is in early access');
   });
 
-  it('uses the shared canonical pilot offer in every buyer-facing path', () => {
+  it('uses the shared canonical pilot offer on the existing Gate pilot paths', () => {
     expect(pilot).toContain("from '@/lib/commercial-offer'");
     expect(intake).toContain("from '@/lib/commercial-offer'");
     expect(pilot).toContain('PROTECTED_WORKFLOW_PILOT');
@@ -83,7 +84,7 @@ describe('commercial offer contract', () => {
     expect(commercialOffer).toContain("workflowLabel: '1 protected workflow'");
   });
 
-  it('names the finance boundary first while keeping other workflows eligible', () => {
+  it('keeps the Gate finance profile intact and the workforce evaluation separately unpriced', () => {
     expect(commercialOffer).toContain("firstProfileLabel: 'Finance operations vendor bank-detail change or payment release'");
     expect(commercialOffer).toContain("safetyRuleLabel: 'No accepted exact-action authority and required evidence, no provider entry'");
     expect(pilot).toMatch(/Other\s+consequential workflows remain eligible/);
@@ -93,7 +94,18 @@ describe('commercial offer contract', () => {
     expect(intake).toContain('payer_adverse_determination');
     expect(finGuard).toContain('PROTECTED_WORKFLOW_PILOT.durationLabel');
     expect(finGuard).not.toContain('Pilot in 30 days');
-    expect(home).toContain('Vendor bank-detail changes and payment releases');
+    expect(home).toContain('<WorkforceIntroduction />');
+    expect(home).toContain('<WorkforceNextStep />');
+    expect(home).toContain('private local alpha using synthetic refunds');
+    expect(workforce).toContain('Build your<br />AI workforce.');
+    expect(workforce).toContain('refunds workflow, a named owner and agreed acceptance criteria');
+    expect(workforce).toContain('The external evaluation team and provider are not yet selected. Terms are not yet set.');
+    expect(workforce).toContain('href="/contact#workforce"');
+    expect(pricing).toContain('Evaluation terms are not yet set; the existing Gate offers below do not price this evaluation.');
+    for (const surface of [home, workforce]) {
+      expect(surface).not.toContain("from '@/lib/commercial-offer'");
+      expect(surface).not.toMatch(/PROTECTED_WORKFLOW_PILOT|PRODUCTION_GATE|\$25K|\$25,000|90-day protected-workflow pilot/);
+    }
     expect(home).not.toContain('Payer adverse medical-necessity determinations contain');
     expect(assuranceBrief).toContain('Finance Operations Assurance');
     expect(assuranceBrief).not.toContain('Adverse Determination Assurance');
