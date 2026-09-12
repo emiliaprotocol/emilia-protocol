@@ -37,6 +37,7 @@ export default async function ListingPage({ params }: {
     listWorksRecords('activity'),
   ]);
   const builder = builderRes.ok ? (builderRes.record as BuilderRecord) : null;
+  const contact = builderContact(listing, builder);
   const cards = ((cardsRes.ok ? cardsRes.records : []) as CapabilityCardRecord[])
     .filter((c) => c.listing_id === listing.listing_id);
   const activity = ((activityRes.ok ? activityRes.records : []) as ActivityRecord[])
@@ -88,12 +89,19 @@ export default async function ListingPage({ params }: {
           </div>
 
           <section className={market.marketDetailActions} aria-labelledby="listing-next-title">
-            <h2 id="listing-next-title">Inspect first. Set authority separately.</h2>
+            <h2 id="listing-next-title">{contact ? 'Could this worker help with your job?' : 'Inspect first. Set authority separately.'}</h2>
             <div className={market.marketActions}>
-              <Link href="/works/scan" className={market.marketPrimary}>Start a free scan</Link>
+              {contact ? <a href={contact.href} className={market.marketPrimary}
+                target={contact.kind === 'website' ? '_blank' : undefined}
+                rel="noopener noreferrer" aria-describedby="builder-contact-note">Discuss this worker</a> : null}
+              <Link href="/works/scan" className={contact ? market.marketSecondary : market.marketPrimary}>Start a free scan</Link>
               <Link href="/works/gate" className={market.marketSecondary}>Discuss paid Gate</Link>
               <Link href="/works/qualification" className={market.marketSecondary}>Understand qualification</Link>
             </div>
+            {contact ? <p id="builder-contact-note" className={market.marketNote}>
+              {contact.kind === 'website' ? 'Opens the builder’s contact page outside EMILIA in a new tab.' : 'Opens your email app. Nothing is sent until you send it.'}{' '}
+              Ask about this listing ({listing.listing_id}) and confirm availability, scope, price and terms directly with the builder. This does not hire an agent, take payment or grant access.
+            </p> : null}
             <p className={market.marketNote}>A scan maps supported declared actions; it does not run this listing or activate Gate. Qualification is scoped evidence for a candidate and assignment, not permission to act or certification of safety. Gate deployment and commercial terms need a separate agreement.</p>
           </section>
         </div>
@@ -158,6 +166,20 @@ export default async function ListingPage({ params }: {
       <SiteFooter />
     </div>
   );
+}
+
+/** Contact is an introduction, never a hiring or execution authorization. */
+function builderContact(listing: ListingRecord, builder: BuilderRecord | null): { href: string; kind: 'website' | 'email' } | null {
+  if (listing.example !== false || listing.kind !== 'agent' || listing.status !== 'active'
+    || !builder || builder.example !== false || builder.builder_id !== listing.builder_id) return null;
+  const href = builder.contact_route;
+  if (typeof href !== 'string' || /[\u0000-\u0020\u007f]|%0[ad]/i.test(href)) return null;
+  try {
+    const url = new URL(href);
+    if (url.protocol === 'https:' && url.hostname && !url.username && !url.password) return { href, kind: 'website' };
+    if (url.protocol === 'mailto:' && /^[^\s<>]+@[^\s<>]+$/.test(url.pathname)) return { href, kind: 'email' };
+  } catch { /* Malformed public routes do not become actionable contact links. */ }
+  return null;
 }
 
 function FactRow({ label, value, href }: { label: string; value: string; href?: string }) {

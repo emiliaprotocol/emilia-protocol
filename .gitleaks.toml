@@ -120,6 +120,7 @@ title = "emilia-protocol gitleaks config"
     # public Ed25519 conformance artifact, not a bearer credential.
     paths = [
       '''^conformance/composition/oauth-txn-challenge-aeb-v0\.1/native-fixture\.json$''',
+      '''^conformance/composition/wimse-wpt02-oauth-txn-aeb-v0\.1/oauth-txn-challenge-native-fixture\.json$''',
     ]
     regexes = [
       '''example''',

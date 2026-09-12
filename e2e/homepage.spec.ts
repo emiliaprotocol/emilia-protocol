@@ -13,7 +13,7 @@ test.describe('Homepage', () => {
     // Hero heading exists
     const h1 = page.locator('h1').first();
     await expect(h1).toBeVisible();
-    await expect(h1).toHaveText('Your AI workforceneeds management.');
+    await expect(h1).toHaveText('Build yourAI workforce.');
 
     // Navigation bar is present
     const nav = page.getByRole('navigation', { name: 'Primary' });
@@ -41,14 +41,14 @@ test.describe('Homepage', () => {
       timeout: 10_000,
     });
     await expect(page.locator('#the-handover').getByText('$6,600', { exact: true })).toHaveCount(2);
-    await expect(page.getByText('Private local alpha. Evaluations by arrangement, not a hosted service.', { exact: true })).toBeVisible({
+    await expect(page.getByText('Workforce workspace: private local alpha. Evaluations by arrangement, not a hosted service.', { exact: true })).toBeVisible({
       timeout: 10_000,
     });
   });
 
   test('workforce navigation and inquiry path work without a signup promise', async ({ page }) => {
     await page.goto('/workforce');
-    await expect(page).toHaveTitle('Manage Your AI Workforce | EMILIA');
+    await expect(page).toHaveTitle('Build Your AI Workforce | EMILIA');
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://www.emiliaprotocol.ai/workforce');
     await expect(page.getByText(/no high availability or rollback resistance/)).toBeVisible();
     await page.getByRole('link', { name: 'Discuss your workflow', exact: true }).first().click();

@@ -1,19 +1,31 @@
 # Product marketing context
 
-Updated: 2026-09-05. Public-facing message contract. Private commercial strategy,
+Updated: 2026-09-06. Public-facing message contract. Private commercial strategy,
 fundraising assumptions and customer records belong in the company repository.
 
 ## The story
 
-**Headline:** Your AI workforce needs management.
+**Headline:** Build your AI workforce.
 
-**Promise:** Give every agent a job, set its authority, and know what happened.
+**Promise:** Find specialized agents or bring your own. Give them a job, set their
+limits and see how they perform.
 
-**Category:** Authorization infrastructure for agentic AI.
+**Purpose:** Help builders earn work, help companies delegate it, and make every
+completed assignment improve the next decision.
 
-EMILIA is building the workspace for the people responsible for AI work. Define
-the job and its limits, keep the allowance and unresolved work accounted for
-when an agent is replaced, and review what happened on the configured path.
+That purpose is the reason for building EMILIA, not a claim of existing paid
+work, measured customer improvement or an operating reputation network.
+
+**Company:** An AI workforce business, with authorization infrastructure beneath
+the operating product.
+
+The marketplace helps companies find specialized workers and helps builders
+explain their work. Companies can also bring agents they already use. The
+workspace organizes the job, its owner, limits and work record. Gate enforces
+authority on configured execution paths. The Protocol is the open foundation.
+
+The job belongs to the company. Changing the worker must not reset its allowance,
+erase unresolved work or transfer the previous version's performance to the next.
 
 “HR for AI agents” is a useful explanation for assigning work, setting authority,
 reviewing results and retiring an assignment. It is not an employment service or
@@ -23,9 +35,14 @@ a claim of novelty. Agents are software; a person or institution remains account
 
 - **EMILIA is the company.** It builds the operational product and supplies
   integration, deployment, support and evidence operations under agreed terms.
-- **EMILIA Gate is the commercial product.** The workforce workspace organizes
-  jobs, agent assignments, authority and work records around Gate's covered
-  execution paths. It is not a second authorization engine or a new protocol.
+- **EMILIA Workforce is the operating product being built.** Marketplace
+  discovery, bring-your-own onboarding, employer-owned jobs, revocable assignments
+  and version-scoped work records belong to one journey, not separate businesses.
+  Public directory and scanner access do not imply a hosted workforce service.
+- **EMILIA Gate enforces covered actions.** It is the execution-control component
+  underneath the workspace, not a second authorization engine. Its open reference
+  implementation remains free. Paid integration, operation and support do not buy
+  a favorable qualification result.
 - **EMILIA Protocol is open.** Formats, verifiers, reference code and conformance
   artifacts can be used without buying from EMILIA. Individual Internet-Drafts
   are proposals, not RFCs or IETF endorsement.
@@ -73,21 +90,52 @@ authority does not prove settlement or successful business work.
 
 ## Message order and audience
 
+Serve companies and builders with distinct paths. Companies should understand
+how to delegate work; builders should understand how to describe an agent and
+respond to an actual opportunity. Do not make a marketplace purchase a prerequisite
+for workforce management, or require a new identity protocol for discovery.
+
 Start with the person responsible for one consequential workflow. The first
 evaluation is a finance team's refunds workflow; the external team, owner and
 provider are not yet selected. Terms, pricing and production acceptance must be
 agreed separately. Do not advertise an old fixed-price pilot as this evaluation.
 
-1. Give the agent a job and name its owner.
-2. Set the allowance, limits and exception path.
-3. Replace the agent without resetting the allowance or unresolved work.
-4. Show Gate's decision, the provider report and the business review separately.
-5. Explain the covered execution path and open evidence underneath.
-6. Invite the buyer to discuss one real workflow.
+1. Find a worker or bring an existing agent.
+2. Inspect its builder, version, declared actions and available evidence.
+3. Name a job owner and agree on limits, exceptions and acceptance criteria.
+4. Bind an assignment to that exact worker version and configured execution path.
+5. Review Gate's decision, the provider report and the business result separately.
+6. Retire or replace the assignment without losing job history or unresolved work.
 
-**Primary CTA:** Discuss your workflow → `/contact#workforce`.
+This is the product journey, not a statement that public discovery already
+provisions production assignments or that every integration is implemented.
 
-**Product path:** See the workforce product → `/workforce`.
+**Company CTA:** Build your workforce → `#build-your-workforce`, then discuss
+one workflow at `/contact#workforce`. This is an evaluation inquiry, not signup.
+
+**Builder CTA:** Bring your agent → `/works/scan` when the marketplace is enabled.
+The free browser-only declaration scan needs no account, makes no upload and
+does not run an agent. List separately at `/works/join`; respond to posted jobs
+at `/works/opportunities`. Without the marketplace feature, use `/scan#run-local`.
+
+**Product path:** Explore the workforce product → `/workforce`.
+
+## Discovery, work records and publication
+
+A scan identifies declared tools and possible consequential actions. It does not
+prove actual behavior, safety, malicious intent or complete coverage. Browser
+inputs stay on the device and are not automatically saved or published.
+
+Listings are supplied by builders. Examples are not available workers or evidence
+of marketplace supply. An active listing is not verified availability for hire.
+Public Authority Records require separate repository-control proof and exact-byte
+owner approval. Do not collapse that process into ordinary listing publication.
+
+Version, identity, authority and work quality are separate facts. A declared
+identity is not an authenticated runtime. The intended scorecard is specific to
+the assignment, task and exact worker version; failures, unresolved work and
+missing reviews must remain visible. Signed evidence alone is not a quality score.
+No universal worker rating, accredited certification or guaranteed paid work.
 
 **Developer paths:** Keep the public docs, local scanner, Gate quickstart, open
 verifier, protocol and engineering evidence accessible. A local scan or wrapper
@@ -134,3 +182,5 @@ Use light surfaces, readable dark type and real, explicitly labeled alpha record
 Avoid decorative circle-and-arrow diagrams, cartoon workers, fake screens and
 unsubstantiated compliance badges. The website and decks should tell the same
 story while keeping roadmap, engineering evidence and outside adoption separate.
+Use purposeful editorial artwork with a plain concept label. Keep the homepage
+about the workforce business; the marketplace is its sourcing path, not its identity.

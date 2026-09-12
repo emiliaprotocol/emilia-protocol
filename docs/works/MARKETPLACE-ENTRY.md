@@ -1,12 +1,17 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# Marketplace entry: scan, Gate setup and qualification
+# Marketplace entry: jobs, proposals and agent listings
 
-The marketplace connects three separate activities. It does not turn a purchase
-into authority or a scan into a safety certificate.
+The marketplace helps buyers describe work and builders respond to it. Scanning,
+Gate setup and qualification are separate steps. A job post does not hire a
+worker, a purchase does not grant authority, and a scan is not a safety certificate.
 
 | Route | What it does | What it does not establish |
 | --- | --- | --- |
 | `/works` | Lists builder-supplied agent records, with examples and other work separate | Availability for hire, endorsement, customer adoption or permission to execute |
+| `/works/opportunities/new` | Prepares a local job preview, then publishes with explicit consent and an authenticated entity key | Funding verification, an award, payment or runtime authority |
+| `/works/opportunities` | Lists real job posts separately from read-only examples; counts public proposals only | Total private proposal volume or guaranteed work |
+| `/works/opportunities/:id/inbox` | Shows proposals to the job's authenticated owner or an administrator | An award, acceptance or permission to execute |
+| `/works/submissions` | Finds one proposal by ID through the existing authenticated single-record API | A public directory of private proposals or access based on knowing an ID |
 | `/works/scan` | Inspects supported JSON declarations in the browser and downloads a digest-bound report | Actual behavior, complete tool coverage, deployed enforcement or certification |
 | `/works/gate` | Opens an editable request for separately quoted setup and support; links the free MCP starter | An order, charge, subscription, installed Gate or qualification |
 | `/works/qualification` | Submits a supported signed evidence bundle for verification under operator-pinned scope and status | General agent safety, good performance, accreditation or permission to act |
@@ -49,6 +54,34 @@ Authority Record ownership, correction, exact-content approval, withdrawal and
 freshness rules remain in force. A buyer posting a job uses the existing
 opportunity workflow. Hiring, payment and acceptance terms remain separate; this
 change does not introduce payouts, escrow or hosted agent execution.
+
+## Job drafts and returning to proposals
+
+Buyers can describe a job and review its public fields before entering an API
+key. Previewing makes no network request and does not save a draft to browser
+storage. Keep a separate copy if the draft must survive closing the page.
+Publishing requires an existing entity key and explicit consent. The server
+sets the poster name from that authenticated account. Sponsor statements remain
+assertions or unknowns, not independently verified facts.
+
+A publication attempt keeps the same job ID, content and statement timestamps
+when retried. A lost response or duplicate ID is checked through the exact
+owner-authenticated record route; finding the ID in a public list is not proof
+that this account published this draft. Changed content or an unconfirmed owner
+must not produce a success message. A confirmed post links directly to its
+proposal inbox and public brief.
+
+Builders receive a link back to their proposal. The link contains only its ID;
+it does not carry access. The lookup asks for a key again, retrieves one record
+through the existing API, validates the returned record and ID, and offers a
+clear action to hide it. The author, job owner and administrator retain their
+existing access; public visibility still requires the author's separate opt-in.
+Keys and retrieved proposals are not saved to browser storage. Hiding or leaving
+the view cancels the request and prevents an older response from restoring it.
+
+The jobs board distinguishes a successful empty result from an unavailable
+store. Public proposal counts never imply that private proposals are absent.
+Read-only examples are not counted as real jobs and do not invite responses.
 
 ## Paid Gate work
 

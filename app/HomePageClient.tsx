@@ -11,9 +11,9 @@ export default function HomePage(): React.ReactElement {
       <SiteNav activePage="" />
       <main>
         <WorkforceIntroduction />
-        <WorkforceHandover />
         <WorkforceResponsibilities />
         <WorkforceMarketplace />
+        <WorkforceHandover />
         <WorkforceFoundation />
         <section className={workforce.section + ' ' + workforce.tinted} aria-labelledby="evidence-title">
           <div className={workforce.container}>

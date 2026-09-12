@@ -21,15 +21,15 @@ export default function MarketplaceGatePage() {
     <main className={styles.main}>
       <nav aria-label="Breadcrumb"><Link href="/works">Marketplace</Link><span> / Gate setup</span></nav>
       <header className={styles.hero}>
-        <p className={styles.eyebrow}>From understanding an agent to controlling its actions</p>
-        <h1>Set the limits.<br />Then let it work.</h1>
-        <p className={styles.lead}>A scan can flag a refund, a deployment or a permissions change. Gate checks whether a covered action may proceed, before the connected tool can execute it.</p>
-        <p>You decide the rules. Routine work can run within standing authority. Exceptions come back to the person responsible.</p>
+        <div><p className={styles.eyebrow}>From understanding an agent to controlling its actions</p>
+          <h1>Set the limits.<br /><em>Then let it work.</em></h1></div>
+        <div className={styles.heroCopy}><p className={styles.lead}>A scan can flag a refund, a deployment or a permissions change. Gate checks whether a covered action may proceed, before the connected tool can execute it.</p>
+          <p>You decide the rules. Routine work can run within standing authority. Exceptions come back to the person responsible.</p></div>
       </header>
 
       <section className={styles.offer} aria-labelledby="setup-title">
         <div>
-          <p className={styles.eyebrow}>Help with one real workflow</p>
+          <p className={styles.eyebrow}><span aria-hidden="true">01 / </span>Help with one real workflow</p>
           <h2 id="setup-title">{MARKETPLACE_GATE_OFFER.name}</h2>
           <p>{MARKETPLACE_GATE_OFFER.scope} We agree the work and support terms with you before starting.</p>
           <ol>{MARKETPLACE_GATE_OFFER.included.map(item => <li key={item}>{item}</li>)}</ol>
@@ -47,16 +47,16 @@ export default function MarketplaceGatePage() {
 
       <section className={styles.section} aria-labelledby="open-gate-title">
         <h2 id="open-gate-title">Prefer to connect it yourself?</h2>
-        <p>The open-source Gate stays free. The MCP starter can prepare one tool boundary and run local refusal checks. Paying EMILIA is not required to use the code or verify evidence.</p>
+        <div><p>The open-source Gate stays free. The MCP starter can prepare one tool boundary and run local refusal checks. Paying EMILIA is not required to use the code or verify evidence.</p>
         <div className={styles.links}><Link href="/scan#run-local">Use the free Gate starter</Link><Link href="/works/scan">Run a free browser scan</Link></div>
-        <p className={styles.note}>A wrapper only controls calls that pass through it. Production needs the credential-owning path, durable shared state, pinned policy and keys, and tested failure handling. A generated scaffold is not an active deployment.</p>
+        <p className={styles.note}>A wrapper only controls calls that pass through it. Production needs the credential-owning path, durable shared state, pinned policy and keys, and tested failure handling. A generated scaffold is not an active deployment.</p></div>
       </section>
 
       <section className={styles.section} aria-labelledby="qualification-title">
         <h2 id="qualification-title">The test result is not for sale.</h2>
-        <p>Payment buys agreed engineering and support. It does not turn a scan, an installation or a failed test into a passing result.</p>
+        <div><p>Payment buys agreed engineering and support. It does not turn a scan, an installation or a failed test into a passing result.</p>
         <p>Qualification checks signed evidence for a named candidate, assignment and profile under explicit trust rules. A result must show its scope and freshness. It is not a safety rating, proof of good work or certification.</p>
-        <Link href="/works/qualification">Check qualification evidence</Link>
+        <Link href="/works/qualification">Check qualification evidence</Link></div>
       </section>
     </main>
     <SiteFooter />

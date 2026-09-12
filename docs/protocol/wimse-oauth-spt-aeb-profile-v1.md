@@ -1,13 +1,15 @@
 # Experimental WIMSE/OAuth/SPT AEB Profile v1
 
-Status: experimental, revision-pinned, exported as
-`@emilia-protocol/verify/aeb-wimse-oauth-adapter`
+Status: historical experimental profile, revision-pinned, no current runtime.
 
-Implementation:
-`packages/verify/src/aeb-wimse-oauth-adapter.ts`
-
-Tests:
-`packages/verify/aeb-wimse-oauth-adapter.test.ts`
+The current source-tree `@emilia-protocol/verify/aeb-wimse-oauth-adapter`
+export is the v3 request profile for WPT-02, HTTP Message Signatures -06, Workload Credentials
+-02, and Transaction Tokens -11. It does not accept this v1 configuration or
+reinterpret these v1 vectors. The current tree does not retain a frozen v1
+runtime. A v1 artifact needs a separately recovered and pinned v1 verifier, or
+it must be reissued and reverified under v3. This document, its vectors, and
+its source lock are historical evidence, not a runnable current conformance
+claim.
 
 Vectors:
 `conformance/vectors/wimse-oauth-spt-aeb.v1.json`
@@ -17,8 +19,8 @@ Source lock:
 
 ## 1. Purpose and claim boundary
 
-This profile lets an AEB relying party verify one native workload/delegation
-leg made from:
+This historical profile described how an AEB relying party could verify one
+native workload/delegation leg made from:
 
 1. a WIMSE Workload Identity Token (WIT);
 2. a WIMSE Workload Proof Token (WPT);
@@ -406,8 +408,8 @@ or consumed external status is rejected.
 
 ## 9. Test coverage
 
-The test uses fresh runtime-generated Ed25519 key pairs and real signatures for
-the positive path. Hostile cases cover:
+The historical test used fresh runtime-generated Ed25519 key pairs and real
+signatures for the positive path. Its recorded hostile cases cover:
 
 - malformed compact JWS;
 - unexpected `alg`;
@@ -426,7 +428,6 @@ the positive path. Hostile cases cover:
 - unavailable or stale identifier-lifecycle status; and
 - attempted substitution into a human-authorization role.
 
-The adapter is exported through
-`@emilia-protocol/verify/aeb-wimse-oauth-adapter`. It remains revision-pinned
-and experimental; package exposure does not broaden the profile or its claim
-boundary.
+The current package export is v3 and does not run these cases as v1. The
+checked-in v1 vectors and source lock preserve the historical claim boundary,
+not current executable conformance.

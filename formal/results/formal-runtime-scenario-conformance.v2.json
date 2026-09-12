@@ -507,7 +507,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "36e9cd9396d5cb5463167d82a3a8c0f2b456e3bebc74aff1f14c3ea56555caf3"
+      "sha256": "c8e62f1361f30b8ffe8f07c843519cd89d999f6da63a54625f6979c2939ba261"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -550,10 +550,6 @@
       "sha256": "f109f68329f8ff6fe82a86127ea657dac945f6b0d19871a345a6ca706ecc7e5c"
     },
     {
-      "path": "packages/gate/dist/action-evidence-packet.js",
-      "sha256": "8cfe8d7868e76b5cc56e16d1fef821e8c05eedde26d36522e4103b8b1508db32"
-    },
-    {
       "path": "packages/gate/dist/action-packs.js",
       "sha256": "81c37ab9dc6286cf0f2bb6d519641c9c2d964108b12fcd9a95b62b6ba5df786f"
     },
@@ -564,10 +560,6 @@
     {
       "path": "packages/gate/dist/action-refusal-statement.js",
       "sha256": "694ca5aa76029afcacf6509890d482e852fb7de7e81c18404e5dfc3a85104d8f"
-    },
-    {
-      "path": "packages/gate/dist/action-risk-control-schedule.js",
-      "sha256": "61a185e3e99fd025e7606f7b7e8807f5ddc5f8bd4c0b5f47644299068f307f8f"
     },
     {
       "path": "packages/gate/dist/adapter-manifest.js",
@@ -691,7 +683,7 @@
     },
     {
       "path": "packages/gate/dist/index.js",
-      "sha256": "5b30506cca922e393d5edffb635795eed699dda0a8727894ba5dcb90a1fabfa1"
+      "sha256": "149207fe59d551d9343d73be173b9e9be272415026b65602f4df9e488e90c2f8"
     },
     {
       "path": "packages/gate/dist/key-registry.js",
@@ -748,10 +740,6 @@
     {
       "path": "packages/gate/dist/provider-entry.js",
       "sha256": "d9e273b3833239d375477a43cd23986dcb8de27afd4af243f6f229608c719b73"
-    },
-    {
-      "path": "packages/gate/dist/provider-outcome-binding.js",
-      "sha256": "009d0a42f5d6559d7e671d48ad4061cec1c46c0cf4b429dabf2f6b423f328c31"
     },
     {
       "path": "packages/gate/dist/receipt-census.js",
@@ -903,7 +891,7 @@
     },
     {
       "path": "packages/gate/src/index.ts",
-      "sha256": "a5b5d91f85595b279c7e91390b57e38417c5ddc45c66932a38b9e5074c0ccd5a"
+      "sha256": "0a1888ea3f216e7956441d7109a5a41a2ae2dd49071d1ecd46a508b46c7c3c66"
     },
     {
       "path": "packages/gate/src/network-witness.ts",
@@ -1115,7 +1103,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
-      "sha256": "1d87c764a932439af2a5e38e61ec0ddd2438fe91aae8919dbcd53c896f6a7b9f"
+      "sha256": "1512b1fd04fd2261c7b9a224eb01544e8ebd40bdc053b3f81a8d909d37e051d0"
     },
     {
       "path": "packages/verify/dist/agent-edge-continuity.js",
@@ -1328,10 +1316,6 @@
     {
       "path": "packages/verify/index.js",
       "sha256": "f386e365a9998f08ea4947ffd415ca353c0a82766677a8e0cf3117909cccee24"
-    },
-    {
-      "path": "packages/verify/outcome-binding.js",
-      "sha256": "87955ae85a628cb75fc986f98d342496f0ae8c174c7f31567bda654760221b2c"
     },
     {
       "path": "packages/verify/pq-signature-agility.js",

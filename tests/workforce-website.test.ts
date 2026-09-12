@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   WorkforceIntroduction,
   WorkforceHandover,
@@ -21,15 +21,26 @@ const read = (path: string): string => readFileSync(resolve(ROOT, path), 'utf8')
 const sections = [WorkforceIntroduction, WorkforceHandover, WorkforceResponsibilities, WorkforceFoundation, WorkforceReadiness, WorkforceNextStep];
 const markup = sections.map(section => renderToStaticMarkup(createElement(section))).join('\n');
 const text = markup.replace(/<[^>]*>/g, ' ').replace(/&#x27;|&#39;|&apos;/g, "'").replace(/\s+/g, ' ');
+afterEach(() => vi.unstubAllEnvs());
 
 describe('workforce website story and public claim boundaries', () => {
   it('renders the human headline and job-first promise without a product-inventory lead', () => {
     const introduction = renderToStaticMarkup(createElement(WorkforceIntroduction));
-    expect(introduction).toMatch(/<h1[^>]*>Your AI workforce<br\s*\/?\s*>needs management\.<\/h1>/);
-    expect(introduction).toContain('Give every agent a job, set its authority, and know what happened.');
-    expect(introduction).toContain('Authorization infrastructure for agentic AI');
-    expect(introduction).toContain('href="/contact#workforce"');
-    expect(introduction).toContain('Discuss your workflow');
+    expect(introduction).toMatch(/<h1[^>]*>Build your<br\s*\/?\s*>AI workforce\.<\/h1>/);
+    expect(introduction).toContain('Find specialized agents or bring your own. Give them a job, set their limits and see how they perform.');
+    expect(introduction).toContain('href="#build-your-workforce"');
+    expect(introduction).toContain('Build your workforce');
+    expect(introduction).toContain('Bring your agent');
+    expect(introduction).toContain('emilia-workforce-coastal-path-v1.webp');
+    expect(introduction).toContain('AI-generated landscape.');
+    expect(introduction).not.toMatch(/mechanical hand|emilia-workforce-atelier-v1/);
+    expect(text).toContain('Help builders earn work, help companies delegate it, and make every completed assignment improve the next decision.');
+    vi.stubEnv('WORKS_V0', '0');
+    const disabled = renderToStaticMarkup(createElement(WorkforceIntroduction));
+    expect(disabled).toContain('href="/scan#run-local"');
+    expect(disabled).not.toContain('href="/works/scan"');
+    vi.stubEnv('WORKS_V0', '1');
+    expect(renderToStaticMarkup(createElement(WorkforceIntroduction))).toContain('href="/works/scan"');
     expect(introduction).not.toContain('universal authority toll booth');
   });
 
@@ -49,7 +60,7 @@ describe('workforce website story and public claim boundaries', () => {
   });
 
   it('keeps alpha, operational and commercial readiness limits beside the product', () => {
-    expect(text).toContain('Private local alpha. Evaluations by arrangement, not a hosted service.');
+    expect(text).toContain('Workforce workspace: private local alpha. Evaluations by arrangement, not a hosted service.');
     expect(text).toContain('one trusted host with bounded local storage');
     expect(text).toContain('no high availability or rollback resistance');
     expect(text).toContain('not a multi-tenant hosted service or a customer deployment');
@@ -64,6 +75,8 @@ describe('workforce website story and public claim boundaries', () => {
     expect(text).toContain('Removing an assignment stops new covered actions, not actions already underway.');
     expect(text).toContain('Keep what Gate permitted, what the provider reported and what a reviewer accepted as separate facts.');
     expect(text).toContain('A signed receipt does not prove the job was done well.');
+    expect(text).toContain('The work record must name the assignment and agent version.');
+    expect(text).toContain("a replacement does not inherit the old agent's score.");
     expect(text).toContain('agent self-review are refused');
     expect(text).toContain('certify legal compliance');
   });

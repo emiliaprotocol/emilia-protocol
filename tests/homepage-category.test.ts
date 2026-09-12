@@ -30,18 +30,18 @@ describe('homepage category contract', () => {
     const story = read('components/workforce/WorkforceStory.tsx');
     const route = read('app/page.js');
 
-    expect(route).toContain('Your AI Workforce Needs Management | EMILIA');
-    expect(route).toContain('Give every agent a job, set its authority, and know what happened.');
+    expect(route).toContain('Build Your AI Workforce | EMILIA');
+    expect(route).toContain('Find specialized agents or bring your own.');
     expect(page).toContain("from '@/components/workforce/WorkforceStory'");
     for (const section of ['WorkforceIntroduction', 'WorkforceHandover', 'WorkforceResponsibilities', 'WorkforceFoundation', 'WorkforceNextStep']) {
       expect(page).toContain(`<${section} />`);
     }
-    expect(story).toContain('Your AI workforce<br />needs management.');
+    expect(story).toContain('Build your<br />AI workforce.');
     expect(story).toContain('The job stays. The agent can change.');
     expect(story).toContain('EMILIA is the company.');
     expect(story).toContain('Gate applies your authority.');
     expect(story).toContain('The Protocol stays open.');
-    expect(story).toContain('Private local alpha.');
+    expect(story).toContain('Workforce workspace: private local alpha.');
     expect(story).toContain('href="/contact#workforce"');
     expect(story).toContain('href="/scan#run-local"');
     expect(page).toContain('href="/workforce"');
