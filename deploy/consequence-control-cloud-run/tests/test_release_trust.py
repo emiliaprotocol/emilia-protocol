@@ -993,6 +993,7 @@ class SchemaCandidateReconciliationTests(unittest.TestCase):
                 self.migration(base, name, raw)
             for name, raw in new.items():
                 self.migration(candidate, name, raw)
+            self.ledger(base, old, [])
             self.ledger(candidate, new, ["20260101000000"])
             result = run(
                 "node",
@@ -1008,7 +1009,7 @@ class SchemaCandidateReconciliationTests(unittest.TestCase):
     def test_candidate_rewrite_and_unclassified_addition_are_refused(self) -> None:
         for rewrite, pending, expected in (
             (True, ["20260101000000"], "rewrites base migration"),
-            (False, [], "not classified as pending"),
+            (False, [], "classified exactly once as pending or remote"),
         ):
             with self.subTest(expected=expected), tempfile.TemporaryDirectory() as directory:
                 base = Path(directory) / "base"
@@ -1022,6 +1023,7 @@ class SchemaCandidateReconciliationTests(unittest.TestCase):
                     self.migration(base, name, raw)
                 for name, raw in new.items():
                     self.migration(candidate, name, raw)
+                self.ledger(base, old, [])
                 self.ledger(candidate, new, pending)
                 result = run(
                     "node",
@@ -1047,6 +1049,7 @@ class SchemaCandidateReconciliationTests(unittest.TestCase):
                 self.migration(base, "001_base.sql", files["001_base.sql"])
                 for name, raw in files.items():
                     self.migration(candidate, name, raw)
+                self.ledger(base, {"001_base.sql": files["001_base.sql"]}, [])
                 self.ledger(candidate, files, pending, extra_public=extra_public)
                 result = run(
                     "node", str(SCHEMA_RECONCILE), "--base-root", str(base),
@@ -1069,6 +1072,7 @@ class SchemaCandidateReconciliationTests(unittest.TestCase):
                 pending = ["20260101000000"] if label == "pending overlaps remote" else []
                 self.migration(base, "001_base.sql", files["001_base.sql"])
                 self.migration(candidate, "001_base.sql", files["001_base.sql"])
+                self.ledger(base, files, [])
                 self.ledger(
                     candidate, files, pending, remote=remote,
                     private_remote=private_remote,
