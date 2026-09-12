@@ -1,6 +1,9 @@
 import { verifyAuthorizationBundle } from './authorization-bundle.js';
 type Obj = Record<string, any>;
 export declare const AEC_VERSION = "EP-AEC-v1";
+declare function isRecord(v: any): boolean;
+declare function own(obj: any, key: string): boolean;
+declare function sha256hex(s: string): string;
 /** Canonical action digest (hex). NOTE: uses EP's canonicalize(); see the JCS
  *  conformance note in the spec — the shared substrate MUST be true RFC 8785. */
 export declare function actionDigest(action: any): string;
@@ -187,9 +190,9 @@ export declare function createAuthorizationChainEvaluator(configuration: AecEval
 }>;
 export declare const __aecSecurityInternals: Readonly<{
     builtinVerifiers: typeof builtinVerifiers;
-    isRecord: (v: any) => boolean;
-    own: (obj: any, key: string) => boolean;
-    sha256hex: (s: string) => string;
+    isRecord: typeof isRecord;
+    own: typeof own;
+    sha256hex: typeof sha256hex;
     normDigest: typeof normDigest;
     strictInstantMs: typeof strictInstantMs;
     freshAt: typeof freshAt;
