@@ -5,7 +5,9 @@
 // The live schema check deliberately executes only trusted base-branch code.
 // This companion check treats the candidate checkout as data and proves that
 // it preserves every base migration byte-for-byte while classifying every new
-// migration in the governed migration-history ledger.
+// migration in the governed migration-history ledger. A candidate's remote
+// classification is a declaration, not proof that its SQL has run. This check
+// does not replace or suppress the independent live schema reconciliation.
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -71,39 +73,43 @@ function versionOf(filename) {
   return version;
 }
 
-function readLedger(root) {
+function readLedger(root, label) {
   const file = path.join(root, 'supabase', 'migration-history.v1.json');
   const metadata = fs.lstatSync(file);
   if (!metadata.isFile() || metadata.isSymbolicLink() || metadata.nlink !== 1) {
-    fail('candidate migration ledger must be one regular non-symlink file');
+    fail(`${label} migration ledger must be one regular non-symlink file`);
   }
   let ledger;
   try {
     ledger = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (error) {
-    fail(`candidate migration ledger is invalid JSON: ${error.message}`);
+    fail(`${label} migration ledger is invalid JSON: ${error.message}`);
   }
   if (ledger.schema_version !== 'EP-MIGRATION-HISTORY-v1') {
-    fail('candidate migration ledger version is invalid');
+    fail(`${label} migration ledger version is invalid`);
   }
   const retroactive = ledger.retroactive_pending_versions;
   const forward = ledger.forward_pending_versions;
   const sequence = ledger.deployment_sequence;
+  const remote = ledger.remote_versions;
+  const privateRemote = ledger.private_remote_versions;
   const publicFiles = ledger.public_files;
-  if (![retroactive, forward, sequence].every(Array.isArray)
+  if (![retroactive, forward, sequence, remote, privateRemote].every(Array.isArray)
       || !publicFiles || typeof publicFiles !== 'object' || Array.isArray(publicFiles)) {
-    fail('candidate migration ledger is missing pending classifications or public hashes');
+    fail(`${label} migration ledger is missing classifications or public hashes`);
   }
   const pending = [...retroactive, ...forward];
-  if (pending.some((value) => typeof value !== 'string' || !VERSION_RE.test(value))
-      || new Set(pending).size !== pending.length) {
-    fail('candidate pending migration classification is invalid or duplicated');
+  for (const [name, versions] of [['pending', pending], ['remote', remote], ['private remote', privateRemote]]) {
+    if (versions.some((value) => typeof value !== 'string' || !VERSION_RE.test(value))
+        || new Set(versions).size !== versions.length) {
+      fail(`${label} ${name} migration classification is invalid or duplicated`);
+    }
   }
   if (sequence.length !== pending.length
       || sequence.some((value, index) => value !== pending[index])) {
-    fail('candidate deployment sequence must equal retroactive then forward pending versions');
+    fail(`${label} deployment sequence must equal retroactive then forward pending versions`);
   }
-  return { pending: new Set(pending), publicFiles };
+  return { pending: new Set(pending), remote: new Set(remote), privateRemote: new Set(privateRemote), publicFiles, asOf: ledger.as_of };
 }
 
 const argumentsMap = parseArguments();
@@ -119,10 +125,29 @@ for (const [name, bytes] of baseFiles) {
 }
 
 const added = [...candidateFiles.keys()].filter((name) => !baseFiles.has(name));
-const ledger = readLedger(argumentsMap['candidate-root']);
+const baseLedger = readLedger(argumentsMap['base-root'], 'trusted base');
+const ledger = readLedger(argumentsMap['candidate-root'], 'candidate');
+try {
+  validateMigrationHistory(argumentsMap['base-root']);
+} catch (error) {
+  fail(`trusted base migration history is invalid: ${error.message}`);
+}
+for (const version of baseLedger.remote) {
+  if (!ledger.remote.has(version)) fail(`candidate removes or demotes an existing remote version: ${version}`);
+}
+for (const version of baseLedger.privateRemote) {
+  if (!ledger.privateRemote.has(version)) fail(`candidate removes an existing private remote version: ${version}`);
+}
+// Full validation below checks calendar validity; canonical ISO dates compare
+// in chronological order. A later observation cannot erase the trusted one.
+if (typeof ledger.asOf !== 'string' || ledger.asOf < baseLedger.asOf) {
+  fail('candidate observation date must not precede the trusted base');
+}
 for (const name of added) {
   const version = versionOf(name);
-  if (!ledger.pending.has(version)) fail(`new migration is not classified as pending: ${name}`);
+  if (ledger.pending.has(version) === ledger.remote.has(version)) {
+    fail(`new migration must be classified exactly once as pending or remote: ${name}`);
+  }
   const expectedHash = ledger.publicFiles[name];
   if (typeof expectedHash !== 'string' || !HASH_RE.test(expectedHash)) {
     fail(`new migration lacks a canonical ledger hash: ${name}`);
@@ -148,4 +173,4 @@ try {
   fail(`candidate migration history is invalid: ${error.message}`);
 }
 
-console.log(`PR candidate reconciled: ${baseFiles.size} immutable base migrations, ${added.length} classified additions`);
+console.log(`PR candidate reconciled: ${baseFiles.size} immutable base migrations, ${added.length} classified additions; live deployment is not verified by this data-only check`);

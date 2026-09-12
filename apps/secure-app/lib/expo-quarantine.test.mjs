@@ -17,8 +17,8 @@ const inputs = () => ({
 
 test('the committed Expo graph accepts only the current seven-day quarantine entries', () => {
   assert.deepEqual(
-    verifyExpoQuarantine({ ...inputs(), now: new Date('2026-08-29T16:00:00Z') }),
-    ['expo', 'expo-asset', 'expo-secure-store'],
+    verifyExpoQuarantine({ ...inputs(), now: new Date('2026-09-12T06:00:00Z') }),
+    ['expo', 'expo-asset', 'expo-local-authentication', 'expo-screen-capture', 'expo-secure-store'],
   );
 });
 
@@ -44,7 +44,7 @@ test('the Expo quarantine fails as soon as a held patch becomes eligible', () =>
 
 test('an unreviewed Expo Doctor exclusion cannot hide behind the quarantine', () => {
   const candidate = inputs();
-  candidate.packageJson.expo.install.exclude.push('expo-local-authentication');
+  candidate.packageJson.expo.install.exclude.push('expo-status-bar');
   assert.throws(
     () => verifyExpoQuarantine({ ...candidate, now: new Date('2026-08-29T16:00:00Z') }),
     /exclusions and quarantine exceptions differ/u,
