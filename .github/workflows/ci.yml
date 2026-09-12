@@ -352,6 +352,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: npm ci --prefix examples/aeb-crossing-lab/insight-oracle-swap-v3 --ignore-scripts
       - name: Type-check backend/tooling tier (checkJs)
         run: npx tsc -p tsconfig.rest.json --incremental false
 
