@@ -1,5 +1,18 @@
 # EMILIA Protocol -- Deployment Guide
 
+## Deployment ownership
+
+The company-operated `emiliaprotocol.ai` site, including Works, is deployed from
+the private `emiliaprotocol/emilia-company` repository at
+`commercial/emilia-works`. Do not deploy this public checkout over the existing
+company production project: the public tree does not contain the Works app.
+
+This guide covers independent deployments of the public protocol application
+in a separate project. Changes to shared public code reach the company site
+through a reviewed update to the private application's `source-lock.json`.
+Moving the Works source does not remove its production database tables or
+relax their live schema, access-control, or migration-journal checks.
+
 ## Prerequisites
 
 | Requirement | Version | Notes |

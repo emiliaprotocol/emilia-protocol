@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 import Link from 'next/link';
 import Image from 'next/image';
-import { isWorksV0Enabled } from '@/lib/works/env';
 import styles from './workforce.module.css';
 
 export function WorkforceIntroduction() {
-  const worksEnabled = isWorksV0Enabled();
   return <section className={styles.hero} aria-labelledby="workforce-title"><div className={styles.container + ' ' + styles.heroLayout}>
     <div className={styles.heroCopy}>
     <p className={styles.eyebrow}>AI workers. Human direction.</p>
@@ -13,7 +11,7 @@ export function WorkforceIntroduction() {
     </div>
     <div className={styles.heroOverview}>
       <p className={styles.promise}>Find specialized agents or bring your own. Give them a job, set their limits and see how they perform.</p>
-      <div className={styles.actions}><Link href="#build-your-workforce" className={styles.primary}>Build your workforce</Link><Link href={worksEnabled ? '/works/scan' : '/scan#run-local'} className={styles.secondary}>Bring your agent</Link></div>
+      <div className={styles.actions}><Link href="#build-your-workforce" className={styles.primary}>Build your workforce</Link><Link href="/scan#run-local" className={styles.secondary}>Bring your agent</Link></div>
       <p className={styles.caption}>Workforce workspace: private local alpha. Evaluations by arrangement, not a hosted service.</p>
     </div>
     <figure className={styles.heroVisual}>
@@ -52,7 +50,6 @@ export function WorkforceHandover() {
 }
 
 export function WorkforceResponsibilities() {
-  const worksEnabled = isWorksV0Enabled();
   return <section id="build-your-workforce" className={styles.section + ' ' + styles.tinted} aria-labelledby="responsibility-title"><div className={styles.container + ' ' + styles.journeyLayout}>
     <div className={styles.heading}>
       <p className={styles.eyebrow}>For companies</p>
@@ -62,7 +59,7 @@ export function WorkforceResponsibilities() {
       <p className={styles.caption}>A workflow evaluation, not a hosted signup.</p>
     </div>
     <div className={styles.journey}>
-      <article><span aria-hidden="true">01</span><div><h3>Know who you are bringing in.</h3><p>Look at the builder, the exact agent version and its declared tools. A free scan helps you spot actions that deserve limits before you connect anything.</p>{worksEnabled ? <Link href="/works">Explore the marketplace</Link> : <Link href="/scan#run-local">Map declared actions</Link>}</div></article>
+      <article><span aria-hidden="true">01</span><div><h3>Know who you are bringing in.</h3><p>Look at the builder, the exact agent version and its declared tools. A free scan helps you spot actions that deserve limits before you connect anything.</p><Link href="/scan#run-local">Map declared actions</Link></div></article>
       <article><span aria-hidden="true">02</span><div><h3>Agree on the job.</h3><p>Name the owner, set the allowance and decide what a good result looks like. Gate enforces those instructions on configured tools. Exceptions return to the owner.</p><Link href="#the-handover">See a refunds example</Link></div></article>
       <article><span aria-hidden="true">03</span><div><h3>Use the work to judge the worker.</h3><p>Keep what Gate permitted, what the provider reported and what a reviewer accepted as separate facts. A signed receipt does not prove the job was done well.</p><p className={styles.journeyNote}>The work record must name the assignment and agent version. Missing reviews stay unknown; a replacement does not inherit the old agent&apos;s score.</p></div></article>
     </div>
@@ -112,17 +109,9 @@ export function WorkforceNextStep() {
   </div></section>;
 }
 
+// The operated marketplace is owned and deployed by the private company app.
 export function WorkforceMarketplace() {
-  if (!isWorksV0Enabled()) return null;
-  return <section className={styles.section + ' ' + styles.marketplace} aria-labelledby="marketplace-entry-title"><div className={styles.container + ' ' + styles.marketplaceLayout}>
-    <div>
-    <p className={styles.eyebrow}>For builders</p>
-    <h2 id="marketplace-entry-title">Give your agent a way to earn work.</h2>
-    <p className={styles.lead}>Show what it does, what it can reach and which version a company would be bringing in. Start with a free private scan. Then choose what to list and which jobs to respond to.</p>
-    <p className={styles.caption}>No account or upload for the browser scan. Listing is a separate step; public Authority Records require owner approval. No automatic publication, safety certification or promise of paid work.</p>
-    </div>
-    <div className={styles.actions}><Link href="/works/scan" className={styles.outlined}>Bring your agent</Link><Link href="/works/opportunities" className={styles.secondary}>Explore posted jobs</Link><Link href="/works/join" className={styles.secondary}>List your agent</Link></div>
-  </div></section>;
+  return null;
 }
 
 export function WorkforceEntry() {
