@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build-adapter.mjs",
+    "test": "node regression-tests.mjs"
+  },
+  "dependencies": {
+    "@noble/curves": "1.9.7",
+    "canonicalize": "4.0.0",
+    "verify-insight-receipt": "0.2.0",
+    "viem": "2.56.3"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.1"
+  }
+}
