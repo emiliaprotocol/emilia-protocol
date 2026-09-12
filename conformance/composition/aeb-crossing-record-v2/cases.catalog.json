@@ -1,5 +1,5 @@
 {
-  "@version": "EP-AEB-CROSSING-RECORD-VECTORS-v2",
+  "@version": "EP-AEB-CROSSING-RECORD-CASE-CATALOG-v2",
   "record_version": "EP-AEB-CROSSING-RECORD-v2",
   "cases": [
     { "id": "V2-VALID", "expected": "verified" },
@@ -17,4 +17,3 @@
   ],
   "claim_boundary": "A verified record is historical evidence and never authorizes another crossing. V1 records retain only v1 semantics."
 }
-

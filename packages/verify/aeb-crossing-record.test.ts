@@ -406,7 +406,7 @@ test("the committed v2 vector catalog covers the direct hostile cases", () => {
   const vectors = JSON.parse(
     readFileSync(
       new URL(
-        "../../conformance/composition/aeb-crossing-record-v2/vectors.json",
+        "../../conformance/composition/aeb-crossing-record-v2/cases.catalog.json",
         import.meta.url,
       ),
       "utf8",

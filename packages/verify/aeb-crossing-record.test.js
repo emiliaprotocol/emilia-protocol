@@ -313,7 +313,7 @@ test("v1 and v2 reject downgrade, relabeling, and cross-version verification", a
     assert.equal((await verify(relabeledV2)).verified, false);
 });
 test("the committed v2 vector catalog covers the direct hostile cases", () => {
-    const vectors = JSON.parse(readFileSync(new URL("../../conformance/composition/aeb-crossing-record-v2/vectors.json", import.meta.url), "utf8"));
+        const vectors = JSON.parse(readFileSync(new URL("../../conformance/composition/aeb-crossing-record-v2/cases.catalog.json", import.meta.url), "utf8"));
     assert.equal(vectors.record_version, AEB_CROSSING_RECORD_V2_VERSION);
     assert.deepEqual(new Set(vectors.cases.map((entry) => entry.id)), new Set([
         "V2-VALID",
