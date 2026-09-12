@@ -3,8 +3,8 @@
  *
  * Structure + the security-critical REJECTION paths are exercised here against
  * node-saml's real validator (unsigned, garbage, and empty responses must NOT
- * authenticate, because wantAssertionsSigned is on). When openssl is available
- * (CI + dev), we additionally generate a throwaway IdP cert, sign a real SAML
+ * authenticate, because wantAssertionsSigned is on). OpenSSL is required for
+ * this suite: we generate a throwaway IdP cert, sign a real SAML
  * assertion and Response envelope with xml-crypto, and prove the ACS ACCEPTS a
  * valid targeted message and REJECTS one signed by a different key.
  *
@@ -20,24 +20,17 @@ const SP_ENTITY_ID = 'https://www.emiliaprotocol.ai/sp';
 const ACS_URL = 'https://www.emiliaprotocol.ai/api/sso/saml/acs';
 const IDP_ENTRY = 'https://idp.example.com/sso';
 
-// Generate a throwaway IdP keypair+cert via openssl AT COLLECTION TIME (sync, at
-// import) so it.skipIf — which is evaluated when tests are collected, before any
-// beforeAll — sees the real availability. No private keys are committed.
+// Generate throwaway fixtures at collection time. Missing OpenSSL or any
+// certificate-generation failure MUST fail the suite, not silently skip the
+// signed positive and hostile cases. No private keys are committed.
 function genCert(): any {
   const key = execFileSync('openssl', ['genrsa', '2048'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   const cert = execFileSync('openssl', ['req', '-new', '-x509', '-key', '/dev/stdin', '-days', '2', '-subj', '/CN=fixture-idp'], { input: key, encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
   return { key, cert, certBody: cert.replace(/-----(BEGIN|END) CERTIFICATE-----/g, '').replace(/\s+/g, '') };
 }
 
-let idp: any = null;          // { key, cert, certBody }
-let otherCertBody: any = null;
-try {
-  idp = genCert();
-  otherCertBody = genCert().certBody;
-} catch {
-  idp = null;            // openssl unavailable — positive signed tests skip cleanly
-}
-const NO_OPENSSL = !idp;
+const idp = genCert();
+const otherCertBody = genCert().certBody;
 
 function sp(idpCertBody: string, wantAuthnResponseSigned = true): any {
   return buildSamlSp({
@@ -129,7 +122,7 @@ describe('SAML SP — rejection paths (must not authenticate)', () => {
 });
 
 describe('SAML SP — signed Response and Assertion round-trip (openssl required)', () => {
-  it.skipIf(NO_OPENSSL)('ACCEPTS a validly-signed targeted message', async () => {
+  it('ACCEPTS a validly-signed targeted message', async () => {
     const signed = signTargetedResponse(samlResponseXml(), idp.key, idp.cert);
     const r = await validateSamlResponse(
       sp(idp.certBody),
@@ -140,7 +133,7 @@ describe('SAML SP — signed Response and Assertion round-trip (openssl required
     expect(r.profile.nameID).toBe('approver@example.com');
   });
 
-  it.skipIf(NO_OPENSSL)('REJECTS a message signed by a different key', async () => {
+  it('REJECTS a message signed by a different key', async () => {
     const signed = signTargetedResponse(samlResponseXml(), idp.key, idp.cert);
     // Configure the SP to trust a DIFFERENT cert than the one that signed.
     const r = await validateSamlResponse(
@@ -162,12 +155,12 @@ describe('SAML ACS — signed response target binding (openssl required)', () =>
     );
   };
 
-  it.skipIf(NO_OPENSSL)('accepts matching signed Destination and bearer Recipient', async () => {
+  it('accepts matching signed Destination and bearer Recipient', async () => {
     const r = await validateTargetedResponse(samlResponseXml());
     expect(r.valid).toBe(true);
   });
 
-  it.skipIf(NO_OPENSSL)('rejects a signed Response addressed to another Destination', async () => {
+  it('rejects a signed Response addressed to another Destination', async () => {
     const r = await validateTargetedResponse(samlResponseXml({
       destination: 'https://other.example/api/sso/saml/acs',
     }));
@@ -175,7 +168,7 @@ describe('SAML ACS — signed response target binding (openssl required)', () =>
     expect(r.error).toMatch(/Destination does not match/);
   });
 
-  it.skipIf(NO_OPENSSL)('rejects a signed bearer assertion addressed to another Recipient', async () => {
+  it('rejects a signed bearer assertion addressed to another Recipient', async () => {
     const r = await validateTargetedResponse(samlResponseXml({
       recipient: 'https://other.example/api/sso/saml/acs',
     }));
@@ -183,7 +176,7 @@ describe('SAML ACS — signed response target binding (openssl required)', () =>
     expect(r.error).toMatch(/Recipient does not match/);
   });
 
-  it.skipIf(NO_OPENSSL)('requires both Destination and bearer Recipient', async () => {
+  it('requires both Destination and bearer Recipient', async () => {
     const missingDestination = await validateTargetedResponse(samlResponseXml({ includeDestination: false }));
     const missingRecipient = await validateTargetedResponse(samlResponseXml({ includeRecipient: false }));
 
@@ -193,7 +186,7 @@ describe('SAML ACS — signed response target binding (openssl required)', () =>
     expect(missingRecipient.error).toMatch(/Recipient does not match/);
   });
 
-  it.skipIf(NO_OPENSSL)('rejects multiple bearer confirmations even when both recipients match', async () => {
+  it('rejects multiple bearer confirmations even when both recipients match', async () => {
     const r = await validateTargetedResponse(samlResponseXml({
       additionalBearerRecipient: ACS_URL,
     }));

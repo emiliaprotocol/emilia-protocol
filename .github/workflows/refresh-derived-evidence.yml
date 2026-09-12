@@ -1,0 +1,126 @@
+name: Refresh derived evidence for maintainer review
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'refresh-evidence' &&
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SOURCE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
+    steps:
+      - name: Check out exact evidence source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.0'
+
+      - name: Install governed dependencies
+        run: |
+          python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
+          npm ci --ignore-scripts
+
+      - name: Download pinned TLC model checker
+        env:
+          TLA_VERSION: v1.7.4
+          TLA_ASSET_ID: '184694200'
+          TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/download-tla2tools.sh "$TLA2TOOLS_JAR"
+
+      - name: Execute the official derived-evidence writer
+        env:
+          NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
+        run: npm run sync:proof-stats
+
+      - name: Refresh and validate public evidence context
+        run: |
+          npm run sync:llm-context
+          npm run check:llm-context
+          npm run check:public-conformance-claims
+
+      - name: Bind generated evidence to the checked-out source
+        run: |
+          test "$SOURCE_SHA" = "$(git rev-parse 'HEAD^{commit}')"
+          mkdir -p test-results
+          node --input-type=module -e '
+            import { createHash } from "node:crypto";
+            import { readFileSync, writeFileSync } from "node:fs";
+            const files = [
+              "security/security-case.json",
+              "lib/proof-stats.json",
+              "AI_CONTEXT.md",
+              "public/llms.txt",
+              "public/llms-full.txt",
+              "public/.well-known/emilia-context.json",
+            ];
+            const file_sha256 = Object.fromEntries(files.map((file) => [
+              file,
+              createHash("sha256").update(readFileSync(file)).digest("hex"),
+            ]));
+            const provenance = {
+              "@version": "EP-DERIVED-EVIDENCE-REFRESH-v1",
+              source_sha: process.env.SOURCE_SHA,
+              repository: process.env.GITHUB_REPOSITORY,
+              workflow_run_id: process.env.GITHUB_RUN_ID,
+              workflow_run_attempt: Number(process.env.GITHUB_RUN_ATTEMPT),
+              file_sha256,
+            };
+            writeFileSync(
+              "test-results/derived-evidence-provenance.json",
+              JSON.stringify(provenance, null, 2) + "\n",
+              { mode: 0o600 },
+            );
+          '
+
+      - name: Upload derived evidence for maintainer review
+        if: ${{ success() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: derived-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+          path: |
+            security/security-case.json
+            lib/proof-stats.json
+            AI_CONTEXT.md
+            public/llms.txt
+            public/llms-full.txt
+            public/.well-known/emilia-context.json
+            test-results/derived-evidence-provenance.json
