@@ -19,7 +19,8 @@
       "bounded_sections": [
         "5 Validation Procedure",
         "8 Extensibility Framework",
-        "9 Privacy Considerations (GDPR / Right to Erasure)"
+        "9 Privacy Considerations (GDPR / Right to Erasure)",
+        "10 Security Considerations"
       ]
     }
   ],
