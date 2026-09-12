@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+// Generated from aeb-consequence-conformance.test.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
+/* eslint-disable */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';

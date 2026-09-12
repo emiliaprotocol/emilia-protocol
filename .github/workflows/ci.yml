@@ -525,6 +525,10 @@ jobs:
         env:
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
         run: npm run conformance:hostility
+      - name: Run hostility against every live conformance suite
+        env:
+          NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
+        run: npm run conformance:hostility:current
       - name: Run Model-to-Matter executor profile vectors
         env:
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
