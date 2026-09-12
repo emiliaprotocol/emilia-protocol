@@ -157,6 +157,7 @@ export const STANDALONE_RUNTIME_SOURCES = [
   'scripts/evaluate-external-implementation-v3.mts',
   'scripts/gen-python-fixture.mts',
   'scripts/generate-conformance-manifest.mts',
+  'scripts/sync-current-clean-room-pins.mts',
   'scripts/generate-llm-context.mts',
   'scripts/generate-proof-metrics.mts',
   'scripts/generate-proof-stats.mts',
