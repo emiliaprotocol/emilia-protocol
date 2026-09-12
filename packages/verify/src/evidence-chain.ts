@@ -54,13 +54,25 @@ const MAX_JSON_STRING_BYTES = 1024 * 1024;
 const RESERVED_COMPONENT_TYPES = new Set(['ep-quorum', 'ep-receipt', EP_PLATFORM_ATTESTATION_COMPONENT]);
 const IDENT_CHAR = /[A-Za-z0-9_.:-]/;
 const IDENT = /^[A-Za-z0-9_.:-]+$/;
-const HEX_256 = /^[0-9a-f]{64}$/;
-const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
+function isHex256(value: string): boolean {
+  return /^[0-9a-f]{64}$/.test(value);
+}
 
-const isRecord = (v: any): boolean => v !== null && typeof v === 'object' && !Array.isArray(v);
-const own = (obj: any, key: string): boolean => isRecord(obj) && Object.prototype.hasOwnProperty.call(obj, key);
+function rfc3339Match(value: string): RegExpMatchArray | null {
+  return value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/);
+}
 
-const sha256hex = (s: string): string => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
+function isRecord(v: any): boolean {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
+function own(obj: any, key: string): boolean {
+  return isRecord(obj) && Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function sha256hex(s: string): string {
+  return crypto.createHash('sha256').update(s, 'utf8').digest('hex');
+}
 
 /** Canonical action digest (hex). NOTE: uses EP's canonicalize(); see the JCS
  *  conformance note in the spec — the shared substrate MUST be true RFC 8785. */
@@ -72,12 +84,12 @@ export function actionDigest(action: any): string {
 function normDigest(d: any): string | null {
   if (typeof d !== 'string') return null;
   const bare = d.replace(/^sha256:/i, '').toLowerCase();
-  return HEX_256.test(bare) ? bare : null;
+  return isHex256(bare) ? bare : null;
 }
 
 function strictInstantMs(value: any): number {
   if (typeof value !== 'string') return NaN;
-  const match = value.match(RFC3339_INSTANT);
+  const match = rfc3339Match(value);
   if (!match) return NaN;
   const [, y, mo, d, h, mi, s, , oh, om] = match;
   const calendar = new Date(0);
