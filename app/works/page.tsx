@@ -1,33 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// /works — the EMILIA Marketplace directory: builders list what they are building,
-// show the work, and become discoverable. Server-rendered, flag-gated
-// (WORKS_V0=1), filterable by task, interface, license, and activity type
-// through a plain GET form — no client JS.
+// /works: server-rendered marketplace entry. Listing fields remain poster-supplied;
+// the public Authority Record service retains its separate consent boundary.
 
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
+import Form from 'next/form';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, cta, color, font, radius } from '@/lib/tokens';
 import { isWorksV0Enabled } from '@/lib/works/env';
 import { listWorksRecords } from '@/lib/works/store';
 import { createSupabaseAuthorityRecordStore } from '@/lib/works/authority-record-store';
 import { listPublicAuthorityRecords } from '@/lib/works/authority-record-service';
-import type {
-  ActivityRecord,
-  BuilderRecord,
-  CapabilityCardRecord,
-  ListingRecord,
-} from '@/lib/works/model';
+import type { ActivityRecord, BuilderRecord, CapabilityCardRecord, ListingRecord } from '@/lib/works/model';
 import { ClaimBadge, ExampleTag, Tag, WorksDisciplineNote } from './ui';
+import market from './marketplace.module.css';
+import { ShortlistProvider, ShortlistButton } from './Shortlist';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'EMILIA Works (Private Beta) — Inspectable Autonomous Work',
-  description:
-    'A directory of accountable builders and their work, with evidence status on capability statements.',
+  title: 'Find AI Workers for Your Team | EMILIA Marketplace',
+  description: 'Find specialized AI agents, inspect their declared tools and talk to their builders. Bring your own agent for a free private scan. Listings are not verified hiring availability.',
   alternates: { canonical: '/works' },
 };
 
@@ -44,13 +39,31 @@ function matches(listing: ListingRecord, filters: {
   if (filters.iface && !listing.interfaces.includes(filters.iface)) return false;
   if (filters.license && (listing.license || '') !== filters.license) return false;
   if (filters.q) {
-    const haystack = [
-      listing.name, listing.summary, listing.license || '',
-      ...listing.supported_tasks, ...listing.interfaces,
-    ].join(' ').toLowerCase();
+    const haystack = [listing.name, listing.summary, listing.license || '', ...listing.supported_tasks, ...listing.interfaces].join(' ').toLowerCase();
     if (!haystack.includes(filters.q.toLowerCase())) return false;
   }
   return true;
+}
+
+function isActiveAgent(listing: ListingRecord): boolean {
+  return listing.example === false && listing.kind === 'agent' && listing.status === 'active';
+}
+
+async function loadAuthorityRecords(): Promise<
+  | { status: 'AVAILABLE'; records: Awaited<ReturnType<typeof listPublicAuthorityRecords>> }
+  | { status: 'UNAVAILABLE' }
+> {
+  try {
+    return {
+      status: 'AVAILABLE',
+      records: await listPublicAuthorityRecords({ store: createSupabaseAuthorityRecordStore() }),
+    };
+  } catch {
+    // Configuration failures can happen before a promise exists. Keep them,
+    // and service failures, distinct from a successful empty public directory.
+    // Backend error details may contain private configuration; do not render them.
+    return { status: 'UNAVAILABLE' };
+  }
 }
 
 export default async function WorksDirectory({ searchParams }: {
@@ -59,232 +72,211 @@ export default async function WorksDirectory({ searchParams }: {
   if (!isWorksV0Enabled()) notFound();
   const params = await searchParams;
   const filters = {
-    q: one(params.q),
-    task: one(params.task),
-    iface: one(params.interface),
-    license: one(params.license),
-    activity: one(params.activity),
+    q: one(params.q), task: one(params.task), iface: one(params.interface),
+    license: one(params.license), activity: one(params.activity),
   };
 
-  const [listingsRes, buildersRes, cardsRes, activityRes, authorityRecords] = await Promise.all([
+  const [listingsRes, buildersRes, cardsRes, activityRes, authorityRecordsRes] = await Promise.all([
     listWorksRecords('listings'),
     listWorksRecords('builders'),
     listWorksRecords('cards'),
     listWorksRecords('activity'),
-    listPublicAuthorityRecords({ store: createSupabaseAuthorityRecordStore() }),
+    loadAuthorityRecords(),
   ]);
   const listings = (listingsRes.ok ? listingsRes.records : []) as ListingRecord[];
   const builders = (buildersRes.ok ? buildersRes.records : []) as BuilderRecord[];
   const cards = (cardsRes.ok ? cardsRes.records : []) as CapabilityCardRecord[];
   const activity = (activityRes.ok ? activityRes.records : []) as ActivityRecord[];
-
-  const builderById = new Map(builders.map((b) => [b.builder_id, b]));
+  const authorityRecords = authorityRecordsRes.status === 'AVAILABLE' ? authorityRecordsRes.records : [];
+  const builderById = new Map(builders.map(builder => [builder.builder_id, builder]));
   const activeByListing = new Map<string, Set<string>>();
   for (const item of activity) {
     if (!activeByListing.has(item.listing_id)) activeByListing.set(item.listing_id, new Set());
     activeByListing.get(item.listing_id)!.add(item.type);
   }
-
-  const allTasks = [...new Set(listings.flatMap((l) => l.supported_tasks))].sort();
-  const allInterfaces = [...new Set(listings.flatMap((l) => l.interfaces))].sort();
-  const allLicenses = [...new Set(listings.map((l) => l.license).filter(Boolean) as string[])].sort();
-  const allActivityTypes = [...new Set(activity.map((a) => a.type))].sort();
-
-  const visible = listings.filter((listing) => {
-    if (!matches(listing, filters)) return false;
-    if (filters.activity && !activeByListing.get(listing.listing_id)?.has(filters.activity)) return false;
-    return true;
-  });
+  const allTasks = [...new Set(listings.flatMap(listing => listing.supported_tasks))].sort();
+  const allInterfaces = [...new Set(listings.flatMap(listing => listing.interfaces))].sort();
+  const allLicenses = [...new Set(listings.map(listing => listing.license).filter(Boolean) as string[])].sort();
+  const allActivityTypes = [...new Set(activity.map(item => item.type))].sort();
+  const visible = listings.filter(listing => matches(listing, filters)
+    && (!filters.activity || activeByListing.get(listing.listing_id)?.has(filters.activity)));
   const filtersActive = Object.values(filters).some(Boolean);
-  const visibleAuthorityRecords = authorityRecords.filter((record) => {
+  const agents = listings.filter(isActiveAgent);
+  const visibleAgents = visible.filter(isActiveAgent);
+  const visibleExamples = visible.filter(listing => listing.example === true);
+  const visibleOther = visible.filter(listing => listing.example !== true && !isActiveAgent(listing));
+  const visibleAuthorityRecords = authorityRecords.filter(record => {
     if (!filters.q) return true;
     const subject = record.projection.subject;
-    return `${subject.name} ${subject.builder_name} ${subject.repository_url}`
-      .toLowerCase().includes(filters.q.toLowerCase());
+    return `${subject.name} ${subject.builder_name} ${subject.repository_url}`.toLowerCase().includes(filters.q.toLowerCase());
   });
+  const renderListing = (listing: ListingRecord) => (
+    <ListingPreview key={listing.listing_id} listing={listing}
+      builder={builderById.get(listing.builder_id)}
+      cards={cards.filter(card => card.listing_id === listing.listing_id)} />
+  );
 
   return (
-    <div style={styles.page}>
-      <SiteNav />
-
-      <section style={{ borderBottom: `1px solid ${color.border}` }}>
-        <div style={{ ...styles.sectionWide, paddingTop: 72, paddingBottom: 64 }}>
-          <div style={styles.eyebrow}>EMILIA Works · Private beta</div>
-          <h1 style={{ ...styles.h1, maxWidth: 760 }}>
-            A market for autonomous work you can inspect
-          </h1>
-          <p style={{ ...styles.body, maxWidth: 680 }}>
-            Builder profiles and listings are supplied by their posters. Capability statements carry
-            an evidence status, exact scope, source, observation date, and limitations so visitors can
-            distinguish VERIFIED evidence from an ASSERTED statement or an UNKNOWN state.
-          </p>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <Link href="/works/join" style={cta.primary} className="ep-cta">List your work</Link>
-            <Link href="/works/opportunities/new" style={cta.secondary} className="ep-cta-secondary">Post an opportunity</Link>
-            <a href="#works-listings" style={cta.ghost} className="ep-cta-ghost">Browse listings</a>
-            <a href="#authority-records" style={cta.ghost} className="ep-cta-ghost">Browse Authority Records</a>
-            <Link href="/works/opportunities" style={cta.ghost} className="ep-cta-ghost">Browse and respond</Link>
+    <div className={market.marketPage}>
+      <SiteNav activePage="works" />
+      <ShortlistProvider><main id="main-content">
+        <section className={market.marketHero}>
+          <nav className={market.marketContainer + ' ' + market.marketContext} aria-label="Marketplace context"><Link href="/workforce">EMILIA Workforce</Link><span aria-hidden="true">/</span><span>Marketplace</span><Link href="/workforce#build-your-workforce">Already have an agent? Bring it into a job</Link></nav>
+          <nav className={market.marketContainer + ' ' + market.marketTabs} aria-label="Marketplace"><a href="#works-listings" aria-current="page">Find agents</a><Link href="/works/join">Sell your agent&apos;s work</Link><Link href="/works/opportunities">Find jobs</Link><Link href="/works/scan">Free agent scan <span aria-hidden="true">↗</span></Link></nav>
+          <div className={market.marketContainer + ' ' + market.heroLayout}>
+            <div className={market.heroCopy}>
+            <p className={market.marketEyebrow}>Good work. The right worker.</p>
+            <h1>What would you<br />like <em>taken care of?</em></h1>
+            <p className={market.marketLead}>Describe the work you need done, or explore what builders have made. Compare proposals and decide who you want to work with.</p>
+            <div className={market.heroActions}>
+              <Link href="/works/opportunities/new" className={market.marketPrimary}>Describe your job</Link>
+              <a href="#works-listings" className={market.heroBrowse}>Browse agent listings <span aria-hidden="true">↓</span></a>
+            </div>
+            <p className={market.marketNote}>Draft first. Review before anything is public.</p>
+            </div>
+            <figure className={market.inspectionArt}>
+              <Image src="/emilia-workforce-coastal-path-v1.webp" alt="A sunlit coastal path winds through soft grasses toward the ocean, shaded by mature trees." width={1672} height={941} sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1432px) 45vw, 672px" loading="eager" />
+              <figcaption><p>You choose the work.<br />You set the direction.</p><span>AI-generated landscape</span></figcaption>
+            </figure>
           </div>
-        </div>
-      </section>
+          <div className={market.marketContainer + ' ' + market.returnVisit}>
+            <span>Already sent a proposal?</span> <Link href="/works/submissions">Find a proposal</Link>
+          </div>
+        </section>
 
-      <section id="authority-records" style={{ borderBottom: `1px solid ${color.border}` }}>
-        <div style={{ ...styles.sectionWide, paddingTop: 48, paddingBottom: 56 }}>
-          <div style={styles.eyebrow}>Owner-claimed · version-pinned</div>
-          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Authority Records</h2>
-          <p style={{ ...styles.body, maxWidth: 760 }}>
-            Public records appear only after the named repository proves control and its owner
-            approves the exact current bytes. Payment can buy monitoring and freshness, never a favorable result.
-          </p>
-          <div style={{ display: 'grid', gap: 14 }}>
-            {visibleAuthorityRecords.map((record) => (
-              <Link key={record.record_id} href={`/works/records/${record.record_id}`} style={{
-                display: 'grid', gap: 8, padding: 20, color: color.t1,
-                textDecoration: 'none', border: `1px solid ${color.border}`,
-                borderRadius: radius.base, background: color.card,
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <section id="works-listings" className={market.marketSection} aria-labelledby="agent-listings-title">
+          <div className={market.marketContainer}>
+            <h2 id="agent-listings-title" className={market.srOnly}>Agents for your shortlist</h2>
+            <Form action="/works" scroll={false} className={market.marketFilters}>
+              <div className={market.searchRow}><FilterField label="What work do you need done?"><input key={filters.q} name="q" defaultValue={filters.q} placeholder="Try research, refunds or customer support" type="search" maxLength={200} /></FilterField><button type="submit" className={market.marketPrimary}>Find agents <span aria-hidden="true">↗</span></button></div>
+              <div className={market.searchSuggestions}><span>Explore by task</span>{[['Research', 'research'], ['Finance', 'finance'], ['Customer support', 'support'], ['Engineering', 'code']].map(([name, query]) => <Link key={query} href={`/works?q=${query}#works-listings`}>{name}</Link>)}</div>
+              <details className={market.filterDisclosure} open={Boolean(filters.task || filters.iface || filters.license || filters.activity)}><summary>Refine by task, interface or license</summary><div className={market.advancedFilters}>
+              <FilterSelect label="Task" name="task" value={filters.task} options={allTasks} />
+              <FilterSelect label="Interface" name="interface" value={filters.iface} options={allInterfaces} />
+              <FilterSelect label="License" name="license" value={filters.license} options={allLicenses} />
+              <FilterSelect label="Activity" name="activity" value={filters.activity} options={allActivityTypes} />
+              <button type="submit" className={market.marketPrimary}>Filter listings</button>
+              </div></details>
+            </Form>
+
+            {!listingsRes.ok ? (
+              <p className={market.marketEmpty} role="status">The listing directory is unavailable right now. We cannot confirm the number of agents. Please try again later.</p>
+            ) : (
+              <>
+                <div className={market.sectionHeading}><p className={market.marketCount}>{visibleAgents.length} of {agents.length} active agent listings · examples excluded</p>{filtersActive ? <Link href="/works#works-listings">Reset filters</Link> : <span className={market.marketNote}>Builder-supplied listings</span>}</div>
+                <p className={market.marketNote}>“Active” is the poster&apos;s listing status, not verified availability for hire. Apps, projects and paused or archived work are listed separately below.</p>
+                <div className={market.marketListingList}>{visibleAgents.map(renderListing)}</div>
+                {visibleAgents.length === 0 ? (
+                  <div className={market.marketEmpty}>
+                    <div><p className={market.marketEyebrow}>{agents.length === 0 ? 'The first good match starts here' : 'Make room for a different match'}</p><h3>{agents.length === 0 ? 'No active agent listings yet.' : 'No active agents match these filters.'}</h3>
+                    <p>{agents.length === 0 ? 'Tell builders what you need done, or bring the agent you have built. We are opening the directory one real listing at a time.' : 'Try a different task or interface, or tell builders what you need.'}</p>
+                    <div className={market.marketActions}>
+                      <Link href="/works/opportunities/new" className={market.marketPrimary}>Post a job</Link>
+                      <Link href="/works/join" className={market.marketSecondary}>List your agent</Link>
+                    </div></div><aside className={market.emptyAside}><span className={market.marketEyebrow}>Want to look around first?</span><p>Explore the example directory.<br />See what a useful listing includes.</p><a href="#example-listings">See the examples <span aria-hidden="true">↗</span></a><small>Examples show the format. They are not available agents.</small></aside>
+                  </div>
+                ) : null}
+                {filtersActive && visible.length === 0 ? (
+                  <p className={market.marketNote}>No listings match these filters. <Link href="/works">Reset filters</Link></p>
+                ) : null}
+              </>
+            )}
+            {!cardsRes.ok || !buildersRes.ok || !activityRes.ok ? (
+              <p className={market.marketNote} role="status">Some builder, claim or activity records could not be loaded. Missing evidence is unknown, not a favorable result.</p>
+            ) : null}
+          </div>
+        </section>
+
+        <section className={market.builderBand} aria-labelledby="builder-band-title"><div className={market.marketContainer + ' ' + market.builderLayout}><div><p className={market.marketEyebrow}>For the people building the workers</p><h2 id="builder-band-title">You built it.<br /><em>Help someone put it to work.</em></h2><p>Show the job your agent does, the systems it needs and where its limits are. Start a conversation with a company that needs that work.</p><div className={market.marketActions}><Link href="/works/join" className={market.marketPrimary}>List your agent</Link><Link href="/works/opportunities" className={market.marketSecondary}>Find jobs for your agent</Link></div><p className={market.marketNote}>Listing and introductions today. Pricing, payment and delivery are agreed directly; EMILIA does not process agent sales.</p></div><aside className={market.scanInvitation}><p className={market.marketEyebrow}>Free, private agent scan</p><h3>Know what you are<br />asking someone to trust.</h3><p>Inspect declared tools. Flag possible money movement, access changes and other consequential actions before connecting a system.</p><Link href="/works/scan" className={market.marketSecondary}>Bring your agent <span aria-hidden="true">↗</span></Link><p className={market.marketNote}>Builders: start with a free scan. No account. No upload. Your input stays in your browser. Declarations only, not a security audit.</p></aside></div></section>
+
+        <section className={market.marketSection + ' ' + market.marketTinted} aria-labelledby="market-next-title">
+          <div className={market.marketContainer}>
+            <p className={market.marketEyebrow}>From discovery to a real workflow</p>
+            <h2 id="market-next-title">A shortlist is only the beginning.</h2>
+            <div className={market.marketColumns}>
+              <article><h3>Give the worker a job.</h3><p>Name an owner, set limits and agree on the result you need. Bring your own agent or a marketplace candidate to a workflow evaluation. The workforce workspace is a private local alpha.</p><Link href="/workforce#build-your-workforce">Build your workforce</Link><Link href="/works/opportunities/new">Post a job for builders</Link></article>
+              <article><h3>Help companies choose your work.</h3><p>Describe your agent, its constraints and the evidence you can share. Respond to posted jobs. Hiring and payment terms are agreed separately; a listing is not a promise of work.</p><Link href="/works/join">List your agent</Link><Link href="/works/opportunities">Browse and respond</Link></article>
+              <article><h3>Ready for consequential work?</h3><p>The open Gate stays free. Paid setup and support are quoted separately. Qualification concerns a named candidate and assignment; it does not authorize execution or certify an agent as safe.</p><Link href="/works/gate">Explore Gate setup and support</Link><Link href="/works/qualification">Understand qualification</Link></article>
+            </div>
+          </div>
+        </section>
+
+        <section id="authority-records" className={market.marketSection} aria-labelledby="authority-records-title">
+          <div className={market.marketContainer}>
+            <p className={market.marketEyebrow}>03 / Owner-claimed · version-pinned</p>
+            <h2 id="authority-records-title">Inspect an Authority Record</h2>
+            <p className={market.marketLead}>Public records appear only after the named repository proves control and its owner approves the exact current bytes. Private scans never appear here without that separate approval.</p>
+            <p className={market.marketNote}>Payment can buy monitoring and freshness, never a favorable result. These records are not counted as available agent listings.</p>
+            <div className={market.marketListingList}>
+              {visibleAuthorityRecords.map(record => (
+                <Link key={record.record_id} href={`/works/records/${record.record_id}`} className={market.marketAuthorityRecord}>
                   <strong>{record.projection.subject.name}</strong>
-                  <span style={{ fontFamily: font.mono, fontSize: 11, color: color.t3 }}>
-                    mapped {record.projection.provenance.observed_at.slice(0, 10)} · commit {record.projection.provenance.resolved_revision.slice(0, 12)}
-                  </span>
-                </div>
-                <span style={{ color: color.t3, fontSize: 13 }}>{record.projection.subject.builder_name}</span>
-              </Link>
-            ))}
-            {visibleAuthorityRecords.length === 0 ? (
-              <div style={{ ...styles.card, color: color.t3, fontSize: 14 }}>
-                No owner-approved Authority Records are public yet. Private scans never appear here.
-              </div>
-            ) : null}
+                  <span>{record.projection.subject.builder_name}</span>
+                  <span>Mapped {record.projection.provenance.observed_at.slice(0, 10)} · commit {record.projection.provenance.resolved_revision.slice(0, 12)}</span>
+                </Link>
+              ))}
+              {authorityRecordsRes.status === 'UNAVAILABLE' ? (
+                <p className={market.marketEmpty} role="status">Authority Records are unavailable right now. We cannot confirm which public records are available. Please try again later.</p>
+              ) : visibleAuthorityRecords.length === 0 ? <p className={market.marketEmpty}>{filters.q ? 'No owner-approved Authority Records match this search.' : 'No owner-approved Authority Records are public yet. Private scans never appear here.'}</p> : null}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="works-listings">
-        <div style={{ ...styles.sectionWide, paddingTop: 48, paddingBottom: 96 }}>
-          {/* Filters — plain GET form, server-rendered */}
-          <form method="get" action="/works" style={{
-            display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end',
-            padding: '20px 24px', background: color.card,
-            border: `1px solid ${color.border}`, borderRadius: radius.base, marginBottom: 32,
-          }}>
-            <FilterField label="Search">
-              <input name="q" defaultValue={filters.q} placeholder="Name, task, interface"
-                style={{ ...styles.input, width: 220 }} />
-            </FilterField>
-            <FilterSelect label="Task" name="task" value={filters.task} options={allTasks} />
-            <FilterSelect label="Interface" name="interface" value={filters.iface} options={allInterfaces} />
-            <FilterSelect label="License" name="license" value={filters.license} options={allLicenses} />
-            <FilterSelect label="Activity" name="activity" value={filters.activity} options={allActivityTypes} />
-            <button type="submit" style={{ ...cta.primary, padding: '12px 20px' }}>Filter</button>
-          </form>
+        {visibleOther.length > 0 ? <section className={market.marketSection} aria-labelledby="other-work-title"><div className={market.marketContainer}>
+          <h2 id="other-work-title">Other listed work</h2>
+          <p className={market.marketLead}>Apps, projects and inactive agent listings. These are not included in the active agent count.</p>
+          <div className={market.marketListingList}>{visibleOther.map(renderListing)}</div>
+        </div></section> : null}
 
-          <div style={{
-            fontFamily: font.mono, fontSize: 12, color: color.t3,
-            letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16,
-          }}>
-            {visible.length} of {listings.length} listings
-          </div>
-
-          <div style={{ display: 'grid', gap: 16 }}>
-            {visible.map((listing) => {
-              const builder = builderById.get(listing.builder_id);
-              const listingCards = cards.filter((c) => c.listing_id === listing.listing_id);
-              return (
-                <div key={listing.listing_id} style={{
-                  background: color.card, border: `1px solid ${color.border}`,
-                  borderRadius: radius.base, padding: '24px 28px',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        <Link href={`/works/listings/${listing.listing_id}`} style={{
-                          fontFamily: font.sans, fontSize: 18, fontWeight: 700,
-                          color: color.t1, textDecoration: 'none',
-                        }}>
-                          {listing.name}
-                        </Link>
-                        {listing.example ? <ExampleTag /> : null}
-                      </div>
-                      {builder ? (
-                        <Link href={`/works/builders/${builder.builder_id}`} style={{
-                          fontSize: 13, color: color.t3, textDecoration: 'none',
-                        }}>
-                          {builder.name}
-                        </Link>
-                      ) : null}
-                    </div>
-                    <div style={{ fontFamily: font.mono, fontSize: 12, color: color.t3 }}>
-                      {listing.kind} · {listing.license || 'license unspecified'} · {listing.status}
-                    </div>
-                  </div>
-
-                  <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, margin: '12px 0 16px', maxWidth: 820 }}>
-                    {listing.summary}
-                  </p>
-
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: listingCards.length ? 16 : 0 }}>
-                    {listing.supported_tasks.map((task) => <Tag key={`t-${task}`}>{task}</Tag>)}
-                    {listing.interfaces.map((iface) => <Tag key={`i-${iface}`}>{iface}</Tag>)}
-                  </div>
-
-                  {listingCards.slice(0, 2).map((card) => (
-                    <div key={card.card_id} style={{
-                      display: 'flex', alignItems: 'flex-start', gap: 12,
-                      borderTop: `1px solid ${color.border}`, paddingTop: 12, marginTop: 12,
-                    }}>
-                      <ClaimBadge claim={card.claim} />
-                      <span style={{ fontSize: 13, color: color.t2, lineHeight: 1.6 }}>
-                        {card.claim.statement}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-            {filtersActive && visible.length === 0 ? (
-              <div style={{ ...styles.card, color: color.t3, fontSize: 14 }}>
-                <div style={{ marginBottom: 12 }}>No listings match these filters.</div>
-                <Link href="/works" style={cta.secondary} className="ep-cta-secondary">Reset filters</Link>
-              </div>
-            ) : null}
-          </div>
-
+        <section id="example-listings" className={market.marketSection + ' ' + market.marketTinted} aria-labelledby="example-listings-title"><div className={market.marketContainer}>
+          <p className={market.marketEyebrow}>Read-only examples · not marketplace supply</p>
+          <h2 id="example-listings-title">See how a listing works</h2>
+          <p className={market.marketLead}>These example agents, apps and projects show the record format. They are not available workers, customer deployments or proof of marketplace adoption.</p>
+          <details className={market.examplesDisclosure}><summary>Open the example directory</summary>
+          <div className={market.marketListingList}>{visibleExamples.map(renderListing)}</div>
+          {listingsRes.ok && visibleExamples.length === 0 ? <p className={market.marketNote}>No example listings match these filters.</p> : null}
+          <p className={market.marketNote}><strong>Read the statement, not just the badge.</strong> VERIFIED describes source-backed evidence for that claim and scope, not universal agent trust. ASSERTED is a poster&apos;s statement. UNKNOWN means the evidence is missing or no longer current.</p>
           <WorksDisciplineNote />
-        </div>
-      </section>
-
+          </details>
+        </div></section>
+      </main></ShortlistProvider>
       <SiteFooter />
     </div>
   );
 }
 
+function ListingPreview({ listing, builder, cards }: {
+  listing: ListingRecord; builder?: BuilderRecord; cards: CapabilityCardRecord[];
+}) {
+  return <article className={market.marketListing}>
+    <div className={market.marketListingHeading}>
+      <div><span className={market.monogram} aria-hidden="true">{listing.name.slice(0, 2).toUpperCase()}</span><div className={market.marketTitleRow}>
+        <h3><Link href={`/works/listings/${listing.listing_id}`}>{listing.name}</Link></h3>
+        {listing.example ? <ExampleTag /> : null}
+      </div>
+      {builder ? <Link href={`/works/builders/${builder.builder_id}`} className={market.marketBuilder}>{builder.name}</Link> : <p className={market.marketNote}>Builder record unavailable.</p>}</div>
+      <p className={market.marketMeta}>{listing.kind} · {listing.license || 'license unspecified'} · {listing.status}{listing.example === undefined ? ' · example status unspecified' : ''}</p>
+    </div>
+    <p className={market.marketListingSummary}>{listing.summary}</p>
+    <div className={market.marketPills}>{listing.supported_tasks.map(task => <Tag key={`t-${task}`}>{task}</Tag>)}{listing.interfaces.map(iface => <Tag key={`i-${iface}`}>{iface}</Tag>)}</div>
+    {cards.length > 0 ? <details className={market.evidenceDisclosure}><summary>Read the evidence <span>{cards.length > 2 ? `First 2 of ${cards.length} statements` : `${cards.length} ${cards.length === 1 ? 'statement' : 'statements'}`}</span></summary>{cards.slice(0, 2).map(card => <div key={card.card_id} className={market.marketClaim}>
+      <div className={market.marketTitleRow}><ClaimBadge claim={card.claim} /><span>Statement evidence</span></div>
+      <p>{card.claim.statement}</p>
+      <p className={market.marketNote}>Scope: {card.claim.scope} · Observed {card.claim.observed_at.slice(0, 10)}</p>
+      <p className={market.marketNote}>Source: {card.claim.source?.reference || 'none recorded'}</p>
+      <p className={market.marketNote}>Limitations: {card.claim.limitations || 'not specified by the poster'}</p>
+    </div>)}</details> : null}
+    {cards.length === 0 ? <p className={market.marketNote}>No capability evidence is displayed for this listing.</p> : null}
+    <div className={market.cardFooter}><Link href={`/works/listings/${listing.listing_id}`} className={market.marketListingLink}>Inspect listing and evidence <span aria-hidden="true">↗</span></Link>{isActiveAgent(listing) && <ShortlistButton item={{ id: listing.listing_id, name: listing.name, builder: builder?.name || 'Builder unknown', summary: listing.summary, tasks: listing.supported_tasks, interfaces: listing.interfaces, constraints: listing.operating_constraints, license: listing.license || 'Not specified' }} />}</div>
+  </article>;
+}
+
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label style={{ display: 'grid', gap: 6 }}>
-      <span style={{
-        fontFamily: font.mono, fontSize: 11, letterSpacing: 1,
-        textTransform: 'uppercase', color: color.t3,
-      }}>
-        {label}
-      </span>
-      {children}
-    </label>
-  );
+  return <label className={market.marketFilterField}><span>{label}</span>{children}</label>;
 }
 
 function FilterSelect({ label, name, value, options }: {
   label: string; name: string; value: string; options: string[];
 }) {
-  return (
-    <FilterField label={label}>
-      <select name={name} defaultValue={value} style={{ ...styles.input, width: 180 }}>
-        <option value="">All</option>
-        {options.map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
-      </select>
-    </FilterField>
-  );
+  return <FilterField label={label}><select key={value} name={name} defaultValue={value}><option value="">All</option>{options.map(option => <option key={option} value={option}>{option}</option>)}</select></FilterField>;
 }

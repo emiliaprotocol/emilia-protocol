@@ -3,40 +3,36 @@
 
 Runs offline with a local policy stub:  python examples/crewai_guard.py
 
-For real CrewAI, the guard composes with the @tool decorator and a live `fetch`:
+For receipt-backed CrewAI tools, use the receipt-enforcing package instead:
 
-    import requests
     from crewai.tools import tool
-    def post(body):
-        return requests.post("https://www.emiliaprotocol.ai/api/trust/gate",
-                             data=body, headers={"content-type": "application/json"}).json()
+    from emilia_crewai import require_receipt
 
     @tool("wire_transfer")
-    @guard("payment.release",
-           context_fn=lambda kw: {"amount": kw["amount"], "destination": kw["destination"]},
-           fetch=post, on_signoff=wait_for_human)
+    @require_receipt("payment.release", trusted_keys=TRUSTED_ISSUER_KEYS,
+                     store=CONSUMPTION_STORE, assurance_class="class_a",
+                     verify_assurance=verify_human_receipt)
     def wire_transfer(amount, destination): ...
+
+The pins, durable store, and independent human-evidence verifier are deployment
+configuration. See examples/README.md. This offline demo has no human verifier,
+so its large payment remains blocked. It never moves money.
 """
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
-from emilia_guard import guard, demo_policy  # noqa: E402
-
-
-def approve(decision, _kwargs):
-    print(f"   signoff required ({decision['reason']}) — simulating CFO approval…")
+from emilia_guard import demo_policy, guard
 
 
 @guard(
     "payment.release",
     context_fn=lambda kw: {"amount": kw["amount"], "destination": kw["destination"]},
     fetch=demo_policy,
-    on_signoff=approve,
 )
 def wire_transfer(amount, destination):
-    """CrewAI tool: release a wire transfer."""
-    return f"wired ${amount:,} to {destination}"
+    """CrewAI tool shape: simulate a payment without moving funds."""
+    return f"simulated ${amount:,} payment to {destination}"
 
 
 def run(label, **kw):
@@ -50,6 +46,6 @@ def run(label, **kw):
 if __name__ == "__main__":
     print("EMILIA x CrewAI — one decorator guards a tool")
     run("1) small payment -> allowed", amount=200, destination="acct_known")
-    run("2) large payment -> human signoff -> released", amount=50000, destination="acct_new")
+    run("2) large payment -> blocked pending verified human evidence", amount=50000, destination="acct_new")
     run("3) blocked destination -> denied", amount=1000, destination="acct_sanctioned")
-    print("\nSwap demo_policy for a live `fetch`. Same guard, every irreversible tool.\n")
+    print("\nOffline policy demo. Use the receipt-enforcing package for protected tools.\n")

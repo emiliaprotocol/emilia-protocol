@@ -1,0 +1,5 @@
+# Installed-wheel tests for the native smolagents adapter.
+# Shared EMILIA dependencies are built separately from the exact release commit.
+cryptography==50.0.0
+pytest==9.1.1
+smolagents==1.26.0

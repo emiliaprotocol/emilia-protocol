@@ -8,11 +8,11 @@ import { cta, color, font, radius } from '@/lib/tokens';
 export const metadata: Metadata = {
   title: 'EMILIA Gate Pricing',
   description:
-    'Use the open EMILIA Protocol for free, run one fixed 90-day protected-workflow pilot, and scope customer-specific Gate enforcement with optional qualification and reliance-risk controls.',
+    'Explore an AI workforce evaluation or existing Gate implementation options. Workforce evaluation terms are not yet set. The open EMILIA Protocol remains free to use.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'EMILIA Gate Pricing',
-    description: 'Open verification infrastructure, one $25K protected-workflow pilot, customer-specific Gate implementation, and deployment-scoped enforcement, reconciliation, and evidence operations.',
+    description: 'AI workforce evaluations are scoped separately from existing Gate offers. The open Protocol is free; implementation and operations depend on the agreed workflow.',
     url: 'https://www.emiliaprotocol.ai/pricing',
     type: 'website',
     images: ['/og-sequence.jpg'],
@@ -151,6 +151,14 @@ export default function PricingPage(): React.ReactElement {
   return (
     <div style={{ minHeight: '100vh', background: color.bg, color: color.t1, fontFamily: font.sans }}>
       <SiteNav activePage="Pricing" />
+      <main>
+      <section aria-labelledby="workforce-evaluation-title" style={{ padding: '56px 0', background: '#f0f2eb', color: '#17251f' }}>
+        <C>
+          <h2 id="workforce-evaluation-title" style={{ fontSize: 'clamp(28px, 4vw, 42px)', lineHeight: 1.2, margin: '0 0 20px' }}>Evaluating the AI workforce workspace?</h2>
+          <p style={{ fontSize: 19, lineHeight: 1.65, maxWidth: 800 }}>Start with one refunds job, a named owner and an agreed acceptance test. The workforce product is a private local alpha. Evaluation terms are not yet set; the existing Gate offers below do not price this evaluation.</p>
+          <Link href="/contact#workforce" style={{ ...cta.primary, marginTop: 16 }}>Discuss your workflow</Link>
+        </C>
+      </section>
 
       {/* HERO */}
       <section style={{ paddingTop: 120, paddingBottom: 56 }}>
@@ -159,7 +167,7 @@ export default function PricingPage(): React.ReactElement {
             Pricing
           </div>
           <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(38px, 5vw, 64px)', letterSpacing: -2.2, lineHeight: 1.0, color: color.t1, margin: '0 0 24px', maxWidth: 780 }}>
-            Diagnose the past. Protect the next effect. Operate the boundary.
+            Open tools. Scoped implementation. Agreed operating support.
           </h1>
           <p style={{ fontSize: 18, color: color.t2, maxWidth: 620, lineHeight: 1.7, margin: 0 }}>
             The open protocol is free. The one public pilot is {PROTECTED_WORKFLOW_PILOT.shortPriceLabel} for{' '}
@@ -387,6 +395,7 @@ export default function PricingPage(): React.ReactElement {
         </C>
       </section>
 
+      </main>
       <SiteFooter />
     </div>
   );

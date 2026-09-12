@@ -133,6 +133,9 @@ const OPENAPI_EXEMPTIONS = [
   '/api/works/authority-records/[recordId]/billing/checkout',
   '/api/works/authority-records/[recordId]/billing/reconcile',
   '/api/works/billing/webhook',
+  // Flag-gated product verifier: no writes or protocol endpoint; operator-owned
+  // scope and status, bounded signed input, dedicated qualification negatives.
+  '/api/works/qualification',
   // Public lead form (marketing intake), not a protocol surface.
   '/api/pilot/request',
   // Self-serve observe-mode pilot sandbox (provision + report), not a protocol surface.

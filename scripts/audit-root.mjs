@@ -26,17 +26,82 @@ if (minimumRank === undefined) {
 const REVIEWED_ADVISORY = 'https://github.com/advisories/GHSA-mh99-v99m-4gvg';
 const REVIEWED_BRACE_EXPANSION = new Set(['2.1.3', '5.0.8']);
 
+// npm prints two structurally different JSON payloads on stdout, and its exit
+// status does not tell them apart because it is non-zero for both:
+//   * an advisory report, which always carries auditReportVersion and a
+//     vulnerabilities map;
+//   * the advisory-endpoint failure envelope from npm's lib/utils/audit-error.js,
+//     which carries the fetch error's top-level message (plus method, uri,
+//     headers, statusCode, body when npm has them) and carries no advisory data
+//     at all. npm's exit handler then appends a generic
+//     {"error":{"summary":"","detail":""}} envelope that says nothing about any
+//     package.
+// The second case is a transport failure, not a security finding, so it is
+// retried rather than reported as an advisory. It is never treated as a pass:
+// an unreachable endpoint means the audit did not happen, which is not the same
+// as an audit that found nothing.
+const AUDIT_ATTEMPTS = 3;
+// Overridable only so the unit tests do not sleep; it changes retry pacing, not
+// the pass/fail decision.
+const RETRY_DELAY_MS = Number.parseInt(process.env.EP_AUDIT_RETRY_DELAY_MS ?? '5000', 10);
+// Bound each attempt. npm's default fetch-timeout is 5 minutes, so a single
+// stalled request otherwise burns the whole job and still yields no answer.
+const AUDIT_ARGS = ['audit', '--json', '--fetch-timeout=60000', '--fetch-retries=2'];
+
+function sleepSync(milliseconds) {
+  if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0) return;
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
+
+function isEndpointFailure(payload) {
+  return payload !== null
+    && typeof payload === 'object'
+    && !Array.isArray(payload)
+    && !('auditReportVersion' in payload)
+    && !('vulnerabilities' in payload)
+    && typeof payload.message === 'string';
+}
+
+function describeEndpointFailure(payload) {
+  const parts = [payload.message];
+  if (typeof payload.statusCode === 'number') parts.push(`statusCode=${payload.statusCode}`);
+  if (typeof payload.uri === 'string') parts.push(`uri=${payload.uri}`);
+  return parts.join('; ');
+}
+
+function runAudit() {
+  try {
+    return JSON.parse(execFileSync('npm', AUDIT_ARGS, {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }));
+  } catch (error) {
+    const stdout = error?.stdout;
+    if (typeof stdout !== 'string' || stdout.length === 0) throw error;
+    return JSON.parse(stdout);
+  }
+}
+
 let report;
-try {
-  const stdout = execFileSync('npm', ['audit', '--json'], {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  report = JSON.parse(stdout);
-} catch (error) {
-  const stdout = error?.stdout;
-  if (typeof stdout !== 'string' || stdout.length === 0) throw error;
-  report = JSON.parse(stdout);
+let endpointFailure = null;
+for (let attempt = 1; attempt <= AUDIT_ATTEMPTS; attempt += 1) {
+  const payload = runAudit();
+  if (!isEndpointFailure(payload)) {
+    report = payload;
+    endpointFailure = null;
+    break;
+  }
+  endpointFailure = describeEndpointFailure(payload);
+  console.error(
+    `npm audit advisory endpoint unreachable (attempt ${attempt}/${AUDIT_ATTEMPTS}): ${endpointFailure}`,
+  );
+  if (attempt < AUDIT_ATTEMPTS) sleepSync(RETRY_DELAY_MS);
+}
+if (endpointFailure !== null) {
+  throw new Error(
+    `npm audit could not reach the advisory endpoint after ${AUDIT_ATTEMPTS} attempts, `
+    + `so no advisory data was obtained: ${endpointFailure}`,
+  );
 }
 
 if (report === null || typeof report !== 'object' || Array.isArray(report)) {

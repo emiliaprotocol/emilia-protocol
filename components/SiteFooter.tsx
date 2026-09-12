@@ -4,6 +4,7 @@ import { ENTITY } from '@/lib/site-config';
 type FooterLink = [string, string];
 
 const COL_SYSTEM: FooterLink[] = [
+  ['/workforce', 'AI Workforce'],
   ['/products', 'Product Story'],
   ['/authority-brain', 'Authority Brain'],
   ['/gate', 'EMILIA Gate'],
@@ -50,7 +51,7 @@ const COL_COMPANY: FooterLink[] = [
   ['/security', 'Security'],
   ['/auditors', 'For Auditors'],
   ['/trust-desk', 'Trust Desk'],
-  [`mailto:${ENTITY.email}`, 'Contact'],
+  ['/contact#workforce', 'Discuss Your Workflow'],
   ['/legal/privacy', 'Privacy Policy'],
   ['/legal/terms', 'Terms of Service'],
 ];
@@ -58,7 +59,7 @@ const COL_COMPANY: FooterLink[] = [
 type Column = { title: string; links: FooterLink[] };
 
 const COLUMNS: Column[] = [
-  { title: 'System',   links: COL_SYSTEM },
+  { title: 'Product',   links: COL_SYSTEM },
   { title: 'Solutions', links: COL_SOLUTIONS },
   { title: 'Developers', links: COL_DEVELOPERS },
   { title: 'Protocol', links: COL_PROTOCOL },
@@ -89,16 +90,16 @@ export default function SiteFooter({}: SiteFooterProps) {
         }}>
           <div>
             <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 19, color: color.t1 }}>
-              Protocol proves. Gate prevents.
+              Your AI workforce needs management.
             </div>
-            <div style={{ fontSize: 13, color: color.t2, marginTop: 8, lineHeight: 1.6, maxWidth: 560 }}>
-              Authority Brain maps supported declared actions and blind spots. Gate controls configured
-              crossings. Approver captures an exact-action decision when required. The Protocol keeps the record
-              portable. Assurance re-performs it.
+            <div style={{ fontSize: 16, color: color.t2, marginTop: 8, lineHeight: 1.6, maxWidth: 560 }}>
+              Give every agent a job, set its authority, and know what happened.
+              EMILIA is building the workspace. Gate enforces limits on configured
+              execution paths. The open Protocol keeps the evidence portable.
             </div>
           </div>
-          <a href="/products" className="ep-footer-link" style={{ fontFamily: font.mono, fontSize: 12, color: '#765A13' }}>
-            Follow the product story &rarr;
+          <a href="/workforce" className="ep-footer-link" style={{ fontFamily: font.sans, fontSize: 15, color: '#765A13' }}>
+            See the workforce product &rarr;
           </a>
         </div>
         <div style={{

@@ -2,31 +2,31 @@ import type { Metadata } from 'next';
 import HomePageClient from './HomePageClient';
 
 export const metadata: Metadata = {
-  title: { absolute: 'Authority Toll Booth for Autonomous Work | EMILIA' },
+  title: { absolute: 'Build Your AI Workforce | EMILIA' },
   description:
-    'At configured protected boundaries, consequential agent actions must present customer authority before provider entry, and the result leaves an action-bound record.',
+    'Find specialized agents or bring your own. Give them a job, set their limits and see how they perform. EMILIA brings workforce management and a builder marketplace together.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Authority Toll Booth for Autonomous Work | EMILIA',
+    title: 'Build Your AI Workforce | EMILIA',
     description:
-      'At configured protected boundaries, EMILIA prevents agents from quietly widening authority.',
+      'Help builders earn work and help companies delegate it. Explore the marketplace and EMILIA’s private local workforce alpha, built around Gate and the open Protocol.',
     url: 'https://www.emiliaprotocol.ai/',
     type: 'website',
     images: [
       {
-        url: '/emilia-authority-tollbooth-v1.png',
-        width: 1717,
-        height: 916,
-        alt: 'Agent-intent paths cross a customer-owned authority checkpoint and leave with action-bound receipts',
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'EMILIA: Build your AI workforce. Find specialized agents or bring your own.',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Authority Toll Booth for Autonomous Work | EMILIA',
+    title: 'Build Your AI Workforce | EMILIA',
     description:
-      'Protected crossings require authority before action, then preserve what happened.',
-    images: ['/emilia-authority-tollbooth-v1.png'],
+      'Find specialized agents or bring your own. Give them a job, set their limits and review the work. Workforce workspace: private local alpha.',
+    images: ['/twitter-image'],
   },
 };
 
