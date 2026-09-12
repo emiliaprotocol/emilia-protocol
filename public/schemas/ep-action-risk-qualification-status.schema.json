@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/ep-action-risk-qualification-status.schema.json",
+  "title": "EP Action Risk Qualification Status v1",
+  "description": "Closed schema for a hybrid-signed technical qualification observation. This artifact is not policy, insurance coverage, a premium decision, a liability allocation, or action authorization.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@version",
+    "status_id",
+    "schedule_id",
+    "schedule_digest",
+    "tenant_id",
+    "requirements_digest",
+    "sequence",
+    "observed_at",
+    "outcome",
+    "evidence_digest",
+    "claim_boundary",
+    "issuer",
+    "proof"
+  ],
+  "properties": {
+    "@version": { "const": "EP-ACTION-RISK-QUALIFICATION-STATUS-v1" },
+    "status_id": { "$ref": "#/$defs/identifier" },
+    "schedule_id": { "$ref": "#/$defs/identifier" },
+    "schedule_digest": { "$ref": "#/$defs/digest" },
+    "tenant_id": { "$ref": "#/$defs/identifier" },
+    "requirements_digest": { "$ref": "#/$defs/digest" },
+    "sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "observed_at": { "$ref": "#/$defs/instant" },
+    "outcome": { "enum": ["ELIGIBLE", "NOT_ELIGIBLE", "INDETERMINATE"] },
+    "evidence_digest": { "$ref": "#/$defs/digest" },
+    "claim_boundary": {
+      "const": "technical_qualification_observation_only_not_policy_coverage_premium_liability_or_action_authorization"
+    },
+    "issuer": { "$ref": "#/$defs/issuer" },
+    "proof": { "$ref": "#/$defs/hybridProof" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_.@/+\\-]{0,511}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "instant": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?Z$"
+    },
+    "issuer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "key_id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "key_id": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "agileSignatureEd25519": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "sig", "key_id"],
+      "properties": {
+        "alg": { "const": "Ed25519" },
+        "sig": { "type": "string", "pattern": "^[A-Za-z0-9_-]{86}$" },
+        "key_id": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "agileSignatureMlDsa65": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "sig", "key_id"],
+      "properties": {
+        "alg": { "const": "ML-DSA-65" },
+        "sig": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+        "key_id": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "hybridProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "required_algorithms", "key_id", "body_digest", "signatures"],
+      "properties": {
+        "profile": { "const": "EP-RISK-HYBRID-v2" },
+        "required_algorithms": { "const": ["Ed25519", "ML-DSA-65"] },
+        "key_id": { "$ref": "#/$defs/identifier" },
+        "body_digest": { "$ref": "#/$defs/digest" },
+        "signatures": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [
+            { "$ref": "#/$defs/agileSignatureEd25519" },
+            { "$ref": "#/$defs/agileSignatureMlDsa65" }
+          ],
+          "items": false
+        }
+      }
+    }
+  }
+}
