@@ -12,7 +12,7 @@
 .lead { max-width: 800px; font-size: 20px; line-height: 1.65; color: var(--text); }
 .hero .lead { font-size: 18px; max-width: 580px; }
 .heroVisual { margin: 0; min-width: 0; grid-column: 1 / -1; }
-.heroImage { width: 100%; aspect-ratio: 1672 / 941; overflow: hidden; background: #FAFAF9; }
+.heroImage { width: 100%; aspect-ratio: 1672 / 941; overflow: hidden; background: #FAFAF9; border-radius: 5px; }
 .heroImage img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .heroVisual figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; padding: 16px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
 .heroVisual figcaption span:first-child { color: var(--ink); font-size: 16px; }

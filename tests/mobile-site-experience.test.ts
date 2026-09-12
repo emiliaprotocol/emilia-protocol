@@ -39,7 +39,7 @@ describe('mobile public-site experience contract', () => {
     expect(story).toContain('aria-label="Illustrative refunds job before and after replacement"');
     expect(css).toContain('font-size: clamp(48px, 6.2vw, 82px)');
     expect(story).toContain('role="group" aria-label="Illustrative refunds job before and after replacement"');
-    expect(story).toContain('/emilia-workforce-atelier-v1.webp');
+    expect(story).toContain('/emilia-workforce-coastal-path-v1.webp');
     expect(css).toContain('object-fit: contain');
     expect(css).toContain('.journeyLayout { grid-template-columns: 1fr; gap: 36px; }');
     expect(css).toContain('min-height: 48px');

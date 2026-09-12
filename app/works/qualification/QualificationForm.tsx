@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import type { MarketplaceQualificationResponse } from '@/lib/works/marketplace-qualification';
 import { isQualificationResponseProjection, qualificationDisplayDeadline, qualificationWindowRemaining, type QualificationDisplayWindow } from './display-window';
 import styles from './qualification.module.css';
 
 const MAX_BYTES = 256 * 1024;
+const subscribeToHydration = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 
 const DIMENSIONS = [
   ['verification', 'Evidence signatures'], ['acceptance', 'Trusted sources'],
@@ -24,6 +27,7 @@ const reasonText: Record<string, string> = {
 };
 
 export default function QualificationForm() {
+  const ready = useSyncExternalStore(subscribeToHydration, clientReady, serverReady);
   const [scopeId, setScopeId] = useState('');
   const [evidence, setEvidence] = useState('');
   const [consent, setConsent] = useState(false);
@@ -82,6 +86,7 @@ export default function QualificationForm() {
 
   async function verify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!ready) return;
     invalidate();
     if (!consent) { setNotice('Confirm you are allowed to send this evidence before continuing.'); return; }
     if (!/^[a-z0-9][a-z0-9._-]{0,95}$/.test(scopeId)) {
@@ -103,7 +108,7 @@ export default function QualificationForm() {
     try {
       const result = await fetch('/api/works/qualification', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body, signal: abort.signal, cache: 'no-store', credentials: 'omit',
+        body, signal: abort.signal, cache: 'no-store', credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer',
       });
       const data: unknown = await result.json();
       if (current !== generation.current || abort.signal.aborted) return;
@@ -137,7 +142,9 @@ export default function QualificationForm() {
   return <section className={styles.verify} aria-labelledby="qualification-check-title">
     <h2 id="qualification-check-title">Have signed evidence? Check it here.</h2>
     <p>You need a registered test scope and its signed evidence bundle. The hosted verifier supplies the trusted keys and status observation. You cannot supply your own trust settings.</p>
-    <form onSubmit={verify} className={styles.form}>
+    <form method="post" onSubmit={verify} className={styles.form}>
+      <noscript><p>JavaScript is required to check evidence securely. No evidence is sent before the form is ready.</p></noscript>
+      <fieldset disabled={!ready} className={styles.form} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <label htmlFor="qualification-scope">Registered scope ID</label>
       <input id="qualification-scope" autoComplete="off" spellCheck={false} value={scopeId} maxLength={96}
         onChange={(event) => { invalidate(); setScopeId(event.target.value); }} placeholder="Your operator-provided scope ID" required />
@@ -152,9 +159,10 @@ export default function QualificationForm() {
       </label>
       <p className={styles.help}>This check does not publish a listing, save a public badge or authorize an agent to act.</p>
       <div className={styles.actions}>
-        <button type="submit" disabled={pending || !consent}>{pending ? 'Verifying…' : 'Verify evidence'}</button>
+        <button type="submit" disabled={!ready || pending || !consent}>{pending ? 'Verifying…' : 'Verify evidence'}</button>
         <button type="button" className={styles.secondary} onClick={() => { invalidate(); setScopeId(''); setEvidence(''); setConsent(false); }}>Clear evidence</button>
       </div>
+      </fieldset>
     </form>
     <div aria-live="polite" aria-atomic="true">
       {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
