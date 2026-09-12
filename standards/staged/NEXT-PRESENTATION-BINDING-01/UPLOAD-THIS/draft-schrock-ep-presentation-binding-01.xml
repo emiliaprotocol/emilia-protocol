@@ -4,7 +4,7 @@
      category="info" ipr="trust200902" submissionType="IETF"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
-    <title abbrev="Presentation Binding">Presentation Binding for Human-Authorization Receipts: Proving the Human Approved What They Saw</title>
+    <title abbrev="Presentation Binding">Binding Deterministic Rendering and Display Attestations to Human-Authorization Receipts</title>
     <seriesInfo name="Internet-Draft" value="draft-schrock-ep-presentation-binding-01"/>
     <author fullname="Iman Schrock">
       <organization>EMILIA Protocol, Inc.</organization>
@@ -22,9 +22,9 @@
     <keyword>presentation attack</keyword>
     <keyword>AI agents</keyword>
     <abstract>
-      <t>A human-authorization receipt proves a named person produced a
+      <t>A human-authorization receipt proves an enrolled key produced a
       user-verified signature over a digest that commits to an exact
-      action. It does not prove the surface that person signed on
+      action. It does not prove the signing surface
       DISPLAYED that action honestly. If a signing interface shows a
       benign summary while committing a different action, the resulting
       receipt is laundered authority: cryptographically valid and
@@ -35,22 +35,21 @@
       offline-checkable pieces that touch no existing receipt format: a
       DETERMINISTIC RENDERER, a pure function from the canonical action
       to a byte-identical human-readable rendering, so a verifier
-      RE-DERIVES the rendering from the signed bytes and rejects any
-      surface that showed something else; and a DISPLAY ATTESTATION, a
+      RE-DERIVES the rendering from the signed bytes and rejects a
+      claimed rendering that does not match; and a DISPLAY ATTESTATION, a
       signed claim by the signing client binding the rendering it showed
       to the action it committed. Neither eliminates the presentation
-      attack (nothing purely digital can), but together they convert
-      "trust the vendor's UI" into "verify the rendering was the honest
-      function of the signed action," and they make the residual risk
+      attack (nothing purely digital can), but together they let a verifier
+      check the claimed rendering against the signed action under
+      relying-party-selected client trust inputs. They make the residual risk
       explicit rather than hidden.</t>
     </abstract>
   </front>
   <middle>
     <section anchor="intro">
       <name>Introduction</name>
-      <t>The hard part of human authorization was never the signature.
-      It is the question a relying party's counsel asks first: a receipt
-      of WHAT? A named human signed a digest; the digest commits to an
+      <t>Signature verification alone does not establish what an approver was
+      shown. An enrolled key signed a digest; the digest commits to an
       action; but the human did not see the digest; they saw a screen,
       and the screen was drawn by software. If that software rendered
       "approve invoice, $1.00" while committing "wire $82,000 to account
@@ -59,9 +58,10 @@
       this weakness: they compose and grade a receipt whose meaning was
       set by an unattested rendering step.</t>
       <t>Two observations make the problem tractable without
-      overclaiming. First, most presentation attacks are RENDERING
-      attacks: the surface computed the display from something other
-      than the signed action. That is defeatable, because a rendering
+      overclaiming. One presentation-attack pattern is a RENDERING
+      mismatch: the surface computes the display from something other
+      than the signed action. A verifier can detect that mismatch when
+      the submitted rendering or attestation records it, because a rendering
       can be made a PURE FUNCTION of the signed action and re-derived by
       any verifier. Second, the residue (a compromised or malicious
       client that renders honestly to a verifier's re-derivation while
@@ -93,12 +93,11 @@
       text, and a rendering digest over the canonical structure.</t>
       <t>Because the rendering is a pure function of the SIGNED action,
       a verifier re-derives it from the very bytes the receipt's action
-      digest commits to and compares. A surface that displayed "$1" for
-      an action that says "$82,000" cannot produce a rendering that
-      re-derives; the deviation is detected offline, by anyone, without
-      trusting the surface. This turns "render from the exact hashed
-      bytes, never a re-described copy" from an unverifiable interface
-      rule into a verifiable property.</t>
+      digest commits to and compares. A claimed rendering of "$1" for
+      an action that says "$82,000" does not re-derive and is detected
+      offline. This makes consistency between the deterministic rendering
+      and the signed action verifiable; it does not establish what an
+      untrusted surface actually displayed.</t>
       <t>Handling untrusted content is normative: values that can carry
       display-manipulating characters (bidirectional overrides,
       control characters, homoglyph-bearing runs, or excessive length)
@@ -123,9 +122,9 @@
       <t>Verified versus accepted applies here too: verifying the
       attestation (its signature holds and its rendering re-derives from
       the action) is distinct from trusting the CLIENT that made it. A
-      display attestation raises the cost and auditability of a
-      presentation attack; it does not, by itself, make the client
-      honest.</t>
+      display attestation records a claim that can be checked and audited; it
+      does not, by itself, make the client honest or make a false display
+      expensive.</t>
     </section>
     <section anchor="compose">
       <name>Composition with the Evidence Layers</name>
@@ -139,9 +138,10 @@
       evidence policy
       (<xref target="I-D.schrock-ep-action-evidence-graph"/>) MAY, for a
       high-stakes reliance purpose, treat a receipt without a verifying
-      display attestation as insufficient. The property this document
-      adds — the human approved what a verifier can prove they were
-      shown, is the one every other layer silently assumed.</t>
+      display attestation as insufficient. This document adds a separately
+      verifiable binding between the signed action and deterministic or
+      attested display bytes under relying-party-selected trust inputs. It
+      does not prove what the human perceived.</t>
     </section>
     <section anchor="residual">
       <name>Residual Risk: WYSIWYS Is Not Solved</name>
@@ -154,18 +154,19 @@
       approver). Defenses against that residue are operational and
       hardware-rooted (trusted display paths, out-of-band confirmation
       of material fields, secure enclaves) and are out of scope here,
-      though at least one such path ships today: Android's Protected
-      Confirmation renders a prompt in a TEE-isolated display path and
-      signs the exact displayed text under a key restricted to
-      user-confirmed content, with an attestation chain a relying party
-      can grade. Profiling such mechanisms as display attestors for
-      this document's attestation, with assurance graded by the
-      attestation chain, is planned work for a future revision.
-      What this document removes is the CHEAP, SCALABLE, UNDETECTABLE
-      rendering attack — the software surface that simply computed the
-      display from the wrong bytes — and it makes the remaining,
-      expensive residue explicit so a relying party can price it rather
-      than discover it in a dispute.</t>
+      though supported devices running Android 9 and later can offer
+      <eref target="https://developer.android.com/reference/android/security/ConfirmationPrompt">Android Protected Confirmation</eref>
+      as one separately profiled mechanism. It renders the
+      prompt text in a protected path; a relying party using it must verify
+      the attestation's trusted-confirmation requirement and bind the exact
+      prompt text, because extra data is not displayed. This document does
+      not define that profile.
+      This document makes a mismatch between the signed action and the
+      submitted deterministic rendering detectable. A malicious client can
+      still attest the expected bytes while displaying different content, so
+      that attack can remain cheap and scalable. The relying party therefore
+      has to evaluate the client and display-path trust inputs and account for
+      the residual risk.</t>
     </section>
     <section anchor="security">
       <name>Security Considerations</name>
@@ -178,10 +179,10 @@
       misleading render is the attack.</t>
       <section anchor="receipt-presentation-boundary">
         <name>Receipt and Presentation Evidence Remain Distinct</name>
-        <t>Verification of an authorization receipt proves that the enrolled
-        key signed the exact covered Authorization Context under the selected
-        receipt profile. It does not prove that the signing surface faithfully
-        rendered that context to the approver. Presentation evidence narrows
+        <t>Verification of an <tt>EP-AUTHORIZATION-RECEIPT-v1</tt> receipt
+        proves that the enrolled key signed the exact covered Authorization
+        Context under that profile. It does not prove that the signing surface
+        faithfully rendered that context to the approver. Presentation evidence narrows
         this gap only to the extent stated by its own profile: it can bind
         deterministic or attested display bytes to the same action, but it
         cannot prove that an uncompromised human perceived those bytes or that
