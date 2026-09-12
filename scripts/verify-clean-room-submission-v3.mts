@@ -583,13 +583,17 @@ function executeSession(
   const target = path.join(temporary, `${crypto.randomBytes(16).toString('hex')}.json`);
   fs.writeFileSync(target, session.executionBytes, { mode: 0o444 });
   fs.chmodSync(target, 0o444);
+  const cidfile = docker
+    ? path.join(temporary, `${crypto.randomBytes(16).toString('hex')}.cid`)
+    : null;
   let stdout = '';
   let runnerError: unknown = null;
+  let cleanupError: unknown = null;
   try {
     const command = docker?.command ?? runner.path;
     const args = docker
       ? [
-          'run', '--rm', '--network', 'none', '--read-only',
+          'run', '--rm', '--cidfile', cidfile!, '--network', 'none', '--read-only',
           '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
           '--user', '65532:65532', '--pids-limit', '128', '--memory', '512m',
           '--cpus', '1', '--tmpfs', '/tmp:rw,noexec,nosuid,nodev,size=16m',
@@ -606,6 +610,7 @@ function executeSession(
         cwd: temporary,
         encoding: 'utf8',
         timeout: 180_000,
+        killSignal: 'SIGKILL',
         maxBuffer: 64 * 1024 * 1024,
         stdio: ['ignore', 'pipe', 'pipe'],
         env: runnerEnvironment(),
@@ -613,6 +618,34 @@ function executeSession(
     );
   } catch (error) {
     runnerError = error;
+  }
+  if (runnerError && docker && cidfile) {
+    try {
+      if (fs.existsSync(cidfile)) {
+        const containerId = fs.readFileSync(cidfile, 'utf8').trim();
+        if (/^[a-f0-9]{64}$/.test(containerId)) {
+          execFileSync(docker.command, ['rm', '--force', containerId], {
+            cwd: temporary,
+            encoding: 'utf8',
+            timeout: 10_000,
+            killSignal: 'SIGKILL',
+            maxBuffer: 1024 * 1024,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: runnerEnvironment(),
+          });
+        }
+      }
+    } catch (error) {
+      cleanupError = error;
+    }
+  }
+  if (runnerError && cleanupError) {
+    const stderr = (runnerError as any)?.stderr;
+    const cleanupStderr = (cleanupError as any)?.stderr;
+    throw new Error(
+      `${label}: runner failed: ${String(stderr || errorMessage(runnerError)).trim()}; `
+      + `container cleanup failed: ${String(cleanupStderr || errorMessage(cleanupError)).trim()}`,
+    );
   }
   if (sha256V3(fs.readFileSync(target)) !== sha256V3(session.executionBytes)) {
     throw new Error(`${label}: runner mutated the execution suite`);
