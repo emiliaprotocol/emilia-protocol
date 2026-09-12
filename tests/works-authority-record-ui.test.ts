@@ -43,6 +43,14 @@ describe('Authority Record consent-first UI contract', () => {
     expect(record).toContain('RequestAuthorityRecord');
     expect(request).toContain('Request this Authority Record');
     expect(request).toContain('/requests');
+    expect(request).toContain('<form method="post"');
+    expect(request).toContain('useSyncExternalStore(subscribeToHydration, clientReady, serverReady)');
+    expect(request).toContain("if (!ready || state === 'sending') return;");
+    expect(request).toContain('<fieldset disabled={!ready');
+    expect(request).toContain("credentials: 'omit', redirect: 'error', referrerPolicy: 'no-referrer'");
+    expect(request).toContain('<span>Work email</span>');
+    expect(request).toContain("} catch {\n      setState('error');");
+    expect(request).toContain('We could not confirm the request. Check your inbox before trying again.');
     expect(request).not.toMatch(/buyers|purchasers/i);
     expect(verify).toContain('window.location.hash');
     expect(verify).not.toContain('searchParams.get');

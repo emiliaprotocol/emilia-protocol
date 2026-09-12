@@ -271,7 +271,7 @@ export function buildCleanRoomKitV3({
       reference_implementation_included: false,
       source_files_included: false,
       runner_inputs_expectation_separated: true,
-      post_build_challenge: '64 fresh canonicalization cases in 32 positive/negative pairs at evaluation time',
+      post_build_challenge: '80 challenge-v2 canonicalization cases: 32 valid/wrong-digest pairs and 16 raw-text boundary cases at evaluation time',
       files: reportFiles,
     };
     fs.writeFileSync(manifestTarget, `${JSON.stringify(report, null, 2)}\n`);

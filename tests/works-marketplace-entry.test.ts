@@ -59,6 +59,18 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('marketplace storefront entry', () => {
+  it('lets buyers describe a job before browsing and gives returning builders a proposal lookup', async () => {
+    const html = await directory();
+    const hero = html.slice(html.indexOf('<main'), html.indexOf('id="works-listings"'));
+    expect(hero).toContain('href="/works/opportunities/new"');
+    expect(hero).toContain('Describe your job');
+    expect(hero.indexOf('Describe your job')).toBeLessThan(hero.indexOf('Browse agent listings'));
+    expect(hero).toContain('Draft first. Review before anything is public.');
+    expect(hero).toContain('href="/works/submissions"');
+    expect(hero).toContain('Find a proposal');
+    expect(hero).not.toMatch(/Hire now|Guaranteed match|Certified agents/);
+  });
+
   it('keeps directory and detail feature-gated before reading records', async () => {
     vi.stubEnv('WORKS_V0', '0');
     await expect(directory()).rejects.toThrow('WORKS_NOT_FOUND');
@@ -68,7 +80,7 @@ describe('marketplace storefront entry', () => {
     expect(listPublicAuthorityRecords).not.toHaveBeenCalled();
   });
 
-  it('leads with free scan and counts only explicitly non-example active agents', async () => {
+  it('connects directory browsing and a free builder scan, counting only explicitly non-example active agents', async () => {
     listings = [
       listing('real-agent'), listing('example-agent', { example: true }),
       listing('example-app', { kind: 'app', example: true }),
@@ -77,12 +89,21 @@ describe('marketplace storefront entry', () => {
       listing('unmarked-agent', { example: undefined }),
     ];
     const html = await directory();
-    expect(html).toContain('Discover the agent.<br/><span>Inspect its tools.</span>');
-    expect(html).toContain('marketplace-tool-inspection-v1.webp');
-    expect(html).toContain('Looking to manage your agents? Explore Workforce');
+    expect(html).toContain('What would you<br/>like <em>taken care of?</em>');
+    expect(html).toContain('emilia-workforce-coastal-path-v1.webp');
+    expect(html).not.toMatch(/mechanical hand|emilia-workforce-atelier-v1/);
+    expect(html).toContain('Sell your agent&#x27;s work');
+    expect(html).toContain('name="q"');
+    expect(html).toContain('aria-label="Shortlist real-agent"');
+    expect(html).not.toContain('aria-label="Shortlist example-agent"');
+    expect(html).not.toContain('aria-label="Shortlist paused-agent"');
+    expect(html).toContain('EMILIA does not process agent sales');
+    expect(html).toContain('Already have an agent? Bring it into a job');
     expect(html).not.toContain('FIELD NOTE');
     expect(html).toContain('href="/works/scan"');
-    expect(html.indexOf('Start a free scan')).toBeLessThan(html.indexOf('Browse agent listings'));
+    expect(html.indexOf('Browse agent listings')).toBeLessThan(html.indexOf('Bring your agent'));
+    expect(html).toContain('Builders: start with a free scan.');
+    expect(html).toContain('The workforce workspace is a private local alpha.');
     const agents = section(html, 'works-listings');
     expect(agents).toContain('1 of 1 active agent listings · examples excluded');
     expect(agents).toContain('href="/works/listings/real-agent"');
@@ -118,7 +139,10 @@ describe('marketplace storefront entry', () => {
     }];
     for (const params of [{ q: 'research-agent' }, { task: 'research' }, { interface: 'MCP' }, { license: 'Apache-2.0' }, { activity: 'release' }, { q: ['research-agent', 'finance-agent'] }]) {
       const html = await directory(params);
-      expect(html).toMatch(/<form(?=[^>]*method="get")(?=[^>]*action="\/works")[^>]*>/);
+      // Next Form defaults to GET and preserves comparison state while the
+      // server still filters the records. No POST action is introduced.
+      expect(html).toMatch(/<form(?=[^>]*action="\/works")[^>]*>/);
+      expect(html).not.toMatch(/<form[^>]*method="post"/);
       expect(section(html, 'works-listings')).toContain('1 of 2 active agent listings');
       expect(section(html, 'works-listings')).toContain('href="/works/listings/research-agent"');
       expect(section(html, 'works-listings')).not.toContain('href="/works/listings/finance-agent"');
@@ -228,5 +252,53 @@ describe('marketplace storefront entry', () => {
     expect(html).toContain('No payment execution');
     listings = [listing('example-agent', { example: true })];
     expect(await listingDetail('example-agent')).toContain('not an agent available for hire or a customer deployment');
+  });
+
+  it('puts a builder introduction first for a real active agent without pre-sending or claiming a hire', async () => {
+    listings = [listing('real-agent')];
+    const html = await listingDetail();
+    expect(html).toContain('href="mailto:builder@acme.example"');
+    expect(html).toContain('Discuss this worker');
+    expect(html.indexOf('Discuss this worker')).toBeLessThan(html.indexOf('Start a free scan'));
+    expect(html).toContain('Nothing is sent until you send it.');
+    expect(html).toContain('confirm availability, scope, price and terms directly with the builder');
+    expect(html).toContain('This does not hire an agent, take payment or grant access.');
+    expect(html).not.toContain('mailto:builder@acme.example?');
+  });
+
+  it('identifies an external builder contact page and prevents opener or referrer access', async () => {
+    listings = [listing('real-agent')];
+    vi.mocked(getWorksRecord).mockImplementation(async collection => ({
+      ok: true, record: collection === 'builders'
+        ? { ...builder, contact_route: 'https://acme.example/contact' } : listings[0],
+    }));
+    const html = await listingDetail();
+    expect(html).toMatch(/<a[^>]*href="https:\/\/acme.example\/contact"[^>]*target="_blank"[^>]*rel="noopener noreferrer"[^>]*>Discuss this worker<\/a>/);
+    expect(html).toContain('outside EMILIA in a new tab');
+  });
+
+  it.each([
+    { example: true }, { example: undefined }, { status: 'paused' }, { status: 'archived' },
+    { kind: 'app' }, { kind: 'project' },
+  ] as Partial<ListingRecord>[])('does not imply a contact-for-work path for non-supply listings: %j', async overrides => {
+    listings = [listing('real-agent', overrides)];
+    expect(await listingDetail()).not.toContain('Discuss this worker');
+  });
+
+  it.each([
+    null,
+    { ...builder, example: true },
+    { ...builder, example: undefined },
+    { ...builder, builder_id: 'different-builder' },
+    ...['javascript:alert(1)', 'data:text/html,hi', 'http://acme.example', 'https://',
+      'https://name:secret@acme.example', 'mailto:missing-address',
+      'mailto:builder@acme.example%0d%0abcc:other@example.com']
+      .map(contact_route => ({ ...builder, contact_route })),
+  ])('refuses unavailable, example, mismatched or unsafe builder contact records: %j', async selectedBuilder => {
+    listings = [listing('real-agent')];
+    vi.mocked(getWorksRecord).mockImplementation(async collection => collection === 'builders'
+      ? selectedBuilder ? { ok: true, record: selectedBuilder } : { ok: false, code: 'not_found', detail: 'Not found' }
+      : { ok: true, record: listings[0] });
+    expect(await listingDetail()).not.toContain('Discuss this worker');
   });
 });

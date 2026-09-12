@@ -13,8 +13,19 @@ import { canonicalizeV2, loadPinnedKitV2, sha256V2, validateBundleDefinitionV2, 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLE_RELATIVE_PATH = 'conformance/clean-room/v3/bundle.v3.json';
 const HANDLE_PATTERN = /^cr3_[A-Za-z0-9_-]{32}$/;
-const CHALLENGE_GENERATOR = 'EP-CLEAN-ROOM-CANONICALIZATION-CHALLENGE-v1';
+const HISTORICAL_CHALLENGE_GENERATOR = 'EP-CLEAN-ROOM-CANONICALIZATION-CHALLENGE-v1';
+const CHALLENGE_GENERATOR = 'EP-CLEAN-ROOM-CANONICALIZATION-CHALLENGE-v2';
 const CHALLENGE_PAIR_COUNT = 32;
+const CHALLENGE_RAW_CASES = [
+    ['negative-zero', true], ['negative-zero-decimal', true],
+    ['integer-exponent', true], ['max-safe-integer', true],
+    ['depth-64', true], ['surrogate-pair', true],
+    ['distinct-escaped-keys', true], ['zero-exponent', true],
+    ['unsafe-integer', false], ['fractional', false],
+    ['large-exponent', false], ['depth-65', false],
+    ['lone-high-surrogate', false], ['lone-low-surrogate', false],
+    ['duplicate-key', false], ['escaped-duplicate-key', false],
+];
 const SESSION_RANDOMIZER = 'EP-CLEAN-ROOM-SESSION-RANDOMIZER-v1';
 function plainObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -182,12 +193,24 @@ function challengeGeneratorContract() {
         '@version': CHALLENGE_GENERATOR,
         randomizer: randomizerContract(CHALLENGE_GENERATOR),
         pair_count: CHALLENGE_PAIR_COUNT,
-        payload_per_pair: '{"value":base64url(random_bytes(24)),"nested":[true,null,zero_based_pair_index]}',
+        payload_per_pair: {
+            nonce: 'base64url(random_bytes(24))',
+            template: richCanonicalizationPayload('$nonce', 0),
+            substitution: 'replace $nonce with this pair nonce and nested[2] with the zero-based pair index',
+        },
         input_json: 'JSON.stringify(payload)',
         canonicalization: 'RFC 8785 compatible canonicalizeV3(JSON.parse(input_json))',
         correct_digest: 'lowercase_hex(SHA-256(UTF8(canonicalization)))',
         wrong_digest: 'lowercase_hex(random_bytes(32)), resampled only if equal to the correct digest',
         cases_per_pair: 'one correct-digest case and one wrong-digest case over the exact same input_json',
+        raw_case_count: CHALLENGE_RAW_CASES.length,
+        raw_cases: CHALLENGE_RAW_CASES.map(([name, valid]) => ({
+            name, valid, input_json_template: rawChallengeInput(name, '$nonce'),
+        })),
+        raw_input_json: 'raw JSON text preserving number tokens, surrogate escapes, duplicate decoded keys and container depth; independent 24-byte base64url nonce per case',
+        raw_digest: 'SHA-256 of permissive canonicalizeV3(JSON.parse(input_json)), including refusal traps; digest agreement alone does not establish validity',
+        raw_acceptance: 'syntax, strict parse (unique decoded keys, paired surrogates, depth <= 64), EP safe-integer and Unicode value profile, then canonical digest; these profile bounds are not general RFC 8785 requirements',
+        replay: 'exact generation and random-byte request order are pinned by evaluator_artifact_sha256; replayPostBuildChallengesV1 is historical only and cannot be selected for submission acceptance',
         handles: 'base64url(random_bytes(24)) prefixed with cr3_',
         run_id: 'base64url(random_bytes(24)) prefixed with run_',
         presentation_order: 'sort cases by independent random_bytes(24) values',
@@ -295,11 +318,13 @@ function canonicalizationCase(value, valid, randomBytes) {
         expected: { valid },
     };
 }
-export function buildPostBuildChallengesV3(kit, { seed = crypto.randomBytes(32) } = {}) {
+// Historical replay only. Submission acceptance always calls the current
+// generator below and exposes no version downgrade option.
+export function replayPostBuildChallengesV1(kit, { seed }) {
     const contract = kit.contracts.find((entry) => entry.path === 'conformance/vectors/canonicalization.v1.json');
     if (!contract)
         throw new Error('canonicalization suite is missing from the v3 kit');
-    const randomBytes = deterministicRandomBytes(seed, CHALLENGE_GENERATOR);
+    const randomBytes = deterministicRandomBytes(seed, HISTORICAL_CHALLENGE_GENERATOR);
     const values = [];
     for (let index = 0; index < CHALLENGE_PAIR_COUNT; index += 1) {
         const value = {
@@ -313,6 +338,71 @@ export function buildPostBuildChallengesV3(kit, { seed = crypto.randomBytes(32) 
         values.push({
             sourceId: `post-build-canonical-pair-${index}-invalid`,
             ...canonicalizationCase(value, false, randomBytes),
+        });
+    }
+    return {
+        ...buildSession(contract, values, randomBytes),
+        seed,
+        generator: HISTORICAL_CHALLENGE_GENERATOR,
+    };
+}
+function rawChallengeInput(name, nonce) {
+    const object = (value) => `{"nonce":${JSON.stringify(nonce)},"value":${value}}`;
+    switch (name) {
+        case 'negative-zero': return object('-0');
+        case 'negative-zero-decimal': return object('-0.0');
+        case 'integer-exponent': return object('1e0');
+        case 'max-safe-integer': return object('9007199254740991');
+        case 'zero-exponent': return object('0e99');
+        case 'unsafe-integer': return object('9007199254740992');
+        case 'fractional': return object('1.5');
+        case 'large-exponent': return object('1e30');
+        case 'depth-64': return '['.repeat(64) + JSON.stringify(nonce) + ']'.repeat(64);
+        case 'depth-65': return '['.repeat(65) + JSON.stringify(nonce) + ']'.repeat(65);
+        case 'surrogate-pair': return object('"\\ud83d\\ude00"');
+        case 'lone-high-surrogate': return object('"\\ud800"');
+        case 'lone-low-surrogate': return object('"\\udc00"');
+        case 'distinct-escaped-keys': return object('{"a":1,"\\u0062":2}');
+        case 'duplicate-key': return object('{"a":1,"a":2}');
+        case 'escaped-duplicate-key': return object('{"a":1,"\\u0061":2}');
+    }
+}
+function richCanonicalizationPayload(nonce, index) {
+    return {
+        '\ue000': nonce,
+        '\u{1f600}': `e\u0301:${nonce}`,
+        nested: [true, null, index, {
+                '\ufffd': nonce,
+                '\u{1f600}': `e\u0301:${nonce}:\b\t\n\f\r\u000e\u001b\\\"`,
+            }],
+    };
+}
+export function buildPostBuildChallengesV3(kit, { seed = crypto.randomBytes(32) } = {}) {
+    const contract = kit.contracts.find((entry) => entry.path === 'conformance/vectors/canonicalization.v1.json');
+    if (!contract)
+        throw new Error('canonicalization suite is missing from the v3 kit');
+    const randomBytes = deterministicRandomBytes(seed, CHALLENGE_GENERATOR);
+    const values = [];
+    for (let index = 0; index < CHALLENGE_PAIR_COUNT; index += 1) {
+        const nonce = randomBytes(24).toString('base64url');
+        const value = richCanonicalizationPayload(nonce, index);
+        for (const valid of [true, false]) {
+            values.push({
+                sourceId: `post-build-canonical-pair-${index}-${valid ? 'valid' : 'invalid'}`,
+                ...canonicalizationCase(value, valid, randomBytes),
+            });
+        }
+    }
+    for (const [name, valid] of CHALLENGE_RAW_CASES) {
+        const inputJson = rawChallengeInput(name, randomBytes(24).toString('base64url'));
+        // These are syntax-valid JSON texts with explicitly classified EP profile
+        // outcomes. Refusal traps intentionally have the digest a permissive
+        // parser/canonicalizer would accept, not a random mismatching digest.
+        const digest = sha256V3(Buffer.from(canonicalizeV3(JSON.parse(inputJson)), 'utf8'));
+        values.push({
+            sourceId: `post-build-canonical-raw-${name}`,
+            input: { canonicalization: { input_json: inputJson, expected_digest: digest } },
+            expected: { valid },
         });
     }
     return {
@@ -459,6 +549,8 @@ export function verifyCleanRoomSubmissionV3({ manifestPath, runnerPath, attestat
             status: 'pass',
             suite: 'conformance/vectors/canonicalization.v1.json',
             cases: challengeRows.length,
+            paired_cases: CHALLENGE_PAIR_COUNT * 2,
+            raw_boundary_cases: CHALLENGE_RAW_CASES.length,
             valid_cases: [...challenge.bindings.values()]
                 .filter((entry) => entry.expected.valid === true).length,
             invalid_cases: [...challenge.bindings.values()]

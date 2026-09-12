@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-09-06T17:45:50.109Z",
+  "evidence_snapshot_at": "2026-09-07T17:16:43.125Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "a840fb20ae8e8669c854934e4a0c89ca0578132229156e53e75c1503685ee476",
+    "input_digest_sha256": "e88359838bd1aa3931f413c0775626fccdf24b62d23ba9004cb53c53c8300108",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "ad02e4bb5f6f4fc6c7c73ad0cc9e386730799b451d3f5853fa07f614129720f5",
+        "sha256": "fc69b2d86ee71538627a1fa3e93b8d6f8e509fc9afcc9786ef048b2fab9017ad",
         "bytes": 4299
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "d8260f6cb1e664717641ab560ef09e45e3105390b68e60f07f3912f1422ff6bf",
+        "sha256": "375e96ecf7dfc21ce0d890c2ec1165fd53593c03db44b8fc46881e6409996971",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "d7428ea0d3dc882e15f625d4d0128024c2a1d7373c203c5ed7499f0316cc0daf",
+        "sha256": "fa348bd8073acc65df02e66bd411bee34e0baff89e2094b1ea218fb25fd0030e",
         "bytes": 391522
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "8b2fa70f9e723404cb958978885281baecae6e1f74f0d1f4e40f5178e217aa0f",
-        "bytes": 50046
+        "sha256": "f5f7aa4994e115cfb6ec23a63afa10db2ba8cafa5ea38e6f5d6e6aedf56e530f",
+        "bytes": 47789
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -307,17 +307,17 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 10919,
-      "files": 675,
+      "total": 11065,
+      "files": 683,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
       "suites": 21,
-      "vectors": 340,
+      "vectors": 335,
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "c3e067557d68aaab9203122456cdffa3dbbc8968040682fb94781077b693063a",
+      "manifest_sha256": "e1ae7d70f442201a2f42d439aa082dcae1cbf1d2771beef12e79282041af609c",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -349,7 +349,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "a8abac213a1d64f2724812db4264731e80454651c0f68963ffde3046e7f16242",
+        "evidenceSha256": "62a973fafff4f491a3513a4dad7dce18720d6553f60a64df9fcce2ca696d0cad",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -419,7 +419,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 264,
-      "evidence_bundle_sha256": "4131113a9ed0609cd198ccc8d543a19db279ebd03843f3acd8e22f33e3b16db7"
+      "evidence_bundle_sha256": "de263b6eb918c44f969f9b70ed711cf9237a5e9a40473655458deccb45f5288f"
     },
     "caid": {
       "core_vectors": 48,
@@ -476,7 +476,7 @@
       "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
       "scope": "time_pinned_vector_set",
       "relation_to_current_bundle": "time_pinned_prior_vector_set",
-      "current_vectors": 340
+      "current_vectors": 335
     },
     "hostility": {
       "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",
@@ -4593,9 +4593,9 @@
     },
     {
       "identifier": "draft-schrock-ep-architecture",
-      "revision_at_snapshot": "03",
+      "revision_at_snapshot": "02",
       "role": "Portfolio architecture",
-      "next_action": "Published September 6; use -03 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
+      "next_action": "Published July 21; use -02 as the current architecture baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4609,9 +4609,9 @@
     },
     {
       "identifier": "draft-schrock-ep-authorization-evidence-chain",
-      "revision_at_snapshot": "06",
+      "revision_at_snapshot": "05",
       "role": "Heterogeneous evidence composition",
-      "next_action": "Published September 6; use -06 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
+      "next_action": "Published August 3; use -05 as the current verifier-derived distinct-subject and explicit AEC/AEB term-ownership baseline",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4625,9 +4625,9 @@
     },
     {
       "identifier": "draft-schrock-ep-bounded-capability-receipts",
-      "revision_at_snapshot": "05",
+      "revision_at_snapshot": "04",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published September 6; use -05 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
+      "next_action": "Published August 11; use -04 for immutable scope-comparison semantics, composable relation-proof provenance, capability-scoped operation identity, bounded provider entry, atomic issuance registration, operation-bound holder signatures, and explicit implementation limits",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4665,9 +4665,9 @@
     },
     {
       "identifier": "draft-schrock-ep-quorum",
-      "revision_at_snapshot": "04",
+      "revision_at_snapshot": "03",
       "role": "Distinct-human multi-handshake composition",
-      "next_action": "Published September 6; use -04 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
+      "next_action": "Published July 19; quorum owns ordered multi-party ceremony semantics",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4737,7 +4737,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-09-06",
+    "updated": "2026-08-22",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -4789,10 +4789,10 @@
           "order": 4,
           "label": "Authorization Evidence Chain",
           "draft": "draft-schrock-ep-authorization-evidence-chain",
-          "revision": "06",
-          "source": "standards/staged/NEXT-AEC-06/UPLOAD-THIS/draft-schrock-ep-authorization-evidence-chain-06.xml",
+          "revision": "05",
+          "source": "standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml",
           "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
-          "snapshot_sha256": "69fef7053014c053e274f6396afdc9ea77943b6538876c8e49707d51796c1585",
+          "snapshot_sha256": "1ae4783a0c8e6e68b247191732d8b372c4032416b447a98f0b1040d54faad220",
           "canonical_question": "Does the natively verified, action-matched bundle satisfy the relying party's evidence requirement?",
           "boundary": "Returns SATISFIED or UNSATISFIED; it never returns a universal authorization verdict."
         }

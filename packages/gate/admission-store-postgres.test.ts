@@ -616,22 +616,37 @@ test('real PostgreSQL enforces reserve, supersession, currentness, crash recover
       maxTransactionRetries: 6,
     });
 
-    const reaperNow = Date.now();
+    // Keep the too-early refusal independent of short-lived expiry cleanup.
+    // Runner scheduling and the awaited seed queries can exceed 250 ms.
+    const liveInput = admissionInput(
+      'admission:not-yet-expired',
+      'operation:not-yet-expired',
+      Date.now(),
+    );
+    await seedCurrentness(liveInput);
+    const liveReservation = await store.reserve(liveInput);
+    assert.ok(liveReservation.ok);
+    assert.deepEqual(await store.reapExpiredReservation({
+      tenant_id: liveReservation.record.tenant_id,
+      admission_id: liveReservation.record.admission_id,
+      expected_revision: liveReservation.record.revision,
+    }), { ok: false, reason: 'state_conflict' });
+
     const abandonedInput = admissionInput(
       'admission:abandoned-before-invocation',
       'operation:abandoned-before-invocation',
-      reaperNow,
-      { expires_at: iso(reaperNow + 250) },
+      Date.now(),
     );
     await seedCurrentness(abandonedInput);
+    // Set the cleanup deadline only after setup, and let PostgreSQL wait until
+    // that exact deadline. No snapshot, journal, or database clock is rewritten.
+    abandonedInput.expires_at = iso(Date.now() + 5_000);
     const abandoned = await store.reserve(abandonedInput);
     assert.ok(abandoned.ok);
-    assert.deepEqual(await store.reapExpiredReservation({
-      tenant_id: abandoned.record.tenant_id,
-      admission_id: abandoned.record.admission_id,
-      expected_revision: abandoned.record.revision,
-    }), { ok: false, reason: 'state_conflict' });
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await pool.query(`SELECT pg_sleep(GREATEST(0,
+      EXTRACT(EPOCH FROM ($1::timestamptz - clock_timestamp()))))`, [
+      abandonedInput.expires_at,
+    ]);
     const reaped = await store.reapExpiredReservation({
       tenant_id: abandoned.record.tenant_id,
       admission_id: abandoned.record.admission_id,
