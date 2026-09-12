@@ -8,6 +8,8 @@
 // migration in the governed migration-history ledger. A candidate's remote
 // classification is a declaration, not proof that its SQL has run. This check
 // does not replace or suppress the independent live schema reconciliation.
+// An already-journaled source may move privately only after its exact hash is
+// approved in the trusted BASE tree. A candidate cannot approve its own deletion.
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -115,18 +117,47 @@ function readLedger(root, label) {
 const argumentsMap = parseArguments();
 const baseFiles = regularFiles(argumentsMap['base-root']);
 const candidateFiles = regularFiles(argumentsMap['candidate-root']);
+const baseLedger = readLedger(argumentsMap['base-root'], 'trusted base');
+const ledger = readLedger(argumentsMap['candidate-root'], 'candidate');
+const relocationPath = path.join(argumentsMap['base-root'], 'supabase', 'source-relocations.v1.json');
+let relocations = {};
+if (fs.existsSync(relocationPath)) {
+  const stat = fs.lstatSync(relocationPath);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 65536) {
+    fail('trusted source relocation approvals must be one bounded regular file');
+  }
+  let approval;
+  try { approval = JSON.parse(fs.readFileSync(relocationPath, 'utf8')); }
+  catch { fail('trusted source relocation approvals are invalid JSON'); }
+  if (approval.schema_version !== 'EP-MIGRATION-SOURCE-RELOCATIONS-v1'
+      || approval.destination_repository !== 'emiliaprotocol/emilia-company'
+      || approval.destination_root !== 'commercial/emilia-works/supabase/migrations'
+      || !approval.files || typeof approval.files !== 'object' || Array.isArray(approval.files)
+      || Object.entries(approval.files).some(([name, hash]) => !FILE_RE.test(name) || !HASH_RE.test(hash))) {
+    fail('trusted source relocation approvals are invalid');
+  }
+  relocations = approval.files;
+}
+const relocated = [];
 
 for (const [name, bytes] of baseFiles) {
   const candidate = candidateFiles.get(name);
-  if (candidate === undefined) fail(`candidate deletes base migration: ${name}`);
+  if (candidate === undefined) {
+    const version = versionOf(name);
+    if (relocations[name] === sha256(bytes) && baseLedger.remote.has(version)
+        && ledger.remote.has(version) && ledger.privateRemote.has(version)
+        && !Object.hasOwn(ledger.publicFiles, name)) {
+      relocated.push(name);
+      continue;
+    }
+    fail(`candidate deletes base migration: ${name}`);
+  }
   if (sha256(bytes) !== sha256(candidate)) {
     fail(`candidate rewrites base migration: ${name}`);
   }
 }
 
 const added = [...candidateFiles.keys()].filter((name) => !baseFiles.has(name));
-const baseLedger = readLedger(argumentsMap['base-root'], 'trusted base');
-const ledger = readLedger(argumentsMap['candidate-root'], 'candidate');
 try {
   validateMigrationHistory(argumentsMap['base-root']);
 } catch (error) {
@@ -173,4 +204,4 @@ try {
   fail(`candidate migration history is invalid: ${error.message}`);
 }
 
-console.log(`PR candidate reconciled: ${baseFiles.size} immutable base migrations, ${added.length} classified additions; live deployment is not verified by this data-only check`);
+console.log(`PR candidate reconciled: ${baseFiles.size} immutable base migrations, ${relocated.length} base-approved private source relocations, ${added.length} classified additions; live deployment is not verified by this data-only check; private destination custody is not verified`);
