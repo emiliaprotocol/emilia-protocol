@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Experimental                             12 August 2026
-Expires: 13 February 2027
+Intended status: Experimental                           6 September 2026
+Expires: 10 March 2027
 
 
 Bounded Capability Receipts and Durable Spend Control for Agent Actions
@@ -53,9 +53,9 @@ Status of This Memo
 
 
 
-Schrock                 Expires 13 February 2027                [Page 1]
+Schrock                   Expires 10 March 2027                 [Page 1]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    Internet-Drafts are draft documents valid for a maximum of six months
@@ -63,7 +63,7 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 13 February 2027.
+   This Internet-Draft will expire on 10 March 2027.
 
 Copyright Notice
 
@@ -109,23 +109,23 @@ Table of Contents
 
 
 
-Schrock                 Expires 13 February 2027                [Page 2]
+Schrock                   Expires 10 March 2027                 [Page 2]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    15. Conformance . . . . . . . . . . . . . . . . . . . . . . . . .  24
    16. Relationship to Other Work  . . . . . . . . . . . . . . . . .  27
-   17. Security Considerations . . . . . . . . . . . . . . . . . . .  28
+   17. Security Considerations . . . . . . . . . . . . . . . . . . .  29
    18. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  32
    19. Implementation Status . . . . . . . . . . . . . . . . . . . .  32
-   20. Changes Since -04 . . . . . . . . . . . . . . . . . . . . . .  34
-   21. Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  35
-   22. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  35
-   23. References  . . . . . . . . . . . . . . . . . . . . . . . . .  35
-     23.1.  Normative References . . . . . . . . . . . . . . . . . .  35
-     23.2.  Informative References . . . . . . . . . . . . . . . . .  36
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  37
+   20. Changes Since -04 . . . . . . . . . . . . . . . . . . . . . .  35
+   21. Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  36
+   22. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  36
+   23. References  . . . . . . . . . . . . . . . . . . . . . . . . .  36
+     23.1.  Normative References . . . . . . . . . . . . . . . . . .  36
+     23.2.  Informative References . . . . . . . . . . . . . . . . .  37
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  38
 
 1.  Introduction
 
@@ -165,9 +165,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027                [Page 3]
+Schrock                   Expires 10 March 2027                 [Page 3]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
 1.2.  Scope and Non-Goals
@@ -221,9 +221,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027                [Page 4]
+Schrock                   Expires 10 March 2027                 [Page 4]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
       authoritative active or frozen status and a monotonically
@@ -277,9 +277,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027                [Page 5]
+Schrock                   Expires 10 March 2027                 [Page 5]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    All capability-store participants that can authorize a capability or
@@ -333,9 +333,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027                [Page 6]
+Schrock                   Expires 10 March 2027                 [Page 6]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    {
@@ -389,9 +389,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027                [Page 7]
+Schrock                   Expires 10 March 2027                 [Page 7]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    subject:  The intended holder or workload identifier.  This
@@ -445,9 +445,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027                [Page 8]
+Schrock                   Expires 10 March 2027                 [Page 8]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
       format [RFC3339] using the canonical string form selected by the
@@ -501,9 +501,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027                [Page 9]
+Schrock                   Expires 10 March 2027                 [Page 9]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
        unresolved, truncated, reordered, or substituted link; a repeated
@@ -557,9 +557,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027               [Page 10]
+Schrock                   Expires 10 March 2027                [Page 10]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    This composition does not make human authorization part of every
@@ -613,9 +613,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027               [Page 11]
+Schrock                   Expires 10 March 2027                [Page 11]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    Any BROADER component makes the composite broader; otherwise any
@@ -669,9 +669,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027               [Page 12]
+Schrock                   Expires 10 March 2027                [Page 12]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    applicable after a profile, rule, domain, or procedure revision.  A
@@ -725,9 +725,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027               [Page 13]
+Schrock                   Expires 10 March 2027                [Page 13]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
 8.  Holder Proof and Threshold Custody
@@ -781,9 +781,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027               [Page 14]
+Schrock                   Expires 10 March 2027                [Page 14]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    For ed25519-operation-proof, the portable threshold value MUST be
@@ -837,9 +837,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027               [Page 15]
+Schrock                   Expires 10 March 2027                [Page 15]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    Mutable counters in a presented receipt are not authoritative.
@@ -893,9 +893,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027               [Page 16]
+Schrock                   Expires 10 March 2027                [Page 16]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    5.  reject a unit or scale mismatch;
@@ -928,36 +928,32 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    Immediately before provider entry, the store MUST atomically verify
    reservation ownership, verify that its authoritative transaction time
    is earlier than the recorded provider-entry deadline, and recheck
-   current capability and applicable allowance state.  When the
-   admission-control epoch profile is enabled, the same transaction MUST
-   require domain status active and equality between the current epoch
-   and the epoch captured at reservation.  On success, that transaction
-   MUST record that provider entry has begun, decrease reserved, and
-   increase consumed by the same amount before the effect adapter is
-   invoked.  A reservation that has reached its deadline MUST NOT enter
-   the effect adapter.  A serialized absence of the provider-entry
-   marker after the deadline is authoritative proof of non-entry and may
-   drive the not_entered transition in Section 10.4.
-
-
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 17]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
+   current capability and applicable allowance state.  This check MUST
+   recheck direct revocation and every authority-bearing cascade-mode
+   ancestor in the same atomic state domain, as specified in
+   Section 12.1.  A reservation does not freeze revocation status.  When
+   the admission-control epoch profile is enabled, the same transaction
+   MUST require domain status active and equality between the current
+   epoch and the epoch captured at reservation.  On success, that
+   transaction MUST record that provider entry has begun, decrease
+   reserved, and increase consumed by the same amount before the effect
+   adapter is invoked.  A reservation that has reached its deadline MUST
+   NOT enter the effect adapter.  A serialized absence of the provider-
+   entry marker after the deadline is authoritative proof of non-entry
+   and may drive the not_entered transition in Section 10.4.
 
    A frozen domain, epoch mismatch, capability revocation, or current
    allowance refusal can establish not_entered only when the same
    transaction authenticates the reservation owner and proves that the
    operation remains reserved.  It then decreases reserved without
+
+
+
+Schrock                   Expires 10 March 2027                [Page 17]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    increasing consumed and retains the operation as a replay tombstone.
    A wrong holder, missing authoritative state, or conflicting operation
    state MUST NOT release another owner's reservation or assert non-
@@ -975,8 +971,18 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
    A delegated operation does not enter an external effect adapter.  Its
    atomic terminal transition verifies ownership and state reserved,
-   decreases reserved, increases consumed by the same amount, and binds
-   the child registration described in Section 12.
+   rechecks the funding capability's direct revocation and every
+   authority-bearing cascade-mode ancestor, decreases reserved,
+   increases consumed by the same amount, and binds the child
+   registration described in Section 12.  This funding commitment is the
+   authority-transfer cutoff for a delegated operation.  If applicable
+   revocation commits first, the store MUST refuse the transfer and may
+   release the reservation only after authenticating its owner and
+   proving that no child authority was committed.  If the funding
+   commitment commits first, its debit remains consumed; subsequent
+   child use follows the signed direct or cascade mode.  Retrying child
+   registration for that same committed transfer does not create another
+   allocation or reopen the parent debit.
 
    A repeated commit, wrong reservation token, or external-effect commit
    against an operation not in provider_entered MUST refuse.  A caller
@@ -999,15 +1005,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-
-
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 18]
+Schrock                   Expires 10 March 2027                [Page 18]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
 10.4.  Crash Recovery and Reconciliation
@@ -1061,9 +1061,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027               [Page 19]
+Schrock                   Expires 10 March 2027                [Page 19]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
 11.1.  Admission-Control Epoch and Emergency Freeze
@@ -1117,9 +1117,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027               [Page 20]
+Schrock                   Expires 10 March 2027                [Page 20]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    This profile stops new admission inside the owning atomic state
@@ -1173,9 +1173,9 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 
 
-Schrock                 Expires 13 February 2027               [Page 21]
+Schrock                   Expires 10 March 2027                [Page 21]
 
-Internet-Draft           EP Bounded Capabilities             August 2026
+Internet-Draft           EP Bounded Capabilities          September 2026
 
 
    When a capability's revocation_mode is direct, revoking that
@@ -1194,45 +1194,49 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    eventually consistent notification does not establish immediate
    cascade revocation.
 
-   The ancestor revocation transition and a descendant reservation MUST
-   be serialized in that state domain.  If revocation commits first, the
-   descendant request MUST refuse.  If the reservation commits first,
-   the revocation is late for that operation and prevents later
-   authority claims; it MUST NOT retroactively release the reservation,
-   relabel an effect, or authorize a retry.  Any operation whose effect
-   outcome is unresolved remains subject to the reconciliation rules in
-   Section 10.4.
+   Direct revocation of the exercised capability and revocation of every
+   authority-bearing cascade-mode ancestor MUST serialize with both
+   reservation and provider entry in that state domain.  Revocation that
+   commits first prevents a new reservation.  Revocation that commits
+   after reservation but before provider entry MUST prevent entry.  Only
+   the authenticated reservation owner may establish not_entered,
+   release the held amount, and retain the replay tombstone under
+   Section 10.2.  If provider entry commits first, later revocation
+   prevents new authority claims but MUST NOT release consumed
+   authority, relabel an effect, or authorize a retry.  An unresolved
+   effect remains subject to Section 10.4.
+
+   This entry-time rule does not change direct-mode descendant
+   independence.  Revocation of a direct-mode ancestor alone does not
+   invalidate a previously registered descendant; the descendant's own
+   revocation and every cascade-mode ancestor still apply.
 
    If complete current ancestor state cannot be established before
-   reservation, the request MUST refuse without entering the effect
-   adapter.  This is a pre-effect status failure, not evidence that an
-   external effect is indeterminate.  A deployment using separate state
-   domains or freshness-bounded status distribution MUST NOT claim
-   immediate cascade revocation across those domains.
+   reservation or provider entry, the request MUST refuse without
+   entering the effect adapter.  Missing status alone does not authorize
+   release of an existing reservation; retain it for authenticated
+   recovery unless the store separately proves non-entry.  This is a
+   pre-effect status failure, not evidence that an external effect is
+   indeterminate.  A deployment using separate state domains or
+   freshness-bounded status distribution MUST NOT claim immediate
+   cascade revocation across those domains.
 
    Neither mode grants a grace period after revocation.  Continued or
    wind-down authority MUST be established by a separate authorization
    with its own exact scope, budget, holder, and validity interval; it
    MUST NOT be inferred from an in-flight delegation.  This document
    defines the consequence of an authenticated revocation within one
+
+
+
+Schrock                   Expires 10 March 2027                [Page 22]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    state domain.  It does not define who is entitled to revoke, how
    revocation is distributed, or how independently operated domains
    transfer exclusive admission ownership.
-
-
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 22]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
 
 13.  Evidence and Decision Vocabulary
 
@@ -1279,16 +1283,16 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
    *  capability_not_active
 
+
+
+Schrock                   Expires 10 March 2027                [Page 23]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    *  capability_expired
 
    *  capability_revoked
-
-
-
-Schrock                 Expires 13 February 2027               [Page 23]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
 
    *  capability_revocation_mode_invalid
 
@@ -1329,33 +1333,43 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    at every hop, over-depth chains, parent over-allocation, crash
    recovery, and indeterminate-effect charging.
 
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 24]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
-
    The conformance set MUST exercise revocation inheritance over a root,
    child, and grandchild.  It MUST show that direct-mode revocation
    leaves previously registered descendant authority independently
    usable, while cascade-mode revocation refuses every later descendant
    reservation and child allocation.  It MUST reject a missing or
+
+
+
+Schrock                   Expires 10 March 2027                [Page 24]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    unknown revocation_mode, refuse when required ancestor state is
    unavailable, and cover a race between ancestor revocation and
    descendant reservation in which exactly one transition commits first.
-   A reservation that commits first remains owned and reconcilable; a
-   revocation that commits first prevents the reservation.
+   A reservation that commits first remains owned pending the separate
+   provider-entry decision; a revocation that commits first prevents the
+   reservation.
+
+   The conformance set MUST test reserve, revoke, then provider entry
+   for both direct leaf revocation and inherited cascade revocation.
+   Both cases MUST refuse entry and permit budget release only through
+   authenticated not_entered with a retained replay tombstone.  It MUST
+   also test provider entry before revocation: the amount remains
+   consumed and outcome reconciliation remains available without re-
+   execution.  A direct-mode ancestor revocation alone MUST NOT refuse
+   an otherwise valid descendant's entry.  Missing ancestor status and
+   wrong-holder recovery attempts MUST NOT silently release another
+   owner's reservation.
+
+   The conformance set MUST also serialize applicable revocation against
+   a delegated funding commitment after reservation.  Revocation first
+   refuses the new allocation; commitment first preserves the parent
+   debit and applies the signed revocation mode to subsequent child use.
+   Neither registration retries nor revoked child use restore or
+   duplicate the parent allocation.
 
    The conformance set MUST also include multiple executor participants
    sharing one domain, an independent-store state fork, and a scope
@@ -1380,6 +1394,14 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    differs from the current evaluation in the profile or rule content
    digest, complete-domain encoding, digest algorithm, digest or
    cardinality, or deterministic procedure identifier, version or
+
+
+
+Schrock                   Expires 10 March 2027                [Page 25]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    content digest, and demonstrate that every such mismatch prevents
    chain-wide promotion.  It MUST show that a stale record contributes
    no current local result, while a separately executed current
@@ -1387,20 +1409,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    demonstrate that a matching prior record can support chain
    composition without repeating the enumeration, subject to relying-
    party policy.
-
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 25]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
 
    The conformance set MUST reject an establishment record from an
    authenticated but untrusted runner, a record using the same mutable
@@ -1440,6 +1448,16 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    has been consumed, while a new request requires current valid
    authority.
 
+
+
+
+
+
+Schrock                   Expires 10 March 2027                [Page 26]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    The conformance set MUST reject a holder preimage of the wrong length
    or digest, and MUST demonstrate that a captured valid preimage does
    not bypass scope, budget, status, validity, operation replay, or
@@ -1450,13 +1468,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    operation ID, action digest, amount, unit, scale, audience, and
    state-domain digest; every mutation MUST refuse.  It MUST also refuse
    a portable threshold other than m=1, n=1 for that method.
-
-
-
-Schrock                 Expires 13 February 2027               [Page 26]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
 
    The parent-over-allocation case MUST include at least three sibling
    child-creation attempts whose individually valid amounts collectively
@@ -1493,6 +1504,16 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    for child capabilities and additionally accounts delegated budget as
    a terminal parent spend.
 
+
+
+
+
+
+Schrock                   Expires 10 March 2027                [Page 27]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    Attenuating Authorization Tokens for Agentic Delegation Chains
    [ATTENUATING] describes constrained, attenuable agent tokens.  This
    document's distinct contribution is not the existence of constrained
@@ -1506,13 +1527,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    balance-valued authority in one authoritative store: reservation and
    consumption reduce the amount available to every sibling allocation
    in that domain.
-
-
-
-Schrock                 Expires 13 February 2027               [Page 27]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
 
    PEDIGREE [PEDIGREE] defines cryptographic delegation, mandate
    narrowing, and an operator-controlled ceiling.  This document
@@ -1548,6 +1562,14 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    payment authorization scope and requires verification before
    settlement.  It is adjacent and complementary work: this document
    does not define hardware attestation or transparency registration,
+
+
+
+Schrock                   Expires 10 March 2027                [Page 28]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    while that document does not specify the authoritative shared-state,
    reserve-and-commit, parent-funded delegation, and post-entry
    uncertainty machinery defined here.  A deployment can compose the two
@@ -1561,14 +1583,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    issuance authorization digest, not only an identifier.  Scope, budget
    units, parent, holder commitment, and validity are all inside the
    issuer signature.
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 28]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
 
    *State forks.* Two stores accepting the same capability lineage can
    each spend or delegate its full budget.  Global offline or cross-
@@ -1597,6 +1611,21 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    accounted.  A store that cannot serialize deadline recovery against
    provider entry MUST NOT restore the budget.
 
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 10 March 2027                [Page 29]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    *Freeze and provider-entry races.* A freeze result is meaningful only
    when domain status, admission epoch, capability state, applicable
    allowance state, and operation state are serialized in the same
@@ -1618,14 +1647,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    *External predicate freshness.* Reservation protects the bounded
    budget; it does not make mutable world facts current.  If an action
    depends on a record, counterparty status, market condition, or other
-
-
-
-Schrock                 Expires 13 February 2027               [Page 29]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
-
    external predicate that can change after scope evaluation, the
    deployment MUST require freshness-bound live evidence or re-evaluate
    that predicate in boundary policy before provider entry.  A short
@@ -1653,6 +1674,14 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    an enforcement point, endpoint, or log that leaks the reusable
    preimage.  Secret shares require confidential distribution,
    authenticated participants, compromise response, and rate limiting.
+
+
+
+Schrock                   Expires 10 March 2027                [Page 30]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    Deployments that require non-exportable custody need a separately
    defined signature- or hardware-bound holder profile.  The built-in
    ed25519-operation-proof prevents a reusable bearer secret from
@@ -1662,25 +1691,18 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
    *Revocation.* Expiry and exhausted budget are not revocation.  A
    deployment that requires early invalidation MUST consult a separately
-   authenticated revocation or status source before reservation and
-   define its freshness policy.  Revocation inheritance is not inferred
-   from lineage alone: the signed mode determines whether already
-   transferred descendant authority survives.  An immediate cascade
-   claim requires the ancestor revocation transition and descendant
-   reservation to be serialized in the same authoritative atomic state
-   domain.  Notification or eventual cache refresh cannot supply that
-   guarantee.  Full-lineage locking can make a high-fan-out ancestor a
-   contention and denial-of-service hot spot; deployments MUST bound
-   lineage depth, admission work, and lock acquisition time without
-   weakening the fail-closed result.
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 30]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
+   authenticated revocation or status source before reservation and at
+   provider entry and define its freshness policy.  Revocation
+   inheritance is not inferred from lineage alone: the signed mode
+   determines whether already transferred descendant authority survives.
+   An immediate cascade claim requires the ancestor revocation
+   transition, descendant reservation, and provider entry to be
+   serialized in the same authoritative atomic state domain.
+   Notification or eventual cache refresh cannot supply that guarantee.
+   Full-lineage locking can make a high-fan-out ancestor a contention
+   and denial-of-service hot spot; deployments MUST bound lineage depth,
+   admission work, and lock acquisition time without weakening the fail-
+   closed result.
 
    *Units and arithmetic.* All accounting uses integers with signed unit
    and scale.  Floating-point arithmetic, implicit currency conversion,
@@ -1708,6 +1730,14 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    record from an untrusted runner does not establish a relation
    property.  Profiles that permit mechanical establishment MUST bound
    domain cardinality and procedure work, define one canonical domain
+
+
+
+Schrock                   Expires 10 March 2027                [Page 31]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    encoding, and reject values outside the established domain for chain-
    composition purposes.  Implementations MUST apply bounded parsing
    before processing a presented record and MUST NOT perform attacker-
@@ -1728,15 +1758,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    does not provide a post-quantum signature profile or a zero-knowledge
    receipt.  Algorithm agility and long-term preservation are separate
    concerns.
-
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 31]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
 
 18.  Privacy Considerations
 
@@ -1765,6 +1786,14 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    digests, orphaned registration after parent commitment, and an
    explicit two-store state-fork counterexample.  These are same-team
    implementation and regression results, not independent implementation
+
+
+
+Schrock                   Expires 10 March 2027                [Page 32]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    or production deployment evidence.
 
    The reference stores move an operation amount from reserved_amount to
@@ -1786,13 +1815,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    freeze-event artifact.  Control transitions use a trusted verifier
    callback; the reference store does not yet atomically consume a
    portable detector capability in the same transaction.
-
-
-
-Schrock                 Expires 13 February 2027               [Page 32]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
 
    The prototype wire format predates this document and does not yet
    implement all mandatory fields in this version, including full
@@ -1820,12 +1842,20 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    The reference implementation now signs and requires revocation_mode,
    records each capability's immediate parent, and implements direct and
    cascade revocation in both the in-memory test store and PostgreSQL
+
+
+
+Schrock                   Expires 10 March 2027                [Page 33]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    store.  A descendant reservation resolves the complete registered
    ancestor lineage.  The PostgreSQL path locks those state rows in the
    reservation transaction, so an ancestor revocation that commits first
    refuses the reservation, while a reservation that commits first
    remains owned and reconcilable.  Missing, malformed, or migration-
-   incomplete ancestor state refuses before provider entry.  The tracked
+   incomplete ancestor state refuses at reservation.  The tracked
    migration quarantines legacy rows without an explicit mode rather
    than inferring direct or cascade.  Regression cases cover the signed
    closed field, direct descendant survival, cascade refusal,
@@ -1835,6 +1865,18 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    it is not independent interoperability, revocation distribution, or
    cross-domain cascade enforcement.
 
+   Entry-time direct and inherited revocation revalidation is not yet
+   implemented in these reference stores.  They recheck the admission-
+   control epoch, applicable allowance state, ownership, and deadline at
+   provider entry, but currently resolve direct and ancestor revocation
+   at reservation.  Those results do not establish the entry-time
+   revocation rule or its new ordering cases in Section 15, Paragraph 3.
+   The implementation and bounded revocation model therefore provide
+   partial experience, not conformance to that part of this revision.
+   The delegated-commit revocation recheck is also a protocol
+   requirement, not an implementation claim for the existing
+   reservation-time revocation path.
+
    The -04 scope-profile contract and comparison-reporting rules are not
    yet implemented.  In particular, the reference implementation does
    not yet emit per-component decidability records, relation
@@ -1842,14 +1884,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    establishment provenance, or the local-only versus chain-composable
    result.  No implementation or conformance claim is made for those
    additions.  The -04 atomic root-issuance registration rule is also
-
-
-
-Schrock                 Expires 13 February 2027               [Page 33]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
-
    not implemented as a conforming protocol operation because the
    prototype does not yet bind and consume the full issuance
    authorization described here.  The capability-scoped operation key
@@ -1864,6 +1898,14 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    its own parent, and increasing amounts within the delegation chain
    presented at mint or verification time.  Those checks provide local
    simple-path and monotonic amount enforcement.  They do not discover
+
+
+
+Schrock                   Expires 10 March 2027                [Page 34]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
+
    omitted parents or establish the digest-linked, graph-wide lineage
    required by Section 12, so they do not close the remaining
    conformance gap.
@@ -1897,15 +1939,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
 
 20.  Changes Since -04
 
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 34]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
-
    *  Moved the reserved-to-consumed budget transition to the atomic
       provider-entry boundary for external effects and prohibited a
       second debit at outcome commit.
@@ -1913,8 +1946,21 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    *  Required current capability and applicable allowance state to be
       rechecked in the provider-entry transaction.
 
+   *  Made provider entry the cutoff for direct and inherited cascade
+      revocation, preserved direct-mode descendant independence, and
+      added explicit ordering cases and the remaining implementation
+      limitation.
+
    *  Defined an optional admission-control domain and monotonic epoch
       captured at reservation and rechecked at provider entry.
+
+
+
+
+Schrock                   Expires 10 March 2027                [Page 35]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
 
    *  Defined serialized freeze, restoration, wrong-holder, non-entry,
       and pre-freeze reconciliation behavior without claiming that
@@ -1953,15 +1999,6 @@ Internet-Draft           EP Bounded Capabilities             August 2026
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/info/rfc2119>.
 
-
-
-
-
-Schrock                 Expires 13 February 2027               [Page 35]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
-
    [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
               Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
               <https://www.rfc-editor.org/info/rfc3339>.
@@ -1969,6 +2006,17 @@ Internet-Draft           EP Bounded Capabilities             August 2026
    [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
               Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
               <https://www.rfc-editor.org/info/rfc4648>.
+
+
+
+
+
+
+
+Schrock                   Expires 10 March 2027                [Page 36]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
 
    [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
               Signature Algorithm (EdDSA)", RFC 8032,
@@ -2010,18 +2058,21 @@ Internet-Draft           EP Bounded Capabilities             August 2026
               Authorization", 2026, <https://datatracker.ietf.org/doc/
               draft-nelson-agent-delegation-receipts/>.
 
-
-
-
-Schrock                 Expires 13 February 2027               [Page 36]
-
-Internet-Draft           EP Bounded Capabilities             August 2026
-
-
    [EP-QUORUM]
               Schrock, I., "Multi-Party Authorization (Quorum) for the
               EMILIA Protocol", 2026, <https://datatracker.ietf.org/doc/
               draft-schrock-ep-quorum/>.
+
+
+
+
+
+
+
+Schrock                   Expires 10 March 2027                [Page 37]
+
+Internet-Draft           EP Bounded Capabilities          September 2026
+
 
    [HAWKINS]  Hawkins, W., "Attested Payment Authorization for
               Autonomous Agents", Work in Progress, Internet-Draft,
@@ -2069,4 +2120,9 @@ Author's Address
 
 
 
-Schrock                 Expires 13 February 2027               [Page 37]
+
+
+
+
+
+Schrock                   Expires 10 March 2027                [Page 38]

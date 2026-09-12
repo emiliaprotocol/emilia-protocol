@@ -453,7 +453,7 @@ describe('clean-room evaluator v3 oracle separation', () => {
     }
   });
 
-  it('passes an honest evaluator over 335 pinned vectors and fresh challenges', () => {
+  it('passes an honest evaluator over 340 pinned vectors and fresh challenges', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-v3-valid-'));
     try {
       const runner = path.join(dir, 'runner');
@@ -474,7 +474,7 @@ describe('clean-room evaluator v3 oracle separation', () => {
       expect(report.conformance).toMatchObject({
         status: 'pass',
         suites: 21,
-        vectors: 335,
+        vectors: 340,
       });
       expect(report.post_build_challenge).toMatchObject({
         status: 'pass',

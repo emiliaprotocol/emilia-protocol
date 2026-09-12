@@ -7,6 +7,7 @@
 // authorizes; each adversarial mutation drives the whole quorum invalid.
 import { describe, it, expect } from 'vitest';
 import { verifyQuorum } from '../lib/quorum-web.js';
+import { verifyQuorum as verifyNodeQuorum } from '../packages/verify/src/quorum.js';
 
 const HOST = 'emiliaprotocol.ai';
 const utf8 = (s) => new TextEncoder().encode(s);
@@ -45,6 +46,92 @@ const ctx = (slot, i, appr, ah) => ({ action_hash: ah ?? ACTION, policy: 'p', ro
 const ordered = () => ({ mode: 'ordered', required: 3, approvers: ROSTER.map((r) => ({ role: r.role, approver: r.approver })), distinct_humans: true, window_sec: 900 });
 const quorum = (members, policy) => ({ '@type': 'ep.quorum', action_hash: ACTION, policy: policy ?? ordered(), members });
 const member = async (i, opts, appr, ah) => ({ ...await signSim(ctx(ROSTER[i], i, appr, ah), opts), role: ROSTER[i].role });
+
+const SIGNOFF_CHAIN_PROFILE = 'EP-QUORUM-SIGNOFF-CHAIN-v1';
+const signoffHash = async (signoff) => Array.from(
+  await sha(utf8(`${SIGNOFF_CHAIN_PROFILE}\0${canon(signoff)}`)),
+  (x) => x.toString(16).padStart(2, '0'),
+).join('');
+const strongPolicy = () => ({ ...ordered(), ordered_chain: true, ordered_chain_profile: SIGNOFF_CHAIN_PROFILE });
+
+describe.each([
+  ['browser', verifyQuorum],
+  ['node', verifyNodeQuorum],
+])('%s completed-signoff ordering regression', (_name, verify) => {
+  it.each([false, true])('rejects reverse signing of precomputed context-only links (profile present: %s)', async (withProfile) => {
+    ACTION = 'a'.repeat(64);
+    const contexts = ROSTER.map((slot, i) => ctx(slot, i));
+    for (let i = 1; i < contexts.length; i++) {
+      contexts[i].prev_context_hash = Array.from(await sha(utf8(canon(contexts[i - 1]))),
+        (x) => x.toString(16).padStart(2, '0')).join('');
+    }
+    const members = [];
+    const actualSigningOrder = [];
+    // These are real signatures made in the reverse of the claimed order.
+    // Every context is available before any predecessor has signed.
+    for (let i = contexts.length - 1; i >= 0; i--) {
+      members[i] = { ...await signSim(contexts[i]), role: ROSTER[i].role };
+      actualSigningOrder.push(ROSTER[i].approver);
+    }
+    expect(actualSigningOrder).toEqual(['ep:ig', 'ep:ao', 'ep:po']);
+    const policy = withProfile ? strongPolicy() : { ...ordered(), ordered_chain: true };
+    const result = await verify(quorum(members, policy), { rpId: HOST });
+    expect(result.checks.all_signatures_valid).toBe(true);
+    expect(result.valid).toBe(false);
+    expect(result.checks.chain_linked).toBe(false);
+  });
+
+  it('accepts a chain whose next challenge binds the completed predecessor signoff', async () => {
+    ACTION = 'a'.repeat(64);
+    const members = [];
+    for (let i = 0; i < ROSTER.length; i++) {
+      const context = ctx(ROSTER[i], i);
+      if (i > 0) context.prev_signoff_hash = await signoffHash(members[i - 1].signoff);
+      members.push({ ...await signSim(context), role: ROSTER[i].role });
+    }
+    const result = await verify(quorum(members, strongPolicy()), { rpId: HOST });
+    expect(result.valid).toBe(true);
+    expect(result.checks.chain_linked).toBe(true);
+
+    // A different valid signature of the same predecessor context is a
+    // different completed artifact and must not satisfy the existing link.
+    members[0] = { ...await signSim(members[0].signoff.context, { pair: members[0]._pair }), role: ROSTER[0].role };
+    const substituted = await verify(quorum(members, strongPolicy()), { rpId: HOST });
+    expect(substituted.checks.all_signatures_valid).toBe(true);
+    expect(substituted.checks.chain_linked).toBe(false);
+    expect(substituted.valid).toBe(false);
+  });
+
+  it('pins the complete relying-party policy and rejects stripped or mutated requirements', async () => {
+    ACTION = 'a'.repeat(64);
+    const policy = strongPolicy();
+    const members = [];
+    for (let i = 0; i < ROSTER.length; i++) {
+      const context = ctx(ROSTER[i], i);
+      if (i > 0) context.prev_signoff_hash = await signoffHash(members[i - 1].signoff);
+      members.push({ ...await signSim(context), role: ROSTER[i].role });
+    }
+    expect((await verify(quorum(members, policy), { rpId: HOST, expectedPolicy: policy })).valid).toBe(true);
+    const stripped = { ...policy };
+    delete stripped.ordered_chain;
+    delete stripped.ordered_chain_profile;
+    for (const candidate of [stripped, { ...policy, required: 2 }, { ...policy, ordered_chain_profile: 'unknown' }]) {
+      const result = await verify(quorum(members, candidate), { rpId: HOST, expectedPolicy: policy });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('quorum_policy_mismatch');
+    }
+    expect((await verify(quorum(members, policy), { rpId: HOST, expectedPolicy: null })).valid).toBe(false);
+  });
+
+  it('accepts exactly the first k completed signoffs for ordered k-of-n', async () => {
+    ACTION = 'a'.repeat(64);
+    const first = { ...await signSim(ctx(ROSTER[0], 0)), role: ROSTER[0].role };
+    const secondContext = { ...ctx(ROSTER[1], 1), prev_signoff_hash: await signoffHash(first.signoff) };
+    const second = { ...await signSim(secondContext), role: ROSTER[1].role };
+    const policy = { ...strongPolicy(), required: 2 };
+    expect((await verify(quorum([first, second], policy), { rpId: HOST, expectedPolicy: policy })).valid).toBe(true);
+  });
+});
 
 describe('lib/quorum-web.js — EP-QUORUM-v1 (Web Crypto)', () => {
   it('authorizes a genuine ordered 3-of-3 quorum (every check passes)', async () => {

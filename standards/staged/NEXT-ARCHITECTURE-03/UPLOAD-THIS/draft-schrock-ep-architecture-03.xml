@@ -13,7 +13,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="August" day="12"/>
+    <date year="2026" month="September" day="6"/>
     <area>Security</area>
     <keyword>agent authorization</keyword>
     <keyword>evidence</keyword>
@@ -575,7 +575,8 @@
         execution decision. It is a published individual Internet-Draft.</li>
         <li><xref target="EP-BOUNDED"/> defines a signed grant plus durable
         reserve-admit-reconcile profile for scoped, budgeted multi-operation
-        authority. It is a published experimental individual Internet-Draft.</li>
+        authority. It is an experimental individual-draft proposal, not an
+        adopted standard or a claim of complete reference conformance.</li>
         <li><xref target="EP-AEB"/> defines the effect-boundary lifecycle and
         enforcement composition. At the time of this revision it is a
         companion individual-draft proposal, not an adopted standard.</li>
@@ -627,11 +628,13 @@
         AEC and AEB can consume such evidence through its native verifier
         without redefining the carrier.</li>
         <li>AuthZEN's Access Request and Approval Profile
-        <xref target="AUTHZEN-AARP"/> defines asynchronous approval tasks and
-        policy-decision-point re-evaluation. EMILIA profiles are complementary
-        when a deployment requires portable exact-action evidence, distinct
-        human ceremonies, durable consumption, or consequence reconciliation.
-        Those properties are not implied by a generic approval result.</li>
+        <xref target="AUTHZEN-AARP"/> defines approval tasks, exact request
+        bindings, signed material for independently operated services, and
+        current-policy re-evaluation. EMILIA can supply a native per-approver
+        ceremony profile where one is required, then apply executor-owned
+        authority consumption and outcome reconciliation. Those additional
+        guarantees require their own checks; neither an AuthZEN approval
+        assertion nor an EMILIA evidence result alone establishes them.</li>
         <li>FIDO Verifiable Intent <xref target="FIDO-VI"/> describes portable
         evidence of user intent. The cited page describes a contribution and
         prospective standardization, not a final FIDO specification.</li>
@@ -777,7 +780,7 @@
         <front>
           <title>The Canonical Action Identifier (CAID)</title>
           <author fullname="Iman Schrock"/>
-          <date year="2026" month="July"/>
+          <date year="2026" month="August" day="6"/>
         </front>
         <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-02"/>
       </reference>
@@ -785,31 +788,31 @@
         <front>
           <title>Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)</title>
           <author fullname="Iman Schrock"/>
-          <date year="2026" month="July"/>
+          <date year="2026" month="September" day="6"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-05"/>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-06"/>
       </reference>
       <reference anchor="EP-RECEIPTS" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
         <front>
           <title>Authorization Receipts for High-Risk Agent Actions</title>
           <author fullname="Iman Schrock"/>
-          <date year="2026" month="July"/>
+          <date year="2026" month="August" day="16"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-11"/>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-12"/>
       </reference>
       <reference anchor="EP-QUORUM" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
         <front>
           <title>Multi-Party Quorum Authorization for High-Risk Agent Actions (EP-QUORUM)</title>
           <author fullname="Iman Schrock"/>
-          <date year="2026" month="July"/>
+          <date year="2026" month="September" day="6"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-quorum-03"/>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-quorum-04"/>
       </reference>
       <reference anchor="EP-BOUNDED" target="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/">
         <front>
           <title>Bounded Capability Receipts and Durable Spend Control for Agent Actions</title>
           <author fullname="Iman Schrock"/>
-          <date year="2026" month="August"/>
+          <date year="2026" month="September" day="6"/>
         </front>
         <seriesInfo name="Internet-Draft" value="draft-schrock-ep-bounded-capability-receipts-05"/>
       </reference>
@@ -817,9 +820,9 @@
         <front>
           <title>The Action Evidence Boundary for Consequential Agent Effects</title>
           <author fullname="Iman Schrock"/>
-          <date year="2026" month="July"/>
+          <date year="2026" month="August" day="31"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-03"/>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-05"/>
       </reference>
       <reference anchor="EP-REVOCATION" target="https://datatracker.ietf.org/doc/draft-schrock-ep-revocation-statement/">
         <front>
@@ -842,10 +845,11 @@
           <title>Deployment Scenarios and Gap Analysis for AI Agent Gateway</title>
           <author fullname="Linda Dunbar"/>
           <author fullname="YiFei Wang"/>
+          <author fullname="Iman Schrock"/>
           <author fullname="Bing Liu"/>
-          <date year="2026" month="July" day="2"/>
+          <date year="2026" month="August" day="14"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-dunbar-dmsc-gw-scenarios-gap-analysis-02"/>
+        <seriesInfo name="Internet-Draft" value="draft-dunbar-dmsc-gw-scenarios-gap-analysis-04"/>
       </reference>
       <reference anchor="WIMSE-CBC" target="https://datatracker.ietf.org/doc/draft-winmagic-wimse-condition-bounded-credentials/">
         <front>
@@ -891,7 +895,7 @@
         <front>
           <title>AuthZEN Access Request and Approval Profile - Draft 1</title>
           <author fullname="K. McGuinness"/>
-          <date year="2026" month="July" day="9"/>
+          <date year="2026" month="September" day="3"/>
         </front>
       </reference>
       <reference anchor="FIDO-VI" target="https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/">

@@ -156,6 +156,19 @@ func VerifyQuorumWithOrigins(quorum map[string]any, rpID string, allowedOrigins 
 	return verifyQuorum(quorum, rpID, allowedOrigins)
 }
 
+// VerifyQuorumWithPolicy additionally pins the complete relying-party policy.
+// The unpinned APIs verify internal consistency, not an externally required floor.
+func VerifyQuorumWithPolicy(quorum map[string]any, rpID string, allowedOrigins []string, expectedPolicy map[string]any) QuorumResult {
+	expected := Canonicalize(expectedPolicy)
+	actual := Canonicalize(getMap(quorum["policy"]))
+	if expectedPolicy == nil || expected != actual {
+		result := verifyQuorum(nil, rpID, allowedOrigins)
+		result.Reason = "quorum_policy_mismatch"
+		return result
+	}
+	return verifyQuorum(quorum, rpID, allowedOrigins)
+}
+
 func verifyQuorum(quorum map[string]any, rpID string, allowedOrigins ...[]string) QuorumResult {
 	checks := map[string]bool{
 		"all_signatures_valid": false, "action_binding": false, "distinct_humans": false,
@@ -341,15 +354,19 @@ func verifyQuorum(quorum map[string]any, rpID string, allowedOrigins ...[]string
 
 	orderedChain, _ := policy["ordered_chain"].(bool)
 	if mode == "ordered" && orderedChain {
-		linked := len(members) >= required && len(members) <= len(eligible)
+		linked := getStr(policy, "ordered_chain_profile") == "EP-QUORUM-SIGNOFF-CHAIN-v1" && len(members) >= required && len(members) <= len(eligible)
 		for idx := 0; idx < len(members); idx++ {
-			prev := getStr(ctxOf(members[idx]), "prev_context_hash")
+			context := ctxOf(members[idx])
+			prev := getStr(context, "prev_signoff_hash")
+			if _, legacy := context["prev_context_hash"]; legacy {
+				linked = false
+			}
 			if idx == 0 {
-				if prev != "" {
+				if _, present := context["prev_signoff_hash"]; present {
 					linked = false
 				}
 			} else {
-				sum := sha256.Sum256([]byte(Canonicalize(ctxOf(members[idx-1]))))
+				sum := sha256.Sum256([]byte("EP-QUORUM-SIGNOFF-CHAIN-v1\x00" + Canonicalize(members[idx-1]["signoff"])))
 				if prev != hex.EncodeToString(sum[:]) {
 					linked = false
 				}

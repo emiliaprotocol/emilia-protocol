@@ -150,13 +150,13 @@ function signedAttestation(
 }
 
 describe('current-bundle clean-room v2', () => {
-  it('pins the exact current 21-suite/335-vector manifest and rich Authority companion', () => {
+  it('pins the exact current 21-suite/340-vector manifest and rich Authority companion', () => {
     const kit = loadPinnedKitV2();
-    expect(kit.bundle.totals).toEqual({ suites: 21, vectors: 335 });
+    expect(kit.bundle.totals).toEqual({ suites: 21, vectors: 340 });
     expect(kit.sourceManifestSha256)
-      .toBe('375e96ecf7dfc21ce0d890c2ec1165fd53593c03db44b8fc46881e6409996971');
+      .toBe('d8260f6cb1e664717641ab560ef09e45e3105390b68e60f07f3912f1422ff6bf');
     expect(kit.sourceManifestClaimSha256)
-      .toBe('e1ae7d70f442201a2f42d439aa082dcae1cbf1d2771beef12e79282041af609c');
+      .toBe('c3e067557d68aaab9203122456cdffa3dbbc8968040682fb94781077b693063a');
     expect(kit.authorityExecutionCompanionSha256)
       .toBe('121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959');
     const authority = kit.contracts.find((entry) =>
@@ -324,7 +324,7 @@ describe('current-bundle clean-room v2', () => {
       expect(report.conformance).toMatchObject({
         status: 'pass',
         suites: 21,
-        vectors: 335,
+        vectors: 340,
       });
       expect(report.acceptance).toMatchObject({
         accepted: true,

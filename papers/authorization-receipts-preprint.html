@@ -4,8 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <meta name="author" content="Iman Schrock (EMILIA Protocol, Inc.)" />
-  <title>Action-Bound Injective Authorization under Signer Harvesting: A Computational and Symbolic Security Analysis (Preprint, EMILIA Protocol)</title>
+  <title>Authorization Receipts for High-Risk Agent Actions</title>
   <style>
     /* Default styles provided by pandoc.
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -174,18 +173,15 @@
 </head>
 <body>
 <header id="title-block-header">
-<h1 class="title">Action-Bound Injective Authorization under Signer
-Harvesting: A Computational and Symbolic Security Analysis (Preprint,
-EMILIA Protocol)</h1>
-<p class="author">Iman Schrock (EMILIA Protocol, Inc.)</p>
+<h1 class="title">Authorization Receipts for High-Risk Agent
+Actions</h1>
 </header>
 <h1
 id="action-bound-injective-authorization-under-signer-harvesting-a-computational-and-symbolic-security-analysis">Action-Bound
 Injective Authorization under Signer Harvesting: A Computational and
 Symbolic Security Analysis</h1>
-<p><strong>Iman Schrock</strong> EMILIA Protocol, Inc. <a
-href="mailto:team@emiliaprotocol.ai">team@emiliaprotocol.ai</a> ORCID:
-<a
+<p><strong>Iman Schrock</strong> EMILIA Protocol, Inc.
+team@emiliaprotocol.ai ORCID: <a
 href="https://orcid.org/0009-0004-0290-5433">0009-0004-0290-5433</a></p>
 <p><em>Preprint. August 2026.</em></p>
 <p><em>The construction analyzed here is also specified, in engineering
@@ -222,18 +218,18 @@ replace the security argument. The analysis does not prove
 natural-person identity, presentation fidelity, policy correctness, log
 completeness, or downstream effects.</p>
 <hr />
-<h2 id="1-introduction">1. Introduction</h2>
-<h3 id="11-the-testimony-versus-evidence-problem">1.1 The
+<h2 id="introduction">1. Introduction</h2>
+<h3 id="the-testimony-versus-evidence-problem">1.1 The
 testimony-versus-evidence problem</h3>
 <p>Consider a dispute that is now routine in outline and will shortly be
 routine in fact. An AI agent operated by a financial-services firm
 releases a wire transfer. The transfer is later challenged, and the firm
 produces its approval records: a workflow-tool entry showing that a user
-clicked "approve" at a certain time.</p>
+clicked “approve” at a certain time.</p>
 <p>Every element of that record is an assertion by the firm. The
-database holding the approval row is writable by the firm's
+database holding the approval row is writable by the firm’s
 administrators; the mapping between the row and the executed action is
-maintained by the firm's software; the timestamp is the firm's clock. An
+maintained by the firm’s software; the timestamp is the firm’s clock. An
 auditor, counterparty, insurer, or court that wants to rely on the
 record must trust the operator of the approval system, and the operator
 is frequently the party whose conduct is in question. The record is
@@ -257,7 +253,7 @@ provide no independent cryptographic binding from an enrolled approver
 key to the canonical bytes of a specific action; the approval record is
 producible and alterable by the operator.</li>
 <li><strong>The verification gap.</strong> Those workflow records
-require third parties to trust the operator's logs rather than carrying
+require third parties to trust the operator’s logs rather than carrying
 a portable artifact that can be checked under independently selected
 trust roots.</li>
 </ol>
@@ -265,10 +261,10 @@ trust roots.</li>
 these gaps: before an irreversible action executes, an enrolled approver
 key signs a canonical context binding the exact action; the
 authorization reaches a terminal state at most once within the
-executor's shared atomic consumption domain; and the resulting receipt
+executor’s shared atomic consumption domain; and the resulting receipt
 is verifiable offline for as long as its algorithms and independently
 selected trust material remain acceptable or are renewed.</p>
-<h3 id="12-the-security-question-and-boundary">1.2 The security question
+<h3 id="the-security-question-and-boundary">1.2 The security question
 and boundary</h3>
 <p>The claim is deliberately limited. A receipt is evidence that a key
 enrolled under an approver identifier signed a canonical context binding
@@ -283,7 +279,7 @@ integrity; it never proves business correctness or a downstream effect.
 The organization publishing this work is not an auditor, regulator, or
 insurer; the artifacts described here support the judgments of such
 parties and conclude nothing on their own.</p>
-<h3 id="13-security-experiment">1.3 Security experiment</h3>
+<h3 id="security-experiment">1.3 Security experiment</h3>
 <p>The contribution is not the observation that a signature
 authenticates a byte string. The question is what a relying party may
 infer when the party collecting signatures is itself adversarial.</p>
@@ -293,7 +289,7 @@ tuples. Define the base authorization context
 policy commitment <code>p</code>, initiator <code>i</code>,
 relying-party audience <code>r</code>, and fresh shared authorization
 instance <code>q</code>. For approver slot <code>v</code>, let
-<code>n_v</code> be that slot's fresh nonce and <code>w_v</code> its
+<code>n_v</code> be that slot’s fresh nonce and <code>w_v</code> its
 validity token. The signed context is
 <code>x_v = (b, v, n_v, w_v)</code> and the signed message is
 <code>m_{b,v} = Enc("ep_signoff_v2", H(Enc(a)), p, i, r, q, n_v, w_v, v)</code>.
@@ -308,7 +304,7 @@ caller and durably changes the key from <code>UNUSED</code> to
 timeout after provider entry is reported as <code>INDETERMINATE</code>;
 it is never converted into proof that the physical effect did or did not
 occur.</p>
-<p>The challenger generates and pins the relying party's approver keys.
+<p>The challenger generates and pins the relying party’s approver keys.
 For each authorization attempt, the enforcement domain issues a fresh
 <code>q</code>, atomically registers the corresponding <code>u_b</code>,
 and supplies <code>q</code> as an independently pinned input to
@@ -341,7 +337,7 @@ signature security. A signature scheme may be unforgeable while an
 implementation that omits <code>ConsumeIfUnused</code>, accepts an
 ambiguous encoding, or leaves the initiator outside the signed context
 loses ABIA.</p>
-<h3 id="14-contributions">1.4 Contributions</h3>
+<h3 id="contributions">1.4 Contributions</h3>
 <ul>
 <li><strong>A protocol abstraction and ABIA security
 definition.</strong> We isolate action-bound authorization from its
@@ -352,7 +348,7 @@ a relying party is entitled to infer.</li>
 <li><strong>A reduction with explicit non-cryptographic
 assumptions.</strong> We bound transplantation and quorum forgery by
 EUF-CMA, hash collision resistance, and injective encoding; duplicate
-admission is impossible only if the named domain's consume-if-unused
+admission is impossible only if the named domain’s consume-if-unused
 interface is linearizable and completely mediates provider entry.</li>
 <li><strong>Mechanized symbolic confirmation and separations.</strong>
 Four Tamarin models derive the receipt and quorum properties from
@@ -372,9 +368,9 @@ verification are the analyzed core. A host-record binding profile and
 evidence-sufficiency graph are secondary compositions and are not
 claimed as new cryptographic primitives.</li>
 <li><strong>Bounded validation.</strong> The reference implementation,
-21-suite/335-vector conformance battery, and separately authored Rust
-verifier validate encoding and interoperability. They are not presented
-as independent security proofs.</li>
+historical 21-suite/340-vector conformance battery, and separately
+authored Rust verifier validate encoding and interoperability. They are
+not presented as independent security proofs.</li>
 </ul>
 <p>The paper does not claim a new signature, hash, or transparency-log
 primitive. Its cryptology contribution is the ABIA composition theorem:
@@ -382,7 +378,7 @@ under an adaptive signer-harvesting adversary, exact-context
 authenticity and single-use admission rest on different assumptions, and
 omitting either binding produces an attack without weakening the
 signature scheme.</p>
-<h3 id="15-the-result-in-one-statement">1.5 The result in one
+<h3 id="the-result-in-one-statement">1.5 The result in one
 statement</h3>
 <p><strong>Theorem 1 (ABIA composition).</strong> Let <code>Sig</code>
 be EUF-CMA secure, <code>H</code> collision resistant, and
@@ -435,19 +431,19 @@ If both queries exist, injectivity and collision resistance make each
 signed slot context equal to the one the verifier accepted, while the
 explicit base-context equality check makes both signatures authorize the
 same action, policy, initiator, audience, and authorization instance.
-Each slot's nonce and validity token remain separately bound to that
+Each slot’s nonce and validity token remain separately bound to that
 slot. The explicit distinctness checks exclude one signer or the
 initiator from filling both roles. This exhausts the winning conditions.
 A union bound over the bad events gives the stated inequality. QED.</p>
 <p>The mechanized result in Section 7 is independent corroboration of
-this argument in the Dolev--Yao trace model. Its checked acceptance rule
+this argument in the Dolev–Yao trace model. Its checked acceptance rule
 consumes a linear <code>AdmissionAvailable</code> fact created for the
 fresh context; it does not use a restriction asserting that consumption
 is unique. Removing that state input produces the expected same-receipt
 replay. Removing the initiator from the quorum signature or omitting the
 exact pinned registry view produces the other reported separation
 traces.</p>
-<h2 id="2-threat-model">2. Threat Model</h2>
+<h2 id="threat-model">2. Threat Model</h2>
 <p>Three adversarial settings drive the design. They are treated
 together because a mechanism that addresses one while silently assuming
 away another produces evidence that fails exactly when it matters.</p>
@@ -468,11 +464,11 @@ accepted action when the party producing the record is the one whose
 conduct is later in dispute. The symbolic analysis in Section 7 is run
 against exactly this adversary, which is what makes its authenticity and
 no-replay results say something the delegation layer cannot.</p>
-<h3 id="21-compromised-or-malicious-operator">2.1 Compromised or
-malicious operator</h3>
+<h3 id="compromised-or-malicious-operator">2.1 Compromised or malicious
+operator</h3>
 <p>The party running the orchestration service (policy registry, signoff
 routing, log) is not trusted for evidence purposes. Under the
-recommended key custody classes and the model's uncompromised-key
+recommended key custody classes and the model’s uncompromised-key
 assumption (Section 4.4), a compromised operator can deny service and
 can fail to route signoff requests; it cannot forge a signature under an
 enrolled approver key it does not hold. Within a shared atomic
@@ -481,12 +477,12 @@ rejected. Independent executors require a shared consumption service or
 equivalent coordination to obtain that replay guarantee.</p>
 <p>Two operator-compromise paths remain open and are part of the model
 rather than claimed away. First, an operator that controls the signing
-client's rendering can harvest a <em>genuine</em> signature over an
+client’s rendering can harvest a <em>genuine</em> signature over an
 action the approver misunderstood; this is the presentation-attack
 family of Section 10.2, and it is why independently authored rendering
 surfaces are required for high-value policies. Second, an operator that
 unilaterally controls the directory of enrolled approver keys can enroll
-a key it controls under a legitimate approver's name, relocating the
+a key it controls under a legitimate approver’s name, relocating the
 forgery rather than preventing it; Section 4.4 describes the
 directory-authority controls. The accurate statement of the modeled
 property is therefore: under the uncompromised-key assumption, the
@@ -494,19 +490,19 @@ operator cannot forge a signature under an enrolled approver key. The
 stronger statement, that the operator cannot obtain an unauthorized
 approval at all, additionally requires the directory-authority and
 independent-rendering controls to be deployed.</p>
-<h3 id="22-compromised-agent">2.2 Compromised agent</h3>
+<h3 id="compromised-agent">2.2 Compromised agent</h3>
 <p>The initiating agent is identified but never trusted. A
 prompt-injected or otherwise compromised agent can propose any action,
 state any escalation reason, and attribute itself to any external
 identity. The design consequence is uniform: everything the initiator
 supplies is treated as a claim. Injection can change what the initiator
 <em>proposes</em>; it cannot change what a human <em>approves</em> on
-the human's own hardware, because the device-bound signature is produced
-outside the model's context. The protocol additionally enforces
+the human’s own hardware, because the device-bound signature is produced
+outside the model’s context. The protocol additionally enforces
 separation of duties: an initiator can never occupy an approver slot for
 its own action. This separation is one of the properties the symbolic
 quorum model verifies (Section 7).</p>
-<h3 id="23-post-hoc-dispute">2.3 Post-hoc dispute</h3>
+<h3 id="post-hoc-dispute">2.3 Post-hoc dispute</h3>
 <p>After execution, the parties evaluating the evidence (auditors,
 counterparties, insurers, courts, regulators) may distrust every online
 service involved, may be examining events years old, and may have no
@@ -516,7 +512,7 @@ using only its own bytes, pinned or directory-proven approver key
 material, and a log checkpoint carried inside the receipt. What offline
 verification can and cannot establish in this setting is bounded
 precisely in Sections 4.3 and 10.3.</p>
-<h3 id="24-out-of-scope">2.4 Out of scope</h3>
+<h3 id="out-of-scope">2.4 Out of scope</h3>
 <p>The protocol binds approvals to <em>approver identifiers</em> whose
 keys are enrolled in a directory; proving that the holder of an
 identifier is a particular natural person is the job of the
@@ -528,9 +524,8 @@ which raises their cost, and no more than that. The symbolic analysis is
 explicit about this boundary: it proves the distinct-identity and
 no-self-approval property, and nothing about whether two distinct
 identities are two independent wills (Section 7.4).</p>
-<h2 id="3-the-receipt-construction">3. The Receipt Construction</h2>
-<h3 id="31-actions-as-canonical-bytes">3.1 Actions as canonical
-bytes</h3>
+<h2 id="the-receipt-construction">3. The Receipt Construction</h2>
+<h3 id="actions-as-canonical-bytes">3.1 Actions as canonical bytes</h3>
 <p>An action is a single proposed operation with concrete parameters:
 one wire transfer to one beneficiary for one amount, one credential
 rotation of one key. It is represented as a JSON Action Object
@@ -551,10 +546,10 @@ of canonical bytes binds to exactly one action. The symbolic models of
 Section 7 make this abstract but load-bearing: they treat message
 encoding as injective (the standard symbolic assumption) and derive
 no-replay-across-actions from the fact that each signature is over the
-action's hash, so the attacker cannot repurpose a signature over one
+action’s hash, so the attacker cannot repurpose a signature over one
 action term as a signature over another.</p>
-<h3 id="32-the-authorization-context-and-the-signoff">3.2 The
-authorization context and the signoff</h3>
+<h3 id="the-authorization-context-and-the-signoff">3.2 The authorization
+context and the signoff</h3>
 <p>For each authorization attempt, the relying party, authorization
 server, or enforcement domain first issues and durably registers a
 shared authorization instance of at least 128 bits of CSPRNG output. The
@@ -566,7 +561,7 @@ exact policy version evaluated, the initiator identity, the shared
 authorization instance, the approver identifier and slot index, the
 required approval count, a distinct per-approver nonce of at least 128
 bits of CSPRNG output, issuance and expiry times, and a hash chaining
-the attempt to the issuing log's most recent receipt. Every context in
+the attempt to the issuing log’s most recent receipt. Every context in
 one approval ceremony signs the same authorization instance; each
 context signs a different nonce. The context is JCS-canonicalized; the
 <em>context hash</em> is its SHA-256 digest; the approver signs the
@@ -590,7 +585,7 @@ hash; interfaces that display a different action than the one hashed
 constitute a presentation attack (Section 10.2).</p>
 <p>The context may optionally carry two further members, both claims by
 parties the protocol identifies but never trusts. An <em>initiator
-attestation</em> records the initiator's own stated reason for
+attestation</em> records the initiator’s own stated reason for
 escalating to a human, as a closed enumeration (irreversibility,
 magnitude, uncertainty, novelty, authority gap, policy rule) plus an
 optional rule identifier and a length-capped free-text statement. An
@@ -598,17 +593,17 @@ optional rule identifier and a length-capped free-text statement. An
 identity and, optionally, the external delegation under which the agent
 acted, with an optional observed-at timestamp against which a relying
 party may enforce evidence freshness, fail-closed. Because JCS
-serializes every member present, both are covered by the approver's
+serializes every member present, both are covered by the approver’s
 signature: the receipt proves the stated reason and claimed attribution
 were part of what the approver signed. Neither is proof of the
-initiator's internal state, the agent's identity, or the delegation's
+initiator’s internal state, the agent’s identity, or the delegation’s
 validity, and policy engines must not use attestation content to relax
 any threshold: the initiator must gain nothing by saying the right
 words.</p>
 <p>The signoff itself carries the context hash, the signature, the key
 custody class, the approver key identifier, and, for device-bound keys,
 the WebAuthn assertion material. For device-bound keys the WebAuthn
-challenge must equal the context hash and the authenticator's
+challenge must equal the context hash and the authenticator’s
 user-verification flag must be set, so the signature attests both
 possession of the enrolled authenticator and a local user-verification
 event. In the symbolic models this user-verification requirement is
@@ -619,9 +614,9 @@ authorization context (Section 7.2); the model assumes the authenticator
 enforces user verification and does not itself prove WebAuthn internals.
 Denials are signed over the same context hash with a denial envelope, so
 refusals are equally attributable to the enrolled key and equally
-terminal: "the enrolled approver key signed a refusal of this action" is
+terminal: “the enrolled approver key signed a refusal of this action” is
 a positive, verifiable fact, not an absence.</p>
-<h3 id="33-core-protocol-interface-and-adversarial-queries">3.3 Core
+<h3 id="core-protocol-interface-and-adversarial-queries">3.3 Core
 protocol interface and adversarial queries</h3>
 <p>The cryptographic core has four roles: approver key holders, an
 operator that may be malicious, a relying party, and an enforcement
@@ -678,13 +673,13 @@ authenticity lemma is conditioned on its absence before acceptance. This
 separation is important. The theorem addresses misuse of valid
 signatures; it does not claim resilience after key extraction or against
 a compromised trusted display path.</p>
-<h3 id="34-one-time-consumption-as-enforcement-point-state">3.4 One-time
+<h3 id="one-time-consumption-as-enforcement-point-state">3.4 One-time
 consumption as enforcement-point state</h3>
 <p>An authorization attempt moves through a small state machine:</p>
 <pre><code>REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
           \-&gt; DENIED                          \-&gt; EXPIRED
           \-&gt; EXPIRED</code></pre>
-<p>COMMITTED, DENIED, and EXPIRED are terminal. The construction's
+<p>COMMITTED, DENIED, and EXPIRED are terminal. The construction’s
 invariants, maintained as machine-checked models (Section 7) and
 required of conforming implementations, are:</p>
 <ul>
@@ -727,10 +722,10 @@ against agent error and prompt injection but can be bypassed by an
 operator with code control. An evidence-only class makes no enforcement
 claim at all. Implementations must declare their class in the receipts
 they produce and must not state a stronger class than deployed; the
-distance between "the construction has these properties" and "your
-deployment is unbypassable" is the most common overclaim in this
+distance between “the construction has these properties” and “your
+deployment is unbypassable” is the most common overclaim in this
 category.</p>
-<h3 id="35-the-trust-receipt-and-offline-verification">3.5 The trust
+<h3 id="the-trust-receipt-and-offline-verification">3.5 The trust
 receipt and offline verification</h3>
 <p>Upon commitment, the orchestrator assembles the Trust Receipt: the
 full Action Object and its hash, every authorization context, every
@@ -776,17 +771,17 @@ world; split-view detection requires online activity such as gossip or
 witness cosigning. A relying party with freshness or revocation
 requirements must additionally consult a current directory head and
 checkpoint online. Implementations must not describe offline
-verification as establishing that a receipt is "currently valid."</p>
-<h3 id="36-key-custody-and-the-approver-directory">3.6 Key custody and
-the approver directory</h3>
-<p>Key classes classify custody of the approver's signing key and
+verification as establishing that a receipt is “currently valid.”</p>
+<h3 id="key-custody-and-the-approver-directory">3.6 Key custody and the
+approver directory</h3>
+<p>Key classes classify custody of the approver’s signing key and
 nothing else. Class A keys are generated and held in a platform
 authenticator or security key and exercised via WebAuthn with user
 verification required; this is the recommended class and the one the
 symbolic models take as their setting. Class B keys are software keys in
-the approver's client environment, acceptable where WebAuthn is
+the approver’s client environment, acceptable where WebAuthn is
 impractical, with the reduced assurance noted in receipts. Class C, in
-which the operator signs on the approver's behalf after authenticating
+which the operator signs on the approver’s behalf after authenticating
 them, exists only to describe pre-existing deployments; receipts
 produced under it must be labeled as such, and relying parties should
 treat them as operator assertion, not approver signature.</p>
@@ -813,8 +808,8 @@ binding lives. The receipt format proves that a key enrolled under a
 given identifier signed the exact action; the strength of the claim that
 the identifier names a particular human is a property of the directory
 authority and whatever identity-proofing layer feeds it, and it is
-deliberately not smuggled into the receipt's own claims.</p>
-<h2 id="4-quorum-and-distinctness">4. Quorum and Distinctness</h2>
+deliberately not smuggled into the receipt’s own claims.</p>
+<h2 id="quorum-and-distinctness">4. Quorum and Distinctness</h2>
 <p>High-consequence actions frequently require more than one approver,
 and multi-party approval introduces a failure mode that single-approver
 analysis misses: counting signatures instead of humans. This is the
@@ -841,7 +836,7 @@ cannot self-approve, and that no single signer fills the quorum (Section
 7.3). Together these rule out one enrolled identity filling two slots
 and one credential being presented twice. They do not prove that the
 identities correspond to independent natural persons; that depends on
-the directory's identity-proofing controls. Where a policy requires
+the directory’s identity-proofing controls. Where a policy requires
 ordered approval, the chain is checked for acyclicity and linearity.</p>
 <p>One residual vector in the multi-approver setting survives all
 signature checking and is stated plainly. Since each approver signs
@@ -855,19 +850,19 @@ demonstrably signed the same stated reason and attribution. Verifiers
 implementing the members flag violations; the rule is a conformance
 check layered above signature validity, not a change to it.</p>
 <p>Delegated approval authority is constrained rather than prohibited: a
-delegation record must appear in the receipt's key proofs, a delegate's
+delegation record must appear in the receipt’s key proofs, a delegate’s
 effective scope is the intersection of the delegation grant and the
-principal's authority at signing time, chains are bounded in depth, and
+principal’s authority at signing time, chains are bounded in depth, and
 every link is independently signed.</p>
-<h2 id="5-host-record-binding">5. Host-Record Binding</h2>
+<h2 id="host-record-binding">5. Host-Record Binding</h2>
 <p>Receipts do not live alone. The agent-action record formats now in
 development (post-execution capsules, pre-execution permits, audit-trail
 records, provenance graphs, intent chains) almost uniformly make the
-same, sound scoping decision: human authorization is somebody else's
+same, sound scoping decision: human authorization is somebody else’s
 format. The result is a set of reserved-but-empty slots: an approver
 disposition whose authority is opaque, an authority-context stub, a
 human-override field with a privacy carve-out where the human should be,
-a "signed grant" whose format is an unassigned work item. A dozen slots
+a “signed grant” whose format is an unassigned work item. A dozen slots
 with a dozen ad-hoc answers would be worse than none. The binding
 profile is composition <em>around</em> the analyzed core of Sections 3
 and 4, not a second protocol: a bound artifact verifies under its own
@@ -875,26 +870,26 @@ specification, and the receipt whose bytes it references is the one the
 symbolic models are about.</p>
 <p>The binding profile defines, host-agnostically, what filling such a
 slot means. Evidence is bound either <strong>by reference</strong> (a
-member carrying the SHA-256 digest of the authorization artifact's
+member carrying the SHA-256 digest of the authorization artifact’s
 canonical bytes, an artifact-type token, and an optional locator hint)
 or <strong>embedded</strong> (a compact self-describing claim carrying
-the action digest, mode, named approvals with each approver's own
+the action digest, mode, named approvals with each approver’s own
 signature object, and optional quorum semantics). Five requirements make
 the binding mean the same thing in every host:</p>
 <ul>
 <li><strong>B1, digest grounding.</strong> A binding is credited only
 against artifact bytes: the reference form by digest equality, the
 embedded form by verifying the contained signatures. A host field that
-merely asserts "a human approved," with neither, must not be treated as
+merely asserts “a human approved,” with neither, must not be treated as
 human-authorization evidence.</li>
 <li><strong>B2, action agreement.</strong> When the host record binds an
-action, the authorization artifact's action binding must agree with it.
+action, the authorization artifact’s action binding must agree with it.
 An artifact authorizing a different action invalidates the binding; it
 does not merely weaken it. This defeats splicing a genuine artifact from
-one action into another's record, the confused-deputy case.</li>
+one action into another’s record, the confused-deputy case.</li>
 <li><strong>B3, verified versus accepted.</strong> Verifying a binding
 (digests and signatures hold) is distinct from accepting it (the relying
-party trusts the artifact's issuer via out-of-band pinned key material).
+party trusts the artifact’s issuer via out-of-band pinned key material).
 A verifier must report the two separately, and a binding from an
 unpinned issuer must not be accepted; a self-issued artifact cannot be
 self-accepted.</li>
@@ -907,13 +902,13 @@ verifier performed a defined search against defined sources at a stated
 time and found none, attesting the search and its emptiness, never a
 universal negative.</li>
 <li><strong>B5, consistency.</strong> When a host record carries both
-forms, the embedded claim's canonical bytes must hash to the reference's
+forms, the embedded claim’s canonical bytes must hash to the reference’s
 digest; a mismatch invalidates both. The two forms may not tell two
 stories.</li>
 </ul>
 <p>For transparency-logged signed statements (the SCITT host family, RFC
 9943), the profile fixes the digest choice per host-statement profile:
-either a digest over the receipt payload's canonical bytes, for offline
+either a digest over the receipt payload’s canonical bytes, for offline
 composition, or a digest over the COSE_Sign1 bytes of the receipt
 expressed as a signed statement, recommended when the receipt is
 registered in a transparency service so the reference also resolves to a
@@ -923,21 +918,21 @@ artifact, which can be withheld until a relying party with a need to
 know requires it, at the cost, by B4, of the evidence not counting until
 produced.</p>
 <p>Two boundary rules complete the profile. A host record must not
-extend an artifact's validity by carrying it; replay and one-time-use
+extend an artifact’s validity by carrying it; replay and one-time-use
 semantics belong to the artifact and its enforcement point. And the
 profile defines no authorization format of its own: a bound artifact
 verifies under its own specification.</p>
-<h2 id="6-evidence-sufficiency-the-action-evidence-graph">6. Evidence
+<h2 id="evidence-sufficiency-the-action-evidence-graph">6. Evidence
 Sufficiency: the Action Evidence Graph</h2>
-<h3 id="61-the-relying-partys-question">6.1 The relying party's
+<h3 id="the-relying-partys-question">6.1 The relying party’s
 question</h3>
 <p>The standards landscape now produces many signed artifacts about one
 agent action: workload identity credentials, delegation and grant
 tokens, call-chain transaction tokens, runtime attestation results,
 pre-execution permits, action-bound human-approval receipts,
 post-execution records, transparency-log inclusion receipts. Each
-answers its own question. None answers the relying party's: given all of
-these artifacts, is this action's evidence sufficient <em>for this
+answers its own question. None answers the relying party’s: given all of
+these artifacts, is this action’s evidence sufficient <em>for this
 reliance purpose</em>? A bank releasing a wire, an insurer paying a
 claim, and a regulator auditing an agent need different sufficiency bars
 over the same artifacts, and today each such decision is ad hoc,
@@ -945,21 +940,21 @@ non-reproducible, and leaves no evidence of its own. As with the binding
 profile, this layer composes <em>around</em> the analyzed core: it
 consumes the receipt as one node among several and inherits, without
 strengthening, the trust model of each artifact it references.</p>
-<h3 id="62-content-addressed-graphs-edges-as-claims">6.2
-Content-addressed graphs, edges as claims</h3>
+<h3 id="content-addressed-graphs-edges-as-claims">6.2 Content-addressed
+graphs, edges as claims</h3>
 <p>An Action Evidence Graph is a portable JSON document carrying the
-action digest, nodes, and edges. Each node's identifier is the SHA-256
-digest of the referenced artifact's JCS-canonical bytes, with a type
+action digest, nodes, and edges. Each node’s identifier is the SHA-256
+digest of the referenced artifact’s JCS-canonical bytes, with a type
 token and, optionally, the artifact inline; a verifier rejects an inline
 artifact whose canonical digest does not equal its node id. Because
 nodes are references, a presenter can disclose the <em>shape</em> of its
 evidence without the contents; an undisclosed node contributes nothing
 to sufficiency, and a required undisclosed node fails closed.</p>
 <p>Edges are presenter claims, and this framing carries the security
-weight of the layer. An edge (for example, "this permit <em>permits</em>
-that authorization receipt") is credited only if the claimed binding is
-present in the source artifact's own canonical bytes, at minimum
-containment of the target's digest. A claimed edge that the bytes do not
+weight of the layer. An edge (for example, “this permit <em>permits</em>
+that authorization receipt”) is credited only if the claimed binding is
+present in the source artifact’s own canonical bytes, at minimum
+containment of the target’s digest. A claimed edge that the bytes do not
 back <em>poisons</em> the evaluation: the graph has asserted something
 its evidence does not support, and the verdict must not be
 admissible.</p>
@@ -968,8 +963,8 @@ computed over the sorted (id, type) node pairs, the sorted edges, and
 the action digest, and never over inline artifact bytes, so two parties
 holding different disclosures of the same graph agree on what graph they
 are discussing.</p>
-<h3 id="63-policy-replay-and-the-closed-verdict-set">6.3 Policy replay
-and the closed verdict set</h3>
+<h3 id="policy-replay-and-the-closed-verdict-set">6.3 Policy replay and
+the closed verdict set</h3>
 <p>The sufficiency bar is an evidence policy supplied by the relying
 party. The graph document has no policy member, by construction: a
 presenter choosing its own sufficiency bar is the confused-deputy
@@ -993,7 +988,7 @@ unverified fact; if the policy required that type, the verdict is
 presented, and nothing about the graph lied. A claimed edge the source
 bytes do not back is a lie about the evidence and forces
 <code>unverifiable</code> regardless of what else verified. Absence
-degrades to "not enough"; deception degrades to "not trustable."</p>
+degrades to “not enough”; deception degrades to “not trustable.”</p>
 <p>The replay digest is the canonical digest of exactly three inputs:
 the policy as supplied, the ordered list of normalized evidence facts
 (per node: type, label, verified flag, attested action digest, outcome
@@ -1002,12 +997,12 @@ revocation check was required), and the evaluation time, bound to the
 graph digest. Raw artifact bytes, network state, and clock reads are
 excluded by construction; two evaluators that disagree on a replay
 digest are, by definition, evaluating different inputs.</p>
-<h3 id="64-reliance-results-and-policy-packs">6.4 Reliance results and
+<h3 id="reliance-results-and-policy-packs">6.4 Reliance results and
 policy packs</h3>
 <p>The verdict may itself be issued as a signed artifact carrying the
 verdict, reasons, action digest, graph digest, policy digest and
 identifier, reliance purpose, replay digest, and evaluation time, signed
-by the relying party's verifier key. The signature adds accountability,
+by the relying party’s verifier key. The signature adds accountability,
 never authority: any third party can recompute the replay digest rather
 than trust the signer, and the verified/accepted distinction of B3
 applies to the result itself. Signed reliance results make reliance
@@ -1027,7 +1022,7 @@ establish that the action was correct or safe, and it confers no
 authority beyond what the underlying artifacts carry. The token is a
 protocol token naming sufficiency under the stated policy; it carries no
 legal meaning.</p>
-<h2 id="7-formal-analysis">7. Formal Analysis</h2>
+<h2 id="formal-analysis">7. Formal Analysis</h2>
 <p>The reduction in Section 1.5 is the security argument. This section
 provides an independent symbolic check, under a Dolev-Yao attacker, of
 the receipt core, a 2-of-2 quorum instance, and two composed acceptance
@@ -1037,17 +1032,17 @@ first (Sections 7.1 through 7.4), then the complementary state-machine
 and relational model checking that surrounds it (Section 7.5), and
 finally the discipline that keeps <em>specified</em> separate from
 <em>verified</em> (Section 7.6).</p>
-<h3 id="71-the-symbolic-model-and-its-attacker">7.1 The symbolic model
-and its attacker</h3>
-<p>The four Tamarin models are the EP models in which "the signature
-verifies" is a <em>derived</em> fact rather than an axiom. Signatures
-are terms in Tamarin's standard <code>signing</code> equational theory,
+<h3 id="the-symbolic-model-and-its-attacker">7.1 The symbolic model and
+its attacker</h3>
+<p>The four Tamarin models are the EP models in which “the signature
+verifies” is a <em>derived</em> fact rather than an axiom. Signatures
+are terms in Tamarin’s standard <code>signing</code> equational theory,
 <code>verify(sign(m, k), m, pk(k)) = true</code>, and the adversary is
 the standard Dolev-Yao network attacker: full control of the network,
 sees every message, may apply all function symbols, may extract a device
 key through an explicit compromise rule, and may additionally request an
-honest human to sign arbitrary actions of the attacker's own choosing.
-The attacker's ability to collect honest signatures over any actions it
+honest human to sign arbitrary actions of the attacker’s own choosing.
+The attacker’s ability to collect honest signatures over any actions it
 likes is what makes the no-replay-across-actions results meaningful: the
 prover must rule out repurposing any of those honest signatures onto a
 different action.</p>
@@ -1087,7 +1082,7 @@ canonical action-keyed fleet execution. The models do not cover full
 WebAuthn internals, directory publication, or transparency-log
 mechanics; Section 7.4 states the exact composition and exclusions.</p>
 <h3
-id="72-receipt-core-verified-lemmas-and-the-consumption-falsification">7.2
+id="receipt-core-verified-lemmas-and-the-consumption-falsification">7.2
 Receipt core: verified lemmas and the consumption falsification</h3>
 <p>The core model maps to the receipt construction of Section 3. A human
 approver holds a device-bound key whose public half is published (so the
@@ -1096,7 +1091,7 @@ the signing rule can consume only a linear fact that the
 user-verification step alone produces, so no trace contains a human
 signature without a prior user-verification event over the same action
 hash, policy commitment, initiator, audience, nonce, validity token, and
-approver slot. The relying party pins the human's key out of band
+approver slot. The relying party pins the human’s key out of band
 (abstracting the approver directory as a single step) and accepts a
 receipt only if the signature verifies under that pinned key over the
 complete abstract context. The request rule creates one linear
@@ -1117,7 +1112,7 @@ exists: an honest, user-verified, consumption-checked receipt is
 accepted with no key compromise, so the model is not vacuous.</li>
 <li><code>core_authenticity_uv_gated</code> (verified, authenticity
 gated on user verification). If any relying party accepts a receipt
-naming human H for one complete abstract context, and H's key was not
+naming human H for one complete abstract context, and H’s key was not
 compromised before acceptance, then H performed a user-verification
 event and signed that same context, in that order, before
 acceptance.</li>
@@ -1145,7 +1140,7 @@ cannot occur. This establishes the symbolic half of the assumption split
 in Theorem 1: signature verification carries exact-context authenticity,
 while linear state carries single-use admission.</p>
 <h3
-id="73-quorum-verified-lemmas-and-the-initiator-binding-falsification">7.3
+id="quorum-verified-lemmas-and-the-initiator-binding-falsification">7.3
 Quorum: verified lemmas and the initiator-binding falsification</h3>
 <p>The quorum model maps to Section 4. It enrolls two distinct approver
 identities, each with its own device-bound key; a restriction enforces
@@ -1213,10 +1208,10 @@ check, not a property of the signatures. The fix is spec-faithful and
 not a lemma weakening: the initiator identity is now bound inside what
 each approver signs, and with that binding all five lemmas verify. The
 falsification identified a load-bearing binding, and the model now shows
-that binding is what carries the property. This mirrors the core model's
+that binding is what carries the property. This mirrors the core model’s
 consumption result exactly: a check the design depends on is shown to be
 depended upon.</p>
-<h3 id="74-composed-acceptance-paths-and-the-exact-scope">7.4 Composed
+<h3 id="composed-acceptance-paths-and-the-exact-scope">7.4 Composed
 acceptance paths and the exact scope</h3>
 <p>The third model, <code>ep_reliance_composed.spthy</code>, puts the
 following in one symbolic trace: a signed reliance challenge; a computed
@@ -1302,8 +1297,7 @@ system.</li>
 <p>Symbolic verification does not prove the current validity or business
 correctness of any real receipt; it proves properties of the
 construction under these abstractions.</p>
-<h3
-id="75-complementary-state-machine-and-relational-model-checking">7.5
+<h3 id="complementary-state-machine-and-relational-model-checking">7.5
 Complementary state-machine and relational model checking</h3>
 <p>The symbolic analysis above is about the protocol under a network
 attacker. Separately, and complementarily, the surrounding state machine
@@ -1319,7 +1313,7 @@ evidence artifact stands on: an authorization is never consumed twice; a
 consumed authorization is never subsequently revoked, and a revoked one
 never consumed; the lifecycle is acyclic and terminal states are
 inescapable; nonces are unique; delegation chains are acyclic and
-delegates cannot exceed their principals' authority; direct-write bypass
+delegates cannot exceed their principals’ authority; direct-write bypass
 of the state machine is impossible; concurrent revoke and consume
 interleavings serialize; and a denied action can never become approved.
 Model checking earned its keep during development: TLC surfaced four
@@ -1332,7 +1326,7 @@ instances, and the two-handshake configuration was bounded-tested
 Exhaustively proving the composed, concurrent case is exactly the kind
 of question better suited to the symbolic prover than to TLC brute
 force, which is one reason the Tamarin models exist.</p>
-<p>The quorum construction and the protocol's relational structure are
+<p>The quorum construction and the protocol’s relational structure are
 separately checked in Alloy (6.1.0, SAT4J). One model proves fifteen
 assertions over the receipt and signoff relations (no double
 consumption, revoked-never-consumed, consumed-was-verified,
@@ -1346,19 +1340,19 @@ still verify, no trust laundering, and observer-independent
 portability). These relational checks treat Ed25519 unforgeability as an
 abstract fact; they are structural, not cryptographic, which is
 precisely the gap the Tamarin models close.</p>
-<p>The division of labor is deliberate. Alloy and TLA+ answer "does the
+<p>The division of labor is deliberate. Alloy and TLA+ answer “does the
 state machine keep its invariants across the reachable space, assuming
-signatures behave"; Tamarin answers "do the security properties survive
+signatures behave”; Tamarin answers “do the security properties survive
 an attacker who controls the network and can solicit honest signatures,
-with signature validity derived rather than assumed." The three are
+with signature validity derived rather than assumed.” The three are
 complementary, and the paper does not present the state-machine model
 checking as a substitute for the protocol proof or the reverse.</p>
-<h3 id="76-specified-versus-verified-and-residual-normative-gaps">7.6
+<h3 id="specified-versus-verified-and-residual-normative-gaps">7.6
 Specified versus verified, and residual normative gaps</h3>
-<p>The distinction the project's own status tracking draws is the right
+<p>The distinction the project’s own status tracking draws is the right
 one to repeat here: <em>specified</em> means a property is written down
 as a theorem; <em>verified</em> means a model checker has run and found
-no counterexample under the model's assumptions. The two are conflated
+no counterexample under the model’s assumptions. The two are conflated
 in this field often enough that keeping them separate is itself a
 contribution to hygiene.</p>
 <p>Two consequences follow and are stated normatively. First, several
@@ -1370,39 +1364,39 @@ extending the models to them is tracked work. Second, a few normative
 mechanisms are ahead of the reference implementation and not yet
 exercised by it or by conformance vectors, notably the
 operator-signed-directory assurance downgrade, delegation records in the
-receipt's key proofs together with the delegate-cannot-exceed-principal
+receipt’s key proofs together with the delegate-cannot-exceed-principal
 check, and enforcement-class emission; on these the specification is
 authoritative and the reference implementation is incomplete, not the
 reverse. Implementations must not represent any model as covering
 deployment topologies or components it does not model.</p>
-<h2 id="8-implementation-and-conformance">8. Implementation and
+<h2 id="implementation-and-conformance">8. Implementation and
 Conformance</h2>
 <p>A reference implementation of the receipt, quorum, evidence-chain,
 binding, and evidence-graph layers is published under Apache-2.0. The
-conformance battery (21 suites, 335 vectors) is self-contained: each
-vector carries its own public key and document, requiring no server or
-shared state. The conformance battery of 21 suites comprising 335
-vectors is adversarial (reject vectors each pin one invariant: tampered
-bytes, wrong key, replay, malformed signature, broken Merkle anchor) and
-deterministic (regenerable byte-identically from fixed seeds). Further
-suites cover quorum semantics, device signoffs, revocation timing,
-trusted-time attestation, the full trust receipt with Merkle inclusion
-and signed checkpoint (including a transparency-statement digest
-profile), provenance chains, evidence records, a
-canonicalization-malleability battery, the offline-verification
-boundary, currency (authentic-as-of-commit versus current validity),
-initiator-attestation field validation, sparse-Merkle
+historical conformance battery (21 suites, 340 vectors) is
+self-contained: each vector carries its own public key and document,
+requiring no server or shared state. The historical conformance battery
+of 21 suites comprising 340 vectors is adversarial (reject vectors each
+pin one invariant: tampered bytes, wrong key, replay, malformed
+signature, broken Merkle anchor) and deterministic (regenerable
+byte-identically from fixed seeds). Further suites cover quorum
+semantics, device signoffs, revocation timing, trusted-time attestation,
+the full trust receipt with Merkle inclusion and signed checkpoint
+(including a transparency-statement digest profile), provenance chains,
+evidence records, a canonicalization-malleability battery, the
+offline-verification boundary, currency (authentic-as-of-commit versus
+current validity), initiator-attestation field validation, sparse-Merkle
 one-time-consumption transitions, witness cosignatures over a checkpoint
 head, and an independent RFC 3161 timestamp-proof profile.</p>
 <p>The implementation status is stated precisely, because it is the most
 tempting place to overclaim. The JavaScript, Python, and Go reference
 verifiers live in <em>one repository</em>: they are same-team ports
-whose agreement across all 335 current vectors is cross-language
+whose agreement across all 340 current vectors is cross-language
 consistency evidence, not three independent implementations. A
 historical Ed25519-signed
 <code>EP-EXTERNAL-VERIFICATION-STATEMENT-v1</code> from COSA / J Diesel
 NY records external reproduction of 158 vectors against a pinned commit
-using this project's own <code>emilia-verify</code> package; it remains
+using this project’s own <code>emilia-verify</code> package; it remains
 exactly that historical reproduction result.</p>
 <p>Separately, a Rust verifier authored by J Diesel NY is rebuilt by CI
 from immutable public source commit
@@ -1425,9 +1419,9 @@ graph identity, unbacked-edge poisoning, required-edge stripping,
 freshness degradation, and replay determinism, together with a complete
 worked vector (graph, relying-party policy, and signed reliance result)
 reproducible from a fixed seed. Deterministic vectors for the binding
-profile's checks and for the observed-absence statement are published
+profile’s checks and for the observed-absence statement are published
 alongside.</p>
-<h2 id="9-related-work">9. Related Work</h2>
+<h2 id="related-work">9. Related Work</h2>
 <p>The receipt is positioned as a composition with adjacent layers, not
 a replacement for any of them; each answers a different question, and
 the composition is the point.</p>
@@ -1436,12 +1430,12 @@ an append-only transparency log with inclusion receipts, and is
 deliberately agnostic about <em>who authorized</em> a statement, which
 is precisely the question the authorization receipt answers. The two
 compose directly: a receipt can be expressed as a COSE signed statement
-and registered in a transparency service, and the binding profile's
+and registered in a transparency service, and the binding profile’s
 statement-digest form (Section 5) is designed for that carriage. The
 agent-action statement cluster emerging around SCITT (capsules, permits,
 post-execution records, refusal events) makes agent actions transparent,
 logged, and policy-checked; those profiles reserve slots for, and do not
-produce, the enrolled approver's action-bound approval evidence itself.
+produce, the enrolled approver’s action-bound approval evidence itself.
 Receiver-attested logging has the receiving service sign what it
 observed, post hoc; pre-execution authorization and post-execution
 attestation are complementary halves of a complete record.</p>
@@ -1449,33 +1443,33 @@ attestation are complementary halves of a complete record.</p>
 credentials authenticate which workload is calling and prove key
 possession; their chartered scope is workload identity, and they
 deliberately do not define personal identities. A workload token is
-nonetheless carry-capable for the binding profile's reference form, and
+nonetheless carry-capable for the binding profile’s reference form, and
 the two answers have different trust roots (a workload key versus an
 enrolled approver key under organizational authority), which is why
 neither format can absorb the other. RATS (RFC 9334) and the Entity
 Attestation Token (RFC 9711) attest platform or workload
-trustworthiness, an orthogonal trust root; the receipt borrows EAT's
+trustworthiness, an orthogonal trust root; the receipt borrows EAT’s
 verifier-relevant-nonce freshness discipline with a higher floor.</p>
 <p><strong>Authorization and delegation.</strong> OAuth Rich
 Authorization Requests (RFC 9396) and GNAP (RFC 9635) authorize a
-client's requested scope; step-up authentication (RFC 9470) can demand
+client’s requested scope; step-up authentication (RFC 9470) can demand
 fresh human authentication but yields no durable, portable artifact of
 the approval. Transaction tokens (draft-ietf-oauth-transaction-tokens)
 propagate context across a machine call chain within a trust domain,
 short-lived and online-validated; the receipt is the human-approval
 evidence root from which such a chain can descend. Delegation-receipt
-work (draft-nelson-agent-delegation-receipts) binds a <em>user's</em>
-delegation to an <em>operator's</em> instructions, upstream; the
+work (draft-nelson-agent-delegation-receipts) binds a <em>user’s</em>
+delegation to an <em>operator’s</em> instructions, upstream; the
 authorization receipt binds an enrolled organizational approver key to
 an exact action downstream, with separation-of-duties and quorum
 semantics the delegation layer does not formalize, and the two compose
 by reference. CIBA may serve as the transport by which an approver is
 reached; the signoff is what the approver produces on arrival. Security
 Event Tokens (RFC 8417) and CAEP convey issuer assertions that an event
-occurred, not an enrolled approver key's pre-execution signoff bound to
+occurred, not an enrolled approver key’s pre-execution signoff bound to
 one action. Per-hop machine-side route and execution receipts govern
 delegated machine authority; none binds an enrolled approver key to a
-specific action under a human-approval policy, and the receipt's
+specific action under a human-approval policy, and the receipt’s
 delegation constraints share their tighten-only scope-narrowing
 discipline. For long-lived evidence, Evidence Record Syntax (RFC 4998)
 supplies the re-timestamping pattern by which receipts remain verifiable
@@ -1505,15 +1499,15 @@ Tamarin falsifications are consequently separations between primitive
 authenticity and protocol authorization: the same ideal signing algebra
 is used in the safe and unsafe models, and only the omitted protocol
 binding changes.</p>
-<h2 id="10-limitations">10. Limitations</h2>
-<h3 id="101-what-a-receipt-does-not-prove">10.1 What a receipt does not
+<h2 id="limitations">10. Limitations</h2>
+<h3 id="what-a-receipt-does-not-prove">10.1 What a receipt does not
 prove</h3>
 <p>A receipt proves that a key enrolled under an approver identifier
 signed a canonical context binding one action and that the authorization
 reached a recorded terminal state within the relevant consumption
 domain. It does not prove that a particular natural person exercised the
 key: identifier-to-person binding is the directory and identity-proofing
-layer's property (Section 3.6), and possession of the enrolled device
+layer’s property (Section 3.6), and possession of the enrolled device
 plus its user-verification factor is the practical proxy the artifact
 rests on. A coerced approver, a shoulder-surfed PIN, or a human who has
 enrolled multiple identities all produce receipts that verify.
@@ -1524,7 +1518,7 @@ and nothing about independent wills (Section 7.4). Receipts make insider
 events attributable to enrolled identities and evidenced, which raises
 their cost; they do not make them impossible, and conforming
 implementations are prohibited from claiming otherwise.</p>
-<h3 id="102-presentation-attacks-narrowed-not-solved">10.2 Presentation
+<h3 id="presentation-attacks-narrowed-not-solved">10.2 Presentation
 attacks: narrowed, not solved</h3>
 <p>The gravest risk in the construction is that the approver signs
 context hash H believing it represents action X when it represents
@@ -1557,10 +1551,10 @@ empirical failure mode of human-in-the-loop controls under volume. The
 construction is therefore not a general approval workflow; deployments
 are directed to scope signoff to genuinely high-risk, low-frequency
 actions and to treat signing-latency floors and zero deny rates as
-warning signs. The artifact's evidentiary value is only as strong as the
+warning signs. The artifact’s evidentiary value is only as strong as the
 attention of the human at its center.</p>
-<h3 id="103-log-completeness-is-unprovable-offline">10.3 Log
-completeness is unprovable offline</h3>
+<h3 id="log-completeness-is-unprovable-offline">10.3 Log completeness is
+unprovable offline</h3>
 <p>Offline verification establishes that a receipt was included in a log
 tree whose head the operator signed. It cannot establish, offline, that
 the tree shown to this verifier is the tree shown to everyone
@@ -1578,8 +1572,8 @@ offline model, stated as such, rather than defects a future version will
 quietly remove. The symbolic analysis inherits this boundary directly:
 it abstracts the log and directory as out-of-band pinning and proves
 nothing about split-view or completeness.</p>
-<h3 id="104-scope-of-the-sufficiency-layer">10.4 Scope of the
-sufficiency layer</h3>
+<h3 id="scope-of-the-sufficiency-layer">10.4 Scope of the sufficiency
+layer</h3>
 <p>An evidence-graph verdict is evidence of sufficiency under a stated,
 relying-party-owned policy at a stated time. It does not adjudicate
 disputes, does not establish business correctness, and inherits, without
@@ -1587,7 +1581,7 @@ strengthening or weakening, the trust model of each artifact class it
 consumes. The publisher of these formats is not an auditor, regulator,
 or insurer; the artifacts are designed to support the determinations of
 such parties and never to substitute for them.</p>
-<h2 id="11-conclusion">11. Conclusion</h2>
+<h2 id="conclusion">11. Conclusion</h2>
 <p>The gap this work addresses is narrow and, we have argued, real: the
 agent-security stack now produces abundant signed evidence about what an
 agent <em>is</em>, what it was <em>delegated</em>, what it <em>did</em>,
@@ -1598,10 +1592,10 @@ custody of an interested party. The authorization receipt makes that
 narrower fact portable and offline-verifiable, with one-time terminal
 admission inside a shared atomic consumption domain; the binding profile
 lets adjacent record formats carry it without redefining it; and the
-evidence-graph layer turns "is this pile of artifacts enough?" into a
+evidence-graph layer turns “is this pile of artifacts enough?” into a
 deterministic, replayable, relying-party-owned computation whose own
 outcome is evidence.</p>
-<p>The design's discipline is subtraction. The operator is removed from
+<p>The design’s discipline is subtraction. The operator is removed from
 the signature path, then prevented from re-entering through directory
 authority. The presenter is removed from the sufficiency decision.
 Symmetric primitives are removed from the verification path. Absence is
@@ -1653,64 +1647,65 @@ and Alloy models with checked configurations and a proof-status ledger
 that keeps <em>specified</em> and <em>verified</em> separate; the
 reference implementation (receipt, quorum, evidence-chain, host-record
 binding, and evidence-graph layers, with JavaScript, Python, and Go
-same-team ports); the 21-suite / 335-vector conformance battery with
-deterministic regeneration scripts; the pinned external Rust source and
-evaluator; the 359-case hostility campaign; the aggregate conformance
-case; the historical third-party reproduction statement; and the worked
-vectors referenced in this paper. The construction is also specified, in
-engineering form, as individual Internet-Drafts via the IETF Datatracker
+same-team ports); the historical 21-suite / 340-vector conformance
+battery with deterministic regeneration scripts; the pinned external
+Rust source and evaluator; the 359-case hostility campaign; the
+aggregate conformance case; the historical third-party reproduction
+statement; and the worked vectors referenced in this paper. The
+construction is also specified, in engineering form, as individual
+Internet-Drafts via the IETF Datatracker
 (draft-schrock-ep-authorization-receipts and companion documents);
 Internet-Drafts are working documents and should be cited as work in
 progress.</p>
 <h2 id="references">References</h2>
 <ul>
-<li>I. Schrock, "Authorization Receipts for High-Risk Agent Actions,"
+<li>I. Schrock, “Authorization Receipts for High-Risk Agent Actions,”
 Internet-Draft draft-schrock-ep-authorization-receipts-12, work in
 progress, August 2026.</li>
-<li>I. Schrock, "Multi-Party Human Authorization (EP-QUORUM),"
-Internet-Draft draft-schrock-ep-quorum-03, work in progress, July
+<li>I. Schrock, “Multi-Party Human Authorization (EP-QUORUM),”
+Internet-Draft draft-schrock-ep-quorum-04, work in progress, July
 2026.</li>
-<li>I. Schrock, "Authorization Evidence Chains: Composing Heterogeneous
-Agent-Action Evidence (EP-AEC)," Internet-Draft
-draft-schrock-ep-authorization-evidence-chain-05, work in progress,
+<li>I. Schrock, “Authorization Evidence Chains: Composing Heterogeneous
+Agent-Action Evidence (EP-AEC),” Internet-Draft
+draft-schrock-ep-authorization-evidence-chain-06, work in progress,
 August 2026.</li>
-<li>I. Schrock, "Long-Term Evidence Records for Authorization Receipts
-(EP-EVIDENCE-RECORD)," Internet-Draft
+<li>I. Schrock, “Long-Term Evidence Records for Authorization Receipts
+(EP-EVIDENCE-RECORD),” Internet-Draft
 draft-schrock-ep-evidence-record-01, work in progress, July 2026.</li>
-<li>S. Meier, B. Schmidt, C. Cremers, D. Basin, "The TAMARIN Prover for
-the Symbolic Analysis of Security Protocols," CAV 2013.</li>
-<li>S. Goldwasser, S. Micali, R. Rivest, "A Digital Signature Scheme
-Secure Against Adaptive Chosen-Message Attacks," SIAM Journal on
+<li>S. Meier, B. Schmidt, C. Cremers, D. Basin, “The TAMARIN Prover for
+the Symbolic Analysis of Security Protocols,” CAV 2013.</li>
+<li>S. Goldwasser, S. Micali, R. Rivest, “A Digital Signature Scheme
+Secure Against Adaptive Chosen-Message Attacks,” SIAM Journal on
 Computing 17(2), 1988.</li>
-<li>D. Dolev, A. C. Yao, "On the Security of Public Key Protocols," IEEE
+<li>D. Dolev, A. C. Yao, “On the Security of Public Key Protocols,” IEEE
 Transactions on Information Theory, 1983.</li>
-<li>L. Lamport, "Specifying Systems: The TLA+ Language and Tools for
-Hardware and Software Engineers," Addison-Wesley, 2002.</li>
-<li>D. Jackson, "Software Abstractions: Logic, Language, and Analysis,"
+<li>L. Lamport, “Specifying Systems: The TLA+ Language and Tools for
+Hardware and Software Engineers,” Addison-Wesley, 2002.</li>
+<li>D. Jackson, “Software Abstractions: Logic, Language, and Analysis,”
 MIT Press, revised edition, 2012.</li>
-<li>A. Rundgren, B. Jordan, S. Erdtman, "JSON Canonicalization Scheme
-(JCS)," RFC 8785, June 2020.</li>
-<li>W3C, "Web Authentication: An API for accessing Public Key
-Credentials, Level 2," April 2021.</li>
-<li>"An Architecture for Trustworthy and Transparent Digital Supply
-Chains (SCITT)," RFC 9943.</li>
-<li>J. Schaad, "CBOR Object Signing and Encryption (COSE): Structures
-and Process," RFC 9052.</li>
-<li>"The Entity Attestation Token (EAT)," RFC 9711.</li>
-<li>"Remote ATtestation procedureS (RATS) Architecture," RFC 9334.</li>
-<li>"Grant Negotiation and Authorization Protocol (GNAP)," RFC
+<li>A. Rundgren, B. Jordan, S. Erdtman, “JSON Canonicalization Scheme
+(JCS),” RFC 8785, June 2020.</li>
+<li>W3C, “Web Authentication: An API for accessing Public Key
+Credentials, Level 2,” April 2021.</li>
+<li>“An Architecture for Trustworthy and Transparent Digital Supply
+Chains (SCITT),” RFC 9943.</li>
+<li>J. Schaad, “CBOR Object Signing and Encryption (COSE): Structures
+and Process,” RFC 9052.</li>
+<li>“The Entity Attestation Token (EAT),” RFC 9711.</li>
+<li>“Remote ATtestation procedureS (RATS) Architecture,” RFC 9334.</li>
+<li>“Grant Negotiation and Authorization Protocol (GNAP),” RFC
 9635.</li>
-<li>"OAuth 2.0 Rich Authorization Requests," RFC 9396.</li>
-<li>"OAuth 2.0 Step Up Authentication Challenge Protocol," RFC
+<li>“OAuth 2.0 Rich Authorization Requests,” RFC 9396.</li>
+<li>“OAuth 2.0 Step Up Authentication Challenge Protocol,” RFC
 9470.</li>
-<li>"Security Event Token (SET)," RFC 8417.</li>
-<li>"Evidence Record Syntax (ERS)," RFC 4998.</li>
-<li>OpenID Foundation, "OpenID Connect Client-Initiated Backchannel
-Authentication Flow, Core 1.0," September 2021.</li>
-<li>R. Nelson, "Delegation Receipt Protocol for AI Agent Authorization,"
+<li>“Security Event Token (SET),” RFC 8417.</li>
+<li>“Evidence Record Syntax (ERS),” RFC 4998.</li>
+<li>OpenID Foundation, “OpenID Connect Client-Initiated Backchannel
+Authentication Flow, Core 1.0,” September 2021.</li>
+<li>R. Nelson, “Delegation Receipt Protocol for AI Agent Authorization,”
 Internet-Draft draft-nelson-agent-delegation-receipts, work in progress,
 June 2026.</li>
-<li>"Transaction Tokens," Internet-Draft
+<li>“Transaction Tokens,” Internet-Draft
 draft-ietf-oauth-transaction-tokens, work in progress.</li>
 </ul>
 </body>

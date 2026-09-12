@@ -21,7 +21,8 @@
  * quorumGate) wires DB + API routes to these functions — that layer is the
  * next increment; this module is what it enforces with.
  */
-import { verifyQuorum, verifyWebAuthnSignoff } from '../../packages/verify/index.js';
+import { canonicalize, verifyQuorum, verifyWebAuthnSignoff } from '../../packages/verify/index.js';
+import { completedSignoffHash, SIGNOFF_CHAIN_PROFILE } from '../../packages/verify/quorum.js';
 
 const ctxOf = (m) => m?.signoff?.context ?? {};
 const slotKey = (role, approver) => `${role} ${approver}`;
@@ -30,7 +31,7 @@ const slotKey = (role, approver) => `${role} ${approver}`;
  * Should an incoming attestation be admitted into the trail?
  * @returns {{ ok: boolean, reason?: string }}
  */
-export function canAccept(policy, actionHash, existing, incoming, opts = {}) {
+export function canAccept(policy, actionHash, existing, incoming, opts: Record<string, unknown> = {}) {
   if (!policy || typeof actionHash !== 'string' || !actionHash) return { ok: false, reason: 'no_policy' };
   const eligible = Array.isArray(policy.approvers) ? policy.approvers : [];
   if (eligible.length === 0) return { ok: false, reason: 'no_eligible_approvers' };
@@ -38,6 +39,20 @@ export function canAccept(policy, actionHash, existing, incoming, opts = {}) {
   const windowSec = Number.isFinite(policy.window_sec) ? policy.window_sec : 900;
   const ordered = policy.mode === 'ordered';
   const cx = ctxOf(incoming);
+
+  if (Object.hasOwn(opts, 'expectedPolicy') && canonicalize(opts.expectedPolicy) !== canonicalize(policy)) {
+    return { ok: false, reason: 'quorum_policy_mismatch' };
+  }
+  if (policy.ordered_chain === true) {
+    if (!ordered || policy.ordered_chain_profile !== SIGNOFF_CHAIN_PROFILE) {
+      return { ok: false, reason: 'unsupported_chain_profile' };
+    }
+    if (Object.hasOwn(cx, 'prev_context_hash')
+        || (existing.length === 0 ? Object.hasOwn(cx, 'prev_signoff_hash')
+          : cx.prev_signoff_hash !== completedSignoffHash(existing[existing.length - 1]?.signoff))) {
+      return { ok: false, reason: 'broken_chain' };
+    }
+  }
 
   // 1. Action binding — must be signing the exact action this quorum authorizes.
   if (cx.action_hash !== actionHash) return { ok: false, reason: 'action_mismatch' };
@@ -86,7 +101,8 @@ export function canAccept(policy, actionHash, existing, incoming, opts = {}) {
  * @returns {{ satisfied: boolean, checks: object, members: Array }}
  */
 export function quorumGate(policy, actionHash, members, opts = {}) {
-  const r = verifyQuorum({ '@type': 'ep.quorum', action_hash: actionHash, policy, members }, opts);
+  const r = verifyQuorum({ '@type': 'ep.quorum', action_hash: actionHash, policy, members },
+    { expectedPolicy: policy, ...opts });
   return { satisfied: r.valid, checks: r.checks, members: r.members };
 }
 

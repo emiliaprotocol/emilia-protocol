@@ -14,14 +14,14 @@
       that case. It separates transport and workload identity, delegation and
       policy, material action identity, authorization evidence, evidence
       satisfaction, local authorization, durable consumption or reservation,
-      effect invocation, outcome evidence, revocation, and preservation.
+      effect invocation, outcome evidence, revocation, and preservation. 
        The architecture composes the Canonical Action Identifier (CAID),
       Authorization Evidence Chain (AEC), and Action Evidence Boundary (AEB)
       with optional staged-approval and consequence-control profiles. It does
       not define a universal token, policy language, execution engine,
       settlement network, or distributed consensus system. A valid signature,
       a current credential, a satisfied evidence requirement, and an observed
-      effect remain different facts.
+      effect remain different facts. 
     " name="description">
 <meta content="xml2rfc 3.34.0" name="generator">
 <meta content="agent authorization" name="keyword">
@@ -246,7 +246,7 @@ dl > dt {
   float: left;
   margin-right: 1em;
 }
-/*
+/* 
 dl.nohang > dt {
   float: none;
 }
@@ -1233,11 +1233,11 @@ li > p:last-of-type:only-child {
 <thead><tr>
 <td class="left">Internet-Draft</td>
 <td class="center">EP Architecture</td>
-<td class="right">August 2026</td>
+<td class="right">September 2026</td>
 </tr></thead>
 <tfoot><tr>
 <td class="left">Schrock</td>
-<td class="center">Expires 13 February 2027</td>
+<td class="center">Expires 10 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1250,12 +1250,12 @@ li > p:last-of-type:only-child {
 <dd class="internet-draft">draft-schrock-ep-architecture-03</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-08-12" class="published">12 August 2026</time>
+<time datetime="2026-09-06" class="published">6 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Informational</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-02-13">13 February 2027</time></dd>
+<dd class="expires"><time datetime="2027-03-10">10 March 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1303,7 +1303,7 @@ li > p:last-of-type:only-child {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 13 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 10 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -2226,7 +2226,8 @@ li > p:last-of-type:only-child {
         <li class="normal" id="section-9-2.5">
           <span>[<a href="#EP-BOUNDED" class="cite xref">EP-BOUNDED</a>]</span> defines a signed grant plus durable
         reserve-admit-reconcile profile for scoped, budgeted multi-operation
-        authority. It is a published experimental individual Internet-Draft.<a href="#section-9-2.5" class="pilcrow">¶</a>
+        authority. It is an experimental individual-draft proposal, not an
+        adopted standard or a claim of complete reference conformance.<a href="#section-9-2.5" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-9-2.6">
           <span>[<a href="#EP-AEB" class="cite xref">EP-AEB</a>]</span> defines the effect-boundary lifecycle and
@@ -2294,11 +2295,13 @@ li > p:last-of-type:only-child {
         without redefining the carrier.<a href="#section-10-2.4" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-10-2.5">AuthZEN's Access Request and Approval Profile
-        <span>[<a href="#AUTHZEN-AARP" class="cite xref">AUTHZEN-AARP</a>]</span> defines asynchronous approval tasks and
-        policy-decision-point re-evaluation. EMILIA profiles are complementary
-        when a deployment requires portable exact-action evidence, distinct
-        human ceremonies, durable consumption, or consequence reconciliation.
-        Those properties are not implied by a generic approval result.<a href="#section-10-2.5" class="pilcrow">¶</a>
+        <span>[<a href="#AUTHZEN-AARP" class="cite xref">AUTHZEN-AARP</a>]</span> defines approval tasks, exact request
+        bindings, signed material for independently operated services, and
+        current-policy re-evaluation. EMILIA can supply a native per-approver
+        ceremony profile where one is required, then apply executor-owned
+        authority consumption and outcome reconciliation. Those additional
+        guarantees require their own checks; neither an AuthZEN approval
+        assertion nor an EMILIA evidence result alone establishes them.<a href="#section-10-2.5" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-10-2.6">FIDO Verifiable Intent <span>[<a href="#FIDO-VI" class="cite xref">FIDO-VI</a>]</span> describes portable
         evidence of user intent. The cited page describes a contribution and
@@ -2483,35 +2486,35 @@ li > p:last-of-type:only-child {
 <dd class="break"></dd>
 <dt id="AUTHZEN-AARP">[AUTHZEN-AARP]</dt>
         <dd>
-<span class="refAuthor">McGuinness, K.</span>, <span class="refTitle">"AuthZEN Access Request and Approval Profile - Draft 1"</span>, <time datetime="2026-07-09" class="refDate">9 July 2026</time>, <span>&lt;<a href="https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html">https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html</a>&gt;</span>. </dd>
+<span class="refAuthor">McGuinness, K.</span>, <span class="refTitle">"AuthZEN Access Request and Approval Profile - Draft 1"</span>, <time datetime="2026-09-03" class="refDate">3 September 2026</time>, <span>&lt;<a href="https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html">https://openid.github.io/authzen/authzen-access-request-approval-profile-1_0.html</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="CAID">[CAID]</dt>
         <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"The Canonical Action Identifier (CAID)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-canonical-action-identifier-02</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/</a>&gt;</span>. </dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"The Canonical Action Identifier (CAID)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-canonical-action-identifier-02</span>, <time datetime="2026-08-06" class="refDate">6 August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="DMSC-GW">[DMSC-GW]</dt>
         <dd>
-<span class="refAuthor">Dunbar, L.</span>, <span class="refAuthor">Wang, Y.</span>, and <span class="refAuthor">B. Liu</span>, <span class="refTitle">"Deployment Scenarios and Gap Analysis for AI Agent Gateway"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-dunbar-dmsc-gw-scenarios-gap-analysis-02</span>, <time datetime="2026-07-02" class="refDate">2 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/">https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/</a>&gt;</span>. </dd>
+<span class="refAuthor">Dunbar, L.</span>, <span class="refAuthor">Wang, Y.</span>, <span class="refAuthor">Schrock, I.</span>, and <span class="refAuthor">B. Liu</span>, <span class="refTitle">"Deployment Scenarios and Gap Analysis for AI Agent Gateway"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-dunbar-dmsc-gw-scenarios-gap-analysis-04</span>, <time datetime="2026-08-14" class="refDate">14 August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/">https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="EP-AEB">[EP-AEB]</dt>
         <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"The Action Evidence Boundary for Consequential Agent Effects"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-action-evidence-boundary-03</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/</a>&gt;</span>. </dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"The Action Evidence Boundary for Consequential Agent Effects"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-action-evidence-boundary-05</span>, <time datetime="2026-08-31" class="refDate">31 August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="EP-AEC">[EP-AEC]</dt>
         <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-evidence-chain-05</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/</a>&gt;</span>. </dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-evidence-chain-06</span>, <time datetime="2026-09-06" class="refDate">6 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="EP-BOUNDED">[EP-BOUNDED]</dt>
         <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Bounded Capability Receipts and Durable Spend Control for Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-bounded-capability-receipts-05</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/</a>&gt;</span>. </dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Bounded Capability Receipts and Durable Spend Control for Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-bounded-capability-receipts-05</span>, <time datetime="2026-09-06" class="refDate">6 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="EP-QUORUM">[EP-QUORUM]</dt>
         <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Multi-Party Quorum Authorization for High-Risk Agent Actions (EP-QUORUM)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-quorum-03</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/</a>&gt;</span>. </dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Multi-Party Quorum Authorization for High-Risk Agent Actions (EP-QUORUM)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-quorum-04</span>, <time datetime="2026-09-06" class="refDate">6 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="EP-RECEIPTS">[EP-RECEIPTS]</dt>
         <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Receipts for High-Risk Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-receipts-11</span>, <time datetime="2026-07" class="refDate">July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/</a>&gt;</span>. </dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Receipts for High-Risk Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-receipts-12</span>, <time datetime="2026-08-16" class="refDate">16 August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="EP-REVOCATION">[EP-REVOCATION]</dt>
         <dd>

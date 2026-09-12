@@ -4,6 +4,7 @@
 Every EP-QUORUM-v1 vector must produce the same verdict here as in the JS and
 Go runtimes. Verdict parity is the parity claim."""
 import json
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -45,3 +46,27 @@ def test_required_algorithms_refused_by_name(vector_id, reason):
     result = verify_quorum(_vector(vector_id)["quorum"], OPTS)
     assert result["valid"] is False
     assert result.get("reason") == reason
+
+
+@pytest.mark.parametrize("mutation", ["strip", "threshold", "profile"])
+def test_expected_policy_rejects_stripping_and_mutation(mutation):
+    quorum = deepcopy(_vector("accept_ordered_3of3")["quorum"])
+    expected = deepcopy(quorum["policy"])
+    opts = {**OPTS, "expectedPolicy": expected}
+    assert verify_quorum(quorum, opts)["valid"] is True
+    if mutation == "strip":
+        del quorum["policy"]["ordered_chain"]
+        del quorum["policy"]["ordered_chain_profile"]
+    elif mutation == "threshold":
+        quorum["policy"]["required"] = 2
+    else:
+        quorum["policy"]["ordered_chain_profile"] = "unknown"
+    result = verify_quorum(quorum, opts)
+    assert result["valid"] is False
+    assert result["reason"] == "quorum_policy_mismatch"
+
+
+def test_explicit_null_expected_policy_fails_closed():
+    result = verify_quorum(_vector("accept_ordered_3of3")["quorum"], {**OPTS, "expectedPolicy": None})
+    assert result["valid"] is False
+    assert result["reason"] == "quorum_policy_mismatch"
