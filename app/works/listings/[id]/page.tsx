@@ -8,7 +8,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, color, font, radius } from '@/lib/tokens';
+import { styles, color, font } from '@/lib/tokens';
 import { isWorksV0Enabled } from '@/lib/works/env';
 import { getWorksRecord, listWorksRecords } from '@/lib/works/store';
 import type {
@@ -18,6 +18,7 @@ import type {
   ListingRecord,
 } from '@/lib/works/model';
 import { ClaimCard, ExampleTag, SectionTitle, Tag, WorksDisciplineNote } from '../../ui';
+import market from '../../works.module.css';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,7 @@ export default async function ListingPage({ params }: {
     listWorksRecords('activity'),
   ]);
   const builder = builderRes.ok ? (builderRes.record as BuilderRecord) : null;
+  const contact = builderContact(listing, builder);
   const cards = ((cardsRes.ok ? cardsRes.records : []) as CapabilityCardRecord[])
     .filter((c) => c.listing_id === listing.listing_id);
   const activity = ((activityRes.ok ? activityRes.records : []) as ActivityRecord[])
@@ -43,27 +45,31 @@ export default async function ListingPage({ params }: {
     .sort((a, b) => String(b.occurred_at).localeCompare(String(a.occurred_at)));
 
   return (
-    <div style={styles.page}>
-      <SiteNav />
+    <div className={market.marketPage}>
+      <SiteNav activePage="works" />
+      <main>
 
-      <section style={{ borderBottom: `1px solid ${color.border}` }}>
-        <div style={{ ...styles.sectionWide, paddingTop: 64, paddingBottom: 48 }}>
-          <div style={styles.eyebrow}>
+      <section className={market.marketHero} style={{ borderBottom: `1px solid ${color.border}` }}>
+        <div className={market.marketContainer}>
+          <div className={market.marketEyebrow}>
             <Link href="/works" style={{ color: color.t3, textDecoration: 'none' }}>Marketplace</Link>
             {' / Listing'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <h1 style={{ ...styles.h1, marginBottom: 0 }}>{listing.name}</h1>
+            <h1 style={{ marginBottom: 0, overflowWrap: 'anywhere' }}>{listing.name}</h1>
             {listing.example ? <ExampleTag /> : null}
           </div>
           {builder ? (
             <div style={{ margin: '12px 0 16px' }}>
-              <Link href={`/works/builders/${builder.builder_id}`} style={{ fontSize: 14, color: color.t3, textDecoration: 'none' }}>
+              <Link href={`/works/builders/${builder.builder_id}`} className={market.marketBuilder}>
                 by {builder.name}
               </Link>
             </div>
           ) : null}
-          <p style={{ ...styles.body, maxWidth: 720, marginBottom: 20 }}>{listing.summary}</p>
+          <p className={market.marketLead}>{listing.summary}</p>
+          {listing.example ? <p className={market.marketNote}><strong>Read-only example.</strong> This shows the listing format. It is not an agent available for hire or a customer deployment.</p> : null}
+          {listing.status !== 'active' ? <p className={market.marketNote}>The poster has marked this listing {listing.status}. Confirm its current availability with the builder.</p> : null}
+          <p className={market.marketNote}>Listing fields are supplied by the poster. Inspect the work and its evidence before deciding whether it fits your job.</p>
 
           <dl style={{ margin: 0, display: 'grid', gap: 10, maxWidth: 820 }}>
             <FactRow label="Kind" value={listing.kind} />
@@ -81,57 +87,74 @@ export default async function ListingPage({ params }: {
             {listing.supported_tasks.map((task) => <Tag key={`t-${task}`}>{task}</Tag>)}
             {listing.interfaces.map((iface) => <Tag key={`i-${iface}`}>{iface}</Tag>)}
           </div>
+
+          <section className={market.marketDetailActions} aria-labelledby="listing-next-title">
+            <h2 id="listing-next-title">{contact ? 'Could this worker help with your job?' : 'Inspect first. Set authority separately.'}</h2>
+            <div className={market.marketActions}>
+              {contact ? <a href={contact.href} className={market.marketPrimary}
+                target={contact.kind === 'website' ? '_blank' : undefined}
+                rel="noopener noreferrer" aria-describedby="builder-contact-note">Discuss this worker</a> : null}
+              <Link href="/works/scan" className={contact ? market.marketSecondary : market.marketPrimary}>Start a free scan</Link>
+              <Link href="/works/gate" className={market.marketSecondary}>Discuss paid Gate</Link>
+              <Link href="/works/qualification" className={market.marketSecondary}>Understand qualification</Link>
+            </div>
+            {contact ? <p id="builder-contact-note" className={market.marketNote}>
+              {contact.kind === 'website' ? 'Opens the builder’s contact page outside EMILIA in a new tab.' : 'Opens your email app. Nothing is sent until you send it.'}{' '}
+              Ask about this listing ({listing.listing_id}) and confirm availability, scope, price and terms directly with the builder. This does not hire an agent, take payment or grant access.
+            </p> : null}
+            <p className={market.marketNote}>A scan maps supported declared actions; it does not run this listing or activate Gate. Qualification is scoped evidence for a candidate and assignment, not permission to act or certification of safety. Gate deployment and commercial terms need a separate agreement.</p>
+          </section>
         </div>
       </section>
 
-      <section>
-        <div style={{ ...styles.sectionWide, paddingTop: 48, paddingBottom: 96 }}>
+      <section className={market.marketDetailSection}>
+        <div className={market.marketContainer}>
           {listing.operating_constraints.length > 0 ? (
             <>
               <SectionTitle>Operating constraints</SectionTitle>
               <ul style={{ ...styles.list, marginBottom: 48, maxWidth: 820 }}>
                 {listing.operating_constraints.map((constraint) => (
-                  <li key={constraint} style={{ fontSize: 14 }}>{constraint}</li>
+                  <li key={constraint} style={{ fontSize: 18 }}>{constraint}</li>
                 ))}
               </ul>
             </>
           ) : null}
 
           <SectionTitle>Capability cards</SectionTitle>
+          <p className={market.marketNote}>VERIFIED belongs to the exact statement and its source-backed evidence, not to the agent as a whole. Expired evidence becomes UNKNOWN. Read the scope, source, observation date and limitations together.</p>
           <div style={{ display: 'grid', gap: 16, marginBottom: 48 }}>
             {cards.map((card) => <ClaimCard key={card.card_id} claim={card.claim} />)}
             {cards.length === 0 ? (
-              <div style={{ fontSize: 14, color: color.t3 }}>No capability cards yet.</div>
+              <div className={market.marketNote}>{cardsRes.ok ? 'No capability cards yet.' : 'Capability records could not be loaded. Their evidence status is unknown.'}</div>
             ) : null}
           </div>
 
           <SectionTitle>Activity</SectionTitle>
           <div>
             {activity.map((item) => (
-              <div key={item.activity_id} style={{
-                display: 'grid', gridTemplateColumns: '110px 1fr', gap: 16,
+              <div key={item.activity_id} className={market.marketFactRow} style={{
                 borderBottom: `1px solid ${color.border}`, padding: '14px 0',
               }}>
-                <div style={{ fontFamily: font.mono, fontSize: 12, color: color.t3, paddingTop: 2 }}>
+                <div style={{ fontFamily: font.mono, fontSize: 14, color: color.t3, paddingTop: 2 }}>
                   {item.occurred_at.slice(0, 10)}
                 </div>
                 <div>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: color.gold }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 13, letterSpacing: 1, textTransform: 'uppercase', color: color.gold }}>
                       {item.type.replace(/_/g, ' ')}
                     </span>
-                    <a href={item.source_url} style={{ fontSize: 14, color: color.t1, fontWeight: 600 }} rel="noopener noreferrer">
+                    <a href={item.source_url} style={{ fontSize: 18, color: color.t1, fontWeight: 600 }} rel="noopener noreferrer">
                       {item.title}
                     </a>
                   </div>
-                  <div style={{ fontSize: 13, color: color.t3, lineHeight: 1.6, marginTop: 4 }}>
+                  <div style={{ fontSize: 16, color: color.t3, lineHeight: 1.6, marginTop: 4 }}>
                     {item.scope}
                   </div>
                 </div>
               </div>
             ))}
             {activity.length === 0 ? (
-              <div style={{ fontSize: 14, color: color.t3 }}>No activity recorded yet.</div>
+              <div className={market.marketNote}>{activityRes.ok ? 'No activity recorded yet.' : 'Activity records could not be loaded.'}</div>
             ) : null}
           </div>
 
@@ -139,21 +162,36 @@ export default async function ListingPage({ params }: {
         </div>
       </section>
 
+      </main>
       <SiteFooter />
     </div>
   );
 }
 
+/** Contact is an introduction, never a hiring or execution authorization. */
+function builderContact(listing: ListingRecord, builder: BuilderRecord | null): { href: string; kind: 'website' | 'email' } | null {
+  if (listing.example !== false || listing.kind !== 'agent' || listing.status !== 'active'
+    || !builder || builder.example !== false || builder.builder_id !== listing.builder_id) return null;
+  const href = builder.contact_route;
+  if (typeof href !== 'string' || /[\u0000-\u0020\u007f]|%0[ad]/i.test(href)) return null;
+  try {
+    const url = new URL(href);
+    if (url.protocol === 'https:' && url.hostname && !url.username && !url.password) return { href, kind: 'website' };
+    if (url.protocol === 'mailto:' && /^[^\s<>]+@[^\s<>]+$/.test(url.pathname)) return { href, kind: 'email' };
+  } catch { /* Malformed public routes do not become actionable contact links. */ }
+  return null;
+}
+
 function FactRow({ label, value, href }: { label: string; value: string; href?: string }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 12 }}>
+    <div className={market.marketFactRow}>
       <dt style={{
-        fontFamily: font.mono, fontSize: 11, letterSpacing: 1,
+        fontFamily: font.mono, fontSize: 13, letterSpacing: 1,
         textTransform: 'uppercase', color: color.t3, paddingTop: 2,
       }}>
         {label}
       </dt>
-      <dd style={{ margin: 0, fontSize: 14, color: color.t2, overflowWrap: 'anywhere' }}>
+      <dd style={{ margin: 0, fontSize: 17, color: color.t2, overflowWrap: 'anywhere' }}>
         {href ? (
           <a href={href} style={{ color: color.t1 }} rel="noopener noreferrer">{value}</a>
         ) : value}

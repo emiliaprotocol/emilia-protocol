@@ -46,7 +46,7 @@
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.2px;
-  color: #B08D35;            /* gold — clearly navigation, distinct from the logo */
+  color: #806220;            /* dark gold keeps small navigation text readable on white */
   text-decoration: none;
   transition: color 0.15s, border-color 0.15s;
   padding-bottom: 2px;
@@ -55,10 +55,10 @@
 }
 .ep-nav-link:hover,
 .ep-nav-link:focus-visible {
-  color: #8A6D28;            /* deeper gold on hover */
+  color: #654C18;
 }
 .ep-nav-link[data-active="true"] {
-  color: #8A6D28;
+  color: #654C18;
   font-weight: 600;
   border-bottom-color: #B08D35;
 }
