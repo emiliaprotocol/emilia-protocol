@@ -2,7 +2,9 @@
 
 This packet is a complete, renderable candidate based on the immutable
 published -00 source. It adds the receipt/presentation evidence boundary from
-issue #753 as Section 6.1. It has not been submitted to the IETF. The live
+issue #753 as Section 6.1 and narrows inherited claims about what deterministic
+rendering and display attestations establish. It has not been submitted to the
+IETF. The live
 Datatracker still identified -00 as current when this packet was built on
 2026-09-11.
 
