@@ -279,12 +279,25 @@ export function securityCaseExecutionArgs(check) {
         ...(!check ? ["--emit", "security/security-case.json"] : []),
     ];
 }
+export function proofStatsTestArgs(reportPath, coverage = false) {
+    return [
+        'vitest', 'run', '--silent',
+        // Keep the complete inventory and existing integration budgets in both modes.
+        '--maxWorkers=4', '--testTimeout=60000', '--hookTimeout=60000',
+        '--reporter=json', `--outputFile=${reportPath}`,
+        ...(coverage ? ['--coverage'] : []),
+    ];
+}
 function generateProofStats() {
     const check = process.argv.includes("--check");
+    const coverage = process.argv.includes('--coverage');
     const bootstrapDerivedEvidence = process.argv.includes("--bootstrap-derived-evidence");
     const securityCasePreverified = process.argv.includes("--security-case-preverified");
     if (check && bootstrapDerivedEvidence) {
         throw new Error("bootstrap-derived-evidence cannot be used in check mode");
+    }
+    if (coverage && bootstrapDerivedEvidence) {
+        throw new Error('coverage requires a complete measured test run, not bootstrap mode');
     }
     if (securityCasePreverified) {
         if (!check) {
@@ -326,21 +339,7 @@ function generateProofStats() {
     else {
         const reportDir = mkdtempSync(join(tmpdir(), "ep-proof-stats-"));
         const reportPath = join(reportDir, "vitest.json");
-        const execution = spawnSync("npx", [
-            "vitest",
-            "run",
-            "--silent",
-            // Proof-stat measurement runs the complete integration inventory, including
-            // tests that launch real git, archive, and protocol-check subprocesses.
-            // Bound worker fan-out and give each case an explicit integration budget so
-            // CPU starvation cannot turn Vitest's five-second unit default into a false
-            // governed-evidence failure. The run still fails closed on any timeout.
-            "--maxWorkers=4",
-            "--testTimeout=60000",
-            "--hookTimeout=60000",
-            "--reporter=json",
-            `--outputFile=${reportPath}`,
-        ], {
+        const execution = spawnSync("npx", proofStatsTestArgs(reportPath, coverage), {
             encoding: "utf8",
             maxBuffer: 1e9,
         });

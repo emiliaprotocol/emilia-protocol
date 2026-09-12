@@ -73,7 +73,7 @@ export function planCurrentCleanRoomPinRefresh(root = ROOT): Map<string, string>
   return new Map([...edits].filter(([name, content]) => read(name) !== content));
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.slice(2).some(arg => arg !== '--check')) throw new Error('only --check is supported');
   // The existing generator re-executes all three ports and verifies source,
   // vector, execution-companion and result hashes before any pin is written.

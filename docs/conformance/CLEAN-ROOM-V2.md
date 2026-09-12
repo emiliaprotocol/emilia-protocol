@@ -17,6 +17,12 @@ immutable source commit is supplied separately when the kit is built:
 This is conformance and intake infrastructure. It does not assert that any
 implementation is external or independently constructed.
 
+When implementation changes alter the manifest, run `npm run conformance:manifest`
+followed by `npm run sync:clean-room-pins`. The second command re-executes and
+checks the manifest before refreshing the current v2/v3 pins and their documentation.
+It refuses changed vector content, counts, paths, or execution companions. Those
+need a separately reviewed corpus revision. The historical v1 evidence is untouched.
+
 ## Build the source-free kit
 
 Run from an immutable repository checkout:
