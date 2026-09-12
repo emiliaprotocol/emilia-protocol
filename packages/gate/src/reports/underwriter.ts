@@ -2,15 +2,15 @@
 /**
  * EMILIA Gate — underwriter control attestation (AI-liability loss-run analogue).
  *
- * The artifact an AI-liability underwriter prices premium credit against — the
- * MFA-for-cyber analogue: evidence that a deny-by-default authorization control
- * was IN FORCE and OPERATING over the policy period, computed from the gate's
- * tamper-evident evidence log. Pure function: same entries + same options in,
+ * A candidate artifact for carrier evaluation: evidence that a deny-by-default
+ * authorization control was in force and operating over the stated period,
+ * computed from the Gate's tamper-evident evidence log. No carrier acceptance
+ * or premium effect is claimed. Pure function: same entries + same options in,
  * identical JSON out (pin `now` for a byte-stable artifact).
  *
  * HONESTY BOUNDARY (carried inside the artifact): this attests CONTROL
  * OPERATION only. It does not attest the business correctness of any authorized
- * action, and it is not an insurance document until adopted by the carrier.
+ * action, and it is not an insurance document.
  * Near-miss / remediation narrative belongs to the broker — the builder emits
  * those fields as null and NEVER fabricates prose.
  *
@@ -104,7 +104,7 @@ export function buildUnderwriterAttestation(entries: any[] = [], {
 
   // Scope + integrity pass. Out-of-window records are simply out of scope;
   // records we cannot verify as log entries are warned AND excluded — never
-  // attested over. Exclusion is the conservative direction for premium credit.
+  // attested over. Exclusion is the conservative direction for carrier review.
   const warnings: { index: number; seq: number | null; reason: string }[] = [];
   const inScope: { entry: any; t: number }[] = [];
   entries.forEach((e, index) => {
@@ -172,7 +172,7 @@ export function buildUnderwriterAttestation(entries: any[] = [], {
         'Identity proofing, authority enrollment, or issuer/approver key custody, which remain external trust roots.',
         'Any period, system, or enforcement point outside the supplied evidence log.',
       ],
-      status: 'Not an insurance document. This attestation carries no coverage effect until adopted by the carrier.',
+      status: 'Not an insurance document. This attestation has no coverage effect; acceptance as technical evidence would not create or decide coverage.',
     },
     control_in_force: {
       control: 'EMILIA Gate — Consequence Firewall',

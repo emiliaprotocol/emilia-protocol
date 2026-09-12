@@ -90,6 +90,11 @@ const nextConfig = {
       { source: '/brain', destination: '/authority-brain', permanent: true },
       { source: '/solutions', destination: '/use-cases', permanent: true },
       { source: '/developers', destination: '/docs', permanent: true },
+      // Retire legacy insurance collateral that overstated the current product.
+      // These URLs were previously distributed, so keep them useful while the
+      // carrier design work moves through independent review.
+      { source: '/briefs/emilia-insurance-onepager.pdf', destination: '/insurance', permanent: true },
+      { source: '/briefs/emilia-underwriter-brief.pdf', destination: '/insurance', permanent: true },
     ];
   },
   async headers() {
