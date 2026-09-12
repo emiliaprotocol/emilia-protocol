@@ -60,7 +60,7 @@
           },
           {
             "path": "packages/verify/package.json",
-            "sha256": "f42720245d42a3304890409817b9fa0b4b183719e7aa870466dbf7a0373e57a2"
+            "sha256": "eb50b5eb82dd93ffd198bf20ac41fc5e2672090b4a4dad6a21c63eb6ff29d5e0"
           },
           {
             "path": "packages/verify/src/aadp-authorization-artifact.ts",
@@ -73,8 +73,8 @@
         ]
       }
     },
-    "source_lock_file_sha256": "sha256:7a4660094c5b810c6d38d72424e2922fc813313c004a5358b4e12da7500311e9",
-    "source_lock_canonical_digest": "sha256:016a6cac12edd173dd55dda76bf7d8b11c641d8bdeb51acb27db2b2aa863a02a",
+    "source_lock_file_sha256": "sha256:87590a3f567daf231fe219b6a6bf5d3bbff6a35017a9677314023382bdb8d198",
+    "source_lock_canonical_digest": "sha256:e147a8a857404c5be557474a5004f913fb7de9a0ecac458b1457a4f32464e3d1",
     "aadp": {
       "draft": "draft-saha-aadp-01",
       "implementation_kind": "draft-derived-bounded-lifecycle-model",
@@ -296,7 +296,7 @@
           "artifact_digest": "sha256:6d8a602f3a58a00c3436304d33d0d5732433ef302b30643b079cc3524f8b7dbf",
           "native_verification": "VERIFIED",
           "evidence_satisfaction": "SATISFIED",
-          "verification_record_digest": "sha256:ac8bf3b46cfafb1c064d3b8dc41db9e96ef5e2d07813e7982ee963961b544fdb",
+          "verification_record_digest": "sha256:c387c15fbff52c8d0545b03108155a94cf4064db30804d62ae2727869dc52532",
           "action_mapping": {
             "profile": "AADP-ACTION-MAPPING-RECORD-v1",
             "mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
@@ -322,7 +322,7 @@
           "artifact_digest": "sha256:6d8a602f3a58a00c3436304d33d0d5732433ef302b30643b079cc3524f8b7dbf",
           "native_verification": "VERIFIED",
           "evidence_satisfaction": "SATISFIED",
-          "verification_record_digest": "sha256:ac8bf3b46cfafb1c064d3b8dc41db9e96ef5e2d07813e7982ee963961b544fdb",
+          "verification_record_digest": "sha256:c387c15fbff52c8d0545b03108155a94cf4064db30804d62ae2727869dc52532",
           "action_mapping": {
             "profile": "AADP-ACTION-MAPPING-RECORD-v1",
             "mapping_profile": "https://emiliaprotocol.ai/profiles/aadp-ep-payment-release-v1",
@@ -438,8 +438,8 @@
       "claim": "the deterministic report binds every source-locked hash",
       "passed": true,
       "actual": {
-        "source_lock_file_sha256": "sha256:7a4660094c5b810c6d38d72424e2922fc813313c004a5358b4e12da7500311e9",
-        "source_lock_canonical_digest": "sha256:016a6cac12edd173dd55dda76bf7d8b11c641d8bdeb51acb27db2b2aa863a02a",
+        "source_lock_file_sha256": "sha256:87590a3f567daf231fe219b6a6bf5d3bbff6a35017a9677314023382bdb8d198",
+        "source_lock_canonical_digest": "sha256:e147a8a857404c5be557474a5004f913fb7de9a0ecac458b1457a4f32464e3d1",
         "hashes": [
           "ba6d9db982b23f642227b5a8f9f68589d0f3692c2e97adbfa2ac8a18792d8db8",
           "72b90df3c5e45386442e548eaf565c7049b6260842711db3354ce90271dac081",
@@ -447,7 +447,7 @@
           "25c03b4e90b63cc5eb074b317d502dcd5b6bc3b218cd55eee9657b76ae21e20b",
           "c0c01956b5ce064e2d7b868c7d84813425e69ce819efb4e374fce986937c76f4",
           "36b8bbb56579bb0db1f5f5d60a5532b0ff3f5d508273c84a905c379dd8d5da20",
-          "f42720245d42a3304890409817b9fa0b4b183719e7aa870466dbf7a0373e57a2",
+          "eb50b5eb82dd93ffd198bf20ac41fc5e2672090b4a4dad6a21c63eb6ff29d5e0",
           "90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9",
           "6360e1e8b6ef01765b467c5ff35c18998de8458c21370f33987242ea5e8a0062"
         ],
@@ -455,5 +455,5 @@
       }
     }
   ],
-  "report_digest": "sha256:5c36e506ff02ab492744b5c36ca62d449367c19e9f30cae5372ca643fb132fc3"
+  "report_digest": "sha256:6461714b36cb98f534f2eef348b868be973e646ccede30d3e20143a24199b984"
 }
