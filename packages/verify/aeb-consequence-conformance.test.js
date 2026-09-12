@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-// Generated from aeb-consequence-conformance.test.ts by scripts/build-standalone-runtimes.mjs. Do not edit.
-/* eslint-disable */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -48,6 +46,21 @@ test('publishes the closed local_atomic AEB consequence-admission hostile suite'
 test('reference evaluator reproduces every exact expected row', () => {
     for (const entry of suite.vectors) {
         assert.deepEqual(evaluateAebConsequenceCase(entry.input), entry.expected, entry.id);
+    }
+});
+test('provider commitment does not promote an unobserved or indeterminate effect', () => {
+    for (const effect of ['NOT_OBSERVED', 'INDETERMINATE']) {
+        const input = structuredClone(vector('provider_committed_effect_diverged').input);
+        input.observation.effect_relation = effect;
+        const result = evaluateAebConsequenceCase(input);
+        assert.equal(result.provider_outcome, 'COMMITTED');
+        assert.equal(result.effect_relation, effect);
+        assert.equal(result.custody, 'INVOKING');
+        assert.equal(result.decision, 'INDETERMINATE');
+        assert.equal(result.reconciliation, 'REQUIRED');
+        assert.equal(result.retry, 'REFUSED');
+        assert.deepEqual(result.reasons, ['blind_retry_refused']);
+        assert.equal(validateAebConsequenceResult(result).valid, true);
     }
 });
 test('verification, action match, satisfaction, authorization, reservation, and custody remain distinct', () => {

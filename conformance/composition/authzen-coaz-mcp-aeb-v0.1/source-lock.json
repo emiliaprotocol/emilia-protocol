@@ -60,7 +60,7 @@
   },
   "aeb_kernel": {
     "path": "packages/verify/dist/aeb-consequence-conformance.js",
-    "sha256": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f",
+    "sha256": "8baacf30ca25232f644eb7bff642ace40634587edec036ea552f119b818ad83d",
     "claim_scope": "local_atomic"
   },
   "local_files": [
@@ -146,7 +146,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-consequence-conformance.js",
-      "sha256": "6572b0814c5665ba729a20c3c26fc16857a050ba4360900fa13eb5931d90e98f"
+      "sha256": "8baacf30ca25232f644eb7bff642ace40634587edec036ea552f119b818ad83d"
     },
     {
       "path": "packages/verify/dist/aeb-crossing-record.js",
@@ -394,7 +394,7 @@
     },
     {
       "path": "packages/verify/src/aeb-consequence-conformance.ts",
-      "sha256": "03556de560f14f64705116b94b78e733f5e9a6f90d671131f5a98ac0169c4590"
+      "sha256": "45114fe390a2e6270868d5d817571fb8ceaa7f259ed9040b20e6da05a73cd6cd"
     },
     {
       "path": "packages/verify/src/aeb-crossing-record.ts",
