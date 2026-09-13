@@ -1,7 +1,7 @@
 {
   "@version": "AEB-ADAPTER-CONTRACT-LOCK-v1",
   "contract_version": "AEB-ADAPTER-v1",
-  "verify_package_version": "3.21.0",
+  "verify_package_version": "4.0.0",
   "files": [
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",

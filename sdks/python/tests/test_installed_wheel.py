@@ -14,8 +14,8 @@ import emilia_protocol
 class TestInstalledWheel(unittest.TestCase):
     def test_distribution_metadata_matches_runtime(self) -> None:
         distribution = metadata.distribution("emilia-protocol")
-        self.assertEqual(distribution.version, "0.11.0")
-        self.assertEqual(emilia_protocol.__version__, "0.11.0")
+        self.assertEqual(distribution.version, "0.11.1")
+        self.assertEqual(emilia_protocol.__version__, "0.11.1")
         self.assertFalse(distribution.requires)
 
     def test_distribution_contains_only_canonical_namespace(self) -> None:

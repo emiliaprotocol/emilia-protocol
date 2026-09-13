@@ -3,6 +3,15 @@
 
 ## Unreleased
 
+## 0.5.1 (2026-09-13)
+
+- Allow the optional verifier peer to use either 3.21.x or 4.x. Receipt
+  verification remains compatible; this lets the guard install alongside
+  Gate 0.25.0 without ignoring peer-dependency checks.
+- Test valid and tampered signed receipts through the optional verifier API.
+
+## 0.5.0 (2026-08-30)
+
 ### Security
 
 - Bind the action to the tool name and the exact executing arguments
@@ -18,7 +27,7 @@
   `runToolCalls`, so the digest does not move with a local (or minified)
   function identifier.
 
-## 0.5.0 (2026-08-30)
+### Changed
 
 - Advance the executor-action boundary to the current `require-receipt` line
   and publish the Node type-resolution metadata used by the verified build.

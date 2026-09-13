@@ -3,13 +3,13 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 4.0.0 (release candidate)
 
-- **Source candidate only; not cleared for a 3.x npm release.** The existing
+- **Breaking change.** The existing
   `./aeb-wimse-oauth-adapter` subpath now implements the receiver-scoped v3
   profile and no longer accepts its published v1 constructor or artifacts.
-  A package release must either preserve v1 under its current subpath and add
-  v3 separately, or use a new major version. Existing v1 artifacts require the
+  This is a new major package version, not a compatible 3.x update.
+  Existing v1 artifacts require the
   frozen v1 verifier or reissuance and verification under v3.
 
 ## 3.21.0 (2026-08-30)

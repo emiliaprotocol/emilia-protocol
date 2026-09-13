@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/langgraph",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Bind LangGraph Agent Inbox human responses to exact, one-time EMILIA authority. Accept uses the frozen interrupt, edit requires fresh authority for the edited action, and response or ignore never authorize tool execution.",
   "type": "module",
   "main": "index.js",

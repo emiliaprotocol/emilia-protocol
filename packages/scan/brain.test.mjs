@@ -56,9 +56,9 @@ test('renders a self-contained Authority Brain from the real scanActions report'
   assert.equal(model.actions[0].confidence, 'medium');
   assert.equal(model.actions[0].authoritySource, 'not established by static scan');
   assert.equal(model.actions[0].provenance, 'declared MCP metadata · deterministic local classification');
-  assert.match(model.actions[0].protectCommand, /scan@0\.5\.0 protect '\.\/tools\.json' --action 'sendWire' --apply --verify/);
+  assert.match(model.actions[0].protectCommand, /scan@0\.5\.1 protect '\.\/tools\.json' --action 'sendWire' --apply --verify/);
   assert.equal(model.actions[0].verifyCommand, null);
-  assert.match(model.actions[0].handoffCommand, /scan@0\.5\.0 protect '\.\/tools\.json'/);
+  assert.match(model.actions[0].handoffCommand, /scan@0\.5\.1 protect '\.\/tools\.json'/);
   assert.match(model.actions[0].handoffCommand, /--action 'sendWire'/);
   assert.match(model.actions[0].handoffCommand, /--reviewed --crossing-profile '<launch-profile>'$/);
   assert.deepEqual(model.blindSpots, [
@@ -85,7 +85,7 @@ test('an embedded selected-action map suppresses regeneration and exposes only i
 
   assert.equal(selected.protectCommand, null);
   assert.equal(selected.starterSelectedAction, true);
-  assert.match(selected.handoffCommand, /scan@0\.5\.0 protect '\.\/tools\.json' --action 'sendWire' --reviewed --crossing-profile '<launch-profile>'$/);
+  assert.match(selected.handoffCommand, /scan@0\.5\.1 protect '\.\/tools\.json' --action 'sendWire' --reviewed --crossing-profile '<launch-profile>'$/);
   assert.equal(pending.protectCommand, null);
   assert.equal(pending.handoffCommand, null);
   assert.equal(pending.starterReviewPending, true);
@@ -140,7 +140,7 @@ test('pasteable commands keep hostile paths and visible action names inert under
   const protect = spawnSync('/bin/sh', ['-c', action.protectCommand], { cwd: dir, env });
   assert.equal(protect.status, 0, protect.stderr?.toString());
   assert.deepEqual(protect.stdout.toString().split('\0').filter(Boolean), [
-    '@emilia-protocol/scan@0.5.0',
+    '@emilia-protocol/scan@0.5.1',
     'protect',
     inputReference,
     '--action',
@@ -152,7 +152,7 @@ test('pasteable commands keep hostile paths and visible action names inert under
   const handoff = spawnSync('/bin/sh', ['-c', action.handoffCommand], { cwd: dir, env });
   assert.equal(handoff.status, 0, handoff.stderr?.toString());
   assert.deepEqual(handoff.stdout.toString().split('\0').filter(Boolean), [
-    '@emilia-protocol/scan@0.5.0',
+    '@emilia-protocol/scan@0.5.1',
     'protect',
     inputReference,
     '--action',
@@ -428,7 +428,7 @@ test('brain CLI generates real MCP and OpenAPI dashboards from bounded JSON inpu
   assert.equal(mcpModel.source, 'mcp');
   assert.equal(mcpModel.actions.length, 2);
   assert.equal(mcpModel.actions[0].protectCommand,
-    "npx @emilia-protocol/scan@0.5.0 protect 'tools.json' --action 'sendWire' --apply --verify");
+    "npx @emilia-protocol/scan@0.5.1 protect 'tools.json' --action 'sendWire' --apply --verify");
 
   const openapi = spawnSync(process.execPath, [cli, 'brain', 'openapi.json', '--out', 'openapi-brain.html'], {
     cwd: dir,
@@ -454,7 +454,7 @@ test('brain --sample creates the default dashboard and requires explicit force t
   const model = embeddedModel(readFileSync(output, 'utf8'));
   assert.equal(model.source, 'mcp');
   assert.equal(model.inputMode, 'sample');
-  assert.match(model.actions.find((action) => action.name === 'sendWire').protectCommand, /scan@0\.5\.0 protect --sample --action 'sendWire' --apply --verify/);
+  assert.match(model.actions.find((action) => action.name === 'sendWire').protectCommand, /scan@0\.5\.1 protect --sample --action 'sendWire' --apply --verify/);
 
   const refused = spawnSync(process.execPath, [cli, 'brain', '--sample'], { cwd: dir, encoding: 'utf8' });
   assert.notEqual(refused.status, 0);

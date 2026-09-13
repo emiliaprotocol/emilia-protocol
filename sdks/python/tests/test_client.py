@@ -141,7 +141,7 @@ class TestClientConfigurationAndTransport(unittest.TestCase):
             clear=False,
         ):
             client = EPClient()
-        self.assertEqual(__version__, "0.11.0")
+        self.assertEqual(__version__, "0.11.1")
         self.assertEqual(client._base_url, "https://api.example.test")
         self.assertEqual(client._api_key, "from-env")
 
@@ -180,7 +180,7 @@ class TestClientConfigurationAndTransport(unittest.TestCase):
         self.assertEqual(request.get_header("Authorization"), "Bearer secret")
         self.assertEqual(
             request.get_header("User-agent"),
-            "emilia-protocol-python/0.11.0",
+            "emilia-protocol-python/0.11.1",
         )
 
     def test_problem_details_error_uses_detail_code_and_type_tail(self) -> None:
