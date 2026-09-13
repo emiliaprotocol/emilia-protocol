@@ -53,7 +53,7 @@ describe('public product naming and navigation contract', () => {
     expect(builder).toContain('ep-protect activate');
     expect(builder).toContain("import gatePackage from '../../packages/gate/package.json'");
     expect(builder).toContain('@emilia-protocol/gate@{gatePackage.version}');
-    expect(gatePackage.version).toBe('0.24.0');
+    expect(gatePackage.version).toBe('0.25.0');
     expect(builder).not.toContain('@emilia-protocol/gate@0.23.17');
     expect(builder).toContain('customer-owned-mcp-gateway');
     expect(activationCli).toContain('activateProtectionPlan');
