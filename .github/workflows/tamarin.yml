@@ -8,6 +8,10 @@ permissions:
 
 on:
   push:
+    # GitHub does not apply path filters to tag pushes. Keep branch coverage
+    # without re-running identical prover jobs for every package release tag.
+    branches:
+      - '**'
     paths:
       - 'formal/tamarin/**'
       - '.github/workflows/tamarin.yml'
