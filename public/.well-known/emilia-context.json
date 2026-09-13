@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-09-12T08:59:40.664Z",
+  "evidence_snapshot_at": "2026-09-13T07:29:12.741Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "75322c799938cf964fbe60dd6331804efeb87783adedfad75ca40760de8c1c1a",
+    "input_digest_sha256": "a1eba46984270dd7e83ae8231cfc7360c23a53d6c00d94b645a4fab5d8984894",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "7481911a33cd8247e0e35b2c232e72567a25062a1f9f2c2d10507f368b3c36e1",
+        "sha256": "625317f8fd52d98267a5f1f7e16230b37fcc287790261063438003f186fedd2d",
         "bytes": 4299
       },
       {
@@ -37,8 +37,8 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "41da63b0a44e222b407ad3274ad1c72f95703bb2c2ce57cacdef577d3e57aef8",
-        "bytes": 391522
+        "sha256": "99034a5d0eb870326bed1e7b774788f7ff3979cc76d7b7c68a803ee1a2d531f6",
+        "bytes": 391520
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -349,7 +349,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "d1371c8b5a95c74ce90b525c60408585f2f5ef118fb71f510cd6d024cffa78c6",
+        "evidenceSha256": "e0e5417a4fda1949b17a212e560bb918d2d603401123f315ad62bffa85959382",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -419,7 +419,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 264,
-      "evidence_bundle_sha256": "caa49f2665b56ea6dc848a45c81a96a356784a20693630a06033dd1e8227b323"
+      "evidence_bundle_sha256": "c207d7ba716e813e40ff5c980cee7e2816ccc5ab8d35721c4524da9cb84e0346"
     },
     "caid": {
       "core_vectors": 48,
