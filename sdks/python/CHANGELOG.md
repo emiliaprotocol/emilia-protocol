@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.1 (2026-09-13)
+
+- Use Twine 7 in the release pipeline to validate Hatchling's standard 2.5
+  metadata. This supersedes the unpublished 0.11.0 release attempt.
+
 ## 0.11.0 (2026-08-30)
 
 - Changed the canonical import namespace from `ep` to `emilia_protocol` to

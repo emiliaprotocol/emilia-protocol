@@ -3,6 +3,12 @@
 
 ## Unreleased
 
+## 0.5.1 (2026-09-13)
+
+- Accept both npm 11 and npm 12 pack reports in the installed-consumer test.
+- Test against the hash-verified published 3.21.0 verifier dependency, not the
+  newer major version in the source checkout.
+
 ## 0.5.0 (2026-08-30)
 
 ### Added

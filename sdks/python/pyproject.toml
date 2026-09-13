@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "emilia-protocol"
-version = "0.11.0"
+version = "0.11.1"
 description = "Synchronous, zero-dependency client for EMILIA handshakes, trust gate, and v1 trust receipts."
 readme = "README.md"
 license = {text = "Apache-2.0"}

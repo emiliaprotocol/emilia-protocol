@@ -15,11 +15,12 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, sep } from 'node:path';
+import { basename, join, sep } from 'node:path';
 
 const MCP_GUARD_VERSION = '0.6.0';
 const REQUIRE_RECEIPT_VERSION = '0.8.1';
 const VERIFY_VERSION = '3.21.0';
+const VERIFY_TARBALL_SHA256 = 'bd9adc23c7d859994ca6532e4104d2d3eb608348a53e81d6b8ebeba6aceb3af4';
 const REGISTRY_CUTOFF = '2026-08-16T23:59:59.000Z';
 
 function run(command, args, options = {}) {
@@ -31,6 +32,20 @@ function run(command, args, options = {}) {
   return result.stdout;
 }
 
+function packTarball(specifier, destination) {
+  const report = JSON.parse(run('npm', [
+    'pack', specifier, '--json', '--pack-destination', destination,
+  ]));
+  // npm 11 reports an array; npm 12 reports entries keyed by package identity.
+  const entries = Array.isArray(report) ? report : Object.values(report ?? {});
+  assert.equal(entries.length, 1, 'pack must return exactly one archive');
+  const filename = entries[0]?.filename;
+  assert.equal(typeof filename, 'string');
+  assert.equal(basename(filename), filename, 'archive must stay inside the pack directory');
+  assert.ok(filename.endsWith('.tgz'));
+  return join(destination, filename);
+}
+
 test('packed scan refuses missing runtime, then uses the exact audited guard in a blank consumer', () => {
   const root = mkdtempSync(join(tmpdir(), 'emilia-scan-packed-'));
   const packs = join(root, 'packs');
@@ -38,41 +53,12 @@ test('packed scan refuses missing runtime, then uses the exact audited guard in 
   mkdirSync(packs);
   mkdirSync(consumer);
 
-  const packReport = JSON.parse(run('npm', [
-    'pack',
-    import.meta.dirname,
-    '--json',
-    '--pack-destination',
-    packs,
-  ]));
-  const packEntries = Array.isArray(packReport) ? packReport : Object.values(packReport ?? {});
-  assert.equal(packEntries.length, 1);
-  assert.equal(typeof packEntries[0]?.filename, 'string');
-  const scanTarball = join(packs, packEntries[0].filename);
-  const guardPack = JSON.parse(run('npm', [
-    'pack',
-    join(import.meta.dirname, '..', 'mcp-guard'),
-    '--json',
-    '--pack-destination',
-    packs,
-  ]));
-  const guardTarball = join(packs, guardPack[0].filename);
-  const requireReceiptPack = JSON.parse(run('npm', [
-    'pack',
-    join(import.meta.dirname, '..', 'require-receipt'),
-    '--json',
-    '--pack-destination',
-    packs,
-  ]));
-  const requireReceiptTarball = join(packs, requireReceiptPack[0].filename);
-  const verifyPack = JSON.parse(run('npm', [
-    'pack',
-    join(import.meta.dirname, '..', 'verify'),
-    '--json',
-    '--pack-destination',
-    packs,
-  ]));
-  const verifyTarball = join(packs, verifyPack[0].filename);
+  const scanTarball = packTarball(import.meta.dirname, packs);
+  const guardTarball = packTarball(join(import.meta.dirname, '..', 'mcp-guard'), packs);
+  const requireReceiptTarball = packTarball(join(import.meta.dirname, '..', 'require-receipt'), packs);
+  // Exercise Scan's published 3.x dependency, not the newer in-repository major.
+  const verifyTarball = packTarball(`@emilia-protocol/verify@${VERIFY_VERSION}`, packs);
+  assert.equal(createHash('sha256').update(readFileSync(verifyTarball)).digest('hex'), VERIFY_TARBALL_SHA256);
 
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
   run('npm', [
