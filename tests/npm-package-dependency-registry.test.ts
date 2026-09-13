@@ -80,7 +80,7 @@ describe('npm internal dependency registry guard', () => {
       {
         metadata: CLI_METADATA,
         directory: 'cli',
-        version: '0.2.7',
+        version: '0.2.8',
         expectedPins: [{
           spec: '@emilia-protocol/verify@3.21.0',
           sha256: 'bd9adc23c7d859994ca6532e4104d2d3eb608348a53e81d6b8ebeba6aceb3af4',
