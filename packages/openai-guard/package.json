@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/openai-guard",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Guard OpenAI-compatible tool calls (OpenAI, xAI Grok, Together, …) with EMILIA Protocol — block irreversible agent actions until a named human signs off.",
   "type": "module",
   "main": "index.js",
@@ -34,7 +34,7 @@
     "@emilia-protocol/require-receipt": "^0.8.1"
   },
   "peerDependencies": {
-    "@emilia-protocol/verify": "^3.21.0"
+    "@emilia-protocol/verify": "^3.21.0 || ^4.0.0"
   },
   "peerDependenciesMeta": {
     "@emilia-protocol/verify": {

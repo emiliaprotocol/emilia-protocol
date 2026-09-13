@@ -6,12 +6,16 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { _resetConsumed, guardAction, requireReceiptForOpenAITool, runToolCalls, withGuard, } from './index.js';
-import { mintReceipt as hostedMintReceipt } from './receipt.js';
+import { mintReceipt as hostedMintReceipt, verifyReceipt as offlineVerifyReceipt } from './receipt.js';
 import { bindToolAction } from '../require-receipt/index.js';
-test('package metadata pins the current optional verifier release line', () => {
+test('package metadata supports compatible verifier lines and verifies signed receipts', async () => {
     const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
-    assert.equal(packageJson.version, '0.5.0');
-    assert.equal(packageJson.peerDependencies['@emilia-protocol/verify'], '^3.21.0');
+    assert.equal(packageJson.version, '0.5.1');
+    assert.equal(packageJson.peerDependencies['@emilia-protocol/verify'], '^3.21.0 || ^4.0.0');
+    const doc = receipt('payment.release');
+    assert.equal((await offlineVerifyReceipt(doc, trustedKey)).valid, true);
+    doc.payload.claim.action_type = 'payment.redirect';
+    assert.equal((await offlineVerifyReceipt(doc, trustedKey)).valid, false);
 });
 function canonicalize(value) {
     if (value === null || value === undefined)
