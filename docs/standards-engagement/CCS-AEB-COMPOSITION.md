@@ -8,16 +8,34 @@ CCS owns the native tool-invocation policy decision. Its native verifier owns
 the meaning of `allow`, `deny`, and `escalate`, its rule evaluation, and the
 integrity of its receipt.
 
-AEB does not reinterpret those states. It accepts a natively verified CCS
-`allow` only as one `machine-policy-decision` evidence leg, maps the protected
-tool and parameters to the executor's independently constructed CAID, evaluates
-the relying party's complete AEC requirement, makes a separate local
-authorization decision, and reserves every replay identity before provider
-entry.
+AEB does not reinterpret those states. A relying party can use a natively
+verified CCS `allow` as one `machine-policy-decision` evidence leg and map
+the protected tool and parameters to the executor's independently constructed
+CAID. Evidence satisfaction under AEC, the executor's authorization decision,
+and reservation of the required replay identities before provider entry remain
+separate steps. The receipt-level compatibility runner does not perform that
+complete execution path.
 
 ## Current runnable profiles
 
-The current public-key profile is source-locked to
+The separate [CCS-09 compatibility profile](../../conformance/composition/ccs09-aeb-v1/README.md)
+checks the draft's 22-field v1.3 receipt construction with the existing
+CCS-05 adapter and exercises optional relying-party-pinned AEB/CAID mapping.
+It includes actual archive-byte verification and a section-by-section
+CCS-08 to CCS-09 comparison. CCS-09 changes the external mapping requirement
+to optional and classifies AEB/CAID as informative references. Its credit
+for EMILIA's historical CCS-05 result is not validation of this new run.
+
+```sh
+npm run conformance:composition:ccs09-aeb
+npm run conformance:composition:ccs09-sources
+```
+
+This receipt-level check does not implement the durable pre-execution and
+post-execution lifecycle required by CCS-09 section 4.2. It does not upgrade
+the historical package-backed profiles below to a new draft or package.
+
+The package-backed public-key profile is source-locked to
 `ccs-verifier==1.1.20`, upstream tag object
 `c6a35839a26c228cab9c1b827aab814fa4d14945`, and commit
 `8c95600f661028acc74056d5829e0a0f7db0ab0b`. It verifies the exact upstream
