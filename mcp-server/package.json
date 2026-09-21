@@ -21,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^3.21.0"
+    "@emilia-protocol/verify": "^4.0.0"
   },
   "overrides": {
     "@hono/node-server": "2.0.10",
