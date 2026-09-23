@@ -1,0 +1,12 @@
+Rafael,
+
+I took you up on the offer. I prepared a small companion profile and vector set for two operation families: payment.release maps to payment.release.1, and tool.call maps to tool.call.1.
+
+The split is deliberate. The delegation scope names the permitted operation family. CAID names the material fields of one concrete action. Native chain verification and constraints stay with your verifier, and local admission remains a separate decision.
+
+The profile refuses unsupported detail types, more than one authorization detail, malformed scopes, missing CAID material, a mismatched CAID, and a same-verb/different-semantics substitution. It also pins agent_delegation as used by -01, so a type change in -02 cannot silently alter the profile.
+
+The validator and all 14 vectors pass locally. I kept the packet deliberately narrow, pinned a closed two-currency subset for the external ISO reference, and made no claim that the current seed registry is neutral or that the other 50 types have been reviewed. If this is the boundary you meant, I would value your read before taking it further.
+
+Best,
+Iman

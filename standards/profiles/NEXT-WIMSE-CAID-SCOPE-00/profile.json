@@ -1,0 +1,61 @@
+{
+  "profile_id": "WIMSE-CAID-SCOPE-00",
+  "status": "private-review-draft",
+  "updated": "2026-09-23",
+  "authorization_details_type": "agent_delegation",
+  "authorization_details_cardinality": {
+    "min": 1,
+    "max": 1
+  },
+  "caid_suite": "jcs-sha256",
+  "registry": {
+    "name": "caid-action-types",
+    "version": 3,
+    "updated": "2026-08-21",
+    "sha256": "e3e1e3052461ad9279b7f38b3df502c2d4e2293aea40636d2da8766f205240e7",
+    "path_from_repository_root": "caid/registry/action-types.json",
+    "stewardship": "EMILIA Protocol maintainers",
+    "license": "CC0-1.0"
+  },
+  "sources": {
+    "delegation_draft": {
+      "id": "draft-asor-wimse-agent-delegation-chain-01",
+      "published": "2026-09-03",
+      "url": "https://datatracker.ietf.org/doc/html/draft-asor-wimse-agent-delegation-chain-01"
+    },
+    "delegation_followup": {
+      "date": "2026-09-23",
+      "list": "wimse@ietf.org",
+      "message_id": "<CAESAJSUsabSeDKC2yVxtuTPZxoeWwxSN8VWy1tGf6GeMD7kPhg@mail.gmail.com>",
+      "status": "author-stated plan for -02; not published -02 text"
+    },
+    "caid_draft": {
+      "id": "draft-schrock-canonical-action-identifier-02",
+      "published": "2026-08-06",
+      "url": "https://datatracker.ietf.org/doc/html/draft-schrock-canonical-action-identifier-02"
+    }
+  },
+  "mappings": [
+    {
+      "scope_family": "payment.release",
+      "caid_action_type": "payment.release.1"
+    },
+    {
+      "scope_family": "tool.call",
+      "caid_action_type": "tool.call.1"
+    }
+  ],
+  "external_value_pins": {
+    "payment.release.1": {
+      "currency": {
+        "values_ref": "ISO 4217 alpha-3",
+        "allowed_values": ["EUR", "USD"],
+        "note": "Closed subset for this private experiment. Other ISO 4217 values require a new profile version or a separately pinned code-set snapshot."
+      }
+    }
+  },
+  "result_vocabulary": {
+    "success": "COVERED",
+    "failure": "REFUSED"
+  }
+}
