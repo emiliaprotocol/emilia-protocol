@@ -109,10 +109,17 @@ The first failing rule determines the result:
    `REFUSED` with `scope_not_covered`.
 9. The action object's `action_type` MUST equal the mapped CAID action type.
    Otherwise return `REFUSED` with `action_type_mismatch`.
-10. Recompute the CAID under the pinned registry and `jcs-sha256`. If material
-    validation, the profile-pinned external enum check, or CAID computation
-    fails, return `REFUSED` with
-    `invalid_action_object` and retain the native CAID refusal reasons.
+10. Before invoking native CAID validation, apply the mapped action type's
+    requirements from `profile.json` at
+    `action_type_rules.<action_type>.required_profile_fields`. A required
+    profile field that is absent, empty, or not a string returns `REFUSED`
+    with `invalid_action_object` and the sub-reason
+    `missing_or_empty_profile_field:<field>`. Then recompute the CAID under
+    the pinned registry and `jcs-sha256`. If native material validation or
+    CAID computation fails, return `REFUSED` with `invalid_action_object` and
+    retain the native CAID refusal reasons. A profile-pinned external enum
+    failure returns the profile sub-reason
+    `external_enum_not_allowed:<field>`.
 11. The recomputed CAID MUST byte-equal `presented_caid`. Otherwise return
     `REFUSED` with `caid_mismatch`.
 12. Return `COVERED` with `covered`, the mapped action type, and recomputed
@@ -138,7 +145,10 @@ The family names invocation of an agent-framework tool. The concrete action
 MUST include the stable execution `target`, exact framework `tool` name, and
 complete post-default `args` object. Although the pinned CAID registry makes
 `occurrence_id` optional in the general type, this profile requires a nonempty
-`occurrence_id` for every `tool.call.1` action.
+`occurrence_id` for every `tool.call.1` action. The machine-readable source of
+that additional requirement is `profile.json` at
+`action_type_rules.tool.call.1.required_profile_fields`; it is evaluated
+before the general CAID registry, as specified by Rule 10.
 
 A transport retry of the same logical invocation MUST present the identical
 action object, including the same `occurrence_id`, and therefore the identical
