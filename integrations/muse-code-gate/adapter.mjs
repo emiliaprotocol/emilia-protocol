@@ -167,6 +167,13 @@ export function createOutcomeSigner({ privateKey, publicKey, keyId = 'ep:key:mus
 
 function issueOutcomeReceipt({ outcome, canonical, gateEvidence, signer, now }) {
   const at = new Date(typeof now === 'function' ? now() : now).toISOString();
+  const authorizationEvidenceHash = gateEvidence?.authorizationEvidence?.hash
+    ?? gateEvidence?.execution?.authorizes_decision;
+  const executionEvidenceHash = gateEvidence?.execution?.hash;
+  const evidenceHash = (value) => (typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
+    ? value : null);
+  const boundAuthorizationHash = evidenceHash(authorizationEvidenceHash);
+  const boundExecutionHash = evidenceHash(executionEvidenceHash);
   const claim = {
     profile: OUTCOME_PROFILE,
     execution_authorizing: false,
@@ -177,10 +184,12 @@ function issueOutcomeReceipt({ outcome, canonical, gateEvidence, signer, now }) 
     provider_entry: 'ENTERED',
     outcome,
     retry: 'REFUSE',
-    gate_authorization_digest: gateEvidence?.authorizationEvidence?.hash
-      ?? gateEvidence?.execution?.authorizes_decision
-      ?? null,
-    gate_execution_digest: gateEvidence?.execution?.hash ?? null,
+    ...(boundAuthorizationHash
+      ? { gate_authorization_evidence_hash: boundAuthorizationHash }
+      : {}),
+    ...(boundExecutionHash
+      ? { gate_execution_evidence_hash: boundExecutionHash }
+      : {}),
   };
   const payload = {
     receipt_id: `ep:muse-gate-outcome:${randomUUID()}`,

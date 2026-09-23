@@ -52,7 +52,19 @@ test('the Gate-wrapped provider emits an offline-verifiable EXECUTED receipt', a
   assert.equal(result._emilia.provider_entry, 'ENTERED');
   const verified = verifyOutcomeReceipt(result._emilia.outcome_receipt, fixture.outcomePublicKey);
   assert.equal(verified.valid, true, JSON.stringify(verified));
-  assert.equal(result._emilia.outcome_receipt.payload.claim.caid, canonicalizePaymentRelease(INPUT).caid);
+  const claim = result._emilia.outcome_receipt.payload.claim;
+  assert.equal(claim.caid, canonicalizePaymentRelease(INPUT).caid);
+  assert.equal(claim.gate_authorization_evidence_hash, result._emilia.execution.authorizes_decision);
+  assert.equal(claim.gate_execution_evidence_hash, result._emilia.execution.hash);
+});
+
+test('missing authorization receipt refuses before provider entry', async () => {
+  const fixture = createDemoPaymentReleaseFixture({ input: INPUT });
+  const result = await fixture.tool(INPUT);
+  assert.equal(result.isError, true);
+  assert.match(result._emilia.reason, /receipt_required/);
+  assert.equal(result._emilia.provider_entry, 'NOT_ENTERED');
+  assert.equal(fixture.providerCalls.length, 0);
 });
 
 test('payee, account, amount, currency, and operation mutations all refuse before provider entry', async () => {
@@ -79,6 +91,25 @@ test('replay is refused and never calls the provider twice', async () => {
   assert.equal(first._emilia.outcome, 'EXECUTED');
   assert.equal(replay.isError, true);
   assert.match(replay._emilia.reason, /replay/);
+  assert.equal(fixture.providerCalls.length, 1);
+});
+
+test('concurrent presentation of one receipt permits exactly one provider entry', async () => {
+  const fixture = createDemoPaymentReleaseFixture({
+    input: INPUT,
+    provider: async (payment) => {
+      await new Promise((resolve) => setImmediate(resolve));
+      return { accepted: true, operation: payment.operation };
+    },
+  });
+  const receipt = fixture.mintReceipt();
+  const [left, right] = await Promise.all([
+    fixture.tool({ ...INPUT, _emilia_receipt: receipt }),
+    fixture.tool({ ...INPUT, _emilia_receipt: receipt }),
+  ]);
+  const results = [left, right];
+  assert.equal(results.filter((result) => result._emilia?.outcome === 'EXECUTED').length, 1);
+  assert.equal(results.filter((result) => result._emilia?.reason === 'replay_refused').length, 1);
   assert.equal(fixture.providerCalls.length, 1);
 });
 
@@ -111,6 +142,24 @@ test('hostile shapes, numeric money, and extra provider-affecting fields fail cl
     assert.equal(result.isError, true, JSON.stringify(input));
     assert.equal(fixture.providerCalls.length, 0);
   }
+});
+
+test('outcome receipt byte mutation invalidates offline verification', async () => {
+  const fixture = createDemoPaymentReleaseFixture({ input: INPUT });
+  const result = await fixture.tool({ ...INPUT, _emilia_receipt: fixture.mintReceipt() });
+  const tampered = structuredClone(result._emilia.outcome_receipt);
+  tampered.payload.claim.operation_id = 'invoice-attacker';
+  const verified = verifyOutcomeReceipt(tampered, fixture.outcomePublicKey);
+  assert.equal(verified.valid, false);
+  assert.equal(verified.checks.signature, false);
+});
+
+test('a valid outcome signature under an unpinned key is refused', async () => {
+  const pinned = createDemoPaymentReleaseFixture({ input: INPUT });
+  const unpinned = createDemoPaymentReleaseFixture({ input: INPUT });
+  const result = await unpinned.tool({ ...INPUT, _emilia_receipt: unpinned.mintReceipt() });
+  assert.equal(verifyOutcomeReceipt(result._emilia.outcome_receipt, unpinned.outcomePublicKey).valid, true);
+  assert.equal(verifyOutcomeReceipt(result._emilia.outcome_receipt, pinned.outcomePublicKey).valid, false);
 });
 
 test('Muse PreToolUse hook is only an early refusal: deny JSON on invalid, silence on valid', async () => {
