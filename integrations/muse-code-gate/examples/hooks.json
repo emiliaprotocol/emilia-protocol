@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__emilia_payment_gate__release_payment",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./integrations/muse-code-gate/hook.mjs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__emilia_payment_gate__release_payment",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ./integrations/muse-code-gate/hook.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}
+
