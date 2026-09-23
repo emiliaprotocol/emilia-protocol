@@ -95,7 +95,8 @@ The first failing rule determines the result:
 4. If that object's `type` is not the exact pinned type, return `REFUSED` with
    `unknown_authorization_details_type`.
 5. If the object has a member other than `type`, `scopes`, or `constraints`,
-   or if `scopes` is not an array, return `REFUSED` with
+   if `scopes` is not an array, or if a present `constraints` member is not
+   an array, return `REFUSED` with
    `malformed_authorization_detail`.
 6. Validate every scope using the `-01` Section 4.1 grammar. Any invalid scope
    returns `REFUSED` with `malformed_scope` before covering is evaluated.
@@ -144,7 +145,9 @@ action object, including the same `occurrence_id`, and therefore the identical
 CAID. A second intended invocation, even with identical arguments, MUST use a
 new `occurrence_id` and therefore a new CAID. This correlation rule does not
 itself prevent a duplicate effect. Durable single-use admission and provider
-idempotency remain enforcement responsibilities outside this profile.
+idempotency remain enforcement responsibilities outside this profile. In
+particular, a stateful admission layer MUST refuse reuse of one `occurrence_id`
+with different action material, even if each object has a valid CAID.
 
 The CAID registry classifies this type's risk as varying by tool. Mapping a
 delegation to it does not make an arbitrary tool safe or authorized.

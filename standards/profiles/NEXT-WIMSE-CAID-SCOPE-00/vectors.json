@@ -202,6 +202,38 @@
       }
     },
     {
+      "id": "tool-call-reused-occurrence-mutated-material-refused",
+      "description": "A retry cannot change the action material while reusing the original occurrence_id and CAID.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["tool.call"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "tool.call",
+        "action_object": {
+          "action_type": "tool.call.1",
+          "target": "github.example.internal",
+          "tool": "repository.archive",
+          "args": {
+            "owner": "acme",
+            "repository": "annual-ledger",
+            "reason": "retention-policy-17"
+          },
+          "occurrence_id": "call-2026-09-23-0001"
+        },
+        "presented_caid": "caid:1:tool.call.1:jcs-sha256:08mwE09lqZdrg9d6uOHJkJYBzGV9F3IeVA9lEXCySyU"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "caid_mismatch"
+      }
+    },
+    {
       "id": "same-verb-different-semantics-refused",
       "description": "The terminal verb release does not make release of a legal hold equivalent to payment.release.",
       "input": {
@@ -269,6 +301,36 @@
             "scopes": ["payment.release"],
             "constraints": [],
             "unrecognized_policy": true
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "malformed_authorization_detail"
+      }
+    },
+    {
+      "id": "non-array-constraints-refused",
+      "description": "A recognized detail with a non-array constraints member is malformed and cannot be partially evaluated.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": {
+              "amount_max": "250.00"
+            }
           }
         ],
         "requested_scope": "payment.release",
