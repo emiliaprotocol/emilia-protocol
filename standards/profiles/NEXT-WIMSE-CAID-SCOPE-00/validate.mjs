@@ -31,6 +31,11 @@ const EXPECTED_MAPPINGS = new Map([
   ["tool.call", "tool.call.1"],
 ]);
 const EXPECTED_PAYMENT_CURRENCIES = ["EUR", "USD"];
+const EXPECTED_TOOL_REQUIRED_FIELDS = ["occurrence_id"];
+const EXPECTED_TOOL_RETRY_SEMANTICS = {
+  same_logical_invocation: "reuse_identical_occurrence_id_and_caid",
+  new_logical_invocation: "new_occurrence_id_and_caid",
+};
 
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
@@ -131,6 +136,15 @@ function validateProfilePins() {
     problems.push("unexpected payment.release.1 currency pin");
   }
 
+  const toolRules = profile.action_type_rules?.["tool.call.1"];
+  if (!isPlainObject(toolRules) ||
+      JSON.stringify(toolRules.required_profile_fields) !==
+        JSON.stringify(EXPECTED_TOOL_REQUIRED_FIELDS) ||
+      JSON.stringify(toolRules.retry_semantics) !==
+        JSON.stringify(EXPECTED_TOOL_RETRY_SEMANTICS)) {
+    problems.push("unexpected tool.call.1 occurrence or retry rules");
+  }
+
   return problems;
 }
 
@@ -174,6 +188,18 @@ export function evaluate(input) {
   if (!isPlainObject(input.action_object) ||
       input.action_object.action_type !== mapping.caid_action_type) {
     return refusal("action_type_mismatch");
+  }
+
+  const requiredProfileFields =
+    profile.action_type_rules?.[mapping.caid_action_type]
+      ?.required_profile_fields ?? [];
+  for (const field of requiredProfileFields) {
+    if (typeof input.action_object[field] !== "string" ||
+        input.action_object[field].length === 0) {
+      return refusal("invalid_action_object", {
+        caid_reasons: [`missing_or_empty_profile_field:${field}`],
+      });
+    }
   }
 
   const computed = computeCaid(input.action_object, {

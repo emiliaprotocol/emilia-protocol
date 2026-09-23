@@ -1,6 +1,6 @@
 {
   "suite": "WIMSE-CAID-SCOPE-00-vectors",
-  "version": 1,
+  "version": 2,
   "note": "COVERED is operation-family plus exact-action correlation under pinned inputs. It is not authorization or execution.",
   "vectors": [
     {
@@ -103,6 +103,105 @@
       }
     },
     {
+      "id": "tool-call-transport-retry-covered",
+      "description": "A transport retry of the same logical invocation presents the identical occurrence_id, action object, and CAID.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["tool.call"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "tool.call",
+        "action_object": {
+          "action_type": "tool.call.1",
+          "target": "github.example.internal",
+          "tool": "repository.archive",
+          "args": {
+            "owner": "acme",
+            "repository": "quarterly-ledger",
+            "reason": "retention-policy-17"
+          },
+          "occurrence_id": "call-2026-09-23-0001"
+        },
+        "presented_caid": "caid:1:tool.call.1:jcs-sha256:08mwE09lqZdrg9d6uOHJkJYBzGV9F3IeVA9lEXCySyU"
+      },
+      "expect": {
+        "decision": "COVERED",
+        "reason": "covered",
+        "scope_family": "tool.call",
+        "caid_action_type": "tool.call.1",
+        "caid": "caid:1:tool.call.1:jcs-sha256:08mwE09lqZdrg9d6uOHJkJYBzGV9F3IeVA9lEXCySyU"
+      }
+    },
+    {
+      "id": "tool-call-missing-occurrence-id-refused",
+      "description": "This profile requires occurrence_id even though the general tool.call.1 registry type makes it optional.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["tool.call"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "tool.call",
+        "action_object": {
+          "action_type": "tool.call.1",
+          "target": "github.example.internal",
+          "tool": "repository.archive",
+          "args": {
+            "owner": "acme",
+            "repository": "quarterly-ledger",
+            "reason": "retention-policy-17"
+          }
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "invalid_action_object",
+        "caid_reasons": ["missing_or_empty_profile_field:occurrence_id"]
+      }
+    },
+    {
+      "id": "tool-call-new-occurrence-requires-new-caid",
+      "description": "A second intended invocation uses a new occurrence_id and cannot reuse the first invocation's CAID.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["tool.call"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "tool.call",
+        "action_object": {
+          "action_type": "tool.call.1",
+          "target": "github.example.internal",
+          "tool": "repository.archive",
+          "args": {
+            "owner": "acme",
+            "repository": "quarterly-ledger",
+            "reason": "retention-policy-17"
+          },
+          "occurrence_id": "call-2026-09-23-0002"
+        },
+        "presented_caid": "caid:1:tool.call.1:jcs-sha256:08mwE09lqZdrg9d6uOHJkJYBzGV9F3IeVA9lEXCySyU"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "caid_mismatch"
+      }
+    },
+    {
       "id": "same-verb-different-semantics-refused",
       "description": "The terminal verb release does not make release of a legal hold equivalent to payment.release.",
       "input": {
@@ -156,6 +255,35 @@
       "expect": {
         "decision": "REFUSED",
         "reason": "unknown_authorization_details_type"
+      }
+    },
+    {
+      "id": "malformed-authorization-detail-refused",
+      "description": "An otherwise recognizable detail with an unknown member is refused rather than partially evaluated.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": [],
+            "unrecognized_policy": true
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "malformed_authorization_detail"
       }
     },
     {
@@ -268,6 +396,62 @@
       "expect": {
         "decision": "REFUSED",
         "reason": "scope_not_covered"
+      }
+    },
+    {
+      "id": "terminal-wildcard-adjacent-namespace-refused",
+      "description": "The terminal wildcard pay.* does not cover the adjacent namespace payment.release when the dot boundary is retained.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["pay.*"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "scope_not_covered"
+      }
+    },
+    {
+      "id": "terminal-wildcard-bare-prefix-refused",
+      "description": "The terminal wildcard payment.* does not turn the invalid bare name payment into a covered requested scope.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.*"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "unknown_scope_family"
       }
     },
     {

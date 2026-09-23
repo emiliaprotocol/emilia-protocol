@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-`WIMSE-CAID-SCOPE-00` is a private companion profile for one narrow
+`WIMSE-CAID-SCOPE-00` is an experimental companion profile for one narrow
 interoperability test. It maps two operation-family strings carried in an
 `agent_delegation` authorization detail to two versioned CAID action types.
 It does not change the delegation token, the CAID format, or either source
@@ -29,7 +29,7 @@ pinned to registry version 3 and the exact `action-types.json` digest in
 The CAID v1 reference implementation validates that an external enum value is
 a string, but it does not embed external code sets. This packet therefore pins
 a closed `EUR` and `USD` subset for `payment.release.1.currency`. Any other
-value, including another real ISO 4217 code, refuses in this private profile
+value, including another real ISO 4217 code, refuses in this profile
 until a separately pinned code-set snapshot or new profile version is agreed.
 
 ## 2. Layer boundary
@@ -127,7 +127,7 @@ fallback to local intuition.
 The family names release of a payment instruction to settlement. The
 concrete action MUST include `amount`, `currency`, `beneficiary_account`, and
 `payment_instruction_id` exactly as required by the pinned CAID definition.
-This private packet accepts only `EUR` and `USD` for the externally defined
+This packet accepts only `EUR` and `USD` for the externally defined
 currency field. A similarly named operation such as release of a legal hold
 is not covered.
 
@@ -135,9 +135,19 @@ is not covered.
 
 The family names invocation of an agent-framework tool. The concrete action
 MUST include the stable execution `target`, exact framework `tool` name, and
-complete post-default `args` object. The CAID registry classifies its risk as
-varying by tool. Mapping a delegation to this type does not make an arbitrary
-tool safe or authorized.
+complete post-default `args` object. Although the pinned CAID registry makes
+`occurrence_id` optional in the general type, this profile requires a nonempty
+`occurrence_id` for every `tool.call.1` action.
+
+A transport retry of the same logical invocation MUST present the identical
+action object, including the same `occurrence_id`, and therefore the identical
+CAID. A second intended invocation, even with identical arguments, MUST use a
+new `occurrence_id` and therefore a new CAID. This correlation rule does not
+itself prevent a duplicate effect. Durable single-use admission and provider
+idempotency remain enforcement responsibilities outside this profile.
+
+The CAID registry classifies this type's risk as varying by tool. Mapping a
+delegation to it does not make an arbitrary tool safe or authorized.
 
 ## 6. Deliberate limits
 

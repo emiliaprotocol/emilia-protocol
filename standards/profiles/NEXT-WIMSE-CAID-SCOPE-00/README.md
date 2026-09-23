@@ -1,7 +1,8 @@
 # WIMSE delegation scope to CAID companion profile
 
-Status: private review draft, 2026-09-23. This directory has not been
-submitted to the IETF, reviewed by WIMSE, or published as an Internet-Draft.
+Status: experimental review draft, 2026-09-23. This directory has been shared
+for review, but it has not been adopted by WIMSE or published as an
+Internet-Draft.
 
 This packet tests one narrow answer to the operation-vocabulary gap Rafael
 Asor identified on the public WIMSE list: bind two delegation scope families
@@ -25,7 +26,8 @@ delegation chain and any other required evidence.
 
 - `PROFILE.md` defines the boundary and deterministic evaluation rules.
 - `profile.json` pins the source revisions, registry bytes, and two mappings.
-- `vectors.json` contains accepted cases and hostile refusals.
+- `vectors.json` contains accepted cases and hostile refusals, including
+  malformed details, segment-bounded wildcards, and tool-call retries.
 - `validate.mjs` validates the pins and executes every vector using the
   repository's current CAID implementation.
 
@@ -35,9 +37,13 @@ Run from the repository root:
 node standards/profiles/NEXT-WIMSE-CAID-SCOPE-00/validate.mjs
 ```
 
+When the packet is sent outside the repository, `validate.mjs` MUST be
+included. It imports the pinned repository CAID implementation and registry;
+the packet is not a standalone replacement for those source files.
+
 ## Claim boundary
 
-This is a private interoperability experiment, not evidence that Rafael,
+This is an interoperability experiment, not evidence that Rafael,
 WIMSE, the IETF, or another implementation adopted CAID or this profile. It
 does not define a neutral global registry, and it does not review the other
 50 entries in the current 52-type EMILIA-maintained seed registry.
