@@ -21,6 +21,7 @@ import { generateDemoConfig } from '../demo-config.mjs';
 
 const HOOK_PATH = fileURLToPath(new URL('../hook.mjs', import.meta.url));
 const SERVER_PATH = fileURLToPath(new URL('../server.mjs', import.meta.url));
+const SETTINGS_PATH = fileURLToPath(new URL('../examples/settings.json', import.meta.url));
 
 const INPUT = Object.freeze({
   payee: 'vendor:acme',
@@ -186,6 +187,17 @@ test('stdio MCP surface inventories and dispatches only release_payment', async 
   const listedSchema = TOOLS[0].inputSchema;
   assert.equal(listedSchema.additionalProperties, false);
   assert.deepEqual(listedSchema.required, ['payee', 'account', 'amount', 'currency', 'operation', '_emilia_receipt']);
+});
+
+test('Muse 1.3 settings example uses the current required stdio server shape', async () => {
+  const settings = JSON.parse(await readFile(SETTINGS_PATH, 'utf8'));
+  assert.equal(settings.schema_version, 1);
+  assert.equal(Object.hasOwn(settings, 'mcp_servers'), false);
+  const server = settings.mcpServers?.emilia_payment_gate;
+  assert.equal(server?.type, 'stdio');
+  assert.equal(Object.hasOwn(server, 'transport'), false);
+  assert.equal(server?.mode, 'required');
+  assert.equal(server?.enabled, true);
 });
 
 test('hook CLI uses Muse 1.3 denial JSON + exit 2 and emits nothing on allow', () => {

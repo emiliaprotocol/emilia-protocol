@@ -1,7 +1,8 @@
 {
-  "mcp_servers": {
+  "schema_version": 1,
+  "mcpServers": {
     "emilia_payment_gate": {
-      "transport": "stdio",
+      "type": "stdio",
       "command": "node",
       "args": [
         "./integrations/muse-code-gate/server.mjs"
@@ -14,4 +15,3 @@
     }
   }
 }
-

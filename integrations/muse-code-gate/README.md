@@ -43,14 +43,18 @@ npm ci --ignore-scripts
 node integrations/muse-code-gate/demo-config.mjs .muse/emilia-payment-gate-demo
 ```
 
-Merge [`examples/settings.json`](./examples/settings.json) into Muse's
-`settings.json`. The current Muse stdio shape is:
+Merge the `mcpServers` entry from
+[`examples/settings.json`](./examples/settings.json) into
+`${XDG_CONFIG_HOME:-$HOME/.config}/muse/settings.json`. Muse Code 1.3.0 uses
+the camel-case `mcpServers` key; the legacy `mcp_servers` key is not the
+current configuration shape. The current stdio form is:
 
 ```json
 {
-  "mcp_servers": {
+  "schema_version": 1,
+  "mcpServers": {
     "emilia_payment_gate": {
-      "transport": "stdio",
+      "type": "stdio",
       "command": "node",
       "args": ["./integrations/muse-code-gate/server.mjs"],
       "env": {
@@ -62,6 +66,10 @@ Merge [`examples/settings.json`](./examples/settings.json) into Muse's
   }
 }
 ```
+
+This shape was startup-tested with the server in `mode: "required"` against
+Muse Code 1.3.0-R3401.1. A required server that cannot start aborts the Muse
+session rather than silently removing the Gate tool.
 
 `authorized-call.json` in the generated directory contains the exact arguments
 and receipt for one local call. The bundled provider is intentionally harmless:
@@ -206,4 +214,3 @@ real stdio MCP `tools/list` + `tools/call` round trip.
   indeterminate result.
 - Muse approval mode, sandboxing, authentication, provider permissions, and
   administrator policy remain separate controls.
-
