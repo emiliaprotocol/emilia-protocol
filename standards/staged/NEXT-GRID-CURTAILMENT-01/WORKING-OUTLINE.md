@@ -220,6 +220,47 @@ Keep statement and fixture identifiers profile-local unless the coauthors delibe
 - `conformance/vectors/grace-mobile-grid.v1.json`
 - `PIPs/PIP-014-grid-curtailment-profile.md`
 
+## Worked example placement note
+
+Justin's 23 September non-normative RDU101 example is accepted as the
+device-level path to adapt into `-01`, subject to this responsibility split:
+
+1. `draft-morrison-ot-command-authority` may supply a verified
+   credential-to-person or credential-to-device enrollment result.  That
+   result is an input to GRACE; it is not sufficient authority to dispatch.
+2. EMILIA is the control spine.  It binds the exact curtailment action and
+   relying-party policy, verifies the required authority evidence, admits and
+   consumes the authority once in the durable admission domain before provider
+   entry, and preserves unresolved state for reconciliation.
+3. COSA, or another deployment-pinned executor adapter, projects an admitted
+   action into the native management command and returns actuator-side dispatch
+   evidence.  Its acknowledgment does not itself authorize the action or prove
+   the physical effect.
+4. A separately authenticated meter supplies observed-effect evidence.  The
+   hardwired REPO, emergency stop, and branch protection remain outside the
+   Gate and continue to operate when GRACE is unavailable.
+
+The example's topology therefore follows this control order:
+
+```text
+Morrison identity/enrollment result + proposed action
+                       |
+                       v
+EMILIA exact-action authority + AEB/Gate admission and consumption
+                       |
+                       v
+COSA or other executor adapter -> native command -> actuator-side ACK
+                       |
+                       v
+independent meter readback -> EMILIA reconciliation and Action State
+
+hardwired safety interlock: independent of every protocol path above
+```
+
+The example must retain its current no-energized-test claim, the distinction
+between management acknowledgment and independent readback, and the rule that
+an unresolved post-dispatch state never authorizes a blind retry.
+
 ## Immediate decisions
 
 1. Blake and Drew confirm their preferred RFCXML author metadata.
