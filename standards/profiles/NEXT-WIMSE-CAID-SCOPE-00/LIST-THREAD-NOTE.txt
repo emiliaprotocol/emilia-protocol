@@ -1,12 +1,14 @@
 Rafael,
 
-I took you up on the offer. I prepared a small companion profile and vector set for two operation families: payment.release maps to payment.release.1, and tool.call maps to tool.call.1.
+Thank you for rebuilding the evaluator and checking the refusal reasons. Your four points were right.
 
-The split is deliberate. The delegation scope names the permitted operation family. CAID names the material fields of one concrete action. Native chain verification and constraints stay with your verifier, and local admission remains a separate decision.
+For this profile, tool.call.1 now requires a nonempty occurrence_id. A transport retry of the same logical invocation presents the same complete action, occurrence ID, and CAID. A second intended invocation gets a new occurrence ID and CAID. Reusing one occurrence with different material remains a stateful admission conflict; this mapping does not claim exactly-once execution.
 
-The profile refuses unsupported detail types, more than one authorization detail, malformed scopes, missing CAID material, a mismatched CAID, and a same-verb/different-semantics substitution. It also pins agent_delegation as used by -01, so a type change in -02 cannot silently alter the profile.
+You were also right about the packet. I omitted validate.mjs from the emailed set. The complete validator is now in the public packet, and the reproducible unit is the PR checkout because it imports the pinned CAID implementation and registry.
 
-The validator and all 14 vectors pass locally. I kept the packet deliberately narrow, pinned a closed two-currency subset for the external ISO reference, and made no claim that the current seed registry is neutral or that the other 50 types have been reviewed. If this is the boundary you meant, I would value your read before taking it further.
+I added direct refusals for an unknown detail member, non-array constraints, pay.* against payment.release, the invalid bare prefix, a same-invocation retry, a new occurrence with the old CAID, and changed material under the original occurrence and CAID. The revised 22-vector set passes locally.
+
+The explicit mappings, the agent_delegation pin, and the claim boundary are unchanged.
 
 Best,
 Iman
