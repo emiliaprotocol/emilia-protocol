@@ -378,6 +378,9 @@ export async function createFileKvBackend(path, {
   });
   return Object.freeze({
     durable: true,
+    ownershipFenced: true,
+    permanentConsumption: true,
+    atomicReplayFenced: true,
     async health() {
       try {
         await stat(dirname(path));
@@ -411,6 +414,12 @@ export async function createFileKvBackend(path, {
         delete state[key];
         await writeState(path, state);
         return true;
+      });
+    },
+    async get(key) {
+      return withLock(path, lockOptions, async () => {
+        const state = await readState(path);
+        return Object.hasOwn(state, key) ? state[key] : null;
       });
     },
     async has(key) {

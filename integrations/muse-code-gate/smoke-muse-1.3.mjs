@@ -17,7 +17,8 @@ import { fileURLToPath } from 'node:url';
 import { generateDemoConfig } from './demo-config.mjs';
 
 const SERVER_NAME = 'emilia_payment_gate';
-const TOOL_ID = 'mcp__emilia_payment_gate__release_payment';
+const RELEASE_TOOL_ID = 'mcp__emilia_payment_gate__release_payment';
+const RECONCILIATION_TOOL_ID = 'mcp__emilia_payment_gate__reconcile_payment';
 const PROMPT = 'Reply exactly MUSE_GATE_READY';
 const SCRIPT_DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = resolve(SCRIPT_DIRECTORY, '../..');
@@ -134,14 +135,14 @@ function requiredServerSettings({ command, args, env }) {
   };
 }
 
-const museArgs = [
+const museArgs = (prompt) => [
   'exec',
   '--provider', 'echo',
   '--json',
   '--disable-web-tools',
   '--approval-mode', 'never',
   '--no-foreign-personal-context',
-  PROMPT,
+  prompt,
 ];
 
 function requireCondition(condition, message) {
@@ -155,7 +156,7 @@ async function runReadyCase(museBinary, root) {
     args: [SERVER_PATH],
     env: { EMILIA_MUSE_GATE_CONFIG: gate.configPath },
   }));
-  const result = await run(museBinary, museArgs, { env: home.env });
+  const result = await run(museBinary, museArgs(PROMPT), { env: home.env });
   const tracePaths = await findFiles(home.dataRoot, (path) => path.endsWith('.log'));
   const sessionPaths = await findFiles(home.dataRoot, (path) => path.endsWith('session.jsonl'));
   const traces = await combinedText(tracePaths);
@@ -169,12 +170,19 @@ async function runReadyCase(museBinary, root) {
     'required MCP transport was not ready');
   requireCondition(new RegExp(`event="mcp\\.handshake".*server="${SERVER_NAME}".*mode="required".*outcome="ready"`).test(traces),
     'required MCP handshake was not ready');
-  requireCondition(new RegExp(`event="mcp\\.capability\\.discovery".*server="${SERVER_NAME}".*outcome="ready".*tool_count=1`).test(traces),
-    'required MCP tool discovery did not report one tool');
+  requireCondition(new RegExp(`event="mcp\\.capability\\.discovery".*server="${SERVER_NAME}".*outcome="ready".*tool_count=2`).test(traces),
+    'required MCP tool discovery did not report both tools');
   requireCondition(sessions.some((entry) => entry.payload_type === 'runtime.mcp_tool_identity_catalog'
-    && entry.payload?.entries?.some((tool) => tool.canonical_id === TOOL_ID)),
-  `${TOOL_ID} was absent from the Muse tool identity catalog`);
-  return { exit: result.code, tool: TOOL_ID, traceFiles: tracePaths.length };
+    && entry.payload?.entries?.some((tool) => tool.canonical_id === RELEASE_TOOL_ID)),
+  `${RELEASE_TOOL_ID} was absent from the Muse tool identity catalog`);
+  requireCondition(sessions.some((entry) => entry.payload_type === 'runtime.mcp_tool_identity_catalog'
+    && entry.payload?.entries?.some((tool) => tool.canonical_id === RECONCILIATION_TOOL_ID)),
+  `${RECONCILIATION_TOOL_ID} was absent from the Muse tool identity catalog`);
+  return {
+    exit: result.code,
+    tools: [RELEASE_TOOL_ID, RECONCILIATION_TOOL_ID],
+    traceFiles: tracePaths.length,
+  };
 }
 
 async function runBrokenRequiredCase(museBinary, root) {
@@ -183,7 +191,7 @@ async function runBrokenRequiredCase(museBinary, root) {
     command: missingCommand,
     args: [],
   }));
-  const result = await run(museBinary, museArgs, { env: home.env });
+  const result = await run(museBinary, museArgs(PROMPT), { env: home.env });
   const tracePaths = await findFiles(home.dataRoot, (path) => path.endsWith('.log'));
   const traces = await combinedText(tracePaths);
   const output = jsonLines(result.stdout);
@@ -197,6 +205,37 @@ async function runBrokenRequiredCase(museBinary, root) {
   requireCondition(new RegExp(`event="mcp\\.transport\\.startup".*server="${SERVER_NAME}".*mode="required".*outcome="failed".*reason="command_unavailable"`).test(traces),
     'broken required server did not produce command_unavailable trace evidence');
   return { exit: result.code, reason: 'command_unavailable', traceFiles: tracePaths.length };
+}
+
+async function runDeterministicInvocationBoundaryCase(museBinary, root) {
+  const gate = await generateDemoConfig(join(root, 'gate'));
+  const home = await makeMuseHome(root, requiredServerSettings({
+    command: process.execPath,
+    args: [SERVER_PATH],
+    env: { EMILIA_MUSE_GATE_CONFIG: gate.configPath },
+  }));
+  const prompt = `Call ${RELEASE_TOOL_ID} exactly once with the authorized arguments in ${gate.callPath}`;
+  const result = await run(museBinary, museArgs(prompt), { env: home.env });
+  const help = await run(museBinary, ['exec', '--help'], { env: home.env, timeoutMs: 10_000 });
+  let providerLedger = null;
+  try {
+    providerLedger = await readFile(gate.config.provider_ledger_file, 'utf8');
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
+  requireCondition(result.code === 0, `echo limitation case exited ${result.code ?? result.signal}`);
+  requireCondition(JSON.stringify(jsonLines(result.stdout)).includes(prompt),
+    'echo provider did not return the submitted tool-call prompt as text');
+  requireCondition(providerLedger === null,
+    'echo provider unexpectedly invoked release_payment');
+  requireCondition(!help.stdout.includes('--tool-call') && !help.stdout.includes('--force-tool'),
+    'Muse exec unexpectedly exposes a deterministic forced-tool option; update the smoke to use it');
+  return {
+    provider: 'echo',
+    attempted_prompt: true,
+    release_payment_invoked: false,
+    limitation: 'Muse Code 1.3 echo mode returns the prompt as text and muse exec exposes no forced or scripted tool-call option. A deterministic release_payment call therefore requires a direct MCP client; using a model would not be deterministic.',
+  };
 }
 
 async function main() {
@@ -216,12 +255,17 @@ async function main() {
   try {
     const ready = await runReadyCase(museBinary, join(smokeRoot, 'ready'));
     const brokenRequired = await runBrokenRequiredCase(museBinary, join(smokeRoot, 'broken-required'));
+    const deterministicInvocation = await runDeterministicInvocationBoundaryCase(
+      museBinary,
+      join(smokeRoot, 'deterministic-invocation'),
+    );
     process.stdout.write(`${JSON.stringify({
       ok: true,
       muse: versionText,
       settings_shape: 'mcp_servers/transport',
       ready,
       broken_required: brokenRequired,
+      deterministic_invocation: deterministicInvocation,
     }, null, 2)}\n`);
   } finally {
     if (process.env.MUSE_SMOKE_KEEP === '1') {

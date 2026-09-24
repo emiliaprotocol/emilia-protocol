@@ -182,6 +182,14 @@ test('two backend instances serialize addIfAbsent on one state file', async (t) 
   assert.equal(['first', 'second'].includes(state['receipt:contended']), true);
 });
 
+test('backend get returns the exact stored value for reconciliation pinning', async (t) => {
+  const { statePath } = await temporaryState(t);
+  const backend = await createFileKvBackend(statePath);
+  assert.equal(await backend.get('reconcile:missing'), null);
+  assert.equal(await backend.addIfAbsent('reconcile:one', '{"terminal":true}'), true);
+  assert.equal(await backend.get('reconcile:one'), '{"terminal":true}');
+});
+
 test('live lock ownership is never stolen', async (t) => {
   const { statePath } = await temporaryState(t);
   const token = 'live-owner-token-0123456789abcdef';
