@@ -55,7 +55,7 @@
     "typescript": "7.0.2"
   },
   "overrides": {
-    "adm-zip": "0.6.0",
+    "adm-zip": "0.6.1",
     "diff": "8.0.3",
     "fast-uri": "3.1.6",
     "serialize-javascript": "7.0.7",
