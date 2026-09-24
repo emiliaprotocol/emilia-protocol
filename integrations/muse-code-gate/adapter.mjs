@@ -233,7 +233,7 @@ export function verifyOutcomeReceipt(receipt, publicKey) {
 function structuredToolError(reason, extra = {}) {
   return {
     isError: true,
-    content: [{ type: 'text', text: `EMILIA Gate refused release_payment: ${reason}.` }],
+    content: [{ type: 'text', text: `EMILIA release_payment: ${reason}.` }],
     _emilia: {
       gate: 'refused',
       status: 428,
@@ -262,15 +262,24 @@ export function createPaymentReleaseTool({ gate, provider, outcomeSigner, now = 
     observedAction: (args) => canonicalizePaymentRelease(args).action,
   }, async (args) => {
     const canonical = canonicalizePaymentRelease(args);
-    return provider(structuredClone(canonical.providerInput), {
+    const providerResult = await provider(structuredClone(canonical.providerInput), {
       caid: canonical.caid,
       action: structuredClone(canonical.action),
     });
+    // MCP isError is only an error response. It does not prove the provider
+    // made no change. Throw while still inside Gate so the durable execution
+    // record and adapter outcome both become INDETERMINATE.
+    if (providerResult?.isError === true) throw new Error('provider_reported_error_after_entry');
+    // Normalize untrusted provider output before Gate returns. A throwing
+    // getter or unserializable result therefore also remains inside Gate's
+    // indeterminate terminal path.
+    return structuredClone(providerResult);
   });
 
   const tool = async (args = {}, extra) => {
     let canonical;
     let pinnedArgs;
+    let providerEntered = false;
     try {
       // Pin one strict JSON snapshot before Gate awaits any verifier/store.
       // Receipt resolution, observed-action binding, and provider invocation
@@ -283,7 +292,7 @@ export function createPaymentReleaseTool({ gate, provider, outcomeSigner, now = 
     }
     try {
       const result = await gated(pinnedArgs, extra);
-      if (result?.isError) {
+      if (result?._emilia?.gate === 'refused') {
         return {
           ...result,
           _emilia: {
@@ -296,6 +305,18 @@ export function createPaymentReleaseTool({ gate, provider, outcomeSigner, now = 
           },
         };
       }
+      if (result?._emilia?.gate !== 'allowed') {
+        return structuredToolError('gate_result_unrecognized', {
+          gate: 'unknown',
+          status: 500,
+          adapter: ADAPTER_VERSION,
+          caid: canonical.caid,
+          provider_entry: 'UNKNOWN',
+          outcome: 'INDETERMINATE',
+          retry: 'REFUSE',
+        });
+      }
+      providerEntered = true;
       const receipt = issueOutcomeReceipt({
         outcome: 'EXECUTED',
         canonical,
@@ -313,7 +334,6 @@ export function createPaymentReleaseTool({ gate, provider, outcomeSigner, now = 
           outcome: 'EXECUTED',
           retry: 'REFUSE',
           outcome_receipt: receipt,
-          outcome_verification_key: signer.publicKey,
         },
       };
     } catch (error) {
@@ -324,30 +344,49 @@ export function createPaymentReleaseTool({ gate, provider, outcomeSigner, now = 
         });
         return structuredToolError(terminal.reason || 'execution_evidence_unavailable', {
           status: 500,
+          gate: 'allowed',
           adapter: ADAPTER_VERSION,
           caid: canonical.caid,
           provider_entry: 'ENTERED',
           outcome: 'EXECUTED',
           retry: 'REFUSE',
           outcome_receipt: receipt,
-          outcome_verification_key: signer.publicKey,
         });
       }
-      if (terminal?.outcome !== 'indeterminate') {
-        return structuredToolError(terminal?.reason || 'gate_terminal_error');
+      if (terminal?.outcome === 'indeterminate') {
+        const receipt = issueOutcomeReceipt({
+          outcome: 'INDETERMINATE', canonical, gateEvidence: terminal, signer, now,
+        });
+        return structuredToolError('effect_attempted_outcome_unknown', {
+          status: 409,
+          gate: 'allowed',
+          adapter: ADAPTER_VERSION,
+          caid: canonical.caid,
+          provider_entry: 'ENTERED',
+          outcome: 'INDETERMINATE',
+          retry: 'REFUSE',
+          outcome_receipt: receipt,
+        });
       }
-      const receipt = issueOutcomeReceipt({
-        outcome: 'INDETERMINATE', canonical, gateEvidence: terminal, signer, now,
-      });
-      return structuredToolError('effect_attempted_outcome_unknown', {
-        status: 409,
+      if (providerEntered) {
+        return structuredToolError('post_entry_evidence_processing_failed', {
+          status: 500,
+          gate: 'allowed',
+          adapter: ADAPTER_VERSION,
+          caid: canonical.caid,
+          provider_entry: 'ENTERED',
+          outcome: 'INDETERMINATE',
+          retry: 'REFUSE',
+        });
+      }
+      return structuredToolError(terminal?.reason || 'gate_terminal_state_unknown', {
+        gate: 'unknown',
+        status: 500,
         adapter: ADAPTER_VERSION,
         caid: canonical.caid,
-        provider_entry: 'ENTERED',
+        provider_entry: 'UNKNOWN',
         outcome: 'INDETERMINATE',
         retry: 'REFUSE',
-        outcome_receipt: receipt,
-        outcome_verification_key: signer.publicKey,
       });
     }
   };

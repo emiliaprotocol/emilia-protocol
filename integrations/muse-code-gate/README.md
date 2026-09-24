@@ -20,9 +20,10 @@ The demo uses only public Muse interfaces: stdio MCP plus `PreToolUse` and
 4. Gate verifies the pinned issuer, Class-A evidence, exact execution fields,
    freshness, and one-time consumption. It reserves authority before invoking
    the provider handler.
-5. Only the MCP server's provider function owns the effect boundary. A normal
-   return is recorded as `EXECUTED`. An exception after invocation is recorded
-   as `INDETERMINATE`, burns the authority, and must not be blindly retried.
+5. Only the MCP server's provider function owns the effect boundary. A normal,
+   non-error return is recorded as `EXECUTED`. An exception or generic MCP
+   error after invocation is recorded as `INDETERMINATE`, burns the authority,
+   and must not be blindly retried.
 6. The response carries an `EP-RECEIPT-v1` outcome receipt. The repository's
    offline verifier checks its signature and this adapter checks its closed
    outcome semantics.
@@ -43,18 +44,17 @@ npm ci --ignore-scripts
 node integrations/muse-code-gate/demo-config.mjs .muse/emilia-payment-gate-demo
 ```
 
-Merge the `mcpServers` entry from
+Merge the `mcp_servers` entry from
 [`examples/settings.json`](./examples/settings.json) into
-`${XDG_CONFIG_HOME:-$HOME/.config}/muse/settings.json`. Muse Code 1.3.0 uses
-the camel-case `mcpServers` key; the legacy `mcp_servers` key is not the
-current configuration shape. The current stdio form is:
+`${XDG_CONFIG_HOME:-$HOME/.config}/muse/settings.json`. This example follows
+[Meta's published Extending documentation](https://dev.meta.ai/docs/muse-code/extending):
 
 ```json
 {
   "schema_version": 1,
-  "mcpServers": {
+  "mcp_servers": {
     "emilia_payment_gate": {
-      "type": "stdio",
+      "transport": "stdio",
       "command": "node",
       "args": ["./integrations/muse-code-gate/server.mjs"],
       "env": {
@@ -67,9 +67,12 @@ current configuration shape. The current stdio form is:
 }
 ```
 
-This shape was startup-tested with the server in `mode: "required"` against
-Muse Code 1.3.0-R3401.1. A required server that cannot start aborts the Muse
-session rather than silently removing the Gate tool.
+This documented shape was startup-tested with the server in `mode: "required"`
+against Muse Code 1.3.0-R3401.1. That build also accepts the newer
+`mcpServers` / `type` aliases, but do not put both forms in one file. A required
+server that cannot start aborts the Muse session rather than silently removing
+the Gate tool. Revalidate the configuration against the installed Muse build
+when upgrading.
 
 `authorized-call.json` in the generated directory contains the exact arguments
 and receipt for one local call. The bundled provider is intentionally harmless:
@@ -176,14 +179,18 @@ Gate state and reconcile the stable operation identifier.
 
 ## Offline verification
 
-Save `_emilia.outcome_receipt` from the MCP result and verify it with the public
-key returned as `_emilia.outcome_verification_key`:
+Save `_emilia.outcome_receipt` from the MCP result and verify it with the Gate
+outcome public key that your deployment pinned out of band. For the local demo,
+that key is in the privately generated `authorized-call.json`; it is not taken
+from the MCP result:
 
 ```sh
 node integrations/muse-code-gate/verify-receipt.mjs outcome-receipt.json PUBLIC_KEY_B64URL
 ```
 
-Verification proves that the pinned Gate outcome key signed those exact bytes.
+Never trust a verification key delivered beside the receipt it is meant to
+verify. An attacker could replace both. Verification proves that the separately
+pinned Gate outcome key signed those exact bytes.
 The receipt is evidence, not authority for another execution. It does not prove
 that the payee was wise or legitimate, that settlement became final, that fraud
 was absent, or that a provider's claim was true. `EXECUTED` means the wrapped

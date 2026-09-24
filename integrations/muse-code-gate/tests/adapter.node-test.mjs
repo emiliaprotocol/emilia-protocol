@@ -51,6 +51,7 @@ test('the Gate-wrapped provider emits an offline-verifiable EXECUTED receipt', a
   assert.equal(result._emilia.gate, 'allowed');
   assert.equal(result._emilia.outcome, 'EXECUTED');
   assert.equal(result._emilia.provider_entry, 'ENTERED');
+  assert.equal(Object.hasOwn(result._emilia, 'outcome_verification_key'), false);
   const verified = verifyOutcomeReceipt(result._emilia.outcome_receipt, fixture.outcomePublicKey);
   assert.equal(verified.valid, true, JSON.stringify(verified));
   const claim = result._emilia.outcome_receipt.payload.claim;
@@ -130,6 +131,29 @@ test('a provider exception after entry burns authority and emits INDETERMINATE, 
   assert.match(replay._emilia.reason, /replay/);
 });
 
+test('a generic MCP provider error is INDETERMINATE, never a safe pre-entry refusal', async () => {
+  const fixture = createDemoPaymentReleaseFixture({
+    input: INPUT,
+    provider: async () => ({
+      isError: true,
+      content: [{ type: 'text', text: 'provider reported an error after accepting the call' }],
+    }),
+  });
+  const receipt = fixture.mintReceipt();
+  const result = await fixture.tool({ ...INPUT, _emilia_receipt: receipt });
+  assert.equal(fixture.providerCalls.length, 1);
+  assert.equal(result.isError, true);
+  assert.equal(result._emilia.gate, 'allowed');
+  assert.equal(result._emilia.provider_entry, 'ENTERED');
+  assert.equal(result._emilia.outcome, 'INDETERMINATE');
+  assert.equal(result._emilia.retry, 'REFUSE');
+  assert.equal(Object.hasOwn(result._emilia, 'outcome_verification_key'), false);
+  assert.equal(verifyOutcomeReceipt(result._emilia.outcome_receipt, fixture.outcomePublicKey).valid, true);
+  const replay = await fixture.tool({ ...INPUT, _emilia_receipt: receipt });
+  assert.equal(replay.isError, true);
+  assert.match(replay._emilia.reason, /replay/);
+});
+
 test('hostile shapes, numeric money, and extra provider-affecting fields fail closed', async () => {
   const cases = [
     { ...INPUT, amount: 1250 },
@@ -189,13 +213,13 @@ test('stdio MCP surface inventories and dispatches only release_payment', async 
   assert.deepEqual(listedSchema.required, ['payee', 'account', 'amount', 'currency', 'operation', '_emilia_receipt']);
 });
 
-test('Muse 1.3 settings example uses the current required stdio server shape', async () => {
+test('Muse settings example follows the published required stdio server shape', async () => {
   const settings = JSON.parse(await readFile(SETTINGS_PATH, 'utf8'));
   assert.equal(settings.schema_version, 1);
-  assert.equal(Object.hasOwn(settings, 'mcp_servers'), false);
-  const server = settings.mcpServers?.emilia_payment_gate;
-  assert.equal(server?.type, 'stdio');
-  assert.equal(Object.hasOwn(server, 'transport'), false);
+  assert.equal(Object.hasOwn(settings, 'mcpServers'), false);
+  const server = settings.mcp_servers?.emilia_payment_gate;
+  assert.equal(server?.transport, 'stdio');
+  assert.equal(Object.hasOwn(server, 'type'), false);
   assert.equal(server?.mode, 'required');
   assert.equal(server?.enabled, true);
 });
