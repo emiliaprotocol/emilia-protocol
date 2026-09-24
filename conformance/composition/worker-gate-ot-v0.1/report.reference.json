@@ -1,0 +1,142 @@
+{
+  "@version": "WORKER-GATE-OT-REFERENCE-REPORT-v0.1",
+  "profile": "EP-WORKER-GATE-OT-COMPOSITION-v0.1",
+  "fixture": {
+    "id": "truealter-fc10.synthetic.v1",
+    "sha256": "3cd708af715b1ee5417b9debefeb55bb747e3298014d19747f000b76900734d3",
+    "bytes": 24150,
+    "status": "SYNTHETIC. No live device, protocol stack or production key produced any value here. Proposed values are marked as proposals."
+  },
+  "cases": [
+    {
+      "id": "TRUEALTER-PROVENANCE-SIGNATURES",
+      "category": "prerequisite",
+      "passed": true,
+      "expected": "every supplied compact JWS verifies under the pinned synthetic P-256 key and proposed aud/exp/jti profile",
+      "observed": {
+        "deliveries": 9,
+        "valid": 9
+      }
+    },
+    {
+      "id": "ACTION-DIGEST-AND-CAID",
+      "category": "prerequisite",
+      "passed": true,
+      "expected": "the collaborator JCS digest reproduces exactly and EMILIA computes a typed CAID without treating the digest as authority",
+      "observed": {
+        "fixture_digest": "2ebbbe1484c61773d6be9abcbf321e6ebd95194d92840b8636b6339da31f392c",
+        "caid": "caid:1:ot.modbus.write-multiple-registers.1:jcs-sha256:9cizcd5xuzr3wLK_iJjP4z2A72JD9PzkFOp7Wzq0NLA",
+        "caid_digest": "sha256:f5c8b371de71bb3af7c0b2bf8898cfe33d80ef6243f4fce414ea7b5b3ab434b0"
+      }
+    },
+    {
+      "id": "J0-THROUGH",
+      "category": "positive",
+      "passed": true,
+      "expected": "one reservation, one provider entry, provider commitment recorded separately from physical effect",
+      "observed": {
+        "state": "EXECUTED",
+        "provider_entries": 1,
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "UNOBSERVED"
+      }
+    },
+    {
+      "id": "J1-IDENTITY-ONLY",
+      "category": "hostile",
+      "passed": true,
+      "expected": "valid provenance never substitutes for authority and is refused before provider entry",
+      "observed": {
+        "state": "REFUSED",
+        "reason": "missing_authority",
+        "provider_entries": 0
+      }
+    },
+    {
+      "id": "J2-CONCURRENT-DUPLICATE",
+      "category": "hostile",
+      "passed": true,
+      "expected": "one atomic reservation wins across two sessions and the MBAP transaction identifier does not create fresh authority",
+      "observed": {
+        "states": [
+          "EXECUTED",
+          "REFUSED"
+        ],
+        "reasons": [
+          null,
+          "provenance_replay"
+        ],
+        "provider_entries": 1
+      }
+    },
+    {
+      "id": "J3-LOST-RESPONSE-RESTART",
+      "category": "boundary",
+      "passed": true,
+      "expected": "lost response remains indeterminate, restarted deliveries do not redispatch, and authenticated reconciliation terminalizes the original attempt",
+      "observed": {
+        "first": "INDETERMINATE",
+        "redelivery": "provenance_replay",
+        "fresh_worker": "authority_already_reserved",
+        "reconciled": true,
+        "provider_entries": 1
+      }
+    },
+    {
+      "id": "J4-ACTION-MUTATION",
+      "category": "hostile",
+      "passed": true,
+      "expected": "native value or target mutation is refused before provider entry and an awaited mutation cannot alter frozen action bytes",
+      "observed": {
+        "reasons": [
+          "exact_action_binding_mismatch",
+          "exact_action_binding_mismatch"
+        ],
+        "provider_entries": 0,
+        "frozen_bytes_unchanged": true
+      }
+    },
+    {
+      "id": "FIRST-CONDUIT-REFUSALS",
+      "category": "hostile",
+      "passed": true,
+      "expected": "all five malformed or context-mismatched FC10 inputs refuse before evidence lookup or reservation",
+      "observed": {
+        "unit_id_zero": "unit_id_out_of_range",
+        "unit_id_248": "unit_id_out_of_range",
+        "protocol_id_nonzero": "protocol_id_nonzero",
+        "byte_count_not_twice_quantity": "byte_count_mismatch",
+        "unit_disagrees_with_device_context": "unit_context_mismatch"
+      }
+    }
+  ],
+  "passed": true,
+  "coverage": {
+    "executed": [
+      "J0",
+      "J1",
+      "J2",
+      "J3",
+      "J4"
+    ],
+    "not_executed": [
+      "J5_SAFETY_INDEPENDENCE"
+    ]
+  },
+  "composition": {
+    "provenance": "collaborator-supplied synthetic ES256 invocation JWS",
+    "exact_action": "interoperability-local typed CAID plus first-conduit FC10 projection",
+    "authority": "separate synthetic EMILIA authority input",
+    "admission": "single-process in-memory one-time authority and provider-attempt domain",
+    "provider": "synthetic FC10 provider-entry state; no live device"
+  },
+  "known_limits": [
+    "The fixture and authority are synthetic; no production key, live TrueAlter service, PLC, RTU, or protocol stack was exercised.",
+    "The admission domain is an in-memory single-process conformance model, not evidence of multi-process durable atomicity.",
+    "The fixture aud, exp, and jti claims are explicitly proposed and are not in the released TrueAlter invocation-signing claim set.",
+    "The fixture action digest is a provisional bare JCS SHA-256. The runner computes a separate interoperability-local typed CAID and never treats either identifier as authority.",
+    "Provider commitment and observed physical effect remain separate; no physical effect is claimed.",
+    "J5 safety independence remains unexecuted because it requires a protective-path simulator outside the Gate."
+  ],
+  "results_digest": "sha256:0bb14cb1e39070d34dd9743e956f31794b0b6a1e1aa6efaa2f1963b37ad5f07c"
+}
