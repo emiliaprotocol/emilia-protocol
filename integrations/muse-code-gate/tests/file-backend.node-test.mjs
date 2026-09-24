@@ -116,30 +116,38 @@ test('ownerless and invalid lock directories recover only after the configured g
   }
 });
 
-test('recovery resumes after a same-host recovery owner dies', async (t) => {
+test('a dead recovery owner remains fail-closed for operator repair', async (t) => {
   const { statePath } = await temporaryState(t);
   const lockDirectory = await installLock(statePath, { pid: definitelyDeadPid() });
   await installRecoveryMarker(lockDirectory, { pid: definitelyDeadPid() });
   const backend = await createFileKvBackend(statePath, {
-    lockRetries: 4,
+    lockRetries: 2,
     lockDelayMs: 0,
     orphanLockGraceMs: 0,
   });
-  assert.equal(await backend.addIfAbsent('receipt:recovery-restart', 'committed:v2'), true);
-  assert.equal(await backend.has('receipt:recovery-restart'), true);
+  await assert.rejects(
+    backend.addIfAbsent('receipt:recovery-restart', 'committed:v2'),
+    /consumption_store_lock_timeout/,
+  );
+  const marker = JSON.parse(await readFile(join(lockDirectory, 'recovery.json'), 'utf8'));
+  assert.equal(marker.pid, definitelyDeadPid());
 });
 
-test('ownerless lock resumes after recovery dies between owner unlink and rmdir', async (t) => {
+test('ownerless lock with a recovery marker remains fail-closed', async (t) => {
   const { statePath } = await temporaryState(t);
   const lockDirectory = `${statePath}.lock`;
   await mkdir(lockDirectory, { mode: 0o700 });
   await installRecoveryMarker(lockDirectory, { pid: definitelyDeadPid() });
   const backend = await createFileKvBackend(statePath, {
-    lockRetries: 4,
+    lockRetries: 2,
     lockDelayMs: 0,
     orphanLockGraceMs: 0,
   });
-  assert.equal(await backend.addIfAbsent('receipt:owner-unlinked', 'committed:v2'), true);
+  await assert.rejects(
+    backend.addIfAbsent('receipt:owner-unlinked', 'committed:v2'),
+    /consumption_store_lock_timeout/,
+  );
+  assert.equal((await stat(join(lockDirectory, 'recovery.json'))).isFile(), true);
 });
 
 test('live recovery owner is never stolen', async (t) => {

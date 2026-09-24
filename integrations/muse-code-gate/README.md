@@ -228,9 +228,12 @@ call `release_payment`. Set `MUSE_SMOKE_KEEP=1` to retain its temporary evidence
 - The JSON consumption backend fsyncs the replacement file and its containing
   directory, and serializes independent backend instances with single-host
   PID/hostname/token lock ownership. It recovers same-host dead owners and,
-  after a grace period plus inode revalidation, abandoned partial locks and
-  dead recovery owners. Live, foreign-host, symlink, and identity-ambiguous
-  locks fail closed. It is for a local filesystem on one host; a fleet or
+  after a grace period plus inode revalidation, abandoned partial locks. A
+  surviving `recovery.json` marker, including one left by a process that died
+  during recovery, fails closed and requires operator inspection and removal;
+  it is never reclaimed automatically. Live, foreign-host, symlink, and
+  identity-ambiguous locks also fail closed. It is for one local filesystem;
+  a fleet or
   network filesystem must use a linearizable shared backend and operational
   reconciliation.
 - The demo ledger is not a payment provider and supplies no settlement proof.

@@ -152,29 +152,7 @@ async function lockDirectorySnapshot(lockDirectory) {
   }
 }
 
-async function fileSnapshot(path) {
-  try {
-    const details = await lstat(path);
-    if (!details.isFile()) return null;
-    return {
-      device: details.dev,
-      inode: details.ino,
-      modifiedAtMs: details.mtimeMs,
-    };
-  } catch (error) {
-    if (error?.code === 'ENOENT') return null;
-    throw error;
-  }
-}
-
 function sameLockDirectory(left, right) {
-  return left !== null
-    && right !== null
-    && left.device === right.device
-    && left.inode === right.inode;
-}
-
-function sameFile(left, right) {
   return left !== null
     && right !== null
     && left.device === right.device
@@ -193,46 +171,6 @@ async function removeRecoveryMarker(
     && sameOwner(recoveryOwner, currentRecoveryOwner)) {
     await unlink(recoveryPath).catch(() => {});
   }
-}
-
-async function clearAbandonedRecoveryMarker(
-  lockDirectory,
-  recoveryPath,
-  observedDirectory,
-  hostname,
-  orphanLockGraceMs,
-) {
-  const observedFile = await fileSnapshot(recoveryPath);
-  if (!observedFile) return true;
-  const observedRecoveryOwner = await readRecoveryOwner(recoveryPath);
-  const oldEnough = Date.now() - observedFile.modifiedAtMs >= orphanLockGraceMs;
-  const reclaimable = oldEnough && (
-    !observedRecoveryOwner
-      || (observedRecoveryOwner.hostname === hostname && !pidIsAlive(observedRecoveryOwner.pid))
-  );
-  if (!reclaimable) return false;
-
-  const confirmedDirectory = await lockDirectorySnapshot(lockDirectory);
-  const confirmedFile = await fileSnapshot(recoveryPath);
-  if (!sameLockDirectory(observedDirectory, confirmedDirectory)
-    || !sameFile(observedFile, confirmedFile)) return false;
-  const confirmedRecoveryOwner = await readRecoveryOwner(recoveryPath);
-  if (observedRecoveryOwner) {
-    if (!sameOwner(observedRecoveryOwner, confirmedRecoveryOwner)
-      || confirmedRecoveryOwner.hostname !== hostname
-      || pidIsAlive(confirmedRecoveryOwner.pid)) return false;
-  } else if (confirmedRecoveryOwner) {
-    // A recovery process finished publishing ownership while it was observed.
-    return false;
-  }
-
-  const finalDirectory = await lockDirectorySnapshot(lockDirectory);
-  const finalFile = await fileSnapshot(recoveryPath);
-  if (!sameLockDirectory(observedDirectory, finalDirectory)
-    || !sameFile(observedFile, finalFile)) return false;
-  await unlink(recoveryPath);
-  await syncDirectory(lockDirectory);
-  return true;
 }
 
 /**
@@ -264,13 +202,10 @@ async function recoverStaleLock(lockDirectory, hostname, orphanLockGraceMs) {
     await writeSyncedJson(recoveryPath, recoveryOwner);
   } catch (error) {
     if (error?.code === 'EEXIST') {
-      await clearAbandonedRecoveryMarker(
-        lockDirectory,
-        recoveryPath,
-        observedDirectory,
-        hostname,
-        orphanLockGraceMs,
-      );
+      // Never reclaim another recovery marker automatically. A process can
+      // die mid-recovery, but check-then-delete reclamation can also delete a
+      // newly created live marker and admit two writers. This demo chooses a
+      // fail-closed operator repair over that replay-safety risk.
       return false;
     }
     if (error?.code === 'ENOENT') return false;
