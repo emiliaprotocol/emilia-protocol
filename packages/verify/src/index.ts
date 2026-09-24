@@ -2395,6 +2395,8 @@ export { verifyQuorum } from './quorum.js';
 // instance. Verification is evidence-only and never authorizes another entry.
 export {
   AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS,
+  AEB_CROSSING_LIFECYCLE_INDEX_V2_DOMAIN,
+  AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION,
   AEB_CROSSING_RECORD_VERSION,
   AEB_CROSSING_RECORD_V2_VERSION,
   BCR_CROSSING_ADAPTER,
@@ -2408,12 +2410,33 @@ export {
   crossingRecordV2ContractDigest,
   crossingRecordV2Digest,
   crossingRecordV2SignedBytes,
+  crossingLifecycleIndexV2AdmissionDomainDigest,
+  crossingLifecycleIndexV2ContractDigest,
+  crossingLifecycleIndexV2Digest,
+  crossingLifecycleIndexV2SignedBytes,
+  issueAebCrossingLifecycleIndexV2,
   issueAebCrossingRecord,
   issueAebCrossingRecordV2,
   mapBcrCrossingAuthority,
   mapWimseOAuthCrossingAuthority,
+  upgradeAebCrossingRecordV1ToLifecycleIndexV2,
+  verifyAebCrossingLifecycleIndexV2,
   verifyAebCrossingRecord,
   verifyAebCrossingRecordV2,
+} from './aeb-crossing-record.js';
+
+export type {
+  AebCrossingCustodyReference,
+  AebCrossingCustodyReferencePhase,
+  AebCrossingEvaluationProfile,
+  AebCrossingLifecycleIndexConversionStatus,
+  AebCrossingLifecycleIndexV2,
+  AebCrossingLifecycleIndexV2Body,
+  AebCrossingLifecycleIndexV2Context,
+  AebCrossingLifecycleIndexV2Draft,
+  AebCrossingLifecycleIndexV2VerifyOptions,
+  AebCrossingLifecycleIndexV2VerifyResult,
+  AebCrossingRecordV1UpgradeOptions,
 } from './aeb-crossing-record.js';
 
 // Native AIC crossing mappings preserve the pure-JSON RFC 7638 JKT and

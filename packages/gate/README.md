@@ -1,21 +1,52 @@
 # @emilia-protocol/gate — EMILIA Gate
 
-**The Consequence Firewall.** Deny-by-default admission for configured consequential machine actions.
+**Consequence admission for autonomous work.** Apply a native authorization
+decision to one exact provider attempt, then keep custody until the outcome is
+known.
 
-> On an exclusively mediated path, an agent without a valid receipt cannot reach the configured
-> executor for money, code, permissions, data, infrastructure, energy, or physical state.
+OAuth, AuthZEN, AP2, and local systems keep their native credentials, mappings,
+and policy decisions. Gate verifies the configured AEB evidence for the final
+operation, applies the relying party's local authorization rule, reserves every
+native replay identity before provider entry, and refuses blind retry after an
+uncertain result.
 
-A guarded action runs **only** if it arrives with a receipt that is **valid** (Ed25519 over
-canonical JSON, signed by a pinned issuer), **in-scope** (bound to the exact action), **sufficiently
-assured** (meets the action's required tier), **fresh**, and **unused** (not a replay). Otherwise it
-is refused with a machine-readable `Receipt-Required` challenge (HTTP 428). Every decision — allow or
-deny — is appended to a tamper-evident evidence log.
+On an exclusively mediated path, an agent without sufficient current authority
+cannot reach the configured executor for money, code, permissions, data,
+infrastructure, energy, or physical state. That authority can be native or can
+include an EMILIA receipt when local policy requires fresh human approval.
 
-This is **not** authentication ("who are you") or permissions ("are you allowed here"). It is a
-**policy-enforcement point** that requires portable proof a named human authorized *this exact
-action* before the world is mutated.
+Gate is not an identity provider, a replacement PDP, or proof of a provider's
+physical effect. Its prevention claim covers only configured paths the
+deployment completely mediates.
 
-## Run it
+For the native-evidence path, import the stable facade:
+
+```js
+import {
+  createNativeConsequenceBoundary,
+  createPostgresAebDurableConsumptionStore,
+} from '@emilia-protocol/gate/aeb';
+```
+
+This direct path implements the proposed, staged AEB-06 refinement. The
+current published AEB-05 still requires CAID matching and AEC evidence
+satisfaction. The named source labels and same-repository vectors do not
+establish native-protocol conformance or independent interoperability.
+
+See the [consequence-admission boundary](../../docs/protocol/consequence-admission.md)
+for the division of responsibility between the native authorization system,
+optional CAID/AEC composition, AEB custody, and provider outcome evidence.
+The [direct native handoff profile](../../docs/protocol/aeb-native-authorization-handoff-v1.md)
+defines the signed permit binding and operator-controlled status lookup.
+`createConsequenceBoundary()` remains available for deployments that need the
+composed CAID/AEC path.
+
+The original Receipt Required guard remains available for deployments whose
+policy specifically requires an EMILIA approval receipt.
+
+## Receipt guard
+
+### Run it
 
 ```bash
 node --test                       # Gate + red-team + EG-1 + MCP + adapter tests
@@ -25,7 +56,7 @@ node adapters/github-demo.mjs     # an agent tries to delete a prod repo (refuse
 node custody-demo.mjs             # rotate, revoke a compromised issuer key live, retention export
 ```
 
-## Use it
+### Use it
 
 ```js
 import { createTrustedActionFirewall } from '@emilia-protocol/gate';

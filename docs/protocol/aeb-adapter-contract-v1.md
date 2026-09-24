@@ -134,6 +134,33 @@ for every leg. A missing, stale, consumed, revoked, or unavailable current
 status fails closed. `EP-STATUS-v1` is the portable signed status profile for
 deployments that need an offline-verifiable current-status artifact.
 
+### Evidence-only v2 projection
+
+`AEB-EVALUATION-v2` is a separately signed, evidence-only projection of a
+signed v1 evaluation. It does not replace or reinterpret v1. Existing v1
+records continue to verify under the v1 rules.
+
+The v2 projection preserves every evidence leg, including its adapter and
+mapping-profile provenance, native evidence and status digests, subject,
+replay unit, mapper and resolver, action mapping, freshness, and leg verdict.
+It also carries the pinned mapping profile's semantic-loss declaration. If
+that profile is unavailable, has the wrong digest, has an invalid declaration,
+or reports omitted material fields, conversion is explicitly
+`INDETERMINATE`; the converter does not fill in missing facts.
+
+A leg may contain an opaque `native_decision_reference`. This is only a
+profile-and-digest pointer to a decision made by the native authorization
+system. It is never inferred from an accepted leg, and AEB does not copy or
+reinterpret the native verdict. For example, an AuthZEN decision remains an
+AuthZEN decision and must be resolved and verified under its native profile.
+
+The v2 record has the literal field `execution_authorizing: false`. It records
+evidence satisfaction, not a local PEP decision. `verifyAebEvaluationV2`
+checks the original v1 signature, the v2 signature, the exact source digest,
+and deterministic re-derivation. Its result is still non-authorizing. A local
+admission and every later provider transition remain separate lifecycle
+records.
+
 ## Execution boundary
 
 The reference package exposes an atomic consumption-store interface. A local
@@ -153,7 +180,7 @@ back: it marks the reservation `RELEASED_NOT_ENTERED`, which is permanent. The
 byte-identical reservation key can never be reserved again, the native replay
 fences that reservation installed stay installed, and a late `COMMITTED` for
 the released attempt is refused. This is
-`draft-schrock-action-evidence-boundary-04` s5.11: reconciliation never
+`draft-schrock-action-evidence-boundary-05` s5.11: reconciliation never
 resurrects the original authorization and never silently releases its one-time
 replay unit, so a later attempt permitted by policy has to carry a new action
 instance, meaning a new operation identifier, a new consumption nonce, and

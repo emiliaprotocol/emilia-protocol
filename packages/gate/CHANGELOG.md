@@ -1,6 +1,26 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+## 0.26.0 (unreleased)
+
+### Added
+
+- Add the stable `./aeb` facade for native authorization handoff and
+  consequence admission. Gate verifies a pinned gateway statement bound to the
+  stated native authorization identity and exact action, applies local policy,
+  durably reserves its replay unit before provider entry, and preserves
+  uncertain provider outcomes for authenticated reconciliation.
+- Snapshot the configured trust, policy, provider, recovery, clock, identifier,
+  and durable-store callables when the boundary is constructed. The provider
+  result is cloned and frozen before verification, so later caller or provider
+  mutation cannot change what runs or what Gate returns under recorded program
+  digests.
+
+This direct handoff is reference implementation work for the proposed, staged
+AEB-06 refinement. Published AEB-05 still requires CAID matching and AEC
+satisfaction. Source labels do not establish native-protocol conformance or
+independent interoperability.
+
 ## Unreleased
 
 ### Security

@@ -48,3 +48,33 @@ published policy with an effective date, relying-party migration window, and
 an archival-verification rule. Retirement must not invalidate historical v1
 signatures or reinterpret their contract digest.
 
+## Separate lifecycle index
+
+`EP-AEB-CROSSING-LIFECYCLE-INDEX-v2` is a different, domain-separated
+artifact. It does not replace this profile, and the two version strings are not
+interchangeable.
+
+The lifecycle index exists to avoid turning a crossing record into a second
+flattened authority model. It contains the action and a recomputable admission
+domain digest, then references the independently verifiable records for:
+
+- evidence evaluation;
+- local admission;
+- authority reservation or consumption;
+- provider entry;
+- effect observation;
+- provider outcome; and
+- reconciliation.
+
+It deliberately contains no `native_authority`, no copied native or AuthZEN
+decision, no referee verdict, and no raw admission-domain fields. A valid index
+is evidence that its signer committed to those references. It is not authority
+to execute, and every referenced record still has to verify under its own
+profile and relying-party pins.
+
+`upgradeAebCrossingRecordV1ToLifecycleIndexV2` first verifies the source under
+caller-pinned v1 keys, then preserves its resolvable references. If a v1 axis
+asserted a later provider state but v1 carried no digest for the underlying
+record, the conversion is signed as
+`INDETERMINATE` with a specific reason. It never manufactures the missing
+outcome, observation, or reconciliation evidence.

@@ -23,6 +23,8 @@ import type { AebExecutionConditionsResult } from './aeb-execution-conditions.js
 export declare const AEB_ADAPTER_VERSION = "AEB-ADAPTER-v1";
 export declare const AEB_EVALUATION_VERSION = "AEB-EVALUATION-v1";
 export declare const AEB_EVALUATION_DOMAIN = "AEB-EVALUATION-v1\0";
+export declare const AEB_EVALUATION_V2_VERSION = "AEB-EVALUATION-v2";
+export declare const AEB_EVALUATION_V2_DOMAIN = "AEB-EVALUATION-v2\0";
 export declare const AEB_REQUIREMENT_VERSION = "AEB-REQUIREMENT-v1";
 export declare const AEB_REGISTRY_VERSION = "EP-EVIDENCE-REGISTRY-v1";
 export declare const AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION = "EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v1";
@@ -302,6 +304,114 @@ export interface AebEvaluationRecord {
         value: string;
     };
 }
+/**
+ * Optional pointer to a decision produced by a native authorization system.
+ *
+ * The decision stays native: this reference neither copies its verdict nor
+ * turns it into an AEB authorization decision.  A verifier that needs the
+ * decision has to resolve and verify it under the native profile named here.
+ */
+export interface AebNativeDecisionReference {
+    profile: string;
+    decision_digest: AebDigest;
+}
+export type AebSemanticLossStatus = 'NO_MATERIAL_FIELD_LOSS' | 'INDETERMINATE';
+export interface AebSemanticLossReport {
+    status: AebSemanticLossStatus;
+    omitted_material_fields: string[];
+    omitted_nonmaterial_fields: string[];
+    reasons: string[];
+}
+/**
+ * A v2 leg preserves the complete v1 leg and adds the mapping-profile loss
+ * report that a portable reader otherwise could not reconstruct from the
+ * profile digest alone.  A native decision reference is optional and opaque.
+ */
+export interface AebEvaluationLegV2 extends AebEvaluationLeg {
+    semantic_loss: AebSemanticLossReport;
+    native_decision_reference?: AebNativeDecisionReference;
+}
+export type AebEvaluationV2ConversionStatus = 'COMPLETE' | 'INDETERMINATE';
+/**
+ * Evidence-only, multi-leg projection of one signed v1 evaluation.
+ *
+ * This record intentionally has no AUTHORIZED state.  It preserves evidence
+ * satisfaction and native provenance, while any local admission decision is a
+ * separate lifecycle record referenced by the crossing lifecycle index.
+ */
+export interface AebEvaluationRecordV2Body {
+    '@type': typeof AEB_EVALUATION_V2_VERSION;
+    source_evaluation: {
+        version: typeof AEB_EVALUATION_VERSION;
+        digest: AebDigest;
+    };
+    operation_id: string;
+    consumption_nonce: string;
+    initiator_id: string;
+    executor_id?: string;
+    evaluator: AebEvaluationRecord['evaluator'];
+    requirement: {
+        reference: string;
+        digest: AebDigest;
+        registry_digest: AebDigest;
+    };
+    action: {
+        caid: string;
+        normalized_action_digest: AebDigest;
+    };
+    legs: AebEvaluationLegV2[];
+    satisfaction: AebEvaluationRecord['composition'] & {
+        verdict: AebVerdict;
+    };
+    authority_constraints: AebEvaluationRecord['authority_constraints'];
+    evaluated_at: string;
+    evidence_digest: AebDigest;
+    reasons: string[];
+    conversion: {
+        status: AebEvaluationV2ConversionStatus;
+        reason_codes: string[];
+    };
+    execution_authorizing: false;
+}
+export interface AebEvaluationRecordV2 extends AebEvaluationRecordV2Body {
+    signature: {
+        alg: 'Ed25519';
+        key_id: string;
+        value: string;
+    };
+}
+export interface AebEvaluationV2ProjectionOptions {
+    /** Pinned profiles used to recover the signed mapping's loss declaration. */
+    profiles?: Readonly<Record<string, AebPinnedProfile>>;
+    /** Optional opaque native-decision pointers keyed by v1 artifact_ref. */
+    native_decision_references?: Readonly<Record<string, AebNativeDecisionReference>>;
+}
+export interface AebEvaluationV2IssueOptions extends AebEvaluationV2ProjectionOptions {
+    signer: AebEvaluationSigner;
+}
+export interface AebEvaluationV2UpgradeResult {
+    body: AebEvaluationRecordV2Body;
+    status: AebEvaluationV2ConversionStatus;
+    reasons: string[];
+}
+export interface AebEvaluationV2VerificationOptions extends AebEvaluationV2ProjectionOptions {
+    source_evaluation: AebEvaluationRecord;
+    evaluator_keys: Readonly<Record<string, AebEvaluatorKey>>;
+}
+export interface AebEvaluationV2Verification {
+    valid: boolean;
+    execution_authorizing: false;
+    record_digest: AebDigest | null;
+    checks: {
+        schema: boolean;
+        source_binding: boolean;
+        source_signature: boolean;
+        rederived: boolean;
+        signature: boolean;
+    };
+    conversion_status: AebEvaluationV2ConversionStatus | null;
+    reasons: string[];
+}
 export interface AebEvaluationResult {
     record: AebEvaluationRecord;
     valid: boolean;
@@ -375,7 +485,7 @@ export interface AebConsumptionStore {
     release(key: string): boolean;
     /**
      * TERMINAL released-not-entered marker for an AUTHORITATIVE serialized
-     * non-entry. draft-schrock-action-evidence-boundary-04 s5.11: reconciliation
+     * non-entry. draft-schrock-action-evidence-boundary-05 s5.11: reconciliation
      * never resurrects the original authorization and never silently releases its
      * one-time replay unit, so the key stays permanently unreservable and
      * uncommittable and the native replay fences it installed stay installed. A
@@ -448,6 +558,21 @@ export declare function mappingProfileDigest(id: string, pin: AebPinnedProfile):
 export declare function registryEntryDigest(id: string, entry: AebRegistryEntry): AebDigest;
 export declare function unifiedRegistryDigest(registry: AebUnifiedRegistry): AebDigest;
 export declare function evaluateAebEvidence(options: AebEvaluationOptions): AebEvaluationResult;
+/** Domain-separated digest of the complete evidence-only v2 body. */
+export declare function aebEvaluationV2Digest(body: AebEvaluationRecordV2Body): AebDigest;
+/**
+ * Deterministically projects a signed v1 evaluation into the v2 evidence
+ * shape.  This does not verify the v1 signature and does not authorize an
+ * action; verifyAebEvaluationV2 performs the pinned-key verification.
+ */
+export declare function upgradeAebEvaluationV1ToV2(source: AebEvaluationRecord, options?: AebEvaluationV2ProjectionOptions): AebEvaluationV2UpgradeResult;
+/** Issues a separately signed v2 projection without changing the v1 record. */
+export declare function issueAebEvaluationV2FromV1(source: AebEvaluationRecord, options: AebEvaluationV2IssueOptions): AebEvaluationRecordV2;
+/**
+ * Verifies both signatures and re-derives the v2 projection from the supplied
+ * v1 evaluation.  A valid result remains evidence-only.
+ */
+export declare function verifyAebEvaluationV2(record: unknown, options: AebEvaluationV2VerificationOptions): AebEvaluationV2Verification;
 export declare function verifyAebEvaluation(record: unknown, options: AebVerificationOptions): AebEvaluationVerification;
 export declare function authorizeAebExecution(record: AebEvaluationRecord, options: {
     verification: Pick<AebEvaluationVerification, 'valid' | 'execution_authorizing' | 'record_digest'>;
@@ -465,7 +590,7 @@ export declare function aebReservationKey(record: Pick<AebEvaluationRecord, 'eva
 /**
  * Reconcile one reservation against an authenticated provider outcome.
  *
- * draft-schrock-action-evidence-boundary-04 s5.10 and s5.11 govern this
+ * draft-schrock-action-evidence-boundary-05 s5.10 and s5.11 govern this
  * function. An INDETERMINATE outcome preserves the reservation and refuses a
  * blind replay. An authoritative NOT_COMMITTED outcome does not hand the
  * one-time replay unit back: it marks the reservation permanently

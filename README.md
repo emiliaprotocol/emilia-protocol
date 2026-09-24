@@ -112,19 +112,38 @@ formal scope or explicit gap, assumptions, exclusions, and evidence hash. Start 
 ## AEB-1: test the evidence-to-effect boundary
 
 The open [AEB-1 Consequence Admission Conformance](docs/conformance/AEB-1-CONSEQUENCE-ADMISSION.md)
-pack tests the last control point before a consequential action: native
-verification, relying-party acceptance, exact CAID/action matching, evidence satisfaction, local
-authorization, atomic reservation, `INVOKING` custody, separate
-provider-outcome and observed-effect truth, no-blind-retry behavior, and
-authenticated reconciliation.
+pack tests the current published composed path at the last control point before
+a consequential action: native verification, relying-party acceptance,
+exact-action binding, required CAID matching, required AEC evidence
+satisfaction, local authorization, atomic reservation, `INVOKING` custody,
+separate provider-outcome and observed-effect truth, no-blind-retry behavior,
+and authenticated reconciliation.
+
+[Read the consequence-admission boundary](docs/protocol/consequence-admission.md) for the exact
+division of responsibility across the published CAID/AEC path, the proposed
+conditional path, AEB custody, and provider outcome evidence.
 
 ```bash
 npx @emilia-protocol/verify aeb-conformance --reference
 ```
 
 It is format-neutral and self-run. A passing report is self-attested
-conformance evidence—not an audit, certification, production-deployment claim,
-or permission to execute an action.
+conformance evidence, not an audit, certification, production-deployment
+claim, or permission to execute an action.
+
+Under the proposed AEB-06 refinement, CAID is used only when independently
+encoded actions must be joined, and AEC is used only when local policy requires
+several evidence legs. A separate 23-case repository corpus exercises that
+candidate direct-native path across AuthZEN/COAZ-MCP, AP2, OAuth Transaction
+Tokens, and a local signed mandate:
+
+```bash
+npm run conformance:composition:consequence-admission
+```
+
+That corpus is reference implementation evidence for a staged proposal. It is
+not evidence that AEB-06 has been submitted or adopted, or that the named
+native protocols conform to it.
 
 For a focused executable proof of the repository's Gate path, run:
 
@@ -317,36 +336,35 @@ portfolio of individual Internet-Drafts. A published Internet-Draft is not an
 RFC, an adopted working-group item, or IETF endorsement; Datatracker is
 authoritative for revision and status.
 
-### Canonical four-document presentation surface
+### One consequence-boundary surface
 
-For reader navigation, the canonical evidence path is:
+The current published
+[AEB-05](standards/posted/draft-schrock-action-evidence-boundary-05.xml)
+defines the existing evidence join and consequence lifecycle. The proposed -06
+refinement makes AEB the direct composition point after a native decision.
+OAuth, AIMS, AuthZEN, COAZ, AP2, and local systems keep ownership of their
+credentials, operation mappings, and authorization decisions. AEB applies that
+decision at the protected provider boundary: it binds the final action when
+needed, derives stable replay identity, reserves before provider entry, and
+keeps an uncertain result locked until authenticated reconciliation.
 
-1. [Authorization Receipts-11](standards/posted/draft-schrock-ep-authorization-receipts-11.xml)
-   defines the action-bound approval-evidence profile. The current posted
-   revision is -11, filed as a Standards Track candidate individual submission.
-2. [Human Authorization Binding-00](standards/posted/draft-schrock-human-authorization-binding-00.xml)
-   binds a named-human authorization artifact into an adjacent host record.
-3. [Authority Introduction-03](standards/posted/draft-schrock-ep-authority-introduction-03.xml)
-   establishes relying-party-pinned trust roots and scoped authority.
-4. [Authorization Evidence Chain-05](standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
-   evaluates whether natively verified, action-matched evidence satisfies the
-   relying party's requirement; it returns `SATISFIED` or `UNSATISFIED`, never
-   `AUTHORIZED`.
+[CAID-02](standards/posted/draft-schrock-canonical-action-identifier-02.xml)
+is used when independently encoded representations must be compared. It is not
+a mandatory second mapping when the consequence-owning PEP already derives and
+enforces a current decision over the final operation.
+[AEC-05](standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
+is used when the relying party requires several evidence legs. Authorization
+Receipts, Human Authorization Binding, and Authority Introduction remain
+available profiles for deployments that need them; they are not prerequisites
+for every AEB integration. Architecture-02 remains the navigation document.
 
-This four-document surface is presentation only. It does not merge, retire,
-replace, update, obsolete, subordinate, or demote any draft in the active
-portfolio.
-
-### Separate runtime execution spine
-
-The runtime path is [Architecture-02](standards/posted/draft-schrock-ep-architecture-02.xml)
-→ [CAID-02](standards/posted/draft-schrock-canonical-action-identifier-02.xml)
-→ [AEC-05](standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
-→ [AEB-04](standards/posted/draft-schrock-action-evidence-boundary-04.xml):
-system boundaries, exact material-action matching, evidence satisfaction, then
-executor-side admission and durable consequence custody. AEC appears in both
-views because evidence satisfaction feeds runtime admission, not because the
-views are equivalent.
+[The consequence-admission guide](docs/protocol/consequence-admission.md) states
+the implementation boundary and the cases where AEB is unnecessary.
+The [direct native handoff profile](docs/protocol/aeb-native-authorization-handoff-v1.md)
+shows how an existing permit reaches Gate without a second CAID or AEC layer.
+The proposed -06 refinement is retained in
+[`standards/staged/NEXT-AEB-06`](standards/staged/NEXT-AEB-06) for review; it
+has not been submitted or adopted.
 
 The complete active portfolio remains 24 Datatracker records: 20 sole-authored
 records and four coauthored records, each with its own scope and revision
@@ -371,9 +389,9 @@ Three same-team reference ports (JS / Python / Go) agree across all 21 suites an
 | Layer | What it does |
 |---|---|
 | **Mandate** | Defines mission, limits, evidence, expiry, delegation, and exception rules. |
-| **CAID / exact action** | Freezes the material executable object so evidence cannot move to different work. |
-| **AEC** | Evaluates whether independently verified and matched evidence satisfies the relying party's requirement; it does not authorize. |
-| **AEB / Gate** | Makes the local authorization decision, reserves the covered authority, and controls provider entry. |
+| **CAID / exact action** | Compares material meaning when authorization and execution use independently encoded representations; it does not authorize. |
+| **AEC** | When required, evaluates whether independently verified and matched evidence satisfies the relying party's multi-leg requirement; it does not authorize. |
+| **AEB / Gate** | Applies the native or local authorization decision at the consequence boundary, reserves the covered authority, and controls provider entry. |
 | **Outcome evidence** | Keeps invocation, provider response, observed effect, and uncertainty distinct. |
 
 ---

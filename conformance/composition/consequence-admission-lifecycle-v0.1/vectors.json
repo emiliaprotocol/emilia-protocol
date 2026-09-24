@@ -1,0 +1,234 @@
+{
+  "@version": "EP-CONSEQUENCE-ADMISSION-LIFECYCLE-VECTORS-v0.1",
+  "suite_id": "emilia-consequence-admission-lifecycle-v0.1",
+  "description": "Synthetic adapter-result fixtures exercise the residual lifecycle after a native authority system has already authorized one exact action.",
+  "claim_boundary": [
+    "The suite does not implement or re-run AuthZEN, COAZ-MCP, AP2, OAuth, or any other native policy decision.",
+    "The suite does not establish conformance, adoption, deployment, independent interoperability, provider success, or exactly-once physical effect for any named external protocol.",
+    "The suite proves only deterministic behavior of this reference lifecycle runner over the checked-in synthetic fixtures."
+  ],
+  "base_action": {
+    "action_type": "payment.release.1",
+    "amount": "50.00",
+    "currency": "USD",
+    "payee": "acct:merchant-42",
+    "provider_operation": "payments.transfer.create"
+  },
+  "base_context": {
+    "audience": "https://payments.example/gate",
+    "tenant": "tenant:acme",
+    "executor": "executor:payments-gate",
+    "provider": "provider:payments-sandbox"
+  },
+  "profiles": [
+    {
+      "id": "authzen-coaz-mcp",
+      "native_system": "AuthZEN/COAZ-MCP",
+      "authorization_owner": "native AuthZEN PDP and enforcing PEP",
+      "native_authority_id": "authzen:decision:permit-1042",
+      "native_result": "PERMIT_ACCEPTED_BY_PEP",
+      "normalization": {
+        "currency": "ASCII_UPPERCASE_ISO4217"
+      },
+      "covered_paths": [
+        "mcp:payments-gateway"
+      ],
+      "known_uncovered_paths": [
+        "direct:provider-api-credential"
+      ]
+    },
+    {
+      "id": "ap2-payment-mandate",
+      "native_system": "AP2",
+      "authorization_owner": "native AP2 verifier and relying-party policy",
+      "native_authority_id": "ap2:payment-mandate:pm-2048",
+      "native_result": "MANDATE_ACCEPTED_BY_NATIVE_VERIFIER",
+      "normalization": {},
+      "covered_paths": [
+        "ap2:merchant-payment-adapter"
+      ],
+      "known_uncovered_paths": []
+    },
+    {
+      "id": "oauth-transaction-token",
+      "native_system": "OAuth Transaction Token",
+      "authorization_owner": "Transaction Token Service and accepting protected workload",
+      "native_authority_id": "oauth:txn-token:jti-4096",
+      "native_result": "TOKEN_ACCEPTED_BY_PROTECTED_RESOURCE",
+      "normalization": {},
+      "covered_paths": [
+        "oauth:protected-resource"
+      ],
+      "known_uncovered_paths": []
+    },
+    {
+      "id": "local-signed-mandate",
+      "native_system": "Local signed mandate",
+      "authorization_owner": "local mandate verifier and executor policy",
+      "native_authority_id": "local:mandate:lm-8192",
+      "native_result": "SIGNED_MANDATE_ACCEPTED_BY_LOCAL_VERIFIER",
+      "normalization": {},
+      "covered_paths": [
+        "local:credential-owning-adapter"
+      ],
+      "known_uncovered_paths": []
+    }
+  ],
+  "cases": [
+    {
+      "id": "AUTHZEN-EXACT-ACTION-ADMITTED-ONCE",
+      "profile": "authzen-coaz-mcp",
+      "scenario": "ADMIT_THEN_REPLAY",
+      "expected": "EXECUTED_THEN_REFUSED"
+    },
+    {
+      "id": "AP2-EXACT-ACTION-ADMITTED-ONCE",
+      "profile": "ap2-payment-mandate",
+      "scenario": "ADMIT_THEN_REPLAY",
+      "expected": "EXECUTED_THEN_REFUSED"
+    },
+    {
+      "id": "OAUTH-EXACT-ACTION-ADMITTED-ONCE",
+      "profile": "oauth-transaction-token",
+      "scenario": "ADMIT_THEN_REPLAY",
+      "expected": "EXECUTED_THEN_REFUSED"
+    },
+    {
+      "id": "LOCAL-SIGNED-EXACT-ACTION-ADMITTED-ONCE",
+      "profile": "local-signed-mandate",
+      "scenario": "ADMIT_THEN_REPLAY",
+      "expected": "EXECUTED_THEN_REFUSED"
+    },
+    {
+      "id": "MATERIAL-MUTATION-REQUIRES-NATIVE-REEVALUATION",
+      "profile": "authzen-coaz-mcp",
+      "scenario": "MUTATE_MATERIAL_FIELD",
+      "field": "amount",
+      "value": "500.00",
+      "expected": "REEVALUATION_REQUIRED"
+    },
+    {
+      "id": "DECLARED-CURRENCY-NORMALIZATION-PRESERVES-ACTION",
+      "profile": "authzen-coaz-mcp",
+      "scenario": "MUTATE_MATERIAL_FIELD",
+      "field": "currency",
+      "value": "usd",
+      "expected": "EXECUTED"
+    },
+    {
+      "id": "UNDECLARED-CURRENCY-NORMALIZATION-IS-NOT-INFERRED",
+      "profile": "ap2-payment-mandate",
+      "scenario": "MUTATE_MATERIAL_FIELD",
+      "field": "currency",
+      "value": "usd",
+      "expected": "REEVALUATION_REQUIRED"
+    },
+    {
+      "id": "OMITTED-MATERIAL-FIELD-IS-INDETERMINATE",
+      "profile": "ap2-payment-mandate",
+      "scenario": "OMIT_MATERIAL_FIELD",
+      "field": "payee",
+      "expected": "INDETERMINATE"
+    },
+    {
+      "id": "UNKNOWN-MATERIAL-FIELD-IS-INDETERMINATE",
+      "profile": "oauth-transaction-token",
+      "scenario": "ADD_UNKNOWN_MATERIAL_FIELD",
+      "field": "settlement_window",
+      "value": "instant",
+      "expected": "INDETERMINATE"
+    },
+    {
+      "id": "WRONG-AUDIENCE-REFUSED",
+      "profile": "authzen-coaz-mcp",
+      "scenario": "MUTATE_CONTEXT",
+      "field": "audience",
+      "value": "https://other.example/gate",
+      "expected": "REFUSED"
+    },
+    {
+      "id": "WRONG-TENANT-REFUSED",
+      "profile": "ap2-payment-mandate",
+      "scenario": "MUTATE_CONTEXT",
+      "field": "tenant",
+      "value": "tenant:other",
+      "expected": "REFUSED"
+    },
+    {
+      "id": "WRONG-EXECUTOR-REFUSED",
+      "profile": "oauth-transaction-token",
+      "scenario": "MUTATE_CONTEXT",
+      "field": "executor",
+      "value": "executor:alternate",
+      "expected": "REFUSED"
+    },
+    {
+      "id": "WRONG-PROVIDER-REFUSED",
+      "profile": "local-signed-mandate",
+      "scenario": "MUTATE_CONTEXT",
+      "field": "provider",
+      "value": "provider:production",
+      "expected": "REFUSED"
+    },
+    {
+      "id": "STALE-NATIVE-AUTHORITY-REFUSED",
+      "profile": "oauth-transaction-token",
+      "scenario": "STALE_AUTHORITY",
+      "expected": "REFUSED"
+    },
+    {
+      "id": "REVOKED-NATIVE-AUTHORITY-REFUSED",
+      "profile": "local-signed-mandate",
+      "scenario": "REVOKED_AUTHORITY",
+      "expected": "REFUSED"
+    },
+    {
+      "id": "TAMPERED-LOCAL-MANDATE-SIGNATURE-REFUSED",
+      "profile": "local-signed-mandate",
+      "scenario": "TAMPER_NATIVE_SIGNATURE",
+      "expected": "REFUSED"
+    },
+    {
+      "id": "REFRESHED-WRAPPER-CANNOT-REKEY-REPLAY",
+      "profile": "ap2-payment-mandate",
+      "scenario": "REFRESH_WRAPPER_AND_REPLAY",
+      "expected": "EXECUTED_THEN_REFUSED"
+    },
+    {
+      "id": "CONCURRENT-RESERVATION-HAS-ONE-DISPATCH-OWNER",
+      "profile": "authzen-coaz-mcp",
+      "scenario": "CONCURRENT_RESERVATION",
+      "expected": "ONE_EXECUTED_ONE_REFUSED"
+    },
+    {
+      "id": "PRE-ENTRY-CRASH-IS-SAFELY-RETRYABLE",
+      "profile": "local-signed-mandate",
+      "scenario": "PRE_ENTRY_CRASH_AND_RECOVER",
+      "expected": "EXECUTED_AFTER_RECOVERY"
+    },
+    {
+      "id": "POST-ENTRY-RESPONSE-LOSS-IS-STICKY-INDETERMINATE",
+      "profile": "oauth-transaction-token",
+      "scenario": "POST_ENTRY_RESPONSE_LOSS",
+      "expected": "INDETERMINATE_NO_REDISPATCH"
+    },
+    {
+      "id": "AUTHENTICATED-RECONCILIATION-CLOSES-SAME-EFFECT",
+      "profile": "oauth-transaction-token",
+      "scenario": "AUTHENTICATED_RECONCILIATION",
+      "expected": "EXECUTED_WITHOUT_REDISPATCH"
+    },
+    {
+      "id": "MISMATCHED-RECONCILIATION-STAYS-INDETERMINATE",
+      "profile": "oauth-transaction-token",
+      "scenario": "MISMATCHED_RECONCILIATION",
+      "expected": "INDETERMINATE"
+    },
+    {
+      "id": "BYPASS-PATH-IS-DISCLOSED-NOT-MEDIATED",
+      "profile": "authzen-coaz-mcp",
+      "scenario": "DISCLOSE_BYPASS_PATH",
+      "expected": "DISCLOSED_UNCOVERED_PATH"
+    }
+  ]
+}
