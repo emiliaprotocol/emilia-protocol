@@ -201,13 +201,31 @@ numeric money, noncanonical currency/account strings, replay, provider-response
 loss, offline receipt verification, Muse denial/allow process semantics, and a
 real stdio MCP `tools/list` + `tools/call` round trip.
 
+If Muse Code 1.3 is installed, an optional isolated live smoke proves that the
+documented required-server configuration admits the Gate server and that a
+broken required server stops the session before the echo provider runs:
+
+```sh
+MUSE_BIN=/absolute/path/to/muse npm run smoke:muse-code-gate
+```
+
+The smoke uses temporary XDG directories, the `mcp_servers` / `transport`
+settings shape above, and no Meta credentials. It proves startup, handshake,
+one-tool discovery, tool inventory, and required-server failure; it does not
+call `release_payment`. Set `MUSE_SMOKE_KEEP=1` to retain its temporary evidence.
+
 ## Deployment boundaries
 
 - The generated issuer and outcome keys are local fixtures, not enrollment or
   production key custody.
-- The JSON file consumption backend is ownership-fenced through Gate's existing
-  durable-store wrapper and suitable for one local server process. A fleet must
-  use a linearizable shared backend and operational reconciliation.
+- The JSON consumption backend fsyncs the replacement file and its containing
+  directory, and serializes independent backend instances with single-host
+  PID/hostname/token lock ownership. It recovers same-host dead owners and,
+  after a grace period plus inode revalidation, abandoned partial locks and
+  dead recovery owners. Live, foreign-host, symlink, and identity-ambiguous
+  locks fail closed. It is for a local filesystem on one host; a fleet or
+  network filesystem must use a linearizable shared backend and operational
+  reconciliation.
 - The demo ledger is not a payment provider and supplies no settlement proof.
 - CAID commits to content; it does not authorize, execute, or judge the action.
 - The outcome receipt is not a retry token. Replay remains refused even after an
