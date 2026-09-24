@@ -14,6 +14,7 @@ import {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = JSON.parse(readFileSync(resolve(HERE, 'fixtures/truealter-fc10.synthetic.v1.json'), 'utf8'));
+const CAID_PIN = JSON.parse(readFileSync(resolve(HERE, 'caid-pin.v1.json'), 'utf8'));
 
 test('the joined synthetic fixture passes J0 through J4 under one admission-domain model', async () => {
   const report = await runProfile();
@@ -64,4 +65,15 @@ test('the report keeps synthetic execution and safety boundaries explicit', asyn
   assert.match(report.known_limits.join(' '), /single-process/i);
   assert.match(report.known_limits.join(' '), /no physical effect is claimed/i);
   assert.match(report.known_limits.join(' '), /proposed/i);
+});
+
+test('the local CAID type and definition are pinned without claiming collaborator confirmation', async () => {
+  const report = await runProfile();
+  const caidCase = report.cases.find((entry) => entry.id === 'ACTION-DIGEST-AND-CAID');
+  assert.equal(caidCase.passed, true);
+  assert.equal(caidCase.observed.action_type, 'ot.modbus.write-multiple-registers.1');
+  assert.equal(caidCase.observed.fixture_file_sha256, CAID_PIN.fixture_file_sha256);
+  assert.equal(caidCase.observed.definition_file_sha256, CAID_PIN.definition_file_sha256);
+  assert.equal(caidCase.observed.caid, CAID_PIN.expected_caid);
+  assert.equal(caidCase.observed.collaborator_confirmation, 'pending');
 });

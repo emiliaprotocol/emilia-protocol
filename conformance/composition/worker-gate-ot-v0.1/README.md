@@ -2,7 +2,7 @@
 
 Status: executable synthetic conformance pack for cases J0 through J4 and the five supplied first-conduit refusal inputs. J5, durable multi-process admission, a live TrueAlter service, and physical-controller testing remain unexecuted.
 
-The collaborator attachment is retained byte-for-byte as `fixtures/truealter-fc10.synthetic.v1.json` (24,150 bytes; SHA-256 `3cd708af715b1ee5417b9debefeb55bb747e3298014d19747f000b76900734d3`). The reference report records the same digest.
+The collaborator attachment is retained byte-for-byte as `fixtures/truealter-fc10.synthetic.v1.json` (24,150 bytes; SHA-256 `3cd708af715b1ee5417b9debefeb55bb747e3298014d19747f000b76900734d3`). Alter Meridian Pty Ltd (True Alter) supplied the fixture and, through Blake Morrison on 24 September 2026, explicitly authorized its retention under Apache-2.0 with that attribution. [`NOTICE.md`](NOTICE.md) records the permission and claim boundary. The reference report records the same fixture digest.
 
 Run it with:
 
@@ -12,7 +12,9 @@ npm run conformance:composition:worker-gate-ot
 
 The runner verifies the supplied synthetic ES256 JWS values, reproduces the provisional bare-JCS action digest, independently computes an interoperability-local typed CAID, parses the FC10 bytes, and exercises one synthetic in-memory admission domain. The packaged TrueAlter releases were also checked from fresh installs. `alter-runtime` 0.4.16 passed all 21 Python vector cases. The exported `canonicalStringify` API in `@truealter/sdk` 0.5.14 passed all 16 accepts and three of the five refusal cases, but accepted the unsafe-integer case after `JSON.parse`; its object-only API also cannot detect a duplicate member after parsing. An additional depth-65 probe was accepted even though the packaged profile pins `max_depth` to 64. Both releases carry `canonical-jcs-v1.json` with SHA-256 `7e345eb09842f65475003a2c6fce9b192a41a7eecb62e898e93e20db35f476cc`.
 
-Those release checks do not close the provenance profile. The released invocation claim set contains `tool`, `args_sha256`, `nonce`, `iat`, and `iss`; the fixture's `aud`, `exp`, and `jti` fields are explicitly proposed additions. Its bare action digest also remains provisional until the CAID action type and definition are jointly pinned.
+Those release checks do not close the provenance profile. The released invocation claim set contains `tool`, `args_sha256`, `nonce`, `iat`, and `iss`; the fixture's `aud`, `exp`, and `jti` fields are explicitly proposed additions.
+
+The EMILIA side now pins the interoperability-local CAID action type and complete definition in [`caid-action-definition.v1.json`](caid-action-definition.v1.json), with its exact file digest and expected CAID in [`caid-pin.v1.json`](caid-pin.v1.json). This makes the tested value reproducible. It does not add the type to CAID's public registry or claim that True Alter has confirmed the type name or field definition. Collaborator confirmation remains open.
 
 ## Goal
 
@@ -223,6 +225,9 @@ Each case records:
 ```text
 conformance/composition/worker-gate-ot-v0.1/
   README.md
+  NOTICE.md
+  caid-action-definition.v1.json
+  caid-pin.v1.json
   fixtures/truealter-fc10.synthetic.v1.json
   run.mts
   run.mjs
@@ -237,4 +242,4 @@ The directory name is provider-neutral. TrueAlter is the first identity adapter,
 
 `report.reference.json` passes J0 through J4. It records one provider entry for the concurrent duplicate and lost-response/restart cases, zero provider entries for the identity-only and mutation cases, and refusals for all five malformed or context-mismatched FC10 inputs.
 
-This is not yet the durable joined test described by the topology. The current admission domain is a single-process in-memory model. J5 still requires an independent protective-path simulator, and publication of the collaborator fixture should wait for confirmation that it may be redistributed under this repository's Apache-2.0 license with TrueAlter attribution.
+This is not yet the durable joined test described by the topology. The current admission domain is a single-process in-memory model. J5 still requires an independent protective-path simulator. The fixture is published under the permission and attribution recorded in `NOTICE.md`; the local CAID pin remains subject to collaborator confirmation.

@@ -18,6 +18,8 @@ export const PROFILE = 'EP-WORKER-GATE-OT-COMPOSITION-v0.1';
 const REPORT_VERSION = 'WORKER-GATE-OT-REFERENCE-REPORT-v0.1';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = resolve(HERE, 'fixtures/truealter-fc10.synthetic.v1.json');
+const ACTION_DEFINITION_PATH = resolve(HERE, 'caid-action-definition.v1.json');
+const CAID_PIN_PATH = resolve(HERE, 'caid-pin.v1.json');
 const REFERENCE_PATH = resolve(HERE, 'report.reference.json');
 const EXPECTED_AUDIENCE = 'emilia-gate-synthetic';
 const EXPECTED_ISSUER = '~ada';
@@ -25,23 +27,10 @@ const EXPECTED_TOOL = 'ot.modbus.write_multiple_registers';
 const MAX_FIXTURE_TTL_SECONDS = 300;
 const FIXTURE_NOW = 1_790_208_001;
 const PROVIDER_ID = 'provider:modbus-synthetic';
-const ACTION_TYPE = 'ot.modbus.write-multiple-registers.1';
-
-const ACTION_DEFINITION = Object.freeze({
-  action_type: ACTION_TYPE,
-  status: 'interoperability-local',
-  required_fields: [
-    { name: 'protocol', type: 'enum', values: ['modbus-tcp'] },
-    { name: 'function_code', type: 'integer' },
-    { name: 'unit_id', type: 'integer' },
-    { name: 'start_address', type: 'integer' },
-    { name: 'quantity', type: 'integer' },
-    { name: 'values', type: 'array' },
-    { name: 'site', type: 'string' },
-    { name: 'device', type: 'string' },
-  ],
-  optional_fields: [],
-});
+const ACTION_DEFINITION_BYTES = readFileSync(ACTION_DEFINITION_PATH);
+const ACTION_DEFINITION = Object.freeze(JSON.parse(ACTION_DEFINITION_BYTES.toString('utf8')));
+const ACTION_TYPE = ACTION_DEFINITION.action_type;
+const CAID_PIN = Object.freeze(JSON.parse(readFileSync(CAID_PIN_PATH, 'utf8')));
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -90,7 +79,7 @@ function materialAction(value) {
 
 function caidFor(value) {
   const result = computeCaid(materialAction(value), {
-    suite: 'jcs-sha256',
+    suite: CAID_PIN.suite,
     definitions: [ACTION_DEFINITION],
   });
   if (!('caid' in result)) throw new Error(`CAID refused: ${JSON.stringify(result)}`);
@@ -337,12 +326,29 @@ export async function buildReferenceReport() {
   const actionCanonical = canonical(fixture.action.A);
   const actionDigest = digest(fixture.action.A);
   const baseCaid = caidFor(fixture.action.A);
+  const definitionFileDigest = sha256(ACTION_DEFINITION_BYTES);
+  const fixtureFileDigest = sha256(loaded.bytes);
   cases.push(caseResult(
     'ACTION-DIGEST-AND-CAID',
     'prerequisite',
-    actionCanonical === fixture.action.A_canonical && actionDigest === fixture.action.A_digest,
-    'the collaborator JCS digest reproduces exactly and EMILIA computes a typed CAID without treating the digest as authority',
-    { fixture_digest: actionDigest, caid: baseCaid.caid, caid_digest: baseCaid.digest },
+    actionCanonical === fixture.action.A_canonical
+      && actionDigest === fixture.action.A_digest
+      && actionDigest === CAID_PIN.fixture_action_jcs_sha256
+      && fixtureFileDigest === CAID_PIN.fixture_file_sha256
+      && ACTION_TYPE === CAID_PIN.action_type
+      && definitionFileDigest === CAID_PIN.definition_file_sha256
+      && baseCaid.caid === CAID_PIN.expected_caid
+      && baseCaid.digest === CAID_PIN.expected_caid_digest,
+    'the collaborator JCS digest reproduces exactly and the separately pinned local definition computes the expected typed CAID without treating either identifier as authority',
+    {
+      fixture_digest: actionDigest,
+      fixture_file_sha256: fixtureFileDigest,
+      action_type: ACTION_TYPE,
+      definition_file_sha256: definitionFileDigest,
+      caid: baseCaid.caid,
+      caid_digest: baseCaid.digest,
+      collaborator_confirmation: CAID_PIN.collaborator_confirmation,
+    },
   ));
 
   const authority = (label) => ({ authority_id: `authority:${label}`, action_caid: baseCaid.caid });
@@ -482,7 +488,7 @@ export async function buildReferenceReport() {
     profile: PROFILE,
     fixture: {
       id: fixture.fixture,
-      sha256: sha256(loaded.bytes),
+      sha256: fixtureFileDigest,
       bytes: loaded.bytes.length,
       status: fixture.status,
     },
@@ -494,7 +500,7 @@ export async function buildReferenceReport() {
     },
     composition: {
       provenance: 'collaborator-supplied synthetic ES256 invocation JWS',
-      exact_action: 'interoperability-local typed CAID plus first-conduit FC10 projection',
+      exact_action: `interoperability-local typed CAID ${ACTION_TYPE} under a separately hashed definition plus first-conduit FC10 projection`,
       authority: 'separate synthetic EMILIA authority input',
       admission: 'single-process in-memory one-time authority and provider-attempt domain',
       provider: 'synthetic FC10 provider-entry state; no live device',
@@ -503,7 +509,7 @@ export async function buildReferenceReport() {
       'The fixture and authority are synthetic; no production key, live TrueAlter service, PLC, RTU, or protocol stack was exercised.',
       'The admission domain is an in-memory single-process conformance model, not evidence of multi-process durable atomicity.',
       'The fixture aud, exp, and jti claims are explicitly proposed and are not in the released TrueAlter invocation-signing claim set.',
-      'The fixture action digest is a provisional bare JCS SHA-256. The runner computes a separate interoperability-local typed CAID and never treats either identifier as authority.',
+      'The fixture action digest is a provisional bare JCS SHA-256. The runner computes a separate, reproducibly pinned interoperability-local typed CAID and never treats either identifier as authority. True Alter confirmation of the exact local type name and definition remains open.',
       'Provider commitment and observed physical effect remain separate; no physical effect is claimed.',
       'J5 safety independence remains unexecuted because it requires a protective-path simulator outside the Gate.',
     ],

@@ -22,11 +22,15 @@
       "id": "ACTION-DIGEST-AND-CAID",
       "category": "prerequisite",
       "passed": true,
-      "expected": "the collaborator JCS digest reproduces exactly and EMILIA computes a typed CAID without treating the digest as authority",
+      "expected": "the collaborator JCS digest reproduces exactly and the separately pinned local definition computes the expected typed CAID without treating either identifier as authority",
       "observed": {
         "fixture_digest": "2ebbbe1484c61773d6be9abcbf321e6ebd95194d92840b8636b6339da31f392c",
+        "fixture_file_sha256": "3cd708af715b1ee5417b9debefeb55bb747e3298014d19747f000b76900734d3",
+        "action_type": "ot.modbus.write-multiple-registers.1",
+        "definition_file_sha256": "b440d2146f3aa44565cdf26971b03508115cb34821a388520bf0c18571efcd48",
         "caid": "caid:1:ot.modbus.write-multiple-registers.1:jcs-sha256:9cizcd5xuzr3wLK_iJjP4z2A72JD9PzkFOp7Wzq0NLA",
-        "caid_digest": "sha256:f5c8b371de71bb3af7c0b2bf8898cfe33d80ef6243f4fce414ea7b5b3ab434b0"
+        "caid_digest": "sha256:f5c8b371de71bb3af7c0b2bf8898cfe33d80ef6243f4fce414ea7b5b3ab434b0",
+        "collaborator_confirmation": "pending"
       }
     },
     {
@@ -125,7 +129,7 @@
   },
   "composition": {
     "provenance": "collaborator-supplied synthetic ES256 invocation JWS",
-    "exact_action": "interoperability-local typed CAID plus first-conduit FC10 projection",
+    "exact_action": "interoperability-local typed CAID ot.modbus.write-multiple-registers.1 under a separately hashed definition plus first-conduit FC10 projection",
     "authority": "separate synthetic EMILIA authority input",
     "admission": "single-process in-memory one-time authority and provider-attempt domain",
     "provider": "synthetic FC10 provider-entry state; no live device"
@@ -134,9 +138,9 @@
     "The fixture and authority are synthetic; no production key, live TrueAlter service, PLC, RTU, or protocol stack was exercised.",
     "The admission domain is an in-memory single-process conformance model, not evidence of multi-process durable atomicity.",
     "The fixture aud, exp, and jti claims are explicitly proposed and are not in the released TrueAlter invocation-signing claim set.",
-    "The fixture action digest is a provisional bare JCS SHA-256. The runner computes a separate interoperability-local typed CAID and never treats either identifier as authority.",
+    "The fixture action digest is a provisional bare JCS SHA-256. The runner computes a separate, reproducibly pinned interoperability-local typed CAID and never treats either identifier as authority. True Alter confirmation of the exact local type name and definition remains open.",
     "Provider commitment and observed physical effect remain separate; no physical effect is claimed.",
     "J5 safety independence remains unexecuted because it requires a protective-path simulator outside the Gate."
   ],
-  "results_digest": "sha256:0bb14cb1e39070d34dd9743e956f31794b0b6a1e1aa6efaa2f1963b37ad5f07c"
+  "results_digest": "sha256:6b92b83099990694d43eff4f014e1628eae8c99f79d54613ff06e23835460823"
 }

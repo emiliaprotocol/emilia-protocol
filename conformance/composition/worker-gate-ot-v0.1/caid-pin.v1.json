@@ -1,0 +1,16 @@
+{
+  "@version": "EP-WORKER-GATE-OT-CAID-PIN-v1",
+  "profile": "EP-WORKER-GATE-OT-COMPOSITION-v0.1",
+  "scope": "interoperability-local",
+  "suite": "jcs-sha256",
+  "action_type": "ot.modbus.write-multiple-registers.1",
+  "definition_file": "caid-action-definition.v1.json",
+  "definition_file_sha256": "b440d2146f3aa44565cdf26971b03508115cb34821a388520bf0c18571efcd48",
+  "fixture_file": "fixtures/truealter-fc10.synthetic.v1.json",
+  "fixture_file_sha256": "3cd708af715b1ee5417b9debefeb55bb747e3298014d19747f000b76900734d3",
+  "fixture_action_jcs_sha256": "2ebbbe1484c61773d6be9abcbf321e6ebd95194d92840b8636b6339da31f392c",
+  "expected_caid": "caid:1:ot.modbus.write-multiple-registers.1:jcs-sha256:9cizcd5xuzr3wLK_iJjP4z2A72JD9PzkFOp7Wzq0NLA",
+  "expected_caid_digest": "sha256:f5c8b371de71bb3af7c0b2bf8898cfe33d80ef6243f4fce414ea7b5b3ab434b0",
+  "collaborator_confirmation": "pending",
+  "claim_boundary": "This pin makes the EMILIA test input reproducible. It is not a public CAID registry entry, authority, execution evidence, physical-effect evidence, or a claim that True Alter has confirmed this exact type name and definition."
+}
