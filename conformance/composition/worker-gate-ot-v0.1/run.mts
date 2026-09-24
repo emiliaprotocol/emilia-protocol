@@ -32,6 +32,96 @@ const ACTION_DEFINITION = Object.freeze(JSON.parse(ACTION_DEFINITION_BYTES.toStr
 const ACTION_TYPE = ACTION_DEFINITION.action_type;
 const CAID_PIN = Object.freeze(JSON.parse(readFileSync(CAID_PIN_PATH, 'utf8')));
 
+interface Fc10Action {
+  protocol: string;
+  function_code: number;
+  unit_id: number;
+  start_address: number;
+  quantity: number;
+  values: number[];
+  site?: string;
+  device?: string;
+}
+
+interface ProvenancePayload {
+  tool: string;
+  args_sha256: string;
+  nonce: string;
+  iat: number;
+  iss: string;
+  aud: string;
+  exp: number;
+  jti: string;
+}
+
+interface Provenance {
+  jws: string;
+  jws_sha256: string;
+  header: { alg: string; kid: string };
+  payload: ProvenancePayload;
+}
+
+interface Delivery {
+  provenance: Provenance;
+  observed_fc10_adu_hex: string;
+  observed_action: Fc10Action;
+  observed_action_digest: string;
+}
+
+interface WorkerFixture {
+  fixture: string;
+  status: string;
+  keys: { public_jwk: Record<string, unknown> & { kid: string } };
+  action: { A: Fc10Action; A_digest: string; A_canonical: string };
+  cases: Record<string, { deliveries: Delivery[] }>;
+  first_conduit_refusals: Record<
+    string,
+    string | { adu_hex: string; device_context_unit: number }
+  >;
+}
+
+type ProvenanceCheck =
+  | { valid: false; reason: string }
+  | { valid: true; header: { alg: string; kid: string }; payload: ProvenancePayload };
+
+interface AdmissionBinding {
+  operation_id: string;
+  authority_id: string;
+  action_caid: string;
+  jti: string;
+  provider_id: string;
+  provider_idempotency_key: string;
+}
+
+interface AdmissionRecord extends AdmissionBinding {
+  state: string;
+  provider_entries: number;
+  provider_outcome: string;
+  effect_relation: string;
+}
+
+type Reservation =
+  | { ok: false; reason: string }
+  | { ok: true; record: AdmissionRecord };
+
+interface ExecutionResult {
+  state: 'REFUSED' | 'INDETERMINATE' | 'EXECUTED';
+  provider_entries: number;
+  reason?: string;
+  retry_allowed?: boolean;
+  record?: AdmissionRecord;
+  provider_outcome?: string;
+  effect_relation?: string;
+}
+
+interface CaseResult {
+  id: string;
+  category: string;
+  passed: boolean;
+  expected: string;
+  observed: unknown;
+}
+
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
@@ -60,7 +150,7 @@ function deepFreeze(value) {
 
 function loadFixture() {
   const bytes = readFileSync(FIXTURE_PATH);
-  return { bytes, value: JSON.parse(bytes.toString('utf8')) };
+  return { bytes, value: JSON.parse(bytes.toString('utf8')) as WorkerFixture };
 }
 
 function materialAction(value) {
@@ -77,20 +167,28 @@ function materialAction(value) {
   };
 }
 
-function caidFor(value) {
+function caidFor(value: Fc10Action): { caid: string; digest: string } {
   const result = computeCaid(materialAction(value), {
     suite: CAID_PIN.suite,
     definitions: [ACTION_DEFINITION],
   });
-  if (!('caid' in result)) throw new Error(`CAID refused: ${JSON.stringify(result)}`);
-  return result;
+  if (!('caid' in result)
+    || typeof result.caid !== 'string'
+    || typeof result.digest !== 'string') {
+    throw new Error(`CAID refused: ${JSON.stringify(result)}`);
+  }
+  return { caid: result.caid, digest: result.digest };
 }
 
 function decodeB64Json(value) {
   return JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
 }
 
-export function verifyFixtureProvenance(provenance, publicJwk, options = {}) {
+export function verifyFixtureProvenance(
+  provenance: Provenance,
+  publicJwk: Record<string, unknown> & { kid: string },
+  options: { now?: number; audience?: string } = {},
+): ProvenanceCheck {
   const now = options.now ?? FIXTURE_NOW;
   const audience = options.audience ?? EXPECTED_AUDIENCE;
   if (!provenance || typeof provenance.jws !== 'string') return { valid: false, reason: 'missing_jws' };
@@ -129,7 +227,10 @@ export function verifyFixtureProvenance(provenance, publicJwk, options = {}) {
   }
   const signingInput = Buffer.from(`${parts[0]}.${parts[1]}`, 'ascii');
   const signature = Buffer.from(parts[2], 'base64url');
-  const key = crypto.createPublicKey({ key: publicJwk, format: 'jwk' });
+  const key = crypto.createPublicKey({
+    key: publicJwk as crypto.webcrypto.JsonWebKey,
+    format: 'jwk',
+  });
   const signatureValid = signature.length === 64 && crypto.verify(
     'sha256',
     signingInput,
@@ -143,7 +244,10 @@ export function verifyFixtureProvenance(provenance, publicJwk, options = {}) {
   return { valid: true, header, payload };
 }
 
-export function decodeFc10Adu(hex, context = {}) {
+export function decodeFc10Adu(
+  hex: string,
+  context: { device_context_unit?: number; site?: string; device?: string } = {},
+) {
   if (typeof hex !== 'string' || !/^[0-9a-f]+$/i.test(hex) || hex.length % 2 !== 0) {
     throw new Error('invalid_hex');
   }
@@ -165,7 +269,7 @@ export function decodeFc10Adu(hex, context = {}) {
   if (context.device_context_unit !== undefined && unitId !== context.device_context_unit) {
     throw new Error('unit_context_mismatch');
   }
-  const values = [];
+  const values: number[] = [];
   for (let offset = 13; offset < bytes.length; offset += 2) values.push(bytes.readUInt16BE(offset));
   return {
     transaction_id: bytes.readUInt16BE(0),
@@ -183,14 +287,19 @@ export function decodeFc10Adu(hex, context = {}) {
 }
 
 class AdmissionDomain {
-  constructor(id) {
+  readonly id: string;
+  private readonly authorityUses: Map<string, string>;
+  private readonly jtiUses: Map<string, string>;
+  private readonly records: Map<string, AdmissionRecord>;
+
+  constructor(id: string) {
     this.id = id;
     this.authorityUses = new Map();
     this.jtiUses = new Map();
     this.records = new Map();
   }
 
-  reserve(binding) {
+  reserve(binding: AdmissionBinding): Reservation {
     if (this.jtiUses.has(binding.jti)) return { ok: false, reason: 'provenance_replay' };
     if (this.authorityUses.has(binding.authority_id)) return { ok: false, reason: 'authority_already_reserved' };
     const record = {
@@ -206,7 +315,7 @@ class AdmissionDomain {
     return { ok: true, record };
   }
 
-  enter(operationId) {
+  enter(operationId: string) {
     const record = this.records.get(operationId);
     if (!record || record.state !== 'RESERVED') return false;
     record.state = 'PROVIDER_ENTERED';
@@ -215,7 +324,7 @@ class AdmissionDomain {
     return true;
   }
 
-  commit(operationId) {
+  commit(operationId: string) {
     const record = this.records.get(operationId);
     if (!record || record.state !== 'PROVIDER_ENTERED') return false;
     record.state = 'COMMITTED';
@@ -223,7 +332,7 @@ class AdmissionDomain {
     return true;
   }
 
-  markIndeterminate(operationId) {
+  markIndeterminate(operationId: string) {
     const record = this.records.get(operationId);
     if (!record || record.state !== 'PROVIDER_ENTERED') return false;
     record.state = 'INDETERMINATE';
@@ -231,7 +340,13 @@ class AdmissionDomain {
     return true;
   }
 
-  reconcile(operationId, evidence) {
+  reconcile(operationId: string, evidence: {
+    authenticated: boolean;
+    action_caid: string;
+    provider_idempotency_key: string;
+    provider_outcome: string;
+    effect_relation: string;
+  }) {
     const record = this.records.get(operationId);
     if (!record || record.state !== 'INDETERMINATE') return false;
     if (evidence.authenticated !== true
@@ -266,7 +381,14 @@ function validateDelivery(fixture, delivery) {
   return { ok: true, provenance, decoded, actionCaid: caidFor(decoded.action).caid };
 }
 
-async function executeDelivery({ fixture, domain, delivery, authority, operationId, loseResponse = false }) {
+async function executeDelivery({ fixture, domain, delivery, authority, operationId, loseResponse = false }: {
+  fixture: WorkerFixture;
+  domain: AdmissionDomain;
+  delivery: Delivery;
+  authority: { authority_id: string; action_caid: string } | null;
+  operationId: string;
+  loseResponse?: boolean;
+}): Promise<ExecutionResult> {
   let checked;
   try {
     checked = validateDelivery(fixture, delivery);
@@ -305,14 +427,20 @@ async function executeDelivery({ fixture, domain, delivery, authority, operation
   };
 }
 
-function caseResult(id, category, passed, expected, observed) {
+function caseResult(
+  id: string,
+  category: string,
+  passed: boolean,
+  expected: string,
+  observed: unknown,
+): CaseResult {
   return { id, category, passed, expected, observed };
 }
 
 export async function buildReferenceReport() {
   const loaded = loadFixture();
   const fixture = loaded.value;
-  const cases = [];
+  const cases: CaseResult[] = [];
   const allDeliveries = Object.values(fixture.cases).flatMap((entry) => entry.deliveries);
   const provenanceChecks = allDeliveries.map((entry) => verifyFixtureProvenance(entry.provenance, fixture.keys.public_jwk));
   cases.push(caseResult(
@@ -438,7 +566,7 @@ export async function buildReferenceReport() {
 
   const j4Domain = new AdmissionDomain('domain:j4');
   const j4Authority = authority('j4');
-  const j4Results = [];
+  const j4Results: ExecutionResult[] = [];
   for (const [index, delivery] of fixture.cases.J4_ACTION_MUTATION.deliveries.entries()) {
     j4Results.push(await executeDelivery({
       fixture,
@@ -464,7 +592,7 @@ export async function buildReferenceReport() {
     { reasons: j4Results.map((entry) => entry.reason), provider_entries: j4Domain.entries(), frozen_bytes_unchanged: frozenBefore === frozenAfter },
   ));
 
-  const firstConduitResults = {};
+  const firstConduitResults: Record<string, string> = {};
   for (const [name, input] of Object.entries(fixture.first_conduit_refusals)) {
     if (name === 'note') continue;
     try {

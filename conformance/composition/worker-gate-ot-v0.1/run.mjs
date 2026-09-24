@@ -77,9 +77,12 @@ function caidFor(value) {
         suite: CAID_PIN.suite,
         definitions: [ACTION_DEFINITION],
     });
-    if (!('caid' in result))
+    if (!('caid' in result)
+        || typeof result.caid !== 'string'
+        || typeof result.digest !== 'string') {
         throw new Error(`CAID refused: ${JSON.stringify(result)}`);
-    return result;
+    }
+    return { caid: result.caid, digest: result.digest };
 }
 function decodeB64Json(value) {
     return JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
@@ -134,7 +137,10 @@ export function verifyFixtureProvenance(provenance, publicJwk, options = {}) {
     }
     const signingInput = Buffer.from(`${parts[0]}.${parts[1]}`, 'ascii');
     const signature = Buffer.from(parts[2], 'base64url');
-    const key = crypto.createPublicKey({ key: publicJwk, format: 'jwk' });
+    const key = crypto.createPublicKey({
+        key: publicJwk,
+        format: 'jwk',
+    });
     const signatureValid = signature.length === 64 && crypto.verify('sha256', signingInput, { key, dsaEncoding: 'ieee-p1363' }, signature);
     if (!signatureValid)
         return { valid: false, reason: 'invalid_signature' };
@@ -190,6 +196,10 @@ export function decodeFc10Adu(hex, context = {}) {
     };
 }
 class AdmissionDomain {
+    id;
+    authorityUses;
+    jtiUses;
+    records;
     constructor(id) {
         this.id = id;
         this.authorityUses = new Map();
