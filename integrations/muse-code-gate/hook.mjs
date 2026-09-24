@@ -80,6 +80,23 @@ export async function processMuseHookEvent(event) {
     return { exitCode: 0, output: null, observation };
   }
 
+  if (name === 'PostToolUseFailure') {
+    // Muse documents this event as observational. Deliberately exclude the
+    // request, provider error, and tool payload: each may carry credentials or
+    // payment data and none establishes whether a provider accepted the call.
+    return {
+      exitCode: 0,
+      output: null,
+      observation: {
+        observed_at: new Date().toISOString(),
+        hook_event_name: 'PostToolUseFailure',
+        tool_name: toolName,
+        state: 'MUSE_TOOL_FAILURE_UNVERIFIED',
+        note: 'observational_only_reconcile_at_provider',
+      },
+    };
+  }
+
   return denial('unsupported_hook_event');
 }
 

@@ -23,6 +23,7 @@ async function writePrivateJson(path, value) {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
 }
 
+/** @param {string} outputDirectory @param {{ input?: any, now?: () => number }} [options] */
 export async function generateDemoConfig(outputDirectory, { input = DEMO_INPUT, now = Date.now } = {}) {
   const directory = resolve(outputDirectory);
   await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -32,13 +33,14 @@ export async function generateDemoConfig(outputDirectory, { input = DEMO_INPUT, 
   const configPath = resolve(directory, 'gate-config.json');
   const callPath = resolve(directory, 'authorized-call.json');
   const config = {
-    '@version': 'EP-MUSE-CODE-GATE-CONFIG-v1',
+    '@version': 'EP-MUSE-CODE-GATE-CONFIG-v2',
     trusted_issuer_keys: [harness.publicKey],
     approver_keys: harness.approverKeys,
     rp_id: harness.rpId,
     allowed_origins: harness.allowedOrigins,
     max_age_sec: 900,
     state_file: resolve(directory, 'consumption-state.json'),
+    reconciliation_store_file: resolve(directory, 'reconciliation-state.json'),
     provider_ledger_file: resolve(directory, 'demo-provider-ledger.jsonl'),
     outcome_signing_key: {
       key_id: 'ep:key:muse-gate-demo-outcome',

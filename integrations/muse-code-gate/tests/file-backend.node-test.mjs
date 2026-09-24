@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { hostname } from 'node:os';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -116,6 +116,20 @@ test('ownerless and invalid lock directories recover only after the configured g
   }
 });
 
+test('zero orphan grace recovers despite a fractional future filesystem mtime', async (t) => {
+  const { statePath } = await temporaryState(t);
+  const lockDirectory = `${statePath}.lock`;
+  await mkdir(lockDirectory, { mode: 0o700 });
+  const fractionalFutureSeconds = (Date.now() + 0.75) / 1000;
+  await utimes(lockDirectory, fractionalFutureSeconds, fractionalFutureSeconds);
+  const backend = await createFileKvBackend(statePath, {
+    lockRetries: 2,
+    lockDelayMs: 0,
+    orphanLockGraceMs: 0,
+  });
+  assert.equal(await backend.addIfAbsent('receipt:fractional-mtime', 'committed:v2'), true);
+});
+
 test('a dead recovery owner remains fail-closed for operator repair', async (t) => {
   const { statePath } = await temporaryState(t);
   const lockDirectory = await installLock(statePath, { pid: definitelyDeadPid() });
@@ -180,6 +194,14 @@ test('two backend instances serialize addIfAbsent on one state file', async (t) 
   assert.deepEqual([...results].sort(), [false, true]);
   const state = JSON.parse(await readFile(statePath, 'utf8'));
   assert.equal(['first', 'second'].includes(state['receipt:contended']), true);
+});
+
+test('backend get returns the exact stored value for reconciliation pinning', async (t) => {
+  const { statePath } = await temporaryState(t);
+  const backend = await createFileKvBackend(statePath);
+  assert.equal(await backend.get('reconcile:missing'), null);
+  assert.equal(await backend.addIfAbsent('reconcile:one', '{"terminal":true}'), true);
+  assert.equal(await backend.get('reconcile:one'), '{"terminal":true}');
 });
 
 test('live lock ownership is never stolen', async (t) => {

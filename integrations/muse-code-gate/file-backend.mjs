@@ -185,8 +185,12 @@ async function recoverStaleLock(lockDirectory, hostname, orphanLockGraceMs) {
   const deadSameHostOwner = observed
     && observed.hostname === hostname
     && !pidIsAlive(observed.pid);
+  // Date.now() is integer milliseconds while APFS mtimeMs can be fractional
+  // and slightly ahead within the same millisecond. An explicit zero grace
+  // means recover immediately, not "only if the rounded age is nonnegative".
   const orphanedLongEnough = !observed
-    && Date.now() - observedDirectory.modifiedAtMs >= orphanLockGraceMs;
+    && (orphanLockGraceMs === 0
+      || Date.now() - observedDirectory.modifiedAtMs >= orphanLockGraceMs);
   if (!deadSameHostOwner && !orphanedLongEnough) return false;
 
   const recoveryPath = join(lockDirectory, RECOVERY_FILE);
@@ -378,6 +382,9 @@ export async function createFileKvBackend(path, {
   });
   return Object.freeze({
     durable: true,
+    ownershipFenced: true,
+    permanentConsumption: true,
+    atomicReplayFenced: true,
     async health() {
       try {
         await stat(dirname(path));
@@ -411,6 +418,12 @@ export async function createFileKvBackend(path, {
         delete state[key];
         await writeState(path, state);
         return true;
+      });
+    },
+    async get(key) {
+      return withLock(path, lockOptions, async () => {
+        const state = await readState(path);
+        return Object.hasOwn(state, key) ? state[key] : null;
       });
     },
     async has(key) {
