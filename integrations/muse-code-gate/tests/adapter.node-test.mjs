@@ -45,6 +45,11 @@ test('outcome signer refuses a mismatched public key before provider entry', () 
   );
 });
 
+test('outcome signer refuses a noncanonical or empty issuer before provider entry', () => {
+  assert.throws(() => createOutcomeSigner({ keyId: '' }), /outcome_key_id_required/);
+  assert.throws(() => createOutcomeSigner({ keyId: ' padded ' }), /outcome_key_id_not_canonical/);
+});
+
 test('reconciliation refuses a store without durable fenced permanent-consumption capabilities', () => {
   const methodsOnly = {
     get: async () => null,

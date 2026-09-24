@@ -183,6 +183,7 @@ function privateKeyFrom(value) {
  * @param {{ privateKey?: any, publicKey?: any, keyId?: string }} [options]
  */
 export function createOutcomeSigner({ privateKey, publicKey, keyId = 'ep:key:muse-gate-outcome' } = {}) {
+  const normalizedKeyId = exactString(keyId, 'outcome_key_id', 256);
   if (!privateKey && !publicKey) {
     const generated = generateKeyPairSync('ed25519');
     privateKey = generated.privateKey;
@@ -204,7 +205,11 @@ export function createOutcomeSigner({ privateKey, publicKey, keyId = 'ep:key:mus
   const derivedPublicKey = publicKeyB64u(derivedPublicKeyObject);
   const normalizedPublicKey = publicKeyB64u(suppliedPublicKeyObject);
   if (normalizedPublicKey !== derivedPublicKey) throw new TypeError('outcome_key_pair_mismatch');
-  return Object.freeze({ privateKey: normalizedPrivateKey, publicKey: normalizedPublicKey, keyId });
+  return Object.freeze({
+    privateKey: normalizedPrivateKey,
+    publicKey: normalizedPublicKey,
+    keyId: normalizedKeyId,
+  });
 }
 
 function issueOutcomeReceipt({
