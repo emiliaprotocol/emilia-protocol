@@ -185,8 +185,12 @@ async function recoverStaleLock(lockDirectory, hostname, orphanLockGraceMs) {
   const deadSameHostOwner = observed
     && observed.hostname === hostname
     && !pidIsAlive(observed.pid);
+  // Date.now() is integer milliseconds while APFS mtimeMs can be fractional
+  // and slightly ahead within the same millisecond. An explicit zero grace
+  // means recover immediately, not "only if the rounded age is nonnegative".
   const orphanedLongEnough = !observed
-    && Date.now() - observedDirectory.modifiedAtMs >= orphanLockGraceMs;
+    && (orphanLockGraceMs === 0
+      || Date.now() - observedDirectory.modifiedAtMs >= orphanLockGraceMs);
   if (!deadSameHostOwner && !orphanedLongEnough) return false;
 
   const recoveryPath = join(lockDirectory, RECOVERY_FILE);
