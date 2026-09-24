@@ -16,15 +16,20 @@ The revision closes four gaps found during the shared EMILIA and TrueAlter work:
 ## Scope and layer boundaries
 
 - GRACE consumes a verified result from the identity layer and states what properties it requires from that result.
-- Credential-to-person or credential-to-device binding remains in `draft-morrison-ot-command-authority`; GRACE does not redefine it.
-- Without the required external identity result, GRACE may identify an enrolled credential but must not claim a natural person.
+- `draft-morrison-ot-command-authority` binds a principal's signed grant to the
+  specific agent, asset, control verb, and expiry. GRACE does not redefine that
+  action-specific authority proof.
+- GRACE separately admits and consumes the exact request once. Neither the
+  upstream proof nor GRACE admission is sufficient on its own.
 - GRACE binds authorization, admission, command projection, dispatch evidence, and observed effects. It does not prove that every physical effect passed through the Gate.
 - Transparency inclusion, where used, proves logging under the log service policy. It does not prove identity, physical truth, or complete mediation.
 - Safety functions remain able to act when GRACE, identity services, revocation services, networks, and logs are unavailable.
 
 ## Proposed editors and section ownership
 
-The names below record the division accepted in email. Final RFCXML metadata still requires each new author to confirm preferred name, organization, country, and email.
+The names below record the division accepted in email. Blake supplied the
+RFCXML author blocks for himself and Drew on 23 September; the review candidate
+uses those values without modification.
 
 | Area | Lead | Review |
 | --- | --- | --- |
@@ -61,8 +66,10 @@ Keep provider outcome and observed-effect relation as separate axes.
 
 ### 3. Trust, deployment inputs, and layer boundaries
 
-- Define the external identity result GRACE requires and how its freshness is evaluated.
-- Reference `draft-morrison-ot-command-authority` for the credential-binding mechanism.
+- Define the action-specific Command Authority Envelope GRACE requires and how
+  its grant coverage, expiry, and freshness are evaluated.
+- Reference `draft-morrison-ot-command-authority` for that upstream authority
+  mechanism.
 - Require an effect-path inventory covering every path capable of reaching the controlled devices.
 - Require one configured durable admission-domain identifier for all redundant paths within the protected action.
 - Preserve the limit that receipts and logs cannot establish absence of bypass paths.
@@ -81,7 +88,8 @@ Keep provider outcome and observed-effect relation as separate axes.
 
 ### 6. Human authorization
 
-- State exactly which identity-layer result and freshness policy the relying party requires.
+- State exactly which identity and action-authority results and freshness
+  policies the relying party requires.
 - Bind authorization to the exact curtailment action and pinned actuation-plan digest.
 - Do not infer natural-person identity from an enrolled device credential alone.
 
@@ -225,9 +233,10 @@ Keep statement and fixture identifiers profile-local unless the coauthors delibe
 Justin's 23 September non-normative RDU101 example is accepted as the
 device-level path to adapt into `-01`, subject to this responsibility split:
 
-1. `draft-morrison-ot-command-authority` may supply a verified
-   credential-to-person or credential-to-device enrollment result.  That
-   result is an input to GRACE; it is not sufficient authority to dispatch.
+1. `draft-morrison-ot-command-authority` supplies action-specific command
+   authority evidence binding the principal's signed grant to the agent,
+   asset, control verb, and expiry. That proof is an input to GRACE admission;
+   it does not consume GRACE admission and is not sufficient by itself.
 2. EMILIA is the control spine.  It binds the exact curtailment action and
    relying-party policy, verifies the required authority evidence, admits and
    consumes the authority once in the durable admission domain before provider
@@ -243,7 +252,7 @@ device-level path to adapt into `-01`, subject to this responsibility split:
 The example's topology therefore follows this control order:
 
 ```text
-Morrison identity/enrollment result + proposed action
+Morrison action-specific authority proof + proposed action
                        |
                        v
 EMILIA exact-action authority + AEB/Gate admission and consumption
@@ -263,8 +272,11 @@ an unresolved post-dispatch state never authorizes a blind retry.
 
 ## Immediate decisions
 
-1. Blake and Drew confirm their preferred RFCXML author metadata.
-2. Blake checks Sections 7 through 10 for OT fidelity and identifies any required device/protocol-specific split.
-3. Drew checks Sections 8, 10, and 11 against degraded operations and control-room practice.
-4. Iman and Justin turn the agreed outline into the first `-01` RFCXML candidate without modifying `-00`.
-5. The four authors review the joined conformance topology before its fixture values are frozen.
+1. Blake confirms that the RFCXML faithfully transcribes his Sections 7
+   through 10 and keeps the per-protocol tables in the separate transport
+   binding.
+2. Drew confirms that the RFCXML faithfully transcribes his degraded-operation
+   and control-room requirements in Section 11.
+3. Justin confirms the adapted RDU101 facts and revised outcome labels.
+4. The four authors review the joined conformance topology before its fixture
+   values are frozen.
