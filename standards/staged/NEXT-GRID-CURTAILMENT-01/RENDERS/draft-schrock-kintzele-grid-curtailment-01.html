@@ -16,9 +16,10 @@
       pinned actuation plan, consumes that authority once in a durable
       admission domain, and preserves unresolved state after possible provider
       entry. An upstream action-specific command-authority proof is an input to
-      that admission, not sufficient dispatch authority by itself. A deployment-pinned
-      executor adapter returns command-channel evidence, and a separately
-      authenticated meter supplies observed-effect evidence.
+      that admission, and neither it nor the admission is sufficient dispatch
+      authority alone. A deployment-pinned executor adapter returns
+      command-channel evidence, and a separately authenticated meter supplies
+      observed-effect evidence.
        Safety trips, protective relays, emergency shutdowns, and hardwired
       interlocks remain outside GRACE and continue to operate when the Gate,
       network, identity service, or evidence service is unavailable. Missing
@@ -1244,7 +1245,7 @@ li > p:last-of-type:only-child {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Schrock, et al.</td>
-<td class="center">Expires 27 March 2027</td>
+<td class="center">Expires 28 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1257,12 +1258,12 @@ li > p:last-of-type:only-child {
 <dd class="internet-draft">draft-schrock-kintzele-grid-curtailment-01</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-09-23" class="published">23 September 2026</time>
+<time datetime="2026-09-24" class="published">24 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Informational</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-03-27">27 March 2027</time></dd>
+<dd class="expires"><time datetime="2027-03-28">28 March 2027</time></dd>
 <dt class="label-authors">Authors:</dt>
 <dd class="authors">
 <div class="author">
@@ -1293,9 +1294,10 @@ li > p:last-of-type:only-child {
       pinned actuation plan, consumes that authority once in a durable
       admission domain, and preserves unresolved state after possible provider
       entry. An upstream action-specific command-authority proof is an input to
-      that admission, not sufficient dispatch authority by itself. A deployment-pinned
-      executor adapter returns command-channel evidence, and a separately
-      authenticated meter supplies observed-effect evidence.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+      that admission, and neither it nor the admission is sufficient dispatch
+      authority alone. A deployment-pinned executor adapter returns
+      command-channel evidence, and a separately authenticated meter supplies
+      observed-effect evidence.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
 <p id="section-abstract-2">Safety trips, protective relays, emergency shutdowns, and hardwired
       interlocks remain outside GRACE and continue to operate when the Gate,
       network, identity service, or evidence service is unavailable. Missing
@@ -1326,7 +1328,7 @@ li > p:last-of-type:only-child {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 27 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 28 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1789,12 +1791,16 @@ li > p:last-of-type:only-child {
 <p id="section-7-7">The classification binds the physical operation, not a display label
       or the incidental number of octets carrying it. A Modbus 4xxxxx or
       0xxxxx label <span class="bcp14">MUST NOT</span> replace the zero-based protocol
-      address. Modbus function 0x06 and function 0x10 with quantity one remain
-      different operations when their classified field sets differ. DNP3
-      requests that vary only in an unbound qualifier encoding may identify
-      the same operation when the pinned binding decodes them to the same
-      complete field set. The complete DNP3 control octet, operation count,
-      on-time, and off-time are material and <span class="bcp14">MUST</span> be bound.<a href="#section-7-7" class="pilcrow">¶</a></p>
+      address. Modbus function 0x06 and function 0x10 with quantity one encode
+      the same single-register write through different field sets and therefore
+      yield different native-command digests. A conduit <span class="bcp14">MUST NOT</span>
+      normalize either form into the other, and authority bound to one form
+      <span class="bcp14">MUST NOT</span> admit the other. DNP3 requests that vary only in
+      an unbound qualifier encoding <span class="bcp14">MUST</span> identify the same
+      operation and yield the same native-command digest when the pinned
+      binding decodes them to the same complete field set. The complete DNP3
+      control octet, operation count, on-time, and off-time are material and
+      <span class="bcp14">MUST</span> be bound.<a href="#section-7-7" class="pilcrow">¶</a></p>
 <p id="section-7-8">Two-phase DNP3 SELECT and OPERATE and multi-object requests are outside
       this revision. A later profile admitting them <span class="bcp14">MUST</span> bind
       both phases to one authorization and state machine, or the complete
@@ -2005,9 +2011,12 @@ li > p:last-of-type:only-child {
       admissibility condition; the five-state device result; any observed
       interlock action; and any requested operator action. Unknown values
       <span class="bcp14">MUST</span> be shown as unknown rather than as zero or blank.<a href="#section-11-8" class="pilcrow">¶</a></p>
-<p id="section-11-9">Settlement admission requires a reconciled, committed result with the
+<p id="section-11-9">Any summary label shown to an operator <span class="bcp14">MUST</span> be derived
+      from the underlying facts at display time and <span class="bcp14">MUST NOT</span>
+      replace those facts in storage.<a href="#section-11-9" class="pilcrow">¶</a></p>
+<p id="section-11-10">Settlement admission requires a reconciled, committed result with the
       profile-selected in-bounds relation. No other state may reach the
-      settlement adapter.<a href="#section-11-9" class="pilcrow">¶</a></p>
+      settlement adapter.<a href="#section-11-10" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="safety">
@@ -2017,6 +2026,8 @@ li > p:last-of-type:only-child {
       </h2>
 <p id="section-12-1">Trips, protective relays, emergency shutdowns, branch protection, and
       hardwired interlocks are outside the GRACE authority and admission path.
+      The upstream command-authority proof
+      <span>[<a href="#OT-COMMAND-AUTHORITY" class="cite xref">OT-COMMAND-AUTHORITY</a>]</span> does not alter that safety boundary.
       A GRACE implementation <span class="bcp14">MUST NOT</span> delay, suppress, consume,
       or condition authority required by an independent safety function. The
       safety function <span class="bcp14">MUST</span> remain capable of reaching its safe
@@ -2178,19 +2189,25 @@ li > p:last-of-type:only-child {
       </h2>
 <p id="section-19-1">This section is an implementation sketch supplied for review. It is
       not a protocol requirement and does not report an energized actuation
-      test. The cited hardware was characterized read-only. No outlet was
+      test. The cited hardware characterization is read-only: TEST-01 is
+      complete, TEST-02 remains strictly on hold, and no outlet was
       de-energized during this work.<a href="#section-19-1" class="pilcrow">¶</a></p>
 <p id="section-19-2">The example device is a Vertiv Liebert GXT5-3000LVRT2UXLN, rated
       2700 W, 3000 VA, and 120 V AC, with NEMA 5-20R programmable
       receptacles. A Liebert RDU101 management card running firmware 1.9.3.0
-      exposes <code>LIEBERT_GP_PWR.MIB</code> over SNMPv3 AuthPriv. The proposed
-      action is to de-energize programmable receptacle group 2 through the
-      outlet-group power-control point represented by object 4365 and group
-      index 2. The device exposes four outlet-group control rows. The
+      exposes <code>LIEBERT_GP_PWR.MIB</code> over SNMPv3 AuthPriv using SHA-1
+      authentication and AES-128 privacy. The proposed action is to de-energize
+      programmable receptacle group 2 through point 4365,
+      <code>lgpPwrOutputReceptacleControlEntry</code>, at OID
+      <code>1.3.6.1.4.1.476.1.42.3.9.20.1.20.1.2.1.4365.2</code>. Four rows,
+      indices 1 through 4, were present during characterization. The
       outlet-group identifier is a different object and is not the command
       target.<a href="#section-19-2" class="pilcrow">¶</a></p>
+<p id="section-19-3">The worked-example topology consumes the action-specific proof defined
+      by <span>[<a href="#OT-COMMAND-AUTHORITY" class="cite xref">OT-COMMAND-AUTHORITY</a>]</span> before EMILIA admission and
+      keeps independent observation and safety outside the command path.<a href="#section-19-3" class="pilcrow">¶</a></p>
 <span id="name-example-control-and-evidenc"></span><figure id="figure-1">
-        <div class="alignLeft art-ascii-art art-text artwork" id="section-19-3.1">
+        <div class="alignLeft art-ascii-art art-text artwork" id="section-19-4.1">
 <pre>
 Morrison action-specific proof + proposed action
                        |
@@ -2212,7 +2229,7 @@ REPO / E-stop / branch protection: hardwired outside every path
 <figcaption><a href="#figure-1" class="selfRef">Figure 1</a>:
 <a href="#name-example-control-and-evidenc" class="selfRef">Example control and evidence order</a>
         </figcaption></figure>
-<p id="section-19-4">A Command Authority Envelope conforming to
+<p id="section-19-5">A Command Authority Envelope conforming to
       <span>[<a href="#OT-COMMAND-AUTHORITY" class="cite xref">OT-COMMAND-AUTHORITY</a>]</span> establishes who asked and what that
       principal authorized the agent to ask for, bound to this action, asset,
       control verb, and expiry. EMILIA evaluates that proof as an upstream
@@ -2222,45 +2239,61 @@ REPO / E-stop / branch protection: hardwired outside every path
       adapter then issues the native SNMPv3 operation and returns the RDU101
       response as downstream command-channel evidence. An SNMP SetResponse
       means that the management card processed the SET. It does not establish
-      the electrical state of the receptacle or the attached load.<a href="#section-19-4" class="pilcrow">¶</a></p>
-<p id="section-19-5">The independent readback in this example comes through a separate
-      Modbus channel and control domain from the RDU101. A second object read
-      through the RDU101 remains same-domain command-channel evidence and is
-      not independent readback. The hardwired REPO input, emergency stop, and
-      branch overcurrent device remain outside Morrison, EMILIA, and COSA and
-      continue to operate without them.<a href="#section-19-5" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-19-6">
-        <dt id="section-19-6.1">Nominal</dt>
-        <dd style="margin-left: 1.5em" id="section-19-6.2">An authenticated accepted acknowledgment plus independent readback
-        within the approved bound yields <code>effect_confirmed</code> and permits
-        the configured <code>invoked_confirmed</code> settlement result.<a href="#section-19-6.2" class="pilcrow">¶</a>
+      the electrical state of the receptacle or the attached load.<a href="#section-19-5" class="pilcrow">¶</a></p>
+<p id="section-19-6">The independent readback in this example comes from an instrumented
+      Modbus power meter through a separate channel and control domain from the
+      RDU101. A second object read through the RDU101 remains same-domain
+      command-channel evidence and is not independent readback. The hardwired
+      REPO input, emergency stop, and branch overcurrent device remain outside
+      the upstream command-authority proof
+      <span>[<a href="#OT-COMMAND-AUTHORITY" class="cite xref">OT-COMMAND-AUTHORITY</a>]</span>, EMILIA, and COSA and continue to
+      operate without them.<a href="#section-19-6" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-19-7">
+        <dt id="section-19-7.1">Nominal</dt>
+        <dd style="margin-left: 1.5em" id="section-19-7.2">An authenticated accepted acknowledgment plus independent readback
+        within the approved bound yields <code>in_bounds</code>,
+        <code>effect_confirmed</code>, and <code>invoked_confirmed</code> in the
+        <code>EP-GRACE-PROOF-OF-CURTAILMENT-v1</code> bundle.<a href="#section-19-7.2" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
-<dt id="section-19-6.3">No authentic acknowledgment</dt>
-        <dd style="margin-left: 1.5em" id="section-19-6.4">A transport timeout or unavailable channel after possible provider
-        entry yields <code>effect_unconfirmed</code>, a null observed-effect
-        relation, <code>retry_safe=false</code>, and no settlement invocation.<a href="#section-19-6.4" class="pilcrow">¶</a>
+<dt id="section-19-7.3">Degraded communications</dt>
+        <dd style="margin-left: 1.5em" id="section-19-7.4">A transport timeout or unavailable channel after possible provider
+        entry yields <code>degraded_transport_timeout</code>, reason
+        <code>channel_unavailable</code>, <code>effect_unconfirmed</code>,
+        <code>retry_safe=false</code>, and <code>not_invoked_refused</code>.<a href="#section-19-7.4" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
-<dt id="section-19-6.5">Acknowledgment and readback disagree</dt>
-        <dd style="margin-left: 1.5em" id="section-19-6.6">An accepted acknowledgment with admissible out-of-bounds readback
-        is <code>effect_observed</code> and <code>out_of_bounds</code>, not
-        <code>effect_confirmed</code>. A rejected command with admissible in-bounds
-        readback is divergent.
-        Missing, stale, or same-domain readback is unconfirmed. Each result is
-        preserved and settlement is refused.<a href="#section-19-6.6" class="pilcrow">¶</a>
+<dt id="section-19-7.5">Missed bound or discrepant readback</dt>
+        <dd style="margin-left: 1.5em" id="section-19-7.6">An accepted acknowledgment with admissible out-of-bounds readback
+        yields <code>state_mismatch</code>, <code>out_of_bounds</code>,
+        <code>effect_observed</code>, and <code>not_invoked_refused</code>, not
+        <code>effect_confirmed</code>.<a href="#section-19-7.6" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
-<dt id="section-19-6.7">Safety interlock trip</dt>
-        <dd style="margin-left: 1.5em" id="section-19-6.8">A hardwired interlock trip is recorded as
-        <code>safety_interlock_tripped</code>. It is not an in-bounds GRACE effect,
-        and the same admission is not retried.<a href="#section-19-6.8" class="pilcrow">¶</a>
+<dt id="section-19-7.7">Conflicting telemetry</dt>
+        <dd style="margin-left: 1.5em" id="section-19-7.8">A command-channel result and admissible readback that conflict yield
+        <code>state_mismatch</code>, <code>divergent</code>,
+        <code>effect_divergent</code>, and <code>not_invoked_refused</code>.<a href="#section-19-7.8" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-19-7.9">Unresolved readback</dt>
+        <dd style="margin-left: 1.5em" id="section-19-7.10">Missing, stale, same-domain, or otherwise inadmissible readback
+        yields <code>state_mismatch</code>, a null observed-effect relation,
+        <code>effect_unconfirmed</code>, and <code>not_invoked_refused</code>.<a href="#section-19-7.10" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-19-7.11">Safety interlock trip</dt>
+        <dd style="margin-left: 1.5em" id="section-19-7.12">A hardwired interlock trip is recorded as
+        <code>safety_interlock_tripped</code>, <code>effect_unconfirmed</code>, and
+        <code>not_invoked_refused</code>. It is not an in-bounds GRACE effect, and
+        the same admission is not retried.<a href="#section-19-7.12" class="pilcrow">¶</a>
 </dd>
       <dd class="break"></dd>
 </dl>
-<p id="section-19-7">Every non-nominal path stops the same admission. There is no blind
-      retry. A subsequent attempt requires a new action, new authorization,
-      and new admission.<a href="#section-19-7" class="pilcrow">¶</a></p>
+<p id="section-19-8">Every non-nominal path stops the same admission. There is no ambient
+      or blind retry across degraded communications, disagreement, unresolved
+      readback, or an independent interlock trip. A subsequent attempt requires
+      a new action, new authorization, and new admission.<a href="#section-19-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="conformance">
@@ -2430,7 +2463,7 @@ REPO / E-stop / branch protection: hardwired outside every path
 <dd class="break"></dd>
 <dt id="OT-COMMAND-AUTHORITY">[OT-COMMAND-AUTHORITY]</dt>
     <dd>
-<span class="refAuthor">Morrison, B.</span> and <span class="refAuthor">C. Whiteside</span>, <span class="refTitle">"Operational Technology Command Authority"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-morrison-ot-command-authority-02</span>, <time datetime="2026-08-31" class="refDate">31 August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-morrison-ot-command-authority/">https://datatracker.ietf.org/doc/draft-morrison-ot-command-authority/</a>&gt;</span>. </dd>
+<span class="refAuthor">Morrison, B.</span> and <span class="refAuthor">C. Whiteside</span>, <span class="refTitle">"Consented and Attributable Agent Authority for Operational-Technology Control Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-morrison-ot-command-authority-02</span>, <time datetime="2026-08-31" class="refDate">31 August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-morrison-ot-command-authority/">https://datatracker.ietf.org/doc/draft-morrison-ot-command-authority/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 </dl>
 </section>

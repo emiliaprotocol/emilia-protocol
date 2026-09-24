@@ -22,7 +22,7 @@
       <organization>Alter Meridian Pty Ltd</organization>
       <address><postal><country>AU</country></postal><email>drew@truealter.com</email></address>
     </author>
-    <date year="2026" month="September" day="23"/>
+    <date year="2026" month="September" day="24"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>demand response</keyword>
@@ -35,9 +35,10 @@
       pinned actuation plan, consumes that authority once in a durable
       admission domain, and preserves unresolved state after possible provider
       entry. An upstream action-specific command-authority proof is an input to
-      that admission, not sufficient dispatch authority by itself. A deployment-pinned
-      executor adapter returns command-channel evidence, and a separately
-      authenticated meter supplies observed-effect evidence.</t>
+      that admission, and neither it nor the admission is sufficient dispatch
+      authority alone. A deployment-pinned executor adapter returns
+      command-channel evidence, and a separately authenticated meter supplies
+      observed-effect evidence.</t>
       <t>Safety trips, protective relays, emergency shutdowns, and hardwired
       interlocks remain outside GRACE and continue to operate when the Gate,
       network, identity service, or evidence service is unavailable. Missing
@@ -334,12 +335,16 @@
       <t>The classification binds the physical operation, not a display label
       or the incidental number of octets carrying it. A Modbus 4xxxxx or
       0xxxxx label <bcp14>MUST NOT</bcp14> replace the zero-based protocol
-      address. Modbus function 0x06 and function 0x10 with quantity one remain
-      different operations when their classified field sets differ. DNP3
-      requests that vary only in an unbound qualifier encoding may identify
-      the same operation when the pinned binding decodes them to the same
-      complete field set. The complete DNP3 control octet, operation count,
-      on-time, and off-time are material and <bcp14>MUST</bcp14> be bound.</t>
+      address. Modbus function 0x06 and function 0x10 with quantity one encode
+      the same single-register write through different field sets and therefore
+      yield different native-command digests. A conduit <bcp14>MUST NOT</bcp14>
+      normalize either form into the other, and authority bound to one form
+      <bcp14>MUST NOT</bcp14> admit the other. DNP3 requests that vary only in
+      an unbound qualifier encoding <bcp14>MUST</bcp14> identify the same
+      operation and yield the same native-command digest when the pinned
+      binding decodes them to the same complete field set. The complete DNP3
+      control octet, operation count, on-time, and off-time are material and
+      <bcp14>MUST</bcp14> be bound.</t>
       <t>Two-phase DNP3 SELECT and OPERATE and multi-object requests are outside
       this revision. A later profile admitting them <bcp14>MUST</bcp14> bind
       both phases to one authorization and state machine, or the complete
@@ -527,6 +532,9 @@
       admissibility condition; the five-state device result; any observed
       interlock action; and any requested operator action. Unknown values
       <bcp14>MUST</bcp14> be shown as unknown rather than as zero or blank.</t>
+      <t>Any summary label shown to an operator <bcp14>MUST</bcp14> be derived
+      from the underlying facts at display time and <bcp14>MUST NOT</bcp14>
+      replace those facts in storage.</t>
       <t>Settlement admission requires a reconciled, committed result with the
       profile-selected in-bounds relation. No other state may reach the
       settlement adapter.</t>
@@ -535,6 +543,8 @@
     <section anchor="safety"><name>Independent Safety Boundary</name>
       <t>Trips, protective relays, emergency shutdowns, branch protection, and
       hardwired interlocks are outside the GRACE authority and admission path.
+      The upstream command-authority proof
+      <xref target="OT-COMMAND-AUTHORITY"/> does not alter that safety boundary.
       A GRACE implementation <bcp14>MUST NOT</bcp14> delay, suppress, consume,
       or condition authority required by an independent safety function. The
       safety function <bcp14>MUST</bcp14> remain capable of reaching its safe
@@ -668,17 +678,23 @@
     <section anchor="rdu101-example"><name>Non-Normative RDU101 Worked Example</name>
       <t>This section is an implementation sketch supplied for review. It is
       not a protocol requirement and does not report an energized actuation
-      test. The cited hardware was characterized read-only. No outlet was
+      test. The cited hardware characterization is read-only: TEST-01 is
+      complete, TEST-02 remains strictly on hold, and no outlet was
       de-energized during this work.</t>
       <t>The example device is a Vertiv Liebert GXT5-3000LVRT2UXLN, rated
       2700 W, 3000 VA, and 120 V AC, with NEMA 5-20R programmable
       receptacles. A Liebert RDU101 management card running firmware 1.9.3.0
-      exposes <tt>LIEBERT_GP_PWR.MIB</tt> over SNMPv3 AuthPriv. The proposed
-      action is to de-energize programmable receptacle group 2 through the
-      outlet-group power-control point represented by object 4365 and group
-      index 2. The device exposes four outlet-group control rows. The
+      exposes <tt>LIEBERT_GP_PWR.MIB</tt> over SNMPv3 AuthPriv using SHA-1
+      authentication and AES-128 privacy. The proposed action is to de-energize
+      programmable receptacle group 2 through point 4365,
+      <tt>lgpPwrOutputReceptacleControlEntry</tt>, at OID
+      <tt>1.3.6.1.4.1.476.1.42.3.9.20.1.20.1.2.1.4365.2</tt>. Four rows,
+      indices 1 through 4, were present during characterization. The
       outlet-group identifier is a different object and is not the command
       target.</t>
+      <t>The worked-example topology consumes the action-specific proof defined
+      by <xref target="OT-COMMAND-AUTHORITY"/> before EMILIA admission and
+      keeps independent observation and safety outside the command path.</t>
       <figure>
         <name>Example control and evidence order</name>
         <artwork type="ascii-art"><![CDATA[
@@ -710,36 +726,48 @@ REPO / E-stop / branch protection: hardwired outside every path
       response as downstream command-channel evidence. An SNMP SetResponse
       means that the management card processed the SET. It does not establish
       the electrical state of the receptacle or the attached load.</t>
-      <t>The independent readback in this example comes through a separate
-      Modbus channel and control domain from the RDU101. A second object read
-      through the RDU101 remains same-domain command-channel evidence and is
-      not independent readback. The hardwired REPO input, emergency stop, and
-      branch overcurrent device remain outside Morrison, EMILIA, and COSA and
-      continue to operate without them.</t>
+      <t>The independent readback in this example comes from an instrumented
+      Modbus power meter through a separate channel and control domain from the
+      RDU101. A second object read through the RDU101 remains same-domain
+      command-channel evidence and is not independent readback. The hardwired
+      REPO input, emergency stop, and branch overcurrent device remain outside
+      the upstream command-authority proof
+      <xref target="OT-COMMAND-AUTHORITY"/>, EMILIA, and COSA and continue to
+      operate without them.</t>
       <dl>
         <dt>Nominal</dt>
         <dd>An authenticated accepted acknowledgment plus independent readback
-        within the approved bound yields <tt>effect_confirmed</tt> and permits
-        the configured <tt>invoked_confirmed</tt> settlement result.</dd>
-        <dt>No authentic acknowledgment</dt>
+        within the approved bound yields <tt>in_bounds</tt>,
+        <tt>effect_confirmed</tt>, and <tt>invoked_confirmed</tt> in the
+        <tt>EP-GRACE-PROOF-OF-CURTAILMENT-v1</tt> bundle.</dd>
+        <dt>Degraded communications</dt>
         <dd>A transport timeout or unavailable channel after possible provider
-        entry yields <tt>effect_unconfirmed</tt>, a null observed-effect
-        relation, <tt>retry_safe=false</tt>, and no settlement invocation.</dd>
-        <dt>Acknowledgment and readback disagree</dt>
+        entry yields <tt>degraded_transport_timeout</tt>, reason
+        <tt>channel_unavailable</tt>, <tt>effect_unconfirmed</tt>,
+        <tt>retry_safe=false</tt>, and <tt>not_invoked_refused</tt>.</dd>
+        <dt>Missed bound or discrepant readback</dt>
         <dd>An accepted acknowledgment with admissible out-of-bounds readback
-        is <tt>effect_observed</tt> and <tt>out_of_bounds</tt>, not
-        <tt>effect_confirmed</tt>. A rejected command with admissible in-bounds
-        readback is divergent.
-        Missing, stale, or same-domain readback is unconfirmed. Each result is
-        preserved and settlement is refused.</dd>
+        yields <tt>state_mismatch</tt>, <tt>out_of_bounds</tt>,
+        <tt>effect_observed</tt>, and <tt>not_invoked_refused</tt>, not
+        <tt>effect_confirmed</tt>.</dd>
+        <dt>Conflicting telemetry</dt>
+        <dd>A command-channel result and admissible readback that conflict yield
+        <tt>state_mismatch</tt>, <tt>divergent</tt>,
+        <tt>effect_divergent</tt>, and <tt>not_invoked_refused</tt>.</dd>
+        <dt>Unresolved readback</dt>
+        <dd>Missing, stale, same-domain, or otherwise inadmissible readback
+        yields <tt>state_mismatch</tt>, a null observed-effect relation,
+        <tt>effect_unconfirmed</tt>, and <tt>not_invoked_refused</tt>.</dd>
         <dt>Safety interlock trip</dt>
         <dd>A hardwired interlock trip is recorded as
-        <tt>safety_interlock_tripped</tt>. It is not an in-bounds GRACE effect,
-        and the same admission is not retried.</dd>
+        <tt>safety_interlock_tripped</tt>, <tt>effect_unconfirmed</tt>, and
+        <tt>not_invoked_refused</tt>. It is not an in-bounds GRACE effect, and
+        the same admission is not retried.</dd>
       </dl>
-      <t>Every non-nominal path stops the same admission. There is no blind
-      retry. A subsequent attempt requires a new action, new authorization,
-      and new admission.</t>
+      <t>Every non-nominal path stops the same admission. There is no ambient
+      or blind retry across degraded communications, disagreement, unresolved
+      readback, or an independent interlock trip. A subsequent attempt requires
+      a new action, new authorization, and new admission.</t>
     </section>
 
     <section anchor="conformance"><name>Conformance Cases</name>
@@ -859,7 +887,7 @@ REPO / E-stop / branch protection: hardwired outside every path
     </references>
     <references><name>Informative References</name>
       <reference anchor="OT-COMMAND-AUTHORITY" target="https://datatracker.ietf.org/doc/draft-morrison-ot-command-authority/">
-        <front><title>Operational Technology Command Authority</title>
+        <front><title>Consented and Attributable Agent Authority for Operational-Technology Control Actions</title>
           <author fullname="Blake Morrison"/>
           <author fullname="Christopher Whiteside"/>
           <date year="2026" month="August" day="31"/></front>

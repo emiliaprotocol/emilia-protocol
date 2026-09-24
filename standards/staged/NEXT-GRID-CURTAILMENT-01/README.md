@@ -11,16 +11,17 @@ The candidate applies the architecture agreed by the four collaborators:
    spine.
 2. A proof from `draft-morrison-ot-command-authority` is upstream,
    action-specific command-authority evidence. It binds the agent, principal,
-   asset, control verb, and expiry, but is not sufficient dispatch authority by
-   itself.
+   asset, control verb, and expiry. Neither that proof nor GRACE admission is
+   sufficient dispatch authority alone.
 3. COSA, or another pinned executor adapter, supplies downstream
    command-channel acknowledgment after admission.
 4. A separately authenticated meter supplies observed-effect evidence.
 5. Hardwired trips and interlocks remain outside every protocol path.
 
-It also adapts Justin Kintzele's RDU101 material as a non-normative worked
-example. The example preserves the central limit: the hardware was
-characterized read-only, and no energized actuation test is claimed.
+It also adapts the RDU101 facts and outcome values Justin Kintzele froze on
+24 September as a non-normative worked example. The example preserves the
+central limit: TEST-01 was read-only, TEST-02 remains on hold, and no energized
+actuation test is claimed.
 
 ## Contents
 

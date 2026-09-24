@@ -5,11 +5,11 @@
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
 Intended status: Informational                             J. D Kintzele
-Expires: 27 March 2027                                  J Diesel NY, LLC
+Expires: 28 March 2027                                  J Diesel NY, LLC
                                                              B. Morrison
                                                                 D. Dylan
                                                   Alter Meridian Pty Ltd
-                                                       23 September 2026
+                                                       24 September 2026
 
 
    GRACE: Evidence-Bound Grid Curtailment Admission, Observation, and
@@ -24,10 +24,10 @@ Abstract
    actuation plan, consumes that authority once in a durable admission
    domain, and preserves unresolved state after possible provider entry.
    An upstream action-specific command-authority proof is an input to
-   that admission, not sufficient dispatch authority by itself.  A
-   deployment-pinned executor adapter returns command-channel evidence,
-   and a separately authenticated meter supplies observed-effect
-   evidence.
+   that admission, and neither it nor the admission is sufficient
+   dispatch authority alone.  A deployment-pinned executor adapter
+   returns command-channel evidence, and a separately authenticated
+   meter supplies observed-effect evidence.
 
    Safety trips, protective relays, emergency shutdowns, and hardwired
    interlocks remain outside GRACE and continue to operate when the
@@ -53,7 +53,7 @@ Status of This Memo
 
 
 
-Schrock, et al.           Expires 27 March 2027                 [Page 1]
+Schrock, et al.           Expires 28 March 2027                 [Page 1]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
@@ -63,7 +63,7 @@ Internet-Draft              GRACE Curtailment             September 2026
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 27 March 2027.
+   This Internet-Draft will expire on 28 March 2027.
 
 Copyright Notice
 
@@ -98,18 +98,18 @@ Table of Contents
    14. Single-Use Settlement Admission . . . . . . . . . . . . . . .  15
    15. Proof-of-Curtailment Bundle . . . . . . . . . . . . . . . . .  16
    16. Artifact Signature Profiles . . . . . . . . . . . . . . . . .  16
-   17. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  16
+   17. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  17
    18. Security Considerations . . . . . . . . . . . . . . . . . . .  17
-   19. Non-Normative RDU101 Worked Example . . . . . . . . . . . . .  17
-   20. Conformance Cases . . . . . . . . . . . . . . . . . . . . . .  19
+   19. Non-Normative RDU101 Worked Example . . . . . . . . . . . . .  18
+   20. Conformance Cases . . . . . . . . . . . . . . . . . . . . . .  20
    21. Implementation Status . . . . . . . . . . . . . . . . . . . .  20
-   22. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  20
-   23. Normative References  . . . . . . . . . . . . . . . . . . . .  20
-   24. Informative References  . . . . . . . . . . . . . . . . . . .  22
+   22. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  21
+   23. Normative References  . . . . . . . . . . . . . . . . . . . .  21
+   24. Informative References  . . . . . . . . . . . . . . . . . . .  23
 
 
 
-Schrock, et al.           Expires 27 March 2027                 [Page 2]
+Schrock, et al.           Expires 28 March 2027                 [Page 2]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
@@ -165,7 +165,7 @@ Internet-Draft              GRACE Curtailment             September 2026
 
 
 
-Schrock, et al.           Expires 27 March 2027                 [Page 3]
+Schrock, et al.           Expires 28 March 2027                 [Page 3]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
@@ -221,7 +221,7 @@ Internet-Draft              GRACE Curtailment             September 2026
 
 
 
-Schrock, et al.           Expires 27 March 2027                 [Page 4]
+Schrock, et al.           Expires 28 March 2027                 [Page 4]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
@@ -277,7 +277,7 @@ Internet-Draft              GRACE Curtailment             September 2026
 
 
 
-Schrock, et al.           Expires 27 March 2027                 [Page 5]
+Schrock, et al.           Expires 28 March 2027                 [Page 5]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
@@ -333,7 +333,7 @@ Internet-Draft              GRACE Curtailment             September 2026
 
 
 
-Schrock, et al.           Expires 27 March 2027                 [Page 6]
+Schrock, et al.           Expires 28 March 2027                 [Page 6]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
@@ -389,7 +389,7 @@ Internet-Draft              GRACE Curtailment             September 2026
 
 
 
-Schrock, et al.           Expires 27 March 2027                 [Page 7]
+Schrock, et al.           Expires 28 March 2027                 [Page 7]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
@@ -445,7 +445,7 @@ Internet-Draft              GRACE Curtailment             September 2026
 
 
 
-Schrock, et al.           Expires 27 March 2027                 [Page 8]
+Schrock, et al.           Expires 28 March 2027                 [Page 8]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
@@ -497,20 +497,24 @@ Internet-Draft              GRACE Curtailment             September 2026
    The classification binds the physical operation, not a display label
    or the incidental number of octets carrying it.  A Modbus 4xxxxx or
    0xxxxx label MUST NOT replace the zero-based protocol address.
-   Modbus function 0x06 and function 0x10 with quantity one remain
+   Modbus function 0x06 and function 0x10 with quantity one encode the
 
 
 
-Schrock, et al.           Expires 27 March 2027                 [Page 9]
+Schrock, et al.           Expires 28 March 2027                 [Page 9]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
 
-   different operations when their classified field sets differ.  DNP3
-   requests that vary only in an unbound qualifier encoding may identify
-   the same operation when the pinned binding decodes them to the same
-   complete field set.  The complete DNP3 control octet, operation
-   count, on-time, and off-time are material and MUST be bound.
+   same single-register write through different field sets and therefore
+   yield different native-command digests.  A conduit MUST NOT normalize
+   either form into the other, and authority bound to one form MUST NOT
+   admit the other.  DNP3 requests that vary only in an unbound
+   qualifier encoding MUST identify the same operation and yield the
+   same native-command digest when the pinned binding decodes them to
+   the same complete field set.  The complete DNP3 control octet,
+   operation count, on-time, and off-time are material and MUST be
+   bound.
 
    Two-phase DNP3 SELECT and OPERATE and multi-object requests are
    outside this revision.  A later profile admitting them MUST bind both
@@ -548,19 +552,19 @@ Internet-Draft              GRACE Curtailment             September 2026
    4.  Verify the human authorization over the exact action and plan
        digests against the pinned profile.
 
-   5.  Verify every required upstream action-specific command-authority
-       proof, including grant coverage, expiry, and freshness, under
-       relying-party policy.
 
 
 
 
 
-
-Schrock, et al.           Expires 27 March 2027                [Page 10]
+Schrock, et al.           Expires 28 March 2027                [Page 10]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
+
+   5.  Verify every required upstream action-specific command-authority
+       proof, including grant coverage, expiry, and freshness, under
+       relying-party policy.
 
    6.  Require the pinned first conduit, executor adapter, meter, Action
        State signer, admission store, settlement store, and settlement
@@ -607,17 +611,16 @@ Internet-Draft              GRACE Curtailment             September 2026
    command digest, security-context digest, human-authorization digest,
    execution idempotency key, and operator.
 
-   For every device attempt, the implementation MUST preserve the
-   operation, admission, plan-step, device, conduit, and attempt
-   identifiers; native-command, exact native-request, and security-
 
 
-
-Schrock, et al.           Expires 27 March 2027                [Page 11]
+Schrock, et al.           Expires 28 March 2027                [Page 11]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
 
+   For every device attempt, the implementation MUST preserve the
+   operation, admission, plan-step, device, conduit, and attempt
+   identifiers; native-command, exact native-request, and security-
    context digests; admission and provider-entry times; command-channel
    acknowledgment state; provider outcome and evidence digest; and, when
    available, the observed-effect relation, evidence digest, and
@@ -666,10 +669,7 @@ Internet-Draft              GRACE Curtailment             September 2026
 
 
 
-
-
-
-Schrock, et al.           Expires 27 March 2027                [Page 12]
+Schrock, et al.           Expires 28 March 2027                [Page 12]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
@@ -725,7 +725,7 @@ Internet-Draft              GRACE Curtailment             September 2026
 
 
 
-Schrock, et al.           Expires 27 March 2027                [Page 13]
+Schrock, et al.           Expires 28 March 2027                [Page 13]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
@@ -752,6 +752,10 @@ Internet-Draft              GRACE Curtailment             September 2026
    interlock action; and any requested operator action.  Unknown values
    MUST be shown as unknown rather than as zero or blank.
 
+   Any summary label shown to an operator MUST be derived from the
+   underlying facts at display time and MUST NOT replace those facts in
+   storage.
+
    Settlement admission requires a reconciled, committed result with the
    profile-selected in-bounds relation.  No other state may reach the
    settlement adapter.
@@ -760,31 +764,33 @@ Internet-Draft              GRACE Curtailment             September 2026
 
    Trips, protective relays, emergency shutdowns, branch protection, and
    hardwired interlocks are outside the GRACE authority and admission
-   path.  A GRACE implementation MUST NOT delay, suppress, consume, or
-   condition authority required by an independent safety function.  The
-   safety function MUST remain capable of reaching its safe state while
-   the Gate, network, identity service, evidence service, or executor
-   adapter is unavailable.
+   path.  The upstream command-authority proof [OT-COMMAND-AUTHORITY]
+   does not alter that safety boundary.  A GRACE implementation MUST NOT
+   delay, suppress, consume, or condition authority required by an
+   independent safety function.  The safety function MUST remain capable
+   of reaching its safe state while the Gate, network, identity service,
+   evidence service, or executor adapter is unavailable.
 
    A safety action may be observed and recorded after the fact.  Such a
    record MUST NOT claim that GRACE admitted the safety action or count
    it as admitted curtailment.  A safety trip during an unresolved
    dispatch also MUST NOT authorize replay of the original admission.
 
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 14]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
    GRACE cannot establish that a protective path is independent.  A
    deployment claiming conformance MUST declare each protective path and
    demonstrate its operation with the Gate, admission store, identity
    services, and network unavailable.  Routing a protective function
    through the Gate merely to record it violates this section.
-
-
-
-
-
-Schrock, et al.           Expires 27 March 2027                [Page 14]
-
-Internet-Draft              GRACE Curtailment             September 2026
-
 
 13.  Action State Signed Statement
 
@@ -825,22 +831,21 @@ Internet-Draft              GRACE Curtailment             September 2026
    and MUST NOT issue another settlement attempt under the same
    entitlement.
 
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 15]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
    This is at-most-one admission to the configured settlement effect in
    one authoritative state domain.  It is not exactly-once physical
    payment, global double-spend prevention across independent
    authorities, tariff eligibility, or evidence that funds moved.
-
-
-
-
-
-
-
-
-Schrock, et al.           Expires 27 March 2027                [Page 15]
-
-Internet-Draft              GRACE Curtailment             September 2026
-
 
 15.  Proof-of-Curtailment Bundle
 
@@ -878,6 +883,21 @@ Internet-Draft              GRACE Curtailment             September 2026
    deployed, or operationally independent.  A deployment claiming the
    hybrid profile MUST identify and protect both actual signing keys.
 
+
+
+
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 16]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
 17.  Privacy Considerations
 
    Curtailment records can reveal facility identity, capacity, operating
@@ -887,16 +907,6 @@ Internet-Draft              GRACE Curtailment             September 2026
    them, use digests when independent recomputation is not required, and
    apply retention and access policies appropriate to critical-
    infrastructure data.
-
-
-
-
-
-
-Schrock, et al.           Expires 27 March 2027                [Page 16]
-
-Internet-Draft              GRACE Curtailment             September 2026
-
 
    Selective disclosure or encryption cannot repair an overbroad signed
    source object.  Deployments SHOULD separate public verification
@@ -930,29 +940,42 @@ Internet-Draft              GRACE Curtailment             September 2026
    authority's upstream population is complete.  Deployment claims MUST
    state those acceptance roots.
 
+
+
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 17]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
 19.  Non-Normative RDU101 Worked Example
 
    This section is an implementation sketch supplied for review.  It is
    not a protocol requirement and does not report an energized actuation
-   test.  The cited hardware was characterized read-only.  No outlet was
-   de-energized during this work.
+   test.  The cited hardware characterization is read-only: TEST-01 is
+   complete, TEST-02 remains strictly on hold, and no outlet was de-
+   energized during this work.
 
    The example device is a Vertiv Liebert GXT5-3000LVRT2UXLN, rated 2700
    W, 3000 VA, and 120 V AC, with NEMA 5-20R programmable receptacles.
    A Liebert RDU101 management card running firmware 1.9.3.0 exposes
-   LIEBERT_GP_PWR.MIB over SNMPv3 AuthPriv.  The proposed action is to
-   de-energize programmable receptacle group 2 through the outlet-group
-   power-control point represented by object 4365 and group index 2.
-   The device exposes four outlet-group control rows.  The outlet-group
+   LIEBERT_GP_PWR.MIB over SNMPv3 AuthPriv using SHA-1 authentication
+   and AES-128 privacy.  The proposed action is to de-energize
+   programmable receptacle group 2 through point 4365,
+   lgpPwrOutputReceptacleControlEntry, at OID
+   1.3.6.1.4.1.476.1.42.3.9.20.1.20.1.2.1.4365.2.  Four rows, indices 1
+   through 4, were present during characterization.  The outlet-group
    identifier is a different object and is not the command target.
 
-
-
-
-Schrock, et al.           Expires 27 March 2027                [Page 17]
-
-Internet-Draft              GRACE Curtailment             September 2026
-
+   The worked-example topology consumes the action-specific proof
+   defined by [OT-COMMAND-AUTHORITY] before EMILIA admission and keeps
+   independent observation and safety outside the command path.
 
    Morrison action-specific proof + proposed action
                           |
@@ -979,50 +1002,69 @@ Internet-Draft              GRACE Curtailment             September 2026
    action and RDU101 projection, and admits and consumes that exact
    request once before provider entry.  Both bindings are per-action and
    neither is sufficient alone.  The COSA adapter then issues the native
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 18]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
    SNMPv3 operation and returns the RDU101 response as downstream
    command-channel evidence.  An SNMP SetResponse means that the
    management card processed the SET.  It does not establish the
    electrical state of the receptacle or the attached load.
 
-   The independent readback in this example comes through a separate
-   Modbus channel and control domain from the RDU101.  A second object
-   read through the RDU101 remains same-domain command-channel evidence
-   and is not independent readback.  The hardwired REPO input, emergency
-   stop, and branch overcurrent device remain outside Morrison, EMILIA,
-   and COSA and continue to operate without them.
+   The independent readback in this example comes from an instrumented
+   Modbus power meter through a separate channel and control domain from
+   the RDU101.  A second object read through the RDU101 remains same-
+   domain command-channel evidence and is not independent readback.  The
+   hardwired REPO input, emergency stop, and branch overcurrent device
+   remain outside the upstream command-authority proof
+   [OT-COMMAND-AUTHORITY], EMILIA, and COSA and continue to operate
+   without them.
 
    Nominal  An authenticated accepted acknowledgment plus independent
-      readback within the approved bound yields effect_confirmed and
-      permits the configured invoked_confirmed settlement result.
+      readback within the approved bound yields in_bounds,
+      effect_confirmed, and invoked_confirmed in the EP-GRACE-PROOF-OF-
+      CURTAILMENT-v1 bundle.
 
-   No authentic acknowledgment  A transport timeout or unavailable
-      channel after possible provider entry yields effect_unconfirmed, a
-      null observed-effect relation, retry_safe=false, and no settlement
-      invocation.
+   Degraded communications  A transport timeout or unavailable channel
+      after possible provider entry yields degraded_transport_timeout,
+      reason channel_unavailable, effect_unconfirmed, retry_safe=false,
+      and not_invoked_refused.
 
-   Acknowledgment and readback disagree  An accepted acknowledgment with
+   Missed bound or discrepant readback  An accepted acknowledgment with
+      admissible out-of-bounds readback yields state_mismatch,
+      out_of_bounds, effect_observed, and not_invoked_refused, not
+      effect_confirmed.
+
+   Conflicting telemetry  A command-channel result and admissible
+      readback that conflict yield state_mismatch, divergent,
+      effect_divergent, and not_invoked_refused.
+
+   Unresolved readback  Missing, stale, same-domain, or otherwise
+      inadmissible readback yields state_mismatch, a null observed-
+      effect relation, effect_unconfirmed, and not_invoked_refused.
+
+   Safety interlock trip  A hardwired interlock trip is recorded as
+      safety_interlock_tripped, effect_unconfirmed, and
+      not_invoked_refused.  It is not an in-bounds GRACE effect, and the
+      same admission is not retried.
+
+   Every non-nominal path stops the same admission.  There is no ambient
+   or blind retry across degraded communications, disagreement,
+   unresolved readback, or an independent interlock trip.  A subsequent
+   attempt requires a new action, new authorization, and new admission.
 
 
 
 
-Schrock, et al.           Expires 27 March 2027                [Page 18]
+
+Schrock, et al.           Expires 28 March 2027                [Page 19]
 
 Internet-Draft              GRACE Curtailment             September 2026
 
-
-      admissible out-of-bounds readback is effect_observed and
-      out_of_bounds, not effect_confirmed.  A rejected command with
-      admissible in-bounds readback is divergent.  Missing, stale, or
-      same-domain readback is unconfirmed.  Each result is preserved and
-      settlement is refused.
-
-   Safety interlock trip  A hardwired interlock trip is recorded as
-      safety_interlock_tripped.  It is not an in-bounds GRACE effect,
-      and the same admission is not retried.
-
-   Every non-nominal path stops the same admission.  There is no blind
-   retry.  A subsequent attempt requires a new action, new
-   authorization, and new admission.
 
 20.  Conformance Cases
 
@@ -1058,14 +1100,6 @@ Internet-Draft              GRACE Curtailment             September 2026
    11.  a new executor instance inheriting an indeterminate attempt
         without second entry or fresh authority;
 
-
-
-
-Schrock, et al.           Expires 27 March 2027                [Page 19]
-
-Internet-Draft              GRACE Curtailment             September 2026
-
-
    12.  same-domain readback recorded as inadmissible and distinguished
         from admissible readback that disagrees; and
 
@@ -1080,6 +1114,13 @@ Internet-Draft              GRACE Curtailment             September 2026
 
    This section records implementation evidence and may be removed
    before publication as an RFC.
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 20]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
 
    The public EMILIA repository [GRACE-IMPLEMENTATION] contains a
    TypeScript reference circuit for exact action construction, two
@@ -1114,14 +1155,6 @@ Internet-Draft              GRACE Curtailment             September 2026
    [ACTION-STATE]
               Mih, S. W., "An Agent Action Capsule Profile for SCITT",
               Work in Progress, Internet-Draft, draft-mih-scitt-agent-
-
-
-
-Schrock, et al.           Expires 27 March 2027                [Page 20]
-
-Internet-Draft              GRACE Curtailment             September 2026
-
-
               action-capsule-02, July 2026,
               <https://datatracker.ietf.org/doc/draft-mih-scitt-agent-
               action-capsule/>.
@@ -1135,6 +1168,15 @@ Internet-Draft              GRACE Curtailment             September 2026
               boundary-04, August 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-action-
               evidence-boundary/>.
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 21]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
 
    [EP-CAID]  Schrock, I., "Canonical Action Identifier: Stable Identity
               for Material Agent Actions", Work in Progress, Internet-
@@ -1167,17 +1209,6 @@ Internet-Draft              GRACE Curtailment             September 2026
               Lattice-Based Digital Signature Standard", FIPS 204,
               August 2024, <https://doi.org/10.6028/NIST.FIPS.204>.
 
-
-
-
-
-
-
-Schrock, et al.           Expires 27 March 2027                [Page 21]
-
-Internet-Draft              GRACE Curtailment             September 2026
-
-
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
               DOI 10.17487/RFC2119, March 1997,
@@ -1191,6 +1222,17 @@ Internet-Draft              GRACE Curtailment             September 2026
               Interchange Format", STD 90, RFC 8259,
               DOI 10.17487/RFC8259, December 2017,
               <https://www.rfc-editor.org/info/rfc8259>.
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 22]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
 
    [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
               Canonicalization Scheme (JCS)", RFC 8785,
@@ -1220,19 +1262,12 @@ Internet-Draft              GRACE Curtailment             September 2026
               grid.v1.json>.
 
    [OT-COMMAND-AUTHORITY]
-              Morrison, B. and C. Whiteside, "Operational Technology
-              Command Authority", Work in Progress, Internet-Draft,
-              draft-morrison-ot-command-authority-02, 31 August 2026,
+              Morrison, B. and C. Whiteside, "Consented and Attributable
+              Agent Authority for Operational-Technology Control
+              Actions", Work in Progress, Internet-Draft, draft-
+              morrison-ot-command-authority-02, 31 August 2026,
               <https://datatracker.ietf.org/doc/draft-morrison-ot-
               command-authority/>.
-
-
-
-
-Schrock, et al.           Expires 27 March 2027                [Page 22]
-
-Internet-Draft              GRACE Curtailment             September 2026
-
 
 Authors' Addresses
 
@@ -1246,6 +1281,13 @@ Authors' Addresses
    J Diesel NY, LLC
    United States of America
    Email: jkintzele@jdieselny.com
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 23]
+
+Internet-Draft              GRACE Curtailment             September 2026
 
 
    Blake Morrison
@@ -1285,4 +1327,18 @@ Authors' Addresses
 
 
 
-Schrock, et al.           Expires 27 March 2027                [Page 23]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 24]

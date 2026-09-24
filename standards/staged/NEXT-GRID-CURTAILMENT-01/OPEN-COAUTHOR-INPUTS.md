@@ -2,18 +2,21 @@
 
 The candidate applies the architecture agreed in the shared thread and
 transcribes Blake Morrison's marked-up Sections 7 through 10 and Drew Dylan's
-Section 11. Their supplied author blocks are now in the RFCXML. These are the
-remaining reviews before the four coauthors can freeze an upload candidate.
+Section 11. Their supplied author blocks are in the RFCXML. Blake's final five
+corrections and Justin Kintzele's frozen RDU101 facts and dispositions are now
+incorporated. The exact updated candidate still requires final coauthor review
+before it becomes an upload candidate.
 
 ## Blake
 
-- Confirm that the RFCXML accurately transcribes the supplied total field
+- Confirmed the RFCXML accurately transcribed the supplied total field
   classification, conduit-context, atomic-record, ownership-fence,
   correlation-field, no-response, and safety requirements.
-- Confirm that the four generic Modbus/DNP3 results are sufficiently precise
-  while the per-protocol tables remain in the separate transport-binding work.
-- Confirm whether the -01 reference should remain on the public
-  `draft-morrison-ot-command-authority-02` until `-03` is publicly posted.
+- Requested and supplied the final Modbus 0x06/0x10, DNP3 qualifier,
+  insufficient-authority, control-room label, and citation corrections now in
+  this candidate.
+- Directed the candidate to keep the public
+  `draft-morrison-ot-command-authority-02` reference until `-03` is posted.
 
 ## Drew
 
@@ -26,12 +29,13 @@ remaining reviews before the four coauthors can freeze an upload candidate.
 
 ## Justin
 
-- Check the adapted RDU101 facts, including device model, firmware, object 4365,
-  group 2, four control rows, SNMPv3 AuthPriv, and the distinction between an
-  RDU101 SetResponse and independent Modbus readback.
-- Confirm the nominal, timeout, disagreement, missing-readback, and interlock
-  outcomes reflect the supplied example.
-- Confirm the no-energized-test wording remains exact enough for public review.
+- Froze the target device, RDU101 firmware, SNMPv3 AuthPriv parameters, point
+  4365 OID, group 2, four characterized rows, and separate Modbus-meter
+  readback facts used in the example.
+- Froze the nominal, degraded-communications, missed-bound, conflicting-
+  telemetry, unresolved-readback, and independent-interlock dispositions.
+- Confirmed TEST-01 was read-only, TEST-02 remains strictly on hold, and no
+  energized actuation is claimed.
 
 ## All four
 
