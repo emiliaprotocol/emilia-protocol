@@ -152,6 +152,9 @@ function privateKeyFrom(value) {
   throw new TypeError('outcome_private_key_required');
 }
 
+/**
+ * @param {{ privateKey?: any, publicKey?: any, keyId?: string }} [options]
+ */
 export function createOutcomeSigner({ privateKey, publicKey, keyId = 'ep:key:muse-gate-outcome' } = {}) {
   if (!privateKey && !publicKey) {
     const generated = generateKeyPairSync('ed25519');
@@ -249,6 +252,13 @@ function structuredToolError(reason, extra = {}) {
  * Create the credential-owning exact-action boundary. The supplied provider is
  * called only from inside gateMcpTool/Gate.run after reservation and provider
  * entry. Receipt carriers are never passed to the provider.
+ *
+ * @param {{
+ *   gate?: any,
+ *   provider?: (payment: any, context: any) => any,
+ *   outcomeSigner?: any,
+ *   now?: () => number,
+ * }} [options]
  */
 export function createPaymentReleaseTool({ gate, provider, outcomeSigner, now = Date.now } = {}) {
   if (!gate || typeof gate.run !== 'function') throw new TypeError('gate_required');
@@ -394,7 +404,15 @@ export function createPaymentReleaseTool({ gate, provider, outcomeSigner, now = 
   return tool;
 }
 
-/** Explicit local fixture API. It never represents a production key store. */
+/**
+ * Explicit local fixture API. It never represents a production key store.
+ *
+ * @param {{
+ *   input?: any,
+ *   provider?: (payment: any, context: any) => any,
+ *   now?: () => number,
+ * }} [options]
+ */
 export function createDemoPaymentReleaseFixture({
   input,
   provider = async (payment) => ({ provider_reference: `demo:${payment.operation}`, accepted: true }),

@@ -48,12 +48,17 @@ function mcpError(reason) {
   };
 }
 
+/**
+ * @param {any} request
+ * @param {{ invoke?: (input: any) => any }} [options]
+ */
 export async function handleToolRequest(request, { invoke } = {}) {
   if (request?.params?.name !== 'release_payment') return mcpError('unknown_tool');
   if (typeof invoke !== 'function') return mcpError('payment_gate_unavailable');
   return invoke(request.params.arguments ?? {});
 }
 
+/** @param {{ invoke: (input: any) => any }} options */
 export function createServer({ invoke }) {
   const server = new Server(
     { name: 'emilia-payment-gate', version: ADAPTER_VERSION },
@@ -91,7 +96,11 @@ export async function loadConfig(path) {
   return config;
 }
 
-/** Build the exact Gate/provider boundary used by the stdio server. */
+/**
+ * Build the exact Gate/provider boundary used by the stdio server.
+ * @param {any} config
+ * @param {{ providerMode?: string }} [options]
+ */
 export async function createServerRuntime(config, {
   providerMode = process.env.EMILIA_MUSE_PROVIDER_MODE ?? 'success',
 } = {}) {

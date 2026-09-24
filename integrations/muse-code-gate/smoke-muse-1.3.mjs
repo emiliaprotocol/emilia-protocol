@@ -117,6 +117,7 @@ async function makeMuseHome(root, settings) {
   };
 }
 
+/** @param {{ command: string, args: string[], env?: Record<string, string> }} options */
 function requiredServerSettings({ command, args, env }) {
   return {
     schema_version: 1,
