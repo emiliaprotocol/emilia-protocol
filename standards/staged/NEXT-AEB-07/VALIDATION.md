@@ -525,3 +525,13 @@ revised source:
 - `xml2rfc 3.34.0 --text` and `--html`: PASS; renders replaced in `RENDERS/`.
 - `idnits 3.1.0 -m submission` on the TXT and on the XML: PASS, no nits.
 - `SHA256SUMS.txt` regenerated for the XML and both renders.
+
+## Filing pin (2026-09-25)
+
+`EP-NATIVE-HANDOFF` and `EP-LIFECYCLE-CORPUS` now pin
+`b1b268e7d0538a9e22e379ddb06f55149d352c3b`, the merge of PR #790 on main,
+replacing the branch commit `82490c9ff50a2d2a2d24f2c47024932fbae8490a`. Both
+pinned URLs return HTTP 200. The front-page date is 2026-09-25. Re-checked on
+the revised source: `xmllint --noout` PASS; `xml2rfc 3.34.0 --text` and
+`--html` PASS, renders replaced; `idnits 3.1.0 -m submission` on the TXT and
+the XML PASS, no nits; `SHA256SUMS.txt` regenerated.

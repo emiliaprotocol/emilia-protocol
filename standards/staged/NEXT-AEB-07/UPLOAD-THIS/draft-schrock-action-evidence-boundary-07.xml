@@ -2264,24 +2264,24 @@
             <date year="2026" month="August" day="15"/>
           </front>
         </reference>
-        <reference anchor="EP-NATIVE-HANDOFF" target="https://github.com/emiliaprotocol/emilia-protocol/blob/82490c9ff50a2d2a2d24f2c47024932fbae8490a/docs/protocol/aeb-native-authorization-handoff-v1.md">
+        <reference anchor="EP-NATIVE-HANDOFF" target="https://github.com/emiliaprotocol/emilia-protocol/blob/b1b268e7d0538a9e22e379ddb06f55149d352c3b/docs/protocol/aeb-native-authorization-handoff-v1.md">
           <front>
             <title>AEB-NATIVE-AUTHORIZATION-HANDOFF-v1 Reference Encoding and Native Consequence Boundary</title>
             <author><organization>EMILIA Protocol</organization></author>
             <date year="2026" month="September" day="25"/>
           </front>
           <annotation>Repository commit
-          82490c9ff50a2d2a2d24f2c47024932fbae8490a. Same-team reference code;
+          b1b268e7d0538a9e22e379ddb06f55149d352c3b. Same-team reference code;
           informative only.</annotation>
         </reference>
-        <reference anchor="EP-LIFECYCLE-CORPUS" target="https://github.com/emiliaprotocol/emilia-protocol/tree/82490c9ff50a2d2a2d24f2c47024932fbae8490a/conformance/composition/consequence-admission-lifecycle-v0.1">
+        <reference anchor="EP-LIFECYCLE-CORPUS" target="https://github.com/emiliaprotocol/emilia-protocol/tree/b1b268e7d0538a9e22e379ddb06f55149d352c3b/conformance/composition/consequence-admission-lifecycle-v0.1">
           <front>
             <title>Consequence-Admission Lifecycle Composition Corpus v0.1</title>
             <author><organization>EMILIA Protocol</organization></author>
             <date year="2026" month="September" day="25"/>
           </front>
           <annotation>Repository commit
-          82490c9ff50a2d2a2d24f2c47024932fbae8490a. Synthetic same-team
+          b1b268e7d0538a9e22e379ddb06f55149d352c3b. Synthetic same-team
           corpus.</annotation>
         </reference>
         <reference anchor="WIMSE-HTTP" target="https://datatracker.ietf.org/doc/draft-ietf-wimse-http-signature/">
