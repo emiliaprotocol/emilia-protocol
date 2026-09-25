@@ -166,13 +166,17 @@ and unsigned gateway headers are not trusted.
 `InMemoryAebConsumptionStore` is test-only. Fleet execution uses
 `authorizeAebExecutionDurable()` and `reconcileAebExecutionDurable()` with the
 durable, ownership-fenced store contract implemented by
-`@emilia-protocol/gate`. A reserve call that throws, or answers anything other
-than `true`, `'RESERVED'`, `false`, `'CONSUMPTION_CONFLICT'`, or
-`'NATIVE_REPLAY_CONFLICT'`, is never reported as a clean refusal while the
-row may be reserved: `authorizeAebExecutionDurable()` reads the row through
-the store's optional `state()` and returns `RECONCILIATION_REQUIRED` with
-`consumption_reservation_unconfirmed` unless the read shows it was not
-reserved by this call.
+`@emilia-protocol/gate`.
+A reserve call that throws, or answers anything other than `true`,
+`'RESERVED'`, `false`, `'CONSUMPTION_CONFLICT'`, or
+`'NATIVE_REPLAY_CONFLICT'`, may have reserved the row, and
+`authorizeAebExecutionDurable()` never reports it as a clean refusal on
+the strength of a read that shows the row `AVAILABLE`, because a write
+still in flight can land after that read. It returns
+`RECONCILIATION_REQUIRED` with `consumption_reservation_unconfirmed`,
+unless the store's optional `state()` shows the key `CONSUMED` or
+`RELEASED_NOT_ENTERED`, permanent states that this call's reserve cannot
+have written or changed, which is `REFUSED` with `consumption_conflict`.
 
 #### Crossing Lab adapter workbench
 

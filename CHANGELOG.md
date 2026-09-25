@@ -36,10 +36,10 @@ Historical entries below retain the labels used when they were written.
   digest. Fresh authority with a fresh operation ID no longer reaches the
   provider a second time while the first attempt is uncertain, and an
   executed action stays closed. Only a FAILED result the boundary accepts
-  (verified for the attempt by the operator's provider-outcome verifier
-  where one is configured, and always on the native boundary) or a
-  pre-entry stop proven by the explicit not-entered marker in the boundary's
-  own durable attempt record reopens it.
+  (verified for the attempt by the operator's provider-outcome verifier,
+  which both boundaries now require) or a pre-entry stop proven by the
+  explicit not-entered marker in the boundary's own durable attempt record
+  reopens it.
 - An attempt that stopped before provider entry can be released through a
   separate pre-entry recovery mode of an authorized `reconcile()`, but only
   when recovery's own atomic move of the attempt record from `RESERVED` to
@@ -49,19 +49,25 @@ Historical entries below retain the labels used when they were written.
   That move is the linearization point: the original run can no longer call
   the provider. A recovery that loses the move to a live run returns
   `INDETERMINATE` (`recovery_lost_to_live_attempt`), releases nothing, and
-  never treats its pre-entry lookup as a terminal outcome. Reservations are
+  never treats its pre-entry lookup as a terminal outcome. A run that has
+  sent a write that could record its attempt as not entered, even one
+  whose acknowledgement was lost, never calls the provider afterwards;
+  when its start cannot be confirmed it holds everything as
+  `INDETERMINATE` without sending such a write. Reservations are
   released or committed only after the attempt's terminal or not-entered
   transition is confirmed, a store answer counts as success only when it is
   exactly `true` or a durable read confirms the write, and a lost
   acknowledgement never releases anything on its own. The native boundary
   writes the attempt record before any reservation and keys every
-  reservation by attempt ID, so a failed reserve can no longer delete another
-  attempt's reservation. The composed boundary closes its
+  reservation by its `boundary_id` and attempt ID, so a failed reserve can
+  no longer delete another attempt's reservation. The composed boundary closes its
   evaluation reservation, which successive attempts can share, only for the
   attempt that still owns it. One recovery credential, bound to exactly one
-  attempt (its boundary kind and attempt ID) and never to a shared operation
-  key, covers all of that attempt's reservations, and a claim for a row
-  outside that attempt is refused.
+  attempt (its boundary kind, its boundary's required `boundary_id`, and its
+  attempt ID) and never to a shared operation key, covers all of that
+  attempt's reservations, and a claim for a row outside that attempt is
+  refused, so two boundaries that share one store cannot claim each other's
+  rows even with identical attempt IDs.
 - The fence compares the canonical action digest and the configured provider
   coordinates exactly. Gate implements no material-field equivalence; callers
   must canonicalize amounts, case, whitespace, and Unicode normalization.
@@ -80,9 +86,11 @@ Historical entries below retain the labels used when they were written.
   The signed `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1` wire is unchanged: handoffs
   issued by verify 4.1.0 verify here, and handoffs issued here verify under
   4.1.0.
-- Release order: publish `@emilia-protocol/verify` 5.0.0 (a major release:
-  it refuses some lifecycle indexes that 4.1.0 verified and changes some
-  results) first, then bump Gate's exact `@emilia-protocol/verify` dependency
+- Release order: publish `@emilia-protocol/verify` 5.0.0 (a major release
+  by choice: it refuses some lifecycle indexes that 4.1.0 verified and
+  changes some results, although `docs/api/COMPATIBILITY.md`, which never
+  treats a security patch as breaking, would permit a minor version)
+  first, then bump Gate's exact `@emilia-protocol/verify` dependency
   from `4.1.0` to `5.0.0`, then publish `@emilia-protocol/gate` 0.27.0
   (breaking under 0.x). Gate imports a pin-validation function
   and replay-identity fields that verify 4.1.0 does not provide, so a Gate
@@ -92,17 +100,27 @@ Historical entries below retain the labels used when they were written.
   consumption store. A 0.26.0 boundary has no same-action fence and does not
   reserve the label-free identity key, so in a mixed fleet an action in
   flight on either version can execute again through a fresh permit on the
-  other. Stop every 0.26.0 boundary and drain or reconcile its in-flight
-  attempts before any upgraded instance serves the store; a rolling upgrade
-  across the two versions is unsafe.
+  other; a rolling upgrade across the two versions is unsafe. First stop
+  every 0.26.0 boundary and drain or reconcile its in-flight attempts on
+  0.26.0 with the provider-outcome verifier it already uses (0.26.0 counts
+  only a verifier answer of exactly `true`); only then deploy the new
+  verifier, the upgraded attempt stores, and the new Gate together, and
+  never deploy the new verifier while 0.26.0 serves. The executed-action
+  fence is not retroactive: an action that 0.26.0 executed has no fence
+  row, so the new Gate admits fresh authority for it.
 - Recovery claims on the PostgreSQL store require a scope that names the
-  boundary kind and the attempt, and a claim without one is refused before
-  the authorizer runs. A provider-outcome verifier's answer counts only when
-  it restates the purpose, attempt, and provider idempotency key it checked,
-  so a verifier that answers `true` without reading the purpose can no
-  longer close a live attempt with a pre-entry lookup (one that restates
-  every context it is given still can). The composed boundary accepts the same verifier
-  and refuses terminal reconciliation without it.
+  boundary kind, the boundary ID, and the attempt, and a claim without one
+  is refused before the authorizer runs. A provider-outcome verifier's
+  answer counts only when it restates the purpose, attempt, and provider
+  idempotency key it checked. Both boundaries require that verifier and
+  close an entered attempt only on its affirmation, including the result
+  of the run's own provider call, so an adapter's unverified FAILED never
+  reopens the action. Evidence presented to reconciliation carries its
+  kind, and a pre-entry lookup is refused in terminal mode before the
+  verifier runs, so a correctly labelled "not found" lookup can no longer
+  close a live attempt. A mislabelled lookup, together with a verifier that
+  affirms a purpose it did not evaluate, still can; Gate cannot detect
+  that.
 - The PostgreSQL AEB consumption store gains the durable `state()` read the
   native boundary requires, and native reconciliation after a restart claims
   its reservations through the store's recovery path. The new function is in

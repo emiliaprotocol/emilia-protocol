@@ -133,37 +133,49 @@ native path and `createConsequenceBoundary()` on the composed CAID/AEC path.
   not-entered marker in its own durable attempt record (below). `EXECUTED`
   keeps the fence closed for that action instance, and a later attempt is
   refused with `native_action_already_executed`.
-- Terminal evidence is verified for the attempt and the purpose of the
-  check. The operator's provider-outcome verifier, `provider_outcomes.verify`,
-  receives the attempt binding, the outcome, the attempt's provider
+- Terminal evidence is verified for the attempt, the purpose of the check,
+  and the kind of evidence presented. Both boundaries require the
+  operator's provider-outcome verifier, `provider_outcomes.verify`, and
+  refuse construction without it (`provider_outcome_verifier_required`).
+  It receives the attempt binding, the outcome, the attempt's provider
   idempotency key, and a `purpose`: `provider_outcome` for a terminal
   result, `pre_entry_lookup` for the lookup presented to pre-entry recovery.
   The only answer Gate accepts is `{ verified: true, purpose, attempt_id,
   provider_idempotency_key }` restating what it was asked. Any other
   answer, including a bare `true`, means "not verified" (`INDETERMINATE`
-  with `provider_outcome_authentication_failed`), and an entered attempt
-  closes only on an affirmation of `provider_outcome` for that attempt, so a
-  verifier that answers `true` without reading `purpose` cannot turn a
-  pre-entry "not found" lookup into a terminal result. A "not found" lookup is valid only as
-  `pre_entry_lookup` in pre-entry mode. The native boundary requires the
-  verifier. On the composed boundary it is an option: with it, `run()` also
-  verifies its own provider result; without it, terminal reconciliation is
-  refused with `provider_outcome_verifier_required` and changes nothing, and
-  `run()` accepts its provider adapter's result after a form check, so that
-  adapter must authenticate what it returns. Gate cannot tell whether a
-  verifier evaluated the evidence: one that affirms every context it is
-  given still accepts a "not found" lookup as a terminal outcome.
+  with `provider_outcome_authentication_failed`). An entered attempt closes
+  as `EXECUTED` or `FAILED` only on an affirmation of `provider_outcome`
+  for that attempt and its provider idempotency key, on both boundaries and
+  for the result of the run's own provider call as well as for
+  reconciliation, so a provider adapter's unverified `FAILED` never releases
+  the fence.
+- Evidence presented to `reconcile()` carries its kind in Gate's own input:
+  an `EXECUTED` or `FAILED` outcome carries `evidence_kind`
+  (`provider_outcome` or `pre_entry_lookup`) and is refused without it
+  (`evidence_kind_required`). Terminal reconciliation refuses evidence of
+  kind `pre_entry_lookup`, and pre-entry recovery refuses evidence of kind
+  `provider_outcome`, before either calls the verifier
+  (`evidence_kind_mismatch`), so a "not found"
+  lookup presented with its own kind never becomes a terminal `FAILED`, even
+  under a verifier that only restates its context. Gate cannot detect
+  mislabelled evidence or a verifier that affirms a purpose it did not
+  evaluate: a lookup presented as `provider_outcome` to a verifier that
+  restates the context, or always answers `provider_outcome`, still becomes
+  a terminal `FAILED` while the provider call may be in flight. The
+  operator must label evidence by what it is, and the verifier must check
+  the evidence against the purpose it is asked about.
 - The fence lives in the durable consumption store and survives a restart. It
   is not in-process memory.
 - A call releases or closes only reservations that it created. The native
   boundary writes three reservations per attempt, in refusal order: the
   operation identity (`consumption_conflict`), the native replay key
   (`native_replay_conflict`), and the action fence (`native_action_in_flight`
-  or `native_action_already_executed`). Each row key includes the attempt ID
+  or `native_action_already_executed`). Each row key includes the
+  boundary's `boundary_id` and the attempt ID
   (`nativeConsequenceBoundaryAttemptReservationKeys()`), which no other
   attempt can produce, so a failed write for one attempt cannot release
   another attempt's reservation even when both carry the same caller-chosen
-  operation ID. The composed boundary keys its fence holder by attempt ID
+  operation ID. The composed boundary keys its fence holder the same way
   (`consequenceBoundaryActionFenceHolderKey()`). Its evaluation reservation
   is keyed by the evaluation, and successive attempts can present the same
   evaluation, so the boundary commits that reservation for an attempt only
@@ -205,10 +217,9 @@ Both boundaries recover such an attempt under the following contract.
    `recovery_authorization` that the attempt store's `recover()` accepts for
    that exact attempt, and the provider's answer: a "not found" lookup result
    as `FAILED`, or `INDETERMINATE` when the provider offers no lookup. A
-   lookup result must be affirmed by `provider_outcomes.verify` as
-   `pre_entry_lookup` (on the composed boundary, when the verifier is
-   configured). The two modes never fall through into each
-   other. Terminal reconciliation (`mode: 'terminal'`, the default) returns
+   lookup result carries `evidence_kind: 'pre_entry_lookup'` and must be
+   affirmed by `provider_outcomes.verify` as `pre_entry_lookup`. The two
+   modes never fall through into each other. Terminal reconciliation (`mode: 'terminal'`, the default) returns
    `INDETERMINATE` with `pre_entry_recovery_required` for a record that is
    still `RESERVED` or carries the not-entered marker, and changes
    nothing. A claim of `EXECUTED` in pre-entry mode contradicts
@@ -270,13 +281,37 @@ Both boundaries recover such an attempt under the following contract.
    attempt: a pre-entry recovery linearized first, and the run releases what
    it holds and returns `attempt_released_by_recovery`. Anything else,
    including a `RELEASED` record without the marker: everything stays held
-   and the result is `INDETERMINATE` with `attempt_start_unconfirmed`. An
-   unreadable record is read again. If it stays unreadable, the run, which
-   has not called the provider and never will, closes the attempt as not
-   entered from `RESERVED` or from `INVOKING` (the store's compare-and-swap
-   applies at most one) and hands its rows back only once a durable read
-   shows the not-entered marker; otherwise everything stays held as
-   `INDETERMINATE` with `attempt_start_unconfirmed`. Every pre-entry stop releases nothing until its not-entered
+   and the result is `INDETERMINATE` with `attempt_start_unconfirmed`. A
+   run that has sent any write that could record its attempt as not
+   entered, including a write whose acknowledgement was lost, never calls
+   the provider afterwards, whatever a later read shows, because the write
+   can still take effect after that read and would then record "not
+   entered" for an attempt that entered.
+   An unreadable record is read
+   again, up to three times; a read that shows `INVOKING` lets the run
+   proceed as the owner, because it has sent no not-entered write. If the
+   record stays unreadable, the run sends no not-entered write at all: it
+   holds everything, does not call the provider, and returns
+   `INDETERMINATE` with `attempt_start_unconfirmed` and `invoked: false`. If
+   the start write did not land, the record is still `RESERVED` and
+   pre-entry recovery closes it. If it landed, the record says `INVOKING`
+   although the provider was never called: pre-entry recovery answers
+   `recovery_lost_to_live_attempt`, and the record is closable only by
+   terminal reconciliation with provider evidence that authenticates that
+   no operation exists under the attempt's provider idempotency key, such
+   as an authenticated cancellation of that key by the provider. Whether the
+   presented evidence establishes that is the verifier's decision, affirmed
+   as `provider_outcome`. Without such evidence the action stays fenced, by
+   design. On the composed boundary without `attempts.store.state()`, a run
+   whose start is unconfirmed cannot read the record, so it sends no
+   not-entered write, holds everything, and returns `INDETERMINATE` with
+   `attempt_start_unconfirmed` without calling the provider.
+   A native reserve call that throws, or answers anything other than exactly
+   `true` or `'RESERVED'` or a defined conflict, has an unknown effect: the
+   run reads that row, and unless the read shows `CONSUMED` or
+   `RELEASED_NOT_ENTERED` it closes the attempt as not entered, hands its
+   rows back, and returns `INDETERMINATE` with
+   `consumption_reservation_unconfirmed`, never a clean refusal. Every pre-entry stop releases nothing until its not-entered
    transition is confirmed; otherwise the native run returns `INDETERMINATE`
    with `native_pre_entry_release_unconfirmed` and the composed run returns
    `INDETERMINATE` with `attempt_release_unconfirmed`. A native stop whose
@@ -419,10 +454,26 @@ same-action fence and does not reserve the label-free identity key. While
 0.26.0 and a newer Gate serve one consumption store, an action in flight on
 either version can be executed again through a fresh permit on the other,
 and a grant consumed by the newer Gate can be admitted again by 0.26.0 under
-another pinned label. Before any upgraded instance serves a store, stop every
-gate 0.26.0 boundary that uses it and drain or reconcile that boundary's
-in-flight attempts. A rolling upgrade across 0.26.0 and a newer Gate is not
-supported.
+another pinned label. A rolling upgrade across 0.26.0 and a newer Gate is not
+supported. Upgrade in this order:
+
+1. Stop every gate 0.26.0 boundary that uses the store, and drain or
+   reconcile its in-flight attempts on 0.26.0 with the provider-outcome
+   verifier that 0.26.0 already uses. A 0.26.0 native boundary counts only
+   a verifier answer of exactly `true`, so a verifier that returns the new
+   affirmation fails every 0.26.0 run and reconciliation, and the drain
+   cannot finish. Finish on 0.26.0 any pre-entry stop whose rows it did not
+   release too: 0.26.0 wrote those records `RELEASED` without the
+   not-entered marker, so the newer Gate reports them
+   `attempt_record_unproven` and releases nothing for them.
+2. Only then deploy the new provider-outcome verifier, the upgraded attempt
+   stores, and the newer Gate together. Never deploy the new verifier while
+   any 0.26.0 boundary still serves.
+
+The executed-action fence is not retroactive. Gate 0.26.0 wrote no fence row
+for the actions it completed, so the newer Gate admits fresh authority for
+an action that 0.26.0 already executed; only actions executed after the
+upgrade are refused as `native_action_already_executed`.
 
 ## Reference implementation
 
@@ -455,24 +506,31 @@ and release are fenced to the reserving store instance, so after a restart
 `reconcile()` claims the attempt's reservations through `claimReservation()`
 with the caller's `recovery_authorization`: the operation, native-authority,
 and action-fence-holder rows on the native boundary, and the evaluation
-reservation and the holder on the composed boundary. Each claim passes
+reservation and the holder on the composed boundary.
+Each claim passes
 `authorizeRecoveryClaim` a `scope` (`AebRecoveryClaimScope`):
-`{ boundary, attemptId, operationId, recoveryOperationKey, reservation }`,
-where `boundary` is `native` or `composed`,
+`{ boundary, boundaryId, attemptId, operationId, recoveryOperationKey,
+reservation }`, where `boundary` is `native` or `composed`, `boundaryId` is
+the boundary's configured `boundary_id`,
 `recoveryOperationKey` is the native `nativeConsequenceBoundaryReservationKey()`
 value or the composed evaluation reservation key, and `reservation` is
 `operation`, `native-authority`, or `action-fence-holder`. Gate builds the
-scope from attempt custody it has already authenticated. A native scope
-derives only native rows and a composed scope only composed rows, so a native
-attempt and a composed attempt that share one store and happen to share an
-attempt ID never name each other's rows. The authorizer also receives
-`attemptIdentity`, `consequenceBoundaryRecoveryAttemptIdentity(scope)`, which
-is `native:<attemptId>` or `composed:<attemptId>`.
+scope from attempt custody it has already authenticated. A scope derives
+only the rows of its own boundary kind and boundary ID, so two boundaries
+that share one store, of different kinds or of the same kind, never name
+each other's rows, even when their attempt IDs are identical. The
+authorizer also receives `attemptIdentity`,
+`consequenceBoundaryRecoveryAttemptIdentity(scope)`, which is
+`native:<boundaryId>:<attemptId>` or `composed:<boundaryId>:<attemptId>`.
+`scope.operationId` is caller-asserted: the store checks that the scope's
+boundary kind, boundary ID, attempt ID, recovery operation key, and
+reservation derive the claimed row, but it never checks `operationId`
+against that row, so an authorizer must not rely on it.
 
 A recovery credential is bound to exactly one attempt. An authorizer binds it
 to `attemptIdentity`, together with the tenant and relying party it was
-issued for, never to `scope.attemptId` alone, which a native and a composed
-attempt on one store can share, and never to `scope.recoveryOperationKey` or
+issued for, never to `scope.attemptId` alone, which attempts of other
+boundaries on one store can share, and never to `scope.recoveryOperationKey` or
 an operation ID: every
 attempt that reuses one operation ID for the same action (native), or presents
 the same evaluation (composed), shares those values, so a credential bound to
@@ -490,9 +548,17 @@ refuses, before the authorizer runs, a claim without a scope
 the two checks above, `recovery_claim_already_owned` for a row this store
 instance already owns, and, after the authorizer, `recovery_claim_unauthorized`
 and `recovery_claim_row_not_reserved`. Attempt IDs are unique per attempt: a custom
-`attempts.create_id` must never return an ID twice, and boundaries of one
-kind that share a consumption store must never reuse an attempt ID across
-their attempt stores. One credential bound to the attempt covers every
+`attempts.create_id` must never return an ID twice within one boundary.
+Every boundary configures a required `boundary_id` (1 to 128 letters,
+digits, `_`, `.`, or `-`, starting with a letter or digit, with no `:`;
+otherwise construction is refused with `boundary_id_invalid`), and keeps it
+unchanged while its attempts may still need reconciliation. Replicas that
+serve one attempt store use the same `boundary_id`; boundaries with different attempt stores that
+share one consumption store use different values. The attempt identity and
+every attempt-keyed reservation include it, so two such boundaries cannot
+collide even with identical attempt IDs, while the action fence key does
+not include it, so every boundary at one provider still fences the same
+action. One credential bound to the attempt covers every
 reservation the attempt holds, so restart reconciliation completes in one
 call. Gate 0.26.0 shipped the PostgreSQL store without `state()`, so it could
 not back the native boundary there.

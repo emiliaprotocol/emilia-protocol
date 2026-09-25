@@ -40,14 +40,27 @@ This package follows [Semantic Versioning](https://semver.org/).
   reservation, which left that evaluation reserved with nothing to recover
   it and refused every later run. Now only `false`, `'CONSUMPTION_CONFLICT'`,
   and `'NATIVE_REPLAY_CONFLICT'` are clean refusals, because they mean the
-  call wrote nothing. A throw or any other answer is resolved through the
-  store's optional durable `state()` read (new optional member of
-  `AebDurableConsumptionStore`): `AVAILABLE` is `REFUSED`
-  `consumption_store_unavailable`, `CONSUMED` or `RELEASED_NOT_ENTERED` is
-  `REFUSED` `consumption_conflict`, and anything else, including a store
-  without `state()` or a read that fails, returns `RECONCILIATION_REQUIRED`
-  with `consumption_reservation_unconfirmed`, which authorizes nothing and
-  is not a clean refusal.
+  call wrote nothing.
+  A throw or any other answer may have reserved the row. It is
+  resolved through the store's optional durable `state()` read (new
+  optional member of `AebDurableConsumptionStore`) only when the read
+  shows a permanent state that this call's reserve cannot have written:
+  `CONSUMED` or `RELEASED_NOT_ENTERED` is `REFUSED`
+  `consumption_conflict`. Anything else, including `AVAILABLE`, a store
+  without `state()`, or a read that fails, returns
+  `RECONCILIATION_REQUIRED` with `consumption_reservation_unconfirmed`,
+  which authorizes nothing and is not a clean refusal. `AVAILABLE` is not
+  proof that nothing was reserved, because a reserve write still in flight
+  can land after the read.
+-
+  Issuer normalization for pin alias detection no longer uses regular
+  expressions that can backtrack polynomially on crafted input. An issuer
+  longer than the pin identifier grammar's 512-character maximum is
+  compared as written, and a shorter one is normalized with linear string
+  operations, so a long issuer such as a run of `.` or `/` characters, or
+  `//` followed by many `"` characters, is processed in bounded time.
+  Which spellings count as aliases is unchanged for every issuer the pin
+  grammar admits.
 - The verification result adds `legacy_replay_keys`: the verify 4.1.0
   `replay_key` of the grant under every pinned `system`, `profile`, and
   issuer that shares the matched pin's authority namespace, sorted and
@@ -154,14 +167,15 @@ This package follows [Semantic Versioning](https://semver.org/).
   `native_pins_issuer_alias_without_shared_namespace`, so a boundary that
   checks pins at construction refuses it. 4.1.0 refused every pin that
   declared `authority_namespace`.
-- Version type: major, 5.0.0. This package follows Semantic Versioning
-  2.0.0, which requires a major release for any backward-incompatible change
-  to the public API and makes no exception for security fixes (the security
-  exception in `docs/api/COMPATIBILITY.md` covers the protocol, HTTP API,
-  and MCP tool surfaces, not this package), and 4.0.0 was a major release
-  because a verifier stopped accepting artifacts that the previous release
-  accepted. This release does the same: it refuses lifecycle indexes that
-  4.1.0 verified (a provider entry with no custody reference), changes what
+- Version type: major, 5.0.0, by choice. `docs/api/COMPATIBILITY.md` says
+  that security patches may change behavior on any surface and are never
+  treated as breaking changes, so that policy would permit releasing these
+  security fixes as a minor version, 4.2.0. This release is major anyway
+  because it refuses artifacts that 4.1.0 accepted and changes outputs for
+  the same input, and a dependent that accepts `^4` should not receive that
+  without choosing to; 4.0.0 was a major release for the same reason. It
+  refuses lifecycle indexes that 4.1.0 verified (a provider entry with no
+  custody reference), changes what
   `upgradeAebCrossingRecordV1ToLifecycleIndexV2()` returns for the same
   input (`INDETERMINATE` with `evaluation_reference_unverified` where 4.1.0
   returned `COMPLETE`, and an `INDETERMINATE` conversion where 4.1.0 threw

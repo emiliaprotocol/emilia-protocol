@@ -21,18 +21,19 @@ This package follows [Semantic Versioning](https://semver.org/).
   second time. After an authenticated EXECUTED result the fence stays closed
   (`native_action_already_executed`). Only a FAILED result the boundary
   accepts, direct or reconciled (affirmed for the attempt by
-  `provider_outcomes.verify` on the native boundary, and on the composed
-  boundary when that option is configured; see the terminal-evidence entry
-  below), or a pre-entry stop proven by
+  `provider_outcomes.verify`, which both boundaries now require; see the
+  terminal-evidence entry below), or a pre-entry stop proven by
   the explicit not-entered marker in the boundary's own durable attempt
   record opens it. On the composed boundary its
   existing refusals take precedence over the fence refusal. Both boundaries
   derive the same fence key from the relying party ID, so they fence each
   other when they share a store. New exports:
   `nativeConsequenceBoundaryActionFenceKey()`,
-  `nativeConsequenceBoundaryActionFenceHolderKey()` (which takes `provider`
-  and `attempt_id`), `nativeConsequenceBoundaryAttemptReservationKeys()`, and
-  `consequenceBoundaryActionFenceHolderKey()`.
+  `nativeConsequenceBoundaryActionFenceHolderKey()` (which takes `provider`,
+  `boundary_id`, and `attempt_id`),
+  `nativeConsequenceBoundaryAttemptReservationKeys()` (which also takes
+  `boundary_id`), and `consequenceBoundaryActionFenceHolderKey()` (which
+  takes `{ reservation_key, boundary_id, attempt_id }`).
 - An attempt that stopped before provider entry (a crash while `RESERVED`, a
   lost acknowledgement on the move to `INVOKING`, a store error during a
   pre-entry release, or a crash after the fence holder was reserved but before
@@ -46,9 +47,10 @@ This package follows [Semantic Versioning](https://semver.org/).
   that never reached `INVOKING`. Neither mode falls through into the other.
   Pre-entry recovery takes a `recovery_authorization` that the attempt
   store's `recover()` accepts for the attempt and the provider's answer: a
-  "not found" lookup result as FAILED (on the native boundary it must pass
-  `provider_outcomes.verify`, called with `purpose: 'pre_entry_lookup'`), or
-  INDETERMINATE when the provider has no lookup. Recovery treats the attempt
+  "not found" lookup result as FAILED (presented as evidence of kind
+  `pre_entry_lookup`, and affirmed by `provider_outcomes.verify` called with
+  `purpose: 'pre_entry_lookup'`), or INDETERMINATE when the provider has no
+  lookup. Recovery treats the attempt
   as not entered only when its own `RESERVED` to `RELEASED` transition, which
   writes the not-entered marker, is confirmed by a durable read (on a
   composed attempt store without `state()`, answered with exactly `true`),
@@ -92,10 +94,10 @@ This package follows [Semantic Versioning](https://semver.org/).
   hands back what it holds (`attempt_released_by_recovery`). Anything else,
   including a `RELEASED` record without the marker, keeps everything held as
   `INDETERMINATE` with `attempt_start_unconfirmed`. A composed attempt store
-  without `state()` cannot be read, so the run attempts that not-entered
-  transition directly and holds everything unless it answers exactly
-  `true`. A pre-entry stop that cannot confirm its own not-entered
-  transition returns `INDETERMINATE` with
+  without `state()` cannot be read, so the run sends no not-entered write,
+  holds everything, and returns `INDETERMINATE` with
+  `attempt_start_unconfirmed` without calling the provider. A pre-entry stop that
+  cannot confirm its own not-entered transition returns `INDETERMINATE` with
   `native_pre_entry_release_unconfirmed` on the native boundary and
   `attempt_release_unconfirmed` on the composed boundary. A native stop
   whose first reservation was refused holds no row, so it returns `REFUSED`
@@ -110,6 +112,13 @@ This package follows [Semantic Versioning](https://semver.org/).
   0.26.0 the composed boundary accepted any truthy answer, so a
   store that answered `{ ok: false }` to the move to
   `INVOKING` let the provider be called while the record stayed `RESERVED`.
+  On the native boundary, a reserve call that throws, or answers anything
+  other than exactly `true` or `'RESERVED'` or a defined conflict (`false`,
+  `'CONSUMPTION_CONFLICT'`, or `'NATIVE_REPLAY_CONFLICT'`), has an unknown
+  effect: the run reads that row, and unless the read shows `CONSUMED` or
+  `RELEASED_NOT_ENTERED` it closes the attempt as not entered, hands its
+  rows back, and returns `INDETERMINATE` with
+  `consumption_reservation_unconfirmed`, never a clean refusal.
 - The composed boundary's evaluation reservation is keyed by the evaluation,
   which successive attempts can present. Gate now commits it for an attempt
   only while that attempt's own fence holder is still held, which marks it
@@ -127,14 +136,21 @@ This package follows [Semantic Versioning](https://semver.org/).
   `consequenceBoundaryRecoveryClaimKey()` and
   `consequenceBoundaryRecoveryClaimMarkerKey()`), and a claim on the
   composed evaluation reservation, which several attempts share, unless the
-  scope's attempt still holds its fence-holder row. The scope names the
-  boundary kind as well as the attempt ID (`scope.boundary`, `'native'` or
-  `'composed'`): a native scope derives only native rows and a composed
-  scope only composed rows, and `authorizeRecoveryClaim` receives
-  `attemptIdentity` (`native:<attemptId>` or `composed:<attemptId>`, from
-  the new export `consequenceBoundaryRecoveryAttemptIdentity()`), so a
-  native attempt and a composed attempt that share one store and one
-  attempt ID can no longer claim each other's rows. A malformed scope is a
+  scope's attempt still holds its fence-holder row.
+  The scope names the boundary kind (`scope.boundary`, `'native'` or
+  `'composed'`) and the boundary (`scope.boundaryId`, the boundary's
+  required `boundary_id`) as well as the attempt ID. A scope derives only
+  the rows of its own boundary kind and boundary ID, every attempt-keyed
+  reservation includes both, and `authorizeRecoveryClaim` receives
+  `attemptIdentity` (`native:<boundaryId>:<attemptId>` or
+  `composed:<boundaryId>:<attemptId>`, from the new export
+  `consequenceBoundaryRecoveryAttemptIdentity()`), so two boundaries that
+  share one store, of different kinds or of the same kind, can no longer
+  claim each other's rows even when their attempt IDs are identical. The
+  action fence key does not include the boundary ID, so every boundary at
+  one provider still fences the same action. `scope.operationId` is
+  caller-asserted: the store does not check it against the claimed row, and
+  an authorizer must not rely on it. A malformed scope is a
   refusal (`recovery_claim_scope_invalid`), not a thrown error. The
   PostgreSQL store's new `claimReservationResult()` returns the refusal
   reason (`AebRecoveryClaimRefusal`): `recovery_claim_scope_required`,
@@ -146,8 +162,9 @@ This package follows [Semantic Versioning](https://semver.org/).
   attempt's live holder.
 - A call now releases or closes only reservations it created. The native
   boundary writes three reservations per attempt (operation identity, native
-  authority, action-fence holder), each keyed by its attempt ID, which no
-  other attempt can produce; the composed boundary keys its fence holder the
+  authority, action-fence holder), each keyed by its `boundary_id` and
+  attempt ID, which no other attempt can produce; the composed boundary
+  keys its fence holder the
   same way. In 0.26.0, when a native reserve write failed, the error path
   released the operation reservation for the caller-supplied operation ID
   without proof that this call had created it. With a store that fences
@@ -156,7 +173,8 @@ This package follows [Semantic Versioning](https://semver.org/).
   reservation and replay fence in the same process, leaving that action
   locked and that attempt's grant admissible for a second action. A failed
   reserve now marks the attempt `RELEASED`, releases only this attempt's rows,
-  and returns `consumption_store_unavailable`, or `INDETERMINATE`
+  and returns `INDETERMINATE` `consumption_reservation_unconfirmed`, because
+  the failed write may still land, or `INDETERMINATE`
   `native_pre_entry_release_unconfirmed` when a release cannot be confirmed.
 - One grant accepted under two pinned `system` or `profile` labels, or under
   two spellings of one issuer that declare the same namespace, is now spent
@@ -211,29 +229,38 @@ This package follows [Semantic Versioning](https://semver.org/).
   recovered as a pre-entry stop and its one-time authority released
   unconsumed. An attempt store declares `notEnteredMarker: true` when it
   persists that evidence with the transition and returns it from `state()`.
-- Terminal evidence is verified for the attempt and the purpose of the
-  check. `provider_outcomes.verify` now receives the attempt's
-  `provider_idempotency_key` and a `purpose`, and the only answer Gate
-  accepts is `{ verified: true, purpose, attempt_id,
+-
+  Terminal evidence is verified for the attempt, the purpose of the check,
+  and the kind of evidence presented. `provider_outcomes.verify` now
+  receives the attempt's `provider_idempotency_key` and a `purpose`, and
+  the only answer Gate accepts is `{ verified: true, purpose, attempt_id,
   provider_idempotency_key }` restating what it was asked
   (`ConsequenceBoundaryProviderOutcomeAffirmation`). Any other answer,
   including a bare `true`, means "not verified" (`INDETERMINATE`
-  `provider_outcome_authentication_failed`), so a verifier that answers
-  `true` without reading `purpose` can no longer turn a pre-entry "not
-  found" lookup into a terminal result; a "not found" lookup is valid only as `pre_entry_lookup`
-  in pre-entry mode. The composed boundary accepts the same optional
-  `provider_outcomes` option. With it, `run()` verifies its own provider
-  result, terminal reconciliation verifies the presented outcome, and
-  pre-entry recovery verifies a FAILED lookup as `pre_entry_lookup`.
-  Without it, terminal reconciliation is refused with
-  `provider_outcome_verifier_required` and changes nothing, and `run()`
-  accepts its provider adapter's result after the same form check as
-  0.26.0, so on that path the adapter is the only check of the outcome.
-  Gate cannot tell whether a verifier evaluated the evidence: one that
-  affirms every context it is given still accepts a "not found" lookup as
-  a terminal outcome. In 0.26.0 the composed boundary never verified provider evidence,
-  and its `reconcile()` accepted a FAILED from any caller whose recovery
-  authorization the attempt store accepted.
+  `provider_outcome_authentication_failed`). The composed
+  `createConsequenceBoundary()` now requires `provider_outcomes` as the
+  native boundary does, and throws at construction without it
+  (`consequence_boundary_configuration_invalid:
+  provider_outcome_verifier_required`). On both boundaries an attempt
+  that reached `INVOKING` closes as EXECUTED or FAILED only on an
+  affirmation of `provider_outcome` bound to that attempt and its provider
+  idempotency key, including the result of the run's own provider call, so
+  a provider adapter's unverified FAILED, such as a timeout mapped to
+  FAILED, never releases the fence. Evidence presented to `reconcile()`
+  carries its kind in Gate's input (`evidence_kind`: `'provider_outcome'`
+  or `'pre_entry_lookup'`): terminal reconciliation refuses a
+  `pre_entry_lookup` and pre-entry recovery refuses a `provider_outcome`
+  before the verifier runs (`evidence_kind_mismatch`; an EXECUTED or FAILED
+  outcome without a kind is `evidence_kind_required`), so a
+  "not found" lookup presented with its own kind can no longer become a
+  terminal result, even under a verifier that only restates the context.
+  Gate cannot detect mislabelled evidence or a verifier that affirms a
+  purpose it did not evaluate: a lookup presented as `provider_outcome` to
+  a verifier that restates the context, or always answers
+  `provider_outcome`, still becomes a terminal FAILED while the provider
+  call may be in flight. In 0.26.0 the composed boundary never verified
+  provider evidence, and its `reconcile()` accepted a FAILED from any
+  caller whose recovery authorization the attempt store accepted.
 - Liveness repairs. On the composed boundary, every refusal in `run()` that
   happens before the attempt record exists (an unkeyable fence binding, an
   envelope refusal, attempt-ID allocation, and an attempt-store reserve that
@@ -249,17 +276,26 @@ This package follows [Semantic Versioning](https://semver.org/).
   live run enter the provider after a second run of the same evaluation had
   already entered and FAILED, spending one evaluation twice. That evaluation
   and its native mandate stay fenced, and a retry needs a fresh evaluation
-  over fresh native authority. When the record cannot be read after the
-  move to `INVOKING`, the run reads it again up to three times; if it stays
-  unreadable, the run, which has not called the provider and never will,
-  writes the not-entered move from both `RESERVED` and `INVOKING` (the
-  store's compare-and-swap applies at most one), hands its rows back once
-  that move is confirmed, and returns `REFUSED`; otherwise it holds them as
-  `INDETERMINATE` `attempt_start_unconfirmed`.
-  A start write that landed with a lost read is then closed by the run
-  itself once the store answers, or remains closable by terminal
-  reconciliation with verified provider evidence. Terminal reconciliation now verifies the presented outcome before
-  it freezes the record, so an outcome the verifier rejects leaves the
+  over fresh native authority.
+  A run that has sent any write that could record its attempt as not
+  entered, including a write whose acknowledgement was lost, never calls
+  the provider afterwards, whatever a later read shows, because that write
+  can still take effect after the read and would then make an entered
+  attempt look never entered. When the record cannot be read after the
+  move to `INVOKING`, the run reads it again up to three times and proceeds
+  as the owner if a read shows `INVOKING`; if it stays unreadable, the run
+  sends no not-entered write, holds every reservation, does not call the
+  provider, and returns `INDETERMINATE` `attempt_start_unconfirmed` with
+  `invoked: false`. If the start write did not land, pre-entry recovery
+  closes the still-`RESERVED` record. If it landed, the record says
+  `INVOKING` although the provider was never called, and it is closable
+  only by terminal reconciliation with provider evidence that authenticates
+  that no operation exists under the attempt's provider idempotency key,
+  such as an authenticated cancellation of that key, which is the
+  verifier's decision to affirm as `provider_outcome`; otherwise the action
+  stays fenced, by design. Terminal reconciliation now verifies the
+  presented outcome before it freezes the record, so an outcome the
+  verifier rejects leaves the
   record unchanged and a later reconciliation with verified evidence can
   still close it. When a recovery claim fails, recovery reads the row again
   and counts a row that is already `AVAILABLE` (or already closed to the
@@ -277,7 +313,8 @@ This package follows [Semantic Versioning](https://semver.org/).
   `claimReservation(key, authorization, scope)` with the caller's
   `recovery_authorization` when the store declares
   `recoveryClaimSupported: true`. Each claim carries an `AebRecoveryClaimScope`
-  (`{ boundary, attemptId, operationId, recoveryOperationKey, reservation }`),
+  (`{ boundary, boundaryId, attemptId, operationId, recoveryOperationKey,
+  reservation }`),
   which the store validates without running getters and passes to
   `authorizeRecoveryClaim` as `claim.scope`, with `claim.attemptIdentity`. One authorization bound to the
   attempt covers every reservation it holds, so restart reconciliation to
@@ -290,11 +327,24 @@ This package follows [Semantic Versioning](https://semver.org/).
   while 0.26.0 and this release serve one consumption store, an action in
   flight on either version can be executed again through a fresh permit on
   the other, and a grant consumed by this release can be admitted again by
-  0.26.0 under another pinned label. Before any instance of this release
-  serves a store, stop every gate 0.26.0 boundary that uses that store and
-  drain or reconcile its in-flight attempts. Do not roll an upgrade across
-  0.26.0 and this release. After the upgrade, Gate fences the verify 4.1.0
-  `replay_key` for every `system` and `profile` label, with its issuer
+  0.26.0 under another pinned label. Do not roll an upgrade across 0.26.0
+  and this release. Upgrade in this order. First stop every gate 0.26.0
+  boundary that uses the store and drain or reconcile its in-flight
+  attempts on 0.26.0, with the provider-outcome verifier that 0.26.0
+  already uses: a 0.26.0 native boundary counts only a verifier answer of
+  exactly `true`, so a verifier that returns the new affirmation fails
+  every 0.26.0 run and reconciliation and the drain cannot finish. Finish
+  on 0.26.0 any pre-entry stop whose rows it did not release as well,
+  because 0.26.0 wrote those records `RELEASED` without the not-entered
+  marker and this release reports them `attempt_record_unproven`. Only then
+  deploy the new verifier, the upgraded attempt stores, and this release
+  together; never deploy the new verifier while any 0.26.0 boundary still
+  serves. The executed-action fence is not retroactive: 0.26.0 wrote no
+  fence row for the actions it completed, so this release admits fresh
+  authority for an action that 0.26.0 already executed, and only actions
+  executed after the upgrade are refused as
+  `native_action_already_executed`. After the upgrade, Gate fences the
+  verify 4.1.0 `replay_key` for every `system` and `profile` label, with its issuer
   spelling, that the pin set accepts under the grant's authority namespace,
   so a grant that 0.26.0 consumed under one label is refused as
   `native_replay_conflict` under any label still pinned in that namespace.
@@ -318,17 +368,33 @@ This package follows [Semantic Versioning](https://semver.org/).
 - `authorizeRecoveryClaim` is called once per reservation an attempt holds
   (operation, native authority, and action-fence holder on the native
   boundary) and receives the validated `scope` and `attemptIdentity`
-  (`native:<attemptId>` or `composed:<attemptId>`). Bind the recovery
-  credential to exactly one attempt: `attemptIdentity`, together with the
-  relying party and tenant it was issued for, and never `scope.attemptId`
-  alone. `claimReservation()` now requires a scope with a `boundary` member
-  and refuses a claim without one (`recovery_claim_scope_required`); a
-  caller that claimed rows directly must pass the attempt's scope. Do not bind it to one exact row
-  key, or restart reconciliation cannot finish in one call. Never bind it to
+  (`native:<boundaryId>:<attemptId>` or `composed:<boundaryId>:<attemptId>`).
+  Bind the recovery credential to exactly one attempt: `attemptIdentity`,
+  together with the relying party and tenant it was issued for, never
+  `scope.attemptId` alone, and never `scope.operationId`, which the store
+  does not check against the claimed row. `claimReservation()` now
+  requires a scope and refuses a claim without one
+  (`recovery_claim_scope_required`); a scope that lacks `boundary` or
+  `boundaryId` is malformed (`recovery_claim_scope_invalid`); a
+  caller that claimed rows directly must pass the attempt's scope. Do not
+  bind it to one exact row key, or restart reconciliation cannot finish in
+  one call. Never bind it to
   `scope.recoveryOperationKey` or an operation ID: every attempt that reuses
   one operation ID for the same action shares those values, so such a
   credential would authorize claims across attempts. A custom
-  `attempts.create_id` must return a unique ID for every attempt.
+  `attempts.create_id` must return a unique ID for every attempt of one
+  boundary.
+- Both boundaries require a `boundary_id`: 1 to 128 letters, digits, `_`,
+  `.`, or `-`, starting with a letter or digit, with no `:`. Anything else
+  is refused at construction (`boundary_id_invalid`). Keep it unchanged
+  while the boundary's attempts may still need reconciliation. Replicas that
+  serve one attempt store must use the same value, because the attempt
+  record does not carry it; boundaries with different attempt stores that
+  share one consumption store use different values. It is part of the
+  attempt identity and of every attempt-keyed reservation key, so
+  attempt-keyed rows and recovery credentials from a build without it are
+  not derivable: drain first, as above, and issue recovery credentials for
+  the new identity.
 - Native runs now write the attempt record, and call `create_id`, before any
   reservation. A run refused after its record is written leaves that record
   `RELEASED`.
@@ -341,17 +407,21 @@ This package follows [Semantic Versioning](https://semver.org/).
   it checked. A verifier that answers a bare `true` no longer verifies
   anything: update it to restate what it checked, and to affirm a "not
   found" lookup only for `pre_entry_lookup`. `createConsequenceBoundary()`
-  accepts the same option; a composed deployment without it can no longer
-  close an attempt through terminal reconciliation
-  (`provider_outcome_verifier_required`), and its `run()` still closes on
-  its adapter's result unverified. With the option, `run()` verifies its own
-  provider result too.
+  now requires the same option and refuses construction without it
+  (`provider_outcome_verifier_required`); its `run()` verifies its own
+  provider result. Callers of `reconcile()` present evidence with its kind
+  (`evidence_kind`: `'provider_outcome'` or `'pre_entry_lookup'`).
 - A native attempt store must declare `notEnteredMarker: true`, or
   `createNativeConsequenceBoundary()` refuses it at construction: it persists
   the evidence Gate writes with each transition, including the not-entered
   marker, atomically with the transition and returns it from `state()`. A
   composed attempt store without that declaration is used as in 0.26.0,
-  with transitions counted only on an answer of exactly `true`. A store
+  with transitions counted only on an answer of exactly `true`. Without its
+  `state()`, a start answer other than exactly `true` now holds every
+  reservation as `INDETERMINATE` `attempt_start_unconfirmed` without
+  calling the provider; pre-entry recovery closes that attempt only when
+  its own move from `RESERVED` is answered with exactly `true`, and
+  otherwise the action stays fenced. A store
   that drops stored evidence cannot prove a pre-entry stop, so such an
   attempt stays fenced as `attempt_record_unproven`.
 - `createNativeConsequenceBoundary()` refuses a pin set that
@@ -379,10 +449,13 @@ This package follows [Semantic Versioning](https://semver.org/).
   this in CI.
 - Version type: the changes above refuse pin sets, attempt stores, inputs,
   verifier answers, and recovery claims that 0.26.0 accepted, require a
-  provider-outcome verifier for composed terminal reconciliation, and change
-  how `reconcile()` releases a pre-entry stop, so this is a breaking release.
-  Under Semantic Versioning's 0.x rules it is the next minor version, 0.27.0,
-  and it pins `@emilia-protocol/verify` exactly at 5.0.0.
+  provider-outcome verifier and a `boundary_id` on both boundaries, and
+  change how `reconcile()` releases a pre-entry stop, so this is a breaking
+  release. Semantic Versioning 2.0.0 allows anything to change in a 0.y.z
+  version; this release follows the npm caret convention, under which
+  `^0.26.0` admits only 0.26.x, and ships the breaking change as the next
+  minor version, 0.27.0. It pins `@emilia-protocol/verify` exactly at
+  5.0.0.
 - `createNativeConsequenceBoundary()` now also refuses a pin set that declares
   two different `authority_namespace` values for one exact issuer
   (`native_pins_issuer_namespace_conflict`), and treats more issuer spellings
