@@ -220,7 +220,7 @@
     "mammoth": "^1.12.2",
     "mcp-handler": "^2.1.1",
     "motion": "13.2.0",
-    "next": "^16.3.4",
+    "next": "^16.3.5",
     "node-app-attest": "1.0.1",
     "pdf-parse": "^2.4.5",
     "react": "^19.2.7",
