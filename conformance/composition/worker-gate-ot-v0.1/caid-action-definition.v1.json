@@ -1,0 +1,48 @@
+{
+  "action_type": "ot.modbus.write-multiple-registers.1",
+  "status": "active",
+  "risk_class": "safety-critical",
+  "summary": "Issue one Modbus TCP Function Code 16 request to write an ordered register sequence to one identified device.",
+  "required_fields": [
+    {
+      "name": "function_code",
+      "type": "integer",
+      "notes": "16 for this versioned action type; the first-conduit projection enforces the value"
+    },
+    {
+      "name": "unit_id",
+      "type": "integer",
+      "notes": "Modbus unit identifier in the inclusive range 1 through 247"
+    },
+    {
+      "name": "start_address",
+      "type": "integer",
+      "notes": "Zero-based first register address as carried by the FC10 request"
+    },
+    {
+      "name": "quantity",
+      "type": "integer",
+      "notes": "Register count in the inclusive FC10 range 1 through 123"
+    },
+    {
+      "name": "values",
+      "type": "array",
+      "notes": "Ordered array of quantity unsigned 16-bit register values; the first-conduit projection enforces element range and length"
+    },
+    {
+      "name": "site",
+      "type": "string",
+      "notes": "Relying-party-pinned site identifier"
+    },
+    {
+      "name": "device",
+      "type": "string",
+      "notes": "Relying-party-pinned target device identifier"
+    }
+  ],
+  "optional_fields": [],
+  "digest_notes": "All seven fields are material. The action type already names Modbus, so protocol is not duplicated in the bound action. Site and device are taken verbatim from the relying party's pinned inventory. The MBAP transaction identifier is correlation-only and is excluded.",
+  "references": [
+    "Modbus Application Protocol Specification V1.1b3, Section 6.12"
+  ]
+}

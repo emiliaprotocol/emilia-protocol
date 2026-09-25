@@ -1,0 +1,146 @@
+{
+  "@version": "WORKER-GATE-OT-REFERENCE-REPORT-v0.1",
+  "profile": "EP-WORKER-GATE-OT-COMPOSITION-v0.1",
+  "fixture": {
+    "id": "truealter-fc10.synthetic.v2",
+    "sha256": "95e9d734dd689e593352a9cd5fda49acbe2752da149879b34496e45e24951e2c",
+    "bytes": 24044,
+    "status": "SYNTHETIC. No live device, protocol stack or production key produced any value here. Proposed values are marked as proposals."
+  },
+  "cases": [
+    {
+      "id": "TRUEALTER-PROVENANCE-SIGNATURES",
+      "category": "prerequisite",
+      "passed": true,
+      "expected": "every supplied compact JWS verifies under the pinned synthetic P-256 key and proposed aud/exp/jti profile",
+      "observed": {
+        "deliveries": 9,
+        "valid": 9
+      }
+    },
+    {
+      "id": "ACTION-DIGEST-AND-CAID",
+      "category": "prerequisite",
+      "passed": true,
+      "expected": "the collaborator JCS digest reproduces exactly and the separately pinned local definition computes the expected typed CAID without treating either identifier as authority",
+      "observed": {
+        "fixture_digest": "64586a77c5c3370e4a53c280ac016d0342a744e89aa1ef4178ce363164b6bda1",
+        "fixture_file_sha256": "95e9d734dd689e593352a9cd5fda49acbe2752da149879b34496e45e24951e2c",
+        "action_type": "ot.modbus.write-multiple-registers.1",
+        "definition_file_sha256": "2479b2881713e93ad5efbf2cb24a6f1c6a125a18d06f2c0e3196c2ec7a9907bc",
+        "caid": "caid:1:ot.modbus.write-multiple-registers.1:jcs-sha256:EMNgSJJYCF_yMFagPhMj-miIiTxVzdfhJ-ds4sc0hqc",
+        "caid_digest": "sha256:10c360489258085ff23056a03e1323fa6888893c55cdd7e127e76ce2c73486a7",
+        "collaborator_confirmation": "confirmed-by-truealter-2026-09-25"
+      }
+    },
+    {
+      "id": "J0-THROUGH",
+      "category": "positive",
+      "passed": true,
+      "expected": "one reservation, one provider entry, provider commitment recorded separately from physical effect",
+      "observed": {
+        "state": "EXECUTED",
+        "provider_entries": 1,
+        "provider_outcome": "COMMITTED",
+        "effect_relation": "UNOBSERVED"
+      }
+    },
+    {
+      "id": "J1-IDENTITY-ONLY",
+      "category": "hostile",
+      "passed": true,
+      "expected": "valid provenance never substitutes for authority and is refused before provider entry",
+      "observed": {
+        "state": "REFUSED",
+        "reason": "missing_authority",
+        "provider_entries": 0
+      }
+    },
+    {
+      "id": "J2-CONCURRENT-DUPLICATE",
+      "category": "hostile",
+      "passed": true,
+      "expected": "one atomic reservation wins across two sessions and the MBAP transaction identifier does not create fresh authority",
+      "observed": {
+        "states": [
+          "EXECUTED",
+          "REFUSED"
+        ],
+        "reasons": [
+          null,
+          "provenance_replay"
+        ],
+        "provider_entries": 1
+      }
+    },
+    {
+      "id": "J3-LOST-RESPONSE-RESTART",
+      "category": "boundary",
+      "passed": true,
+      "expected": "lost response remains indeterminate, restarted deliveries do not redispatch, and authenticated reconciliation terminalizes the original attempt",
+      "observed": {
+        "first": "INDETERMINATE",
+        "redelivery": "provenance_replay",
+        "fresh_worker": "authority_already_reserved",
+        "reconciled": true,
+        "provider_entries": 1
+      }
+    },
+    {
+      "id": "J4-ACTION-MUTATION",
+      "category": "hostile",
+      "passed": true,
+      "expected": "native value or target mutation is refused before provider entry and an awaited mutation cannot alter frozen action bytes",
+      "observed": {
+        "reasons": [
+          "exact_action_binding_mismatch",
+          "exact_action_binding_mismatch"
+        ],
+        "provider_entries": 0,
+        "frozen_bytes_unchanged": true
+      }
+    },
+    {
+      "id": "FIRST-CONDUIT-REFUSALS",
+      "category": "hostile",
+      "passed": true,
+      "expected": "all five malformed or context-mismatched FC10 inputs refuse before evidence lookup or reservation",
+      "observed": {
+        "unit_id_zero": "unit_id_out_of_range",
+        "unit_id_248": "unit_id_out_of_range",
+        "protocol_id_nonzero": "protocol_id_nonzero",
+        "byte_count_not_twice_quantity": "byte_count_mismatch",
+        "unit_disagrees_with_device_context": "unit_context_mismatch"
+      }
+    }
+  ],
+  "passed": true,
+  "coverage": {
+    "executed": [
+      "J0",
+      "J1",
+      "J2",
+      "J3",
+      "J4"
+    ],
+    "not_executed": [
+      "J5_SAFETY_INDEPENDENCE"
+    ]
+  },
+  "composition": {
+    "provenance": "collaborator-supplied synthetic ES256 invocation JWS",
+    "exact_action": "interoperability-local typed CAID ot.modbus.write-multiple-registers.1 under a separately hashed definition plus first-conduit FC10 projection",
+    "authority": "separate synthetic EMILIA authority input",
+    "admission": "single-process in-memory one-time authority and provider-attempt domain",
+    "provider": "synthetic FC10 provider-entry state; no live device"
+  },
+  "known_limits": [
+    "The fixture and authority are synthetic; no production key, live TrueAlter service, PLC, RTU, or protocol stack was exercised.",
+    "The admission domain is an in-memory single-process conformance model, not evidence of multi-process durable atomicity.",
+    "The fixture aud, exp, and jti claims are synthetic inputs. A fresh public npm install of @truealter/sdk 0.5.15 verified all nine fixture JWS values and refused validly signed invocations missing each required claim. The npm package does not itself ship this FC10 fixture.",
+    "The fixture action digest is a provisional bare JCS SHA-256. The runner computes the separately hashed, jointly confirmed interoperability-local typed CAID and never treats either identifier as authority.",
+    "Provider commitment and observed physical effect remain separate; no physical effect is claimed.",
+    "J5 safety independence remains unexecuted because it requires a protective-path simulator outside the Gate."
+  ],
+  "results_digest": "sha256:674b24f6b236fa8012c2b129f07986b44b3aeb6e4aa151b40ca73c64101a7ca2"
+}

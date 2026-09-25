@@ -1,6 +1,22 @@
 # Worker → Gate → OT executor joined topology v0.1
 
-Status: topology proposal for the joint EMILIA and TrueAlter fixture. This document defines the system boundary and expected cases. It is not evidence that the joined implementation exists or that a physical controller has been tested.
+Status: executable synthetic conformance pack for cases J0 through J4 and the five supplied first-conduit refusal inputs. J5, durable multi-process admission, a live TrueAlter service, and physical-controller testing remain unexecuted.
+
+The collaborator attachment is retained byte-for-byte as `fixtures/truealter-fc10.synthetic.v2.json` (24,044 bytes; SHA-256 `95e9d734dd689e593352a9cd5fda49acbe2752da149879b34496e45e24951e2c`). Alter Meridian Pty Ltd (True Alter) supplied the fixture and, through Blake Morrison on 24 September 2026, explicitly authorized its retention under Apache-2.0 with that attribution. Blake supplied v2 on 25 September 2026 and confirmed the seven-field CAID definition and resulting identifier as a joint pin. [`NOTICE.md`](NOTICE.md) records the permission and claim boundary. The reference report records the same fixture digest.
+
+Run it with:
+
+```sh
+npm run conformance:composition:worker-gate-ot
+```
+
+The runner verifies the supplied synthetic ES256 JWS values, reproduces the provisional bare-JCS action digest, independently computes an interoperability-local typed CAID, parses the FC10 bytes, and exercises one synthetic in-memory admission domain. The packaged TrueAlter releases were also checked from fresh installs. `alter-runtime` 0.4.16 passed all 21 Python vector cases. The exported `canonicalStringify` API in `@truealter/sdk` 0.5.14 passed all 16 accepts and three of the five refusal cases, but accepted the unsafe-integer case after `JSON.parse`; its object-only API also cannot detect a duplicate member after parsing. An additional depth-65 probe was accepted even though the packaged profile pins `max_depth` to 64.
+
+`@truealter/sdk` 0.5.15 was subsequently verified from a fresh public npm install. The registry tarball has SHA-256 `8bc6a96f3f869378c4a425fcc6d2d8ae600c742aa64f084dd8ece570c398b09d`, and `npm audit signatures` reported no missing or invalid signatures. Its shipped `canonical-jcs-v1.json` retains SHA-256 `7e345eb09842f65475003a2c6fce9b192a41a7eecb62e898e93e20db35f476cc`. All 16 accept vectors and all five refusal vectors passed through the strict wire API; an independent depth probe accepted 64 containers and refused 65 with `depth_bound`. `signInvocation` emitted `aud`, `exp`, and `jti` under the configured profile, while `verifyInvocation` refused a validly signed input missing each required claim and refused a repeated `jti` when given a replay hook. The public package verified all nine v2 fixture JWS values against the exact action. The npm tarball does not itself contain the FC10 v2 fixture, so the fixture remains the separately attributed collaborator input pinned here.
+
+The release tag `v0.5.15` at commit `3d0fd09eaf476ca8d66533ea7adfac2791fff674` rebuilt to byte-identical unpacked package files. The npm SLSA predicate names the workflow-hosting `main` commit `d7149dca2d3f693df86de643c4439576978a958c`, while that workflow checks out `export/main`; source equivalence was therefore established by the independent tagged-source rebuild, not by treating the provenance predicate alone as a source-tree pin.
+
+The joint interoperability-local CAID action type and seven-field definition are pinned in [`caid-action-definition.v1.json`](caid-action-definition.v1.json), with the exact file digest and expected CAID in [`caid-pin.v1.json`](caid-pin.v1.json). Blake confirmed `ot.modbus.write-multiple-registers.1`, the definition without a redundant `protocol` field, and the resulting CAID. This makes the tested value reproducible; it does not add the type to CAID's public registry.
 
 ## Goal
 
@@ -119,7 +135,7 @@ Provenance establishes signed delivery context. It does not authorize execution.
 
 Freeze the action before the first asynchronous boundary. For the FC10 case, the material fields include:
 
-- protocol and function;
+- function code, with Modbus already named by the action type;
 - target device;
 - register start address or index;
 - ordered register values;
@@ -206,12 +222,15 @@ Each case records:
 5. Pin the FC10 simulator and independent readback source.
 6. Agree which evidence is synthetic and which, if any, comes from a live protocol stack or device.
 
-## Planned executable pack
+## Executable pack
 
 ```text
 conformance/composition/worker-gate-ot-v0.1/
   README.md
-  fixtures/truealter-fc10.synthetic.v1.json
+  NOTICE.md
+  caid-action-definition.v1.json
+  caid-pin.v1.json
+  fixtures/truealter-fc10.synthetic.v2.json
   run.mts
   run.mjs
   run.node-test.mts
@@ -220,3 +239,9 @@ conformance/composition/worker-gate-ot-v0.1/
 ```
 
 The directory name is provider-neutral. TrueAlter is the first identity adapter, not a requirement of the topology.
+
+## Current result and remaining work
+
+`report.reference.json` passes J0 through J4. It records one provider entry for the concurrent duplicate and lost-response/restart cases, zero provider entries for the identity-only and mutation cases, and refusals for all five malformed or context-mismatched FC10 inputs.
+
+This is not yet the durable joined test described by the topology. The current admission domain is a single-process in-memory model. J5 still requires an independent protective-path simulator. The fixture is published under the permission and attribution recorded in `NOTICE.md`; the interoperability-local CAID pin is jointly confirmed, while public CAID registry status remains separate.
