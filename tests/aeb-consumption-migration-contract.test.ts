@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  AEB_CONSUMPTION_DDL,
   AEB_CONSUMPTION_OPERATION_TABLE,
   AEB_CONSUMPTION_REPLAY_TABLE,
 } from '../packages/gate/src/aeb-consumption-store.ts';
@@ -13,6 +14,11 @@ const migration = readFileSync(
 
 const terminalReleaseMigration = readFileSync(
   new URL('../supabase/migrations/20260901190000_aeb_released_not_entered.sql', import.meta.url),
+  'utf8',
+);
+
+const operationStateMigration = readFileSync(
+  new URL('../supabase/migrations/20260925010000_aeb_operation_state.sql', import.meta.url),
   'utf8',
 );
 
@@ -105,6 +111,57 @@ describe('AEB terminal released-not-entered migration', () => {
     );
     expect(terminalReleaseMigration).not.toMatch(
       /GRANT (?:ALL|EXECUTE)[\s\S]*release_terminal_operation[\s\S]*service_role/,
+    );
+  });
+});
+
+describe('AEB operation-state read migration', () => {
+  it('assumes the private-schema owner only for the definition and revokes it', () => {
+    expect(operationStateMigration).toContain(
+      'GRANT ep_aeb_store_owner TO CURRENT_USER\n  WITH INHERIT FALSE, SET TRUE;\nSET ROLE ep_aeb_store_owner;',
+    );
+    expect(operationStateMigration).toContain(
+      'RESET ROLE;\nREVOKE ep_aeb_store_owner FROM CURRENT_USER;',
+    );
+  });
+
+  it('reads one tenant-bound exact operation row and reports AVAILABLE when absent', () => {
+    expect(operationStateMigration).toContain(
+      'CREATE OR REPLACE FUNCTION ep_aeb_private.operation_state(',
+    );
+    expect(operationStateMigration).toContain(
+      'PERFORM ep_aeb_private.assert_tenant_principal(p_tenant_id, FALSE);',
+    );
+    expect(operationStateMigration).toContain('WHERE operations.tenant_id = p_tenant_id');
+    expect(operationStateMigration).toContain(
+      'AND operations.relying_party_id = p_relying_party_id',
+    );
+    expect(operationStateMigration).toContain(
+      'AND operations.operation_key = p_operation_key',
+    );
+    expect(operationStateMigration).toContain("), 'AVAILABLE');");
+    expect(operationStateMigration).toMatch(/SECURITY DEFINER SET search_path = ''/);
+    expect(operationStateMigration).not.toMatch(/\b(?:INSERT|UPDATE|DELETE)\b/);
+  });
+
+  it('grants the read to the executor role only', () => {
+    expect(operationStateMigration).toContain(
+      'REVOKE ALL ON FUNCTION ep_aeb_private.operation_state(TEXT, TEXT, TEXT)\n'
+        + '  FROM PUBLIC, anon, authenticated, service_role, ep_aeb_recovery;',
+    );
+    expect(operationStateMigration).toContain(
+      'GRANT EXECUTE ON FUNCTION ep_aeb_private.operation_state(TEXT, TEXT, TEXT)\n'
+        + '  TO ep_aeb_executor;',
+    );
+    expect(operationStateMigration.match(/GRANT EXECUTE/g)).toHaveLength(1);
+  });
+
+  it('matches the function the store DDL defines', () => {
+    expect(AEB_CONSUMPTION_DDL).toContain(
+      'CREATE OR REPLACE FUNCTION ep_aeb_private.operation_state(',
+    );
+    expect(AEB_CONSUMPTION_DDL).toMatch(
+      /GRANT EXECUTE ON FUNCTION ep_aeb_private\.operation_state\(TEXT, TEXT, TEXT\)\s+TO ep_aeb_executor;/,
     );
   });
 });

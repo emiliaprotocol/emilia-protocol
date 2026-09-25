@@ -6,9 +6,14 @@
  * pinned transaction. Logical conflicts roll the transaction back; database
  * errors propagate so callers fail closed. Commit and release are fenced by an
  * opaque per-reservation token retained only by the store instance that won.
+ * A different instance (for example after a restart) takes ownership of a
+ * RESERVED row only through claimReservation(), which requires the separate
+ * recovery pool and an authorized recovery claim. state() is an authenticated
+ * durable read, which the direct-native consequence boundary requires.
  */
 import crypto from 'node:crypto';
 import type {
+  AebConsumptionState,
   AebDurableConsumptionStore,
   AebReservationResult,
 } from '@emilia-protocol/verify/aeb-adapter-contract';
@@ -175,6 +180,25 @@ BEGIN
   );
 END
 $fn$;
+-- Authenticated durable read of one exact operation row. AVAILABLE means no
+-- row exists. Lets a caller distinguish a lost write acknowledgement from a
+-- write that never happened without granting table reads.
+CREATE OR REPLACE FUNCTION ep_aeb_private.operation_state(
+  p_tenant_id TEXT, p_relying_party_id TEXT, p_operation_key TEXT
+) RETURNS TABLE(state TEXT)
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
+AS $fn$
+BEGIN
+  PERFORM ep_aeb_private.assert_tenant_principal(p_tenant_id, FALSE);
+  RETURN QUERY SELECT COALESCE((
+    SELECT operations.state
+    FROM public.${AEB_CONSUMPTION_OPERATION_TABLE} AS operations
+    WHERE operations.tenant_id = p_tenant_id
+      AND operations.relying_party_id = p_relying_party_id
+      AND operations.operation_key = p_operation_key
+  ), 'AVAILABLE');
+END
+$fn$;
 CREATE OR REPLACE FUNCTION ep_aeb_private.reserve_replay_keys(
   p_tenant_id TEXT, p_relying_party_id TEXT, p_operation_key TEXT, p_replay_keys TEXT[]
 ) RETURNS TABLE(replay_key TEXT)
@@ -273,6 +297,8 @@ ALTER FUNCTION ep_aeb_private.reserve_operation(TEXT, TEXT, TEXT, TEXT)
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 ALTER FUNCTION ep_aeb_private.has_replay_fence(TEXT, TEXT, TEXT)
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
+ALTER FUNCTION ep_aeb_private.operation_state(TEXT, TEXT, TEXT)
+  OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 ALTER FUNCTION ep_aeb_private.reserve_replay_keys(TEXT, TEXT, TEXT, TEXT[])
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 ALTER FUNCTION ep_aeb_private.commit_operation(TEXT, TEXT, TEXT, TEXT)
@@ -295,11 +321,14 @@ GRANT EXECUTE ON FUNCTION ep_aeb_private.has_replay_fence(TEXT, TEXT, TEXT),
   TO ${AEB_CONSUMPTION_EXECUTOR_ROLE};
 GRANT EXECUTE ON FUNCTION ep_aeb_private.claim_operation(TEXT, TEXT, TEXT, TEXT)
   TO ${AEB_CONSUMPTION_RECOVERY_ROLE};
+GRANT EXECUTE ON FUNCTION ep_aeb_private.operation_state(TEXT, TEXT, TEXT)
+  TO ${AEB_CONSUMPTION_EXECUTOR_ROLE};
 REVOKE ${AEB_CONSUMPTION_OWNER_ROLE} FROM CURRENT_USER;`;
 
 /** Exact statements issued by the store, exported for audit and deterministic fakes. */
 export const AEB_CONSUMPTION_SQL = Object.freeze({
   hasReplayFence: `SELECT fenced FROM ep_aeb_private.has_replay_fence($1::text, $2::text, $3::text)`,
+  operationState: `SELECT state FROM ep_aeb_private.operation_state($1::text, $2::text, $3::text)`,
   reserveOperation: `SELECT operation_key FROM ep_aeb_private.reserve_operation($1::text, $2::text, $3::text, $4::text)`,
   reserveReplayKeys: `SELECT replay_key FROM ep_aeb_private.reserve_replay_keys($1::text, $2::text, $3::text, $4::text[])`,
   commitOperation: `SELECT operation_key FROM ep_aeb_private.commit_operation($1::text, $2::text, $3::text, $4::text)`,
@@ -364,6 +393,12 @@ export interface PostgresAebDurableConsumptionStore extends AebDurableConsumptio
    * remains the race-closing operation.
    */
   hasReplayFence(replayKey: string): Promise<boolean>;
+  /**
+   * Authenticated durable read of one operation row: AVAILABLE when no row
+   * exists, otherwise RESERVED, CONSUMED, or RELEASED_NOT_ENTERED. Database
+   * errors and malformed answers throw, so callers treat them as unknown.
+   */
+  state(key: string): Promise<AebConsumptionState>;
   /**
    * Rotate ownership of an existing RESERVED row after external authorization.
    * The stored and replacement owner tokens are never returned or passed to
@@ -506,6 +541,29 @@ export function createPostgresAebDurableConsumptionStore({
           throw new Error('lookup replay fence: malformed PostgreSQL result');
         }
         return fenced;
+      } finally {
+        client.release();
+      }
+    },
+
+    async state(key): Promise<AebConsumptionState> {
+      assertText(key, 'operation key', 4096);
+      const client = await pool.connect();
+      if (!client || typeof client.query !== 'function' || typeof client.release !== 'function') {
+        throw new TypeError('AEB consumption pg pool returned an invalid client');
+      }
+      try {
+        const result = await client.query(AEB_CONSUMPTION_SQL.operationState, [
+          tenantId, relyingPartyId, key,
+        ]);
+        const rows = exactRowCount(result, 'read operation state');
+        const state = result.rows?.[0]?.state;
+        if (rows !== 1 || result.rows?.length !== 1
+            || (state !== 'AVAILABLE' && state !== 'RESERVED'
+              && state !== 'CONSUMED' && state !== 'RELEASED_NOT_ENTERED')) {
+          throw new Error('read operation state: malformed PostgreSQL result');
+        }
+        return state;
       } finally {
         client.release();
       }

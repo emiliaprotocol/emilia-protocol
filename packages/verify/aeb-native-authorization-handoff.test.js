@@ -250,3 +250,177 @@ test('an unknown runtime verification mode fails closed', () => {
   assert.equal(result.mode, 'execution');
   assert.ok(result.reasons.includes('native_handoff_mode_invalid'));
 });
+
+function withSources(f, sources) {
+  return { ...f.pins, accepted_sources: sources };
+}
+
+function sourcePin(f, overrides = {}) {
+  return { ...f.pins.accepted_sources[0], ...overrides };
+}
+
+test('one native grant relabelled under a second pinned profile or system keeps one replay identity', () => {
+  // Regression for the C2 probe: the v1 replay unit hashed system and profile,
+  // so the relabelled grant derived a second replay key and spent twice.
+  for (const relabel of [
+    { profile: 'authzen:exact-action-result:2' },
+    { system: 'coaz', profile: 'coaz:exact-action-result:1' },
+  ]) {
+    const f = fixture();
+    const pins = withSources(f, [f.pins.accepted_sources[0], sourcePin(f, relabel)]);
+    const original = issueAebNativeAuthorizationHandoff(f.input, f.signer);
+    const relabelled = issueAebNativeAuthorizationHandoff({
+      ...f.input,
+      native_authorization: { ...f.input.native_authorization, ...relabel },
+    }, f.signer);
+    const first = verify(f, original, ACTION, { pins });
+    const second = verifyAebNativeAuthorizationHandoff(relabelled, {
+      pins,
+      expected_action: ACTION,
+      status: { ...f.status, native_authorization: relabelled.native_authorization },
+      now: NOW,
+    });
+    assert.equal(first.valid, true, JSON.stringify(first.reasons));
+    assert.equal(second.valid, true, JSON.stringify(second.reasons));
+    assert.equal(original.native_authorization.replay_unit, relabelled.native_authorization.replay_unit);
+    assert.equal(first.native_replay_unit, second.native_replay_unit);
+    assert.equal(first.replay_key, second.replay_key);
+    assert.equal(aebNativeAuthorizationReplayKey(original), aebNativeAuthorizationReplayKey(relabelled));
+  }
+});
+
+test('the replay unit is derived from the authority namespace, issuer, and authorization ID only', () => {
+  const f = fixture();
+  const base = f.input.native_authorization;
+  const unit = deriveAebNativeAuthorizationReplayUnit(base);
+  assert.equal(unit, deriveAebNativeAuthorizationReplayUnit({ ...base, system: 'oauth', profile: 'oauth:other:1' }));
+  assert.equal(unit, deriveAebNativeAuthorizationReplayUnit(base, { authority_namespace: base.issuer }));
+  assert.notEqual(unit, deriveAebNativeAuthorizationReplayUnit({ ...base, issuer: 'https://other.example' }));
+  assert.notEqual(unit, deriveAebNativeAuthorizationReplayUnit({ ...base, authorization_id: 'native-authz:124' }));
+  assert.notEqual(unit, deriveAebNativeAuthorizationReplayUnit(base, { authority_namespace: 'namespace:grants' }));
+  assert.throws(
+    () => deriveAebNativeAuthorizationReplayUnit(base, { authority_namespace: '' }),
+    /valid native authority namespace required/,
+  );
+});
+
+test('a pinned authority namespace scopes the replay identity; mixed or duplicate pins are refused', () => {
+  const f = fixture();
+  const handoff = issueAebNativeAuthorizationHandoff(f.input, f.signer);
+  const relabelled = issueAebNativeAuthorizationHandoff({
+    ...f.input,
+    native_authorization: { ...f.input.native_authorization, profile: 'authzen:exact-action-result:2' },
+  }, f.signer);
+  const relabelledStatus = { ...f.status, native_authorization: relabelled.native_authorization };
+
+  const shared = withSources(f, [
+    sourcePin(f, { authority_namespace: 'namespace:shared' }),
+    sourcePin(f, { profile: 'authzen:exact-action-result:2', authority_namespace: 'namespace:shared' }),
+  ]);
+  const sharedFirst = verify(f, handoff, ACTION, { pins: shared });
+  const sharedSecond = verify(f, relabelled, ACTION, { pins: shared, status: relabelledStatus });
+  assert.equal(sharedFirst.valid, true, JSON.stringify(sharedFirst.reasons));
+  assert.equal(sharedFirst.replay_key, sharedSecond.replay_key);
+  assert.equal(sharedFirst.replay_key, aebNativeAuthorizationReplayKey({
+    ...handoff,
+    authority_namespace: 'namespace:shared',
+  }));
+  assert.notEqual(sharedFirst.native_replay_unit, handoff.native_authorization.replay_unit);
+
+  const distinct = withSources(f, [
+    sourcePin(f, { authority_namespace: 'namespace:decisions' }),
+    sourcePin(f, { profile: 'authzen:exact-action-result:2', authority_namespace: 'namespace:grants' }),
+  ]);
+  const distinctFirst = verify(f, handoff, ACTION, { pins: distinct });
+  const distinctSecond = verify(f, relabelled, ACTION, { pins: distinct, status: relabelledStatus });
+  assert.equal(distinctFirst.valid, true);
+  assert.equal(distinctSecond.valid, true);
+  assert.notEqual(distinctFirst.replay_key, distinctSecond.replay_key);
+
+  for (const [name, sources] of [
+    ['mixed', [
+      sourcePin(f),
+      sourcePin(f, { profile: 'authzen:exact-action-result:2', authority_namespace: 'namespace:grants' }),
+    ]],
+    ['duplicate-identity', [
+      sourcePin(f, { authority_namespace: 'namespace:decisions' }),
+      sourcePin(f, { authority_namespace: 'namespace:grants' }),
+    ]],
+    ['invalid-namespace', [sourcePin(f, { authority_namespace: '' })]],
+  ]) {
+    const result = verify(f, handoff, ACTION, { pins: withSources(f, sources) });
+    assert.equal(result.valid, false, name);
+    assert.equal(result.checks.schema, false, name);
+    assert.equal(result.replay_key, null, name);
+    assert.ok(result.reasons.includes('native_handoff_schema_invalid'), name);
+  }
+});
+
+test('an unpinned source establishes no replay identity', () => {
+  const f = fixture();
+  const handoff = issueAebNativeAuthorizationHandoff({
+    ...f.input,
+    native_authorization: { ...f.input.native_authorization, profile: 'authzen:other:1' },
+  }, f.signer);
+  const result = verify(f, handoff);
+  assert.equal(result.checks.source_pinned, false);
+  assert.equal(result.native_replay_unit, null);
+  assert.equal(result.replay_key, null);
+});
+
+test('hostile in-process inputs refuse with a reason instead of throwing', () => {
+  const f = fixture();
+  const handoff = issueAebNativeAuthorizationHandoff(f.input, f.signer);
+  const base = { pins: f.pins, expected_action: ACTION, status: f.status, now: NOW };
+  const sparseKeys = [f.pins.gateway_keys[0]];
+  sparseKeys.length = 2;
+  const sparseSources = [f.pins.accepted_sources[0]];
+  sparseSources.length = 2;
+  const trapHandoff = new Proxy(structuredClone(handoff), {
+    get(target, key) {
+      if (key === 'signature') throw new Error('trap');
+      return target[key];
+    },
+    getOwnPropertyDescriptor(target, key) {
+      if (key === 'signature') throw new Error('trap');
+      return Reflect.getOwnPropertyDescriptor(target, key);
+    },
+  });
+  const modeGetter = Object.defineProperty({ ...base }, 'mode', {
+    get() { throw new Error('mode getter'); },
+    enumerable: true,
+  });
+  const pinsGetter = Object.defineProperty({ ...base }, 'pins', {
+    get() { return f.pins; },
+    enumerable: true,
+  });
+  const protoPins = JSON.parse(`{"__proto__":{"a":1},${JSON.stringify(f.pins).slice(1)}`);
+  // Faithful to descriptor reads, hostile on [[Get]]: still refused.
+  const getTrapHandoff = new Proxy(structuredClone(handoff), {
+    get(target, key) {
+      if (key === 'signature') throw new Error('trap');
+      return target[key];
+    },
+  });
+  const proxyOptions = new Proxy({ ...base }, {});
+  const proxyAction = new Proxy({ ...ACTION }, {});
+  const cases = {
+    getTrapHandoff: [getTrapHandoff, base, 'native_handoff_schema_invalid'],
+    proxyOptions: [handoff, proxyOptions, 'native_handoff_options_invalid'],
+    proxyAction: [handoff, { ...base, expected_action: proxyAction }, 'native_handoff_expected_action_invalid'],
+    sparseGatewayKeys: [handoff, { ...base, pins: { ...f.pins, gateway_keys: sparseKeys } }, 'native_handoff_schema_invalid'],
+    sparseSources: [handoff, { ...base, pins: { ...f.pins, accepted_sources: sparseSources } }, 'native_handoff_schema_invalid'],
+    trapHandoff: [trapHandoff, base, 'native_handoff_schema_invalid'],
+    modeGetter: [handoff, modeGetter, 'native_handoff_options_invalid'],
+    pinsGetter: [handoff, pinsGetter, 'native_handoff_options_invalid'],
+    protoPins: [handoff, { ...base, pins: protoPins }, 'native_handoff_schema_invalid'],
+    nullOptions: [handoff, null, 'native_handoff_schema_invalid'],
+  };
+  for (const [name, [value, options, reason]] of Object.entries(cases)) {
+    let result;
+    assert.doesNotThrow(() => { result = verifyAebNativeAuthorizationHandoff(value, options); }, name);
+    assert.equal(result.valid, false, name);
+    assert.equal(result.execution_authorizing, false, name);
+    assert.ok(result.reasons.includes(reason), `${name}: ${JSON.stringify(result.reasons)}`);
+  }
+});

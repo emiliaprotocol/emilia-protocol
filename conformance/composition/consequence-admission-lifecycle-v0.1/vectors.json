@@ -5,7 +5,7 @@
   "claim_boundary": [
     "The suite does not implement or re-run AuthZEN, COAZ-MCP, AP2, OAuth, or any other native policy decision.",
     "The suite does not establish conformance, adoption, deployment, independent interoperability, provider success, or exactly-once physical effect for any named external protocol.",
-    "The suite proves only deterministic behavior of this reference lifecycle runner over the checked-in synthetic fixtures."
+    "The suite proves only deterministic behavior of this standalone lifecycle model over the checked-in synthetic fixtures. It does not execute the shipped Verify or Gate packages."
   ],
   "base_action": {
     "action_type": "payment.release.1",
@@ -223,6 +223,27 @@
       "profile": "oauth-transaction-token",
       "scenario": "MISMATCHED_RECONCILIATION",
       "expected": "INDETERMINATE"
+    },
+    {
+      "id": "FRESH-AUTHORITY-CANNOT-REENTER-UNCERTAIN-ACTION",
+      "profile": "authzen-coaz-mcp",
+      "scenario": "FRESH_AUTHORITY_DURING_INDETERMINATE",
+      "fresh_authority_id": "authzen:decision:permit-1043",
+      "expected": "INDETERMINATE_THEN_ACTION_IN_FLIGHT"
+    },
+    {
+      "id": "FRESH-AUTHORITY-CANNOT-REPEAT-EXECUTED-ACTION",
+      "profile": "local-signed-mandate",
+      "scenario": "FRESH_AUTHORITY_AFTER_EXECUTED",
+      "fresh_authority_id": "local:mandate:lm-8193",
+      "expected": "EXECUTED_THEN_ACTION_CLOSED"
+    },
+    {
+      "id": "RELABELLED-GRANT-IS-SPENT-ONCE",
+      "profile": "authzen-coaz-mcp",
+      "scenario": "RELABEL_GRANT",
+      "alias_label": "authzen-coaz-mcp-alias",
+      "expected": "EXECUTED_THEN_REPLAY_REFUSED"
     },
     {
       "id": "BYPASS-PATH-IS-DISCLOSED-NOT-MEDIATED",

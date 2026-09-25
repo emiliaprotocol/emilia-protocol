@@ -7,6 +7,14 @@
  * result's integrity and bindings before exercising one shared residual
  * lifecycle: exact-action comparison, reserve, provider entry, terminal or
  * indeterminate outcome, and authenticated reconciliation.
+ *
+ * The model derives the native replay unit from the pinned authority
+ * namespace, the native system (standing in for the issuer), and the native
+ * authority identifier. The profile label is not an input, so one grant
+ * presented under a second pinned label is the same authority. The store also
+ * holds an exact-action fence keyed by provider and action digest: while an
+ * attempt for that action is reserved, entered, or indeterminate, and after it
+ * executed, a fresh authority with a new operation identifier is refused.
  */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
@@ -95,21 +103,31 @@ function nativeIntegrityPayload(authority) {
   return payload;
 }
 
+function deriveReplayUnit(profile, authority) {
+  // Label-free: (authority namespace, issuer, authorization identifier).
+  return digest({
+    authority_namespace: profile.native_system,
+    issuer: authority.native_system,
+    native_authority_id: authority.native_authority_id,
+  });
+}
+
 function buildNativeAuthority(profile, options = {}) {
   const projected = normalizeAction(profile, CORPUS.base_action);
   assert.equal(projected.mapping, 'MAPPED');
+  const nativeAuthorityId = options.authorityId ?? profile.native_authority_id;
   const authorityBase = {
-    profile_id: profile.id,
+    profile_id: options.label ?? profile.id,
     native_system: profile.native_system,
     authorization_owner: profile.authorization_owner,
-    native_authority_id: profile.native_authority_id,
+    native_authority_id: nativeAuthorityId,
     native_result: profile.native_result,
     native_verified: true,
     native_authorized: true,
     exact_action_digest: projected.action_digest,
-    replay_unit: digest({
-      profile_id: profile.id,
-      native_authority_id: profile.native_authority_id,
+    replay_unit: deriveReplayUnit(profile, {
+      native_system: profile.native_system,
+      native_authority_id: nativeAuthorityId,
     }),
     context: clone(CORPUS.base_context),
     status: {
@@ -158,14 +176,25 @@ function verifyNativeResult(authority) {
     && authority.integrity.verifier_result_digest === digest(nativeIntegrityPayload(authority));
 }
 
+function actionKey(bindings) {
+  return digest({ provider: bindings.provider, action_digest: bindings.action_digest });
+}
+
 class LifecycleStore {
   constructor() {
     this.operations = new Map();
     this.replayOwners = new Map();
+    this.actionOwners = new Map();
+    this.executedActions = new Set();
   }
 
   reserve({ operationId, replayUnit, owner, bindings }) {
-    if (this.operations.has(operationId) || this.replayOwners.has(replayUnit)) return null;
+    if (this.operations.has(operationId) || this.replayOwners.has(replayUnit)) {
+      return { conflict: 'native_replay_or_operation_conflict' };
+    }
+    const fence = actionKey(bindings);
+    if (this.executedActions.has(fence)) return { conflict: 'native_action_already_executed' };
+    if (this.actionOwners.has(fence)) return { conflict: 'native_action_in_flight' };
     const entry = {
       operation_id: operationId,
       replay_unit: replayUnit,
@@ -177,7 +206,15 @@ class LifecycleStore {
     };
     this.operations.set(operationId, entry);
     this.replayOwners.set(replayUnit, operationId);
-    return entry;
+    this.actionOwners.set(fence, operationId);
+    return { entry };
+  }
+
+  markExecuted(entry) {
+    entry.state = 'EXECUTED';
+    const fence = actionKey(entry.bindings);
+    this.actionOwners.delete(fence);
+    this.executedActions.add(fence);
   }
 
   recoverPreEntry(operationId, owner) {
@@ -187,6 +224,7 @@ class LifecycleStore {
     }
     this.operations.delete(operationId);
     this.replayOwners.delete(entry.replay_unit);
+    this.actionOwners.delete(actionKey(entry.bindings));
     return true;
   }
 
@@ -196,8 +234,9 @@ class LifecycleStore {
 }
 
 class ConsequenceAdmissionGate {
-  constructor(profile) {
+  constructor(profile, acceptedLabels = [profile.id]) {
     this.profile = profile;
+    this.acceptedLabels = new Set(acceptedLabels);
     this.store = new LifecycleStore();
     this.providerCalls = 0;
     this.dispatchOwners = new Set();
@@ -208,11 +247,12 @@ class ConsequenceAdmissionGate {
     if (!verifyNativeResult(authority) || authority.native_verified !== true) {
       return { state: 'REFUSED', reason: 'native_verifier_result_invalid' };
     }
+    if (!this.acceptedLabels.has(authority.profile_id)) {
+      return { state: 'REFUSED', reason: 'native_profile_id_pin_mismatch' };
+    }
     for (const [field, expected] of Object.entries({
-      profile_id: this.profile.id,
       native_system: this.profile.native_system,
       authorization_owner: this.profile.authorization_owner,
-      native_authority_id: this.profile.native_authority_id,
       native_result: this.profile.native_result,
     })) {
       if (authority[field] !== expected) {
@@ -252,6 +292,9 @@ class ConsequenceAdmissionGate {
         reason: 'material_action_changed_native_authority_must_be_reevaluated',
       };
     }
+    if (authority.replay_unit !== deriveReplayUnit(this.profile, authority)) {
+      return { state: 'REFUSED', reason: 'native_replay_unit_mismatch' };
+    }
     return { state: 'READY', action_digest: projected.action_digest };
   }
 
@@ -260,22 +303,25 @@ class ConsequenceAdmissionGate {
     if (inspected.state !== 'READY') {
       return { ...inspected, provider_calls: this.providerCalls };
     }
-    const entry = this.store.reserve({
+    // The model derives the replay unit itself; the carried value is only
+    // checked for consistency in inspect().
+    const reservation = this.store.reserve({
       operationId,
-      replayUnit: authority.replay_unit,
+      replayUnit: deriveReplayUnit(this.profile, authority),
       owner,
       bindings: {
         action_digest: inspected.action_digest,
         provider: context.provider,
       },
     });
-    if (!entry) {
+    if (reservation.conflict) {
       return {
         state: 'REFUSED',
-        reason: 'native_replay_or_operation_conflict',
+        reason: reservation.conflict,
         provider_calls: this.providerCalls,
       };
     }
+    const { entry } = reservation;
     if (mode === 'PRE_ENTRY_CRASH') {
       return {
         state: 'PRE_ENTRY_CRASHED',
@@ -297,7 +343,7 @@ class ConsequenceAdmissionGate {
         provider_calls: this.providerCalls,
       };
     }
-    entry.state = 'EXECUTED';
+    this.store.markExecuted(entry);
     return { state: 'EXECUTED', provider_calls: this.providerCalls };
   }
 
@@ -331,7 +377,7 @@ class ConsequenceAdmissionGate {
     if (body.outcome !== 'EXECUTED') {
       return { state: 'INDETERMINATE', reason: 'provider_outcome_not_terminal' };
     }
-    entry.state = 'EXECUTED';
+    this.store.markExecuted(entry);
     return { state: 'EXECUTED', reconciled: true };
   }
 }
@@ -552,6 +598,62 @@ async function executeCase(vector, profile) {
       };
       break;
     }
+    case 'FRESH_AUTHORITY_DURING_INDETERMINATE': {
+      const lost = gate.admit({ ...input, mode: 'POST_ENTRY_RESPONSE_LOSS' });
+      const fresh = buildNativeAuthority(profile, { authorityId: vector.fresh_authority_id });
+      const retry = gate.admit({
+        ...input,
+        authority: fresh,
+        operationId: `${input.operationId}:fresh`,
+        owner: `${input.owner}:fresh`,
+      });
+      observed = {
+        first: lost.state,
+        retry: retry.state,
+        retry_reason: retry.reason,
+        fresh_replay_unit: fresh.replay_unit !== input.authority.replay_unit,
+        provider_calls: gate.providerCalls,
+      };
+      break;
+    }
+    case 'FRESH_AUTHORITY_AFTER_EXECUTED': {
+      const first = gate.admit(input);
+      const fresh = buildNativeAuthority(profile, { authorityId: vector.fresh_authority_id });
+      const second = gate.admit({
+        ...input,
+        authority: fresh,
+        operationId: `${input.operationId}:fresh`,
+        owner: `${input.owner}:fresh`,
+      });
+      observed = {
+        first: first.state,
+        second: second.state,
+        second_reason: second.reason,
+        fresh_replay_unit: fresh.replay_unit !== input.authority.replay_unit,
+        provider_calls: gate.providerCalls,
+      };
+      break;
+    }
+    case 'RELABEL_GRANT': {
+      const relabelGate = new ConsequenceAdmissionGate(profile, [profile.id, vector.alias_label]);
+      const first = relabelGate.admit(input);
+      const relabelled = buildNativeAuthority(profile, { label: vector.alias_label });
+      const second = relabelGate.admit({
+        ...input,
+        authority: relabelled,
+        operationId: `${input.operationId}:relabelled`,
+        owner: `${input.owner}:relabelled`,
+      });
+      observed = {
+        first: first.state,
+        second: second.state,
+        second_reason: second.reason,
+        label_changed: relabelled.profile_id !== input.authority.profile_id,
+        replay_unit_stable: relabelled.replay_unit === input.authority.replay_unit,
+        provider_calls: relabelGate.providerCalls,
+      };
+      break;
+    }
     case 'DISCLOSE_BYPASS_PATH': {
       observed = {
         coverage: 'CONFIGURED_PATHS_ONLY',
@@ -583,6 +685,25 @@ function expectedResult(expected, observed) {
     case 'EXECUTED_THEN_REFUSED':
       return observed.first === 'EXECUTED'
         && observed.second === 'REFUSED'
+        && observed.provider_calls === 1;
+    case 'INDETERMINATE_THEN_ACTION_IN_FLIGHT':
+      return observed.first === 'INDETERMINATE'
+        && observed.retry === 'REFUSED'
+        && observed.retry_reason === 'native_action_in_flight'
+        && observed.fresh_replay_unit === true
+        && observed.provider_calls === 1;
+    case 'EXECUTED_THEN_ACTION_CLOSED':
+      return observed.first === 'EXECUTED'
+        && observed.second === 'REFUSED'
+        && observed.second_reason === 'native_action_already_executed'
+        && observed.fresh_replay_unit === true
+        && observed.provider_calls === 1;
+    case 'EXECUTED_THEN_REPLAY_REFUSED':
+      return observed.first === 'EXECUTED'
+        && observed.second === 'REFUSED'
+        && observed.second_reason === 'native_replay_or_operation_conflict'
+        && observed.label_changed === true
+        && observed.replay_unit_stable === true
         && observed.provider_calls === 1;
     case 'EXECUTED':
       return observed.state === 'EXECUTED' && observed.provider_calls === 1;
@@ -659,6 +780,8 @@ export async function runSuite() {
       native_authorization_remains_native: true,
       exact_action_checked_at_executor_boundary: true,
       stable_native_replay_unit: true,
+      replay_unit_excludes_profile_label: true,
+      same_action_fence: 'IN_FLIGHT_AND_EXECUTED',
       reserve_before_provider_entry: true,
       provider_entry_attempts: 'AT_MOST_ONE',
       post_entry_uncertainty: 'STICKY_INDETERMINATE',
