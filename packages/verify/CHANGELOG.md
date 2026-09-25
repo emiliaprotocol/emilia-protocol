@@ -3,7 +3,7 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## 4.1.0 (unreleased)
+## 4.1.0 (2026-09-24)
 
 - Add `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1`, a closed Ed25519 gateway statement
   that binds the stated native authorization identity and `PERMIT` decision to

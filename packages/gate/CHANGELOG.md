@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-## 0.26.0 (unreleased)
+## 0.26.0 (2026-09-24)
 
 ### Added
 
