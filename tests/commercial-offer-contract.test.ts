@@ -56,10 +56,8 @@ describe('commercial offer contract', () => {
     expect(conversionSurfaces).toContain('$25K');
     expect(programIntegrity).toContain('href="/pilot?v=health"');
     expect(trustedContextPack).not.toMatch(/60[- ]day|60 days|Amelia I/i);
-    expect(trustedContextPack).toContain('$25K');
-    expect(trustedContextPack).toContain('90 days');
-    expect(trustedContextPack).toMatch(/one\s+buyer-selected protected workflow/);
-    expect(trustedContextPack).toContain('separately scoped');
+    // The protocol profile carries no commercial terms.
+    expect(trustedContextPack).not.toMatch(/\$\s?\d/);
   });
 
   it('accepts and returns to every server-supported public record id', () => {

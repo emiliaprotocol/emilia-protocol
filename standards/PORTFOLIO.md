@@ -129,7 +129,7 @@ Separately, the **runtime execution spine** is:
 2. **CAID-02** identifies and matches the exact material action.
 3. **AEC-05** verifies and composes action-matched evidence into a relying-party
    satisfaction result.
-4. **AEB-05** applies the executor-side admission boundary, including authority
+4. **AEB-06** applies the executor-side admission boundary, including authority
    separation and one-time consequence custody.
 
 This spine names the runtime path; it is not the four-document presentation
@@ -244,6 +244,15 @@ archive. The revision defines a neutral native-compilation contract with
 explicit semantic-loss disclosure, exact-action binding, a stable native replay
 unit, and preservation of the AEB lifecycle axes. Native-owner review and the
 complete multi-profile conformance gate remain open.
+
+On **September 24, 2026**, AEB-06 was posted through Datatracker submission
+169466. Its XML and TXT were verified byte-for-byte against the immutable IETF
+archive. The revision places AEB after the native authorization decision,
+makes CAID conditional on a cross-format join and AEC conditional on a
+multi-leg evidence requirement, and keeps durable reservation before provider
+entry and authenticated reconciliation without blind retry. It is an
+individual Internet-Draft, not an adopted working-group item. Native-owner
+review and the complete multi-profile conformance gate remain open.
 
 The published line also retains Authority Introduction-03, Quorum-03, Bounded
 Capability Receipts-02, and the other current individual drafts listed in

@@ -77,7 +77,7 @@ complete active portfolio remains the 24 records in
 coauthored records, each with its own scope and revision history.
 
 The separate runtime execution spine is **Architecture-02 -> CAID-02 ->
-AEC-05 -> AEB-05**: architecture and decision boundaries, exact material-action
+AEC-05 -> AEB-06**: architecture and decision boundaries, exact material-action
 identity and matching, evidence satisfaction, then executor-side admission and
 one-time consequence custody. This runtime path is not the four-document
 presentation surface and does not retire, merge, or demote any active profile.
@@ -164,6 +164,20 @@ Revision -05 makes AEB a neutral native-compilation target while requiring
 explicit semantic-loss disclosure, exact-action binding, a stable native replay
 unit, and preservation of the AEB lifecycle axes. Native-owner review and the
 complete multi-profile conformance gate remain open.
+
+## September 24 AEB maintenance revision
+
+`draft-schrock-action-evidence-boundary-06` was posted through Datatracker
+submission 169466 (Datatracker time 2026-09-25T02:15:03Z). Its XML and TXT
+match the immutable IETF archive byte-for-byte. The posted HTML follows the
+same whitespace-normalized local render rule as -05. Revision -06 places AEB
+after the native identity and authorization decision: CAID is used only for a
+cross-format join, AEC only for a multi-leg evidence requirement, and no second
+PDP is required. It keeps stable replay identity, durable consume or reserve
+before provider entry, and authenticated reconciliation without blind retry.
+It is an individual Internet-Draft, not a working-group item, and posting is
+not protocol-owner review. Native-owner review and the complete multi-profile
+conformance gate remain open.
 
 ## New-filing freeze
 

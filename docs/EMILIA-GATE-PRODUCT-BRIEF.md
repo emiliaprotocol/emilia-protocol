@@ -18,11 +18,6 @@ verifiable at the point of consequence.* A human decision is one authority sourc
 path, not the default execution model. EMILIA does not stop every unguarded system; it protects only
 the paths where a resource owner deploys Gate with complete mediation.
 
-**The commercial sentence:** *EMILIA charges where authorized intent becomes consequential action.*
-This names the value location. Current pricing remains protected-workflow pilot, implementation,
-and annual Gate plus Assurance. It is not a claim of current per-action revenue or global network
-operation.
-
 ## The category
 
 Firewalls ask "is this packet allowed?" WAFs ask "is this request malicious?" EDR asks "is this
@@ -159,17 +154,14 @@ central transaction rail, or proof of external adoption.
 | Issuer / signoff | `@emilia-protocol/issue` | shipped |
 | Native approval capture | iOS and Android reference apps + SDKs | built on the mobile integration branch; production signing and store review remain deployment gates |
 
-**Commercial layer:** managed policy, approver-directory integrations, evidence export, deployment
-operations, continuous conformance, and warranties. The open verifier and enforcement semantics
-remain reproducible. Customer-operated and EMILIA-managed Gate are parallel deployment choices. In
-either mode, the customer controls authority, trust roots, policy, provider-credential custody,
-acceptance rules, and portable evidence. Managed Gate is scoped and quoted for a defined customer
-deployment after implementation acceptance; the public repository does not establish a generally
-available live service.
+**Deployment modes:** customer-operated and EMILIA-managed Gate are parallel deployment choices.
+In either mode, the customer controls authority, trust roots, policy, provider-credential custody,
+acceptance rules, and portable evidence. The open verifier and enforcement semantics remain
+reproducible. The public repository does not establish a generally available live service.
 
-## Gate deployment surfaces (the land-grab order)
+## Gate deployment surfaces
 
-Plant the gate at every actuator boundary, widest-adoption-first:
+Gate can sit at each of these actuator boundaries:
 
 1. **MCP** — wrap agent tools; dangerous action without a receipt returns `428`. *(shipped: `mcp-guard` + `gate`)*
 2. **APIs** — middleware for Express / FastAPI / Next / Go; protect POST/PUT/PATCH/DELETE. *(shipped: `gate.middleware`)*
@@ -179,21 +171,21 @@ Plant the gate at every actuator boundary, widest-adoption-first:
 6. **Attestation-verifier profile** — a relying-party-pinned verifier checks workload/image/config/policy measurements, while a separately pinned active probe proves the declared route returns 428. *(reference verifier and software-TPM interoperability fixture built; physical production-host attestation remains external deployment evidence)*
 7. **Network witness** — a TAP, packet broker, or service observer signs privacy-minimized action-bound observations. It remains an evidence plane and can never establish enforcement by itself. *(local vendor-neutral profile and replay-safe testnet built; no independent operator is claimed)*
 
-## Build order (for the managed product)
+## Build status
 
 1. **BYOC consequence firewall** — deploy the GitHub reference service with customer-owned keys and Postgres state. *(built)*
 2. **MCP and HTTP entry points** — one enforcement contract across agent tools and ordinary APIs. *(core built; product packaging next)*
 3. **Native approval capture** — controlled material-field display plus platform attestation. *(reference apps built; signing/release hardening remains)*
 4. **Policy and coverage inventory** — show each declared surface as `gated`, `witness_only`, `ungated`, `stale`, or `unknown`; only fresh attestation plus an active refusal probe earns `gated`. *(built reference kernel and UI)*
 5. **Evidence operations** — searchable export, retention, fork alerts, insurer/auditor packages, network-witness ingestion, and evidence-complete settlement decisions. *(kernels built; managed operation next)*
-6. **Managed fleet** — directory integrations, rollout, drift detection, continuous conformance, partner hardware adapters, risk pricing, and a separately contracted warranty. *(commercial expansion)*
+6. **Managed fleet** - directory integrations, rollout, drift detection, continuous conformance, and partner hardware adapters. *(future work)*
 
 ## Standards
 
 The governed repository inventory currently tracks 24 active Datatracker records: 20
 sole-authored records and four coauthored records. Current snapshots include AE-CHALLENGE -07,
-AEB -05, CAID -02, Architecture -02, AEC -05, Authorization Receipts -12, Bounded Capability
-Receipts -04, Quorum -03, Model-to-Matter -04, and the coauthored GRACE Grid Curtailment -00.
+AEB -06, CAID -02, Architecture -03, AEC -06, Authorization Receipts -12, Bounded Capability
+Receipts -05, Quorum -04, Model-to-Matter -04, and the coauthored GRACE Grid Curtailment -00.
 `standards/STATUS.json` is the repository source and the live Datatracker is authoritative for
 current revision and status. None is an RFC, an adopted working-group item, or IETF endorsement.
 Conformance is earned by executable harnesses, not asserted by draft status.
@@ -213,9 +205,7 @@ without issuing an audit opinion or accredited certification.
 EMILIA Gate cannot stop a malicious operator who controls their own stack from simply not deploying
 it. What it does: make legitimate infrastructure refuse consequential actions that lack the valid
 authority evidence required by the resource owner, and let clouds, rails, regulators, and insurers
-require a suitable evidence profile. Necessary, not sufficient. That is how a standard wins: first
-it protects the careful, then it becomes a procurement requirement, then unprotected systems look
-reckless.
+require a suitable evidence profile. Necessary, not sufficient.
 
 A portable qualification does not change that limit. It establishes only that accepted evaluation
 evidence remains current for the exact measured candidate, assignment, and request under pinned
@@ -227,9 +217,7 @@ signed observation row, but a passive observer cannot block an action. The contr
 reports an observed surface without active enforcement proof as `witness_only` and refuses any
 settlement profile that requires a gated route.
 
-## Where it sits in the roadmap
+## Related profiles
 
-EMILIA Gate is the **horizontal product**; the verticals are profiles of it:
-**Receipt-Required** (MCP/dev) is the adoption wedge that seeds Gate deployment · **GRACE** is the
-energy vertical · **defense/autonomy** is the physical-action vertical. One company, one sentence:
-**the authority control plane for autonomous work.**
+**Receipt-Required** (MCP and developer tools), **GRACE** (energy curtailment), and physical-action
+profiles are profiles of EMILIA Gate, not separate products.

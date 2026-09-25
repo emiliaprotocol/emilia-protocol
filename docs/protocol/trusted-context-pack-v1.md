@@ -217,16 +217,6 @@ evidence role and therefore cannot unlock execution.
 - package exports: `@emilia-protocol/gate/trusted-context` and
   provider entries under `@emilia-protocol/gate/trusted-context/*`
 
-## Commercial packaging
-
-This is a control inside the single public protected-workflow pilot, not a new
-memory-object SKU. The pilot costs $25K, runs for 90 days, and identifies and
-adversarially tests one buyer-selected protected workflow under synthetic and
-read-only conditions.
-Any production Gate Implementation is separately scoped after buyer acceptance;
-an Operated Gate is then scoped for the deployment-specific control boundary.
-Pricing remains governed by `lib/commercial-offer.ts`.
-
 ## Remaining deployment evidence
 
 The five-vector ApertoMemory trust-and-custody source-fact subset has now been

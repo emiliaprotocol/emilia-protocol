@@ -1,6 +1,71 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+All notable changes to `@emilia-protocol/gate` are documented here.
+This package follows [Semantic Versioning](https://semver.org/).
+
+## Unreleased
+
+### Security
+
+- `createNativeConsequenceBoundary()` now holds a durable exact-action fence.
+  Each attempt reserves a second, per-operation holder row that carries a
+  fence keyed by relying party, provider coordinates (tenant, provider,
+  provider account, environment), and action digest. While an attempt for
+  that action is reserved, invoking, or indeterminate, a new attempt is
+  refused as `native_action_in_flight`, even with a fresh native authorization
+  and a fresh operation ID. After an authenticated EXECUTED result the fence
+  stays closed and a new attempt is refused as
+  `native_action_already_executed`. Only an authenticated FAILED result
+  (direct or reconciled) or a proven pre-entry release opens it. New exports:
+  `nativeConsequenceBoundaryActionFenceKey()` and
+  `nativeConsequenceBoundaryActionFenceHolderKey()`.
+- The native replay key and the provider idempotency key no longer depend on
+  the handoff's `system` or `profile` labels. They take the label-free replay
+  unit that `@emilia-protocol/verify` derives from the pinned authority
+  namespace, the issuer, and the native authorization ID, so one grant
+  accepted under two pinned labels is spent once.
+- `reconcile()` refuses an attempt that never entered the provider
+  (`RESERVED`, or `RELEASED` without terminal evidence) as
+  `attempt_never_entered_provider`, and refuses an outcome that conflicts with
+  an existing terminal record as `reconciliation_outcome_conflict` without
+  touching any reservation. Pre-entry refusals release reservations only after
+  the attempt itself is durably `RELEASED`.
+- Hostile in-process input is refused instead of throwing: a Proxy anywhere in
+  `run()` or `reconcile()` input, getters, extra keys, and an own `__proto__`
+  member. Attempt-store answers are copied once as plain data. A
+  `pins.relying_party_id` outside the Gate identifier grammar is refused at
+  construction, and durable keys are derived before `local_authorize` runs, so
+  an unkeyable binding is a refusal (`native_consequence_binding_invalid`)
+  with no side effect.
+
+### Fixed
+
+- `createPostgresAebDurableConsumptionStore()` now provides the durable
+  `state()` read the native boundary requires, through a new executor-only
+  security-definer function `ep_aeb_private.operation_state`. After a restart,
+  native `reconcile()` claims the operation and action-fence reservations
+  through `claimReservation()` with the caller's `recovery_authorization`
+  when the store declares `recoveryClaimSupported: true`.
+
+### Compatibility
+
+- Attempts recorded by 0.26.0 cannot be reconciled after upgrading, because
+  the native replay unit changed. Drain uncertain native attempts before
+  upgrading.
+- Existing databases need the `operation_state` function:
+  `supabase/migrations/20260925010000_aeb_operation_state.sql` (it mirrors
+  `AEB_CONSUMPTION_DDL`).
+- `authorizeRecoveryClaim` now receives the same `recovery_authorization` for
+  two keys per native attempt. An authorizer bound to a single key must accept
+  both `nativeConsequenceBoundaryReservationKey()` and
+  `nativeConsequenceBoundaryActionFenceHolderKey()`.
+- Each executed native action leaves one permanent marker row in the
+  consumption store, used only to choose the `native_action_already_executed`
+  reason.
+- Identical intentional repeats must differ in the canonical action, for
+  example through a caller-chosen instance field.
+
 ## 0.26.0 (2026-09-24)
 
 ### Added
@@ -16,12 +81,63 @@
   mutation cannot change what runs or what Gate returns under recorded program
   digests.
 
-This direct handoff is reference implementation work for the proposed, staged
-AEB-06 refinement. Published AEB-05 still requires CAID matching and AEC
-satisfaction. Source labels do not establish native-protocol conformance or
+The direct handoff is a repository implementation profile for the direct
+native path of AEB-06. AEB-06 was posted as an individual Internet-Draft at
+2026-09-25T02:15:03Z, before this release was published, and is not adopted by
+any working group; the text shipped in this release still described it as
+staged. AEB-06 makes CAID and AEC conditional but does not specify the gateway
+handoff. Source labels do not establish native-protocol conformance or
 independent interoperability.
 
-## Unreleased
+### Known issues (found after release)
+
+- `createNativeConsequenceBoundary()` does not fence the action itself. While
+  a first attempt is `INDETERMINATE`, a second attempt at the identical action
+  that carries a fresh native `authorization_id` and a fresh operation ID is
+  admitted and reaches the provider a second time.
+- The native replay unit includes the handoff's `system` and `profile` labels.
+  When a relying party pins one gateway and issuer under two labels, the same
+  native grant presented under each label is admitted twice.
+- The shipped PostgreSQL AEB store does not expose `state()`, so it cannot back
+  `createNativeConsequenceBoundary()`; construction fails with
+  `native_consequence_boundary_configuration_invalid`.
+
+All three are repaired in the Unreleased section above; no fixed version has
+been published yet.
+
+## 0.25.0 (2026-09-13)
+
+### Added
+
+- Add `./action-risk-control-schedule`
+  (`EP-ACTION-RISK-CONTROL-SCHEDULE-v1`), a relying-party-scoped,
+  hybrid-signed statement of the technical controls required for one action
+  class, with a signed qualification status and an evaluation that returns
+  `ELIGIBLE`, `NOT_ELIGIBLE`, or `INDETERMINATE`. The schedule is evidence
+  input only. It never authorizes an action, creates policy or coverage, sets a
+  premium, allocates liability, or proves a provider effect.
+- Add `./provider-outcome-binding` (`EP-PROVIDER-OUTCOME-BINDING-v1`). It
+  verifies a complete `EP-OUTCOME-OBSERVATION-v2` under the relying party's
+  source pins and requires the signed observation to commit the digest of one
+  closed `EP-PROVIDER-OUTCOME-CONTEXT-v1`. Outcomes are `COMMITTED`,
+  `PROVEN_NOT_COMMITTED`, or `INDETERMINATE`; the binding is not provider
+  truth or proof of an external effect.
+- Add `./action-evidence-packet` (`EP-ACTION-EVIDENCE-PACKET-v1`), a
+  content-addressed join of native artifacts for one exact Gate action through
+  relying-party-supplied native verifier adapters. Results are
+  `TECHNICALLY_COMPLETE`, `INCOMPLETE`, `CONFLICTED`, or `INDETERMINATE`. The
+  packet never decides coverage, causation, liability, a claim, or payment.
+
+### Changed
+
+- Depend on `@emilia-protocol/verify` 4.0.0.
+- The underwriter control attestation's boundary `status` string changed from
+  "carries no coverage effect until adopted by the carrier" to "has no coverage
+  effect; acceptance as technical evidence would not create or decide
+  coverage", so newly built attestations differ in that field from 0.24.0
+  output.
+
+## 0.24.0 (2026-09-05)
 
 ### Security
 
@@ -46,10 +162,6 @@ independent interoperability.
   existing evidence-record fields except that raw `guard_evidence` is now
   redacted from public refusal and `guard()` error surfaces; the full record
   remains available through the internal evidence log and direct `run()` result.
-
-## 0.24.0 (2026-08-30)
-
-### Security
 
 - Restrict the Action Escrow human-facing milestone, amount, currency, payee,
   and destination fields to printable ASCII before building the exact approval
@@ -122,6 +234,42 @@ independent interoperability.
     `population_conservation_violation:system` or
     `population_conservation_violation:receipt` on violation.
 
+## 0.23.15 (2026-08-15)
+
+First published in 0.23.15. This section was previously labelled Unreleased.
+
+### Added
+
+- Add the transport- and evidence-format-neutral `./consequence-boundary`
+  facade. It re-verifies a signed AEB join for one frozen action, applies local
+  policy, atomically fences native replay units, records provider-attempt
+  custody, and reports only `EXECUTED`, authoritative `FAILED`, or
+  `INDETERMINATE` after provider entry.
+- Add `./bounded-execution-acceptance`, a relying-party-signed acceptance
+  profile and portable evidence pack over signed bounded-execution reports.
+  Evaluation preserves unresolved work as `INDETERMINATE` and deliberately
+  makes no legal-compliance, external-effect, safety, or complete-mediation
+  claim.
+
+### Security
+
+- Scope legacy receipt consumption by the canonical signed
+  `[tenant_id, receipt_id]` pair. Every reserve, consume, commit, and release
+  transition now uses the same recorded composite key, preventing one
+  tenant's receipt identifier from colliding with another tenant in a shared
+  store.
+- Require an explicit relying-party verification mode when WebAuthn RP and
+  origin pins are authoritative; omitted pins now fail closed instead of
+  silently producing an integrity-only result.
+
+### Compatibility
+
+- Pre-composite stores contain bare `receipt_id` rows that the new composite
+  keyspace does not consult. Before upgrading a deployment that cannot accept
+  one additional admission during the configured `maxAgeSec` window, drain
+  in-flight receipts or refuse admission for one complete `maxAgeSec`
+  interval. Fresh stores are unaffected.
+
 ## 0.23.14 (2026-08-05)
 
 - Carry `@emilia-protocol/require-receipt` 0.8.0 so Gate integrations can use
@@ -157,43 +305,6 @@ independent interoperability.
 
 - Add crash-safe, program-aware provider entry with a caller-prepared invocation token.
 - Preserve bounded-program status, concurrency, occurrence, and budget checks on that path.
-
-All notable changes to `@emilia-protocol/gate` are documented here.
-This package follows [Semantic Versioning](https://semver.org/).
-
-## Unreleased
-
-### Added
-
-- Add the transport- and evidence-format-neutral `./consequence-boundary`
-  facade. It re-verifies a signed AEB join for one frozen action, applies local
-  policy, atomically fences native replay units, records provider-attempt
-  custody, and reports only `EXECUTED`, authoritative `FAILED`, or
-  `INDETERMINATE` after provider entry.
-- Add `./bounded-execution-acceptance`, a relying-party-signed acceptance
-  profile and portable evidence pack over signed bounded-execution reports.
-  Evaluation preserves unresolved work as `INDETERMINATE` and deliberately
-  makes no legal-compliance, external-effect, safety, or complete-mediation
-  claim.
-
-### Security
-
-- Scope legacy receipt consumption by the canonical signed
-  `[tenant_id, receipt_id]` pair. Every reserve, consume, commit, and release
-  transition now uses the same recorded composite key, preventing one
-  tenant's receipt identifier from colliding with another tenant in a shared
-  store.
-- Require an explicit relying-party verification mode when WebAuthn RP and
-  origin pins are authoritative; omitted pins now fail closed instead of
-  silently producing an integrity-only result.
-
-### Compatibility
-
-- Pre-composite stores contain bare `receipt_id` rows that the new composite
-  keyspace does not consult. Before upgrading a deployment that cannot accept
-  one additional admission during the configured `maxAgeSec` window, drain
-  in-flight receipts or refuse admission for one complete `maxAgeSec`
-  interval. Fresh stores are unaffected.
 
 ## 0.23.9 (2026-08-03)
 

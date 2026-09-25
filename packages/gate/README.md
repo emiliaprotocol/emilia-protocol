@@ -7,8 +7,9 @@ known.
 OAuth, AuthZEN, AP2, and local systems keep their native credentials, mappings,
 and policy decisions. Gate verifies the configured AEB evidence for the final
 operation, applies the relying party's local authorization rule, reserves every
-native replay identity before provider entry, and refuses blind retry after an
-uncertain result.
+native replay identity before provider entry, refuses a second attempt at the
+same action while an earlier attempt is unresolved, and refuses blind retry
+after an uncertain result.
 
 On an exclusively mediated path, an agent without sufficient current authority
 cannot reach the configured executor for money, code, permissions, data,
@@ -22,16 +23,45 @@ deployment completely mediates.
 For the native-evidence path, import the stable facade:
 
 ```js
-import {
-  createNativeConsequenceBoundary,
-  createPostgresAebDurableConsumptionStore,
-} from '@emilia-protocol/gate/aeb';
+import { createNativeConsequenceBoundary } from '@emilia-protocol/gate/aeb';
 ```
 
-This direct path implements the proposed, staged AEB-06 refinement. The
-current published AEB-05 still requires CAID matching and AEC evidence
-satisfaction. The named source labels and same-repository vectors do not
-establish native-protocol conformance or independent interoperability.
+On the direct native path Gate also holds an exact-action fence. While an
+attempt for the same relying party, provider account, and action digest is
+reserved, invoking, or uncertain, a new attempt is refused as
+`native_action_in_flight`, even with a fresh native authorization and a fresh
+operation ID. An executed action stays closed (`native_action_already_executed`).
+Only an authenticated FAILED outcome or a proven pre-entry release opens it.
+The fence keys on the digest of the action object the caller passes, so put
+only material fields in that object. Intentional repeats must differ in the
+canonical action, for example through a caller-chosen instance field.
+
+The native replay key is derived from the relying-party-pinned authority
+namespace (by default the issuer), the issuer, and the native authorization
+ID. The `system` and `profile` labels are not inputs, so one grant accepted
+under two pinned labels is spent once. Source pins that accept one issuer must
+all declare `authority_namespace` or all omit it.
+
+The native boundary needs a durable, ownership-fenced consumption store that
+also exposes a durable `state()` read. The PostgreSQL store from
+`createPostgresAebDurableConsumptionStore()` provides that read. Its commit and
+release are fenced to the reserving store instance, so after a restart
+`reconcile()` claims the operation reservation and the action-fence holder
+through `claimReservation()` with the caller's `recovery_authorization`. The
+store's `authorizeRecoveryClaim` must accept that authorization for both keys
+(`nativeConsequenceBoundaryReservationKey()` and
+`nativeConsequenceBoundaryActionFenceHolderKey()`). Gate 0.26.0 shipped the
+PostgreSQL store without `state()`; existing databases need the
+`ep_aeb_private.operation_state` function from
+`supabase/migrations/20260925010000_aeb_operation_state.sql`.
+
+This direct path follows AEB-06, which was posted on 2026-09-24 as an
+individual Internet-Draft and is not adopted by any working group. AEB-06 makes
+CAID conditional on a cross-format join and AEC conditional on a multi-leg
+evidence requirement. The signed gateway handoff and the same-action fence are
+repository implementation profiles that AEB-06 does not specify. The named
+source labels and same-repository vectors do not establish native-protocol
+conformance or independent interoperability.
 
 See the [consequence-admission boundary](../../docs/protocol/consequence-admission.md)
 for the division of responsibility between the native authorization system,
@@ -639,8 +669,9 @@ The AEB consumption store has its own disjoint PostgreSQL credentials:
 `createPostgresAebDurableConsumptionStore()` requires an `ep_aeb_executor`
 pool and a physically distinct `ep_aeb_recovery` pool. Each login must be
 listed for the tenant in `ep_aeb_private.tenant_principals`. Neither runtime
-role receives table privileges; reserve, commit, release, and recovery claim
-are narrow security-definer functions. Supabase `service_role` receives no
+role receives table privileges; reserve, commit, release, recovery claim, and
+the operation-state read are narrow security-definer functions, and the state
+read is granted to `ep_aeb_executor` only. Supabase `service_role` receives no
 table, schema, or function authority. Remedy case sets use the same custody
 shape through a tenant-bound `ep_remedy_executor` login and
 `ep_remedy_private.tenant_principals`.

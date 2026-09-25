@@ -32,17 +32,29 @@ runs:
   steps:
     # All ${{ }} values are routed through env vars and referenced as quoted
     # "$VARS" so untrusted input can never be injected into the shell.
+    # Install into an isolated directory that has its own minimal package.json.
+    # Running npm inside the action directory makes npm walk up to the
+    # repository root package.json and resolve that whole dependency tree, which
+    # fails with ETARGET while a coordinated release is still propagating.
     - name: Install verifier
-      shell: bash
-      working-directory: ${{ github.action_path }}
-      env:
-        EP_VERIFY_VERSION: ${{ inputs.version }}
-      run: npm install --no-save "@emilia-protocol/verify@$EP_VERIFY_VERSION"
-    - name: Verify Trust Receipt
+      id: install
       shell: bash
       env:
         EP_ACTION_PATH: ${{ github.action_path }}
+        EP_VERIFY_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        EP_VERIFY_DIR="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/ep-verify-receipt.XXXXXX")"
+        printf '%s\n' '{"name":"ep-verify-receipt-runtime","private":true}' > "$EP_VERIFY_DIR/package.json"
+        npm install --prefix "$EP_VERIFY_DIR" --no-save --no-package-lock --ignore-scripts \
+          --no-audit --no-fund "@emilia-protocol/verify@$EP_VERIFY_VERSION"
+        cp "$EP_ACTION_PATH/verify.mjs" "$EP_VERIFY_DIR/verify.mjs"
+        echo "dir=$EP_VERIFY_DIR" >> "$GITHUB_OUTPUT"
+    - name: Verify Trust Receipt
+      shell: bash
+      env:
+        EP_VERIFY_DIR: ${{ steps.install.outputs.dir }}
         EP_RECEIPT: ${{ inputs.receipt }}
         EP_PUBLIC_KEY: ${{ inputs.public-key }}
         EP_KEYS_URL: ${{ inputs.keys-url }}
-      run: node "$EP_ACTION_PATH/verify.mjs"
+      run: node "$EP_VERIFY_DIR/verify.mjs"

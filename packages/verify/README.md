@@ -96,14 +96,14 @@ import {
 } from '@emilia-protocol/verify/aeb';
 ```
 
-The direct handoff below implements the proposed, staged AEB-06 refinement.
-The current published AEB-05 still requires CAID matching and AEC evidence
-satisfaction. These source labels and same-repository vectors do not establish
-native-protocol conformance or independent interoperability.
+The direct handoff below serves the direct native path of AEB-06, which was
+posted on 2026-09-24 as an individual Internet-Draft and is not adopted by any
+working group. The handoff itself is a repository implementation profile;
+AEB-06 does not specify it. These source labels and same-repository vectors do
+not establish native-protocol conformance or independent interoperability.
 
-When a native system already authorized the final operation, the proposed
-profile uses a shorter signed handoff instead of manufacturing a CAID or AEC
-layer:
+When a native system already authorized the final operation, the handoff
+replaces a manufactured CAID or AEC layer with a shorter signed statement:
 
 ```js
 import {
@@ -117,12 +117,13 @@ audience, executor, and provider. A successful check means that the pinned
 gateway signed this exact native `PERMIT` and action binding. It does not prove
 the wisdom of the native decision or a provider effect.
 
-The AEB kernel verifies native evidence under relying-party-pinned adapters and
-keeps native verification separate from local authorization. A pinned CAID
-profile is used when independently encoded representations must be compared.
-AEC composition is used when the relying party requires several evidence legs.
-The execution API then reserves the accepted native replay identities before
-provider entry.
+`evaluateAebEvidence()` is the composed kernel. It verifies native evidence
+under relying-party-pinned adapters, keeps native verification separate from
+local authorization, and always requires a CAID for the action and an AEC
+composition of the verified legs under a pinned requirement. Its execution API
+then reserves the accepted native replay identities before provider entry. The
+conditional path, with no CAID or AEC, is the native handoff above together
+with Gate's `createNativeConsequenceBoundary()`.
 
 Use `createAebNativeVerificationAttestationAdapter()` when a native protocol
 verifier runs at a workload gateway. Its signed attestation binds the native
@@ -859,6 +860,14 @@ records. Relabeling does not upgrade a v1 record, and neither version is an
 authorization for a later crossing. See
 [`docs/protocol/aeb-crossing-record-v2.md`](../../docs/protocol/aeb-crossing-record-v2.md)
 for migration and retirement rules.
+
+A crossing record and a lifecycle index cite an evaluation digest, but the
+verifiers join that evaluation to the record only when you pass it as
+`evaluation`; the result then reports `evaluation_binding` as `BOUND` or
+`MISMATCH`. Without it the digest is an unverified pointer and the binding is
+`INDETERMINATE`. `BOUND` is a join, not authentication, so verify the
+evaluation itself with `verifyAebEvaluation()` or `verifyAebEvaluationV2()`.
+See [evaluation binding](../../docs/protocol/aeb-crossing-record-v2.md#evaluation-binding).
 
 ## Reliance gap reports (acceptance preflight)
 

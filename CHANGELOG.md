@@ -14,17 +14,59 @@ Historical entries below retain the labels used when they were written.
   decision: bind the final operation when needed, derive stable replay
   identity, reserve before provider entry, and keep an uncertain outcome locked
   until authenticated reconciliation.
-- Add a synthetic 23-case composition corpus covering AuthZEN/COAZ-MCP, AP2,
-  OAuth Transaction Token, and a pinned local mandate. The corpus tests the
-  shared lifecycle without claiming native-protocol conformance or making a
-  second authorization decision.
+- Add a synthetic 26-case composition corpus covering AuthZEN/COAZ-MCP, AP2,
+  OAuth Transaction Token, and a pinned local mandate. The corpus runner is a
+  standalone lifecycle model that does not execute the shipped Verify or Gate
+  code. It tests the shared lifecycle without claiming native-protocol
+  conformance or making a second authorization decision.
 - Add stable `@emilia-protocol/verify/aeb` and
   `@emilia-protocol/gate/aeb` package entry points.
-- Add the signed direct-native authorization handoff for AIMS, AuthZEN, COAZ,
-  AP2, OAuth, and local systems. Gate resolves current status through an
+- Add the signed direct-native authorization handoff for AuthZEN, COAZ, AP2,
+  OAuth, and local systems, and for deployments that follow the AIMS profile of
+  existing standards. Gate resolves current status through an
   operator-controlled callback, applies local admission, atomically fences the
   native replay identity, and never requires CAID or AEC when no join or
   multi-leg composition is needed.
+
+### Native boundary repairs after PR #788
+
+- Gate's direct native boundary holds a durable exact-action fence keyed by
+  relying party, provider coordinates, and action digest. A fresh native
+  authorization with a fresh operation ID no longer reaches the provider a
+  second time while the first attempt is uncertain, and an executed action
+  stays closed. Only an authenticated FAILED result or a proven pre-entry
+  release reopens it.
+- The native replay unit, replay key, and provider idempotency key are
+  derived from the pinned authority namespace, the issuer, and the native
+  authorization ID. The `system` and `profile` labels are no longer inputs,
+  so one grant relabelled under a second pinned profile is spent once. The
+  replay domains move to v2; handoffs issued by verify 4.1.0 must be
+  reissued.
+- The PostgreSQL AEB consumption store gains the durable `state()` read the
+  native boundary requires, and native reconciliation after a restart claims
+  its reservations through the store's recovery path. The new function is in
+  `supabase/migrations/20260925010000_aeb_operation_state.sql`, recorded as a
+  forward-pending migration; this change does not apply it to any database.
+- Native reconciliation refuses attempts that never entered the provider and
+  outcomes that conflict with a terminal record. Hostile in-process inputs
+  (Proxies, accessors, sparse arrays, own `__proto__` members) are refused
+  with a reason instead of throwing.
+- Crossing Record and lifecycle-index verifiers can join the cited evaluation
+  when it is supplied and report `evaluation_binding`; the v1 upgrade no
+  longer reports an unchecked evaluation reference as `COMPLETE`.
+- The synthetic consequence-admission corpus adds three cases: fresh
+  authority while the first attempt is uncertain, fresh authority after the
+  action executed, and one grant relabelled under a second pinned label. Its
+  model now derives the replay unit without the profile label and holds an
+  exact-action fence. It remains a standalone model, not a run of the shipped
+  packages.
+- AEB-06 is recorded as posted (individual Internet-Draft, not adopted), and
+  a -07 candidate that specifies the same-action fence, one native replay
+  identity, and the native authorization handoff is staged in
+  `standards/staged/NEXT-AEB-07/`. It has not been submitted.
+- The `verify-receipt` action installs the verifier into an isolated
+  temporary directory, so the caller's repository dependencies no longer
+  affect the install.
 
 ### September 5 security review repairs
 

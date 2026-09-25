@@ -3,6 +3,59 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Security
+
+- Native authorization replay derivations move to
+  `AEB-NATIVE-AUTHORIZATION-REPLAY-v2` and
+  `AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2`. The replay unit is derived from
+  the authority namespace (by default the issuer), the issuer, and the native
+  authorization ID. The `system` and `profile` labels are no longer inputs, so
+  one grant relabelled under a second pinned profile no longer derives a
+  second replay key. A handoff issued by 4.1.0 carries a v1 replay unit and is
+  refused as `native_handoff_schema_invalid`; it must be reissued.
+- `verifyAebNativeAuthorizationHandoff()` reads each caller value once into
+  plain JSON and refuses Proxies, accessors, and sparse arrays with a reason
+  (`native_handoff_options_invalid`, `native_handoff_schema_invalid`, or
+  `native_handoff_expected_action_invalid`) instead of throwing.
+
+### Added
+
+- Native source pins accept an optional `authority_namespace`. Pins that
+  accept one issuer must all declare it or all omit it, and two pins with the
+  same gateway, system, profile, and issuer are refused.
+- `deriveAebNativeAuthorizationReplayUnit()` and
+  `aebNativeAuthorizationReplayKey()` accept an `authority_namespace`.
+  `native_replay_unit` and `replay_key` are derived under the matched pin's
+  namespace and are null when the source is not pinned.
+- Crossing Record v1 and v2 and `EP-AEB-CROSSING-LIFECYCLE-INDEX-v2` verifiers
+  accept an optional `evaluation` record and report `evaluation_binding`
+  (`BOUND`, `INDETERMINATE`, or `MISMATCH`). The join checks the evaluation
+  digest, profile label, operation, CAID, action commitment, the evidence leg
+  that matches the native authority, and the verdict. Without an evaluation,
+  the cited evaluation digest is an unverified pointer and the binding is
+  `INDETERMINATE`. `BOUND` is a join, not authentication: run
+  `verifyAebEvaluation()` or `verifyAebEvaluationV2()` on the evaluation too.
+- `aebCrossingEvaluationReference()` defines the evaluation reference as the
+  digest of the complete signed evaluation (the verifiers' `record_digest`),
+  with the `AebCrossingEvaluationBinding` and `AebCrossingEvaluationReference`
+  types.
+
+### Fixed
+
+- The v1 lifecycle upgrade no longer labels an unchecked evaluation digest as
+  `AEB-EVALUATION-v1` or reports it `COMPLETE`. Without a matching
+  `source_evaluation` the index carries `profile: null` and the conversion is
+  `INDETERMINATE` with `evaluation_reference_unverified`. A supplied
+  `source_evaluation` that does not bind makes the issuer-side upgrade throw
+  the typed `CrossingRecordError` `source_evaluation_mismatch`, and nothing is
+  signed. Out-of-order v1
+  references are converted as `INDETERMINATE` instead of throwing
+  `lifecycle_order_invalid`.
+- The lifecycle index refuses a provider entry that is not preceded by a
+  custody reservation or consumption.
+
 ## 4.1.0 (2026-09-24)
 
 - Add `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1`, a closed Ed25519 gateway statement
@@ -11,8 +64,9 @@ This package follows [Semantic Versioning](https://semver.org/).
   window, revocation handle, and wrapper-neutral replay identity. The gateway,
   source profile, and issuer are relying-party pinned; native-artifact
   verification remains the native system's responsibility. It provides the
-  direct AIMS, AuthZEN, COAZ, AP2, OAuth, and local handoff without requiring
-  CAID or AEC.
+  direct handoff for AuthZEN, COAZ, AP2, OAuth, and local sources, and for
+  deployments that follow the AIMS profile of existing standards, without
+  requiring CAID or AEC.
 - Add the stable `./aeb` facade, signed nonauthorizing `AEB-EVALUATION-v2`
   projections, and the separate
   `EP-AEB-CROSSING-LIFECYCLE-INDEX-v2`. Deterministic v1 upgrades preserve
@@ -20,12 +74,24 @@ This package follows [Semantic Versioning](https://semver.org/).
   `INDETERMINATE` instead of inventing it. Existing Crossing Record v1 and v2
   bytes and verification rules remain unchanged.
 
-The direct handoff is reference implementation work for the proposed, staged
-AEB-06 refinement. Published AEB-05 still requires CAID matching and AEC
-satisfaction. Source labels do not establish native-protocol conformance or
-independent interoperability.
+The direct handoff is a repository implementation profile for the direct
+native path. When 4.1.0 was published (2026-09-25T02:04Z), AEB-06 was staged
+and AEB-05, which requires CAID matching and AEC satisfaction, was current.
+AEB-06 was posted later that day, at 2026-09-25T02:15:03Z, as an individual
+Internet-Draft and is not adopted by any working group. It makes CAID and AEC conditional but does
+not specify the gateway handoff. Source labels do not establish
+native-protocol conformance or independent interoperability.
 
-## 4.0.0 (2026-09-09)
+Correction (found after release): the v1 upgrade copies the v1 record's
+evaluation digest into the lifecycle index under the `AEB-EVALUATION-v1`
+profile label without receiving or re-verifying that evaluation, and can report the
+conversion `COMPLETE`. A `COMPLETE` conversion therefore shows only that the
+signer committed to the references; it does not show that the referenced
+evaluation exists or matches the operation.
+The Unreleased section above adds the evaluation join and stops the upgrade
+from reporting an unchecked reference as `COMPLETE`.
+
+## 4.0.0 (2026-09-13)
 
 - **Breaking change.** The existing
   `./aeb-wimse-oauth-adapter` subpath now implements the receiver-scoped v3
@@ -34,7 +100,7 @@ independent interoperability.
   Existing v1 artifacts require the
   frozen v1 verifier or reissuance and verification under v3.
 
-## 3.21.0 (2026-08-30)
+## 3.21.0 (2026-09-05)
 
 - Added the AEB Crossing Lab local adapter workbench. It scaffolds, seals, and
   runs one bundled deterministic `AebAdapter` through the canonical
