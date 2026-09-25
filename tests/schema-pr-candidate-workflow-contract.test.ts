@@ -19,9 +19,11 @@ const parserStep = job.steps.find(
 describe('fork-safe schema candidate workflow contract', () => {
   it('limits the explicit fork checkout exception to inert migration data', () => {
     expect(workflow.permissions).toEqual({ contents: 'read' });
-    expect(job.if).toContain("github.event_name == 'pull_request_target'");
+    expect(job.if).toBe("github.event_name == 'pull_request_target' || github.event_name == 'merge_group'");
     expect(candidateCheckout.uses).toMatch(/^actions\/checkout@[0-9a-f]{40}$/);
-    expect(candidateCheckout.with.ref).toBe('${{ github.event.pull_request.head.sha }}');
+    expect(candidateCheckout.with.ref).toBe(
+      '${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}',
+    );
     expect(candidateCheckout.with['persist-credentials']).toBe(false);
     expect(candidateCheckout.with['allow-unsafe-pr-checkout']).toBe(true);
     expect(candidateCheckout.with.path).toBe('candidate-data');
