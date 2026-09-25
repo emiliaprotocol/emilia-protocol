@@ -5,7 +5,7 @@
   "files": [
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "c157494b46a7780bee0b47b4881ccf8d31ccbe4203e3b4a52797cf4ca982cf21"
+      "sha256": "1e16a65199e27b524b75493e7d0d20bc33081dc05f6912255cb6f27296b96194"
     },
     {
       "path": "docs/protocol/aeb-adapter-contract-v1.md",

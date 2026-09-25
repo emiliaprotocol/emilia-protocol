@@ -583,7 +583,7 @@
     },
     {
       "path": "packages/gate/dist/aeb-consumption-store.js",
-      "sha256": "6a848f48c2c9f1db31f4030d5d659042dbe39ec609f12eb58a0d5a3da329c4d3"
+      "sha256": "eafa565e28644743c5745838369ed039b003009ad6624b8fc4a5de9cbfa8e39c"
     },
     {
       "path": "packages/gate/dist/aec-execution.js",
@@ -647,7 +647,7 @@
     },
     {
       "path": "packages/gate/dist/consequence-boundary.js",
-      "sha256": "e9fa3fbc19923e8ee1219995bbd1979031e57d31939eededeca82396d05ffcd0"
+      "sha256": "336dbfd4660bd0d97cc54c795524fbd62eea581a3e03435d42574a671d62abd6"
     },
     {
       "path": "packages/gate/dist/coverage-reconciliation-attestation.js",
@@ -875,7 +875,7 @@
     },
     {
       "path": "packages/gate/src/aeb-consumption-store.ts",
-      "sha256": "bf4845de202ce1b9653da1aee8c04c1fed8daeeed4416ffe14a153ee3a0acf71"
+      "sha256": "61116a00e74377ebdd48fc99ccd10e9b2a5ef3a125d0cf258066cc3df5476f73"
     },
     {
       "path": "packages/gate/src/aec-execution.ts",
@@ -1071,7 +1071,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "5d313811963f09eaccaf0110a554ef7a6a5cadf222f8b97d2a34ce9a5b672efc"
+      "sha256": "3aeeaeadacab684695d76833c3e13844759095c87345dc661b2d302e791440f5"
     },
     {
       "path": "packages/verify/dist/aeb-aic-crossing-adapter.js",
@@ -1091,7 +1091,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-crossing-record.js",
-      "sha256": "462d70c7f7d91e63caebcb269cd3d9373fb74be6786085c66e98c1586a643f74"
+      "sha256": "8600155a798033e686016d15048c4a5a0ee440101a7ff5b7536f2b77ee7f1181"
     },
     {
       "path": "packages/verify/dist/aeb-discovery-permit-adapter.js",
@@ -1111,7 +1111,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-native-authorization-handoff.js",
-      "sha256": "bb55a9453b75005e991754f2e3d67c75f638f579777d68f5af585bef901dbb25"
+      "sha256": "81df3c0aee142966720c7a753d619ffb77873d7506c71adcd97761848f157670"
     },
     {
       "path": "packages/verify/dist/aeb-oasnt-adapter.js",
@@ -1363,7 +1363,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "c157494b46a7780bee0b47b4881ccf8d31ccbe4203e3b4a52797cf4ca982cf21"
+      "sha256": "1e16a65199e27b524b75493e7d0d20bc33081dc05f6912255cb6f27296b96194"
     },
     {
       "path": "packages/verify/src/authority-program.ts",
