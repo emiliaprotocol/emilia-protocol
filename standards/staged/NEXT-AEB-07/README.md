@@ -47,17 +47,21 @@ wording-only edit.
    action, instance-field misuse, and action-digest scope.
 2. Pre-entry recovery (Section 5.10). An attempt that stopped before provider
    entry (a crash while CONSUMED or RESERVED, a lost acknowledgement of the
-   write that enters DISPATCH_PENDING, an unconfirmed release after a
-   pre-entry refusal, or a crash after the action key was occupied but before
-   the attempt was recorded) MUST have a recovery operation. It requires
-   relying-party recovery authorization bound to that exact attempt and
-   releases the action key and the attempt's reservations only when an
-   authenticated durable read shows that the attempt never reached
-   DISPATCH_PENDING, that the boundary closed it as not entered through an
-   atomic transition that no dispatch can follow and that recorded an
-   explicit not-entered marker, or that no attempt record exists, and, where
-   the effecting system offers an authenticated lookup, that lookup reports
-   that the operation was not received. A record from which the original
+   write that enters DISPATCH_PENDING, or an unconfirmed release after a
+   pre-entry refusal) MUST have a recovery operation. Records left by a
+   crash after the action key was occupied but before the attempt was
+   recorded cannot be shown not entered, so they stay held; a boundary
+   SHOULD record the attempt before it occupies the action key, so that
+   this case cannot arise. Recovery requires relying-party recovery
+   authorization bound to that exact attempt and releases the action key
+   and the attempt's reservations only when an authenticated durable read
+   shows that the attempt never reached DISPATCH_PENDING, or that the
+   boundary closed it as not entered through an atomic transition that no
+   dispatch can follow and that recorded an explicit not-entered marker,
+   and, where the effecting system offers an authenticated lookup, that
+   lookup reports that the operation was not received. The absence of an
+   attempt record is not proof of non-entry, because a live attempt may not
+   yet have written it. A record from which the original
    attempt could still dispatch is first closed that way. Every not-entered
    transition, the boundary's own pre-entry stop and recovery's, records
    that marker in the same atomic write, and the absence of evidence is
@@ -71,7 +75,13 @@ wording-only edit.
    A recovery that loses the transition to the original attempt releases
    nothing, treats the attempt as INDETERMINATE, and never uses its lookup
    result as evidence of the outcome, because that lookup describes a moment
-   before dispatch.
+   before dispatch. A boundary that has sent a write that could record an
+   attempt as not entered, including one whose result it did not receive,
+   MUST NOT dispatch that attempt afterwards, whatever a later read shows
+   (Section 5.12). An attempt left in DISPATCH_PENDING without a dispatch
+   is INDETERMINATE and is closed only by reconciliation with terminal
+   evidence that authenticates that no operation exists under its provider
+   idempotency key; otherwise it stays held.
 3. Record ownership, release ordering, and recovery credentials (Sections
    5.11, 5.12, and 5.14). A boundary MUST release or close only records whose
    ownership for the current attempt it can prove; an operation-identifier
@@ -91,10 +101,15 @@ wording-only edit.
    authorization MUST be bound to exactly one attempt, never only to an
    operation identifier or another shared value, and every record claimed
    under it must be derived from that attempt. A claim that names no attempt
-   is refused before its authorization is evaluated, and where boundaries of
-   different kinds share one store, the attempt identity includes a
-   component that distinguishes them, both in the derivation of the claimed
-   records and in the scope the authorization is checked against. One such
+   is refused before its authorization is evaluated. The attempt identity
+   is scoped to the boundary: it includes an identifier of the boundary
+   (the same for every instance of one boundary) and, where boundaries of
+   different kinds share one store, a component that distinguishes them,
+   both in the derivation of every record keyed by the attempt and in the
+   scope the authorization is checked against, so two boundaries of the
+   same kind that assign the same attempt identifier cannot name each
+   other's records. The boundary identifier is never part of the action
+   key. One such
    authorization MUST suffice to close every record the attempt holds,
    including its occupation of the action key.
 4. Verified terminal evidence (Sections 5.13 and 5.14). A terminal outcome
@@ -108,7 +123,16 @@ wording-only edit.
    evidence only for pre-entry recovery and is never accepted as FAILED for
    an attempt that reached DISPATCH_PENDING, because a dispatch in flight
    can still arrive after it. A boundary without such a verifier keeps a
-   dispatched attempt INDETERMINATE.
+   dispatched attempt INDETERMINATE. This applies on every boundary and
+   evidence path, including the result that the dispatch itself returns: an
+   adapter's report of FAILED is not verification. Presented evidence
+   carries its kind (terminal outcome or pre-entry lookup) in the
+   boundary's own input, and reconciliation and pre-entry recovery each
+   refuse the other kind before the verifier runs. The boundary cannot
+   detect a verifier that affirms a purpose it did not evaluate or a
+   presenter that labels a lookup as a terminal outcome; Section 5.13 puts
+   those obligations on the verifier and the presenter, and the Security
+   Considerations say that the residual rests with them.
 5. Canonical action identity (Section 5.10). Action digests and effecting
    target identities are compared exactly. The native operation profile MUST
    define canonical forms for material fields (amount and currency formats,
@@ -126,11 +150,20 @@ wording-only edit.
    and profile, wrapper and handoff digests, and retry, session, trace, and
    challenge identifiers are excluded. One issuer MUST have exactly one
    namespace in a pin set: pins whose issuer values are identical or equal
-   after normalization (URI scheme case; for URLs also host case, a trailing
-   dot on the host, a default port, trailing slashes, and a missing "//"
-   after http or https) either all omit a declaration with one identical
+   after normalization either all omit a declaration with one identical
    issuer value or all declare the same namespace, or the pin set is
-   refused. Two different declared namespaces for one issuer value are
+   refused.
+   Section 4 sets the minimum normalization: URI scheme case, and
+   for URLs also host case, a trailing dot on the host, a default port,
+   trailing slashes, and a missing "//" after http or https. The reference
+   verifier normalizes those and also resolves dot segments in the path
+   (and accepts a missing "//" and drops a default port for every special
+   URL scheme: http, https, ws, wss, and ftp), compares a URN namespace
+   identifier and a DID method name case-insensitively, compares a
+   `did:web` host case-insensitively without trailing dots, and compares a
+   `spiffe://` trust domain case-insensitively without trailing dots and
+   drops trailing slashes from a SPIFFE path. Normalization cannot detect
+   every alias. Two different declared namespaces for one issuer value are
    refused. Changing a namespace rotates every replay identity under it, so
    in-flight attempts MUST be resolved and consumed grants made unpresentable
    first. Provider idempotency keys derive from the native replay identity.
@@ -166,13 +199,14 @@ wording-only edit.
    says what each boundary keys by attempt: the native boundary keys all
    three of its reservations by attempt, while the composed boundary keys
    only its occupation of the action key by attempt and keys its evaluation
-   reservation by evaluation. It also says that the native boundary
-   verifies terminal provider evidence through an operator-configured
-   verifier that is told the purpose of each check, that the composed
-   boundary does so only when that verifier is configured and otherwise
-   refuses terminal reconciliation but still closes a run on its adapter's
-   form-checked result, and that the reference Gate fences the replay key of
-   an earlier release for every pinned source label.
+   reservation by evaluation. It also says that both boundaries require an
+   operator-configured verifier that is told the purpose of each check and
+   verify every terminal provider outcome through it, including the
+   dispatch's own result, that presented evidence carries its kind, that
+   the reference code cannot tell whether a verifier evaluated the evidence
+   or whether evidence was labelled correctly, and that the reference Gate
+   fences the replay key of an earlier release for every pinned source
+   label.
 10. Consistency and references. Reconciliation is now bound to the attempt it
    resolves. The SCITT Permit text in Section 7.3 no longer requires CAID
    unconditionally. The `all_of` and `any_of` members of EP-AEB-REQUIREMENT-v1
@@ -199,23 +233,26 @@ or registry.
 - Refresh the date and re-run the checks in `VALIDATION.md`, including the
   Datatracker revision check and the reference-currency check.
 - The `EP-NATIVE-HANDOFF` and `EP-LIFECYCLE-CORPUS` references pin commit
-  `ebb4084b81d0e0bb544494c92c171dcebda7dab3` on branch `fix/pr788-followups`
-  (PR #790), which carries the round-four code and docs that Section 15
-  describes: the separate pre-entry recovery mode and its linearization,
-  the explicit not-entered marker, release only after a confirmed
-  transition, exact affirmative store answers, terminal-evidence
-  verification with a purpose (required on the native boundary, optional on
-  the composed boundary), recovery claims bound to one attempt, refused
-  without a scope, and namespaced by boundary kind, the owner check on the
-  composed boundary's evaluation reservation, one namespace per issuer in
-  the verifier, and Gate's additional fence over the carried wire
-  `replay_unit` for every pinned label. Every Section 15 statement was
-  checked against that code. It is same-team reference code, not an
-  independent implementation. The PR was not merged when this candidate
-  was prepared. Before filing, re-pin both references to the merge commit
-  on `main`, re-render, regenerate `SHA256SUMS.txt`, and re-run idnits. The
-  handoff still carries its 4.1.0 wire `replay_unit`, which covers the
-  labels, and the reference Gate still has no material-field inventory or
+  `82490c9ff50a2d2a2d24f2c47024932fbae8490a` on branch `fix/pr788-followups`
+  (PR #790), which carries the round-five code and its documentation.
+  Section 15 describes that code, and each of its statements was checked
+  against it: the separate pre-entry recovery mode and its linearization,
+  the explicit not-entered marker, no provider call after a not-entered
+  write (an unconfirmed start sends none and holds every record), release
+  only after a confirmed transition, exact affirmative store answers,
+  terminal-evidence verification with a purpose required on both
+  boundaries (including the dispatch's own result), evidence kinds refused
+  per mode before the verifier, recovery claims bound to one attempt,
+  refused without a scope, and scoped by boundary kind and boundary
+  identifier, the owner check on the composed boundary's evaluation
+  reservation, one namespace per issuer in the verifier, and Gate's
+  additional fence over the carried wire `replay_unit` for every pinned
+  label. It is same-team reference code, not an independent
+  implementation. The PR was not merged when this candidate was prepared.
+  Before filing, re-pin both references to the merge commit on `main`,
+  re-render, regenerate `SHA256SUMS.txt`, and re-run idnits. The handoff
+  still carries its 4.1.0 wire `replay_unit`, which covers the labels, and
+  the reference Gate still has no material-field inventory or
   canonical-form equivalence; Section 15 says both.
 
 ## Layout

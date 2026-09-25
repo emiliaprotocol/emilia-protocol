@@ -3,6 +3,97 @@
 Checks run on 2026-09-25 (UTC) against the candidate in this directory. Each
 entry gives the command and a summary of its output.
 
+## Round-five revision (2026-09-25 UTC)
+
+A round-four attack review of branch `fix/pr788-followups` at `5176290f1`
+found that the reference Gate, when it could not read an attempt record
+after an unconfirmed write that enters DISPATCH_PENDING, sent a not-entered
+transition from DISPATCH_PENDING and could still dispatch when a later read
+showed DISPATCH_PENDING, so a delayed not-entered write made an attempt that
+entered look never entered and one grant reached the provider twice; that
+the composed boundary without a provider-outcome verifier released the
+action key on its adapter's unverified FAILED; that a verifier that
+restates the context it is given still turned a "not found" lookup into a
+terminal FAILED; that two boundaries of the same kind sharing one store
+with the same attempt identifier could claim each other's records; and
+that Section 5.10 still listed a crash before the attempt record among the
+stops that MUST have a recovery operation, although the same section says
+that such records stay held. The source was revised as follows:
+
+- Section 5.10: a crash after the action key is occupied but before the
+  attempt is recorded is no longer in the list of stops that MUST have a
+  recovery operation. Its records cannot be shown not entered and stay
+  held, and a boundary SHOULD record the attempt first so that the case
+  cannot arise.
+- Section 5.12: a boundary that has sent a write that could record an
+  attempt as not entered, including one whose result it did not receive,
+  MUST NOT dispatch that attempt afterwards, whatever a later read shows.
+  An attempt left in DISPATCH_PENDING without a dispatch is INDETERMINATE
+  and is closed only by reconciliation with terminal evidence that
+  authenticates that no operation exists under its provider idempotency
+  key, as the verifier decides; otherwise it stays held.
+- Section 5.13: the verification requirement applies to every boundary and
+  evidence path, including the result that the dispatch itself returns; an
+  adapter's classification is not verification. Presented evidence carries
+  its kind in the boundary's own input, and reconciliation and pre-entry
+  recovery each refuse the other kind before the verifier runs. The
+  presenter and the verifier carry separate obligations that the boundary
+  cannot check.
+- Section 5.14: the attempt identity is scoped to the boundary. It includes
+  an identifier of the boundary, the same for every instance of one
+  boundary, and, across kinds, a component that distinguishes them, in
+  every record keyed by the attempt and in the authorization scope, but
+  never in the action key.
+- Security Considerations: "Evidence-agnostic verification" no longer says
+  that telling the verifier the purpose solves the problem; it states the
+  residual that the boundary cannot detect (a verifier that affirms a
+  purpose it did not evaluate, and evidence presented under the wrong
+  kind). New "Unverified adapter results" paragraph; "Lost
+  acknowledgements" covers a delayed not-entered write; "Recovery
+  credential scope" covers same-kind boundaries.
+- Section 15 was rewritten to describe the round-five code: no provider
+  call after a not-entered write, a verifier required on both boundaries
+  and applied to the dispatch's own result, evidence kinds, and a claim
+  scope that names a boundary identifier. The integrator checked every
+  Section 15 statement against the round-five code, removed the review
+  comments, and re-pinned `EP-NATIVE-HANDOFF` and `EP-LIFECYCLE-CORPUS` to
+  `82490c9ff50a2d2a2d24f2c47024932fbae8490a`, the branch commit that
+  carries that code and its docs.
+- Changes since -06 and `README.md` were updated to match. `README.md`
+  item 2 no longer accepts "no attempt record exists" as proof of
+  non-entry, and item 6 now states both the Section 4 minimum
+  normalization and the full list the reference verifier applies.
+
+Checks on the revised source:
+
+- `xmllint --noout`: PASS.
+- `xml2rfc 3.34.0 --text` and `--html`: PASS with the same inherited
+  submissionType warning. A second render into a scratch directory is
+  byte-identical to `RENDERS/` (`cmp`).
+- `idnits 3.1.0 -m submission` on the TXT and on the XML: PASS, no nits.
+- ASCII: no byte above 0x7F in the XML, the text render, `README.md`, or this
+  file. No double hyphen in XML prose outside comments.
+- `shasum -a 256 -c SHA256SUMS.txt`: PASS for all three files.
+- Structural checker, version 6: condition I2 now requires Section 15 to
+  say that both boundaries require the verifier and apply it to their own
+  provider result, and 11 conditions were added for the Section 5.10
+  crash-before-record case, no dispatch after a not-entered write, the
+  undispatched DISPATCH_PENDING record, verification on every boundary,
+  evidence kinds, the residual-trust statement, the boundary-scoped
+  attempt identity (two conditions), unverified adapter results, Section
+  15, and the Changes section (73 in total). The revised -07 passes 73 of
+  73. The -07 source as it stood before this revision passes 61 of 73; the
+  12 failures are exactly I2 and the 11 new conditions. The posted -06
+  passes 3 of 73 (the same three regression guards).
+- Datatracker API (2026-09-25T16:08Z, after the re-pin):
+  `draft-schrock-action-evidence-boundary` is still at rev 06, and the
+  archive URL for -07 returns 404. For each of the 12 other Internet-Drafts
+  cited with a revision in the XML, the Datatracker record is at the cited
+  revision and the archive URL of the next revision returns 404.
+
+As before, these checks show that the text states the requirements, not that
+the reference code meets them. The candidate is staged, not submitted.
+
 ## Round-four revision (2026-09-25 UTC)
 
 A round-three attack review of branch `fix/pr788-followups` at `9c93ea1a2`
