@@ -109,7 +109,7 @@ assert.ok(!xml.includes('qualifier encoding may identify'), 'DNP3 result remains
 expectText(xml, 'draft-morrison-ot-command-authority-02');
 assert.ok(!xml.includes('draft-morrison-ot-command-authority-03'), 'references an unpublished -03');
 
-const commandAuthority = xml.indexOf('Morrison action-specific proof + proposed action');
+const commandAuthority = xml.indexOf('[OT-COMMAND-AUTHORITY] action-specific proof + proposed action');
 const emilia = xml.indexOf('EMILIA exact-action authority + admission + one-time consumption');
 const cosa = xml.indexOf('COSA adapter -> RDU101 SNMPv3 SET');
 const meter = xml.indexOf('separate Modbus domain -> independent meter readback');
@@ -118,7 +118,7 @@ assert.ok(commandAuthority >= 0 && commandAuthority < emilia && emilia < cosa &&
   'worked-example control order changed');
 
 for (const value of [
-  'Morrison action-specific proof + proposed action',
+  '[OT-COMMAND-AUTHORITY] action-specific proof + proposed action',
   'EMILIA exact-action authority + admission + one-time consumption',
   'Non-Normative RDU101 Worked Example',
   'does not report an energized actuation',

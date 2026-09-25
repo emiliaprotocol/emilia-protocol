@@ -977,7 +977,7 @@ Internet-Draft              GRACE Curtailment             September 2026
    defined by [OT-COMMAND-AUTHORITY] before EMILIA admission and keeps
    independent observation and safety outside the command path.
 
-   Morrison action-specific proof + proposed action
+   [OT-COMMAND-AUTHORITY] action-specific proof + proposed action
                           |
                           v
    EMILIA exact-action authority + admission + one-time consumption

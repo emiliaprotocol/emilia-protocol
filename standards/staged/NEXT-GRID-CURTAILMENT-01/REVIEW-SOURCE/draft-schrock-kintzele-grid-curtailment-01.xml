@@ -698,7 +698,7 @@
       <figure>
         <name>Example control and evidence order</name>
         <artwork type="ascii-art"><![CDATA[
-Morrison action-specific proof + proposed action
+[OT-COMMAND-AUTHORITY] action-specific proof + proposed action
                        |
                        v
 EMILIA exact-action authority + admission + one-time consumption
