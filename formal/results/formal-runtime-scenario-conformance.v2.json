@@ -1103,7 +1103,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-issuer-comparison.js",
-      "sha256": "cc32aa27833e868bc95f9435549e65f375b4f86194521ac75a6ab5200cc2c99a"
+      "sha256": "3b45a681c38a1ca93012182a7320bbcf31b926a7f13678874e56be85c0601e99"
     },
     {
       "path": "packages/verify/dist/aeb-mcgraw-delegation-adapter.js",
