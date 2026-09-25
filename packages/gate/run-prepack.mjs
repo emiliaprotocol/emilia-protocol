@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
-for (const script of ['build', 'test:qualification']) {
+for (const script of ['build', 'test:qualification', 'test:stripe-refund-durable']) {
   const result = spawnSync(npm, ['run', script], {
     encoding: 'utf8',
     env: process.env,

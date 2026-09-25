@@ -1253,6 +1253,43 @@ indeterminate until you reconcile the same operation against authenticated
 provider records. This adapter alone is not durable or exactly-once recovery;
 the regression tests use a mock provider, not live Stripe or PostgreSQL.
 
+For refunds that must survive a lost Stripe response or process restart, use the
+**opt-in** `@emilia-protocol/gate/adapters/stripe-refund-durable` path. Build
+Gate with `createStripeDurableRefundManifest()`; its receipt must bind the
+Stripe account returned by the trusted account probe as well as the payment
+intent, amount, and stable business-system operation ID. Configure
+`createStripeRefundDurableStore()` with the existing Proposal-to-Effect
+PostgreSQL attempt tables, separate executor/recovery roles, and a recovery
+authorization callback. Supply a server-side `resolve_operation` that reads an
+immutable refund job, not agent-provided payment details. The connector also
+requires a server-only metadata HMAC key; retain that same key for the entire
+recovery window. Key rotation without a retained prior key leaves an uncertain
+attempt unreconciled. Keep the PTE operation row at least as long as duplicate
+submission remains possible, including after Stripe's idempotency cache expires.
+The Stripe client must probe, create, and list under the same account; a
+platform client that silently switches to a Connect account for only one call
+is not supported.
+
+`guardStripeRefundDurable()` records the attempt before Stripe entry and makes
+at most one provider-entry attempt per operation when all refund writes use
+this covered path, the PTE store is configured as described, and each Stripe
+account belongs to one tenant for this profile. The store and idempotency key
+are tenant-scoped: pointing two tenant configurations at the same Stripe account
+does not deduplicate the same physical refund job across those tenants. A fresh
+receipt or OAuth token cannot turn a lost response into a second create call.
+After the owner lease is stale, `reconcileStripeRefundDurable()` can mark the
+attempt COMMITTED only from a single matching refund returned by the trusted
+Stripe client. Empty, incomplete, unavailable, or conflicting lookup results
+stay INDETERMINATE; they never prove no effect. COMMITTED means Stripe created
+a refund object, not that funds settled. A stale RESERVED attempt remains held
+for explicit operator recovery; it is not automatically re-dispatched. The
+HMAC metadata tag helps identify the matching object, but an actor who can
+read its metadata and create refunds could copy it, so the match proves a
+Stripe object exists rather than exclusive authorship by this connector. The
+legacy `guardStripeMutation()`
+refund path above is **not** durable recovery and is unchanged. The new path
+has mock-provider and attempt-state tests, not a live Stripe/PostgreSQL run.
+
 Clients are injected (the real `@octokit/rest`, `stripe`, a `pg`/Supabase client, or the AWS SDK), so
 the adapters are testable without credentials. Adding an adapter is ~40 lines: a frozen action pack
 (selectors + tiers + `execution_binding.required_fields`) and an op map (`selector`, `observed(params)`,
