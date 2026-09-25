@@ -473,7 +473,7 @@ artifact; it is not a statement that the migration is already deployed:
 
 ```bash
 GATE_SQL_PATH=node_modules/@emilia-protocol/gate/sql/gate-qualification-v2.sql
-test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.25.0"
+test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.26.0"
 printf '%s  %s\n' \
   'e9b55e29c90cf7061bd62a8afd7c97402927e1eeb87649d4a38952a4b08df6b3' \
   "$GATE_SQL_PATH" | shasum -a 256 -c -
