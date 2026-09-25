@@ -377,8 +377,12 @@ const DEFAULT_PORTS = Object.freeze({
  * as a WHATWG URL, which also accepts a missing `//` and resolves dot
  * segments; the host compares lower-case without trailing dots, a default
  * port is dropped, and trailing slashes on the path are dropped. For `urn:`
- * the namespace identifier compares case-insensitively (RFC 8141). Any other
- * identifier compares as written.
+ * the namespace identifier compares case-insensitively (RFC 8141). For `did:`
+ * the method name compares lower-case, and for `did:web` the host compares
+ * lower-case without trailing dots. For `spiffe://` the trust
+ * domain compares lower-case without trailing dots and trailing slashes on
+ * the path are dropped. Any other identifier, and every path, compares as
+ * written. This finds common aliases, not every alias.
  */
 function issuerComparisonForm(issuer) {
     const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(issuer);
@@ -389,6 +393,27 @@ function issuerComparisonForm(issuer) {
     if (protocol === 'urn:') {
         const nid = /^([A-Za-z0-9][A-Za-z0-9-]{0,31}):/.exec(rest);
         return nid ? `urn:${nid[1].toLowerCase()}:${rest.slice(nid[0].length)}` : `urn:${rest}`;
+    }
+    if (protocol === 'did:') {
+        const method = /^([A-Za-z0-9]+):/.exec(rest);
+        if (!method)
+            return `did:${rest}`;
+        const methodName = method[1].toLowerCase();
+        const id = rest.slice(method[0].length);
+        if (methodName !== 'web')
+            return `did:${methodName}:${id}`;
+        // The pin identifier grammar has no `%`, so a did:web issuer here never
+        // carries an encoded port: the host is the first colon-separated part.
+        const [host, ...path] = id.split(':');
+        const normalizedHost = host.toLowerCase().replace(/\.+$/, '');
+        return `did:web:${normalizedHost}${path.length > 0 ? `:${path.join(':')}` : ''}`;
+    }
+    if (protocol === 'spiffe:') {
+        const authority = /^\/\/([^/?#]*)(.*)$/.exec(rest);
+        if (!authority)
+            return `spiffe:${rest}`;
+        const trustDomain = authority[1].toLowerCase().replace(/\.+$/, '');
+        return `spiffe://${trustDomain}${authority[2].replace(/\/+$/, '')}`;
     }
     if (!Object.hasOwn(DEFAULT_PORTS, protocol))
         return `${protocol}${rest}`;
@@ -406,6 +431,29 @@ function issuerComparisonForm(issuer) {
     const host = url.hostname.toLowerCase().replace(/\.+$/, '');
     const path = url.pathname.replace(/\/+$/, '');
     return `${url.protocol}//${userinfo}${host}${port}${path}${url.search}${url.hash}`;
+}
+/** The namespace a pin's replay identity is derived under. */
+function effectiveNamespace(source) {
+    return source.authority_namespace ?? source.issuer;
+}
+/**
+ * The verify 4.1.0 replay key of one grant under every pinned label whose
+ * replay identity shares the matched pin's namespace.
+ */
+function namespaceGroupReplayKeys(handoff, matched, sources) {
+    const namespace = effectiveNamespace(matched);
+    const keys = new Set();
+    for (const source of sources) {
+        if (effectiveNamespace(source) !== namespace)
+            continue;
+        keys.add(legacyReplayKeyUnchecked(handoff.relying_party_id, deriveWireReplayUnitUnchecked({
+            system: source.system,
+            profile: source.profile,
+            issuer: source.issuer,
+            authorization_id: handoff.native_authorization.authorization_id,
+        })));
+    }
+    return [...keys].sort();
 }
 function parseBody(value) {
     if (!isRecord(value) || !exactKeys(value, BODY_KEYS)
@@ -867,6 +915,10 @@ export function verifyAebNativeAuthorizationHandoff(handoffValue, options) {
         && parsedPins.identityRefusal === null
         ? deriveReplayIdentityUnchecked(handoff.native_authorization, matchedSource.authority_namespace)
         : null;
+    // Every pinned label in the grant's namespace group, as 4.1.0 keyed it.
+    const legacyReplayKeys = handoff && matchedSource && parsedPins && nativeReplayIdentity
+        ? namespaceGroupReplayKeys(handoff, matchedSource, parsedPins.sources)
+        : null;
     return freezeDeep({
         mode,
         valid,
@@ -883,6 +935,7 @@ export function verifyAebNativeAuthorizationHandoff(handoffValue, options) {
         replay_identity_key: handoff && nativeReplayIdentity
             ? identityReplayKeyUnchecked(handoff.relying_party_id, nativeReplayIdentity)
             : null,
+        legacy_replay_keys: legacyReplayKeys,
         handoff: frozenHandoff,
     });
 }

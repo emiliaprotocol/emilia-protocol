@@ -183,12 +183,15 @@ export interface AebCrossingLifecycleIndexV2Body {
     admission_domain_digest: AebDigest;
     lifecycle: {
         /**
-         * `profile` is null only in an INDETERMINATE conversion from a legacy
-         * crossing record whose unlabeled evaluation digest could not be bound to
-         * a supplied evaluation (reason `evaluation_reference_unverified`).
+         * When `conversion.reason_codes` includes
+         * `evaluation_reference_unverified` (an INDETERMINATE conversion from a
+         * v1 crossing record whose unlabeled evaluation digest was not bound to a
+         * supplied evaluation), `profile` is `AEB-EVALUATION-v1`, the label verify
+         * 4.1.0 wrote for every v1 conversion. It was not checked against any
+         * evaluation, and verifiers do not compare it with a supplied one.
          */
         evaluation: {
-            profile: AebCrossingEvaluationProfile | null;
+            profile: AebCrossingEvaluationProfile;
             digest: AebDigest;
         };
         /** Reference only. The native/local decision remains authoritative. */
@@ -380,8 +383,9 @@ export declare function issueAebCrossingLifecycleIndexV2(draft: AebCrossingLifec
  *
  * v1 carries an unlabeled evaluation digest. Unless the caller supplies the
  * source evaluation and it binds to the source record, the index carries that
- * digest with a null profile and the conversion is INDETERMINATE
- * (`evaluation_reference_unverified`). A supplied evaluation that does not
+ * digest under the unchecked `AEB-EVALUATION-v1` label that 4.1.0 wrote, and
+ * the conversion is INDETERMINATE with `evaluation_reference_unverified`,
+ * which marks the label unchecked. A supplied evaluation that does not
  * bind is refused with `source_evaluation_mismatch`; nothing is signed.
  * References that v1 recorded out of lifecycle order (custody or provider
  * entry without a local admission reference, or provider entry without a

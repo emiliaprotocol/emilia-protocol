@@ -798,3 +798,74 @@ test('the pin-set validator names each refusal and never throws', () => {
     assert.equal(Object.isFrozen(result), true, name);
   }
 });
+
+test('S3: legacy_replay_keys holds the 4.1.0 key of every pinned label in the grant\'s namespace group', () => {
+  const f = fixture();
+  const labelB = { profile: 'authzen:exact-action-result:2' };
+  const labelC = { system: 'coaz', profile: 'coaz:exact-action-result:1' };
+  const otherIssuer = { issuer: 'https://other-authz.example', profile: 'authzen:exact-action-result:9' };
+  const pins = withSources(f, [
+    f.pins.accepted_sources[0],
+    sourcePin(f, labelB),
+    sourcePin(f, labelC),
+    sourcePin(f, otherIssuer),
+  ]);
+  const handoffA = issueAebNativeAuthorizationHandoff(f.input, f.signer);
+  const keyFor = (label) => aebNativeAuthorizationReplayKey(issueAebNativeAuthorizationHandoff({
+    ...f.input,
+    native_authorization: { ...f.input.native_authorization, ...label },
+  }, f.signer));
+  const result = verify(f, handoffA, ACTION, { pins });
+  assert.equal(result.valid, true, JSON.stringify(result.reasons));
+  const expected = [keyFor({}), keyFor(labelB), keyFor(labelC)].sort();
+  assert.deepEqual(result.legacy_replay_keys, expected);
+  assert.ok(result.legacy_replay_keys.includes(result.replay_key));
+  // A pin for another issuer (another default namespace) is not in the group.
+  assert.ok(!result.legacy_replay_keys.includes(keyFor(otherIssuer)));
+  assert.equal(Object.isFrozen(result.legacy_replay_keys), true);
+
+  // A declared namespace groups by the namespace, across issuer spellings.
+  const declared = withSources(f, [
+    sourcePin(f, { authority_namespace: 'namespace:authz' }),
+    sourcePin(f, { ...labelB, issuer: 'https://authz.example/', authority_namespace: 'namespace:authz' }),
+    sourcePin(f, { ...otherIssuer, authority_namespace: 'namespace:other' }),
+  ]);
+  const grouped = verify(f, handoffA, ACTION, { pins: declared });
+  assert.equal(grouped.valid, true, JSON.stringify(grouped.reasons));
+  assert.deepEqual(grouped.legacy_replay_keys, [
+    keyFor({}),
+    keyFor({ ...labelB, issuer: 'https://authz.example/' }),
+  ].sort());
+
+  // No identity, no legacy set.
+  const unpinned = verify(f, handoffA, ACTION, { pins: withSources(f, [sourcePin(f, labelB)]) });
+  assert.equal(unpinned.native_replay_identity, null);
+  assert.equal(unpinned.legacy_replay_keys, null);
+});
+
+test('S6: did:web host case and spiffe trust-domain case are issuer aliases', () => {
+  const f = fixture();
+  for (const [first, second] of [
+    ['did:web:authz.example', 'did:web:AUTHZ.example'],
+    ['did:web:authz.example:users:pay', 'did:web:Authz.Example.:users:pay'],
+    ['DID:web:authz.example', 'did:WEB:authz.example'],
+    ['spiffe://authz.example/ns/pay', 'spiffe://AUTHZ.EXAMPLE/ns/pay'],
+    ['spiffe://authz.example/ns/pay', 'SPIFFE://authz.example./ns/pay/'],
+  ]) {
+    const aliased = withSources(f, [sourcePin(f, { issuer: first }), sourcePin(f, { issuer: second })]);
+    assert.deepEqual(
+      verifyAebNativeAuthorizationPins(aliased).reasons,
+      ['native_pins_issuer_alias_without_shared_namespace'],
+      `${first} ${second}`,
+    );
+  }
+  // Paths stay case-sensitive, and other DID methods keep their identifier.
+  for (const [first, second] of [
+    ['did:web:authz.example:users:pay', 'did:web:authz.example:Users:Pay'],
+    ['spiffe://authz.example/ns/pay', 'spiffe://authz.example/NS/pay'],
+    ['did:key:z6MkAbc', 'did:key:z6Mkabc'],
+  ]) {
+    const distinct = withSources(f, [sourcePin(f, { issuer: first }), sourcePin(f, { issuer: second })]);
+    assert.deepEqual(verifyAebNativeAuthorizationPins(distinct), { valid: true, reasons: [] }, `${first} ${second}`);
+  }
+});

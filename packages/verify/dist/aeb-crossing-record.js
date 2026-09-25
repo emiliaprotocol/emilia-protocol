@@ -158,6 +158,8 @@ const LIFECYCLE_INDEX_KEYS = new Set([
     "reconciliation_digest",
 ]);
 const LIFECYCLE_EVALUATION_KEYS = new Set(["profile", "digest"]);
+/** Conversion reason code that marks the evaluation profile label unchecked. */
+const UNVERIFIED_EVALUATION_REFERENCE = "evaluation_reference_unverified";
 const LIFECYCLE_CUSTODY_KEYS = new Set(["phase", "digest"]);
 const LIFECYCLE_SOURCE_KEYS = new Set(["version", "digest"]);
 const LIFECYCLE_CONVERSION_KEYS = new Set(["status", "reason_codes"]);
@@ -703,7 +705,7 @@ function validateLifecycleIndexV2Body(body) {
     const lifecycle = body.lifecycle;
     if (!isRecord(lifecycle.evaluation) ||
         !exactKeys(lifecycle.evaluation, LIFECYCLE_EVALUATION_KEYS) ||
-        ![AEB_EVALUATION_VERSION, AEB_EVALUATION_V2_VERSION, null].includes(lifecycle.evaluation.profile) ||
+        ![AEB_EVALUATION_VERSION, AEB_EVALUATION_V2_VERSION].includes(lifecycle.evaluation.profile) ||
         !digest(lifecycle.evaluation.digest) ||
         !nullableDigest(lifecycle.local_admission_digest) ||
         !nullableDigest(lifecycle.provider_entry_digest) ||
@@ -759,11 +761,12 @@ function validateLifecycleIndexV2Body(body) {
     if (body.conversion.status === "INDETERMINATE" &&
         body.conversion.reason_codes.length === 0)
         return "conversion_report_invalid";
-    // An unlabeled evaluation reference exists only as the honest output of a
-    // legacy conversion that could not bind the source evaluation.
-    if (lifecycle.evaluation.profile === null &&
+    // An unverified evaluation label exists only as the honest output of a
+    // legacy conversion that could not bind the source evaluation, and it is
+    // always the AEB-EVALUATION-v1 label that 4.1.0 wrote.
+    if (body.conversion.reason_codes.includes(UNVERIFIED_EVALUATION_REFERENCE) &&
         (body.conversion.status !== "INDETERMINATE" ||
-            !body.conversion.reason_codes.includes("evaluation_reference_unverified")))
+            lifecycle.evaluation.profile !== AEB_EVALUATION_VERSION))
         return "conversion_report_invalid";
     // A conversion that could not resolve custody is not COMPLETE.
     if (body.conversion.status === "COMPLETE" &&
@@ -1041,8 +1044,9 @@ export async function issueAebCrossingLifecycleIndexV2(draft, context, options) 
  *
  * v1 carries an unlabeled evaluation digest. Unless the caller supplies the
  * source evaluation and it binds to the source record, the index carries that
- * digest with a null profile and the conversion is INDETERMINATE
- * (`evaluation_reference_unverified`). A supplied evaluation that does not
+ * digest under the unchecked `AEB-EVALUATION-v1` label that 4.1.0 wrote, and
+ * the conversion is INDETERMINATE with `evaluation_reference_unverified`,
+ * which marks the label unchecked. A supplied evaluation that does not
  * bind is refused with `source_evaluation_mismatch`; nothing is signed.
  * References that v1 recorded out of lifecycle order (custody or provider
  * entry without a local admission reference, or provider entry without a
@@ -1136,7 +1140,7 @@ export async function upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, optio
         sourceBody.referee.admission !== "ADMIT")
         reasonCodes.push("provider_entry_without_admit");
     if (!evaluationBound)
-        reasonCodes.push("evaluation_reference_unverified");
+        reasonCodes.push(UNVERIFIED_EVALUATION_REFERENCE);
     if (sourceBody.referee.provider_commitment !== "NOT_INVOKED")
         reasonCodes.push("provider_outcome_reference_unavailable");
     if (sourceBody.referee.observed_effect !== "NOT_OBSERVED")
@@ -1146,10 +1150,15 @@ export async function upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, optio
     const reasons = [...new Set(reasonCodes)].sort();
     const conversionStatus = reasons.length === 0 ? "COMPLETE" : "INDETERMINATE";
     // Only a bound evaluation supplies the profile label; v1 never carried one.
+    // Otherwise the label is the AEB-EVALUATION-v1 value 4.1.0 always wrote,
+    // marked unchecked by the evaluation_reference_unverified reason code.
+    const boundProfile = evaluationBound
+        ? evaluationFacts(pinnedEvaluation)?.profile
+        : undefined;
+    if (evaluationBound && boundProfile === undefined)
+        throw new CrossingRecordError("source_evaluation_mismatch");
     const evaluation = {
-        profile: evaluationBound
-            ? (evaluationFacts(pinnedEvaluation)?.profile ?? null)
-            : null,
+        profile: boundProfile ?? AEB_EVALUATION_VERSION,
         digest: sourceBody.lifecycle_records.evaluation_digest,
     };
     return issueAebCrossingLifecycleIndexV2({
@@ -1463,7 +1472,10 @@ export async function verifyAebCrossingLifecycleIndexV2(value, options) {
         if (suppliedEvaluation !== undefined) {
             const joinReason = evaluationJoinReason(suppliedEvaluation, {
                 digest: body.lifecycle.evaluation.digest,
-                profile: body.lifecycle.evaluation.profile,
+                // An unverified conversion label is not compared.
+                profile: body.conversion.reason_codes.includes(UNVERIFIED_EVALUATION_REFERENCE)
+                    ? null
+                    : body.lifecycle.evaluation.profile,
                 operation_id: body.operation_id,
                 action: body.action,
             });

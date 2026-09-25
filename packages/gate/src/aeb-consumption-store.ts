@@ -18,6 +18,10 @@
  * is keyed by the evaluation; it closes or commits that row for an attempt
  * only while the attempt's own holder row, keyed by the evaluation
  * reservation and the attempt ID, is still RESERVED.
+ *
+ * Every recovery claim must carry a scope naming the claimed row. A claim
+ * without one is refused before the authorizer runs
+ * (`recovery_claim_scope_required`).
  */
 import crypto from 'node:crypto';
 import type {
@@ -26,6 +30,7 @@ import type {
   AebReservationResult,
 } from '@emilia-protocol/verify/aeb-adapter-contract';
 import {
+  consequenceBoundaryRecoveryAttemptIdentity,
   consequenceBoundaryRecoveryClaimKey,
   consequenceBoundaryRecoveryClaimMarkerKey,
 } from './consequence-boundary.js';
@@ -373,15 +378,17 @@ export interface PostgresAebDurableConsumptionStoreOptions {
   /** Must return an unpredictable opaque string in production. */
   ownerTokenFactory?: () => string;
   /**
-   * Verify a caller credential for the reservation being claimed. When the
-   * claim carries a `scope`, the store has already checked that `operationKey`
-   * is the row the scope names for that attempt, so one credential bound to
-   * the attempt authorizes every reservation that attempt holds: bind it to
-   * `scope.attemptId` together with `tenantId` and `relyingPartyId`. Do not
-   * bind it to `scope.recoveryOperationKey`, which every attempt with the same
+   * Verify a caller credential for the reservation being claimed. The store
+   * runs it only for a claim whose scope names exactly `operationKey`
+   * (consequenceBoundaryRecoveryClaimKey()), so one credential bound to the
+   * attempt authorizes every reservation that attempt holds: bind it to
+   * `attemptIdentity` (the boundary kind and the attempt ID) together with
+   * `tenantId` and `relyingPartyId`. Never bind it to `scope.attemptId`
+   * alone, which a native and a composed attempt on one store can share, to
+   * `scope.recoveryOperationKey` alone, which every attempt with the same
    * operation ID and action (native) or the same evaluation (composed)
-   * shares, and not to `operationKey`, or restart reconciliation cannot
-   * finish in one call.
+   * shares, or to `operationKey`, or restart reconciliation cannot finish in
+   * one call.
    */
   authorizeRecoveryClaim?: AebRecoveryClaimAuthorizer;
 }
@@ -397,9 +404,16 @@ export interface PostgresAebDurableConsumptionStoreOptions {
  */
 export interface AebRecoveryClaimScope {
   /**
+   * Which consequence boundary wrote the attempt. A `native` scope derives
+   * only native rows and a `composed` scope only composed rows, so equal
+   * attempt IDs on the two boundaries never name each other's rows.
+   */
+  boundary: 'native' | 'composed';
+  /**
    * Boundary attempt whose reservation is being claimed. Attempt IDs are
-   * unique per attempt: the attempt store refuses a second reservation of one
-   * ID.
+   * unique per attempt store: it refuses a second reservation of one ID.
+   * Boundaries of one kind that share a consumption store must also never
+   * reuse an attempt ID across their attempt stores.
    */
   attemptId: string;
   /** Caller operation identifier the attempt carried. */
@@ -420,12 +434,36 @@ export interface AebRecoveryClaimAuthorization {
   authorization: unknown;
   tenantId: string;
   relyingPartyId: string;
-  /** Exact store row being claimed. */
+  /** Exact store row being claimed; the scope names exactly this row. */
   operationKey: string;
   requiredState: 'RESERVED';
-  /** Present when the claim comes from a consequence boundary. */
-  scope?: Readonly<AebRecoveryClaimScope>;
+  /**
+   * The attempt identity to bind a credential to:
+   * consequenceBoundaryRecoveryAttemptIdentity(scope), `native:<attemptId>`
+   * or `composed:<attemptId>`.
+   */
+  attemptIdentity: string;
+  /** The validated scope. */
+  scope: Readonly<AebRecoveryClaimScope>;
 }
+
+/**
+ * Why claimReservationResult() refused a claim. Every reason except
+ * `recovery_claim_unauthorized` and `recovery_claim_row_not_reserved` is
+ * decided before the authorizer runs.
+ */
+export type AebRecoveryClaimRefusal =
+  | 'recovery_claim_scope_required'
+  | 'recovery_claim_scope_invalid'
+  | 'recovery_claim_key_mismatch'
+  | 'recovery_claim_owner_marker_absent'
+  | 'recovery_claim_already_owned'
+  | 'recovery_claim_unauthorized'
+  | 'recovery_claim_row_not_reserved';
+
+export type AebRecoveryClaimResult =
+  | { claimed: true }
+  | { claimed: false; reason: AebRecoveryClaimRefusal };
 
 export type AebRecoveryClaimAuthorizer = (
   claim: Readonly<AebRecoveryClaimAuthorization>,
@@ -457,17 +495,27 @@ export interface PostgresAebDurableConsumptionStore extends AebDurableConsumptio
   /**
    * Rotate ownership of an existing RESERVED row after external authorization.
    * The stored and replacement owner tokens are never returned or passed to
-   * the authorizer. `scope`, when given, must name exactly `key`
+   * the authorizer. `scope` is required and must name exactly `key`
    * (consequenceBoundaryRecoveryClaimKey()); for the composed evaluation
    * reservation the scope's attempt must still hold its fence holder row.
    * Otherwise the claim is refused before the authorizer runs. The validated
-   * scope is passed to the authorizer.
+   * scope and its attempt identity are passed to the authorizer. Same as
+   * claimReservationResult(), reduced to whether the claim succeeded.
    */
   claimReservation(
     key: string,
     authorization: unknown,
     scope?: AebRecoveryClaimScope,
   ): Promise<boolean>;
+  /**
+   * claimReservation() with the refusal reason. Scope problems are refusals,
+   * never throws; database errors still reject so callers fail closed.
+   */
+  claimReservationResult(
+    key: string,
+    authorization: unknown,
+    scope?: AebRecoveryClaimScope,
+  ): Promise<AebRecoveryClaimResult>;
 }
 
 const BEGIN_WRITE = 'BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE';
@@ -511,30 +559,44 @@ function assertOwnerToken(value: unknown): asserts value is string {
 
 const RECOVERY_CLAIM_RESERVATIONS = new Set(['operation', 'native-authority', 'action-fence-holder']);
 
-/** Copy a caller scope through data descriptors only; no getter ever runs. */
-function recoveryClaimScope(value: unknown): Readonly<AebRecoveryClaimScope> {
-  const invalid = () => new TypeError('AEB consumption recovery claim scope is invalid');
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) throw invalid();
+const RECOVERY_CLAIM_BOUNDARIES = new Set(['native', 'composed']);
+
+function validText(value: unknown, maximumBytes: number): value is string {
+  return typeof value === 'string'
+    && Buffer.byteLength(value, 'utf8') >= 1
+    && Buffer.byteLength(value, 'utf8') <= maximumBytes
+    && !/[\u0000-\u001f\u007f]/.test(value);
+}
+
+/**
+ * Copy a caller scope through data descriptors only; no getter ever runs.
+ * Null for anything that is not a well-formed scope.
+ */
+function recoveryClaimScope(value: unknown): Readonly<AebRecoveryClaimScope> | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
   let descriptors: PropertyDescriptorMap;
   try {
     descriptors = Object.getOwnPropertyDescriptors(value);
   } catch {
-    throw invalid();
+    return null;
   }
   const keys = Reflect.ownKeys(descriptors);
   if (keys.some((key) => typeof key !== 'string' || !Object.hasOwn(descriptors[key as string], 'value'))) {
-    throw invalid();
+    return null;
   }
   const record: Record<string, unknown> = {};
   for (const key of keys as string[]) record[key] = descriptors[key].value;
-  if (Object.keys(record).sort().join(',') !== 'attemptId,operationId,recoveryOperationKey,reservation'
-      || !RECOVERY_CLAIM_RESERVATIONS.has(record.reservation as string)) {
-    throw invalid();
+  if (Object.keys(record).sort().join(',')
+      !== 'attemptId,boundary,operationId,recoveryOperationKey,reservation'
+      || !RECOVERY_CLAIM_BOUNDARIES.has(record.boundary as string)
+      || !RECOVERY_CLAIM_RESERVATIONS.has(record.reservation as string)
+      || !validText(record.attemptId, 512)
+      || !validText(record.operationId, 512)
+      || !validText(record.recoveryOperationKey, 4096)) {
+    return null;
   }
-  assertText(record.attemptId, 'recovery claim attempt ID', 512);
-  assertText(record.operationId, 'recovery claim operation ID', 512);
-  assertText(record.recoveryOperationKey, 'recovery claim operation key', 4096);
   return Object.freeze({
+    boundary: record.boundary as AebRecoveryClaimScope['boundary'],
     attemptId: record.attemptId as string,
     operationId: record.operationId as string,
     recoveryOperationKey: record.recoveryOperationKey as string,
@@ -707,33 +769,44 @@ export function createPostgresAebDurableConsumptionStore({
       return 'RESERVED';
     },
 
-    async claimReservation(key, authorization, scope): Promise<boolean> {
+    async claimReservationResult(key, authorization, scope): Promise<AebRecoveryClaimResult> {
       assertText(key, 'operation key', 4096);
-      const claimScope = scope === undefined ? undefined : recoveryClaimScope(scope);
+      const refuse = (reason: AebRecoveryClaimRefusal): AebRecoveryClaimResult => (
+        Object.freeze({ claimed: false as const, reason })
+      );
+      // Every claim names the row it is for. Gate always passes a scope; a
+      // claim without one is refused before the authorizer can see it.
+      if (scope === undefined) return refuse('recovery_claim_scope_required');
+      const claimScope = recoveryClaimScope(scope);
+      if (!claimScope) return refuse('recovery_claim_scope_invalid');
       // Recovery is a restart boundary, not an in-place owner rotation. The
       // base AEB store API fences ownership by store instance (commit/release
       // take only the operation key), so replacing a token already owned by
       // this instance would let its stale caller inherit the new token.
-      if (ownedReservations.has(key)) return false;
-      if (claimScope) {
-        // A scope names exactly one row: the one the boundaries derive from
-        // it. A credential bound to one attempt cannot claim another row.
-        if (consequenceBoundaryRecoveryClaimKey(claimScope) !== key) return false;
-        // A row shared by every attempt of one evaluation is claimable for an
-        // attempt only while that attempt's own holder row marks it as the
-        // current owner.
-        const marker = consequenceBoundaryRecoveryClaimMarkerKey(claimScope);
-        if (marker !== null && await store.state(marker) !== 'RESERVED') return false;
+      if (ownedReservations.has(key)) return refuse('recovery_claim_already_owned');
+      // A scope names exactly one row: the one the boundaries derive from it,
+      // for its boundary kind. A credential bound to one attempt identity
+      // cannot claim another row.
+      if (consequenceBoundaryRecoveryClaimKey(claimScope) !== key) {
+        return refuse('recovery_claim_key_mismatch');
       }
-      const claim = Object.freeze({
+      // A row shared by every attempt of one evaluation is claimable for an
+      // attempt only while that attempt's own holder row marks it as the
+      // current owner.
+      const marker = consequenceBoundaryRecoveryClaimMarkerKey(claimScope);
+      if (marker !== null && await store.state(marker) !== 'RESERVED') {
+        return refuse('recovery_claim_owner_marker_absent');
+      }
+      const claim: Readonly<AebRecoveryClaimAuthorization> = Object.freeze({
         authorization,
         tenantId,
         relyingPartyId,
         operationKey: key,
         requiredState: 'RESERVED' as const,
-        ...(claimScope ? { scope: claimScope } : {}),
+        attemptIdentity: consequenceBoundaryRecoveryAttemptIdentity(claimScope)!,
+        scope: claimScope,
       });
-      if (await authorizeRecoveryClaim(claim) !== true) return false;
+      if (await authorizeRecoveryClaim(claim) !== true) return refuse('recovery_claim_unauthorized');
 
       const ownerToken = ownerTokenFactory();
       assertOwnerToken(ownerToken);
@@ -747,8 +820,13 @@ export function createPostgresAebDurableConsumptionStore({
         if (rows > 1) throw new Error('claim operation: unexpected PostgreSQL row count');
         return rows === 1;
       });
-      if (changed) ownedReservations.set(key, ownerToken);
-      return changed;
+      if (!changed) return refuse('recovery_claim_row_not_reserved');
+      ownedReservations.set(key, ownerToken);
+      return Object.freeze({ claimed: true as const });
+    },
+
+    async claimReservation(key, authorization, scope): Promise<boolean> {
+      return (await store.claimReservationResult(key, authorization, scope)).claimed;
     },
 
     async commit(key): Promise<boolean> {

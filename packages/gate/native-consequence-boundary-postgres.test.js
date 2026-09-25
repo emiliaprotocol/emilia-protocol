@@ -198,6 +198,7 @@ function attemptStore() {
         ownershipFenced: true,
         compareAndSwap: true,
         atomicEvidenceBinding: true,
+        notEnteredMarker: true,
         rows,
         async reserve(binding) {
             if (rows.has(binding.attempt_id))
@@ -211,6 +212,9 @@ function attemptStore() {
             if (!row || row.owner !== input.owner || row.state !== input.expected_state)
                 return false;
             row.state = input.next_state;
+            // A move to RELEASED persists its not-entered marker with the state.
+            if (input.next_state === 'RELEASED')
+                row.evidence = structuredClone(input.evidence);
             return true;
         },
         async reconcile(input) {
@@ -329,7 +333,13 @@ function boundary(f, store, attempts, invoke, options = {}) {
         invoke,
         provider_outcomes: {
             verification_program_digest: digestAeb({ program: 'outcome:pg:1' }),
-            verify: () => true,
+            // Affirms the exact purpose, attempt, and key it was asked about.
+            verify: (context) => ({
+                verified: true,
+                purpose: context.purpose,
+                attempt_id: context.attempt.attempt_id,
+                provider_idempotency_key: context.provider_idempotency_key,
+            }),
         },
         now: () => NOW,
     });
@@ -691,6 +701,7 @@ test('a recovery claim scope is validated and passed to the authorizer unchanged
     const claims = [];
     const store = pgStore(db, () => true, claims);
     const scope = {
+        boundary: 'native',
         attemptId: 'native-attempt:scope:1',
         operationId: 'operation:scope:1',
         recoveryOperationKey: 'aeb-native-operation:sha256:' + '0'.repeat(64),
@@ -704,19 +715,22 @@ test('a recovery claim scope is validated and passed to the authorizer unchanged
     assert.match(scopedKey, /^aeb-native-attempt-operation:sha256:[a-f0-9]{64}$/);
     assert.equal(await store.claimReservation(scopedKey, 'x', scope), false);
     assert.deepEqual(claims[0]?.scope, scope);
+    assert.equal(claims[0]?.attemptIdentity, 'native:native-attempt:scope:1');
     assert.equal(Object.isFrozen(claims[0]?.scope), true);
-    await assert.rejects(store.claimReservation('k', 'x', { ...scope, reservation: 'everything' }), /recovery claim scope is invalid/);
-    await assert.rejects(store.claimReservation('k', 'x', { ...scope, extra: true }), /recovery claim scope is invalid/);
+    // S4: malformed scopes are refusals with a reason, never throws.
+    assert.deepEqual(await store.claimReservationResult('k', 'x', { ...scope, reservation: 'everything' }), { claimed: false, reason: 'recovery_claim_scope_invalid' });
+    assert.deepEqual(await store.claimReservationResult('k', 'x', { ...scope, extra: true }), { claimed: false, reason: 'recovery_claim_scope_invalid' });
     let getterRan = false;
     const getterScope = Object.defineProperty({ ...scope }, 'attemptId', {
         get() { getterRan = true; return 'native-attempt:scope:1'; },
         enumerable: true,
     });
-    await assert.rejects(store.claimReservation('k', 'x', getterScope), /recovery claim scope is invalid/);
+    assert.equal(await store.claimReservation('k', 'x', getterScope), false);
     assert.equal(getterRan, false);
+    // S4: a claim without a scope never reaches the authorizer.
+    assert.deepEqual(await store.claimReservationResult('aeb-native-attempt-operation:missing', 'x'), { claimed: false, reason: 'recovery_claim_scope_required' });
     assert.equal(await store.claimReservation('aeb-native-attempt-operation:missing', 'x'), false);
-    assert.equal(claims[1]?.scope, undefined);
-    assert.equal(Object.hasOwn(claims[1], 'scope'), false);
+    assert.equal(claims.length, 1);
 });
 test('R5 PGB: a credential bound to one attempt cannot claim another attempt\'s live holder row', async () => {
     // Regression for PGB (real PostgreSQL 17 in round 2): an authorizer bound to
@@ -746,11 +760,13 @@ test('R5 PGB: a credential bound to one attempt cannot claim another attempt\'s 
     const otherAttempt = 'native-attempt:pg:someone-else';
     const forgedScopes = [
         // A scope for another attempt, with the victim's operation fence.
-        { attemptId: otherAttempt, operationId: victim.operation_id, recoveryOperationKey: victimKeys.operation_fence, reservation: 'action-fence-holder' },
+        { boundary: 'native', attemptId: otherAttempt, operationId: victim.operation_id, recoveryOperationKey: victimKeys.operation_fence, reservation: 'action-fence-holder' },
         // A scope for another attempt under an unrelated operation.
-        { attemptId: otherAttempt, operationId: 'operation:other', recoveryOperationKey: `aeb-native-operation:sha256:${'e'.repeat(64)}`, reservation: 'action-fence-holder' },
+        { boundary: 'native', attemptId: otherAttempt, operationId: 'operation:other', recoveryOperationKey: `aeb-native-operation:sha256:${'e'.repeat(64)}`, reservation: 'action-fence-holder' },
         // A scope that names the victim's attempt but another reservation.
-        { attemptId: victim.attempt_id, operationId: victim.operation_id, recoveryOperationKey: victimKeys.operation_fence, reservation: 'operation' },
+        { boundary: 'native', attemptId: victim.attempt_id, operationId: victim.operation_id, recoveryOperationKey: victimKeys.operation_fence, reservation: 'operation' },
+        // S4: the victim's attempt ID under the other boundary kind.
+        { boundary: 'composed', attemptId: victim.attempt_id, operationId: victim.operation_id, recoveryOperationKey: victimKeys.operation_fence, reservation: 'action-fence-holder' },
     ];
     for (const scope of forgedScopes) {
         assert.equal(await attacker.claimReservation(victimKeys.holder, { attempt_id: scope.attemptId }, scope), false);
@@ -777,6 +793,7 @@ test('R5/R6: a claim on the shared composed evaluation row needs the claiming at
     assert.equal(await owner.reserve(reservationKey, []), 'RESERVED');
     assert.equal(await owner.reserve(holder('attempt:one'), [`aeb-native-action:sha256:${'2'.repeat(64)}`]), 'RESERVED');
     const scope = (attemptId) => ({
+        boundary: 'composed',
         attemptId,
         operationId: 'operation:composed:claim',
         recoveryOperationKey: reservationKey,

@@ -204,6 +204,17 @@ export interface AebNativeAuthorizationHandoffVerification {
      * `native_replay_identity` is null.
      */
     replay_identity_key: string | null;
+    /**
+     * The verify 4.1.0 `replay_key` this grant has under every pinned
+     * (system, profile, issuer) label that shares the matched pin's authority
+     * namespace (the issuer, unless the pin declares `authority_namespace`),
+     * sorted and without duplicates. It includes `replay_key`. Code built on
+     * 4.1.0 fenced only the key of the label a grant was presented under, so a
+     * replay fence that holds all of these refuses a grant consumed there under
+     * one label and presented here under another pinned label. Null exactly
+     * when `native_replay_identity` is null.
+     */
+    legacy_replay_keys: readonly string[] | null;
     handoff: Readonly<AebNativeAuthorizationHandoff> | null;
 }
 export declare function digestAebNativeAuthorizationAction(action: unknown): AebNativeAuthorizationDigest;

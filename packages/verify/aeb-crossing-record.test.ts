@@ -29,6 +29,7 @@ import {
   verifyAebCrossingLifecycleIndexV2,
   verifyAebCrossingRecord,
   verifyAebCrossingRecordV2,
+  type AebCrossingEvaluationProfile,
 } from "./dist/aeb-crossing-record.js";
 import {
   AEB_EVALUATION_VERSION,
@@ -825,8 +826,10 @@ test("v1 upgrade preserves resolvable lifecycle references and reports unrecover
     },
   );
   // Without the source evaluation, v1's unlabeled evaluation digest is
-  // carried as an unverified reference: no profile label is invented and the
-  // conversion is not COMPLETE.
+  // carried as an unverified reference: the conversion is not COMPLETE, and
+  // the evaluation_reference_unverified reason code marks the profile label
+  // as the unchecked AEB-EVALUATION-v1 value 4.1.0 wrote (never null, so the
+  // 4.1.0 type stays exact).
   assert.equal(converted.body.conversion.status, "INDETERMINATE");
   assert.deepEqual(converted.body.conversion.reason_codes, [
     "evaluation_reference_unverified",
@@ -835,7 +838,7 @@ test("v1 upgrade preserves resolvable lifecycle references and reports unrecover
     converted.body.source_crossing_record.version,
     AEB_CROSSING_RECORD_VERSION,
   );
-  assert.equal(converted.body.lifecycle.evaluation.profile, null);
+  assert.equal(converted.body.lifecycle.evaluation.profile, AEB_EVALUATION_VERSION);
   assert.equal(
     converted.body.lifecycle.evaluation.digest,
     source.body.lifecycle_records.evaluation_digest,
@@ -1618,7 +1621,7 @@ test("the lifecycle index refuses provider entry without an authority reservatio
   assert.equal(result.checks.lifecycle_order, false);
 });
 
-test("a lifecycle index cannot claim COMPLETE with an unlabeled evaluation or unknown custody", async () => {
+test("an unverified evaluation label is the flagged 4.1.0 placeholder, never null, and a COMPLETE index needs known custody", async () => {
   const source = await issue();
   const converted = await upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, {
     signing_keys: [...SIGNERS],
@@ -1626,15 +1629,45 @@ test("a lifecycle index cannot claim COMPLETE with an unlabeled evaluation or un
     deterministic: true,
     mldsaBackend,
   });
-  const complete = structuredClone(converted.body) as any;
-  complete.conversion = { status: "COMPLETE", reason_codes: [] };
-  complete.contract_digest = crossingLifecycleIndexV2ContractDigest(complete);
-  const result = await verifyAebCrossingLifecycleIndexV2(
-    await signIndexBody(complete),
-    indexOptions({ expected_evaluation: complete.lifecycle.evaluation }),
-  );
-  assert.equal(result.verified, false);
-  assert.equal(result.reason, "conversion_report_invalid");
+  // S7: the profile stays a non-null AebCrossingEvaluationProfile, as in 4.1.0.
+  const profile: AebCrossingEvaluationProfile = converted.body.lifecycle.evaluation.profile;
+  assert.equal(profile, AEB_EVALUATION_VERSION);
+  assert.ok(converted.body.conversion.reason_codes.includes("evaluation_reference_unverified"));
+
+  // The flag pins the placeholder: an unverified label other than v1 is refused.
+  const relabeled = structuredClone(converted.body) as any;
+  relabeled.lifecycle.evaluation.profile = AEB_EVALUATION_V2_VERSION;
+  relabeled.contract_digest = crossingLifecycleIndexV2ContractDigest(relabeled);
+  assert.equal((await verifyAebCrossingLifecycleIndexV2(
+    await signIndexBody(relabeled),
+    indexOptions({ expected_evaluation: relabeled.lifecycle.evaluation }),
+  )).reason, "conversion_report_invalid");
+
+  // A null profile is not a lifecycle index, as in 4.1.0.
+  const unlabeled = structuredClone(converted.body) as any;
+  unlabeled.lifecycle.evaluation.profile = null;
+  unlabeled.contract_digest = crossingLifecycleIndexV2ContractDigest(unlabeled);
+  assert.equal((await verifyAebCrossingLifecycleIndexV2(
+    await signIndexBody(unlabeled),
+    indexOptions({ expected_evaluation: unlabeled.lifecycle.evaluation }),
+  )).reason, "malformed_lifecycle_index");
+
+  // The flag cannot ride on a NATIVE or COMPLETE report.
+  for (const conversion of [
+    { status: "NATIVE", reason_codes: ["evaluation_reference_unverified"] },
+    { status: "COMPLETE", reason_codes: ["evaluation_reference_unverified"] },
+  ]) {
+    const flagged = structuredClone(converted.body) as any;
+    flagged.conversion = conversion;
+    if (conversion.status === "NATIVE") {
+      flagged.source_crossing_record = { version: null, digest: null };
+    }
+    flagged.contract_digest = crossingLifecycleIndexV2ContractDigest(flagged);
+    assert.equal((await verifyAebCrossingLifecycleIndexV2(
+      await signIndexBody(flagged),
+      indexOptions({ expected_evaluation: flagged.lifecycle.evaluation }),
+    )).reason, "conversion_report_invalid", conversion.status);
+  }
 
   const unknownCustody = structuredClone(converted.body) as any;
   unknownCustody.lifecycle.evaluation = {
@@ -1652,16 +1685,32 @@ test("a lifecycle index cannot claim COMPLETE with an unlabeled evaluation or un
     await signIndexBody(unknownCustody),
     indexOptions({ expected_evaluation: unknownCustody.lifecycle.evaluation }),
   )).reason, "conversion_report_invalid");
+});
 
-  const nativeUnlabeled = structuredClone(converted.body) as any;
-  nativeUnlabeled.conversion = { status: "NATIVE", reason_codes: [] };
-  nativeUnlabeled.source_crossing_record = { version: null, digest: null };
-  nativeUnlabeled.contract_digest =
-    crossingLifecycleIndexV2ContractDigest(nativeUnlabeled);
-  assert.equal((await verifyAebCrossingLifecycleIndexV2(
-    await signIndexBody(nativeUnlabeled),
-    indexOptions({ expected_evaluation: nativeUnlabeled.lifecycle.evaluation }),
-  )).reason, "conversion_report_invalid");
+test("an unverified conversion label is not compared with a supplied evaluation, so a v2 evaluation still binds", async () => {
+  const { config, record: evaluationV1 } = evaluationFor(V1_OPERATION);
+  const evaluationV2 = issueAebEvaluationV2FromV1(evaluationV1, {
+    signer: { key_id: "eval:crossing", private_key: edPrivate },
+    profiles: config.profiles,
+  });
+  const source = await issue(wimseAuthority(EVALUATION_TOKEN_DIGEST), {
+    lifecycle_records: boundLifecycleRecords(evaluationV2),
+  });
+  const converted = await upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, {
+    signing_keys: [...SIGNERS],
+    source_verification_keys: [...VERIFICATION_KEYS],
+    deterministic: true,
+    mldsaBackend,
+  });
+  assert.equal(converted.body.lifecycle.evaluation.profile, AEB_EVALUATION_VERSION);
+  assert.ok(converted.body.conversion.reason_codes.includes("evaluation_reference_unverified"));
+  const result = await verifyAebCrossingLifecycleIndexV2(
+    converted,
+    indexOptions({ evaluation: evaluationV2 }),
+  );
+  assert.equal(result.verified, true, JSON.stringify(result));
+  assert.equal(result.evaluation_binding, "BOUND");
+  assert.equal(result.conversion_status, "INDETERMINATE");
 });
 
 test("v1 upgrade with the bound source evaluation is COMPLETE and carries its profile", async () => {

@@ -617,6 +617,19 @@ function boundaryHarness(
         result: { accepted: true },
       };
     },
+    // Affirms only a provider terminal outcome for this attempt, never a
+    // pre-entry lookup. Terminal reconciliation requires such a verifier.
+    provider_outcomes: {
+      verify: (context) => (context.purpose === 'provider_outcome'
+        && context.outcome.evidence.evidence_id.startsWith('provider-evidence:'))
+        ? {
+          verified: true as const,
+          purpose: context.purpose,
+          attempt_id: context.attempt.attempt_id,
+          provider_idempotency_key: context.provider_idempotency_key,
+        }
+        : false,
+    },
     now: () => DECISION_NOW,
   });
   return { boundary, store, attempts, providerCalls: () => providerCalls };

@@ -1893,21 +1893,58 @@ export async function authorizeAebExecutionDurable(record, options) {
         return decision(conditionsRefusal.state, conditionsRefusal.reason);
     if (!secureDurableStore(options.store))
         return decision('REFUSED', 'secure_consumption_store_required');
+    const store = options.store;
+    let replayKeys;
     try {
-        const reservation = await options.store.reserve(reservationKey, sortedUnique([
+        replayKeys = sortedUnique([
             ...aebNativeReplayKeys(record),
             ...(options.additional_replay_keys ?? []),
-        ]));
-        if (reservation !== true && reservation !== 'RESERVED') {
-            return decision('REFUSED', reservation === 'NATIVE_REPLAY_CONFLICT'
-                ? 'native_replay_conflict'
-                : 'consumption_conflict');
-        }
+        ]);
     }
     catch {
+        // Nothing was written: reserve() was never called.
         return decision('REFUSED', 'consumption_store_unavailable');
     }
-    return decision('AUTHORIZED', 'reserved_for_execution', reservationKey);
+    let reservation;
+    let threw = false;
+    try {
+        reservation = await store.reserve(reservationKey, replayKeys);
+    }
+    catch {
+        threw = true;
+    }
+    if (!threw && (reservation === true || reservation === 'RESERVED')) {
+        return decision('AUTHORIZED', 'reserved_for_execution', reservationKey);
+    }
+    // A defined refusal means this call wrote nothing.
+    if (!threw && reservation === 'NATIVE_REPLAY_CONFLICT') {
+        return decision('REFUSED', 'native_replay_conflict');
+    }
+    if (!threw && (reservation === 'CONSUMPTION_CONFLICT' || reservation === false)) {
+        return decision('REFUSED', 'consumption_conflict');
+    }
+    // A throw or an unrecognized answer may hide a reservation that landed.
+    // It is a clean refusal only when a durable read shows the key was not
+    // reserved by this call; otherwise the reservation may be RESERVED, and
+    // the caller must not treat the evaluation as untouched.
+    const readState = typeof store.state === 'function'
+        ? store.state.bind(store)
+        : null;
+    let observed = null;
+    if (readState) {
+        try {
+            observed = await readState(reservationKey);
+        }
+        catch {
+            observed = null;
+        }
+    }
+    if (observed === 'AVAILABLE')
+        return decision('REFUSED', 'consumption_store_unavailable');
+    if (observed === 'CONSUMED' || observed === 'RELEASED_NOT_ENTERED') {
+        return decision('REFUSED', 'consumption_conflict');
+    }
+    return decision('RECONCILIATION_REQUIRED', 'consumption_reservation_unconfirmed');
 }
 /** Production reconciliation path. Same s5.10/s5.11 semantics as the reference path. */
 export async function reconcileAebExecutionDurable(store, reservationKey, outcome) {

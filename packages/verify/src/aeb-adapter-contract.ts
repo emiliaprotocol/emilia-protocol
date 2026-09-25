@@ -603,10 +603,20 @@ export interface AebDurableConsumptionStore {
    * one-time unit back to the same action instance.
    */
   terminalRelease?: true;
+  /**
+   * `false`, `'CONSUMPTION_CONFLICT'`, and `'NATIVE_REPLAY_CONFLICT'` mean this
+   * call wrote nothing. Any other answer except `true` or `'RESERVED'`, and a
+   * throw, leave it unknown whether the reservation landed.
+   */
   reserve(key: string, replayKeys: readonly string[]): Promise<boolean | AebReservationResult>;
   commit(key: string): Promise<boolean>;
   release(key: string): Promise<boolean>;
   releaseTerminal?(key: string): Promise<boolean>;
+  /**
+   * Optional durable read of one key. When present, authorizeAebExecutionDurable
+   * uses it to resolve a reserve() whose answer was lost or unrecognized.
+   */
+  state?(key: string): AebConsumptionState | Promise<AebConsumptionState>;
 }
 
 export type AebReservationResult = 'RESERVED' | 'CONSUMPTION_CONFLICT' | 'NATIVE_REPLAY_CONFLICT';
@@ -2525,23 +2535,54 @@ export async function authorizeAebExecutionDurable(
   const conditionsRefusal = executionConditionsRefusal(options.execution_conditions);
   if (conditionsRefusal) return decision(conditionsRefusal.state, conditionsRefusal.reason);
   if (!secureDurableStore(options.store)) return decision('REFUSED', 'secure_consumption_store_required');
+  const store = options.store;
+  let replayKeys: string[];
   try {
-    const reservation = await options.store.reserve(reservationKey, sortedUnique([
+    replayKeys = sortedUnique([
       ...aebNativeReplayKeys(record),
       ...(options.additional_replay_keys ?? []),
-    ]));
-    if (reservation !== true && reservation !== 'RESERVED') {
-      return decision(
-        'REFUSED',
-        reservation === 'NATIVE_REPLAY_CONFLICT'
-          ? 'native_replay_conflict'
-          : 'consumption_conflict',
-      );
-    }
+    ]);
   } catch {
+    // Nothing was written: reserve() was never called.
     return decision('REFUSED', 'consumption_store_unavailable');
   }
-  return decision('AUTHORIZED', 'reserved_for_execution', reservationKey);
+  let reservation: unknown;
+  let threw = false;
+  try {
+    reservation = await store.reserve(reservationKey, replayKeys);
+  } catch {
+    threw = true;
+  }
+  if (!threw && (reservation === true || reservation === 'RESERVED')) {
+    return decision('AUTHORIZED', 'reserved_for_execution', reservationKey);
+  }
+  // A defined refusal means this call wrote nothing.
+  if (!threw && reservation === 'NATIVE_REPLAY_CONFLICT') {
+    return decision('REFUSED', 'native_replay_conflict');
+  }
+  if (!threw && (reservation === 'CONSUMPTION_CONFLICT' || reservation === false)) {
+    return decision('REFUSED', 'consumption_conflict');
+  }
+  // A throw or an unrecognized answer may hide a reservation that landed.
+  // It is a clean refusal only when a durable read shows the key was not
+  // reserved by this call; otherwise the reservation may be RESERVED, and
+  // the caller must not treat the evaluation as untouched.
+  const readState = typeof (store as { state?: unknown }).state === 'function'
+    ? (store as { state(key: string): unknown }).state.bind(store)
+    : null;
+  let observed: unknown = null;
+  if (readState) {
+    try {
+      observed = await readState(reservationKey);
+    } catch {
+      observed = null;
+    }
+  }
+  if (observed === 'AVAILABLE') return decision('REFUSED', 'consumption_store_unavailable');
+  if (observed === 'CONSUMED' || observed === 'RELEASED_NOT_ENTERED') {
+    return decision('REFUSED', 'consumption_conflict');
+  }
+  return decision('RECONCILIATION_REQUIRED', 'consumption_reservation_unconfirmed');
 }
 
 /** Production reconciliation path. Same s5.10/s5.11 semantics as the reference path. */
