@@ -7,19 +7,27 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 
-- The enforcement replay unit and replay key (`native_replay_unit` and
-  `replay_key` in the verification result) are now derived locally from the
-  matched pin's authority namespace and the native authorization ID. The
-  namespace is the issuer unless the pin declares `authority_namespace`, in
-  which case the issuer string is not an input. The `system` and `profile`
-  labels are no longer inputs, so one grant relabelled under a second pinned
-  profile no longer derives a second replay key, and pins that spell one
-  issuer two ways but declare the same namespace share one key.
+- The verification result now also carries the label-free replay identity:
+  `native_replay_identity`, derived locally from the matched pin's authority
+  namespace and the native authorization ID, and `replay_identity_key`, its
+  relying-party-scoped key under `AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2`.
+  The namespace is the issuer unless the pin declares `authority_namespace`,
+  in which case the issuer string is not an input. The `system` and `profile`
+  labels are not inputs, so one grant relabelled under a second pinned
+  profile derives the same identity, and pins that spell one issuer two ways
+  but declare the same namespace share it. Both are null unless the source is
+  pinned and the pin set passes `verifyAebNativeAuthorizationPins()`.
+- `native_replay_unit` and `replay_key` keep the values 4.1.0 reported: the
+  label-bearing wire `replay_unit` and its key under
+  `AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v1`. That key changes when one grant
+  is relabelled, so a replay fence must hold `replay_identity_key`, and may
+  hold `replay_key` beside it to keep grants that 4.1.0-based code recorded;
+  it must never hold `replay_key` alone.
 - Wire compatibility: the signed `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1`
   encoding, including its carried `replay_unit`, is unchanged. Handoffs issued
   by 4.1.0 verify under this version, and handoffs issued by this version
-  verify under 4.1.0. The carried `replay_unit` is still checked as part of
-  the wire format but is no longer used as the replay identity.
+  verify under 4.1.0. The carried `replay_unit` is checked as part of the wire
+  format and is never used as the replay identity.
 - `verifyAebNativeAuthorizationHandoff()` reads each caller value once into
   plain JSON and refuses Proxies, accessors, and sparse arrays with a reason
   (`native_handoff_options_invalid`, `native_handoff_schema_invalid`, or
@@ -28,33 +36,47 @@ This package follows [Semantic Versioning](https://semver.org/).
 ### Added
 
 - Native source pins accept an optional `authority_namespace`, which replaces
-  the issuer in the replay identity. Pins for one issuer must all declare a
-  namespace or all omit it (`native_pins_namespace_declaration_mixed`). Pins
-  whose issuers are different spellings of one URL (scheme or host case, a
-  default port, a trailing slash) must all declare the same namespace
-  (`native_pins_issuer_alias_without_shared_namespace`). Two pins with the
-  same gateway, system, profile, and issuer are refused. Changing a pin's
-  namespace rotates the replay keys derived under it: drain in-flight attempts
-  and let grants consumed under the old namespace expire before rotating.
+  the issuer in the replay identity. One issuer has exactly one namespace in a
+  pin set. Pins for one issuer must all declare a namespace or all omit it
+  (`native_pins_namespace_declaration_mixed`), and pins that declare one must
+  all declare the same one. Pins whose issuers are different spellings of one
+  issuer must all declare the same namespace
+  (`native_pins_issuer_alias_without_shared_namespace`). Spellings compare
+  equal after the URI scheme and URL host are lower-cased, a trailing dot on
+  the host, a default port, and trailing slashes are removed, and dot
+  segments in the path are resolved; an http or https URL written without
+  `//` compares equal to the URL written with it, and a URN's namespace
+  identifier compares case-insensitively. One exact
+  issuer declared under two different namespaces is refused
+  (`native_pins_issuer_namespace_conflict`). Two pins with the same gateway,
+  system, profile, and issuer are refused. When a pin set declares any
+  namespace, an alias without one shared namespace refuses it outright. When
+  it declares none, it is still accepted for handoff verification exactly as
+  4.1.0 accepted it, but an aliased issuer derives no replay identity. Changing
+  a pin's namespace changes the replay identity derived under it: drain
+  in-flight attempts and let grants consumed under the old namespace expire
+  before rotating.
 - `verifyAebNativeAuthorizationPins()` validates a pin set before use and
   returns one `native_pins_*` reason instead of throwing, so a boundary can
   refuse an unsafe pin set at construction. The reasons are
   `native_pins_schema_invalid`, `native_pins_duplicate_gateway_key`,
   `native_pins_duplicate_source`, `native_pins_source_gateway_unpinned`,
-  `native_pins_namespace_declaration_mixed`, and
+  `native_pins_namespace_declaration_mixed`,
+  `native_pins_issuer_namespace_conflict`, and
   `native_pins_issuer_alias_without_shared_namespace`. The handoff verifier
-  refuses the same pin sets as `native_handoff_schema_invalid`.
+  refuses the same pin sets as `native_handoff_schema_invalid`, except an
+  aliasing pin set that declares no namespace, which it accepts as 4.1.0 did
+  without deriving a replay identity.
 - `deriveAebNativeAuthorizationReplayIdentity()` derives the label-free
-  enforcement identity from the authority namespace (the issuer by default)
-  and the native authorization ID under
-  `AEB-NATIVE-AUTHORIZATION-REPLAY-IDENTITY-v1`, and
-  `aebNativeAuthorizationReplayKey()` accepts an `authority_namespace` and
-  keys that identity under `AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2`.
-  `deriveAebNativeAuthorizationReplayUnit()` keeps its 4.1.0 meaning: the
-  label-bearing wire digest under `AEB-NATIVE-AUTHORIZATION-REPLAY-v1`.
-  `native_replay_unit` and `replay_key` are derived under the matched pin's
-  namespace and are null when the source is not pinned. New constant:
-  `AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_DOMAIN`.
+  identity from the authority namespace (the issuer by default) and the
+  native authorization ID under `AEB-NATIVE-AUTHORIZATION-REPLAY-IDENTITY-v1`,
+  and `aebNativeAuthorizationReplayIdentityKey()` keys it under
+  `AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2`. New constants:
+  `AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_DOMAIN` and
+  `AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_KEY_DOMAIN`.
+  `deriveAebNativeAuthorizationReplayUnit()`, `aebNativeAuthorizationReplayKey()`,
+  and `AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN` keep their 4.1.0 meanings
+  and values.
 - Crossing Record v1 and v2 and `EP-AEB-CROSSING-LIFECYCLE-INDEX-v2` verifiers
   accept an optional `evaluation` record and report `evaluation_binding`
   (`BOUND`, `INDETERMINATE`, or `MISMATCH`). The join checks the evaluation
@@ -84,14 +106,29 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Compatibility
 
-- `replay_key` values differ from the ones 4.1.0 derived: the key is now
-  `AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2` over the label-free identity. A
-  consumption store keyed by 4.1.0 replay keys does not recognize the same
-  grant under the new key, so drain it (reconcile in-flight attempts and let
-  consumed grants expire or be revoked) before upgrading.
-- Pin sets that alias one issuer URL (for example `https://a.example` and
-  `https://a.example/`), which 4.1.0 accepted, are now refused unless every
-  aliased pin declares the same `authority_namespace`.
+- Every value and export that 4.1.0 provided keeps its 4.1.0 meaning:
+  `native_replay_unit`, `replay_key`, `aebNativeAuthorizationReplayKey()`,
+  `deriveAebNativeAuthorizationReplayUnit()`, and
+  `AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN`. A pin set that 4.1.0 accepted
+  is still accepted by `verifyAebNativeAuthorizationHandoff()`; when it
+  aliases one issuer (for example `https://a.example` and
+  `https://a.example/`, or `urn:example:issuer` and `URN:example:issuer`),
+  `native_replay_identity` and `replay_identity_key` are null and
+  `verifyAebNativeAuthorizationPins()` reports
+  `native_pins_issuer_alias_without_shared_namespace`, so a boundary that
+  checks pins at construction refuses it. 4.1.0 refused every pin that
+  declared `authority_namespace`.
+- Version type: minor, 4.2.0. The native handoff changes are additive: no
+  export is removed, no 4.1.0 value or output changes for plain-data input,
+  and handoffs are byte-identical in both directions. The crossing-record changes are
+  security fixes that stop reporting an unchecked evaluation reference as
+  complete; on that path `lifecycle.evaluation.profile` can now be `null`
+  (see below).
+- Release order: publish this Verify release before `@emilia-protocol/gate`.
+  Gate imports `verifyAebNativeAuthorizationPins()` and the replay-identity
+  fields from this release and pins `@emilia-protocol/verify` exactly, so
+  Gate's dependency must be bumped from `4.1.0` to this release before Gate
+  is published.
 - `AebCrossingLifecycleIndexV2Body.lifecycle.evaluation.profile` may now be
   `null`; TypeScript readers must handle it.
 

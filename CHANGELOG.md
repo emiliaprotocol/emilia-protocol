@@ -39,29 +39,49 @@ Historical entries below retain the labels used when they were written.
   (the native boundary also requires `provider_outcomes.verify` to pass) or a
   pre-entry stop proven from the boundary's own durable attempt record reopens
   it.
-- An attempt that stopped before provider entry can be released through an
-  authorized `reconcile()`, but only when its durable attempt record proves it
-  never entered the provider; otherwise it stays `INDETERMINATE`. The native
-  boundary writes the attempt record before any reservation and keys every
+- An attempt that stopped before provider entry can be released through a
+  separate pre-entry recovery mode of an authorized `reconcile()`, but only
+  when recovery's own atomic move of the attempt record from `RESERVED` to
+  `RELEASED` succeeds (or Gate already recorded it as released before entry).
+  That move is the linearization point: the original run can no longer call
+  the provider. A recovery that loses the move to a live run returns
+  `INDETERMINATE` (`recovery_lost_to_live_attempt`), releases nothing, and
+  never treats its pre-entry lookup as a terminal outcome. Reservations are
+  released or committed only after the attempt's terminal or not-entered
+  transition is confirmed, a store answer counts as success only when it is
+  exactly `true` or a durable read confirms the write, and a lost
+  acknowledgement never releases anything on its own. The native boundary
+  writes the attempt record before any reservation and keys every
   reservation by attempt ID, so a failed reserve can no longer delete another
-  attempt's reservation. One recovery credential scoped to the attempt now
-  covers all of its reservations.
+  attempt's reservation. The composed boundary closes its
+  evaluation reservation, which successive attempts can share, only for the
+  attempt that still owns it. One recovery credential, bound to exactly one
+  attempt and never to a shared operation key, covers all of that attempt's
+  reservations, and a claim for a row outside that attempt is refused.
 - The fence compares the canonical action digest and the configured provider
   coordinates exactly. Gate implements no material-field equivalence; callers
   must canonicalize amounts, case, whitespace, and Unicode normalization.
-- The native replay key and provider idempotency key are derived locally
-  from the pinned authority namespace (the issuer unless the pin declares one)
-  and the native authorization ID. The `system` and `profile` labels are no
-  longer inputs, so one grant relabelled under a second pinned profile is spent
-  once. Pins that spell one issuer URL two ways must declare one shared
-  namespace. The signed `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1` wire is
-  unchanged: handoffs issued by verify 4.1.0 verify here, and handoffs issued
-  here verify under 4.1.0. Replay keys differ from the ones 4.1.0 derived.
-- Upgrade note: native attempts left in flight under gate 0.26.0 hold only the
-  old replay key and no fence row, so after upgrading the same grant could
-  enter the provider again. Drain or reconcile every in-flight native attempt,
-  and let grants consumed under 0.26.0 expire or revoke them, before
-  upgrading.
+- Gate's native replay fence now holds a label-free replay identity derived
+  locally from the pinned authority namespace (the issuer unless the pin
+  declares one) and the native authorization ID, so one grant relabelled
+  under a second pinned profile is spent once. Verify reports it as
+  `native_replay_identity` and `replay_identity_key`; `native_replay_unit` and
+  `replay_key` keep their verify 4.1.0 values, and Gate fences that 4.1.0 key
+  beside the new one so grants consumed by gate 0.26.0 stay fenced. The
+  provider idempotency key is derived from the identity. One issuer has
+  exactly one namespace in a pin set: spellings of one issuer must declare one
+  shared namespace, and two declared namespaces for one issuer are refused.
+  The signed `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1` wire is unchanged: handoffs
+  issued by verify 4.1.0 verify here, and handoffs issued here verify under
+  4.1.0.
+- Release order: publish `@emilia-protocol/verify` first, then bump Gate's
+  exact `@emilia-protocol/verify` dependency from `4.1.0` to that release,
+  then publish `@emilia-protocol/gate`. Gate imports a pin-validation function
+  and replay-identity fields that verify 4.1.0 does not provide.
+- Upgrade note: a native attempt left in flight under gate 0.26.0 has no
+  fence row, so fresh authority for that action is not refused after the
+  upgrade (the same grant still is, through the 4.1.0 replay key). Drain or
+  reconcile every in-flight native attempt before upgrading.
 - The PostgreSQL AEB consumption store gains the durable `state()` read the
   native boundary requires, and native reconciliation after a restart claims
   its reservations through the store's recovery path. The new function is in
@@ -82,8 +102,9 @@ Historical entries below retain the labels used when they were written.
   packages.
 - AEB-06 is recorded as posted (individual Internet-Draft, not adopted), and
   a -07 candidate that specifies the same-action fence and its pre-entry
-  recovery, one native replay identity, and the native authorization handoff
-  is staged in
+  recovery (with its linearization point, release ordering, and recovery
+  authorization bound to one attempt), one native replay identity with one
+  namespace per issuer, and the native authorization handoff is staged in
   `standards/staged/NEXT-AEB-07/`. It has not been submitted.
 - The `verify-receipt` action installs the verifier into an isolated
   temporary directory, so the caller's repository dependencies no longer

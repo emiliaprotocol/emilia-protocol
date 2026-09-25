@@ -6,7 +6,7 @@
 > or that every current receipt uses the same custody class.
 
 The current key-class taxonomy is in
-[Authorization Receipts revision -12, Section 5.1](https://datatracker.ietf.org/doc/html/draft-schrock-ep-authorization-receipts-12#section-5.1).
+[Authorization Receipts revision -13, Section 5.1](https://datatracker.ietf.org/doc/html/draft-schrock-ep-authorization-receipts-13#section-5.1).
 Current threats are governed by the canonical sections on
 [credential and approval compromise](../THREAT_MODEL.md#46-credential-and-approval-compromise),
 [issuer, signing-key, and trust-root compromise](../THREAT_MODEL.md#47-issuer-signing-key-and-trust-root-compromise),

@@ -8,9 +8,6 @@ Standards Initiative.
 **⚠️ Caveat:** the formal comment window closed **2026-04-02**. Send as a *supplemental*
 contribution and **verify on the project page first** whether late/supplemental input is
 accepted: https://www.nccoe.nist.gov/projects/software-and-ai-agent-identity-and-authorization
-A Gmail draft is staged (subject prefixed "Supplemental comment"). Why bother: NCCoE poses as
-*open questions* exactly what EP answers — getting on record positions EP at the standard-setting
-table for the project phase.
 
 ---
 

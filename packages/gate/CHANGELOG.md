@@ -35,21 +35,90 @@ This package follows [Semantic Versioning](https://semver.org/).
   pre-entry release, or a crash after the fence holder was reserved but before
   the attempt was recorded) previously held the fence forever, refusing every
   later attempt at that action. The native boundary now writes the attempt
-  record, and calls `create_id`, before any reservation, so the last case can
-  no longer arise there. `reconcile()` recovers such an attempt when given a
-  `recovery_authorization` that the attempt store's `recover()` accepts for it
-  and the provider's answer: a FAILED lookup result (on the native boundary it
-  must pass `provider_outcomes.verify`), or INDETERMINATE when the provider
-  has no lookup. Only if the durable record is still `RESERVED` (reconcile
-  moves it to `RELEASED`) or is `RELEASED` without provider evidence does it
-  release every reservation the attempt holds, confirm each release through a
-  durable read, and return `REFUSED` with `attempt_never_entered_provider`. A
-  claim of EXECUTED is refused as `reconciliation_outcome_conflict` and
-  releases nothing; an unconfirmed release stays `INDETERMINATE`
-  (`native_pre_entry_release_unconfirmed`). On the composed boundary this
-  recovery requires `attempts.store.state()`, and it closes the evaluation
-  reservation as `RELEASED_NOT_ENTERED` when the store supports terminal
-  release, so a retry needs a fresh evaluation.
+  record, and calls `create_id`, before any reservation, and both boundaries
+  write it before the fence holder, so the last case can no longer arise.
+  Pre-entry recovery is a separate mode of `reconcile()`, `mode:
+  'pre_entry'`; terminal reconciliation is `mode: 'terminal'`, the default,
+  and returns `INDETERMINATE` with `pre_entry_recovery_required` for a record
+  that never reached `INVOKING`. Neither mode falls through into the other.
+  Pre-entry recovery takes a `recovery_authorization` that the attempt
+  store's `recover()` accepts for the attempt and the provider's answer: a
+  "not found" lookup result as FAILED (on the native boundary it must pass
+  `provider_outcomes.verify`, called with `purpose: 'pre_entry_lookup'`), or
+  INDETERMINATE when the provider has no lookup. Recovery treats the attempt
+  as not entered only when its own `RESERVED` to `RELEASED` transition is
+  confirmed by a durable read (on a composed attempt store without
+  `state()`, answered with exactly `true`), or when the record is already
+  `RELEASED` without provider evidence. That transition is the
+  linearization point: the live run's move to `INVOKING` then fails, and the
+  run does not call the provider and releases whatever it reserved
+  (`attempt_released_by_recovery`); a composed run whose attempt store has
+  no `state()` cannot tell that transition from its own lost write, so it
+  holds everything as `attempt_start_unconfirmed` instead. If the
+  record is already `INVOKING` or later, recovery returns `INDETERMINATE`
+  with `recovery_lost_to_live_attempt`, releases nothing, and never uses its
+  lookup as a terminal outcome. Only after a confirmed not-entered transition
+  does Gate release the attempt's reservations, confirm each release, and
+  return `REFUSED` with `attempt_never_entered_provider`;
+  an unconfirmed release stays `INDETERMINATE`
+  (`native_pre_entry_release_unconfirmed`). A claim of EXECUTED is refused as
+  `reconciliation_outcome_conflict` and releases nothing. On the composed
+  boundary recovery releases only the fence holder and never touches the
+  evaluation reservation, which a live run hands back itself and which stays
+  reserved after a crash, so a retry needs a fresh evaluation. Without
+  `attempts.store.state()`, only recovery's own transition answered with
+  exactly `true` proves the stop, and a stop or lost race that recovery
+  cannot prove that way keeps the action fenced.
+- Both boundaries release or commit the fence holder and every other
+  reservation of an attempt only after the attempt record's terminal or
+  not-entered transition has succeeded and been confirmed. Terminal
+  reconciliation freezes an `INVOKING` record as `INDETERMINATE` first and
+  writes the terminal record before it consumes reservations or opens the
+  fence; if the terminal record cannot be written, everything stays held.
+  In 0.26.0 the composed `reconcile()` committed the evaluation reservation
+  before its terminal attempt transition and without freezing an `INVOKING`
+  record.
+- A lost acknowledgement no longer releases anything on its own. If the
+  move from `RESERVED` to `INVOKING` throws or answers anything but `true`,
+  the run reads the durable record. `INVOKING` for this attempt means the
+  write landed, and the run proceeds as the record's owner. `RESERVED` is
+  first closed as not entered through the same atomic transition, then
+  released (`attempt_start_conflict`). `RELEASED` without evidence means a
+  pre-entry recovery linearized first, and the run hands back what it holds
+  (`attempt_released_by_recovery`). Anything else keeps everything held as
+  `INDETERMINATE` with `attempt_start_unconfirmed`. A composed attempt store
+  without `state()` cannot be read, so the run attempts that not-entered
+  transition directly and holds everything unless it answers exactly
+  `true`. A pre-entry stop that cannot confirm its own not-entered
+  transition returns `INDETERMINATE` with `attempt_release_unconfirmed`. In
+  0.26.0 the composed boundary released the
+  evaluation reservation after such an error while the durable record could
+  say `INVOKING`.
+- A store answer counts as success only when it is exactly `true` or a
+  durable read confirms the write. Where a store has a durable read, Gate
+  decides attempt transitions and consumption-store commits, releases, and
+  closes by that read alone; a recovery claim needs exactly `true`. In
+  0.26.0 the composed boundary accepted any truthy answer, so a
+  store that answered `{ ok: false }` to the move to
+  `INVOKING` let the provider be called while the record stayed `RESERVED`.
+- The composed boundary's evaluation reservation is keyed by the evaluation,
+  which successive attempts can present. Gate now commits it for an attempt
+  only while that attempt's own fence holder is still held, which marks it
+  as the reservation's owner (otherwise `evaluation_reservation_not_owned`
+  unless it is already consumed), and pre-entry recovery never touches it, so
+  recovering one attempt can no longer commit a later attempt's live
+  reservation for the same evaluation.
+  When the release of that reservation fails before provider entry, the run
+  now returns `INDETERMINATE` with `evaluation_release_unconfirmed` rather
+  than a clean refusal.
+- Recovery claims are bound to one attempt. Before `authorizeRecoveryClaim`
+  runs, `claimReservation()` refuses a scoped claim whose key is not the row
+  that its `scope` names for that attempt (new exports
+  `consequenceBoundaryRecoveryClaimKey()` and
+  `consequenceBoundaryRecoveryClaimMarkerKey()`), and a claim on the
+  composed evaluation reservation, which several attempts share, unless the
+  scope's attempt still holds its fence-holder row. A credential bound to
+  one attempt can therefore no longer claim another attempt's live holder.
 - A call now releases or closes only reservations it created. The native
   boundary writes three reservations per attempt (operation identity, native
   authority, action-fence holder), each keyed by its attempt ID, which no
@@ -64,22 +133,35 @@ This package follows [Semantic Versioning](https://semver.org/).
   reserve now marks the attempt `RELEASED`, releases only this attempt's rows,
   and returns `consumption_store_unavailable`, or `INDETERMINATE`
   `native_pre_entry_release_unconfirmed` when a release cannot be confirmed.
-- The native replay key and the provider idempotency key no longer depend on
-  the handoff's `system` or `profile` labels, or on the issuer string when the
-  pin declares an `authority_namespace`. Gate uses the label-free replay unit
-  that `@emilia-protocol/verify` derives locally from the pinned authority
-  namespace (the issuer by default) and the native authorization ID, so one
-  grant accepted under two pinned labels, or under two spellings of one issuer
-  that declare the same namespace, is spent once.
+- One grant accepted under two pinned `system` or `profile` labels, or under
+  two spellings of one issuer that declare the same namespace, is now spent
+  once. Gate reserves the label-free `replay_identity_key` that
+  `@emilia-protocol/verify` derives locally from the pinned authority
+  namespace (the issuer by default) and the native authorization ID. It
+  reserves the 4.1.0 `replay_key` beside it, so grants that 0.26.0 consumed
+  stay fenced. The provider idempotency key is derived from the identity and
+  no longer depends on the labels or, when the pin declares an
+  `authority_namespace`, on the issuer string.
 - `reconcile()` never reconciles an attempt that did not enter the provider to
-  EXECUTED or FAILED (`attempt_never_entered_provider`), and refuses an
-  outcome that conflicts with an existing terminal record as
+  EXECUTED or FAILED: terminal mode returns `INDETERMINATE` with
+  `pre_entry_recovery_required`, and pre-entry mode can only release it as
+  not entered (`attempt_never_entered_provider`). It refuses an outcome that
+  conflicts with an existing terminal record as
   `reconciliation_outcome_conflict` without touching any reservation.
   Pre-entry refusals release reservations only after the attempt itself is
   durably `RELEASED`.
 - Hostile in-process input is refused instead of throwing: a Proxy anywhere in
   `run()` or `reconcile()` input, getters, extra keys, and an own `__proto__`
-  member. Attempt-store answers are copied once as plain data. A
+  member. On the composed boundary this now also covers throwing getters on
+  `artifacts`, `current_statuses`, `additional_replay_keys`, and `outcome`,
+  revoked Proxies, and a synchronous attempt store that returns plain
+  booleans. An unexpected exception is returned as `boundary_internal_error`
+  and never thrown: from `run()` it is `REFUSED` before an attempt exists and
+  otherwise `INDETERMINATE`, with `invoked: true` once the provider may have
+  been entered, and every reservation stays held; from `reconcile()` it is
+  `REFUSED`. In 0.26.0 the composed boundary threw on these inputs, and a
+  synchronous attempt store made `run()` throw after the provider call.
+  Attempt-store answers are copied once as plain data. A
   `pins.relying_party_id` outside the Gate identifier grammar is refused at
   construction, and durable keys are derived before `local_authorize` runs, so
   an unkeyable binding is a refusal (`native_consequence_binding_invalid`)
@@ -102,29 +184,40 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Compatibility
 
-- Drain before upgrading. A native attempt left in flight under 0.26.0 holds
-  only the 0.26.0 replay key and no fence row. After upgrading, the same grant
-  derives a different replay key and finds no fence, so it can be admitted and
-  reach the provider again. A grant consumed under 0.26.0 is likewise recorded
-  only under the old key. Before upgrading, reconcile or otherwise resolve
-  every in-flight native attempt, and let every grant consumed under 0.26.0
-  expire or revoke it at its status source.
+- Drain in-flight attempts before upgrading. Gate still fences the verify
+  4.1.0 replay key that 0.26.0 reserved, so the same grant consumed or in
+  flight under 0.26.0 is refused as `native_replay_conflict` after the
+  upgrade. A 0.26.0 attempt has no fence row, though, so fresh authority for
+  an action that 0.26.0 left in flight is not refused. Before upgrading,
+  reconcile or otherwise resolve every in-flight native attempt.
 - Changing a pin's `authority_namespace`, or the issuer spelling of a pin that
-  uses the default namespace, rotates the replay keys derived under it in the
-  same way. Drain in-flight attempts and let consumed grants expire before
-  rotating. Pins whose issuers are different spellings of one URL must now
+  uses the default namespace, changes the replay identity of every grant under
+  it. The 4.1.0 key still refuses the same grant presented with the same
+  labels and issuer, but not one presented under another accepted label or
+  spelling. Drain in-flight attempts and let consumed grants expire before
+  rotating. Pins whose issuers are different spellings of one issuer must now
   all declare the same namespace, or construction is refused.
 - Existing databases need the `operation_state` function:
   `supabase/migrations/20260925010000_aeb_operation_state.sql` (it mirrors
   `AEB_CONSUMPTION_DDL`).
 - `authorizeRecoveryClaim` is called once per reservation an attempt holds
   (operation, native authority, and action-fence holder on the native
-  boundary) and receives a `scope` naming the attempt. An authorizer that
-  binds its credential to one exact row key must instead bind it to
-  `scope.attemptId` or `scope.recoveryOperationKey`, or restart
-  reconciliation cannot finish in one call.
+  boundary) and receives a `scope` naming the attempt. Bind the recovery
+  credential to exactly one attempt: `scope.attemptId`, together with the
+  relying party and tenant it was issued for. Do not bind it to one exact row
+  key, or restart reconciliation cannot finish in one call. Never bind it to
+  `scope.recoveryOperationKey` or an operation ID: every attempt that reuses
+  one operation ID for the same action shares those values, so such a
+  credential would authorize claims across attempts. A custom
+  `attempts.create_id` must return a unique ID for every attempt.
 - Native runs now write the attempt record, and call `create_id`, before any
-  reservation. A refused run leaves a `RELEASED` attempt record.
+  reservation. A run refused after its record is written leaves that record
+  `RELEASED`.
+- `reconcile()` takes an optional `mode` (`'terminal'`, the default, or
+  `'pre_entry'`). A caller that used `reconcile()` to release a pre-entry
+  stop must now pass `mode: 'pre_entry'`. `provider_outcomes.verify` receives
+  a `purpose` (`'provider_outcome'` or `'pre_entry_lookup'`); a verification
+  program should accept a "not found" lookup only for `pre_entry_lookup`.
 - `createNativeConsequenceBoundary()` refuses a pin set that
   `verifyAebNativeAuthorizationPins()` rejects, throwing
   `native_consequence_boundary_configuration_invalid: <native_pins_* reason>`
@@ -132,10 +225,26 @@ This package follows [Semantic Versioning](https://semver.org/).
 - `createConsequenceBoundary()` writes one fence-holder row per attempt and
   one marker row per executed action to its consumption store, and refuses
   `action_fence_binding_invalid` when `aeb.config.relying_party_id` cannot key
-  the fence. Pre-entry recovery on this boundary needs `attempts.store.state()`.
+  the fence. Pre-entry recovery on this boundary works without
+  `attempts.store.state()`, but then only its own transition answered with
+  exactly `true` proves the stop.
 - Gate now imports `verifyAebNativeAuthorizationPins()` from
-  `@emilia-protocol/verify`, which verify 4.1.0 does not export. A release
-  of this Gate must depend on a Verify release that includes it.
+  `@emilia-protocol/verify`, which verify 4.1.0 does not export, and relies on
+  that release's one-namespace-per-issuer pin rule. Release order is a hard
+  dependency: publish `@emilia-protocol/verify` first, then change Gate's
+  exact `@emilia-protocol/verify` dependency from `4.1.0` to that release,
+  then publish Gate. A Gate published while it still pins 4.1.0 fails when
+  `@emilia-protocol/gate/aeb` loads; the workspace link hides this in CI.
+- Version type: the changes above refuse pin sets and inputs that 0.26.0
+  accepted and change how `reconcile()` releases a pre-entry stop, so this is
+  a breaking release. Under Semantic Versioning's 0.x rules it is the next
+  minor version, 0.27.0.
+- `createNativeConsequenceBoundary()` now also refuses a pin set that declares
+  two different `authority_namespace` values for one exact issuer
+  (`native_pins_issuer_namespace_conflict`), and treats more issuer spellings
+  as aliases (URI scheme case, trailing dots on a URL host, an http or https
+  URL written without `//`, and URN namespace-identifier case), through
+  `verifyAebNativeAuthorizationPins()`.
 - The fence, and every other key built from them, compares the canonical
   action digest and the provider coordinates exactly as configured. Gate
   implements no material-field inventory and no equivalence between spellings

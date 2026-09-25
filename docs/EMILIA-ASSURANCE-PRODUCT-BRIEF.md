@@ -25,14 +25,14 @@ EMILIA-hosted black box.
 | EMILIA Gate | Refuse a consequential action until admissible authorization evidence exists | Managed or customer-hosted enforcement, policy, integrations, and fleet operation |
 | EMILIA Assurance | Re-perform decisions, detect drift, test conformance, and assemble evidence | Managed reports, monitoring, deployment reviews, support, and narrowly scoped warranties |
 
-## What customers can buy now
+## Services
 
 ### EMILIA Conformance
 
 Run the public accept/refuse suites and hostility corpus against a named
-implementation and version. The free path is self-test. The paid path adds a
-witnessed procedure, stable input and result digests, a signed statement, and
-support resolving failures.
+implementation and version. Anyone can run the self-test. A witnessed
+engagement adds a witnessed procedure, stable input and result digests, a
+signed statement, and support resolving failures.
 
 The report says `non-accredited conformance test` unless an independent,
 appropriately accredited laboratory performed it.
@@ -75,9 +75,9 @@ Gate behavior for named enforcement points, risk tiers, periods, and limits. The
 warranty does not cover legal compliance, human perception, business wisdom, or
 actions that bypass the protected boundary.
 
-## The first paid profile
+## The first profile
 
-**Finance Operations Assurance** is the first paid vertical:
+**Finance Operations Assurance** is the first vertical profile:
 
 > No accepted exact-action authority and required evidence, no provider entry.
 
@@ -87,22 +87,6 @@ admit provider entry on a completely mediated covered path. Gate does not prove
 bank-detail correctness, payee
 identity, fraud absence, provider success, legality, or business wisdom, and it
 does not take custody or move money.
-
-## How the business meters value
-
-Verification remains open and free. Managed services price the operational
-burden and risk surface:
-
-- protected enforcement boundaries and workflows;
-- protected decision volume and risk tier;
-- reporting and re-performance cadence;
-- evidence-retention period;
-- directory, policy, SIEM, GRC, and auditor integrations;
-- support and response commitments;
-- any separately contracted warranty limit.
-
-Do not charge per refusal. A business model that earns more when a control allows
-more actions creates the wrong incentive.
 
 ## Certification boundary
 

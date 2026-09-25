@@ -11,7 +11,7 @@ server verifies offline, consumes before mutation, then runs the tool
 same receipt again is replay-refused
 ```
 
-The pitch is intentionally small:
+The idea is intentionally small:
 
 > No receipt, no irreversible action.
 

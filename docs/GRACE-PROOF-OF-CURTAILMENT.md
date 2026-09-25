@@ -119,15 +119,12 @@ of what the market already trusts.
 
 ---
 
-## What we're deliberately parking (not killing)
+## Out of scope
 
-Two of the wilder branches are interesting but would sink the pitch if we led with them:
-
-- **Global route-cost cascades / forcing adoption by redirecting demand.** We deliberately exclude
-  non-market coercion and routing-based forcing functions. Adoption comes from **payment,
-  interconnection leverage, and auditability** — not from pressuring anyone's network.
-- **Edge waste-heat / thermostat-as-listener.** A cool separate thesis with its own privacy,
-  security, and economics problems. Keep it out of GRACE so the pitch stays clean.
+- **Route-cost cascades or redirecting demand to force participation.** GRACE excludes non-market
+  coercion and routing-based forcing functions.
+- **Edge waste-heat reuse and thermostat-as-listener designs.** These raise separate privacy,
+  security, and economics questions and are not part of GRACE.
 
 ---
 

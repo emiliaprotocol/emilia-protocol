@@ -117,20 +117,31 @@ audience, executor, and provider. A successful check means that the pinned
 gateway signed this exact native `PERMIT` and action binding. It does not prove
 the wisdom of the native decision or a provider effect.
 
-The result's `native_replay_unit` and `replay_key` are derived locally from the
-matched pin's authority namespace and the native authorization ID. The
-namespace is the issuer unless the pin declares `authority_namespace`, in which
-case the issuer string is not an input; the `system` and `profile` labels are
-never inputs. Pins whose issuers are different spellings of one URL (scheme
-or host case, a default port, a trailing slash) must all declare the same
-namespace, and pins for one issuer must all declare a namespace or all omit
-it. `verifyAebNativeAuthorizationPins()` reports a refused pin set before use
-with one `native_pins_*` reason, and the handoff verifier refuses it as
-`native_handoff_schema_invalid`. The signed
-`AEB-NATIVE-AUTHORIZATION-HANDOFF-v1` wire is unchanged from 4.1.0: handoffs
-issued by either version verify under the other. The carried `replay_unit`
-keeps its 4.1.0 derivation and is never used as the replay identity, and
-`replay_key` values differ from the ones 4.1.0 derived.
+The result's `native_replay_identity` is derived locally from the matched
+pin's authority namespace and the native authorization ID, and
+`replay_identity_key` is its relying-party-scoped key. The namespace is the
+issuer unless the pin declares `authority_namespace`, in which case the issuer
+string is not an input; the `system` and `profile` labels are never inputs. A
+replay fence must hold `replay_identity_key`. The result also reports
+`native_replay_unit` and `replay_key` exactly as 4.1.0 did (the label-bearing
+wire `replay_unit` and its key); a fence may hold `replay_key` beside the
+identity key to keep grants recorded by 4.1.0-based code, never alone,
+because it changes when one grant is relabelled.
+
+One issuer has exactly one namespace in a pin set. Pins whose issuers are
+different spellings of one issuer (URI scheme case, URL host case, a trailing
+dot on the host, a default port, trailing slashes, dot segments in the path,
+an http or https URL written without `//`, or URN namespace-identifier case)
+must all declare the same namespace; pins for one issuer must all declare a
+namespace or all omit it; and one exact issuer declared under two different
+namespaces is refused. `verifyAebNativeAuthorizationPins()` reports a refused
+pin set before use with one `native_pins_*` reason. The handoff verifier
+refuses such a pin set as `native_handoff_schema_invalid`, except that a pin
+set declaring no namespace is accepted as 4.1.0 accepted it and, when it
+aliases one issuer, yields a null `native_replay_identity` and
+`replay_identity_key`. The signed `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1` wire
+is unchanged from 4.1.0: handoffs issued by either version verify under the
+other, and the carried `replay_unit` is never used as the replay identity.
 
 `evaluateAebEvidence()` is the composed kernel. It verifies native evidence
 under relying-party-pinned adapters, keeps native verification separate from

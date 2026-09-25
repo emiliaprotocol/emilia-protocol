@@ -210,5 +210,5 @@ working-group action, joint publication, or endorsement.
   BCP 14, RFC 8174.
 - Saha, S., "The Agent Action Decision Protocol (AADP): Per-Action
   Authorization for AI Agents", `draft-saha-aadp-01`.
-- Schrock, I., "Authorization Receipts for AI Agent Actions",
-  `draft-schrock-ep-authorization-receipts-12`.
+- Schrock, I., "Authorization Receipts for High-Risk Agent Actions",
+  `draft-schrock-ep-authorization-receipts-13`.

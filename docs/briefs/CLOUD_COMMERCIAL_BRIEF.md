@@ -30,9 +30,6 @@ Managed infrastructure for organizations that adopt the open protocol.
 | Tenant Controls | Multi-tenant isolation, per-tenant policy, per-tenant retention |
 | Webhooks | Real-time notifications on policy violations, signoff events, blocked actions |
 
-**Revenue model:** Recurring infrastructure subscription. Priced per tenant
-and per action volume.
-
 ## EMILIA Gate Enterprise
 
 For organizations requiring private deployment and regulatory controls.
@@ -44,8 +41,6 @@ For organizations requiring private deployment and regulatory controls.
 | SSO / SCIM | Integration with enterprise identity providers |
 | Evidence Retention | Configurable retention periods with legal hold capability |
 | Dedicated Support | Named support contacts, SLA-backed response times |
-
-**Revenue model:** Annual enterprise license plus deployment support.
 
 ## Vertical Packs
 
