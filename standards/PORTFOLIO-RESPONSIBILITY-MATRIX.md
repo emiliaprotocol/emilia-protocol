@@ -85,5 +85,5 @@ overlap alone. A future consolidation proposal must show all of the following:
    consolidation.
 
 Under those gates, neither shared vocabulary nor a shared implementation is
-duplication. The immediate constraints remain external reproduction and paid
-buyer conversations, not reducing the document count.
+duplication. The immediate constraint remains external reproduction, not
+reducing the document count.

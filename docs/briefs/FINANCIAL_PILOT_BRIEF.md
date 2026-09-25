@@ -1,7 +1,5 @@
 # Finance Operations Protected-Workflow Pilot
 
-**Current offer:** $25,000 · 90 days · one buyer-selected workflow
-
 ## The workflow
 
 Choose one consequential finance action:
@@ -71,7 +69,7 @@ The pilot does **not**:
 
 ## Acceptance decision
 
-At day 90, the buyer decides whether the tested boundary and evidence are fit for
+At the end of the pilot, the buyer decides whether the tested boundary and evidence are fit for
 production. The decision is based on the buyer's workflow, controls, integration
 constraints, and observed results, not on a generic security score.
 

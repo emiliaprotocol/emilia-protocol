@@ -36,13 +36,16 @@ Historical entries below retain the labels used when they were written.
   digest. Fresh authority with a fresh operation ID no longer reaches the
   provider a second time while the first attempt is uncertain, and an
   executed action stays closed. Only a FAILED result the boundary accepts
-  (the native boundary also requires `provider_outcomes.verify` to pass) or a
-  pre-entry stop proven from the boundary's own durable attempt record reopens
-  it.
+  (verified for the attempt by the operator's provider-outcome verifier
+  where one is configured, and always on the native boundary) or a
+  pre-entry stop proven by the explicit not-entered marker in the boundary's
+  own durable attempt record reopens it.
 - An attempt that stopped before provider entry can be released through a
   separate pre-entry recovery mode of an authorized `reconcile()`, but only
   when recovery's own atomic move of the attempt record from `RESERVED` to
-  `RELEASED` succeeds (or Gate already recorded it as released before entry).
+  `RELEASED`, which writes an explicit not-entered marker, succeeds (or the
+  record already carries that marker). A `RELEASED` record without the
+  marker is never read as "not entered".
   That move is the linearization point: the original run can no longer call
   the provider. A recovery that loses the move to a live run returns
   `INDETERMINATE` (`recovery_lost_to_live_attempt`), releases nothing, and
@@ -56,8 +59,9 @@ Historical entries below retain the labels used when they were written.
   attempt's reservation. The composed boundary closes its
   evaluation reservation, which successive attempts can share, only for the
   attempt that still owns it. One recovery credential, bound to exactly one
-  attempt and never to a shared operation key, covers all of that attempt's
-  reservations, and a claim for a row outside that attempt is refused.
+  attempt (its boundary kind and attempt ID) and never to a shared operation
+  key, covers all of that attempt's reservations, and a claim for a row
+  outside that attempt is refused.
 - The fence compares the canonical action digest and the configured provider
   coordinates exactly. Gate implements no material-field equivalence; callers
   must canonicalize amounts, case, whitespace, and Unicode normalization.
@@ -67,28 +71,49 @@ Historical entries below retain the labels used when they were written.
   under a second pinned profile is spent once. Verify reports it as
   `native_replay_identity` and `replay_identity_key`; `native_replay_unit` and
   `replay_key` keep their verify 4.1.0 values, and Gate fences that 4.1.0 key
-  beside the new one so grants consumed by gate 0.26.0 stay fenced. The
+  beside the new one for every label and issuer spelling pinned under the
+  grant's namespace, so a grant consumed by gate 0.26.0 under one label is
+  refused under any other label still pinned there. The
   provider idempotency key is derived from the identity. One issuer has
   exactly one namespace in a pin set: spellings of one issuer must declare one
   shared namespace, and two declared namespaces for one issuer are refused.
   The signed `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1` wire is unchanged: handoffs
   issued by verify 4.1.0 verify here, and handoffs issued here verify under
   4.1.0.
-- Release order: publish `@emilia-protocol/verify` first, then bump Gate's
-  exact `@emilia-protocol/verify` dependency from `4.1.0` to that release,
-  then publish `@emilia-protocol/gate`. Gate imports a pin-validation function
-  and replay-identity fields that verify 4.1.0 does not provide.
-- Upgrade note: a native attempt left in flight under gate 0.26.0 has no
-  fence row, so fresh authority for that action is not refused after the
-  upgrade (the same grant still is, through the 4.1.0 replay key). Drain or
-  reconcile every in-flight native attempt before upgrading.
+- Release order: publish `@emilia-protocol/verify` 5.0.0 (a major release:
+  it refuses some lifecycle indexes that 4.1.0 verified and changes some
+  results) first, then bump Gate's exact `@emilia-protocol/verify` dependency
+  from `4.1.0` to `5.0.0`, then publish `@emilia-protocol/gate` 0.27.0
+  (breaking under 0.x). Gate imports a pin-validation function
+  and replay-identity fields that verify 4.1.0 does not provide, so a Gate
+  published against 4.1.0 fails to load its root entry and every subpath
+  that imports `@emilia-protocol/verify/aeb`.
+- Upgrade note: do not run gate 0.26.0 and the new Gate against one
+  consumption store. A 0.26.0 boundary has no same-action fence and does not
+  reserve the label-free identity key, so in a mixed fleet an action in
+  flight on either version can execute again through a fresh permit on the
+  other. Stop every 0.26.0 boundary and drain or reconcile its in-flight
+  attempts before any upgraded instance serves the store; a rolling upgrade
+  across the two versions is unsafe.
+- Recovery claims on the PostgreSQL store require a scope that names the
+  boundary kind and the attempt, and a claim without one is refused before
+  the authorizer runs. A provider-outcome verifier's answer counts only when
+  it restates the purpose, attempt, and provider idempotency key it checked,
+  so a verifier that answers `true` without reading the purpose can no
+  longer close a live attempt with a pre-entry lookup (one that restates
+  every context it is given still can). The composed boundary accepts the same verifier
+  and refuses terminal reconciliation without it.
 - The PostgreSQL AEB consumption store gains the durable `state()` read the
   native boundary requires, and native reconciliation after a restart claims
   its reservations through the store's recovery path. The new function is in
   `supabase/migrations/20260925010000_aeb_operation_state.sql`, recorded as a
   forward-pending migration; this change does not apply it to any database.
-- Native reconciliation refuses attempts that never entered the provider and
-  outcomes that conflict with a terminal record. Hostile in-process inputs
+- Terminal reconciliation leaves attempts that never entered the provider to
+  pre-entry recovery and refuses outcomes that conflict with a terminal
+  record. A refusal that may have left the evaluation reservation or a
+  consumption reservation held is no longer a clean refusal: Gate reports it
+  as `INDETERMINATE` and verify's `authorizeAebExecutionDurable()` as
+  `RECONCILIATION_REQUIRED`, each with a reason. Hostile in-process inputs
   (Proxies, accessors, sparse arrays, own `__proto__` members) are refused
   with a reason instead of throwing.
 - Crossing Record and lifecycle-index verifiers can join the cited evaluation
@@ -102,9 +127,11 @@ Historical entries below retain the labels used when they were written.
   packages.
 - AEB-06 is recorded as posted (individual Internet-Draft, not adopted), and
   a -07 candidate that specifies the same-action fence and its pre-entry
-  recovery (with its linearization point, release ordering, and recovery
-  authorization bound to one attempt), one native replay identity with one
-  namespace per issuer, and the native authorization handoff is staged in
+  recovery (with its linearization point, an explicit not-entered marker,
+  release ordering, and recovery authorization bound to one attempt and
+  refused without one), purpose-bound verification of terminal provider
+  evidence, one native replay identity with one namespace per issuer, and
+  the native authorization handoff is staged in
   `standards/staged/NEXT-AEB-07/`. It has not been submitted.
 - The `verify-receipt` action installs the verifier into an isolated
   temporary directory, so the caller's repository dependencies no longer

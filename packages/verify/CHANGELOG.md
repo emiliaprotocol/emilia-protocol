@@ -32,6 +32,30 @@ This package follows [Semantic Versioning](https://semver.org/).
   plain JSON and refuses Proxies, accessors, and sparse arrays with a reason
   (`native_handoff_options_invalid`, `native_handoff_schema_invalid`, or
   `native_handoff_expected_action_invalid`) instead of throwing.
+- `authorizeAebExecutionDurable()` no longer reports a clean `REFUSED` when
+  the reservation's outcome is unknown. In 4.1.0 a reserve call that threw
+  became `REFUSED consumption_store_unavailable`, and any answer other than
+  `true`, `'RESERVED'`, or `'NATIVE_REPLAY_CONFLICT'` became
+  `REFUSED consumption_conflict`, even when the store had applied the
+  reservation, which left that evaluation reserved with nothing to recover
+  it and refused every later run. Now only `false`, `'CONSUMPTION_CONFLICT'`,
+  and `'NATIVE_REPLAY_CONFLICT'` are clean refusals, because they mean the
+  call wrote nothing. A throw or any other answer is resolved through the
+  store's optional durable `state()` read (new optional member of
+  `AebDurableConsumptionStore`): `AVAILABLE` is `REFUSED`
+  `consumption_store_unavailable`, `CONSUMED` or `RELEASED_NOT_ENTERED` is
+  `REFUSED` `consumption_conflict`, and anything else, including a store
+  without `state()` or a read that fails, returns `RECONCILIATION_REQUIRED`
+  with `consumption_reservation_unconfirmed`, which authorizes nothing and
+  is not a clean refusal.
+- The verification result adds `legacy_replay_keys`: the verify 4.1.0
+  `replay_key` of the grant under every pinned `system`, `profile`, and
+  issuer that shares the matched pin's authority namespace, sorted and
+  including `replay_key`. Code built on 4.1.0 fenced only the key of the
+  label a grant was presented under, so a replay fence that holds all of
+  these refuses a grant consumed there under one label and presented here
+  under another pinned label. It is null exactly when
+  `native_replay_identity` is null.
 
 ### Added
 
@@ -46,7 +70,15 @@ This package follows [Semantic Versioning](https://semver.org/).
   the host, a default port, and trailing slashes are removed, and dot
   segments in the path are resolved; an http or https URL written without
   `//` compares equal to the URL written with it, and a URN's namespace
-  identifier compares case-insensitively. One exact
+  identifier compares case-insensitively. For a DID the method name compares
+  case-insensitively; for `did:web` the host also compares case-insensitively
+  without trailing dots (a `did:web` issuer with a percent-encoded port
+  cannot be pinned, because the pin identifier grammar has no `%`). For
+  `spiffe://` the trust
+  domain compares case-insensitively without trailing dots, and trailing
+  slashes on the path are dropped. Normalization cannot find every alias:
+  two issuer strings that denote one authority but do not normalize equal
+  need one explicitly shared namespace. One exact
   issuer declared under two different namespaces is refused
   (`native_pins_issuer_namespace_conflict`). Two pins with the same gateway,
   system, profile, and issuer are refused. When a pin set declares any
@@ -92,10 +124,14 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- The v1 lifecycle upgrade no longer labels an unchecked evaluation digest as
-  `AEB-EVALUATION-v1` or reports it `COMPLETE`. Without a matching
-  `source_evaluation` the index carries `profile: null` and the conversion is
-  `INDETERMINATE` with `evaluation_reference_unverified`. A supplied
+- The v1 lifecycle upgrade no longer reports an unchecked evaluation
+  reference as `COMPLETE`. Without a matching `source_evaluation`, the
+  index carries the digest under the `AEB-EVALUATION-v1` label that 4.1.0
+  wrote for every v1 conversion, and the conversion is `INDETERMINATE` with
+  `evaluation_reference_unverified`. That reason code marks the label as
+  unchecked, and the verifiers do not compare an unchecked label with a
+  supplied evaluation. `lifecycle.evaluation.profile` keeps its 4.1.0
+  non-null type. A supplied
   `source_evaluation` that does not bind makes the issuer-side upgrade throw
   the typed `CrossingRecordError` `source_evaluation_mismatch`, and nothing is
   signed. Out-of-order v1
@@ -118,19 +154,31 @@ This package follows [Semantic Versioning](https://semver.org/).
   `native_pins_issuer_alias_without_shared_namespace`, so a boundary that
   checks pins at construction refuses it. 4.1.0 refused every pin that
   declared `authority_namespace`.
-- Version type: minor, 4.2.0. The native handoff changes are additive: no
-  export is removed, no 4.1.0 value or output changes for plain-data input,
-  and handoffs are byte-identical in both directions. The crossing-record changes are
-  security fixes that stop reporting an unchecked evaluation reference as
-  complete; on that path `lifecycle.evaluation.profile` can now be `null`
-  (see below).
+- Version type: major, 5.0.0. This package follows Semantic Versioning
+  2.0.0, which requires a major release for any backward-incompatible change
+  to the public API and makes no exception for security fixes (the security
+  exception in `docs/api/COMPATIBILITY.md` covers the protocol, HTTP API,
+  and MCP tool surfaces, not this package), and 4.0.0 was a major release
+  because a verifier stopped accepting artifacts that the previous release
+  accepted. This release does the same: it refuses lifecycle indexes that
+  4.1.0 verified (a provider entry with no custody reference), changes what
+  `upgradeAebCrossingRecordV1ToLifecycleIndexV2()` returns for the same
+  input (`INDETERMINATE` with `evaluation_reference_unverified` where 4.1.0
+  returned `COMPLETE`, and an `INDETERMINATE` conversion where 4.1.0 threw
+  `lifecycle_order_invalid`), and returns `RECONCILIATION_REQUIRED` from
+  `authorizeAebExecutionDurable()` where 4.1.0 returned `REFUSED`. No export
+  is removed and no public TypeScript type is narrowed:
+  `lifecycle.evaluation.profile` keeps its non-null type,
+  `RECONCILIATION_REQUIRED` was already a state of `AebExecutionDecision`,
+  and `state()` and `legacy_replay_keys` are additions. The signed native
+  handoff is byte-identical in both directions.
 - Release order: publish this Verify release before `@emilia-protocol/gate`.
   Gate imports `verifyAebNativeAuthorizationPins()` and the replay-identity
   fields from this release and pins `@emilia-protocol/verify` exactly, so
-  Gate's dependency must be bumped from `4.1.0` to this release before Gate
-  is published.
-- `AebCrossingLifecycleIndexV2Body.lifecycle.evaluation.profile` may now be
-  `null`; TypeScript readers must handle it.
+  Gate's dependency must be bumped from `4.1.0` to `5.0.0` before Gate is
+  published. A Gate published while it still pins 4.1.0 fails to load
+  its root entry and every subpath that imports `@emilia-protocol/verify/aeb`,
+  not only `@emilia-protocol/gate/aeb`.
 
 ## 4.1.0 (2026-09-24)
 

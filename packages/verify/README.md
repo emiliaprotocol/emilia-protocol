@@ -126,13 +126,17 @@ replay fence must hold `replay_identity_key`. The result also reports
 `native_replay_unit` and `replay_key` exactly as 4.1.0 did (the label-bearing
 wire `replay_unit` and its key); a fence may hold `replay_key` beside the
 identity key to keep grants recorded by 4.1.0-based code, never alone,
-because it changes when one grant is relabelled.
+because it changes when one grant is relabelled. `legacy_replay_keys` lists
+the 4.1.0 key of the grant under every pinned label and issuer spelling that
+shares the matched pin's namespace; a fence that holds all of them refuses a
+grant that 4.1.0-based code consumed under any of those labels.
 
 One issuer has exactly one namespace in a pin set. Pins whose issuers are
 different spellings of one issuer (URI scheme case, URL host case, a trailing
 dot on the host, a default port, trailing slashes, dot segments in the path,
-an http or https URL written without `//`, or URN namespace-identifier case)
-must all declare the same namespace; pins for one issuer must all declare a
+an http or https URL written without `//`, URN namespace-identifier case,
+DID method-name case, `did:web` host case and trailing dots, or SPIFFE
+trust-domain case and trailing dots) must all declare the same namespace; pins for one issuer must all declare a
 namespace or all omit it; and one exact issuer declared under two different
 namespaces is refused. `verifyAebNativeAuthorizationPins()` reports a refused
 pin set before use with one `native_pins_*` reason. The handoff verifier
@@ -142,6 +146,8 @@ aliases one issuer, yields a null `native_replay_identity` and
 `replay_identity_key`. The signed `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1` wire
 is unchanged from 4.1.0: handoffs issued by either version verify under the
 other, and the carried `replay_unit` is never used as the replay identity.
+Normalization cannot find every alias: two issuer strings that denote one
+authority but do not normalize equal need one explicitly shared namespace.
 
 `evaluateAebEvidence()` is the composed kernel. It verifies native evidence
 under relying-party-pinned adapters, keeps native verification separate from
@@ -160,7 +166,13 @@ and unsigned gateway headers are not trusted.
 `InMemoryAebConsumptionStore` is test-only. Fleet execution uses
 `authorizeAebExecutionDurable()` and `reconcileAebExecutionDurable()` with the
 durable, ownership-fenced store contract implemented by
-`@emilia-protocol/gate`.
+`@emilia-protocol/gate`. A reserve call that throws, or answers anything other
+than `true`, `'RESERVED'`, `false`, `'CONSUMPTION_CONFLICT'`, or
+`'NATIVE_REPLAY_CONFLICT'`, is never reported as a clean refusal while the
+row may be reserved: `authorizeAebExecutionDurable()` reads the row through
+the store's optional `state()` and returns `RECONCILIATION_REQUIRED` with
+`consumption_reservation_unconfirmed` unless the read shows it was not
+reserved by this call.
 
 #### Crossing Lab adapter workbench
 

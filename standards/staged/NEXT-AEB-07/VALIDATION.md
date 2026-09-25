@@ -3,6 +3,91 @@
 Checks run on 2026-09-25 (UTC) against the candidate in this directory. Each
 entry gives the command and a summary of its output.
 
+## Round-four revision (2026-09-25 UTC)
+
+A round-three attack review of branch `fix/pr788-followups` at `9c93ea1a2`
+found that the reference Gate inferred that an attempt never entered the
+provider from a released attempt record without provider evidence, so an
+attempt store that does not return stored evidence let one authorization
+enter the provider twice; that a "not found" lookup presented as a terminal
+outcome against a live attempt opened the action key on the composed
+boundary, and on the native boundary when the verifier ignored the purpose
+of the check; that a recovery claim without a scope reached the authorizer
+unchecked, while Section 15 said the store refused it; that a native and a
+composed attempt with the same attempt identifier on one store could claim
+each other's records; and that several refusals reported a clean refusal
+while a write they made could still be held. The source was revised as
+follows:
+
+- Section 5.10: every not-entered transition records an explicit
+  not-entered marker in the same atomic write. Only that marker, or a
+  durable read of a pre-dispatch state, shows non-entry. The absence of
+  evidence is never proof: a closed record without the marker or terminal
+  provider evidence is INDETERMINATE, is never treated as a pre-entry stop,
+  and releases nothing. Release item 3 and the recovery proof require the
+  recorded marker.
+- Section 5.11: a refusal whose writes are not all confirmed released is
+  reported as INDETERMINATE, not as a final refusal.
+- Section 5.13: a terminal outcome that commits or releases the records of
+  a dispatched attempt is accepted only after a relying-party-configured
+  verifier authenticates it for that attempt, including its provider
+  idempotency key. The boundary tells the verifier the purpose of each
+  check and counts only a result that affirms that purpose for that
+  attempt. A "not received" lookup is evidence only for pre-entry recovery.
+  A boundary without such a verifier keeps a dispatched attempt
+  INDETERMINATE.
+- Section 5.14: reconciliation evidence is verified for the terminal
+  purpose. A recovery claim that names no attempt is refused before its
+  authorization is evaluated, and the attempt identity includes a
+  component that distinguishes boundaries of different kinds sharing one
+  store.
+- Security Considerations: new "Inferred non-entry" and "Evidence-agnostic
+  verification" paragraphs; "Recovery credential scope" covers scope-less
+  claims and shared stores.
+- Section 15: both reference boundaries record the marker; the native
+  boundary requires a purpose-affirming verifier, and the composed boundary
+  uses one when configured and otherwise refuses terminal reconciliation
+  but still closes a run on its adapter's form-checked result, which
+  Section 15 scopes as meeting Section 5.13 only if that adapter
+  authenticates what it returns; the PostgreSQL store
+  refuses a claim without a recovery scope and names the boundary kind in
+  the scope; the reference Gate fences the earlier release's replay key for
+  every pinned source label, and its documentation requires that the
+  earlier release not share a store with the current code. These
+  statements describe round-four code that is not at the pinned commit
+  `b929810bbb6cba642f0ef3dbc4b6954ac3c481e7`. Each carries a
+  `PR790-R4-CONFIRM` comment; the pin was left for the integrator.
+- Changes since -06 and `README.md` were updated to match. `README.md`
+  item 3 now uses the Section 5.11 ownership wording, so a durable owner
+  marker or creation without hand-back also proves current ownership.
+
+Checks on the revised source:
+
+- `xmllint --noout`: PASS.
+- `xml2rfc 3.34.0 --text` and `--html`: PASS with the same inherited
+  submissionType warning. A second render into a scratch directory is
+  byte-identical to `RENDERS/` (`cmp`).
+- `idnits 3.1.0 -m submission` on the TXT and on the XML: PASS, no nits.
+- ASCII: no byte above 0x7F in the XML, the text render, `README.md`, or this
+  file. No double hyphen in XML prose outside comments.
+- `shasum -a 256 -c SHA256SUMS.txt`: PASS for all three files.
+- Structural checker, version 5: condition L9 no longer requires Section 15
+  to say that the composed boundary delegates evidence verification, and 13
+  conditions were added for the marker, verifier purpose, scope-required
+  claims, boundary-kind identity, unconfirmed refusals, Section 15, and
+  security (62 in total). The revised -07 passes 62 of 62. The -07 source
+  as it stood before this revision passes 49 of 62; the 13 failures are
+  exactly the new conditions. The posted -06 passes 3 of 62 (the same three
+  regression guards).
+- Datatracker API (2026-09-25T11:38Z): `draft-schrock-action-evidence-boundary`
+  is still at rev 06, and the archive URL for -07 returns 404. For each of
+  the 12 other Internet-Drafts cited with a revision in the XML, the
+  Datatracker record is at the cited revision and the archive URL of the
+  next revision returns 404.
+
+As before, these checks show that the text states the requirements, not that
+the reference code meets them.
+
 ## Round-three revision (2026-09-25 UTC)
 
 A round-two attack review of branch `fix/pr788-followups` at `aa08efd46`

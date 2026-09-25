@@ -75,9 +75,15 @@ accepts.
 7. A terminal provider result is accepted only through the operator-pinned
    `provider_outcomes.verify` callback. That callback receives the exact
    provider, operation, action, native replay unit, attempt, outcome, the
-   verifier-program digest recorded for that attempt, and a `purpose`:
-   `provider_outcome` for a terminal result, or `pre_entry_lookup` for the
-   lookup presented in pre-entry recovery. During reconciliation,
+   verifier-program digest recorded for that attempt, the attempt's provider
+   idempotency key, and a `purpose`: `provider_outcome` for a terminal
+   result, or `pre_entry_lookup` for the lookup presented in pre-entry
+   recovery. The only answer Gate accepts is `{ verified: true, purpose,
+   attempt_id, provider_idempotency_key }` restating what it was asked; any
+   other answer, including a bare `true`, is "not verified". An entered
+   attempt closes only on an affirmation of `provider_outcome` for that
+   attempt, and a "not found" lookup is valid only as `pre_entry_lookup` in
+   pre-entry mode. During reconciliation,
    the callback must resolve the verifier identified by that recorded digest,
    not silently reinterpret old evidence under a newer verifier.
 8. A missing, malformed, or unauthenticated provider result becomes
@@ -103,18 +109,30 @@ unless the source is pinned and the pin set passes
 `verifyAebNativeAuthorizationPins()`. The provider idempotency key is derived
 from the identity.
 
-Gate reserves two keys for each grant: `replay_identity_key`, which makes a
-relabelled grant one spend, and the verify 4.1.0 `replay_key` over the
-carried wire `replay_unit`, which keeps grants that gate 0.26.0 consumed
-fenced after an upgrade. The 4.1.0 key covers the labels, so it is never
-used alone.
+Gate reserves `replay_identity_key`, which makes a relabelled grant one
+spend, and, beside it, the verify 4.1.0 `replay_key` for every `system` and
+`profile` label, with its issuer spelling, that the pin set accepts under the
+grant's authority namespace. A grant that gate 0.26.0 consumed under one
+label is therefore refused under any other label still pinned in that
+namespace after an upgrade. The 4.1.0 keys cover the labels, so they are
+never used alone, and they cover only the labels and spellings pinned now:
+keep every label and spelling that 0.26.0 accepted pinned until the grants
+consumed under it have expired or been revoked. Do not run gate 0.26.0 and a
+newer Gate against one store: 0.26.0 has no same-action fence and does not
+reserve the identity key, so a mixed fleet can execute one action twice.
+Stop every 0.26.0 boundary and drain or reconcile its in-flight attempts
+before an upgraded instance serves the store.
 
 One issuer has one namespace in a pin set. Pins whose issuer strings are
 identical, or are spellings the verifier normalizes as equal (URI scheme case,
 URL host case, a trailing dot on the host, a default port, trailing slashes,
 dot segments in the path, an http or https URL written without `//`, URN
-namespace-identifier case), must either all omit `authority_namespace` and use
-one identical issuer string, or all declare the same `authority_namespace`.
+namespace-identifier case, DID method-name case, `did:web` host case and
+trailing dots, SPIFFE trust-domain case and trailing dots),
+must either all omit `authority_namespace` and use one identical issuer
+string, or all declare the same `authority_namespace`. Normalization cannot
+find every alias; two issuer strings that denote one authority but do not
+normalize equal need one explicitly shared namespace.
 `verifyAebNativeAuthorizationPins()` refuses a pin set that mixes declared and
 default namespaces for one issuer (`native_pins_namespace_declaration_mixed`),
 declares two different namespaces for one exact issuer
@@ -129,9 +147,10 @@ it.
 
 Changing a pin's namespace, or the issuer spelling of a pin that uses the
 default namespace, changes the replay identity of every grant under it. The
-4.1.0 key still refuses the same grant presented with the same labels and
-issuer, but not the grant presented under another accepted label or
-spelling. Drain or reconcile in-flight attempts, and wait until every grant
+4.1.0 keys do not depend on the namespace, so the same grant is still refused
+while a label and issuer spelling whose 4.1.0 key was reserved when it was
+consumed stays pinned in its namespace, but not when it is presented only
+under labels and spellings outside that set. Drain or reconcile in-flight attempts, and wait until every grant
 consumed under the old namespace has expired or been revoked, before
 rotating.
 
@@ -149,10 +168,11 @@ wire.
 
 The same-action fence is keyed by the relying party, the provider coordinates
 exactly as configured, and the canonical action digest. It is released only by
-an authenticated terminal `FAILED` outcome (one that passes
-`provider_outcomes.verify`), returned directly or reached through authorized
-reconciliation, or by a pre-entry stop that Gate proves from its own durable
-attempt record. `EXECUTED` keeps it closed for that action instance.
+an authenticated terminal `FAILED` outcome (one that
+`provider_outcomes.verify` affirms as `provider_outcome` for the attempt),
+returned directly or reached through authorized reconciliation, or by a
+pre-entry stop that Gate proves from the explicit not-entered marker in its
+own durable attempt record. `EXECUTED` keeps it closed for that action instance.
 
 An attempt that stopped before provider entry, for example after a crash while
 `RESERVED`, a lost acknowledgement of the move to `INVOKING`, or a store error
@@ -169,31 +189,41 @@ accepts for that exact attempt, and the provider's answer: an authenticated
 should accept a "not found" only for that purpose, never for `purpose:
 'provider_outcome'`. Recovery treats the attempt as not entered only when a
 durable read confirms its own atomic transition of the durable record from
-`RESERVED` to `RELEASED`, or when the record is already `RELEASED` without
-provider evidence, which Gate records only for a stop before the provider
-callback. That transition is the linearization point: afterwards the original
+`RESERVED` to `RELEASED`, which writes an explicit not-entered marker bound
+to the attempt, or when the record is already `RELEASED` with that marker,
+which Gate also writes when a run stops itself before the provider callback.
+A `RELEASED` record without the marker or provider evidence is never read as
+not entered: both reconciliation modes return `INDETERMINATE` with
+`attempt_record_unproven` and release nothing. The attempt store must declare
+`notEnteredMarker: true` and return the stored evidence from `state()`.
+That transition is the linearization point: afterwards the original
 run cannot move the record to `INVOKING` and does not call the provider. Only
 after it does Gate release the attempt's reservations; after each release is
 confirmed by a durable read the result is `REFUSED` with
 `attempt_never_entered_provider`, and otherwise it is `INDETERMINATE` with
-`native_pre_entry_release_unconfirmed`. If the record is already `INVOKING` or
+`native_pre_entry_release_unconfirmed`. A row that a failed claim finds
+already `AVAILABLE` counts as released. If the record is already `INVOKING` or
 later, recovery returns `INDETERMINATE` with `recovery_lost_to_live_attempt`,
 releases nothing, and never uses its lookup result as terminal evidence; that
 attempt needs terminal reconciliation with a provider outcome observed after
 entry. A claim of `EXECUTED` is refused as `reconciliation_outcome_conflict`
 and releases nothing.
 
-Terminal reconciliation freezes an `INVOKING` record as `INDETERMINATE`,
-verifies the outcome, and writes the terminal record before it consumes the
+Terminal reconciliation verifies the outcome, freezes an `INVOKING` record
+as `INDETERMINATE`, and writes the terminal record before it consumes the
 native authority and operation reservations and releases or keeps closed the
 fence. If the move from `RESERVED` to `INVOKING` throws or answers anything
 but `true`, the run releases nothing on that basis and reads the durable
 record: `INVOKING` means the write landed and the run proceeds as its owner;
 `RESERVED` is closed as not entered before anything is released
-(`attempt_start_conflict`); `RELEASED` without evidence means a pre-entry
-recovery linearized first, so the run releases what it holds
+(`attempt_start_conflict`); `RELEASED` with the not-entered marker means a
+pre-entry recovery linearized first, so the run releases what it holds
 (`attempt_released_by_recovery`); anything else holds everything as
-`INDETERMINATE` with `attempt_start_unconfirmed`. The native boundary decides
+`INDETERMINATE` with `attempt_start_unconfirmed`. An unreadable record is
+read again; if it stays unreadable, the run, which has not called the
+provider and never will, closes the attempt as not entered from `RESERVED`
+or `INVOKING` and hands its rows back only once a durable read shows the
+not-entered marker. The native boundary decides
 every attempt-store transition and every consumption-store commit, release,
 and close by a durable read, never by the store's answer, so a truthy answer
 such as `{ ok: false }` never counts; a recovery claim counts only when the
@@ -239,11 +269,14 @@ provides `state()` through the executor-only `ep_aeb_private.operation_state`
 function; after a restart, reconciliation claims the attempt's operation,
 native-authority, and action-fence-holder reservations through its recovery
 path with the caller's `recovery_authorization`, passing a scope that names
-the attempt so one credential covers all three. The credential is bound to
-that one attempt (`scope.attemptId`, with the relying party and tenant), never
-to `scope.recoveryOperationKey` or an operation ID, which attempts that reuse
-one operation ID for the same action share, and a claim succeeds only for a
-row key derived from the scope's own attempt. Gate 0.26.0 shipped that store
+the boundary kind (`boundary: 'native'`) and the attempt so one credential
+covers all three. The credential is bound to that one attempt (the
+`attemptIdentity` the authorizer receives, `native:<attemptId>`, with the
+relying party and tenant), never to `scope.recoveryOperationKey` or an
+operation ID, which attempts that reuse one operation ID for the same action
+share, and a claim succeeds only for a row key derived from the scope's own
+attempt. A claim without a scope is refused before the authorizer runs
+(`recovery_claim_scope_required`). Gate 0.26.0 shipped that store
 without `state()`, so there it could not back
 `createNativeConsequenceBoundary()`.
 

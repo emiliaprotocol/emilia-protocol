@@ -54,10 +54,15 @@ wording-only edit.
    releases the action key and the attempt's reservations only when an
    authenticated durable read shows that the attempt never reached
    DISPATCH_PENDING, that the boundary closed it as not entered through an
-   atomic transition that no dispatch can follow, or that no attempt record
-   exists, and, where the effecting system offers an authenticated lookup,
-   that lookup reports that the operation was not received. A record from
-   which the original attempt could still dispatch is first closed that way.
+   atomic transition that no dispatch can follow and that recorded an
+   explicit not-entered marker, or that no attempt record exists, and, where
+   the effecting system offers an authenticated lookup, that lookup reports
+   that the operation was not received. A record from which the original
+   attempt could still dispatch is first closed that way. Every not-entered
+   transition, the boundary's own pre-entry stop and recovery's, records
+   that marker in the same atomic write, and the absence of evidence is
+   never proof of non-entry: a closed record that carries neither the marker
+   nor terminal provider evidence is INDETERMINATE and releases nothing.
    Without that proof the attempt is treated as INDETERMINATE. A pre-entry
    stop is never reconciled to EXECUTED or FAILED. Pre-entry recovery is a
    separate operation that never continues into reconciliation. Its own
@@ -73,18 +78,38 @@ wording-only edit.
    match alone does not prove ownership, because operation identifiers can be
    caller input. A record that successive attempts can hold, such as a
    reservation keyed by an evaluation, is released, closed, or committed only
-   for its current owner, shown by an authenticated durable read. When an
-   attempt record exists, the attempt's records are released, closed, or
+   for an attempt proven to be its current owner, for example through a
+   durable record keyed by the attempt that marks it as the owner, or
+   because the attempt itself created the record and has not handed it back.
+   When an attempt record exists, the attempt's records are released, closed, or
    committed only after its terminal or not-entered transition has succeeded
    and been confirmed. Only the store's affirmative result counts as success;
    any other answer is resolved through a durable read, and a lost
    acknowledgement of the write that enters DISPATCH_PENDING never releases
-   anything on its own. Recovery authorization MUST be bound to exactly one
-   attempt, never only to an operation identifier or another shared value,
-   and every record claimed under it must be derived from that attempt. One
-   such authorization MUST suffice to close every record the attempt holds,
+   anything on its own, and a refusal whose writes are not all confirmed
+   released is reported as INDETERMINATE, not as a final refusal. Recovery
+   authorization MUST be bound to exactly one attempt, never only to an
+   operation identifier or another shared value, and every record claimed
+   under it must be derived from that attempt. A claim that names no attempt
+   is refused before its authorization is evaluated, and where boundaries of
+   different kinds share one store, the attempt identity includes a
+   component that distinguishes them, both in the derivation of the claimed
+   records and in the scope the authorization is checked against. One such
+   authorization MUST suffice to close every record the attempt holds,
    including its occupation of the action key.
-4. Canonical action identity (Section 5.10). Action digests and effecting
+4. Verified terminal evidence (Sections 5.13 and 5.14). A terminal outcome
+   that commits or releases the records of an attempt that reached
+   DISPATCH_PENDING, from the dispatch or from reconciliation, is accepted
+   only after a relying-party-configured verifier authenticates the provider
+   evidence and binds it to that attempt, including its provider
+   idempotency key. The boundary tells the verifier the purpose of each
+   check, a terminal outcome or a pre-entry lookup, and counts only a result
+   that affirms that purpose for that attempt. A "not received" lookup is
+   evidence only for pre-entry recovery and is never accepted as FAILED for
+   an attempt that reached DISPATCH_PENDING, because a dispatch in flight
+   can still arrive after it. A boundary without such a verifier keeps a
+   dispatched attempt INDETERMINATE.
+5. Canonical action identity (Section 5.10). Action digests and effecting
    target identities are compared exactly. The native operation profile MUST
    define canonical forms for material fields (amount and currency formats,
    case, white space, Unicode normalization), the party that constructs the
@@ -92,7 +117,7 @@ wording-only edit.
    effecting target MUST be configured with the same effecting target
    identity. AEB does not claim that a boundary recognizes equivalent
    spellings.
-5. One native replay identity (Sections 4, 5.9, and 8.5). The -06 "stable
+6. One native replay identity (Sections 4, 5.9, and 8.5). The -06 "stable
    replay identity" and "native replay unit" are now one value. Its inputs are
    exactly the relying-party-pinned authority namespace, which defaults to the
    verified issuer value, and the native authorization identifier; when a pin
@@ -111,7 +136,7 @@ wording-only edit.
    first. Provider idempotency keys derive from the native replay identity.
    The adapter probe now includes a relabelled-grant probe and a probe under a
    second issuer spelling.
-6. AuthZEN and COAZ (Sections 5.3 and 7.2). A permit covers only the inputs
+7. AuthZEN and COAZ (Sections 5.3 and 7.2). A permit covers only the inputs
    that the pinned mapping projects. AUTHORIZED for the full executor action
    requires every material field to be projected and operation-bound, or
    enforced by a separate pinned check; otherwise correspondence is
@@ -119,7 +144,7 @@ wording-only edit.
    exact-action binding comes from the handoff over the full action digest,
    not from the permit alone. The semantic-loss report now covers native
    projections.
-7. Material field without CAID (Section 2). Materiality is defined through the
+8. Material field without CAID (Section 2). Materiality is defined through the
    material-field inventory of the pinned native operation profile, with the
    CAID action-type definition added when a cross-format join is selected.
    Operation, idempotency, wrapper, session, trace, challenge, and retry
@@ -127,7 +152,7 @@ wording-only edit.
    native operation profile, native authorization handoff, action digest,
    action instance, instance field, effecting target identity, authority
    namespace, native replay identity, and action key.
-8. Native authorization handoff (new Section 5.8). The draft now specifies what
+9. Native authorization handoff (new Section 5.8). The draft now specifies what
    a gateway attests and what the boundary verifies, in which order, and under
    which pins. The gateway attests the permit, native source, full action
    digest, relying party, audience, executor, effecting target, validity, and
@@ -141,9 +166,14 @@ wording-only edit.
    says what each boundary keys by attempt: the native boundary keys all
    three of its reservations by attempt, while the composed boundary keys
    only its occupation of the action key by attempt and keys its evaluation
-   reservation by evaluation. It also says that the composed boundary
-   delegates provider-evidence verification to the operator.
-9. Consistency and references. Reconciliation is now bound to the attempt it
+   reservation by evaluation. It also says that the native boundary
+   verifies terminal provider evidence through an operator-configured
+   verifier that is told the purpose of each check, that the composed
+   boundary does so only when that verifier is configured and otherwise
+   refuses terminal reconciliation but still closes a run on its adapter's
+   form-checked result, and that the reference Gate fences the replay key of
+   an earlier release for every pinned source label.
+10. Consistency and references. Reconciliation is now bound to the attempt it
    resolves. The SCITT Permit text in Section 7.3 no longer requires CAID
    unconditionally. The `all_of` and `any_of` members of EP-AEB-REQUIREMENT-v1
    are defined again, and the `evidence-binding` term accepted by the
@@ -153,7 +183,7 @@ wording-only edit.
    `78a5165a0048895a345e4ac5b0f2b9c7904bb110`. The stray KLRC mention is
    removed, AIMS is cited as `draft-ietf-wimse-aims-00`, the CAID-02 date is
    corrected to 6 August 2026, and acronyms are expanded on first use.
-10. Normative references. Only BCP 14 (RFC 2119, RFC 8174), CAID, and AEC are
+11. Normative references. Only BCP 14 (RFC 2119, RFC 8174), CAID, and AEC are
    normative. CAID and AEC stay normative because the conditional
    cross-format and multi-leg stages cannot be implemented without them. The
    new fence, replay-identity, and handoff requirements add no normative
@@ -176,14 +206,22 @@ or registry.
   answers, recovery claims bound to one attempt, the owner check on the
   composed boundary's evaluation reservation, one namespace per issuer in
   the verifier, and Gate's additional fence over the carried wire
-  `replay_unit`. Every Section 15 statement was checked against that code.
-  It is same-team reference code, not an independent implementation. The
-  PR was not merged when this candidate was prepared. Before filing, re-pin
-  both references to the merge commit on `main`, re-render, regenerate
-  `SHA256SUMS.txt`, and re-run idnits. The handoff still carries its 4.1.0
-  wire `replay_unit`, which covers the labels, and the reference Gate still
-  has no material-field inventory or canonical-form equivalence; Section 15
-  says both.
+  `replay_unit`. Every round-three Section 15 statement was checked against
+  that code. It is same-team reference code, not an independent
+  implementation. The round-four revision adds Section 15 statements that
+  describe code which is not at that commit: the explicit not-entered
+  marker, terminal-evidence verification with a purpose (required on the
+  native boundary, optional on the composed boundary), recovery claims refused without a scope and namespaced by
+  boundary kind, and the fence over the earlier release's replay key for
+  every pinned label. Each is marked with a `PR790-R4-CONFIRM` comment in
+  the XML. Once that code is on the branch, confirm each statement against
+  it, remove the comments, and re-pin both references to a commit that
+  carries it. The PR was not merged when this candidate was prepared.
+  Before filing, re-pin both references to the merge commit on `main`,
+  re-render, regenerate `SHA256SUMS.txt`, and re-run idnits. The handoff
+  still carries its 4.1.0 wire `replay_unit`, which covers the labels, and
+  the reference Gate still has no material-field inventory or
+  canonical-form equivalence; Section 15 says both.
 
 ## Layout
 

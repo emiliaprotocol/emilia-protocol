@@ -131,16 +131,21 @@ admission reference. Provider entry, and therefore any effect observation,
 provider outcome, or reconciliation, requires an authority custody reference
 in phase `RESERVATION` or `CONSUMPTION`. Only a conversion reporting
 `INDETERMINATE` may carry a legacy provider entry whose custody it could not
-resolve. A `COMPLETE` conversion requires a labeled evaluation reference and
-resolved custody.
+resolve. A `COMPLETE` conversion requires a checked evaluation reference (one
+not marked `evaluation_reference_unverified`) and resolved custody.
 
 `upgradeAebCrossingRecordV1ToLifecycleIndexV2` first verifies the source under
 caller-pinned v1 keys, then preserves its resolvable references. V1 never
 labeled its evaluation digest. Unless the caller passes the source evaluation
 as `source_evaluation` and it binds to the source record, the index carries the
-digest with `profile: null` and the conversion is `INDETERMINATE` with
-`evaluation_reference_unverified`. A supplied evaluation that does not bind is
-refused with `source_evaluation_mismatch` and nothing is signed.
+digest under the `AEB-EVALUATION-v1` label that verify 4.1.0 wrote for every
+v1 conversion, and the conversion is `INDETERMINATE` with
+`evaluation_reference_unverified`. That reason code marks the label as
+unchecked: the verifiers do not compare it with a supplied evaluation, and it
+does not show that the referenced evaluation exists or matches. The type of
+`lifecycle.evaluation.profile` stays non-null, as in 4.1.0. A supplied
+evaluation that does not bind is refused with `source_evaluation_mismatch`
+and nothing is signed.
 
 If a v1 axis asserted a later provider state but v1 carried no digest for the
 underlying record, the conversion is signed as `INDETERMINATE` with a specific
