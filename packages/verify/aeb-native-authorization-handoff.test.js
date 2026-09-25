@@ -659,6 +659,10 @@ test('pins that spell one issuer two ways are refused unless they declare one sh
     'https://authz.example.',
     'https://authz.example./',
     'https:authz.example',
+    // Keep alias normalization linear even at the identifier-size boundary.
+    // CodeQL flagged the former trailing-run regular expressions as
+    // polynomial-time on attacker-controlled pin data.
+    `https://AUTHZ.EXAMPLE${'.'.repeat(400)}${'/'.repeat(80)}`,
   ];
   for (const alias of aliasSpellings) {
     const aliased = withSources(f, [sourcePin(f), sourcePin(f, { issuer: alias })]);
@@ -849,8 +853,13 @@ test('S6: did:web host case and spiffe trust-domain case are issuer aliases', ()
     ['did:web:authz.example', 'did:web:AUTHZ.example'],
     ['did:web:authz.example:users:pay', 'did:web:Authz.Example.:users:pay'],
     ['DID:web:authz.example', 'did:WEB:authz.example'],
+    ['did:web:authz.example:users:pay', `did:web:AUTHZ.EXAMPLE${'.'.repeat(400)}:users:pay`],
     ['spiffe://authz.example/ns/pay', 'spiffe://AUTHZ.EXAMPLE/ns/pay'],
     ['spiffe://authz.example/ns/pay', 'SPIFFE://authz.example./ns/pay/'],
+    [
+      'spiffe://authz.example/ns/pay',
+      `SPIFFE://AUTHZ.EXAMPLE${'.'.repeat(350)}/ns/pay${'/'.repeat(100)}`,
+    ],
   ]) {
     const aliased = withSources(f, [sourcePin(f, { issuer: first }), sourcePin(f, { issuer: second })]);
     assert.deepEqual(

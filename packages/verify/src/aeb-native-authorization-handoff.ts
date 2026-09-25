@@ -623,6 +623,25 @@ const DEFAULT_PORTS: Readonly<Record<string, string>> = Object.freeze({
   'ftp:': '21',
 });
 
+/** Remove one repeated trailing character in linear time. */
+function trimTrailingCharacter(value: string, character: '.' | '/'): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === character) end -= 1;
+  return end === value.length ? value : value.slice(0, end);
+}
+
+/** Split a `//authority` suffix without a backtracking regular expression. */
+function splitUriAuthority(rest: string): readonly [authority: string, suffix: string] | null {
+  if (!rest.startsWith('//')) return null;
+  let end = 2;
+  while (end < rest.length) {
+    const character = rest[end];
+    if (character === '/' || character === '?' || character === '#') break;
+    end += 1;
+  }
+  return [rest.slice(2, end), rest.slice(end)];
+}
+
 /**
  * Comparison form of an issuer, used only to detect aliased pins; the replay
  * identity never hashes this form. The scheme compares case-insensitively.
@@ -655,14 +674,14 @@ function issuerComparisonForm(issuer: string): string {
     // The pin identifier grammar has no `%`, so a did:web issuer here never
     // carries an encoded port: the host is the first colon-separated part.
     const [host, ...path] = id.split(':');
-    const normalizedHost = host.toLowerCase().replace(/\.+$/, '');
+    const normalizedHost = trimTrailingCharacter(host.toLowerCase(), '.');
     return `did:web:${normalizedHost}${path.length > 0 ? `:${path.join(':')}` : ''}`;
   }
   if (protocol === 'spiffe:') {
-    const authority = /^\/\/([^/?#]*)(.*)$/.exec(rest);
+    const authority = splitUriAuthority(rest);
     if (!authority) return `spiffe:${rest}`;
-    const trustDomain = authority[1].toLowerCase().replace(/\.+$/, '');
-    return `spiffe://${trustDomain}${authority[2].replace(/\/+$/, '')}`;
+    const trustDomain = trimTrailingCharacter(authority[0].toLowerCase(), '.');
+    return `spiffe://${trustDomain}${trimTrailingCharacter(authority[1], '/')}`;
   }
   if (!Object.hasOwn(DEFAULT_PORTS, protocol)) return `${protocol}${rest}`;
   let url: URL;
@@ -675,8 +694,8 @@ function issuerComparisonForm(issuer: string): string {
   const userinfo = url.username !== '' || url.password !== ''
     ? `${url.username}${url.password !== '' ? `:${url.password}` : ''}@`
     : '';
-  const host = url.hostname.toLowerCase().replace(/\.+$/, '');
-  const path = url.pathname.replace(/\/+$/, '');
+  const host = trimTrailingCharacter(url.hostname.toLowerCase(), '.');
+  const path = trimTrailingCharacter(url.pathname, '/');
   return `${url.protocol}//${userinfo}${host}${port}${path}${url.search}${url.hash}`;
 }
 
