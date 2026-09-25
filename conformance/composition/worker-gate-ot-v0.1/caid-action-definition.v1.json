@@ -5,14 +5,6 @@
   "summary": "Issue one Modbus TCP Function Code 16 request to write an ordered register sequence to one identified device.",
   "required_fields": [
     {
-      "name": "protocol",
-      "type": "enum",
-      "values": [
-        "modbus-tcp"
-      ],
-      "values_ref": "inline:modbus-tcp"
-    },
-    {
       "name": "function_code",
       "type": "integer",
       "notes": "16 for this versioned action type; the first-conduit projection enforces the value"
@@ -49,7 +41,7 @@
     }
   ],
   "optional_fields": [],
-  "digest_notes": "All eight fields are material. Site and device are taken verbatim from the relying party's pinned inventory. The MBAP transaction identifier is correlation-only and is excluded.",
+  "digest_notes": "All seven fields are material. The action type already names Modbus, so protocol is not duplicated in the bound action. Site and device are taken verbatim from the relying party's pinned inventory. The MBAP transaction identifier is correlation-only and is excluded.",
   "references": [
     "Modbus Application Protocol Specification V1.1b3, Section 6.12"
   ]

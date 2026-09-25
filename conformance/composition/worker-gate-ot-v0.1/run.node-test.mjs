@@ -8,7 +8,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { buildReferenceReport, decodeFc10Adu, PROFILE, runProfile, verifyFixtureProvenance, } from './run.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
-const FIXTURE = JSON.parse(readFileSync(resolve(HERE, 'fixtures/truealter-fc10.synthetic.v1.json'), 'utf8'));
+const FIXTURE = JSON.parse(readFileSync(resolve(HERE, 'fixtures/truealter-fc10.synthetic.v2.json'), 'utf8'));
 const CAID_PIN = JSON.parse(readFileSync(resolve(HERE, 'caid-pin.v1.json'), 'utf8'));
 test('the joined synthetic fixture passes J0 through J4 under one admission-domain model', async () => {
     const report = await runProfile();
@@ -39,7 +39,11 @@ test('the fixture JWS rejects a changed audience and a changed signature', () =>
     assert.equal(verifyFixtureProvenance(provenance, FIXTURE.keys.public_jwk).valid, true);
     assert.equal(verifyFixtureProvenance(provenance, FIXTURE.keys.public_jwk, { audience: 'other-gate' }).reason, 'audience_mismatch');
     const tampered = structuredClone(provenance);
-    tampered.jws = `${tampered.jws.slice(0, -1)}${tampered.jws.endsWith('A') ? 'B' : 'A'}`;
+    const parts = tampered.jws.split('.');
+    const changedSignature = Buffer.from(parts[2], 'base64url');
+    changedSignature[0] ^= 0x01;
+    parts[2] = changedSignature.toString('base64url');
+    tampered.jws = parts.join('.');
     assert.equal(verifyFixtureProvenance(tampered, FIXTURE.keys.public_jwk).reason, 'invalid_signature');
 });
 test('MBAP transaction identifiers are correlation-only while invalid FC10 structure refuses', () => {
@@ -55,9 +59,9 @@ test('the report keeps synthetic execution and safety boundaries explicit', asyn
     assert.deepEqual(report.coverage.not_executed, ['J5_SAFETY_INDEPENDENCE']);
     assert.match(report.known_limits.join(' '), /single-process/i);
     assert.match(report.known_limits.join(' '), /no physical effect is claimed/i);
-    assert.match(report.known_limits.join(' '), /proposed/i);
+    assert.match(report.known_limits.join(' '), /0\.5\.15.*unverified/i);
 });
-test('the local CAID type and definition are pinned without claiming collaborator confirmation', async () => {
+test('the jointly confirmed local CAID pin excludes redundant protocol binding', async () => {
     const report = await runProfile();
     const caidCase = report.cases.find((entry) => entry.id === 'ACTION-DIGEST-AND-CAID');
     assert.equal(caidCase.passed, true);
@@ -65,5 +69,6 @@ test('the local CAID type and definition are pinned without claiming collaborato
     assert.equal(caidCase.observed.fixture_file_sha256, CAID_PIN.fixture_file_sha256);
     assert.equal(caidCase.observed.definition_file_sha256, CAID_PIN.definition_file_sha256);
     assert.equal(caidCase.observed.caid, CAID_PIN.expected_caid);
-    assert.equal(caidCase.observed.collaborator_confirmation, 'pending');
+    assert.equal(caidCase.observed.collaborator_confirmation, 'confirmed-by-truealter-2026-09-25');
+    assert.equal(Object.hasOwn(FIXTURE.action.A, 'protocol'), false);
 });

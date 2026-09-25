@@ -17,7 +17,7 @@ import { canonicalize, computeCaid } from '../../../packages/verify/vendor/caid.
 export const PROFILE = 'EP-WORKER-GATE-OT-COMPOSITION-v0.1';
 const REPORT_VERSION = 'WORKER-GATE-OT-REFERENCE-REPORT-v0.1';
 const HERE = dirname(fileURLToPath(import.meta.url));
-const FIXTURE_PATH = resolve(HERE, 'fixtures/truealter-fc10.synthetic.v1.json');
+const FIXTURE_PATH = resolve(HERE, 'fixtures/truealter-fc10.synthetic.v2.json');
 const ACTION_DEFINITION_PATH = resolve(HERE, 'caid-action-definition.v1.json');
 const CAID_PIN_PATH = resolve(HERE, 'caid-pin.v1.json');
 const REFERENCE_PATH = resolve(HERE, 'report.reference.json');
@@ -33,7 +33,6 @@ const ACTION_TYPE = ACTION_DEFINITION.action_type;
 const CAID_PIN = Object.freeze(JSON.parse(readFileSync(CAID_PIN_PATH, 'utf8')));
 
 interface Fc10Action {
-  protocol: string;
   function_code: number;
   unit_id: number;
   start_address: number;
@@ -156,7 +155,6 @@ function loadFixture() {
 function materialAction(value) {
   return {
     action_type: ACTION_TYPE,
-    protocol: value.protocol,
     function_code: value.function_code,
     unit_id: value.unit_id,
     start_address: value.start_address,
@@ -274,7 +272,6 @@ export function decodeFc10Adu(
   return {
     transaction_id: bytes.readUInt16BE(0),
     action: {
-      protocol: 'modbus-tcp',
       function_code: functionCode,
       unit_id: unitId,
       start_address: startAddress,
@@ -636,8 +633,8 @@ export async function buildReferenceReport() {
     known_limits: [
       'The fixture and authority are synthetic; no production key, live TrueAlter service, PLC, RTU, or protocol stack was exercised.',
       'The admission domain is an in-memory single-process conformance model, not evidence of multi-process durable atomicity.',
-      'The fixture aud, exp, and jti claims are explicitly proposed and are not in the released TrueAlter invocation-signing claim set.',
-      'The fixture action digest is a provisional bare JCS SHA-256. The runner computes a separate, reproducibly pinned interoperability-local typed CAID and never treats either identifier as authority. True Alter confirmation of the exact local type name and definition remains open.',
+      'The fixture aud, exp, and jti claims are synthetic inputs. Blake Morrison reports them as implemented in @truealter/sdk 0.5.15, but that package was not available from the public npm registry during this run and remains unverified here.',
+      'The fixture action digest is a provisional bare JCS SHA-256. The runner computes the separately hashed, jointly confirmed interoperability-local typed CAID and never treats either identifier as authority.',
       'Provider commitment and observed physical effect remain separate; no physical effect is claimed.',
       'J5 safety independence remains unexecuted because it requires a protective-path simulator outside the Gate.',
     ],

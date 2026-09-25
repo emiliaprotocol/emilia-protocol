@@ -123,7 +123,7 @@ title = "emilia-protocol gitleaks config"
       '''^conformance/composition/wimse-wpt02-oauth-txn-aeb-v0\.1/oauth-txn-challenge-native-fixture\.json$''',
       # Collaborator-supplied synthetic ES256 invocations. The fixture embeds
       # its deterministic seed and public key and is not a bearer credential.
-      '''^conformance/composition/worker-gate-ot-v0\.1/fixtures/truealter-fc10\.synthetic\.v1\.json$''',
+      '''^conformance/composition/worker-gate-ot-v0\.1/fixtures/truealter-fc10\.synthetic\.v2\.json$''',
     ]
     regexes = [
       '''example''',

@@ -2,9 +2,9 @@
   "@version": "WORKER-GATE-OT-REFERENCE-REPORT-v0.1",
   "profile": "EP-WORKER-GATE-OT-COMPOSITION-v0.1",
   "fixture": {
-    "id": "truealter-fc10.synthetic.v1",
-    "sha256": "3cd708af715b1ee5417b9debefeb55bb747e3298014d19747f000b76900734d3",
-    "bytes": 24150,
+    "id": "truealter-fc10.synthetic.v2",
+    "sha256": "95e9d734dd689e593352a9cd5fda49acbe2752da149879b34496e45e24951e2c",
+    "bytes": 24044,
     "status": "SYNTHETIC. No live device, protocol stack or production key produced any value here. Proposed values are marked as proposals."
   },
   "cases": [
@@ -24,13 +24,13 @@
       "passed": true,
       "expected": "the collaborator JCS digest reproduces exactly and the separately pinned local definition computes the expected typed CAID without treating either identifier as authority",
       "observed": {
-        "fixture_digest": "2ebbbe1484c61773d6be9abcbf321e6ebd95194d92840b8636b6339da31f392c",
-        "fixture_file_sha256": "3cd708af715b1ee5417b9debefeb55bb747e3298014d19747f000b76900734d3",
+        "fixture_digest": "64586a77c5c3370e4a53c280ac016d0342a744e89aa1ef4178ce363164b6bda1",
+        "fixture_file_sha256": "95e9d734dd689e593352a9cd5fda49acbe2752da149879b34496e45e24951e2c",
         "action_type": "ot.modbus.write-multiple-registers.1",
-        "definition_file_sha256": "b440d2146f3aa44565cdf26971b03508115cb34821a388520bf0c18571efcd48",
-        "caid": "caid:1:ot.modbus.write-multiple-registers.1:jcs-sha256:9cizcd5xuzr3wLK_iJjP4z2A72JD9PzkFOp7Wzq0NLA",
-        "caid_digest": "sha256:f5c8b371de71bb3af7c0b2bf8898cfe33d80ef6243f4fce414ea7b5b3ab434b0",
-        "collaborator_confirmation": "pending"
+        "definition_file_sha256": "2479b2881713e93ad5efbf2cb24a6f1c6a125a18d06f2c0e3196c2ec7a9907bc",
+        "caid": "caid:1:ot.modbus.write-multiple-registers.1:jcs-sha256:EMNgSJJYCF_yMFagPhMj-miIiTxVzdfhJ-ds4sc0hqc",
+        "caid_digest": "sha256:10c360489258085ff23056a03e1323fa6888893c55cdd7e127e76ce2c73486a7",
+        "collaborator_confirmation": "confirmed-by-truealter-2026-09-25"
       }
     },
     {
@@ -137,10 +137,10 @@
   "known_limits": [
     "The fixture and authority are synthetic; no production key, live TrueAlter service, PLC, RTU, or protocol stack was exercised.",
     "The admission domain is an in-memory single-process conformance model, not evidence of multi-process durable atomicity.",
-    "The fixture aud, exp, and jti claims are explicitly proposed and are not in the released TrueAlter invocation-signing claim set.",
-    "The fixture action digest is a provisional bare JCS SHA-256. The runner computes a separate, reproducibly pinned interoperability-local typed CAID and never treats either identifier as authority. True Alter confirmation of the exact local type name and definition remains open.",
+    "The fixture aud, exp, and jti claims are synthetic inputs. Blake Morrison reports them as implemented in @truealter/sdk 0.5.15, but that package was not available from the public npm registry during this run and remains unverified here.",
+    "The fixture action digest is a provisional bare JCS SHA-256. The runner computes the separately hashed, jointly confirmed interoperability-local typed CAID and never treats either identifier as authority.",
     "Provider commitment and observed physical effect remain separate; no physical effect is claimed.",
     "J5 safety independence remains unexecuted because it requires a protective-path simulator outside the Gate."
   ],
-  "results_digest": "sha256:6b92b83099990694d43eff4f014e1628eae8c99f79d54613ff06e23835460823"
+  "results_digest": "sha256:8e420e3db4110ea1eb5b43e94e27d8d34164d56944beef9fa0dc120919266ceb"
 }
