@@ -33,7 +33,7 @@
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "esbuild": "^0.28.1",
-    "vitest": "^4.1.8"
+    "vitest": "^5.0.1"
   },
   "keywords": [
     "mcp",

@@ -3,19 +3,11 @@
   "entries": [
     {
       "package": "expo",
-      "accepted_spec": "57.0.23",
-      "accepted_version": "57.0.23",
-      "doctor_required_version": "57.0.24",
-      "required_version_published_at": "2026-09-18T08:07:12.211Z",
-      "eligible_at": "2026-09-25T08:07:12.211Z"
-    },
-    {
-      "package": "expo-asset",
-      "accepted_spec": "57.0.17",
-      "accepted_version": "57.0.17",
-      "doctor_required_version": "57.0.18",
-      "required_version_published_at": "2026-09-18T08:10:13.973Z",
-      "eligible_at": "2026-09-25T08:10:13.973Z"
+      "accepted_spec": "57.0.24",
+      "accepted_version": "57.0.24",
+      "doctor_required_version": "57.0.25",
+      "required_version_published_at": "2026-09-24T10:13:10.090Z",
+      "eligible_at": "2026-10-01T10:13:10.090Z"
     }
   ]
 }
