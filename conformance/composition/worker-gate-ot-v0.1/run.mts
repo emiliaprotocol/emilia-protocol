@@ -633,7 +633,7 @@ export async function buildReferenceReport() {
     known_limits: [
       'The fixture and authority are synthetic; no production key, live TrueAlter service, PLC, RTU, or protocol stack was exercised.',
       'The admission domain is an in-memory single-process conformance model, not evidence of multi-process durable atomicity.',
-      'The fixture aud, exp, and jti claims are synthetic inputs. Blake Morrison reports them as implemented in @truealter/sdk 0.5.15, but that package was not available from the public npm registry during this run and remains unverified here.',
+      'The fixture aud, exp, and jti claims are synthetic inputs. A fresh public npm install of @truealter/sdk 0.5.15 verified all nine fixture JWS values and refused validly signed invocations missing each required claim. The npm package does not itself ship this FC10 fixture.',
       'The fixture action digest is a provisional bare JCS SHA-256. The runner computes the separately hashed, jointly confirmed interoperability-local typed CAID and never treats either identifier as authority.',
       'Provider commitment and observed physical effect remain separate; no physical effect is claimed.',
       'J5 safety independence remains unexecuted because it requires a protective-path simulator outside the Gate.',

@@ -68,7 +68,8 @@ test('the report keeps synthetic execution and safety boundaries explicit', asyn
   assert.deepEqual(report.coverage.not_executed, ['J5_SAFETY_INDEPENDENCE']);
   assert.match(report.known_limits.join(' '), /single-process/i);
   assert.match(report.known_limits.join(' '), /no physical effect is claimed/i);
-  assert.match(report.known_limits.join(' '), /0\.5\.15.*unverified/i);
+  assert.match(report.known_limits.join(' '), /0\.5\.15.*verified all nine/i);
+  assert.match(report.known_limits.join(' '), /does not itself ship this FC10 fixture/i);
 });
 
 test('the jointly confirmed local CAID pin excludes redundant protocol binding', async () => {
