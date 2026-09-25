@@ -16,7 +16,7 @@ The customer runs EMILIA components inside its own cloud or classified boundary:
 - KMS/HSM signer adapter
 - audit export
 
-This is the preferred first government wedge because sensitive mission data does not leave the customer's environment.
+This mode suits deployments in which sensitive mission data must not leave the customer's environment.
 
 ## 3. EMILIA Cloud Gov
 

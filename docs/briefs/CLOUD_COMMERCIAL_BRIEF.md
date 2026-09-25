@@ -70,14 +70,3 @@ specific regulatory environments.
 - EU AI Act accountability chain evidence
 - Human-in-the-loop enforcement at configurable decision points
 
-## Competitive Position
-
-| Layer | Function |
-|-------|----------|
-| Open protocol (bottom) | Free adoption, no switching cost, community contribution |
-| Managed control plane (top) | Operational infrastructure that organizations pay for |
-
-The open protocol drives adoption. The managed layer captures recurring revenue.
-Compliance requirements and liability reduction are non-discretionary budget items
-for government, financial, and regulated enterprise buyers. Organizations that
-adopt the protocol for one workflow expand to additional action classes over time.

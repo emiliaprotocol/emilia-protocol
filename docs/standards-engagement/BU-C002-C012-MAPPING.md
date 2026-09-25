@@ -14,11 +14,14 @@ item, or IETF endorsement. This mapping follows its Section 18 review-row
 fields and its Section 26 negative case, "Refusal consumes single-use
 authorization."
 
-The EMILIA source locks are the checked-in posted snapshots recorded by
+The EMILIA source locks are the checked-in snapshots recorded by
 `standards/STATUS.json`:
 
-- `draft-schrock-ep-authorization-receipts-12`, XML SHA-256
-  `66eaa988d974f8535063b35efadc5140331006679b5946bc372d50a16efef52d`;
+- `draft-schrock-ep-authorization-receipts-13`, XML SHA-256
+  `77e7021e116bebbd8e786dd27b51468701ea4887dfa0dd8d692e919f1fd00ffb`
+  (byte-identical to the IETF archive copy; -13 adds only Section 13.13,
+  "What Successful Verification Does Not Establish", to the -12 text this
+  mapping was first written against);
 - `draft-schrock-action-evidence-boundary-06`, XML SHA-256
   `82eaf5eea816c037cb8dcb4608c8735a96f09850aad0a6df5bac021964bf17c5`;
 - `draft-schrock-canonical-action-identifier-02`, XML SHA-256

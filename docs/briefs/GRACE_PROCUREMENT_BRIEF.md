@@ -20,9 +20,9 @@ compute event was authorized, executed, measured, and settled under a pinned met
 GRACE **complements** existing DERMS / virtual-power-plant orchestration (it is the verifiable
 authorization + settlement layer those systems lack), and is **scheduler-agnostic** on the shed side.
 
-**First mover:** the wedge buyer is an **AI/HPC datacenter or neocloud operator with a DR aggregator
-or utility sponsor** — the party that holds the interconnection/payment incentive *and* has a grid
-counterpart to settle against. That pairing is the minimum unit for a first pilot.
+A first pilot needs an **AI/HPC datacenter or neocloud operator with a DR aggregator or utility
+sponsor**: one party holds the interconnection and payment incentive, and the other is the grid
+counterpart to settle against.
 
 ## The problem
 
@@ -100,19 +100,10 @@ verifies for settlement review; auto-revert. (This stage requires a host facilit
   CSV/API; **signed-at-source / revenue-grade meter attestation is follow-on** for full
   settlement-grade deployment.
 - The baseline methodology is the program's, not GRACE's; GRACE pins and protects its application.
-- A first pilot requires one cooperating facility and one program/tariff context (ERCOT is the
-  highest-leverage first market: most AI-datacenter construction, longest interconnection queue,
-  most permissive market structure).
+- A first pilot requires one cooperating facility and one program/tariff context.
 - EMILIA proves authorization and evidence integrity — a **necessary, not sufficient,** condition
   for trustworthy demand response; it does not by itself guarantee physical-baseline accuracy or
   market-rule compliance.
-
-## Commercial model
-
-Open-core. The standard, the verifier, and the receipt profile are free and open. Revenue is the
-operated trust layer: the managed issuer, approver directory, transparency log, and the compliance-
-evidence / settlement pipeline. The protocol is given away for ubiquity and no lock-in; the operated
-infrastructure is the business.
 
 ## Next step
 

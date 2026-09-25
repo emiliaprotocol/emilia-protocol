@@ -44,7 +44,7 @@
 
 ---
 
-## 1:30–3:00 — Pre-action enforcement (the sharpest wedge)
+## 1:30-3:00 - Pre-action enforcement
 
 > MCP tells you what a server can do. EP helps answer whether it should be trusted enough to connect in this environment.
 

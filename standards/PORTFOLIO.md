@@ -85,10 +85,10 @@ through host-record binding and scoped authority, to relying-party evidence
 satisfaction:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-12`](posted/draft-schrock-ep-authorization-receipts-12.xml)
+   [`draft-schrock-ep-authorization-receipts-13`](staged/NEXT-AUTHORIZATION-RECEIPTS-13/UPLOAD-THIS/draft-schrock-ep-authorization-receipts-13.xml)
    defines one action-bound organizational approval-evidence profile and its
-   extension seam. Snapshot SHA-256:
-   `66eaa988d974f8535063b35efadc5140331006679b5946bc372d50a16efef52d`.
+   extension seam. Snapshot SHA-256 (byte-identical to the IETF archive copy):
+   `77e7021e116bebbd8e786dd27b51468701ea4887dfa0dd8d692e919f1fd00ffb`.
 2. **Human Authorization Binding** —
    [`draft-schrock-human-authorization-binding-00`](posted/draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact by value or reference into an

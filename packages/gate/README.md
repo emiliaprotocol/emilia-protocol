@@ -8,8 +8,8 @@ OAuth, AuthZEN, AP2, and local systems keep their native credentials, mappings,
 and policy decisions. Gate verifies the configured AEB evidence for the final
 operation, applies the relying party's local authorization rule, reserves every
 native replay identity before provider entry, refuses a second attempt at the
-same action while an earlier attempt is unresolved, and refuses blind retry
-after an uncertain result.
+same canonical action and configured provider while an earlier attempt is
+unresolved, and refuses blind retry after an uncertain result.
 
 On an exclusively mediated path, an agent without sufficient current authority
 cannot reach the configured executor for money, code, permissions, data,
@@ -26,32 +26,89 @@ For the native-evidence path, import the stable facade:
 import { createNativeConsequenceBoundary } from '@emilia-protocol/gate/aeb';
 ```
 
-On the direct native path Gate also holds an exact-action fence. While an
-attempt for the same relying party, provider account, and action digest is
-reserved, invoking, or uncertain, a new attempt is refused as
-`native_action_in_flight`, even with a fresh native authorization and a fresh
-operation ID. An executed action stays closed (`native_action_already_executed`).
-Only an authenticated FAILED outcome or a proven pre-entry release opens it.
-The fence keys on the digest of the action object the caller passes, so put
-only material fields in that object. Intentional repeats must differ in the
-canonical action, for example through a caller-chosen instance field.
+Both boundaries, `createNativeConsequenceBoundary()` and the composed
+`createConsequenceBoundary()`, hold a durable same-action fence keyed by the
+relying party ID (`pins.relying_party_id` or `aeb.config.relying_party_id`),
+the provider coordinates exactly as configured (tenant, provider, provider
+account, environment), and `digestAebNativeAuthorizationAction(action)`.
+While an attempt for that key is reserved, invoking, or uncertain, a new
+attempt is refused before provider entry as `native_action_in_flight`, even
+with fresh authority and a fresh operation ID. After an executed result it is
+refused as `native_action_already_executed`. The fence opens only on a
+terminal FAILED outcome the boundary accepts, from the provider call or from
+authorized reconciliation (the native boundary also requires it to pass
+`provider_outcomes.verify`), or on a pre-entry stop the boundary proves from
+its own durable attempt record. Both boundaries derive the same fence key, so
+they fence each other when they share a consumption store and relying party
+ID. The native boundary writes its attempt record before any reservation and
+keys every reservation it can release or close by its attempt ID. The
+composed boundary keys its fence holder the same way and releases its
+evaluation reservation only in the call whose reserve created it. A call
+therefore never releases a reservation that another attempt holds.
+
+An attempt that stopped before provider entry (a crash while reserved, a lost
+acknowledgement on the move to invoking, a store error during a pre-entry
+release) still holds the fence. Recover it with `reconcile()` for that
+attempt, a `recovery_authorization` that the attempt store's `recover()`
+accepts for it, and the provider's answer: a FAILED lookup result (on the
+native boundary it must pass `provider_outcomes.verify`), or INDETERMINATE
+when the provider has no lookup. Gate calls the provider only after the
+attempt record reaches INVOKING, and records RELEASED without provider
+evidence only when it stops before the provider callback. When the durable
+record is still RESERVED (reconcile moves it to RELEASED) or is RELEASED
+without evidence, Gate releases that attempt's reservations, confirms each
+release through a durable read, and returns `REFUSED
+attempt_never_entered_provider`; if a release cannot be confirmed it returns
+`INDETERMINATE native_pre_entry_release_unconfirmed`. An EXECUTED claim
+returns `reconciliation_outcome_conflict` and releases nothing. A record that
+reached INVOKING or INDETERMINATE still needs a terminal provider outcome. On
+the composed boundary, pre-entry recovery requires `attempts.store.state()`;
+it closes that evaluation's reservation as `RELEASED_NOT_ENTERED` when the
+consumption store supports terminal release and otherwise leaves it reserved,
+so a retry needs a fresh evaluation either way. Without `state()` the composed
+boundary cannot prove a pre-entry stop, and such an attempt keeps the fence
+closed until the attempt store provides one.
+
+The fence compares the canonical action digest and the provider coordinates
+exactly as configured. Gate implements no material-field inventory and no
+equivalence between spellings: `"500"` and `"500.00"`, `"USD"` and `"usd"`,
+trailing whitespace, and NFC versus NFD strings are different actions, and two
+boundaries configured with `account:one` and `Account:One` for one real
+account do not share a fence. Canonicalize amounts, case, whitespace, and
+Unicode normalization before building the action, put only material fields in
+it, and configure identical coordinates on every boundary instance that can
+reach one provider account. Intentional repeats must differ in the canonical
+action, for example through an instance field fixed when the action is
+authorized.
 
 The native replay key is derived from the relying-party-pinned authority
-namespace (by default the issuer), the issuer, and the native authorization
-ID. The `system` and `profile` labels are not inputs, so one grant accepted
-under two pinned labels is spent once. Source pins that accept one issuer must
-all declare `authority_namespace` or all omit it.
+namespace and the native authorization ID. The namespace is the issuer unless
+the pin declares `authority_namespace`, in which case the issuer string is not
+an input. The `system` and `profile` labels are never inputs, so one grant
+accepted under two pinned labels is spent once. Pins whose issuers are
+different spellings of one URL (scheme or host case, a default port, a
+trailing slash) must all declare the same `authority_namespace`, and pins for
+one issuer must all declare a namespace or all omit it; otherwise
+`createNativeConsequenceBoundary()` refuses construction with
+`native_consequence_boundary_configuration_invalid: <native_pins_* reason>`.
+Changing a pin's namespace rotates its replay keys, so drain in-flight
+attempts and let grants consumed under the old namespace expire first.
 
 The native boundary needs a durable, ownership-fenced consumption store that
 also exposes a durable `state()` read. The PostgreSQL store from
 `createPostgresAebDurableConsumptionStore()` provides that read. Its commit and
 release are fenced to the reserving store instance, so after a restart
-`reconcile()` claims the operation reservation and the action-fence holder
-through `claimReservation()` with the caller's `recovery_authorization`. The
-store's `authorizeRecoveryClaim` must accept that authorization for both keys
-(`nativeConsequenceBoundaryReservationKey()` and
-`nativeConsequenceBoundaryActionFenceHolderKey()`). Gate 0.26.0 shipped the
-PostgreSQL store without `state()`; existing databases need the
+`reconcile()` claims the attempt's reservations through `claimReservation()`
+with the caller's `recovery_authorization`: the operation, native-authority,
+and action-fence-holder rows on the native boundary, and the evaluation
+reservation and the holder on the composed boundary. Each claim passes
+`authorizeRecoveryClaim` a `scope` of `{ attemptId, operationId,
+recoveryOperationKey, reservation }`. Bind the credential to
+`scope.attemptId` or `scope.recoveryOperationKey`, not to the row key: one
+authorization then covers every reservation the attempt holds, and restart
+reconciliation to FAILED or EXECUTED completes in one call.
+Gate 0.26.0 shipped the PostgreSQL store without `state()`; existing
+databases need the
 `ep_aeb_private.operation_state` function from
 `supabase/migrations/20260925010000_aeb_operation_state.sql`.
 
@@ -59,7 +116,8 @@ This direct path follows AEB-06, which was posted on 2026-09-24 as an
 individual Internet-Draft and is not adopted by any working group. AEB-06 makes
 CAID conditional on a cross-format join and AEC conditional on a multi-leg
 evidence requirement. The signed gateway handoff and the same-action fence are
-repository implementation profiles that AEB-06 does not specify. The named
+repository implementation profiles that AEB-06 does not specify; a staged -07
+candidate that specifies the fence has not been submitted. The named
 source labels and same-repository vectors do not establish native-protocol
 conformance or independent interoperability.
 
@@ -69,7 +127,7 @@ optional CAID/AEC composition, AEB custody, and provider outcome evidence.
 The [direct native handoff profile](../../docs/protocol/aeb-native-authorization-handoff-v1.md)
 defines the signed permit binding and operator-controlled status lookup.
 `createConsequenceBoundary()` remains available for deployments that need the
-composed CAID/AEC path.
+composed CAID/AEC path; it also holds the same-action fence.
 
 The original Receipt Required guard remains available for deployments whose
 policy specifically requires an EMILIA approval receipt.

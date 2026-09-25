@@ -1,13 +1,12 @@
-# EP Action-Type Profile Registry (land-claim)
+# EP Action-Type Profile Registry
 
 *The EMILIA Protocol vertical-profile namespace. Each profile is an action-type family with a
 required assurance floor; profiles ride the receipts draft + PIP-012 (envelope/profile registry) and
 introduce no new cryptography.*
 
-This document stakes the EP action-type namespace across the verticals where irreversible autonomous
+This document defines the EP action-type namespace across the verticals where irreversible autonomous
 action meets a human-oversight requirement. **Shipped** profiles have a spec + reference; **reserved**
-profiles claim the namespace and scope, to be specified as demand lands. Standards strategy: claim
-the ground now so the vertical profile is EP's when the regulation arrives, not a competitor's.
+profiles reserve a name and scope, to be specified later.
 
 ## Canonical action URNs
 

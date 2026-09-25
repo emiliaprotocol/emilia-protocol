@@ -117,6 +117,21 @@ audience, executor, and provider. A successful check means that the pinned
 gateway signed this exact native `PERMIT` and action binding. It does not prove
 the wisdom of the native decision or a provider effect.
 
+The result's `native_replay_unit` and `replay_key` are derived locally from the
+matched pin's authority namespace and the native authorization ID. The
+namespace is the issuer unless the pin declares `authority_namespace`, in which
+case the issuer string is not an input; the `system` and `profile` labels are
+never inputs. Pins whose issuers are different spellings of one URL (scheme
+or host case, a default port, a trailing slash) must all declare the same
+namespace, and pins for one issuer must all declare a namespace or all omit
+it. `verifyAebNativeAuthorizationPins()` reports a refused pin set before use
+with one `native_pins_*` reason, and the handoff verifier refuses it as
+`native_handoff_schema_invalid`. The signed
+`AEB-NATIVE-AUTHORIZATION-HANDOFF-v1` wire is unchanged from 4.1.0: handoffs
+issued by either version verify under the other. The carried `replay_unit`
+keeps its 4.1.0 derivation and is never used as the replay identity, and
+`replay_key` values differ from the ones 4.1.0 derived.
+
 `evaluateAebEvidence()` is the composed kernel. It verifies native evidence
 under relying-party-pinned adapters, keeps native verification separate from
 local authorization, and always requires a CAID for the action and an AEC

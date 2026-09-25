@@ -49,8 +49,9 @@ remain separate lifecycle transitions.
 The reader-facing canonical surface is:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-12`](posted/draft-schrock-ep-authorization-receipts-12.xml):
-   one action-bound organizational approval-evidence profile.
+   [`draft-schrock-ep-authorization-receipts-13`](staged/NEXT-AUTHORIZATION-RECEIPTS-13/UPLOAD-THIS/draft-schrock-ep-authorization-receipts-13.xml):
+   one action-bound organizational approval-evidence profile. The -13 XML is
+   byte-identical to the IETF archive copy.
 2. **Human Authorization Binding** —
    [`draft-schrock-human-authorization-binding-00`](posted/draft-schrock-human-authorization-binding-00.xml):
    the host-agnostic binding of named-human authorization evidence into an

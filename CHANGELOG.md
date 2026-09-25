@@ -30,18 +30,38 @@ Historical entries below retain the labels used when they were written.
 
 ### Native boundary repairs after PR #788
 
-- Gate's direct native boundary holds a durable exact-action fence keyed by
-  relying party, provider coordinates, and action digest. A fresh native
-  authorization with a fresh operation ID no longer reaches the provider a
-  second time while the first attempt is uncertain, and an executed action
-  stays closed. Only an authenticated FAILED result or a proven pre-entry
-  release reopens it.
-- The native replay unit, replay key, and provider idempotency key are
-  derived from the pinned authority namespace, the issuer, and the native
-  authorization ID. The `system` and `profile` labels are no longer inputs,
-  so one grant relabelled under a second pinned profile is spent once. The
-  replay domains move to v2; handoffs issued by verify 4.1.0 must be
-  reissued.
+- Both Gate consequence boundaries, the direct native boundary and the
+  composed CAID/AEC boundary, hold a durable same-action fence keyed by
+  relying party, provider coordinates as configured, and canonical action
+  digest. Fresh authority with a fresh operation ID no longer reaches the
+  provider a second time while the first attempt is uncertain, and an
+  executed action stays closed. Only a FAILED result the boundary accepts
+  (the native boundary also requires `provider_outcomes.verify` to pass) or a
+  pre-entry stop proven from the boundary's own durable attempt record reopens
+  it.
+- An attempt that stopped before provider entry can be released through an
+  authorized `reconcile()`, but only when its durable attempt record proves it
+  never entered the provider; otherwise it stays `INDETERMINATE`. The native
+  boundary writes the attempt record before any reservation and keys every
+  reservation by attempt ID, so a failed reserve can no longer delete another
+  attempt's reservation. One recovery credential scoped to the attempt now
+  covers all of its reservations.
+- The fence compares the canonical action digest and the configured provider
+  coordinates exactly. Gate implements no material-field equivalence; callers
+  must canonicalize amounts, case, whitespace, and Unicode normalization.
+- The native replay key and provider idempotency key are derived locally
+  from the pinned authority namespace (the issuer unless the pin declares one)
+  and the native authorization ID. The `system` and `profile` labels are no
+  longer inputs, so one grant relabelled under a second pinned profile is spent
+  once. Pins that spell one issuer URL two ways must declare one shared
+  namespace. The signed `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1` wire is
+  unchanged: handoffs issued by verify 4.1.0 verify here, and handoffs issued
+  here verify under 4.1.0. Replay keys differ from the ones 4.1.0 derived.
+- Upgrade note: native attempts left in flight under gate 0.26.0 hold only the
+  old replay key and no fence row, so after upgrading the same grant could
+  enter the provider again. Drain or reconcile every in-flight native attempt,
+  and let grants consumed under 0.26.0 expire or revoke them, before
+  upgrading.
 - The PostgreSQL AEB consumption store gains the durable `state()` read the
   native boundary requires, and native reconciliation after a restart claims
   its reservations through the store's recovery path. The new function is in
@@ -61,8 +81,9 @@ Historical entries below retain the labels used when they were written.
   exact-action fence. It remains a standalone model, not a run of the shipped
   packages.
 - AEB-06 is recorded as posted (individual Internet-Draft, not adopted), and
-  a -07 candidate that specifies the same-action fence, one native replay
-  identity, and the native authorization handoff is staged in
+  a -07 candidate that specifies the same-action fence and its pre-entry
+  recovery, one native replay identity, and the native authorization handoff
+  is staged in
   `standards/staged/NEXT-AEB-07/`. It has not been submitted.
 - The `verify-receipt` action installs the verifier into an isolated
   temporary directory, so the caller's repository dependencies no longer

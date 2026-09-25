@@ -183,9 +183,10 @@ Gate can sit at each of these actuator boundaries:
 ## Standards
 
 The governed repository inventory currently tracks 24 active Datatracker records: 20
-sole-authored records and four coauthored records. Current snapshots include AE-CHALLENGE -07,
-AEB -06, CAID -02, Architecture -03, AEC -06, Authorization Receipts -12, Bounded Capability
-Receipts -05, Quorum -04, Model-to-Matter -04, and the coauthored GRACE Grid Curtailment -00.
+sole-authored records and four coauthored records. As of 2026-09-25 the current Datatracker
+revisions include AE-CHALLENGE -07, AEB -06, CAID -02, Architecture -03, AEC -06, Authorization
+Receipts -13, Bounded Capability Receipts -06, Presentation Binding -01, Quorum -04,
+Model-to-Matter -04, and the coauthored GRACE Grid Curtailment -00.
 `standards/STATUS.json` is the repository source and the live Datatracker is authoritative for
 current revision and status. None is an RFC, an adopted working-group item, or IETF endorsement.
 Conformance is earned by executable harnesses, not asserted by draft status.

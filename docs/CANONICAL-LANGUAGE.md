@@ -1,6 +1,6 @@
 # EP Canonical Language
 
-This document defines the authoritative vocabulary for EMILIA Protocol across docs, APIs, SDKs, product surfaces, proposals, investor materials, and website content.
+This document defines the authoritative vocabulary for EMILIA Protocol across docs, APIs, SDKs, product surfaces, proposals, and website content.
 
 ## Canonical company category
 
@@ -23,12 +23,9 @@ network or mediates every action.
 
 > **Identity says who or what is present. Delegation says what an agent may call. Policy says what a machine rule permitted. EMILIA proves who authorized the exact material action and controls whether the protected executor may create the consequence now.**
 
-## Canonical investor line
+## Canonical authority line
 
-> **Humans define authority. Agents exercise it. EMILIA ensures the agent cannot quietly widen it. EMILIA charges where authorized intent becomes consequential action.**
-
-The second sentence names the value location, not a current per-action billing meter. Current offers
-remain protected-workflow pilot, implementation, and annual Gate plus Assurance.
+> **Humans define authority. Agents exercise it. EMILIA ensures the agent cannot quietly widen it.**
 
 ## Canonical protocol and product shorthand
 

@@ -88,10 +88,6 @@ bank-detail correctness, payee
 identity, fraud absence, provider success, legality, or business wisdom, and it
 does not take custody or move money.
 
-MCP and privileged enterprise tool calls remain the free distribution wedge:
-developers can install Gate quickly, prove the enforcement loop, and create the
-top of the commercial funnel.
-
 ## How the business meters value
 
 Verification remains open and free. Managed services price the operational

@@ -260,34 +260,6 @@ The principle: **don't try to determine truth between conflicting parties.** Ins
 
 ---
 
-## The Competitive Moat
-
-### Who could build this?
-
-| Threat | Likelihood | EP's Defense |
-|---|---|---|
-| Amazon builds internal trust | High | Only works on Amazon. EP is cross-platform. |
-| Shopify builds internal trust | High | Only works on Shopify. EP is cross-platform. |
-| UCP adds native trust layer | Medium | EP is protocol-neutral — UCP may prefer a neutral third party |
-| A2A builds scoring | Medium | Same — neutral layer preferred over self-scoring |
-| FICO builds "FICO for agents" | High | FICO is closed-source, proprietary. EP wins on openness. |
-| New startup with $50M funding | High | EP is open source with first-mover advantage. You can't buy a protocol moat with money — you earn it with adoption. |
-
-### Why closed systems lose
-
-The agent economy is fundamentally cross-platform. A Shopify seller's Claude agent buying from an Amazon seller's Gemini agent — that transaction crosses three ecosystems. No single platform's trust system covers it.
-
-| System | Scope | Limitation |
-|---|---|---|
-| Amazon internal score | Amazon only | Doesn't travel to Shopify, Stripe, or independent agents |
-| Shopify internal score | Shopify only | Doesn't cover Amazon, eBay, or direct sales |
-| FICO | US credit only | No international, no agent-to-agent |
-| **EP** | **Cross-platform** | **Works everywhere: UCP, A2A, MCP, ACP, AP2** |
-
-**The bet:** The agent economy is more cross-platform than the human economy. If true, EP wins. If false, EP becomes a niche tool. The evidence so far: MCP (Anthropic), A2A (Google), UCP (Google+Shopify), ACP (OpenAI+Stripe) — four competing companies all building open agent protocols. Cross-platform is the direction.
-
----
-
 ## The Protocol Stack Position
 
 ```

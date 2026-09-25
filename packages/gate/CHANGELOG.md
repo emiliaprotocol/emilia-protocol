@@ -8,29 +8,75 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 
-- `createNativeConsequenceBoundary()` now holds a durable exact-action fence.
-  Each attempt reserves a second, per-operation holder row that carries a
-  fence keyed by relying party, provider coordinates (tenant, provider,
-  provider account, environment), and action digest. While an attempt for
-  that action is reserved, invoking, or indeterminate, a new attempt is
-  refused as `native_action_in_flight`, even with a fresh native authorization
-  and a fresh operation ID. After an authenticated EXECUTED result the fence
-  stays closed and a new attempt is refused as
-  `native_action_already_executed`. Only an authenticated FAILED result
-  (direct or reconciled) or a proven pre-entry release opens it. New exports:
-  `nativeConsequenceBoundaryActionFenceKey()` and
-  `nativeConsequenceBoundaryActionFenceHolderKey()`.
+- Both consequence boundaries now hold a durable same-action fence:
+  `createNativeConsequenceBoundary()` and the composed
+  `createConsequenceBoundary()`. Each attempt reserves a holder row that
+  carries a fence keyed by relying party, provider coordinates as configured
+  (tenant, provider, provider account, environment), and canonical action
+  digest. While an attempt for that action is reserved, invoking, or
+  indeterminate, a new attempt is refused before provider entry as
+  `native_action_in_flight`, even with fresh authority and a fresh operation
+  ID. Before this change the composed boundary had no fence, so fresh evidence
+  presented while a first attempt was `INDETERMINATE` reached the provider a
+  second time. After an authenticated EXECUTED result the fence stays closed
+  (`native_action_already_executed`). Only a FAILED result the boundary
+  accepts, direct or reconciled (the native boundary also requires
+  `provider_outcomes.verify` to pass), or a pre-entry stop proven from the
+  boundary's own durable attempt record opens it. On the composed boundary its
+  existing refusals take precedence over the fence refusal. Both boundaries
+  derive the same fence key from the relying party ID, so they fence each
+  other when they share a store. New exports:
+  `nativeConsequenceBoundaryActionFenceKey()`,
+  `nativeConsequenceBoundaryActionFenceHolderKey()` (which takes `provider`
+  and `attempt_id`), `nativeConsequenceBoundaryAttemptReservationKeys()`, and
+  `consequenceBoundaryActionFenceHolderKey()`.
+- An attempt that stopped before provider entry (a crash while `RESERVED`, a
+  lost acknowledgement on the move to `INVOKING`, a store error during a
+  pre-entry release, or a crash after the fence holder was reserved but before
+  the attempt was recorded) previously held the fence forever, refusing every
+  later attempt at that action. The native boundary now writes the attempt
+  record, and calls `create_id`, before any reservation, so the last case can
+  no longer arise there. `reconcile()` recovers such an attempt when given a
+  `recovery_authorization` that the attempt store's `recover()` accepts for it
+  and the provider's answer: a FAILED lookup result (on the native boundary it
+  must pass `provider_outcomes.verify`), or INDETERMINATE when the provider
+  has no lookup. Only if the durable record is still `RESERVED` (reconcile
+  moves it to `RELEASED`) or is `RELEASED` without provider evidence does it
+  release every reservation the attempt holds, confirm each release through a
+  durable read, and return `REFUSED` with `attempt_never_entered_provider`. A
+  claim of EXECUTED is refused as `reconciliation_outcome_conflict` and
+  releases nothing; an unconfirmed release stays `INDETERMINATE`
+  (`native_pre_entry_release_unconfirmed`). On the composed boundary this
+  recovery requires `attempts.store.state()`, and it closes the evaluation
+  reservation as `RELEASED_NOT_ENTERED` when the store supports terminal
+  release, so a retry needs a fresh evaluation.
+- A call now releases or closes only reservations it created. The native
+  boundary writes three reservations per attempt (operation identity, native
+  authority, action-fence holder), each keyed by its attempt ID, which no
+  other attempt can produce; the composed boundary keys its fence holder the
+  same way. In 0.26.0, when a native reserve write failed, the error path
+  released the operation reservation for the caller-supplied operation ID
+  without proof that this call had created it. With a store that fences
+  release per store instance, such as the PostgreSQL store that can now back
+  the native boundary, that release could delete another in-flight attempt's
+  reservation and replay fence in the same process, leaving that action
+  locked and that attempt's grant admissible for a second action. A failed
+  reserve now marks the attempt `RELEASED`, releases only this attempt's rows,
+  and returns `consumption_store_unavailable`, or `INDETERMINATE`
+  `native_pre_entry_release_unconfirmed` when a release cannot be confirmed.
 - The native replay key and the provider idempotency key no longer depend on
-  the handoff's `system` or `profile` labels. They take the label-free replay
-  unit that `@emilia-protocol/verify` derives from the pinned authority
-  namespace, the issuer, and the native authorization ID, so one grant
-  accepted under two pinned labels is spent once.
-- `reconcile()` refuses an attempt that never entered the provider
-  (`RESERVED`, or `RELEASED` without terminal evidence) as
-  `attempt_never_entered_provider`, and refuses an outcome that conflicts with
-  an existing terminal record as `reconciliation_outcome_conflict` without
-  touching any reservation. Pre-entry refusals release reservations only after
-  the attempt itself is durably `RELEASED`.
+  the handoff's `system` or `profile` labels, or on the issuer string when the
+  pin declares an `authority_namespace`. Gate uses the label-free replay unit
+  that `@emilia-protocol/verify` derives locally from the pinned authority
+  namespace (the issuer by default) and the native authorization ID, so one
+  grant accepted under two pinned labels, or under two spellings of one issuer
+  that declare the same namespace, is spent once.
+- `reconcile()` never reconciles an attempt that did not enter the provider to
+  EXECUTED or FAILED (`attempt_never_entered_provider`), and refuses an
+  outcome that conflicts with an existing terminal record as
+  `reconciliation_outcome_conflict` without touching any reservation.
+  Pre-entry refusals release reservations only after the attempt itself is
+  durably `RELEASED`.
 - Hostile in-process input is refused instead of throwing: a Proxy anywhere in
   `run()` or `reconcile()` input, getters, extra keys, and an own `__proto__`
   member. Attempt-store answers are copied once as plain data. A
@@ -44,27 +90,63 @@ This package follows [Semantic Versioning](https://semver.org/).
 - `createPostgresAebDurableConsumptionStore()` now provides the durable
   `state()` read the native boundary requires, through a new executor-only
   security-definer function `ep_aeb_private.operation_state`. After a restart,
-  native `reconcile()` claims the operation and action-fence reservations
-  through `claimReservation()` with the caller's `recovery_authorization`
-  when the store declares `recoveryClaimSupported: true`.
+  `reconcile()` claims the attempt's reservations through
+  `claimReservation(key, authorization, scope)` with the caller's
+  `recovery_authorization` when the store declares
+  `recoveryClaimSupported: true`. Each claim carries an `AebRecoveryClaimScope`
+  (`{ attemptId, operationId, recoveryOperationKey, reservation }`), which the
+  store validates without running getters and passes to
+  `authorizeRecoveryClaim` as `claim.scope`. One authorization bound to the
+  attempt covers every reservation it holds, so restart reconciliation to
+  FAILED or EXECUTED completes in one call on both boundaries.
 
 ### Compatibility
 
-- Attempts recorded by 0.26.0 cannot be reconciled after upgrading, because
-  the native replay unit changed. Drain uncertain native attempts before
-  upgrading.
+- Drain before upgrading. A native attempt left in flight under 0.26.0 holds
+  only the 0.26.0 replay key and no fence row. After upgrading, the same grant
+  derives a different replay key and finds no fence, so it can be admitted and
+  reach the provider again. A grant consumed under 0.26.0 is likewise recorded
+  only under the old key. Before upgrading, reconcile or otherwise resolve
+  every in-flight native attempt, and let every grant consumed under 0.26.0
+  expire or revoke it at its status source.
+- Changing a pin's `authority_namespace`, or the issuer spelling of a pin that
+  uses the default namespace, rotates the replay keys derived under it in the
+  same way. Drain in-flight attempts and let consumed grants expire before
+  rotating. Pins whose issuers are different spellings of one URL must now
+  all declare the same namespace, or construction is refused.
 - Existing databases need the `operation_state` function:
   `supabase/migrations/20260925010000_aeb_operation_state.sql` (it mirrors
   `AEB_CONSUMPTION_DDL`).
-- `authorizeRecoveryClaim` now receives the same `recovery_authorization` for
-  two keys per native attempt. An authorizer bound to a single key must accept
-  both `nativeConsequenceBoundaryReservationKey()` and
-  `nativeConsequenceBoundaryActionFenceHolderKey()`.
+- `authorizeRecoveryClaim` is called once per reservation an attempt holds
+  (operation, native authority, and action-fence holder on the native
+  boundary) and receives a `scope` naming the attempt. An authorizer that
+  binds its credential to one exact row key must instead bind it to
+  `scope.attemptId` or `scope.recoveryOperationKey`, or restart
+  reconciliation cannot finish in one call.
+- Native runs now write the attempt record, and call `create_id`, before any
+  reservation. A refused run leaves a `RELEASED` attempt record.
+- `createNativeConsequenceBoundary()` refuses a pin set that
+  `verifyAebNativeAuthorizationPins()` rejects, throwing
+  `native_consequence_boundary_configuration_invalid: <native_pins_* reason>`
+  at construction.
+- `createConsequenceBoundary()` writes one fence-holder row per attempt and
+  one marker row per executed action to its consumption store, and refuses
+  `action_fence_binding_invalid` when `aeb.config.relying_party_id` cannot key
+  the fence. Pre-entry recovery on this boundary needs `attempts.store.state()`.
+- Gate now imports `verifyAebNativeAuthorizationPins()` from
+  `@emilia-protocol/verify`, which verify 4.1.0 does not export. A release
+  of this Gate must depend on a Verify release that includes it.
+- The fence, and every other key built from them, compares the canonical
+  action digest and the provider coordinates exactly as configured. Gate
+  implements no material-field inventory and no equivalence between spellings
+  (amount formats, case, whitespace, Unicode normalization); callers must
+  canonicalize the action and configure identical coordinates on every
+  boundary instance that reaches one provider account. Identical intentional
+  repeats must differ in the canonical action, for example through an
+  instance field.
 - Each executed native action leaves one permanent marker row in the
   consumption store, used only to choose the `native_action_already_executed`
   reason.
-- Identical intentional repeats must differ in the canonical action, for
-  example through a caller-chosen instance field.
 
 ## 0.26.0 (2026-09-24)
 
@@ -101,9 +183,15 @@ independent interoperability.
 - The shipped PostgreSQL AEB store does not expose `state()`, so it cannot back
   `createNativeConsequenceBoundary()`; construction fails with
   `native_consequence_boundary_configuration_invalid`.
+- The composed `createConsequenceBoundary()` does not fence the action either.
+  Fresh evidence with a new operation ID, presented while a first attempt is
+  `INDETERMINATE`, reaches the provider a second time.
+- When a native reserve write fails, the error path releases the operation
+  reservation for the caller-supplied operation ID without proof that the
+  call created it.
 
-All three are repaired in the Unreleased section above; no fixed version has
-been published yet.
+All of these are repaired in the Unreleased section above; no fixed version
+has been published yet.
 
 ## 0.25.0 (2026-09-13)
 
