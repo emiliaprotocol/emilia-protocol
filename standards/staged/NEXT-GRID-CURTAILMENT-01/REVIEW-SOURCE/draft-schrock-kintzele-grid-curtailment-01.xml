@@ -1,0 +1,906 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-kintzele-grid-curtailment-01"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="GRACE Curtailment">GRACE: Evidence-Bound Grid Curtailment Admission, Observation, and Single-Use Settlement</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-kintzele-grid-curtailment-01"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address>
+    </author>
+    <author fullname="Justin D Kintzele">
+      <organization>J Diesel NY, LLC</organization>
+      <address><postal><country>US</country></postal><email>jkintzele@jdieselny.com</email></address>
+    </author>
+    <author fullname="Blake Morrison">
+      <organization>Alter Meridian Pty Ltd</organization>
+      <address><postal><country>AU</country></postal><email>blake@truealter.com</email></address>
+    </author>
+    <author fullname="Drew Dylan">
+      <organization>Alter Meridian Pty Ltd</organization>
+      <address><postal><country>AU</country></postal><email>drew@truealter.com</email></address>
+    </author>
+    <date year="2026" month="September" day="24"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>demand response</keyword>
+    <keyword>grid curtailment</keyword>
+    <keyword>outcome evidence</keyword>
+    <abstract>
+      <t>This document defines GRACE, an application profile for one bounded
+      <tt>grid.curtailment</tt> action. EMILIA supplies the exact-action
+      authority and admission spine: it binds an approved objective to a
+      pinned actuation plan, consumes that authority once in a durable
+      admission domain, and preserves unresolved state after possible provider
+      entry. An upstream action-specific command-authority proof is an input to
+      that admission, and neither it nor the admission is sufficient dispatch
+      authority alone. A deployment-pinned executor adapter returns
+      command-channel evidence, and a separately authenticated meter supplies
+      observed-effect evidence.</t>
+      <t>Safety trips, protective relays, emergency shutdowns, and hardwired
+      interlocks remain outside GRACE and continue to operate when the Gate,
+      network, identity service, or evidence service is unavailable. Missing
+      or ambiguous post-entry evidence is preserved as indeterminate and
+      cannot authorize blind retry.</t>
+      <t>GRACE verifies signed inputs and deterministic computations. It does
+      not establish physical meter truth, baseline correctness, tariff
+      eligibility, actual payment, complete mediation, or a physical grid
+      deployment. An optional hybrid artifact-signature profile combines
+      Ed25519 with ML-DSA-65 and requires both signatures to verify.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="introduction"><name>Introduction</name>
+      <t>A curtailment instruction can cross several administrative and
+      technical boundaries before it changes electrical load. Authentication
+      of the dispatcher alone does not answer whether the exact event fit a
+      customer-approved participation envelope, whether the required people
+      approved it, whether the executor admitted it only once, or whether
+      later measurement refers to the same action.</t>
+      <t>GRACE keeps those questions separate. It defines an exact action, a
+      bounded envelope, a pinned actuation plan, pre-dispatch authorization
+      and admission checks, native-command projection at the first conduit,
+      per-device dispatch records, separately authenticated execution and
+      measurement claims, outcome reconciliation, and single-use settlement
+      admission. Each relying party selects and pins its own issuers, keys,
+      policies, adapters, clocks, conduits, and state stores.</t>
+      <t>The profile does not define a demand-response tariff, a baseline
+      methodology, a physical meter, a scheduler, a safety system, or a
+      payment rail. Those systems remain authoritative for their own claims.
+      GRACE binds their signed inputs to one action and records the result of
+      deterministic verification. It does not prove that every physical
+      effect passed through the Gate.</t>
+      <section anchor="requirements-language"><name>Requirements Language</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+        NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+        "MAY", and "OPTIONAL" in this document are to be interpreted as
+        described in BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/>
+        when, and only when, they appear in all capitals, as shown here.</t>
+        <t>BCP 14 is indexed by the RFC Editor at <xref target="BCP14"/>.</t>
+      </section>
+    </section>
+
+    <section anchor="terminology"><name>Terminology and Roles</name>
+      <dl>
+        <dt>Participation Envelope</dt>
+        <dd>A customer-approved, finite set of power, energy, count,
+        duration, notice, and time-window bounds. The current profile identifier
+        is <tt>EP-FLEX-ENVELOPE-v2</tt>.</dd>
+        <dt>Curtailment Action</dt>
+        <dd>The closed <tt>EP-GRACE-CURTAILMENT-ACTION-v1</tt> object that
+        identifies one requested power-reduction event.</dd>
+        <dt>Admission</dt>
+        <dd>The executor-side decision that the exact action may enter effect
+        custody once. Admission is not evidence that the effect occurred.</dd>
+        <dt>Command Authority Envelope</dt>
+        <dd>An upstream, action-specific proof binding a principal's grant to
+        an agent, asset, control verb, and expiry. GRACE verifies it as an
+        input to admission; the envelope does not consume GRACE admission.</dd>
+        <dt>Actuation Plan</dt>
+        <dd>A deterministic, digest-bound projection of the approved
+        curtailment objective into ordered device steps. The plan is not a
+        dispatch acknowledgment or effect observation.</dd>
+        <dt>Native Command Projection</dt>
+        <dd>The canonical physical-act fields and conduit-established context
+        derived for one plan step at the first conduit. Exact request bytes
+        are retained separately as dispatch evidence.</dd>
+        <dt>First Conduit</dt>
+        <dd>The earliest deployment-pinned boundary at which a GRACE plan step
+        becomes a device- or protocol-specific command.</dd>
+        <dt>Durable Admission Domain</dt>
+        <dd>The authoritative state domain that atomically reserves, enters,
+        and terminalizes one action across every redundant route, worker,
+        handoff, and restart in the protected deployment.</dd>
+        <dt>Actuator</dt>
+        <dd>The deployment-pinned adapter that attempts the physical or
+        scheduler operation and signs an acknowledgment.</dd>
+        <dt>Provider Outcome</dt>
+        <dd>The command-channel result reported by the executor or downstream
+        provider. It does not establish the physical effect.</dd>
+        <dt>Meter</dt>
+        <dd>A separately pinned observation source. A meter statement is a
+        signed source claim, not proof of physical truth or calibration.</dd>
+        <dt>Independent Readback</dt>
+        <dd>An authenticated observation from a relying-party-pinned source in
+        a control domain distinct from the command-channel source. A declared
+        control-domain identifier is policy input, not proof of organizational
+        independence.</dd>
+        <dt>Observed-Effect Relation</dt>
+        <dd>The deterministic relation between an accepted observation and the
+        effect bound in the approved action, such as <tt>in_bounds</tt>,
+        <tt>out_of_bounds</tt>, <tt>divergent</tt>, or unresolved.</dd>
+        <dt>Safety Function</dt>
+        <dd>A trip, protective relay, emergency shutdown, or interlock whose
+        ability to reach a safe state does not depend on GRACE admission.</dd>
+        <dt>Settlement Effect</dt>
+        <dd>A deployment-supplied downstream operation invoked only after the
+        required evidence reconciles. GRACE controls at-most-one invocation
+        attempt for one entitlement key. It does not define or prove payment.</dd>
+      </dl>
+    </section>
+
+    <section anchor="trust"><name>Trust and Deployment Inputs</name>
+      <t>A conforming deployment <bcp14>MUST</bcp14> independently configure
+      the accepted action, envelope, plan, and native-projection versions;
+      approver roster and threshold; WebAuthn relying-party identifier and
+      origins; accepted upstream command-authority profiles; actuator and meter
+      keys; source roles and control-domain identifiers; validity and freshness
+      policy; permitted devices, conduits, and command families; durable
+      admission-domain identifier; Action State signing key; execution store;
+      settlement store; and settlement adapter. Presenter-supplied trust
+      anchors or policy values <bcp14>MUST NOT</bcp14> influence acceptance.</t>
+      <t>When a deployment uses a proof from
+      <xref target="OT-COMMAND-AUTHORITY"/>, it <bcp14>MUST</bcp14> verify that
+      proof under relying-party policy and evaluate its freshness before
+      admission. The proof <bcp14>MUST</bcp14> bind the signed grant to the
+      specific agent, asset, control verb, and expiry and
+      <bcp14>MUST</bcp14> be checked for coverage against this specific action,
+      not merely against the breadth of the grant. It establishes who asked
+      and what that principal authorized the agent to ask for. GRACE then
+      admits that exact request once and consumes the admission. Both bindings
+      are action-specific; neither is sufficient alone. The upstream proof
+      does not consume GRACE admission and does not establish execution or
+      physical effect.</t>
+      <t>The deployment <bcp14>MUST</bcp14> maintain an effect-path inventory
+      covering every route capable of reaching the controlled devices. Every
+      route for which the deployment claims GRACE enforcement
+      <bcp14>MUST</bcp14> use one configured durable admission-domain
+      identifier and one authoritative admission state domain. Redundant
+      ingress, replacement workers, handoffs, and restarts
+      <bcp14>MUST NOT</bcp14> mint fresh authority.</t>
+      <t>The effect-path inventory <bcp14>MUST</bcp14> enumerate paths by the
+      conduit that reaches the device, not only by the application intending
+      to use it. Engineering laptops, vendor maintenance tooling, local HMI
+      panels, and serial drops behind a gateway are separate paths when they
+      can reach the device. An inventory containing only routes already
+      mediated by GRACE is incomplete.</t>
+      <t>Every protected effect path for which a deployment claims GRACE
+      enforcement <bcp14>MUST</bcp14> pass through the same admission boundary.
+      An implementation that can be bypassed may still emit evidence, but it
+      <bcp14>MUST NOT</bcp14> claim complete enforcement. A receipt, log entry,
+      or transparency inclusion cannot establish the absence of an unmodeled
+      bypass path.</t>
+    </section>
+
+    <section anchor="action"><name>Curtailment Action</name>
+      <t>The action <bcp14>MUST</bcp14> be a closed JSON object
+      <xref target="RFC8259"/> that can be serialized with JCS
+      <xref target="RFC8785"/>. Unknown, duplicated, missing, or
+      non-canonicalizable members are a refusal. Its required members are:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-GRACE-CURTAILMENT-ACTION-v1",
+  "action_id": "grace:event:...",
+  "action_type": "grid.curtailment",
+  "effect_class": "power_reduction",
+  "facility": "facility:...",
+  "target_delta_kw": "18000",
+  "window": {
+    "not_before": "2026-07-15T20:15:00.000Z",
+    "not_after": "2026-07-15T21:45:00.000Z"
+  },
+  "issued_at": "2026-07-15T20:00:00.000Z",
+  "expires_at": "2026-07-15T21:45:00.000Z",
+  "baseline_method_hash": "sha256:...",
+  "control_mode": "human_on_the_loop",
+  "envelope_id": "grace:envelope:...",
+  "requested_by": "ep:agent:grid-coordinator"
+}
+]]></sourcecode>
+      <t><tt>target_delta_kw</tt> <bcp14>MUST</bcp14> be a positive decimal
+      string with at most three fractional digits. Timestamps
+      <bcp14>MUST</bcp14> be UTC RFC 3339 timestamps with millisecond precision.
+      <tt>issued_at</tt> <bcp14>MUST</bcp14> precede
+      <tt>window.not_before</tt>. <tt>expires_at</tt>
+      <bcp14>MUST</bcp14> equal <tt>window.not_after</tt>.
+      <tt>control_mode</tt> is either <tt>human_on_the_loop</tt> or
+      <tt>human_in_the_loop</tt>. The baseline-method digest commits to the
+      program-selected method; it does not validate that method.</t>
+      <t>The verifier <bcp14>MUST</bcp14> derive the action digest and CAID
+      <xref target="EP-CAID"/> from the exact controlled-action projection.
+      A supplied identifier <bcp14>MUST NOT</bcp14> replace that derivation.</t>
+    </section>
+
+    <section anchor="envelope"><name>Participation Envelope and Containment</name>
+      <t>The action names one <tt>EP-FLEX-ENVELOPE-v2</tt> envelope. The
+      relying party <bcp14>MUST</bcp14> obtain that envelope from its pinned
+      authority and <bcp14>MUST</bcp14> verify that it applies to the facility,
+      program, and evaluation time. The bounds object contains positive
+      <tt>max_event_mw</tt>, <tt>max_period_mwh</tt>, <tt>max_events</tt>,
+      <tt>max_event_hours</tt>, <tt>min_notice_minutes</tt>, and a participation
+      window.</t>
+      <t>Before dispatch, the executor <bcp14>MUST</bcp14> compare power with
+      power, energy with energy, count with count, and duration with duration.
+      The action's MW cannot exceed <tt>max_event_mw</tt>. Its MW multiplied by
+      window duration cannot exceed the remaining period MWh budget. One more
+      event and its duration must fit the remaining event and event-hour
+      budgets. Its notice and window must fit the envelope.</t>
+      <t>A required bound or present spent-accounting value that is missing,
+      negative, or unparseable is a refusal. An omitted spent value asserts
+      zero prior settled usage; deployments that cannot make that assertion
+      <bcp14>MUST</bcp14> return indeterminate rather than use zero.</t>
+      <t>For native-device dispatch, the relying-party policy
+      <bcp14>MUST</bcp14> also identify the participating device set, allowed
+      native command families, permitted conduits, and plan validity interval.
+      A plan step for a device, command family, conduit, or time outside that
+      participation boundary <bcp14>MUST</bcp14> be refused before provider
+      entry.</t>
+    </section>
+
+    <section anchor="human"><name>Human Authorization</name>
+      <t>GRACE does not define credential-to-person or credential-to-device
+      enrollment. The relying party <bcp14>MUST</bcp14> state the verified
+      identity-layer result and freshness policy it requires. Without that
+      result, GRACE may report that a configured credential signed an input,
+      but it <bcp14>MUST NOT</bcp14> infer a natural person from the credential
+      alone.</t>
+      <t>The relying party selects an ordered approver roster and a threshold
+      using the action-bound authorization evidence in
+      <xref target="EP-RECEIPTS"/>.
+      Each accepted approval <bcp14>MUST</bcp14> be a Class-A WebAuthn
+      <xref target="WEBAUTHN"/> signoff over a context that binds the controlled
+      action digest, actuation-plan digest, presentation digest, policy digest,
+      initiator, approver, roster index, threshold, validity window,
+      relying-party profile, app, platform, credential, and device key.</t>
+      <t>The verifier <bcp14>MUST</bcp14> require user verification, the pinned
+      relying-party identifier and origin, distinct approvers, distinct device
+      and credential identifiers, initiator exclusion, the exact roster index,
+      and the selected threshold. The quorum semantics are those of
+      <xref target="EP-QUORUM"/>. A valid signature that does not match the
+      relying party's current roster, policy, action, presentation, or ceremony
+      window is a refusal.</t>
+    </section>
+
+    <section anchor="actuation-plan"><name>Actuation Plan and Native Command Binding</name>
+      <t>A deployment that projects one curtailment action into one or more
+      device commands <bcp14>MUST</bcp14> derive a deterministic actuation plan
+      before admission. The plan <bcp14>MUST</bcp14> bind the exact action
+      digest, envelope digest, plan validity interval, participating devices,
+      ordered steps, and the configured durable admission-domain identifier.
+      The complete plan <bcp14>MUST</bcp14> be canonicalized and hashed. Human
+      authorization and the admission record <bcp14>MUST</bcp14> bind that plan
+      digest.</t>
+      <t>Each plan step <bcp14>MUST</bcp14> contain at least a step identifier,
+      device identifier, conduit identifier, command-family identifier, native
+      command digest, security-context digest, and order within the plan. The
+      native command digest covers the complete, canonically encoded set of
+      material fields and conduit-established context defined by the pinned
+      transport binding. The security-context digest covers the
+      security-relevant addressing, protocol, authentication, role, and
+      transport context used to interpret the request. A per-attempt native
+      request digest separately covers the exact bytes sent.</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-GRACE-ACTUATION-PLAN-v1",
+  "plan_id": "grace:plan:...",
+  "action_id": "grace:event:...",
+  "action_digest": "sha256:...",
+  "envelope_digest": "sha256:...",
+  "admission_domain_id": "grace:admission-domain:...",
+  "validity": {
+    "not_before": "2026-07-15T20:15:00.000Z",
+    "not_after": "2026-07-15T21:45:00.000Z"
+  },
+  "steps": [{
+    "step_id": "step:1",
+    "order": 1,
+    "device_id": "device:...",
+    "conduit_id": "conduit:...",
+    "command_family": "deployment-pinned-family",
+    "native_command_digest": "sha256:...",
+    "security_context_digest": "sha256:..."
+  }]
+}
+]]></sourcecode>
+      <t>The plan and native command are separate bindings. The plan is the
+      protocol-independent projection of the approved objective. The native
+      command is derived at the first conduit under one pinned transport
+      binding. Binding only the plan leaves the device operation unbound;
+      binding only the command leaves the approved objective unbound.</t>
+      <t>A transport binding <bcp14>MUST</bcp14> classify every field in a
+      native request into exactly one of four classes: material, conduit
+      context, correlation only, or fixed or derived. Material and conduit
+      context contribute to the native-command digest. Correlation-only and
+      fixed-or-derived fields do not. A field that cannot be classified, or a
+      malformed request, <bcp14>MUST</bcp14> be refused before admission and
+      before evidence lookup.</t>
+      <t>Device identity <bcp14>MUST</bcp14> come from conduit-established link
+      or session context, not from a sender assertion on the wire. A wire value
+      inconsistent with that context <bcp14>MUST</bcp14> be refused without
+      resolving the disagreement in favor of either source. A Modbus unit
+      identifier of zero <bcp14>MUST</bcp14> be refused by a device-scoped
+      binding because it may denote broadcast rather than one device.</t>
+      <t>The classification binds the physical operation, not a display label
+      or the incidental number of octets carrying it. A Modbus 4xxxxx or
+      0xxxxx label <bcp14>MUST NOT</bcp14> replace the zero-based protocol
+      address. Modbus function 0x06 and function 0x10 with quantity one encode
+      the same single-register write through different field sets and therefore
+      yield different native-command digests. A conduit <bcp14>MUST NOT</bcp14>
+      normalize either form into the other, and authority bound to one form
+      <bcp14>MUST NOT</bcp14> admit the other. DNP3 requests that vary only in
+      an unbound qualifier encoding <bcp14>MUST</bcp14> identify the same
+      operation and yield the same native-command digest when the pinned
+      binding decodes them to the same complete field set. The complete DNP3
+      control octet, operation count, on-time, and off-time are material and
+      <bcp14>MUST</bcp14> be bound.</t>
+      <t>Two-phase DNP3 SELECT and OPERATE and multi-object requests are outside
+      this revision. A later profile admitting them <bcp14>MUST</bcp14> bind
+      both phases to one authorization and state machine, or the complete
+      ordered object set to one digest, respectively.</t>
+      <t>Encoding, projection, transport acceptance, and authority to dispatch
+      are separate claims. A serializer or conduit that successfully produces
+      or accepts native bytes does not authorize those bytes. Mutation of a
+      material action field, plan field, classified native-operation field, or
+      security-relevant context after authorization <bcp14>MUST</bcp14> cause a
+      refusal. A correlation-only field may vary without changing the
+      authorized physical act, but it <bcp14>MUST NOT</bcp14> serve as the
+      attempt reference.</t>
+      <t>This revision deliberately leaves protocol-specific Modbus, DNP3, and
+      vendor command-field profiles to separate deployment bindings. Such a
+      binding <bcp14>MUST</bcp14> identify every material field and its canonical
+      byte representation; it <bcp14>MUST NOT</bcp14> weaken the generic binding
+      above.</t>
+    </section>
+
+    <section anchor="admission"><name>Executor Admission and Refusal Semantics</name>
+      <t>The executor applies the Action Evidence Boundary
+      <xref target="EP-AEB"/> in this order:</t>
+      <ol>
+        <li>Validate the closed action and deterministic actuation plan and
+        require both to be active.</li>
+        <li>Derive and verify action-to-envelope and plan-to-participation
+        containment.</li>
+        <li>Derive the expected outcome policy and require its digest to be
+        inside the human-approved policy bytes.</li>
+        <li>Verify the human authorization over the exact action and plan
+        digests against the pinned profile.</li>
+        <li>Verify every required upstream action-specific command-authority
+        proof, including grant coverage, expiry, and freshness, under
+        relying-party policy.</li>
+        <li>Require the pinned first conduit, executor adapter, meter, Action
+        State signer, admission store, settlement store, and settlement
+        adapter.</li>
+        <li>Atomically reserve the exact execution idempotency key before
+        provider entry.</li>
+      </ol>
+      <t>The execution idempotency key <bcp14>MUST</bcp14> bind the action
+      identifier, action digest, actuation-plan digest, and configured durable
+      admission-domain identifier. Every ingress path, executor instance,
+      handoff, and restart <bcp14>MUST</bcp14> use the same authoritative
+      store. The authority-spend record and provider-attempt record
+      <bcp14>MUST</bcp14> be created together or not at all in one durable,
+      atomic transaction. Executor ownership <bcp14>MUST</bcp14> be fenced so
+      that a losing owner cannot complete provider entry after the fence moves;
+      a lease timeout alone is insufficient. Concurrent reservation failure is
+      <tt>refuse_replay</tt>. Storage unavailability is a refusal before
+      provider entry.</t>
+      <t>A deployment <bcp14>MUST</bcp14> distinguish a failure known to have
+      occurred before provider entry from a failure after provider entry may
+      have occurred. Once provider entry may have occurred, a lost,
+      malformed, conflicting, or exceptional result
+      <bcp14>MUST</bcp14> produce <tt>execution_indeterminate</tt>. The executor
+      <bcp14>MUST</bcp14> preserve or burn the reservation, set
+      <tt>retry_safe</tt> to false, and <bcp14>MUST NOT</bcp14> invoke the same
+      admission again. Authenticated reconciliation is required. A later
+      attempt is a new action with new authority.</t>
+      <t>The <tt>execution_indeterminate</tt> state is GRACE's mapping of the
+      unresolved state in <xref target="OT-COMMAND-AUTHORITY"/>. The consumed
+      authority and provider-attempt record <bcp14>MUST</bcp14> survive a Gate
+      or enforcement-point restart; a power cycle <bcp14>MUST NOT</bcp14>
+      restore consumed authority to unused.</t>
+      <t>Pre-invocation failures use a mechanism-named refusal such as
+      <tt>refuse_action</tt>, <tt>refuse_action_not_active</tt>,
+      <tt>refuse_outside_envelope</tt>, <tt>refuse_outcome_policy</tt>,
+      <tt>refuse_authorization</tt>, or <tt>refuse_adapter_unavailable</tt>.
+      Post-invocation evidence failures use <tt>effect_unconfirmed</tt> and are
+      not retry authorization.</t>
+    </section>
+
+    <section anchor="dispatch"><name>Per-Device Dispatch Records</name>
+      <t>The dispatch request <bcp14>MUST</bcp14> bind the complete action,
+      action digest, envelope digest, actuation-plan digest, plan-step
+      identifier, native-command digest, security-context digest,
+      human-authorization digest, execution idempotency key, and operator.</t>
+      <t>For every device attempt, the implementation <bcp14>MUST</bcp14>
+      preserve the operation, admission, plan-step, device, conduit, and
+      attempt identifiers; native-command, exact native-request, and
+      security-context digests;
+      admission and provider-entry times; command-channel acknowledgment
+      state; provider outcome and evidence digest; and, when available, the
+      observed-effect relation, evidence digest, and observation time. One
+      aggregate success value <bcp14>MUST NOT</bcp14> hide a missing, failed,
+      or unresolved device attempt.</t>
+      <t>The attempt identifier <bcp14>MUST NOT</bcp14> be a protocol
+      correlation field. In particular, an SNMP request-id, Modbus MBAP
+      transaction identifier, or DNP3 application-control sequence number is
+      client-chosen and reusable and does not identify any part of the
+      physical act.</t>
+      <t>A COSA acknowledgment, or an acknowledgment returned by another
+      deployment-pinned executor adapter, <bcp14>MUST</bcp14> bind the event,
+      action, plan, step, dispatch-request, idempotency key, executor identity,
+      provider outcome, and dispatch time, and <bcp14>MUST</bcp14> verify under
+      the pinned executor key. It is downstream evidence about a dispatch that
+      EMILIA has already admitted. It does not authorize the action and does
+      not establish that electrical load changed.</t>
+      <t>A native function that defines no application response is an ordinary
+      protocol case, not proof of failure. After a DNP3
+      <tt>DIRECT_OPERATE_NR</tt> request has crossed provider entry, the attempt
+      is <tt>indeterminate</tt> unless independent authenticated reconciliation
+      establishes the effect. The authority remains consumed and the request
+      <bcp14>MUST NOT</bcp14> be retried under the same admission.</t>
+    </section>
+
+    <section anchor="meter"><name>Meter Statement and Compliance Computation</name>
+      <t>The meter statement <bcp14>MUST</bcp14> bind the meter identifier,
+      event identifier, action digest, exact action window, unit, baseline MW,
+      ordered sequence of timestamped load intervals, measurement class,
+      observation time, and signer key identifier. It <bcp14>MUST</bcp14> verify
+      under a separately pinned meter key.</t>
+      <t>For an observation to be used as independent readback, its source
+      <bcp14>MUST</bcp14> be in a relying-party-pinned control domain distinct
+      from the command-channel source. A status object returned by the same
+      management card, executor, or command conduit is command-channel
+      evidence, even when it uses a different object identifier. It
+      <bcp14>MUST NOT</bcp14> be relabeled as independent effect evidence.</t>
+      <t>The meter statement <bcp14>MUST NOT</bcp14> contain
+      <tt>baseline_method_hash</tt>. Program and tariff rules remain in the
+      authorized action and relying-party policy. This separates a signed
+      measurement-source claim from the rule used to interpret it.</t>
+      <t>The reference computation subtracts average interval load from the
+      signed baseline MW, divides the delivered MW by ordered MW, and marks the
+      event compliant at a profile-selected threshold. A deployment
+      <bcp14>MUST</bcp14> pin the computation and threshold it uses. The result
+      states what follows from the accepted inputs. It does not prove the
+      baseline was economically correct, the readings were physically true,
+      or the event qualifies under a tariff.</t>
+    </section>
+
+    <section anchor="outcome"><name>Partial Execution and Outcome Binding</name>
+      <t>The action's human-approved policy binds source-routed predictions for
+      an executor observation and an independent-observer meter observation.
+      Each Outcome Observation <xref target="EP-OUTCOME"/>
+      <bcp14>MUST</bcp14> bind the authorization record, action digest, CAID,
+      consumption nonce, operation identifier, facility, observation window,
+      source role, source class, and observed effect.</t>
+      <t>The relying party <bcp14>MUST</bcp14> pin source keys, roles, classes,
+      control domains, status and validity, distinctness requirements,
+      observation windows, and maximum attestation delay. A declared control
+      domain is relying-party policy input, not proof of organizational
+      independence.</t>
+      <t>An independent observation is admissible only when its control domain
+      is distinct from the command channel, it verifies under its own pinned
+      key, and its observation time is inside the admitted window. A second
+      object read from the same communications card is in the same control
+      domain and <bcp14>MUST NOT</bcp14> satisfy independent readback. An
+      inadmissible observation and an admissible observation that disagrees
+      are different results and <bcp14>MUST NOT</bcp14> share one stored state.</t>
+      <t>Each device attempt <bcp14>MUST</bcp14> retain one of five states:
+      <tt>not_entered</tt>, <tt>invoking</tt>, <tt>committed</tt>,
+      <tt>proven_not_committed</tt>, or <tt>indeterminate</tt>. A device moves
+      to <tt>invoking</tt> at provider entry. <tt>committed</tt> requires both
+      command-channel evidence and an independently authenticated admissible
+      observation. <tt>proven_not_committed</tt> requires positive evidence
+      from the sending host that the operation did not leave it; absence of an
+      acknowledgment is insufficient. Every other post-entry result is
+      terminal <tt>indeterminate</tt> for that attempt.</t>
+      <t>The command-channel statement and independent observation
+      <bcp14>MUST</bcp14> be stored separately. Reconciliation writes a third
+      record and <bcp14>MUST NOT</bcp14> overwrite either source record. It may
+      resolve the attempt; it never grants permission to redispatch.</t>
+      <t>A restart or ownership handoff while any device is
+      <tt>invoking</tt> or <tt>indeterminate</tt> <bcp14>MUST NOT</bcp14> create
+      new dispatch authority. The replacement owner inherits the existing
+      attempt, first reads the durable admission and attempt history, and does
+      not open a second attempt. A new admission for the same action while an
+      earlier attempt remains indeterminate is refused by default. A deployment
+      that deliberately widens that rule <bcp14>MUST</bcp14> record the widened
+      policy and the new authority; it cannot reuse the first admission.</t>
+      <t>The aggregate result <bcp14>MUST</bcp14> be derived from the complete
+      per-device matrix. While any device remains indeterminate, the aggregate
+      is indeterminate. A command-channel acceptance with an out-of-bounds
+      admissible readback is <tt>effect_observed</tt> and
+      <tt>out_of_bounds</tt>, not <tt>effect_confirmed</tt>. A command-channel
+      rejection with an in-bounds admissible readback is divergent. Missing,
+      stale, wrong-window, same-domain, or otherwise inadmissible readback is
+      <tt>effect_unconfirmed</tt>. These states <bcp14>MUST NOT</bcp14> be
+      collapsed into a generic success, failure, or retry authorization.</t>
+      <t>The minimum control-room view <bcp14>MUST</bcp14> show, per device:
+      what was requested in plant terms; the command-channel result and time;
+      the independent observation and whether it was admissible; each failed
+      admissibility condition; the five-state device result; any observed
+      interlock action; and any requested operator action. Unknown values
+      <bcp14>MUST</bcp14> be shown as unknown rather than as zero or blank.</t>
+      <t>Any summary label shown to an operator <bcp14>MUST</bcp14> be derived
+      from the underlying facts at display time and <bcp14>MUST NOT</bcp14>
+      replace those facts in storage.</t>
+      <t>Settlement admission requires a reconciled, committed result with the
+      profile-selected in-bounds relation. No other state may reach the
+      settlement adapter.</t>
+    </section>
+
+    <section anchor="safety"><name>Independent Safety Boundary</name>
+      <t>Trips, protective relays, emergency shutdowns, branch protection, and
+      hardwired interlocks are outside the GRACE authority and admission path.
+      The upstream command-authority proof
+      <xref target="OT-COMMAND-AUTHORITY"/> does not alter that safety boundary.
+      A GRACE implementation <bcp14>MUST NOT</bcp14> delay, suppress, consume,
+      or condition authority required by an independent safety function. The
+      safety function <bcp14>MUST</bcp14> remain capable of reaching its safe
+      state while the Gate, network, identity service, evidence service, or
+      executor adapter is unavailable.</t>
+      <t>A safety action may be observed and recorded after the fact. Such a
+      record <bcp14>MUST NOT</bcp14> claim that GRACE admitted the safety action
+      or count it as admitted curtailment. A safety trip during an unresolved
+      dispatch also <bcp14>MUST NOT</bcp14> authorize replay of the original
+      admission.</t>
+      <t>GRACE cannot establish that a protective path is independent. A
+      deployment claiming conformance <bcp14>MUST</bcp14> declare each
+      protective path and demonstrate its operation with the Gate, admission
+      store, identity services, and network unavailable. Routing a protective
+      function through the Gate merely to record it violates this section.</t>
+    </section>
+
+    <section anchor="action-state"><name>Action State Signed Statement</name>
+      <t>Before provider entry, a deployment policy may require a signed audit
+      statement over the exact action, plan, authorization, admission, and
+      first-conduit projections. Registering that statement with a
+      transparency service does not authorize dispatch and does not establish
+      later execution or effect.</t>
+      <t>After outcome reconciliation, the profile emits a COSE_Sign1
+      <xref target="RFC9052"/> Action State Signed Statement using
+      <xref target="ACTION-STATE"/> format version 2 and media type
+      <tt>application/agent-action-capsule+json</tt>. The statement binds the
+      action, actuation plan, admission domain, operator, developer,
+      authorization digest, per-device dispatch records, meter digest,
+      constraints evaluated, disposition, and confirmed or unresolved effect.</t>
+      <t>The capsule identifier is derived from canonical capsule bytes. The
+      JSON wrapper, COSE payload, protected headers, key identifier, and
+      statement digest <bcp14>MUST</bcp14> cross-check. The current reference
+      output is an <tt>unregistered_signed_statement</tt>. It is not a SCITT
+      transparency-service registration or proof of ledger inclusion. When a
+      deployment adds SCITT inclusion evidence, that evidence proves only the
+      statement's inclusion under the transparency-service policy.</t>
+    </section>
+
+    <section anchor="settlement"><name>Single-Use Settlement Admission</name>
+      <t>The one-time entitlement key is the injective serialization of
+      <tt>[envelope_id, event_id, meter_payload_digest]</tt> under profile
+      <tt>EP-GRACE-SETTLE-v1</tt>. Every member is required. The meter digest
+      <bcp14>MUST</bcp14> be a lowercase SHA-256 digest of the accepted signed
+      meter body.</t>
+      <t>Only a compliant computation and an in-bounds reconciled outcome may
+      reach the settlement adapter. The settlement store
+      <bcp14>MUST</bcp14> reserve the entitlement atomically before invocation.
+      A duplicate is <tt>settlement_already_consumed</tt>. If invocation begins
+      and its result is unknown, the implementation <bcp14>MUST</bcp14> commit
+      or preserve the reservation and <bcp14>MUST NOT</bcp14> issue another
+      settlement attempt under the same entitlement.</t>
+      <t>This is at-most-one admission to the configured settlement effect in
+      one authoritative state domain. It is not exactly-once physical payment,
+      global double-spend prevention across independent authorities, tariff
+      eligibility, or evidence that funds moved.</t>
+    </section>
+
+    <section anchor="bundle"><name>Proof-of-Curtailment Bundle</name>
+      <t>The <tt>EP-GRACE-PROOF-OF-CURTAILMENT-v1</tt> bundle is a signed,
+      offline-verifiable summary. It binds the action and action digest,
+      envelope digest, baseline-method digest, actuation plan and digest,
+      authorization digest, admission record, native-command projections,
+      per-device attempts, provider-evidence digests, readback-evidence
+      digests, complete device-state matrix, aggregate Outcome Binding result,
+      deterministic compliance result, Action State statement digest, and
+      settlement admission result. Unavailable evidence
+      <bcp14>MUST</bcp14> remain explicit; it <bcp14>MUST NOT</bcp14> be omitted
+      in a way that implies success.</t>
+      <t>Bundle verification establishes integrity and binding relative to the
+      verifier's pinned trust and policy inputs. It does not independently
+      establish any source claim as real-world truth.</t>
+    </section>
+
+    <section anchor="signatures"><name>Artifact Signature Profiles</name>
+      <t>The baseline profile signs canonical artifact bytes with Ed25519. The
+      optional <tt>EP-GRACE-ARTIFACT-SIGNATURE-v2</tt> profile uses a fixed
+      required algorithm list, in order: <tt>Ed25519</tt> and
+      <tt>ML-DSA-65</tt> <xref target="FIPS204"/>. Its signing bytes commit to
+      the complete artifact and the required algorithm list.</t>
+      <t>A v2 verifier <bcp14>MUST</bcp14> require exactly one signature under
+      each independently pinned key and <bcp14>MUST</bcp14> accept only when
+      both signatures verify. Missing algorithms, reordered or narrowed
+      requirements, key substitution, malformed signatures, or an unavailable
+      ML-DSA verifier are refusals. A v1 verifier <bcp14>MUST NOT</bcp14>
+      silently accept a v2 artifact.</t>
+      <t>Hybrid signing provides cryptographic migration evidence. It does not
+      make a software-held key hardware-backed, FIPS validated, deployed, or
+      operationally independent. A deployment claiming the hybrid profile
+      <bcp14>MUST</bcp14> identify and protect both actual signing keys.</t>
+    </section>
+
+    <section anchor="privacy"><name>Privacy Considerations</name>
+      <t>Curtailment records can reveal facility identity, capacity, operating
+      schedules, energy consumption, human approvers, device identifiers, and
+      commercial program terms. Implementations <bcp14>SHOULD</bcp14> minimize
+      portable fields, disclose raw intervals only to parties that require
+      them, use digests when independent recomputation is not required, and
+      apply retention and access policies appropriate to critical-infrastructure
+      data.</t>
+      <t>Selective disclosure or encryption cannot repair an overbroad signed
+      source object. Deployments <bcp14>SHOULD</bcp14> separate public
+      verification material from restricted operational evidence and preserve
+      enough binding information to detect substitution.</t>
+    </section>
+
+    <section anchor="security"><name>Security Considerations</name>
+      <t>The principal attacks are action substitution, envelope overflow,
+      actuation-plan or native-command substitution, stale approval, initiator
+      self-approval, duplicate approvers, split admission domains, bypass
+      paths, redundant-route or replacement-worker replay, executor ownership
+      races, crash or restart after possible provider entry, partial
+      actuation, lost acknowledgment, actuator-key substitution, stale or
+      conflicting readback, meter-key substitution, market-rule smuggling into
+      meter data, observation-source collapse, accidental capture of an
+      independent safety path, wrapper substitution, signature-leg stripping,
+      and duplicate settlement admission. The preceding sections require
+      fail-closed checks or explicit indeterminate states for each.</t>
+      <t>Key compromise remains a trust-root failure. Historical signatures can
+      establish what a key signed; they do not prove who controlled the key or
+      that the signed claim was true. A separately keyed meter under the same
+      operator's control may improve fault isolation but does not create
+      organizational independence.</t>
+      <t>GRACE cannot prove that the selected baseline is fair, a meter is
+      calibrated or untampered, a scheduler has no bypass, a declared control
+      domain is honest, a payment rail moved funds, or an authority's upstream
+      population is complete. Deployment claims <bcp14>MUST</bcp14> state those
+      acceptance roots.</t>
+    </section>
+
+    <section anchor="rdu101-example"><name>Non-Normative RDU101 Worked Example</name>
+      <t>This section is an implementation sketch supplied for review. It is
+      not a protocol requirement and does not report an energized actuation
+      test. The cited hardware characterization is read-only: TEST-01 is
+      complete, TEST-02 remains strictly on hold, and no outlet was
+      de-energized during this work.</t>
+      <t>The example device is a Vertiv Liebert GXT5-3000LVRT2UXLN, rated
+      2700 W, 3000 VA, and 120 V AC, with NEMA 5-20R programmable
+      receptacles. A Liebert RDU101 management card running firmware 1.9.3.0
+      exposes <tt>LIEBERT_GP_PWR.MIB</tt> over SNMPv3 AuthPriv using SHA-1
+      authentication and AES-128 privacy. The proposed action is to de-energize
+      programmable receptacle group 2 through point 4365,
+      <tt>lgpPwrOutputReceptacleControlEntry</tt>, at OID
+      <tt>1.3.6.1.4.1.476.1.42.3.9.20.1.20.1.2.1.4365.2</tt>. Four rows,
+      indices 1 through 4, were present during characterization. The
+      outlet-group identifier is a different object and is not the command
+      target.</t>
+      <t>The worked-example topology consumes the action-specific proof defined
+      by <xref target="OT-COMMAND-AUTHORITY"/> before EMILIA admission and
+      keeps independent observation and safety outside the command path.</t>
+      <figure>
+        <name>Example control and evidence order</name>
+        <artwork type="ascii-art"><![CDATA[
+[OT-COMMAND-AUTHORITY] action-specific proof + proposed action
+                       |
+                       v
+EMILIA exact-action authority + admission + one-time consumption
+                       |
+                       v
+COSA adapter -> RDU101 SNMPv3 SET -> command ACK
+                       |
+                       v
+separate Modbus domain -> independent meter readback
+                       |
+                       v
+EMILIA reconciliation -> Action State -> settlement
+
+REPO / E-stop / branch protection: hardwired outside every path
+]]></artwork>
+      </figure>
+      <t>A Command Authority Envelope conforming to
+      <xref target="OT-COMMAND-AUTHORITY"/> establishes who asked and what that
+      principal authorized the agent to ask for, bound to this action, asset,
+      control verb, and expiry. EMILIA evaluates that proof as an upstream
+      input, binds the exact action and RDU101 projection, and admits and
+      consumes that exact request once before provider entry. Both bindings are
+      per-action and neither is sufficient alone. The COSA
+      adapter then issues the native SNMPv3 operation and returns the RDU101
+      response as downstream command-channel evidence. An SNMP SetResponse
+      means that the management card processed the SET. It does not establish
+      the electrical state of the receptacle or the attached load.</t>
+      <t>The independent readback in this example comes from an instrumented
+      Modbus power meter through a separate channel and control domain from the
+      RDU101. A second object read through the RDU101 remains same-domain
+      command-channel evidence and is not independent readback. The hardwired
+      REPO input, emergency stop, and branch overcurrent device remain outside
+      the upstream command-authority proof
+      <xref target="OT-COMMAND-AUTHORITY"/>, EMILIA, and COSA and continue to
+      operate without them.</t>
+      <dl>
+        <dt>Nominal</dt>
+        <dd>An authenticated accepted acknowledgment plus independent readback
+        within the approved bound yields <tt>in_bounds</tt>,
+        <tt>effect_confirmed</tt>, and <tt>invoked_confirmed</tt> in the
+        <tt>EP-GRACE-PROOF-OF-CURTAILMENT-v1</tt> bundle.</dd>
+        <dt>Degraded communications</dt>
+        <dd>A transport timeout or unavailable channel after possible provider
+        entry yields <tt>degraded_transport_timeout</tt>, reason
+        <tt>channel_unavailable</tt>, <tt>effect_unconfirmed</tt>,
+        <tt>retry_safe=false</tt>, and <tt>not_invoked_refused</tt>.</dd>
+        <dt>Missed bound or discrepant readback</dt>
+        <dd>An accepted acknowledgment with admissible out-of-bounds readback
+        yields <tt>state_mismatch</tt>, <tt>out_of_bounds</tt>,
+        <tt>effect_observed</tt>, and <tt>not_invoked_refused</tt>, not
+        <tt>effect_confirmed</tt>.</dd>
+        <dt>Conflicting telemetry</dt>
+        <dd>A command-channel result and admissible readback that conflict yield
+        <tt>state_mismatch</tt>, <tt>divergent</tt>,
+        <tt>effect_divergent</tt>, and <tt>not_invoked_refused</tt>.</dd>
+        <dt>Unresolved readback</dt>
+        <dd>Missing, stale, same-domain, or otherwise inadmissible readback
+        yields <tt>state_mismatch</tt>, a null observed-effect relation,
+        <tt>effect_unconfirmed</tt>, and <tt>not_invoked_refused</tt>.</dd>
+        <dt>Safety interlock trip</dt>
+        <dd>A hardwired interlock trip is recorded as
+        <tt>safety_interlock_tripped</tt>, <tt>effect_unconfirmed</tt>, and
+        <tt>not_invoked_refused</tt>. It is not an in-bounds GRACE effect, and
+        the same admission is not retried.</dd>
+      </dl>
+      <t>Every non-nominal path stops the same admission. There is no ambient
+      or blind retry across degraded communications, disagreement, unresolved
+      readback, or an independent interlock trip. A subsequent attempt requires
+      a new action, new authorization, and new admission.</t>
+    </section>
+
+    <section anchor="conformance"><name>Conformance Cases</name>
+      <t>A conformance suite for the -01 requirements
+      <bcp14>MUST</bcp14> cover at least:</t>
+      <ol>
+        <li>exact objective, plan, classified native-command, and
+        native-request binding;</li>
+        <li>refusal when a material native-operation field or
+        security-relevant context changes;</li>
+        <li>concurrent duplicate arrival through two ingress paths sharing one
+        durable admission domain;</li>
+        <li>a replacement worker attempting the same operation without being
+        granted fresh authority;</li>
+        <li>a restart known to occur before provider entry;</li>
+        <li>a lost response after provider entry, preserving consumed authority
+        and <tt>retry_safe=false</tt>;</li>
+        <li>partial execution across multiple devices;</li>
+        <li>admissible command acknowledgment and readback that conflict;</li>
+        <li>authenticated reconciliation that resolves an attempt without
+        redispatch;</li>
+        <li>operation of the declared protective path with the Gate, admission
+        store, identity services, and network unavailable;</li>
+        <li>a new executor instance inheriting an indeterminate attempt without
+        second entry or fresh authority;</li>
+        <li>same-domain readback recorded as inadmissible and distinguished from
+        admissible readback that disagrees; and</li>
+        <li>an aggregate that remains indeterminate while any one of several
+        devices is unresolved.</li>
+      </ol>
+      <t>The staged packet validates document integrity and claim boundaries.
+      It does not claim that these thirteen behavioral cases have been
+      implemented or passed.</t>
+    </section>
+
+    <section anchor="implementation"><name>Implementation Status</name>
+      <t>This section records implementation evidence and may be removed before
+      publication as an RFC.</t>
+      <t>The public EMILIA repository <xref target="GRACE-IMPLEMENTATION"/>
+      contains a TypeScript reference circuit
+      for exact action construction, two distinct Class-A approvals, bounded
+      admission, a COSA-labeled simulated actuator, a separately keyed
+      simulated meter, Outcome Binding, an Action State Signed Statement, and
+      one-time settlement admission. The adapters are marked
+      <tt>simulation: true</tt>. The circuit is not evidence of a physical grid
+      event, production COSA integration, utility adoption, meter truth, or an
+      actual payment.</t>
+      <t>The published -00 packet recorded 80 targeted tests across four files
+      and six declared vertical vectors <xref target="GRACE-VECTORS"/>. Those
+      are same-team reference results, not an independent implementation or
+      interoperability claim. They do not validate the new -01 actuation-plan,
+      first-conduit, per-device, durable-domain, safety-boundary, or RDU101
+      requirements.</t>
+      <t>This -01 text is a staged review candidate. Its companion validation
+      checks document integrity and the required claim boundaries. No
+      energized actuation test, production COSA integration, utility
+      deployment, or physical meter validation has been performed for this
+      revision.</t>
+    </section>
+
+    <section anchor="iana"><name>IANA Considerations</name>
+      <t>This document has no IANA actions. The <tt>grid.curtailment</tt> and
+      <tt>EP-GRACE-*</tt> identifiers are profile-local strings and are not
+      entries in an IANA registry.</t>
+    </section>
+  </middle>
+  <back>
+    <references><name>Normative References</name>
+      <reference anchor="BCP14" target="https://www.rfc-editor.org/info/bcp14">
+        <front><title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="IETF"/><date/></front>
+      </reference>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8259.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9052.xml"/>
+      <reference anchor="WEBAUTHN" target="https://www.w3.org/TR/webauthn-2/">
+        <front><title>Web Authentication: An API for accessing Public Key Credentials - Level 2</title>
+          <author><organization>World Wide Web Consortium</organization></author><date year="2021" month="April"/></front>
+      </reference>
+      <reference anchor="FIPS204" target="https://doi.org/10.6028/NIST.FIPS.204">
+        <front><title>Module-Lattice-Based Digital Signature Standard</title>
+          <author><organization>National Institute of Standards and Technology</organization></author><date year="2024" month="August"/></front>
+        <seriesInfo name="FIPS" value="204"/>
+      </reference>
+      <reference anchor="EP-CAID" target="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">
+        <front><title>Canonical Action Identifier: Stable Identity for Material Agent Actions</title>
+          <author fullname="Iman Schrock"/><date year="2026" month="August"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-02"/>
+      </reference>
+      <reference anchor="EP-RECEIPTS" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
+        <front><title>Authorization Receipts for High-Risk Agent Actions</title>
+          <author fullname="Iman Schrock"/><date year="2026" month="August"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-12"/>
+      </reference>
+      <reference anchor="EP-QUORUM" target="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/">
+        <front><title>Multi-Party Quorum Authorization for High-Risk Agent Actions</title>
+          <author fullname="Iman Schrock"/><date year="2026" month="July"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-quorum-03"/>
+      </reference>
+      <reference anchor="EP-AEB" target="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">
+        <front><title>Action Evidence Boundary: Binding Verified Authorization Evidence to Agent Execution</title>
+          <author fullname="Iman Schrock"/><date year="2026" month="August"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-04"/>
+      </reference>
+      <reference anchor="EP-OUTCOME" target="https://datatracker.ietf.org/doc/draft-schrock-ep-outcome-binding/">
+        <front><title>Outcome Binding for High-Risk Agent Actions</title>
+          <author fullname="Iman Schrock"/><date year="2026" month="July"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-outcome-binding-00"/>
+      </reference>
+      <reference anchor="ACTION-STATE" target="https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/">
+        <front><title>An Agent Action Capsule Profile for SCITT</title>
+          <author fullname="Steven Walter Mih"/><date year="2026" month="July"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-02"/>
+      </reference>
+    </references>
+    <references><name>Informative References</name>
+      <reference anchor="OT-COMMAND-AUTHORITY" target="https://datatracker.ietf.org/doc/draft-morrison-ot-command-authority/">
+        <front><title>Consented and Attributable Agent Authority for Operational-Technology Control Actions</title>
+          <author fullname="Blake Morrison"/>
+          <author fullname="Christopher Whiteside"/>
+          <date year="2026" month="August" day="31"/></front>
+        <seriesInfo name="Internet-Draft" value="draft-morrison-ot-command-authority-02"/>
+      </reference>
+      <reference anchor="GRACE-IMPLEMENTATION" target="https://github.com/emiliaprotocol/emilia-protocol/tree/main/lib/grace">
+        <front><title>GRACE Reference Implementation</title>
+          <author><organization>EMILIA Protocol</organization></author><date year="2026"/></front>
+      </reference>
+      <reference anchor="GRACE-VECTORS" target="https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/vectors/grace-mobile-grid.v1.json">
+        <front><title>GRACE Mobile Grid Vertical Composition Vectors</title>
+          <author><organization>EMILIA Protocol</organization></author><date year="2026"/></front>
+      </reference>
+    </references>
+  </back>
+</rfc>

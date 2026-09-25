@@ -1,0 +1,1344 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                             J. D Kintzele
+Expires: 28 March 2027                                  J Diesel NY, LLC
+                                                             B. Morrison
+                                                                D. Dylan
+                                                  Alter Meridian Pty Ltd
+                                                       24 September 2026
+
+
+   GRACE: Evidence-Bound Grid Curtailment Admission, Observation, and
+                         Single-Use Settlement
+               draft-schrock-kintzele-grid-curtailment-01
+
+Abstract
+
+   This document defines GRACE, an application profile for one bounded
+   grid.curtailment action.  EMILIA supplies the exact-action authority
+   and admission spine: it binds an approved objective to a pinned
+   actuation plan, consumes that authority once in a durable admission
+   domain, and preserves unresolved state after possible provider entry.
+   An upstream action-specific command-authority proof is an input to
+   that admission, and neither it nor the admission is sufficient
+   dispatch authority alone.  A deployment-pinned executor adapter
+   returns command-channel evidence, and a separately authenticated
+   meter supplies observed-effect evidence.
+
+   Safety trips, protective relays, emergency shutdowns, and hardwired
+   interlocks remain outside GRACE and continue to operate when the
+   Gate, network, identity service, or evidence service is unavailable.
+   Missing or ambiguous post-entry evidence is preserved as
+   indeterminate and cannot authorize blind retry.
+
+   GRACE verifies signed inputs and deterministic computations.  It does
+   not establish physical meter truth, baseline correctness, tariff
+   eligibility, actual payment, complete mediation, or a physical grid
+   deployment.  An optional hybrid artifact-signature profile combines
+   Ed25519 with ML-DSA-65 and requires both signatures to verify.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+
+
+Schrock, et al.           Expires 28 March 2027                 [Page 1]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 28 March 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+     1.1.  Requirements Language . . . . . . . . . . . . . . . . . .   3
+   2.  Terminology and Roles . . . . . . . . . . . . . . . . . . . .   3
+   3.  Trust and Deployment Inputs . . . . . . . . . . . . . . . . .   5
+   4.  Curtailment Action  . . . . . . . . . . . . . . . . . . . . .   6
+   5.  Participation Envelope and Containment  . . . . . . . . . . .   7
+   6.  Human Authorization . . . . . . . . . . . . . . . . . . . . .   7
+   7.  Actuation Plan and Native Command Binding . . . . . . . . . .   8
+   8.  Executor Admission and Refusal Semantics  . . . . . . . . . .  10
+   9.  Per-Device Dispatch Records . . . . . . . . . . . . . . . . .  11
+   10. Meter Statement and Compliance Computation  . . . . . . . . .  12
+   11. Partial Execution and Outcome Binding . . . . . . . . . . . .  13
+   12. Independent Safety Boundary . . . . . . . . . . . . . . . . .  14
+   13. Action State Signed Statement . . . . . . . . . . . . . . . .  15
+   14. Single-Use Settlement Admission . . . . . . . . . . . . . . .  15
+   15. Proof-of-Curtailment Bundle . . . . . . . . . . . . . . . . .  16
+   16. Artifact Signature Profiles . . . . . . . . . . . . . . . . .  16
+   17. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  17
+   18. Security Considerations . . . . . . . . . . . . . . . . . . .  17
+   19. Non-Normative RDU101 Worked Example . . . . . . . . . . . . .  18
+   20. Conformance Cases . . . . . . . . . . . . . . . . . . . . . .  20
+   21. Implementation Status . . . . . . . . . . . . . . . . . . . .  20
+   22. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  21
+   23. Normative References  . . . . . . . . . . . . . . . . . . . .  21
+   24. Informative References  . . . . . . . . . . . . . . . . . . .  23
+
+
+
+Schrock, et al.           Expires 28 March 2027                 [Page 2]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  23
+
+1.  Introduction
+
+   A curtailment instruction can cross several administrative and
+   technical boundaries before it changes electrical load.
+   Authentication of the dispatcher alone does not answer whether the
+   exact event fit a customer-approved participation envelope, whether
+   the required people approved it, whether the executor admitted it
+   only once, or whether later measurement refers to the same action.
+
+   GRACE keeps those questions separate.  It defines an exact action, a
+   bounded envelope, a pinned actuation plan, pre-dispatch authorization
+   and admission checks, native-command projection at the first conduit,
+   per-device dispatch records, separately authenticated execution and
+   measurement claims, outcome reconciliation, and single-use settlement
+   admission.  Each relying party selects and pins its own issuers,
+   keys, policies, adapters, clocks, conduits, and state stores.
+
+   The profile does not define a demand-response tariff, a baseline
+   methodology, a physical meter, a scheduler, a safety system, or a
+   payment rail.  Those systems remain authoritative for their own
+   claims.  GRACE binds their signed inputs to one action and records
+   the result of deterministic verification.  It does not prove that
+   every physical effect passed through the Gate.
+
+1.1.  Requirements Language
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   BCP 14 is indexed by the RFC Editor at [BCP14].
+
+2.  Terminology and Roles
+
+   Participation Envelope  A customer-approved, finite set of power,
+      energy, count, duration, notice, and time-window bounds.  The
+      current profile identifier is EP-FLEX-ENVELOPE-v2.
+
+   Curtailment Action  The closed EP-GRACE-CURTAILMENT-ACTION-v1 object
+      that identifies one requested power-reduction event.
+
+   Admission  The executor-side decision that the exact action may enter
+      effect custody once.  Admission is not evidence that the effect
+      occurred.
+
+
+
+Schrock, et al.           Expires 28 March 2027                 [Page 3]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   Command Authority Envelope  An upstream, action-specific proof
+      binding a principal's grant to an agent, asset, control verb, and
+      expiry.  GRACE verifies it as an input to admission; the envelope
+      does not consume GRACE admission.
+
+   Actuation Plan  A deterministic, digest-bound projection of the
+      approved curtailment objective into ordered device steps.  The
+      plan is not a dispatch acknowledgment or effect observation.
+
+   Native Command Projection  The canonical physical-act fields and
+      conduit-established context derived for one plan step at the first
+      conduit.  Exact request bytes are retained separately as dispatch
+      evidence.
+
+   First Conduit  The earliest deployment-pinned boundary at which a
+      GRACE plan step becomes a device- or protocol-specific command.
+
+   Durable Admission Domain  The authoritative state domain that
+      atomically reserves, enters, and terminalizes one action across
+      every redundant route, worker, handoff, and restart in the
+      protected deployment.
+
+   Actuator  The deployment-pinned adapter that attempts the physical or
+      scheduler operation and signs an acknowledgment.
+
+   Provider Outcome  The command-channel result reported by the executor
+      or downstream provider.  It does not establish the physical
+      effect.
+
+   Meter  A separately pinned observation source.  A meter statement is
+      a signed source claim, not proof of physical truth or calibration.
+
+   Independent Readback  An authenticated observation from a relying-
+      party-pinned source in a control domain distinct from the command-
+      channel source.  A declared control-domain identifier is policy
+      input, not proof of organizational independence.
+
+   Observed-Effect Relation  The deterministic relation between an
+      accepted observation and the effect bound in the approved action,
+      such as in_bounds, out_of_bounds, divergent, or unresolved.
+
+   Safety Function  A trip, protective relay, emergency shutdown, or
+      interlock whose ability to reach a safe state does not depend on
+      GRACE admission.
+
+   Settlement Effect  A deployment-supplied downstream operation invoked
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                 [Page 4]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+      only after the required evidence reconciles.  GRACE controls at-
+      most-one invocation attempt for one entitlement key.  It does not
+      define or prove payment.
+
+3.  Trust and Deployment Inputs
+
+   A conforming deployment MUST independently configure the accepted
+   action, envelope, plan, and native-projection versions; approver
+   roster and threshold; WebAuthn relying-party identifier and origins;
+   accepted upstream command-authority profiles; actuator and meter
+   keys; source roles and control-domain identifiers; validity and
+   freshness policy; permitted devices, conduits, and command families;
+   durable admission-domain identifier; Action State signing key;
+   execution store; settlement store; and settlement adapter.
+   Presenter-supplied trust anchors or policy values MUST NOT influence
+   acceptance.
+
+   When a deployment uses a proof from [OT-COMMAND-AUTHORITY], it MUST
+   verify that proof under relying-party policy and evaluate its
+   freshness before admission.  The proof MUST bind the signed grant to
+   the specific agent, asset, control verb, and expiry and MUST be
+   checked for coverage against this specific action, not merely against
+   the breadth of the grant.  It establishes who asked and what that
+   principal authorized the agent to ask for.  GRACE then admits that
+   exact request once and consumes the admission.  Both bindings are
+   action-specific; neither is sufficient alone.  The upstream proof
+   does not consume GRACE admission and does not establish execution or
+   physical effect.
+
+   The deployment MUST maintain an effect-path inventory covering every
+   route capable of reaching the controlled devices.  Every route for
+   which the deployment claims GRACE enforcement MUST use one configured
+   durable admission-domain identifier and one authoritative admission
+   state domain.  Redundant ingress, replacement workers, handoffs, and
+   restarts MUST NOT mint fresh authority.
+
+   The effect-path inventory MUST enumerate paths by the conduit that
+   reaches the device, not only by the application intending to use it.
+   Engineering laptops, vendor maintenance tooling, local HMI panels,
+   and serial drops behind a gateway are separate paths when they can
+   reach the device.  An inventory containing only routes already
+   mediated by GRACE is incomplete.
+
+
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                 [Page 5]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   Every protected effect path for which a deployment claims GRACE
+   enforcement MUST pass through the same admission boundary.  An
+   implementation that can be bypassed may still emit evidence, but it
+   MUST NOT claim complete enforcement.  A receipt, log entry, or
+   transparency inclusion cannot establish the absence of an unmodeled
+   bypass path.
+
+4.  Curtailment Action
+
+   The action MUST be a closed JSON object [RFC8259] that can be
+   serialized with JCS [RFC8785].  Unknown, duplicated, missing, or non-
+   canonicalizable members are a refusal.  Its required members are:
+
+   {
+     "@version": "EP-GRACE-CURTAILMENT-ACTION-v1",
+     "action_id": "grace:event:...",
+     "action_type": "grid.curtailment",
+     "effect_class": "power_reduction",
+     "facility": "facility:...",
+     "target_delta_kw": "18000",
+     "window": {
+       "not_before": "2026-07-15T20:15:00.000Z",
+       "not_after": "2026-07-15T21:45:00.000Z"
+     },
+     "issued_at": "2026-07-15T20:00:00.000Z",
+     "expires_at": "2026-07-15T21:45:00.000Z",
+     "baseline_method_hash": "sha256:...",
+     "control_mode": "human_on_the_loop",
+     "envelope_id": "grace:envelope:...",
+     "requested_by": "ep:agent:grid-coordinator"
+   }
+
+   target_delta_kw MUST be a positive decimal string with at most three
+   fractional digits.  Timestamps MUST be UTC RFC 3339 timestamps with
+   millisecond precision.  issued_at MUST precede window.not_before.
+   expires_at MUST equal window.not_after.  control_mode is either
+   human_on_the_loop or human_in_the_loop.  The baseline-method digest
+   commits to the program-selected method; it does not validate that
+   method.
+
+   The verifier MUST derive the action digest and CAID [EP-CAID] from
+   the exact controlled-action projection.  A supplied identifier MUST
+   NOT replace that derivation.
+
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                 [Page 6]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+5.  Participation Envelope and Containment
+
+   The action names one EP-FLEX-ENVELOPE-v2 envelope.  The relying party
+   MUST obtain that envelope from its pinned authority and MUST verify
+   that it applies to the facility, program, and evaluation time.  The
+   bounds object contains positive max_event_mw, max_period_mwh,
+   max_events, max_event_hours, min_notice_minutes, and a participation
+   window.
+
+   Before dispatch, the executor MUST compare power with power, energy
+   with energy, count with count, and duration with duration.  The
+   action's MW cannot exceed max_event_mw.  Its MW multiplied by window
+   duration cannot exceed the remaining period MWh budget.  One more
+   event and its duration must fit the remaining event and event-hour
+   budgets.  Its notice and window must fit the envelope.
+
+   A required bound or present spent-accounting value that is missing,
+   negative, or unparseable is a refusal.  An omitted spent value
+   asserts zero prior settled usage; deployments that cannot make that
+   assertion MUST return indeterminate rather than use zero.
+
+   For native-device dispatch, the relying-party policy MUST also
+   identify the participating device set, allowed native command
+   families, permitted conduits, and plan validity interval.  A plan
+   step for a device, command family, conduit, or time outside that
+   participation boundary MUST be refused before provider entry.
+
+6.  Human Authorization
+
+   GRACE does not define credential-to-person or credential-to-device
+   enrollment.  The relying party MUST state the verified identity-layer
+   result and freshness policy it requires.  Without that result, GRACE
+   may report that a configured credential signed an input, but it MUST
+   NOT infer a natural person from the credential alone.
+
+   The relying party selects an ordered approver roster and a threshold
+   using the action-bound authorization evidence in [EP-RECEIPTS].  Each
+   accepted approval MUST be a Class-A WebAuthn [WEBAUTHN] signoff over
+   a context that binds the controlled action digest, actuation-plan
+   digest, presentation digest, policy digest, initiator, approver,
+   roster index, threshold, validity window, relying-party profile, app,
+   platform, credential, and device key.
+
+
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                 [Page 7]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   The verifier MUST require user verification, the pinned relying-party
+   identifier and origin, distinct approvers, distinct device and
+   credential identifiers, initiator exclusion, the exact roster index,
+   and the selected threshold.  The quorum semantics are those of
+   [EP-QUORUM].  A valid signature that does not match the relying
+   party's current roster, policy, action, presentation, or ceremony
+   window is a refusal.
+
+7.  Actuation Plan and Native Command Binding
+
+   A deployment that projects one curtailment action into one or more
+   device commands MUST derive a deterministic actuation plan before
+   admission.  The plan MUST bind the exact action digest, envelope
+   digest, plan validity interval, participating devices, ordered steps,
+   and the configured durable admission-domain identifier.  The complete
+   plan MUST be canonicalized and hashed.  Human authorization and the
+   admission record MUST bind that plan digest.
+
+   Each plan step MUST contain at least a step identifier, device
+   identifier, conduit identifier, command-family identifier, native
+   command digest, security-context digest, and order within the plan.
+   The native command digest covers the complete, canonically encoded
+   set of material fields and conduit-established context defined by the
+   pinned transport binding.  The security-context digest covers the
+   security-relevant addressing, protocol, authentication, role, and
+   transport context used to interpret the request.  A per-attempt
+   native request digest separately covers the exact bytes sent.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                 [Page 8]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   {
+     "@version": "EP-GRACE-ACTUATION-PLAN-v1",
+     "plan_id": "grace:plan:...",
+     "action_id": "grace:event:...",
+     "action_digest": "sha256:...",
+     "envelope_digest": "sha256:...",
+     "admission_domain_id": "grace:admission-domain:...",
+     "validity": {
+       "not_before": "2026-07-15T20:15:00.000Z",
+       "not_after": "2026-07-15T21:45:00.000Z"
+     },
+     "steps": [{
+       "step_id": "step:1",
+       "order": 1,
+       "device_id": "device:...",
+       "conduit_id": "conduit:...",
+       "command_family": "deployment-pinned-family",
+       "native_command_digest": "sha256:...",
+       "security_context_digest": "sha256:..."
+     }]
+   }
+
+   The plan and native command are separate bindings.  The plan is the
+   protocol-independent projection of the approved objective.  The
+   native command is derived at the first conduit under one pinned
+   transport binding.  Binding only the plan leaves the device operation
+   unbound; binding only the command leaves the approved objective
+   unbound.
+
+   A transport binding MUST classify every field in a native request
+   into exactly one of four classes: material, conduit context,
+   correlation only, or fixed or derived.  Material and conduit context
+   contribute to the native-command digest.  Correlation-only and fixed-
+   or-derived fields do not.  A field that cannot be classified, or a
+   malformed request, MUST be refused before admission and before
+   evidence lookup.
+
+   Device identity MUST come from conduit-established link or session
+   context, not from a sender assertion on the wire.  A wire value
+   inconsistent with that context MUST be refused without resolving the
+   disagreement in favor of either source.  A Modbus unit identifier of
+   zero MUST be refused by a device-scoped binding because it may denote
+   broadcast rather than one device.
+
+   The classification binds the physical operation, not a display label
+   or the incidental number of octets carrying it.  A Modbus 4xxxxx or
+   0xxxxx label MUST NOT replace the zero-based protocol address.
+   Modbus function 0x06 and function 0x10 with quantity one encode the
+
+
+
+Schrock, et al.           Expires 28 March 2027                 [Page 9]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   same single-register write through different field sets and therefore
+   yield different native-command digests.  A conduit MUST NOT normalize
+   either form into the other, and authority bound to one form MUST NOT
+   admit the other.  DNP3 requests that vary only in an unbound
+   qualifier encoding MUST identify the same operation and yield the
+   same native-command digest when the pinned binding decodes them to
+   the same complete field set.  The complete DNP3 control octet,
+   operation count, on-time, and off-time are material and MUST be
+   bound.
+
+   Two-phase DNP3 SELECT and OPERATE and multi-object requests are
+   outside this revision.  A later profile admitting them MUST bind both
+   phases to one authorization and state machine, or the complete
+   ordered object set to one digest, respectively.
+
+   Encoding, projection, transport acceptance, and authority to dispatch
+   are separate claims.  A serializer or conduit that successfully
+   produces or accepts native bytes does not authorize those bytes.
+   Mutation of a material action field, plan field, classified native-
+   operation field, or security-relevant context after authorization
+   MUST cause a refusal.  A correlation-only field may vary without
+   changing the authorized physical act, but it MUST NOT serve as the
+   attempt reference.
+
+   This revision deliberately leaves protocol-specific Modbus, DNP3, and
+   vendor command-field profiles to separate deployment bindings.  Such
+   a binding MUST identify every material field and its canonical byte
+   representation; it MUST NOT weaken the generic binding above.
+
+8.  Executor Admission and Refusal Semantics
+
+   The executor applies the Action Evidence Boundary [EP-AEB] in this
+   order:
+
+   1.  Validate the closed action and deterministic actuation plan and
+       require both to be active.
+
+   2.  Derive and verify action-to-envelope and plan-to-participation
+       containment.
+
+   3.  Derive the expected outcome policy and require its digest to be
+       inside the human-approved policy bytes.
+
+   4.  Verify the human authorization over the exact action and plan
+       digests against the pinned profile.
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 10]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   5.  Verify every required upstream action-specific command-authority
+       proof, including grant coverage, expiry, and freshness, under
+       relying-party policy.
+
+   6.  Require the pinned first conduit, executor adapter, meter, Action
+       State signer, admission store, settlement store, and settlement
+       adapter.
+
+   7.  Atomically reserve the exact execution idempotency key before
+       provider entry.
+
+   The execution idempotency key MUST bind the action identifier, action
+   digest, actuation-plan digest, and configured durable admission-
+   domain identifier.  Every ingress path, executor instance, handoff,
+   and restart MUST use the same authoritative store.  The authority-
+   spend record and provider-attempt record MUST be created together or
+   not at all in one durable, atomic transaction.  Executor ownership
+   MUST be fenced so that a losing owner cannot complete provider entry
+   after the fence moves; a lease timeout alone is insufficient.
+   Concurrent reservation failure is refuse_replay.  Storage
+   unavailability is a refusal before provider entry.
+
+   A deployment MUST distinguish a failure known to have occurred before
+   provider entry from a failure after provider entry may have occurred.
+   Once provider entry may have occurred, a lost, malformed,
+   conflicting, or exceptional result MUST produce
+   execution_indeterminate.  The executor MUST preserve or burn the
+   reservation, set retry_safe to false, and MUST NOT invoke the same
+   admission again.  Authenticated reconciliation is required.  A later
+   attempt is a new action with new authority.
+
+   The execution_indeterminate state is GRACE's mapping of the
+   unresolved state in [OT-COMMAND-AUTHORITY].  The consumed authority
+   and provider-attempt record MUST survive a Gate or enforcement-point
+   restart; a power cycle MUST NOT restore consumed authority to unused.
+
+   Pre-invocation failures use a mechanism-named refusal such as
+   refuse_action, refuse_action_not_active, refuse_outside_envelope,
+   refuse_outcome_policy, refuse_authorization, or
+   refuse_adapter_unavailable.  Post-invocation evidence failures use
+   effect_unconfirmed and are not retry authorization.
+
+9.  Per-Device Dispatch Records
+
+   The dispatch request MUST bind the complete action, action digest,
+   envelope digest, actuation-plan digest, plan-step identifier, native-
+   command digest, security-context digest, human-authorization digest,
+   execution idempotency key, and operator.
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 11]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   For every device attempt, the implementation MUST preserve the
+   operation, admission, plan-step, device, conduit, and attempt
+   identifiers; native-command, exact native-request, and security-
+   context digests; admission and provider-entry times; command-channel
+   acknowledgment state; provider outcome and evidence digest; and, when
+   available, the observed-effect relation, evidence digest, and
+   observation time.  One aggregate success value MUST NOT hide a
+   missing, failed, or unresolved device attempt.
+
+   The attempt identifier MUST NOT be a protocol correlation field.  In
+   particular, an SNMP request-id, Modbus MBAP transaction identifier,
+   or DNP3 application-control sequence number is client-chosen and
+   reusable and does not identify any part of the physical act.
+
+   A COSA acknowledgment, or an acknowledgment returned by another
+   deployment-pinned executor adapter, MUST bind the event, action,
+   plan, step, dispatch-request, idempotency key, executor identity,
+   provider outcome, and dispatch time, and MUST verify under the pinned
+   executor key.  It is downstream evidence about a dispatch that EMILIA
+   has already admitted.  It does not authorize the action and does not
+   establish that electrical load changed.
+
+   A native function that defines no application response is an ordinary
+   protocol case, not proof of failure.  After a DNP3 DIRECT_OPERATE_NR
+   request has crossed provider entry, the attempt is indeterminate
+   unless independent authenticated reconciliation establishes the
+   effect.  The authority remains consumed and the request MUST NOT be
+   retried under the same admission.
+
+10.  Meter Statement and Compliance Computation
+
+   The meter statement MUST bind the meter identifier, event identifier,
+   action digest, exact action window, unit, baseline MW, ordered
+   sequence of timestamped load intervals, measurement class,
+   observation time, and signer key identifier.  It MUST verify under a
+   separately pinned meter key.
+
+   For an observation to be used as independent readback, its source
+   MUST be in a relying-party-pinned control domain distinct from the
+   command-channel source.  A status object returned by the same
+   management card, executor, or command conduit is command-channel
+   evidence, even when it uses a different object identifier.  It MUST
+   NOT be relabeled as independent effect evidence.
+
+   The meter statement MUST NOT contain baseline_method_hash.  Program
+   and tariff rules remain in the authorized action and relying-party
+   policy.  This separates a signed measurement-source claim from the
+   rule used to interpret it.
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 12]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   The reference computation subtracts average interval load from the
+   signed baseline MW, divides the delivered MW by ordered MW, and marks
+   the event compliant at a profile-selected threshold.  A deployment
+   MUST pin the computation and threshold it uses.  The result states
+   what follows from the accepted inputs.  It does not prove the
+   baseline was economically correct, the readings were physically true,
+   or the event qualifies under a tariff.
+
+11.  Partial Execution and Outcome Binding
+
+   The action's human-approved policy binds source-routed predictions
+   for an executor observation and an independent-observer meter
+   observation.  Each Outcome Observation [EP-OUTCOME] MUST bind the
+   authorization record, action digest, CAID, consumption nonce,
+   operation identifier, facility, observation window, source role,
+   source class, and observed effect.
+
+   The relying party MUST pin source keys, roles, classes, control
+   domains, status and validity, distinctness requirements, observation
+   windows, and maximum attestation delay.  A declared control domain is
+   relying-party policy input, not proof of organizational independence.
+
+   An independent observation is admissible only when its control domain
+   is distinct from the command channel, it verifies under its own
+   pinned key, and its observation time is inside the admitted window.
+   A second object read from the same communications card is in the same
+   control domain and MUST NOT satisfy independent readback.  An
+   inadmissible observation and an admissible observation that disagrees
+   are different results and MUST NOT share one stored state.
+
+   Each device attempt MUST retain one of five states: not_entered,
+   invoking, committed, proven_not_committed, or indeterminate.  A
+   device moves to invoking at provider entry. committed requires both
+   command-channel evidence and an independently authenticated
+   admissible observation. proven_not_committed requires positive
+   evidence from the sending host that the operation did not leave it;
+   absence of an acknowledgment is insufficient.  Every other post-entry
+   result is terminal indeterminate for that attempt.
+
+   The command-channel statement and independent observation MUST be
+   stored separately.  Reconciliation writes a third record and MUST NOT
+   overwrite either source record.  It may resolve the attempt; it never
+   grants permission to redispatch.
+
+   A restart or ownership handoff while any device is invoking or
+   indeterminate MUST NOT create new dispatch authority.  The
+   replacement owner inherits the existing attempt, first reads the
+   durable admission and attempt history, and does not open a second
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 13]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   attempt.  A new admission for the same action while an earlier
+   attempt remains indeterminate is refused by default.  A deployment
+   that deliberately widens that rule MUST record the widened policy and
+   the new authority; it cannot reuse the first admission.
+
+   The aggregate result MUST be derived from the complete per-device
+   matrix.  While any device remains indeterminate, the aggregate is
+   indeterminate.  A command-channel acceptance with an out-of-bounds
+   admissible readback is effect_observed and out_of_bounds, not
+   effect_confirmed.  A command-channel rejection with an in-bounds
+   admissible readback is divergent.  Missing, stale, wrong-window,
+   same-domain, or otherwise inadmissible readback is
+   effect_unconfirmed.  These states MUST NOT be collapsed into a
+   generic success, failure, or retry authorization.
+
+   The minimum control-room view MUST show, per device: what was
+   requested in plant terms; the command-channel result and time; the
+   independent observation and whether it was admissible; each failed
+   admissibility condition; the five-state device result; any observed
+   interlock action; and any requested operator action.  Unknown values
+   MUST be shown as unknown rather than as zero or blank.
+
+   Any summary label shown to an operator MUST be derived from the
+   underlying facts at display time and MUST NOT replace those facts in
+   storage.
+
+   Settlement admission requires a reconciled, committed result with the
+   profile-selected in-bounds relation.  No other state may reach the
+   settlement adapter.
+
+12.  Independent Safety Boundary
+
+   Trips, protective relays, emergency shutdowns, branch protection, and
+   hardwired interlocks are outside the GRACE authority and admission
+   path.  The upstream command-authority proof [OT-COMMAND-AUTHORITY]
+   does not alter that safety boundary.  A GRACE implementation MUST NOT
+   delay, suppress, consume, or condition authority required by an
+   independent safety function.  The safety function MUST remain capable
+   of reaching its safe state while the Gate, network, identity service,
+   evidence service, or executor adapter is unavailable.
+
+   A safety action may be observed and recorded after the fact.  Such a
+   record MUST NOT claim that GRACE admitted the safety action or count
+   it as admitted curtailment.  A safety trip during an unresolved
+   dispatch also MUST NOT authorize replay of the original admission.
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 14]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   GRACE cannot establish that a protective path is independent.  A
+   deployment claiming conformance MUST declare each protective path and
+   demonstrate its operation with the Gate, admission store, identity
+   services, and network unavailable.  Routing a protective function
+   through the Gate merely to record it violates this section.
+
+13.  Action State Signed Statement
+
+   Before provider entry, a deployment policy may require a signed audit
+   statement over the exact action, plan, authorization, admission, and
+   first-conduit projections.  Registering that statement with a
+   transparency service does not authorize dispatch and does not
+   establish later execution or effect.
+
+   After outcome reconciliation, the profile emits a COSE_Sign1
+   [RFC9052] Action State Signed Statement using [ACTION-STATE] format
+   version 2 and media type application/agent-action-capsule+json.  The
+   statement binds the action, actuation plan, admission domain,
+   operator, developer, authorization digest, per-device dispatch
+   records, meter digest, constraints evaluated, disposition, and
+   confirmed or unresolved effect.
+
+   The capsule identifier is derived from canonical capsule bytes.  The
+   JSON wrapper, COSE payload, protected headers, key identifier, and
+   statement digest MUST cross-check.  The current reference output is
+   an unregistered_signed_statement.  It is not a SCITT transparency-
+   service registration or proof of ledger inclusion.  When a deployment
+   adds SCITT inclusion evidence, that evidence proves only the
+   statement's inclusion under the transparency-service policy.
+
+14.  Single-Use Settlement Admission
+
+   The one-time entitlement key is the injective serialization of
+   [envelope_id, event_id, meter_payload_digest] under profile EP-GRACE-
+   SETTLE-v1.  Every member is required.  The meter digest MUST be a
+   lowercase SHA-256 digest of the accepted signed meter body.
+
+   Only a compliant computation and an in-bounds reconciled outcome may
+   reach the settlement adapter.  The settlement store MUST reserve the
+   entitlement atomically before invocation.  A duplicate is
+   settlement_already_consumed.  If invocation begins and its result is
+   unknown, the implementation MUST commit or preserve the reservation
+   and MUST NOT issue another settlement attempt under the same
+   entitlement.
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 15]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   This is at-most-one admission to the configured settlement effect in
+   one authoritative state domain.  It is not exactly-once physical
+   payment, global double-spend prevention across independent
+   authorities, tariff eligibility, or evidence that funds moved.
+
+15.  Proof-of-Curtailment Bundle
+
+   The EP-GRACE-PROOF-OF-CURTAILMENT-v1 bundle is a signed, offline-
+   verifiable summary.  It binds the action and action digest, envelope
+   digest, baseline-method digest, actuation plan and digest,
+   authorization digest, admission record, native-command projections,
+   per-device attempts, provider-evidence digests, readback-evidence
+   digests, complete device-state matrix, aggregate Outcome Binding
+   result, deterministic compliance result, Action State statement
+   digest, and settlement admission result.  Unavailable evidence MUST
+   remain explicit; it MUST NOT be omitted in a way that implies
+   success.
+
+   Bundle verification establishes integrity and binding relative to the
+   verifier's pinned trust and policy inputs.  It does not independently
+   establish any source claim as real-world truth.
+
+16.  Artifact Signature Profiles
+
+   The baseline profile signs canonical artifact bytes with Ed25519.
+   The optional EP-GRACE-ARTIFACT-SIGNATURE-v2 profile uses a fixed
+   required algorithm list, in order: Ed25519 and ML-DSA-65 [FIPS204].
+   Its signing bytes commit to the complete artifact and the required
+   algorithm list.
+
+   A v2 verifier MUST require exactly one signature under each
+   independently pinned key and MUST accept only when both signatures
+   verify.  Missing algorithms, reordered or narrowed requirements, key
+   substitution, malformed signatures, or an unavailable ML-DSA verifier
+   are refusals.  A v1 verifier MUST NOT silently accept a v2 artifact.
+
+   Hybrid signing provides cryptographic migration evidence.  It does
+   not make a software-held key hardware-backed, FIPS validated,
+   deployed, or operationally independent.  A deployment claiming the
+   hybrid profile MUST identify and protect both actual signing keys.
+
+
+
+
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 16]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+17.  Privacy Considerations
+
+   Curtailment records can reveal facility identity, capacity, operating
+   schedules, energy consumption, human approvers, device identifiers,
+   and commercial program terms.  Implementations SHOULD minimize
+   portable fields, disclose raw intervals only to parties that require
+   them, use digests when independent recomputation is not required, and
+   apply retention and access policies appropriate to critical-
+   infrastructure data.
+
+   Selective disclosure or encryption cannot repair an overbroad signed
+   source object.  Deployments SHOULD separate public verification
+   material from restricted operational evidence and preserve enough
+   binding information to detect substitution.
+
+18.  Security Considerations
+
+   The principal attacks are action substitution, envelope overflow,
+   actuation-plan or native-command substitution, stale approval,
+   initiator self-approval, duplicate approvers, split admission
+   domains, bypass paths, redundant-route or replacement-worker replay,
+   executor ownership races, crash or restart after possible provider
+   entry, partial actuation, lost acknowledgment, actuator-key
+   substitution, stale or conflicting readback, meter-key substitution,
+   market-rule smuggling into meter data, observation-source collapse,
+   accidental capture of an independent safety path, wrapper
+   substitution, signature-leg stripping, and duplicate settlement
+   admission.  The preceding sections require fail-closed checks or
+   explicit indeterminate states for each.
+
+   Key compromise remains a trust-root failure.  Historical signatures
+   can establish what a key signed; they do not prove who controlled the
+   key or that the signed claim was true.  A separately keyed meter
+   under the same operator's control may improve fault isolation but
+   does not create organizational independence.
+
+   GRACE cannot prove that the selected baseline is fair, a meter is
+   calibrated or untampered, a scheduler has no bypass, a declared
+   control domain is honest, a payment rail moved funds, or an
+   authority's upstream population is complete.  Deployment claims MUST
+   state those acceptance roots.
+
+
+
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 17]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+19.  Non-Normative RDU101 Worked Example
+
+   This section is an implementation sketch supplied for review.  It is
+   not a protocol requirement and does not report an energized actuation
+   test.  The cited hardware characterization is read-only: TEST-01 is
+   complete, TEST-02 remains strictly on hold, and no outlet was de-
+   energized during this work.
+
+   The example device is a Vertiv Liebert GXT5-3000LVRT2UXLN, rated 2700
+   W, 3000 VA, and 120 V AC, with NEMA 5-20R programmable receptacles.
+   A Liebert RDU101 management card running firmware 1.9.3.0 exposes
+   LIEBERT_GP_PWR.MIB over SNMPv3 AuthPriv using SHA-1 authentication
+   and AES-128 privacy.  The proposed action is to de-energize
+   programmable receptacle group 2 through point 4365,
+   lgpPwrOutputReceptacleControlEntry, at OID
+   1.3.6.1.4.1.476.1.42.3.9.20.1.20.1.2.1.4365.2.  Four rows, indices 1
+   through 4, were present during characterization.  The outlet-group
+   identifier is a different object and is not the command target.
+
+   The worked-example topology consumes the action-specific proof
+   defined by [OT-COMMAND-AUTHORITY] before EMILIA admission and keeps
+   independent observation and safety outside the command path.
+
+   [OT-COMMAND-AUTHORITY] action-specific proof + proposed action
+                          |
+                          v
+   EMILIA exact-action authority + admission + one-time consumption
+                          |
+                          v
+   COSA adapter -> RDU101 SNMPv3 SET -> command ACK
+                          |
+                          v
+   separate Modbus domain -> independent meter readback
+                          |
+                          v
+   EMILIA reconciliation -> Action State -> settlement
+
+   REPO / E-stop / branch protection: hardwired outside every path
+
+                Figure 1: Example control and evidence order
+
+   A Command Authority Envelope conforming to [OT-COMMAND-AUTHORITY]
+   establishes who asked and what that principal authorized the agent to
+   ask for, bound to this action, asset, control verb, and expiry.
+   EMILIA evaluates that proof as an upstream input, binds the exact
+   action and RDU101 projection, and admits and consumes that exact
+   request once before provider entry.  Both bindings are per-action and
+   neither is sufficient alone.  The COSA adapter then issues the native
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 18]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   SNMPv3 operation and returns the RDU101 response as downstream
+   command-channel evidence.  An SNMP SetResponse means that the
+   management card processed the SET.  It does not establish the
+   electrical state of the receptacle or the attached load.
+
+   The independent readback in this example comes from an instrumented
+   Modbus power meter through a separate channel and control domain from
+   the RDU101.  A second object read through the RDU101 remains same-
+   domain command-channel evidence and is not independent readback.  The
+   hardwired REPO input, emergency stop, and branch overcurrent device
+   remain outside the upstream command-authority proof
+   [OT-COMMAND-AUTHORITY], EMILIA, and COSA and continue to operate
+   without them.
+
+   Nominal  An authenticated accepted acknowledgment plus independent
+      readback within the approved bound yields in_bounds,
+      effect_confirmed, and invoked_confirmed in the EP-GRACE-PROOF-OF-
+      CURTAILMENT-v1 bundle.
+
+   Degraded communications  A transport timeout or unavailable channel
+      after possible provider entry yields degraded_transport_timeout,
+      reason channel_unavailable, effect_unconfirmed, retry_safe=false,
+      and not_invoked_refused.
+
+   Missed bound or discrepant readback  An accepted acknowledgment with
+      admissible out-of-bounds readback yields state_mismatch,
+      out_of_bounds, effect_observed, and not_invoked_refused, not
+      effect_confirmed.
+
+   Conflicting telemetry  A command-channel result and admissible
+      readback that conflict yield state_mismatch, divergent,
+      effect_divergent, and not_invoked_refused.
+
+   Unresolved readback  Missing, stale, same-domain, or otherwise
+      inadmissible readback yields state_mismatch, a null observed-
+      effect relation, effect_unconfirmed, and not_invoked_refused.
+
+   Safety interlock trip  A hardwired interlock trip is recorded as
+      safety_interlock_tripped, effect_unconfirmed, and
+      not_invoked_refused.  It is not an in-bounds GRACE effect, and the
+      same admission is not retried.
+
+   Every non-nominal path stops the same admission.  There is no ambient
+   or blind retry across degraded communications, disagreement,
+   unresolved readback, or an independent interlock trip.  A subsequent
+   attempt requires a new action, new authorization, and new admission.
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 19]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+20.  Conformance Cases
+
+   A conformance suite for the -01 requirements MUST cover at least:
+
+   1.   exact objective, plan, classified native-command, and native-
+        request binding;
+
+   2.   refusal when a material native-operation field or security-
+        relevant context changes;
+
+   3.   concurrent duplicate arrival through two ingress paths sharing
+        one durable admission domain;
+
+   4.   a replacement worker attempting the same operation without being
+        granted fresh authority;
+
+   5.   a restart known to occur before provider entry;
+
+   6.   a lost response after provider entry, preserving consumed
+        authority and retry_safe=false;
+
+   7.   partial execution across multiple devices;
+
+   8.   admissible command acknowledgment and readback that conflict;
+
+   9.   authenticated reconciliation that resolves an attempt without
+        redispatch;
+
+   10.  operation of the declared protective path with the Gate,
+        admission store, identity services, and network unavailable;
+
+   11.  a new executor instance inheriting an indeterminate attempt
+        without second entry or fresh authority;
+
+   12.  same-domain readback recorded as inadmissible and distinguished
+        from admissible readback that disagrees; and
+
+   13.  an aggregate that remains indeterminate while any one of several
+        devices is unresolved.
+
+   The staged packet validates document integrity and claim boundaries.
+   It does not claim that these thirteen behavioral cases have been
+   implemented or passed.
+
+21.  Implementation Status
+
+   This section records implementation evidence and may be removed
+   before publication as an RFC.
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 20]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   The public EMILIA repository [GRACE-IMPLEMENTATION] contains a
+   TypeScript reference circuit for exact action construction, two
+   distinct Class-A approvals, bounded admission, a COSA-labeled
+   simulated actuator, a separately keyed simulated meter, Outcome
+   Binding, an Action State Signed Statement, and one-time settlement
+   admission.  The adapters are marked simulation: true.  The circuit is
+   not evidence of a physical grid event, production COSA integration,
+   utility adoption, meter truth, or an actual payment.
+
+   The published -00 packet recorded 80 targeted tests across four files
+   and six declared vertical vectors [GRACE-VECTORS].  Those are same-
+   team reference results, not an independent implementation or
+   interoperability claim.  They do not validate the new -01 actuation-
+   plan, first-conduit, per-device, durable-domain, safety-boundary, or
+   RDU101 requirements.
+
+   This -01 text is a staged review candidate.  Its companion validation
+   checks document integrity and the required claim boundaries.  No
+   energized actuation test, production COSA integration, utility
+   deployment, or physical meter validation has been performed for this
+   revision.
+
+22.  IANA Considerations
+
+   This document has no IANA actions.  The grid.curtailment and EP-
+   GRACE-* identifiers are profile-local strings and are not entries in
+   an IANA registry.
+
+23.  Normative References
+
+   [ACTION-STATE]
+              Mih, S. W., "An Agent Action Capsule Profile for SCITT",
+              Work in Progress, Internet-Draft, draft-mih-scitt-agent-
+              action-capsule-02, July 2026,
+              <https://datatracker.ietf.org/doc/draft-mih-scitt-agent-
+              action-capsule/>.
+
+   [BCP14]    IETF, "Key words for use in RFCs to Indicate Requirement
+              Levels", <https://www.rfc-editor.org/info/bcp14>.
+
+   [EP-AEB]   Schrock, I., "Action Evidence Boundary: Binding Verified
+              Authorization Evidence to Agent Execution", Work in
+              Progress, Internet-Draft, draft-schrock-action-evidence-
+              boundary-04, August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-action-
+              evidence-boundary/>.
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 21]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   [EP-CAID]  Schrock, I., "Canonical Action Identifier: Stable Identity
+              for Material Agent Actions", Work in Progress, Internet-
+              Draft, draft-schrock-canonical-action-identifier-02,
+              August 2026, <https://datatracker.ietf.org/doc/draft-
+              schrock-canonical-action-identifier/>.
+
+   [EP-OUTCOME]
+              Schrock, I., "Outcome Binding for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-outcome-binding-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              outcome-binding/>.
+
+   [EP-QUORUM]
+              Schrock, I., "Multi-Party Quorum Authorization for High-
+              Risk Agent Actions", Work in Progress, Internet-Draft,
+              draft-schrock-ep-quorum-03, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              quorum/>.
+
+   [EP-RECEIPTS]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-12, August 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-receipts/>.
+
+   [FIPS204]  National Institute of Standards and Technology, "Module-
+              Lattice-Based Digital Signature Standard", FIPS 204,
+              August 2024, <https://doi.org/10.6028/NIST.FIPS.204>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8259]  Bray, T., Ed., "The JavaScript Object Notation (JSON) Data
+              Interchange Format", STD 90, RFC 8259,
+              DOI 10.17487/RFC8259, December 2017,
+              <https://www.rfc-editor.org/info/rfc8259>.
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 22]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+   [RFC9052]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
+              Structures and Process", STD 96, RFC 9052,
+              DOI 10.17487/RFC9052, August 2022,
+              <https://www.rfc-editor.org/info/rfc9052>.
+
+   [WEBAUTHN] World Wide Web Consortium, "Web Authentication: An API for
+              accessing Public Key Credentials - Level 2", April 2021,
+              <https://www.w3.org/TR/webauthn-2/>.
+
+24.  Informative References
+
+   [GRACE-IMPLEMENTATION]
+              EMILIA Protocol, "GRACE Reference Implementation", 2026,
+              <https://github.com/emiliaprotocol/emilia-
+              protocol/tree/main/lib/grace>.
+
+   [GRACE-VECTORS]
+              EMILIA Protocol, "GRACE Mobile Grid Vertical Composition
+              Vectors", 2026, <https://github.com/emiliaprotocol/emilia-
+              protocol/blob/main/conformance/vectors/grace-mobile-
+              grid.v1.json>.
+
+   [OT-COMMAND-AUTHORITY]
+              Morrison, B. and C. Whiteside, "Consented and Attributable
+              Agent Authority for Operational-Technology Control
+              Actions", Work in Progress, Internet-Draft, draft-
+              morrison-ot-command-authority-02, 31 August 2026,
+              <https://datatracker.ietf.org/doc/draft-morrison-ot-
+              command-authority/>.
+
+Authors' Addresses
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+   Justin D Kintzele
+   J Diesel NY, LLC
+   United States of America
+   Email: jkintzele@jdieselny.com
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 23]
+
+Internet-Draft              GRACE Curtailment             September 2026
+
+
+   Blake Morrison
+   Alter Meridian Pty Ltd
+   Australia
+   Email: blake@truealter.com
+
+
+   Drew Dylan
+   Alter Meridian Pty Ltd
+   Australia
+   Email: drew@truealter.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock, et al.           Expires 28 March 2027                [Page 24]

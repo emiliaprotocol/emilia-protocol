@@ -68,6 +68,11 @@
       "evidence_paths": ["docs/SOC2-CONTROL-MAPPING.md"]
     },
     {
+      "tag": "EP-GRACE-ACTUATION-PLAN-v1",
+      "status": "spec_only",
+      "evidence_paths": ["standards/staged/NEXT-GRID-CURTAILMENT-01/REVIEW-SOURCE/draft-schrock-kintzele-grid-curtailment-01.xml"]
+    },
+    {
       "tag": "EP-HAC-v1",
       "status": "spec_only",
       "evidence_paths": ["standards/posted/draft-schrock-human-authorization-binding-00.xml"]

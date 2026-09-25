@@ -66,9 +66,9 @@ meter, not the packet.**
 ```
         ┌──────────────────────────── settlement $ ─────────────────────────────┐
         │                                                                        │
-   1. AUTHORIZE ──▶ 2. VERIFY & GATE ──▶ 3. SHED ──▶ 4. MEASURE ──▶ 5. PROVE ──▶ 6. SETTLE
-     (EMILIA)          (EMILIA)          (COSA)     (attested      (EMILIA)      (EMILIA)
-                                                      meter)
+   1. AUTHORIZE ──▶ 2. VERIFY & GATE ──▶ 3. SHED ──▶ 4. MEASURE ──▶ 5. RECONCILE ──▶ 6. SETTLE
+     (EMILIA)          (EMILIA)        (executor)   (independent       (EMILIA)        (EMILIA)
+                                                     meter)
 ```
 
 1. **Authorize (EMILIA).** A **market-authorized party** (ISO, utility, aggregator/CSP, or the
@@ -82,24 +82,28 @@ meter, not the packet.**
    posture changes *only* against a valid, unexpired, in-scope order. A spoofed or stale order is
    rejected, *and* the operator can prove it only ever acted on a legitimate one. Protects both sides.
 
-3. **Shed (COSA — your engine).** The authorized target becomes scheduler actions: flip interactive
-   inference to **cache-first** (your COGOBJ reuse + semantic dedup), **defer** batch and training
-   jobs, **cap GPU clocks** on non-critical work — while a life-safety / contractual lane never sheds.
-   Your `priority_marker = sha256(receipt)` lives here as the capability token gating the scheduler.
+3. **Shed (deployment-pinned executor; COSA is the reference adapter).** Only after EMILIA admits
+   and consumes the exact-action authority does the executor project the target into scheduler or
+   device commands. COSA can flip interactive inference to **cache-first**, **defer** batch and
+   training jobs, or **cap GPU clocks** on non-critical work. Its signed acknowledgment is dispatch
+   evidence; it is not authorization and does not establish the physical effect.
 
-4. **Measure (attested meter — your hardware).** Signed power telemetry from a revenue-grade meter /
-   smart PDU, signed at the source and Merkle-anchored so it can't be backfilled or cherry-picked.
-   The serious version of your trusted-edge instinct.
+4. **Measure (independent attested meter).** Signed power telemetry comes from a revenue-grade meter
+   or smart PDU in a separate control domain, signed at the source and Merkle-anchored so it cannot
+   be backfilled or cherry-picked.
 
-5. **Prove (EMILIA).** Delivered = baseline − actual, computed against a **pinned method** (see below).
+5. **Reconcile and prove (EMILIA).** EMILIA preserves the executor acknowledgment and independent
+   meter statement as separate evidence, computes delivered = baseline − actual against a **pinned
+   method**, and records unresolved or divergent outcomes without creating authority to retry.
 
 6. **Settle (EMILIA).** One **Proof-of-Curtailment Bundle** — the authorization receipt + the
    operator's acknowledgment + the attested telemetry + the computed kW·h — all offline-verifiable.
    The ISO/utility pays against *proof*, not self-report. Over-claiming a shed you didn't deliver
    becomes detectable.
 
-**COSA moves the megawatts. EMILIA proves the move was authorized and delivered.** Neither of us has
-the product alone — that's what makes it a real partnership.
+**EMILIA is the authority, admission, and evidence spine. COSA is a valuable executor adapter behind
+that boundary.** The meter independently establishes observed effect, and GRACE composes the three
+without turning any one acknowledgment into a broader claim.
 
 ---
 
@@ -127,13 +131,14 @@ Two of the wilder branches are interesting but would sink the pitch if we led wi
 
 ---
 
-## The demo (5 minutes, and your hardware is the star)
+## The demo (5 minutes, with each boundary visible)
 
 One multi-GPU node + a smart PDU on a live wattage graph + the controller + an EMILIA verifier + a
-COSA cache: grid authority Face-ID-approves "shed 700 W for 10 min" → controller verifies offline →
-COSA flips to cache-first, pauses the batch job, caps clocks → **the wattage line visibly drops** →
-window expires, posture auto-reverts → emit the bundle, verify offline. Then the money shots: tamper
-the wattage log → verification **fails**; replay a spoofed order → **refused**.
+COSA or equivalent executor adapter: grid authority Face-ID-approves "shed 700 W for 10 min" →
+EMILIA verifies and admits the exact action once → the adapter projects the admitted action into
+native commands → **the wattage line visibly drops** → independent readback is reconciled → the
+window expires and posture auto-reverts → emit the bundle, verify offline. Then the money shots:
+tamper the wattage log → verification **fails**; replay a spoofed order → **refused**.
 
 **This isn't slideware.** A runnable reference of exactly this loop already lives at
 `examples/grace/proof_of_curtailment.py` in the EP repo — it issues the order, sheds, measures via an
@@ -145,10 +150,11 @@ attacks all refusing. `python3 proof_of_curtailment.py` and watch.
 
 ## Working model & standards alignment
 
-- **Layers and ownership.** COSA owns the shed + facility-edge metering (Apache-2.0). EMILIA owns
-  authorize + verify + prove + settle (already Apache-2.0). **The interface between them is the EP
-  receipt — no proprietary API.** The shed actuator is pluggable (COSA is the reference backend; any
-  scheduler that honors the interface works).
+- **Layers and ownership.** EMILIA owns the open authority substrate and the Gate enforcement,
+  admission, consumption, and reconciliation path. COSA/J Diesel retains its scheduler, actuator,
+  and integration implementation. The executor is pluggable: COSA can be a reference adapter, and
+  any deployment-pinned scheduler that implements the same exact-action dispatch and evidence
+  contract can occupy that role. The independent meter remains a separate trust domain.
 - **Revenue (open-core, no split needed).** Both layers stay open-source; each party monetizes
   services on its own side — COSA on compute optimization, EMILIA on the managed issuer / approver
   directory / compliance-evidence + settlement pipeline. No joint entity required to start; the
@@ -159,9 +165,9 @@ attacks all refusing. `python3 proof_of_curtailment.py` and watch.
   profile that references the IETF draft normatively. Parallel engagement: Justin to grid/utility
   bodies, Iman to IETF — **cross-reference, don't compete**, so EMILIA stays *the* authorization
   layer rather than one of several.
-- **Commitment (reputational, not legal).** Both layers ship open-source under Apache-2.0 before
-  either commercializes; the COSA-shed ↔ EMILIA-authorize interface stays the open EP receipt; neither
-  party ships a "GRACE-compatible" product without implementing the full receipt profile.
+- **Commitment (reputational, not legal).** GRACE remains a jointly authored open profile. Neither
+  party ships a "GRACE-compatible" product without implementing the full authority, admission,
+  executor-evidence, independent-readback, and reconciliation profile.
 
 ## Rough timeline
 
@@ -189,10 +195,10 @@ attacks all refusing. `python3 proof_of_curtailment.py` and watch.
 graceful curtailment. The receipt inside it is **Proof-of-Curtailment**: GRACE is the event, the
 receipt is the proof.
 
-Friday: bring your shed view and your facility-edge metering view; we'll bring the authorize + prove
-+ settle side. The goal isn't to debate the vision — it's to lock the receipt profile and the demo
-and start building. This is one of the strongest protocol-vertical fits we've seen, and it's yours as
-much as ours. Let's go.
+Friday: bring your actuator and facility-control view; we'll bring the authority, admission,
+reconciliation, and settlement spine. The goal isn't to debate the vision — it's to lock the receipt
+profile and the demo and start building. This is one of the strongest protocol-vertical fits we've
+seen, and it's yours as much as ours. Let's go.
 
 *— Iman, EMILIA Protocol*
 
