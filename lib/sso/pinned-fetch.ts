@@ -23,6 +23,7 @@
 import https from 'node:https';
 import type * as dnsPromises from 'node:dns/promises';
 import { validateSsoProviderUrl } from './url-policy.js';
+import { pinnedLookup } from '../net/public-address.js';
 
 const MAX_RESPONSE_BYTES = 1024 * 1024; // discovery/JWKS/token responses are tiny; cap defensively
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -74,7 +75,7 @@ export async function safePinnedFetch(
 
   const url = new URL(target);
   const method = (init.method || 'GET').toUpperCase();
-  const { address, family } = check;
+  const { address } = check;
 
   return new Promise((resolve, reject) => {
     const req = https.request(
@@ -87,7 +88,7 @@ export async function safePinnedFetch(
         method,
         headers: { ...(init.headers || {}), Host: url.host },
         // Pin the connection to the already-validated IP — no rebind possible.
-        lookup: (_hostname, _options, cb) => cb(null, address, family || 4),
+        lookup: pinnedLookup(address),
         timeout: init.timeoutMs || DEFAULT_TIMEOUT_MS,
       },
       (res) => {

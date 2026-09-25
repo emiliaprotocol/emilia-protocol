@@ -17,26 +17,16 @@ import https from 'node:https';
 import { lookup } from 'node:dns/promises';
 import { getServiceClient } from '@/lib/supabase';
 import { logger } from '../logger.js';
+import { isNonPublicIpLiteral, isPublicAddress, pinnedLookup } from '../net/public-address.js';
 
 // ── SSRF Protection ─────────────────────────────────────────────────────────
 
-/** Private/reserved IP ranges that must not be targeted by webhooks. */
-const PRIVATE_RANGES = [
-  /^127\./,
-  /^10\./,
-  /^172\.(1[6-9]|2\d|3[01])\./,
-  /^192\.168\./,
-  /^169\.254\./,
-  /^0\./,
-  /^::1$/,
-  /^fc/i,
-  /^fd/i,
-  /^fe80/i,
-];
-
 /**
- * Check whether a hostname resolves to a private/reserved IP or is a
- * well-known internal hostname. Used to prevent SSRF via webhook URLs.
+ * Check whether a hostname is a well-known internal name or a non-public IP
+ * literal. Used to prevent SSRF via webhook URLs. IP classification is an
+ * allowlist (lib/net/public-address.ts): a deny-list of private ranges missed
+ * the IPv6 families that carry an IPv4 target (NAT64, 6to4, IPv4-compatible)
+ * and the unspecified address `::`, which connects to the local host.
  *
  * @param {string} hostname
  * @returns {boolean}
@@ -44,17 +34,12 @@ const PRIVATE_RANGES = [
 function isPrivateHost(hostname: string): boolean {
   if (['localhost', '0.0.0.0'].includes(hostname)) return true;
   if (hostname.endsWith('.internal') || hostname.endsWith('.local')) return true;
-  const host = hostname.replace(/^\[|\]$/g, '').replace(/%.*$/, '').toLowerCase();
-  const mapped = host.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  const candidates = mapped ? [host, mapped[1]] : [host];
-  return candidates.some((h) => PRIVATE_RANGES.some(r => r.test(h)));
+  return isNonPublicIpLiteral(hostname);
 }
 
-/** Check a resolved IP literal against the private/reserved ranges. */
+/** Check a resolved address; anything that is not public unicast is refused. */
 function isPrivateIp(ip: string): boolean {
-  // Normalize IPv4-mapped IPv6 (e.g. ::ffff:169.254.169.254) to its v4 form.
-  const v4 = ip.replace(/^::ffff:/i, '');
-  return PRIVATE_RANGES.some(r => r.test(v4)) || PRIVATE_RANGES.some(r => r.test(ip));
+  return !isPublicAddress(ip);
 }
 
 /**
@@ -213,11 +198,10 @@ export function computeSignature(secret: string, timestamp: number, payload: any
  *
  * @param {URL} url the validated https URL
  * @param {string} pinnedAddress the validated public IP to connect to
- * @param {number} pinnedFamily 4 or 6
  * @param {{ headers: object, body: string, timeoutMs: number }} opts
  * @returns {Promise<{ status:number, ok:boolean, body:string }>}
  */
-function deliverToPinnedAddress(url: URL, pinnedAddress: string, pinnedFamily: number, { headers, body, timeoutMs }: any): Promise<any> {
+function deliverToPinnedAddress(url: URL, pinnedAddress: string, { headers, body, timeoutMs }: any): Promise<any> {
   return new Promise((resolve, reject) => {
     const req = https.request(
       {
@@ -230,7 +214,7 @@ function deliverToPinnedAddress(url: URL, pinnedAddress: string, pinnedFamily: n
         headers: { ...headers, Host: url.host },
         // Pin the connection: force resolution to the already-validated IP so no
         // second, independent DNS lookup can rebind to an internal address.
-        lookup: (_hostname, _options, cb) => cb(null, pinnedAddress, pinnedFamily || 4),
+        lookup: pinnedLookup(pinnedAddress),
         timeout: timeoutMs,
       },
       (res) => {
@@ -400,7 +384,6 @@ async function attemptDelivery(supabase: any, endpoint: any, delivery: any): Pro
     const response = await deliverToPinnedAddress(
       validated.parsed,
       pinned.address,
-      pinned.family,
       {
         headers: {
           'Content-Type': 'application/json',

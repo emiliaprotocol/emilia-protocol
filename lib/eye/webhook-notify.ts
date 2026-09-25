@@ -63,6 +63,7 @@
  */
 
 import { logger } from '../logger.js';
+import { isNonPublicIpLiteral } from '../net/public-address.js';
 
 // ── Status ordering ───────────────────────────────────────────────────────────
 // Mirrors EYE_STATUSES severity order. 'clear' is index 0 and never fires.
@@ -79,32 +80,13 @@ const DEFAULT_TIMEOUT_MS = 8000;
 // Operator-configured URL is server-trusted, but we still refuse private /
 // internal targets so a misconfiguration (or a poisoned env) can't be used to
 // probe internal infrastructure.
-const PRIVATE_RANGES = [
-  /^127\./,
-  /^10\./,
-  /^172\.(1[6-9]|2\d|3[01])\./,
-  /^192\.168\./,
-  /^169\.254\./,
-  /^0\./,
-  /^::1$/,
-  /^fc/i,
-  /^fd/i,
-  /^fe80/i,
-];
-
 function isPrivateHost(hostname) {
   if (['localhost', '0.0.0.0'].includes(hostname)) return true;
   if (hostname.endsWith('.internal') || hostname.endsWith('.local')) return true;
-  // URL.hostname returns IPv6 literals BRACKETED (e.g. "[::1]") and may carry a
-  // "%zone" suffix. Strip both and lowercase before range-testing — otherwise
-  // loopback (::1), ULA (fc00::/7) and link-local (fe80::/10) IPv6 webhook
-  // targets would slip past the guard, since the regexes never match "[…]".
-  const host = hostname.replace(/^\[|\]$/g, '').replace(/%.*$/, '').toLowerCase();
-  // IPv4-mapped/compat IPv6 (e.g. ::ffff:127.0.0.1) must be judged on the
-  // embedded IPv4 address as well.
-  const mapped = host.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-  const candidates = mapped ? [host, mapped[1]] : [host];
-  return candidates.some((h) => PRIVATE_RANGES.some((r) => r.test(h)));
+  // IP literals (URL.hostname keeps IPv6 brackets) are judged by allowlist in
+  // lib/net/public-address.ts: loopback, private, link-local and the IPv6
+  // families that embed an IPv4 target (NAT64, 6to4, IPv4-compatible) all fail.
+  return isNonPublicIpLiteral(hostname);
 }
 
 /**

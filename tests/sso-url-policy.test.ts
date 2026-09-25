@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { validateOidcRedirectUri, validateSsoProviderUrl } from '../lib/sso/url-policy.js';
 
-const publicLookup = async () => [{ address: '203.0.113.10', family: 4 }];
+const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
 const privateLookup = async () => [{ address: '10.0.0.7', family: 4 }];
 
 describe('SSO provider URL policy', () => {
@@ -69,6 +69,33 @@ describe('SSO provider URL policy', () => {
     expect(result.error).toContain('blocked or private');
   });
 
+  // GHSA-c6v8-gfwf-wcgh: IPv6 forms that reach an IPv4 target or the local host.
+  it.each([
+    'https://[64:ff9b::a9fe:a9fe]/latest/meta-data/',
+    'https://[64:ff9b::10.0.0.1]/sso',
+    'https://[64:ff9b:1::a00:1]/sso',
+    'https://[2002:7f00:1::]/sso',
+    'https://[::10.0.0.1]/sso',
+    'https://[::]/sso',
+  ])('rejects IPv6 transition/unspecified literal %s', async (url) => {
+    const result = await validateSsoProviderUrl(url, 'provider', { lookup: publicLookup });
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('blocked or private');
+  });
+
+  it.each([
+    ['NAT64', '64:ff9b::a9fe:a9fe'],
+    ['6to4', '2002:7f00:1::'],
+    ['IPv4-compatible', '::127.0.0.1'],
+    ['unspecified', '::'],
+  ])('rejects a hostname that resolves to a %s address', async (_kind, address) => {
+    const result = await validateSsoProviderUrl('https://idp.attacker.test/sso', 'oidc_issuer', {
+      lookup: async () => [{ address, family: 6 }],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('resolves to a blocked or private host');
+  });
+
   it('rejects a hostname that resolves to an IPv4-mapped IPv6 private address', async () => {
     const result = await validateSsoProviderUrl('https://idp.attacker.test/sso', 'oidc_issuer', {
       lookup: async () => [{ address: '::ffff:169.254.169.254', family: 6 }],
@@ -79,14 +106,14 @@ describe('SSO provider URL policy', () => {
 
   it('still accepts a normal public https provider host', async () => {
     const result = await validateSsoProviderUrl('https://idp.example.com/sso/', 'oidc_issuer', {
-      lookup: async () => [{ address: '203.0.113.10', family: 4 }],
+      lookup: async () => [{ address: '93.184.216.34', family: 4 }],
     });
     expect(result.valid).toBe(true);
     expect(result.url).toBe('https://idp.example.com/sso');
   });
 
   it('does not misclassify a genuine public IPv6 that contains an ffff group', async () => {
-    const result = await validateSsoProviderUrl('https://[2001:db8::ffff:a9fe:a9fe]/sso', 'provider', {
+    const result = await validateSsoProviderUrl('https://[2606:4700::ffff:a9fe:a9fe]/sso', 'provider', {
       lookup: publicLookup,
     });
     expect(result.valid).toBe(true);

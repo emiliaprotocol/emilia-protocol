@@ -13,6 +13,7 @@
 
 import net from 'node:net';
 import { lookup as dnsLookup } from 'node:dns/promises';
+import { isPublicAddress } from '../net/public-address.js';
 import { getGitHubToken } from '@/lib/env';
 
 /**
@@ -169,36 +170,13 @@ function normalizeHostname(hostname: unknown): string {
     .toLowerCase();
 }
 
+// Allowlist classification (lib/net/public-address.ts): only public unicast
+// passes, so IPv6 families that carry an IPv4 target (NAT64, 6to4,
+// IPv4-compatible) are refused along with the private ranges.
 function isPrivateIp(hostname: string): boolean {
   const host = normalizeHostname(hostname);
-  const ipVersion = net.isIP(host);
-  if (ipVersion === 4) {
-    const [a, b] = host.split('.').map((p) => Number(p));
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      a >= 224
-    );
-  }
-  if (ipVersion === 6) {
-    const mapped = host.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
-    if (mapped) return isPrivateIp(mapped[1]);
-    return (
-      host === '::' ||
-      host === '::1' ||
-      host.startsWith('fc') ||
-      host.startsWith('fd') ||
-      host.startsWith('fe80:') ||
-      host.startsWith('ff')
-    );
-  }
-  return false;
+  if (!net.isIP(host)) return false;
+  return !isPublicAddress(host);
 }
 
 function isBlockedHostname(hostname: string): boolean {
@@ -224,7 +202,7 @@ async function resolvesPublicly(hostname: string): Promise<boolean> {
     const addresses = Array.isArray(records)
       ? records.map((r) => r.address).filter(Boolean)
       : [records?.address].filter(Boolean);
-    return addresses.length > 0 && addresses.every((addr) => !isPrivateIp(addr));
+    return addresses.length > 0 && addresses.every((addr) => isPublicAddress(addr));
   } catch {
     return false;
   }
