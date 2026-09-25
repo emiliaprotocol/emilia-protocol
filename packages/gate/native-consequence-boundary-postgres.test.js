@@ -12,7 +12,7 @@ import test from 'node:test';
 import { digestAeb } from '@emilia-protocol/verify/aeb-adapter-contract';
 import { AEB_NATIVE_AUTHORIZATION_GATEWAY_KEY_VERSION, AEB_NATIVE_AUTHORIZATION_PINS_VERSION, AEB_NATIVE_AUTHORIZATION_SOURCE_PIN_VERSION, AEB_NATIVE_AUTHORIZATION_STATUS_VERSION, issueAebNativeAuthorizationHandoff, } from '@emilia-protocol/verify/aeb';
 import { AEB_CONSUMPTION_DDL, AEB_CONSUMPTION_SQL, createPostgresAebDurableConsumptionStore, } from './aeb-consumption-store.js';
-import { createNativeConsequenceBoundary, nativeConsequenceBoundaryAttemptReservationKeys, nativeConsequenceBoundaryReservationKey, } from './consequence-boundary.js';
+import { consequenceBoundaryActionFenceHolderKey, consequenceBoundaryRecoveryClaimKey, createNativeConsequenceBoundary, nativeConsequenceBoundaryAttemptReservationKeys, nativeConsequenceBoundaryReservationKey, } from './consequence-boundary.js';
 const TENANT = 'tenant:acme';
 const RELYING_PARTY = 'rp:payments';
 const EXECUTOR = 'executor:gate-1';
@@ -453,7 +453,10 @@ test('an unauthorized restart reconciliation leaves every reservation held', asy
     assert.equal(db.operation(keys.operation)?.state, 'RESERVED');
     assert.equal(db.operation(keys.authority)?.state, 'RESERVED');
     assert.equal(db.operation(keys.holder)?.state, 'RESERVED');
-    assert.equal([...attempts.rows.values()][0]?.state, 'INDETERMINATE');
+    // recover() authenticated custody of the attempt, so its terminal record is
+    // written first (R2); the store's claim authorizer then refused every row,
+    // so the fence stays closed until an authorized reconcile finishes.
+    assert.equal([...attempts.rows.values()][0]?.state, 'COMMITTED');
 });
 test('after a restart, reconciliation to FAILED burns the authorization and releases the action fence', async () => {
     const db = fakePostgres();
@@ -623,6 +626,7 @@ test('PG5: a transient release error after a pre-entry refusal is recovered afte
         attempt: first.attempt,
         outcome: { state: 'FAILED', evidence: failed(1), reason: 'not_found' },
         recovery_authorization: 'recovery:approved',
+        mode: 'pre_entry',
     });
     assert.equal(recovered.state, 'REFUSED');
     assert.equal(recovered.reason, 'attempt_never_entered_provider');
@@ -692,7 +696,13 @@ test('a recovery claim scope is validated and passed to the authorizer unchanged
         recoveryOperationKey: 'aeb-native-operation:sha256:' + '0'.repeat(64),
         reservation: 'operation',
     };
+    // R5: a scope names exactly one row; any other key is refused before the
+    // authorizer runs.
     assert.equal(await store.claimReservation('aeb-native-attempt-operation:missing', 'x', scope), false);
+    assert.equal(claims.length, 0);
+    const scopedKey = consequenceBoundaryRecoveryClaimKey(scope);
+    assert.match(scopedKey, /^aeb-native-attempt-operation:sha256:[a-f0-9]{64}$/);
+    assert.equal(await store.claimReservation(scopedKey, 'x', scope), false);
     assert.deepEqual(claims[0]?.scope, scope);
     assert.equal(Object.isFrozen(claims[0]?.scope), true);
     await assert.rejects(store.claimReservation('k', 'x', { ...scope, reservation: 'everything' }), /recovery claim scope is invalid/);
@@ -708,3 +718,83 @@ test('a recovery claim scope is validated and passed to the authorizer unchanged
     assert.equal(claims[1]?.scope, undefined);
     assert.equal(Object.hasOwn(claims[1], 'scope'), false);
 });
+test('R5 PGB: a credential bound to one attempt cannot claim another attempt\'s live holder row', async () => {
+    // Regression for PGB (real PostgreSQL 17 in round 2): an authorizer bound to
+    // scope.attemptId, as the README advised, approved a claim on another
+    // attempt's live holder, which was then released and a second provider
+    // call followed.
+    const db = fakePostgres();
+    const f = nativeFixture();
+    const attempts = attemptStore();
+    const atProvider = deferredSignal();
+    const providerGo = deferredSignal();
+    let calls = 0;
+    const live = boundary(f, pgStore(db), attempts, async () => {
+        calls += 1;
+        if (calls === 1) {
+            atProvider.resolve();
+            await providerGo.promise;
+        }
+        return { state: 'EXECUTED', evidence: evidence(calls), result: {} };
+    });
+    const victimRun = live.run({ operation_id: 'operation:pg:pgb', handoff: f.handoff, action: ACTION });
+    await atProvider.promise;
+    const victim = [...attempts.rows.values()][0].binding;
+    const victimKeys = keysFor(victim);
+    const claims = [];
+    const attacker = pgStore(db, (claim) => claim.authorization?.attempt_id === claim.scope?.attemptId, claims);
+    const otherAttempt = 'native-attempt:pg:someone-else';
+    const forgedScopes = [
+        // A scope for another attempt, with the victim's operation fence.
+        { attemptId: otherAttempt, operationId: victim.operation_id, recoveryOperationKey: victimKeys.operation_fence, reservation: 'action-fence-holder' },
+        // A scope for another attempt under an unrelated operation.
+        { attemptId: otherAttempt, operationId: 'operation:other', recoveryOperationKey: `aeb-native-operation:sha256:${'e'.repeat(64)}`, reservation: 'action-fence-holder' },
+        // A scope that names the victim's attempt but another reservation.
+        { attemptId: victim.attempt_id, operationId: victim.operation_id, recoveryOperationKey: victimKeys.operation_fence, reservation: 'operation' },
+    ];
+    for (const scope of forgedScopes) {
+        assert.equal(await attacker.claimReservation(victimKeys.holder, { attempt_id: scope.attemptId }, scope), false);
+    }
+    assert.equal(claims.length, 0, 'refused before the authorizer runs');
+    assert.equal(db.operation(victimKeys.holder)?.state, 'RESERVED');
+    const fresh = await boundary(f, pgStore(db), attempts, async () => {
+        calls += 1;
+        return { state: 'EXECUTED', evidence: evidence(calls), result: {} };
+    }).run({ operation_id: 'operation:pg:pgb:fresh', handoff: f.issue('native-authz:pgb:fresh'), action: ACTION });
+    assert.equal(fresh.reason, 'native_action_in_flight');
+    providerGo.resolve();
+    assert.equal((await victimRun).state, 'EXECUTED');
+    assert.equal(calls, 1);
+});
+test('R5/R6: a claim on the shared composed evaluation row needs the claiming attempt\'s holder', async () => {
+    const db = fakePostgres();
+    const reservationKey = `aeb:sha256:${'1'.repeat(64)}`;
+    const holder = (attemptId) => consequenceBoundaryActionFenceHolderKey({
+        reservation_key: reservationKey,
+        attempt_id: attemptId,
+    });
+    const owner = pgStore(db);
+    assert.equal(await owner.reserve(reservationKey, []), 'RESERVED');
+    assert.equal(await owner.reserve(holder('attempt:one'), [`aeb-native-action:sha256:${'2'.repeat(64)}`]), 'RESERVED');
+    const scope = (attemptId) => ({
+        attemptId,
+        operationId: 'operation:composed:claim',
+        recoveryOperationKey: reservationKey,
+        reservation: 'operation',
+    });
+    const claims = [];
+    const recovery = pgStore(db, () => true, claims);
+    // Attempt two holds no holder row, so it is not the evaluation row's owner.
+    assert.equal(await recovery.claimReservation(reservationKey, 'x', scope('attempt:two')), false);
+    assert.equal(claims.length, 0);
+    assert.equal(consequenceBoundaryRecoveryClaimKey(scope('attempt:one')), reservationKey);
+    assert.equal(await recovery.claimReservation(reservationKey, 'x', scope('attempt:one')), true);
+    assert.equal(claims.length, 1);
+    assert.equal(await recovery.commit(reservationKey), true);
+    assert.equal(db.operation(reservationKey)?.state, 'CONSUMED');
+});
+function deferredSignal() {
+    let resolve;
+    const promise = new Promise((done) => { resolve = done; });
+    return { promise, resolve };
+}

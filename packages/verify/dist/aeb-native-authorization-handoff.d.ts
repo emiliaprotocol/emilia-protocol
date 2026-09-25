@@ -24,11 +24,19 @@ export declare const AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN = "AEB-NATIVE-AUTHOR
  */
 export declare const AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_DOMAIN = "AEB-NATIVE-AUTHORIZATION-REPLAY-IDENTITY-v1";
 /**
- * Domain of the relying-party-scoped durable replay key over the native replay
- * identity. Verify 4.1.0 used `AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v1` over the
- * label-bearing wire unit, so keys derived by 4.1.0 do not match these.
+ * Domain of the verify 4.1.0 relying-party-scoped replay key over the
+ * label-bearing wire `replay_unit` (aebNativeAuthorizationReplayKey() and the
+ * verification result's `replay_key`). Unchanged from 4.1.0. That key changes
+ * when one grant is relabelled under a second pinned profile or system, so it
+ * is not sufficient as the only replay fence.
  */
-export declare const AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN = "AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2";
+export declare const AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN = "AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v1";
+/**
+ * Domain of the relying-party-scoped durable replay key over the label-free
+ * native replay identity (aebNativeAuthorizationReplayIdentityKey() and the
+ * verification result's `replay_identity_key`).
+ */
+export declare const AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_KEY_DOMAIN = "AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2";
 export declare const AEB_NATIVE_AUTHORIZATION_ACTION_DOMAIN = "AEB-NATIVE-AUTHORIZATION-ACTION-v1";
 export declare const AEB_NATIVE_AUTHORIZATION_GATEWAY_KEY_VERSION = "AEB-NATIVE-AUTHORIZATION-GATEWAY-KEY-v1";
 export declare const AEB_NATIVE_AUTHORIZATION_SOURCE_PIN_VERSION = "AEB-NATIVE-AUTHORIZATION-SOURCE-PIN-v1";
@@ -171,15 +179,31 @@ export interface AebNativeAuthorizationHandoffVerification {
     record_digest: AebNativeAuthorizationDigest;
     action_digest: AebNativeAuthorizationDigest | null;
     /**
-     * Label-free native replay identity under the matched pin's authority
-     * namespace: (namespace, authorization ID), with the issuer as the default
-     * namespace. Null unless the native source is pinned. It never equals the
-     * wire `handoff.native_authorization.replay_unit`, which is a
-     * label-bearing compatibility digest.
+     * The wire `handoff.native_authorization.replay_unit`, exactly as verify
+     * 4.1.0 reported it: a label-bearing digest of (system, profile, issuer,
+     * authorization ID). Kept for compatibility. It changes when one grant is
+     * relabelled, so enforcement should use `native_replay_identity`.
      */
     native_replay_unit: AebNativeAuthorizationDigest | null;
-    /** Relying-party-scoped durable replay key for `native_replay_unit`. */
+    /**
+     * The verify 4.1.0 replay key over `native_replay_unit`
+     * (`AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v1`), unchanged. Fence it together
+     * with `replay_identity_key`, never alone.
+     */
     replay_key: string | null;
+    /**
+     * Label-free native replay identity under the matched pin's authority
+     * namespace: (namespace, authorization ID), with the issuer as the default
+     * namespace. Null unless the native source is pinned and the pin set passes
+     * verifyAebNativeAuthorizationPins().
+     */
+    native_replay_identity: AebNativeAuthorizationDigest | null;
+    /**
+     * Relying-party-scoped durable replay key for `native_replay_identity`
+     * (`AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2`). Null exactly when
+     * `native_replay_identity` is null.
+     */
+    replay_identity_key: string | null;
     handoff: Readonly<AebNativeAuthorizationHandoff> | null;
 }
 export declare function digestAebNativeAuthorizationAction(action: unknown): AebNativeAuthorizationDigest;
@@ -202,12 +226,21 @@ export declare function deriveAebNativeAuthorizationReplayIdentity(source: Omit<
     authority_namespace?: string;
 }): AebNativeAuthorizationDigest;
 /**
- * Relying-party-scoped durable replay key over the native replay identity.
+ * The verify 4.1.0 relying-party-scoped replay key over the label-bearing wire
+ * `replay_unit`, byte-identical to 4.1.0. One grant relabelled under a second
+ * pinned profile or system derives a second value, so a replay fence should
+ * hold this key together with aebNativeAuthorizationReplayIdentityKey(), not
+ * alone.
+ */
+export declare function aebNativeAuthorizationReplayKey(input: Pick<AebNativeAuthorizationHandoffBody, 'relying_party_id' | 'native_authorization'>): string;
+/**
+ * Relying-party-scoped durable replay key over the label-free native replay
+ * identity (deriveAebNativeAuthorizationReplayIdentity()).
  * `authority_namespace` is the value pinned by the relying party for the
  * accepted source; omit it for the default (issuer) namespace. The input's
  * wire `replay_unit` must be the 4.1.0-compatible value for its labels.
  */
-export declare function aebNativeAuthorizationReplayKey(input: Pick<AebNativeAuthorizationHandoffBody, 'relying_party_id' | 'native_authorization'> & {
+export declare function aebNativeAuthorizationReplayIdentityKey(input: Pick<AebNativeAuthorizationHandoffBody, 'relying_party_id' | 'native_authorization'> & {
     authority_namespace?: string;
 }): string;
 export interface AebNativeAuthorizationPinsVerification {
@@ -245,7 +278,8 @@ declare const _default: Readonly<{
     AEB_NATIVE_AUTHORIZATION_HANDOFF_DOMAIN: "AEB-NATIVE-AUTHORIZATION-HANDOFF-v1\0";
     AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN: "AEB-NATIVE-AUTHORIZATION-REPLAY-v1";
     AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_DOMAIN: "AEB-NATIVE-AUTHORIZATION-REPLAY-IDENTITY-v1";
-    AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN: "AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2";
+    AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN: "AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v1";
+    AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_KEY_DOMAIN: "AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2";
     AEB_NATIVE_AUTHORIZATION_ACTION_DOMAIN: "AEB-NATIVE-AUTHORIZATION-ACTION-v1";
     AEB_NATIVE_AUTHORIZATION_GATEWAY_KEY_VERSION: "AEB-NATIVE-AUTHORIZATION-GATEWAY-KEY-v1";
     AEB_NATIVE_AUTHORIZATION_SOURCE_PIN_VERSION: "AEB-NATIVE-AUTHORIZATION-SOURCE-PIN-v1";
@@ -255,6 +289,7 @@ declare const _default: Readonly<{
     deriveAebNativeAuthorizationReplayUnit: typeof deriveAebNativeAuthorizationReplayUnit;
     deriveAebNativeAuthorizationReplayIdentity: typeof deriveAebNativeAuthorizationReplayIdentity;
     aebNativeAuthorizationReplayKey: typeof aebNativeAuthorizationReplayKey;
+    aebNativeAuthorizationReplayIdentityKey: typeof aebNativeAuthorizationReplayIdentityKey;
     issueAebNativeAuthorizationHandoff: typeof issueAebNativeAuthorizationHandoff;
     verifyAebNativeAuthorizationPins: typeof verifyAebNativeAuthorizationPins;
     verifyAebNativeAuthorizationHandoff: typeof verifyAebNativeAuthorizationHandoff;

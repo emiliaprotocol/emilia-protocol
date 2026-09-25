@@ -13,11 +13,15 @@
  * durable read, which the direct-native consequence boundary requires.
  *
  * Ownership is per store instance and per key, so two callers in one process
- * that reserve the same key share one owner token. The consequence
- * boundaries therefore write only keys that include their attempt ID, which
- * no other attempt can produce.
+ * that reserve the same key share one owner token. The native consequence
+ * boundary therefore writes only keys that include its attempt ID, which no
+ * other attempt can produce. The composed boundary's evaluation reservation
+ * is keyed by the evaluation; it closes or commits that row for an attempt
+ * only while the attempt's own holder row, keyed by the evaluation
+ * reservation and the attempt ID, is still RESERVED.
  */
 import crypto from 'node:crypto';
+import { consequenceBoundaryRecoveryClaimKey, consequenceBoundaryRecoveryClaimMarkerKey, } from './consequence-boundary.js';
 export const AEB_PG_CONSUMPTION_STORE_VERSION = 'EP-GATE-AEB-PG-CONSUMPTION-v1';
 export const AEB_CONSUMPTION_OPERATION_TABLE = 'ep_aeb_consumption_operations';
 export const AEB_CONSUMPTION_REPLAY_TABLE = 'ep_aeb_consumption_replay_fences';
@@ -551,6 +555,18 @@ export function createPostgresAebDurableConsumptionStore({ pool, recoveryPool, t
             // this instance would let its stale caller inherit the new token.
             if (ownedReservations.has(key))
                 return false;
+            if (claimScope) {
+                // A scope names exactly one row: the one the boundaries derive from
+                // it. A credential bound to one attempt cannot claim another row.
+                if (consequenceBoundaryRecoveryClaimKey(claimScope) !== key)
+                    return false;
+                // A row shared by every attempt of one evaluation is claimable for an
+                // attempt only while that attempt's own holder row marks it as the
+                // current owner.
+                const marker = consequenceBoundaryRecoveryClaimMarkerKey(claimScope);
+                if (marker !== null && await store.state(marker) !== 'RESERVED')
+                    return false;
+            }
             const claim = Object.freeze({
                 authorization,
                 tenantId,

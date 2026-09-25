@@ -14,13 +14,22 @@
  * close is keyed by its attempt ID (the diagnostic executed marker is only
  * ever committed), so a release, close, or recovery claim can only reach rows
  * that attempt created. On the composed boundary the action-fence holder is
- * keyed the same way. The durable attempt record is written before any
- * attempt-keyed reservation, so an attempt that stops before provider entry
- * can be found and recovered through reconcile().
+ * keyed the same way; the evaluation reservation is keyed by the evaluation,
+ * and an attempt commits it only while its own holder is still held, which
+ * marks it as that reservation's owner. The durable attempt record is written
+ * before any attempt-keyed reservation, so an attempt that stops before
+ * provider entry can be found and recovered through reconcile().
+ *
+ * Release ordering: an attempt's reservations are released, closed, or
+ * committed only after its durable record has confirmably reached a terminal
+ * state or RELEASED without evidence (not entered). Pre-entry recovery and
+ * terminal reconciliation are separate reconcile() modes, and a pre-entry
+ * recovery that loses its RESERVED -> RELEASED transition to the live run
+ * releases nothing.
  */
 import crypto from 'node:crypto';
 import { types as nodeTypes } from 'node:util';
-import { aebReservationKey, authorizeAebExecutionDurable, canonicalizeAeb, digestAeb, reconcileAebExecutionDurable, verifyAebEvaluation, } from '@emilia-protocol/verify/aeb-adapter-contract';
+import { aebReservationKey, authorizeAebExecutionDurable, canonicalizeAeb, digestAeb, verifyAebEvaluation, } from '@emilia-protocol/verify/aeb-adapter-contract';
 import { digestAebNativeAuthorizationAction, verifyAebNativeAuthorizationHandoff, verifyAebNativeAuthorizationPins, } from '@emilia-protocol/verify/aeb';
 export const CONSEQUENCE_BOUNDARY_VERSION = 'EMILIA-CONSEQUENCE-BOUNDARY-v1';
 export const CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN = 'EMILIA-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1';
@@ -517,24 +526,88 @@ export function nativeConsequenceBoundaryAttemptReservationKeys(input) {
         provider: record.provider,
         action_digest: record.action_digest,
     });
-    const operation = `aeb-native-attempt-operation:${digestAeb({
-        domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ATTEMPT-OPERATION`,
-        operation_fence: operationFence,
-        attempt_id: record.attempt_id,
-    })}`;
+    const operation = nativeAttemptOperationKey(operationFence, record.attempt_id);
     return {
         operation_fence: operationFence,
         action_fence: actionFence,
         operation,
-        authority: `aeb-native-attempt-authority:${digestAeb({
-            domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ATTEMPT-AUTHORITY`,
-            operation_key: operation,
-        })}`,
-        holder: `aeb-native-action-holder:${digestAeb({
-            domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ACTION-FENCE-HOLDER`,
-            operation_key: operation,
-        })}`,
+        authority: nativeAttemptAuthorityKey(operation),
+        holder: nativeAttemptHolderKey(operation),
     };
+}
+function nativeAttemptOperationKey(operationFence, attemptId) {
+    return `aeb-native-attempt-operation:${digestAeb({
+        domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ATTEMPT-OPERATION`,
+        operation_fence: operationFence,
+        attempt_id: attemptId,
+    })}`;
+}
+function nativeAttemptAuthorityKey(operationKey) {
+    return `aeb-native-attempt-authority:${digestAeb({
+        domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ATTEMPT-AUTHORITY`,
+        operation_key: operationKey,
+    })}`;
+}
+function nativeAttemptHolderKey(operationKey) {
+    return `aeb-native-action-holder:${digestAeb({
+        domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ACTION-FENCE-HOLDER`,
+        operation_key: operationKey,
+    })}`;
+}
+const NATIVE_OPERATION_FENCE_KEY = /^aeb-native-operation:sha256:[a-f0-9]{64}$/;
+const COMPOSED_RESERVATION_KEY = /^aeb:sha256:[a-f0-9]{64}$/;
+const RECOVERY_CLAIM_SCOPE_KEYS = ['attemptId', 'operationId', 'recoveryOperationKey', 'reservation'];
+/**
+ * The exact consumption-store row a recovery claim scope names, derived the
+ * way the boundaries derive it: from the scope's recovery operation key (the
+ * native operation fence, or the composed evaluation reservation key), its
+ * attempt ID, and which reservation it names. Null for a scope no boundary
+ * produces. A store that is given a scope refuses a claim on any other row,
+ * so a credential bound to one attempt cannot claim another attempt's row.
+ */
+export function consequenceBoundaryRecoveryClaimKey(scope) {
+    const record = dataRecord(scope);
+    if (!record || !exactKeys(record, RECOVERY_CLAIM_SCOPE_KEYS)
+        || !identifier(record.attemptId) || typeof record.operationId !== 'string'
+        || typeof record.recoveryOperationKey !== 'string')
+        return null;
+    const attemptId = record.attemptId;
+    const recoveryOperationKey = record.recoveryOperationKey;
+    if (NATIVE_OPERATION_FENCE_KEY.test(recoveryOperationKey)) {
+        const operation = nativeAttemptOperationKey(recoveryOperationKey, attemptId);
+        if (record.reservation === 'operation')
+            return operation;
+        if (record.reservation === 'native-authority')
+            return nativeAttemptAuthorityKey(operation);
+        if (record.reservation === 'action-fence-holder')
+            return nativeAttemptHolderKey(operation);
+        return null;
+    }
+    if (COMPOSED_RESERVATION_KEY.test(recoveryOperationKey)) {
+        if (record.reservation === 'operation')
+            return recoveryOperationKey;
+        if (record.reservation === 'action-fence-holder') {
+            return consequenceBoundaryActionFenceHolderKey({
+                reservation_key: recoveryOperationKey,
+                attempt_id: attemptId,
+            });
+        }
+    }
+    return null;
+}
+/**
+ * For a scope whose row is shared by every attempt of one evaluation (the
+ * composed evaluation reservation), the row that marks this attempt as its
+ * current owner: the attempt's action-fence holder. Null for a row keyed by
+ * the attempt itself, which needs no marker.
+ */
+export function consequenceBoundaryRecoveryClaimMarkerKey(scope) {
+    const record = dataRecord(scope);
+    if (!record || record.reservation !== 'operation'
+        || typeof record.recoveryOperationKey !== 'string'
+        || !COMPOSED_RESERVATION_KEY.test(record.recoveryOperationKey))
+        return null;
+    return consequenceBoundaryRecoveryClaimKey({ ...record, reservation: 'action-fence-holder' });
 }
 /**
  * Key of the reservation that holds the action fence for one native attempt.
@@ -592,6 +665,26 @@ function indeterminate(reason, invoked, attempt) {
         ...(attempt ? { attempt } : {}),
     });
 }
+const ATTEMPT_STATES = [
+    'RESERVED', 'INVOKING', 'INDETERMINATE', 'COMMITTED', 'RELEASED',
+];
+/**
+ * Await a store or callback call and never throw: a throw, a rejection, or a
+ * synchronous answer that is not a promise all come back as a value.
+ */
+async function guarded(call, fallback) {
+    try {
+        return await call();
+    }
+    catch {
+        return fallback;
+    }
+}
+function reconcileMode(value) {
+    if (value === undefined || value === 'terminal')
+        return 'terminal';
+    return value === 'pre_entry' ? 'pre_entry' : null;
+}
 /**
  * Build one relying-party-controlled consequence boundary. Presented evidence
  * never selects adapters, trust roots, requirements, or local policy.
@@ -626,56 +719,187 @@ export function createConsequenceBoundary(options) {
     const now = options.now ?? (() => new Date().toISOString());
     const createAttemptId = options.attempts.create_id
         ?? (() => `attempt:${crypto.randomUUID()}`);
+    const attemptStore = options.attempts.store;
+    const envelopeBoundary = options.consequence_envelope ?? null;
     // Action-fence custody. A store that fails the secure-store check is
     // refused by authorizeAebExecutionDurable() before any fence write.
     const custody = secureAebConsumptionStore(options.aeb.store)
         ? consumptionCustody(options.aeb.store)
         : null;
-    // Pre-entry recovery needs a durable attempt-state read. Attempt stores
-    // written for 0.26.0 may lack one; they keep the provider-outcome-only
-    // reconciliation path.
-    const readComposedAttemptState = typeof options.attempts.store.state === 'function'
-        ? options.attempts.store.state.bind(options.attempts.store)
+    // A durable attempt-state read confirms every attempt transition. Attempt
+    // stores written for 0.26.0 may lack one; their transitions count only on
+    // an acknowledgement that is exactly `true`.
+    const readComposedAttemptState = typeof attemptStore.state === 'function'
+        ? attemptStore.state.bind(attemptStore)
         : null;
-    /** A throwing or non-boolean attempt-store answer is an unconfirmed write. */
-    async function releaseComposedAttempt(reference) {
-        try {
-            return await options.attempts.store.transition({
-                ...reference,
-                expected_state: 'RESERVED',
-                next_state: 'RELEASED',
-            }) === true;
-        }
-        catch {
-            return false;
-        }
-    }
     async function composedAttemptState(reference) {
         if (!readComposedAttemptState)
             return null;
         try {
             const snapshot = dataRecord(await readComposedAttemptState(reference));
             if (!snapshot || typeof snapshot.state !== 'string'
-                || !['RESERVED', 'INVOKING', 'INDETERMINATE', 'COMMITTED', 'RELEASED']
-                    .includes(snapshot.state))
+                || !ATTEMPT_STATES.includes(snapshot.state))
                 return null;
+            const state = snapshot.state;
             return snapshot.evidence === undefined
-                ? { state: snapshot.state }
-                : { state: snapshot.state, evidence: snapshot.evidence };
+                ? { state }
+                : { state, evidence: cloneFrozen(snapshot.evidence) };
         }
         catch {
             return null;
         }
     }
+    /**
+     * One attempt-store transition. With a durable read the read decides; the
+     * store's answer never counts on its own. Without one, only an answer that
+     * is exactly `true` counts. RELEASED counts as not entered only without
+     * provider evidence.
+     */
+    async function composedTransition(reference, expected, next) {
+        const answer = await guarded(() => attemptStore.transition({
+            ...reference,
+            expected_state: expected,
+            next_state: next,
+        }), undefined);
+        if (!readComposedAttemptState) {
+            return { confirmed: answer === true, snapshot: answer === true ? { state: next } : null };
+        }
+        const snapshot = await composedAttemptState(reference);
+        return {
+            confirmed: snapshot !== null && snapshot.state === next
+                && (next !== 'RELEASED' || snapshot.evidence === undefined),
+            snapshot,
+        };
+    }
+    function composedTerminalMatches(snapshot, next, evidence) {
+        if (snapshot?.state !== next)
+            return false;
+        // A store that does not return evidence is trusted on the state alone.
+        if (snapshot.evidence === undefined)
+            return true;
+        try {
+            return canonicalizeAeb(snapshot.evidence) === canonicalizeAeb(evidence);
+        }
+        catch {
+            return false;
+        }
+    }
+    /** INDETERMINATE -> COMMITTED or RELEASED with evidence, confirmed. */
+    async function composedTerminal(reference, next, evidence) {
+        const answer = await guarded(() => attemptStore.reconcile({
+            ...reference,
+            expected_state: 'INDETERMINATE',
+            next_state: next,
+            evidence,
+        }), undefined);
+        if (!readComposedAttemptState)
+            return answer === true;
+        return composedTerminalMatches(await composedAttemptState(reference), next, evidence);
+    }
+    /**
+     * Close the evaluation reservation R(E) and this attempt's fence holder
+     * after the attempt's terminal record is confirmed. R(E) is keyed by the
+     * evaluation, not the attempt; the holder, keyed by R(E) and this attempt,
+     * is its attempt marker. The holder is reserved after R(E), is released
+     * before R(E) on every pre-entry path, and is closed only after R(E) is
+     * committed, so while it is RESERVED no other attempt can hold R(E). Without
+     * that marker R(E) is left untouched.
+     */
+    async function settleComposedReservations(reservationKey, holderKey, executedMarker, executed, recovery) {
+        const store = custody;
+        const commitEvaluation = () => recovery
+            ? store.closeForRecovery(reservationKey, 'CONSUMED', recovery.authorization, recovery.scope('operation'))
+            : store.closeConfirmed(reservationKey, 'CONSUMED');
+        if (store.hasStateRead) {
+            const holder = await store.state(holderKey);
+            if (holder === 'RESERVED') {
+                if (!await commitEvaluation())
+                    return 'authorization_consumption_unconfirmed';
+            }
+            else if (await store.state(reservationKey) !== 'CONSUMED') {
+                return 'evaluation_reservation_not_owned';
+            }
+            return await closeComposedActionFence(holderKey, executedMarker, executed, recovery && {
+                authorization: recovery.authorization,
+                scope: recovery.scope('action-fence-holder'),
+            })
+                ? null
+                : 'native_action_fence_release_unconfirmed';
+        }
+        // Without a durable read the holder's own acknowledged close is the
+        // marker: it proves this attempt still held the holder, so R(E) was still
+        // this attempt's. EXECUTED commits the holder, FAILED releases it.
+        const holderScope = recovery?.scope('action-fence-holder');
+        const holderClosed = executed
+            ? recovery
+                ? await store.closeForRecovery(holderKey, 'CONSUMED', recovery.authorization, holderScope)
+                : await store.closeConfirmed(holderKey, 'CONSUMED')
+            : recovery
+                ? await store.releaseForRecovery(holderKey, recovery.authorization, holderScope)
+                : await store.releaseConfirmed(holderKey);
+        if (executed)
+            await store.markActionExecuted(executedMarker);
+        if (!holderClosed) {
+            return executed ? 'authorization_consumption_unconfirmed' : 'native_action_fence_release_unconfirmed';
+        }
+        return await commitEvaluation() ? null : 'authorization_consumption_unconfirmed';
+    }
+    async function closeComposedActionFence(holderKey, executedMarker, executed, recovery) {
+        if (executed) {
+            // A holder left RESERVED still fences the action, so an unconfirmed
+            // commit cannot reopen it.
+            if (!recovery)
+                await custody.closeConfirmed(holderKey, 'CONSUMED');
+            else
+                await custody.closeForRecovery(holderKey, 'CONSUMED', recovery.authorization, recovery.scope);
+            await custody.markActionExecuted(executedMarker);
+            return true;
+        }
+        return !recovery
+            ? custody.releaseConfirmed(holderKey)
+            : custody.releaseForRecovery(holderKey, recovery.authorization, recovery.scope);
+    }
     async function run(input) {
+        const progress = { entered: false };
+        try {
+            return await runAttempt(input, progress);
+        }
+        catch {
+            // Last resort: every store and callback call below is guarded, so this
+            // is reached only by a defect. Whatever was reserved stays held.
+            return progress.attempt
+                ? indeterminate('boundary_internal_error', progress.entered, progress.attempt)
+                : refused('boundary_internal_error');
+        }
+    }
+    async function runAttempt(input, progress) {
         let action;
         let evaluation;
         let evaluationDigest;
         let decisionNow;
+        let artifacts;
+        let currentStatuses;
+        let executionConditions;
+        let additionalReplayKeys;
         try {
-            action = cloneFrozen(input?.action);
-            evaluation = cloneFrozen(input?.evaluation);
+            // One read of the caller's object: getters and Proxies anywhere in it
+            // are refused here rather than run later.
+            const record = dataRecord(input);
+            if (!record || containsProxy(record))
+                throw new Error('execution_input_invalid');
+            action = cloneFrozen(record.action);
+            evaluation = cloneFrozen(record.evaluation);
             evaluationDigest = digestAeb(evaluation);
+            artifacts = record.artifacts;
+            currentStatuses = record.current_statuses;
+            executionConditions = record.execution_conditions;
+            if (record.additional_replay_keys !== undefined) {
+                const keys = cloneFrozen(record.additional_replay_keys);
+                if (!Array.isArray(keys) || !keys.every((key) => typeof key === 'string')) {
+                    throw new Error('execution_input_invalid');
+                }
+                additionalReplayKeys = keys;
+            }
             decisionNow = now();
             if (!canonicalInstant(decisionNow))
                 throw new Error('clock_invalid');
@@ -686,15 +910,21 @@ export function createConsequenceBoundary(options) {
         if (evaluation.executor_id !== options.executor_id) {
             return refused('executor_binding_mismatch');
         }
-        const verification = verifyAebEvaluation(evaluation, {
-            mode: 'execution',
-            config: options.aeb.config,
-            adapters: options.aeb.adapters,
-            artifacts: input.artifacts,
-            expected_action: action,
-            current_statuses: input.current_statuses,
-            now: decisionNow,
-        });
+        let verification;
+        try {
+            verification = verifyAebEvaluation(evaluation, {
+                mode: 'execution',
+                config: options.aeb.config,
+                adapters: options.aeb.adapters,
+                artifacts: artifacts,
+                expected_action: action,
+                current_statuses: currentStatuses,
+                now: decisionNow,
+            });
+        }
+        catch {
+            return refused('evaluation_not_verified');
+        }
         if (!verification.valid || !verification.execution_authorizing) {
             const composition = dataRecord(evaluation.composition);
             if (verification.checks.schema
@@ -722,13 +952,19 @@ export function createConsequenceBoundary(options) {
         }
         if (!localAuthorization)
             return refused('local_authorization_denied');
-        const authorization = await authorizeAebExecutionDurable(evaluation, {
-            verification,
-            local_authorization: true,
-            store: options.aeb.store,
-            execution_conditions: input.execution_conditions,
-            additional_replay_keys: input.additional_replay_keys,
-        });
+        let authorization;
+        try {
+            authorization = await authorizeAebExecutionDurable(evaluation, {
+                verification,
+                local_authorization: true,
+                store: options.aeb.store,
+                execution_conditions: executionConditions,
+                additional_replay_keys: additionalReplayKeys,
+            });
+        }
+        catch {
+            return refused('execution_input_invalid');
+        }
         if (!authorization.invoke_allowed || !authorization.reservation_key) {
             return authorization.state === 'RECONCILIATION_REQUIRED'
                 ? indeterminate(authorization.reason, false)
@@ -736,6 +972,9 @@ export function createConsequenceBoundary(options) {
         }
         const reservationKey = authorization.reservation_key;
         const actionDigest = digestAeb(action);
+        const releaseEvaluation = async () => custody
+            ? custody.releaseConfirmed(reservationKey)
+            : await guarded(() => options.aeb.store.release(reservationKey), false) === true;
         // Same-action fence, shared with the native boundary: relying party,
         // provider coordinates as configured, and the canonical action digest.
         // Derived before any further write so an unkeyable binding is a refusal.
@@ -747,30 +986,35 @@ export function createConsequenceBoundary(options) {
             actionFence = actionFenceKeyUnchecked(relyingPartyId, provider, digestAebNativeAuthorizationAction(action));
         }
         catch {
-            await options.aeb.store.release(reservationKey).catch(() => false);
+            await releaseEvaluation();
             return refused('action_fence_binding_invalid');
         }
         const executedMarker = nativeActionExecutedMarkerKey(actionFence);
         let envelopeReservation = null;
-        if (options.consequence_envelope) {
+        if (envelopeBoundary) {
             let capacity;
             try {
-                capacity = await options.consequence_envelope.reserve({
+                capacity = await envelopeBoundary.reserve({
                     operation_id: evaluation.operation_id,
-                    state_domain_id: options.consequence_envelope.envelope.state_domain_id,
-                    expected_epoch: options.consequence_envelope.envelope.epoch,
+                    state_domain_id: envelopeBoundary.envelope.state_domain_id,
+                    expected_epoch: envelopeBoundary.envelope.epoch,
                     action,
                 });
             }
             catch {
                 capacity = { status: 'REFUSED', reason: 'consequence_envelope_unavailable' };
             }
-            if (capacity.status !== 'RESERVED') {
-                await options.aeb.store.release(reservationKey).catch(() => false);
-                return refused(capacity.reason);
+            if (capacity?.status !== 'RESERVED') {
+                await releaseEvaluation();
+                return refused(identifier(capacity?.reason) ? capacity.reason : 'consequence_envelope_unavailable');
             }
             envelopeReservation = capacity.reservation;
         }
+        const releaseEnvelopeNotEntered = async () => {
+            if (envelopeReservation) {
+                await guarded(() => envelopeBoundary.releaseNotEntered(envelopeReservation), null);
+            }
+        };
         const providerIdempotencyKey = consequenceBoundaryProviderIdempotencyKey({
             provider,
             caid: evaluation.caid,
@@ -800,10 +1044,8 @@ export function createConsequenceBoundary(options) {
             });
         }
         catch {
-            if (envelopeReservation) {
-                await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
-            }
-            await options.aeb.store.release(reservationKey).catch(() => false);
+            await releaseEnvelopeNotEntered();
+            await releaseEvaluation();
             return refused('attempt_allocation_failed');
         }
         const attemptBinding = cloneFrozen({
@@ -812,116 +1054,118 @@ export function createConsequenceBoundary(options) {
             request_digest: requestDigest,
             provider_idempotency_key: providerIdempotencyKey,
         });
-        let reserved;
+        // No owner handle exists until reserve() answers, so an attempt record a
+        // failed reserve may still have written can never reach INVOKING; the
+        // evaluation reservation it would guard can be handed back.
+        let reservedAnswer;
         try {
-            reserved = await options.attempts.store.reserve(attemptBinding);
+            reservedAnswer = dataRecord(await attemptStore.reserve(attemptBinding));
         }
         catch {
-            if (envelopeReservation) {
-                await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
-            }
-            await options.aeb.store.release(reservationKey).catch(() => false);
+            await releaseEnvelopeNotEntered();
+            await releaseEvaluation();
             return refused('attempt_store_unavailable');
         }
-        if (!reserved.reserved) {
-            if (envelopeReservation) {
-                await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
-            }
-            await options.aeb.store.release(reservationKey).catch(() => false);
-            return refused(reserved.reason || 'attempt_conflict');
+        if (reservedAnswer?.reserved !== true || !opaqueOwner(reservedAnswer.owner)) {
+            await releaseEnvelopeNotEntered();
+            await releaseEvaluation();
+            return refused(identifier(reservedAnswer?.reason) ? reservedAnswer.reason : 'attempt_conflict');
         }
         const attempt = {
             ...attemptBinding,
-            owner: reserved.owner,
+            owner: reservedAnswer.owner,
         };
+        const publicBinding = publicAttempt(attempt);
+        progress.attempt = publicBinding;
+        /**
+         * Pre-entry stop. Nothing is handed back until the attempt record is
+         * durably not entered (RESERVED -> RELEASED, confirmed). Then the holder
+         * goes first, the capacity reservation next, and the evaluation
+         * reservation last, so a held holder always proves this attempt still
+         * owns R(E).
+         */
+        async function stopBeforeEntry(reason, holderMayBeHeld, envelopeEntered, alreadyReleased = false) {
+            if (!alreadyReleased) {
+                const released = await composedTransition(attempt, 'RESERVED', 'RELEASED');
+                if (!released.confirmed) {
+                    if (envelopeReservation && envelopeEntered) {
+                        await guarded(() => envelopeBoundary.settle(envelopeReservation, 'INDETERMINATE'), null);
+                    }
+                    return indeterminate('attempt_release_unconfirmed', false, publicBinding);
+                }
+            }
+            if (holderMayBeHeld && !await custody.releaseConfirmed(holderKey)) {
+                return indeterminate('native_pre_entry_release_unconfirmed', false, publicBinding);
+            }
+            if (envelopeReservation) {
+                // The record proves the provider callback never ran, so capacity that
+                // already began provider entry is settled as proven not committed.
+                if (envelopeEntered) {
+                    await guarded(() => envelopeBoundary.settle(envelopeReservation, 'PROVEN_NOT_COMMITTED'), null);
+                }
+                else {
+                    await releaseEnvelopeNotEntered();
+                }
+            }
+            if (!await releaseEvaluation()) {
+                return indeterminate('evaluation_release_unconfirmed', false, publicBinding);
+            }
+            return refused(reason);
+        }
         // The holder reservation is keyed by this attempt and fences the exact
         // action at this provider. It is written after the attempt record, so an
         // attempt that stops before entry can be found and its holder released by
-        // reconcile(); and it is handed back before the evaluation reservation,
-        // so a held holder proves this attempt still owns that reservation.
+        // reconcile().
         let holderReserved = false;
-        let holderMayExist = false;
         try {
             const fenced = await custody.reserve(holderKey, [actionFence]);
             holderReserved = fenced === true || fenced === 'RESERVED';
-            if (!holderReserved) {
-                const reason = await custody.actionFenceRefusal(executedMarker);
-                await releaseComposedAttempt(attempt);
-                if (envelopeReservation) {
-                    await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
-                }
-                await options.aeb.store.release(reservationKey).catch(() => false);
-                return refused(reason);
-            }
         }
         catch {
-            holderMayExist = true;
+            return stopBeforeEntry('consumption_store_unavailable', true, false);
         }
-        if (holderMayExist) {
-            const attemptReleased = await releaseComposedAttempt(attempt);
-            if (envelopeReservation) {
-                await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
-            }
-            if (!await custody.releaseConfirmed(holderKey)) {
-                return indeterminate('native_pre_entry_release_unconfirmed', false, publicAttempt(attempt));
-            }
-            await options.aeb.store.release(reservationKey).catch(() => false);
-            return attemptReleased
-                ? refused('consumption_store_unavailable')
-                : indeterminate('attempt_release_unconfirmed', false, publicAttempt(attempt));
+        if (!holderReserved) {
+            return stopBeforeEntry(await custody.actionFenceRefusal(executedMarker), false, false);
         }
-        /** Pre-entry hand-back: the holder first, then the evaluation reservation. */
-        async function releaseBeforeEntry() {
-            if (!await custody.releaseConfirmed(holderKey))
-                return false;
-            await options.aeb.store.release(reservationKey).catch(() => false);
-            return true;
-        }
+        let envelopeEntered = false;
         if (envelopeReservation) {
-            const capacityEntry = await options.consequence_envelope
-                .beginProviderEntry(envelopeReservation)
-                .catch(() => ({ status: 'REFUSED', reason: 'consequence_envelope_unavailable' }));
-            if (capacityEntry.status !== 'ENTERED') {
-                const attemptReleased = await options.attempts.store.transition({
-                    ...attempt,
-                    expected_state: 'RESERVED',
-                    next_state: 'RELEASED',
-                }).catch(() => false);
-                await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
-                if (!await releaseBeforeEntry()) {
-                    return indeterminate('native_pre_entry_release_unconfirmed', false, publicAttempt(attempt));
-                }
-                return attemptReleased
-                    ? refused(capacityEntry.reason)
-                    : indeterminate('attempt_release_unconfirmed', false, publicAttempt(attempt));
+            const capacityEntry = await guarded(() => envelopeBoundary.beginProviderEntry(envelopeReservation), { status: 'REFUSED', reason: 'consequence_envelope_unavailable' });
+            if (capacityEntry?.status !== 'ENTERED') {
+                return stopBeforeEntry(identifier(capacityEntry?.reason)
+                    ? capacityEntry.reason
+                    : 'consequence_envelope_unavailable', true, false);
             }
+            envelopeEntered = true;
         }
-        try {
-            const started = await options.attempts.store.transition({
-                ...attempt,
-                expected_state: 'RESERVED',
-                next_state: 'INVOKING',
-            });
-            if (!started) {
-                if (envelopeReservation) {
-                    await options.consequence_envelope.settle(envelopeReservation, 'INDETERMINATE').catch(() => null);
-                    return indeterminate('attempt_start_conflict', false, publicAttempt(attempt));
+        // Provider entry. An answer other than exactly `true` is resolved by the
+        // durable record, never by assumption: INVOKING means this owner's write
+        // landed and it proceeds; RESERVED means it did not, so the attempt is
+        // closed as not entered first; RELEASED without evidence means a pre-entry
+        // recovery linearized first; anything else holds every reservation.
+        const start = await composedTransition(attempt, 'RESERVED', 'INVOKING');
+        if (!start.confirmed) {
+            if (readComposedAttemptState) {
+                if (start.snapshot?.state === 'RESERVED') {
+                    return stopBeforeEntry('attempt_start_conflict', true, envelopeEntered);
                 }
-                return await releaseBeforeEntry()
-                    ? refused('attempt_start_conflict')
-                    : indeterminate('native_pre_entry_release_unconfirmed', false, publicAttempt(attempt));
+                if (start.snapshot?.state === 'RELEASED' && start.snapshot.evidence === undefined) {
+                    return stopBeforeEntry('attempt_released_by_recovery', true, envelopeEntered, true);
+                }
             }
-        }
-        catch {
+            else {
+                const released = await composedTransition(attempt, 'RESERVED', 'RELEASED');
+                if (released.confirmed) {
+                    return stopBeforeEntry('attempt_start_conflict', true, envelopeEntered, true);
+                }
+            }
             if (envelopeReservation) {
-                await options.consequence_envelope.settle(envelopeReservation, 'INDETERMINATE').catch(() => null);
-                return indeterminate('attempt_store_unavailable', false, publicAttempt(attempt));
+                await guarded(() => envelopeBoundary.settle(envelopeReservation, 'INDETERMINATE'), null);
             }
-            return await releaseBeforeEntry()
-                ? refused('attempt_store_unavailable')
-                : indeterminate('native_pre_entry_release_unconfirmed', false, publicAttempt(attempt));
+            return indeterminate('attempt_start_unconfirmed', false, publicBinding);
         }
+        progress.entered = true;
         let rawOutcome;
+        let invokeThrew = false;
         try {
             rawOutcome = await options.invoke(cloneFrozen({
                 action,
@@ -934,58 +1178,36 @@ export function createConsequenceBoundary(options) {
             }));
         }
         catch {
-            await options.attempts.store.transition({
-                ...attempt,
-                expected_state: 'INVOKING',
-                next_state: 'INDETERMINATE',
-            }).catch(() => false);
-            if (envelopeReservation) {
-                await options.consequence_envelope.settle(envelopeReservation, 'INDETERMINATE').catch(() => null);
-            }
-            return indeterminate('provider_outcome_indeterminate', true, publicAttempt(attempt));
+            invokeThrew = true;
         }
-        const frozen = await options.attempts.store.transition({
-            ...attempt,
-            expected_state: 'INVOKING',
-            next_state: 'INDETERMINATE',
-        }).catch(() => false);
-        if (!frozen) {
+        const frozen = await composedTransition(attempt, 'INVOKING', 'INDETERMINATE');
+        if (invokeThrew || !frozen.confirmed) {
             if (envelopeReservation) {
-                await options.consequence_envelope.settle(envelopeReservation, 'INDETERMINATE').catch(() => null);
+                await guarded(() => envelopeBoundary.settle(envelopeReservation, 'INDETERMINATE'), null);
             }
-            return indeterminate('attempt_freeze_failed', true, publicAttempt(attempt));
+            return indeterminate(invokeThrew ? 'provider_outcome_indeterminate' : 'attempt_freeze_failed', true, publicBinding);
         }
         if (envelopeReservation) {
-            const held = await options.consequence_envelope
-                .settle(envelopeReservation, 'INDETERMINATE')
-                .catch(() => ({ status: 'REFUSED', reason: 'consequence_envelope_unavailable' }));
-            if (held.status !== 'INDETERMINATE') {
-                return indeterminate('consequence_envelope_indeterminate_unconfirmed', true, publicAttempt(attempt));
+            const held = await guarded(() => envelopeBoundary.settle(envelopeReservation, 'INDETERMINATE'), { status: 'REFUSED', reason: 'consequence_envelope_unavailable' });
+            if (held?.status !== 'INDETERMINATE') {
+                return indeterminate('consequence_envelope_indeterminate_unconfirmed', true, publicBinding);
             }
         }
         const outcome = normalizeEffectOutcome(rawOutcome);
         if (!outcome) {
-            return indeterminate('provider_outcome_invalid', true, publicAttempt(attempt));
+            return indeterminate('provider_outcome_invalid', true, publicBinding);
         }
         if (outcome.state === 'INDETERMINATE') {
-            return indeterminate(identifier(outcome.reason) ? outcome.reason : 'provider_outcome_indeterminate', true, publicAttempt(attempt));
+            return indeterminate(identifier(outcome.reason) ? outcome.reason : 'provider_outcome_indeterminate', true, publicBinding);
         }
         if (!validEvidence(outcome.evidence)) {
-            return indeterminate('provider_evidence_invalid', true, publicAttempt(attempt));
+            return indeterminate('provider_evidence_invalid', true, publicBinding);
         }
-        // A one-time authorization is burned after any provider invocation with an
-        // authoritative terminal outcome. A later attempt requires a new action
-        // instance and a fresh authorization, even when this attempt FAILED.
-        const consumed = await reconcileAebExecutionDurable(options.aeb.store, reservationKey, 'COMMITTED');
-        if (consumed.state !== 'CONSUMED') {
-            return indeterminate('authorization_consumption_unconfirmed', true, publicAttempt(attempt));
-        }
-        // EXECUTED keeps the action fence closed; an authenticated FAILED hands it
-        // back so a fresh authorization may retry the same action. An unconfirmed
-        // release leaves the attempt INDETERMINATE for reconcile() to finish.
-        if (!await closeComposedActionFence(holderKey, executedMarker, outcome.state === 'EXECUTED')) {
-            return indeterminate('native_action_fence_release_unconfirmed', true, publicAttempt(attempt));
-        }
+        // The terminal record comes first; only then is the one-time
+        // authorization burned (even after FAILED: a later attempt requires a new
+        // action instance and a fresh authorization) and the fence closed.
+        // EXECUTED keeps the fence closed; an authenticated FAILED hands it back
+        // so a fresh authorization may retry the same action.
         const terminalState = outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED';
         const providerEvidence = cloneFrozen({
             ...attemptBinding,
@@ -997,22 +1219,18 @@ export function createConsequenceBoundary(options) {
             outcome: outcome.state === 'EXECUTED' ? 'COMMITTED' : 'NOT_COMMITTED',
             evidence_digest: outcome.evidence.evidence_digest,
         });
-        const terminal = await options.attempts.store.reconcile({
-            ...attempt,
-            expected_state: 'INDETERMINATE',
-            next_state: terminalState,
-            evidence: providerEvidence,
-        }).catch(() => false);
-        if (!terminal) {
-            return indeterminate('attempt_terminal_record_unconfirmed', true, publicAttempt(attempt));
+        if (!await composedTerminal(attempt, terminalState, providerEvidence)) {
+            return indeterminate('attempt_terminal_record_unconfirmed', true, publicBinding);
+        }
+        const settledReservations = await settleComposedReservations(reservationKey, holderKey, executedMarker, outcome.state === 'EXECUTED');
+        if (settledReservations !== null) {
+            return indeterminate(settledReservations, true, publicBinding);
         }
         if (envelopeReservation) {
-            const capacityTerminal = await options.consequence_envelope
-                .settle(envelopeReservation, outcome.state === 'EXECUTED' ? 'COMMITTED' : 'PROVEN_NOT_COMMITTED')
-                .catch(() => ({ status: 'REFUSED', reason: 'consequence_envelope_unavailable' }));
+            const capacityTerminal = await guarded(() => envelopeBoundary.settle(envelopeReservation, outcome.state === 'EXECUTED' ? 'COMMITTED' : 'PROVEN_NOT_COMMITTED'), { status: 'REFUSED', reason: 'consequence_envelope_unavailable' });
             const expectedCapacityState = outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED';
-            if (capacityTerminal.status !== expectedCapacityState) {
-                return indeterminate('consequence_envelope_terminal_unconfirmed', true, publicAttempt(attempt));
+            if (capacityTerminal?.status !== expectedCapacityState) {
+                return indeterminate('consequence_envelope_terminal_unconfirmed', true, publicBinding);
             }
         }
         if (outcome.state === 'EXECUTED') {
@@ -1034,32 +1252,36 @@ export function createConsequenceBoundary(options) {
             attempt: attemptBinding,
         });
     }
-    async function closeComposedActionFence(holderKey, executedMarker, executed, recovery) {
-        if (executed) {
-            // A holder left RESERVED still fences the action, so an unconfirmed
-            // commit cannot reopen it.
-            if (!recovery)
-                await custody.closeConfirmed(holderKey, 'CONSUMED');
-            else
-                await custody.closeForRecovery(holderKey, 'CONSUMED', recovery.authorization, recovery.scope);
-            await custody.markActionExecuted(executedMarker);
-            return true;
-        }
-        return !recovery
-            ? custody.releaseConfirmed(holderKey)
-            : custody.releaseForRecovery(holderKey, recovery.authorization, recovery.scope);
-    }
     async function reconcile(input) {
+        try {
+            return await reconcileWithMode(input);
+        }
+        catch {
+            return refused('boundary_internal_error');
+        }
+    }
+    async function reconcileWithMode(input) {
         let action;
         let evaluation;
         let attemptBinding;
         let evaluationDigest;
+        let artifacts;
+        let rawOutcome;
+        let recoveryAuthorization;
+        let mode;
         try {
-            action = cloneFrozen(input?.action);
-            evaluation = cloneFrozen(input?.evaluation);
+            const record = dataRecord(input);
+            if (!record || containsProxy(record))
+                throw new Error('input_invalid');
+            action = cloneFrozen(record.action);
+            evaluation = cloneFrozen(record.evaluation);
             evaluationDigest = digestAeb(evaluation);
-            attemptBinding = cloneFrozen(input?.attempt);
-            if (!validAttemptBinding(attemptBinding))
+            attemptBinding = cloneFrozen(record.attempt);
+            artifacts = record.artifacts;
+            rawOutcome = record.outcome;
+            recoveryAuthorization = record.recovery_authorization;
+            mode = reconcileMode(record.mode);
+            if (!validAttemptBinding(attemptBinding) || mode === null)
                 throw new Error('attempt_invalid');
         }
         catch {
@@ -1068,34 +1290,35 @@ export function createConsequenceBoundary(options) {
         if (evaluation.executor_id !== options.executor_id) {
             return refused('executor_binding_mismatch');
         }
-        const verification = verifyAebEvaluation(evaluation, {
-            mode: 'historical',
-            config: options.aeb.config,
-            adapters: options.aeb.adapters,
-            artifacts: input.artifacts,
-            expected_action: action,
-        });
+        let verification;
+        try {
+            verification = verifyAebEvaluation(evaluation, {
+                mode: 'historical',
+                config: options.aeb.config,
+                adapters: options.aeb.adapters,
+                artifacts: artifacts,
+                expected_action: action,
+            });
+        }
+        catch {
+            return refused('evaluation_not_verified');
+        }
         if (!verification.valid) {
             return refused(verification.reasons[0] ?? 'evaluation_not_verified');
         }
+        const expectedProviderIdempotencyKey = consequenceBoundaryProviderIdempotencyKey({
+            provider,
+            caid: evaluation.caid,
+            action_digest: digestAeb(action),
+            authorization_instance: evaluation.consumption_nonce,
+        });
         const expectedRequestDigest = consequenceBoundaryRequestDigest({
             provider,
             operation_id: evaluation.operation_id,
             caid: evaluation.caid,
             action,
             evaluation_digest: evaluationDigest,
-            provider_idempotency_key: consequenceBoundaryProviderIdempotencyKey({
-                provider,
-                caid: evaluation.caid,
-                action_digest: digestAeb(action),
-                authorization_instance: evaluation.consumption_nonce,
-            }),
-        });
-        const expectedProviderIdempotencyKey = consequenceBoundaryProviderIdempotencyKey({
-            provider,
-            caid: evaluation.caid,
-            action_digest: digestAeb(action),
-            authorization_instance: evaluation.consumption_nonce,
+            provider_idempotency_key: expectedProviderIdempotencyKey,
         });
         if (attemptBinding.tenant_id !== provider.tenant_id
             || attemptBinding.provider_id !== provider.provider_id
@@ -1105,17 +1328,12 @@ export function createConsequenceBoundary(options) {
             || attemptBinding.request_digest !== expectedRequestDigest) {
             return refused('reconciliation_binding_mismatch');
         }
-        const outcome = normalizeEffectOutcome(input.outcome);
-        // Without a durable attempt-state read the boundary cannot prove a stop
-        // before provider entry, so only a terminal provider outcome can proceed.
-        if ((!outcome || outcome.state === 'INDETERMINATE') && !readComposedAttemptState) {
-            return indeterminate('provider_outcome_indeterminate', true, attemptBinding);
-        }
+        const outcome = normalizeEffectOutcome(rawOutcome);
         let recovered = null;
         try {
             recovered = await options.attempts.recover({
                 attempt: attemptBinding,
-                recovery_authorization: input.recovery_authorization,
+                recovery_authorization: recoveryAuthorization,
             });
         }
         catch {
@@ -1151,66 +1369,70 @@ export function createConsequenceBoundary(options) {
             recoveryOperationKey: reservationKey,
             reservation,
         });
-        // Pre-entry recovery: a durable record that never reached INVOKING (or was
-        // RELEASED without evidence) proves this boundary never entered the
-        // provider for the attempt. The holder is released; while it is still
-        // held it proves this attempt still owns the evaluation reservation, which
-        // is closed as RELEASED_NOT_ENTERED so it can never be reserved again.
-        if (readComposedAttemptState) {
-            let snapshot = await composedAttemptState(recoveredReference);
-            if (snapshot === null) {
-                return indeterminate('attempt_state_unavailable', true, attemptBinding);
-            }
-            const preEntry = snapshot.state === 'RESERVED'
-                || (snapshot.state === 'RELEASED' && snapshot.evidence === undefined);
-            if (preEntry) {
-                if (!outcome)
-                    return indeterminate('provider_outcome_indeterminate', false, attemptBinding);
-                if (outcome.state === 'EXECUTED')
+        if (mode === 'pre_entry') {
+            // Pre-entry recovery. It never falls through to terminal
+            // reconciliation, never treats the caller's lookup as a provider
+            // outcome, and never touches the evaluation reservation, which a live
+            // run hands back itself. The linearization point is this call's own
+            // RESERVED -> RELEASED transition (or an earlier one, recorded as
+            // RELEASED without evidence): after it the original run can no longer
+            // move the attempt to INVOKING.
+            if (!outcome)
+                return indeterminate('provider_outcome_indeterminate', false, attemptBinding);
+            if (outcome.state === 'EXECUTED')
+                return refused('reconciliation_outcome_conflict');
+            if (readComposedAttemptState) {
+                const snapshot = await composedAttemptState(recoveredReference);
+                if (snapshot === null)
+                    return indeterminate('attempt_state_unavailable', false, attemptBinding);
+                if (snapshot.state === 'COMMITTED'
+                    || (snapshot.state === 'RELEASED' && snapshot.evidence !== undefined)) {
                     return refused('reconciliation_outcome_conflict');
-                if (snapshot.state === 'RESERVED') {
-                    await releaseComposedAttempt(recoveredReference);
-                    snapshot = await composedAttemptState(recoveredReference);
-                    if (snapshot === null) {
-                        return indeterminate('attempt_state_unavailable', true, attemptBinding);
-                    }
                 }
-                if (snapshot.state === 'RELEASED' && snapshot.evidence === undefined) {
-                    const holderState = await custody.state(holderKey);
-                    let released = holderState === 'AVAILABLE';
-                    if (holderState === 'RESERVED') {
-                        const evaluationClosed = !custody.hasTerminalRelease
-                            || await custody.closeForRecovery(reservationKey, 'RELEASED_NOT_ENTERED', input.recovery_authorization, scope('operation'));
-                        released = evaluationClosed && await custody.releaseForRecovery(holderKey, input.recovery_authorization, scope('action-fence-holder'));
+                if (snapshot.state === 'INVOKING' || snapshot.state === 'INDETERMINATE') {
+                    return indeterminate('recovery_lost_to_live_attempt', true, attemptBinding);
+                }
+                if (snapshot.state === 'RESERVED') {
+                    const released = await composedTransition(recoveredReference, 'RESERVED', 'RELEASED');
+                    if (!released.confirmed) {
+                        const after = released.snapshot?.state;
+                        if (after === 'INVOKING' || after === 'INDETERMINATE' || after === 'COMMITTED'
+                            || (after === 'RELEASED' && released.snapshot?.evidence !== undefined)) {
+                            return indeterminate('recovery_lost_to_live_attempt', true, attemptBinding);
+                        }
+                        return indeterminate(after === undefined ? 'attempt_state_unavailable' : 'attempt_release_unconfirmed', false, attemptBinding);
                     }
-                    else if (holderState === null && !custody.hasStateRead) {
-                        released = await custody.releaseForRecovery(holderKey, input.recovery_authorization, scope('action-fence-holder'));
-                    }
-                    return released
-                        ? refused('attempt_never_entered_provider')
-                        : indeterminate('native_pre_entry_release_unconfirmed', false, attemptBinding);
                 }
             }
-            if (!outcome || outcome.state === 'INDETERMINATE') {
-                return indeterminate('provider_outcome_indeterminate', true, attemptBinding);
+            else {
+                // Without a durable read only this call's own acknowledged
+                // RESERVED -> RELEASED proves the stop.
+                const released = await composedTransition(recoveredReference, 'RESERVED', 'RELEASED');
+                if (!released.confirmed) {
+                    return indeterminate('attempt_release_unconfirmed', false, attemptBinding);
+                }
+            }
+            return await custody.releaseForRecovery(holderKey, recoveryAuthorization, scope('action-fence-holder'))
+                ? refused('attempt_never_entered_provider')
+                : indeterminate('native_pre_entry_release_unconfirmed', false, attemptBinding);
+        }
+        // Terminal reconciliation: only for an attempt that reached INVOKING, and
+        // only with a terminal provider outcome.
+        const snapshot = readComposedAttemptState
+            ? await composedAttemptState(recoveredReference)
+            : null;
+        if (readComposedAttemptState) {
+            if (snapshot === null)
+                return indeterminate('attempt_state_unavailable', true, attemptBinding);
+            if (snapshot.state === 'RESERVED'
+                || (snapshot.state === 'RELEASED' && snapshot.evidence === undefined)) {
+                return indeterminate('pre_entry_recovery_required', false, attemptBinding);
             }
         }
         if (!outcome || outcome.state === 'INDETERMINATE') {
             return indeterminate('provider_outcome_indeterminate', true, attemptBinding);
         }
-        const consumed = await reconcileAebExecutionDurable(options.aeb.store, reservationKey, 'COMMITTED');
-        // After a restart an ownership-fenced store (the shipped PostgreSQL store)
-        // refuses the commit until the authorized recovery claim takes the row.
-        if (consumed.state !== 'CONSUMED'
-            && !await custody.closeForRecovery(reservationKey, 'CONSUMED', input.recovery_authorization, scope('operation'))) {
-            return indeterminate('authorization_consumption_unconfirmed', true, attemptBinding);
-        }
-        if (!await closeComposedActionFence(holderKey, executedMarker, outcome.state === 'EXECUTED', {
-            authorization: input.recovery_authorization,
-            scope: scope('action-fence-holder'),
-        })) {
-            return indeterminate('native_action_fence_release_unconfirmed', true, attemptBinding);
-        }
+        const terminalState = outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED';
         const providerEvidence = cloneFrozen({
             ...attemptBinding,
             operation_id: evaluation.operation_id,
@@ -1221,24 +1443,48 @@ export function createConsequenceBoundary(options) {
             outcome: outcome.state === 'EXECUTED' ? 'COMMITTED' : 'NOT_COMMITTED',
             evidence_digest: outcome.evidence.evidence_digest,
         });
-        const terminal = await options.attempts.store.reconcile({
-            ...recoveredReference,
-            expected_state: 'INDETERMINATE',
-            next_state: outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED',
-            evidence: providerEvidence,
-        }).catch(() => false);
-        if (!terminal) {
-            return indeterminate('attempt_terminal_record_unconfirmed', true, attemptBinding);
+        if (snapshot) {
+            if (snapshot.state === 'COMMITTED' || snapshot.state === 'RELEASED') {
+                // A terminal record is never rewritten, and a conflicting outcome
+                // must not touch the reservations that record already closed.
+                if (!composedTerminalMatches(snapshot, terminalState, providerEvidence)) {
+                    return refused('reconciliation_outcome_conflict');
+                }
+            }
+            else {
+                if (snapshot.state === 'INVOKING'
+                    && !(await composedTransition(recoveredReference, 'INVOKING', 'INDETERMINATE')).confirmed) {
+                    return indeterminate('attempt_freeze_unconfirmed', true, attemptBinding);
+                }
+                if (!await composedTerminal(recoveredReference, terminalState, providerEvidence)) {
+                    return indeterminate('attempt_terminal_record_unconfirmed', true, attemptBinding);
+                }
+            }
         }
-        if (options.consequence_envelope) {
-            const capacityTerminal = await options.consequence_envelope.reconcile({
+        else if (!await composedTerminal(recoveredReference, terminalState, providerEvidence)) {
+            // A 0.26.0-style attempt store: freeze an INVOKING record, then retry
+            // the terminal write. A RESERVED record fails both, so nothing is
+            // released for an attempt that never reached INVOKING.
+            if (!(await composedTransition(recoveredReference, 'INVOKING', 'INDETERMINATE')).confirmed
+                || !await composedTerminal(recoveredReference, terminalState, providerEvidence)) {
+                return indeterminate('attempt_terminal_record_unconfirmed', true, attemptBinding);
+            }
+        }
+        // After a restart an ownership-fenced store (the shipped PostgreSQL store)
+        // refuses the commit until the authorized recovery claim takes the row.
+        const settledReservations = await settleComposedReservations(reservationKey, holderKey, executedMarker, outcome.state === 'EXECUTED', { authorization: recoveryAuthorization, scope });
+        if (settledReservations !== null) {
+            return indeterminate(settledReservations, true, attemptBinding);
+        }
+        if (envelopeBoundary) {
+            const capacityTerminal = await guarded(() => envelopeBoundary.reconcile({
                 operation_id: evaluation.operation_id,
                 action_digest: digestAeb(action),
                 outcome: outcome.state === 'EXECUTED' ? 'COMMITTED' : 'PROVEN_NOT_COMMITTED',
-                recovery_authorization: input.recovery_authorization,
-            }).catch(() => ({ status: 'REFUSED', reason: 'consequence_envelope_unavailable' }));
+                recovery_authorization: recoveryAuthorization,
+            }), { status: 'REFUSED', reason: 'consequence_envelope_unavailable' });
             const expectedCapacityState = outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED';
-            if (capacityTerminal.status !== expectedCapacityState) {
+            if (capacityTerminal?.status !== expectedCapacityState) {
                 return indeterminate('consequence_envelope_reconciliation_unconfirmed', true, attemptBinding);
             }
         }
@@ -1547,8 +1793,7 @@ export function createNativeConsequenceBoundary(options) {
             const snapshot = dataRecord(await readAttemptState(reference));
             if (!snapshot
                 || typeof snapshot.state !== 'string'
-                || !['RESERVED', 'INVOKING', 'INDETERMINATE', 'COMMITTED', 'RELEASED']
-                    .includes(snapshot.state))
+                || !ATTEMPT_STATES.includes(snapshot.state))
                 return null;
             const state = snapshot.state;
             if (snapshot.evidence === undefined)
@@ -1559,23 +1804,27 @@ export function createNativeConsequenceBoundary(options) {
             return null;
         }
     }
+    /**
+     * One attempt-store transition, decided by the durable read that follows
+     * it. The store's answer never counts on its own: a lost acknowledgement, a
+     * `false`, or a truthy non-`true` value are all resolved by the read.
+     * Returns the record as read afterwards (the unchanged record when it was
+     * not in `expected`), or null when it cannot be read.
+     */
     async function transitionAttempt(reference, expected, next) {
         const before = await attemptState(reference);
-        if (before?.state === next)
-            return true;
-        if (before?.state !== expected)
-            return false;
-        try {
-            await transitionAttemptState({
-                ...reference,
-                expected_state: expected,
-                next_state: next,
-            });
-        }
-        catch {
-            // A lost acknowledgement is resolved by the durable state read below.
-        }
-        return (await attemptState(reference))?.state === next;
+        if (before === null || before.state !== expected)
+            return before;
+        await guarded(() => transitionAttemptState({
+            ...reference,
+            expected_state: expected,
+            next_state: next,
+        }), undefined);
+        return attemptState(reference);
+    }
+    /** RELEASED with no provider evidence: a durable not-entered record. */
+    function notEntered(snapshot) {
+        return snapshot?.state === 'RELEASED' && snapshot.evidence === undefined;
     }
     function terminalRecordMatches(snapshot, next, evidence) {
         try {
@@ -1607,7 +1856,7 @@ export function createNativeConsequenceBoundary(options) {
         current = await attemptState(reference);
         return terminalRecordMatches(current, next, evidence);
     }
-    async function verifyProviderOutcome(attempt, outcome) {
+    async function verifyProviderOutcome(attempt, outcome, purpose = 'provider_outcome') {
         try {
             return await verifyOutcome(cloneFrozen({
                 provider,
@@ -1617,6 +1866,7 @@ export function createNativeConsequenceBoundary(options) {
                 verification_program_digest: attempt.provider_outcome_verification_program_digest,
                 attempt,
                 outcome,
+                purpose,
             })) === true;
         }
         catch {
@@ -1674,6 +1924,19 @@ export function createNativeConsequenceBoundary(options) {
         });
     }
     async function run(input) {
+        const progress = { entered: false };
+        try {
+            return await runAttempt(input, progress);
+        }
+        catch {
+            // Last resort: every store and callback call below is guarded, so this
+            // is reached only by a defect. Whatever was reserved stays held.
+            return progress.attempt
+                ? indeterminate('boundary_internal_error', progress.entered, progress.attempt)
+                : refused('boundary_internal_error');
+        }
+    }
+    async function runAttempt(input, progress) {
         let action;
         let handoff;
         let operationId;
@@ -1702,7 +1965,7 @@ export function createNativeConsequenceBoundary(options) {
             now: decisionNow,
         });
         if (!preflight.valid || !preflight.handoff || !preflight.action_digest
-            || !preflight.native_replay_unit || !preflight.replay_key) {
+            || !preflight.native_replay_identity || !preflight.replay_identity_key) {
             return refused(preflight.reasons[0] ?? 'native_handoff_not_verified');
         }
         let status;
@@ -1721,7 +1984,8 @@ export function createNativeConsequenceBoundary(options) {
         });
         if (!verification.valid || !verification.execution_authorizing
             || !verification.handoff || !verification.action_digest
-            || !verification.native_replay_unit || !verification.replay_key) {
+            || !verification.native_replay_identity || !verification.replay_identity_key
+            || !verification.replay_key) {
             return refused(verification.reasons[0] ?? 'native_handoff_not_verified');
         }
         if (verification.handoff.relying_party_id !== relyingPartyId) {
@@ -1732,7 +1996,7 @@ export function createNativeConsequenceBoundary(options) {
             providerIdempotencyKey = nativeConsequenceBoundaryProviderIdempotencyKey({
                 provider,
                 action_digest: verification.action_digest,
-                native_replay_unit: verification.native_replay_unit,
+                native_replay_unit: verification.native_replay_identity,
             });
             // Every key but the attempt-bound rows is derivable now; a binding Gate
             // cannot key is a refusal with no callback and no store write.
@@ -1773,7 +2037,7 @@ export function createNativeConsequenceBoundary(options) {
             decided_at: localDecidedAt,
             action_digest: verification.action_digest,
             handoff_digest: verification.record_digest,
-            native_replay_unit: verification.native_replay_unit,
+            native_replay_unit: verification.native_replay_identity,
             program_digest: localAuthorizationProgramDigest,
         });
         const requestDigest = nativeConsequenceBoundaryRequestDigest({
@@ -1782,7 +2046,7 @@ export function createNativeConsequenceBoundary(options) {
             action,
             action_digest: verification.action_digest,
             handoff_digest: verification.record_digest,
-            native_replay_unit: verification.native_replay_unit,
+            native_replay_unit: verification.native_replay_identity,
             trust_snapshot_id: trustSnapshotId,
             trust_snapshot_digest: trustSnapshotDigest,
             authorization_program_digest: authorizationProgramDigest,
@@ -1820,7 +2084,7 @@ export function createNativeConsequenceBoundary(options) {
             operation_id: operationId,
             action_digest: verification.action_digest,
             handoff_digest: verification.record_digest,
-            native_replay_unit: verification.native_replay_unit,
+            native_replay_unit: verification.native_replay_identity,
             trust_snapshot_id: trustSnapshotId,
             trust_snapshot_digest: trustSnapshotDigest,
             authorization_program_digest: authorizationProgramDigest,
@@ -1847,14 +2111,16 @@ export function createNativeConsequenceBoundary(options) {
             ...attemptBinding,
             owner,
         };
+        progress.attempt = publicNativeAttempt(attempt);
         // Attempt-bound rows this call wrote or may have written (a reserve that
         // threw can still have landed). No other attempt can own these keys.
         const held = [];
         // Reservations are handed back only after the attempt itself is durably
-        // RELEASED, so an attempt that is still RESERVED or INVOKING keeps its
-        // fences until reconcile() proves it never entered the provider.
+        // RELEASED without evidence (by this call, or by a pre-entry recovery that
+        // linearized first), so an attempt that is still RESERVED or INVOKING
+        // keeps its fences until reconcile() proves it never entered the provider.
         async function stopBeforeEntry(expected, reason) {
-            const attemptReleased = await transitionAttempt(attempt, expected, 'RELEASED');
+            const attemptReleased = notEntered(await transitionAttempt(attempt, expected, 'RELEASED'));
             if (held.length === 0)
                 return refused(reason);
             if (!attemptReleased) {
@@ -1873,7 +2139,15 @@ export function createNativeConsequenceBoundary(options) {
         //    authorization ID), and the exact-action fence at this provider.
         const reservations = [
             [keys.operation, [keys.operation_fence], async () => 'consumption_conflict'],
-            [keys.authority, [verification.replay_key], async () => 'native_replay_conflict'],
+            // The authority reservation fences the label-free replay identity key and
+            // the verify 4.1.0 key. The identity key is what makes a relabelled grant
+            // one spend; the 4.1.0 key keeps grants consumed by Gate 0.26.0, and a
+            // grant burned before a namespace rotation, fenced across the upgrade.
+            [
+                keys.authority,
+                [verification.replay_identity_key, verification.replay_key],
+                async () => 'native_replay_conflict',
+            ],
             [keys.holder, [keys.action_fence], () => custody.actionFenceRefusal(keys.executed_marker)],
         ];
         for (const [key, fences, conflictReason] of reservations) {
@@ -1915,10 +2189,23 @@ export function createNativeConsequenceBoundary(options) {
         if (!entryVerification.valid || !entryVerification.execution_authorizing) {
             return stopBeforeEntry('RESERVED', entryVerification.reasons[0] ?? 'native_handoff_not_verified_at_provider_entry');
         }
+        // Provider entry. The durable record decides: INVOKING means this owner's
+        // write landed (a lost acknowledgement included) and it proceeds as the
+        // owner; RESERVED means it did not, so the attempt is first closed as not
+        // entered and then released; RELEASED without evidence means a pre-entry
+        // recovery linearized first, so this run hands back the rows it still
+        // holds; an unreadable record holds everything.
         const started = await transitionAttempt(attempt, 'RESERVED', 'INVOKING');
-        if (!started) {
+        if (started?.state !== 'INVOKING') {
+            if (started?.state === 'RESERVED') {
+                return stopBeforeEntry('RESERVED', 'attempt_start_conflict');
+            }
+            if (notEntered(started)) {
+                return stopBeforeEntry('RESERVED', 'attempt_released_by_recovery');
+            }
             return indeterminate('attempt_start_unconfirmed', false, publicNativeAttempt(attempt));
         }
+        progress.entered = true;
         // The custody transition itself can block. Resolve status once more after
         // it completes so no delayed store call can carry stale authority into the
         // provider callback.
@@ -1956,7 +2243,7 @@ export function createNativeConsequenceBoundary(options) {
                 operation_id: operationId,
                 action_digest: verification.action_digest,
                 handoff_digest: verification.record_digest,
-                native_replay_unit: verification.native_replay_unit,
+                native_replay_unit: verification.native_replay_identity,
                 authorization_program_digest: authorizationProgramDigest,
                 local_authorization: localDecision,
                 trust_snapshot_id: trustSnapshotId,
@@ -1971,8 +2258,9 @@ export function createNativeConsequenceBoundary(options) {
             return indeterminate('provider_outcome_indeterminate', true, publicNativeAttempt(attempt));
         }
         const frozen = await transitionAttempt(attempt, 'INVOKING', 'INDETERMINATE');
-        if (!frozen)
+        if (frozen?.state !== 'INDETERMINATE') {
             return indeterminate('attempt_freeze_failed', true, publicNativeAttempt(attempt));
+        }
         const outcome = normalizeEffectOutcome(rawOutcome, true);
         if (!outcome)
             return indeterminate('provider_outcome_invalid', true, publicNativeAttempt(attempt));
@@ -1982,31 +2270,49 @@ export function createNativeConsequenceBoundary(options) {
         if (!await verifyProviderOutcome(attemptBinding, outcome)) {
             return indeterminate('provider_outcome_authentication_failed', true, publicNativeAttempt(attempt));
         }
-        // Any terminal provider result follows provider entry and therefore burns
-        // the one-time native authorization and the operation identity, including
-        // an authenticated NOT_COMMITTED.
-        if (!await custody.closeConfirmed(keys.authority, 'CONSUMED')
-            || !await custody.closeConfirmed(keys.operation, 'CONSUMED')) {
-            return indeterminate('authorization_consumption_unconfirmed', true, publicNativeAttempt(attempt));
+        return closeEnteredAttempt(attempt, attemptBinding, keys, outcome);
+    }
+    /**
+     * Finish an attempt that entered the provider, once its authenticated
+     * terminal outcome is known. The terminal record comes first and must be
+     * confirmed by a durable read; only then are the one-time native
+     * authorization and the operation identity burned (any terminal result
+     * follows provider entry, including an authenticated NOT_COMMITTED) and the
+     * action fence closed. Every step is idempotent, so a later authenticated
+     * reconciliation finishes whatever an interrupted call left open.
+     */
+    async function closeEnteredAttempt(reference, attemptBinding, keys, outcome, recovery) {
+        if (!await closeAttempt(reference, outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED', providerEvidence(attemptBinding, outcome))) {
+            return indeterminate('attempt_terminal_record_unconfirmed', true, attemptBinding);
         }
-        // The fence closes before the terminal record, so an unconfirmed release
-        // leaves the attempt INDETERMINATE and any authenticated reconciliation
-        // can finish it. The holder is keyed by this attempt, so a repeated close
-        // can never reach a later attempt's fence.
-        if (!await closeActionFence(keys, outcome.state === 'EXECUTED')) {
-            return indeterminate('native_action_fence_release_unconfirmed', true, publicNativeAttempt(attempt));
+        const consume = (key, reservation) => recovery
+            ? custody.closeForRecovery(key, 'CONSUMED', recovery.authorization, claimScope(keys, attemptBinding, reservation))
+            : custody.closeConfirmed(key, 'CONSUMED');
+        if (!await consume(keys.authority, 'native-authority')
+            || !await consume(keys.operation, 'operation')) {
+            return indeterminate('authorization_consumption_unconfirmed', true, attemptBinding);
         }
-        const evidence = providerEvidence(attemptBinding, outcome);
-        const terminal = await closeAttempt(attempt, outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED', evidence);
-        if (!terminal) {
-            return indeterminate('attempt_terminal_record_unconfirmed', true, publicNativeAttempt(attempt));
+        // The holder is keyed by this attempt, so a repeated close can never
+        // reach a later attempt's fence.
+        if (!await closeActionFence(keys, outcome.state === 'EXECUTED', recovery
+            ? { authorization: recovery.authorization, attempt: attemptBinding }
+            : undefined)) {
+            return indeterminate('native_action_fence_release_unconfirmed', true, attemptBinding);
         }
         return terminalResult(outcome, attemptBinding);
     }
     const RECONCILE_KEYS = [
-        'operation_id', 'handoff', 'action', 'attempt', 'outcome', 'recovery_authorization',
+        'operation_id', 'handoff', 'action', 'attempt', 'outcome', 'recovery_authorization', 'mode',
     ];
     async function reconcile(input) {
+        try {
+            return await reconcileWithMode(input);
+        }
+        catch {
+            return refused('boundary_internal_error');
+        }
+    }
+    async function reconcileWithMode(input) {
         let action;
         let handoff;
         let attemptBinding;
@@ -2014,6 +2320,7 @@ export function createNativeConsequenceBoundary(options) {
         let decisionNow;
         let rawOutcome;
         let recoveryAuthorization;
+        let mode;
         try {
             // One read of the caller's object: getters, Proxy traps, and an own
             // "__proto__" member are refused here rather than read later.
@@ -2031,8 +2338,9 @@ export function createNativeConsequenceBoundary(options) {
             operationId = record.operation_id;
             rawOutcome = record.outcome;
             recoveryAuthorization = record.recovery_authorization;
+            mode = reconcileMode(record.mode);
             decisionNow = now();
-            if (!identifier(operationId) || !canonicalInstant(decisionNow)
+            if (!identifier(operationId) || !canonicalInstant(decisionNow) || mode === null
                 || !validNativeAttemptBinding(attemptBinding))
                 throw new Error('input_invalid');
         }
@@ -2095,7 +2403,7 @@ export function createNativeConsequenceBoundary(options) {
             now: decisionNow,
         });
         if (!verification.valid || !verification.handoff || !verification.action_digest
-            || !verification.native_replay_unit) {
+            || !verification.native_replay_identity) {
             return refused(verification.reasons[0] ?? 'native_handoff_not_verified');
         }
         const derivedKeys = deriveNativeConsumptionKeys({
@@ -2113,7 +2421,7 @@ export function createNativeConsequenceBoundary(options) {
             expectedProviderIdempotencyKey = nativeConsequenceBoundaryProviderIdempotencyKey({
                 provider,
                 action_digest: verification.action_digest,
-                native_replay_unit: verification.native_replay_unit,
+                native_replay_unit: verification.native_replay_identity,
             });
         }
         catch {
@@ -2129,7 +2437,7 @@ export function createNativeConsequenceBoundary(options) {
             decided_at: attemptBinding.local_decided_at,
             action_digest: verification.action_digest,
             handoff_digest: verification.record_digest,
-            native_replay_unit: verification.native_replay_unit,
+            native_replay_unit: verification.native_replay_identity,
             program_digest: attemptBinding.local_authorization_program_digest,
         });
         const expectedRequestDigest = nativeConsequenceBoundaryRequestDigest({
@@ -2138,7 +2446,7 @@ export function createNativeConsequenceBoundary(options) {
             action,
             action_digest: verification.action_digest,
             handoff_digest: verification.record_digest,
-            native_replay_unit: verification.native_replay_unit,
+            native_replay_unit: verification.native_replay_identity,
             trust_snapshot_id: attemptBinding.trust_snapshot_id,
             trust_snapshot_digest: attemptBinding.trust_snapshot_digest,
             authorization_program_digest: expectedAuthorizationProgramDigest,
@@ -2153,7 +2461,7 @@ export function createNativeConsequenceBoundary(options) {
             || attemptBinding.operation_id !== operationId
             || attemptBinding.action_digest !== verification.action_digest
             || attemptBinding.handoff_digest !== verification.record_digest
-            || attemptBinding.native_replay_unit !== verification.native_replay_unit
+            || attemptBinding.native_replay_unit !== verification.native_replay_identity
             || attemptBinding.authorization_program_digest
                 !== expectedAuthorizationProgramDigest
             || attemptBinding.local_decision_digest !== expectedLocalDecision.decision_digest
@@ -2162,95 +2470,85 @@ export function createNativeConsequenceBoundary(options) {
             return refused('reconciliation_binding_mismatch');
         }
         const outcome = normalizeEffectOutcome(rawOutcome, true);
-        let recoveredState = await attemptState(recoveredReference);
+        const recoveredState = await attemptState(recoveredReference);
         if (recoveredState === null) {
             return indeterminate('attempt_state_unavailable', true, attemptBinding);
         }
-        // Pre-entry recovery. Gate calls the provider only after moving the
-        // attempt to INVOKING, and records RELEASED without evidence only for a
-        // stop before the provider callback. So a durable record that is RESERVED,
-        // or RELEASED without evidence, proves Gate never entered the provider for
-        // this attempt. The caller's provider lookup, where one exists, must agree:
-        // an authenticated FAILED ("not found") or an explicit INDETERMINATE when
-        // no lookup is available. An EXECUTED claim contradicts the record and
-        // releases nothing.
-        const preEntryRecord = recoveredState.state === 'RESERVED'
-            || (recoveredState.state === 'RELEASED' && recoveredState.evidence === undefined);
-        if (preEntryRecord) {
+        if (mode === 'pre_entry') {
+            // Pre-entry recovery. Gate calls the provider only after moving the
+            // attempt to INVOKING, and records RELEASED without evidence only for a
+            // stop before the provider callback. The linearization point is this
+            // call's own RESERVED -> RELEASED transition, confirmed by a durable
+            // read (or an earlier not-entered transition, recorded as RELEASED
+            // without evidence): after it the original run cannot reach INVOKING.
+            // The caller's lookup must agree (FAILED "not found" that passes
+            // provider_outcomes.verify as a pre_entry_lookup, or INDETERMINATE when
+            // the provider has no lookup), but it is never used as a terminal
+            // outcome: if the attempt reached INVOKING first, nothing is released.
             if (!outcome)
                 return indeterminate('provider_outcome_indeterminate', false, attemptBinding);
             if (outcome.state === 'EXECUTED')
                 return refused('reconciliation_outcome_conflict');
-            if (outcome.state === 'FAILED' && !await verifyProviderOutcome(attemptBinding, outcome)) {
+            if (recoveredState.state === 'COMMITTED'
+                || (recoveredState.state === 'RELEASED' && recoveredState.evidence !== undefined)) {
+                return refused('reconciliation_outcome_conflict');
+            }
+            if (recoveredState.state === 'INVOKING' || recoveredState.state === 'INDETERMINATE') {
+                return indeterminate('recovery_lost_to_live_attempt', true, attemptBinding);
+            }
+            if (outcome.state === 'FAILED'
+                && !await verifyProviderOutcome(attemptBinding, outcome, 'pre_entry_lookup')) {
                 return indeterminate('provider_outcome_authentication_failed', false, attemptBinding);
             }
-            if (recoveredState.state === 'RESERVED'
-                && !await transitionAttempt(recoveredReference, 'RESERVED', 'RELEASED')) {
-                // The original call may have won the race to INVOKING; only a
-                // provider outcome can close an attempt that reached it.
-                recoveredState = await attemptState(recoveredReference);
-                if (recoveredState === null) {
-                    return indeterminate('attempt_state_unavailable', true, attemptBinding);
+            if (recoveredState.state === 'RESERVED') {
+                const released = await transitionAttempt(recoveredReference, 'RESERVED', 'RELEASED');
+                if (!notEntered(released)) {
+                    if (released === null)
+                        return indeterminate('attempt_state_unavailable', false, attemptBinding);
+                    return released.state === 'RESERVED'
+                        ? indeterminate('attempt_release_unconfirmed', false, attemptBinding)
+                        : indeterminate('recovery_lost_to_live_attempt', true, attemptBinding);
                 }
             }
-            else {
-                recoveredState = { state: 'RELEASED' };
+            let released = true;
+            for (const [key, reservation] of [
+                [keys.holder, 'action-fence-holder'],
+                [keys.authority, 'native-authority'],
+                [keys.operation, 'operation'],
+            ]) {
+                released = await custody.releaseForRecovery(key, recoveryAuthorization, claimScope(keys, attemptBinding, reservation)) && released;
             }
-            if (recoveredState.state === 'RELEASED' && recoveredState.evidence === undefined) {
-                let released = true;
-                for (const [key, reservation] of [
-                    [keys.holder, 'action-fence-holder'],
-                    [keys.authority, 'native-authority'],
-                    [keys.operation, 'operation'],
-                ]) {
-                    released = await custody.releaseForRecovery(key, recoveryAuthorization, claimScope(keys, attemptBinding, reservation)) && released;
-                }
-                return released
-                    ? refused('attempt_never_entered_provider')
-                    : indeterminate('native_pre_entry_release_unconfirmed', false, attemptBinding);
-            }
+            return released
+                ? refused('attempt_never_entered_provider')
+                : indeterminate('native_pre_entry_release_unconfirmed', false, attemptBinding);
+        }
+        // Terminal reconciliation: only for an attempt that reached INVOKING,
+        // and only with the provider's authenticated terminal outcome for it.
+        if (recoveredState.state === 'RESERVED' || notEntered(recoveredState)) {
+            return indeterminate('pre_entry_recovery_required', false, attemptBinding);
         }
         if (!outcome || outcome.state === 'INDETERMINATE') {
             return indeterminate('provider_outcome_indeterminate', true, attemptBinding);
         }
-        const evidence = providerEvidence(attemptBinding, outcome);
         const terminalState = outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED';
         if ((recoveredState.state === 'COMMITTED' || recoveredState.state === 'RELEASED')
-            && !terminalRecordMatches(recoveredState, terminalState, evidence)) {
+            && !terminalRecordMatches(recoveredState, terminalState, providerEvidence(attemptBinding, outcome))) {
             // A terminal record is never rewritten, and a conflicting outcome must
             // not touch the reservations that record already closed.
             return refused('reconciliation_outcome_conflict');
         }
-        if (recoveredState.state === 'RESERVED') {
-            return indeterminate('attempt_state_unavailable', true, attemptBinding);
-        }
         if (recoveredState.state === 'INVOKING'
-            && !await transitionAttempt(recoveredReference, 'INVOKING', 'INDETERMINATE')) {
+            && (await transitionAttempt(recoveredReference, 'INVOKING', 'INDETERMINATE'))?.state
+                !== 'INDETERMINATE') {
             return indeterminate('attempt_freeze_unconfirmed', true, attemptBinding);
         }
         if (!await verifyProviderOutcome(attemptBinding, outcome)) {
             return indeterminate('provider_outcome_authentication_failed', true, attemptBinding);
         }
-        // Any terminal provider result follows provider entry and therefore burns
-        // the one-time native authorization and the operation identity, including
-        // an authenticated NOT_COMMITTED. After a restart the reservations may be
-        // owned by a dead process; the store's authorized recovery claim takes
-        // them over, one credential scoped to this attempt for all three.
-        const custodyClosed = await custody.closeForRecovery(keys.authority, 'CONSUMED', recoveryAuthorization, claimScope(keys, attemptBinding, 'native-authority')) && await custody.closeForRecovery(keys.operation, 'CONSUMED', recoveryAuthorization, claimScope(keys, attemptBinding, 'operation'));
-        if (!custodyClosed) {
-            return indeterminate('authorization_consumption_unconfirmed', true, attemptBinding);
-        }
-        if (!await closeActionFence(keys, outcome.state === 'EXECUTED', {
-            authorization: recoveryAuthorization,
-            attempt: attemptBinding,
-        })) {
-            return indeterminate('native_action_fence_release_unconfirmed', true, attemptBinding);
-        }
-        const terminal = await closeAttempt(recoveredReference, terminalState, evidence);
-        if (!terminal) {
-            return indeterminate('attempt_terminal_record_unconfirmed', true, attemptBinding);
-        }
-        return terminalResult(outcome, attemptBinding);
+        // After a restart the reservations may be owned by a dead process; the
+        // store's authorized recovery claim takes them over, one credential
+        // scoped to this attempt for all three.
+        return closeEnteredAttempt(recoveredReference, attemptBinding, keys, outcome, { authorization: recoveryAuthorization });
     }
     return Object.freeze({
         version: NATIVE_CONSEQUENCE_BOUNDARY_VERSION,
@@ -2271,6 +2569,8 @@ export default Object.freeze({
     NATIVE_CONSEQUENCE_BOUNDARY_TRUST_SNAPSHOT_DOMAIN,
     NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN,
     consequenceBoundaryActionFenceHolderKey,
+    consequenceBoundaryRecoveryClaimKey,
+    consequenceBoundaryRecoveryClaimMarkerKey,
     nativeConsequenceBoundaryReservationKey,
     nativeConsequenceBoundaryActionFenceKey,
     nativeConsequenceBoundaryAttemptReservationKeys,

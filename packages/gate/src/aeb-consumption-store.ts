@@ -12,9 +12,12 @@
  * durable read, which the direct-native consequence boundary requires.
  *
  * Ownership is per store instance and per key, so two callers in one process
- * that reserve the same key share one owner token. The consequence
- * boundaries therefore write only keys that include their attempt ID, which
- * no other attempt can produce.
+ * that reserve the same key share one owner token. The native consequence
+ * boundary therefore writes only keys that include its attempt ID, which no
+ * other attempt can produce. The composed boundary's evaluation reservation
+ * is keyed by the evaluation; it closes or commits that row for an attempt
+ * only while the attempt's own holder row, keyed by the evaluation
+ * reservation and the attempt ID, is still RESERVED.
  */
 import crypto from 'node:crypto';
 import type {
@@ -22,6 +25,10 @@ import type {
   AebDurableConsumptionStore,
   AebReservationResult,
 } from '@emilia-protocol/verify/aeb-adapter-contract';
+import {
+  consequenceBoundaryRecoveryClaimKey,
+  consequenceBoundaryRecoveryClaimMarkerKey,
+} from './consequence-boundary.js';
 
 export const AEB_PG_CONSUMPTION_STORE_VERSION = 'EP-GATE-AEB-PG-CONSUMPTION-v1';
 export const AEB_CONSUMPTION_OPERATION_TABLE = 'ep_aeb_consumption_operations';
@@ -367,30 +374,42 @@ export interface PostgresAebDurableConsumptionStoreOptions {
   ownerTokenFactory?: () => string;
   /**
    * Verify a caller credential for the reservation being claimed. When the
-   * claim carries a `scope`, one credential for the attempt must authorize
-   * every reservation that attempt holds: bind it to `scope.attemptId` or
-   * `scope.recoveryOperationKey`, not to `operationKey`, or restart
-   * reconciliation cannot finish in one call.
+   * claim carries a `scope`, the store has already checked that `operationKey`
+   * is the row the scope names for that attempt, so one credential bound to
+   * the attempt authorizes every reservation that attempt holds: bind it to
+   * `scope.attemptId` together with `tenantId` and `relyingPartyId`. Do not
+   * bind it to `scope.recoveryOperationKey`, which every attempt with the same
+   * operation ID and action (native) or the same evaluation (composed)
+   * shares, and not to `operationKey`, or restart reconciliation cannot
+   * finish in one call.
    */
   authorizeRecoveryClaim?: AebRecoveryClaimAuthorizer;
 }
 
 /**
  * Which attempt a recovery claim is for. The consequence boundary supplies it
- * from custody it has already authenticated through its attempt store, and
- * it is the same for every reservation of one attempt, so an authorizer can
- * bind one credential to the attempt (or to its operation key) instead of to
- * each row key.
+ * from custody it has already authenticated through its attempt store. The
+ * store refuses a claim whose key is not the row this scope names
+ * (consequenceBoundaryRecoveryClaimKey()), and a claim on a row shared by
+ * several attempts (the composed evaluation reservation) unless the scope's
+ * attempt still holds its action-fence holder row, so an authorizer binds one
+ * credential to the attempt instead of to each row key.
  */
 export interface AebRecoveryClaimScope {
-  /** Boundary attempt whose reservation is being claimed. */
+  /**
+   * Boundary attempt whose reservation is being claimed. Attempt IDs are
+   * unique per attempt: the attempt store refuses a second reservation of one
+   * ID.
+   */
   attemptId: string;
   /** Caller operation identifier the attempt carried. */
   operationId: string;
   /**
-   * Operation identity shared by every reservation of the attempt: the
-   * native boundary's nativeConsequenceBoundaryReservationKey() value, or the
-   * composed boundary's AEB evaluation reservation key.
+   * Operation identity the attempt's row keys are derived from: the native
+   * boundary's nativeConsequenceBoundaryReservationKey() value, or the
+   * composed boundary's AEB evaluation reservation key. Other attempts with
+   * the same operation ID and action, or the same evaluation, share it, so it
+   * is not a binding for a credential.
    */
   recoveryOperationKey: string;
   /** Which of the attempt's reservations `operationKey` names. */
@@ -438,7 +457,11 @@ export interface PostgresAebDurableConsumptionStore extends AebDurableConsumptio
   /**
    * Rotate ownership of an existing RESERVED row after external authorization.
    * The stored and replacement owner tokens are never returned or passed to
-   * the authorizer. `scope`, when given, is passed to the authorizer as-is.
+   * the authorizer. `scope`, when given, must name exactly `key`
+   * (consequenceBoundaryRecoveryClaimKey()); for the composed evaluation
+   * reservation the scope's attempt must still hold its fence holder row.
+   * Otherwise the claim is refused before the authorizer runs. The validated
+   * scope is passed to the authorizer.
    */
   claimReservation(
     key: string,
@@ -692,6 +715,16 @@ export function createPostgresAebDurableConsumptionStore({
       // take only the operation key), so replacing a token already owned by
       // this instance would let its stale caller inherit the new token.
       if (ownedReservations.has(key)) return false;
+      if (claimScope) {
+        // A scope names exactly one row: the one the boundaries derive from
+        // it. A credential bound to one attempt cannot claim another row.
+        if (consequenceBoundaryRecoveryClaimKey(claimScope) !== key) return false;
+        // A row shared by every attempt of one evaluation is claimable for an
+        // attempt only while that attempt's own holder row marks it as the
+        // current owner.
+        const marker = consequenceBoundaryRecoveryClaimMarkerKey(claimScope);
+        if (marker !== null && await store.state(marker) !== 'RESERVED') return false;
+      }
       const claim = Object.freeze({
         authorization,
         tenantId,

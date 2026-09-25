@@ -12,9 +12,18 @@
  * close is keyed by its attempt ID (the diagnostic executed marker is only
  * ever committed), so a release, close, or recovery claim can only reach rows
  * that attempt created. On the composed boundary the action-fence holder is
- * keyed the same way. The durable attempt record is written before any
- * attempt-keyed reservation, so an attempt that stops before provider entry
- * can be found and recovered through reconcile().
+ * keyed the same way; the evaluation reservation is keyed by the evaluation,
+ * and an attempt commits it only while its own holder is still held, which
+ * marks it as that reservation's owner. The durable attempt record is written
+ * before any attempt-keyed reservation, so an attempt that stops before
+ * provider entry can be found and recovered through reconcile().
+ *
+ * Release ordering: an attempt's reservations are released, closed, or
+ * committed only after its durable record has confirmably reached a terminal
+ * state or RELEASED without evidence (not entered). Pre-entry recovery and
+ * terminal reconciliation are separate reconcile() modes, and a pre-entry
+ * recovery that loses its RESERVED -> RELEASED transition to the live run
+ * releases nothing.
  */
 import { type AebAdapter, type AebConsumptionState, type AebDigest, type AebDurableConsumptionStore, type AebEvaluationRecord, type AebPinnedConfig, type AebStatusInput } from '@emilia-protocol/verify/aeb-adapter-contract';
 import type { AebExecutionConditionsResult } from '@emilia-protocol/verify/aeb-execution-conditions';
@@ -140,13 +149,14 @@ export interface ConsequenceBoundaryOptions<TResult> {
         adapters: Record<string, AebAdapter>;
         /**
          * Durable consumption store. Besides the evaluation reservation it holds
-         * one action-fence holder per attempt, keyed by the attempt
-         * (consequenceBoundaryActionFenceHolderKey), which fences the exact action
-         * at this provider under `config.relying_party_id`. A durable `state()`
-         * read confirms lost acknowledgements; `terminalRelease` plus
-         * `recoveryClaimSupported` (the shipped PostgreSQL store) let
-         * reconcile() finish after a restart and close a stopped attempt's
-         * evaluation reservation as RELEASED_NOT_ENTERED.
+         * one action-fence holder per attempt, keyed by the evaluation
+         * reservation and the attempt (consequenceBoundaryActionFenceHolderKey),
+         * which fences the exact action at this provider under
+         * `config.relying_party_id` and marks that attempt as the evaluation
+         * reservation's owner. A durable `state()` read confirms lost
+         * acknowledgements and lets reconciliation check that marker;
+         * `recoveryClaimSupported` (the shipped PostgreSQL store) lets
+         * reconcile() finish after a restart.
          */
         store: AebDurableConsumptionStore & {
             state?(key: string): AebConsumptionState | Promise<AebConsumptionState>;
@@ -156,10 +166,10 @@ export interface ConsequenceBoundaryOptions<TResult> {
     };
     attempts: {
         /**
-         * Durable attempt custody. With `state()`, reconcile() can prove a stop
-         * before provider entry (RESERVED, or RELEASED without evidence) and
-         * release that attempt's action fence; without it only a terminal
-         * provider outcome can close an attempt.
+         * Durable attempt custody. With `state()`, every transition is confirmed
+         * by a durable read; without it (attempt stores written for 0.26.0) only
+         * an answer that is exactly `true` counts, and pre-entry recovery proves
+         * a stop only through its own acknowledged RESERVED -> RELEASED.
          */
         store: ConsequenceBoundaryAttemptStore;
         create_id?: (input: {
@@ -188,6 +198,24 @@ export interface ConsequenceBoundaryRunInput {
     execution_conditions?: AebExecutionConditionsResult;
     additional_replay_keys?: readonly string[];
 }
+/**
+ * Which recovery reconcile() performs. The two never fall through into each
+ * other.
+ *
+ * `terminal` (the default): close an attempt that reached INVOKING with the
+ * provider's terminal outcome for it (EXECUTED, or FAILED meaning the effect
+ * did not and will not occur). A record that never reached INVOKING is
+ * `INDETERMINATE` `pre_entry_recovery_required` and nothing changes.
+ *
+ * `pre_entry`: close an attempt that stopped before provider entry. The
+ * outcome is the provider's lookup for this attempt: FAILED ("not found"),
+ * or INDETERMINATE when no lookup exists; EXECUTED contradicts the record.
+ * It succeeds only through this call's own RESERVED -> RELEASED transition
+ * (or an earlier one, recorded as RELEASED without evidence). If the attempt
+ * reached INVOKING first, the lookup is discarded and the result is
+ * `INDETERMINATE` `recovery_lost_to_live_attempt` with nothing released.
+ */
+export type ConsequenceBoundaryReconcileMode = 'terminal' | 'pre_entry';
 export interface ConsequenceBoundaryReconcileInput<TResult> {
     evaluation: unknown;
     action: unknown;
@@ -195,6 +223,7 @@ export interface ConsequenceBoundaryReconcileInput<TResult> {
     attempt: unknown;
     outcome: ConsequenceBoundaryEffectOutcome<TResult>;
     recovery_authorization: unknown;
+    mode?: ConsequenceBoundaryReconcileMode;
 }
 export interface NativeConsequenceBoundaryProviderEvidence extends NativeConsequenceBoundaryAttemptBinding {
     evidence_id: string;
@@ -234,6 +263,15 @@ export interface NativeConsequenceBoundaryProviderOutcomeVerificationContext<TRe
     outcome: Readonly<Exclude<ConsequenceBoundaryEffectOutcome<TResult>, {
         state: 'INDETERMINATE';
     }>>;
+    /**
+     * `provider_outcome`: the provider's terminal result for this attempt (the
+     * provider call, or terminal reconciliation). `pre_entry_lookup`: the
+     * provider's lookup for an attempt Gate recorded as never entered (pre-entry
+     * recovery), where FAILED means "not found". A lookup that an in-flight call
+     * could still overtake is not a terminal NOT_COMMITTED, so a verification
+     * program should accept it only for `pre_entry_lookup`.
+     */
+    purpose: 'provider_outcome' | 'pre_entry_lookup';
 }
 export interface NativeConsequenceBoundaryAuthorizationContext {
     action: unknown;
@@ -274,8 +312,10 @@ export interface NativeConsequenceBoundaryOptions<TResult> {
          * reserving process (the shipped PostgreSQL store) must also declare
          * `recoveryClaimSupported: true` so reconciliation after a restart can
          * claim them. Every claim for one attempt carries the same
-         * `recovery_authorization` and a scope naming the attempt, so one
-         * credential bound to the attempt (or its operation key) covers all three.
+         * `recovery_authorization` and a scope naming the attempt, and the store
+         * refuses a key that is not one of that attempt's rows
+         * (consequenceBoundaryRecoveryClaimKey), so one credential bound to the
+         * attempt ID covers all three and no other attempt's rows.
          */
         store: AebDurableConsumptionStore & {
             state(key: string): AebConsumptionState | Promise<AebConsumptionState>;
@@ -329,6 +369,8 @@ export interface NativeConsequenceBoundaryReconcileInput<TResult> {
     attempt: unknown;
     outcome: ConsequenceBoundaryEffectOutcome<TResult>;
     recovery_authorization: unknown;
+    /** See ConsequenceBoundaryReconcileMode; `terminal` when omitted. */
+    mode?: ConsequenceBoundaryReconcileMode;
 }
 export type ConsequenceBoundaryResult<TResult> = {
     state: 'REFUSED';
@@ -462,6 +504,22 @@ export declare function nativeConsequenceBoundaryAttemptReservationKeys(input: {
     attempt_id: string;
 }): NativeConsequenceBoundaryAttemptReservationKeys;
 /**
+ * The exact consumption-store row a recovery claim scope names, derived the
+ * way the boundaries derive it: from the scope's recovery operation key (the
+ * native operation fence, or the composed evaluation reservation key), its
+ * attempt ID, and which reservation it names. Null for a scope no boundary
+ * produces. A store that is given a scope refuses a claim on any other row,
+ * so a credential bound to one attempt cannot claim another attempt's row.
+ */
+export declare function consequenceBoundaryRecoveryClaimKey(scope: unknown): string | null;
+/**
+ * For a scope whose row is shared by every attempt of one evaluation (the
+ * composed evaluation reservation), the row that marks this attempt as its
+ * current owner: the attempt's action-fence holder. Null for a row keyed by
+ * the attempt itself, which needs no marker.
+ */
+export declare function consequenceBoundaryRecoveryClaimMarkerKey(scope: unknown): string | null;
+/**
  * Key of the reservation that holds the action fence for one native attempt.
  * It is derived from that attempt's operation key, which includes the attempt
  * ID, so reconciliation can only ever close the holder of its own attempt.
@@ -518,6 +576,8 @@ declare const _default: Readonly<{
     NATIVE_CONSEQUENCE_BOUNDARY_TRUST_SNAPSHOT_DOMAIN: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-TRUST-SNAPSHOT-v1";
     NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-LOCAL-DECISION-v1";
     consequenceBoundaryActionFenceHolderKey: typeof consequenceBoundaryActionFenceHolderKey;
+    consequenceBoundaryRecoveryClaimKey: typeof consequenceBoundaryRecoveryClaimKey;
+    consequenceBoundaryRecoveryClaimMarkerKey: typeof consequenceBoundaryRecoveryClaimMarkerKey;
     nativeConsequenceBoundaryReservationKey: typeof nativeConsequenceBoundaryReservationKey;
     nativeConsequenceBoundaryActionFenceKey: typeof nativeConsequenceBoundaryActionFenceKey;
     nativeConsequenceBoundaryAttemptReservationKeys: typeof nativeConsequenceBoundaryAttemptReservationKeys;
