@@ -44,6 +44,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "FAIL: vectors.json has no vectors array")
 		os.Exit(1)
 	}
+	enumSnapshots, _ := doc["enum_snapshots"].([]interface{})
 
 	failures := 0
 	total := 0
@@ -71,8 +72,9 @@ func main() {
 		switch kind {
 		case "compute":
 			res := caid.ComputeCaid(input["object"], caid.ComputeOptions{
-				Suite:       str(input, "suite"),
-				Definitions: definitions,
+				Suite:         str(input, "suite"),
+				Definitions:   definitions,
+				EnumSnapshots: enumSnapshots,
 			})
 			if expCaid, hasCaid := expect["caid"]; hasCaid {
 				if len(res.Refusals) != 0 {
@@ -92,7 +94,8 @@ func main() {
 			}
 		case "verify":
 			res := caid.VerifyCaid(input["object"], str(input, "caid"), caid.VerifyOptions{
-				Definitions: definitions,
+				Definitions:   definitions,
+				EnumSnapshots: enumSnapshots,
 			})
 			expValid, _ := expect["valid"].(bool)
 			if res.Valid != expValid {

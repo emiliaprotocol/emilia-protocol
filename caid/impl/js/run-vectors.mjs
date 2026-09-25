@@ -46,6 +46,7 @@ for (const v of suite.vectors) {
     actual = computeCaid(v.input.object, {
       suite: v.input.suite,
       definitions: v.definitions,
+      enumSnapshots: suite.enum_snapshots,
     });
     if (actual && typeof actual.caid === "string") {
       actualCaids.set(v.id, actual.caid);
@@ -53,6 +54,7 @@ for (const v of suite.vectors) {
   } else if (v.kind === "verify") {
     actual = verifyCaid(v.input.object, v.input.caid, {
       definitions: v.definitions,
+      enumSnapshots: suite.enum_snapshots,
     });
   } else if (v.kind === "parse") {
     actual = parseCaid(v.input.caid);

@@ -67,7 +67,11 @@ def run_mapping_vectors(corpus):
             side = left if side_name == "left" else right
             side["expected_profile_hash"] = mapping_profile_hash(side["profile"])
         result = compare_mapped_actions(
-            left, right, definitions=corpus["definitions"], suite=corpus["suite"]
+            left,
+            right,
+            definitions=corpus["definitions"],
+            enum_snapshots=corpus.get("enum_snapshots"),
+            suite=corpus["suite"],
         )
         expected = vector["expect"]
         verdict_ok = result["verdict"] == expected["verdict"]

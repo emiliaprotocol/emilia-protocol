@@ -43,6 +43,11 @@ artifact against the same versioned definition must get the same result.
   reordered, retyped, or semantically redefined within an active version.
 - Normalization rules, enum sets, and `digest_notes` MUST NOT change within
   an active version.
+- A human-readable external enum name is not an immutable set. External enums
+  MUST name an edition or snapshot and pin the SHA-256 digest of the RFC 8785
+  canonical JSON values array. A verifier resolves only an exact
+  `values_ref` / `values_snapshot` / `values_sha256` match and verifies the
+  digest locally. Missing, unresolved, or mismatched pins fail closed.
 - Non-normative references and editorial summaries MAY be corrected only
   when the change cannot alter validation or interpretation.
 - Status MAY move from `active` to `deprecated`; deprecation never makes an
@@ -58,6 +63,31 @@ Any of the following requires publishing a NEW version of the type
 - changing a field's type,
 - changing a field's meaning or normalization rule,
 - changing the enum code set a values_ref points at in a non-additive way.
+
+Additive upstream code-set changes also require a new action-type version if
+the accepted array changes. The point of the pin is that validation remains
+replayable; an upstream maintainer's compatibility policy cannot silently
+alter an active CAID type.
+
+## 3.1 Registry v3 to v4 corrective migration
+
+Registry v3 named external enum sources but did not identify an immutable
+edition or provide bytes that a verifier could integrity-check. Implementations
+therefore could not enforce those fields consistently. Registry v4 does not
+silently reinterpret the file labeled v3: it is a new registry snapshot and
+adds the pinned `2026-09-17` SIX ISO 4217 List One value set for currency
+fields. The action objects and resulting CAID strings for values in that set
+do not change.
+
+Issuers and verifiers moving to v4 MUST pin the v4 registry snapshot and load
+the referenced value-set artifact. A bare v3-style external `values_ref`, an
+unresolved snapshot, a digest mismatch, and a value outside the set all refuse
+as `mistyped_field:<name>`. Historical decisions made with registry v3 remain
+decisions under that pinned historical registry; callers MUST NOT report them
+as v4 validation without replaying them. Other external references that do not
+yet carry an immutable snapshot remain deliberately fail-closed in v4 when the
+field is present. They require a reviewed value-set artifact (and, if the
+accepted set changes, a new action-type version) before use.
 
 Old versions are never deleted. A superseded version's status moves from
 `active` to `deprecated`; deprecated types still validate, and verifiers
@@ -103,8 +133,10 @@ The quality bar is the material-fields test:
   identifiers, personal emails, tax IDs, authorization codes) are
   `digest` typed, with the normalization rule stated in notes. Raw
   personal data and secrets never sit in an action object.
-- Enums carry a `values_ref` naming a real code set (an ISO standard, an
-  IANA registry, a regulator's catalog) or an explicit inline list.
+- Enums carry a non-empty inline list, or an external `values_ref` plus an
+  immutable edition/snapshot, a canonical values array, and its verified
+  SHA-256 pin. A mutable standard, registry, catalog, or URL by itself is not
+  sufficient.
 - Timestamps are RFC 3339 UTC with `Z`; date-only values are strings with
   an ISO 8601 date note.
 - A practitioner from the type's industry should recognize the fields as
@@ -116,7 +148,7 @@ will be under this governance.
 
 ## 6. Licensing
 
-- Registry data (`action-types.json`, `suites.json`, and this document)
+- Registry data (`action-types.json`, `suites.json`, `value-sets/`, and this document)
   is dedicated to the public domain under CC0-1.0.
 - Reference implementation code in this package is licensed Apache-2.0.
 

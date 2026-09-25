@@ -58,7 +58,11 @@ export function runMappingVectors(corpus = JSON.parse(fs.readFileSync(VECTORS, '
       const side = sideName === 'left' ? left : right;
       side.expected_profile_hash = mappingProfileHash(side.profile);
     }
-    const result = compareMappedActions(left, right, { definitions: corpus.definitions, suite: corpus.suite });
+    const result = compareMappedActions(left, right, {
+      definitions: corpus.definitions,
+      enumSnapshots: corpus.enum_snapshots,
+      suite: corpus.suite,
+    });
     const verdictOK = result.verdict === vector.expect.verdict;
     const reasonsOK = vector.expect.reason_contains
       ? result.reasons.includes(vector.expect.reason_contains)

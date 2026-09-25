@@ -32,6 +32,11 @@ CAID addresses both problems with one small object and one string:
   conforming issuer cannot mint an identifier for an underspecified action.
   This is the unilateral win: your artifact stops being challengeable on
   "the digest did not cover the amount."
+- **Replayable enums**: inline enums are closed sets. External enums resolve
+  only through a locally supplied snapshot whose reference, edition label,
+  and SHA-256 pin all match the type definition. Mutable names, missing
+  snapshots, digest mismatches, and out-of-set values fail closed without a
+  network fetch.
 - **Joinable**: under the selected suite and pinned type definition, matching
   CAIDs commit to matching canonical typed content. Each artifact still
   verifies under its own specification and trust boundary. A shared action
@@ -81,7 +86,8 @@ boundary.
   published individual Internet-Draft source (xml2rfc v3)
 - `registry/` — action-type registry seed, suites, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations
-- `conformance/vectors.json` — 48 core identifier vectors
+- `conformance/vectors.json` — 55 core identifier vectors, including pinned,
+  unresolved, mismatched, and out-of-set enum cases
 - `conformance/mapping-vectors.json` — 23 cross-format mapping vectors,
   including the SILP IR to CAID `CANCEL+EMAIL` profile
 - `interop/consequential-action-v1/` — 25 candidate, revision-pinned
@@ -94,3 +100,13 @@ boundary.
 Stewardship: currently maintained by EMILIA Protocol with a standing
 commitment, stated in `registry/GOVERNANCE.md`, to transition the registry
 to IANA or another neutral body upon adoption.
+
+## Registry v4 migration
+
+Registry v4 adds an immutable `2026-09-17` SIX ISO 4217 snapshot. Existing
+valid currency action objects produce the same CAID bytes, but issuers and
+verifiers must move their registry pin from v3 to v4 and supply the referenced
+snapshot. A v3-style bare external `values_ref` is now refused. The other
+external code-set names still lacking a governed snapshot deliberately remain
+unusable when present; this is a fail-closed compatibility correction, not a
+claim that those mutable sources have been resolved.

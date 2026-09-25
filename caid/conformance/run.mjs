@@ -53,9 +53,10 @@ function run(label, command, args, cwd = ROOT) {
   return result.stdout.trim();
 }
 
-run('JavaScript core: 48 vectors', 'node', ['impl/js/run-vectors.mjs']);
-run('Python core: 48 vectors', 'python3', ['impl/python/run_vectors.py']);
-run('Go core: 48 vectors', 'go', ['run', './cmd/core-vectors'], GO_ROOT);
+const coreCorpus = JSON.parse(readFileSync(path.join(ROOT, 'conformance/vectors.json'), 'utf8'));
+run(`JavaScript core: ${coreCorpus.vectors.length} vectors`, 'node', ['impl/js/run-vectors.mjs']);
+run(`Python core: ${coreCorpus.vectors.length} vectors`, 'python3', ['impl/python/run_vectors.py']);
+run(`Go core: ${coreCorpus.vectors.length} vectors`, 'go', ['run', './cmd/core-vectors'], GO_ROOT);
 
 const mappingOutputs = [
   ['JavaScript', run(`JavaScript mapping: ${mappingCorpus.vectors.length} vectors`, 'node', ['impl/js/run-mapping-vectors.mjs', '--json'])],
@@ -87,4 +88,4 @@ for (const [language, output] of interopOutputs.slice(1)) {
 }
 
 console.log('PASS cross-language consequential-interoperability verdict and reason parity');
-console.log(`CAID conformance: 48 core + ${mappingCorpus.vectors.length} base mapping + ${interopCorpus.vectors.length} consequential-interoperability vectors green in JS, Python, and Go.`);
+console.log(`CAID conformance: ${coreCorpus.vectors.length} core + ${mappingCorpus.vectors.length} base mapping + ${interopCorpus.vectors.length} consequential-interoperability vectors green in JS, Python, and Go.`);

@@ -246,7 +246,7 @@ def _field_list(definition, key):
     return [f for f in v if _is_plain_object(f)]
 
 
-def _validate_against_definition(obj, definition):
+def _validate_against_definition(obj, definition, enum_snapshots=None):
     refusals = []
     required = _field_list(definition, "required_fields")
     optional = _field_list(definition, "optional_fields")
@@ -262,13 +262,75 @@ def _validate_against_definition(obj, definition):
             continue
         if name not in obj:
             continue
-        code = _check_field_type(obj[name], f)
+        code = _check_field_type(obj[name], f, enum_snapshots)
         if code:
             refusals.append(code + ":" + name)
     return refusals
 
 
-def _check_field_type(value, field):
+def _valid_enum_values(values):
+    return (
+        isinstance(values, list)
+        and len(values) > 0
+        and all(isinstance(value, str) and len(value) > 0 for value in values)
+        and len(set(values)) == len(values)
+    )
+
+
+def _resolve_enum_values(field, enum_snapshots=None):
+    """Resolve an enum to a closed, integrity-checked string list.
+
+    `values` without values_ref remains the legacy inline form, and the
+    registry's compact `inline: a | b` form is parsed directly. External
+    references fail closed unless the definition embeds a non-empty snapshot,
+    names its edition/snapshot, and pins the JCS values array by SHA-256.
+    """
+    values_ref = field.get("values_ref")
+    declared = field.get("values")
+
+    if isinstance(values_ref, str) and values_ref.startswith("inline:"):
+        values = [value.strip() for value in values_ref[len("inline:") :].split("|")]
+        if not _valid_enum_values(values):
+            return None
+        if declared is not None and declared != values:
+            return None
+        return values
+
+    # A values array with no external reference is the legacy inline form.
+    if values_ref is None:
+        return declared if _valid_enum_values(declared) else None
+
+    values_snapshot = field.get("values_snapshot")
+    values_sha256 = field.get("values_sha256")
+    if (
+        not isinstance(values_ref, str)
+        or len(values_ref) == 0
+        or not isinstance(values_snapshot, str)
+        or len(values_snapshot) == 0
+        or not isinstance(values_sha256, str)
+        or not DIGEST_FIELD_RE.match(values_sha256)
+    ):
+        return None
+    if not _valid_enum_values(declared) and isinstance(enum_snapshots, list):
+        for snapshot in enum_snapshots:
+            if (
+                _is_plain_object(snapshot)
+                and snapshot.get("values_ref") == values_ref
+                and snapshot.get("values_snapshot") == values_snapshot
+                and snapshot.get("values_sha256") == values_sha256
+            ):
+                declared = snapshot.get("values")
+                break
+    if not _valid_enum_values(declared):
+        return None
+    canonical = canonicalize(declared)
+    if not canonical["ok"]:
+        return None
+    actual = "sha256:" + hashlib.sha256(canonical["canonical"].encode("utf-8")).hexdigest()
+    return declared if actual == values_sha256 else None
+
+
+def _check_field_type(value, field, enum_snapshots=None):
     # Returns None when valid, else "mistyped_field" or "invalid_amount".
     ftype = field.get("type")
     if ftype == "string":
@@ -284,10 +346,8 @@ def _check_field_type(value, field):
     if ftype == "enum":
         if not isinstance(value, str):
             return "mistyped_field"
-        values = field.get("values")
-        if isinstance(values, list) and value not in values:
-            return "mistyped_field"
-        return None
+        values = _resolve_enum_values(field, enum_snapshots)
+        return None if values is not None and value in values else "mistyped_field"
     if ftype == "timestamp":
         if not isinstance(value, str):
             return "mistyped_field"
@@ -322,7 +382,8 @@ def _b64url(digest_bytes):
 
 
 def compute_caid(action_object, options=None):
-    """compute_caid(action_object, {"suite": ..., "definitions": [...]})
+    """compute_caid(action_object, {"suite": ..., "definitions": [...],
+                                     "enum_snapshots": [...]})
       -> {"caid": str, "digest": str}     on success
       -> {"refusals": [str]}              on any failure (never throws)
 
@@ -345,7 +406,11 @@ def compute_caid(action_object, options=None):
     refusals = []
 
     # Steps 3-4: material fields present and type-valid.
-    refusals.extend(_validate_against_definition(action_object, definition))
+    refusals.extend(
+        _validate_against_definition(
+            action_object, definition, opts.get("enum_snapshots")
+        )
+    )
 
     # Step 5: suite known (and implemented here).
     suite = opts.get("suite")
@@ -420,7 +485,8 @@ def parse_caid(caid_input):
 
 
 def verify_caid(action_object, caid_string, options=None):
-    """verify_caid(action_object, caid_string, {"definitions": [...]})
+    """verify_caid(action_object, caid_string,
+                    {"definitions": [...], "enum_snapshots": [...]})
       -> {"valid": bool, "reasons": [str]}
 
     Same inputs, same reasons, same order, replayable offline. Reason
@@ -476,7 +542,9 @@ def verify_caid(action_object, caid_string, options=None):
             validation_refusals.append("unknown_action_type")
         else:
             validation_refusals.extend(
-                _validate_against_definition(action_object, definition)
+                _validate_against_definition(
+                    action_object, definition, opts.get("enum_snapshots")
+                )
             )
     if not canon["ok"]:
         validation_refusals.extend(canon["refusals"])

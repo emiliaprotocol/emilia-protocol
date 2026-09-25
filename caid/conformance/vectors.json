@@ -1,6 +1,35 @@
 {
  "suite_note": "Shared cross-language CAID conformance vectors. Each vector carries its own inline type definitions and never references the public registry. CAID carries no trust semantics: these vectors test identification only, not authorization, identity, or proof.",
  "version": 1,
+ "enum_snapshots": [
+  {
+   "values_ref": "ISO 4217 alpha-3",
+   "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+   "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+   "values": [
+    "AED", "AFN", "ALL", "AMD", "AOA", "ARS", "AUD", "AWG", "AZN",
+    "BAM", "BBD", "BDT", "BHD", "BIF", "BMD", "BND", "BOB", "BOV",
+    "BRL", "BSD", "BTN", "BWP", "BYN", "BZD", "CAD", "CDF", "CHE",
+    "CHF", "CHW", "CLF", "CLP", "CNY", "COP", "COU", "CRC", "CUP",
+    "CVE", "CZK", "DJF", "DKK", "DOP", "DZD", "EGP", "ERN", "ETB",
+    "EUR", "FJD", "FKP", "GBP", "GEL", "GHS", "GIP", "GMD", "GNF",
+    "GTQ", "GYD", "HKD", "HNL", "HTG", "HUF", "IDR", "ILS", "INR",
+    "IQD", "IRR", "ISK", "JMD", "JOD", "JPY", "KES", "KGS", "KHR",
+    "KMF", "KPW", "KRW", "KWD", "KYD", "KZT", "LAK", "LBP", "LKR",
+    "LRD", "LSL", "LYD", "MAD", "MDL", "MGA", "MKD", "MMK", "MNT",
+    "MOP", "MRU", "MUR", "MVR", "MWK", "MXN", "MXV", "MYR", "MZN",
+    "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "OMR", "PAB", "PEN",
+    "PGK", "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD", "RUB",
+    "RWF", "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE",
+    "SOS", "SRD", "SSP", "STN", "SVC", "SYP", "SZL", "THB", "TJS",
+    "TMT", "TND", "TOP", "TRY", "TTD", "TWD", "TZS", "UAH", "UGX",
+    "USD", "USN", "UYI", "UYU", "UYW", "UZS", "VED", "VES", "VND",
+    "VUV", "WST", "XAD", "XAF", "XAG", "XAU", "XBA", "XBB", "XBC",
+    "XBD", "XCD", "XCG", "XDR", "XOF", "XPD", "XPF", "XPT", "XSU",
+    "XTS", "XUA", "XXX", "YER", "ZAR", "ZMW", "ZWG"
+   ]
+  }
+ ],
  "vectors": [
   {
    "id": "compute-payment-release-happy",
@@ -21,7 +50,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -199,7 +228,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -258,7 +287,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -317,7 +346,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -378,7 +407,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -435,7 +464,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -492,7 +521,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -552,7 +581,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -612,7 +641,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -670,7 +699,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -727,7 +756,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -785,7 +814,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -843,7 +872,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -900,7 +929,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -958,7 +987,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1131,7 +1160,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1189,7 +1218,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1247,7 +1276,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1305,7 +1334,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1363,7 +1392,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1422,7 +1451,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1486,7 +1515,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1544,7 +1573,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1601,7 +1630,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1660,7 +1689,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1719,7 +1748,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1807,7 +1836,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1865,7 +1894,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1924,7 +1953,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -1983,7 +2012,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -2042,7 +2071,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -2101,7 +2130,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -2208,7 +2237,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -2265,7 +2294,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -2323,7 +2352,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -2381,7 +2410,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -2441,7 +2470,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -2501,7 +2530,7 @@
       {
        "name": "currency",
        "type": "enum",
-       "values_ref": "ISO 4217 alpha-3"
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
       },
       {
        "name": "beneficiary_account",
@@ -2587,6 +2616,148 @@
      "malformed_caid"
     ]
    }
+  },
+  {
+   "id": "compute-pinned-external-enum-usd",
+   "kind": "compute",
+   "description": "a common code in the integrity-pinned ISO 4217 snapshot is accepted",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{
+     "name": "currency",
+     "type": "enum",
+     "values_ref": "ISO 4217 alpha-3",
+     "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+    }],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:test.currency.1:jcs-sha256:v065Cib6SaT8wd-KWQTtoMgscmKw4_WLxYGaEHRl8xo",
+    "digest": "sha256:bf4eb90a26fa49a4fcc1df8a5904eda0c82c7262b0e3f58bc5819a107465f31a"
+   }
+  },
+  {
+   "id": "compute-pinned-external-enum-xad",
+   "kind": "compute",
+   "description": "a less-common active code in the same pinned ISO 4217 snapshot is accepted",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{
+     "name": "currency",
+     "type": "enum",
+     "values_ref": "ISO 4217 alpha-3",
+     "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+    }],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "XAD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:test.currency.1:jcs-sha256:jREi8-vehQQthNRMyWEPoji23CPAlXWEFo_Trzzs7Sc",
+    "digest": "sha256:8d1122f3ebde85042d84d44cc9610fa238b6dc23c0957584168fd3af3ceced27"
+   }
+  },
+  {
+   "id": "refuse-not-a-currency",
+   "kind": "compute",
+   "description": "a string absent from the pinned ISO 4217 snapshot fails closed",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{
+     "name": "currency",
+     "type": "enum",
+     "values_ref": "ISO 4217 alpha-3",
+     "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+    }],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "NOT-A-CURRENCY"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:currency"]}
+  },
+  {
+   "id": "refuse-bare-external-enum-ref",
+   "kind": "compute",
+   "description": "a mutable external name without snapshot metadata is not a value constraint",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:currency"]}
+  },
+  {
+   "id": "refuse-unresolved-external-enum-snapshot",
+   "kind": "compute",
+   "description": "pin metadata without an exactly matching locally supplied snapshot fails closed",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{
+     "name": "currency",
+     "type": "enum",
+     "values_ref": "Example Currency alpha-3",
+     "values_snapshot": "example edition 1",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+    }],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:currency"]}
+  },
+  {
+   "id": "refuse-external-enum-hash-mismatch",
+   "kind": "compute",
+   "description": "embedded external values are rejected when their JCS array does not match the declared digest",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{
+     "name": "currency",
+     "type": "enum",
+     "values_ref": "ISO 4217 alpha-3",
+     "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+     "values": ["USD", "EUR"]
+    }],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:currency"]}
+  },
+  {
+   "id": "refuse-inline-enum-outside-set",
+   "kind": "compute",
+   "description": "the compact inline values_ref form is a closed set, not documentation",
+   "definitions": [{
+    "action_type": "test.channel.1",
+    "required_fields": [{"name": "channel", "type": "enum", "values_ref": "inline: email | sms"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.channel.1", "channel": "voice"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:channel"]}
   }
  ]
 }

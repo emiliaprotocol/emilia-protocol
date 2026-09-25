@@ -1,13 +1,16 @@
 # CAID Status
 
-Updated: 2026-07-27
+Updated: 2026-09-24
 
 ## Verified implementation
 
 - A typed action object and strict `caid:1` identifier.
-- An immutable 47-type seed registry and two-suite registry.
+- A 52-type registry v4, two-suite registry, and integrity-pinned 178-code
+  `2026-09-17` SIX ISO 4217 snapshot.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
-- 48 shared core vectors passing in all three ports.
+- 55 shared core vectors passing in all three ports, including valid USD/XAD,
+  `NOT-A-CURRENCY`, bare/unresolved external references, hash mismatch, and
+  compact inline-enum enforcement.
 - 23 Action-Mapping Profile vectors passing with byte-for-byte agreement on
   verdicts and refusal reasons in all three ports, including the SILP IR to
   CAID `CANCEL+EMAIL` profile.
@@ -29,6 +32,20 @@ npm run caid:conformance
 These are cross-language ports maintained by the same project. They are not
 represented as independent implementations.
 
+External Rust remains a separately pinned third-party historical conformance
+record for the earlier clean-room corpus; this repository does not contain or
+claim a Rust CAID implementation for the registry-v4 enum behavior.
+
+## Registry v4 compatibility boundary
+
+Valid action objects using currency codes in the pinned ISO 4217 array retain
+their existing CAID strings because the definition metadata is not part of the
+action object. Issuers and verifiers must nevertheless pin registry v4 and
+load the exact enum snapshot. Under v4, bare, unresolved, digest-mismatched,
+or out-of-set external enums fail closed. Other external references that have
+not yet received immutable snapshot artifacts remain fail-closed when their
+fields are present.
+
 The 25 interoperability mappings are candidates pending author review. Four
 have complete extraction fixtures under their pinned profiles, thirteen are
 partial, and eight define no complete native action artifact. The latter
@@ -42,6 +59,10 @@ Internet-Draft on 2026-08-06. It is not an RFC, an adopted IETF working-group
 item, or IETF endorsement. The draft defines the identifier and the
 profile-bounded mapping algorithm; the IETF archive is authoritative for the
 published revision.
+
+The registry-v4 enum correction is staged for the next Internet-Draft
+revision and is not part of the already published `-02` text until the author
+submits that revision.
 
 ## Explicit boundaries
 

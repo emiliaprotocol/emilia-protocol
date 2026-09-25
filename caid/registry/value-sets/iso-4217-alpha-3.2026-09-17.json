@@ -1,0 +1,37 @@
+{
+  "@version": "CAID-ENUM-SNAPSHOT-v1",
+  "id": "iso-4217-alpha-3",
+  "values_ref": "ISO 4217 alpha-3",
+  "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+  "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+  "hash_input": "RFC 8785 canonical JSON encoding of the values array",
+  "source": {
+    "authority": "SIX Financial Information AG, ISO 4217 Maintenance Agency",
+    "url": "https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml",
+    "published": "2026-09-17",
+    "retrieved": "2026-09-24",
+    "source_sha256": "sha256:33139b438657d1cee116ba737807ea71d19d6de4b90f799a09c56f0cc6a1b0ff"
+  },
+  "values": [
+    "AED", "AFN", "ALL", "AMD", "AOA", "ARS", "AUD", "AWG", "AZN",
+    "BAM", "BBD", "BDT", "BHD", "BIF", "BMD", "BND", "BOB", "BOV",
+    "BRL", "BSD", "BTN", "BWP", "BYN", "BZD", "CAD", "CDF", "CHE",
+    "CHF", "CHW", "CLF", "CLP", "CNY", "COP", "COU", "CRC", "CUP",
+    "CVE", "CZK", "DJF", "DKK", "DOP", "DZD", "EGP", "ERN", "ETB",
+    "EUR", "FJD", "FKP", "GBP", "GEL", "GHS", "GIP", "GMD", "GNF",
+    "GTQ", "GYD", "HKD", "HNL", "HTG", "HUF", "IDR", "ILS", "INR",
+    "IQD", "IRR", "ISK", "JMD", "JOD", "JPY", "KES", "KGS", "KHR",
+    "KMF", "KPW", "KRW", "KWD", "KYD", "KZT", "LAK", "LBP", "LKR",
+    "LRD", "LSL", "LYD", "MAD", "MDL", "MGA", "MKD", "MMK", "MNT",
+    "MOP", "MRU", "MUR", "MVR", "MWK", "MXN", "MXV", "MYR", "MZN",
+    "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "OMR", "PAB", "PEN",
+    "PGK", "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD", "RUB",
+    "RWF", "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE",
+    "SOS", "SRD", "SSP", "STN", "SVC", "SYP", "SZL", "THB", "TJS",
+    "TMT", "TND", "TOP", "TRY", "TTD", "TWD", "TZS", "UAH", "UGX",
+    "USD", "USN", "UYI", "UYU", "UYW", "UZS", "VED", "VES", "VND",
+    "VUV", "WST", "XAD", "XAF", "XAG", "XAU", "XBA", "XBB", "XBC",
+    "XBD", "XCD", "XCG", "XDR", "XOF", "XPD", "XPF", "XPT", "XSU",
+    "XTS", "XUA", "XXX", "YER", "ZAR", "ZMW", "ZWG"
+  ]
+}

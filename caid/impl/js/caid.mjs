@@ -168,7 +168,7 @@ function fieldList(def, key) {
   return Array.isArray(def[key]) ? def[key].filter(isPlainObject) : [];
 }
 
-function validateAgainstDefinition(obj, def) {
+function validateAgainstDefinition(obj, def, enumSnapshots) {
   const refusals = [];
   const required = fieldList(def, "required_fields");
   const optional = fieldList(def, "optional_fields");
@@ -181,14 +181,91 @@ function validateAgainstDefinition(obj, def) {
   for (const f of [...required, ...optional]) {
     if (typeof f.name !== "string") continue;
     if (!(f.name in obj) || obj[f.name] === undefined) continue;
-    const code = checkFieldType(obj[f.name], f);
+    const code = checkFieldType(obj[f.name], f, enumSnapshots);
     if (code) refusals.push(code + ":" + f.name);
   }
   return refusals;
 }
 
+// Resolve the closed value set declared by an enum field.
+//
+// Backwards compatibility:
+// - `values: [...]` without values_ref remains a valid inline enum.
+// - `values_ref: "inline: a | b"` is the registry's compact inline form.
+//
+// External references fail closed. They are usable only when the definition
+// carries the exact non-empty value snapshot, a human-readable snapshot/edition
+// identifier, and the SHA-256 digest of the JCS values array. A mutable name or
+// URL by itself never constrains an enum.
+function resolveEnumValues(field, enumSnapshots) {
+  const ref = field.values_ref;
+  let declared = field.values;
+
+  if (typeof ref === "string" && ref.startsWith("inline:")) {
+    const values = ref
+      .slice("inline:".length)
+      .split("|")
+      .map((value) => value.trim());
+    if (!validEnumValues(values)) return null;
+    if (declared !== undefined && !sameStringArray(declared, values)) return null;
+    return values;
+  }
+
+  // A values array with no external reference is the legacy inline form.
+  if (ref === undefined) return validEnumValues(declared) ? declared : null;
+
+  if (
+    typeof ref !== "string" ||
+    ref.length === 0 ||
+    typeof field.values_snapshot !== "string" ||
+    field.values_snapshot.length === 0 ||
+    typeof field.values_sha256 !== "string" ||
+    !DIGEST_FIELD_RE.test(field.values_sha256)
+  ) {
+    return null;
+  }
+
+  if (!validEnumValues(declared) && Array.isArray(enumSnapshots)) {
+    const resolved = enumSnapshots.find(
+      (snapshot) =>
+        isPlainObject(snapshot) &&
+        snapshot.values_ref === ref &&
+        snapshot.values_snapshot === field.values_snapshot &&
+        snapshot.values_sha256 === field.values_sha256
+    );
+    declared = resolved?.values;
+  }
+  if (!validEnumValues(declared)) return null;
+
+  const canonical = canonicalize(declared);
+  if (!canonical.ok) return null;
+  const actual =
+    "sha256:" +
+    createHash("sha256")
+      .update(Buffer.from(canonical.canonical, "utf8"))
+      .digest("hex");
+  return actual === field.values_sha256 ? declared : null;
+}
+
+function validEnumValues(values) {
+  return (
+    Array.isArray(values) &&
+    values.length > 0 &&
+    values.every((value) => typeof value === "string" && value.length > 0) &&
+    new Set(values).size === values.length
+  );
+}
+
+function sameStringArray(left, right) {
+  return (
+    Array.isArray(left) &&
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
 // Returns null when valid, else "mistyped_field" or "invalid_amount".
-function checkFieldType(value, field) {
+function checkFieldType(value, field, enumSnapshots) {
   switch (field.type) {
     case "string":
       return typeof value === "string" ? null : "mistyped_field";
@@ -200,10 +277,9 @@ function checkFieldType(value, field) {
       return DIGEST_FIELD_RE.test(value) ? null : "mistyped_field";
     case "enum":
       if (typeof value !== "string") return "mistyped_field";
-      if (Array.isArray(field.values) && !field.values.includes(value)) {
-        return "mistyped_field";
-      }
-      return null;
+      return resolveEnumValues(field, enumSnapshots)?.includes(value)
+        ? null
+        : "mistyped_field";
     case "timestamp":
       if (typeof value !== "string") return "mistyped_field";
       return isValidTimestamp(value) ? null : "mistyped_field";
@@ -234,7 +310,7 @@ function sha256(canonical) {
 // ---------------------------------------------------------------------------
 
 /**
- * computeCaid(actionObject, {suite, definitions})
+ * computeCaid(actionObject, {suite, definitions, enumSnapshots})
  *   -> {caid: string, digest: string}   on success
  *   -> {refusals: [string]}             on any failure (never throws)
  *
@@ -261,7 +337,7 @@ export function computeCaid(actionObject, options) {
   const refusals = [];
 
   // Steps 3-4: material fields present and type-valid.
-  refusals.push(...validateAgainstDefinition(actionObject, def));
+  refusals.push(...validateAgainstDefinition(actionObject, def, opts.enumSnapshots));
 
   // Step 5: suite known (and implemented here).
   const suite = opts.suite;
@@ -391,7 +467,9 @@ export function verifyCaid(actionObject, caidString, options) {
     if (def === null) {
       validationRefusals.push("unknown_action_type");
     } else {
-      validationRefusals.push(...validateAgainstDefinition(actionObject, def));
+      validationRefusals.push(
+        ...validateAgainstDefinition(actionObject, def, opts.enumSnapshots)
+      );
     }
   }
   if (!canon.ok) {

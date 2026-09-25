@@ -14,14 +14,26 @@ signatures, identity, or authorization.
 ## Usage
 
 ```js
+import { readFileSync } from "node:fs";
 import { computeCaid, verifyCaid, parseCaid, canonicalize } from "./caid.mjs";
+
+const iso4217 = JSON.parse(readFileSync(
+  new URL("../../registry/value-sets/iso-4217-alpha-3.2026-09-17.json", import.meta.url),
+  "utf8",
+));
 
 const definitions = [
   {
     action_type: "payment.release.1",
     required_fields: [
       { name: "amount", type: "amount-string" },
-      { name: "currency", type: "enum", values_ref: "ISO 4217 alpha-3" },
+      {
+        name: "currency",
+        type: "enum",
+        values_ref: iso4217.values_ref,
+        values_snapshot: iso4217.values_snapshot,
+        values_sha256: iso4217.values_sha256,
+      },
       { name: "beneficiary_account", type: "digest" },
       { name: "payment_instruction_id", type: "string" },
     ],
@@ -37,11 +49,12 @@ const action = {
   payment_instruction_id: "pi-2026-000117",
 };
 
-const out = computeCaid(action, { suite: "jcs-sha256", definitions });
+const enumSnapshots = [iso4217];
+const out = computeCaid(action, { suite: "jcs-sha256", definitions, enumSnapshots });
 // success: { caid: "caid:1:payment.release.1:jcs-sha256:<b64url>", digest: "sha256:<hex>" }
 // failure: { refusals: ["missing_material_field:currency", ...] } and no caid
 
-const check = verifyCaid(action, out.caid, { definitions });
+const check = verifyCaid(action, out.caid, { definitions, enumSnapshots });
 // { valid: true, reasons: [] }
 // or { valid: false, reasons: ["digest_mismatch"] } etc.
 
@@ -64,5 +77,6 @@ node run-vectors.mjs
 ```
 
 Runs every vector in `../../conformance/vectors.json` and exits nonzero on
-any failure. The vectors carry their own inline type definitions, so
-conformance never depends on the public registry's contents.
+any failure. The vectors carry their own type definitions and enum snapshot,
+so conformance never depends on mutable network state or the public registry's
+current contents.

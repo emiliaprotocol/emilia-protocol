@@ -109,18 +109,20 @@ type CanonicalizeResult struct {
 }
 
 // ComputeOptions carries the suite and the type definitions ComputeCaid
-// validates against. Definitions is a slice of decoded JSON objects in
-// the registry entry schema (DESIGN.md section 3); a local definitions
-// file in the same schema works identically.
+// validates against. Definitions and EnumSnapshots are slices of decoded
+// JSON objects in the registry schemas (DESIGN.md section 3); local files in
+// the same schemas work identically.
 type ComputeOptions struct {
-	Suite       string
-	Definitions []interface{}
+	Suite         string
+	Definitions   []interface{}
+	EnumSnapshots []interface{}
 }
 
 // VerifyOptions carries the type definitions VerifyCaid validates
 // against.
 type VerifyOptions struct {
-	Definitions []interface{}
+	Definitions   []interface{}
+	EnumSnapshots []interface{}
 }
 
 // ---------------------------------------------------------------------------
@@ -435,7 +437,7 @@ func fieldList(def map[string]interface{}, key string) []map[string]interface{} 
 	return out
 }
 
-func validateAgainstDefinition(obj map[string]interface{}, def map[string]interface{}) []string {
+func validateAgainstDefinition(obj map[string]interface{}, def map[string]interface{}, enumSnapshots []interface{}) []string {
 	var refusals []string
 	required := fieldList(def, "required_fields")
 	optional := fieldList(def, "optional_fields")
@@ -460,16 +462,117 @@ func validateAgainstDefinition(obj map[string]interface{}, def map[string]interf
 		if !present {
 			continue
 		}
-		if code := checkFieldType(value, f); code != "" {
+		if code := checkFieldType(value, f, enumSnapshots); code != "" {
 			refusals = append(refusals, code+":"+name)
 		}
 	}
 	return refusals
 }
 
+// resolveEnumValues resolves an enum to a closed, integrity-checked string
+// list. A values array without values_ref remains the legacy inline form, and
+// values_ref="inline: a | b" is parsed directly. External references fail
+// closed unless the definition embeds a non-empty value snapshot, names its
+// edition/snapshot, and pins the JCS values array by SHA-256.
+func resolveEnumValues(field map[string]interface{}, enumSnapshots []interface{}) ([]string, bool) {
+	ref, hasRef := field["values_ref"]
+	declaredRaw, hasDeclared := field["values"]
+
+	if refString, ok := ref.(string); ok && strings.HasPrefix(refString, "inline:") {
+		parts := strings.Split(strings.TrimPrefix(refString, "inline:"), "|")
+		values := make([]string, 0, len(parts))
+		seen := make(map[string]bool, len(parts))
+		for _, part := range parts {
+			value := strings.TrimSpace(part)
+			if value == "" || seen[value] {
+				return nil, false
+			}
+			seen[value] = true
+			values = append(values, value)
+		}
+		if len(values) == 0 {
+			return nil, false
+		}
+		if hasDeclared {
+			declared, ok := validEnumValues(declaredRaw)
+			if !ok || !sameStringSlice(declared, values) {
+				return nil, false
+			}
+		}
+		return values, true
+	}
+
+	// A values array with no external reference is the legacy inline form.
+	if !hasRef {
+		return validEnumValues(declaredRaw)
+	}
+
+	refString, refOK := ref.(string)
+	snapshot, snapshotOK := field["values_snapshot"].(string)
+	pin, pinOK := field["values_sha256"].(string)
+	if !refOK || refString == "" || !snapshotOK || snapshot == "" || !pinOK || !digestFieldRe.MatchString(pin) {
+		return nil, false
+	}
+	declared, ok := validEnumValues(declaredRaw)
+	if !ok {
+		for _, candidate := range enumSnapshots {
+			resolved, isObject := asObject(candidate)
+			if !isObject || resolved["values_ref"] != refString || resolved["values_snapshot"] != snapshot || resolved["values_sha256"] != pin {
+				continue
+			}
+			declaredRaw = resolved["values"]
+			declared, ok = validEnumValues(declaredRaw)
+			break
+		}
+	}
+	if !ok {
+		return nil, false
+	}
+	canonical := Canonicalize(declaredRaw)
+	if !canonical.OK {
+		return nil, false
+	}
+	sum := sha256.Sum256([]byte(canonical.Canonical))
+	actual := "sha256:" + hex.EncodeToString(sum[:])
+	if actual != pin {
+		return nil, false
+	}
+	return declared, true
+}
+
+func validEnumValues(raw interface{}) ([]string, bool) {
+	items, ok := raw.([]interface{})
+	if !ok || len(items) == 0 {
+		return nil, false
+	}
+	values := make([]string, 0, len(items))
+	seen := make(map[string]bool, len(items))
+	for _, item := range items {
+		value, ok := item.(string)
+		if !ok || value == "" || seen[value] {
+			return nil, false
+		}
+		seen[value] = true
+		values = append(values, value)
+	}
+	return values, true
+}
+
+func sameStringSlice(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // checkFieldType returns "" when valid, else "mistyped_field" or
 // "invalid_amount".
-func checkFieldType(value interface{}, field map[string]interface{}) string {
+func checkFieldType(value interface{}, field map[string]interface{}, enumSnapshots []interface{}) string {
 	ftype, ok := field["type"].(string)
 	if !ok {
 		// A definition entry without a string type: fail closed.
@@ -501,15 +604,16 @@ func checkFieldType(value interface{}, field map[string]interface{}) string {
 		if !isStr {
 			return "mistyped_field"
 		}
-		if values, hasValues := field["values"].([]interface{}); hasValues {
-			for _, v := range values {
-				if vs, isVStr := v.(string); isVStr && vs == s {
-					return ""
-				}
-			}
+		values, ok := resolveEnumValues(field, enumSnapshots)
+		if !ok {
 			return "mistyped_field"
 		}
-		return ""
+		for _, allowed := range values {
+			if allowed == s {
+				return ""
+			}
+		}
+		return "mistyped_field"
 	case "timestamp":
 		s, isStr := value.(string)
 		if !isStr || !isValidTimestamp(s) {
@@ -581,7 +685,7 @@ func ComputeCaid(actionObject interface{}, opts ComputeOptions) ComputeResult {
 	var refusals []string
 
 	// Steps 3-4: material fields present and type-valid.
-	refusals = append(refusals, validateAgainstDefinition(obj, def)...)
+	refusals = append(refusals, validateAgainstDefinition(obj, def, opts.EnumSnapshots)...)
 
 	// Step 5: suite known (and implemented here).
 	if !supportedSuites[opts.Suite] {
@@ -712,7 +816,7 @@ func VerifyCaid(actionObject interface{}, caidString string, opts VerifyOptions)
 		if def == nil {
 			validationRefusals = append(validationRefusals, "unknown_action_type")
 		} else {
-			validationRefusals = append(validationRefusals, validateAgainstDefinition(obj, def)...)
+			validationRefusals = append(validationRefusals, validateAgainstDefinition(obj, def, opts.EnumSnapshots)...)
 		}
 	}
 	if !canon.OK {

@@ -2,6 +2,35 @@
   "@version": "CAID-ACTION-MAPPING-VECTORS-v1",
   "description": "Shared vectors for profile-bounded material-action equivalence. A result is content correlation only; it never authorizes an action.",
   "suite": "jcs-sha256",
+  "enum_snapshots": [
+    {
+      "values_ref": "ISO 4217 alpha-3",
+      "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+      "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+      "values": [
+        "AED", "AFN", "ALL", "AMD", "AOA", "ARS", "AUD", "AWG", "AZN",
+        "BAM", "BBD", "BDT", "BHD", "BIF", "BMD", "BND", "BOB", "BOV",
+        "BRL", "BSD", "BTN", "BWP", "BYN", "BZD", "CAD", "CDF", "CHE",
+        "CHF", "CHW", "CLF", "CLP", "CNY", "COP", "COU", "CRC", "CUP",
+        "CVE", "CZK", "DJF", "DKK", "DOP", "DZD", "EGP", "ERN", "ETB",
+        "EUR", "FJD", "FKP", "GBP", "GEL", "GHS", "GIP", "GMD", "GNF",
+        "GTQ", "GYD", "HKD", "HNL", "HTG", "HUF", "IDR", "ILS", "INR",
+        "IQD", "IRR", "ISK", "JMD", "JOD", "JPY", "KES", "KGS", "KHR",
+        "KMF", "KPW", "KRW", "KWD", "KYD", "KZT", "LAK", "LBP", "LKR",
+        "LRD", "LSL", "LYD", "MAD", "MDL", "MGA", "MKD", "MMK", "MNT",
+        "MOP", "MRU", "MUR", "MVR", "MWK", "MXN", "MXV", "MYR", "MZN",
+        "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "OMR", "PAB", "PEN",
+        "PGK", "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD", "RUB",
+        "RWF", "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE",
+        "SOS", "SRD", "SSP", "STN", "SVC", "SYP", "SZL", "THB", "TJS",
+        "TMT", "TND", "TOP", "TRY", "TTD", "TWD", "TZS", "UAH", "UGX",
+        "USD", "USN", "UYI", "UYU", "UYW", "UZS", "VED", "VES", "VND",
+        "VUV", "WST", "XAD", "XAF", "XAG", "XAU", "XBA", "XBB", "XBC",
+        "XBD", "XCD", "XCG", "XDR", "XOF", "XPD", "XPF", "XPT", "XSU",
+        "XTS", "XUA", "XXX", "YER", "ZAR", "ZMW", "ZWG"
+      ]
+    }
+  ],
   "definitions": [
     {
       "action_type": "order.place.1",
@@ -12,7 +41,7 @@
         { "name": "order_id", "type": "string" },
         { "name": "merchant_ref", "type": "digest", "notes": "sha256:<lowercase hex> of the normalized merchant identifier" },
         { "name": "total_amount", "type": "amount-string", "notes": "grand total including tax and shipping, in order currency" },
-        { "name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3" },
+        { "name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270" },
         { "name": "items_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the canonical line-item list (sku, quantity, unit price per line)" },
         { "name": "customer_ref", "type": "digest", "notes": "sha256:<lowercase hex> of the normalized customer identifier" },
         { "name": "fulfillment_ref", "type": "digest", "notes": "sha256:<lowercase hex> of the canonical delivery, pickup, or digital-fulfillment target" }
