@@ -28,7 +28,14 @@ function fakeStripe(accountId = 'acct_authorized') {
         return { id: 'po_1', ...p };
       },
     },
-    refunds: { create: async (p) => { calls.push(['refund', p]); return { id: 're_1', ...p }; } },
+    refunds: {
+      create: async (p, requestOptions) => {
+        calls.push(requestOptions === undefined
+          ? ['refund', p]
+          : ['refund', p, requestOptions]);
+        return { id: 're_1', ...p };
+      },
+    },
     accounts: {
       retrieve: async () => ({ id: accountId }),
       updateExternalAccount: async (acct, ext, u) => { calls.push(['ext', { acct, ext, u }]); return { id: ext }; },
@@ -102,6 +109,101 @@ test('payout refuses a replayed receipt', async () => {
   await guardStripeMutation(gate, stripe, { op: 'payout.create', params, receipt });
   await assert.rejects(() => guardStripeMutation(gate, stripe, { op: 'payout.create', params, receipt }), (e) => /replay/.test(e.gate.reason));
   assert.equal(stripe.calls.length, 1);
+});
+
+const REFUND = {
+  action_type: 'stripe.refund.create',
+  payment_intent: 'pi_synthetic_100_dollars',
+  amount: 5000,
+  operation_id: 'refund:order-123:01',
+};
+
+test('refund refuses an absent stable business operation id before provider dispatch', async () => {
+  const { gate, harness, stripe } = setup({
+    action_type: REFUND.action_type,
+    payment_intent: REFUND.payment_intent,
+    amount: REFUND.amount,
+  });
+  await assert.rejects(
+    () => guardStripeMutation(gate, stripe, {
+      op: 'refund.create',
+      params: { payment_intent: REFUND.payment_intent, amount: REFUND.amount },
+      receipt: harness.mint({ outcome: 'allow_with_signoff' }),
+    }),
+    /operation_id/,
+  );
+  assert.equal(stripe.calls.length, 0);
+});
+
+test('refund binds operation id to approval and sends stable Stripe idempotency key on fresh receipts', async () => {
+  const { gate, harness, stripe } = setup(REFUND);
+  const firstReceipt = harness.mint({ outcome: 'allow_with_signoff' });
+  const secondReceipt = harness.mint({ outcome: 'allow_with_signoff' });
+  await guardStripeMutation(gate, stripe, { op: 'refund.create', params: REFUND, receipt: firstReceipt });
+  await guardStripeMutation(gate, stripe, { op: 'refund.create', params: REFUND, receipt: secondReceipt });
+  assert.equal(stripe.calls.length, 2);
+  assert.deepEqual(stripe.calls.map((call) => call[1]), [
+    { payment_intent: REFUND.payment_intent, amount: REFUND.amount },
+    { payment_intent: REFUND.payment_intent, amount: REFUND.amount },
+  ]);
+  const firstKey = stripe.calls[0][2]?.idempotencyKey;
+  assert.match(firstKey, /^emilia:stripe:refund:v1:[0-9a-f]{64}$/);
+  assert.equal(stripe.calls[1][2]?.idempotencyKey, firstKey);
+  await assert.rejects(
+    () => guardStripeMutation(gate, stripe, {
+      op: 'refund.create',
+      params: { ...REFUND, operation_id: 'refund:order-123:02' },
+      receipt: harness.mint({ outcome: 'allow_with_signoff' }),
+    }),
+    (error) => /binding/.test(error.gate?.reason),
+  );
+  assert.equal(stripe.calls.length, 2);
+});
+
+test('two authorized partial refunds of identical amount retain distinct provider keys', async () => {
+  const first = setup(REFUND);
+  const secondAction = { ...REFUND, operation_id: 'refund:order-123:02' };
+  const second = setup(secondAction);
+  await guardStripeMutation(first.gate, first.stripe, {
+    op: 'refund.create', params: REFUND, receipt: first.harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  await guardStripeMutation(second.gate, second.stripe, {
+    op: 'refund.create', params: secondAction, receipt: second.harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  assert.notEqual(first.stripe.calls[0][2]?.idempotencyKey, second.stripe.calls[0][2]?.idempotencyKey);
+});
+
+test('lost refund response and fresh approval retry retain one provider operation key', async () => {
+  const { gate, harness } = setup(REFUND);
+  const providerCalls = [];
+  const accepted = new Map();
+  const stripe = {
+    refunds: {
+      create: async (params, options) => {
+        providerCalls.push({ params, options });
+        const prior = accepted.get(options.idempotencyKey);
+        if (prior) return prior;
+        const result = { id: 're_synthetic_1', ...params };
+        accepted.set(options.idempotencyKey, result);
+        throw new Error('response lost after provider accepted refund');
+      },
+    },
+  };
+  await assert.rejects(
+    () => guardStripeMutation(gate, stripe, {
+      op: 'refund.create', params: REFUND,
+      receipt: harness.mint({ outcome: 'allow_with_signoff' }),
+    }),
+    (error) => error.emiliaGateOutcome?.outcome === 'indeterminate',
+  );
+  const retried = await guardStripeMutation(gate, stripe, {
+    op: 'refund.create', params: REFUND,
+    receipt: harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  assert.equal(retried.result.id, 're_synthetic_1');
+  assert.equal(providerCalls.length, 2);
+  assert.equal(providerCalls[0].options.idempotencyKey, providerCalls[1].options.idempotencyKey);
+  assert.equal(accepted.size, 1);
 });
 
 test('payout-destination change requires quorum', async () => {
