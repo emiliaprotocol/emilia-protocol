@@ -1934,18 +1934,25 @@ li > p:last-of-type:only-child {
         endpoint, and authenticated provider or system-of-record identities.<a href="#section-4-3.11" class="pilcrow">¶</a>
 </li>
       </ul>
-<p id="section-4-4">A pin set that accepts one issuer value under more than one native
-      system or profile label, or from more than one gateway, MUST assign all
-      of those pins one authority namespace, unless every such pin explicitly
-      declares an authority namespace. Pins whose issuer values differ but are
-      equal after normalization MUST all declare the same authority
-      namespace. For an issuer value that is a URL, normalization at least
-      lowercases the scheme and host, removes a port that is the default for
-      the scheme, and removes trailing slashes from the path. A pin set that
-      violates either rule MUST be refused when it is configured.
-      Normalization cannot detect every alias; two issuer values that denote
-      one authority but do not normalize equal need an explicitly shared
-      authority namespace.<a href="#section-4-4" class="pilcrow">¶</a></p>
+<p id="section-4-4">One issuer MUST have exactly one authority namespace in a pin set,
+      whether its pins differ in native system or profile label or in
+      gateway. Pins whose issuer values are identical, or are equal after
+      normalization, MUST all resolve to the same authority namespace: either
+      every such pin omits a declaration and carries one identical issuer
+      value, or every such pin declares the same authority namespace. A pin
+      set MUST be refused when it is configured if it declares two different
+      authority namespaces for one issuer value, mixes declared and default
+      namespaces for one issuer value, or contains issuer values that differ
+      but are equal after normalization without one shared declared
+      namespace. For an issuer value that is a URI, normalization at least
+      lowercases the scheme. For a URL with a host, it also lowercases the
+      host, removes a trailing dot from the host, removes a port that is the
+      default for the scheme, and removes trailing slashes from the path, and
+      it reads an http or https URL written without the "//" that introduces
+      the authority, such as "https:a.example", as the same URL written with
+      it. Normalization cannot detect every alias; two issuer values that
+      denote one authority but do not normalize equal need an explicitly
+      shared authority namespace.<a href="#section-4-4" class="pilcrow">¶</a></p>
 <p id="section-4-5">Changing the authority namespace of an accepted source, or the issuer
       value of a pin that uses the default namespace, changes the native replay
       identity of every grant accepted under it, so a grant already consumed or
@@ -2488,25 +2495,52 @@ li > p:last-of-type:only-child {
         confirm a release after a pre-entry refusal, or crash after occupying
         the action key but before recording the attempt. Such an attempt keeps
         the action key occupied and its reservations held. The boundary MUST
-        provide a recovery operation for it. That operation MUST require
-        recovery authorization from the relying party that is bound to the
-        exact attempt, including its operation identifier and action key. It
-        MAY release the action key and the attempt's reservations only when an
-        authenticated durable read shows that the attempt record never reached
-        DISPATCH_PENDING, that the boundary closed it as not entered through
-        an atomic transition that no dispatch of the attempt can follow, or
-        that no attempt record was written, and, where the effecting system
-        offers an authenticated lookup by operation or idempotency key, that
-        lookup reports that the operation was not received. When the record
-        is still in a state from which the original attempt could proceed to
-        dispatch, the recovery operation MUST first close it as not entered
-        through such an atomic transition, so that the original attempt cannot
-        dispatch after the release. Without that proof the action key and the
+        provide a pre-entry recovery operation for it. Pre-entry recovery is
+        distinct from the reconciliation of <a href="#reconcile" class="auto internal xref">Section 5.14</a>: one
+        invocation either releases the attempt as not entered or leaves every
+        record held, and it MUST NOT continue into reconciliation to EXECUTED
+        or FAILED. The operation MUST require recovery authorization from the
+        relying party that is bound to exactly one attempt, as
+        <a href="#reconcile" class="auto internal xref">Section 5.14</a> specifies, including that attempt's
+        operation identifier and action key.<a href="#section-5.10-9" class="pilcrow">¶</a></p>
+<p id="section-5.10-10">The operation MAY release the action key and the attempt's
+        reservations only when an authenticated durable read shows that the
+        attempt record never reached DISPATCH_PENDING, that the boundary closed
+        it as not entered through an atomic transition that no dispatch of the
+        attempt can follow, or that no attempt record was written, and, where
+        the effecting system offers an authenticated lookup by operation or
+        idempotency key, that lookup reports that the operation was not
+        received. When the record is still in a state from which the original
+        attempt could proceed to dispatch, the recovery operation MUST first
+        close it as not entered through such an atomic transition, so that the
+        original attempt cannot dispatch after the release.<a href="#section-5.10-10" class="pilcrow">¶</a></p>
+<p id="section-5.10-11">That transition is the linearization point between recovery and
+        the original attempt. Recovery MAY treat the attempt as not entered
+        only if its own transition succeeded, as shown by an authenticated
+        durable read where the store provides one and otherwise by the
+        affirmative result that <a href="#consume-reserve" class="auto internal xref">Section 5.11</a> defines.
+        Once that transition has succeeded, the original attempt's own
+        transition toward DISPATCH_PENDING MUST fail, and the original attempt
+        MUST NOT dispatch. It MUST NOT use the records it writes afterwards,
+        and it releases them only after it confirms that the attempt was
+        closed as not entered; until then they stay held. If
+        recovery's transition fails because the record has reached
+        DISPATCH_PENDING or a later state, recovery MUST treat the attempt as
+        INDETERMINATE and MUST release nothing. A lookup result obtained for
+        that recovery describes a moment before dispatch, so it MUST NOT be
+        used as evidence of the attempt's outcome: an attempt that reached
+        DISPATCH_PENDING is resolved only by reconciliation under
+        <a href="#reconcile" class="auto internal xref">Section 5.14</a>, with evidence obtained after dispatch
+        could have begun.<a href="#section-5.10-11" class="pilcrow">¶</a></p>
+<p id="section-5.10-12">Without the proof described above, the action key and the
         reservations MUST stay held and the attempt MUST be treated as
-        INDETERMINATE. Recovery MUST NOT release a record written by a
-        different attempt, and a pre-entry stop MUST NOT be reconciled to
-        EXECUTED or FAILED.<a href="#section-5.10-9" class="pilcrow">¶</a></p>
-<p id="section-5.10-10">Without an instance field, identical material actions are one
+        INDETERMINATE. Recovery MUST
+        release the attempt's records only after its not-entered transition
+        has succeeded and been confirmed, as <a href="#consume-reserve" class="auto internal xref">Section 5.11</a>
+        requires for every release. Recovery MUST NOT release, close, or commit
+        a record held by a different attempt, and a pre-entry stop MUST NOT be
+        reconciled to EXECUTED or FAILED.<a href="#section-5.10-12" class="pilcrow">¶</a></p>
+<p id="section-5.10-13">Without an instance field, identical material actions are one
         action instance, and a further identical action after EXECUTED is
         refused. A native operation profile that must admit intentionally
         repeated identical actions MAY declare an instance field. The instance
@@ -2514,7 +2548,7 @@ li > p:last-of-type:only-child {
         is covered by the native authorization or by the handoff's action
         digest. Its value SHOULD be fixed by the party that authorizes the
         action rather than chosen by the party that retries it (see
-        <a href="#security" class="auto internal xref">Section 10</a>).<a href="#section-5.10-10" class="pilcrow">¶</a></p>
+        <a href="#security" class="auto internal xref">Section 10</a>).<a href="#section-5.10-13" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="consume-reserve">
@@ -2546,7 +2580,14 @@ li > p:last-of-type:only-child {
         action key but was written by another attempt MUST NOT be released or
         closed on this attempt's behalf; operation identifiers can be chosen
         by the caller, so an identifier match alone does not prove
-        ownership.
+        ownership. A record that successive attempts can hold, such as a
+        reservation keyed by an evaluation, a wrapper, or a native replay
+        identity rather than by the attempt, MUST be released, closed, or
+        committed on an attempt's behalf only when the boundary can prove
+        that the attempt is that record's current owner, for example through
+        a durable record keyed by the attempt that marks it as the owner, or
+        because the attempt itself created the record and has not handed it
+        back.
         The operation record MUST bind the native replay
         identity and the action key to the executor-owned observed action and
         operation identifier, never a presenter-selected decoy. Independently
@@ -2558,18 +2599,31 @@ li > p:last-of-type:only-child {
         native authority MUST NOT make an occupied or closed action key
         reservable again.<a href="#section-5.11-2" class="pilcrow">¶</a></p>
 <p id="section-5.11-3">If the store is unavailable, non-atomic, or stale, or reports an
-        ambiguous result, the boundary MUST refuse before invocation. When the
-        outcome of a write is unknown, the boundary MUST NOT invoke, and MUST
-        resolve the stored state through an authenticated durable read before
-        it releases or reuses any key the write may have recorded. It MUST NOT
-        release a record that it cannot prove it wrote; such a record stays
-        held until that read or the recovery of
-        <a href="#same-action-fence" class="auto internal xref">Section 5.10</a> resolves it.<a href="#section-5.11-3" class="pilcrow">¶</a></p>
-<p id="section-5.11-4">AEB does not claim atomicity between a local store and an unrelated
+        ambiguous result, the boundary MUST refuse before invocation. An
+        atomic transition or conditional write succeeds only when the store
+        returns the affirmative result that its interface defines for success.
+        Any other answer, including an error, a timeout, a refusal, or a value
+        that is merely not a refusal, is a failure whose effect on stored
+        state is unknown. When the outcome of a write is unknown, the boundary
+        MUST NOT invoke, and MUST resolve the stored state through an
+        authenticated durable read before it releases or reuses any key the
+        write may have recorded. It MUST NOT release a record that it cannot
+        prove it wrote; such a record stays held until that read or the
+        recovery of <a href="#same-action-fence" class="auto internal xref">Section 5.10</a> resolves it.<a href="#section-5.11-3" class="pilcrow">¶</a></p>
+<p id="section-5.11-4">When an attempt record exists, the boundary MUST release, close,
+        or commit the attempt's occupation of the action key and its other
+        reservations only after the attempt record's transition to a terminal
+        state, or to not entered, has succeeded and been confirmed, through an
+        authenticated durable read where the store provides one and otherwise
+        by the affirmative result of the transition. It MUST NOT release them
+        before that
+        transition or regardless of its result. If the transition fails or
+        cannot be confirmed, those records MUST stay held.<a href="#section-5.11-4" class="pilcrow">¶</a></p>
+<p id="section-5.11-5">AEB does not claim atomicity between a local store and an unrelated
         remote provider. It requires the local consume or reserve transition
         to occur first so that any uncertainty after dispatch cannot make the
         same authority, or the same action, available for an uncontrolled
-        second effect.<a href="#section-5.11-4" class="pilcrow">¶</a></p>
+        second effect.<a href="#section-5.11-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="invoke">
@@ -2593,7 +2647,18 @@ li > p:last-of-type:only-child {
         record MUST bind the action digest, action key, operation identifier,
         native replay identity, provider environment, audience, reservation or
         consumption record, and adapter. Failure or ambiguity while writing
-        this record MUST withhold dispatch.<a href="#section-5.12-2" class="pilcrow">¶</a></p>
+        this record MUST withhold dispatch. When the result of that write is
+        not affirmative, the boundary MUST NOT release any record on that
+        basis. It MUST read the attempt record: if the record reached
+        DISPATCH_PENDING for this attempt, the boundary either dispatches as
+        the proven owner of that record or treats the attempt as
+        INDETERMINATE; if the record is still in its earlier state, the
+        boundary MUST close it as not entered through the atomic transition of
+        <a href="#same-action-fence" class="auto internal xref">Section 5.10</a> before it releases anything. If the
+        record cannot be read, the boundary MAY attempt that not-entered
+        transition directly and release only on its affirmative result;
+        otherwise every record stays held and the attempt is treated as
+        INDETERMINATE.<a href="#section-5.12-2" class="pilcrow">¶</a></p>
 <p id="section-5.12-3">The boundary MUST invoke only from that durable state. Where the
         provider supports an idempotency key, the boundary MUST send one
         derived from the native replay identity; the derivation MAY also bind
@@ -2666,13 +2731,29 @@ li > p:last-of-type:only-child {
         that holds the same action key. A pre-entry stop MUST NOT be
         reconciled to EXECUTED or FAILED; <a href="#same-action-fence" class="auto internal xref">Section 5.10</a>
         defines its recovery.<a href="#section-5.14-3" class="pilcrow">¶</a></p>
-<p id="section-5.14-4">One recovery authorization bound to the attempt MUST suffice for
-        the boundary to claim and close every record that the attempt holds,
-        including its occupation of the action key, so that reconciliation or
-        recovery of one attempt completes in one operation. A boundary MUST
-        NOT require a separately bound credential for a record that it derives
-        from the attempt's own records.<a href="#section-5.14-4" class="pilcrow">¶</a></p>
-<p id="section-5.14-5">Reconciliation MUST NOT resurrect the original authorization or
+<p id="section-5.14-4">Recovery authorization MUST be bound to exactly one attempt,
+        identified by an attempt identifier that no other attempt uses. It
+        MUST NOT be bound only to an operation identifier, an operation key,
+        an action key, an evaluation, or another value that several attempts
+        can share, because such a credential would authorize claims across
+        attempts. Before a boundary or store claims, releases, closes, or
+        commits a record under recovery authorization, it MUST verify that the
+        record is one of the records derived from the attempt the
+        authorization names, and MUST refuse any other record. One recovery
+        authorization bound to the attempt MUST suffice for the boundary to
+        claim and close every record that the attempt holds, including its
+        occupation of the action key, so that reconciliation or recovery of
+        one attempt completes in one operation. A boundary MUST NOT require a
+        separately bound credential for a record that it derives from the
+        attempt's own records.<a href="#section-5.14-4" class="pilcrow">¶</a></p>
+<p id="section-5.14-5">Reconciliation MUST record the attempt's terminal state, and
+        confirm it, before it releases, closes, or commits any of the
+        attempt's reservations or its occupation of the action key
+        (<a href="#consume-reserve" class="auto internal xref">Section 5.11</a>). An attempt record that is still in
+        DISPATCH_PENDING or a later non-terminal state MUST first be moved to
+        INDETERMINATE through an atomic transition, so that the original
+        attempt can no longer record its own outcome concurrently.<a href="#section-5.14-5" class="pilcrow">¶</a></p>
+<p id="section-5.14-6">Reconciliation MUST NOT resurrect the original authorization or
         silently release its native replay identity. Reconciliation to FAILED
         releases the same-action fence; reconciliation to EXECUTED keeps it
         closed. If policy permits a later attempt after an authoritative
@@ -2681,7 +2762,7 @@ li > p:last-of-type:only-child {
         and complete the lifecycle required by local policy. An implementation
         MUST NOT invoke again merely because a timeout elapsed, because the
         caller retried, or because fresh native authority was presented for
-        the same action instance.<a href="#section-5.14-5" class="pilcrow">¶</a></p>
+        the same action instance.<a href="#section-5.14-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3115,9 +3196,17 @@ li > p:last-of-type:only-child {
         differently spelled issuer values normalize equal without a shared
         authority namespace, a
         pre-entry stop with and without proof that it never entered the
-        provider, a failed reservation write while another attempt holds a
-        record with the same operation identifier, and a native decision
-        request that omits a material field. A profile that accepts
+        provider, a pre-entry recovery that loses its not-entered transition
+        to an original attempt that reaches DISPATCH_PENDING first, a lost
+        acknowledgement of the write that enters DISPATCH_PENDING, a store
+        answer that is neither the affirmative result nor a refusal, a
+        failed reservation write while another attempt holds a record with the
+        same operation identifier, recovery of one attempt while a later
+        attempt holds a record that both can hold in turn, a recovery
+        authorization for one attempt presented for another attempt's record,
+        one issuer value pinned under two different declared authority
+        namespaces, and a native decision request that omits a material
+        field. A profile that accepts
         native authorization handoffs MUST also include a handoff whose
         attested action digest differs from the observed action. The profile
         MUST state every native semantic that could not be compiled without
@@ -3223,15 +3312,14 @@ li > p:last-of-type:only-child {
       party that accepts one issuer under two labels or two spellings lets one
       grant be spent once per label or spelling. Deriving the native replay
       identity from the authority namespace and native authorization
-      identifier, and refusing pin sets in which differently spelled but
-      normalization-equal issuers do not declare one namespace, removes that
-      degree of freedom. Normalization cannot detect every alias: two issuer
-      values that denote one authority but do not normalize equal need an
-      explicitly shared namespace, or one grant can be spent once per value.
-      Declaring distinct authority namespaces for one issuer value is a
-      relying-party assertion that the issuer's identifiers under those pins
-      denote distinct grants. If that assertion is wrong, one grant can be
-      spent once per namespace.<a href="#section-10-4" class="pilcrow">¶</a></p>
+      identifier, and refusing pin sets in which one issuer, however
+      spelled, does not map to exactly one namespace, removes that degree of
+      freedom. A pin set that declared two namespaces for one issuer value
+      would let one grant be spent once per namespace, so
+      <a href="#pins" class="auto internal xref">Section 4</a> refuses it. Normalization cannot detect every
+      alias: two issuer values that denote one authority but do not
+      normalize equal need an explicitly shared namespace, or one grant can
+      be spent once per value.<a href="#section-10-4" class="pilcrow">¶</a></p>
 <p id="section-10-5"><strong>Namespace rotation.</strong> Changing an authority
       namespace, or the issuer value of a pin that uses the default namespace,
       changes the native replay identity of every grant accepted under it. A
@@ -3245,21 +3333,52 @@ li > p:last-of-type:only-child {
       therefore requires a recovery operation, but releases only with proof
       that the attempt never entered the provider. Releasing on a timeout or
       on local belief would reopen the second entry that the fence prevents.<a href="#section-10-6" class="pilcrow">¶</a></p>
-<p id="section-10-7"><strong>Record ownership.</strong> Operation identifiers can be
+<p id="section-10-7"><strong>Recovery racing a live attempt.</strong> An attempt that
+      looks stopped can be slow rather than dead. If recovery observes a
+      pre-entry record and a provider lookup that finds nothing, the original
+      attempt can still enter DISPATCH_PENDING and dispatch a moment later. A
+      recovery that then used its lookup as evidence of FAILED would release
+      the action key while the first dispatch is in flight, and a fresh
+      attempt would enter the provider a second time.
+      <a href="#same-action-fence" class="auto internal xref">Section 5.10</a> therefore makes recovery's own
+      atomic not-entered transition the linearization point, and a recovery
+      that loses that transition releases nothing and never reuses its
+      lookup.<a href="#section-10-7" class="pilcrow">¶</a></p>
+<p id="section-10-8"><strong>Lost acknowledgements and non-affirmative answers.</strong>
+      A write can take effect even though its acknowledgement is lost, and a
+      store interface can return a value that is neither success nor a clear
+      refusal. Treating either as a clean failure and releasing records would
+      free the action key of an attempt whose record says it may dispatch.
+      <a href="#consume-reserve" class="auto internal xref">Section 5.11</a> and <a href="#invoke" class="auto internal xref">Section 5.12</a> therefore
+      count only the affirmative result as success and resolve every other
+      answer through a durable read before any release.<a href="#section-10-8" class="pilcrow">¶</a></p>
+<p id="section-10-9"><strong>Record ownership.</strong> Operation identifiers can be
       chosen by the caller. An error path that releases a record by operation
       identifier alone can delete a live record of another attempt that uses
       the same identifier, reopening that attempt's authority and action key.
       <a href="#consume-reserve" class="auto internal xref">Section 5.11</a> therefore limits release to records
-      whose ownership the boundary can prove.<a href="#section-10-7" class="pilcrow">¶</a></p>
-<p id="section-10-8"><strong>Instance fields.</strong> An instance field lets two
+      whose ownership the boundary can prove. The same holds for a record
+      that successive attempts can hold, such as a reservation keyed by an
+      evaluation: recovering one attempt must not commit or release that
+      record while a later attempt holds it. Releasing records before the
+      attempt's terminal or not-entered transition is confirmed has the same
+      effect, because the transition can still fail and leave a live attempt
+      without its records.<a href="#section-10-9" class="pilcrow">¶</a></p>
+<p id="section-10-10"><strong>Recovery credential scope.</strong> A recovery credential
+      bound to an operation identifier or another value that several
+      attempts share authorizes claims on every attempt that shares it,
+      including a live one. <a href="#reconcile" class="auto internal xref">Section 5.14</a> therefore binds
+      recovery authorization to exactly one attempt and requires every
+      claimed record to be derived from that attempt.<a href="#section-10-10" class="pilcrow">¶</a></p>
+<p id="section-10-11"><strong>Instance fields.</strong> An instance field lets two
       intentionally identical actions proceed. It also lets any party that can
       choose a new instance value step around the same-action fence on a
       retry, because the fence cannot tell a deliberate second instance from a
       retry that carries a new instance value. Profiles should bind the
       instance value inside the native authorization, set by the authorizing
       party, so that a retrying caller cannot mint a new instance without new
-      authorization.<a href="#section-10-8" class="pilcrow">¶</a></p>
-<p id="section-10-9"><strong>Action-digest scope.</strong> If an action digest covered a
+      authorization.<a href="#section-10-11" class="pilcrow">¶</a></p>
+<p id="section-10-12"><strong>Action-digest scope.</strong> If an action digest covered a
       field that the requester can vary without changing the consequence,
       such as a free-text memo or a request timestamp, the requester could
       vary it to obtain a new action key and step around the same-action
@@ -3269,50 +3388,50 @@ li > p:last-of-type:only-child {
       material value have the same effect: without the canonical forms that
       <a href="#same-action-fence" class="auto internal xref">Section 5.10</a> requires, a retry that writes an
       amount, a currency code, or a name differently obtains a new action
-      key.<a href="#section-10-9" class="pilcrow">¶</a></p>
-<p id="section-10-10"><strong>Gateway trust.</strong> A native authorization handoff moves
+      key.<a href="#section-10-12" class="pilcrow">¶</a></p>
+<p id="section-10-13"><strong>Gateway trust.</strong> A native authorization handoff moves
       trust from the native issuer to the gateway. A compromised or
       misconfigured gateway can attest permits that no PDP issued, or attest a
       full action digest that its mapping never evaluated. Relying parties
       should pin the narrowest set of gateways, source labels, and issuers,
       retain historical pins across key rotation, and treat each accepted
-      gateway as part of the enforcement trusted computing base.<a href="#section-10-10" class="pilcrow">¶</a></p>
-<p id="section-10-11"><strong>Mutable context.</strong> Intermediary-added headers and agent
+      gateway as part of the enforcement trusted computing base.<a href="#section-10-13" class="pilcrow">¶</a></p>
+<p id="section-10-14"><strong>Mutable context.</strong> Intermediary-added headers and agent
       annotations are convenient but are not trustworthy merely because they
       arrived on an authenticated hop. Every load-bearing field needs accepted
       end-to-end integrity coverage or independent derivation at the effect
-      boundary.<a href="#section-10-11" class="pilcrow">¶</a></p>
-<p id="section-10-12"><strong>Time of check and time of use.</strong> The action passed to
+      boundary.<a href="#section-10-14" class="pilcrow">¶</a></p>
+<p id="section-10-15"><strong>Time of check and time of use.</strong> The action passed to
       the executor must be the frozen action that was verified, matched,
       satisfied, authorized, and consumed or reserved. Mutable aliases,
       provider defaults, exchange rates, destinations, branch heads, and
       policy epochs can change a consequence after approval; profiles must
-      bind or revalidate them as material fields.<a href="#section-10-12" class="pilcrow">¶</a></p>
-<p id="section-10-13"><strong>Replay and distributed state.</strong> Process-local caches are
+      bind or revalidate them as material fields.<a href="#section-10-15" class="pilcrow">¶</a></p>
+<p id="section-10-16"><strong>Replay and distributed state.</strong> Process-local caches are
       insufficient where replicas can invoke the same effect. Replay,
       consumption, reservation, same-action fence, and operation ownership
       state must be durable, atomic, and shared across every boundary instance
-      that can reach the protected executor.<a href="#section-10-13" class="pilcrow">¶</a></p>
-<p id="section-10-14"><strong>Freshness and revocation.</strong> Expiration, nonce checks,
+      that can reach the protected executor.<a href="#section-10-16" class="pilcrow">¶</a></p>
+<p id="section-10-17"><strong>Freshness and revocation.</strong> Expiration, nonce checks,
       credential status, authority status, and policy epoch are separate
       checks. A fresh message does not make a revoked credential valid, and a
-      current credential does not make old per-action evidence fresh.<a href="#section-10-14" class="pilcrow">¶</a></p>
-<p id="section-10-15"><strong>Indeterminate effects.</strong> Retrying after a timeout can
+      current credential does not make old per-action evidence fresh.<a href="#section-10-17" class="pilcrow">¶</a></p>
+<p id="section-10-18"><strong>Indeterminate effects.</strong> Retrying after a timeout can
       duplicate a payment, mutation, disclosure, or physical action. An
       invocation that might have reached the provider consumes the operation's
       retry right and holds its action key until authenticated reconciliation
       resolves the exact outcome. Fresh authority does not reopen it. Caller
-      assurances and unauthenticated webhooks do not resolve it.<a href="#section-10-15" class="pilcrow">¶</a></p>
-<p id="section-10-16"><strong>Signature overclaiming.</strong> A cryptographic signature can
+      assurances and unauthenticated webhooks do not resolve it.<a href="#section-10-18" class="pilcrow">¶</a></p>
+<p id="section-10-19"><strong>Signature overclaiming.</strong> A cryptographic signature can
       establish control of a key and integrity of covered content under a
       selected verification profile. It does not inherently identify a human,
       prove human operation, prove comprehension, establish legal authority,
-      or prove execution.<a href="#section-10-16" class="pilcrow">¶</a></p>
-<p id="section-10-17"><strong>Boundary bypass.</strong> A correct AEB implementation does not
+      or prove execution.<a href="#section-10-19" class="pilcrow">¶</a></p>
+<p id="section-10-20"><strong>Boundary bypass.</strong> A correct AEB implementation does not
       protect direct database credentials, alternate APIs, shell access,
       administrator consoles, side channels, or actuator paths that bypass it.
       Deployment topology and credential placement are security properties,
-      not implementation details.<a href="#section-10-17" class="pilcrow">¶</a></p>
+      not implementation details.<a href="#section-10-20" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="privacy">
@@ -3413,14 +3532,26 @@ li > p:last-of-type:only-child {
         provider entry, and releases only on authenticated FAILED,
         reconciliation to FAILED, a confirmed pre-entry release, or authorized
         pre-entry recovery with proof that the attempt never entered the
-        provider. Action digests and effecting target identities are compared
+        provider. Pre-entry recovery is a separate operation that never
+        continues into reconciliation. Its own atomic not-entered transition
+        is the linearization point: a recovery that loses that transition to
+        the original attempt releases nothing, treats the attempt as
+        INDETERMINATE, and never uses its lookup result as evidence of the
+        outcome. Action digests and effecting target identities are compared
         exactly, so profiles define canonical forms for material fields.
         Instance fields let a profile admit intentionally repeated
         actions.<a href="#section-14-1.1" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-14-1.2">Required a boundary to release or close only records whose
-        ownership it can prove, and required one recovery authorization to
-        cover every record of one attempt.<a href="#section-14-1.2" class="pilcrow">¶</a>
+        ownership it can prove, and to release, close, or commit an attempt's
+        records only after the attempt's terminal or not-entered transition
+        is confirmed. Only the store's affirmative result counts as success,
+        and a lost acknowledgement of the write that enters DISPATCH_PENDING
+        is resolved through a durable read, never by releasing. A record that
+        successive attempts can hold is closed only for its current owner.
+        Recovery authorization is bound to exactly one attempt, every claimed
+        record must be derived from that attempt, and one such authorization
+        covers every record of the attempt.<a href="#section-14-1.2" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-14-1.3">Defined the native replay identity once and made the
         stable replay identity of -06 and the native replay unit of
@@ -3428,10 +3559,10 @@ li > p:last-of-type:only-child {
         are the relying-party-pinned authority namespace, which defaults to the
         issuer, and the native authorization identifier. Operation identifiers,
         wire labels such as the native system and profile, and the issuer
-        value when a namespace is declared are excluded. Pins whose issuer
-        values are different spellings of one normalized value must declare
-        one shared namespace, and a namespace change requires in-flight
-        attempts and consumed grants to be drained first.
+        value when a namespace is declared are excluded. One issuer,
+        including every issuer value equal to it after normalization, maps to
+        exactly one namespace in a pin set, and a namespace change requires
+        in-flight attempts and consumed grants to be drained first.
         Provider idempotency keys derive from the native replay
         identity.<a href="#section-14-1.3" class="pilcrow">¶</a>
 </li>
@@ -3519,39 +3650,78 @@ li > p:last-of-type:only-child {
       <code>replay_unit</code> computed over the native system and profile labels,
       the issuer, and the authorization identifier; the verifier checks it as
       part of the encoding and never uses it as the replay identity. The
-      verifier refuses a pin set whose issuer values differ only in URL scheme
-      or host case, a default port, or trailing slashes unless those pins
-      declare one shared namespace.<a href="#section-15-3" class="pilcrow">¶</a></p>
-<p id="section-15-4">Both reference Gate boundaries, the native consequence boundary and
-      the composed CAID and AEC boundary, implement the same-action fence of
+      reference Gate fences a key over that carried value in addition to the
+      replay identity, so authority consumed by an earlier release stays
+      fenced; that key is never the only fence. The verifier's pin-set
+      check refuses a pin set that does not map each
+      issuer, including issuer values that are equal after the normalization
+      of <a href="#pins" class="auto internal xref">Section 4</a>, to exactly one authority namespace, and the
+      verifier derives no replay identity under such a pin set.<a href="#section-15-3" class="pilcrow">¶</a></p>
+<p id="section-15-4">At the same commit, both reference Gate boundaries, the native
+      consequence boundary and the composed CAID and AEC boundary, implement
+      the same-action fence of
       <a href="#same-action-fence" class="auto internal xref">Section 5.10</a>. They derive one action key from the
       relying party identifier, the configured provider coordinates, and the
       action digest, so they fence each other when they share a store. Each
       writes the attempt record before any record that occupies the action
-      key, keys every record it can release or close by the attempt, and
-      provides the pre-entry recovery of <a href="#same-action-fence" class="auto internal xref">Section 5.10</a>
-      through its reconciliation operation, in which one recovery
-      authorization scoped to the attempt covers every record the attempt
-      holds. The composed boundary provides that recovery only when its
-      attempt store exposes a durable state read. The reference PostgreSQL
-      consumption store exposes the durable state read and an authorized
-      recovery claim that both boundaries use after a restart. The reference
-      boundaries cannot tell whether an effecting system offers a lookup: they
+      key, never counts a store answer other than the exact affirmative
+      result as success, and provides the pre-entry recovery of
+      <a href="#same-action-fence" class="auto internal xref">Section 5.10</a> as a separate mode of its
+      reconciliation operation. In that mode its
+      own not-entered transition of the attempt record is the linearization
+      point, a recovery that loses the transition returns INDETERMINATE
+      without releasing anything, and the attempt's records are released only
+      after the transition is confirmed. Recovery authorization is scoped to
+      one attempt identifier, and a claimed record must be one derived from
+      that attempt.<a href="#section-15-4" class="pilcrow">¶</a></p>
+<p id="section-15-5">The two boundaries key their records differently. The native
+      boundary keys each of its three reservations, for the operation, the
+      native replay identity, and its occupation of the action key, by the
+      attempt. The composed boundary keys its occupation of the action key by
+      the attempt, but keys its evaluation reservation by the evaluation,
+      which successive attempts can present. It commits that reservation
+      for an attempt only on proof that the attempt still owns it: a durable
+      read showing the attempt's own occupation of the action key still
+      held, or, without such a read, the acknowledged close of that
+      occupation. Its pre-entry recovery releases only that occupation,
+      leaving the evaluation reservation to the run that made it. Where its
+      attempt store or consumption store offers no durable state read, the
+      composed boundary confirms a transition or release only by the store's
+      exact affirmative result rather than by the authenticated durable read
+      that <a href="#consume-reserve" class="auto internal xref">Section 5.11</a> requires. It then treats only its
+      own not-entered transition answered affirmatively as proof of a
+      pre-entry stop, and because it cannot tell a recovery's not-entered
+      transition from its own lost write, a run that loses that race keeps
+      every record held and the action key occupied. The reference
+      PostgreSQL consumption store exposes a durable state read and an
+      authorized recovery claim that both
+      boundaries use after a restart; the claim is refused before the
+      authorizer runs unless the claimed record is the one that the recovery
+      scope names for its attempt.<a href="#section-15-5" class="pilcrow">¶</a></p>
+<p id="section-15-6">Evidence verification also differs. The native boundary
+      authenticates provider outcomes through an operator-configured
+      verifier. The composed boundary delegates that check. It checks only
+      the form of the evidence that its provider adapter returns, accepts a
+      reconciliation outcome from a caller whose recovery authorization its
+      attempt store accepts, and does not verify provider evidence itself.
+      On the composed boundary, the authenticated-evidence requirements of
+      <a href="#same-action-fence" class="auto internal xref">Section 5.10</a>, <a href="#outcome" class="auto internal xref">Section 5.13</a>, and
+      <a href="#reconcile" class="auto internal xref">Section 5.14</a> are therefore met only if the operator's
+      provider adapter authenticates the outcomes it returns and the
+      operator's recovery authorization process verifies the evidence before
+      it authorizes a caller. Neither
+      boundary can tell whether an effecting system offers a lookup: both
       accept an indeterminate provider answer as the absence of one, so
       presenting the lookup result where a lookup exists is the operator's
-      responsibility. The native boundary authenticates provider outcomes
-      through an operator-configured verifier. The composed boundary accepts a
-      reconciliation outcome only from a caller whose recovery authorization
-      its attempt store accepts, and does not verify provider evidence
-      itself.<a href="#section-15-4" class="pilcrow">¶</a></p>
-<p id="section-15-5">The reference Gate implements no material-field inventory and no
+      responsibility.<a href="#section-15-6" class="pilcrow">¶</a></p>
+<p id="section-15-7">The reference Gate implements no material-field inventory and no
       canonical-form equivalence. It compares the caller-supplied action
       digest and the configured provider coordinates exactly, so the
       canonicalization that <a href="#same-action-fence" class="auto internal xref">Section 5.10</a> requires is
       performed by the caller or its profile. This code is same-team
       reference code, not an independent implementation, and has no known
-      production deployment.<a href="#section-15-5" class="pilcrow">¶</a></p>
-<p id="section-15-6">Synthetic lifecycle corpus. A 26-case corpus
+      production deployment.<a href="#section-15-7" class="pilcrow">¶</a></p>
+<p id="section-15-8">Synthetic lifecycle corpus. A 26-case corpus
       <span>[<a href="#EP-LIFECYCLE-CORPUS" class="cite xref">EP-LIFECYCLE-CORPUS</a>]</span> runs four synthetic native-result
       profiles (AuthZEN with COAZ-MCP, AP2, an OAuth Transaction Token, and a
       locally signed mandate) through one post-authorization lifecycle model.
@@ -3560,8 +3730,8 @@ li > p:last-of-type:only-child {
       that model rather than the shipped code. It includes cases with fresh
       native authority for an action whose first attempt is INDETERMINATE or
       has EXECUTED, and a case that relabels one grant under a second source
-      label.<a href="#section-15-6" class="pilcrow">¶</a></p>
-<p id="section-15-7">The informative <code>EP-FIELD-ORIGIN-v0.1</code> profile is evaluated
+      label.<a href="#section-15-8" class="pilcrow">¶</a></p>
+<p id="section-15-9">The informative <code>EP-FIELD-ORIGIN-v0.1</code> profile is evaluated
       before admission in the reference Gate. Its Gap 6 implementation profile
       has 14 deterministic cases, including disallowed field origins, unknown
       origin, profile substitution, an unpinned transformation, and the
@@ -3571,7 +3741,7 @@ li > p:last-of-type:only-child {
       conformance work and is not established by this revision. These
       same-team artifacts are not an independent implementation, are not an
       adoption claim, and do not prove that a deployment mediates every effect
-      path.<a href="#section-15-7" class="pilcrow">¶</a></p>
+      path.<a href="#section-15-9" class="pilcrow">¶</a></p>
 </section>
 </div>
 <section id="section-16">
@@ -3644,15 +3814,15 @@ li > p:last-of-type:only-child {
 <dd class="break"></dd>
 <dt id="EP-LIFECYCLE-CORPUS">[EP-LIFECYCLE-CORPUS]</dt>
         <dd>
-<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"Consequence-Admission Lifecycle Composition Corpus v0.1"</span>, <time datetime="2026-09-25" class="refDate">25 September 2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/tree/46b5ec92745d50ea7163301b1141eedd2091fc6e/conformance/composition/consequence-admission-lifecycle-v0.1">https://github.com/emiliaprotocol/emilia-protocol/tree/46b5ec92745d50ea7163301b1141eedd2091fc6e/conformance/composition/consequence-admission-lifecycle-v0.1</a>&gt;</span>. <span class="annotation">Repository commit
-          46b5ec92745d50ea7163301b1141eedd2091fc6e. Synthetic same-team
+<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"Consequence-Admission Lifecycle Composition Corpus v0.1"</span>, <time datetime="2026-09-25" class="refDate">25 September 2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/tree/b929810bbb6cba642f0ef3dbc4b6954ac3c481e7/conformance/composition/consequence-admission-lifecycle-v0.1">https://github.com/emiliaprotocol/emilia-protocol/tree/b929810bbb6cba642f0ef3dbc4b6954ac3c481e7/conformance/composition/consequence-admission-lifecycle-v0.1</a>&gt;</span>. <span class="annotation">Repository commit
+          b929810bbb6cba642f0ef3dbc4b6954ac3c481e7. Synthetic same-team
           corpus.</span>
         </dd>
 <dd class="break"></dd>
 <dt id="EP-NATIVE-HANDOFF">[EP-NATIVE-HANDOFF]</dt>
         <dd>
-<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"AEB-NATIVE-AUTHORIZATION-HANDOFF-v1 Reference Encoding and Native Consequence Boundary"</span>, <time datetime="2026-09-25" class="refDate">25 September 2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/blob/46b5ec92745d50ea7163301b1141eedd2091fc6e/docs/protocol/aeb-native-authorization-handoff-v1.md">https://github.com/emiliaprotocol/emilia-protocol/blob/46b5ec92745d50ea7163301b1141eedd2091fc6e/docs/protocol/aeb-native-authorization-handoff-v1.md</a>&gt;</span>. <span class="annotation">Repository commit
-          46b5ec92745d50ea7163301b1141eedd2091fc6e. Same-team reference code;
+<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"AEB-NATIVE-AUTHORIZATION-HANDOFF-v1 Reference Encoding and Native Consequence Boundary"</span>, <time datetime="2026-09-25" class="refDate">25 September 2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/blob/b929810bbb6cba642f0ef3dbc4b6954ac3c481e7/docs/protocol/aeb-native-authorization-handoff-v1.md">https://github.com/emiliaprotocol/emilia-protocol/blob/b929810bbb6cba642f0ef3dbc4b6954ac3c481e7/docs/protocol/aeb-native-authorization-handoff-v1.md</a>&gt;</span>. <span class="annotation">Repository commit
+          b929810bbb6cba642f0ef3dbc4b6954ac3c481e7. Same-team reference code;
           informative only.</span>
         </dd>
 <dd class="break"></dd>

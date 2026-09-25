@@ -59,13 +59,31 @@ wording-only edit.
    that lookup reports that the operation was not received. A record from
    which the original attempt could still dispatch is first closed that way.
    Without that proof the attempt is treated as INDETERMINATE. A pre-entry
-   stop is never reconciled to EXECUTED or FAILED.
-3. Record ownership and recovery credentials (Sections 5.11 and 5.14). A
-   boundary MUST release or close only records whose ownership for the current
-   attempt it can prove; an operation-identifier match alone does not prove
-   ownership, because operation identifiers can be caller input. One recovery
-   authorization bound to an attempt MUST suffice to close every record the
-   attempt holds, including its occupation of the action key.
+   stop is never reconciled to EXECUTED or FAILED. Pre-entry recovery is a
+   separate operation that never continues into reconciliation. Its own
+   atomic not-entered transition is the linearization point: once it
+   succeeds, the original attempt cannot enter DISPATCH_PENDING or dispatch.
+   A recovery that loses the transition to the original attempt releases
+   nothing, treats the attempt as INDETERMINATE, and never uses its lookup
+   result as evidence of the outcome, because that lookup describes a moment
+   before dispatch.
+3. Record ownership, release ordering, and recovery credentials (Sections
+   5.11, 5.12, and 5.14). A boundary MUST release or close only records whose
+   ownership for the current attempt it can prove; an operation-identifier
+   match alone does not prove ownership, because operation identifiers can be
+   caller input. A record that successive attempts can hold, such as a
+   reservation keyed by an evaluation, is released, closed, or committed only
+   for its current owner, shown by an authenticated durable read. When an
+   attempt record exists, the attempt's records are released, closed, or
+   committed only after its terminal or not-entered transition has succeeded
+   and been confirmed. Only the store's affirmative result counts as success;
+   any other answer is resolved through a durable read, and a lost
+   acknowledgement of the write that enters DISPATCH_PENDING never releases
+   anything on its own. Recovery authorization MUST be bound to exactly one
+   attempt, never only to an operation identifier or another shared value,
+   and every record claimed under it must be derived from that attempt. One
+   such authorization MUST suffice to close every record the attempt holds,
+   including its occupation of the action key.
 4. Canonical action identity (Section 5.10). Action digests and effecting
    target identities are compared exactly. The native operation profile MUST
    define canonical forms for material fields (amount and currency formats,
@@ -81,11 +99,14 @@ wording-only edit.
    declares a namespace, the issuer value is not an input. The operation
    identifier, provider idempotency key, wire labels such as the native system
    and profile, wrapper and handoff digests, and retry, session, trace, and
-   challenge identifiers are excluded. Pins for one issuer value share one
-   namespace unless every such pin declares its own, and pins whose issuer
-   values differ but are equal after normalization (for URLs: scheme and host
-   case, default port, trailing slashes) MUST all declare the same namespace,
-   or the pin set is refused. Changing a namespace rotates every replay identity under it, so
+   challenge identifiers are excluded. One issuer MUST have exactly one
+   namespace in a pin set: pins whose issuer values are identical or equal
+   after normalization (URI scheme case; for URLs also host case, a trailing
+   dot on the host, a default port, trailing slashes, and a missing "//"
+   after http or https) either all omit a declaration with one identical
+   issuer value or all declare the same namespace, or the pin set is
+   refused. Two different declared namespaces for one issuer value are
+   refused. Changing a namespace rotates every replay identity under it, so
    in-flight attempts MUST be resolved and consumed grants made unpresentable
    first. Provider idempotency keys derive from the native replay identity.
    The adapter probe now includes a relabelled-grant probe and a probe under a
@@ -116,7 +137,12 @@ wording-only edit.
    trust basis moves to the gateway. The encoding stays deployment-pinned;
    the reference encoding is cited informatively. Implementation Status
    describes the verifier and both Gate boundaries as same-team reference
-   code at a pinned commit and states what that code does not implement.
+   code at a pinned commit and states what that code does not implement. It
+   says what each boundary keys by attempt: the native boundary keys all
+   three of its reservations by attempt, while the composed boundary keys
+   only its occupation of the action key by attempt and keys its evaluation
+   reservation by evaluation. It also says that the composed boundary
+   delegates provider-evidence verification to the operator.
 9. Consistency and references. Reconciliation is now bound to the attempt it
    resolves. The SCITT Permit text in Section 7.3 no longer requires CAID
    unconditionally. The `all_of` and `any_of` members of EP-AEB-REQUIREMENT-v1
@@ -142,18 +168,22 @@ or registry.
 
 - Refresh the date and re-run the checks in `VALIDATION.md`, including the
   Datatracker revision check and the reference-currency check.
-- Section 15 (Implementation Status) and the `EP-NATIVE-HANDOFF` and
-  `EP-LIFECYCLE-CORPUS` references describe the reference code at commit
-  `46b5ec92745d50ea7163301b1141eedd2091fc6e` on branch
-  `fix/pr788-followups` (PR #790), which was not merged when this candidate
-  was prepared. At that commit both Gate boundaries implement the Section
-  5.10 fence and its pre-entry recovery, the verifier derives the label-free
-  replay identity and refuses aliased issuer pins without one shared
-  namespace, and the handoff keeps its 4.1.0 wire `replay_unit`, which still
-  covers the labels. Section 15 also states that the reference Gate has no
-  material-field inventory or canonical-form equivalence. Once the branch is
-  merged, re-pin both references to the merge commit on `main`, re-render,
-  regenerate `SHA256SUMS.txt`, and re-run idnits.
+- The `EP-NATIVE-HANDOFF` and `EP-LIFECYCLE-CORPUS` references pin commit
+  `b929810bbb6cba642f0ef3dbc4b6954ac3c481e7` on branch `fix/pr788-followups`
+  (PR #790), which carries the round-three code and docs that Section 15
+  describes: the separate pre-entry recovery mode and its linearization,
+  release only after a confirmed transition, exact affirmative store
+  answers, recovery claims bound to one attempt, the owner check on the
+  composed boundary's evaluation reservation, one namespace per issuer in
+  the verifier, and Gate's additional fence over the carried wire
+  `replay_unit`. Every Section 15 statement was checked against that code.
+  It is same-team reference code, not an independent implementation. The
+  PR was not merged when this candidate was prepared. Before filing, re-pin
+  both references to the merge commit on `main`, re-render, regenerate
+  `SHA256SUMS.txt`, and re-run idnits. The handoff still carries its 4.1.0
+  wire `replay_unit`, which covers the labels, and the reference Gate still
+  has no material-field inventory or canonical-form equivalence; Section 15
+  says both.
 
 ## Layout
 

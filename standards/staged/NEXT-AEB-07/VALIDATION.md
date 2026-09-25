@@ -3,6 +3,101 @@
 Checks run on 2026-09-25 (UTC) against the candidate in this directory. Each
 entry gives the command and a summary of its output.
 
+## Round-three revision (2026-09-25 UTC)
+
+A round-two attack review of branch `fix/pr788-followups` at `aa08efd46`
+found that a pre-entry recovery that lost its transition to a live attempt
+could reuse its pre-entry lookup as a terminal FAILED and release the action
+key while the first provider call was in flight, that the composed Gate
+boundary released its fence holder before its terminal attempt transition,
+that recovery claims were not bound to the claimed record, that a recovery of
+one attempt could commit another attempt's evaluation reservation, that a
+truthy non-`true` store answer counted as success, and that one exact issuer
+under two declared namespaces could spend one grant twice. Section 15 also
+said that each reference boundary keys every record it can release by the
+attempt, which the composed boundary does not do. The source was revised as
+follows:
+
+- Section 5.10: pre-entry recovery is a separate operation that never
+  continues into reconciliation, and its authorization is bound to exactly
+  one attempt. Recovery's own atomic not-entered transition is the
+  linearization point; once it succeeds, the original attempt cannot enter
+  DISPATCH_PENDING, must not use what it writes afterwards, and releases it
+  only after it confirms the not-entered close. A recovery
+  that loses the transition treats the attempt as INDETERMINATE, releases
+  nothing, and never uses its lookup result as outcome evidence. Records are
+  released only after the not-entered transition is confirmed.
+- Section 5.11: an atomic transition succeeds only on the store's affirmative
+  result; any other answer is a failure resolved through a durable read. A
+  record that successive attempts can hold is released, closed, or committed
+  only for an attempt proven to be its current owner. When an attempt record
+  exists, the attempt's records are released, closed, or committed only
+  after its terminal or not-entered transition has succeeded and been
+  confirmed, by a durable read where the store has one and otherwise by the
+  affirmative result.
+- Section 5.12: a non-affirmative result of the write that enters
+  DISPATCH_PENDING releases nothing; the boundary reads the record and either
+  dispatches as its proven owner or treats the attempt as INDETERMINATE,
+  closes a record still in its earlier state as not entered before releasing,
+  and, when the record cannot be read, may attempt that not-entered
+  transition directly and release only on its affirmative result, and
+  otherwise holds everything.
+- Section 5.14: recovery authorization is bound to exactly one attempt, never
+  only to a shared value such as an operation identifier, and every claimed
+  record must be derived from that attempt. Reconciliation records and
+  confirms the terminal state, after freezing a non-terminal record as
+  INDETERMINATE, before it releases or commits anything.
+- Section 4 (pins): one issuer has exactly one authority namespace in a pin
+  set. Two declared namespaces for one issuer value are refused. The minimum
+  normalization adds URI scheme case, a trailing dot on a URL host, and an
+  http or https URL written without "//".
+- Section 8.7 hostile vectors, Security Considerations (relabelled authority,
+  recovery racing a live attempt, lost acknowledgements and non-affirmative
+  answers, record ownership, recovery credential scope), and the Changes
+  section were updated to match.
+- Section 15: the composed boundary is scoped exactly. It keys its
+  occupation of the action key by attempt and its evaluation reservation by
+  evaluation, commits that reservation only on proof that the attempt still
+  owns it and leaves it untouched in pre-entry recovery, checks only the form
+  of provider evidence, and delegates evidence verification to the
+  operator's provider adapter and recovery authorization process. Where its
+  attempt or consumption store has no durable read, it confirms only by the
+  exact affirmative result, not by the durable read that Section 5.11
+  requires, and a run that loses the race with recovery keeps the action key
+  occupied. Section 15 also says that the reference Gate fences a key over
+  the carried wire `replay_unit` in addition to the replay identity, never
+  alone. The integrator checked every Section 15 statement against the
+  round-three code, removed the `PR790-R3-CONFIRM` comments, and re-pinned
+  `EP-NATIVE-HANDOFF` and `EP-LIFECYCLE-CORPUS` to
+  `b929810bbb6cba642f0ef3dbc4b6954ac3c481e7`, the branch commit that carries
+  that code and its docs.
+
+Checks on the revised source:
+
+- `xmllint --noout`: PASS.
+- `xml2rfc 3.34.0 --text` and `--html`: PASS with the same inherited
+  submissionType warning. A second render into a scratch directory is
+  byte-identical to `RENDERS/` (`cmp`).
+- `idnits 3.1.0 -m submission` on the TXT and on the XML: PASS, no nits.
+- ASCII: no byte above 0x7F in the XML, the text render, `README.md`, or this
+  file. No double hyphen in XML prose outside comments.
+- `shasum -a 256 -c SHA256SUMS.txt`: PASS for all three files.
+- Structural checker, version 4: condition R6 was rewritten for the
+  one-namespace-per-issuer rule, and L1 to L10 were added for the recovery,
+  release-ordering, affirmative-answer, ownership, claim-binding, lost
+  acknowledgement, namespace, Section 15, and security conditions (49 in
+  total). The revised -07 passes 49 of 49. The -07 source as it stood before
+  this revision passes 38 of 49; the 11 failures are exactly R6 and L1 to
+  L10. The posted -06 passes 3 of 49 (the same three regression guards).
+- Datatracker API: `draft-schrock-action-evidence-boundary` is still at rev
+  06 (posted 2026-09-25T02:15:03Z), and the archive URL for -07 returns 404.
+  For each of the 12 other Internet-Drafts cited with a revision in the XML,
+  the Datatracker record is at the cited revision and the archive URL of the
+  next revision returns 404.
+
+As before, these checks show that the text states the requirements, not that
+the reference code meets them.
+
 ## Second review revision (2026-09-25 UTC)
 
 A post-integration review of branch `fix/pr788-followups` found that the
