@@ -3,8 +3,8 @@
   "claim_scope": "expectation-separated evaluation of the pinned v2 corpus with opaque run handles and fresh canonicalization challenges; independent construction acceptance requires a separate trusted-attestor signature",
   "source_manifest": {
     "path": "conformance/conformance-manifest.json",
-    "sha256": "90bd016442e54a6c19877887dc6c0cd5f149a727aa845ae07a40eb65b01c0c2d",
-    "manifest_sha256": "4a19d30682d80eaed85b268ecb35d3c151e3bc2ed188cf214fef7ca56c1fe8a3"
+    "sha256": "65053c07f96f194085d9cf9e61a465f9176b21cdb3c610b0a3c890bae951cec0",
+    "manifest_sha256": "54d49edb83cab3d66619be345e9687065a9fc7c675ba8effac9b8de0c9df9cdd"
   },
   "runner_protocol": {
     "version": "EP-CONFORMANCE-FILE-RUNNER-v3",

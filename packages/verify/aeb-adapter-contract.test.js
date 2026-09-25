@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import test from 'node:test';
-import { AEB_EVALUATION_DOMAIN, AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION, InMemoryAebConsumptionStore, aebReservationKey, adapterPinDigest, canonicalizeAeb, digestAeb, digestAebTyped, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, authorizeAebExecution, authorizeAebExecutionDurable, createAebNativeVerificationAttestationAdapter, reconcileAebExecution, reconcileAebExecutionDurable, signAebNativeVerificationAttestation, verifyAebEvaluation, } from './aeb-adapter-contract.js';
+import { AEB_EVALUATION_DOMAIN, AEB_EVALUATION_V2_VERSION, AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION, InMemoryAebConsumptionStore, aebReservationKey, adapterPinDigest, canonicalizeAeb, digestAeb, digestAebTyped, evaluateAebEvidence, issueAebEvaluationV2FromV1, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, authorizeAebExecution, authorizeAebExecutionDurable, createAebNativeVerificationAttestationAdapter, reconcileAebExecution, reconcileAebExecutionDurable, signAebNativeVerificationAttestation, upgradeAebEvaluationV1ToV2, verifyAebEvaluation, verifyAebEvaluationV2, } from './aeb-adapter-contract.js';
 const vectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/aeb-adapter.v1.json', import.meta.url), 'utf8'));
 const CAID = `caid:1:order.purchase.1:jcs-sha256:${'A'.repeat(43)}`;
 const OTHER_CAID = `caid:1:order.purchase.1:jcs-sha256:${'B'.repeat(43)}`;
@@ -292,6 +292,143 @@ function evaluate(setupResult, legs = defaultLegs(), bindings = {}) {
         ...bindings,
     });
 }
+test('AEB evaluation v2 preserves multi-leg provenance without creating an authorization verdict', () => {
+    const fixture = setup();
+    const source = evaluate(fixture).record;
+    const nativeDecisionReferences = {
+        'artifact:human-alice': {
+            profile: 'urn:example:native-decision:v1',
+            decision_digest: digestAeb({ native_decision: 'alice-approved' }),
+        },
+    };
+    const record = issueAebEvaluationV2FromV1(source, {
+        profiles: fixture.config.profiles,
+        native_decision_references: nativeDecisionReferences,
+        signer: { key_id: 'eval:test', private_key: fixture.keyPair.privateKey },
+    });
+    assert.equal(record['@type'], AEB_EVALUATION_V2_VERSION);
+    assert.equal(record.execution_authorizing, false);
+    assert.equal(record.legs.length, source.legs.length);
+    assert.deepEqual(record.legs.map((item) => item.replay_unit), source.legs.map((item) => item.replay_unit));
+    assert.deepEqual(record.legs.map((item) => item.evidence_digest), source.legs.map((item) => item.evidence_digest));
+    assert.ok(record.legs.every((item) => item.semantic_loss.status === 'NO_MATERIAL_FIELD_LOSS'));
+    assert.deepEqual(record.legs.find((item) => item.artifact_ref === 'artifact:human-alice')
+        ?.native_decision_reference, nativeDecisionReferences['artifact:human-alice']);
+    assert.equal(record.conversion.status, 'COMPLETE');
+    const verified = verifyAebEvaluationV2(record, {
+        source_evaluation: source,
+        evaluator_keys: fixture.config.evaluator_keys,
+        profiles: fixture.config.profiles,
+        native_decision_references: nativeDecisionReferences,
+    });
+    assert.equal(verified.valid, true, JSON.stringify(verified));
+    assert.equal(verified.execution_authorizing, false);
+    assert.equal(verified.checks.source_signature, true);
+});
+test('AEB evaluation v1 upgrade reports unavailable semantic-loss declarations as indeterminate', () => {
+    const fixture = setup();
+    const source = evaluate(fixture).record;
+    const upgraded = upgradeAebEvaluationV1ToV2(source);
+    assert.equal(upgraded.status, 'INDETERMINATE');
+    assert.equal(upgraded.body.execution_authorizing, false);
+    assert.equal(upgraded.body.legs.length, source.legs.length);
+    assert.ok(upgraded.body.legs.every((item) => item.semantic_loss.status === 'INDETERMINATE'));
+    assert.ok(upgraded.reasons.every((reason) => reason.startsWith('mapping_profile_unavailable:')));
+});
+test('AEB evaluation v2 refuses provenance, replay-unit, loss-report, and native-decision substitution', () => {
+    const fixture = setup();
+    const source = evaluate(fixture).record;
+    const nativeDecisionReferences = {
+        'artifact:human-alice': {
+            profile: 'urn:example:native-decision:v1',
+            decision_digest: digestAeb({ native_decision: 'alice-approved' }),
+        },
+    };
+    const record = issueAebEvaluationV2FromV1(source, {
+        profiles: fixture.config.profiles,
+        native_decision_references: nativeDecisionReferences,
+        signer: { key_id: 'eval:test', private_key: fixture.keyPair.privateKey },
+    });
+    const verify = (candidate) => verifyAebEvaluationV2(candidate, {
+        source_evaluation: source,
+        evaluator_keys: fixture.config.evaluator_keys,
+        profiles: fixture.config.profiles,
+        native_decision_references: nativeDecisionReferences,
+    });
+    for (const mutate of [
+        (candidate) => { candidate.legs[0].adapter_id = 'test:substituted'; },
+        (candidate) => { candidate.legs[0].replay_unit = digestAeb({ replay: 'new' }); },
+        (candidate) => {
+            candidate.legs[0].semantic_loss.status = 'INDETERMINATE';
+            candidate.legs[0].semantic_loss.reasons = ['material_field_loss'];
+        },
+        (candidate) => {
+            candidate.legs.find((item) => item.artifact_ref === 'artifact:human-alice')
+                .native_decision_reference.decision_digest = digestAeb({ substituted: true });
+        },
+        (candidate) => { candidate.signature.unsigned_note = 'not-covered'; },
+    ]) {
+        const changed = structuredClone(record);
+        mutate(changed);
+        const result = verify(changed);
+        assert.equal(result.valid, false, JSON.stringify(result));
+        assert.equal(result.execution_authorizing, false);
+    }
+});
+test('AEB evaluation v2 never infers a native decision reference from an accepted leg', () => {
+    const fixture = setup();
+    const source = evaluate(fixture).record;
+    const record = issueAebEvaluationV2FromV1(source, {
+        profiles: fixture.config.profiles,
+        signer: { key_id: 'eval:test', private_key: fixture.keyPair.privateKey },
+    });
+    assert.ok(record.legs.every((item) => item.native_decision_reference === undefined));
+    assert.equal(record.conversion.status, 'COMPLETE');
+});
+test('AEB evaluation v2 bounds conversion reasons for URI-shaped artifact references', () => {
+    const fixture = setup();
+    const legs = defaultLegs();
+    legs[0] = {
+        ...legs[0],
+        artifact_ref: 'https://issuer.example/evidence/approval?id=alice%2Ffinance',
+    };
+    const source = evaluate(fixture, legs).record;
+    const record = issueAebEvaluationV2FromV1(source, {
+        signer: { key_id: 'eval:test', private_key: fixture.keyPair.privateKey },
+    });
+    assert.equal(record.conversion.status, 'INDETERMINATE');
+    assert.ok(record.conversion.reason_codes.every((reason) => /^[A-Za-z0-9_.:-]{1,256}$/.test(reason)));
+    const verified = verifyAebEvaluationV2(record, {
+        source_evaluation: source,
+        evaluator_keys: fixture.config.evaluator_keys,
+    });
+    assert.equal(verified.valid, true, JSON.stringify(verified));
+});
+test('AEB evaluation v2 refuses a different private key under the source key id', () => {
+    const fixture = setup();
+    const source = evaluate(fixture).record;
+    const differentKey = crypto.generateKeyPairSync('ed25519').privateKey;
+    assert.throws(() => issueAebEvaluationV2FromV1(source, {
+        profiles: fixture.config.profiles,
+        signer: { key_id: 'eval:test', private_key: differentKey },
+    }), /evaluation_v2_signer_not_source_signer/);
+});
+test('AEB evaluation v2 reports unmatched native decision references', () => {
+    const fixture = setup();
+    const source = evaluate(fixture).record;
+    const record = issueAebEvaluationV2FromV1(source, {
+        profiles: fixture.config.profiles,
+        native_decision_references: {
+            'artifact:not-present': {
+                profile: 'urn:example:native-decision:v1',
+                decision_digest: digestAeb({ native_decision: 'permit' }),
+            },
+        },
+        signer: { key_id: 'eval:test', private_key: fixture.keyPair.privateKey },
+    });
+    assert.equal(record.conversion.status, 'INDETERMINATE');
+    assert.ok(record.conversion.reason_codes.some((reason) => reason.startsWith('native_decision_reference_unmatched:')));
+});
 test('AEB verification fails closed on malformed Unicode in signed-record values and keys', () => {
     const s = setup();
     const valid = evaluate(s).record;
@@ -1077,7 +1214,7 @@ test('production execution requires durable ownership-fenced permanent custody',
     })).reason, 'native_replay_conflict');
 });
 test('authoritative NOT_COMMITTED is terminal and never resurrects the reserved unit', () => {
-    // draft-schrock-action-evidence-boundary-04 s5.11: reconciliation never
+    // draft-schrock-action-evidence-boundary-05 s5.11: reconciliation never
     // resurrects the original authorization and never silently releases its
     // one-time replay unit, so a policy-permitted later attempt has to carry a
     // new action instance.

@@ -1,8 +1,11 @@
 # @emilia-protocol/verify
 
-**Zero-dependency offline verification for EP trust receipts.**
+**Offline verification for AEB evidence joins, lifecycle records, and EP
+receipts.**
 
-Verify Ed25519-signed trust receipts, Merkle anchor proofs, and commitment proofs using only Node.js built-in `crypto`. No EP infrastructure required. No API key. No account. Just math.
+Verify native evidence projections, exact-action joins, nonauthorizing AEB
+records, Ed25519-signed receipts, Merkle anchor proofs, and commitments without
+calling EMILIA infrastructure. No API key or account is required.
 
 This is the core primitive that makes EP a **protocol**, not an API.
 
@@ -81,12 +84,45 @@ Both modules are also re-exported from the package root. A `QUALIFIED` result
 is non-authorizing: it does not grant permission, reserve resources, consume
 authority, invoke a provider, or establish legality or business suitability.
 
-### AEB evidence boundary — `@emilia-protocol/verify/aeb-adapter-contract`
+### AEB evidence boundary — `@emilia-protocol/verify/aeb`
 
-The AEB kernel verifies native evidence under relying-party-pinned adapters,
-maps every accepted leg through a pinned CAID profile, composes the legs through
-`EP-AEC-v1`, enforces distinct-human quorum and no-self-approval, and reserves
-the authorization before execution.
+The stable `./aeb` facade exports the adapter contract and lifecycle evidence
+records. Existing narrow subpaths remain supported.
+
+```js
+import {
+  evaluateAebEvidence,
+  verifyAebEvaluation,
+} from '@emilia-protocol/verify/aeb';
+```
+
+The direct handoff below implements the proposed, staged AEB-06 refinement.
+The current published AEB-05 still requires CAID matching and AEC evidence
+satisfaction. These source labels and same-repository vectors do not establish
+native-protocol conformance or independent interoperability.
+
+When a native system already authorized the final operation, the proposed
+profile uses a shorter signed handoff instead of manufacturing a CAID or AEC
+layer:
+
+```js
+import {
+  issueAebNativeAuthorizationHandoff,
+  verifyAebNativeAuthorizationHandoff,
+} from '@emilia-protocol/verify/aeb';
+```
+
+The relying party pins the gateway key, native source profile, issuer,
+audience, executor, and provider. A successful check means that the pinned
+gateway signed this exact native `PERMIT` and action binding. It does not prove
+the wisdom of the native decision or a provider effect.
+
+The AEB kernel verifies native evidence under relying-party-pinned adapters and
+keeps native verification separate from local authorization. A pinned CAID
+profile is used when independently encoded representations must be compared.
+AEC composition is used when the relying party requires several evidence legs.
+The execution API then reserves the accepted native replay identities before
+provider entry.
 
 Use `createAebNativeVerificationAttestationAdapter()` when a native protocol
 verifier runs at a workload gateway. Its signed attestation binds the native

@@ -11,10 +11,19 @@ import {
   registryEntryDigest,
   unifiedRegistryDigest,
 } from '@emilia-protocol/verify/aeb-adapter-contract';
+import {
+  AEB_NATIVE_AUTHORIZATION_GATEWAY_KEY_VERSION,
+  AEB_NATIVE_AUTHORIZATION_PINS_VERSION,
+  AEB_NATIVE_AUTHORIZATION_SOURCE_PIN_VERSION,
+  AEB_NATIVE_AUTHORIZATION_STATUS_VERSION,
+  issueAebNativeAuthorizationHandoff,
+  type AebNativeAuthorizationSystem,
+} from '@emilia-protocol/verify/aeb';
 import { loadDefaultAgilityMldsaBackend } from '@emilia-protocol/verify/pq-signature-agility';
 import {
   consequenceBoundaryProviderIdempotencyKey,
   createConsequenceBoundary,
+  createNativeConsequenceBoundary,
   type ConsequenceBoundaryAttemptBinding,
   type ConsequenceBoundaryAttemptReference,
   type ConsequenceBoundaryProviderEvidence,
@@ -226,6 +235,9 @@ function durableAebStore() {
       }
       return true;
     },
+    state(key: string) {
+      return operations.get(key) ?? 'AVAILABLE';
+    },
   };
 }
 
@@ -268,6 +280,14 @@ function attemptStore() {
       row.state = input.next_state;
       row.evidence = structuredClone(evidence);
       return true;
+    },
+    async state(input: ConsequenceBoundaryAttemptReference) {
+      const row = rows.get(input.attempt_id);
+      if (!row || row.owner !== input.owner) throw new Error('attempt_not_owned');
+      return {
+        state: row.state,
+        ...(row.evidence ? { evidence: structuredClone(row.evidence) } : {}),
+      };
     },
   };
 }
@@ -793,4 +813,937 @@ test('authoritative non-commitment releases aggregate capacity without reviving 
   assert.equal(envelope.snapshot().available_units, '1');
   assert.equal(envelope.snapshot().committed_units, '0');
   assert.equal((await h.boundary.run(input(f))).state, 'REFUSED');
+});
+
+function nativeFixture(system: AebNativeAuthorizationSystem = 'authzen') {
+  const pair = crypto.generateKeyPairSync('ed25519');
+  const gatewayId = `gateway:${system}`;
+  const keyId = `gateway-key:${system}:one`;
+  const nativeAuthorization = {
+    system,
+    profile: `${system}:exact-action-result:1`,
+    issuer: `https://${system}.example`,
+    authorization_id: `native-authz:${system}:123`,
+  };
+  const pins: any = {
+    '@version': AEB_NATIVE_AUTHORIZATION_PINS_VERSION,
+    relying_party_id: 'rp:payments',
+    audience: 'https://gate.example/payments',
+    executor_id: EXECUTOR,
+    provider: PROVIDER,
+    max_handoff_age_seconds: 120,
+    max_status_age_seconds: 30,
+    clock_skew_seconds: 2,
+    gateway_keys: [{
+      '@version': AEB_NATIVE_AUTHORIZATION_GATEWAY_KEY_VERSION,
+      gateway_id: gatewayId,
+      key_id: keyId,
+      algorithm: 'Ed25519',
+      public_key: pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    }],
+    accepted_sources: [{
+      '@version': AEB_NATIVE_AUTHORIZATION_SOURCE_PIN_VERSION,
+      gateway_id: gatewayId,
+      system,
+      profile: nativeAuthorization.profile,
+      issuer: nativeAuthorization.issuer,
+    }],
+  };
+  const handoffInput: any = {
+    gateway_id: gatewayId,
+    native_authorization: nativeAuthorization,
+    relying_party_id: pins.relying_party_id,
+    audience: pins.audience,
+    executor_id: pins.executor_id,
+    provider: PROVIDER,
+    action: ACTION,
+    issued_at: '2026-08-09T12:00:00.000Z',
+    not_before: '2026-08-09T12:00:00.000Z',
+    expires_at: '2026-08-09T12:01:00.000Z',
+    revocation_id: `revocation:${system}:123`,
+  };
+  const signer = { key_id: keyId, private_key: pair.privateKey };
+  const handoff = issueAebNativeAuthorizationHandoff(handoffInput, signer);
+  const status: any = {
+    '@version': AEB_NATIVE_AUTHORIZATION_STATUS_VERSION,
+    gateway_id: gatewayId,
+    native_authorization: handoff.native_authorization,
+    revocation_id: handoffInput.revocation_id,
+    checked_at: '2026-08-09T12:00:00.000Z',
+    valid_until: '2026-08-09T12:00:30.000Z',
+    revoked: false,
+  };
+  return { pins, handoffInput, signer, handoff, status };
+}
+
+function issueNative(
+  f: ReturnType<typeof nativeFixture>,
+  overrides: Record<string, unknown>,
+) {
+  return issueAebNativeAuthorizationHandoff({ ...f.handoffInput, ...overrides }, f.signer);
+}
+
+function makeNativeBoundary({
+  f = nativeFixture(),
+  aebStore = durableAebStore(),
+  attempts = attemptStore(),
+  localAuthorize = () => true,
+  resolveStatus = () => f.status,
+  resolveHistoricalPins = () => f.pins,
+  providerOutcomeVerify = () => true,
+  trustSnapshotId = 'native-trust-snapshot:test:1',
+  localAuthorizationProgramDigest = digestAeb({
+    program: 'native-local-authorization:test:1',
+  }),
+  providerOutcomeVerificationProgramDigest = digestAeb({
+    program: 'native-provider-outcome-verifier:test:1',
+  }),
+  recover = undefined as undefined | ((input: {
+    attempt: Readonly<ConsequenceBoundaryAttemptBinding>;
+    recovery_authorization: unknown;
+  }) => ConsequenceBoundaryAttemptReference | null
+    | Promise<ConsequenceBoundaryAttemptReference | null>),
+  invoke = async () => ({
+    state: 'EXECUTED' as const,
+    evidence: executedEvidence(),
+    result: { id: 'native-effect-1' },
+  }),
+  now = () => NOW,
+} = {}) {
+  let attemptCounter = 0;
+  const configuration = {
+    executor_id: EXECUTOR,
+    provider: PROVIDER,
+    native_authorization: {
+      pins: f.pins,
+      trust_snapshot_id: trustSnapshotId,
+      store: aebStore,
+      resolve_status: resolveStatus,
+      resolve_historical_pins: resolveHistoricalPins,
+    },
+    attempts: {
+      store: attempts,
+      create_id: () => `native-attempt:${++attemptCounter}`,
+      recover: recover ?? (({ attempt, recovery_authorization }: {
+        attempt: Readonly<ConsequenceBoundaryAttemptBinding>;
+        recovery_authorization: unknown;
+      }) => {
+        if (recovery_authorization !== 'recovery:approved') return null;
+        const row = attempts.rows.get(attempt.attempt_id);
+        return row ? { ...structuredClone(row.binding), owner: row.owner as any } : null;
+      }),
+    },
+    local_authorization_program_digest: localAuthorizationProgramDigest,
+    local_authorize: localAuthorize,
+    invoke,
+    provider_outcomes: {
+      verification_program_digest: providerOutcomeVerificationProgramDigest,
+      verify: providerOutcomeVerify,
+    },
+    now,
+  };
+  const boundary = createNativeConsequenceBoundary(configuration);
+  return { boundary, aebStore, attempts, configuration };
+}
+
+function nativeInput(
+  f: ReturnType<typeof nativeFixture>,
+  operationId = 'operation:native:one',
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    operation_id: operationId,
+    handoff: f.handoff,
+    action: ACTION,
+    ...overrides,
+  };
+}
+
+test('direct native AIMS and COAZ PERMITs execute without a CAID or AEC evaluation', async () => {
+  for (const system of ['aims', 'coaz'] as const) {
+    const f = nativeFixture(system);
+    let calls = 0;
+    const h = makeNativeBoundary({
+      f,
+      localAuthorize: (context) => {
+        assert.equal(context.verification.execution_authorizing, true);
+        assert.equal(context.handoff.native_authorization.system, system);
+        assert.match(context.local_authorization_program_digest, /^sha256:[0-9a-f]{64}$/);
+        return true;
+      },
+      invoke: async (context) => {
+        calls += 1;
+        assert.equal(Object.hasOwn(context, 'caid'), false);
+        assert.equal(Object.hasOwn(context, 'evaluation'), false);
+        assert.equal(context.local_authorization.decision, 'PERMIT');
+        assert.equal(
+          context.local_authorization.program_digest,
+          context.attempt.local_authorization_program_digest,
+        );
+        assert.equal(
+          context.local_authorization.decision_digest,
+          context.attempt.local_decision_digest,
+        );
+        assert.equal(
+          context.authorization_program_digest,
+          context.attempt.authorization_program_digest,
+        );
+        assert.equal(context.trust_snapshot_digest, context.attempt.trust_snapshot_digest);
+        return { state: 'EXECUTED', evidence: executedEvidence(), result: { system } };
+      },
+    });
+    const result = await h.boundary.run(nativeInput(f, `operation:native:${system}`));
+    assert.equal(result.state, 'EXECUTED', system);
+    assert.equal(calls, 1, system);
+  }
+});
+
+test('direct native binding, source, freshness, and revocation failures stop before local policy and provider entry', async () => {
+  const cases: Array<{
+    name: string;
+    prepare(f: ReturnType<typeof nativeFixture>): Record<string, unknown>;
+    now?: () => string;
+    resolveStatus?: (f: ReturnType<typeof nativeFixture>) => unknown;
+  }> = [
+    {
+      name: 'action',
+      prepare: () => ({ action: { ...ACTION, amount: '5000.00' } }),
+    },
+    {
+      name: 'provider',
+      prepare: (f) => ({
+        handoff: issueNative(f, {
+          provider: { ...PROVIDER, provider_account_id: 'account:other' },
+        }),
+      }),
+    },
+    {
+      name: 'audience',
+      prepare: (f) => ({ handoff: issueNative(f, { audience: 'https://other.example/gate' }) }),
+    },
+    {
+      name: 'executor',
+      prepare: (f) => ({ handoff: issueNative(f, { executor_id: 'executor:other' }) }),
+    },
+    {
+      name: 'source',
+      prepare: (f) => ({
+        handoff: issueNative(f, {
+          native_authorization: {
+            ...f.handoffInput.native_authorization,
+            profile: 'authzen:untrusted-profile:1',
+          },
+        }),
+      }),
+    },
+    {
+      name: 'freshness',
+      prepare: () => ({}),
+      now: () => '2026-08-09T12:03:00.000Z',
+    },
+    {
+      name: 'revocation',
+      // The caller's fabricated status is ignored. The trusted resolver wins.
+      prepare: (f) => ({ status: { ...f.status, revoked: false } }),
+      resolveStatus: (f) => ({ ...f.status, revoked: true }),
+    },
+    {
+      name: 'status-resolver-error',
+      prepare: (f) => ({ status: { ...f.status, revoked: false } }),
+      resolveStatus: () => { throw new Error('status source unavailable'); },
+    },
+    {
+      name: 'status-resolver-invalid',
+      prepare: (f) => ({ status: { ...f.status, revoked: false } }),
+      resolveStatus: () => ({ revoked: false }),
+    },
+  ];
+  for (const testCase of cases) {
+    const f = nativeFixture();
+    let localCalls = 0;
+    let providerCalls = 0;
+    const h = makeNativeBoundary({
+      f,
+      now: testCase.now ?? (() => NOW),
+      resolveStatus: testCase.resolveStatus
+        ? () => testCase.resolveStatus!(f) as any
+        : () => f.status,
+      localAuthorize: () => { localCalls += 1; return true; },
+      invoke: async () => {
+        providerCalls += 1;
+        return { state: 'EXECUTED', evidence: executedEvidence(), result: {} };
+      },
+    });
+    const result = await h.boundary.run(nativeInput(
+      f,
+      `operation:native:mutation:${testCase.name}`,
+      testCase.prepare(f),
+    ));
+    assert.equal(result.state, 'REFUSED', testCase.name);
+    assert.equal(localCalls, 0, testCase.name);
+    assert.equal(providerCalls, 0, testCase.name);
+  }
+});
+
+test('direct native local denial remains separate and blocks reservation and provider entry', async () => {
+  const f = nativeFixture();
+  let calls = 0;
+  const h = makeNativeBoundary({
+    f,
+    localAuthorize: () => false,
+    invoke: async () => {
+      calls += 1;
+      return { state: 'EXECUTED', evidence: executedEvidence(), result: {} };
+    },
+  });
+  const result = await h.boundary.run(nativeInput(f));
+  assert.equal(result.state, 'REFUSED');
+  assert.equal(result.reason, 'local_authorization_denied');
+  assert.equal(calls, 0);
+});
+
+test('direct native replay fencing is stable across operation IDs and concurrent dispatch', async () => {
+  const f = nativeFixture();
+  let calls = 0;
+  const h = makeNativeBoundary({
+    f,
+    invoke: async () => {
+      calls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return { state: 'EXECUTED', evidence: executedEvidence(), result: { id: 'winner' } };
+    },
+  });
+  const [first, second] = await Promise.all([
+    h.boundary.run(nativeInput(f, 'operation:native:concurrent:one')),
+    h.boundary.run(nativeInput(f, 'operation:native:concurrent:two')),
+  ]);
+  assert.equal(calls, 1);
+  assert.deepEqual([first.state, second.state].sort(), ['EXECUTED', 'REFUSED']);
+  const refusedResult = first.state === 'REFUSED' ? first : second;
+  assert.equal(refusedResult.reason, 'native_replay_conflict');
+});
+
+test('post-entry throw, invalid result, and explicit uncertainty stay fenced against blind replay', async () => {
+  for (const [name, outcome] of [
+    ['throw', 'throw'],
+    ['invalid', { state: 'EXECUTED', result: {} }],
+    ['indeterminate', { state: 'INDETERMINATE', reason: 'provider_timeout' }],
+  ] as const) {
+    const f = nativeFixture();
+    let calls = 0;
+    const h = makeNativeBoundary({
+      f,
+      invoke: async () => {
+        calls += 1;
+        if (outcome === 'throw') throw new Error('response lost');
+        return outcome as any;
+      },
+    });
+    const first = await h.boundary.run(nativeInput(f, `operation:native:${name}:one`));
+    assert.equal(first.state, 'INDETERMINATE', name);
+    assert.equal(first.retry_allowed, false, name);
+    const replay = await h.boundary.run(nativeInput(f, `operation:native:${name}:two`));
+    assert.equal(replay.state, 'REFUSED', name);
+    assert.equal(replay.reason, 'native_replay_conflict', name);
+    assert.equal(calls, 1, name);
+  }
+});
+
+test('direct native authenticated reconciliation closes uncertainty without re-invocation', async () => {
+  const f = nativeFixture('oauth');
+  let calls = 0;
+  const h = makeNativeBoundary({
+    f,
+    invoke: async () => {
+      calls += 1;
+      throw new Error('provider accepted request but response was lost');
+    },
+  });
+  const first = await h.boundary.run(nativeInput(f, 'operation:native:reconcile'));
+  assert.equal(first.state, 'INDETERMINATE');
+  assert.ok(first.attempt);
+  assert.equal(calls, 1);
+
+  const reconciled = await h.boundary.reconcile({
+    operation_id: 'operation:native:reconcile',
+    handoff: f.handoff,
+    action: ACTION,
+    attempt: first.attempt,
+    outcome: {
+      state: 'EXECUTED',
+      evidence: executedEvidence(),
+      result: { id: 'provider-confirmed' },
+    },
+    recovery_authorization: 'recovery:approved',
+  });
+  assert.equal(reconciled.state, 'EXECUTED');
+  assert.equal(calls, 1);
+  const replay = await h.boundary.run(nativeInput(f, 'operation:native:reconcile:replay'));
+  assert.equal(replay.state, 'REFUSED');
+  assert.equal(replay.reason, 'native_replay_conflict');
+  assert.equal(calls, 1);
+});
+
+test('invalid direct-native handoffs never trigger the trusted status lookup', async () => {
+  const f = nativeFixture();
+  const tampered = structuredClone(f.handoff);
+  tampered.signature.value = `${tampered.signature.value[0] === 'A' ? 'B' : 'A'}${tampered.signature.value.slice(1)}`;
+  let statusLookups = 0;
+  const h = makeNativeBoundary({
+    f,
+    resolveStatus: () => {
+      statusLookups += 1;
+      return f.status;
+    },
+  });
+  const result = await h.boundary.run(nativeInput(f, 'operation:native:invalid-preflight', {
+    handoff: tampered,
+  }));
+  assert.equal(result.state, 'REFUSED');
+  assert.equal(statusLookups, 0);
+});
+
+test('untrusted replay-key input cannot poison another authorization', async () => {
+  const f = nativeFixture();
+  let calls = 0;
+  const h = makeNativeBoundary({
+    f,
+    invoke: async () => {
+      calls += 1;
+      return { state: 'EXECUTED', evidence: executedEvidence(), result: {} };
+    },
+  });
+  const poisoned = await h.boundary.run({
+    ...nativeInput(f, 'operation:native:poisoned'),
+    additional_replay_keys: ['aeb-native:victim'],
+  } as any);
+  assert.equal(poisoned.state, 'REFUSED');
+  assert.equal(poisoned.reason, 'native_execution_input_invalid');
+  assert.equal(calls, 0);
+
+  const clean = await h.boundary.run(nativeInput(f, 'operation:native:clean'));
+  assert.equal(clean.state, 'EXECUTED');
+  assert.equal(calls, 1);
+});
+
+test('freshness and revocation are rechecked immediately before provider entry', async () => {
+  const f = nativeFixture();
+  const times = [
+    '2026-08-09T12:00:01.000Z',
+    '2026-08-09T12:00:02.000Z',
+    '2026-08-09T12:00:33.000Z',
+  ];
+  let statusLookups = 0;
+  let providerCalls = 0;
+  const h = makeNativeBoundary({
+    f,
+    now: () => times.shift() ?? '2026-08-09T12:00:33.000Z',
+    resolveStatus: () => {
+      statusLookups += 1;
+      return f.status;
+    },
+    invoke: async () => {
+      providerCalls += 1;
+      return { state: 'EXECUTED', evidence: executedEvidence(), result: {} };
+    },
+  });
+  const result = await h.boundary.run(nativeInput(f, 'operation:native:toctou'));
+  assert.equal(result.state, 'REFUSED');
+  assert.equal(result.reason, 'native_handoff_revocation_status_not_current');
+  assert.equal(statusLookups, 2);
+  assert.equal(providerCalls, 0);
+  assert.equal(h.aebStore.operations.size, 0);
+  assert.equal([...h.attempts.rows.values()][0]?.state, 'RELEASED');
+});
+
+test('revocation during a delayed custody transition prevents provider entry', async () => {
+  const f = nativeFixture();
+  const attempts = attemptStore();
+  const transition = attempts.transition.bind(attempts);
+  let revoked = false;
+  let providerCalls = 0;
+  attempts.transition = async (entry: any) => {
+    const result = await transition(entry);
+    if (entry.expected_state === 'RESERVED' && entry.next_state === 'INVOKING') {
+      revoked = true;
+    }
+    return result;
+  };
+  const h = makeNativeBoundary({
+    f,
+    attempts,
+    resolveStatus: () => ({ ...f.status, revoked }),
+    invoke: async () => {
+      providerCalls += 1;
+      return { state: 'EXECUTED', evidence: executedEvidence(), result: {} };
+    },
+  });
+  const result = await h.boundary.run(nativeInput(f, 'operation:native:transition-delay'));
+  assert.equal(result.state, 'REFUSED');
+  assert.equal(result.reason, 'native_handoff_revoked');
+  assert.equal(providerCalls, 0);
+  assert.equal(h.aebStore.operations.size, 0);
+  assert.equal([...attempts.rows.values()][0]?.state, 'RELEASED');
+});
+
+test('terminal provider evidence must pass the pinned verifier for the exact attempt binding', async () => {
+  for (const mode of ['forged', 'wrong-operation'] as const) {
+    const f = nativeFixture();
+    let attestation: Record<string, unknown> | null = null;
+    const h = makeNativeBoundary({
+      f,
+      invoke: async (context) => {
+        const evidence = executedEvidence();
+        attestation = {
+          operation_id: mode === 'wrong-operation'
+            ? 'operation:native:other'
+            : context.operation_id,
+          action_digest: context.action_digest,
+          native_replay_unit: context.native_replay_unit,
+          attempt_id: context.attempt.attempt_id,
+          outcome: 'EXECUTED',
+          evidence_digest: mode === 'forged'
+            ? digestAeb({ forged: true })
+            : evidence.evidence_digest,
+        };
+        return { state: 'EXECUTED', evidence, result: { id: mode } };
+      },
+      providerOutcomeVerify: (context) => attestation !== null
+        && attestation.operation_id === context.operation_id
+        && attestation.action_digest === context.action_digest
+        && attestation.native_replay_unit === context.native_replay_unit
+        && attestation.attempt_id === context.attempt.attempt_id
+        && attestation.outcome === context.outcome.state
+        && attestation.evidence_digest === context.outcome.evidence.evidence_digest
+        && context.verification_program_digest
+          === context.attempt.provider_outcome_verification_program_digest,
+    });
+    const result = await h.boundary.run(nativeInput(
+      f,
+      `operation:native:provider-auth:${mode}`,
+    ));
+    assert.equal(result.state, 'INDETERMINATE', mode);
+    assert.equal(result.reason, 'provider_outcome_authentication_failed', mode);
+    assert.equal([...h.aebStore.operations.values()][0], 'RESERVED', mode);
+    assert.equal([...h.attempts.rows.values()][0]?.state, 'INDETERMINATE', mode);
+  }
+});
+
+test('authenticated provider evidence closes a fully bound direct-native attempt', async () => {
+  const f = nativeFixture();
+  let attestation: Record<string, unknown> | null = null;
+  const h = makeNativeBoundary({
+    f,
+    invoke: async (context) => {
+      const evidence = executedEvidence();
+      attestation = {
+        operation_id: context.operation_id,
+        action_digest: context.action_digest,
+        native_replay_unit: context.native_replay_unit,
+        attempt_id: context.attempt.attempt_id,
+        outcome: 'EXECUTED',
+        evidence_digest: evidence.evidence_digest,
+      };
+      return { state: 'EXECUTED', evidence, result: { id: 'authenticated' } };
+    },
+    providerOutcomeVerify: (context) => attestation !== null
+      && attestation.operation_id === context.operation_id
+      && attestation.action_digest === context.action_digest
+      && attestation.native_replay_unit === context.native_replay_unit
+      && attestation.attempt_id === context.attempt.attempt_id
+      && attestation.outcome === context.outcome.state
+      && attestation.evidence_digest === context.outcome.evidence.evidence_digest,
+  });
+  const result = await h.boundary.run(nativeInput(f, 'operation:native:provider-auth:valid'));
+  assert.equal(result.state, 'EXECUTED');
+  assert.equal([...h.aebStore.operations.values()][0], 'CONSUMED');
+  assert.equal([...h.attempts.rows.values()][0]?.state, 'COMMITTED');
+});
+
+test('the provider cannot mutate a result after its verified outcome snapshot is accepted', async () => {
+  const f = nativeFixture();
+  const mutableResult = { id: 'verified-result', amount: '500.00' };
+  const h = makeNativeBoundary({
+    f,
+    invoke: async () => ({
+      state: 'EXECUTED',
+      evidence: executedEvidence(),
+      result: mutableResult,
+    }),
+    providerOutcomeVerify: (context) => context.outcome.state === 'EXECUTED'
+      && context.outcome.result.id === 'verified-result'
+      && context.outcome.result.amount === '500.00',
+  });
+  const result = await h.boundary.run(nativeInput(
+    f,
+    'operation:native:provider-result-snapshot',
+  ));
+  assert.equal(result.state, 'EXECUTED');
+  mutableResult.id = 'mutated-after-verification';
+  mutableResult.amount = '5000.00';
+  if (result.state === 'EXECUTED') {
+    assert.deepEqual(result.result, { id: 'verified-result', amount: '500.00' });
+    assert.equal(Object.isFrozen(result.result), true);
+  }
+});
+
+test('lost commit and terminal-write acknowledgements are closed from durable state', async () => {
+  const f = nativeFixture();
+  const aebStore = durableAebStore();
+  const attempts = attemptStore();
+  const commit = aebStore.commit.bind(aebStore);
+  const terminal = attempts.reconcile.bind(attempts);
+  let loseCommitAck = true;
+  let loseTerminalAck = true;
+  aebStore.commit = async (key: string) => {
+    const result = await commit(key);
+    if (loseCommitAck) {
+      loseCommitAck = false;
+      throw new Error('commit acknowledgement lost');
+    }
+    return result;
+  };
+  attempts.reconcile = async (entry: any) => {
+    const result = await terminal(entry);
+    if (loseTerminalAck) {
+      loseTerminalAck = false;
+      throw new Error('terminal acknowledgement lost');
+    }
+    return result;
+  };
+  const h = makeNativeBoundary({ f, aebStore, attempts });
+  const result = await h.boundary.run(nativeInput(f, 'operation:native:lost-acks'));
+  assert.equal(result.state, 'EXECUTED');
+  assert.equal([...aebStore.operations.values()][0], 'CONSUMED');
+  assert.equal([...attempts.rows.values()][0]?.state, 'COMMITTED');
+});
+
+test('reconciliation resumes after authorization closed but the first attempt write failed', async () => {
+  const f = nativeFixture();
+  const aebStore = durableAebStore();
+  const attempts = attemptStore();
+  const terminal = attempts.reconcile.bind(attempts);
+  let failBeforeWrite = true;
+  attempts.reconcile = async (entry: any) => {
+    if (failBeforeWrite) {
+      failBeforeWrite = false;
+      throw new Error('attempt store unavailable before write');
+    }
+    return terminal(entry);
+  };
+  const h = makeNativeBoundary({ f, aebStore, attempts });
+  const first = await h.boundary.run(nativeInput(f, 'operation:native:partial-close'));
+  assert.equal(first.state, 'INDETERMINATE');
+  assert.equal(first.reason, 'attempt_terminal_record_unconfirmed');
+  assert.equal([...aebStore.operations.values()][0], 'CONSUMED');
+  assert.equal([...attempts.rows.values()][0]?.state, 'INDETERMINATE');
+  assert.ok(first.attempt);
+
+  const reconciliation = {
+    operation_id: 'operation:native:partial-close',
+    handoff: f.handoff,
+    action: ACTION,
+    attempt: first.attempt,
+    outcome: {
+      state: 'EXECUTED' as const,
+      evidence: executedEvidence(),
+      result: { id: 'recovered' },
+    },
+    recovery_authorization: 'recovery:approved',
+  };
+  const closed = await h.boundary.reconcile(reconciliation);
+  assert.equal(closed.state, 'EXECUTED');
+  assert.equal([...attempts.rows.values()][0]?.state, 'COMMITTED');
+
+  const repeated = await h.boundary.reconcile(reconciliation);
+  assert.equal(repeated.state, 'EXECUTED');
+});
+
+test('reconciliation can freeze an invoking attempt after the first freeze write failed', async () => {
+  const f = nativeFixture();
+  const attempts = attemptStore();
+  const transition = attempts.transition.bind(attempts);
+  let failFreeze = true;
+  attempts.transition = async (entry: any) => {
+    if (failFreeze
+        && entry.expected_state === 'INVOKING'
+        && entry.next_state === 'INDETERMINATE') {
+      failFreeze = false;
+      throw new Error('freeze write did not land');
+    }
+    return transition(entry);
+  };
+  const h = makeNativeBoundary({
+    f,
+    attempts,
+    invoke: async () => { throw new Error('provider response lost'); },
+  });
+  const first = await h.boundary.run(nativeInput(f, 'operation:native:freeze-recovery'));
+  assert.equal(first.state, 'INDETERMINATE');
+  assert.ok(first.attempt);
+  assert.equal([...attempts.rows.values()][0]?.state, 'INVOKING');
+
+  const closed = await h.boundary.reconcile({
+    operation_id: 'operation:native:freeze-recovery',
+    handoff: f.handoff,
+    action: ACTION,
+    attempt: first.attempt,
+    outcome: {
+      state: 'EXECUTED',
+      evidence: executedEvidence(),
+      result: { id: 'confirmed' },
+    },
+    recovery_authorization: 'recovery:approved',
+  });
+  assert.equal(closed.state, 'EXECUTED');
+  assert.equal([...attempts.rows.values()][0]?.state, 'COMMITTED');
+});
+
+test('reconciliation uses the persisted historical trust snapshot after key rotation and restart', async () => {
+  const old = nativeFixture('oauth');
+  const aebStore = durableAebStore();
+  const attempts = attemptStore();
+  const firstBoundary = makeNativeBoundary({
+    f: old,
+    aebStore,
+    attempts,
+    trustSnapshotId: 'native-trust-snapshot:old:1',
+    invoke: async () => { throw new Error('provider response lost'); },
+  });
+  const first = await firstBoundary.boundary.run(nativeInput(
+    old,
+    'operation:native:key-rotation',
+  ));
+  assert.equal(first.state, 'INDETERMINATE');
+  assert.ok(first.attempt);
+
+  const rotated = nativeFixture('oauth');
+  let requestedSnapshot: string | null = null;
+  const restarted = makeNativeBoundary({
+    f: rotated,
+    aebStore,
+    attempts,
+    trustSnapshotId: 'native-trust-snapshot:new:2',
+    resolveHistoricalPins: ({ trust_snapshot_id }: any) => {
+      requestedSnapshot = trust_snapshot_id;
+      return trust_snapshot_id === 'native-trust-snapshot:old:1' ? old.pins : null;
+    },
+  });
+  const result = await restarted.boundary.reconcile({
+    operation_id: 'operation:native:key-rotation',
+    handoff: old.handoff,
+    action: ACTION,
+    attempt: first.attempt,
+    outcome: {
+      state: 'EXECUTED',
+      evidence: executedEvidence(),
+      result: { id: 'confirmed-after-rotation' },
+    },
+    recovery_authorization: 'recovery:approved',
+  });
+  assert.equal(requestedSnapshot, 'native-trust-snapshot:old:1');
+  assert.equal(result.state, 'EXECUTED');
+});
+
+test('direct native security callbacks are pinned when the boundary is constructed', async () => {
+  {
+    const f = nativeFixture();
+    let providerCalls = 0;
+    const h = makeNativeBoundary({
+      f,
+      localAuthorize: () => false,
+      invoke: async () => {
+        providerCalls += 1;
+        return { state: 'EXECUTED', evidence: executedEvidence(), result: {} };
+      },
+    });
+    (h.configuration as any).local_authorize = () => true;
+    const result = await h.boundary.run(nativeInput(f, 'operation:native:mutated-local-policy'));
+    assert.equal(result.state, 'REFUSED');
+    assert.equal(result.reason, 'local_authorization_denied');
+    assert.equal(providerCalls, 0);
+  }
+
+  {
+    const f = nativeFixture();
+    let providerCalls = 0;
+    const h = makeNativeBoundary({
+      f,
+      resolveStatus: () => ({ ...f.status, revoked: true }),
+      invoke: async () => {
+        providerCalls += 1;
+        return { state: 'EXECUTED', evidence: executedEvidence(), result: {} };
+      },
+    });
+    (h.configuration.native_authorization as any).resolve_status = () => f.status;
+    const result = await h.boundary.run(nativeInput(f, 'operation:native:mutated-status'));
+    assert.equal(result.state, 'REFUSED');
+    assert.equal(result.reason, 'native_handoff_revoked');
+    assert.equal(providerCalls, 0);
+  }
+
+  {
+    const f = nativeFixture();
+    let originalCalls = 0;
+    let replacementCalls = 0;
+    const h = makeNativeBoundary({
+      f,
+      invoke: async () => {
+        originalCalls += 1;
+        return { state: 'EXECUTED', evidence: executedEvidence(), result: { source: 'pinned' } };
+      },
+    });
+    (h.configuration as any).invoke = async () => {
+      replacementCalls += 1;
+      return { state: 'EXECUTED', evidence: executedEvidence(), result: { source: 'replacement' } };
+    };
+    const result = await h.boundary.run(nativeInput(f, 'operation:native:mutated-invoke'));
+    assert.equal(result.state, 'EXECUTED');
+    assert.equal(originalCalls, 1);
+    assert.equal(replacementCalls, 0);
+    if (result.state === 'EXECUTED') assert.deepEqual(result.result, { source: 'pinned' });
+  }
+
+  {
+    const f = nativeFixture();
+    const h = makeNativeBoundary({ f, providerOutcomeVerify: () => false });
+    (h.configuration.provider_outcomes as any).verify = () => true;
+    const result = await h.boundary.run(nativeInput(
+      f,
+      'operation:native:mutated-provider-verifier',
+    ));
+    assert.equal(result.state, 'INDETERMINATE');
+    assert.equal(result.reason, 'provider_outcome_authentication_failed');
+  }
+});
+
+test('direct native recovery callbacks cannot be replaced after construction', async () => {
+  {
+    const f = nativeFixture();
+    const aebStore = durableAebStore();
+    const attempts = attemptStore();
+    const first = makeNativeBoundary({
+      f,
+      aebStore,
+      attempts,
+      invoke: async () => { throw new Error('provider response lost'); },
+    });
+    const uncertain = await first.boundary.run(nativeInput(
+      f,
+      'operation:native:mutated-historical-pins',
+    ));
+    assert.equal(uncertain.state, 'INDETERMINATE');
+    assert.ok(uncertain.attempt);
+
+    const restarted = makeNativeBoundary({
+      f,
+      aebStore,
+      attempts,
+      resolveHistoricalPins: () => null,
+    });
+    (restarted.configuration.native_authorization as any).resolve_historical_pins = () => f.pins;
+    const result = await restarted.boundary.reconcile({
+      operation_id: 'operation:native:mutated-historical-pins',
+      handoff: f.handoff,
+      action: ACTION,
+      attempt: uncertain.attempt,
+      outcome: {
+        state: 'EXECUTED',
+        evidence: executedEvidence(),
+        result: { id: 'must-not-close-under-replaced-trust-resolver' },
+      },
+      recovery_authorization: 'recovery:approved',
+    });
+    assert.equal(result.state, 'REFUSED');
+    assert.equal(result.reason, 'native_historical_trust_snapshot_unavailable');
+  }
+
+  {
+    const f = nativeFixture();
+    const aebStore = durableAebStore();
+    const attempts = attemptStore();
+    const first = makeNativeBoundary({
+      f,
+      aebStore,
+      attempts,
+      invoke: async () => { throw new Error('provider response lost'); },
+    });
+    const uncertain = await first.boundary.run(nativeInput(
+      f,
+      'operation:native:mutated-recovery',
+    ));
+    assert.equal(uncertain.state, 'INDETERMINATE');
+    assert.ok(uncertain.attempt);
+
+    const restarted = makeNativeBoundary({
+      f,
+      aebStore,
+      attempts,
+      recover: () => null,
+    });
+    (restarted.configuration.attempts as any).recover = ({ attempt }: any) => {
+      const row = attempts.rows.get(attempt.attempt_id);
+      return row ? { ...structuredClone(row.binding), owner: row.owner } : null;
+    };
+    const result = await restarted.boundary.reconcile({
+      operation_id: 'operation:native:mutated-recovery',
+      handoff: f.handoff,
+      action: ACTION,
+      attempt: uncertain.attempt,
+      outcome: {
+        state: 'EXECUTED',
+        evidence: executedEvidence(),
+        result: { id: 'must-not-close-under-replaced-recovery' },
+      },
+      recovery_authorization: 'recovery:approved',
+    });
+    assert.equal(result.state, 'REFUSED');
+    assert.equal(result.reason, 'attempt_recovery_refused');
+  }
+});
+
+test('direct native durable-store methods are pinned when the boundary is constructed', async () => {
+  const f = nativeFixture();
+  const aebStore = durableAebStore();
+  const attempts = attemptStore();
+  const h = makeNativeBoundary({ f, aebStore, attempts });
+  const replacementCalls: string[] = [];
+
+  for (const name of ['reserve', 'commit', 'state'] as const) {
+    const original = aebStore[name].bind(aebStore) as (...args: any[]) => any;
+    (aebStore as any)[name] = (...args: any[]) => {
+      replacementCalls.push(`consumption.${name}`);
+      return original(...args);
+    };
+  }
+  for (const name of ['reserve', 'transition', 'reconcile', 'state'] as const) {
+    const original = attempts[name].bind(attempts) as (...args: any[]) => any;
+    (attempts as any)[name] = (...args: any[]) => {
+      replacementCalls.push(`attempt.${name}`);
+      return original(...args);
+    };
+  }
+
+  const result = await h.boundary.run(nativeInput(f, 'operation:native:mutated-stores'));
+  assert.equal(result.state, 'EXECUTED');
+  assert.deepEqual(replacementCalls, []);
+});
+
+test('direct native pre-entry release uses the store method pinned at construction', async () => {
+  const f = nativeFixture();
+  const aebStore = durableAebStore();
+  const attempts = attemptStore();
+  attempts.reserve = async () => ({ reserved: false as const, reason: 'attempt_policy_refused' });
+  const h = makeNativeBoundary({ f, aebStore, attempts });
+  const originalRelease = aebStore.release.bind(aebStore);
+  let replacementCalls = 0;
+  aebStore.release = async (...args: Parameters<typeof originalRelease>) => {
+    replacementCalls += 1;
+    return originalRelease(...args);
+  };
+
+  const result = await h.boundary.run(nativeInput(f, 'operation:native:mutated-release'));
+  assert.equal(result.state, 'REFUSED');
+  assert.equal(result.reason, 'attempt_policy_refused');
+  assert.equal(replacementCalls, 0);
 });

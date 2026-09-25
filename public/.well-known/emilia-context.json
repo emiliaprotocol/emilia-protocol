@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-09-24T01:36:20.005Z",
+  "evidence_snapshot_at": "2026-09-25T00:50:10.325Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "b3e19be763eaffc7a5a4ac3468eea2f50cdb1d54d69d01023fdfddb2b63066c9",
+    "input_digest_sha256": "6d631ad8f912d947a63a1469a26daa9fa32a6fe68460735e60ae8a1cb7c7d6e3",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "5398d71dfbefb690eb760f6d12365c235018fc7281dc3410cfb822c84deee882",
-        "bytes": 51071
+        "sha256": "2714c9e7ec7bcc4296c6ba12fe847a85476908c5b647586ec3bdd71254a1c9f0",
+        "bytes": 51074
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "981a391aaa7d70bcb2b22119a331121b7244adeb63920ac08bbe9ec28a89459e",
+        "sha256": "6e4ae0c1d239db904bdf4c5f405260a48df6313e926cb0a4547d2b7977f52f03",
         "bytes": 4299
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "90bd016442e54a6c19877887dc6c0cd5f149a727aa845ae07a40eb65b01c0c2d",
+        "sha256": "65053c07f96f194085d9cf9e61a465f9176b21cdb3c610b0a3c890bae951cec0",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "f2839f5ee397c475070ef66f9f5b314619c14369eb87c0c3142b3acd59f317c7",
+        "sha256": "31a5c337478002f42a0961efac995a15b6d59b9a70ca95e2b48e749ece9d7c8a",
         "bytes": 391520
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "8b2fa70f9e723404cb958978885281baecae6e1f74f0d1f4e40f5178e217aa0f",
-        "bytes": 50046
+        "sha256": "bac7a2b9f8bb9d403dbd66127c82ec8ee6570131774d353d00f8d147d154f3bb",
+        "bytes": 51588
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -317,7 +317,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "4a19d30682d80eaed85b268ecb35d3c151e3bc2ed188cf214fef7ca56c1fe8a3",
+      "manifest_sha256": "54d49edb83cab3d66619be345e9687065a9fc7c675ba8effac9b8de0c9df9cdd",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -349,7 +349,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "77d891d8b377db8a7633cdbfd40e6a08ddf866ef162300a848aa570a2d8f2241",
+        "evidenceSha256": "46749d9f4aa5b33aad37eadb827bd2c9b01c0ad5c2fd64935e69849796d15fc3",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -419,7 +419,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 264,
-      "evidence_bundle_sha256": "a94a6d5aea84e1b4841d3230aa65d7b00fd9553fba307352a18f81e898586de9"
+      "evidence_bundle_sha256": "9d51a02b0cabb4000991e5695a8a147ca1475f75f0e8c4046ad70952cd9d195b"
     },
     "caid": {
       "core_vectors": 48,
@@ -4553,9 +4553,9 @@
     },
     {
       "identifier": "draft-schrock-action-evidence-boundary",
-      "revision_at_snapshot": "04",
+      "revision_at_snapshot": "05",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published August 16; use -04 as the current generic field-origin-assertion, pinned-adapter, authority-separation, current-status, re-derivable-evaluation, and refusal-evidence baseline",
+      "next_action": "Published August 31; use -05 as the current native-compilation, semantic-loss disclosure, stable native replay-unit, pinned-adapter, authority-separation, current-status, re-derivable-evaluation, refusal-evidence, and one-time consequence-custody baseline. Native-owner review and the complete multi-profile conformance gate remain open",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4737,7 +4737,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-09-06",
+    "updated": "2026-09-24",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -5323,7 +5323,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of August 22, the repository tracks 24 active records: 20 sole-authored series and four coauthored series. Current repository snapshots include CAID -02, Authorization Receipts -12, AEB -04, Bounded Capability Receipts -04, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, DMSC Agent Gateway Gap Analysis -03, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 24, the repository tracks 24 active records: 20 sole-authored series and four coauthored series. Current repository snapshots include CAID -02, Authorization Receipts -12, AEB -05, Bounded Capability Receipts -04, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, DMSC Agent Gateway Gap Analysis -03, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",

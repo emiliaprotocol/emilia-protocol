@@ -2,11 +2,11 @@
 /**
  * Neutral consequence boundary over CAID, AEC, and AEB.
  *
- * Native evidence stays native. A relying party pins the adapters, evidence
- * requirement, and local authorization policy. This module verifies the AEB
- * join against one frozen action, durably fences every native replay unit,
- * records dispatch custody, and invokes one provider adapter. It does not
- * acquire approvals, mint authority, or require an EMILIA receipt.
+ * Native evidence stays native. The direct path verifies a relying-party-
+ * pinned gateway handoff; it does not re-verify the native permit or artifact.
+ * The boundary durably fences every native replay unit, records dispatch
+ * custody, and invokes one provider adapter. It does not acquire approvals,
+ * mint authority, or require an EMILIA receipt.
  */
 
 import crypto from 'node:crypto';
@@ -18,6 +18,7 @@ import {
   reconcileAebExecutionDurable,
   verifyAebEvaluation,
   type AebAdapter,
+  type AebConsumptionState,
   type AebDigest,
   type AebDurableConsumptionStore,
   type AebEvaluationRecord,
@@ -25,6 +26,14 @@ import {
   type AebStatusInput,
 } from '@emilia-protocol/verify/aeb-adapter-contract';
 import type { AebExecutionConditionsResult } from '@emilia-protocol/verify/aeb-execution-conditions';
+import {
+  verifyAebNativeAuthorizationHandoff,
+  type AebNativeAuthorizationDigest,
+  type AebNativeAuthorizationHandoff,
+  type AebNativeAuthorizationHandoffVerification,
+  type AebNativeAuthorizationPins,
+  type AebNativeAuthorizationStatus,
+} from '@emilia-protocol/verify/aeb';
 import type {
   ConsequenceEnvelopeBoundary,
   ConsequenceEnvelopeReservation,
@@ -33,6 +42,14 @@ import type {
 export const CONSEQUENCE_BOUNDARY_VERSION = 'EMILIA-CONSEQUENCE-BOUNDARY-v1';
 export const CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN =
   'EMILIA-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1';
+export const NATIVE_CONSEQUENCE_BOUNDARY_VERSION =
+  'EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-v1';
+export const NATIVE_CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN =
+  'EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1';
+export const NATIVE_CONSEQUENCE_BOUNDARY_TRUST_SNAPSHOT_DOMAIN =
+  'EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-TRUST-SNAPSHOT-v1';
+export const NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN =
+  'EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-LOCAL-DECISION-v1';
 
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$/;
 const AUTHORIZATION_INSTANCE = /^[A-Za-z0-9_.:-]{1,256}$/;
@@ -73,7 +90,8 @@ export interface ConsequenceBoundaryAttemptReference
 export type ConsequenceBoundaryAttemptTransition =
   | { expected_state: 'RESERVED'; next_state: 'INVOKING' }
   | { expected_state: 'RESERVED'; next_state: 'RELEASED' }
-  | { expected_state: 'INVOKING'; next_state: 'INDETERMINATE' };
+  | { expected_state: 'INVOKING'; next_state: 'INDETERMINATE' }
+  | { expected_state: 'INVOKING'; next_state: 'RELEASED' };
 
 export interface ConsequenceBoundaryProviderEvidence
   extends ConsequenceBoundaryAttemptBinding {
@@ -87,7 +105,9 @@ export interface ConsequenceBoundaryProviderEvidence
 }
 
 /** Durable, owner-fenced dispatch custody. */
-export interface ConsequenceBoundaryAttemptStore {
+export interface ConsequenceBoundaryAttemptStore<
+  TProviderEvidence = ConsequenceBoundaryProviderEvidence,
+> {
   durable: true;
   ownershipFenced: true;
   compareAndSwap: true;
@@ -103,8 +123,13 @@ export interface ConsequenceBoundaryAttemptStore {
   reconcile(input: ConsequenceBoundaryAttemptReference & {
     expected_state: 'INDETERMINATE';
     next_state: 'COMMITTED' | 'RELEASED';
-    evidence: ConsequenceBoundaryProviderEvidence;
+    evidence: TProviderEvidence;
   }): Promise<boolean>;
+  /** Required by the direct-native path for idempotent close after lost acks. */
+  state?(input: ConsequenceBoundaryAttemptReference): Promise<{
+    state: 'RESERVED' | 'INVOKING' | 'INDETERMINATE' | 'COMMITTED' | 'RELEASED';
+    evidence?: TProviderEvidence;
+  }>;
 }
 
 export interface ConsequenceBoundaryEvidence {
@@ -196,6 +221,146 @@ export interface ConsequenceBoundaryReconcileInput<TResult> {
   evaluation: unknown;
   action: unknown;
   artifacts: Record<string, unknown>;
+  attempt: unknown;
+  outcome: ConsequenceBoundaryEffectOutcome<TResult>;
+  recovery_authorization: unknown;
+}
+
+export interface NativeConsequenceBoundaryProviderEvidence
+  extends NativeConsequenceBoundaryAttemptBinding {
+  evidence_id: string;
+  observed_at: string;
+  outcome: 'COMMITTED' | 'NOT_COMMITTED';
+  evidence_digest: AebDigest;
+}
+
+export interface NativeConsequenceBoundaryLocalDecision {
+  decision: 'PERMIT';
+  decided_at: string;
+  program_digest: AebDigest;
+  decision_digest: AebDigest;
+}
+
+export interface NativeConsequenceBoundaryAttemptBinding
+  extends ConsequenceBoundaryAttemptBinding {
+  operation_id: string;
+  action_digest: AebNativeAuthorizationDigest;
+  handoff_digest: AebNativeAuthorizationDigest;
+  native_replay_unit: AebNativeAuthorizationDigest;
+  trust_snapshot_id: string;
+  trust_snapshot_digest: AebDigest;
+  authorization_program_digest: AebDigest;
+  local_authorization_program_digest: AebDigest;
+  local_decision_digest: AebDigest;
+  local_decided_at: string;
+  provider_outcome_verification_program_digest: AebDigest;
+}
+
+export interface NativeConsequenceBoundaryAttemptReference
+  extends NativeConsequenceBoundaryAttemptBinding {
+  owner: ConsequenceBoundaryOwnerHandle;
+}
+
+export interface NativeConsequenceBoundaryProviderOutcomeVerificationContext<TResult> {
+  provider: Readonly<ConsequenceBoundaryProvider>;
+  operation_id: string;
+  action_digest: AebNativeAuthorizationDigest;
+  native_replay_unit: AebNativeAuthorizationDigest;
+  verification_program_digest: AebDigest;
+  attempt: Readonly<NativeConsequenceBoundaryAttemptBinding>;
+  outcome: Readonly<Exclude<ConsequenceBoundaryEffectOutcome<TResult>, { state: 'INDETERMINATE' }>>;
+}
+
+export interface NativeConsequenceBoundaryAuthorizationContext {
+  action: unknown;
+  handoff: Readonly<AebNativeAuthorizationHandoff>;
+  verification: Readonly<AebNativeAuthorizationHandoffVerification>;
+  provider: Readonly<ConsequenceBoundaryProvider>;
+  local_authorization_program_digest: AebDigest;
+}
+
+export interface NativeConsequenceBoundaryEffectContext {
+  action: unknown;
+  operation_id: string;
+  action_digest: AebNativeAuthorizationDigest;
+  handoff_digest: AebNativeAuthorizationDigest;
+  native_replay_unit: AebNativeAuthorizationDigest;
+  authorization_program_digest: AebDigest;
+  local_authorization: Readonly<NativeConsequenceBoundaryLocalDecision>;
+  trust_snapshot_id: string;
+  trust_snapshot_digest: AebDigest;
+  provider_outcome_verification_program_digest: AebDigest;
+  provider_idempotency_key: string;
+  attempt: Readonly<NativeConsequenceBoundaryAttemptBinding>;
+}
+
+export interface NativeConsequenceBoundaryOptions<TResult> {
+  executor_id: string;
+  provider: ConsequenceBoundaryProvider;
+  native_authorization: {
+    pins: AebNativeAuthorizationPins;
+    /** Stable operator identifier for the exact accepted pins below. */
+    trust_snapshot_id: string;
+    store: AebDurableConsumptionStore & {
+      state(key: string): AebConsumptionState | Promise<AebConsumptionState>;
+    };
+    /** Trusted status source. It receives only a preverified pinned handoff. */
+    resolve_status(
+      handoff: Readonly<AebNativeAuthorizationHandoff>,
+    ): AebNativeAuthorizationStatus | Promise<AebNativeAuthorizationStatus>;
+    /** Retrieve an archived trust snapshot during authenticated reconciliation. */
+    resolve_historical_pins(input: {
+      trust_snapshot_id: string;
+      trust_snapshot_digest: AebDigest;
+    }): AebNativeAuthorizationPins | null
+      | Promise<AebNativeAuthorizationPins | null>;
+  };
+  attempts: {
+    store: ConsequenceBoundaryAttemptStore<NativeConsequenceBoundaryProviderEvidence> & {
+      state(input: NativeConsequenceBoundaryAttemptReference): Promise<{
+        state: 'RESERVED' | 'INVOKING' | 'INDETERMINATE' | 'COMMITTED' | 'RELEASED';
+        evidence?: NativeConsequenceBoundaryProviderEvidence;
+      }>;
+    };
+    create_id?: (input: {
+      operation_id: string;
+      request_digest: AebDigest;
+    }) => string | Promise<string>;
+    recover(input: {
+      attempt: Readonly<ConsequenceBoundaryAttemptBinding>;
+      recovery_authorization: unknown;
+    }): ConsequenceBoundaryAttemptReference | null
+      | Promise<ConsequenceBoundaryAttemptReference | null>;
+  };
+  /** Digest of the operator-pinned local admission policy/program. */
+  local_authorization_program_digest: AebDigest;
+  local_authorize(
+    context: Readonly<NativeConsequenceBoundaryAuthorizationContext>,
+  ): boolean | Promise<boolean>;
+  invoke(
+    context: Readonly<NativeConsequenceBoundaryEffectContext>,
+  ): ConsequenceBoundaryEffectOutcome<TResult>
+    | Promise<ConsequenceBoundaryEffectOutcome<TResult>>;
+  provider_outcomes: {
+    /** Digest of the pinned provider-evidence verification program/profile. */
+    verification_program_digest: AebDigest;
+    verify(
+      context: Readonly<NativeConsequenceBoundaryProviderOutcomeVerificationContext<TResult>>,
+    ): boolean | Promise<boolean>;
+  };
+  now?: () => string;
+}
+
+export interface NativeConsequenceBoundaryRunInput {
+  operation_id: string;
+  handoff: unknown;
+  action: unknown;
+}
+
+export interface NativeConsequenceBoundaryReconcileInput<TResult> {
+  operation_id: string;
+  handoff: unknown;
+  action: unknown;
   attempt: unknown;
   outcome: ConsequenceBoundaryEffectOutcome<TResult>;
   recovery_authorization: unknown;
@@ -333,6 +498,7 @@ function validEvidence(value: unknown): value is ConsequenceBoundaryEvidence {
 
 function normalizeEffectOutcome<TResult>(
   value: unknown,
+  snapshotResult = false,
 ): ConsequenceBoundaryEffectOutcome<TResult> | null {
   const record = dataRecord(value);
   if (!record || !identifier(record.state)) return null;
@@ -342,14 +508,24 @@ function normalizeEffectOutcome<TResult>(
       : null;
   }
   if (record.state === 'EXECUTED') {
-    return exactKeys(record, ['state', 'evidence', 'result'])
-      && validEvidence(record.evidence)
-      ? {
+    if (!exactKeys(record, ['state', 'evidence', 'result'])
+        || !validEvidence(record.evidence)) return null;
+    if (!snapshotResult) {
+      return {
         state: 'EXECUTED',
         evidence: cloneFrozen(record.evidence),
         result: record.result as TResult,
-      }
-      : null;
+      };
+    }
+    try {
+      return {
+        state: 'EXECUTED',
+        evidence: cloneFrozen(record.evidence),
+        result: cloneFrozen(record.result as TResult),
+      };
+    } catch {
+      return null;
+    }
   }
   if (record.state === 'FAILED') {
     return exactKeys(record, ['state', 'evidence', 'reason'])
@@ -418,6 +594,70 @@ function validAttemptReference(
   return validAttemptBinding(binding);
 }
 
+const NATIVE_ATTEMPT_BINDING_KEYS = [
+  'tenant_id',
+  'provider_id',
+  'provider_account_id',
+  'environment',
+  'attempt_id',
+  'request_digest',
+  'provider_idempotency_key',
+  'operation_id',
+  'action_digest',
+  'handoff_digest',
+  'native_replay_unit',
+  'trust_snapshot_id',
+  'trust_snapshot_digest',
+  'authorization_program_digest',
+  'local_authorization_program_digest',
+  'local_decision_digest',
+  'local_decided_at',
+  'provider_outcome_verification_program_digest',
+] as const;
+
+function validNativeAttemptBinding(
+  value: unknown,
+): value is NativeConsequenceBoundaryAttemptBinding {
+  const record = dataRecord(value);
+  return record !== null
+    && exactKeys(record, NATIVE_ATTEMPT_BINDING_KEYS)
+    && identifier(record.tenant_id)
+    && identifier(record.provider_id)
+    && identifier(record.provider_account_id)
+    && identifier(record.environment)
+    && identifier(record.attempt_id)
+    && digest(record.request_digest)
+    && identifier(record.provider_idempotency_key)
+    && identifier(record.operation_id)
+    && digest(record.action_digest)
+    && digest(record.handoff_digest)
+    && digest(record.native_replay_unit)
+    && identifier(record.trust_snapshot_id)
+    && digest(record.trust_snapshot_digest)
+    && digest(record.authorization_program_digest)
+    && digest(record.local_authorization_program_digest)
+    && digest(record.local_decision_digest)
+    && canonicalInstant(record.local_decided_at)
+    && digest(record.provider_outcome_verification_program_digest);
+}
+
+function validNativeAttemptReference(
+  value: unknown,
+): value is NativeConsequenceBoundaryAttemptReference {
+  const record = dataRecord(value);
+  if (!record || !exactKeys(record, [...NATIVE_ATTEMPT_BINDING_KEYS, 'owner'])
+      || !opaqueOwner(record.owner)) return false;
+  const { owner: _owner, ...binding } = record;
+  return validNativeAttemptBinding(binding);
+}
+
+function publicNativeAttempt(
+  attempt: NativeConsequenceBoundaryAttemptReference,
+): NativeConsequenceBoundaryAttemptBinding {
+  const { owner: _owner, ...binding } = attempt;
+  return cloneFrozen(binding);
+}
+
 export function consequenceBoundaryRequestDigest(input: {
   provider: ConsequenceBoundaryProvider;
   operation_id: string;
@@ -472,6 +712,117 @@ export function consequenceBoundaryProviderIdempotencyKey(input: {
     authorization_instance: input.authorization_instance,
   });
   return `epcb1:${derived.slice('sha256:'.length)}`;
+}
+
+function secureAebConsumptionStore(
+  value: unknown,
+): value is AebDurableConsumptionStore {
+  return isObject(value)
+    && value.durable === true
+    && value.ownershipFenced === true
+    && value.permanentConsumption === true
+    && value.atomicReplayFenced === true
+    && typeof value.reserve === 'function'
+    && typeof value.commit === 'function'
+    && typeof value.release === 'function';
+}
+
+function secureNativeConsumptionStore(
+  value: unknown,
+): value is AebDurableConsumptionStore & {
+  state(key: string): AebConsumptionState | Promise<AebConsumptionState>;
+} {
+  return secureAebConsumptionStore(value)
+    && isObject(value)
+    && typeof value.state === 'function';
+}
+
+function secureNativeAttemptStore(
+  value: unknown,
+): value is NativeConsequenceBoundaryOptions<unknown>['attempts']['store'] {
+  return secureAttemptStore(value)
+    && isObject(value)
+    && typeof value.state === 'function';
+}
+
+function nativeTrustSnapshotDigest(
+  pins: AebNativeAuthorizationPins,
+): AebDigest {
+  return digestAeb({
+    domain: NATIVE_CONSEQUENCE_BOUNDARY_TRUST_SNAPSHOT_DOMAIN,
+    pins,
+  });
+}
+
+export function nativeConsequenceBoundaryReservationKey(input: {
+  relying_party_id: string;
+  operation_id: string;
+  action_digest: AebNativeAuthorizationDigest;
+}): string {
+  if (!identifier(input?.relying_party_id) || !identifier(input?.operation_id)
+      || !digest(input?.action_digest)) {
+    throw new TypeError('native_consequence_reservation_binding_invalid');
+  }
+  return `aeb-native-operation:${digestAeb({
+    domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:RESERVATION`,
+    relying_party_id: input.relying_party_id,
+    operation_id: input.operation_id,
+    action_digest: input.action_digest,
+  })}`;
+}
+
+export function nativeConsequenceBoundaryProviderIdempotencyKey(input: {
+  provider: ConsequenceBoundaryProvider;
+  action_digest: AebNativeAuthorizationDigest;
+  native_replay_unit: AebNativeAuthorizationDigest;
+}): string {
+  if (!isObject(input) || !isObject(input.provider)
+      || !identifier(input.provider.tenant_id)
+      || !identifier(input.provider.provider_id)
+      || !identifier(input.provider.provider_account_id)
+      || !identifier(input.provider.environment)
+      || !digest(input.action_digest) || !digest(input.native_replay_unit)) {
+    throw new TypeError('native_provider_idempotency_binding_invalid');
+  }
+  const derived = digestAeb({
+    domain: NATIVE_CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN,
+    provider: input.provider,
+    action_digest: input.action_digest,
+    native_replay_unit: input.native_replay_unit,
+  });
+  return `epnb1:${derived.slice('sha256:'.length)}`;
+}
+
+export function nativeConsequenceBoundaryRequestDigest(input: {
+  provider: ConsequenceBoundaryProvider;
+  operation_id: string;
+  action: unknown;
+  action_digest: AebNativeAuthorizationDigest;
+  handoff_digest: AebNativeAuthorizationDigest;
+  native_replay_unit: AebNativeAuthorizationDigest;
+  trust_snapshot_id: string;
+  trust_snapshot_digest: AebDigest;
+  authorization_program_digest: AebDigest;
+  local_authorization: NativeConsequenceBoundaryLocalDecision;
+  provider_outcome_verification_program_digest: AebDigest;
+  provider_idempotency_key: string;
+}): AebDigest {
+  return digestAeb({
+    domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:REQUEST`,
+    provider: input.provider,
+    operation_id: input.operation_id,
+    action: input.action,
+    action_digest: input.action_digest,
+    handoff_digest: input.handoff_digest,
+    native_replay_unit: input.native_replay_unit,
+    trust_snapshot_id: input.trust_snapshot_id,
+    trust_snapshot_digest: input.trust_snapshot_digest,
+    authorization_program_digest: input.authorization_program_digest,
+    local_authorization: input.local_authorization,
+    provider_outcome_verification_program_digest:
+      input.provider_outcome_verification_program_digest,
+    provider_idempotency_key: input.provider_idempotency_key,
+  });
 }
 
 function refused(reason: string): ConsequenceBoundaryResult<never> {
@@ -994,10 +1345,792 @@ export function createConsequenceBoundary<TResult>(
   });
 }
 
+/**
+ * Build the direct native path. The native system has already made the policy
+ * decision; Gate verifies the pinned gateway handoff, not the native permit or
+ * artifact. It applies its own operational authorization and atomically fences
+ * the operation and native replay unit.
+ */
+export function createNativeConsequenceBoundary<TResult>(
+  options: NativeConsequenceBoundaryOptions<TResult>,
+) {
+  let provider: ConsequenceBoundaryProvider;
+  let pins: AebNativeAuthorizationPins;
+  try {
+    provider = cloneFrozen(options?.provider);
+    pins = cloneFrozen(options?.native_authorization?.pins);
+  } catch {
+    throw new TypeError('native_consequence_boundary_configuration_invalid');
+  }
+  if (!isObject(options)
+      || !identifier(options.executor_id)
+      || !isObject(provider)
+      || !identifier(provider.tenant_id)
+      || !identifier(provider.provider_id)
+      || !identifier(provider.provider_account_id)
+      || !identifier(provider.environment)
+      || !isObject(options.native_authorization)
+      || !identifier(options.native_authorization.trust_snapshot_id)
+      || !secureNativeConsumptionStore(options.native_authorization.store)
+      || typeof options.native_authorization.resolve_status !== 'function'
+      || typeof options.native_authorization.resolve_historical_pins !== 'function'
+      || pins.executor_id !== options.executor_id
+      || canonicalizeAeb(pins.provider) !== canonicalizeAeb(provider)
+      || !isObject(options.attempts)
+      || !secureNativeAttemptStore(options.attempts.store)
+      || (options.attempts.create_id !== undefined
+        && typeof options.attempts.create_id !== 'function')
+      || typeof options.attempts.recover !== 'function'
+      || !digest(options.local_authorization_program_digest)
+      || typeof options.local_authorize !== 'function'
+      || typeof options.invoke !== 'function'
+      || !isObject(options.provider_outcomes)
+      || !digest(options.provider_outcomes.verification_program_digest)
+      || typeof options.provider_outcomes.verify !== 'function'
+      || (options.now !== undefined && typeof options.now !== 'function')) {
+    throw new TypeError('native_consequence_boundary_configuration_invalid');
+  }
+
+  const store = options.native_authorization.store;
+  const attemptStore = options.attempts.store;
+  const executorId = options.executor_id;
+  const now = options.now?.bind(options) ?? (() => new Date().toISOString());
+  const createAttemptId = options.attempts.create_id?.bind(options.attempts)
+    ?? (() => `attempt:${crypto.randomUUID()}`);
+  // Snapshot every security-critical callback with its original receiver. The
+  // caller may retain and later mutate the configuration object; such a
+  // mutation must not replace code while the attempt still records the
+  // digests and trust snapshot pinned at construction.
+  const resolveNativeStatus = options.native_authorization.resolve_status
+    .bind(options.native_authorization);
+  const resolveHistoricalPins = options.native_authorization.resolve_historical_pins
+    .bind(options.native_authorization);
+  const recoverAttempt = options.attempts.recover.bind(options.attempts);
+  const localAuthorize = options.local_authorize.bind(options);
+  const invoke = options.invoke.bind(options);
+  const verifyOutcome = options.provider_outcomes.verify.bind(options.provider_outcomes);
+  const readConsumptionState = store.state.bind(store);
+  const reserveConsumption = store.reserve.bind(store);
+  const commitConsumption = store.commit.bind(store);
+  const releaseConsumption = store.release.bind(store);
+  const releaseTerminalConsumption = store.terminalRelease === true
+    && typeof store.releaseTerminal === 'function'
+    ? store.releaseTerminal.bind(store)
+    : null;
+  const readAttemptState = attemptStore.state.bind(attemptStore);
+  const reserveAttempt = attemptStore.reserve.bind(attemptStore);
+  const transitionAttemptState = attemptStore.transition.bind(attemptStore);
+  const reconcileAttempt = attemptStore.reconcile.bind(attemptStore);
+  const trustSnapshotId = options.native_authorization.trust_snapshot_id;
+  const trustSnapshotDigest = nativeTrustSnapshotDigest(pins);
+  const localAuthorizationProgramDigest = options.local_authorization_program_digest;
+  const providerOutcomeVerificationProgramDigest =
+    options.provider_outcomes.verification_program_digest;
+  const authorizationProgramDigest = digestAeb({
+    domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:AUTHORIZATION-PROGRAM`,
+    executor_id: executorId,
+    provider,
+    trust_snapshot_id: trustSnapshotId,
+    trust_snapshot_digest: trustSnapshotDigest,
+    local_authorization_program_digest: localAuthorizationProgramDigest,
+    provider_outcome_verification_program_digest:
+      providerOutcomeVerificationProgramDigest,
+  });
+
+  function deriveAuthorizationProgramDigest(input: {
+    trust_snapshot_id: string;
+    trust_snapshot_digest: AebDigest;
+    local_authorization_program_digest: AebDigest;
+    provider_outcome_verification_program_digest: AebDigest;
+  }): AebDigest {
+    return digestAeb({
+      domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:AUTHORIZATION-PROGRAM`,
+      executor_id: executorId,
+      provider,
+      ...input,
+    });
+  }
+
+  function deriveLocalDecision(input: {
+    decided_at: string;
+    action_digest: AebNativeAuthorizationDigest;
+    handoff_digest: AebNativeAuthorizationDigest;
+    native_replay_unit: AebNativeAuthorizationDigest;
+    program_digest: AebDigest;
+  }): NativeConsequenceBoundaryLocalDecision {
+    const decision = {
+      decision: 'PERMIT' as const,
+      decided_at: input.decided_at,
+      program_digest: input.program_digest,
+      decision_digest: digestAeb({
+        domain: NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN,
+        decision: 'PERMIT',
+        decided_at: input.decided_at,
+        program_digest: input.program_digest,
+        executor_id: executorId,
+        provider,
+        action_digest: input.action_digest,
+        handoff_digest: input.handoff_digest,
+        native_replay_unit: input.native_replay_unit,
+      }),
+    };
+    return cloneFrozen(decision);
+  }
+
+  async function consumptionState(key: string): Promise<AebConsumptionState | null> {
+    try {
+      const state = await readConsumptionState(key);
+      return state === 'AVAILABLE' || state === 'RESERVED'
+        || state === 'CONSUMED' || state === 'RELEASED_NOT_ENTERED'
+        ? state
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function closeConsumption(
+    key: string,
+    target: 'CONSUMED' | 'RELEASED_NOT_ENTERED',
+  ): Promise<boolean> {
+    const before = await consumptionState(key);
+    if (before === target) return true;
+    if (before !== 'RESERVED') return false;
+    try {
+      if (target === 'CONSUMED') await commitConsumption(key);
+      else if (releaseTerminalConsumption) {
+        await releaseTerminalConsumption(key);
+      } else {
+        return false;
+      }
+    } catch {
+      // A lost acknowledgement is resolved by the durable state read below.
+    }
+    return await consumptionState(key) === target;
+  }
+
+  async function releaseUnenteredConsumption(key: string): Promise<boolean> {
+    const before = await consumptionState(key);
+    if (before === 'AVAILABLE') return true;
+    if (before !== 'RESERVED') return false;
+    try { await releaseConsumption(key); } catch { /* confirm through state */ }
+    return await consumptionState(key) === 'AVAILABLE';
+  }
+
+  async function attemptState(reference: NativeConsequenceBoundaryAttemptReference) {
+    try {
+      const snapshot = await readAttemptState(reference);
+      if (!isObject(snapshot)
+          || !identifier(snapshot.state)
+          || !['RESERVED', 'INVOKING', 'INDETERMINATE', 'COMMITTED', 'RELEASED']
+            .includes(snapshot.state)) return null;
+      return snapshot;
+    } catch {
+      return null;
+    }
+  }
+
+  async function transitionAttempt(
+    reference: NativeConsequenceBoundaryAttemptReference,
+    expected: 'RESERVED' | 'INVOKING',
+    next: 'INVOKING' | 'INDETERMINATE' | 'RELEASED',
+  ): Promise<boolean> {
+    const before = await attemptState(reference);
+    if (before?.state === next) return true;
+    if (before?.state !== expected) return false;
+    try {
+      await transitionAttemptState({
+        ...reference,
+        expected_state: expected,
+        next_state: next,
+      } as ConsequenceBoundaryAttemptReference & ConsequenceBoundaryAttemptTransition);
+    } catch {
+      // A lost acknowledgement is resolved by the durable state read below.
+    }
+    return (await attemptState(reference))?.state === next;
+  }
+
+  async function closeAttempt(
+    reference: NativeConsequenceBoundaryAttemptReference,
+    next: 'COMMITTED' | 'RELEASED',
+    evidence: NativeConsequenceBoundaryProviderEvidence,
+  ): Promise<boolean> {
+    const matches = (snapshot: Awaited<ReturnType<typeof attemptState>>) =>
+      snapshot?.state === next
+      && snapshot.evidence !== undefined
+      && canonicalizeAeb(snapshot.evidence) === canonicalizeAeb(evidence);
+    let current = await attemptState(reference);
+    if (matches(current)) return true;
+    if (current?.state !== 'INDETERMINATE') return false;
+    try {
+      await reconcileAttempt({
+        ...reference,
+        expected_state: 'INDETERMINATE',
+        next_state: next,
+        evidence,
+      });
+    } catch {
+      // A lost acknowledgement is resolved by the durable state read below.
+    }
+    current = await attemptState(reference);
+    return matches(current);
+  }
+
+  async function verifyProviderOutcome(
+    attempt: NativeConsequenceBoundaryAttemptBinding,
+    outcome: Exclude<ConsequenceBoundaryEffectOutcome<TResult>, { state: 'INDETERMINATE' }>,
+  ): Promise<boolean> {
+    try {
+      return await verifyOutcome(cloneFrozen({
+        provider,
+        operation_id: attempt.operation_id,
+        action_digest: attempt.action_digest,
+        native_replay_unit: attempt.native_replay_unit,
+        verification_program_digest:
+          attempt.provider_outcome_verification_program_digest,
+        attempt,
+        outcome,
+      })) === true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function run(
+    input: NativeConsequenceBoundaryRunInput,
+  ): Promise<ConsequenceBoundaryResult<TResult>> {
+    let action: unknown;
+    let handoff: unknown;
+    let operationId: string;
+    let decisionNow: string;
+    try {
+      const record = dataRecord(input);
+      if (!record || !exactKeys(record, ['operation_id', 'handoff', 'action'])) {
+        throw new Error('native_execution_input_invalid');
+      }
+      action = cloneFrozen(record.action);
+      handoff = cloneFrozen(record.handoff);
+      operationId = record.operation_id as string;
+      decisionNow = now();
+      if (!identifier(operationId) || !canonicalInstant(decisionNow)) {
+        throw new Error('native_execution_input_invalid');
+      }
+    } catch {
+      return refused('native_execution_input_invalid');
+    }
+
+    const preflight = verifyAebNativeAuthorizationHandoff(handoff, {
+      mode: 'historical',
+      pins,
+      expected_action: action,
+      now: decisionNow,
+    });
+    if (!preflight.valid || !preflight.handoff || !preflight.action_digest
+        || !preflight.native_replay_unit || !preflight.replay_key) {
+      return refused(preflight.reasons[0] ?? 'native_handoff_not_verified');
+    }
+
+    let status: AebNativeAuthorizationStatus;
+    try {
+      status = cloneFrozen(await resolveNativeStatus(
+        preflight.handoff,
+      ));
+    } catch {
+      return refused('native_status_resolution_failed');
+    }
+    const verification = verifyAebNativeAuthorizationHandoff(handoff, {
+      mode: 'execution',
+      pins,
+      expected_action: action,
+      status,
+      now: decisionNow,
+    });
+    if (!verification.valid || !verification.execution_authorizing
+        || !verification.handoff || !verification.action_digest
+        || !verification.native_replay_unit || !verification.replay_key) {
+      return refused(verification.reasons[0] ?? 'native_handoff_not_verified');
+    }
+
+    let localAuthorization = false;
+    try {
+      localAuthorization = await localAuthorize(cloneFrozen({
+        action,
+        handoff: verification.handoff,
+        verification,
+        provider,
+        local_authorization_program_digest: localAuthorizationProgramDigest,
+      })) === true;
+    } catch {
+      localAuthorization = false;
+    }
+    if (!localAuthorization) return refused('local_authorization_denied');
+
+    let localDecidedAt: string;
+    try {
+      localDecidedAt = now();
+      if (!canonicalInstant(localDecidedAt)) throw new Error('clock_invalid');
+    } catch {
+      return refused('native_local_decision_time_invalid');
+    }
+    const localDecision = deriveLocalDecision({
+      decided_at: localDecidedAt,
+      action_digest: verification.action_digest,
+      handoff_digest: verification.record_digest,
+      native_replay_unit: verification.native_replay_unit,
+      program_digest: localAuthorizationProgramDigest,
+    });
+
+    const operationReservationKey = nativeConsequenceBoundaryReservationKey({
+      relying_party_id: verification.handoff.relying_party_id,
+      operation_id: operationId,
+      action_digest: verification.action_digest,
+    });
+    try {
+      const reservation = await reserveConsumption(
+        operationReservationKey,
+        [verification.replay_key],
+      );
+      if (reservation !== true && reservation !== 'RESERVED') {
+        return refused(reservation === 'NATIVE_REPLAY_CONFLICT'
+          ? 'native_replay_conflict'
+          : 'consumption_conflict');
+      }
+    } catch {
+      const released = await releaseUnenteredConsumption(operationReservationKey);
+      return released
+        ? refused('consumption_store_unavailable')
+        : indeterminate('consumption_reservation_state_unconfirmed', false);
+    }
+
+    const providerIdempotencyKey = nativeConsequenceBoundaryProviderIdempotencyKey({
+      provider,
+      action_digest: verification.action_digest,
+      native_replay_unit: verification.native_replay_unit,
+    });
+    const requestDigest = nativeConsequenceBoundaryRequestDigest({
+      provider,
+      operation_id: operationId,
+      action,
+      action_digest: verification.action_digest,
+      handoff_digest: verification.record_digest,
+      native_replay_unit: verification.native_replay_unit,
+      trust_snapshot_id: trustSnapshotId,
+      trust_snapshot_digest: trustSnapshotDigest,
+      authorization_program_digest: authorizationProgramDigest,
+      local_authorization: localDecision,
+      provider_outcome_verification_program_digest:
+        providerOutcomeVerificationProgramDigest,
+      provider_idempotency_key: providerIdempotencyKey,
+    });
+
+    let attemptId: string;
+    try {
+      attemptId = await createAttemptId({
+        operation_id: operationId,
+        request_digest: requestDigest,
+      });
+      if (!identifier(attemptId)) throw new Error('attempt_id_invalid');
+    } catch {
+      const released = await releaseUnenteredConsumption(operationReservationKey);
+      return released
+        ? refused('attempt_allocation_failed')
+        : indeterminate('native_pre_entry_release_unconfirmed', false);
+    }
+    const attemptBinding: NativeConsequenceBoundaryAttemptBinding = cloneFrozen({
+      ...provider,
+      attempt_id: attemptId,
+      request_digest: requestDigest,
+      provider_idempotency_key: providerIdempotencyKey,
+      operation_id: operationId,
+      action_digest: verification.action_digest,
+      handoff_digest: verification.record_digest,
+      native_replay_unit: verification.native_replay_unit,
+      trust_snapshot_id: trustSnapshotId,
+      trust_snapshot_digest: trustSnapshotDigest,
+      authorization_program_digest: authorizationProgramDigest,
+      local_authorization_program_digest: localAuthorizationProgramDigest,
+      local_decision_digest: localDecision.decision_digest,
+      local_decided_at: localDecision.decided_at,
+      provider_outcome_verification_program_digest:
+        providerOutcomeVerificationProgramDigest,
+    });
+    let reserved;
+    try {
+      reserved = await reserveAttempt(attemptBinding);
+    } catch {
+      const released = await releaseUnenteredConsumption(operationReservationKey);
+      return released
+        ? refused('attempt_store_unavailable')
+        : indeterminate('native_pre_entry_release_unconfirmed', false);
+    }
+    if (!reserved.reserved) {
+      const released = await releaseUnenteredConsumption(operationReservationKey);
+      return released
+        ? refused(reserved.reason || 'attempt_conflict')
+        : indeterminate('native_pre_entry_release_unconfirmed', false);
+    }
+    const attempt: NativeConsequenceBoundaryAttemptReference = {
+      ...attemptBinding,
+      owner: reserved.owner,
+    };
+
+    let entryNow: string;
+    let entryStatus: AebNativeAuthorizationStatus;
+    let entryVerification: AebNativeAuthorizationHandoffVerification;
+    try {
+      entryStatus = cloneFrozen(await resolveNativeStatus(
+        verification.handoff,
+      ));
+      entryNow = now();
+      if (!canonicalInstant(entryNow)) throw new Error('clock_invalid');
+      entryVerification = verifyAebNativeAuthorizationHandoff(verification.handoff, {
+        mode: 'execution',
+        pins,
+        expected_action: action,
+        status: entryStatus,
+        now: entryNow,
+      });
+    } catch {
+      entryVerification = {
+        ...verification,
+        valid: false,
+        execution_authorizing: false,
+        reasons: ['native_status_resolution_failed'],
+      };
+    }
+    if (!entryVerification.valid || !entryVerification.execution_authorizing) {
+      const attemptReleased = await transitionAttempt(attempt, 'RESERVED', 'RELEASED');
+      const authorizationReleased = await releaseUnenteredConsumption(operationReservationKey);
+      return attemptReleased && authorizationReleased
+        ? refused(entryVerification.reasons[0] ?? 'native_handoff_not_verified_at_provider_entry')
+        : indeterminate('native_pre_entry_release_unconfirmed', false, publicNativeAttempt(attempt));
+    }
+
+    const started = await transitionAttempt(attempt, 'RESERVED', 'INVOKING');
+    if (!started) {
+      return indeterminate('attempt_start_unconfirmed', false, publicNativeAttempt(attempt));
+    }
+
+    // The custody transition itself can block. Resolve status once more after
+    // it completes so no delayed store call can carry stale authority into the
+    // provider callback.
+    let providerEntryVerification: AebNativeAuthorizationHandoffVerification;
+    try {
+      const providerEntryStatus = cloneFrozen(
+        await resolveNativeStatus(verification.handoff),
+      );
+      const providerEntryNow = now();
+      if (!canonicalInstant(providerEntryNow)) throw new Error('clock_invalid');
+      providerEntryVerification = verifyAebNativeAuthorizationHandoff(
+        verification.handoff,
+        {
+          mode: 'execution',
+          pins,
+          expected_action: action,
+          status: providerEntryStatus,
+          now: providerEntryNow,
+        },
+      );
+    } catch {
+      providerEntryVerification = {
+        ...verification,
+        valid: false,
+        execution_authorizing: false,
+        reasons: ['native_status_resolution_failed'],
+      };
+    }
+    if (!providerEntryVerification.valid
+        || !providerEntryVerification.execution_authorizing) {
+      const attemptReleased = await transitionAttempt(attempt, 'INVOKING', 'RELEASED');
+      const authorizationReleased = await releaseUnenteredConsumption(operationReservationKey);
+      return attemptReleased && authorizationReleased
+        ? refused(
+          providerEntryVerification.reasons[0]
+            ?? 'native_handoff_not_verified_at_provider_entry',
+        )
+        : indeterminate('native_pre_entry_release_unconfirmed', false, publicNativeAttempt(attempt));
+    }
+
+    let rawOutcome: unknown;
+    try {
+      rawOutcome = await invoke(cloneFrozen({
+        action,
+        operation_id: operationId,
+        action_digest: verification.action_digest,
+        handoff_digest: verification.record_digest,
+        native_replay_unit: verification.native_replay_unit,
+        authorization_program_digest: authorizationProgramDigest,
+        local_authorization: localDecision,
+        trust_snapshot_id: trustSnapshotId,
+        trust_snapshot_digest: trustSnapshotDigest,
+        provider_outcome_verification_program_digest:
+          providerOutcomeVerificationProgramDigest,
+        provider_idempotency_key: providerIdempotencyKey,
+        attempt: attemptBinding,
+      }));
+    } catch {
+      await transitionAttempt(attempt, 'INVOKING', 'INDETERMINATE');
+      return indeterminate('provider_outcome_indeterminate', true, publicNativeAttempt(attempt));
+    }
+
+    const frozen = await transitionAttempt(attempt, 'INVOKING', 'INDETERMINATE');
+    if (!frozen) return indeterminate('attempt_freeze_failed', true, publicNativeAttempt(attempt));
+    const outcome = normalizeEffectOutcome<TResult>(rawOutcome, true);
+    if (!outcome) return indeterminate('provider_outcome_invalid', true, publicNativeAttempt(attempt));
+    if (outcome.state === 'INDETERMINATE') {
+      return indeterminate(outcome.reason, true, publicNativeAttempt(attempt));
+    }
+    if (!await verifyProviderOutcome(attemptBinding, outcome)) {
+      return indeterminate(
+        'provider_outcome_authentication_failed',
+        true,
+        publicNativeAttempt(attempt),
+      );
+    }
+
+    if (!await closeConsumption(operationReservationKey, 'CONSUMED')) {
+      return indeterminate(
+        'authorization_consumption_unconfirmed',
+        true,
+        publicNativeAttempt(attempt),
+      );
+    }
+    const evidence: NativeConsequenceBoundaryProviderEvidence = cloneFrozen({
+      ...attemptBinding,
+      operation_id: operationId,
+      action_digest: verification.action_digest,
+      native_replay_unit: verification.native_replay_unit,
+      evidence_id: outcome.evidence.evidence_id,
+      observed_at: outcome.evidence.observed_at,
+      outcome: outcome.state === 'EXECUTED' ? 'COMMITTED' : 'NOT_COMMITTED',
+      evidence_digest: outcome.evidence.evidence_digest,
+    });
+    const terminal = await closeAttempt(
+      attempt,
+      outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED',
+      evidence,
+    );
+    if (!terminal) {
+      return indeterminate(
+        'attempt_terminal_record_unconfirmed',
+        true,
+        publicNativeAttempt(attempt),
+      );
+    }
+    if (outcome.state === 'EXECUTED') {
+      return Object.freeze({
+        state: 'EXECUTED', invoked: true, retry_allowed: false,
+        result: outcome.result, evidence: outcome.evidence, attempt: attemptBinding,
+      } as const);
+    }
+    return Object.freeze({
+      state: 'FAILED', invoked: true, retry_allowed: false,
+      reason: outcome.reason, evidence: outcome.evidence, attempt: attemptBinding,
+    });
+  }
+
+  async function reconcile(
+    input: NativeConsequenceBoundaryReconcileInput<TResult>,
+  ): Promise<ConsequenceBoundaryResult<TResult>> {
+    let action: unknown;
+    let handoff: unknown;
+    let attemptBinding: NativeConsequenceBoundaryAttemptBinding;
+    let operationId: string;
+    let decisionNow: string;
+    try {
+      action = cloneFrozen(input?.action);
+      handoff = cloneFrozen(input?.handoff);
+      attemptBinding = cloneFrozen(input?.attempt) as NativeConsequenceBoundaryAttemptBinding;
+      operationId = input?.operation_id;
+      decisionNow = now();
+      if (!identifier(operationId) || !canonicalInstant(decisionNow)
+          || !validNativeAttemptBinding(attemptBinding)) throw new Error('input_invalid');
+    } catch {
+      return refused('native_reconciliation_input_invalid');
+    }
+    if (attemptBinding.tenant_id !== provider.tenant_id
+        || attemptBinding.provider_id !== provider.provider_id
+        || attemptBinding.provider_account_id !== provider.provider_account_id
+        || attemptBinding.environment !== provider.environment
+        || attemptBinding.operation_id !== operationId) {
+      return refused('reconciliation_binding_mismatch');
+    }
+
+    // Authenticate custody before the caller-controlled attempt can select a
+    // historical trust snapshot or provider-outcome verifier version.
+    let recovered: ConsequenceBoundaryAttemptReference | null = null;
+    try {
+      recovered = await recoverAttempt({
+        attempt: attemptBinding,
+        recovery_authorization: input.recovery_authorization,
+      });
+    } catch {
+      recovered = null;
+    }
+    if (!validNativeAttemptReference(recovered)) return refused('attempt_recovery_refused');
+    const recoveredReference = cloneFrozen(recovered);
+    if (canonicalizeAeb(publicNativeAttempt(recoveredReference))
+        !== canonicalizeAeb(attemptBinding)) {
+      return refused('attempt_recovery_binding_mismatch');
+    }
+
+    let historicalPins: AebNativeAuthorizationPins | null = null;
+    try {
+      historicalPins = await resolveHistoricalPins({
+        trust_snapshot_id: attemptBinding.trust_snapshot_id,
+        trust_snapshot_digest: attemptBinding.trust_snapshot_digest,
+      });
+      if (historicalPins !== null) historicalPins = cloneFrozen(historicalPins);
+    } catch {
+      historicalPins = null;
+    }
+    if (!historicalPins) return refused('native_historical_trust_snapshot_unavailable');
+    if (nativeTrustSnapshotDigest(historicalPins) !== attemptBinding.trust_snapshot_digest) {
+      return refused('native_historical_trust_snapshot_mismatch');
+    }
+    const verification = verifyAebNativeAuthorizationHandoff(handoff, {
+      mode: 'historical',
+      pins: historicalPins,
+      expected_action: action,
+      now: decisionNow,
+    });
+    if (!verification.valid || !verification.handoff || !verification.action_digest
+        || !verification.native_replay_unit) {
+      return refused(verification.reasons[0] ?? 'native_handoff_not_verified');
+    }
+    const expectedProviderIdempotencyKey = nativeConsequenceBoundaryProviderIdempotencyKey({
+      provider,
+      action_digest: verification.action_digest,
+      native_replay_unit: verification.native_replay_unit,
+    });
+    const expectedAuthorizationProgramDigest = deriveAuthorizationProgramDigest({
+      trust_snapshot_id: attemptBinding.trust_snapshot_id,
+      trust_snapshot_digest: attemptBinding.trust_snapshot_digest,
+      local_authorization_program_digest:
+        attemptBinding.local_authorization_program_digest,
+      provider_outcome_verification_program_digest:
+        attemptBinding.provider_outcome_verification_program_digest,
+    });
+    const expectedLocalDecision = deriveLocalDecision({
+      decided_at: attemptBinding.local_decided_at,
+      action_digest: verification.action_digest,
+      handoff_digest: verification.record_digest,
+      native_replay_unit: verification.native_replay_unit,
+      program_digest: attemptBinding.local_authorization_program_digest,
+    });
+    const expectedRequestDigest = nativeConsequenceBoundaryRequestDigest({
+      provider,
+      operation_id: operationId,
+      action,
+      action_digest: verification.action_digest,
+      handoff_digest: verification.record_digest,
+      native_replay_unit: verification.native_replay_unit,
+      trust_snapshot_id: attemptBinding.trust_snapshot_id,
+      trust_snapshot_digest: attemptBinding.trust_snapshot_digest,
+      authorization_program_digest: expectedAuthorizationProgramDigest,
+      local_authorization: expectedLocalDecision,
+      provider_outcome_verification_program_digest:
+        attemptBinding.provider_outcome_verification_program_digest,
+      provider_idempotency_key: expectedProviderIdempotencyKey,
+    });
+    if (attemptBinding.tenant_id !== provider.tenant_id
+        || attemptBinding.provider_id !== provider.provider_id
+        || attemptBinding.provider_account_id !== provider.provider_account_id
+        || attemptBinding.environment !== provider.environment
+        || attemptBinding.operation_id !== operationId
+        || attemptBinding.action_digest !== verification.action_digest
+        || attemptBinding.handoff_digest !== verification.record_digest
+        || attemptBinding.native_replay_unit !== verification.native_replay_unit
+        || attemptBinding.authorization_program_digest
+          !== expectedAuthorizationProgramDigest
+        || attemptBinding.local_decision_digest !== expectedLocalDecision.decision_digest
+        || attemptBinding.provider_idempotency_key !== expectedProviderIdempotencyKey
+        || attemptBinding.request_digest !== expectedRequestDigest) {
+      return refused('reconciliation_binding_mismatch');
+    }
+    const outcome = normalizeEffectOutcome<TResult>(input.outcome, true);
+    if (!outcome || outcome.state === 'INDETERMINATE') {
+      return indeterminate('provider_outcome_indeterminate', true, attemptBinding);
+    }
+
+    const recoveredState = await attemptState(recoveredReference);
+    if (recoveredState?.state === 'INVOKING'
+        && !await transitionAttempt(recoveredReference, 'INVOKING', 'INDETERMINATE')) {
+      return indeterminate('attempt_freeze_unconfirmed', true, attemptBinding);
+    }
+    if (recoveredState?.state === 'RESERVED') {
+      return refused('attempt_never_entered_provider');
+    }
+    if (recoveredState === null) {
+      return indeterminate('attempt_state_unavailable', true, attemptBinding);
+    }
+
+    if (!await verifyProviderOutcome(attemptBinding, outcome)) {
+      return indeterminate('provider_outcome_authentication_failed', true, attemptBinding);
+    }
+
+    const operationReservationKey = nativeConsequenceBoundaryReservationKey({
+      relying_party_id: verification.handoff.relying_party_id,
+      operation_id: operationId,
+      action_digest: verification.action_digest,
+    });
+    // Any terminal provider result follows provider entry and therefore burns
+    // the one-time native authorization, including authenticated NOT_COMMITTED.
+    const custodyClosed = await closeConsumption(operationReservationKey, 'CONSUMED');
+    if (!custodyClosed) {
+      return indeterminate('authorization_consumption_unconfirmed', true, attemptBinding);
+    }
+    const evidence: NativeConsequenceBoundaryProviderEvidence = cloneFrozen({
+      ...attemptBinding,
+      operation_id: operationId,
+      action_digest: verification.action_digest,
+      native_replay_unit: verification.native_replay_unit,
+      evidence_id: outcome.evidence.evidence_id,
+      observed_at: outcome.evidence.observed_at,
+      outcome: outcome.state === 'EXECUTED' ? 'COMMITTED' : 'NOT_COMMITTED',
+      evidence_digest: outcome.evidence.evidence_digest,
+    });
+    const terminal = await closeAttempt(
+      recoveredReference,
+      outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED',
+      evidence,
+    );
+    if (!terminal) {
+      return indeterminate('attempt_terminal_record_unconfirmed', true, attemptBinding);
+    }
+    if (outcome.state === 'EXECUTED') {
+      return Object.freeze({
+        state: 'EXECUTED', invoked: true, retry_allowed: false,
+        result: outcome.result, evidence: outcome.evidence, attempt: attemptBinding,
+      } as const);
+    }
+    return Object.freeze({
+      state: 'FAILED', invoked: true, retry_allowed: false,
+      reason: outcome.reason, evidence: outcome.evidence, attempt: attemptBinding,
+    });
+  }
+
+  return Object.freeze({
+    version: NATIVE_CONSEQUENCE_BOUNDARY_VERSION,
+    executor_id: executorId,
+    provider,
+    run,
+    reconcile,
+  });
+}
+
 export default Object.freeze({
   CONSEQUENCE_BOUNDARY_VERSION,
   CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN,
   consequenceBoundaryProviderIdempotencyKey,
   consequenceBoundaryRequestDigest,
   createConsequenceBoundary,
+  NATIVE_CONSEQUENCE_BOUNDARY_VERSION,
+  NATIVE_CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN,
+  NATIVE_CONSEQUENCE_BOUNDARY_TRUST_SNAPSHOT_DOMAIN,
+  NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN,
+  nativeConsequenceBoundaryReservationKey,
+  nativeConsequenceBoundaryProviderIdempotencyKey,
+  nativeConsequenceBoundaryRequestDigest,
+  createNativeConsequenceBoundary,
 });
