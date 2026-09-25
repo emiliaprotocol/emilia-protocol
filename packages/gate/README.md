@@ -41,6 +41,15 @@ the explicit not-entered marker in its own durable attempt record. Both
 boundaries derive the same fence key, so they fence each other when they
 share a consumption store and relying party ID.
 
+Provider results must be in the strict canonical JSON domain: plain objects
+and arrays, strings, booleans, null, and numbers that are safe integers. Both
+boundaries snapshot the result with its evidence so that what was verified is
+what is returned. A fractional number, a `Date` or other class instance,
+`undefined`, a bigint, a function, or a cyclic value makes `run()` return
+`INDETERMINATE` with `provider_outcome_invalid` after the provider call, and
+the action then needs reconciliation. Encode amounts as integers or strings
+in the invoke adapter's result.
+
 Terminal evidence is verified for the attempt, the purpose of the check,
 and the kind of evidence presented. Both boundaries require the operator's
 provider-outcome verifier, `provider_outcomes.verify`:

@@ -392,6 +392,17 @@ when the action is authorized. That field is part of the canonical action and
 therefore of the action digest. Without such a field, identical actions are
 the same action.
 
+### Provider results
+
+Provider results must be in the strict canonical JSON domain: plain objects
+and arrays, strings, booleans, null, and numbers that are safe integers. Both
+boundaries snapshot the result with its evidence so that what was verified is
+what is returned. A fractional number, a `Date` or other class instance,
+`undefined`, a bigint, a function, or a cyclic value makes `run()` return
+`INDETERMINATE` with `provider_outcome_invalid` after the provider call, and
+the action then needs reconciliation. Encode amounts as integers or strings
+in the invoke adapter's result.
+
 ## Native replay identity
 
 The replay identity that Gate reserves and the provider idempotency key are

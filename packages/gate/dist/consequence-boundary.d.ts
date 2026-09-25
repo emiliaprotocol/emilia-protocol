@@ -341,8 +341,9 @@ export interface ConsequenceBoundaryRunInput {
  * RELEASED record carrying the not-entered marker, is `INDETERMINATE`
  * `pre_entry_recovery_required` and nothing changes. An INVOKING record whose
  * run never called the provider (an unconfirmed start) closes only here, with
- * provider evidence the verifier accepts as authenticating that no operation
- * exists under the attempt's provider idempotency key; otherwise it stays
+ * provider evidence the verifier accepts as foreclosing any execution, now or
+ * later, under the attempt's provider idempotency key. A point-in-time "not
+ * found" does not qualify while the run may still be live. Otherwise it stays
  * fenced by design.
  *
  * `pre_entry`: close an attempt that stopped before provider entry. The

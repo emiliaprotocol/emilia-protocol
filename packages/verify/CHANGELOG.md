@@ -52,8 +52,7 @@ This package follows [Semantic Versioning](https://semver.org/).
   which authorizes nothing and is not a clean refusal. `AVAILABLE` is not
   proof that nothing was reserved, because a reserve write still in flight
   can land after the read.
--
-  Issuer normalization for pin alias detection no longer uses regular
+- Issuer normalization for pin alias detection no longer uses regular
   expressions that can backtrack polynomially on crafted input. An issuer
   longer than the pin identifier grammar's 512-character maximum is
   compared as written, and a shorter one is normalized with linear string

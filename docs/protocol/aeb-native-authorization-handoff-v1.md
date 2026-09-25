@@ -141,7 +141,8 @@ has no fence row, so the newer Gate admits fresh authority for it.
 One issuer has one namespace in a pin set. Pins whose issuer strings are
 identical, or are spellings the verifier normalizes as equal (URI scheme case,
 URL host case, a trailing dot on the host, a default port, trailing slashes,
-dot segments in the path, an http or https URL written without `//`, URN
+dot segments in the path, an http or https URL written without `//`, IPv4
+host spellings such as `127.1` or `0x7f.0.0.1`, an empty port, URN
 namespace-identifier case, DID method-name case, `did:web` host case and
 trailing dots, SPIFFE trust-domain case and trailing dots),
 must either all omit `authority_namespace` and use one identical issuer
@@ -244,8 +245,12 @@ run proceed as the owner, and if the record stays unreadable the run sends
 no not-entered write, holds everything, does not call the provider, and
 returns `INDETERMINATE` with `attempt_start_unconfirmed`. A record that
 then says `INVOKING` although the provider was never called is closable
-only by terminal reconciliation with provider evidence that forecloses any execution, now or later, under the attempt's provider idempotency key, as
-the verifier decides; otherwise the action stays fenced, by design. A point-in-time "not found", even from an authenticated provider lookup, does not foreclose execution: a run that is still alive can deliver its call after the lookup. A
+only by terminal reconciliation with provider evidence that forecloses any
+execution, now or later, under the attempt's provider idempotency key, as
+the verifier decides; otherwise the action stays fenced, by design. A
+point-in-time "not found", even from an authenticated provider lookup, does
+not foreclose execution: a run that is still alive can deliver its call
+after the lookup. A
 reserve answer that is neither exactly `true` or `'RESERVED'` nor a defined
 conflict, or a reserve call that throws, is resolved by a durable read and
 is otherwise `INDETERMINATE` with `consumption_reservation_unconfirmed`,

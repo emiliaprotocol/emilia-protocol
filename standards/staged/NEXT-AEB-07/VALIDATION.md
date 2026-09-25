@@ -30,8 +30,9 @@ that such records stay held. The source was revised as follows:
   MUST NOT dispatch that attempt afterwards, whatever a later read shows.
   An attempt left in DISPATCH_PENDING without a dispatch is INDETERMINATE
   and is closed only by reconciliation with terminal evidence that
-  authenticates that no operation exists under its provider idempotency
-  key, as the verifier decides; otherwise it stays held.
+  forecloses any execution, now or later, under its provider idempotency
+  key, as the verifier decides; a point-in-time absence of the operation
+  does not qualify. Otherwise it stays held.
 - Section 5.13: the verification requirement applies to every boundary and
   evidence path, including the result that the dispatch itself returns; an
   adapter's classification is not verification. Presented evidence carries
@@ -514,7 +515,7 @@ implementation conformance, interoperability, or deployment.
 
 ## Round-five wording correction (closure of an attempt left INVOKING without dispatch)
 
-Section 5.10 now requires terminal evidence that forecloses any execution, now
+Section 5.12 now requires terminal evidence that forecloses any execution, now
 or later, under the attempt's provider idempotency key, and states that a
 point-in-time absence of the operation, even when authenticated, does not
 foreclose execution while a dispatcher may still be live. Re-checked on the

@@ -229,8 +229,7 @@ This package follows [Semantic Versioning](https://semver.org/).
   recovered as a pre-entry stop and its one-time authority released
   unconsumed. An attempt store declares `notEnteredMarker: true` when it
   persists that evidence with the transition and returns it from `state()`.
--
-  Terminal evidence is verified for the attempt, the purpose of the check,
+- Terminal evidence is verified for the attempt, the purpose of the check,
   and the kind of evidence presented. `provider_outcomes.verify` now
   receives the attempt's `provider_idempotency_key` and a `purpose`, and
   the only answer Gate accepts is `{ verified: true, purpose, attempt_id,
@@ -462,6 +461,14 @@ This package follows [Semantic Versioning](https://semver.org/).
   (`verifyAebNativeAuthorizationPins`). That breaks every Gate consumer,
   including receipt-guard users of the root entry. The workspace link hides
   this in CI.
+- TypeScript: `ConsequenceBoundaryReconcileInput.outcome` and
+  `NativeConsequenceBoundaryReconcileInput.outcome` now take
+  `ConsequenceBoundaryPresentedOutcome` (an EXECUTED or FAILED outcome that
+  carries `evidence_kind`) instead of `ConsequenceBoundaryEffectOutcome`, a
+  compile-time break for callers of `reconcile()`. New exported types:
+  `ConsequenceBoundaryEvidenceKind` and `ConsequenceBoundaryPresentedOutcome`.
+  Both boundary configurations require `boundary_id`, and the boundary
+  objects both constructors return expose it.
 - Version type: the changes above refuse pin sets, attempt stores, inputs,
   verifier answers, and recovery claims that 0.26.0 accepted, require a
   provider-outcome verifier and a `boundary_id` on both boundaries, and

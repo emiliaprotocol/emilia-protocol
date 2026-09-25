@@ -52,8 +52,9 @@ const LINE_TERMINATOR = /[\n\r\u2028\u2029]/;
  * compares case-insensitively. For the special URL schemes (http, https, ws,
  * wss, ftp) the issuer is parsed as a WHATWG URL, which also accepts a
  * missing `//` and resolves dot segments; the host compares lower-case without
- * trailing dots, a default port is dropped, and trailing slashes on the path
- * are dropped. For `urn:` the namespace identifier compares case-insensitively
+ * trailing dots (an IPv4 host in any spelling the URL parser accepts, such as
+ * `127.1` or `0x7f.0.0.1`, compares in dotted-decimal form), a default or
+ * empty port is dropped, and trailing slashes on the path are dropped. For `urn:` the namespace identifier compares case-insensitively
  * (RFC 8141). For `did:` the method name compares lower-case, and for
  * `did:web` the host compares lower-case without trailing dots. For
  * `spiffe://` the trust domain compares lower-case without trailing dots and

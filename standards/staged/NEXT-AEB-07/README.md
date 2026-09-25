@@ -80,8 +80,10 @@ wording-only edit.
    MUST NOT dispatch that attempt afterwards, whatever a later read shows
    (Section 5.12). An attempt left in DISPATCH_PENDING without a dispatch
    is INDETERMINATE and is closed only by reconciliation with terminal
-   evidence that authenticates that no operation exists under its provider
-   idempotency key; otherwise it stays held.
+   evidence that forecloses any execution, now or later, under its provider
+   idempotency key; a point-in-time absence of the operation, even when
+   authenticated, does not qualify while a dispatcher may still be live.
+   Otherwise it stays held.
 3. Record ownership, release ordering, and recovery credentials (Sections
    5.11, 5.12, and 5.14). A boundary MUST release or close only records whose
    ownership for the current attempt it can prove; an operation-identifier
@@ -158,7 +160,9 @@ wording-only edit.
    trailing slashes, and a missing "//" after http or https. The reference
    verifier normalizes those and also resolves dot segments in the path
    (and accepts a missing "//" and drops a default port for every special
-   URL scheme: http, https, ws, wss, and ftp), compares a URN namespace
+   URL scheme: http, https, ws, wss, and ftp), and, because it parses those
+   schemes as WHATWG URLs, also canonicalizes IPv4 host spellings (for
+   example 127.1 and 0x7f.0.0.1) and drops an empty port, compares a URN namespace
    identifier and a DID method name case-insensitively, compares a
    `did:web` host case-insensitively without trailing dots, and compares a
    `spiffe://` trust domain case-insensitively without trailing dots and
