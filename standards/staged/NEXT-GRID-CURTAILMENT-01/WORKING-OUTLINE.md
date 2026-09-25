@@ -100,7 +100,11 @@ Lead: Blake.
 - Derive a deterministic actuation plan from the approved objective and participation envelope.
 - Give the plan a digest and bind it into admission.
 - Bind each plan step to the exact native command bytes and security-relevant transport context at the first conduit.
-- Specify material Modbus and DNP3 fields and refusal on their mutation.
+- Keep Modbus 0x06 and 0x10-with-quantity-one as distinct field sets and
+  digests even when they encode the same register write; do not normalize one
+  into the other or admit one under authority for the other.
+- Require DNP3 qualifier-only variations to produce the same result and digest
+  when the pinned binding decodes them to the same complete field set.
 - Keep encoding, projection, and transport acceptance distinct from authority to dispatch.
 
 ### 8. OT topology and durable admission domain
@@ -147,6 +151,8 @@ Lead: Drew.
 - Forbid blind retry after possible provider entry.
 - Define restart and handoff behavior while any device remains unresolved.
 - Define the minimum control-room view needed to reconcile or escalate an event.
+- Derive operator-facing summary labels from the underlying facts at display
+  time; never store a summary label in place of those facts.
 
 ### 12. Outcome binding
 
@@ -230,7 +236,8 @@ Keep statement and fixture identifiers profile-local unless the coauthors delibe
 
 ## Worked example placement note
 
-Justin's 23 September non-normative RDU101 example is accepted as the
+Justin's 23 September non-normative RDU101 example, with the exact fixture
+values he froze on 24 September, is accepted as the
 device-level path to adapt into `-01`, subject to this responsibility split:
 
 1. `draft-morrison-ot-command-authority` supplies action-specific command
@@ -272,11 +279,11 @@ an unresolved post-dispatch state never authorizes a blind retry.
 
 ## Immediate decisions
 
-1. Blake confirms that the RFCXML faithfully transcribes his Sections 7
-   through 10 and keeps the per-protocol tables in the separate transport
-   binding.
-2. Drew confirms that the RFCXML faithfully transcribes his degraded-operation
-   and control-room requirements in Section 11.
-3. Justin confirms the adapted RDU101 facts and revised outcome labels.
-4. The four authors review the joined conformance topology before its fixture
-   values are frozen.
+1. Blake has confirmed that the RFCXML faithfully transcribes his Sections 7
+   through 10. His five final corrections are incorporated in the candidate.
+2. Justin has frozen the RDU101 bench facts, boundary statements, and outcome
+   values used by the worked example.
+3. Drew reviews the final transcription of his degraded-operation and
+   control-room requirements in Section 11.
+4. The four authors review the exact updated RFCXML and joined conformance
+   topology before approving an upload candidate.

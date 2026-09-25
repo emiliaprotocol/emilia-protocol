@@ -818,7 +818,7 @@ test('authenticated NOT_COMMITTED reconciliation is terminal and forces a new ac
     assert.equal(reconciled.aeb.state, vector('authenticated_not_committed_reconciliation_releases_operation').expect.state);
     assert.equal(reconciled.aeb.retry_requires_new_instance, true);
     assert.equal(attemptEntry(f.attemptStore, firstAttempt).state, 'RELEASED');
-    // draft-schrock-action-evidence-boundary-04 s5.11: re-presenting the SAME
+    // draft-schrock-action-evidence-boundary-05 s5.11: re-presenting the SAME
     // evaluation record derives the byte-identical reservation key, which the
     // terminal marker refuses. One reconciled attempt, one provider invocation.
     const blindRetry = await f.controller.execute({

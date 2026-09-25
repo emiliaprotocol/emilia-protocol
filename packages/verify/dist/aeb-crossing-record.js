@@ -11,12 +11,18 @@
  * a bounded-capability receipt without claiming that the native systems are
  * equivalent. They share the record schema and verifier, not record bytes.
  */
-import { canonicalizeAeb, digestAebTyped, } from "./aeb-adapter-contract.js";
+import { AEB_EVALUATION_VERSION, AEB_EVALUATION_V2_VERSION, canonicalizeAeb, digestAebTyped, } from "./aeb-adapter-contract.js";
 import { SIGNATURE_AGILITY_VERSION, signAgileSet, verifyAgileSignatureSet, } from "./pq-signature-agility.js";
 export const AEB_CROSSING_RECORD_VERSION = "EP-AEB-CROSSING-RECORD-v1";
 export const AEB_CROSSING_RECORD_DOMAIN = `${AEB_CROSSING_RECORD_VERSION}\0`;
 export const AEB_CROSSING_RECORD_V2_VERSION = "EP-AEB-CROSSING-RECORD-v2";
 export const AEB_CROSSING_RECORD_V2_DOMAIN = `${AEB_CROSSING_RECORD_V2_VERSION}\0`;
+/**
+ * A separate, derived lifecycle index.  This MUST NOT be confused with or
+ * relabeled as the already shipped EP-AEB-CROSSING-RECORD-v2 profile above.
+ */
+export const AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION = "EP-AEB-CROSSING-LIFECYCLE-INDEX-v2";
+export const AEB_CROSSING_LIFECYCLE_INDEX_V2_DOMAIN = `${AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION}\0`;
 export const AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS = Object.freeze([
     "Ed25519",
     "ML-DSA-65",
@@ -128,6 +134,32 @@ const BODY_KEYS = new Set([
     "referee",
 ]);
 const V2_BODY_KEYS = new Set([...BODY_KEYS, "admission_domain_digest"]);
+const LIFECYCLE_INDEX_V2_BODY_KEYS = new Set([
+    "record_id",
+    "operation_id",
+    "issued_at",
+    "signature_profile",
+    "action",
+    "admission_domain_digest",
+    "lifecycle",
+    "source_crossing_record",
+    "conversion",
+    "contract_digest",
+    "execution_authorizing",
+]);
+const LIFECYCLE_INDEX_KEYS = new Set([
+    "evaluation",
+    "local_admission_digest",
+    "authority_custody",
+    "provider_entry_digest",
+    "effect_observation_digest",
+    "provider_outcome_digest",
+    "reconciliation_digest",
+]);
+const LIFECYCLE_EVALUATION_KEYS = new Set(["profile", "digest"]);
+const LIFECYCLE_CUSTODY_KEYS = new Set(["phase", "digest"]);
+const LIFECYCLE_SOURCE_KEYS = new Set(["version", "digest"]);
+const LIFECYCLE_CONVERSION_KEYS = new Set(["status", "reason_codes"]);
 const SIGNATURE_PROFILE_KEYS = new Set(["id", "required_algorithms"]);
 const AUTHORITY_KEYS = new Set([
     "adapter_id",
@@ -345,6 +377,28 @@ export function crossingRecordV2SignedBytes(body) {
 export function crossingRecordV2Digest(body) {
     return digestAebTyped(body, `${AEB_CROSSING_RECORD_V2_VERSION}:record`);
 }
+export function crossingLifecycleIndexV2AdmissionDomainDigest(boundary) {
+    return digestAebTyped({
+        relying_party_id: boundary.relying_party_id,
+        audience: boundary.audience,
+        executor_id: boundary.executor_id,
+        state_domain_id: boundary.state_domain_id,
+    }, `${AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION}:admission-domain`);
+}
+export function crossingLifecycleIndexV2ContractDigest(body) {
+    return digestAebTyped({
+        operation_id: body.operation_id,
+        action: body.action,
+        admission_domain_digest: body.admission_domain_digest,
+        evaluation: body.lifecycle.evaluation,
+    }, `${AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION}:contract`);
+}
+export function crossingLifecycleIndexV2SignedBytes(body) {
+    return Buffer.from(`${AEB_CROSSING_LIFECYCLE_INDEX_V2_DOMAIN}${canonicalizeAeb(body)}`, "utf8");
+}
+export function crossingLifecycleIndexV2Digest(body) {
+    return digestAebTyped(body, `${AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION}:record`);
+}
 function validateBody(body) {
     if (!isRecord(body) || !exactKeys(body, BODY_KEYS))
         return "malformed_record";
@@ -461,6 +515,112 @@ function validateV2Body(body) {
         return "admission_domain_mismatch";
     if (crossingRecordV2ContractDigest(typed) !== typed.contract_digest)
         return "contract_digest_mismatch";
+    return null;
+}
+function nullableDigest(value) {
+    return value === null || digest(value);
+}
+function validateLifecycleIndexV2Body(body) {
+    if (!isRecord(body) || !exactKeys(body, LIFECYCLE_INDEX_V2_BODY_KEYS))
+        return "malformed_lifecycle_index";
+    if (!identifier(body.record_id) ||
+        !identifier(body.operation_id) ||
+        !instant(body.issued_at) ||
+        body.execution_authorizing !== false)
+        return "malformed_lifecycle_index";
+    if (!isRecord(body.signature_profile) ||
+        !exactKeys(body.signature_profile, SIGNATURE_PROFILE_KEYS) ||
+        body.signature_profile.id !== SIGNATURE_AGILITY_VERSION)
+        return "malformed_lifecycle_index";
+    if (!algorithmSetMatches(body.signature_profile.required_algorithms))
+        return "algorithm_set_mismatch";
+    if (!isRecord(body.action) ||
+        !exactKeys(body.action, ACTION_KEYS) ||
+        typeof body.action.caid !== "string" ||
+        !CAID.test(body.action.caid) ||
+        !digest(body.action.action_digest) ||
+        !digest(body.admission_domain_digest))
+        return "malformed_lifecycle_index";
+    if (!isRecord(body.lifecycle) || !exactKeys(body.lifecycle, LIFECYCLE_INDEX_KEYS))
+        return "malformed_lifecycle_index";
+    const lifecycle = body.lifecycle;
+    if (!isRecord(lifecycle.evaluation) ||
+        !exactKeys(lifecycle.evaluation, LIFECYCLE_EVALUATION_KEYS) ||
+        ![AEB_EVALUATION_VERSION, AEB_EVALUATION_V2_VERSION].includes(lifecycle.evaluation.profile) ||
+        !digest(lifecycle.evaluation.digest) ||
+        !nullableDigest(lifecycle.local_admission_digest) ||
+        !nullableDigest(lifecycle.provider_entry_digest) ||
+        !nullableDigest(lifecycle.effect_observation_digest) ||
+        !nullableDigest(lifecycle.provider_outcome_digest) ||
+        !nullableDigest(lifecycle.reconciliation_digest))
+        return "malformed_lifecycle_index";
+    if (!isRecord(lifecycle.authority_custody) ||
+        !exactKeys(lifecycle.authority_custody, LIFECYCLE_CUSTODY_KEYS) ||
+        ![
+            "NOT_APPLICABLE",
+            "RESERVATION",
+            "CONSUMPTION",
+            "INDETERMINATE",
+        ].includes(lifecycle.authority_custody.phase) ||
+        !nullableDigest(lifecycle.authority_custody.digest))
+        return "malformed_lifecycle_index";
+    if (lifecycle.authority_custody.phase === "NOT_APPLICABLE" &&
+        lifecycle.authority_custody.digest !== null)
+        return "custody_reference_inconsistent";
+    if (["RESERVATION", "CONSUMPTION"].includes(lifecycle.authority_custody.phase) &&
+        !digest(lifecycle.authority_custody.digest))
+        return "custody_reference_inconsistent";
+    if (!isRecord(body.source_crossing_record) ||
+        !exactKeys(body.source_crossing_record, LIFECYCLE_SOURCE_KEYS) ||
+        ![
+            AEB_CROSSING_RECORD_VERSION,
+            AEB_CROSSING_RECORD_V2_VERSION,
+            null,
+        ].includes(body.source_crossing_record.version) ||
+        !nullableDigest(body.source_crossing_record.digest) ||
+        ((body.source_crossing_record.version === null) !==
+            (body.source_crossing_record.digest === null)))
+        return "source_crossing_record_invalid";
+    if (!isRecord(body.conversion) ||
+        !exactKeys(body.conversion, LIFECYCLE_CONVERSION_KEYS) ||
+        !["NATIVE", "COMPLETE", "INDETERMINATE"].includes(body.conversion.status) ||
+        !Array.isArray(body.conversion.reason_codes) ||
+        body.conversion.reason_codes.length > 32 ||
+        !body.conversion.reason_codes.every((reason) => typeof reason === "string" && REASON_CODE.test(reason)) ||
+        new Set(body.conversion.reason_codes).size !==
+            body.conversion.reason_codes.length)
+        return "conversion_report_invalid";
+    if (body.conversion.status === "NATIVE" &&
+        body.source_crossing_record.version !== null)
+        return "conversion_report_invalid";
+    if (body.conversion.status !== "NATIVE" &&
+        body.source_crossing_record.version === null)
+        return "conversion_report_invalid";
+    if (body.conversion.status === "COMPLETE" &&
+        body.conversion.reason_codes.length !== 0)
+        return "conversion_report_invalid";
+    if (body.conversion.status === "INDETERMINATE" &&
+        body.conversion.reason_codes.length === 0)
+        return "conversion_report_invalid";
+    if (!digest(body.contract_digest))
+        return "malformed_lifecycle_index";
+    const typed = body;
+    if (crossingLifecycleIndexV2ContractDigest(typed) !== typed.contract_digest)
+        return "contract_digest_mismatch";
+    if (lifecycle.local_admission_digest === null) {
+        if (!["NOT_APPLICABLE", "INDETERMINATE"].includes(lifecycle.authority_custody.phase) ||
+            lifecycle.authority_custody.digest !== null ||
+            lifecycle.provider_entry_digest !== null ||
+            lifecycle.effect_observation_digest !== null ||
+            lifecycle.provider_outcome_digest !== null ||
+            lifecycle.reconciliation_digest !== null)
+            return "lifecycle_order_invalid";
+    }
+    if (lifecycle.provider_entry_digest === null &&
+        (lifecycle.effect_observation_digest !== null ||
+            lifecycle.provider_outcome_digest !== null ||
+            lifecycle.reconciliation_digest !== null))
+        return "lifecycle_order_invalid";
     return null;
 }
 function mappingCommonValid(input) {
@@ -636,6 +796,160 @@ export async function issueAebCrossingRecordV2(draft, context, options) {
         throw new CrossingRecordError("algorithm_set_mismatch");
     const signatures = await signAgileSet(crossingRecordV2SignedBytes(body), pinnedOptions.signing_keys, pinnedOptions);
     return { "@version": AEB_CROSSING_RECORD_V2_VERSION, body, signatures };
+}
+/**
+ * Issues the derived lifecycle index.  It references the native/local
+ * admission and provider records by digest; it does not flatten or reproduce
+ * their decisions.
+ */
+export async function issueAebCrossingLifecycleIndexV2(draft, context, options) {
+    const pinnedContext = JSON.parse(canonicalizeAeb(context));
+    const pinnedOptions = {
+        ...options,
+        signing_keys: options?.signing_keys?.map((key) => ({
+            ...key,
+            private_key: key.private_key instanceof Uint8Array
+                ? new Uint8Array(key.private_key)
+                : key.private_key,
+        })),
+    };
+    const partial = JSON.parse(canonicalizeAeb(draft));
+    if (!isRecord(pinnedContext) ||
+        !isRecord(pinnedContext.action) ||
+        !exactKeys(pinnedContext.action, ACTION_KEYS) ||
+        canonicalizeAeb(pinnedContext.action) !== canonicalizeAeb(partial.action))
+        throw new CrossingRecordError("action_mismatch");
+    if (!isRecord(pinnedContext.admission_domain) ||
+        !exactKeys(pinnedContext.admission_domain, BOUNDARY_KEYS) ||
+        !Object.values(pinnedContext.admission_domain).every(identifier))
+        throw new CrossingRecordError("admission_domain_mismatch");
+    if (!isRecord(pinnedContext.evaluation) ||
+        !exactKeys(pinnedContext.evaluation, LIFECYCLE_EVALUATION_KEYS) ||
+        canonicalizeAeb(pinnedContext.evaluation) !==
+            canonicalizeAeb(partial.lifecycle?.evaluation))
+        throw new CrossingRecordError("evaluation_reference_mismatch");
+    const bodyWithoutContract = {
+        ...partial,
+        signature_profile: {
+            id: SIGNATURE_AGILITY_VERSION,
+            required_algorithms: [...AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS],
+        },
+        admission_domain_digest: crossingLifecycleIndexV2AdmissionDomainDigest(pinnedContext.admission_domain),
+    };
+    const body = {
+        ...bodyWithoutContract,
+        contract_digest: crossingLifecycleIndexV2ContractDigest(bodyWithoutContract),
+    };
+    const reason = validateLifecycleIndexV2Body(body);
+    if (reason)
+        throw new CrossingRecordError(reason);
+    if (!Array.isArray(pinnedOptions.signing_keys) ||
+        pinnedOptions.signing_keys.length !==
+            AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS.length ||
+        pinnedOptions.signing_keys.some((key, index) => key.alg !== AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS[index]))
+        throw new CrossingRecordError("algorithm_set_mismatch");
+    const signatures = await signAgileSet(crossingLifecycleIndexV2SignedBytes(body), pinnedOptions.signing_keys, pinnedOptions);
+    return {
+        "@version": AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION,
+        body,
+        signatures,
+    };
+}
+/**
+ * Deterministically converts a structurally valid v1 crossing record into the
+ * new lifecycle index.  Any v1 axis that asserted later lifecycle state
+ * without a corresponding record digest is reported as INDETERMINATE rather
+ * than copied as if it were independently verifiable.
+ */
+export async function upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, options) {
+    const pinnedSource = JSON.parse(canonicalizeAeb(source));
+    if (!isRecord(pinnedSource) ||
+        !exactKeys(pinnedSource, DOCUMENT_KEYS) ||
+        pinnedSource["@version"] !== AEB_CROSSING_RECORD_VERSION ||
+        !isRecord(pinnedSource.body) ||
+        validateBody(pinnedSource.body) !== null ||
+        !signatureArray(pinnedSource.signatures))
+        throw new CrossingRecordError("source_crossing_record_invalid");
+    const sourceVerification = await verifyAebCrossingRecord(pinnedSource, {
+        verification_keys: options.source_verification_keys,
+        mldsaBackend: options.mldsaBackend,
+        mldsaBackendLoader: options.mldsaBackendLoader,
+    });
+    if (!sourceVerification.verified)
+        throw new CrossingRecordError("source_crossing_record_unverified");
+    const sourceBody = pinnedSource.body;
+    const reasonCodes = [];
+    const localAdmissionDigest = sourceBody.admission_reference.state === "PRESENT"
+        ? sourceBody.admission_reference.digest
+        : null;
+    if (["MISSING", "INDETERMINATE"].includes(sourceBody.admission_reference.state))
+        reasonCodes.push("local_admission_reference_indeterminate");
+    let custody = {
+        phase: "NOT_APPLICABLE",
+        digest: null,
+    };
+    if (sourceBody.lifecycle_records.consumption_digest !== null) {
+        if (["RESERVED", "INVOKING"].includes(sourceBody.referee.custody)) {
+            custody = {
+                phase: "RESERVATION",
+                digest: sourceBody.lifecycle_records.consumption_digest,
+            };
+        }
+        else if (sourceBody.referee.custody === "TERMINAL") {
+            custody = {
+                phase: "CONSUMPTION",
+                digest: sourceBody.lifecycle_records.consumption_digest,
+            };
+        }
+        else {
+            custody = {
+                phase: "INDETERMINATE",
+                digest: sourceBody.lifecycle_records.consumption_digest,
+            };
+            reasonCodes.push("custody_phase_indeterminate");
+        }
+    }
+    else if (!["UNRESERVED"].includes(sourceBody.referee.custody)) {
+        custody = { phase: "INDETERMINATE", digest: null };
+        reasonCodes.push("custody_reference_unavailable");
+    }
+    if (sourceBody.referee.provider_commitment !== "NOT_INVOKED")
+        reasonCodes.push("provider_outcome_reference_unavailable");
+    if (sourceBody.referee.observed_effect !== "NOT_OBSERVED")
+        reasonCodes.push("effect_observation_reference_unavailable");
+    if (sourceBody.referee.reconciliation !== "NOT_APPLICABLE")
+        reasonCodes.push("reconciliation_reference_unavailable");
+    const reasons = [...new Set(reasonCodes)].sort();
+    const conversionStatus = reasons.length === 0 ? "COMPLETE" : "INDETERMINATE";
+    const evaluation = {
+        profile: AEB_EVALUATION_VERSION,
+        digest: sourceBody.lifecycle_records.evaluation_digest,
+    };
+    return issueAebCrossingLifecycleIndexV2({
+        record_id: `${sourceBody.record_id}:lifecycle-index-v2`,
+        operation_id: sourceBody.operation_id,
+        issued_at: sourceBody.issued_at,
+        action: sourceBody.action,
+        lifecycle: {
+            evaluation,
+            local_admission_digest: localAdmissionDigest,
+            authority_custody: custody,
+            provider_entry_digest: sourceBody.lifecycle_records.provider_entry_digest,
+            effect_observation_digest: null,
+            provider_outcome_digest: null,
+            reconciliation_digest: null,
+        },
+        source_crossing_record: {
+            version: AEB_CROSSING_RECORD_VERSION,
+            digest: crossingRecordDigest(sourceBody),
+        },
+        conversion: { status: conversionStatus, reason_codes: reasons },
+        execution_authorizing: false,
+    }, {
+        action: sourceBody.action,
+        admission_domain: sourceBody.boundary,
+        evaluation,
+    }, options);
 }
 function refusal(reason, checks, recordDigest = null) {
     return {
@@ -816,6 +1130,98 @@ export async function verifyAebCrossingRecordV2(value, options) {
     }
     catch {
         return refuse("malformed_record");
+    }
+}
+export async function verifyAebCrossingLifecycleIndexV2(value, options) {
+    const checks = {
+        schema: false,
+        algorithm_set: null,
+        action: null,
+        admission_domain: null,
+        evaluation: null,
+        contract_digest: null,
+        lifecycle_order: null,
+        signature_set: null,
+    };
+    let conversionStatus = null;
+    const refuse = (reason, recordDigest = null) => ({
+        verified: false,
+        reason,
+        execution_authorizing: false,
+        record_digest: recordDigest,
+        conversion_status: conversionStatus,
+        checks,
+    });
+    try {
+        if (!isRecord(value) ||
+            !exactKeys(value, DOCUMENT_KEYS) ||
+            value["@version"] !== AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION ||
+            !isRecord(value.body))
+            return refuse("malformed_lifecycle_index");
+        checks.schema = true;
+        if (!isRecord(value.body.signature_profile) ||
+            !algorithmSetMatches(value.body.signature_profile.required_algorithms)) {
+            checks.algorithm_set = false;
+            return refuse("algorithm_set_mismatch");
+        }
+        checks.algorithm_set = true;
+        const structural = validateLifecycleIndexV2Body(value.body);
+        if (structural) {
+            if (structural === "contract_digest_mismatch")
+                checks.contract_digest = false;
+            if (["lifecycle_order_invalid", "custody_reference_inconsistent"].includes(structural))
+                checks.lifecycle_order = false;
+            return refuse(structural);
+        }
+        const body = value.body;
+        conversionStatus = body.conversion.status;
+        checks.contract_digest = true;
+        checks.lifecycle_order = true;
+        checks.action = canonicalizeAeb(options?.expected_action)
+            === canonicalizeAeb(body.action);
+        if (!checks.action)
+            return refuse("action_mismatch");
+        checks.admission_domain =
+            crossingLifecycleIndexV2AdmissionDomainDigest(options?.admission_domain) === body.admission_domain_digest;
+        if (!checks.admission_domain)
+            return refuse("admission_domain_mismatch");
+        checks.evaluation = canonicalizeAeb(options?.expected_evaluation)
+            === canonicalizeAeb(body.lifecycle.evaluation);
+        if (!checks.evaluation)
+            return refuse("evaluation_reference_mismatch");
+        const bodyDigest = crossingLifecycleIndexV2Digest(body);
+        if (!signatureArray(value.signatures)) {
+            checks.signature_set = false;
+            const algorithms = Array.isArray(value.signatures)
+                ? value.signatures.map((signature) => signature?.alg)
+                : [];
+            return refuse(algorithms.length < AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS.length
+                ? "hybrid_leg_missing"
+                : "signature_invalid", bodyDigest);
+        }
+        const result = await verifyAgileSignatureSet(crossingLifecycleIndexV2SignedBytes(body), value.signatures, options?.verification_keys, {
+            ...options,
+            policy: "hybrid_all",
+            requiredAlgorithms: [...AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS],
+        });
+        if (result.verified !== true) {
+            checks.signature_set = false;
+            return refuse(result.reason === "missing_required_algorithm"
+                ? "hybrid_leg_missing"
+                : "signature_invalid", bodyDigest);
+        }
+        checks.signature_set = true;
+        return {
+            verified: true,
+            reason: null,
+            execution_authorizing: false,
+            record_digest: bodyDigest,
+            conversion_status: conversionStatus,
+            checks,
+        };
+    }
+    catch {
+        return refuse("malformed_lifecycle_index");
     }
 }
 //# sourceMappingURL=aeb-crossing-record.js.map

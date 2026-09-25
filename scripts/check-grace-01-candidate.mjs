@@ -43,7 +43,7 @@ assert.equal(
 
 expectText(xml, 'docName="draft-schrock-kintzele-grid-curtailment-01"');
 expectText(xml, '<seriesInfo name="Internet-Draft" value="draft-schrock-kintzele-grid-curtailment-01"/>');
-expectText(xml, '<date year="2026" month="September" day="23"/>');
+expectText(xml, '<date year="2026" month="September" day="24"/>');
 
 const documentFront = xml.match(/<front>([\s\S]*?)<abstract>/)?.[1] ?? '';
 expectText(documentFront, '<author fullname="Iman Schrock">');
@@ -77,23 +77,39 @@ for (const text of [
   'same communications card is in the same control',
   'hardwired interlocks are outside the GRACE authority and admission path',
   'MUST NOT</bcp14> invoke the same',
-  'No outlet was',
+  'no outlet was',
   'does not report an energized actuation',
   'Vertiv Liebert GXT5-3000LVRT2UXLN',
   'firmware 1.9.3.0',
   'SNMPv3 AuthPriv',
-  'Modbus channel and control domain',
-  'There is no blind',
+  'SHA-1',
+  'AES-128',
+  '1.3.6.1.4.1.476.1.42.3.9.20.1.20.1.2.1.4365.2',
+  'instrumented',
+  'Modbus power meter through a separate channel and control domain',
+  'There is no ambient',
   'effect_observed',
+  'effect_divergent',
+  'degraded_transport_timeout',
+  'channel_unavailable',
+  'not_invoked_refused',
+  'summary label shown to an operator',
+  'replace those facts in storage',
+  'normalize either form into the other',
+  'yield the same native-command digest',
+  'neither it nor the admission is sufficient dispatch',
+  'Consented and Attributable Agent Authority for Operational-Technology Control Actions',
   'thirteen behavioral cases',
 ]) {
   expectText(xml, text);
 }
 
+assert.ok(!xml.includes('qualifier encoding may identify'), 'DNP3 result remains non-deterministic');
+
 expectText(xml, 'draft-morrison-ot-command-authority-02');
 assert.ok(!xml.includes('draft-morrison-ot-command-authority-03'), 'references an unpublished -03');
 
-const commandAuthority = xml.indexOf('Morrison action-specific proof + proposed action');
+const commandAuthority = xml.indexOf('[OT-COMMAND-AUTHORITY] action-specific proof + proposed action');
 const emilia = xml.indexOf('EMILIA exact-action authority + admission + one-time consumption');
 const cosa = xml.indexOf('COSA adapter -> RDU101 SNMPv3 SET');
 const meter = xml.indexOf('separate Modbus domain -> independent meter readback');
@@ -102,7 +118,7 @@ assert.ok(commandAuthority >= 0 && commandAuthority < emilia && emilia < cosa &&
   'worked-example control order changed');
 
 for (const value of [
-  'Morrison action-specific proof + proposed action',
+  '[OT-COMMAND-AUTHORITY] action-specific proof + proposed action',
   'EMILIA exact-action authority + admission + one-time consumption',
   'Non-Normative RDU101 Worked Example',
   'does not report an energized actuation',

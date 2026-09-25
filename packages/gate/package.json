@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
@@ -298,6 +298,10 @@
       "types": "./dist/proposal-to-effect-postgres.d.ts",
       "import": "./proposal-to-effect-postgres.js"
     },
+    "./aeb": {
+      "types": "./dist/aeb.d.ts",
+      "import": "./aeb.js"
+    },
     "./aeb-consumption-store": {
       "types": "./dist/aeb-consumption-store.d.ts",
       "import": "./aeb-consumption-store.js"
@@ -534,6 +538,7 @@
     "proposal-to-effect-status.js",
     "proposal-to-effect-status-head-store.js",
     "proposal-to-effect-postgres.js",
+    "aeb.js",
     "aeb-consumption-store.js",
     "consequence-actuator.js",
     "consequence-boundary.js",
@@ -659,7 +664,7 @@
   },
   "dependencies": {
     "@emilia-protocol/require-receipt": "0.8.1",
-    "@emilia-protocol/verify": "4.0.0",
+    "@emilia-protocol/verify": "4.1.0",
     "@noble/curves": "^2.3.0"
   },
   "keywords": [
