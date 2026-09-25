@@ -199,28 +199,23 @@ or registry.
 - Refresh the date and re-run the checks in `VALIDATION.md`, including the
   Datatracker revision check and the reference-currency check.
 - The `EP-NATIVE-HANDOFF` and `EP-LIFECYCLE-CORPUS` references pin commit
-  `b929810bbb6cba642f0ef3dbc4b6954ac3c481e7` on branch `fix/pr788-followups`
-  (PR #790), which carries the round-three code and docs that Section 15
+  `ebb4084b81d0e0bb544494c92c171dcebda7dab3` on branch `fix/pr788-followups`
+  (PR #790), which carries the round-four code and docs that Section 15
   describes: the separate pre-entry recovery mode and its linearization,
-  release only after a confirmed transition, exact affirmative store
-  answers, recovery claims bound to one attempt, the owner check on the
+  the explicit not-entered marker, release only after a confirmed
+  transition, exact affirmative store answers, terminal-evidence
+  verification with a purpose (required on the native boundary, optional on
+  the composed boundary), recovery claims bound to one attempt, refused
+  without a scope, and namespaced by boundary kind, the owner check on the
   composed boundary's evaluation reservation, one namespace per issuer in
   the verifier, and Gate's additional fence over the carried wire
-  `replay_unit`. Every round-three Section 15 statement was checked against
-  that code. It is same-team reference code, not an independent
-  implementation. The round-four revision adds Section 15 statements that
-  describe code which is not at that commit: the explicit not-entered
-  marker, terminal-evidence verification with a purpose (required on the
-  native boundary, optional on the composed boundary), recovery claims refused without a scope and namespaced by
-  boundary kind, and the fence over the earlier release's replay key for
-  every pinned label. Each is marked with a `PR790-R4-CONFIRM` comment in
-  the XML. Once that code is on the branch, confirm each statement against
-  it, remove the comments, and re-pin both references to a commit that
-  carries it. The PR was not merged when this candidate was prepared.
-  Before filing, re-pin both references to the merge commit on `main`,
-  re-render, regenerate `SHA256SUMS.txt`, and re-run idnits. The handoff
-  still carries its 4.1.0 wire `replay_unit`, which covers the labels, and
-  the reference Gate still has no material-field inventory or
+  `replay_unit` for every pinned label. Every Section 15 statement was
+  checked against that code. It is same-team reference code, not an
+  independent implementation. The PR was not merged when this candidate
+  was prepared. Before filing, re-pin both references to the merge commit
+  on `main`, re-render, regenerate `SHA256SUMS.txt`, and re-run idnits. The
+  handoff still carries its 4.1.0 wire `replay_unit`, which covers the
+  labels, and the reference Gate still has no material-field inventory or
   canonical-form equivalence; Section 15 says both.
 
 ## Layout

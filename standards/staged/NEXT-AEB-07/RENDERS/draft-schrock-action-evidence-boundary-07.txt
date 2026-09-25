@@ -117,34 +117,34 @@ Internet-Draft          Action Evidence Boundary          September 2026
      5.9.  Derive the Native Replay Identity . . . . . . . . . . . .  19
      5.10. Hold the Same-Action In-Flight Fence  . . . . . . . . . .  20
      5.11. Atomically Consume or Reserve Before Invocation . . . . .  24
-     5.12. Enter the Provider with the Frozen Effect . . . . . . . .  25
-     5.13. Classify the Effect Outcome . . . . . . . . . . . . . . .  26
-     5.14. Perform Authenticated Reconciliation  . . . . . . . . . .  27
-   6.  Declaration and Challenge Semantics . . . . . . . . . . . . .  29
-   7.  Native Evidence and Transport Boundaries  . . . . . . . . . .  29
-     7.1.  WIMSE and HTTP Message Signatures . . . . . . . . . . . .  29
-     7.2.  AuthZEN and COAZ  . . . . . . . . . . . . . . . . . . . .  30
-     7.3.  Attested Per-Action Tokens and Permit Records . . . . . .  31
-   8.  Native Compilation Contract . . . . . . . . . . . . . . . . .  32
-     8.1.  Pinned Inputs . . . . . . . . . . . . . . . . . . . . . .  33
-     8.2.  Deterministic Operations  . . . . . . . . . . . . . . . .  34
-     8.3.  Closed Compile Result . . . . . . . . . . . . . . . . . .  34
-     8.4.  Semantic-Loss Report  . . . . . . . . . . . . . . . . . .  35
-     8.5.  Stable Native Replay Unit . . . . . . . . . . . . . . . .  36
-     8.6.  Path and Provider Ownership . . . . . . . . . . . . . . .  36
-     8.7.  Compilation Conformance . . . . . . . . . . . . . . . . .  37
-   9.  Conformance and Deployment Claims . . . . . . . . . . . . . .  38
-   10. Security Considerations . . . . . . . . . . . . . . . . . . .  39
-   11. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  43
-   12. Relationship to EMILIA and Adjacent Work  . . . . . . . . . .  43
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  44
-   14. Changes since -06 . . . . . . . . . . . . . . . . . . . . . .  44
-   15. Implementation Status . . . . . . . . . . . . . . . . . . . .  46
-   16. References  . . . . . . . . . . . . . . . . . . . . . . . . .  49
-     16.1.  Normative References . . . . . . . . . . . . . . . . . .  50
-     16.2.  Informative References . . . . . . . . . . . . . . . . .  50
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  53
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  53
+     5.12. Enter the Provider with the Frozen Effect . . . . . . . .  26
+     5.13. Classify the Effect Outcome . . . . . . . . . . . . . . .  27
+     5.14. Perform Authenticated Reconciliation  . . . . . . . . . .  28
+   6.  Declaration and Challenge Semantics . . . . . . . . . . . . .  30
+   7.  Native Evidence and Transport Boundaries  . . . . . . . . . .  30
+     7.1.  WIMSE and HTTP Message Signatures . . . . . . . . . . . .  30
+     7.2.  AuthZEN and COAZ  . . . . . . . . . . . . . . . . . . . .  31
+     7.3.  Attested Per-Action Tokens and Permit Records . . . . . .  32
+   8.  Native Compilation Contract . . . . . . . . . . . . . . . . .  33
+     8.1.  Pinned Inputs . . . . . . . . . . . . . . . . . . . . . .  34
+     8.2.  Deterministic Operations  . . . . . . . . . . . . . . . .  35
+     8.3.  Closed Compile Result . . . . . . . . . . . . . . . . . .  35
+     8.4.  Semantic-Loss Report  . . . . . . . . . . . . . . . . . .  36
+     8.5.  Stable Native Replay Unit . . . . . . . . . . . . . . . .  37
+     8.6.  Path and Provider Ownership . . . . . . . . . . . . . . .  37
+     8.7.  Compilation Conformance . . . . . . . . . . . . . . . . .  38
+   9.  Conformance and Deployment Claims . . . . . . . . . . . . . .  39
+   10. Security Considerations . . . . . . . . . . . . . . . . . . .  40
+   11. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  44
+   12. Relationship to EMILIA and Adjacent Work  . . . . . . . . . .  44
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  45
+   14. Changes since -06 . . . . . . . . . . . . . . . . . . . . . .  45
+   15. Implementation Status . . . . . . . . . . . . . . . . . . . .  47
+   16. References  . . . . . . . . . . . . . . . . . . . . . . . . .  51
+     16.1.  Normative References . . . . . . . . . . . . . . . . . .  51
+     16.2.  Informative References . . . . . . . . . . . . . . . . .  51
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  54
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  55
 
 1.  Introduction
 
@@ -1239,13 +1239,16 @@ Internet-Draft          Action Evidence Boundary          September 2026
    attempt record never reached DISPATCH_PENDING, that the boundary
    closed it as not entered through an atomic transition that no
    dispatch of the attempt can follow and that recorded the not-entered
-   marker, or that no attempt record was written, and, where the
-   effecting system offers an authenticated lookup by operation or
-   idempotency key, that lookup reports that the operation was not
-   received.  When the record is still in a state from which the
-   original attempt could proceed to dispatch, the recovery operation
-   MUST first close it as not entered through such an atomic transition,
-   so that the original attempt cannot dispatch after the release.
+   marker, and, where the effecting system offers an authenticated
+   lookup by operation or idempotency key, that lookup reports that the
+   operation was not received.  The absence of an attempt record is not
+   such proof, because a live attempt may not yet have written it; a
+   record held without an attempt record therefore stays held, and a
+   boundary SHOULD record the attempt before it occupies the action key.
+   When the record is still in a state from which the original attempt
+   could proceed to dispatch, the recovery operation MUST first close it
+   as not entered through such an atomic transition, so that the
+   original attempt cannot dispatch after the release.
 
    That transition is the linearization point between recovery and the
    original attempt.  Recovery MAY treat the attempt as not entered only
@@ -1279,9 +1282,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    identical actions MAY declare an instance field.  The instance field
    MUST be a material field, so it is part of the action digest and is
    covered by the native authorization or by the handoff's action
-   digest.  Its value SHOULD be fixed by the party that authorizes the
-   action rather than chosen by the party that retries it (see
-   Section 10).
 
 
 
@@ -1289,6 +1289,10 @@ Schrock                   Expires 29 March 2027                [Page 23]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
+
+   digest.  Its value SHOULD be fixed by the party that authorizes the
+   action rather than chosen by the party that retries it (see
+   Section 10).
 
 5.11.  Atomically Consume or Reserve Before Invocation
 
@@ -1298,6 +1302,49 @@ Internet-Draft          Action Evidence Boundary          September 2026
    can include consuming a one-time authorization, challenge nonce, or
    operation key; reserving a bounded capability or budget; and fencing
    the operation to one owner across replicas.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 24]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
 
    Each write in the transition MUST be atomic within the relying
    party's durable state domain.  Before provider entry, the boundary
@@ -1341,7 +1388,16 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 24]
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 25]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1397,7 +1453,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 25]
+Schrock                   Expires 29 March 2027                [Page 26]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1453,7 +1509,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 26]
+Schrock                   Expires 29 March 2027                [Page 27]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1509,7 +1565,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 27]
+Schrock                   Expires 29 March 2027                [Page 28]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1565,7 +1621,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 28]
+Schrock                   Expires 29 March 2027                [Page 29]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1621,7 +1677,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 29]
+Schrock                   Expires 29 March 2027                [Page 30]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1677,7 +1733,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 30]
+Schrock                   Expires 29 March 2027                [Page 31]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1733,7 +1789,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 31]
+Schrock                   Expires 29 March 2027                [Page 32]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1789,7 +1845,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 32]
+Schrock                   Expires 29 March 2027                [Page 33]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1845,7 +1901,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 33]
+Schrock                   Expires 29 March 2027                [Page 34]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1901,7 +1957,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 34]
+Schrock                   Expires 29 March 2027                [Page 35]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1957,7 +2013,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 35]
+Schrock                   Expires 29 March 2027                [Page 36]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2013,7 +2069,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 36]
+Schrock                   Expires 29 March 2027                [Page 37]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2069,7 +2125,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 37]
+Schrock                   Expires 29 March 2027                [Page 38]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2125,7 +2181,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 38]
+Schrock                   Expires 29 March 2027                [Page 39]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2181,7 +2237,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 39]
+Schrock                   Expires 29 March 2027                [Page 40]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2237,7 +2293,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 40]
+Schrock                   Expires 29 March 2027                [Page 41]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2293,7 +2349,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 41]
+Schrock                   Expires 29 March 2027                [Page 42]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2349,7 +2405,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 42]
+Schrock                   Expires 29 March 2027                [Page 43]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2405,7 +2461,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 43]
+Schrock                   Expires 29 March 2027                [Page 44]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2461,7 +2517,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 44]
+Schrock                   Expires 29 March 2027                [Page 45]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2477,8 +2533,8 @@ Internet-Draft          Action Evidence Boundary          September 2026
       entered transition itself, as the only proof besides a pre-
       dispatch state that an attempt did not enter the provider.  A
       closed record without the marker or terminal provider evidence is
-      INDETERMINATE; the absence of evidence is never proof of non-
-      entry.
+      INDETERMINATE; the absence of evidence, or of an attempt record,
+      is never proof of non-entry.
 
    *  Required every terminal outcome that commits or releases the
       records of a dispatched attempt to be verified for that attempt by
@@ -2517,7 +2573,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 45]
+Schrock                   Expires 29 March 2027                [Page 46]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2573,7 +2629,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 46]
+Schrock                   Expires 29 March 2027                [Page 47]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2629,7 +2685,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 47]
+Schrock                   Expires 29 March 2027                [Page 48]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -2638,16 +2694,21 @@ Internet-Draft          Action Evidence Boundary          September 2026
    coordinates, and the action digest, so they fence each other when
    they share a store.  Each writes the attempt record before any record
    that occupies the action key, records an explicit not-entered marker
-   with every not-entered transition and treats a closed record without
-   it as INDETERMINATE, never counts a store answer other than the exact
-   affirmative result as success, and provides the pre-entry recovery of
-   Section 5.10 as a separate mode of its reconciliation operation.  In
-   that mode its own not-entered transition of the attempt record is the
-   linearization point, a recovery that loses the transition returns
-   INDETERMINATE without releasing anything, and the attempt's records
-   are released only after the transition is confirmed.  Recovery
-   authorization is scoped to one attempt identifier, and a claimed
-   record must be one derived from that attempt.
+   with every not-entered transition, treats a closed record that
+   carries neither that marker nor provider evidence as INDETERMINATE,
+   never counts a store answer other than the exact affirmative result
+   as success, and provides the pre-entry recovery of Section 5.10 as a
+   separate mode of its reconciliation operation.  In that mode its own
+   not-entered transition of the attempt record is the linearization
+   point, a recovery that loses the transition returns INDETERMINATE
+   without releasing anything, and the attempt's records are released
+   only after the transition is confirmed.  Recovery authorization is
+   scoped to one attempt, and a claimed record must be one derived from
+   that attempt.  The composed boundary has no recovery for an
+   evaluation reservation that a run made before it wrote its attempt
+   record: such a reservation stays held, because nothing durable
+   distinguishes a crashed run from a live one that has not yet written
+   its record.
 
    The two boundaries key their records differently.  The native
    boundary keys each of its three reservations, for the operation, the
@@ -2660,36 +2721,36 @@ Internet-Draft          Action Evidence Boundary          September 2026
    key still held, or, without such a read, the acknowledged close of
    that occupation.  Its pre-entry recovery releases only that
    occupation, leaving the evaluation reservation to the run that made
-   it.  Where its attempt store or consumption store offers no durable
-   state read, the composed boundary confirms a transition or release
-   only by the store's exact affirmative result rather than by the
-   authenticated durable read that Section 5.11 requires.  It then
-   treats only its own not-entered transition answered affirmatively as
-   proof of a pre-entry stop, and because it cannot tell a recovery's
-   not-entered transition from its own lost write, a run that loses that
-   race keeps every record held and the action key occupied.  The
-   reference PostgreSQL consumption store exposes a durable state read
-   and an authorized recovery claim that both boundaries use after a
-   restart.  Before the authorizer runs, the store refuses a claim that
-   carries no recovery scope and a claim for any record other than one
-   the scope names for its attempt.  The scope names the boundary kind
-   as well as the attempt identifier, so a native attempt and a composed
-   attempt that share one store and one attempt identifier do not share
-   claims.
+   it.  Where its consumption store offers no durable state read, or its
+   attempt store offers none or does not declare that it stores and
+   returns the not-entered marker, the composed boundary confirms a
+   transition or release only by the store's exact affirmative result
+   rather than by the authenticated durable read that Section 5.11
+   requires.  It then treats only its own not-entered transition
+   answered affirmatively as proof of a pre-entry stop, and because it
+   cannot tell a recovery's not-entered transition from its own lost
+   write, a run that loses that race keeps every record held and the
+   action key occupied.  The reference PostgreSQL consumption store
+   exposes a durable state read and an authorized recovery claim that
+   both boundaries use after a restart.  Before the authorizer runs, the
+   store refuses a claim that carries no recovery scope and a claim for
+   any record other than one the scope names for its attempt.  The scope
+   names the boundary kind as well as the attempt identifier, so a
+   native attempt and a composed attempt that share one store and one
+   attempt identifier do not share claims.
+
+
+
+Schrock                   Expires 29 March 2027                [Page 49]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
 
    Evidence verification.  Both boundaries can verify a terminal outcome
    through an operator-configured verifier that receives the attempt,
    its provider idempotency key, and the purpose of the check, and that
    affirms an outcome only by restating all three.  The native boundary
    requires that verifier and accepts no terminal outcome for an attempt
-
-
-
-Schrock                   Expires 29 March 2027                [Page 48]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    that reached DISPATCH_PENDING without its affirmation.  On the
    composed boundary the verifier is optional.  With it, the composed
    boundary behaves the same way.  Without it, the composed boundary
@@ -2697,14 +2758,18 @@ Internet-Draft          Action Evidence Boundary          September 2026
    the result that its own provider adapter returns, after checking only
    that result's form; on that path the verification requirement of
    Section 5.13 is met only if the operator's provider adapter
-   authenticates the outcomes it returns.  The reference code does not
-   itself authenticate an effecting system: the authenticated-evidence
-   requirements of Section 5.10, Section 5.13, and Section 5.14 are met
-   only if the operator's verifier or adapter authenticates the provider
-   evidence it accepts.  Neither boundary can tell whether an effecting
-   system offers a lookup: both accept an indeterminate provider answer
-   as the absence of one, so presenting the lookup result where a lookup
-   exists is the operator's responsibility.
+   authenticates the outcomes it returns.  The reference code checks
+   that a verifier's answer restates the purpose, the attempt, and the
+   idempotency key it was given, but it cannot tell whether the verifier
+   evaluated the evidence: a verifier that affirms whatever it is asked
+   accepts a pre-entry lookup as a terminal outcome.  The reference code
+   does not itself authenticate an effecting system: the authenticated-
+   evidence requirements of Section 5.10, Section 5.13, and Section 5.14
+   are met only if the operator's verifier or adapter authenticates the
+   provider evidence it accepts.  Neither boundary can tell whether an
+   effecting system offers a lookup: both accept an indeterminate
+   provider answer as the absence of one, so presenting the lookup
+   result where a lookup exists is the operator's responsibility.
 
    The reference Gate implements no material-field inventory and no
    canonical-form equivalence.  It compares the caller-supplied action
@@ -2729,6 +2794,14 @@ Internet-Draft          Action Evidence Boundary          September 2026
    has 14 deterministic cases, including disallowed field origins,
    unknown origin, profile substitution, an unpinned transformation, and
    the positive case in which untrusted content supplies only a bounded
+
+
+
+Schrock                   Expires 29 March 2027                [Page 50]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    memo field.  Conformance vectors and adversarial tests cover selected
    reference paths; the full conformance set above remains future
    conformance work and is not established by this revision.  These
@@ -2737,14 +2810,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    effect path.
 
 16.  References
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 49]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
 16.1.  Normative References
 
@@ -2782,6 +2847,17 @@ Internet-Draft          Action Evidence Boundary          September 2026
               <https://datatracker.ietf.org/doc/draft-schrock-ep-action-
               evidence-graph/>.
 
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 51]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    [AP2]      Google Agentic Commerce, "Agent Payments Protocol (AP2),
               v0.2 CheckoutMandate and PaymentMandate", 2026,
               <https://github.com/google-agentic-commerce/AP2/tree/
@@ -2792,15 +2868,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
               "Authorization API 1.0", OpenID AuthZEN Final
               Specification, 11 January 2026,
               <https://openid.net/specs/authorization-api-1_0.html>.
-
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 50]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
    [AUTHZEN-COAZ]
               Olivier, A. and A. Tulshibagwale, "COAZ: A Framework for
@@ -2838,28 +2905,28 @@ Internet-Draft          Action Evidence Boundary          September 2026
               EMILIA Protocol, "Consequence-Admission Lifecycle
               Composition Corpus v0.1", 25 September 2026,
               <https://github.com/emiliaprotocol/emilia-
-              protocol/tree/b929810bbb6cba642f0ef3dbc4b6954ac3c481e7/
+              protocol/tree/ebb4084b81d0e0bb544494c92c171dcebda7dab3/
+
+
+
+Schrock                   Expires 29 March 2027                [Page 52]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
               conformance/composition/consequence-admission-lifecycle-
               v0.1>.  Repository commit
-              b929810bbb6cba642f0ef3dbc4b6954ac3c481e7.  Synthetic same-
+              ebb4084b81d0e0bb544494c92c171dcebda7dab3.  Synthetic same-
               team corpus.
 
    [EP-NATIVE-HANDOFF]
               EMILIA Protocol, "AEB-NATIVE-AUTHORIZATION-HANDOFF-v1
               Reference Encoding and Native Consequence Boundary", 25
               September 2026, <https://github.com/emiliaprotocol/emilia-
-              protocol/blob/b929810bbb6cba642f0ef3dbc4b6954ac3c481e7/
+              protocol/blob/ebb4084b81d0e0bb544494c92c171dcebda7dab3/
               docs/protocol/aeb-native-authorization-handoff-v1.md>.
-
-
-
-Schrock                   Expires 29 March 2027                [Page 51]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
               Repository commit
-              b929810bbb6cba642f0ef3dbc4b6954ac3c481e7.  Same-team
+              ebb4084b81d0e0bb544494c92c171dcebda7dab3.  Same-team
               reference code; informative only.
 
    [MUNOZ-PERMIT]
@@ -2891,6 +2958,18 @@ Internet-Draft          Action Evidence Boundary          September 2026
               <https://datatracker.ietf.org/doc/draft-ietf-oauth-
               transaction-tokens/>.
 
+
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 53]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    [PEDIGREE] Rampalli, K., "PEDIGREE: Verifiable Delegation Identity
               for Agentic AI Systems", Work in Progress, Internet-Draft,
               draft-rampalli-pedigree-00, April 2026,
@@ -2902,17 +2981,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
               ep-authorization-receipts-13, 12 September 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-receipts/>.
-
-
-
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 52]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
    [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
               Code: The Implementation Status Section", BCP 205,
@@ -2951,6 +3019,13 @@ Acknowledgments
    distinctions are load-bearing in this document.  Acknowledgment does
    not imply endorsement.
 
+
+
+Schrock                   Expires 29 March 2027                [Page 54]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
 Author's Address
 
    Iman Schrock
@@ -2965,4 +3040,41 @@ Author's Address
 
 
 
-Schrock                   Expires 29 March 2027                [Page 53]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 55]

@@ -2520,11 +2520,13 @@ li > p:last-of-type:only-child {
         reservations only when an authenticated durable read shows that the
         attempt record never reached DISPATCH_PENDING, that the boundary closed
         it as not entered through an atomic transition that no dispatch of the
-        attempt can follow and that recorded the not-entered marker, or that
-        no attempt record was written, and, where
-        the effecting system offers an authenticated lookup by operation or
-        idempotency key, that lookup reports that the operation was not
-        received. When the record is still in a state from which the original
+        attempt can follow and that recorded the not-entered marker, and,
+        where the effecting system offers an authenticated lookup by operation
+        or idempotency key, that lookup reports that the operation was not
+        received. The absence of an attempt record is not such proof, because
+        a live attempt may not yet have written it; a record held without an
+        attempt record therefore stays held, and a boundary SHOULD record the
+        attempt before it occupies the action key. When the record is still in a state from which the original
         attempt could proceed to dispatch, the recovery operation MUST first
         close it as not entered through such an atomic transition, so that the
         original attempt cannot dispatch after the release.<a href="#section-5.10-11" class="pilcrow">¶</a></p>
@@ -3617,8 +3619,8 @@ li > p:last-of-type:only-child {
         not-entered transition itself, as the only proof besides a
         pre-dispatch state that an attempt did not enter the provider. A
         closed record without the marker or terminal provider evidence is
-        INDETERMINATE; the absence of evidence is never proof of
-        non-entry.<a href="#section-14-1.2" class="pilcrow">¶</a>
+        INDETERMINATE; the absence of evidence, or of an attempt record, is
+        never proof of non-entry.<a href="#section-14-1.2" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-14-1.3">Required every terminal outcome that commits or releases the
         records of a dispatched attempt to be verified for that attempt by a
@@ -3747,8 +3749,7 @@ li > p:last-of-type:only-child {
       the only fence, and it covers only the labels pinned at the time. The
       earlier release has no same-action fence, so the reference
       documentation requires that it not serve a durable state domain
-      together with the current code.
-       The verifier's pin-set
+      together with the current code. The verifier's pin-set
       check refuses a pin set that does not map each
       issuer, including issuer values that are equal after the normalization
       of <a href="#pins" class="auto internal xref">Section 4</a>, to exactly one authority namespace, and the
@@ -3761,7 +3762,8 @@ li > p:last-of-type:only-child {
       action digest, so they fence each other when they share a store. Each
       writes the attempt record before any record that occupies the action
       key, records an explicit not-entered marker with every not-entered
-      transition and treats a closed record without it as INDETERMINATE,
+      transition, treats a closed record that carries neither that marker
+      nor provider evidence as INDETERMINATE,
       never counts a store answer other than the exact affirmative result as
       success, and provides the pre-entry recovery of
       <a href="#same-action-fence" class="auto internal xref">Section 5.10</a> as a separate mode of its
@@ -3770,8 +3772,11 @@ li > p:last-of-type:only-child {
       point, a recovery that loses the transition returns INDETERMINATE
       without releasing anything, and the attempt's records are released only
       after the transition is confirmed. Recovery authorization is scoped to
-      one attempt identifier, and a claimed record must be one derived from
-      that attempt.<a href="#section-15-4" class="pilcrow">¶</a></p>
+      one attempt, and a claimed record must be one derived from that
+      attempt. The composed boundary has no recovery for an evaluation
+      reservation that a run made before it wrote its attempt record: such a
+      reservation stays held, because nothing durable distinguishes a
+      crashed run from a live one that has not yet written its record.<a href="#section-15-4" class="pilcrow">¶</a></p>
 <p id="section-15-5">The two boundaries key their records differently. The native
       boundary keys each of its three reservations, for the operation, the
       native replay identity, and its occupation of the action key, by the
@@ -3783,8 +3788,9 @@ li > p:last-of-type:only-child {
       held, or, without such a read, the acknowledged close of that
       occupation. Its pre-entry recovery releases only that occupation,
       leaving the evaluation reservation to the run that made it. Where its
-      attempt store or consumption store offers no durable state read, the
-      composed boundary confirms a transition or release only by the store's
+      consumption store offers no durable state read, or its attempt store
+      offers none or does not declare that it stores and returns the
+      not-entered marker, the composed boundary confirms a transition or release only by the store's
       exact affirmative result rather than by the authenticated durable read
       that <a href="#consume-reserve" class="auto internal xref">Section 5.11</a> requires. It then treats only its
       own not-entered transition answered affirmatively as proof of a
@@ -3811,8 +3817,12 @@ li > p:last-of-type:only-child {
       result that its own provider adapter returns, after checking only that
       result's form; on that path the verification requirement of
       <a href="#outcome" class="auto internal xref">Section 5.13</a> is met only if the operator's provider adapter
-      authenticates the outcomes it returns. The reference code does not
-      itself authenticate an effecting system: the authenticated-evidence
+      authenticates the outcomes it returns. The reference code checks
+      that a verifier's answer restates the purpose, the attempt, and the
+      idempotency key it was given, but it cannot tell whether the verifier
+      evaluated the evidence: a verifier that affirms whatever it is asked
+      accepts a pre-entry lookup as a terminal outcome. The reference code
+      does not itself authenticate an effecting system: the authenticated-evidence
       requirements of <a href="#same-action-fence" class="auto internal xref">Section 5.10</a>,
       <a href="#outcome" class="auto internal xref">Section 5.13</a>, and <a href="#reconcile" class="auto internal xref">Section 5.14</a> are met only
       if the operator's verifier or adapter authenticates the provider
@@ -3921,15 +3931,15 @@ li > p:last-of-type:only-child {
 <dd class="break"></dd>
 <dt id="EP-LIFECYCLE-CORPUS">[EP-LIFECYCLE-CORPUS]</dt>
         <dd>
-<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"Consequence-Admission Lifecycle Composition Corpus v0.1"</span>, <time datetime="2026-09-25" class="refDate">25 September 2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/tree/b929810bbb6cba642f0ef3dbc4b6954ac3c481e7/conformance/composition/consequence-admission-lifecycle-v0.1">https://github.com/emiliaprotocol/emilia-protocol/tree/b929810bbb6cba642f0ef3dbc4b6954ac3c481e7/conformance/composition/consequence-admission-lifecycle-v0.1</a>&gt;</span>. <span class="annotation">Repository commit
-          b929810bbb6cba642f0ef3dbc4b6954ac3c481e7. Synthetic same-team
+<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"Consequence-Admission Lifecycle Composition Corpus v0.1"</span>, <time datetime="2026-09-25" class="refDate">25 September 2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/tree/ebb4084b81d0e0bb544494c92c171dcebda7dab3/conformance/composition/consequence-admission-lifecycle-v0.1">https://github.com/emiliaprotocol/emilia-protocol/tree/ebb4084b81d0e0bb544494c92c171dcebda7dab3/conformance/composition/consequence-admission-lifecycle-v0.1</a>&gt;</span>. <span class="annotation">Repository commit
+          ebb4084b81d0e0bb544494c92c171dcebda7dab3. Synthetic same-team
           corpus.</span>
         </dd>
 <dd class="break"></dd>
 <dt id="EP-NATIVE-HANDOFF">[EP-NATIVE-HANDOFF]</dt>
         <dd>
-<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"AEB-NATIVE-AUTHORIZATION-HANDOFF-v1 Reference Encoding and Native Consequence Boundary"</span>, <time datetime="2026-09-25" class="refDate">25 September 2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/blob/b929810bbb6cba642f0ef3dbc4b6954ac3c481e7/docs/protocol/aeb-native-authorization-handoff-v1.md">https://github.com/emiliaprotocol/emilia-protocol/blob/b929810bbb6cba642f0ef3dbc4b6954ac3c481e7/docs/protocol/aeb-native-authorization-handoff-v1.md</a>&gt;</span>. <span class="annotation">Repository commit
-          b929810bbb6cba642f0ef3dbc4b6954ac3c481e7. Same-team reference code;
+<span class="refAuthor">EMILIA Protocol</span>, <span class="refTitle">"AEB-NATIVE-AUTHORIZATION-HANDOFF-v1 Reference Encoding and Native Consequence Boundary"</span>, <time datetime="2026-09-25" class="refDate">25 September 2026</time>, <span>&lt;<a href="https://github.com/emiliaprotocol/emilia-protocol/blob/ebb4084b81d0e0bb544494c92c171dcebda7dab3/docs/protocol/aeb-native-authorization-handoff-v1.md">https://github.com/emiliaprotocol/emilia-protocol/blob/ebb4084b81d0e0bb544494c92c171dcebda7dab3/docs/protocol/aeb-native-authorization-handoff-v1.md</a>&gt;</span>. <span class="annotation">Repository commit
+          ebb4084b81d0e0bb544494c92c171dcebda7dab3. Same-team reference code;
           informative only.</span>
         </dd>
 <dd class="break"></dd>

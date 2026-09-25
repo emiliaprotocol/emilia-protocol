@@ -53,10 +53,19 @@ follows:
   refuses a claim without a recovery scope and names the boundary kind in
   the scope; the reference Gate fences the earlier release's replay key for
   every pinned source label, and its documentation requires that the
-  earlier release not share a store with the current code. These
-  statements describe round-four code that is not at the pinned commit
-  `b929810bbb6cba642f0ef3dbc4b6954ac3c481e7`. Each carries a
-  `PR790-R4-CONFIRM` comment; the pin was left for the integrator.
+  earlier release not share a store with the current code. The
+  integrator checked every Section 15 statement against the round-four
+  code, removed the `PR790-R4-CONFIRM` comments, added that the reference
+  code cannot tell whether a verifier evaluated the evidence and that the
+  composed boundary has no recovery for an evaluation reservation made
+  before its attempt record, and re-pinned `EP-NATIVE-HANDOFF` and
+  `EP-LIFECYCLE-CORPUS` to `ebb4084b81d0e0bb544494c92c171dcebda7dab3`, the
+  branch commit that carries that code and its docs.
+- Section 5.10 (integrator): the recovery proof no longer accepts the
+  absence of an attempt record, because a live attempt may not yet have
+  written it; a record held without an attempt record stays held, and a
+  boundary SHOULD record the attempt before it occupies the action key. The
+  Changes entry for the marker says the same.
 - Changes since -06 and `README.md` were updated to match. `README.md`
   item 3 now uses the Section 5.11 ownership wording, so a durable owner
   marker or creation without hand-back also proves current ownership.
@@ -79,11 +88,12 @@ Checks on the revised source:
   as it stood before this revision passes 49 of 62; the 13 failures are
   exactly the new conditions. The posted -06 passes 3 of 62 (the same three
   regression guards).
-- Datatracker API (2026-09-25T11:38Z): `draft-schrock-action-evidence-boundary`
-  is still at rev 06, and the archive URL for -07 returns 404. For each of
-  the 12 other Internet-Drafts cited with a revision in the XML, the
-  Datatracker record is at the cited revision and the archive URL of the
-  next revision returns 404.
+- Datatracker API (2026-09-25T11:38Z, re-run by the integrator at
+  12:46Z): `draft-schrock-action-evidence-boundary` is still at rev 06, and
+  the archive URL for -07 returns 404. For each of the 12 other
+  Internet-Drafts cited with a revision in the XML, the Datatracker record
+  is at the cited revision and the archive URL of the next revision returns
+  404.
 
 As before, these checks show that the text states the requirements, not that
 the reference code meets them.
