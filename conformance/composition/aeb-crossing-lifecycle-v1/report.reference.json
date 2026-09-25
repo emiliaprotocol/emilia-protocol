@@ -100,6 +100,7 @@
       "id": "CROSSING-RECORD-NONAUTHORIZING",
       "observed": {
         "crossing_record_valid": true,
+        "evaluation_binding": "BOUND",
         "provider_calls": 0,
         "reason": "exact_action_binding_mismatch",
         "state": "REFUSED"
@@ -137,5 +138,5 @@
   ],
   "passed": true,
   "profile": "EP-AEB-CROSSING-LIFECYCLE-COMPOSITION-v1",
-  "results_digest": "sha256:12599b4d360bce8b4d34a2406a82dadf955b2b01e5e36aa2dfac90c6e40eccbe"
+  "results_digest": "sha256:e434e716bb85e93ed8712b5da6c2c3327d6d5df797d0d727fc6264a2234b1a4e"
 }

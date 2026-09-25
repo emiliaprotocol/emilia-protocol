@@ -16,7 +16,7 @@ import { bindToolAction } from '../require-receipt/index.js';
 test('package metadata supports compatible verifier lines and verifies signed receipts', async () => {
   const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
   assert.equal(packageJson.version, '0.5.1');
-  assert.equal(packageJson.peerDependencies['@emilia-protocol/verify'], '^3.21.0 || ^4.0.0');
+  assert.equal(packageJson.peerDependencies['@emilia-protocol/verify'], '^3.21.0 || ^4.0.0 || ^5.0.0');
   const doc = receipt('payment.release');
   assert.equal((await offlineVerifyReceipt(doc, trustedKey)).valid, true);
   doc.payload.claim.action_type = 'payment.redirect';

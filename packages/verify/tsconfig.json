@@ -58,6 +58,7 @@
     "src/aeb-adapter-contract.ts",
     "src/aeb-crossing-record.ts",
     "src/aeb-native-authorization-handoff.ts",
+    "src/aeb-issuer-comparison.ts",
     "src/aeb-aic-crossing-adapter.ts",
     "src/aeb-acceptance-profile.ts",
     "src/aeb-execution-conditions.ts",

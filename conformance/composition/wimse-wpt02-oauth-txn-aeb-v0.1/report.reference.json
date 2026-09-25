@@ -1,5 +1,5 @@
 {
   "@version": "WIMSE-WPT02-OAUTH-TXN-AEB-REPORT-REFERENCE-v0.1",
-  "report_digest": "sha256:954b44e247430294eb474732404114bc11d699cc7d8bfad1eb9bda12e3e5dfe0",
-  "source_lock_file_sha256": "sha256:6cc16b620657487b4e009e70109203641a967a8d39b11f029f16f7f1c6a08334"
+  "report_digest": "sha256:ca5a14398e846596aae01a76d4f33330b8f08e43ebbea4a19da337ce1ba51ebe",
+  "source_lock_file_sha256": "sha256:0db71e190d93fec36690edc79713f30177aae1aba6e77b3a81aabfb5101c25c8"
 }

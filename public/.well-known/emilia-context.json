@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-09-25T05:02:30.345Z",
+  "evidence_snapshot_at": "2026-09-25T19:26:15.606Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "c0085ac80cc0bd8262cdca8bb7f882c15de4c6149fd3673b5517bd51b6528bc5",
+    "input_digest_sha256": "fbe3aa4251ab5c82ecd515eb34329905cc10fbfa6d8f2834e79d84a8a10ffd78",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "2714c9e7ec7bcc4296c6ba12fe847a85476908c5b647586ec3bdd71254a1c9f0",
-        "bytes": 51074
+        "sha256": "bfae959ed0bde4fa3cd7c469ab097aa726b84c14c8eeb652b68cb93b7e7b2b32",
+        "bytes": 51148
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "827a688ad8fa716805aad4a602c9911a2c995936cc17f5d440eb1bf50dffebc0",
+        "sha256": "5a66b3a65d6a98d8c86c117c47d0b4c630e0cc8e5519054068b3b9cfe9ca5fd2",
         "bytes": 4299
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "65053c07f96f194085d9cf9e61a465f9176b21cdb3c610b0a3c890bae951cec0",
+        "sha256": "3b0fb4273d2ed502f053a1845cd9c8118308e9e9036e45a586f36da2acb5a40d",
         "bytes": 6361
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "1406af344d36b26e3b501190497ab6d78690fcb9c57d6841244c48d2ec0a1e94",
+        "sha256": "f06381e87ab595b44a776038ee4320fedaa64239c706252d7b6f6a40fe0f37f8",
         "bytes": 391520
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "bac7a2b9f8bb9d403dbd66127c82ec8ee6570131774d353d00f8d147d154f3bb",
-        "bytes": 51588
+        "sha256": "64d3a06d1b764936c48b0dcd717cbe5742b15df0ec7b46259bf7e95de6d041ab",
+        "bytes": 54743
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -302,12 +302,12 @@
       "layer": "execution lifecycle",
       "question": "Was evidence demanded, consumed, executed, observed, revoked, and preserved correctly?",
       "ep_role": "Separates challenge, native verification, matching, evidence satisfaction, local authorization, bounded reserve, provider invocation, executed or indeterminate outcome, authenticated reconciliation, revocation, and preservation.",
-      "adjacent_examples": "The Dunbar-Wang-Schrock-Liu DMSC Agent Gateway gap-analysis -03, system-of-record gate, bounded capability, provider evidence, SCITT, evidence records"
+      "adjacent_examples": "The Dunbar-Wang-Schrock-Liu DMSC Agent Gateway gap analysis -04, system-of-record gate, bounded capability, provider evidence, SCITT, evidence records"
     }
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 11418,
+      "total": 11422,
       "files": 706,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -317,7 +317,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "54d49edb83cab3d66619be345e9687065a9fc7c675ba8effac9b8de0c9df9cdd",
+      "manifest_sha256": "9f411689776864258cb04f310d3d2e1ccc787747e1f4c65c61f766ce7e86e1a1",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -349,7 +349,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "9cf91786b1f0fd881b3f94e7746a2b6703bca3bce6a67bad2fb55f1620f00a73",
+        "evidenceSha256": "5005aa44ad93a86aaf22379aad6b499e10d13b7c8e8ae22f55f7c764a094c026",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -419,7 +419,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 264,
-      "evidence_bundle_sha256": "2d7a5543ce2d2faf3eeab5c3e9b6392dba913e4d8654f608e465e2fc9f73a09a"
+      "evidence_bundle_sha256": "33814f97984252b059694f31afbf092b86e5ce9fdb349d042c9834639a2110f1"
     },
     "caid": {
       "core_vectors": 48,
@@ -4478,7 +4478,7 @@
     "The AgentROA and ORPRG adapters implement the exact documented native formats and relying-party profiles. They do not claim universal support for every future revision or ORPRG wire profile.",
     "The checked-in TPM interoperability fixture was generated with a software TPM. The verifier is real, but no physical TPM, manufacturer EK chain, measured-boot deployment, or running-production-binary attestation is claimed.",
     "The three local witness instances prove emit, quorum, and gossip behavior. They are not independent operators. Independent witness evidence exists only after separately administered external operators generate and control their own keys and publish live views.",
-    "Twenty-four Datatracker records are active in the repository portfolio as of August 22, 2026: 20 sole-authored series and four coauthored series. The current coauthored records are Memory Projection Record -01, Agent Accountability Composition -00, DMSC Agent Gateway Gap Analysis -03, and GRACE Grid Curtailment -00. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
+    "Twenty-four Datatracker records are active in the repository portfolio as of September 25, 2026: 20 sole-authored series and four coauthored series. The current coauthored records are Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
@@ -4553,9 +4553,9 @@
     },
     {
       "identifier": "draft-schrock-action-evidence-boundary",
-      "revision_at_snapshot": "05",
+      "revision_at_snapshot": "06",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published August 31; use -05 as the current native-compilation, semantic-loss disclosure, stable native replay-unit, pinned-adapter, authority-separation, current-status, re-derivable-evaluation, refusal-evidence, and one-time consequence-custody baseline. Native-owner review and the complete multi-profile conformance gate remain open",
+      "next_action": "Published September 24 (Datatracker posting 2026-09-25T02:15:03Z) as an individual Internet-Draft, not adopted; use -06 as the current consequence-admission baseline: CAID only for a cross-format join, AEC only for a multi-leg evidence requirement, no second PDP, stable replay identity, durable consume or reserve before provider entry, terminal or indeterminate outcome, and authenticated reconciliation without blind retry. The gateway handoff used by the reference packages is a repository implementation profile and is not specified by -06. Native-owner review and the complete multi-profile conformance gate remain open",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4617,17 +4617,17 @@
     },
     {
       "identifier": "draft-schrock-ep-authorization-receipts",
-      "revision_at_snapshot": "12",
+      "revision_at_snapshot": "13",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published August 16; use -12 for acceptance-prefix integrity, the offline anti-backdating limit, historical-versus-current acceptance separation, the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request",
+      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:05:02Z); use -13, which adds the consolidated receipt-claim boundary (Section 13.13) to the -12 baseline: acceptance-prefix integrity, the offline anti-backdating limit, historical-versus-current acceptance separation, the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request. Exact archive-identical XML is in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
     {
       "identifier": "draft-schrock-ep-bounded-capability-receipts",
-      "revision_at_snapshot": "05",
+      "revision_at_snapshot": "06",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published September 6; use -05 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
+      "next_action": "Published September 9 (Datatracker posting 2026-09-09T14:30:11Z); use -06 as the current individual draft. Its XML is not retained in this repository; the IETF archive is authoritative. The -05 XML remains recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4657,9 +4657,9 @@
     },
     {
       "identifier": "draft-schrock-ep-presentation-binding",
-      "revision_at_snapshot": "00",
+      "revision_at_snapshot": "01",
       "role": "Binding the signed action to what the approver was shown",
-      "next_action": "Hold current revision",
+      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:06:51Z); hold -01, which adds the receipt and presentation evidence boundary (Section 6.1). Exact archive-identical XML is in standards/staged/NEXT-PRESENTATION-BINDING-01",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-presentation-binding/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4713,7 +4713,7 @@
     },
     {
       "identifier": "draft-mih-sato-agent-accountability-composition",
-      "revision_at_snapshot": "00",
+      "revision_at_snapshot": "01",
       "role": "Coauthored composition perspective",
       "next_action": "Coordinate terminology; do not imply sole authorship",
       "url": "https://datatracker.ietf.org/doc/draft-mih-sato-agent-accountability-composition/",
@@ -4721,9 +4721,9 @@
     },
     {
       "identifier": "draft-dunbar-dmsc-gw-scenarios-gap-analysis",
-      "revision_at_snapshot": "03",
+      "revision_at_snapshot": "04",
       "role": "Coauthored Agent Gateway deployment and exact-action authorization gap analysis",
-      "next_action": "Published August 6; coordinate -04 hygiene and related-work corrections with Linda Dunbar before any further revision",
+      "next_action": "Revision -04 posted August 14 (Datatracker posting 2026-08-14T18:12:39Z); coordinate any further revision with Linda Dunbar",
       "url": "https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4737,7 +4737,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-09-24",
+    "updated": "2026-09-25",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -4756,10 +4756,10 @@
           "order": 1,
           "label": "Authorization Receipts",
           "draft": "draft-schrock-ep-authorization-receipts",
-          "revision": "12",
-          "source": "standards/posted/draft-schrock-ep-authorization-receipts-12.xml",
+          "revision": "13",
+          "source": "standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13/UPLOAD-THIS/draft-schrock-ep-authorization-receipts-13.xml",
           "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
-          "snapshot_sha256": "66eaa988d974f8535063b35efadc5140331006679b5946bc372d50a16efef52d",
+          "snapshot_sha256": "77e7021e116bebbd8e786dd27b51468701ea4887dfa0dd8d692e919f1fd00ffb",
           "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
           "boundary": "One approval-evidence profile and extension seam; it does not establish scoped authority or evidence satisfaction by itself."
         },
@@ -5323,7 +5323,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 24, the repository tracks 24 active records: 20 sole-authored series and four coauthored series. Current repository snapshots include CAID -02, Authorization Receipts -12, AEB -05, Bounded Capability Receipts -04, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, DMSC Agent Gateway Gap Analysis -03, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 25, 2026, the repository tracks 24 active records: 20 sole-authored series and four coauthored series. Current Datatracker revisions include CAID -02, Authorization Receipts -13, AEB -06, Bounded Capability Receipts -06, Presentation Binding -01, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",

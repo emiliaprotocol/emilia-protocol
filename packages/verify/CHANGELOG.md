@@ -3,6 +3,196 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 5.0.0 (2026-09-25)
+
+### Security
+
+- The verification result now also carries the label-free replay identity:
+  `native_replay_identity`, derived locally from the matched pin's authority
+  namespace and the native authorization ID, and `replay_identity_key`, its
+  relying-party-scoped key under `AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2`.
+  The namespace is the issuer unless the pin declares `authority_namespace`,
+  in which case the issuer string is not an input. The `system` and `profile`
+  labels are not inputs, so one grant relabelled under a second pinned
+  profile derives the same identity, and pins that spell one issuer two ways
+  but declare the same namespace share it. Both are null unless the source is
+  pinned and the pin set passes `verifyAebNativeAuthorizationPins()`.
+- `native_replay_unit` and `replay_key` keep the values 4.1.0 reported: the
+  label-bearing wire `replay_unit` and its key under
+  `AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v1`. That key changes when one grant
+  is relabelled, so a replay fence must hold `replay_identity_key`, and may
+  hold `replay_key` beside it to keep grants that 4.1.0-based code recorded;
+  it must never hold `replay_key` alone.
+- Wire compatibility: the signed `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1`
+  encoding, including its carried `replay_unit`, is unchanged. Handoffs issued
+  by 4.1.0 verify under this version, and handoffs issued by this version
+  verify under 4.1.0. The carried `replay_unit` is checked as part of the wire
+  format and is never used as the replay identity.
+- `verifyAebNativeAuthorizationHandoff()` reads each caller value once into
+  plain JSON and refuses Proxies, accessors, and sparse arrays with a reason
+  (`native_handoff_options_invalid`, `native_handoff_schema_invalid`, or
+  `native_handoff_expected_action_invalid`) instead of throwing.
+- `authorizeAebExecutionDurable()` no longer reports a clean `REFUSED` when
+  the reservation's outcome is unknown. In 4.1.0 a reserve call that threw
+  became `REFUSED consumption_store_unavailable`, and any answer other than
+  `true`, `'RESERVED'`, or `'NATIVE_REPLAY_CONFLICT'` became
+  `REFUSED consumption_conflict`, even when the store had applied the
+  reservation, which left that evaluation reserved with nothing to recover
+  it and refused every later run. Now only `false`, `'CONSUMPTION_CONFLICT'`,
+  and `'NATIVE_REPLAY_CONFLICT'` are clean refusals, because they mean the
+  call wrote nothing.
+  A throw or any other answer may have reserved the row. It is
+  resolved through the store's optional durable `state()` read (new
+  optional member of `AebDurableConsumptionStore`) only when the read
+  shows a permanent state that this call's reserve cannot have written:
+  `CONSUMED` or `RELEASED_NOT_ENTERED` is `REFUSED`
+  `consumption_conflict`. Anything else, including `AVAILABLE`, a store
+  without `state()`, or a read that fails, returns
+  `RECONCILIATION_REQUIRED` with `consumption_reservation_unconfirmed`,
+  which authorizes nothing and is not a clean refusal. `AVAILABLE` is not
+  proof that nothing was reserved, because a reserve write still in flight
+  can land after the read.
+- Issuer normalization for pin alias detection no longer uses regular
+  expressions that can backtrack polynomially on crafted input. An issuer
+  longer than the pin identifier grammar's 512-character maximum is
+  compared as written, and a shorter one is normalized with linear string
+  operations, so a long issuer such as a run of `.` or `/` characters, or
+  `//` followed by many `"` characters, is processed in bounded time.
+  Which spellings count as aliases is unchanged for every issuer the pin
+  grammar admits.
+- The verification result adds `legacy_replay_keys`: the verify 4.1.0
+  `replay_key` of the grant under every pinned `system`, `profile`, and
+  issuer that shares the matched pin's authority namespace, sorted and
+  including `replay_key`. Code built on 4.1.0 fenced only the key of the
+  label a grant was presented under, so a replay fence that holds all of
+  these refuses a grant consumed there under one label and presented here
+  under another pinned label. It is null exactly when
+  `native_replay_identity` is null.
+
+### Added
+
+- Native source pins accept an optional `authority_namespace`, which replaces
+  the issuer in the replay identity. One issuer has exactly one namespace in a
+  pin set. Pins for one issuer must all declare a namespace or all omit it
+  (`native_pins_namespace_declaration_mixed`), and pins that declare one must
+  all declare the same one. Pins whose issuers are different spellings of one
+  issuer must all declare the same namespace
+  (`native_pins_issuer_alias_without_shared_namespace`). Spellings compare
+  equal after the URI scheme and URL host are lower-cased, a trailing dot on
+  the host, a default port, and trailing slashes are removed, and dot
+  segments in the path are resolved; an http or https URL written without
+  `//` compares equal to the URL written with it, and a URN's namespace
+  identifier compares case-insensitively. For a DID the method name compares
+  case-insensitively; for `did:web` the host also compares case-insensitively
+  without trailing dots (a `did:web` issuer with a percent-encoded port
+  cannot be pinned, because the pin identifier grammar has no `%`). For
+  `spiffe://` the trust
+  domain compares case-insensitively without trailing dots, and trailing
+  slashes on the path are dropped. Normalization cannot find every alias:
+  two issuer strings that denote one authority but do not normalize equal
+  need one explicitly shared namespace. One exact
+  issuer declared under two different namespaces is refused
+  (`native_pins_issuer_namespace_conflict`). Two pins with the same gateway,
+  system, profile, and issuer are refused. When a pin set declares any
+  namespace, an alias without one shared namespace refuses it outright. When
+  it declares none, it is still accepted for handoff verification exactly as
+  4.1.0 accepted it, but an aliased issuer derives no replay identity. Changing
+  a pin's namespace changes the replay identity derived under it: drain
+  in-flight attempts and let grants consumed under the old namespace expire
+  before rotating.
+- `verifyAebNativeAuthorizationPins()` validates a pin set before use and
+  returns one `native_pins_*` reason instead of throwing, so a boundary can
+  refuse an unsafe pin set at construction. The reasons are
+  `native_pins_schema_invalid`, `native_pins_duplicate_gateway_key`,
+  `native_pins_duplicate_source`, `native_pins_source_gateway_unpinned`,
+  `native_pins_namespace_declaration_mixed`,
+  `native_pins_issuer_namespace_conflict`, and
+  `native_pins_issuer_alias_without_shared_namespace`. The handoff verifier
+  refuses the same pin sets as `native_handoff_schema_invalid`, except an
+  aliasing pin set that declares no namespace, which it accepts as 4.1.0 did
+  without deriving a replay identity.
+- `deriveAebNativeAuthorizationReplayIdentity()` derives the label-free
+  identity from the authority namespace (the issuer by default) and the
+  native authorization ID under `AEB-NATIVE-AUTHORIZATION-REPLAY-IDENTITY-v1`,
+  and `aebNativeAuthorizationReplayIdentityKey()` keys it under
+  `AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2`. New constants:
+  `AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_DOMAIN` and
+  `AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_KEY_DOMAIN`.
+  `deriveAebNativeAuthorizationReplayUnit()`, `aebNativeAuthorizationReplayKey()`,
+  and `AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN` keep their 4.1.0 meanings
+  and values.
+- Crossing Record v1 and v2 and `EP-AEB-CROSSING-LIFECYCLE-INDEX-v2` verifiers
+  accept an optional `evaluation` record and report `evaluation_binding`
+  (`BOUND`, `INDETERMINATE`, or `MISMATCH`). The join checks the evaluation
+  digest, profile label, operation, CAID, action commitment, the evidence leg
+  that matches the native authority, and the verdict. Without an evaluation,
+  the cited evaluation digest is an unverified pointer and the binding is
+  `INDETERMINATE`. `BOUND` is a join, not authentication: run
+  `verifyAebEvaluation()` or `verifyAebEvaluationV2()` on the evaluation too.
+- `aebCrossingEvaluationReference()` defines the evaluation reference as the
+  digest of the complete signed evaluation (the verifiers' `record_digest`),
+  with the `AebCrossingEvaluationBinding` and `AebCrossingEvaluationReference`
+  types.
+
+### Fixed
+
+- The v1 lifecycle upgrade no longer reports an unchecked evaluation
+  reference as `COMPLETE`. Without a matching `source_evaluation`, the
+  index carries the digest under the `AEB-EVALUATION-v1` label that 4.1.0
+  wrote for every v1 conversion, and the conversion is `INDETERMINATE` with
+  `evaluation_reference_unverified`. That reason code marks the label as
+  unchecked, and the verifiers do not compare an unchecked label with a
+  supplied evaluation. `lifecycle.evaluation.profile` keeps its 4.1.0
+  non-null type. A supplied
+  `source_evaluation` that does not bind makes the issuer-side upgrade throw
+  the typed `CrossingRecordError` `source_evaluation_mismatch`, and nothing is
+  signed. Out-of-order v1
+  references are converted as `INDETERMINATE` instead of throwing
+  `lifecycle_order_invalid`.
+- The lifecycle index refuses a provider entry that is not preceded by a
+  custody reservation or consumption.
+
+### Compatibility
+
+- Every value and export that 4.1.0 provided keeps its 4.1.0 meaning:
+  `native_replay_unit`, `replay_key`, `aebNativeAuthorizationReplayKey()`,
+  `deriveAebNativeAuthorizationReplayUnit()`, and
+  `AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN`. A pin set that 4.1.0 accepted
+  is still accepted by `verifyAebNativeAuthorizationHandoff()`; when it
+  aliases one issuer (for example `https://a.example` and
+  `https://a.example/`, or `urn:example:issuer` and `URN:example:issuer`),
+  `native_replay_identity` and `replay_identity_key` are null and
+  `verifyAebNativeAuthorizationPins()` reports
+  `native_pins_issuer_alias_without_shared_namespace`, so a boundary that
+  checks pins at construction refuses it. 4.1.0 refused every pin that
+  declared `authority_namespace`.
+- Version type: major, 5.0.0, by choice. `docs/api/COMPATIBILITY.md` says
+  that security patches may change behavior on any surface and are never
+  treated as breaking changes, so that policy would permit releasing these
+  security fixes as a minor version, 4.2.0. This release is major anyway
+  because it refuses artifacts that 4.1.0 accepted and changes outputs for
+  the same input, and a dependent that accepts `^4` should not receive that
+  without choosing to; 4.0.0 was a major release for the same reason. It
+  refuses lifecycle indexes that 4.1.0 verified (a provider entry with no
+  custody reference), changes what
+  `upgradeAebCrossingRecordV1ToLifecycleIndexV2()` returns for the same
+  input (`INDETERMINATE` with `evaluation_reference_unverified` where 4.1.0
+  returned `COMPLETE`, and an `INDETERMINATE` conversion where 4.1.0 threw
+  `lifecycle_order_invalid`), and returns `RECONCILIATION_REQUIRED` from
+  `authorizeAebExecutionDurable()` where 4.1.0 returned `REFUSED`. No export
+  is removed and no public TypeScript type is narrowed:
+  `lifecycle.evaluation.profile` keeps its non-null type,
+  `RECONCILIATION_REQUIRED` was already a state of `AebExecutionDecision`,
+  and `state()` and `legacy_replay_keys` are additions. The signed native
+  handoff is byte-identical in both directions.
+- Release order: publish this Verify release before `@emilia-protocol/gate`.
+  Gate imports `verifyAebNativeAuthorizationPins()` and the replay-identity
+  fields from this release and pins `@emilia-protocol/verify` exactly, so
+  Gate's dependency must be bumped from `4.1.0` to `5.0.0` before Gate is
+  published. A Gate published while it still pins 4.1.0 fails to load
+  its root entry and every subpath that imports `@emilia-protocol/verify/aeb`,
+  not only `@emilia-protocol/gate/aeb`.
+
 ## 4.1.0 (2026-09-24)
 
 - Add `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1`, a closed Ed25519 gateway statement
@@ -11,8 +201,9 @@ This package follows [Semantic Versioning](https://semver.org/).
   window, revocation handle, and wrapper-neutral replay identity. The gateway,
   source profile, and issuer are relying-party pinned; native-artifact
   verification remains the native system's responsibility. It provides the
-  direct AIMS, AuthZEN, COAZ, AP2, OAuth, and local handoff without requiring
-  CAID or AEC.
+  direct handoff for AuthZEN, COAZ, AP2, OAuth, and local sources, and for
+  deployments that follow the AIMS profile of existing standards, without
+  requiring CAID or AEC.
 - Add the stable `./aeb` facade, signed nonauthorizing `AEB-EVALUATION-v2`
   projections, and the separate
   `EP-AEB-CROSSING-LIFECYCLE-INDEX-v2`. Deterministic v1 upgrades preserve
@@ -20,12 +211,24 @@ This package follows [Semantic Versioning](https://semver.org/).
   `INDETERMINATE` instead of inventing it. Existing Crossing Record v1 and v2
   bytes and verification rules remain unchanged.
 
-The direct handoff is reference implementation work for the proposed, staged
-AEB-06 refinement. Published AEB-05 still requires CAID matching and AEC
-satisfaction. Source labels do not establish native-protocol conformance or
-independent interoperability.
+The direct handoff is a repository implementation profile for the direct
+native path. When 4.1.0 was published (2026-09-25T02:04Z), AEB-06 was staged
+and AEB-05, which requires CAID matching and AEC satisfaction, was current.
+AEB-06 was posted later that day, at 2026-09-25T02:15:03Z, as an individual
+Internet-Draft and is not adopted by any working group. It makes CAID and AEC conditional but does
+not specify the gateway handoff. Source labels do not establish
+native-protocol conformance or independent interoperability.
 
-## 4.0.0 (2026-09-09)
+Correction (found after release): the v1 upgrade copies the v1 record's
+evaluation digest into the lifecycle index under the `AEB-EVALUATION-v1`
+profile label without receiving or re-verifying that evaluation, and can report the
+conversion `COMPLETE`. A `COMPLETE` conversion therefore shows only that the
+signer committed to the references; it does not show that the referenced
+evaluation exists or matches the operation.
+The Unreleased section above adds the evaluation join and stops the upgrade
+from reporting an unchecked reference as `COMPLETE`.
+
+## 4.0.0 (2026-09-13)
 
 - **Breaking change.** The existing
   `./aeb-wimse-oauth-adapter` subpath now implements the receiver-scoped v3
@@ -34,7 +237,7 @@ independent interoperability.
   Existing v1 artifacts require the
   frozen v1 verifier or reissuance and verification under v3.
 
-## 3.21.0 (2026-08-30)
+## 3.21.0 (2026-09-05)
 
 - Added the AEB Crossing Lab local adapter workbench. It scaffolds, seals, and
   runs one bundled deterministic `AebAdapter` through the canonical

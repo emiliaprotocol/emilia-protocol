@@ -595,6 +595,7 @@ packages/gate/manifest-floor.test.js linguist-generated=true
 packages/gate/mcp.test.js linguist-generated=true
 packages/gate/metering.test.js linguist-generated=true
 packages/gate/metrics.test.js linguist-generated=true
+packages/gate/native-consequence-boundary-postgres.test.js linguist-generated=true
 packages/gate/network-witness-v2.test.js linguist-generated=true
 packages/gate/network-witness.test.js linguist-generated=true
 packages/gate/open-exposure-ledger-postgres.test.js linguist-generated=true

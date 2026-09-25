@@ -16,7 +16,7 @@ test("all carrier-neutral crossing-record cases pass and match the committed dig
   );
   assert.equal(report.profile, PROFILE);
   assert.equal(report.passed, true, JSON.stringify(report, null, 2));
-  assert.equal(report.cases.length, 15);
+  assert.equal(report.cases.length, 21);
   assert.equal(report.results_digest, reference.results_digest);
   assert.deepEqual(await buildReferenceReport(), reference);
 });
@@ -51,6 +51,26 @@ test("the record cannot become a carrier or a fresh authorization grant", async 
   );
 });
 
+test("an evaluation is bound only when supplied and refused when unrelated", async () => {
+  const report = await runProfile();
+  const byId = Object.fromEntries(
+    report.cases.map((entry) => [entry.id, entry]),
+  );
+  for (const id of [
+    "EVALUATION-UNCHECKED-IS-INDETERMINATE",
+    "EVALUATION-BOUND",
+    "UNRELATED-EVALUATION-REFUSED",
+    "EVALUATION-DIGEST-MISMATCH",
+    "NATIVE-AUTHORITY-NOT-IN-EVALUATION",
+    "ADMIT-UNSATISFIED-EVALUATION-REFUSED",
+  ])
+    assert.equal(byId[id]?.passed, true, id);
+  assert.match(
+    report.known_limits.join(" "),
+    /unverified pointer/,
+  );
+});
+
 test("an external execution self-describes as reproduction, not independent implementation", async () => {
   const report = await runProfile({
     name: "External operator",
@@ -58,7 +78,7 @@ test("an external execution self-describes as reproduction, not independent impl
     revision: "example-commit",
     executed_at: "2026-08-19T06:00:00Z",
   });
-  assert.match(report.reproduction_statement, /15\/15/);
+  assert.match(report.reproduction_statement, /21\/21/);
   assert.match(
     report.reproduction_statement,
     /not an independent implementation/,

@@ -1,9 +1,7 @@
 # Legacy Stripe / EMILIA Gate Cloud billing — inactive runbook
 
-> **Not the current public Gate offer.** The public pricing path is the fixed
-> $25,000 managed pilot followed by a production contract scoped by protected
-> workflow, deployment boundary, retention, integrations, and service level.
-> `/pricing` does not link to these historical Team or Business subscriptions.
+> **Not the current public Gate offer.** `/pricing` does not link to these
+> historical Team or Business subscriptions.
 > Do not activate them for new customers without an approved offer change.
 
 The site is wired for two billing paths. Pick one (or both). **Neither requires
@@ -88,8 +86,8 @@ monitoring, freshness history, and presentation depth for an owner-claimed
 Authority Record. It never sells a favorable conclusion, certification, trust
 score, or safety label.
 
-Create a recurring USD Price for **$29/month** in the EMILIA Stripe account,
-then configure these server-only values:
+Create the recurring USD Price that the approved monitoring offer specifies in
+the EMILIA Stripe account, then configure these server-only values:
 
 ```bash
 vercel env add STRIPE_PRICE_AUTHORITY_RECORD_MONITOR production  # price_...

@@ -1,15 +1,28 @@
-# Action Evidence Boundary -06 review candidate
+# AEB-06 publication provenance packet
 
-This packet is a complete, renderable candidate based on the exact published
-`draft-schrock-action-evidence-boundary-05` source. The base XML is retained in
-repository history at commit `cf5ccb3a5172fbced7d54aeb00b0cc70b5430062`
-with SHA-256
+Status: posted on 2026-09-24 as
+`draft-schrock-action-evidence-boundary-06` through Datatracker submission
+169466 (Datatracker time 2026-09-25T02:15:03Z). It is an individual
+Internet-Draft. It is not a working-group item, an RFC, or IETF endorsement,
+and posting is not review by the referenced protocol owners.
+
+The XML under `UPLOAD-THIS/` is the exact submitted -06 source and matches the
+immutable IETF archive byte-for-byte. The text under `RENDERS/` also matches
+the archive byte-for-byte. The packet is retained for publication provenance,
+not as an upload candidate. The posted snapshot is
+[`../../posted/draft-schrock-action-evidence-boundary-06.xml`](../../posted/draft-schrock-action-evidence-boundary-06.xml);
+AEB-05 is retained in `../../archive/`.
+
+The revision was built from the exact published
+`draft-schrock-action-evidence-boundary-05` source. That base XML has SHA-256
 `53b09b275fd3868dfbea11340a71e4827c38ad3cba2fdd12595cdcf42eb6c240`.
 
 The revision narrows AEB to the consequence-admission lifecycle after a native
 authorization path has made its decision. In particular, it:
 
-- composes after AIMS, OAuth, AuthZEN, COAZ, AP2, and local authorization;
+- composes after the native identity and authorization systems in use, such
+  as OAuth, AuthZEN, COAZ, AP2, or local authorization, including deployments
+  that follow the WIMSE AIMS profile of existing standards;
 - leaves COAZ authoritative for operation-to-SARC mapping and PEP enforcement;
 - uses CAID only when independently encoded action formats must be joined;
 - uses AEC only when local policy requires multiple evidence legs;
@@ -24,8 +37,15 @@ Every one-time native replay identity is fenced independently of the operation
 record, so changing an operation identifier cannot make the same authority
 spendable again.
 
-`UPLOAD-THIS/` contains the candidate XML source. `RENDERS/` contains the text
-and HTML produced from that source. This packet is staged review material. It
-has not been submitted, published, adopted by a working group, or reviewed by
-the referenced protocol owners. References to AP2 describe composition with
-its native artifacts and do not claim AP2 interoperability.
+## Known gaps in the posted text
+
+Review after posting found gaps that this packet does not amend. Two examples:
+the text has no same-action fence that refuses a second attempt for the same
+action while an earlier attempt is still in flight, and it does not specify the
+signed gateway handoff that the reference packages use for the direct native
+path. Its wording also describes AIMS as owning identity and authorization
+semantics, although AIMS is an Informational WIMSE working-group document that
+profiles existing standards. These items are carried to the next revision.
+
+References to AP2 describe composition with its native artifacts and do not
+claim AP2 interoperability.

@@ -74,8 +74,8 @@ disconnected leased domain. The current reference implementation covers the loca
 PostgreSQL control domain; leased-edge propagation and portable signed freeze-event evidence remain
 explicit implementation gaps.
 
-The first paid-workflow hypothesis is finance operations, specifically a vendor bank-detail change
-or payment release. The agent may prepare the action. On the configured path, Gate checks the exact
+One representative workflow is a finance-operations vendor bank-detail change or payment release.
+The agent may prepare the action. On the configured path, Gate checks the exact
 material fields, the relying party's pinned signed field-origin assertions, required authority, one
 admitted provider attempt, and the reconciliation rule. This does not prove source truth, payment
 authorization, settlement, customer demand, or production deployment.
@@ -112,7 +112,7 @@ formal scope or explicit gap, assumptions, exclusions, and evidence hash. Start 
 ## AEB-1: test the evidence-to-effect boundary
 
 The open [AEB-1 Consequence Admission Conformance](docs/conformance/AEB-1-CONSEQUENCE-ADMISSION.md)
-pack tests the current published composed path at the last control point before
+pack tests the composed CAID/AEC path at the last control point before
 a consequential action: native verification, relying-party acceptance,
 exact-action binding, required CAID matching, required AEC evidence
 satisfaction, local authorization, atomic reservation, `INVOKING` custody,
@@ -120,8 +120,8 @@ separate provider-outcome and observed-effect truth, no-blind-retry behavior,
 and authenticated reconciliation.
 
 [Read the consequence-admission boundary](docs/protocol/consequence-admission.md) for the exact
-division of responsibility across the published CAID/AEC path, the proposed
-conditional path, AEB custody, and provider outcome evidence.
+division of responsibility across the composed CAID/AEC path, the direct native
+path, AEB custody, and provider outcome evidence.
 
 ```bash
 npx @emilia-protocol/verify aeb-conformance --reference
@@ -131,19 +131,22 @@ It is format-neutral and self-run. A passing report is self-attested
 conformance evidence, not an audit, certification, production-deployment
 claim, or permission to execute an action.
 
-Under the proposed AEB-06 refinement, CAID is used only when independently
-encoded actions must be joined, and AEC is used only when local policy requires
-several evidence legs. A separate 23-case repository corpus exercises that
-candidate direct-native path across AuthZEN/COAZ-MCP, AP2, OAuth Transaction
-Tokens, and a local signed mandate:
+Under AEB-06, posted on 2026-09-24 as an individual Internet-Draft and not
+adopted by any working group, CAID is used only when independently encoded
+actions must be joined, and AEC is used only when local policy requires several
+evidence legs. A separate 26-case synthetic corpus models that direct-native
+lifecycle over AuthZEN/COAZ-MCP, AP2, OAuth Transaction Token, and local
+signed-mandate adapter results:
 
 ```bash
 npm run conformance:composition:consequence-admission
 ```
 
-That corpus is reference implementation evidence for a staged proposal. It is
-not evidence that AEB-06 has been submitted or adopted, or that the named
-native protocols conform to it.
+The corpus runner is a standalone lifecycle model with its own in-memory store
+and admission logic. It does not execute the shipped `@emilia-protocol/verify`
+or `@emilia-protocol/gate` code, so it is not evidence for those packages,
+which have their own test suites. It is also not evidence that the named
+native protocols conform to AEB-06.
 
 For a focused executable proof of the repository's Gate path, run:
 
@@ -339,32 +342,35 @@ authoritative for revision and status.
 ### One consequence-boundary surface
 
 The current published
-[AEB-05](standards/posted/draft-schrock-action-evidence-boundary-05.xml)
-defines the existing evidence join and consequence lifecycle. The proposed -06
-refinement makes AEB the direct composition point after a native decision.
-OAuth, AIMS, AuthZEN, COAZ, AP2, and local systems keep ownership of their
-credentials, operation mappings, and authorization decisions. AEB applies that
-decision at the protected provider boundary: it binds the final action when
-needed, derives stable replay identity, reserves before provider entry, and
-keeps an uncertain result locked until authenticated reconciliation.
+[AEB-06](standards/posted/draft-schrock-action-evidence-boundary-06.xml),
+posted on 2026-09-24 as an individual Internet-Draft and not adopted, makes AEB
+the composition point after a native decision. OAuth, AuthZEN, COAZ, AP2, and
+local systems keep ownership of their credentials, operation mappings, and
+authorization decisions. AIMS (`draft-ietf-wimse-aims`) is an Informational
+WIMSE working-group document that profiles existing standards such as WIMSE
+and OAuth; it does not itself issue credentials or decisions. AEB applies the
+native decision at the protected provider boundary: it binds the final action
+when needed, derives stable replay identity, reserves before provider entry,
+and keeps an uncertain result locked until authenticated reconciliation.
 
 [CAID-02](standards/posted/draft-schrock-canonical-action-identifier-02.xml)
 is used when independently encoded representations must be compared. It is not
 a mandatory second mapping when the consequence-owning PEP already derives and
 enforces a current decision over the final operation.
-[AEC-05](standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
+[AEC-06](standards/staged/NEXT-AEC-06/UPLOAD-THIS/draft-schrock-ep-authorization-evidence-chain-06.xml)
 is used when the relying party requires several evidence legs. Authorization
 Receipts, Human Authorization Binding, and Authority Introduction remain
 available profiles for deployments that need them; they are not prerequisites
-for every AEB integration. Architecture-02 remains the navigation document.
+for every AEB integration. Architecture-03 remains the navigation document.
 
 [The consequence-admission guide](docs/protocol/consequence-admission.md) states
 the implementation boundary and the cases where AEB is unnecessary.
 The [direct native handoff profile](docs/protocol/aeb-native-authorization-handoff-v1.md)
-shows how an existing permit reaches Gate without a second CAID or AEC layer.
-The proposed -06 refinement is retained in
-[`standards/staged/NEXT-AEB-06`](standards/staged/NEXT-AEB-06) for review; it
-has not been submitted or adopted.
+is a repository implementation profile that shows how an existing permit
+reaches Gate without a second CAID or AEC layer; AEB-06 does not itself specify
+that gateway handoff. The exact submitted -06 bytes and their publication
+record are retained in
+[`standards/staged/NEXT-AEB-06`](standards/staged/NEXT-AEB-06).
 
 The complete active portfolio remains 24 Datatracker records: 20 sole-authored
 records and four coauthored records, each with its own scope and revision

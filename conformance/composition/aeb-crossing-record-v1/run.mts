@@ -27,7 +27,15 @@ import {
   type CrossingNativeAuthority,
   type CrossingRefereeAxes,
 } from "../../../packages/verify/aeb-crossing-record.js";
-import { canonicalizeAeb } from "../../../packages/verify/aeb-adapter-contract.js";
+import {
+  adapterPinDigest,
+  canonicalizeAeb,
+  digestAeb,
+  evaluateAebEvidence,
+  mappingProfileDigest,
+  registryEntryDigest,
+  unifiedRegistryDigest,
+} from "../../../packages/verify/aeb-adapter-contract.js";
 import { loadDefaultAgilityMldsaBackend } from "../../../packages/verify/pq-signature-agility.js";
 
 export const PROFILE = "EP-AEB-CROSSING-RECORD-COMPOSITION-v1";
@@ -213,11 +221,180 @@ async function issue(
   );
 }
 
-async function verify(value: unknown, keys = VERIFICATION_KEYS) {
+async function verify(
+  value: unknown,
+  keys = VERIFICATION_KEYS,
+  evaluation?: unknown,
+) {
   return verifyAebCrossingRecord(value, {
     verification_keys: [...keys],
     mldsaBackend,
+    ...(evaluation === undefined ? {} : { evaluation }),
   });
+}
+
+// A signed AEB-EVALUATION-v1 record produced by the shipped evaluator. The
+// crossing verifier joins it to a record only when the caller supplies it.
+const EVALUATION_ADAPTER_ID = "conformance:crossing-native";
+const EVALUATION_PROFILE_ID = "conformance:crossing-mapping";
+const EVALUATION_ARTIFACT_REF = "artifact:native-authority";
+const EVALUATION_ARTIFACT = {
+  root: "root:crossing-native",
+  role: "native-authority",
+  caid: ACTION.caid,
+  action_digest: ACTION.action_digest,
+  replay_id: "txn-token-123",
+  subject: { id: "workload:accounting", kind: "workload" },
+};
+const EVALUATION_TOKEN_DIGEST = digestAeb(EVALUATION_ARTIFACT);
+
+function evaluationRegistryEntry(
+  entryId: string,
+  kind: string,
+  definition: Record<string, unknown>,
+) {
+  const entry: Record<string, unknown> = {
+    kind,
+    version: "1",
+    status: "active",
+    definition,
+  };
+  entry.definition_digest = registryEntryDigest(entryId, entry as any);
+  return entry;
+}
+
+function evaluationFor(
+  operationId: string,
+  options: { caid?: string; revoked?: boolean } = {},
+) {
+  const profile: Record<string, any> = {
+    version: "crossing-mapping-v1",
+    definition: { source: "crossing-record-conformance" },
+    registry_entry_ref: "mapping:conformance:crossing",
+    mapper_id: "mapper:conformance:crossing",
+    resolver: {
+      id: "resolver:conformance:crossing",
+      version: "1",
+      implementation_digest: digestAeb({ implementation: "resolver:conformance:crossing:1" }),
+    },
+    semantic_equivalence: {
+      assertion: "EQUIVALENT_UNDER_PROFILE",
+      loss_policy: "NO_MATERIAL_FIELD_LOSS",
+      omitted_material_fields: [],
+      omitted_nonmaterial_fields: [],
+    },
+  };
+  profile.profile_digest = mappingProfileDigest(EVALUATION_PROFILE_ID, profile as any);
+  const registry: Record<string, any> = {
+    "@version": "EP-EVIDENCE-REGISTRY-v1",
+    registry_id: "registry:crossing-conformance",
+    epoch: 1,
+    entries: {
+      "mapping:conformance:crossing": evaluationRegistryEntry(
+        "mapping:conformance:crossing",
+        "mapping-profile",
+        { profile_digest: profile.profile_digest },
+      ),
+      "role:native-authority": evaluationRegistryEntry(
+        "role:native-authority",
+        "evidence-role",
+        { role: "native-authority", subject_kinds: ["workload"] },
+      ),
+    },
+  };
+  registry.registry_digest = unifiedRegistryDigest(registry as any);
+  const pin: Record<string, any> = {
+    version: "1",
+    trust_roots: ["root:crossing-native"],
+    config: { mode: "offline" },
+    max_status_age_sec: 3600,
+  };
+  pin.config_digest = adapterPinDigest(EVALUATION_ADAPTER_ID, pin as any);
+  const config = {
+    "@version": "AEB-ADAPTER-v1",
+    relying_party_id: BOUNDARY.relying_party_id,
+    evaluator_keys: { "eval:crossing": { public_key: edPublicSpki } },
+    registry,
+    accepted_mappers: ["mapper:conformance:crossing"],
+    adapters: { [EVALUATION_ADAPTER_ID]: pin },
+    profiles: { [EVALUATION_PROFILE_ID]: profile },
+    requirements: {
+      "req:crossing": {
+        "@version": "AEB-REQUIREMENT-v1",
+        all_of: ["native-authority"],
+        terms: [{ type: "one-time-consumption" }],
+      },
+    },
+  } as any;
+  const adapter = {
+    id: EVALUATION_ADAPTER_ID,
+    version: "1",
+    verifyNative({ artifact, status, trust_roots }: any) {
+      const trusted = trust_roots.includes(artifact.root);
+      return {
+        native_verification: trusted ? "VERIFIED" : "FAILED",
+        acceptance: trusted ? "ACCEPTED" : "REJECTED",
+        evidence_digest: digestAeb(artifact),
+        status_digest: digestAeb({
+          checked_at: status.checked_at,
+          expires_at: status.expires_at,
+          revocation_checked: status.revocation_checked,
+          revoked: status.revoked,
+          consumed: status.consumed,
+          unavailable: status.unavailable === true,
+        }),
+        evidence_role: artifact.role,
+        subject: artifact.subject,
+        replay_unit: digestAeb({
+          adapter: EVALUATION_ADAPTER_ID,
+          replay_id: artifact.replay_id,
+        }),
+        reasons: trusted ? [] : ["native_trust_root_not_pinned"],
+      };
+    },
+    mapAction({ artifact, native }: any) {
+      return {
+        mapping: native.native_verification === "VERIFIED" ? "MATCH" : "INDETERMINATE",
+        caid: artifact.caid,
+        action_digest: artifact.action_digest,
+        reasons: [],
+      };
+    },
+  };
+  return evaluateAebEvidence({
+    config,
+    adapters: { [EVALUATION_ADAPTER_ID]: adapter } as any,
+    operation_id: operationId,
+    consumption_nonce: `nonce:${operationId}`,
+    initiator_id: "agent:accounting-17",
+    requirement_ref: "req:crossing",
+    caid: options.caid ?? ACTION.caid,
+    legs: [
+      {
+        adapter_id: EVALUATION_ADAPTER_ID,
+        profile_id: EVALUATION_PROFILE_ID,
+        artifact_ref: EVALUATION_ARTIFACT_REF,
+        artifact: EVALUATION_ARTIFACT,
+        status: {
+          checked_at: "2026-08-19T04:59:00Z",
+          expires_at: "2026-08-19T06:00:00Z",
+          revocation_checked: true,
+          revoked: options.revoked === true,
+          consumed: false,
+        },
+      },
+    ],
+    evaluated_at: NOW,
+    signer: { key_id: "eval:crossing", private_key: edPrivate },
+  }).record;
+}
+
+function evaluationLifecycle(evaluation: unknown) {
+  return {
+    evaluation_digest: digestAeb(evaluation),
+    consumption_digest: `sha256:${"99".repeat(32)}`,
+    provider_entry_digest: null,
+  };
 }
 
 function result(
@@ -510,6 +687,136 @@ export async function buildReferenceReport() {
     ),
   );
 
+  cases.push(
+    result(
+      "EVALUATION-UNCHECKED-IS-INDETERMINATE",
+      "boundary",
+      verified.verified && verified.evaluation_binding === "INDETERMINATE",
+      "verified; evaluation_binding INDETERMINATE without the evaluation",
+      {
+        verified: verified.verified,
+        evaluation_binding: verified.evaluation_binding,
+      },
+    ),
+  );
+
+  const operationId = record.body.operation_id;
+  const evaluation = evaluationFor(operationId);
+  const boundAuthority = mapWimseOAuthCrossingAuthority({
+    native_verification: "VERIFIED",
+    rp_acceptance: "ACCEPTED",
+    authorization_server: "https://as.example",
+    subject: "spiffe://example/agent/accounting",
+    token_id: "txn-token-123",
+    token_digest: EVALUATION_TOKEN_DIGEST,
+    mapping_profile_digest: `sha256:${"ab".repeat(32)}`,
+    constraints_digest: `sha256:${"ac".repeat(32)}`,
+    status: {
+      value: "CURRENT",
+      checked_at: NOW,
+      source_head_digest: `sha256:${"ad".repeat(32)}`,
+    },
+    validity: {
+      not_before: "2026-08-19T04:55:00Z",
+      not_after: "2026-08-19T05:05:00Z",
+    },
+  });
+  assert.equal(boundAuthority.ok, true, JSON.stringify(boundAuthority));
+  const boundRecord = await issue(boundAuthority.authority, {
+    lifecycle_records: evaluationLifecycle(evaluation),
+  });
+  const bound = await verify(boundRecord, VERIFICATION_KEYS, evaluation);
+  cases.push(
+    result(
+      "EVALUATION-BOUND",
+      "positive",
+      bound.verified &&
+        bound.evaluation_binding === "BOUND" &&
+        evaluation.verdict === "SATISFIED",
+      "verified; evaluation_binding BOUND",
+      {
+        verified: bound.verified,
+        evaluation_binding: bound.evaluation_binding,
+        evaluation_verdict: evaluation.verdict,
+      },
+    ),
+  );
+
+  const unrelated = evaluationFor("op-UNRELATED", {
+    caid: "caid:1:order.purchase.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+  });
+  const unrelatedRecord = await issue(bcr, {
+    record_id: "crossing:finance:0003",
+    lifecycle_records: evaluationLifecycle(unrelated),
+  });
+  const unrelatedPointerOnly = await verify(unrelatedRecord);
+  const unrelatedCheck = await verify(unrelatedRecord, VERIFICATION_KEYS, unrelated);
+  cases.push(
+    result(
+      "UNRELATED-EVALUATION-REFUSED",
+      "hostile",
+      unrelatedPointerOnly.evaluation_binding === "INDETERMINATE" &&
+        !unrelatedCheck.verified &&
+        unrelatedCheck.reason === "evaluation_operation_mismatch",
+      "evaluation_operation_mismatch",
+      {
+        pointer_only_binding: unrelatedPointerOnly.evaluation_binding,
+        verified: unrelatedCheck.verified,
+        reason: unrelatedCheck.reason,
+      },
+    ),
+  );
+
+  const digestMismatch = await verify(record, VERIFICATION_KEYS, evaluation);
+  cases.push(
+    result(
+      "EVALUATION-DIGEST-MISMATCH",
+      "hostile",
+      !digestMismatch.verified &&
+        digestMismatch.reason === "evaluation_digest_mismatch",
+      "evaluation_digest_mismatch",
+      { verified: digestMismatch.verified, reason: digestMismatch.reason },
+    ),
+  );
+
+  const unmatchedRecord = await issue(wimse, {
+    lifecycle_records: evaluationLifecycle(evaluation),
+  });
+  const unmatched = await verify(unmatchedRecord, VERIFICATION_KEYS, evaluation);
+  cases.push(
+    result(
+      "NATIVE-AUTHORITY-NOT-IN-EVALUATION",
+      "hostile",
+      !unmatched.verified && unmatched.reason === "evaluation_authority_unmatched",
+      "evaluation_authority_unmatched",
+      { verified: unmatched.verified, reason: unmatched.reason },
+    ),
+  );
+
+  const revoked = evaluationFor(operationId, { revoked: true });
+  const admittedOnRevoked = await issue(boundAuthority.authority, {
+    lifecycle_records: evaluationLifecycle(revoked),
+  });
+  const admittedOnRevokedCheck = await verify(
+    admittedOnRevoked,
+    VERIFICATION_KEYS,
+    revoked,
+  );
+  cases.push(
+    result(
+      "ADMIT-UNSATISFIED-EVALUATION-REFUSED",
+      "hostile",
+      !admittedOnRevokedCheck.verified &&
+        admittedOnRevokedCheck.reason === "evaluation_verdict_inconsistent",
+      "evaluation_verdict_inconsistent",
+      {
+        evaluation_verdict: revoked.verdict,
+        verified: admittedOnRevokedCheck.verified,
+        reason: admittedOnRevokedCheck.reason,
+      },
+    ),
+  );
+
   const base = {
     "@version": "AEB-CROSSING-RECORD-REFERENCE-REPORT-v1",
     profile: PROFILE,
@@ -526,6 +833,7 @@ export async function buildReferenceReport() {
       "A verified crossing record is evidence of a past boundary decision and never authorizes another action.",
       "The two mappings share a projection contract and verifier; they do not claim native semantic equivalence.",
       "A passing report does not prove every authority format is supported, IETF adoption, certification, or production deployment.",
+      "Without a supplied evaluation record the evaluation digest is an unverified pointer (evaluation_binding INDETERMINATE); BOUND joins the evaluation to the record but does not verify the evaluation's own signature.",
     ],
   };
   return { ...base, results_digest: sha256(canonicalizeAeb(base)) };

@@ -110,8 +110,8 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "bytes": 108160,
-      "sha256": "5d313811963f09eaccaf0110a554ef7a6a5cadf222f8b97d2a34ce9a5b672efc"
+      "bytes": 109606,
+      "sha256": "47fcf14535ce14b48ef77e926bce06333af28a9a51cb2d50525ae070afb76d32"
     },
     {
       "path": "packages/verify/dist/strict-json.js",

@@ -592,6 +592,8 @@ function boundaryHarness(
   let attemptCounter = 0;
   const boundary = createConsequenceBoundary({
     executor_id: EXECUTOR,
+    // Unique among the boundaries that share this consumption store.
+    boundary_id: 'aeb-crossing-lifecycle-conformance',
     provider: PROVIDER,
     aeb: { config: fixture.config, adapters: fixture.adapters, store },
     attempts: {
@@ -616,6 +618,19 @@ function boundaryHarness(
         },
         result: { accepted: true },
       };
+    },
+    // Affirms only a provider terminal outcome for this attempt, never a
+    // pre-entry lookup. Terminal reconciliation requires such a verifier.
+    provider_outcomes: {
+      verify: (context) => (context.purpose === 'provider_outcome'
+        && context.outcome.evidence.evidence_id.startsWith('provider-evidence:'))
+        ? {
+          verified: true as const,
+          purpose: context.purpose,
+          attempt_id: context.attempt.attempt_id,
+          provider_idempotency_key: context.provider_idempotency_key,
+        }
+        : false,
     },
     now: () => DECISION_NOW,
   });
@@ -652,7 +667,9 @@ async function validCrossingRecord(source: ReturnType<typeof evaluateFixture>) {
     subject: 'agent:payment-orchestrator',
     capability_id: 'capability:canonical-boundary',
     generation: 1,
-    receipt_digest: digestAeb({ receipt: 'canonical-boundary' }),
+    // The authority joins the cited evaluation through the evidence digest of
+    // the evaluated native artifact, the same digest the AEB leg records.
+    receipt_digest: digestAeb(source.native.artifact),
     mapping_profile_digest: digestAeb({ mapping: 'bcr-crossing-v1' }),
     constraints_digest: digestAeb({ limit: 1 }),
     status: {
@@ -721,9 +738,11 @@ async function validCrossingRecord(source: ReturnType<typeof evaluateFixture>) {
       { alg: 'Ed25519', key_id: 'crossing-ed', public_key: EVALUATOR_PUBLIC_SPKI },
       { alg: 'ML-DSA-65', key_id: 'crossing-pq', public_key: Buffer.from(pqPair.publicKey).toString('base64url') },
     ],
+    evaluation: source.evaluation,
   });
   assert.equal(verification.verified, true, JSON.stringify(verification));
-  return record;
+  assert.equal(verification.evaluation_binding, 'BOUND', JSON.stringify(verification));
+  return { record, evaluation_binding: verification.evaluation_binding };
 }
 
 export async function buildReferenceReport() {
@@ -863,6 +882,8 @@ export async function buildReferenceReport() {
     attempt: lostResult.attempt,
     outcome: {
       state: 'EXECUTED',
+      // The provider's terminal outcome for the attempt, not a lookup.
+      evidence_kind: 'provider_outcome',
       evidence: {
         evidence_id: 'provider-evidence:reconciled',
         observed_at: '2027-01-15T08:00:45.000Z',
@@ -881,7 +902,8 @@ export async function buildReferenceReport() {
   ));
 
   const recordFixture = evaluateFixture(oasntFixture(), 'operation:crossing-record-is-not-authority');
-  const crossingRecord = await validCrossingRecord(recordFixture);
+  const { record: crossingRecord, evaluation_binding: crossingEvaluationBinding } =
+    await validCrossingRecord(recordFixture);
   const crossingVerification = await verifyAebCrossingRecord(crossingRecord, {
     verification_keys: [],
   });
@@ -902,6 +924,7 @@ export async function buildReferenceReport() {
     'verified historical evidence cannot replace native authority',
     {
       crossing_record_valid: true,
+      evaluation_binding: crossingEvaluationBinding,
       state: crossingResult.state,
       reason: crossingResult.state === 'REFUSED' ? crossingResult.reason : null,
       provider_calls: crossingRun.providerCalls(),

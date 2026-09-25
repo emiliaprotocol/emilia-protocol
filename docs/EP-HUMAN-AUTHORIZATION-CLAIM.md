@@ -15,10 +15,10 @@ claim but defines no human-quorum meaning; delegation receipts
 ([draft-nelson-agent-delegation-receipts]) attest the agent's authority but not a
 contemporaneous human approval of the specific action.
 
-The highest-leverage move for EP is therefore not to win a format war but to make
-its primitive **embeddable**: define the human-authorization assertion as a
-compact, self-describing claim that any receipt, token, or chain can carry. Every
-adopter that embeds it propagates EP's semantics rather than reinventing them.
+EP therefore makes its primitive **embeddable**: it defines the
+human-authorization assertion as a compact, self-describing claim that any
+receipt, token, or chain can carry, so an embedding format need not redefine
+its semantics.
 
 ## The claim
 

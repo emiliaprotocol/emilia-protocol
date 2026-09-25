@@ -5,14 +5,14 @@
     "name": "EMILIA reference runner",
     "affiliation": "EMILIA Protocol",
     "revision": "repository-working-tree",
-    "executed_at": "2026-08-22T16:32:10.176Z",
+    "executed_at": "2026-09-25T15:40:05.641Z",
     "execution_owner": "runner-asserted",
     "implementation_owner": "EMILIA Protocol",
     "independent_implementation": false
   },
   "pins": {
     "aeb_contract": "AEB-ADAPTER-v1",
-    "aeb_contract_lock": "sha256:976c7da78180a251834c12e6f27b6b886391521c0f0717d5f8d95422b115f9c9",
+    "aeb_contract_lock": "sha256:ae57d0b30d0e7bd6f590d149e087bb45a63e3cb55bae26ad8d7e445b42a8648d",
     "ccs_distribution": "1.1.0",
     "ccs_runtime": "0.4.1",
     "oasnt_revision": "draft-thallapelly-oasnt-02",
@@ -101,12 +101,12 @@
       "description": "The compatibility lock matches AEB-ADAPTER-v1 contract bytes.",
       "passed": true,
       "observed": {
-        "lock_digest": "sha256:976c7da78180a251834c12e6f27b6b886391521c0f0717d5f8d95422b115f9c9",
+        "lock_digest": "sha256:ae57d0b30d0e7bd6f590d149e087bb45a63e3cb55bae26ad8d7e445b42a8648d",
         "files": [
           {
             "path": "packages/verify/src/aeb-adapter-contract.ts",
-            "expected": "c157494b46a7780bee0b47b4881ccf8d31ccbe4203e3b4a52797cf4ca982cf21",
-            "actual": "c157494b46a7780bee0b47b4881ccf8d31ccbe4203e3b4a52797cf4ca982cf21",
+            "expected": "e6ebc6b0e44e05f850268d3b31f63a0104442db07d3fc5ff180b14e903ae17ad",
+            "actual": "e6ebc6b0e44e05f850268d3b31f63a0104442db07d3fc5ff180b14e903ae17ad",
             "matched": true
           },
           {
@@ -214,6 +214,6 @@
     "One OASNT native check is pinned to the published draft-thallapelly-oasnt-02 token vector and archived text sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603; the two-leg composition uses a synthetic action-only token under the same verifier rules.",
     "A passing report is not IETF adoption, endorsement, certification, or proof of deployment."
   ],
-  "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA reference composition at repository-working-tree on 2026-08-22T16:32:10.176Z: 7/7 pinned native-protocol checks and 7/7 AEB composition checks passed against AEB-ADAPTER-v1 (sha256:976c7da78180a251834c12e6f27b6b886391521c0f0717d5f8d95422b115f9c9). This is a reproduction of the EMILIA reference runner, not an independent implementation or IETF endorsement.",
-  "report_digest": "sha256:885868e8e04d56318c28651aea9f26d1a45c0a10019233ca1ce667b2d1d15da4"
+  "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA reference composition at repository-working-tree on 2026-09-25T15:40:05.641Z: 7/7 pinned native-protocol checks and 7/7 AEB composition checks passed against AEB-ADAPTER-v1 (sha256:ae57d0b30d0e7bd6f590d149e087bb45a63e3cb55bae26ad8d7e445b42a8648d). This is a reproduction of the EMILIA reference runner, not an independent implementation or IETF endorsement.",
+  "report_digest": "sha256:5a7703e95540eb7bd57770401698482dc7b1c1efb1f1aa6fef8075ff64bff6ea"
 }

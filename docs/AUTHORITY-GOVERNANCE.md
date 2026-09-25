@@ -8,7 +8,7 @@
 
 ## 1. Why this matters
 
-EP's cryptographic guarantees are sound, and the wedge is real. But every protocol that verifies a chain of trust eventually depends on an anchor that cannot itself be verified by the protocol — it has to be asserted by humans or institutions. In EP, that anchor is the `authorities` table.
+EP's cryptographic guarantees are sound. But every protocol that verifies a chain of trust eventually depends on an anchor that cannot itself be verified by the protocol - it has to be asserted by humans or institutions. In EP, that anchor is the `authorities` table.
 
 An authority is an identity that signs presentations. When EP checks `checkIssuerTrusted`, it asks: *is this issuer in the authorities table, with status != 'revoked'?* If yes, the presentation is trusted. If the authorities table is wrong, everything downstream is wrong — the formal proofs, the audit score, the load tests, none of it saves you.
 

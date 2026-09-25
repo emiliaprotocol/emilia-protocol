@@ -13,7 +13,7 @@ function byId(report, id) {
 test('all four native profiles traverse one residual consequence lifecycle without a second authorization decision', async () => {
   const report = await runSuite();
   assert.equal(report.passed, true, JSON.stringify(report, null, 2));
-  assert.equal(report.cases.length, 23);
+  assert.equal(report.cases.length, 26);
   assert.equal(report.authorization_decisions_by_aeb, 0);
   assert.deepEqual(
     report.profiles.map((profile) => profile.id),
@@ -102,6 +102,34 @@ test('stable replay identity and atomic reservation permit at most one dispatch 
   assert.deepEqual(concurrent.observed.states, ['EXECUTED', 'REFUSED']);
   assert.equal(concurrent.observed.provider_calls, 1);
   assert.equal(concurrent.observed.dispatch_owner_count, 1);
+});
+
+test('fresh native authority cannot re-enter an uncertain or executed action', async () => {
+  const report = await runSuite();
+  const uncertain = byId(report, 'FRESH-AUTHORITY-CANNOT-REENTER-UNCERTAIN-ACTION');
+  assert.equal(uncertain.observed.first, 'INDETERMINATE');
+  assert.equal(uncertain.observed.retry, 'REFUSED');
+  assert.equal(uncertain.observed.retry_reason, 'native_action_in_flight');
+  assert.equal(uncertain.observed.fresh_replay_unit, true);
+  assert.equal(uncertain.observed.provider_calls, 1);
+
+  const executed = byId(report, 'FRESH-AUTHORITY-CANNOT-REPEAT-EXECUTED-ACTION');
+  assert.equal(executed.observed.first, 'EXECUTED');
+  assert.equal(executed.observed.second, 'REFUSED');
+  assert.equal(executed.observed.second_reason, 'native_action_already_executed');
+  assert.equal(executed.observed.fresh_replay_unit, true);
+  assert.equal(executed.observed.provider_calls, 1);
+});
+
+test('one grant presented under a second pinned label is spent once', async () => {
+  const report = await runSuite();
+  const relabelled = byId(report, 'RELABELLED-GRANT-IS-SPENT-ONCE');
+  assert.equal(relabelled.observed.first, 'EXECUTED');
+  assert.equal(relabelled.observed.second, 'REFUSED');
+  assert.equal(relabelled.observed.second_reason, 'native_replay_or_operation_conflict');
+  assert.equal(relabelled.observed.label_changed, true);
+  assert.equal(relabelled.observed.replay_unit_stable, true);
+  assert.equal(relabelled.observed.provider_calls, 1);
 });
 
 test('pre-entry recovery is retryable while post-entry uncertainty is sticky', async () => {

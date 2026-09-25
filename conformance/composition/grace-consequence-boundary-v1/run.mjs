@@ -390,6 +390,8 @@ function harness(fixture, envelope, options = {}) {
     let lastResult = null;
     const boundary = createConsequenceBoundary({
         executor_id: EXECUTOR,
+        // Unique among the boundaries that share this consumption store.
+        boundary_id: 'grace-consequence-boundary-conformance',
         provider: PROVIDER,
         aeb: { config: fixture.config, adapters: fixture.adapters, store },
         attempts: {
@@ -419,6 +421,19 @@ function harness(fixture, envelope, options = {}) {
                 },
                 result: graceResultSummary(lastResult),
             };
+        },
+        // Affirms only a provider terminal outcome for this attempt, never a
+        // pre-entry lookup. Terminal reconciliation requires such a verifier.
+        provider_outcomes: {
+            verify: (context) => (context.purpose === 'provider_outcome'
+                && context.outcome.evidence.evidence_id.startsWith('provider-evidence:'))
+                ? {
+                    verified: true,
+                    purpose: context.purpose,
+                    attempt_id: context.attempt.attempt_id,
+                    provider_idempotency_key: context.provider_idempotency_key,
+                }
+                : false,
         },
         now: () => NOW,
     });
@@ -487,6 +502,8 @@ export async function buildReferenceReport() {
         attempt: lostResult.attempt,
         outcome: {
             state: 'EXECUTED',
+            // The provider's terminal outcome for the attempt, not a lookup.
+            evidence_kind: 'provider_outcome',
             evidence: {
                 evidence_id: 'provider-evidence:grace:reconciled',
                 observed_at: '2026-07-15T21:45:01.000Z',

@@ -76,7 +76,7 @@ IANA-style registration of the `urn:ep:action` namespace.
 ## Missing / next (honest)
 
 - **Not yet filed** as an I-D (gated on the receipts-story batch, post-IETF-126).
-- **No `urn:ep:action` IANA/registry mechanics** — the registry is a land-claim doc; a real URN-namespace registration + a machine-readable registry file (like `ep-actions.json`) is the follow-on.
+- **No `urn:ep:action` IANA/registry mechanics** - the registry is a repository document; a real URN-namespace registration + a machine-readable registry file (like `ep-actions.json`) is the follow-on.
 - **No adoption yet** — the extension needs one external API annotating a real endpoint to become a dependency rather than a proposal (the require-receipt/402 rail is the demand hook that pulls it).
 - **No conformance tooling** — a linter that checks an OpenAPI doc's `x-emilia-action` blocks against the schema (a `spectral` ruleset or a CLI) would make it turnkey for adopters.
 - **Rollback semantics are declaration-only** — `rollback.operation_id` names the reversing op; it does not yet define a verifiable rollback-evidence artifact.

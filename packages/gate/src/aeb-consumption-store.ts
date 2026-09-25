@@ -6,12 +6,35 @@
  * pinned transaction. Logical conflicts roll the transaction back; database
  * errors propagate so callers fail closed. Commit and release are fenced by an
  * opaque per-reservation token retained only by the store instance that won.
+ * A different instance (for example after a restart) takes ownership of a
+ * RESERVED row only through claimReservation(), which requires the separate
+ * recovery pool and an authorized recovery claim. state() is an authenticated
+ * durable read, which the direct-native consequence boundary requires.
+ *
+ * Ownership is per store instance and per key, so two callers in one process
+ * that reserve the same key share one owner token. The native consequence
+ * boundary therefore writes only keys that include its boundary ID and
+ * attempt ID, which no other attempt can produce. The composed boundary's
+ * evaluation reservation is keyed by the evaluation; it closes or commits that
+ * row for an attempt only while the attempt's own holder row, keyed by the
+ * evaluation reservation, the boundary ID, and the attempt ID, is still
+ * RESERVED.
+ *
+ * Every recovery claim must carry a scope naming the claimed row. A claim
+ * without one is refused before the authorizer runs
+ * (`recovery_claim_scope_required`).
  */
 import crypto from 'node:crypto';
 import type {
+  AebConsumptionState,
   AebDurableConsumptionStore,
   AebReservationResult,
 } from '@emilia-protocol/verify/aeb-adapter-contract';
+import {
+  consequenceBoundaryRecoveryAttemptIdentity,
+  consequenceBoundaryRecoveryClaimKey,
+  consequenceBoundaryRecoveryClaimMarkerKey,
+} from './consequence-boundary.js';
 
 export const AEB_PG_CONSUMPTION_STORE_VERSION = 'EP-GATE-AEB-PG-CONSUMPTION-v1';
 export const AEB_CONSUMPTION_OPERATION_TABLE = 'ep_aeb_consumption_operations';
@@ -175,6 +198,25 @@ BEGIN
   );
 END
 $fn$;
+-- Authenticated durable read of one exact operation row. AVAILABLE means no
+-- row exists. Lets a caller distinguish a lost write acknowledgement from a
+-- write that never happened without granting table reads.
+CREATE OR REPLACE FUNCTION ep_aeb_private.operation_state(
+  p_tenant_id TEXT, p_relying_party_id TEXT, p_operation_key TEXT
+) RETURNS TABLE(state TEXT)
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
+AS $fn$
+BEGIN
+  PERFORM ep_aeb_private.assert_tenant_principal(p_tenant_id, FALSE);
+  RETURN QUERY SELECT COALESCE((
+    SELECT operations.state
+    FROM public.${AEB_CONSUMPTION_OPERATION_TABLE} AS operations
+    WHERE operations.tenant_id = p_tenant_id
+      AND operations.relying_party_id = p_relying_party_id
+      AND operations.operation_key = p_operation_key
+  ), 'AVAILABLE');
+END
+$fn$;
 CREATE OR REPLACE FUNCTION ep_aeb_private.reserve_replay_keys(
   p_tenant_id TEXT, p_relying_party_id TEXT, p_operation_key TEXT, p_replay_keys TEXT[]
 ) RETURNS TABLE(replay_key TEXT)
@@ -273,6 +315,8 @@ ALTER FUNCTION ep_aeb_private.reserve_operation(TEXT, TEXT, TEXT, TEXT)
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 ALTER FUNCTION ep_aeb_private.has_replay_fence(TEXT, TEXT, TEXT)
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
+ALTER FUNCTION ep_aeb_private.operation_state(TEXT, TEXT, TEXT)
+  OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 ALTER FUNCTION ep_aeb_private.reserve_replay_keys(TEXT, TEXT, TEXT, TEXT[])
   OWNER TO ${AEB_CONSUMPTION_OWNER_ROLE};
 ALTER FUNCTION ep_aeb_private.commit_operation(TEXT, TEXT, TEXT, TEXT)
@@ -295,11 +339,14 @@ GRANT EXECUTE ON FUNCTION ep_aeb_private.has_replay_fence(TEXT, TEXT, TEXT),
   TO ${AEB_CONSUMPTION_EXECUTOR_ROLE};
 GRANT EXECUTE ON FUNCTION ep_aeb_private.claim_operation(TEXT, TEXT, TEXT, TEXT)
   TO ${AEB_CONSUMPTION_RECOVERY_ROLE};
+GRANT EXECUTE ON FUNCTION ep_aeb_private.operation_state(TEXT, TEXT, TEXT)
+  TO ${AEB_CONSUMPTION_EXECUTOR_ROLE};
 REVOKE ${AEB_CONSUMPTION_OWNER_ROLE} FROM CURRENT_USER;`;
 
 /** Exact statements issued by the store, exported for audit and deterministic fakes. */
 export const AEB_CONSUMPTION_SQL = Object.freeze({
   hasReplayFence: `SELECT fenced FROM ep_aeb_private.has_replay_fence($1::text, $2::text, $3::text)`,
+  operationState: `SELECT state FROM ep_aeb_private.operation_state($1::text, $2::text, $3::text)`,
   reserveOperation: `SELECT operation_key FROM ep_aeb_private.reserve_operation($1::text, $2::text, $3::text, $4::text)`,
   reserveReplayKeys: `SELECT replay_key FROM ep_aeb_private.reserve_replay_keys($1::text, $2::text, $3::text, $4::text[])`,
   commitOperation: `SELECT operation_key FROM ep_aeb_private.commit_operation($1::text, $2::text, $3::text, $4::text)`,
@@ -331,17 +378,105 @@ export interface PostgresAebDurableConsumptionStoreOptions {
   relyingPartyId?: string;
   /** Must return an unpredictable opaque string in production. */
   ownerTokenFactory?: () => string;
-  /** Verify a caller credential bound to the exact reservation being claimed. */
+  /**
+   * Verify a caller credential for the reservation being claimed. The store
+   * runs it only for a claim whose scope names exactly `operationKey`
+   * (consequenceBoundaryRecoveryClaimKey()), so one credential bound to the
+   * attempt authorizes every reservation that attempt holds: bind it to
+   * `attemptIdentity` (the boundary kind, the boundary ID, and the attempt
+   * ID) together with `tenantId` and `relyingPartyId`. Never bind it to
+   * `scope.attemptId` alone, which attempts on two boundaries can share, to
+   * `scope.recoveryOperationKey` alone, which every attempt with the same
+   * operation ID and action (native) or the same evaluation (composed)
+   * shares, or to `operationKey`, or restart reconciliation cannot finish in
+   * one call.
+   */
   authorizeRecoveryClaim?: AebRecoveryClaimAuthorizer;
+}
+
+/**
+ * Which attempt a recovery claim is for. The consequence boundary supplies it
+ * from custody it has already authenticated through its attempt store. The
+ * store refuses a claim whose key is not the row this scope names
+ * (consequenceBoundaryRecoveryClaimKey()), and a claim on a row shared by
+ * several attempts (the composed evaluation reservation) unless the scope's
+ * attempt still holds its action-fence holder row, so an authorizer binds one
+ * credential to the attempt instead of to each row key.
+ */
+export interface AebRecoveryClaimScope {
+  /**
+   * Which consequence boundary wrote the attempt. A `native` scope derives
+   * only native rows and a `composed` scope only composed rows, so equal
+   * attempt IDs on the two boundaries never name each other's rows.
+   */
+  boundary: 'native' | 'composed';
+  /**
+   * The `boundary_id` of the boundary that wrote the attempt. Every
+   * attempt-derived row key includes it, so two boundaries of the same kind
+   * that share a consumption store never name each other's rows, even with
+   * identical attempt IDs.
+   */
+  boundaryId: string;
+  /**
+   * Boundary attempt whose reservation is being claimed. Attempt IDs are
+   * unique per attempt store: it refuses a second reservation of one ID.
+   */
+  attemptId: string;
+  /**
+   * Caller operation identifier the attempt carried. It is caller-asserted:
+   * the store checks that the scope names the claimed row, but no row key is
+   * derived from `operationId`, so an authorizer must not rely on it.
+   */
+  operationId: string;
+  /**
+   * Operation identity the attempt's row keys are derived from: the native
+   * boundary's nativeConsequenceBoundaryReservationKey() value, or the
+   * composed boundary's AEB evaluation reservation key. Other attempts with
+   * the same operation ID and action, or the same evaluation, share it, so it
+   * is not a binding for a credential.
+   */
+  recoveryOperationKey: string;
+  /** Which of the attempt's reservations `operationKey` names. */
+  reservation: 'operation' | 'native-authority' | 'action-fence-holder';
 }
 
 export interface AebRecoveryClaimAuthorization {
   authorization: unknown;
   tenantId: string;
   relyingPartyId: string;
+  /** Exact store row being claimed; the scope names exactly this row. */
   operationKey: string;
   requiredState: 'RESERVED';
+  /**
+   * The attempt identity to bind a credential to:
+   * consequenceBoundaryRecoveryAttemptIdentity(scope),
+   * `native:<boundaryId>:<attemptId>` or `composed:<boundaryId>:<attemptId>`.
+   */
+  attemptIdentity: string;
+  /**
+   * The validated scope. Every member except `operationId` is checked
+   * against the claimed row; `operationId` is caller-asserted.
+   */
+  scope: Readonly<AebRecoveryClaimScope>;
 }
+
+/**
+ * Why claimReservationResult() refused a claim. Every reason except
+ * `recovery_claim_unauthorized` and `recovery_claim_row_not_reserved` is
+ * decided before the authorizer runs.
+ */
+export type AebRecoveryClaimRefusal =
+  | 'recovery_claim_scope_required'
+  | 'recovery_claim_scope_invalid'
+  | 'recovery_claim_key_mismatch'
+  | 'recovery_claim_owner_marker_absent'
+  | 'recovery_claim_already_owned'
+  | 'recovery_claim_unauthorized'
+  | 'recovery_claim_row_not_reserved';
+
+export type AebRecoveryClaimResult =
+  | { claimed: true }
+  | { claimed: false; reason: AebRecoveryClaimRefusal };
 
 export type AebRecoveryClaimAuthorizer = (
   claim: Readonly<AebRecoveryClaimAuthorization>,
@@ -365,11 +500,35 @@ export interface PostgresAebDurableConsumptionStore extends AebDurableConsumptio
    */
   hasReplayFence(replayKey: string): Promise<boolean>;
   /**
+   * Authenticated durable read of one operation row: AVAILABLE when no row
+   * exists, otherwise RESERVED, CONSUMED, or RELEASED_NOT_ENTERED. Database
+   * errors and malformed answers throw, so callers treat them as unknown.
+   */
+  state(key: string): Promise<AebConsumptionState>;
+  /**
    * Rotate ownership of an existing RESERVED row after external authorization.
    * The stored and replacement owner tokens are never returned or passed to
-   * the authorizer.
+   * the authorizer. `scope` is required and must name exactly `key`
+   * (consequenceBoundaryRecoveryClaimKey()); for the composed evaluation
+   * reservation the scope's attempt must still hold its fence holder row.
+   * Otherwise the claim is refused before the authorizer runs. The validated
+   * scope and its attempt identity are passed to the authorizer. Same as
+   * claimReservationResult(), reduced to whether the claim succeeded.
    */
-  claimReservation(key: string, authorization: unknown): Promise<boolean>;
+  claimReservation(
+    key: string,
+    authorization: unknown,
+    scope?: AebRecoveryClaimScope,
+  ): Promise<boolean>;
+  /**
+   * claimReservation() with the refusal reason. Scope problems are refusals,
+   * never throws; database errors still reject so callers fail closed.
+   */
+  claimReservationResult(
+    key: string,
+    authorization: unknown,
+    scope?: AebRecoveryClaimScope,
+  ): Promise<AebRecoveryClaimResult>;
 }
 
 const BEGIN_WRITE = 'BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE';
@@ -409,6 +568,59 @@ function assertOwnerToken(value: unknown): asserts value is string {
       || /[\u0000-\u001f\u007f]/.test(value)) {
     throw new TypeError('AEB consumption ownerTokenFactory must return an opaque string of 16 to 512 bytes');
   }
+}
+
+const RECOVERY_CLAIM_RESERVATIONS = new Set(['operation', 'native-authority', 'action-fence-holder']);
+
+const RECOVERY_CLAIM_BOUNDARIES = new Set(['native', 'composed']);
+
+/** Same grammar as the boundaries' `boundary_id`. */
+const RECOVERY_CLAIM_BOUNDARY_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
+
+function validText(value: unknown, maximumBytes: number): value is string {
+  return typeof value === 'string'
+    && Buffer.byteLength(value, 'utf8') >= 1
+    && Buffer.byteLength(value, 'utf8') <= maximumBytes
+    && !/[\u0000-\u001f\u007f]/.test(value);
+}
+
+/**
+ * Copy a caller scope through data descriptors only; no getter ever runs.
+ * Null for anything that is not a well-formed scope.
+ */
+function recoveryClaimScope(value: unknown): Readonly<AebRecoveryClaimScope> | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+  let descriptors: PropertyDescriptorMap;
+  try {
+    descriptors = Object.getOwnPropertyDescriptors(value);
+  } catch {
+    return null;
+  }
+  const keys = Reflect.ownKeys(descriptors);
+  if (keys.some((key) => typeof key !== 'string' || !Object.hasOwn(descriptors[key as string], 'value'))) {
+    return null;
+  }
+  const record: Record<string, unknown> = {};
+  for (const key of keys as string[]) record[key] = descriptors[key].value;
+  if (Object.keys(record).sort().join(',')
+      !== 'attemptId,boundary,boundaryId,operationId,recoveryOperationKey,reservation'
+      || !RECOVERY_CLAIM_BOUNDARIES.has(record.boundary as string)
+      || typeof record.boundaryId !== 'string'
+      || !RECOVERY_CLAIM_BOUNDARY_ID.test(record.boundaryId)
+      || !RECOVERY_CLAIM_RESERVATIONS.has(record.reservation as string)
+      || !validText(record.attemptId, 512)
+      || !validText(record.operationId, 512)
+      || !validText(record.recoveryOperationKey, 4096)) {
+    return null;
+  }
+  return Object.freeze({
+    boundary: record.boundary as AebRecoveryClaimScope['boundary'],
+    boundaryId: record.boundaryId as string,
+    attemptId: record.attemptId as string,
+    operationId: record.operationId as string,
+    recoveryOperationKey: record.recoveryOperationKey as string,
+    reservation: record.reservation as AebRecoveryClaimScope['reservation'],
+  });
 }
 
 function exactRowCount(result: QueryResult, operation: string) {
@@ -511,6 +723,29 @@ export function createPostgresAebDurableConsumptionStore({
       }
     },
 
+    async state(key): Promise<AebConsumptionState> {
+      assertText(key, 'operation key', 4096);
+      const client = await pool.connect();
+      if (!client || typeof client.query !== 'function' || typeof client.release !== 'function') {
+        throw new TypeError('AEB consumption pg pool returned an invalid client');
+      }
+      try {
+        const result = await client.query(AEB_CONSUMPTION_SQL.operationState, [
+          tenantId, relyingPartyId, key,
+        ]);
+        const rows = exactRowCount(result, 'read operation state');
+        const state = result.rows?.[0]?.state;
+        if (rows !== 1 || result.rows?.length !== 1
+            || (state !== 'AVAILABLE' && state !== 'RESERVED'
+              && state !== 'CONSUMED' && state !== 'RELEASED_NOT_ENTERED')) {
+          throw new Error('read operation state: malformed PostgreSQL result');
+        }
+        return state;
+      } finally {
+        client.release();
+      }
+    },
+
     async reserve(key, replayKeys = []): Promise<AebReservationResult> {
       assertText(key, 'operation key', 4096);
       if (!Array.isArray(replayKeys)) {
@@ -553,21 +788,44 @@ export function createPostgresAebDurableConsumptionStore({
       return 'RESERVED';
     },
 
-    async claimReservation(key, authorization): Promise<boolean> {
+    async claimReservationResult(key, authorization, scope): Promise<AebRecoveryClaimResult> {
       assertText(key, 'operation key', 4096);
+      const refuse = (reason: AebRecoveryClaimRefusal): AebRecoveryClaimResult => (
+        Object.freeze({ claimed: false as const, reason })
+      );
+      // Every claim names the row it is for. Gate always passes a scope; a
+      // claim without one is refused before the authorizer can see it.
+      if (scope === undefined) return refuse('recovery_claim_scope_required');
+      const claimScope = recoveryClaimScope(scope);
+      if (!claimScope) return refuse('recovery_claim_scope_invalid');
       // Recovery is a restart boundary, not an in-place owner rotation. The
       // base AEB store API fences ownership by store instance (commit/release
       // take only the operation key), so replacing a token already owned by
       // this instance would let its stale caller inherit the new token.
-      if (ownedReservations.has(key)) return false;
-      const claim = Object.freeze({
+      if (ownedReservations.has(key)) return refuse('recovery_claim_already_owned');
+      // A scope names exactly one row: the one the boundaries derive from it,
+      // for its boundary kind. A credential bound to one attempt identity
+      // cannot claim another row.
+      if (consequenceBoundaryRecoveryClaimKey(claimScope) !== key) {
+        return refuse('recovery_claim_key_mismatch');
+      }
+      // A row shared by every attempt of one evaluation is claimable for an
+      // attempt only while that attempt's own holder row marks it as the
+      // current owner.
+      const marker = consequenceBoundaryRecoveryClaimMarkerKey(claimScope);
+      if (marker !== null && await store.state(marker) !== 'RESERVED') {
+        return refuse('recovery_claim_owner_marker_absent');
+      }
+      const claim: Readonly<AebRecoveryClaimAuthorization> = Object.freeze({
         authorization,
         tenantId,
         relyingPartyId,
         operationKey: key,
         requiredState: 'RESERVED' as const,
+        attemptIdentity: consequenceBoundaryRecoveryAttemptIdentity(claimScope)!,
+        scope: claimScope,
       });
-      if (await authorizeRecoveryClaim(claim) !== true) return false;
+      if (await authorizeRecoveryClaim(claim) !== true) return refuse('recovery_claim_unauthorized');
 
       const ownerToken = ownerTokenFactory();
       assertOwnerToken(ownerToken);
@@ -581,8 +839,13 @@ export function createPostgresAebDurableConsumptionStore({
         if (rows > 1) throw new Error('claim operation: unexpected PostgreSQL row count');
         return rows === 1;
       });
-      if (changed) ownedReservations.set(key, ownerToken);
-      return changed;
+      if (!changed) return refuse('recovery_claim_row_not_reserved');
+      ownedReservations.set(key, ownerToken);
+      return Object.freeze({ claimed: true as const });
+    },
+
+    async claimReservation(key, authorization, scope): Promise<boolean> {
+      return (await store.claimReservationResult(key, authorization, scope)).claimed;
     },
 
     async commit(key): Promise<boolean> {

@@ -1503,3 +1503,117 @@ test('an aborted attempt that never reached the provider keeps a non-terminal re
     verification: boundVerification(satisfied.record), local_authorization: true, store,
   }).state, 'AUTHORIZED');
 });
+
+test('S5b CA8: a reserve answer that is lost or unrecognized is never a clean refusal while the row may be RESERVED', async () => {
+  const s = setup();
+  const result = evaluate(s);
+  function durableStore({ withState = true, answer }: {
+    withState?: boolean;
+    answer: (apply: () => void) => Promise<unknown>;
+  }) {
+    const states = new Map<string, string>();
+    const store: any = {
+      durable: true,
+      ownershipFenced: true,
+      permanentConsumption: true,
+      atomicReplayFenced: true,
+      states,
+      async reserve(key: string) {
+        return answer(() => { states.set(key, 'RESERVED'); });
+      },
+      async commit() { return false; },
+      async release() { return false; },
+    };
+    if (withState) store.state = (key: string) => states.get(key) ?? 'AVAILABLE';
+    return store;
+  }
+  const authorize = (store: unknown) => authorizeAebExecutionDurable(result.record, {
+    verification: boundVerification(result.record),
+    local_authorization: true,
+    store,
+  });
+  for (const [label, answer, expected] of [
+    ['applied, acknowledgement lost', async (apply: () => void) => { apply(); throw new Error('ack lost'); },
+      ['RECONCILIATION_REQUIRED', 'consumption_reservation_unconfirmed']],
+    ['applied, truthy object', async (apply: () => void) => { apply(); return { ok: true }; },
+      ['RECONCILIATION_REQUIRED', 'consumption_reservation_unconfirmed']],
+    ['applied, 1', async (apply: () => void) => { apply(); return 1; },
+      ['RECONCILIATION_REQUIRED', 'consumption_reservation_unconfirmed']],
+    // T6: an AVAILABLE read after a throw or an unknown answer is not proof
+    // that nothing was reserved; a write still in flight can land after it.
+    ['not applied, throw', async () => { throw new Error('down'); },
+      ['RECONCILIATION_REQUIRED', 'consumption_reservation_unconfirmed']],
+    ['not applied, undefined', async () => undefined,
+      ['RECONCILIATION_REQUIRED', 'consumption_reservation_unconfirmed']],
+    ['defined conflict', async () => 'CONSUMPTION_CONFLICT',
+      ['REFUSED', 'consumption_conflict']],
+    ['defined replay conflict', async () => 'NATIVE_REPLAY_CONFLICT',
+      ['REFUSED', 'native_replay_conflict']],
+    ['false', async () => false,
+      ['REFUSED', 'consumption_conflict']],
+  ] as const) {
+    const decision = await authorize(durableStore({ answer: answer as any }));
+    assert.deepEqual([decision.state, decision.reason], expected, label);
+    assert.equal(decision.invoke_allowed, false, label);
+  }
+  // Without a durable read an unknown answer cannot be resolved at all.
+  const blind = await authorize(durableStore({
+    withState: false,
+    answer: async () => { throw new Error('down'); },
+  }));
+  assert.deepEqual([blind.state, blind.reason], ['RECONCILIATION_REQUIRED', 'consumption_reservation_unconfirmed']);
+  // A read that fails is unknown too.
+  const unreadable = durableStore({ answer: async () => { throw new Error('down'); } });
+  unreadable.state = () => { throw new Error('read down'); };
+  const unread = await authorize(unreadable);
+  assert.deepEqual([unread.state, unread.reason], ['RECONCILIATION_REQUIRED', 'consumption_reservation_unconfirmed']);
+});
+
+test('T6 CX2: a reserve write that lands after the durable read is never reported as a clean refusal', async () => {
+  const s = setup();
+  const result = evaluate(s);
+  const states = new Map<string, string>();
+  let landLater: (() => void) | null = null;
+  const store: any = {
+    durable: true,
+    ownershipFenced: true,
+    permanentConsumption: true,
+    atomicReplayFenced: true,
+    async reserve(key: string) {
+      // The client times out; the server still commits the write later.
+      landLater = () => { states.set(key, 'RESERVED'); };
+      throw new Error('query timeout');
+    },
+    async commit() { return false; },
+    async release() { return false; },
+    state: (key: string) => states.get(key) ?? 'AVAILABLE',
+  };
+  const decision = await authorizeAebExecutionDurable(result.record, {
+    verification: boundVerification(result.record),
+    local_authorization: true,
+    store,
+  });
+  assert.equal(states.get(decision.reservation_key ?? aebReservationKey(result.record)), undefined,
+    'the durable read ran before the write landed');
+  (landLater as unknown as () => void)();
+  assert.deepEqual([decision.state, decision.reason, decision.invoke_allowed],
+    ['RECONCILIATION_REQUIRED', 'consumption_reservation_unconfirmed', false]);
+  assert.equal(states.get(aebReservationKey(result.record)), 'RESERVED',
+    'the evaluation is RESERVED after the call returned, so the answer could not have been a clean refusal');
+
+  // A key the read shows CONSUMED or RELEASED_NOT_ENTERED cannot have been
+  // reserved by this call, so that stays a clean conflict.
+  for (const terminal of ['CONSUMED', 'RELEASED_NOT_ENTERED']) {
+    const settled: any = {
+      ...store,
+      async reserve() { throw new Error('query timeout'); },
+      state: () => terminal,
+    };
+    const conflict = await authorizeAebExecutionDurable(result.record, {
+      verification: boundVerification(result.record),
+      local_authorization: true,
+      store: settled,
+    });
+    assert.deepEqual([conflict.state, conflict.reason], ['REFUSED', 'consumption_conflict'], terminal);
+  }
+});

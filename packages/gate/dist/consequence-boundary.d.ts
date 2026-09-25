@@ -3,13 +3,39 @@
  *
  * Native evidence stays native. The direct path verifies a relying-party-
  * pinned gateway handoff; it does not re-verify the native permit or artifact.
- * The boundary durably fences every native replay unit, records dispatch
- * custody, and invokes one provider adapter. It does not acquire approvals,
- * mint authority, or require an EMILIA receipt.
+ * Both boundaries durably fence every native replay unit, and every exact
+ * action at one provider target while an attempt for it is in flight, record
+ * dispatch custody, and invoke one provider adapter. They do not acquire
+ * approvals, mint authority, or require an EMILIA receipt.
+ *
+ * Reservation ownership: every reservation a native attempt can release or
+ * close is keyed by its boundary ID and attempt ID (the diagnostic executed
+ * marker is only ever committed), so a release, close, or recovery claim can
+ * only reach rows that attempt created, even on a store that two boundaries
+ * of one kind share. On the composed boundary the action-fence holder is
+ * keyed the same way; the evaluation reservation is keyed by the evaluation,
+ * and an attempt commits it only while its own holder is still held, which
+ * marks it as that reservation's owner. The durable attempt record is written
+ * before any attempt-keyed reservation, so an attempt that stops before
+ * provider entry can be found and recovered through reconcile().
+ *
+ * Release ordering: an attempt's reservations are released, closed, or
+ * committed only after its durable record has confirmably reached a terminal
+ * state or RELEASED with this attempt's explicit not-entered marker. A
+ * RELEASED record without that marker or provider evidence proves nothing and
+ * releases nothing. Pre-entry recovery and terminal reconciliation are
+ * separate reconcile() modes, and a pre-entry recovery that loses its
+ * RESERVED -> RELEASED transition to the live run releases nothing.
+ *
+ * Provider entry: a run invokes the provider only after a durable read shows
+ * its own move to INVOKING, and never after it has sent any write that could
+ * record not-entered for its attempt. A start that no read confirms is held
+ * (INDETERMINATE attempt_start_unconfirmed) with no not-entered write.
  */
 import { type AebAdapter, type AebConsumptionState, type AebDigest, type AebDurableConsumptionStore, type AebEvaluationRecord, type AebPinnedConfig, type AebStatusInput } from '@emilia-protocol/verify/aeb-adapter-contract';
 import type { AebExecutionConditionsResult } from '@emilia-protocol/verify/aeb-execution-conditions';
 import { type AebNativeAuthorizationDigest, type AebNativeAuthorizationHandoff, type AebNativeAuthorizationHandoffVerification, type AebNativeAuthorizationPins, type AebNativeAuthorizationStatus } from '@emilia-protocol/verify/aeb';
+import type { AebRecoveryClaimScope } from './aeb-consumption-store.js';
 import type { ConsequenceEnvelopeBoundary } from './consequence-envelope.js';
 export declare const CONSEQUENCE_BOUNDARY_VERSION = "EMILIA-CONSEQUENCE-BOUNDARY-v1";
 export declare const CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN = "EMILIA-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1";
@@ -17,7 +43,6 @@ export declare const NATIVE_CONSEQUENCE_BOUNDARY_VERSION = "EMILIA-NATIVE-CONSEQ
 export declare const NATIVE_CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN = "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1";
 export declare const NATIVE_CONSEQUENCE_BOUNDARY_TRUST_SNAPSHOT_DOMAIN = "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-TRUST-SNAPSHOT-v1";
 export declare const NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN = "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-LOCAL-DECISION-v1";
-type JsonObject = Record<string, unknown>;
 export interface ConsequenceBoundaryProvider {
     tenant_id: string;
     provider_id: string;
@@ -42,18 +67,35 @@ export interface ConsequenceBoundaryAttemptReference extends ConsequenceBoundary
     /** Opaque custody capability. It MUST NOT cross an untrusted API boundary. */
     owner: ConsequenceBoundaryOwnerHandle;
 }
+/** Value of `ConsequenceBoundaryNotEnteredMarker.kind`. */
+export declare const CONSEQUENCE_BOUNDARY_NOT_ENTERED = "not_entered";
+/**
+ * Durable not-entered marker. Gate writes it as the `evidence` of every
+ * transition to RELEASED that it makes before the provider callback (a run's
+ * own pre-entry stop and pre-entry recovery's linearizing transition). The
+ * attempt store persists it atomically with that transition and returns it
+ * from state(). Pre-entry recovery and `pre_entry_recovery_required` rely on
+ * this marker only: a RELEASED record without it (or without provider
+ * evidence) is never read as "not entered".
+ */
+export interface ConsequenceBoundaryNotEnteredMarker {
+    kind: typeof CONSEQUENCE_BOUNDARY_NOT_ENTERED;
+    attempt_id: string;
+}
 export type ConsequenceBoundaryAttemptTransition = {
     expected_state: 'RESERVED';
     next_state: 'INVOKING';
 } | {
     expected_state: 'RESERVED';
     next_state: 'RELEASED';
+    evidence: ConsequenceBoundaryNotEnteredMarker;
 } | {
     expected_state: 'INVOKING';
     next_state: 'INDETERMINATE';
 } | {
     expected_state: 'INVOKING';
     next_state: 'RELEASED';
+    evidence: ConsequenceBoundaryNotEnteredMarker;
 };
 export interface ConsequenceBoundaryProviderEvidence extends ConsequenceBoundaryAttemptBinding {
     operation_id: string;
@@ -70,6 +112,15 @@ export interface ConsequenceBoundaryAttemptStore<TProviderEvidence = Consequence
     ownershipFenced: true;
     compareAndSwap: true;
     atomicEvidenceBinding: true;
+    /**
+     * Declares that a transition to RELEASED persists its `evidence` (the
+     * not-entered marker) atomically with the state change and that state()
+     * returns the stored evidence of every RELEASED and COMMITTED record.
+     * Required by the direct-native path. The composed path reads state() only
+     * when the store declares it; otherwise it counts transitions only on an
+     * answer that is exactly `true`, as Gate 0.26.0 did.
+     */
+    notEnteredMarker?: true;
     reserve(binding: ConsequenceBoundaryAttemptBinding): Promise<{
         reserved: true;
         owner: ConsequenceBoundaryOwnerHandle;
@@ -83,10 +134,15 @@ export interface ConsequenceBoundaryAttemptStore<TProviderEvidence = Consequence
         next_state: 'COMMITTED' | 'RELEASED';
         evidence: TProviderEvidence;
     }): Promise<boolean>;
-    /** Required by the direct-native path for idempotent close after lost acks. */
+    /**
+     * Durable read of one owned record. Required by the direct-native path.
+     * `evidence` is the stored provider evidence of a COMMITTED or RELEASED
+     * terminal record, or the not-entered marker of a RELEASED record that
+     * never entered the provider.
+     */
     state?(input: ConsequenceBoundaryAttemptReference): Promise<{
         state: 'RESERVED' | 'INVOKING' | 'INDETERMINATE' | 'COMMITTED' | 'RELEASED';
-        evidence?: TProviderEvidence;
+        evidence?: TProviderEvidence | ConsequenceBoundaryNotEnteredMarker;
     }>;
 }
 export interface ConsequenceBoundaryEvidence {
@@ -123,15 +179,117 @@ export interface ConsequenceBoundaryAuthorizationContext {
     evaluation_digest: AebDigest;
     provider: Readonly<ConsequenceBoundaryProvider>;
 }
+/**
+ * Why a provider-outcome verifier is asked. `provider_outcome`: the provider's
+ * terminal result for this attempt (the provider call itself, or terminal
+ * reconciliation), which may close or commit the fence. `pre_entry_lookup`:
+ * the provider's lookup for an attempt Gate recorded as never entered
+ * (pre-entry recovery), where FAILED means "not found". A lookup that an
+ * in-flight call could still overtake is not a terminal NOT_COMMITTED, so a
+ * verification program accepts it only for `pre_entry_lookup`.
+ */
+export type ConsequenceBoundaryProviderOutcomePurpose = 'provider_outcome' | 'pre_entry_lookup';
+/**
+ * What evidence presented to reconcile() is, in Gate's own input schema: the
+ * provider's terminal outcome for the attempt (`provider_outcome`), or the
+ * provider's lookup for an attempt Gate recorded as never entered
+ * (`pre_entry_lookup`). Terminal reconciliation refuses a `pre_entry_lookup`
+ * and pre-entry recovery refuses a `provider_outcome`, both before the
+ * verifier is called (`evidence_kind_mismatch`). Gate cannot tell whether the
+ * operator labelled the evidence correctly; a mislabel, and a verifier that
+ * affirms whatever it is asked, stay outside what Gate can detect.
+ */
+export type ConsequenceBoundaryEvidenceKind = ConsequenceBoundaryProviderOutcomePurpose;
+/**
+ * An outcome presented to reconcile(). EXECUTED and FAILED carry the
+ * `evidence_kind` of their evidence; without it reconcile() refuses
+ * (`evidence_kind_required`). INDETERMINATE carries no evidence and no kind.
+ */
+export type ConsequenceBoundaryPresentedOutcome<TResult> = {
+    state: 'EXECUTED';
+    evidence_kind: ConsequenceBoundaryEvidenceKind;
+    evidence: ConsequenceBoundaryEvidence;
+    result: TResult;
+} | {
+    state: 'FAILED';
+    evidence_kind: ConsequenceBoundaryEvidenceKind;
+    evidence: ConsequenceBoundaryEvidence;
+    reason: string;
+} | {
+    state: 'INDETERMINATE';
+    reason: string;
+};
+/**
+ * The only answer from a provider-outcome verifier that Gate accepts. It must
+ * restate the purpose it evaluated, the attempt ID, and the attempt's provider
+ * idempotency key exactly as the context gave them. Anything else, including
+ * a plain `true`, is "not verified", so a verifier that answers without
+ * reading the context affirms nothing. Gate cannot tell whether a verifier
+ * that restates the context evaluated the evidence for that purpose: a
+ * correctly labelled lookup is kept out of terminal reconciliation by its
+ * evidence kind (ConsequenceBoundaryEvidenceKind), not by this answer.
+ */
+export interface ConsequenceBoundaryProviderOutcomeAffirmation {
+    verified: true;
+    purpose: ConsequenceBoundaryProviderOutcomePurpose;
+    attempt_id: string;
+    provider_idempotency_key: string;
+}
+export type ConsequenceBoundaryProviderOutcomeAnswer = ConsequenceBoundaryProviderOutcomeAffirmation | false | null;
+export interface ConsequenceBoundaryProviderOutcomeVerificationContext<TResult> {
+    provider: Readonly<ConsequenceBoundaryProvider>;
+    operation_id: string;
+    caid: string;
+    action_digest: AebDigest;
+    evaluation_digest: AebDigest;
+    /** The attempt's provider idempotency key (also `attempt.provider_idempotency_key`). */
+    provider_idempotency_key: string;
+    attempt: Readonly<ConsequenceBoundaryAttemptBinding>;
+    outcome: Readonly<Exclude<ConsequenceBoundaryEffectOutcome<TResult>, {
+        state: 'INDETERMINATE';
+    }>>;
+    purpose: ConsequenceBoundaryProviderOutcomePurpose;
+}
 export interface ConsequenceBoundaryOptions<TResult> {
     executor_id: string;
+    /**
+     * Stable identifier of this boundary among every boundary that shares its
+     * consumption store (grammar: 1 to 128 of `A-Za-z0-9_.-`, starting with a
+     * letter or digit). Every attempt-derived reservation key and the recovery
+     * attempt identity include it, so two boundaries of the same kind on one
+     * store never collide, even with identical attempt IDs. Keep it unchanged
+     * for as long as the boundary's attempts may still need reconciliation.
+     */
+    boundary_id: string;
     provider: ConsequenceBoundaryProvider;
     aeb: {
         config: AebPinnedConfig;
         adapters: Record<string, AebAdapter>;
-        store: AebDurableConsumptionStore;
+        /**
+         * Durable consumption store. Besides the evaluation reservation it holds
+         * one action-fence holder per attempt, keyed by the evaluation
+         * reservation and the attempt (consequenceBoundaryActionFenceHolderKey),
+         * which fences the exact action at this provider under
+         * `config.relying_party_id` and marks that attempt as the evaluation
+         * reservation's owner. A durable `state()` read confirms lost
+         * acknowledgements and lets reconciliation check that marker;
+         * `recoveryClaimSupported` (the shipped PostgreSQL store) lets
+         * reconcile() finish after a restart.
+         */
+        store: AebDurableConsumptionStore & {
+            state?(key: string): AebConsumptionState | Promise<AebConsumptionState>;
+            recoveryClaimSupported?: true;
+            claimReservation?(key: string, authorization: unknown, scope?: AebRecoveryClaimScope): Promise<boolean>;
+        };
     };
     attempts: {
+        /**
+         * Durable attempt custody. With `state()` and `notEnteredMarker: true`,
+         * every transition is confirmed by a durable read; otherwise (attempt
+         * stores written for 0.26.0) only an answer that is exactly `true` counts,
+         * and pre-entry recovery proves a stop only through its own acknowledged
+         * RESERVED -> RELEASED.
+         */
         store: ConsequenceBoundaryAttemptStore;
         create_id?: (input: {
             operation_id: string;
@@ -145,6 +303,18 @@ export interface ConsequenceBoundaryOptions<TResult> {
     };
     local_authorize(context: Readonly<ConsequenceBoundaryAuthorizationContext>): boolean | Promise<boolean>;
     invoke(context: Readonly<ConsequenceBoundaryEffectContext>): ConsequenceBoundaryEffectOutcome<TResult> | Promise<ConsequenceBoundaryEffectOutcome<TResult>>;
+    /**
+     * Provider-outcome verifier, required: construction refuses without it
+     * (`provider_outcome_verifier_required`). run() closes a terminal EXECUTED
+     * or FAILED, and terminal reconciliation closes anything, only on its
+     * affirmation of purpose `provider_outcome` for the attempt and its
+     * provider idempotency key; an adapter's unverified FAILED never releases
+     * the fence. Pre-entry recovery verifies a FAILED lookup as
+     * `pre_entry_lookup`.
+     */
+    provider_outcomes: {
+        verify(context: Readonly<ConsequenceBoundaryProviderOutcomeVerificationContext<TResult>>): ConsequenceBoundaryProviderOutcomeAnswer | Promise<ConsequenceBoundaryProviderOutcomeAnswer>;
+    };
     /** Optional state-domain-owned capacity reservation before provider entry. */
     consequence_envelope?: ConsequenceEnvelopeBoundary;
     /** Conformance-only escape hatch for a process-local envelope reference. */
@@ -159,13 +329,47 @@ export interface ConsequenceBoundaryRunInput {
     execution_conditions?: AebExecutionConditionsResult;
     additional_replay_keys?: readonly string[];
 }
+/**
+ * Which recovery reconcile() performs. The two never fall through into each
+ * other.
+ *
+ * `terminal` (the default): close an attempt that reached INVOKING with the
+ * provider's terminal outcome for it (EXECUTED, or FAILED meaning the effect
+ * did not and will not occur), presented with `evidence_kind:
+ * 'provider_outcome'` and affirmed by the provider-outcome verifier for
+ * purpose `provider_outcome` before anything changes. A RESERVED record, or a
+ * RELEASED record carrying the not-entered marker, is `INDETERMINATE`
+ * `pre_entry_recovery_required` and nothing changes. An INVOKING record whose
+ * run never called the provider (an unconfirmed start) closes only here, with
+ * provider evidence the verifier accepts as foreclosing any execution, now or
+ * later, under the attempt's provider idempotency key. A point-in-time "not
+ * found" does not qualify while the run may still be live. Otherwise it stays
+ * fenced by design.
+ *
+ * `pre_entry`: close an attempt that stopped before provider entry. The
+ * outcome is the provider's lookup for this attempt, presented with
+ * `evidence_kind: 'pre_entry_lookup'`: FAILED ("not found"), or
+ * INDETERMINATE when no lookup exists; EXECUTED contradicts the record.
+ * It succeeds only through this call's own RESERVED -> RELEASED transition
+ * with the not-entered marker (or an earlier one, recorded with that marker).
+ * If the attempt reached INVOKING first, the lookup is discarded and the
+ * result is `INDETERMINATE` `recovery_lost_to_live_attempt` with nothing
+ * released.
+ *
+ * In both modes a RELEASED record that carries neither the not-entered
+ * marker nor provider evidence (and a COMMITTED record without provider
+ * evidence) is `INDETERMINATE` `attempt_record_unproven` and nothing changes.
+ */
+export type ConsequenceBoundaryReconcileMode = 'terminal' | 'pre_entry';
 export interface ConsequenceBoundaryReconcileInput<TResult> {
     evaluation: unknown;
     action: unknown;
     artifacts: Record<string, unknown>;
     attempt: unknown;
-    outcome: ConsequenceBoundaryEffectOutcome<TResult>;
+    /** See ConsequenceBoundaryPresentedOutcome and ConsequenceBoundaryEvidenceKind. */
+    outcome: ConsequenceBoundaryPresentedOutcome<TResult>;
     recovery_authorization: unknown;
+    mode?: ConsequenceBoundaryReconcileMode;
 }
 export interface NativeConsequenceBoundaryProviderEvidence extends NativeConsequenceBoundaryAttemptBinding {
     evidence_id: string;
@@ -205,6 +409,10 @@ export interface NativeConsequenceBoundaryProviderOutcomeVerificationContext<TRe
     outcome: Readonly<Exclude<ConsequenceBoundaryEffectOutcome<TResult>, {
         state: 'INDETERMINATE';
     }>>;
+    /** The attempt's provider idempotency key (also `attempt.provider_idempotency_key`). */
+    provider_idempotency_key: string;
+    /** See ConsequenceBoundaryProviderOutcomePurpose. */
+    purpose: ConsequenceBoundaryProviderOutcomePurpose;
 }
 export interface NativeConsequenceBoundaryAuthorizationContext {
     action: unknown;
@@ -229,13 +437,35 @@ export interface NativeConsequenceBoundaryEffectContext {
 }
 export interface NativeConsequenceBoundaryOptions<TResult> {
     executor_id: string;
+    /** See ConsequenceBoundaryOptions.boundary_id; the same grammar and rule. */
+    boundary_id: string;
     provider: ConsequenceBoundaryProvider;
     native_authorization: {
+        /** `pins.relying_party_id` must also satisfy the Gate identifier grammar. */
         pins: AebNativeAuthorizationPins;
         /** Stable operator identifier for the exact accepted pins below. */
         trust_snapshot_id: string;
+        /**
+         * Durable consumption store. Each attempt writes three reservations, all
+         * keyed by its attempt ID (nativeConsequenceBoundaryAttemptReservationKeys):
+         * the operation reservation fences the operation identity, the
+         * authority reservation fences the native replay key, and the holder
+         * reservation fences the exact action at this provider. `state()` must be
+         * a durable read. A store whose commit and release are fenced to the
+         * reserving process (the shipped PostgreSQL store) must also declare
+         * `recoveryClaimSupported: true` so reconciliation after a restart can
+         * claim them. Every claim for one attempt carries the same
+         * `recovery_authorization` and a scope naming the attempt, and the store
+         * refuses a key that is not one of that attempt's rows
+         * (consequenceBoundaryRecoveryClaimKey), so one credential bound to the
+         * attempt identity (consequenceBoundaryRecoveryAttemptIdentity: the
+         * boundary kind, the boundary ID, and the attempt ID) covers all three
+         * and no other attempt's rows, on any boundary.
+         */
         store: AebDurableConsumptionStore & {
             state(key: string): AebConsumptionState | Promise<AebConsumptionState>;
+            recoveryClaimSupported?: true;
+            claimReservation?(key: string, authorization: unknown, scope?: AebRecoveryClaimScope): Promise<boolean>;
         };
         /** Trusted status source. It receives only a preverified pinned handoff. */
         resolve_status(handoff: Readonly<AebNativeAuthorizationHandoff>): AebNativeAuthorizationStatus | Promise<AebNativeAuthorizationStatus>;
@@ -247,9 +477,10 @@ export interface NativeConsequenceBoundaryOptions<TResult> {
     };
     attempts: {
         store: ConsequenceBoundaryAttemptStore<NativeConsequenceBoundaryProviderEvidence> & {
+            notEnteredMarker: true;
             state(input: NativeConsequenceBoundaryAttemptReference): Promise<{
                 state: 'RESERVED' | 'INVOKING' | 'INDETERMINATE' | 'COMMITTED' | 'RELEASED';
-                evidence?: NativeConsequenceBoundaryProviderEvidence;
+                evidence?: NativeConsequenceBoundaryProviderEvidence | ConsequenceBoundaryNotEnteredMarker;
             }>;
         };
         create_id?: (input: {
@@ -268,7 +499,12 @@ export interface NativeConsequenceBoundaryOptions<TResult> {
     provider_outcomes: {
         /** Digest of the pinned provider-evidence verification program/profile. */
         verification_program_digest: AebDigest;
-        verify(context: Readonly<NativeConsequenceBoundaryProviderOutcomeVerificationContext<TResult>>): boolean | Promise<boolean>;
+        /**
+         * Must return a ConsequenceBoundaryProviderOutcomeAffirmation for the
+         * context's purpose, attempt ID, and provider idempotency key; any other
+         * answer, including `true`, is "not verified".
+         */
+        verify(context: Readonly<NativeConsequenceBoundaryProviderOutcomeVerificationContext<TResult>>): ConsequenceBoundaryProviderOutcomeAnswer | Promise<ConsequenceBoundaryProviderOutcomeAnswer>;
     };
     now?: () => string;
 }
@@ -282,8 +518,11 @@ export interface NativeConsequenceBoundaryReconcileInput<TResult> {
     handoff: unknown;
     action: unknown;
     attempt: unknown;
-    outcome: ConsequenceBoundaryEffectOutcome<TResult>;
+    /** See ConsequenceBoundaryPresentedOutcome and ConsequenceBoundaryEvidenceKind. */
+    outcome: ConsequenceBoundaryPresentedOutcome<TResult>;
     recovery_authorization: unknown;
+    /** See ConsequenceBoundaryReconcileMode; `terminal` when omitted. */
+    mode?: ConsequenceBoundaryReconcileMode;
 }
 export type ConsequenceBoundaryResult<TResult> = {
     state: 'REFUSED';
@@ -334,6 +573,14 @@ export declare function consequenceBoundaryProviderIdempotencyKey(input: {
     action_digest: AebDigest;
     authorization_instance: string;
 }): string;
+/**
+ * Operation identity of one (relying party, operation ID, exact action). The
+ * native boundary holds it as a fence inside the attempt's operation
+ * reservation, so a second attempt with the same operation ID and action is
+ * refused as `consumption_conflict` while the first holds it, and forever once
+ * the first reached the provider. It is also the operation key a recovery
+ * claim scope names for every reservation of one attempt.
+ */
 export declare function nativeConsequenceBoundaryReservationKey(input: {
     relying_party_id: string;
     operation_id: string;
@@ -359,12 +606,120 @@ export declare function nativeConsequenceBoundaryRequestDigest(input: {
     provider_idempotency_key: string;
 }): AebDigest;
 /**
+ * Durable identity of one exact action at one effecting target: the relying
+ * party, the provider coordinates the boundary invokes, and the canonical
+ * action digest (digestAebNativeAuthorizationAction). While an attempt for
+ * this identity is RESERVED, INVOKING, or INDETERMINATE, a new attempt is
+ * refused as `native_action_in_flight` even when it carries a fresh native
+ * authorization and a fresh operation ID; after EXECUTED it is refused as
+ * `native_action_already_executed`. Both boundaries derive the same key, so
+ * they fence each other when they share a store and a relying party ID.
+ *
+ * Identity is byte-level. Gate does not canonicalize amounts, case,
+ * whitespace, or Unicode, and does not know which fields are material: two
+ * encodings of one logical action are two actions, and provider coordinates
+ * are compared exactly as configured. Callers and profiles must canonicalize
+ * the action and configure one spelling per provider account. Intentional
+ * repeats must differ in the canonical action itself, for example through a
+ * caller-chosen instance field that the action digest covers.
+ */
+export declare function nativeConsequenceBoundaryActionFenceKey(input: {
+    relying_party_id: string;
+    provider: ConsequenceBoundaryProvider;
+    action_digest: AebNativeAuthorizationDigest;
+}): string;
+/** Keys of the three reservations one native attempt writes, plus its fences. */
+export interface NativeConsequenceBoundaryAttemptReservationKeys {
+    /** Operation identity fence (nativeConsequenceBoundaryReservationKey). */
+    operation_fence: string;
+    /** Exact-action fence (nativeConsequenceBoundaryActionFenceKey). */
+    action_fence: string;
+    /** Attempt-bound reservation that holds `operation_fence`. */
+    operation: string;
+    /** Attempt-bound reservation that holds the native replay key. */
+    authority: string;
+    /** Attempt-bound reservation that holds `action_fence`. */
+    holder: string;
+}
+/**
+ * Consumption-store keys of one native attempt. Every row key includes the
+ * boundary ID and the attempt ID, and the authority and holder keys are
+ * derived from the attempt's operation key, so a release, close, or recovery
+ * claim for one attempt can never reach a row another attempt wrote, even
+ * when both carry the same caller-chosen operation ID, or when two boundaries
+ * of the same kind on one store reuse an attempt ID.
+ */
+export declare function nativeConsequenceBoundaryAttemptReservationKeys(input: {
+    relying_party_id: string;
+    provider: ConsequenceBoundaryProvider;
+    operation_id: string;
+    action_digest: AebNativeAuthorizationDigest;
+    /** The boundary's `boundary_id`. */
+    boundary_id: string;
+    attempt_id: string;
+}): NativeConsequenceBoundaryAttemptReservationKeys;
+/**
+ * The exact consumption-store row a recovery claim scope names, derived the
+ * way the boundaries derive it: from the scope's boundary kind, its boundary
+ * ID, its recovery operation key (the native operation fence, or the composed
+ * evaluation reservation key), its attempt ID, and which reservation it
+ * names. A `native` scope derives only native rows and a `composed` scope only
+ * composed rows. Null for a scope no boundary produces. A store that is given
+ * a scope refuses a claim on any other row, so a credential bound to one
+ * attempt identity (consequenceBoundaryRecoveryAttemptIdentity()) cannot
+ * claim another attempt's row, on any boundary. `operationId` is carried for
+ * the authorizer but is caller-asserted: no row key is derived from it.
+ */
+export declare function consequenceBoundaryRecoveryClaimKey(scope: unknown): string | null;
+/**
+ * The attempt identity a recovery credential binds to: the boundary kind, the
+ * boundary ID, and the attempt ID, as `native:<boundaryId>:<attemptId>` or
+ * `composed:<boundaryId>:<attemptId>`. The boundary ID grammar has no `:`,
+ * so the identity reads one way. Every row of one attempt carries the same
+ * identity; attempts on two boundaries never share one, whatever their kinds
+ * and attempt IDs. Null for a scope that consequenceBoundaryRecoveryClaimKey()
+ * refuses.
+ */
+export declare function consequenceBoundaryRecoveryAttemptIdentity(scope: unknown): string | null;
+/**
+ * For a scope whose row is shared by every attempt of one evaluation (the
+ * composed evaluation reservation), the row that marks this attempt as its
+ * current owner: the attempt's action-fence holder. Null for a row keyed by
+ * the attempt itself, which needs no marker.
+ */
+export declare function consequenceBoundaryRecoveryClaimMarkerKey(scope: unknown): string | null;
+/**
+ * Key of the reservation that holds the action fence for one native attempt.
+ * It is derived from that attempt's operation key, which includes the attempt
+ * ID, so reconciliation can only ever close the holder of its own attempt.
+ */
+export declare function nativeConsequenceBoundaryActionFenceHolderKey(input: {
+    relying_party_id: string;
+    provider: ConsequenceBoundaryProvider;
+    operation_id: string;
+    action_digest: AebNativeAuthorizationDigest;
+    boundary_id: string;
+    attempt_id: string;
+}): string;
+/**
+ * Key of the reservation that holds the action fence for one attempt on the
+ * composed (AEB evaluation) boundary: derived from the evaluation's
+ * consumption reservation key, the boundary ID, and the attempt ID.
+ */
+export declare function consequenceBoundaryActionFenceHolderKey(input: {
+    reservation_key: string;
+    /** The boundary's `boundary_id`. */
+    boundary_id: string;
+    attempt_id: string;
+}): string;
+/**
  * Build one relying-party-controlled consequence boundary. Presented evidence
  * never selects adapters, trust roots, requirements, or local policy.
  */
 export declare function createConsequenceBoundary<TResult>(options: ConsequenceBoundaryOptions<TResult>): Readonly<{
     version: "EMILIA-CONSEQUENCE-BOUNDARY-v1";
     executor_id: string;
+    boundary_id: string;
     provider: ConsequenceBoundaryProvider;
     run: (input: ConsequenceBoundaryRunInput) => Promise<ConsequenceBoundaryResult<TResult>>;
     reconcile: (input: ConsequenceBoundaryReconcileInput<TResult>) => Promise<ConsequenceBoundaryResult<TResult>>;
@@ -373,12 +728,14 @@ export declare function createConsequenceBoundary<TResult>(options: ConsequenceB
  * Build the direct native path. The native system has already made the policy
  * decision; Gate verifies the pinned gateway handoff, not the native permit or
  * artifact. It applies its own operational authorization and atomically fences
- * the operation and native replay unit.
+ * the operation, the native replay unit, and the exact action at this
+ * provider, each in a reservation keyed by the attempt.
  */
 export declare function createNativeConsequenceBoundary<TResult>(options: NativeConsequenceBoundaryOptions<TResult>): Readonly<{
     version: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-v1";
     executor_id: string;
-    provider: ConsequenceBoundaryProvider & JsonObject;
+    boundary_id: string;
+    provider: ConsequenceBoundaryProvider;
     run: (input: NativeConsequenceBoundaryRunInput) => Promise<ConsequenceBoundaryResult<TResult>>;
     reconcile: (input: NativeConsequenceBoundaryReconcileInput<TResult>) => Promise<ConsequenceBoundaryResult<TResult>>;
 }>;
@@ -392,7 +749,15 @@ declare const _default: Readonly<{
     NATIVE_CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1";
     NATIVE_CONSEQUENCE_BOUNDARY_TRUST_SNAPSHOT_DOMAIN: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-TRUST-SNAPSHOT-v1";
     NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-LOCAL-DECISION-v1";
+    consequenceBoundaryActionFenceHolderKey: typeof consequenceBoundaryActionFenceHolderKey;
+    consequenceBoundaryRecoveryClaimKey: typeof consequenceBoundaryRecoveryClaimKey;
+    consequenceBoundaryRecoveryClaimMarkerKey: typeof consequenceBoundaryRecoveryClaimMarkerKey;
+    consequenceBoundaryRecoveryAttemptIdentity: typeof consequenceBoundaryRecoveryAttemptIdentity;
+    CONSEQUENCE_BOUNDARY_NOT_ENTERED: "not_entered";
     nativeConsequenceBoundaryReservationKey: typeof nativeConsequenceBoundaryReservationKey;
+    nativeConsequenceBoundaryActionFenceKey: typeof nativeConsequenceBoundaryActionFenceKey;
+    nativeConsequenceBoundaryAttemptReservationKeys: typeof nativeConsequenceBoundaryAttemptReservationKeys;
+    nativeConsequenceBoundaryActionFenceHolderKey: typeof nativeConsequenceBoundaryActionFenceHolderKey;
     nativeConsequenceBoundaryProviderIdempotencyKey: typeof nativeConsequenceBoundaryProviderIdempotencyKey;
     nativeConsequenceBoundaryRequestDigest: typeof nativeConsequenceBoundaryRequestDigest;
     createNativeConsequenceBoundary: typeof createNativeConsequenceBoundary;

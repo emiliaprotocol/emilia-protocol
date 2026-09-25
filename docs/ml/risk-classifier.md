@@ -8,7 +8,7 @@ and should not be until a pilot is generating real action data.
 
 **The model never decides. The verified engine decides.**
 
-EP's moat is that enforcement is *provable* — `lib/guard-policies.js`
+EP's core property is that enforcement is *provable* - `lib/guard-policies.js`
 (`evaluateGuardPolicy`) plus the TLA+/Alloy proofs. An LLM is non-deterministic
 and itself prompt-injectable. If a model ever sits in the decision path, the
 "formally verified accountability" claim dies.
@@ -78,7 +78,7 @@ eval bar — this is a classifier, not a chatbot.
    downward on these.
 2. **The perimeter needs human / real labels.** The fuzzy cases above have no
    clean rule — these come from (a) reviewed synthetic generation and (b) **real
-   pilot traffic** (the reason to sequence this after a design partner).
+   pilot traffic** (the reason to sequence this after a pilot deployment).
 3. **The red-team registry** (`docs/conformance/RED_TEAM_CASES.md`) seeds
    adversarial examples and is part of the eval set.
 
@@ -115,5 +115,5 @@ classified as safe. Optimize recall on the gate, accept some false escalations
 
 Tinker makes the *infra* easy; the work is **data + evals**. A classifier
 trained only on synthetic data won't generalize. Build the dataset from a real
-pilot's traffic — i.e. **launch → land a design partner → then train this.**
+pilot's traffic, so collect that traffic before training this.
 Until then: the eval harness is the useful, shippable half.

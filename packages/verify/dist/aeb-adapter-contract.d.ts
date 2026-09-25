@@ -509,10 +509,20 @@ export interface AebDurableConsumptionStore {
      * one-time unit back to the same action instance.
      */
     terminalRelease?: true;
+    /**
+     * `false`, `'CONSUMPTION_CONFLICT'`, and `'NATIVE_REPLAY_CONFLICT'` mean this
+     * call wrote nothing. Any other answer except `true` or `'RESERVED'`, and a
+     * throw, leave it unknown whether the reservation landed.
+     */
     reserve(key: string, replayKeys: readonly string[]): Promise<boolean | AebReservationResult>;
     commit(key: string): Promise<boolean>;
     release(key: string): Promise<boolean>;
     releaseTerminal?(key: string): Promise<boolean>;
+    /**
+     * Optional durable read of one key. When present, authorizeAebExecutionDurable
+     * uses it to resolve a reserve() whose answer was lost or unrecognized.
+     */
+    state?(key: string): AebConsumptionState | Promise<AebConsumptionState>;
 }
 export type AebReservationResult = 'RESERVED' | 'CONSUMPTION_CONFLICT' | 'NATIVE_REPLAY_CONFLICT';
 /**

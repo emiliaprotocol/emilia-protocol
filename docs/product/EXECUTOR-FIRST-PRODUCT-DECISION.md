@@ -18,7 +18,7 @@ authoritative.
 
 ## Adopt now
 
-- A free MCP loop breaker as the sharp developer wedge.
+- A free MCP loop breaker for developers.
 - One shared JavaScript exact-action binder used by receipt-required, MCP,
   LangChain, and OpenAI adapters.
 - Mandatory complete-argument binding in the CrewAI and LangChain wrappers.

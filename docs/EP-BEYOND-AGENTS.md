@@ -2,7 +2,7 @@
 
 EMILIA Protocol is not limited to AI-native systems.
 
-EP is a protocol-grade trust substrate for high-risk action enforcement across government workflows, financial infrastructure, enterprise privileged actions, and agent execution. AI is one wedge. The broader category is action-level trust control before execution.
+EP is a protocol-grade trust substrate for high-risk action enforcement across government workflows, financial infrastructure, enterprise privileged actions, and agent execution. AI agents are one use. The broader category is action-level trust control before execution.
 
 ## Domains where EP fits
 

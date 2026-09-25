@@ -13,7 +13,13 @@
     { "id": "V2-AS-V1", "expected": "malformed_record" },
     { "id": "V1-AS-V2", "expected": "malformed_record" },
     { "id": "V1-RELABEL-V2", "expected": "malformed_record" },
-    { "id": "V2-RELABEL-V1", "expected": "malformed_record" }
+    { "id": "V2-RELABEL-V1", "expected": "malformed_record" },
+    { "id": "V2-EVALUATION-UNCHECKED-INDETERMINATE", "expected": "verified; evaluation_binding INDETERMINATE" },
+    { "id": "V2-EVALUATION-BOUND", "expected": "verified; evaluation_binding BOUND" },
+    { "id": "V2-UNRELATED-EVALUATION", "expected": "evaluation_operation_mismatch" },
+    { "id": "V2-EVALUATION-DIGEST-MISMATCH", "expected": "evaluation_digest_mismatch" },
+    { "id": "V2-AUTHORITY-NOT-IN-EVALUATION", "expected": "evaluation_authority_unmatched" },
+    { "id": "V2-ADMIT-UNSATISFIED-EVALUATION", "expected": "evaluation_verdict_inconsistent" }
   ],
-  "claim_boundary": "A verified record is historical evidence and never authorizes another crossing. V1 records retain only v1 semantics."
+  "claim_boundary": "A verified record is historical evidence and never authorizes another crossing. V1 records retain only v1 semantics. Without a supplied evaluation record the evaluation digest is an unverified pointer and the binding is INDETERMINATE; BOUND does not verify the evaluation's own signature."
 }

@@ -12,13 +12,16 @@
     "20260826170000",
     "20260901190000"
   ],
-  "forward_pending_versions": [],
+  "forward_pending_versions": [
+    "20260925010000"
+  ],
   "deployment_sequence": [
     "20260826140000",
     "20260826150000",
     "20260826160000",
     "20260826170000",
-    "20260901190000"
+    "20260901190000",
+    "20260925010000"
   ],
   "requires_include_all": true,
   "remote_versions": [
@@ -439,6 +442,7 @@
     "20260826170000_identity_runtime_residual_closure.sql": "b211532e1e33923a34f0c9a998704244eae78ee083b7dce503934133ac140b91",
     "20260901190000_aeb_released_not_entered.sql": "f736ca3f444d9027e110f5368fe79c060378b1da465cd4c3c7417ba7f1119f92",
     "20260907235809_works_accounts.sql": "9f63f7bc3c8327ca5060fe906fc3bdc84278cedfa24a778fca563ca6ffbc57c2",
-    "20260907235858_works_workflow.sql": "a64b5c85e6481eabf967e70aa7bc2bcaf21b2f5462ee06a24599195d87be1350"
+    "20260907235858_works_workflow.sql": "a64b5c85e6481eabf967e70aa7bc2bcaf21b2f5462ee06a24599195d87be1350",
+    "20260925010000_aeb_operation_state.sql": "b35327842c026446956c139776fcac6af3d941649bf4b143396ac29067b152ff"
   }
 }

@@ -119,15 +119,12 @@ of what the market already trusts.
 
 ---
 
-## What we're deliberately parking (not killing)
+## Out of scope
 
-Two of the wilder branches are interesting but would sink the pitch if we led with them:
-
-- **Global route-cost cascades / forcing adoption by redirecting demand.** We deliberately exclude
-  non-market coercion and routing-based forcing functions. Adoption comes from **payment,
-  interconnection leverage, and auditability** — not from pressuring anyone's network.
-- **Edge waste-heat / thermostat-as-listener.** A cool separate thesis with its own privacy,
-  security, and economics problems. Keep it out of GRACE so the pitch stays clean.
+- **Route-cost cascades or redirecting demand to force participation.** GRACE excludes non-market
+  coercion and routing-based forcing functions.
+- **Edge waste-heat reuse and thermostat-as-listener designs.** These raise separate privacy,
+  security, and economics questions and are not part of GRACE.
 
 ---
 
@@ -155,16 +152,10 @@ attacks all refusing. `python3 proof_of_curtailment.py` and watch.
   and integration implementation. The executor is pluggable: COSA can be a reference adapter, and
   any deployment-pinned scheduler that implements the same exact-action dispatch and evidence
   contract can occupy that role. The independent meter remains a separate trust domain.
-- **Revenue (open-core, no split needed).** Both layers stay open-source; each party monetizes
-  services on its own side — COSA on compute optimization, EMILIA on the managed issuer / approver
-  directory / compliance-evidence + settlement pipeline. No joint entity required to start; the
-  partnership is the open interface, not a cap table.
 - **Standards.** `grid.curtailment` is a vertical **action-type profile** (proposed **PIP-014**) on
   top of `draft-schrock-ep-authorization-receipts` and the PIP-013 human-oversight model, registered
   in the EP profile registry (PIP-012). The Proof-of-Curtailment Bundle is documented as a GRACE
-  profile that references the IETF draft normatively. Parallel engagement: Justin to grid/utility
-  bodies, Iman to IETF — **cross-reference, don't compete**, so EMILIA stays *the* authorization
-  layer rather than one of several.
+  profile that references the IETF draft normatively.
 - **Commitment (reputational, not legal).** GRACE remains a jointly authored open profile. Neither
   party ships a "GRACE-compatible" product without implementing the full authority, admission,
   executor-evidence, independent-readback, and reconciliation profile.

@@ -4,6 +4,28 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { AEB_CONSUMPTION_DDL, AEB_CONSUMPTION_OPERATION_TABLE, AEB_CONSUMPTION_REPLAY_TABLE, AEB_CONSUMPTION_SQL, createPostgresAebDurableConsumptionStore, } from './aeb-consumption-store.js';
+import { consequenceBoundaryActionFenceHolderKey, consequenceBoundaryRecoveryClaimKey, nativeConsequenceBoundaryReservationKey, } from './consequence-boundary.js';
+/**
+ * A row a recovery claim can name: every claim carries a scope, and the store
+ * accepts only the key that scope derives.
+ */
+const NATIVE_BOUNDARY_ID = 'native-boundary-1';
+const COMPOSED_BOUNDARY_ID = 'composed-boundary-1';
+function nativeRow(label, reservation = 'operation', boundaryId = NATIVE_BOUNDARY_ID) {
+    const scope = {
+        boundary: 'native',
+        boundaryId,
+        attemptId: `attempt:${label}`,
+        operationId: `operation:${label}`,
+        recoveryOperationKey: nativeConsequenceBoundaryReservationKey({
+            relying_party_id: 'rp:store-test',
+            operation_id: `operation:${label}`,
+            action_digest: `sha256:${'a'.repeat(64)}`,
+        }),
+        reservation,
+    };
+    return { key: consequenceBoundaryRecoveryClaimKey(scope), scope };
+}
 function operationId(tenantId, relyingPartyId, operationKey) {
     return JSON.stringify([tenantId, relyingPartyId, operationKey]);
 }
@@ -99,6 +121,12 @@ function createDeterministicFakePool() {
                             rowCount: 1,
                             rows: [{ fenced: active.replays.has(replayId(tenantId, relyingPartyId, replayKey)) }],
                         };
+                    }
+                    if (text === AEB_CONSUMPTION_SQL.operationState) {
+                        const [tenantId, relyingPartyId, operationKey] = params;
+                        const active = transaction ?? committed;
+                        const row = active.operations.get(operationId(tenantId, relyingPartyId, operationKey));
+                        return { rowCount: 1, rows: [{ state: row?.state ?? 'AVAILABLE' }] };
                     }
                     assert.ok(transaction, 'statement executed outside a transaction');
                     if (text === AEB_CONSUMPTION_SQL.reserveOperation) {
@@ -303,6 +331,7 @@ test('only the current opaque-token owner can release; a stale owner cannot rele
     assert.equal(pool.operation('tenant-a', 'rp-a', 'operation-stale')?.ownerToken?.startsWith('current-owner-'), true);
 });
 test('a restarted store can recover a RESERVED operation through an authorized claim', async () => {
+    const row = nativeRow('restart');
     const pool = createDeterministicFakePool();
     const beforeRestart = makeStore(pool, { tokenPrefix: 'before-restart' });
     const recoveryAuthorization = { kms_token: 'approved-token' };
@@ -314,33 +343,37 @@ test('a restarted store can recover a RESERVED operation through an authorized c
             return claim.authorization === recoveryAuthorization;
         },
     });
-    assert.equal(await beforeRestart.reserve('operation-restart', ['native-restart']), 'RESERVED');
-    assert.equal(await afterRestart.claimReservation('operation-restart', recoveryAuthorization), true);
+    assert.equal(await beforeRestart.reserve(row.key, ['native-restart']), 'RESERVED');
+    assert.equal(await afterRestart.claimReservation(row.key, recoveryAuthorization, row.scope), true);
     assert.deepEqual(verifierCalls, [{
             authorization: recoveryAuthorization,
             tenantId: 'tenant-a',
             relyingPartyId: 'rp-a',
-            operationKey: 'operation-restart',
+            operationKey: row.key,
             requiredState: 'RESERVED',
+            attemptIdentity: `native:${NATIVE_BOUNDARY_ID}:attempt:restart`,
+            scope: row.scope,
         }]);
-    assert.equal(await afterRestart.commit('operation-restart'), true);
-    assert.equal(pool.operation('tenant-a', 'rp-a', 'operation-restart')?.state, 'CONSUMED');
+    assert.equal(await afterRestart.commit(row.key), true);
+    assert.equal(pool.operation('tenant-a', 'rp-a', row.key)?.state, 'CONSUMED');
 });
 test('an unauthorized restart claim is refused without rotating the stored owner token', async () => {
+    const row = nativeRow('unauthorized');
     const pool = createDeterministicFakePool();
     const beforeRestart = makeStore(pool, { tokenPrefix: 'before-restart' });
     const afterRestart = makeStore(pool, {
         tokenPrefix: 'after-restart',
         authorizeRecoveryClaim: async ({ authorization }) => authorization === 'kms-valid',
     });
-    assert.equal(await beforeRestart.reserve('operation-unauthorized', ['native-unauthorized']), 'RESERVED');
-    const tokenBeforeClaim = pool.operation('tenant-a', 'rp-a', 'operation-unauthorized')?.ownerToken;
-    assert.equal(await afterRestart.claimReservation('operation-unauthorized', 'kms-invalid'), false);
-    assert.equal(pool.operation('tenant-a', 'rp-a', 'operation-unauthorized')?.ownerToken, tokenBeforeClaim);
-    assert.equal(await afterRestart.commit('operation-unauthorized'), false);
-    assert.equal(await beforeRestart.release('operation-unauthorized'), true);
+    assert.equal(await beforeRestart.reserve(row.key, ['native-unauthorized']), 'RESERVED');
+    const tokenBeforeClaim = pool.operation('tenant-a', 'rp-a', row.key)?.ownerToken;
+    assert.equal(await afterRestart.claimReservation(row.key, 'kms-invalid', row.scope), false);
+    assert.equal(pool.operation('tenant-a', 'rp-a', row.key)?.ownerToken, tokenBeforeClaim);
+    assert.equal(await afterRestart.commit(row.key), false);
+    assert.equal(await beforeRestart.release(row.key), true);
 });
 test('recovery verifier and PostgreSQL failures propagate without rotating ownership', async () => {
+    const row = nativeRow('recovery-error');
     const pool = createDeterministicFakePool();
     const beforeRestart = makeStore(pool, { tokenPrefix: 'before-restart' });
     const verifierUnavailable = makeStore(pool, {
@@ -348,43 +381,46 @@ test('recovery verifier and PostgreSQL failures propagate without rotating owner
         authorizeRecoveryClaim: async () => { throw new Error('kms_unavailable'); },
     });
     const databaseUnavailable = makeStore(pool, { tokenPrefix: 'database-unavailable' });
-    assert.equal(await beforeRestart.reserve('operation-recovery-error', ['native-recovery-error']), 'RESERVED');
-    const originalToken = pool.operation('tenant-a', 'rp-a', 'operation-recovery-error')?.ownerToken;
-    await assert.rejects(() => verifierUnavailable.claimReservation('operation-recovery-error', 'kms-token'), /kms_unavailable/);
-    assert.equal(pool.operation('tenant-a', 'rp-a', 'operation-recovery-error')?.ownerToken, originalToken);
+    assert.equal(await beforeRestart.reserve(row.key, ['native-recovery-error']), 'RESERVED');
+    const originalToken = pool.operation('tenant-a', 'rp-a', row.key)?.ownerToken;
+    await assert.rejects(() => verifierUnavailable.claimReservation(row.key, 'kms-token', row.scope), /kms_unavailable/);
+    assert.equal(pool.operation('tenant-a', 'rp-a', row.key)?.ownerToken, originalToken);
     pool.failNext(AEB_CONSUMPTION_SQL.claimOperation);
-    await assert.rejects(() => databaseUnavailable.claimReservation('operation-recovery-error', 'kms-token'), /pg_unavailable/);
-    assert.equal(pool.operation('tenant-a', 'rp-a', 'operation-recovery-error')?.ownerToken, originalToken);
-    assert.equal(await beforeRestart.release('operation-recovery-error'), true);
+    await assert.rejects(() => databaseUnavailable.claimReservation(row.key, 'kms-token', row.scope), /pg_unavailable/);
+    assert.equal(pool.operation('tenant-a', 'rp-a', row.key)?.ownerToken, originalToken);
+    assert.equal(await beforeRestart.release(row.key), true);
 });
 test('the pre-restart owner becomes stale immediately after an authorized recovery claim', async () => {
+    const row = nativeRow('claimed');
     const pool = createDeterministicFakePool();
     const staleOwner = makeStore(pool, { tokenPrefix: 'stale-owner' });
     const recoveredOwner = makeStore(pool, { tokenPrefix: 'recovered-owner' });
-    assert.equal(await staleOwner.reserve('operation-claimed', ['native-claimed']), 'RESERVED');
-    assert.equal(await recoveredOwner.claimReservation('operation-claimed', 'kms-approved'), true);
-    assert.equal(await staleOwner.commit('operation-claimed'), false);
-    assert.equal(await staleOwner.release('operation-claimed'), false);
-    assert.equal(await recoveredOwner.commit('operation-claimed'), true);
+    assert.equal(await staleOwner.reserve(row.key, ['native-claimed']), 'RESERVED');
+    assert.equal(await recoveredOwner.claimReservation(row.key, 'kms-approved', row.scope), true);
+    assert.equal(await staleOwner.commit(row.key), false);
+    assert.equal(await staleOwner.release(row.key), false);
+    assert.equal(await recoveredOwner.commit(row.key), true);
 });
 test('an owning store instance cannot rotate its own token through recovery', async () => {
+    const row = nativeRow('same-instance');
     const pool = createDeterministicFakePool();
     const store = makeStore(pool, { tokenPrefix: 'same-instance' });
-    assert.equal(await store.reserve('operation-same-instance', ['native-same-instance']), 'RESERVED');
-    const tokenBefore = pool.operation('tenant-a', 'rp-a', 'operation-same-instance')?.ownerToken;
-    assert.equal(await store.claimReservation('operation-same-instance', 'kms-approved'), false);
-    assert.equal(pool.operation('tenant-a', 'rp-a', 'operation-same-instance')?.ownerToken, tokenBefore);
-    assert.equal(await store.commit('operation-same-instance'), true);
+    assert.equal(await store.reserve(row.key, ['native-same-instance']), 'RESERVED');
+    const tokenBefore = pool.operation('tenant-a', 'rp-a', row.key)?.ownerToken;
+    assert.equal(await store.claimReservation(row.key, 'kms-approved', row.scope), false);
+    assert.equal(pool.operation('tenant-a', 'rp-a', row.key)?.ownerToken, tokenBefore);
+    assert.equal(await store.commit(row.key), true);
 });
 test('a terminal CONSUMED operation cannot be claimed after restart', async () => {
+    const row = nativeRow('terminal');
     const pool = createDeterministicFakePool();
     const beforeRestart = makeStore(pool, { tokenPrefix: 'before-restart' });
     const afterRestart = makeStore(pool, { tokenPrefix: 'after-restart' });
-    assert.equal(await beforeRestart.reserve('operation-terminal', ['native-terminal']), 'RESERVED');
-    assert.equal(await beforeRestart.commit('operation-terminal'), true);
-    assert.equal(await afterRestart.claimReservation('operation-terminal', 'kms-approved'), false);
-    assert.equal(pool.operation('tenant-a', 'rp-a', 'operation-terminal')?.state, 'CONSUMED');
-    assert.equal(pool.operation('tenant-a', 'rp-a', 'operation-terminal')?.ownerToken, null);
+    assert.equal(await beforeRestart.reserve(row.key, ['native-terminal']), 'RESERVED');
+    assert.equal(await beforeRestart.commit(row.key), true);
+    assert.equal(await afterRestart.claimReservation(row.key, 'kms-approved', row.scope), false);
+    assert.equal(pool.operation('tenant-a', 'rp-a', row.key)?.state, 'CONSUMED');
+    assert.equal(pool.operation('tenant-a', 'rp-a', row.key)?.ownerToken, null);
 });
 test('release removes all open fences and permits a complete re-reservation', async () => {
     const pool = createDeterministicFakePool();
@@ -472,24 +508,25 @@ test('database errors propagate and never become an available or successful verd
     assert.equal(pool.replay('tenant-a', 'rp-a', 'native-error'), undefined);
 });
 test('terminal release keeps the row and its fences so the operation is never reservable again', async () => {
+    const claimRow = nativeRow('op-terminal');
     const pool = createDeterministicFakePool();
     const store = makeStore(pool);
     assert.equal(store.terminalRelease, true);
-    assert.equal(await store.reserve('op-terminal', ['replay-terminal']), 'RESERVED');
-    assert.equal(await store.releaseTerminal('op-terminal'), true);
-    const row = pool.operation('tenant-a', 'rp-a', 'op-terminal');
+    assert.equal(await store.reserve(claimRow.key, ['replay-terminal']), 'RESERVED');
+    assert.equal(await store.releaseTerminal(claimRow.key), true);
+    const row = pool.operation('tenant-a', 'rp-a', claimRow.key);
     assert.equal(row?.state, 'RELEASED_NOT_ENTERED');
     assert.equal(row?.ownerToken, null);
     assert.ok(pool.replay('tenant-a', 'rp-a', 'replay-terminal'), 'native replay fence survives');
     // No re-reservation, no late commit, no second terminal release.
-    assert.equal(await store.reserve('op-terminal', ['replay-terminal']), 'CONSUMPTION_CONFLICT');
-    assert.equal(await store.commit('op-terminal'), false);
-    assert.equal(await store.releaseTerminal('op-terminal'), false);
-    assert.equal(await store.release('op-terminal'), false);
-    assert.equal(pool.operation('tenant-a', 'rp-a', 'op-terminal')?.state, 'RELEASED_NOT_ENTERED');
+    assert.equal(await store.reserve(claimRow.key, ['replay-terminal']), 'CONSUMPTION_CONFLICT');
+    assert.equal(await store.commit(claimRow.key), false);
+    assert.equal(await store.releaseTerminal(claimRow.key), false);
+    assert.equal(await store.release(claimRow.key), false);
+    assert.equal(pool.operation('tenant-a', 'rp-a', claimRow.key)?.state, 'RELEASED_NOT_ENTERED');
     // A restarted instance cannot claim a terminally released reservation.
     const restarted = makeStore(pool, { tokenPrefix: 'restarted' });
-    assert.equal(await restarted.claimReservation('op-terminal', 'authorized'), false);
+    assert.equal(await restarted.claimReservation(claimRow.key, 'authorized', claimRow.scope), false);
 });
 test('terminal release converges after PostgreSQL commits but its response is lost', async () => {
     const pool = createDeterministicFakePool();
@@ -505,13 +542,182 @@ test('terminal release converges after PostgreSQL commits but its response is lo
     assert.ok(pool.replay('tenant-a', 'rp-a', 'replay-terminal-lost-ack'));
 });
 test('a terminal release by a stale owner is refused', async () => {
+    const row = nativeRow('stale-terminal');
     const pool = createDeterministicFakePool();
     const owner = makeStore(pool);
-    assert.equal(await owner.reserve('op-stale-terminal', []), 'RESERVED');
+    assert.equal(await owner.reserve(row.key, []), 'RESERVED');
     const recovered = makeStore(pool, { tokenPrefix: 'recovered' });
-    assert.equal(await recovered.claimReservation('op-stale-terminal', 'authorized'), true);
-    assert.equal(await owner.releaseTerminal('op-stale-terminal'), false);
-    assert.equal(pool.operation('tenant-a', 'rp-a', 'op-stale-terminal')?.state, 'RESERVED');
-    assert.equal(await recovered.releaseTerminal('op-stale-terminal'), true);
-    assert.equal(pool.operation('tenant-a', 'rp-a', 'op-stale-terminal')?.state, 'RELEASED_NOT_ENTERED');
+    assert.equal(await recovered.claimReservation(row.key, 'authorized', row.scope), true);
+    assert.equal(await owner.releaseTerminal(row.key), false);
+    assert.equal(pool.operation('tenant-a', 'rp-a', row.key)?.state, 'RESERVED');
+    assert.equal(await recovered.releaseTerminal(row.key), true);
+    assert.equal(pool.operation('tenant-a', 'rp-a', row.key)?.state, 'RELEASED_NOT_ENTERED');
+});
+// ---------------------------------------------------------------------------
+// PR #790 round 4 (S4): scope-less claims and cross-boundary attempt identity.
+// ---------------------------------------------------------------------------
+test('S4 PGX1: a claim without a scope is refused before the authorizer runs, with a reason', async () => {
+    const pool = createDeterministicFakePool();
+    const owner = makeStore(pool, { tokenPrefix: 'live-owner' });
+    const authorizerCalls = [];
+    // An authorizer bound only to the tenant, which the README warns against:
+    // before round four it accepted a scope-less claim of a live holder.
+    const recovery = makeStore(pool, {
+        tokenPrefix: 'recovery',
+        authorizeRecoveryClaim: async (claim) => {
+            authorizerCalls.push(claim);
+            return claim.tenantId === 'tenant-a';
+        },
+    });
+    const row = nativeRow('pgx1', 'action-fence-holder');
+    assert.equal(await owner.reserve(row.key, ['fence-pgx1']), 'RESERVED');
+    assert.deepEqual(await recovery.claimReservationResult(row.key, 'tenant-secret'), { claimed: false, reason: 'recovery_claim_scope_required' });
+    assert.equal(await recovery.claimReservation(row.key, 'tenant-secret'), false);
+    assert.equal(authorizerCalls.length, 0);
+    assert.equal(await recovery.release(row.key), false);
+    assert.equal(pool.operation('tenant-a', 'rp-a', row.key)?.state, 'RESERVED');
+    // The live owner still holds its fence.
+    assert.equal(await owner.release(row.key), true);
+});
+test('S4: a malformed or mismatched scope is a refusal with a reason, never a throw', async () => {
+    const pool = createDeterministicFakePool();
+    const owner = makeStore(pool, { tokenPrefix: 'live-owner' });
+    let authorizerCalls = 0;
+    const recovery = makeStore(pool, {
+        tokenPrefix: 'recovery',
+        authorizeRecoveryClaim: async () => { authorizerCalls += 1; return true; },
+    });
+    const row = nativeRow('malformed', 'action-fence-holder');
+    assert.equal(await owner.reserve(row.key, []), 'RESERVED');
+    const { boundary: _kind, ...kindless } = row.scope;
+    const getter = { ...row.scope };
+    Object.defineProperty(getter, 'attemptId', { enumerable: true, get() { throw new Error('getter ran'); } });
+    const { boundaryId: _boundaryId, ...boundaryIdless } = row.scope;
+    for (const [label, scope, reason] of [
+        ['no boundary kind', kindless, 'recovery_claim_scope_invalid'],
+        ['no boundary ID', boundaryIdless, 'recovery_claim_scope_invalid'],
+        ['boundary ID outside the grammar', { ...row.scope, boundaryId: 'has:colon' }, 'recovery_claim_scope_invalid'],
+        ['boundary ID not a string', { ...row.scope, boundaryId: 7 }, 'recovery_claim_scope_invalid'],
+        ['another boundary of the same kind', { ...row.scope, boundaryId: 'native-boundary-2' }, 'recovery_claim_key_mismatch'],
+        ['extra member', { ...row.scope, extra: 1 }, 'recovery_claim_scope_invalid'],
+        ['accessor', getter, 'recovery_claim_scope_invalid'],
+        ['unknown kind', { ...row.scope, boundary: 'other' }, 'recovery_claim_scope_invalid'],
+        ['null', null, 'recovery_claim_scope_invalid'],
+        ['other attempt', { ...row.scope, attemptId: 'attempt:other' }, 'recovery_claim_key_mismatch'],
+        ['composed kind over a native key', { ...row.scope, boundary: 'composed' }, 'recovery_claim_key_mismatch'],
+    ]) {
+        assert.deepEqual(await recovery.claimReservationResult(row.key, 'approved', scope), { claimed: false, reason }, label);
+    }
+    assert.equal(authorizerCalls, 0);
+    assert.equal(await owner.release(row.key), true);
+});
+test('S4 PGX3: a native and a composed attempt with the same attempt ID never share a recovery credential', async () => {
+    const pool = createDeterministicFakePool();
+    const composedOwner = makeStore(pool, { tokenPrefix: 'composed-owner' });
+    const sharedAttemptId = 'attempt:shared-T:1';
+    const evaluationKey = `aeb:sha256:${'b'.repeat(64)}`;
+    const composedScope = {
+        boundary: 'composed',
+        boundaryId: COMPOSED_BOUNDARY_ID,
+        attemptId: sharedAttemptId,
+        operationId: 'operation:composed:shared',
+        recoveryOperationKey: evaluationKey,
+        reservation: 'action-fence-holder',
+    };
+    const composedHolder = consequenceBoundaryActionFenceHolderKey({
+        reservation_key: evaluationKey,
+        boundary_id: COMPOSED_BOUNDARY_ID,
+        attempt_id: sharedAttemptId,
+    });
+    assert.equal(consequenceBoundaryRecoveryClaimKey(composedScope), composedHolder);
+    const nativeScope = {
+        ...nativeRow('shared-T', 'action-fence-holder').scope,
+        attemptId: sharedAttemptId,
+    };
+    const nativeHolder = consequenceBoundaryRecoveryClaimKey(nativeScope);
+    // The operator's credential for the crashed native attempt, bound the way
+    // the README says: to the attempt identity, the tenant, and the relying party.
+    const seen = [];
+    const recovery = makeStore(pool, {
+        tokenPrefix: 'recovery',
+        authorizeRecoveryClaim: async (claim) => {
+            seen.push(claim.attemptIdentity);
+            return claim.authorization === 'credential:native-attempt'
+                && claim.attemptIdentity === `native:${NATIVE_BOUNDARY_ID}:${sharedAttemptId}`
+                && claim.tenantId === 'tenant-a'
+                && claim.relyingPartyId === 'rp-a';
+        },
+    });
+    assert.equal(await composedOwner.reserve(composedHolder, ['action-fence-shared']), 'RESERVED');
+    // Presented with the composed scope, the authorizer sees the composed identity.
+    assert.deepEqual(await recovery.claimReservationResult(composedHolder, 'credential:native-attempt', composedScope), { claimed: false, reason: 'recovery_claim_unauthorized' });
+    // Presented with a native scope, the store derives a native row, not this one.
+    assert.deepEqual(await recovery.claimReservationResult(composedHolder, 'credential:native-attempt', nativeScope), { claimed: false, reason: 'recovery_claim_key_mismatch' });
+    assert.deepEqual(await recovery.claimReservationResult(composedHolder, 'credential:native-attempt', { ...composedScope, boundary: 'native' }), { claimed: false, reason: 'recovery_claim_key_mismatch' });
+    assert.deepEqual(seen, [`composed:${COMPOSED_BOUNDARY_ID}:${sharedAttemptId}`]);
+    assert.equal(pool.operation('tenant-a', 'rp-a', composedHolder)?.state, 'RESERVED');
+    assert.equal(await composedOwner.release(composedHolder), true);
+    // The same credential still recovers the native attempt's own row.
+    const nativeOwner = makeStore(pool, { tokenPrefix: 'native-owner' });
+    assert.equal(await nativeOwner.reserve(nativeHolder, ['action-fence-native']), 'RESERVED');
+    assert.deepEqual(await recovery.claimReservationResult(nativeHolder, 'credential:native-attempt', nativeScope), { claimed: true });
+    assert.equal(await recovery.release(nativeHolder), true);
+});
+test('S4: the composed evaluation row is claimable only while the attempt holds its holder, with a reason otherwise', async () => {
+    const pool = createDeterministicFakePool();
+    const owner = makeStore(pool, { tokenPrefix: 'composed-owner' });
+    const recovery = makeStore(pool, { tokenPrefix: 'recovery' });
+    const evaluationKey = `aeb:sha256:${'c'.repeat(64)}`;
+    const scope = {
+        boundary: 'composed',
+        boundaryId: COMPOSED_BOUNDARY_ID,
+        attemptId: 'attempt:marker:1',
+        operationId: 'operation:composed:marker',
+        recoveryOperationKey: evaluationKey,
+        reservation: 'operation',
+    };
+    assert.equal(await owner.reserve(evaluationKey, ['fence-evaluation']), 'RESERVED');
+    assert.deepEqual(await recovery.claimReservationResult(evaluationKey, 'approved', scope), { claimed: false, reason: 'recovery_claim_owner_marker_absent' });
+    const holder = consequenceBoundaryActionFenceHolderKey({
+        reservation_key: evaluationKey,
+        boundary_id: COMPOSED_BOUNDARY_ID,
+        attempt_id: 'attempt:marker:1',
+    });
+    assert.equal(await owner.reserve(holder, ['fence-action']), 'RESERVED');
+    assert.deepEqual(await recovery.claimReservationResult(evaluationKey, 'approved', scope), { claimed: true });
+    assert.deepEqual(await recovery.claimReservationResult(evaluationKey, 'approved', scope), { claimed: false, reason: 'recovery_claim_already_owned' });
+    assert.equal(await recovery.release(evaluationKey), true);
+    const fresh = makeStore(pool, { tokenPrefix: 'fresh' });
+    assert.deepEqual(await fresh.claimReservationResult(evaluationKey, 'approved', scope), { claimed: false, reason: 'recovery_claim_row_not_reserved' });
+});
+test('T4 PG4c: two boundaries of one kind that reuse an attempt ID never share a row or a recovery credential', async () => {
+    // Port of the round-4 PG4c probe onto the store: N1's attempt X crashed and
+    // its operator holds a credential bound to N1's attempt identity; N2's
+    // attempt X is live. Round 4 derived the same identity, native:X, for
+    // both, so the credential claimed N2's live holder.
+    const pool = createDeterministicFakePool();
+    const n2Owner = makeStore(pool, { tokenPrefix: 'n2-owner' });
+    const n1 = nativeRow('same-kind-X', 'action-fence-holder', 'native-boundary-n1');
+    const n2 = nativeRow('same-kind-X', 'action-fence-holder', 'native-boundary-n2');
+    assert.equal(n1.scope.attemptId, n2.scope.attemptId);
+    assert.notEqual(n1.key, n2.key);
+    const seen = [];
+    const recovery = makeStore(pool, {
+        tokenPrefix: 'recovery',
+        authorizeRecoveryClaim: async (claim) => {
+            seen.push(claim.attemptIdentity);
+            return claim.authorization === 'credential:n1-X'
+                && claim.attemptIdentity === `native:native-boundary-n1:${n1.scope.attemptId}`;
+        },
+    });
+    assert.equal(await n2Owner.reserve(n2.key, ['action-fence-n2']), 'RESERVED');
+    assert.deepEqual(await recovery.claimReservationResult(n2.key, 'credential:n1-X', n2.scope), { claimed: false, reason: 'recovery_claim_unauthorized' });
+    assert.deepEqual(await recovery.claimReservationResult(n2.key, 'credential:n1-X', n1.scope), { claimed: false, reason: 'recovery_claim_key_mismatch' });
+    assert.deepEqual(seen, [`native:native-boundary-n2:${n2.scope.attemptId}`]);
+    assert.equal(pool.operation('tenant-a', 'rp-a', n2.key)?.state, 'RESERVED');
+    assert.equal(await n2Owner.release(n2.key), true);
+    // The credential still recovers N1's own row.
+    const n1Owner = makeStore(pool, { tokenPrefix: 'n1-owner' });
+    assert.equal(await n1Owner.reserve(n1.key, ['action-fence-n1']), 'RESERVED');
+    assert.deepEqual(await recovery.claimReservationResult(n1.key, 'credential:n1-X', n1.scope), { claimed: true });
 });

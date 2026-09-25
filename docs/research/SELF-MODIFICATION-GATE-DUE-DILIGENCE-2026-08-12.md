@@ -50,7 +50,7 @@ This is not greenfield.
 - [in-toto](https://in-toto.io/docs/getting-started/) binds authorized supply-chain actors, commands, materials, and products in signed layouts and link metadata. It is a close precedent for exact artifact and step provenance.
 - [Sigstore policy-controller](https://docs.sigstore.dev/policy-controller/overview/) admits container images using signatures and attestations and resolves tags to immutable digests. It already covers a substantial part of exact-candidate deployment admission for Kubernetes.
 
-EMILIA's remaining differentiated seam is narrower: a portable authority lifecycle that joins exact candidate and evaluator evidence to finite mandate state, consumes admission at the effect boundary, fences retries across wrapper-distinct requests in one shared durable domain, and preserves an authenticated unknown-outcome state. That distinction is technically meaningful, but commercial willingness to pay is unverified.
+EMILIA's remaining differentiated seam is narrower: a portable authority lifecycle that joins exact candidate and evaluator evidence to finite mandate state, consumes admission at the effect boundary, fences retries across wrapper-distinct requests in one shared durable domain, and preserves an authenticated unknown-outcome state. That distinction is technically meaningful.
 
 ## Decision and gates
 

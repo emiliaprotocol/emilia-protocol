@@ -134,10 +134,9 @@ probed, independently witnessed, and settlement-eligible. Removing the Gate whil
 healthy network witness changes the surface to `witness_only` and refuses settlement. That negative
 is the architecture's central honesty test.
 
-## Commercial boundary
+## Open and managed boundary
 
-The formats, verifier kernels, and conformance tests can stay open and reproducible. A managed
-EMILIA product can charge for operating the trust configuration and evidence network: inventory,
-policy compilation, deployment attestation, probe fleets, key rotation, metering, evidence export,
-integrations, settlement adapters, risk pricing, and a separately contracted warranty. The managed
-service must not secretly alter the open verdict computation.
+The formats, verifier kernels, and conformance tests stay open and reproducible. A managed service
+that operates the trust configuration and evidence network (inventory, policy compilation,
+deployment attestation, probe fleets, key rotation, evidence export, and integrations) must not
+secretly alter the open verdict computation.

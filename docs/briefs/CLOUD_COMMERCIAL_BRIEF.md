@@ -30,9 +30,6 @@ Managed infrastructure for organizations that adopt the open protocol.
 | Tenant Controls | Multi-tenant isolation, per-tenant policy, per-tenant retention |
 | Webhooks | Real-time notifications on policy violations, signoff events, blocked actions |
 
-**Revenue model:** Recurring infrastructure subscription. Priced per tenant
-and per action volume.
-
 ## EMILIA Gate Enterprise
 
 For organizations requiring private deployment and regulatory controls.
@@ -44,8 +41,6 @@ For organizations requiring private deployment and regulatory controls.
 | SSO / SCIM | Integration with enterprise identity providers |
 | Evidence Retention | Configurable retention periods with legal hold capability |
 | Dedicated Support | Named support contacts, SLA-backed response times |
-
-**Revenue model:** Annual enterprise license plus deployment support.
 
 ## Vertical Packs
 
@@ -70,14 +65,3 @@ specific regulatory environments.
 - EU AI Act accountability chain evidence
 - Human-in-the-loop enforcement at configurable decision points
 
-## Competitive Position
-
-| Layer | Function |
-|-------|----------|
-| Open protocol (bottom) | Free adoption, no switching cost, community contribution |
-| Managed control plane (top) | Operational infrastructure that organizations pay for |
-
-The open protocol drives adoption. The managed layer captures recurring revenue.
-Compliance requirements and liability reduction are non-discretionary budget items
-for government, financial, and regulated enterprise buyers. Organizations that
-adopt the protocol for one workflow expand to additional action classes over time.

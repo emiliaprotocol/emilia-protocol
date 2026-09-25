@@ -20,12 +20,9 @@ This is
 **claim-not-guarantee, evidence-not-adjudication.** EMILIA is the instrument the
 risk-bearer requires — not the balance sheet.
 
-That boundary is the whole strategy. A pure-standards layer captures little value;
-*being* the risk network means becoming a licensed, capitalized surety, which EP
-is not and should not be. The defensible, capital-light position is the middle:
-**the evidence-and-commitment rail that can make agent-action recourse easier to
-underwrite.** The EMILIA receipt, evidence chain, and execution binding can make
-an action and its stated recourse terms verifiable under a pinned profile. The
+EMILIA is not a surety and carries no risk. The EMILIA receipt, evidence chain,
+and execution binding can make an action and its stated recourse terms
+verifiable under a pinned profile. The
 Recourse Reference is the socket through which an insurer, surety, employer, or
 facilitator can bind its own commitment to that evidence. Whether the evidence
 is sufficient for underwriting, coverage, liability, or payment remains that
@@ -125,14 +122,7 @@ it does not rewrite the receipt, reverse an external effect, or itself authorize
 a remedy. Every remedy remains a fresh compensating action with its own
 authorization, operation, effect owner, outcome evidence, and legal analysis.
 
-## Commercial shape (why this is the business, not just a schema)
+## Deployment boundary
 
-The Recourse Reference is what an insurer/surety/facilitator can issue and price
-against. The revenue is theirs (premiums, bps, dispute fees); EMILIA's revenue is
-the **operated rail** — issuing/verifying references, retaining the evidence a
-claim needs, and the status/revocation service — plus being the artifact a
-carrier's product can be built on. The go-to-market is not "sell verification";
-it is **land one underwriter willing to evaluate coverage against EMILIA-bound
-evidence.** That reliance event is the wedge (see the underwriter design-partner
-brief), but this repository does not claim that such coverage is deployed,
-approved, standardized, or legally enforceable.
+This repository does not claim that coverage bound to EMILIA evidence is
+deployed, approved, standardized, or legally enforceable.

@@ -53,9 +53,9 @@
   "native_attestation_bridge": {
     "version": "EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v1",
     "path": "packages/verify/dist/aeb-adapter-contract.js",
-    "sha256": "5d313811963f09eaccaf0110a554ef7a6a5cadf222f8b97d2a34ce9a5b672efc",
+    "sha256": "47fcf14535ce14b48ef77e926bce06333af28a9a51cb2d50525ae070afb76d32",
     "source_path": "packages/verify/src/aeb-adapter-contract.ts",
-    "source_sha256": "c157494b46a7780bee0b47b4881ccf8d31ccbe4203e3b4a52797cf4ca982cf21",
+    "source_sha256": "e6ebc6b0e44e05f850268d3b31f63a0104442db07d3fc5ff180b14e903ae17ad",
     "signer_scope": "deterministic public test-only local PEP harness key; not an AuthZEN or OpenID signature"
   },
   "aeb_kernel": {
@@ -130,7 +130,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "5d313811963f09eaccaf0110a554ef7a6a5cadf222f8b97d2a34ce9a5b672efc"
+      "sha256": "47fcf14535ce14b48ef77e926bce06333af28a9a51cb2d50525ae070afb76d32"
     },
     {
       "path": "packages/verify/dist/aeb-aic-crossing-adapter.js",
@@ -150,7 +150,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-crossing-record.js",
-      "sha256": "d22417d88eb2aca2e3ea4a8b2c96dae18b738e63f29d6d0f86a08007976fca12"
+      "sha256": "8600155a798033e686016d15048c4a5a0ee440101a7ff5b7536f2b77ee7f1181"
     },
     {
       "path": "packages/verify/dist/aeb-discovery-permit-adapter.js",
@@ -266,7 +266,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "621b38bd32119dafd37304829c6875c8b352429c09256729bf3f0d68b79372ae"
+      "sha256": "3b95b5a6bf09f945b3350a5033f3f51373beaa58285e4a16d9f571b882ecfab8"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -378,7 +378,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "c157494b46a7780bee0b47b4881ccf8d31ccbe4203e3b4a52797cf4ca982cf21"
+      "sha256": "e6ebc6b0e44e05f850268d3b31f63a0104442db07d3fc5ff180b14e903ae17ad"
     },
     {
       "path": "packages/verify/src/aeb-aic-crossing-adapter.ts",
@@ -398,7 +398,7 @@
     },
     {
       "path": "packages/verify/src/aeb-crossing-record.ts",
-      "sha256": "4d24b918409f4f400690a33cbc41d26e23a0f062f6ac58e2540c869838ae3fc8"
+      "sha256": "261e0b46ff8323b520ffdce6b85333166e589f2949f20318d9759a8689384bc6"
     },
     {
       "path": "packages/verify/src/aeb-discovery-permit-adapter.ts",
@@ -514,7 +514,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "5c09ae211fe5e67861e1901221ec377ae86973b550f541d0987155024c24f91d"
+      "sha256": "6a78166b8a8c39d9d7083af3c54cb95e8c494e6a7ea8614a95a20fc5eb407f4c"
     },
     {
       "path": "packages/verify/src/initiator-attestation.ts",
@@ -619,7 +619,7 @@
     "path": "packages/verify/dist/aeb-adapter-contract.js",
     "source_path": "packages/verify/src/aeb-adapter-contract.ts",
     "claim_scope": "unsigned local preflight; not an accepted evaluation credential or local authorization",
-    "sha256": "5d313811963f09eaccaf0110a554ef7a6a5cadf222f8b97d2a34ce9a5b672efc",
-    "source_sha256": "c157494b46a7780bee0b47b4881ccf8d31ccbe4203e3b4a52797cf4ca982cf21"
+    "sha256": "47fcf14535ce14b48ef77e926bce06333af28a9a51cb2d50525ae070afb76d32",
+    "source_sha256": "e6ebc6b0e44e05f850268d3b31f63a0104442db07d3fc5ff180b14e903ae17ad"
   }
 }

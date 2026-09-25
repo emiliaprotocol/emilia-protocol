@@ -1,6 +1,505 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
+All notable changes to `@emilia-protocol/gate` are documented here.
+This package follows [Semantic Versioning](https://semver.org/).
+
+## 0.27.0 (2026-09-25)
+
+### Security
+
+- Both consequence boundaries now hold a durable same-action fence:
+  `createNativeConsequenceBoundary()` and the composed
+  `createConsequenceBoundary()`. Each attempt reserves a holder row that
+  carries a fence keyed by relying party, provider coordinates as configured
+  (tenant, provider, provider account, environment), and canonical action
+  digest. While an attempt for that action is reserved, invoking, or
+  indeterminate, a new attempt is refused before provider entry as
+  `native_action_in_flight`, even with fresh authority and a fresh operation
+  ID. Before this change the composed boundary had no fence, so fresh evidence
+  presented while a first attempt was `INDETERMINATE` reached the provider a
+  second time. After an authenticated EXECUTED result the fence stays closed
+  (`native_action_already_executed`). Only a FAILED result the boundary
+  accepts, direct or reconciled (affirmed for the attempt by
+  `provider_outcomes.verify`, which both boundaries now require; see the
+  terminal-evidence entry below), or a pre-entry stop proven by
+  the explicit not-entered marker in the boundary's own durable attempt
+  record opens it. On the composed boundary its
+  existing refusals take precedence over the fence refusal. Both boundaries
+  derive the same fence key from the relying party ID, so they fence each
+  other when they share a store. New exports:
+  `nativeConsequenceBoundaryActionFenceKey()`,
+  `nativeConsequenceBoundaryActionFenceHolderKey()` (which takes `provider`,
+  `boundary_id`, and `attempt_id`),
+  `nativeConsequenceBoundaryAttemptReservationKeys()` (which also takes
+  `boundary_id`), and `consequenceBoundaryActionFenceHolderKey()` (which
+  takes `{ reservation_key, boundary_id, attempt_id }`).
+- An attempt that stopped before provider entry (a crash while `RESERVED`, a
+  lost acknowledgement on the move to `INVOKING`, a store error during a
+  pre-entry release, or a crash after the fence holder was reserved but before
+  the attempt was recorded) previously held the fence forever, refusing every
+  later attempt at that action. The native boundary now writes the attempt
+  record, and calls `create_id`, before any reservation, and both boundaries
+  write it before the fence holder, so the last case can no longer arise.
+  Pre-entry recovery is a separate mode of `reconcile()`, `mode:
+  'pre_entry'`; terminal reconciliation is `mode: 'terminal'`, the default,
+  and returns `INDETERMINATE` with `pre_entry_recovery_required` for a record
+  that never reached `INVOKING`. Neither mode falls through into the other.
+  Pre-entry recovery takes a `recovery_authorization` that the attempt
+  store's `recover()` accepts for the attempt and the provider's answer: a
+  "not found" lookup result as FAILED (presented as evidence of kind
+  `pre_entry_lookup`, and affirmed by `provider_outcomes.verify` called with
+  `purpose: 'pre_entry_lookup'`), or INDETERMINATE when the provider has no
+  lookup. Recovery treats the attempt
+  as not entered only when its own `RESERVED` to `RELEASED` transition, which
+  writes the not-entered marker, is confirmed by a durable read (on a
+  composed attempt store without `state()`, answered with exactly `true`),
+  or when the record is already `RELEASED` with that marker. That transition
+  is the
+  linearization point: the live run's move to `INVOKING` then fails, and the
+  run does not call the provider and releases whatever it reserved
+  (`attempt_released_by_recovery`); a composed run whose attempt store has
+  no `state()` cannot tell that transition from its own lost write, so it
+  holds everything as `attempt_start_unconfirmed` instead. If the
+  record is already `INVOKING` or later, recovery returns `INDETERMINATE`
+  with `recovery_lost_to_live_attempt`, releases nothing, and never uses its
+  lookup as a terminal outcome. Only after a confirmed not-entered transition
+  does Gate release the attempt's reservations, confirm each release, and
+  return `REFUSED` with `attempt_never_entered_provider`;
+  an unconfirmed release stays `INDETERMINATE`
+  (`native_pre_entry_release_unconfirmed`). A claim of EXECUTED is refused as
+  `reconciliation_outcome_conflict` and releases nothing. On the composed
+  boundary recovery releases only the fence holder and never touches the
+  evaluation reservation, which a live run hands back itself and which stays
+  reserved after a crash, so a retry needs a fresh evaluation. Without
+  `attempts.store.state()`, only recovery's own transition answered with
+  exactly `true` proves the stop, and a stop or lost race that recovery
+  cannot prove that way keeps the action fenced.
+- Both boundaries release or commit the fence holder and every other
+  reservation of an attempt only after the attempt record's terminal or
+  not-entered transition has succeeded and been confirmed. Terminal
+  reconciliation freezes an `INVOKING` record as `INDETERMINATE` first and
+  writes the terminal record before it consumes reservations or opens the
+  fence; if the terminal record cannot be written, everything stays held.
+  In 0.26.0 the composed `reconcile()` committed the evaluation reservation
+  before its terminal attempt transition and without freezing an `INVOKING`
+  record.
+- A lost acknowledgement no longer releases anything on its own. If the
+  move from `RESERVED` to `INVOKING` throws or answers anything but `true`,
+  the run reads the durable record. `INVOKING` for this attempt means the
+  write landed, and the run proceeds as the record's owner. `RESERVED` is
+  first closed as not entered through the same atomic transition, then
+  released (`attempt_start_conflict`). `RELEASED` with the not-entered marker
+  for this attempt means a pre-entry recovery linearized first, and the run
+  hands back what it holds (`attempt_released_by_recovery`). Anything else,
+  including a `RELEASED` record without the marker, keeps everything held as
+  `INDETERMINATE` with `attempt_start_unconfirmed`. A composed attempt store
+  without `state()` cannot be read, so the run sends no not-entered write,
+  holds everything, and returns `INDETERMINATE` with
+  `attempt_start_unconfirmed` without calling the provider. A pre-entry stop that
+  cannot confirm its own not-entered transition returns `INDETERMINATE` with
+  `native_pre_entry_release_unconfirmed` on the native boundary and
+  `attempt_release_unconfirmed` on the composed boundary. A native stop
+  whose first reservation was refused holds no row, so it returns `REFUSED`
+  with that refusal's reason even when the transition was not confirmed.
+  In 0.26.0 the composed boundary released the
+  evaluation reservation after such an error while the durable record could
+  say `INVOKING`.
+- A store answer counts as success only when it is exactly `true` or a
+  durable read confirms the write. Where a store has a durable read, Gate
+  decides attempt transitions and consumption-store commits, releases, and
+  closes by that read alone; a recovery claim needs exactly `true`. In
+  0.26.0 the composed boundary accepted any truthy answer, so a
+  store that answered `{ ok: false }` to the move to
+  `INVOKING` let the provider be called while the record stayed `RESERVED`.
+  On the native boundary, a reserve call that throws, or answers anything
+  other than exactly `true` or `'RESERVED'` or a defined conflict (`false`,
+  `'CONSUMPTION_CONFLICT'`, or `'NATIVE_REPLAY_CONFLICT'`), has an unknown
+  effect: the run reads that row, and unless the read shows `CONSUMED` or
+  `RELEASED_NOT_ENTERED` it closes the attempt as not entered, hands its
+  rows back, and returns `INDETERMINATE` with
+  `consumption_reservation_unconfirmed`, never a clean refusal.
+- The composed boundary's evaluation reservation is keyed by the evaluation,
+  which successive attempts can present. Gate now commits it for an attempt
+  only while that attempt's own fence holder is still held, which marks it
+  as the reservation's owner (otherwise `evaluation_reservation_not_owned`
+  unless it is already consumed), and pre-entry recovery never touches it, so
+  recovering one attempt can no longer commit a later attempt's live
+  reservation for the same evaluation.
+  When the release of that reservation fails before provider entry, the run
+  now returns `INDETERMINATE` with `evaluation_release_unconfirmed` rather
+  than a clean refusal.
+- Recovery claims are bound to one attempt. Before `authorizeRecoveryClaim`
+  runs, `claimReservation()` refuses a claim made without a scope
+  (`recovery_claim_scope_required`), a scoped claim whose key is not the row
+  that its `scope` names for that attempt (new exports
+  `consequenceBoundaryRecoveryClaimKey()` and
+  `consequenceBoundaryRecoveryClaimMarkerKey()`), and a claim on the
+  composed evaluation reservation, which several attempts share, unless the
+  scope's attempt still holds its fence-holder row.
+  The scope names the boundary kind (`scope.boundary`, `'native'` or
+  `'composed'`) and the boundary (`scope.boundaryId`, the boundary's
+  required `boundary_id`) as well as the attempt ID. A scope derives only
+  the rows of its own boundary kind and boundary ID, every attempt-keyed
+  reservation includes both, and `authorizeRecoveryClaim` receives
+  `attemptIdentity` (`native:<boundaryId>:<attemptId>` or
+  `composed:<boundaryId>:<attemptId>`, from the new export
+  `consequenceBoundaryRecoveryAttemptIdentity()`), so two boundaries that
+  share one store, of different kinds or of the same kind, can no longer
+  claim each other's rows even when their attempt IDs are identical. The
+  action fence key does not include the boundary ID, so every boundary at
+  one provider still fences the same action. `scope.operationId` is
+  caller-asserted: the store does not check it against the claimed row, and
+  an authorizer must not rely on it. A malformed scope is a
+  refusal (`recovery_claim_scope_invalid`), not a thrown error. The
+  PostgreSQL store's new `claimReservationResult()` returns the refusal
+  reason (`AebRecoveryClaimRefusal`): `recovery_claim_scope_required`,
+  `recovery_claim_scope_invalid`, `recovery_claim_key_mismatch`,
+  `recovery_claim_owner_marker_absent`, and `recovery_claim_already_owned`
+  are decided before the authorizer runs, then `recovery_claim_unauthorized`
+  and `recovery_claim_row_not_reserved`; a database error still rejects.
+  A credential bound to one attempt can therefore no longer claim another
+  attempt's live holder.
+- A call now releases or closes only reservations it created. The native
+  boundary writes three reservations per attempt (operation identity, native
+  authority, action-fence holder), each keyed by its `boundary_id` and
+  attempt ID, which no other attempt can produce; the composed boundary
+  keys its fence holder the
+  same way. In 0.26.0, when a native reserve write failed, the error path
+  released the operation reservation for the caller-supplied operation ID
+  without proof that this call had created it. With a store that fences
+  release per store instance, such as the PostgreSQL store that can now back
+  the native boundary, that release could delete another in-flight attempt's
+  reservation and replay fence in the same process, leaving that action
+  locked and that attempt's grant admissible for a second action. A failed
+  reserve now marks the attempt `RELEASED`, releases only this attempt's rows,
+  and returns `INDETERMINATE` `consumption_reservation_unconfirmed`, because
+  the failed write may still land, or `INDETERMINATE`
+  `native_pre_entry_release_unconfirmed` when a release cannot be confirmed.
+- One grant accepted under two pinned `system` or `profile` labels, or under
+  two spellings of one issuer that declare the same namespace, is now spent
+  once. Gate reserves the label-free `replay_identity_key` that
+  `@emilia-protocol/verify` derives locally from the pinned authority
+  namespace (the issuer by default) and the native authorization ID. Beside
+  it, it reserves the 4.1.0 `replay_key` for every `system` and `profile`
+  label, with its issuer spelling, that the pin set accepts under the
+  grant's authority namespace, not only for the presented label, so a grant
+  that 0.26.0 consumed under one label is refused under any other label
+  still pinned in that namespace. The provider idempotency key is derived
+  from the identity and no longer depends on the labels or, when the pin
+  declares an `authority_namespace`, on the issuer string.
+- `reconcile()` never reconciles an attempt that did not enter the provider to
+  EXECUTED or FAILED: terminal mode returns `INDETERMINATE` with
+  `pre_entry_recovery_required`, and pre-entry mode can only release it as
+  not entered (`attempt_never_entered_provider`). It refuses an outcome that
+  conflicts with an existing terminal record as
+  `reconciliation_outcome_conflict` without touching any reservation.
+  Pre-entry refusals release reservations only after the attempt itself is
+  durably `RELEASED`.
+- Hostile in-process input is refused instead of throwing: a Proxy anywhere in
+  `run()` or `reconcile()` input, getters, extra keys, and an own `__proto__`
+  member. On the composed boundary this now also covers throwing getters on
+  `artifacts`, `current_statuses`, `additional_replay_keys`, and `outcome`,
+  and revoked Proxies. A synchronous attempt store that returns plain
+  booleans is supported, not refused: Gate awaits its answers and applies
+  the same rules. An unexpected exception is returned as `boundary_internal_error`
+  and never thrown: from `run()` it is `REFUSED` before an attempt exists and
+  otherwise `INDETERMINATE`, with `invoked: true` once the provider may have
+  been entered, and every reservation stays held; from `reconcile()` it is
+  `REFUSED`. In 0.26.0 the composed boundary threw on these inputs, and a
+  synchronous attempt store made `run()` throw after the provider call.
+  Attempt-store answers are copied once as plain data. A
+  `pins.relying_party_id` outside the Gate identifier grammar is refused at
+  construction, and durable keys are derived before `local_authorize` runs, so
+  an unkeyable binding is a refusal (`native_consequence_binding_invalid`)
+  with no side effect.
+
+- "Not entered" is now recorded, never inferred. Every not-entered
+  transition, a run's own pre-entry stop and pre-entry recovery's
+  linearizing transition, writes the move to `RELEASED` with the evidence
+  `{ kind: 'not_entered', attempt_id }` (new export
+  `CONSEQUENCE_BOUNDARY_NOT_ENTERED`, type
+  `ConsequenceBoundaryNotEnteredMarker`), and pre-entry recovery and the
+  `pre_entry_recovery_required` routing of terminal reconciliation rely
+  only on that marker. A `RELEASED` or `COMMITTED` record that carries
+  neither the marker nor provider evidence, including one from an attempt
+  store whose `state()` drops the stored evidence, is unproven: both
+  reconciliation modes return `INDETERMINATE` with `attempt_record_unproven`
+  and release nothing, so an attempt that entered the provider can never be
+  recovered as a pre-entry stop and its one-time authority released
+  unconsumed. An attempt store declares `notEnteredMarker: true` when it
+  persists that evidence with the transition and returns it from `state()`.
+- Terminal evidence is verified for the attempt, the purpose of the check,
+  and the kind of evidence presented. `provider_outcomes.verify` now
+  receives the attempt's `provider_idempotency_key` and a `purpose`, and
+  the only answer Gate accepts is `{ verified: true, purpose, attempt_id,
+  provider_idempotency_key }` restating what it was asked
+  (`ConsequenceBoundaryProviderOutcomeAffirmation`). Any other answer,
+  including a bare `true`, means "not verified" (`INDETERMINATE`
+  `provider_outcome_authentication_failed`). The composed
+  `createConsequenceBoundary()` now requires `provider_outcomes` as the
+  native boundary does, and throws at construction without it
+  (`consequence_boundary_configuration_invalid:
+  provider_outcome_verifier_required`). On both boundaries an attempt
+  that reached `INVOKING` closes as EXECUTED or FAILED only on an
+  affirmation of `provider_outcome` bound to that attempt and its provider
+  idempotency key, including the result of the run's own provider call, so
+  a provider adapter's unverified FAILED, such as a timeout mapped to
+  FAILED, never releases the fence. Evidence presented to `reconcile()`
+  carries its kind in Gate's input (`evidence_kind`: `'provider_outcome'`
+  or `'pre_entry_lookup'`): terminal reconciliation refuses a
+  `pre_entry_lookup` and pre-entry recovery refuses a `provider_outcome`
+  before the verifier runs (`evidence_kind_mismatch`; an EXECUTED or FAILED
+  outcome without a kind is `evidence_kind_required`), so a
+  "not found" lookup presented with its own kind can no longer become a
+  terminal result, even under a verifier that only restates the context.
+  Gate cannot detect mislabelled evidence or a verifier that affirms a
+  purpose it did not evaluate: a lookup presented as `provider_outcome` to
+  a verifier that restates the context, or always answers
+  `provider_outcome`, still becomes a terminal FAILED while the provider
+  call may be in flight. In 0.26.0 the composed boundary never verified
+  provider evidence, and its `reconcile()` accepted a FAILED from any
+  caller whose recovery authorization the attempt store accepted.
+- Liveness repairs. On the composed boundary, every refusal in `run()` that
+  happens before the attempt record exists (an unkeyable fence binding, an
+  envelope refusal, attempt-ID allocation, and an attempt-store reserve that
+  refuses or throws) now returns `INDETERMINATE` with
+  `evaluation_release_unconfirmed` when the release of the evaluation
+  reservation fails or cannot be confirmed, instead of a clean refusal, and
+  a reservation of the evaluation whose outcome `authorizeAebExecutionDurable()`
+  cannot confirm is `INDETERMINATE` with `consumption_reservation_unconfirmed`.
+  Gate has no recovery for an evaluation reservation left `RESERVED` with no
+  attempt record, and none is safe to add without a new durable marker:
+  nothing durable tells a crashed run apart from a live run that has not yet
+  written its attempt record, and releasing the reservation would let that
+  live run enter the provider after a second run of the same evaluation had
+  already entered and FAILED, spending one evaluation twice. That evaluation
+  and its native mandate stay fenced, and a retry needs a fresh evaluation
+  over fresh native authority.
+  A run that has sent any write that could record its attempt as not
+  entered, including a write whose acknowledgement was lost, never calls
+  the provider afterwards, whatever a later read shows, because that write
+  can still take effect after the read and would then make an entered
+  attempt look never entered. When the record cannot be read after the
+  move to `INVOKING`, the run reads it again up to three times and proceeds
+  as the owner if a read shows `INVOKING`; if it stays unreadable, the run
+  sends no not-entered write, holds every reservation, does not call the
+  provider, and returns `INDETERMINATE` `attempt_start_unconfirmed` with
+  `invoked: false`. If the start write did not land, pre-entry recovery
+  closes the still-`RESERVED` record. If it landed, the record says
+  `INVOKING` although the provider was never called, and it is closable
+  only by terminal reconciliation with provider evidence that forecloses any execution, now or later, under the attempt's provider idempotency key,
+  such as an authenticated cancellation of that key, which is the
+  verifier's decision to affirm as `provider_outcome`; otherwise the action
+  stays fenced, by design.
+  A point-in-time "not found", even from an authenticated provider lookup,
+  does not foreclose execution: a run that is still alive can deliver its
+  call after the lookup. Terminal reconciliation now verifies the
+  presented outcome before it freezes the record, so an outcome the
+  verifier rejects leaves the
+  record unchanged and a later reconciliation with verified evidence can
+  still close it. When a recovery claim fails, recovery reads the row again
+  and counts a row that is already `AVAILABLE` (or already closed to the
+  target state) as done, so it no longer reports
+  `native_pre_entry_release_unconfirmed` for rows that the live run's own
+  hand-back already removed, and it claims again, at most three times, a
+  row that another recovery took over before its write.
+
+### Fixed
+
+- `createPostgresAebDurableConsumptionStore()` now provides the durable
+  `state()` read the native boundary requires, through a new executor-only
+  security-definer function `ep_aeb_private.operation_state`. After a restart,
+  `reconcile()` claims the attempt's reservations through
+  `claimReservation(key, authorization, scope)` with the caller's
+  `recovery_authorization` when the store declares
+  `recoveryClaimSupported: true`. Each claim carries an `AebRecoveryClaimScope`
+  (`{ boundary, boundaryId, attemptId, operationId, recoveryOperationKey,
+  reservation }`),
+  which the store validates without running getters and passes to
+  `authorizeRecoveryClaim` as `claim.scope`, with `claim.attemptIdentity`. One authorization bound to the
+  attempt covers every reservation it holds, so restart reconciliation to
+  FAILED or EXECUTED completes in one call on both boundaries.
+
+### Compatibility
+
+- The composed boundary now snapshots the provider result together with
+  its evidence, as the native boundary already did, so what was verified
+  is what is returned. The result must be in the strict canonical JSON
+  domain: plain objects and arrays, strings, booleans, null, and numbers
+  that are safe integers. A fractional number, a `Date` or other class
+  instance, `undefined`, a bigint, a function, or a cyclic value makes
+  `run()` return `INDETERMINATE` `provider_outcome_invalid` after the
+  provider call, so the action then needs reconciliation. Encode amounts
+  as integers or strings in the invoke adapter's result.
+- A mixed fleet is unsafe. A 0.26.0 boundary, native or composed, has no
+  same-action fence and does not reserve the label-free identity key, so
+  while 0.26.0 and this release serve one consumption store, an action in
+  flight on either version can be executed again through a fresh permit on
+  the other, and a grant consumed by this release can be admitted again by
+  0.26.0 under another pinned label. Do not roll an upgrade across 0.26.0
+  and this release. Upgrade in this order. First stop every gate 0.26.0
+  boundary that uses the store and drain or reconcile its in-flight
+  attempts on 0.26.0, with the provider-outcome verifier that 0.26.0
+  already uses: a 0.26.0 native boundary counts only a verifier answer of
+  exactly `true`, so a verifier that returns the new affirmation fails
+  every 0.26.0 run and reconciliation and the drain cannot finish. A
+  0.26.0 instance that restarts during the drain no longer owns the
+  reservations its earlier process made, so it closes them only through
+  the store's recovery claim (`claimReservation` with a recovery
+  authorization), as in 0.26.0. Finish
+  on 0.26.0 any pre-entry stop whose rows it did not release as well,
+  because 0.26.0 wrote those records `RELEASED` without the not-entered
+  marker and this release reports them `attempt_record_unproven`. Only then
+  deploy the new verifier, the upgraded attempt stores, and this release
+  together; never deploy the new verifier while any 0.26.0 boundary still
+  serves. The executed-action fence is not retroactive: 0.26.0 wrote no
+  fence row for the actions it completed, so this release admits fresh
+  authority for an action that 0.26.0 already executed, and only actions
+  executed after the upgrade are refused as
+  `native_action_already_executed`. After the upgrade, Gate fences the
+  verify 4.1.0 `replay_key` for every `system` and `profile` label, with its issuer
+  spelling, that the pin set accepts under the grant's authority namespace,
+  so a grant that 0.26.0 consumed under one label is refused as
+  `native_replay_conflict` under any label still pinned in that namespace.
+  A 0.26.0 attempt has no fence row, so fresh authority for an action that
+  0.26.0 left in flight would not be refused; that is why its attempts must
+  be resolved first. Keep every label and issuer spelling that 0.26.0
+  accepted pinned until the grants consumed under it have expired or been
+  revoked: removing one drops its 4.1.0 key from the fence.
+- Changing a pin's `authority_namespace`, or the issuer spelling of a pin that
+  uses the default namespace, changes the replay identity of every grant under
+  it. The 4.1.0 keys do not depend on the namespace, so the same grant is
+  still refused when a label and issuer spelling whose 4.1.0 key was
+  reserved at consumption is still pinned in its namespace; presented only
+  under labels and spellings outside that set, it could be admitted again.
+  Drain in-flight attempts and let consumed grants expire before rotating.
+  Pins whose issuers are different spellings of one issuer must now all
+  declare the same namespace, or construction is refused.
+- Existing databases need the `operation_state` function:
+  `supabase/migrations/20260925010000_aeb_operation_state.sql` (it mirrors
+  `AEB_CONSUMPTION_DDL`).
+- `authorizeRecoveryClaim` is called once per reservation an attempt holds
+  (operation, native authority, and action-fence holder on the native
+  boundary) and receives the validated `scope` and `attemptIdentity`
+  (`native:<boundaryId>:<attemptId>` or `composed:<boundaryId>:<attemptId>`).
+  Bind the recovery credential to exactly one attempt: `attemptIdentity`,
+  together with the relying party and tenant it was issued for, never
+  `scope.attemptId` alone, and never `scope.operationId`, which the store
+  does not check against the claimed row. `claimReservation()` now
+  requires a scope and refuses a claim without one
+  (`recovery_claim_scope_required`); a scope that lacks `boundary` or
+  `boundaryId` is malformed (`recovery_claim_scope_invalid`); a
+  caller that claimed rows directly must pass the attempt's scope. Do not
+  bind it to one exact row key, or restart reconciliation cannot finish in
+  one call. Never bind it to
+  `scope.recoveryOperationKey` or an operation ID: every attempt that reuses
+  one operation ID for the same action shares those values, so such a
+  credential would authorize claims across attempts. A custom
+  `attempts.create_id` must return a unique ID for every attempt of one
+  boundary.
+- Both boundaries require a `boundary_id`: 1 to 128 letters, digits, `_`,
+  `.`, or `-`, starting with a letter or digit, with no `:`. Anything else
+  is refused at construction (`boundary_id_invalid`). Keep it unchanged
+  while the boundary's attempts may still need reconciliation. Replicas that
+  serve one attempt store must use the same value, because the attempt
+  record does not carry it; boundaries with different attempt stores that
+  share one consumption store use different values. It is part of the
+  attempt identity and of every attempt-keyed reservation key, so
+  attempt-keyed rows and recovery credentials from a build without it are
+  not derivable: drain first, as above, and issue recovery credentials for
+  the new identity.
+- Native runs now write the attempt record, and call `create_id`, before any
+  reservation. A run refused after its record is written leaves that record
+  `RELEASED`.
+- `reconcile()` takes an optional `mode` (`'terminal'`, the default, or
+  `'pre_entry'`). A caller that used `reconcile()` to release a pre-entry
+  stop must now pass `mode: 'pre_entry'`.
+- `provider_outcomes.verify` receives a `purpose` (`'provider_outcome'` or
+  `'pre_entry_lookup'`) and must answer `{ verified: true, purpose,
+  attempt_id, provider_idempotency_key }` for the purpose, attempt, and key
+  it checked. A verifier that answers a bare `true` no longer verifies
+  anything: update it to restate what it checked, and to affirm a "not
+  found" lookup only for `pre_entry_lookup`. `createConsequenceBoundary()`
+  now requires the same option and refuses construction without it
+  (`provider_outcome_verifier_required`); its `run()` verifies its own
+  provider result. Callers of `reconcile()` present evidence with its kind
+  (`evidence_kind`: `'provider_outcome'` or `'pre_entry_lookup'`).
+- A native attempt store must declare `notEnteredMarker: true`, or
+  `createNativeConsequenceBoundary()` refuses it at construction: it persists
+  the evidence Gate writes with each transition, including the not-entered
+  marker, atomically with the transition and returns it from `state()`. A
+  composed attempt store without that declaration is used as in 0.26.0,
+  with transitions counted only on an answer of exactly `true`. Without its
+  `state()`, a start answer other than exactly `true` now holds every
+  reservation as `INDETERMINATE` `attempt_start_unconfirmed` without
+  calling the provider; pre-entry recovery closes that attempt only when
+  its own move from `RESERVED` is answered with exactly `true`, and
+  otherwise the action stays fenced. A store
+  that drops stored evidence cannot prove a pre-entry stop, so such an
+  attempt stays fenced as `attempt_record_unproven`.
+- `createNativeConsequenceBoundary()` refuses a pin set that
+  `verifyAebNativeAuthorizationPins()` rejects, throwing
+  `native_consequence_boundary_configuration_invalid: <native_pins_* reason>`
+  at construction.
+- `createConsequenceBoundary()` writes one fence-holder row per attempt and
+  one marker row per executed action to its consumption store, and refuses
+  `action_fence_binding_invalid` when `aeb.config.relying_party_id` cannot key
+  the fence. Pre-entry recovery on this boundary works without
+  `attempts.store.state()`, but then only its own transition answered with
+  exactly `true` proves the stop.
+- Gate now imports `verifyAebNativeAuthorizationPins()` from
+  `@emilia-protocol/verify`, which verify 4.1.0 does not export, and relies on
+  that release's one-namespace-per-issuer pin rule. This release pins
+  `@emilia-protocol/verify` exactly at 5.0.0, and release order is a hard
+  dependency: publish `@emilia-protocol/verify` 5.0.0 first, then publish
+  this Gate. A Gate published while it still pins 4.1.0 fails to
+  load its root entry, `@emilia-protocol/gate`, and every subpath that
+  imports `@emilia-protocol/verify/aeb`, not only `./aeb`: in a packed check
+  against the published 4.1.0, `.`, `./aeb`, `./consequence-boundary`, and
+  `./aeb-consumption-store` each failed with a missing export
+  (`verifyAebNativeAuthorizationPins`). That breaks every Gate consumer,
+  including receipt-guard users of the root entry. The workspace link hides
+  this in CI.
+- TypeScript: `ConsequenceBoundaryReconcileInput.outcome` and
+  `NativeConsequenceBoundaryReconcileInput.outcome` now take
+  `ConsequenceBoundaryPresentedOutcome` (an EXECUTED or FAILED outcome that
+  carries `evidence_kind`) instead of `ConsequenceBoundaryEffectOutcome`, a
+  compile-time break for callers of `reconcile()`. New exported types:
+  `ConsequenceBoundaryEvidenceKind` and `ConsequenceBoundaryPresentedOutcome`.
+  Both boundary configurations require `boundary_id`, and the boundary
+  objects both constructors return expose it.
+- Version type: the changes above refuse pin sets, attempt stores, inputs,
+  verifier answers, and recovery claims that 0.26.0 accepted, require a
+  provider-outcome verifier and a `boundary_id` on both boundaries, and
+  change how `reconcile()` releases a pre-entry stop, so this is a breaking
+  release. Semantic Versioning 2.0.0 allows anything to change in a 0.y.z
+  version; this release follows the npm caret convention, under which
+  `^0.26.0` admits only 0.26.x, and ships the breaking change as the next
+  minor version, 0.27.0. It pins `@emilia-protocol/verify` exactly at
+  5.0.0.
+- `createNativeConsequenceBoundary()` now also refuses a pin set that declares
+  two different `authority_namespace` values for one exact issuer
+  (`native_pins_issuer_namespace_conflict`), and treats more issuer spellings
+  as aliases (URI scheme case, trailing dots on a URL host, an http or https
+  URL written without `//`, URN namespace-identifier case, DID method-name
+  case, `did:web` host case and trailing dots, and SPIFFE trust-domain case
+  and trailing dots), through
+  `verifyAebNativeAuthorizationPins()`. Normalization cannot find every
+  alias: two issuer strings that denote one authority but do not normalize
+  equal need one explicitly shared namespace.
+- The fence, and every other key built from them, compares the canonical
+  action digest and the provider coordinates exactly as configured. Gate
+  implements no material-field inventory and no equivalence between spellings
+  (amount formats, case, whitespace, Unicode normalization); callers must
+  canonicalize the action and configure identical coordinates on every
+  boundary instance that reaches one provider account. Identical intentional
+  repeats must differ in the canonical action, for example through an
+  instance field.
+- Each executed native action leaves one permanent marker row in the
+  consumption store, used only to choose the `native_action_already_executed`
+  reason.
+
 ## 0.26.0 (2026-09-24)
 
 ### Added
@@ -16,12 +515,68 @@
   mutation cannot change what runs or what Gate returns under recorded program
   digests.
 
-This direct handoff is reference implementation work for the proposed, staged
-AEB-06 refinement. Published AEB-05 still requires CAID matching and AEC
-satisfaction. Source labels do not establish native-protocol conformance or
+The direct handoff is a repository implementation profile for the direct
+native path of AEB-06. AEB-06 was posted as an individual Internet-Draft at
+2026-09-25T02:15:03Z, before this release was published, and is not adopted by
+any working group; the text shipped in this release still described it as
+staged. AEB-06 makes CAID and AEC conditional but does not specify the gateway
+handoff. Source labels do not establish native-protocol conformance or
 independent interoperability.
 
-## Unreleased
+### Known issues (found after release)
+
+- `createNativeConsequenceBoundary()` does not fence the action itself. While
+  a first attempt is `INDETERMINATE`, a second attempt at the identical action
+  that carries a fresh native `authorization_id` and a fresh operation ID is
+  admitted and reaches the provider a second time.
+- The native replay unit includes the handoff's `system` and `profile` labels.
+  When a relying party pins one gateway and issuer under two labels, the same
+  native grant presented under each label is admitted twice.
+- The shipped PostgreSQL AEB store does not expose `state()`, so it cannot back
+  `createNativeConsequenceBoundary()`; construction fails with
+  `native_consequence_boundary_configuration_invalid`.
+- The composed `createConsequenceBoundary()` does not fence the action either.
+  Fresh evidence with a new operation ID, presented while a first attempt is
+  `INDETERMINATE`, reaches the provider a second time.
+- When a native reserve write fails, the error path releases the operation
+  reservation for the caller-supplied operation ID without proof that the
+  call created it.
+
+All of these are repaired in 0.27.0 above.
+
+## 0.25.0 (2026-09-13)
+
+### Added
+
+- Add `./action-risk-control-schedule`
+  (`EP-ACTION-RISK-CONTROL-SCHEDULE-v1`), a relying-party-scoped,
+  hybrid-signed statement of the technical controls required for one action
+  class, with a signed qualification status and an evaluation that returns
+  `ELIGIBLE`, `NOT_ELIGIBLE`, or `INDETERMINATE`. The schedule is evidence
+  input only. It never authorizes an action, creates policy or coverage, sets a
+  premium, allocates liability, or proves a provider effect.
+- Add `./provider-outcome-binding` (`EP-PROVIDER-OUTCOME-BINDING-v1`). It
+  verifies a complete `EP-OUTCOME-OBSERVATION-v2` under the relying party's
+  source pins and requires the signed observation to commit the digest of one
+  closed `EP-PROVIDER-OUTCOME-CONTEXT-v1`. Outcomes are `COMMITTED`,
+  `PROVEN_NOT_COMMITTED`, or `INDETERMINATE`; the binding is not provider
+  truth or proof of an external effect.
+- Add `./action-evidence-packet` (`EP-ACTION-EVIDENCE-PACKET-v1`), a
+  content-addressed join of native artifacts for one exact Gate action through
+  relying-party-supplied native verifier adapters. Results are
+  `TECHNICALLY_COMPLETE`, `INCOMPLETE`, `CONFLICTED`, or `INDETERMINATE`. The
+  packet never decides coverage, causation, liability, a claim, or payment.
+
+### Changed
+
+- Depend on `@emilia-protocol/verify` 4.0.0.
+- The underwriter control attestation's boundary `status` string changed from
+  "carries no coverage effect until adopted by the carrier" to "has no coverage
+  effect; acceptance as technical evidence would not create or decide
+  coverage", so newly built attestations differ in that field from 0.24.0
+  output.
+
+## 0.24.0 (2026-09-05)
 
 ### Security
 
@@ -46,10 +601,6 @@ independent interoperability.
   existing evidence-record fields except that raw `guard_evidence` is now
   redacted from public refusal and `guard()` error surfaces; the full record
   remains available through the internal evidence log and direct `run()` result.
-
-## 0.24.0 (2026-08-30)
-
-### Security
 
 - Restrict the Action Escrow human-facing milestone, amount, currency, payee,
   and destination fields to printable ASCII before building the exact approval
@@ -122,6 +673,42 @@ independent interoperability.
     `population_conservation_violation:system` or
     `population_conservation_violation:receipt` on violation.
 
+## 0.23.15 (2026-08-15)
+
+First published in 0.23.15. This section was previously labelled Unreleased.
+
+### Added
+
+- Add the transport- and evidence-format-neutral `./consequence-boundary`
+  facade. It re-verifies a signed AEB join for one frozen action, applies local
+  policy, atomically fences native replay units, records provider-attempt
+  custody, and reports only `EXECUTED`, authoritative `FAILED`, or
+  `INDETERMINATE` after provider entry.
+- Add `./bounded-execution-acceptance`, a relying-party-signed acceptance
+  profile and portable evidence pack over signed bounded-execution reports.
+  Evaluation preserves unresolved work as `INDETERMINATE` and deliberately
+  makes no legal-compliance, external-effect, safety, or complete-mediation
+  claim.
+
+### Security
+
+- Scope legacy receipt consumption by the canonical signed
+  `[tenant_id, receipt_id]` pair. Every reserve, consume, commit, and release
+  transition now uses the same recorded composite key, preventing one
+  tenant's receipt identifier from colliding with another tenant in a shared
+  store.
+- Require an explicit relying-party verification mode when WebAuthn RP and
+  origin pins are authoritative; omitted pins now fail closed instead of
+  silently producing an integrity-only result.
+
+### Compatibility
+
+- Pre-composite stores contain bare `receipt_id` rows that the new composite
+  keyspace does not consult. Before upgrading a deployment that cannot accept
+  one additional admission during the configured `maxAgeSec` window, drain
+  in-flight receipts or refuse admission for one complete `maxAgeSec`
+  interval. Fresh stores are unaffected.
+
 ## 0.23.14 (2026-08-05)
 
 - Carry `@emilia-protocol/require-receipt` 0.8.0 so Gate integrations can use
@@ -157,43 +744,6 @@ independent interoperability.
 
 - Add crash-safe, program-aware provider entry with a caller-prepared invocation token.
 - Preserve bounded-program status, concurrency, occurrence, and budget checks on that path.
-
-All notable changes to `@emilia-protocol/gate` are documented here.
-This package follows [Semantic Versioning](https://semver.org/).
-
-## Unreleased
-
-### Added
-
-- Add the transport- and evidence-format-neutral `./consequence-boundary`
-  facade. It re-verifies a signed AEB join for one frozen action, applies local
-  policy, atomically fences native replay units, records provider-attempt
-  custody, and reports only `EXECUTED`, authoritative `FAILED`, or
-  `INDETERMINATE` after provider entry.
-- Add `./bounded-execution-acceptance`, a relying-party-signed acceptance
-  profile and portable evidence pack over signed bounded-execution reports.
-  Evaluation preserves unresolved work as `INDETERMINATE` and deliberately
-  makes no legal-compliance, external-effect, safety, or complete-mediation
-  claim.
-
-### Security
-
-- Scope legacy receipt consumption by the canonical signed
-  `[tenant_id, receipt_id]` pair. Every reserve, consume, commit, and release
-  transition now uses the same recorded composite key, preventing one
-  tenant's receipt identifier from colliding with another tenant in a shared
-  store.
-- Require an explicit relying-party verification mode when WebAuthn RP and
-  origin pins are authoritative; omitted pins now fail closed instead of
-  silently producing an integrity-only result.
-
-### Compatibility
-
-- Pre-composite stores contain bare `receipt_id` rows that the new composite
-  keyspace does not consult. Before upgrading a deployment that cannot accept
-  one additional admission during the configured `maxAgeSec` window, drain
-  in-flight receipts or refuse admission for one complete `maxAgeSec`
-  interval. Fresh stores are unaffected.
 
 ## 0.23.9 (2026-08-03)
 
