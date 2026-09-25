@@ -64,7 +64,7 @@ describe('npm internal dependency registry guard', () => {
           },
           {
             spec: '@emilia-protocol/verify@5.0.0',
-            sha256: 'e6bbf55d7b562cf31cb1abd29290913edd2202cb5f1aec126e2aa475abffe7df',
+            sha256: '5ef734ce2647b08e152703bf1cf6829267f654a62c76c51d9e78c9811d54f904',
           },
         ],
       },
