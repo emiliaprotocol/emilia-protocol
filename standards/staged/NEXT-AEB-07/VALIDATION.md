@@ -3,6 +3,63 @@
 Checks run on 2026-09-25 (UTC) against the candidate in this directory. Each
 entry gives the command and a summary of its output.
 
+## Second review revision (2026-09-25 UTC)
+
+A post-integration review of branch `fix/pr788-followups` found that the
+fence could lock an action permanently after a stop before provider entry,
+that an error path could release a record another attempt owned, that the
+composed Gate path had no fence, that one issuer spelled two ways could spend
+one grant twice, and that the fence compares exact bytes. The source was
+revised as follows:
+
+- Section 5.10: the fence is required on every evidence path (the SHOULD for
+  non-native paths is removed); the release list adds the boundary's own
+  confirmed pre-entry release and authorized pre-entry recovery; a recovery
+  operation with proof of non-entry is required, and without that proof the
+  attempt is treated as INDETERMINATE; action digests and effecting target
+  identities are compared exactly, and profiles define canonical forms.
+- Section 5.11: a boundary releases or closes only records whose ownership it
+  can prove; an operation-identifier match is not proof.
+- Section 5.14: one recovery authorization bound to an attempt suffices for
+  every record of that attempt; a pre-entry stop is never reconciled to
+  EXECUTED or FAILED.
+- Sections 2, 4, 5.9, and 8.5: the native replay identity is derived from the
+  authority namespace (default: the verified issuer value) and the native
+  authorization identifier; a declared namespace replaces the issuer value.
+  Pins whose issuer values differ but are equal after normalization must all
+  declare the same namespace or the pin set is refused; a namespace change
+  requires draining first.
+- Section 8.7 hostile vectors, Section 9 deployment statement, Security
+  Considerations (relabelled authority, namespace rotation, pre-entry stops,
+  record ownership, action-digest scope), the Introduction figure, the
+  Abstract, and the Changes section were updated to match.
+- Section 15 was not changed in this revision; it was re-pinned in the
+  round-two integration revision above.
+
+Checks on the revised source:
+
+- `xmllint --noout`: PASS.
+- `xml2rfc 3.34.0 --text` and `--html`: PASS with the same inherited
+  submissionType warning. A second render into a scratch directory is
+  byte-identical to `RENDERS/` (`cmp`).
+- `idnits 3.1.0 -m submission` on the TXT and on the XML: PASS, no nits.
+- ASCII: no byte above 0x7F in the XML or the text render. No double hyphen
+  in the XML.
+- `shasum -a 256 -c SHA256SUMS.txt`: PASS for all three files.
+- Datatracker API: `draft-schrock-action-evidence-boundary` is still at rev
+  06 (posted 2026-09-25T02:15:03Z), and the archive URL for -07 returns 404.
+  Every Internet-Draft cited in the XML still cites the latest revision.
+- Structural checker, version 3: conditions R4 and R6 were rewritten for the
+  new namespace rule, and R7, F7, F8, F9, F10, O1, and O2 were added (39 in
+  total). The revised -07 passes 39 of 39. The -07 source as it stood before
+  this revision passes 30 of 39; the nine failures are exactly the new or
+  rewritten conditions. The posted -06 passes 3 of 39 (the same three
+  regression guards).
+
+These checks show that the text states the requirements. They do not show
+that the reference code meets them; that is Section 15's job after the
+re-pin.
+
 ## Integrator revision (2026-09-25 UTC)
 
 After the checks below first ran, the source was revised so that Sections
@@ -31,6 +88,46 @@ in Section 5.10; it was revised to test for the new requirement ("atomic write
 that detects conflicts"). With that revision, -07 passes 32 of 32 and -06
 passes 3 of 32 (the same three regression guards). The sections below
 describe the first run and were not otherwise repeated.
+
+## Round-two integration revision (2026-09-25 UTC)
+
+The source was revised after the reference fixes on branch
+`fix/pr788-followups` were integrated:
+
+- Section 5.10, fence release item 3 and the pre-entry recovery paragraph: a
+  record that the boundary closed as not entered, through an atomic
+  transition that no dispatch of the attempt can follow, counts as proof of
+  non-dispatch alongside a record that never reached DISPATCH_PENDING. This
+  matches Section 5.8, which closes an attempt as not entered when the
+  provider-entry recheck fails. A recovery that finds a record from which the
+  original attempt could still dispatch must first close it that way, so the
+  original attempt cannot dispatch after the release.
+- Section 15 was re-pinned to commit
+  `46b5ec92745d50ea7163301b1141eedd2091fc6e` and rewritten. It says that both
+  reference Gate boundaries implement Section 5.10 and its recovery, that the
+  composed boundary recovers only with a durable attempt-state read, that the
+  reference code cannot tell whether a provider lookup exists, that the
+  composed boundary does not verify provider evidence itself, that Gate has
+  no material-field inventory, and that the wire `replay_unit` still covers
+  the labels while the verifier derives its own replay identity. The corpus
+  paragraph now counts 26 cases.
+- The Changes section names both reference Gate boundaries.
+
+Checks on the revised source:
+
+- `xmllint --noout`: PASS.
+- `xml2rfc 3.34.0 --text` and `--html`: PASS with the same inherited
+  submissionType warning. A second render into a scratch `RENDERS/`
+  directory is byte-identical to `RENDERS/` (`cmp`).
+- `idnits 3.1.0 -m submission` on the TXT and on the XML: PASS, no nits.
+- ASCII: no byte above 0x7F in the XML or the text render. No double hyphen
+  in the XML.
+- `shasum -a 256 -c SHA256SUMS.txt`: PASS for all three files.
+- Structural checker, version 3: 39 of 39.
+- Datatracker API: `draft-schrock-action-evidence-boundary` is still at rev
+  06 (posted 2026-09-25T02:15:03Z), and the archive URL for -07 returns 404.
+  For each of the 13 Internet-Drafts cited with a revision in the XML, the
+  archive URL of the next revision returns 404.
 
 ## Base revision and provenance
 

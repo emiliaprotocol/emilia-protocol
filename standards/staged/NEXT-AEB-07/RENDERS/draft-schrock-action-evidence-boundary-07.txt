@@ -25,31 +25,31 @@ Abstract
    relying-party authorization decision, durable atomic consumption or
    reservation, provider entry, closed effect outcomes, and
    authenticated reconciliation.  One grant of native authority is
-   identified by a relying-party-pinned authority namespace, its issuer,
-   and its native authorization identifier, so rewrapping or relabelling
-   the grant cannot make it spendable twice.  A durable same-action
-   fence refuses a new attempt for an action whose earlier attempt is
-   still in flight or uncertain, even when fresh authority is presented.
-   AEB also specifies what a gateway attests, and what the boundary
-   verifies, when a native authorization result is handed to a separate
-   effect boundary.  Canonical Action Identifier (CAID) matching is used
-   when independently encoded native representations must be joined.
-   Authorization Evidence Chain (AEC) evaluation is used when local
-   policy requires multiple evidence legs.  A native authorization
-   decision accepted and enforced by the effect-owning policy
-   enforcement point (PEP) does not require a second policy decision
-   point (PDP).  AEB defines no receipt or token format, no policy
-   language, no universal evidence taxonomy, and no new registry.
-   Native workload credentials, OAuth artifacts, AuthZEN decisions,
-   Agent Payments Protocol (AP2) mandates, message signatures, permits,
-   authorization receipts, and status mechanisms retain their own
-   semantics and, where the native protocol defines one, their own
-   verifiers.
+   identified by a relying-party-pinned authority namespace, which
+   defaults to its issuer, and its native authorization identifier, so
+   rewrapping or relabelling the grant cannot make it spendable twice.
+   A durable same-action fence refuses a new attempt for an action whose
+   earlier attempt is still in flight or uncertain, whatever evidence
+   path admits it and even when fresh authority is presented.  An
+   attempt that stopped before provider entry is released only with
+   proof that it never entered.  AEB also specifies what a gateway
+   attests, and what the boundary verifies, when a native authorization
+   result is handed to a separate effect boundary.  Canonical Action
+   Identifier (CAID) matching is used when independently encoded native
+   representations must be joined.  Authorization Evidence Chain (AEC)
+   evaluation is used when local policy requires multiple evidence legs.
+   A native authorization decision accepted and enforced by the effect-
+   owning policy enforcement point (PEP) does not require a second
+   policy decision point (PDP).  AEB defines no receipt or token format,
+   no policy language, no universal evidence taxonomy, and no new
+   registry.  Native workload credentials, OAuth artifacts, AuthZEN
+   decisions, Agent Payments Protocol (AP2) mandates, message
+   signatures, permits, authorization receipts, and status mechanisms
+   retain their own semantics and, where the native protocol defines
+   one, their own verifiers.
 
-Status of This Memo
 
-   This Internet-Draft is submitted in full conformance with the
-   provisions of BCP 78 and BCP 79.
+
 
 
 
@@ -57,6 +57,11 @@ Schrock                   Expires 29 March 2027                 [Page 1]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
 
    Internet-Drafts are working documents of the Internet Engineering
    Task Force (IETF).  Note that other groups may also distribute
@@ -88,24 +93,19 @@ Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
      1.1.  Scope and Non-Goals . . . . . . . . . . . . . . . . . . .   5
-   2.  Conventions and Terminology . . . . . . . . . . . . . . . . .   5
+   2.  Conventions and Terminology . . . . . . . . . . . . . . . . .   6
    3.  Non-Collapsing Decision and Lifecycle Vocabulary  . . . . . .   8
    4.  Relying-Party Inputs and Pins . . . . . . . . . . . . . . . .   9
-   5.  Required Processing Model . . . . . . . . . . . . . . . . . .  10
+   5.  Required Processing Model . . . . . . . . . . . . . . . . . .  11
      5.1.  Construct the Observed Material Action  . . . . . . . . .  11
      5.2.  Verify Each Native Artifact . . . . . . . . . . . . . . .  12
-     5.3.  Establish Exact-Action Correspondence . . . . . . . . . .  12
-     5.4.  Evaluate Required Field-Origin Assertions . . . . . . . .  13
+     5.3.  Establish Exact-Action Correspondence . . . . . . . . . .  13
+     5.4.  Evaluate Required Field-Origin Assertions . . . . . . . .  14
      5.5.  Evaluate Additional Evidence Requirements When
-            Required . . . . . . . . . . . . . . . . . . . . . . . .  14
+            Required . . . . . . . . . . . . . . . . . . . . . . . .  15
      5.6.  Pinned Boundary Requirement and Evaluation Record . . . .  15
-     5.7.  Make the Local Authorization Decision . . . . . . . . . .  16
+     5.7.  Make the Local Authorization Decision . . . . . . . . . .  17
      5.8.  Accept a Native Authorization Handoff . . . . . . . . . .  17
-     5.9.  Derive the Native Replay Identity . . . . . . . . . . . .  19
-     5.10. Hold the Same-Action In-Flight Fence  . . . . . . . . . .  20
-     5.11. Atomically Consume or Reserve Before Invocation . . . . .  21
-     5.12. Enter the Provider with the Frozen Effect . . . . . . . .  22
-     5.13. Classify the Effect Outcome . . . . . . . . . . . . . . .  23
 
 
 
@@ -114,32 +114,37 @@ Schrock                   Expires 29 March 2027                 [Page 2]
 Internet-Draft          Action Evidence Boundary          September 2026
 
 
-     5.14. Perform Authenticated Reconciliation  . . . . . . . . . .  23
-   6.  Declaration and Challenge Semantics . . . . . . . . . . . . .  24
-   7.  Native Evidence and Transport Boundaries  . . . . . . . . . .  25
-     7.1.  WIMSE and HTTP Message Signatures . . . . . . . . . . . .  25
-     7.2.  AuthZEN and COAZ  . . . . . . . . . . . . . . . . . . . .  26
-     7.3.  Attested Per-Action Tokens and Permit Records . . . . . .  27
-   8.  Native Compilation Contract . . . . . . . . . . . . . . . . .  28
-     8.1.  Pinned Inputs . . . . . . . . . . . . . . . . . . . . . .  28
-     8.2.  Deterministic Operations  . . . . . . . . . . . . . . . .  29
-     8.3.  Closed Compile Result . . . . . . . . . . . . . . . . . .  30
-     8.4.  Semantic-Loss Report  . . . . . . . . . . . . . . . . . .  31
-     8.5.  Stable Native Replay Unit . . . . . . . . . . . . . . . .  31
-     8.6.  Path and Provider Ownership . . . . . . . . . . . . . . .  32
-     8.7.  Compilation Conformance . . . . . . . . . . . . . . . . .  32
-   9.  Conformance and Deployment Claims . . . . . . . . . . . . . .  33
-   10. Security Considerations . . . . . . . . . . . . . . . . . . .  34
-   11. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  36
-   12. Relationship to EMILIA and Adjacent Work  . . . . . . . . . .  36
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  37
-   14. Changes since -06 . . . . . . . . . . . . . . . . . . . . . .  37
-   15. Implementation Status . . . . . . . . . . . . . . . . . . . .  39
-   16. References  . . . . . . . . . . . . . . . . . . . . . . . . .  40
-     16.1.  Normative References . . . . . . . . . . . . . . . . . .  40
-     16.2.  Informative References . . . . . . . . . . . . . . . . .  41
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  44
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  44
+     5.9.  Derive the Native Replay Identity . . . . . . . . . . . .  19
+     5.10. Hold the Same-Action In-Flight Fence  . . . . . . . . . .  20
+     5.11. Atomically Consume or Reserve Before Invocation . . . . .  23
+     5.12. Enter the Provider with the Frozen Effect . . . . . . . .  24
+     5.13. Classify the Effect Outcome . . . . . . . . . . . . . . .  25
+     5.14. Perform Authenticated Reconciliation  . . . . . . . . . .  25
+   6.  Declaration and Challenge Semantics . . . . . . . . . . . . .  26
+   7.  Native Evidence and Transport Boundaries  . . . . . . . . . .  27
+     7.1.  WIMSE and HTTP Message Signatures . . . . . . . . . . . .  27
+     7.2.  AuthZEN and COAZ  . . . . . . . . . . . . . . . . . . . .  28
+     7.3.  Attested Per-Action Tokens and Permit Records . . . . . .  29
+   8.  Native Compilation Contract . . . . . . . . . . . . . . . . .  30
+     8.1.  Pinned Inputs . . . . . . . . . . . . . . . . . . . . . .  30
+     8.2.  Deterministic Operations  . . . . . . . . . . . . . . . .  31
+     8.3.  Closed Compile Result . . . . . . . . . . . . . . . . . .  32
+     8.4.  Semantic-Loss Report  . . . . . . . . . . . . . . . . . .  33
+     8.5.  Stable Native Replay Unit . . . . . . . . . . . . . . . .  33
+     8.6.  Path and Provider Ownership . . . . . . . . . . . . . . .  34
+     8.7.  Compilation Conformance . . . . . . . . . . . . . . . . .  34
+   9.  Conformance and Deployment Claims . . . . . . . . . . . . . .  35
+   10. Security Considerations . . . . . . . . . . . . . . . . . . .  36
+   11. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  39
+   12. Relationship to EMILIA and Adjacent Work  . . . . . . . . . .  39
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  40
+   14. Changes since -06 . . . . . . . . . . . . . . . . . . . . . .  40
+   15. Implementation Status . . . . . . . . . . . . . . . . . . . .  42
+   16. References  . . . . . . . . . . . . . . . . . . . . . . . . .  44
+     16.1.  Normative References . . . . . . . . . . . . . . . . . .  44
+     16.2.  Informative References . . . . . . . . . . . . . . . . .  45
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  48
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  48
 
 1.  Introduction
 
@@ -149,6 +154,21 @@ Internet-Draft          Action Evidence Boundary          September 2026
    and a policy decision.  None of those inputs alone answers every
    question the consequence-owning system has to answer before changing
    its system of record.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                 [Page 3]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
 
    The missing contract is at the effect boundary after authorization.
    The executor must determine what exact material action it is about to
@@ -161,14 +181,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    uncertainty when the effect cannot be observed conclusively.
 
    This document defines that contract.  Its required order is:
-
-
-
-
-Schrock                   Expires 29 March 2027                 [Page 3]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
     native verification, or verification of a
     native authorization handoff
@@ -186,7 +198,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
            |
            v
     native replay identity
-    (authority namespace, issuer, authorization identifier)
+    (authority namespace, authorization identifier)
            |
            v
     same-action fence check and atomic CONSUMED / RESERVED
@@ -204,6 +216,16 @@ Internet-Draft          Action Evidence Boundary          September 2026
                      v
            authenticated reconciliation
 
+    (a pre-entry stop is released only by authorized
+     recovery with proof that it never entered)
+
+
+
+Schrock                   Expires 29 March 2027                 [Page 4]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    The Canonical Action Identifier (CAID) [CAID] and Authorization
    Evidence Chain (AEC) [AEC] stages are conditional.  A native
    authorization path can bind one operation directly and satisfy the
@@ -214,24 +236,14 @@ Internet-Draft          Action Evidence Boundary          September 2026
    provider entry or execution.  An invocation error is not proof that
    no effect occurred.
 
-
-
-
-
-
-
-
-Schrock                   Expires 29 March 2027                 [Page 4]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    Two separate controls stop a duplicate effect.  The native replay
    identity stops one grant of authority from being spent twice.  The
    same-action fence stops two grants from being spent on one action
    while the outcome of the first attempt is unknown.  The second
    control matters whenever a native decision service can issue a fresh
-   permit for each evaluation of an identical request.
+   permit for each evaluation of an identical request, or new evidence
+   can be assembled for an identical action, so it applies on every
+   evidence path.
 
 1.1.  Scope and Non-Goals
 
@@ -263,6 +275,13 @@ Internet-Draft          Action Evidence Boundary          September 2026
       complete mediation merely because an AEB implementation is
       present; or
 
+
+
+Schrock                   Expires 29 March 2027                 [Page 5]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    *  a registry for evidence types, states, action mappings, or
       verifier names.
 
@@ -273,14 +292,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    "OPTIONAL" in this document are to be interpreted as described in BCP
    14 [RFC2119] [RFC8174] when, and only when, they appear in all
    capitals, as shown here.
-
-
-
-
-Schrock                   Expires 29 March 2027                 [Page 5]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
    BCP 14 is indexed by the RFC Editor at [BCP14].
 
@@ -316,17 +327,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
       and enforcement semantics it defines.
 
    Native operation profile:  The relying-party-pinned profile of one
-      native authorization path.  It defines the exact operation
-      representation, the material-field inventory, the action-digest
-      construction, any instance field, the effecting target identity,
-      and the native authorization identifier used for replay identity.
-
-   Native authorization handoff:  An integrity-protected statement, made
-      by a relying-party-pinned gateway or PEP, that it accepted one
-      native permit for one exact action, delivered to an effect
-      boundary that did not itself evaluate the native artifact.
-
-   Field-origin assertion:  A native artifact in which an issuer asserts
 
 
 
@@ -338,6 +338,17 @@ Schrock                   Expires 29 March 2027                 [Page 6]
 Internet-Draft          Action Evidence Boundary          September 2026
 
 
+      native authorization path.  It defines the exact operation
+      representation, the material-field inventory, the action-digest
+      construction, any instance field, the effecting target identity,
+      and the native authorization identifier used for replay identity.
+
+   Native authorization handoff:  An integrity-protected statement, made
+      by a relying-party-pinned gateway or PEP, that it accepted one
+      native permit for one exact action, delivered to an effect
+      boundary that did not itself evaluate the native artifact.
+
+   Field-origin assertion:  A native artifact in which an issuer asserts
       how exact fields of an action representation were sourced or
       transformed, and optionally the point-in-time snapshot on which
       that assertion rests.  Verification establishes the issuer's
@@ -376,17 +387,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
       the provider, provider account, tenant, and environment that the
       boundary invokes.
 
-   Authority namespace:  A relying-party-pinned identifier for the scope
-      within which an issuer's native authorization identifiers denote
-      distinct grants.  By default it is the issuer.
-
-   Native replay identity:  The identity of one grant of native
-      authority, derived under Section 5.9 from the authority namespace,
-      the verified issuer, and the native authorization identifier.
-      This document also calls it the native replay unit.
-
-   Action key:  The tuple of relying party, effecting target identity,
-
 
 
 Schrock                   Expires 29 March 2027                 [Page 7]
@@ -394,8 +394,25 @@ Schrock                   Expires 29 March 2027                 [Page 7]
 Internet-Draft          Action Evidence Boundary          September 2026
 
 
+   Authority namespace:  A relying-party-pinned identifier for the scope
+      within which an issuer's native authorization identifiers denote
+      distinct grants.  By default it is the verified issuer value.
+      Changing it changes the native replay identity of every grant
+      accepted under it.
+
+   Native replay identity:  The identity of one grant of native
+      authority, derived under Section 5.9 from the authority namespace
+      and the native authorization identifier.  This document also calls
+      it the native replay unit.
+
+   Action key:  The tuple of relying party, effecting target identity,
       and action digest that the same-action fence of Section 5.10
       protects.
+
+   Pre-entry stop:  An attempt that stopped before its durable record
+      reached DISPATCH_PENDING, or before any attempt record was
+      written, so that no dispatch to the effecting system could have
+      begun.
 
    Invocation:  The first dispatch of the frozen authorized action to a
       component that can cause the protected effect.
@@ -424,6 +441,15 @@ Internet-Draft          Action Evidence Boundary          September 2026
       policy selects a multi-leg AEC requirement.
 
    AUTHORIZED:  The effect-owning PEP accepts a native authorization
+
+
+
+
+Schrock                   Expires 29 March 2027                 [Page 8]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
       result, or the consequence-owning relying party's local policy
       permits, this exact action at this time.  When the effect-owning
       PEP is not the effect boundary, the boundary learns of that
@@ -442,13 +468,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
    RESERVED:  Bounded state, such as a capability budget, has been
       durably fenced for the exact operation before invocation.
-
-
-
-Schrock                   Expires 29 March 2027                 [Page 8]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
    DISPATCH_PENDING:  A durable intent record binds the frozen action,
       operation identifier, provider environment, and reservation before
@@ -479,6 +498,14 @@ Internet-Draft          Action Evidence Boundary          September 2026
    artifacts.  They MUST NOT select or weaken the controls used to
    accept that request.
 
+
+
+
+Schrock                   Expires 29 March 2027                 [Page 9]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    Before evaluating an action, the relying party MUST configure or pin,
    as applicable:
 
@@ -493,18 +520,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    *  for each accepted native authorization source, the issuer, its
       authority namespace, and the native authorization identifier the
       source supplies;
-
-
-
-
-
-
-
-
-Schrock                   Expires 29 March 2027                 [Page 9]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
    *  when a native authorization handoff is accepted, each gateway
       identity and verification key, the source labels and issuers
@@ -538,21 +553,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
       endpoint, and authenticated provider or system-of-record
       identities.
 
-   A pin set that accepts one issuer under more than one native system
-   or profile label MUST assign all of those pins one authority
-   namespace, unless each such pin explicitly declares a distinct
-   authority namespace.
-
-   A label, key, profile identifier, requirement, status assertion, or
-   policy identifier carried only in presenter-controlled data MUST NOT
-   become its own trust anchor.  Missing, conflicting, unsupported, or
-   ambiguous required configuration MUST fail closed.
-
-5.  Required Processing Model
-
-
-
-
 
 
 
@@ -562,6 +562,35 @@ Schrock                   Expires 29 March 2027                [Page 10]
 Internet-Draft          Action Evidence Boundary          September 2026
 
 
+   A pin set that accepts one issuer value under more than one native
+   system or profile label, or from more than one gateway, MUST assign
+   all of those pins one authority namespace, unless every such pin
+   explicitly declares an authority namespace.  Pins whose issuer values
+   differ but are equal after normalization MUST all declare the same
+   authority namespace.  For an issuer value that is a URL,
+   normalization at least lowercases the scheme and host, removes a port
+   that is the default for the scheme, and removes trailing slashes from
+   the path.  A pin set that violates either rule MUST be refused when
+   it is configured.  Normalization cannot detect every alias; two
+   issuer values that denote one authority but do not normalize equal
+   need an explicitly shared authority namespace.
+
+   Changing the authority namespace of an accepted source, or the issuer
+   value of a pin that uses the default namespace, changes the native
+   replay identity of every grant accepted under it, so a grant already
+   consumed or in flight under the old value could be admitted again.
+   Before such a change, the relying party MUST resolve every attempt in
+   flight under the old value and MUST ensure that no grant consumed
+   under it can still be presented, for example by waiting until those
+   grants expire or by revoking them.
+
+   A label, key, profile identifier, requirement, status assertion, or
+   policy identifier carried only in presenter-controlled data MUST NOT
+   become its own trust anchor.  Missing, conflicting, unsupported, or
+   ambiguous required configuration MUST fail closed.
+
+5.  Required Processing Model
+
 5.1.  Construct the Observed Material Action
 
    The effect boundary MUST construct an immutable observed action from
@@ -570,6 +599,24 @@ Internet-Draft          Action Evidence Boundary          September 2026
    target resource, tenant, account, amount, currency, destination,
    environment, input digest, and any instance field declared by the
    native operation profile.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 11]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
 
    The boundary MUST resolve the relying-party-pinned native operation
    profile used for authorization and include every field in that
@@ -606,18 +653,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    still MUST preserve the native protocol's exact-operation binding
    through provider entry.
 
-
-
-
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 11]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
 5.2.  Verify Each Native Artifact
 
    Each required native artifact MUST be verified independently under
@@ -631,6 +666,14 @@ Internet-Draft          Action Evidence Boundary          September 2026
    verification.  Schema, algorithm, issuer, audience, key status,
    validity, proof-of-possession, freshness, replay, and native policy
    checks remain those of the selected native profile.  A verifier
+
+
+
+Schrock                   Expires 29 March 2027                [Page 12]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    exception, unavailable required status source, unsupported critical
    field, or ambiguous result MUST become a bounded refusal, never an
    allow path.
@@ -666,14 +709,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    that meets neither condition makes exact-action correspondence
    INDETERMINATE, and the boundary MUST refuse before consumption,
    reservation, or provider entry.  The binding of the full executor
-
-
-
-Schrock                   Expires 29 March 2027                [Page 12]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    action comes from the effect-owning PEP's own enforcement or from a
    native authorization handoff over the full action digest, never from
    the permit alone.
@@ -687,6 +722,14 @@ Internet-Draft          Action Evidence Boundary          September 2026
    Cross-format mapping MUST occur only after native verification and
    MUST use the exact source media type, schema version, target action
    type, definition source, and mapping-profile digest pinned by the
+
+
+
+Schrock                   Expires 29 March 2027                [Page 13]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    relying party.  Every target material field MUST be covered.
    Missing, lossy, unknown, unpinned, conflicting, or ambiguous mappings
    yield INDETERMINATE under CAID and MUST fail a required MATCH.  AEB
@@ -723,13 +766,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    MUST withhold admission.  The boundary MUST preserve the distinction
    between assertion verification and acceptance under local policy.
 
-
-
-Schrock                   Expires 29 March 2027                [Page 13]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    A field-origin policy SHOULD be discriminating rather than a blanket
    prohibition on untrusted content.  For example, it can refuse an
    untrusted message that selects a payee or destination while accepting
@@ -741,6 +777,14 @@ Internet-Draft          Action Evidence Boundary          September 2026
    informative reference implementation profile [EP-FIELD-ORIGIN].  They
    do not become a mandatory AEB format and their same-team results are
    not independent implementation evidence.
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 14]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
 
 5.5.  Evaluate Additional Evidence Requirements When Required
 
@@ -772,20 +816,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    qualification result MUST NOT fill an authorization role and MUST NOT
    by itself cause SATISFIED, AUTHORIZED, reservation, or invocation.
 
-
-
-
-
-
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 14]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
 5.6.  Pinned Boundary Requirement and Evaluation Record
 
    The consequence-owning relying party MUST pin every adapter revision,
@@ -804,6 +834,13 @@ Internet-Draft          Action Evidence Boundary          September 2026
    any_of:  OPTIONAL.  An array of non-empty groups, each an array of
       distinct evidence-role names.  Each group MUST have at least one
       of its roles filled by a satisfied leg.
+
+
+
+Schrock                   Expires 29 March 2027                [Page 15]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
 
    terms:  A non-empty array of boundary constraints, defined below.
 
@@ -834,14 +871,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    most once and compare those verified subjects with the boundary-owned
    initiator and executor identifiers.  An evidence-binding term names a
    source_role, a different target_role, and require_same_subject with
-
-
-
-Schrock                   Expires 29 March 2027                [Page 15]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    the value true; it is met only when a satisfied source-role leg
    carries a native binding to the evidence digest of a satisfied
    target-role leg and both legs expose the same verified subject.
@@ -861,6 +890,14 @@ Internet-Draft          Action Evidence Boundary          September 2026
    revisions, complete requirement and configuration digests, native
    artifact digests, current-status snapshots, per-leg VERIFIED and
    MATCH results, AEC SATISFIED, boundary constraints, and the separate
+
+
+
+Schrock                   Expires 29 March 2027                [Page 16]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    AUTHORIZED or REFUSED verdict, as applicable.  A record that omits a
    conditional CAID or AEC stage MUST identify the native exact-
    operation binding and the reason the extra stage was not selected.
@@ -890,14 +927,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    Credential revocation and per-action authorization evidence answer
    different questions.  A current non-revocation or status result can
    establish that a credential remains acceptable under local policy; it
-
-
-
-Schrock                   Expires 29 March 2027                [Page 16]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    does not prove that the credential holder authorized this action.  A
    per-action authorization artifact does not prove that every
    credential in its trust path remains current.  When policy requires
@@ -917,6 +946,14 @@ Internet-Draft          Action Evidence Boundary          September 2026
    carries the gateway's acceptance of one native permit to that
    boundary.  This section specifies the contents and verification of a
    handoff.  It does not define an encoding: a deployment MUST pin the
+
+
+
+Schrock                   Expires 29 March 2027                [Page 17]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    encoding, canonicalization, signature algorithm, and signing input it
    accepts.  [EP-NATIVE-HANDOFF] describes one reference encoding.
 
@@ -940,19 +977,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    *  the issuance time and validity window; and
 
    *  a revocation or status identifier.
-
-
-
-
-
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 17]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
    The native authorization identifier MUST be the identifier that the
    native system assigned to the grant when one exists.  When the native
@@ -979,6 +1003,13 @@ Internet-Draft          Action Evidence Boundary          September 2026
    *  the combination of gateway, source labels, and issuer is accepted
       by a relying-party pin;
 
+
+
+Schrock                   Expires 29 March 2027                [Page 18]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    *  the action digest that the boundary recomputes from its own
       observed action equals the attested digest;
 
@@ -996,19 +1027,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    carried in the handoff is a gateway assertion; the boundary MAY check
    it under the encoding's own rules, but MUST NOT use it in place of
    that derivation.
-
-
-
-
-
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 18]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
    Immediately before provider entry, the boundary MUST repeat the time
    and status checks.  If they fail, it MUST close the attempt as not
@@ -1032,29 +1050,11 @@ Internet-Draft          Action Evidence Boundary          September 2026
    The native replay identity is the native replay unit of Section 8.5;
    the two terms name one value.
 
-   The derivation inputs MUST be exactly the authority namespace pinned
-   for the accepted source, the verified issuer, and the native
-   authorization identifier, combined under a relying-party-pinned,
-   domain-separated derivation.  By default the authority namespace is
-   the issuer.  When a relying party accepts one issuer under more than
-   one native system or profile label, those pins share one authority
-   namespace unless each such pin explicitly declares a distinct
-   authority namespace.  A durable store MAY further scope the resulting
-   value by relying party.
 
-   The derivation MUST NOT take as input the AEB operation identifier, a
-   provider idempotency key, a native system or profile label or other
-   wire label, a wrapper, handoff, or envelope digest, a consumption
-   nonce, a caller-selected retry identifier, or a session, task, trace,
-   or challenge identifier.  A wire label can select a pin; the pin, not
-   the label, supplies the authority namespace.  The same native
-   authority presented in a new wrapper, handoff, task, session, trace,
-   challenge, source label, or caller retry MUST yield the same native
-   replay identity, so relabelling one grant cannot make it spendable
-   twice.
 
-   If the selected native profile cannot provide a stable native
-   authorization identifier, the boundary MUST refuse provider entry.
+
+
+
 
 
 
@@ -1065,6 +1065,31 @@ Schrock                   Expires 29 March 2027                [Page 19]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
+
+   The derivation inputs MUST be exactly the authority namespace of the
+   accepted source and the native authorization identifier, combined
+   under a relying-party-pinned, domain-separated derivation.  By
+   default the authority namespace is the verified issuer value.  When
+   the pin declares an authority namespace, the issuer value is not an
+   input, so pins that name one issuer in different spellings and
+   declare the same namespace yield one native replay identity.
+   Section 4 limits which pin sets are acceptable.  A durable store MAY
+   further scope the resulting value by relying party.
+
+   The derivation MUST NOT take as input the AEB operation identifier, a
+   provider idempotency key, a native system or profile label or other
+   wire label, the issuer value when the pin declares an authority
+   namespace, a wrapper, handoff, or envelope digest, a consumption
+   nonce, a caller-selected retry identifier, or a session, task, trace,
+   or challenge identifier.  A wire label can select a pin; the pin, not
+   the label, supplies the authority namespace.  The same native
+   authority presented in a new wrapper, handoff, task, session, trace,
+   challenge, source label, or caller retry MUST yield the same native
+   replay identity, so relabelling one grant cannot make it spendable
+   twice.
+
+   If the selected native profile cannot provide a stable native
+   authorization identifier, the boundary MUST refuse provider entry.
 
    Native replay identity stops one grant from being spent twice.  It
    does not stop two grants from being spent on one action.  When a
@@ -1080,21 +1105,54 @@ Internet-Draft          Action Evidence Boundary          September 2026
    identifier, the native replay identity, or any wrapper or handoff
    digest.
 
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 20]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
+   The boundary compares action digests and effecting target identities
+   exactly.  It is not required to recognize two spellings of one
+   material value as one value, such as "500" and "500.00", "USD" and
+   "usd", a value with and without trailing white space, or two Unicode
+   normalization forms of one string.  The native operation profile MUST
+   therefore define the canonical form of each material field, and the
+   party that constructs the action MUST apply that form before the
+   action digest is computed.  Every boundary instance that can reach
+   one effecting target MUST be configured with the same effecting
+   target identity, because two configured spellings of one provider
+   account would give one action two action keys.
+
    An attempt occupies its action key from the transition that makes it
    CONSUMED or RESERVED, through DISPATCH_PENDING and INVOKED, and while
    it is INDETERMINATE.  An attempt that reaches EXECUTED keeps the
    action key closed for that action instance.
 
-   For every attempt admitted through a native authorization result,
-   including one received as a native authorization handoff, the
-   boundary MUST refuse a new attempt whose action key is occupied or
-   closed.  The refusal MUST occur before provider entry, and the
-   refused attempt MUST NOT consume its native authority.  While the
-   action key is occupied, the boundary MUST report the reason as
-   native_action_in_flight.  When EXECUTED has closed the action key,
-   the boundary MAY report native_action_already_executed instead.  This
-   holds even when the new attempt carries a fresh native permit, a
-   different native authorization identifier, a new handoff, or a new
+   For every attempt, whatever evidence path admits it, the boundary
+   MUST refuse a new attempt whose action key is occupied or closed.
+   The evidence path can be a native authorization result, a native
+   authorization handoff, a cross-format CAID join, or an AEC
+   composition.  The refusal MUST occur before provider entry, and the
+   refused attempt MUST NOT consume its authority.  For an attempt
+   admitted through a native authorization result, including one
+   received as a native authorization handoff, the boundary MUST report
+   the reason as native_action_in_flight while the action key is
+   occupied, and MAY report native_action_already_executed once EXECUTED
+   has closed it.  On other evidence paths it MUST report a reason that
+   identifies an occupied or closed action key.  This holds even when
+   the new attempt carries a fresh native permit, a different native
+   authorization identifier, a new handoff, new evidence, or a new
    operation identifier.
 
    The fence MUST be recorded in the same durable state domain as
@@ -1108,19 +1166,30 @@ Internet-Draft          Action Evidence Boundary          September 2026
    The fence releases only when:
 
    1.  authenticated evidence establishes that the attempt reached
-       FAILED, or a durable boundary record written before any dispatch
-       could begin proves that the attempt was closed without provider
-       entry; or
+       FAILED;
 
    2.  authenticated reconciliation resolves an INDETERMINATE attempt to
-       FAILED.
+       FAILED;
 
 
 
-Schrock                   Expires 29 March 2027                [Page 20]
+Schrock                   Expires 29 March 2027                [Page 21]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
+
+   3.  the boundary itself stopped the attempt before provider entry,
+       because a write of the transition in Section 5.11 failed or
+       conflicted or because a check made before entry failed, and it
+       confirmed through an authenticated durable read that the attempt
+       was never dispatched (its record never reached DISPATCH_PENDING,
+       or the boundary closed it as not entered under Section 5.8
+       through an atomic transition that no dispatch of the attempt can
+       follow) and that each write it made for the attempt was released;
+       or
+
+   4.  authorized pre-entry recovery, specified below, proves that the
+       attempt was a pre-entry stop.
 
    Reconciliation to EXECUTED keeps the action key closed.  A timeout,
    local exception, elapsed time, caller retry, fresh native authority,
@@ -1129,19 +1198,48 @@ Internet-Draft          Action Evidence Boundary          September 2026
    requires native authority whose native replay identity has not been
    consumed, a new operation identifier, and the complete lifecycle.
 
+   An attempt can stop before provider entry without meeting item 3.
+   The boundary can crash while the attempt is CONSUMED or RESERVED,
+   lose the acknowledgement of the write that enters DISPATCH_PENDING,
+   fail to confirm a release after a pre-entry refusal, or crash after
+   occupying the action key but before recording the attempt.  Such an
+   attempt keeps the action key occupied and its reservations held.  The
+   boundary MUST provide a recovery operation for it.  That operation
+   MUST require recovery authorization from the relying party that is
+   bound to the exact attempt, including its operation identifier and
+   action key.  It MAY release the action key and the attempt's
+   reservations only when an authenticated durable read shows that the
+   attempt record never reached DISPATCH_PENDING, that the boundary
+   closed it as not entered through an atomic transition that no
+   dispatch of the attempt can follow, or that no attempt record was
+   written, and, where the effecting system offers an authenticated
+   lookup by operation or idempotency key, that lookup reports that the
+   operation was not received.  When the record is still in a state from
+   which the original attempt could proceed to dispatch, the recovery
+   operation MUST first close it as not entered through such an atomic
+   transition, so that the original attempt cannot dispatch after the
+   release.  Without that proof the action key and the reservations MUST
+   stay held and the attempt MUST be treated as INDETERMINATE.  Recovery
+   MUST NOT release a record written by a different attempt, and a pre-
+   entry stop MUST NOT be reconciled to EXECUTED or FAILED.
+
    Without an instance field, identical material actions are one action
    instance, and a further identical action after EXECUTED is refused.
    A native operation profile that must admit intentionally repeated
+
+
+
+Schrock                   Expires 29 March 2027                [Page 22]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    identical actions MAY declare an instance field.  The instance field
    MUST be a material field, so it is part of the action digest and is
    covered by the native authorization or by the handoff's action
    digest.  Its value SHOULD be fixed by the party that authorizes the
    action rather than chosen by the party that retries it (see
    Section 10).
-
-   A relying party SHOULD apply the same fence to protected paths that
-   are not admitted through a native authorization result.  A deployment
-   that does not MUST say so in its conformance statement (Section 9).
 
 5.11.  Atomically Consume or Reserve Before Invocation
 
@@ -1154,39 +1252,48 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
    Each write in the transition MUST be atomic within the relying
    party's durable state domain.  Before provider entry, the boundary
-   MUST check and occupy the same-action fence where Section 5.10
-   applies, consume or reserve every one-time native replay identity,
-   and record the operation.  It MAY do so in one atomic step or in
-   several atomic writes.  With several writes, provider entry MUST wait
-   until every write has succeeded.  If any write conflicts or fails,
-   the boundary MUST refuse without provider entry and MUST NOT consume
-   the native authority of the refused attempt.  It MUST confirm the
-   release of each write it made through an authenticated durable read,
-   and otherwise MUST leave that write held.  The operation record MUST
-   bind the native replay identity and the action key to the executor-
-   owned observed action and operation identifier, never a presenter-
-   selected decoy.  Independently of that composite operation record,
-   the store MUST enforce uniqueness or conflict detection for every
-   native replay identity that the selected profile marks as one-time
-   and, where the fence applies, for every occupied or closed action
-   key.  Changing an operation identifier MUST NOT make the same one-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 21]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
-   time native authority reservable again, and presenting fresh native
-   authority MUST NOT make an occupied or closed action key reservable
-   again.
+   MUST check and occupy the same-action fence of Section 5.10, consume
+   or reserve every one-time native replay identity, and record the
+   operation.  It MAY do so in one atomic step or in several atomic
+   writes.  With several writes, provider entry MUST wait until every
+   write has succeeded.  If any write conflicts or fails, the boundary
+   MUST refuse without provider entry and MUST NOT consume the native
+   authority of the refused attempt.  It MUST confirm the release of
+   each write it made through an authenticated durable read, and
+   otherwise MUST leave that write held.  The boundary MUST release or
+   close only records that it wrote for the current attempt and MUST be
+   able to prove that ownership, for example through an ownership token
+   created for the attempt.  A record that carries the same operation
+   identifier, native replay identity, or action key but was written by
+   another attempt MUST NOT be released or closed on this attempt's
+   behalf; operation identifiers can be chosen by the caller, so an
+   identifier match alone does not prove ownership.  The operation
+   record MUST bind the native replay identity and the action key to the
+   executor-owned observed action and operation identifier, never a
+   presenter-selected decoy.  Independently of that composite operation
+   record, the store MUST enforce uniqueness or conflict detection for
+   every native replay identity that the selected profile marks as one-
+   time and for every occupied or closed action key.  Changing an
+   operation identifier MUST NOT make the same one-time native authority
+   reservable again, and presenting fresh native authority MUST NOT make
+   an occupied or closed action key reservable again.
 
    If the store is unavailable, non-atomic, or stale, or reports an
    ambiguous result, the boundary MUST refuse before invocation.  When
    the outcome of a write is unknown, the boundary MUST NOT invoke, and
    MUST resolve the stored state through an authenticated durable read
-   before it releases or reuses any key the write may have recorded.
+
+
+
+Schrock                   Expires 29 March 2027                [Page 23]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
+   before it releases or reuses any key the write may have recorded.  It
+   MUST NOT release a record that it cannot prove it wrote; such a
+   record stays held until that read or the recovery of Section 5.10
+   resolves it.
 
    AEB does not claim atomicity between a local store and an unrelated
    remote provider.  It requires the local consume or reserve transition
@@ -1224,20 +1331,20 @@ Internet-Draft          Action Evidence Boundary          September 2026
    record INVOKED or a terminal outcome before reporting success to the
    requester.
 
-
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 22]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    The adapter MUST receive only the authority and evidence necessary
    for the downstream interface.  It MUST NOT accept mutable
    intermediary or caller context that changes a material field after
    the boundary's authorization decision.
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 24]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
 
 5.13.  Classify the Effect Outcome
 
@@ -1278,18 +1385,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    audience, target resource, and every application-specific material
    field.
 
-
-
-
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 23]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    Reconciliation MAY move INDETERMINATE to EXECUTED when authoritative
    evidence establishes that the exact effect occurred.  It MAY move
    INDETERMINATE to FAILED when authoritative evidence establishes that
@@ -1297,12 +1392,28 @@ Internet-Draft          Action Evidence Boundary          September 2026
    action-mismatched observations MUST leave the operation
    INDETERMINATE.
 
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 25]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    A reconciliation result MUST be bound to the attempt it resolves,
    including that attempt's operation identifier and native replay
    identity.  It MUST NOT commit, close, or release a different attempt
-   that holds the same action key.  An attempt that the boundary closed
-   before provider entry was never INDETERMINATE and MUST NOT be
-   reconciled to EXECUTED.
+   that holds the same action key.  A pre-entry stop MUST NOT be
+   reconciled to EXECUTED or FAILED; Section 5.10 defines its recovery.
+
+   One recovery authorization bound to the attempt MUST suffice for the
+   boundary to claim and close every record that the attempt holds,
+   including its occupation of the action key, so that reconciliation or
+   recovery of one attempt completes in one operation.  A boundary MUST
+   NOT require a separately bound credential for a record that it
+   derives from the attempt's own records.
 
    Reconciliation MUST NOT resurrect the original authorization or
    silently release its native replay identity.  Reconciliation to
@@ -1338,15 +1449,15 @@ Internet-Draft          Action Evidence Boundary          September 2026
    authorize an effect.  A presentation that is malformed,
    unauthenticated, expired, or not bound to the challenge MUST be
    refused without burning the nonce.  A natively verified, challenge-
+   bound presentation consumes the nonce whether or not the remaining
 
 
 
-Schrock                   Expires 29 March 2027                [Page 24]
+Schrock                   Expires 29 March 2027                [Page 26]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
 
-   bound presentation consumes the nonce whether or not the remaining
    evidence satisfies the requirement.  Follow-up challenges MUST remain
    bound to the original boundary-computed action and MUST NOT derive
    that action from presenter input.
@@ -1389,25 +1500,19 @@ Internet-Draft          Action Evidence Boundary          September 2026
    inputs enforced at the effect boundary.  It does not replace their
    issuance, verification, mapping, or authorization semantics.
 
-
-
-
-
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 25]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    PEDIGREE [PEDIGREE] describes native identity and delegation-chain
    evidence.  The AEB result records whether the relying party's stated
    delegation requirement was satisfied by the mapped evidence.  It does
    not reinterpret, re-derive, or override the delegation protocol's
    native decision.  In particular, a PEDIGREE completion block is post-
    effect evidence and MUST NOT fill a pre-action authorization role.
+
+
+
+Schrock                   Expires 29 March 2027                [Page 27]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
 
    Headers, routing metadata, forwarded identity, trace context, or
    other values that an intermediary can add, remove, or mutate outside
@@ -1453,7 +1558,14 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 26]
+
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 28]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1509,7 +1621,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 27]
+Schrock                   Expires 29 March 2027                [Page 29]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1565,7 +1677,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 28]
+Schrock                   Expires 29 March 2027                [Page 30]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1621,7 +1733,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 29]
+Schrock                   Expires 29 March 2027                [Page 31]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1677,7 +1789,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
 
-Schrock                   Expires 29 March 2027                [Page 30]
+Schrock                   Expires 29 March 2027                [Page 32]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1724,16 +1836,16 @@ Internet-Draft          Action Evidence Boundary          September 2026
    Every accepted authorization-bearing native result MUST expose a
    native replay unit.  The native replay unit is the native replay
    identity of Section 5.9 and MUST be derived as specified there, from
-   the authority namespace, the verified issuer, and the native
-   authorization identifier only.  It MUST NOT include an AEB wrapper
-   digest, AEB operation identifier, consumption nonce, caller retry
-   identifier, native system or profile label, or other value whose
-   change would make the same native authority spendable again.
+   the authority namespace and the native authorization identifier only.
+   It MUST NOT include an AEB wrapper digest, AEB operation identifier,
+   consumption nonce, caller retry identifier, native system or profile
+   label, or other value whose change would make the same native
+   authority spendable again.
 
 
 
 
-Schrock                   Expires 29 March 2027                [Page 31]
+Schrock                   Expires 29 March 2027                [Page 33]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
@@ -1742,11 +1854,13 @@ Internet-Draft          Action Evidence Boundary          September 2026
    wrapper reference.  Where the relying party accepts one issuer under
    more than one source label within one authority namespace, the
    evaluator MUST also probe the adapter with the same native authority
-   under a second accepted label.  If the replay unit changes while the
-   verified native authority does not, the result is INDETERMINATE.  If
-   two distinct verified native artifacts from one adapter collapse onto
-   one replay unit without the native profile defining that equivalence,
-   the result is INDETERMINATE.  A replay-unit value does not prove that
+   under a second accepted label, and, where pins declare a shared
+   authority namespace for two spellings of one issuer, under the second
+   spelling.  If the replay unit changes while the verified native
+   authority does not, the result is INDETERMINATE.  If two distinct
+   verified native artifacts from one adapter collapse onto one replay
+   unit without the native profile defining that equivalence, the result
+   is INDETERMINATE.  A replay-unit value does not prove that
    reservation or consumption occurred.
 
 8.6.  Path and Provider Ownership
@@ -1780,19 +1894,24 @@ Internet-Draft          Action Evidence Boundary          September 2026
    concurrent admission, timeout after provider entry, blind retry,
    reconciliation binding mismatch, fresh native authority for the same
    action instance while an earlier attempt is INDETERMINATE, the same
-   native authority under a second accepted source label, and a native
-   decision request that omits a material field.  A profile that accepts
-   native authorization handoffs MUST also include a handoff whose
-   attested action digest differs from the observed action.  The profile
-   MUST state every native semantic that could not be compiled without
-   invention.
+   native authority under a second accepted source label, a pin set
+   whose differently spelled issuer values normalize equal without a
+   shared authority namespace, a pre-entry stop with and without proof
+   that it never entered the provider, a failed reservation write while
 
 
 
-Schrock                   Expires 29 March 2027                [Page 32]
+Schrock                   Expires 29 March 2027                [Page 34]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
+
+   another attempt holds a record with the same operation identifier,
+   and a native decision request that omits a material field.  A profile
+   that accepts native authorization handoffs MUST also include a
+   handoff whose attested action digest differs from the observed
+   action.  The profile MUST state every native semantic that could not
+   be compiled without invention.
 
    A profile that claims a direct native authorization path MUST show
    the exact native operation binding, the native replay identity, and
@@ -1833,22 +1952,28 @@ Internet-Draft          Action Evidence Boundary          September 2026
    *  when native authorization handoffs are accepted, the pinned
       gateways and the native sources accepted from each;
 
-   *  the consumption, reservation, same-action fence, and cross-replica
-      fencing mechanism, and whether the same-action fence applies to
-      paths not admitted through a native authorization result;
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 35]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
+   *  the consumption, reservation, same-action fence, pre-entry
+      recovery, and cross-replica fencing mechanism, and how the
+      boundary proves ownership of the records it releases;
+
+   *  the canonical form of each material field and the effecting target
+      identity configured on each boundary instance;
 
    *  the authoritative sources and matching rules used for
       reconciliation; and
 
    *  all direct, break-glass, administrator, alternate-protocol, and
       system-of-record paths that bypass the AEB implementation.
-
-
-
-Schrock                   Expires 29 March 2027                [Page 33]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
    An implementation placed beside a write path is not complete
    mediation.  A deployment MUST NOT claim complete mediation unless the
@@ -1886,25 +2011,48 @@ Internet-Draft          Action Evidence Boundary          September 2026
    Section 5.10 keeps that path closed until authenticated evidence
    resolves the first attempt.
 
-   *Relabelled authority.* If a replay derivation covers a native system
-   or profile label, a relying party that accepts one issuer under two
-   labels lets one grant be spent once per label.  Deriving the native
-   replay identity from the authority namespace, issuer, and native
-   authorization identifier removes that degree of freedom.  Declaring
-   distinct authority namespaces for one issuer is a relying-party
-   assertion that the issuer's identifiers under those pins denote
-   distinct grants.  If that assertion is wrong, one grant can be spent
-   once per namespace.
 
 
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 34]
+Schrock                   Expires 29 March 2027                [Page 36]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
+
+   *Relabelled authority.* If a replay derivation covers a native system
+   or profile label, or a raw issuer spelling, a relying party that
+   accepts one issuer under two labels or two spellings lets one grant
+   be spent once per label or spelling.  Deriving the native replay
+   identity from the authority namespace and native authorization
+   identifier, and refusing pin sets in which differently spelled but
+   normalization-equal issuers do not declare one namespace, removes
+   that degree of freedom.  Normalization cannot detect every alias: two
+   issuer values that denote one authority but do not normalize equal
+   need an explicitly shared namespace, or one grant can be spent once
+   per value.  Declaring distinct authority namespaces for one issuer
+   value is a relying-party assertion that the issuer's identifiers
+   under those pins denote distinct grants.  If that assertion is wrong,
+   one grant can be spent once per namespace.
+
+   *Namespace rotation.* Changing an authority namespace, or the issuer
+   value of a pin that uses the default namespace, changes the native
+   replay identity of every grant accepted under it.  A grant consumed,
+   or still in flight, under the old identity then looks unused.
+   Section 4 therefore requires in-flight attempts to be resolved and
+   consumed grants to be unpresentable before the change.
+
+   *Pre-entry stops.* A fence that only authenticated outcomes can
+   release turns every crash before provider entry into a permanent
+   refusal of that action.  Section 5.10 therefore requires a recovery
+   operation, but releases only with proof that the attempt never
+   entered the provider.  Releasing on a timeout or on local belief
+   would reopen the second entry that the fence prevents.
+
+   *Record ownership.* Operation identifiers can be chosen by the
+   caller.  An error path that releases a record by operation identifier
+   alone can delete a live record of another attempt that uses the same
+   identifier, reopening that attempt's authority and action key.
+   Section 5.11 therefore limits release to records whose ownership the
+   boundary can prove.
 
    *Instance fields.* An instance field lets two intentionally identical
    actions proceed.  It also lets any party that can choose a new
@@ -1918,10 +2066,21 @@ Internet-Draft          Action Evidence Boundary          September 2026
    *Action-digest scope.* If an action digest covered a field that the
    requester can vary without changing the consequence, such as a free-
    text memo or a request timestamp, the requester could vary it to
+
+
+
+Schrock                   Expires 29 March 2027                [Page 37]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    obtain a new action key and step around the same-action fence.  The
    action digest therefore covers material fields only, and a profile
    that must carry such a field to the provider either declares it
-   material or keeps it out of the action digest.
+   material or keeps it out of the action digest.  Two spellings of one
+   material value have the same effect: without the canonical forms that
+   Section 5.10 requires, a retry that writes an amount, a currency
+   code, or a name differently obtains a new action key.
 
    *Gateway trust.* A native authorization handoff moves trust from the
    native issuer to the gateway.  A compromised or misconfigured gateway
@@ -1955,19 +2114,21 @@ Internet-Draft          Action Evidence Boundary          September 2026
    fresh message does not make a revoked credential valid, and a current
    credential does not make old per-action evidence fresh.
 
-
-
-Schrock                   Expires 29 March 2027                [Page 35]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    *Indeterminate effects.* Retrying after a timeout can duplicate a
    payment, mutation, disclosure, or physical action.  An invocation
    that might have reached the provider consumes the operation's retry
    right and holds its action key until authenticated reconciliation
    resolves the exact outcome.  Fresh authority does not reopen it.
    Caller assurances and unauthenticated webhooks do not resolve it.
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 38]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
 
    *Signature overclaiming.* A cryptographic signature can establish
    control of a key and integrity of covered content under a selected
@@ -2010,18 +2171,20 @@ Internet-Draft          Action Evidence Boundary          September 2026
    AEC [AEC] owns heterogeneous evidence composition and the SATISFIED
    or UNSATISFIED result under a relying-party requirement.  AEB invokes
    AEC only when local policy requires multiple evidence legs, then
-
-
-
-Schrock                   Expires 29 March 2027                [Page 36]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    preserves the separate authorization and effect-lifecycle decisions.
    The earlier Action Evidence Graph series [AEG] is replaced by AEC; an
    implementation following an older citation MUST NOT treat the
    superseded series as a second composition contract.
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 39]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
 
    AIMS, OAuth, AuthZEN, COAZ, and AP2 own their respective identity,
    delegation, authorization, protocol mapping, mandate, and native
@@ -2065,35 +2228,46 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 14.  Changes since -06
 
+   *  Added the same-action in-flight fence (Section 5.10) for every
+      attempt, whatever evidence path admits it.  A new attempt whose
+      action key is held by a CONSUMED, RESERVED, DISPATCH_PENDING,
+      INVOKED, or INDETERMINATE attempt, or closed by an EXECUTED one,
+      is refused before provider entry, even when it carries fresh
+      authority and a new operation identifier; native authorization
 
 
 
-
-Schrock                   Expires 29 March 2027                [Page 37]
+Schrock                   Expires 29 March 2027                [Page 40]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
 
-   *  Added the same-action in-flight fence (Section 5.10).  For native
-      authorization paths, a new attempt whose action key is held by a
-      CONSUMED, RESERVED, DISPATCH_PENDING, INVOKED, or INDETERMINATE
-      attempt, or closed by an EXECUTED one, is refused with the reason
-      native_action_in_flight (or, once EXECUTED has closed it,
-      optionally native_action_already_executed), even when it carries
-      fresh native authority and a new operation identifier.  The fence
-      is durable, is occupied by an atomic conflict-detecting write
-      before provider entry, and releases only on authenticated FAILED,
-      proven non-entry, or reconciliation to FAILED.  Instance fields
-      let a profile admit intentionally repeated actions.
+      paths report native_action_in_flight (or, once EXECUTED has closed
+      the key, optionally native_action_already_executed).  The fence is
+      durable, is occupied by an atomic conflict-detecting write before
+      provider entry, and releases only on authenticated FAILED,
+      reconciliation to FAILED, a confirmed pre-entry release, or
+      authorized pre-entry recovery with proof that the attempt never
+      entered the provider.  Action digests and effecting target
+      identities are compared exactly, so profiles define canonical
+      forms for material fields.  Instance fields let a profile admit
+      intentionally repeated actions.
+
+   *  Required a boundary to release or close only records whose
+      ownership it can prove, and required one recovery authorization to
+      cover every record of one attempt.
 
    *  Defined the native replay identity once and made the stable replay
       identity of -06 and the native replay unit of Section 8.5 the same
       value.  Its inputs are the relying-party-pinned authority
-      namespace, the issuer, and the native authorization identifier.
-      Operation identifiers and wire labels such as the native system
-      and profile are excluded, and pins that accept one issuer under
-      several labels share one namespace unless each declares its own.
-      Provider idempotency keys derive from the native replay identity.
+      namespace, which defaults to the issuer, and the native
+      authorization identifier.  Operation identifiers, wire labels such
+      as the native system and profile, and the issuer value when a
+      namespace is declared are excluded.  Pins whose issuer values are
+      different spellings of one normalized value must declare one
+      shared namespace, and a namespace change requires in-flight
+      attempts and consumed grants to be drained first.  Provider
+      idempotency keys derive from the native replay identity.
 
    *  Specified the native authorization handoff (Section 5.8): what a
       gateway attests, what the boundary verifies and in which order,
@@ -2115,26 +2289,27 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
    *  Bound each reconciliation result to the attempt it resolves.
 
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 41]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    *  Made the SCITT Permit text in Section 7.3 consistent with
       conditional CAID and AEC.
 
    *  Restored the definitions of the all_of and any_of members of EP-
       AEB-REQUIREMENT-v1 and defined the evidence-binding term.
 
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 38]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    *  Updated references to AEC -06, Authorization Receipts -13, and
       WIMSE HTTP Signatures -07, pinned the COAZ and COAZ-MCP references
       to an openid/authzen commit, expanded acronyms on first use, and
       rewrote the implementation status to describe the direct native
-      path and the synthetic lifecycle corpus.
+      path, both reference Gate boundaries, and the synthetic lifecycle
+      corpus.
 
    Revision -06 positioned AEB after native identity and authorization
    systems, made CAID conditional on a cross-format join and AEC
@@ -2172,43 +2347,74 @@ Internet-Draft          Action Evidence Boundary          September 2026
    control, and their OAuth adjacency requires an explicit protocol-
    diversity judgment before the generic gate can close.
 
-   Direct native path.  At the commit cited by [EP-NATIVE-HANDOFF], the
-   reference verifier package verifies a gateway-signed AEB-NATIVE-
-   AUTHORIZATION-HANDOFF-v1 statement under pinned gateway keys and
-   source pins, and the reference Gate package exposes a native
-   consequence boundary.  That boundary checks the handoff against the
-   executor action, obtains status through an operator-configured
 
 
-
-Schrock                   Expires 29 March 2027                [Page 39]
+Schrock                   Expires 29 March 2027                [Page 42]
 
 Internet-Draft          Action Evidence Boundary          September 2026
 
 
-   resolver, runs a separate local authorization callback, reserves the
-   operation and a native replay key through a consumption-store
-   interface that must expose durable state reads, re-checks status and
-   time before provider entry, and records the outcome and authenticated
-   reconciliation.  The PostgreSQL consumption store shipped at that
-   commit does not expose that state read, so it cannot back this
-   boundary.  That code also predates two requirements of this revision:
-   it does not implement the same-action fence of Section 5.10, and its
-   handoff replay unit is computed over the native system and profile
-   labels as well as the issuer and authorization identifier, which
-   Section 5.9 no longer permits.  It is same-team reference code, not
-   an independent implementation, and has no known production
-   deployment.
+   Direct native path.  At the commit cited by [EP-NATIVE-HANDOFF], the
+   reference verifier package verifies a gateway-signed AEB-NATIVE-
+   AUTHORIZATION-HANDOFF-v1 statement under pinned gateway keys and
+   source pins, and derives the native replay identity itself from the
+   pinned authority namespace and the native authorization identifier,
+   as Section 5.8 and Section 5.9 require.  For wire compatibility with
+   earlier releases, the signed handoff still carries a replay_unit
+   computed over the native system and profile labels, the issuer, and
+   the authorization identifier; the verifier checks it as part of the
+   encoding and never uses it as the replay identity.  The verifier
+   refuses a pin set whose issuer values differ only in URL scheme or
+   host case, a default port, or trailing slashes unless those pins
+   declare one shared namespace.
 
-   Synthetic lifecycle corpus.  A 23-case corpus [EP-LIFECYCLE-CORPUS]
+   Both reference Gate boundaries, the native consequence boundary and
+   the composed CAID and AEC boundary, implement the same-action fence
+   of Section 5.10.  They derive one action key from the relying party
+   identifier, the configured provider coordinates, and the action
+   digest, so they fence each other when they share a store.  Each
+   writes the attempt record before any record that occupies the action
+   key, keys every record it can release or close by the attempt, and
+   provides the pre-entry recovery of Section 5.10 through its
+   reconciliation operation, in which one recovery authorization scoped
+   to the attempt covers every record the attempt holds.  The composed
+   boundary provides that recovery only when its attempt store exposes a
+   durable state read.  The reference PostgreSQL consumption store
+   exposes the durable state read and an authorized recovery claim that
+   both boundaries use after a restart.  The reference boundaries cannot
+   tell whether an effecting system offers a lookup: they accept an
+   indeterminate provider answer as the absence of one, so presenting
+   the lookup result where a lookup exists is the operator's
+   responsibility.  The native boundary authenticates provider outcomes
+   through an operator-configured verifier.  The composed boundary
+   accepts a reconciliation outcome only from a caller whose recovery
+   authorization its attempt store accepts, and does not verify provider
+   evidence itself.
+
+   The reference Gate implements no material-field inventory and no
+   canonical-form equivalence.  It compares the caller-supplied action
+   digest and the configured provider coordinates exactly, so the
+   canonicalization that Section 5.10 requires is performed by the
+   caller or its profile.  This code is same-team reference code, not an
+   independent implementation, and has no known production deployment.
+
+   Synthetic lifecycle corpus.  A 26-case corpus [EP-LIFECYCLE-CORPUS]
    runs four synthetic native-result profiles (AuthZEN with COAZ-MCP,
    AP2, an OAuth Transaction Token, and a locally signed mandate)
    through one post-authorization lifecycle model.  Its runner
+
+
+
+Schrock                   Expires 29 March 2027                [Page 43]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    implements its own store and boundary model and does not execute the
    reference verifier or Gate packages, so its results describe that
-   model rather than the shipped code.  It does not yet include a case
-   with fresh native authority for an action whose first attempt is
-   INDETERMINATE, or a case that relabels one grant under a second
+   model rather than the shipped code.  It includes cases with fresh
+   native authority for an action whose first attempt is INDETERMINATE
+   or has EXECUTED, and a case that relabels one grant under a second
    source label.
 
    The informative EP-FIELD-ORIGIN-v0.1 profile is evaluated before
@@ -2234,14 +2440,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-evidence-chain/>.
 
-
-
-
-Schrock                   Expires 29 March 2027                [Page 40]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
    [BCP14]    Internet Engineering Task Force, "Key Words for Use in
               RFCs to Indicate Requirement Levels", BCP 14, 2017,
               <https://www.rfc-editor.org/info/bcp14>.
@@ -2261,6 +2459,13 @@ Internet-Draft          Action Evidence Boundary          September 2026
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/info/rfc8174>.
 
+
+
+Schrock                   Expires 29 March 2027                [Page 44]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
 16.2.  Informative References
 
    [AEG]      Schrock, I., "Action Evidence Graph for Consequential
@@ -2279,24 +2484,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
               "Authorization API 1.0", OpenID AuthZEN Final
               Specification, 11 January 2026,
               <https://openid.net/specs/authorization-api-1_0.html>.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 41]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
    [AUTHZEN-COAZ]
               Olivier, A. and A. Tulshibagwale, "COAZ: A Framework for
@@ -2323,6 +2510,18 @@ Internet-Draft          Action Evidence Boundary          September 2026
               change merged on 10 September 2026. Work in progress; not
               a final specification.
 
+
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 45]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    [EP-FIELD-ORIGIN]
               EMILIA Protocol, "EP-FIELD-ORIGIN-v0.1 Informative
               Implementation Profile and Gap 6 Runner", 15 August 2026,
@@ -2332,30 +2531,22 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
    [EP-LIFECYCLE-CORPUS]
               EMILIA Protocol, "Consequence-Admission Lifecycle
-              Composition Corpus v0.1", 24 September 2026,
+              Composition Corpus v0.1", 25 September 2026,
               <https://github.com/emiliaprotocol/emilia-
-              protocol/tree/69cc928eeb3b39cb8878c9af328da8c3599e86a6/
+              protocol/tree/46b5ec92745d50ea7163301b1141eedd2091fc6e/
               conformance/composition/consequence-admission-lifecycle-
               v0.1>.  Repository commit
-              69cc928eeb3b39cb8878c9af328da8c3599e86a6.  Synthetic same-
+              46b5ec92745d50ea7163301b1141eedd2091fc6e.  Synthetic same-
               team corpus.
 
    [EP-NATIVE-HANDOFF]
               EMILIA Protocol, "AEB-NATIVE-AUTHORIZATION-HANDOFF-v1
-              Reference Encoding and Native Consequence Boundary", 24
+              Reference Encoding and Native Consequence Boundary", 25
               September 2026, <https://github.com/emiliaprotocol/emilia-
-              protocol/blob/69cc928eeb3b39cb8878c9af328da8c3599e86a6/
+              protocol/blob/46b5ec92745d50ea7163301b1141eedd2091fc6e/
               docs/protocol/aeb-native-authorization-handoff-v1.md>.
-
-
-
-Schrock                   Expires 29 March 2027                [Page 42]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
-
               Repository commit
-              69cc928eeb3b39cb8878c9af328da8c3599e86a6.  Same-team
+              46b5ec92745d50ea7163301b1141eedd2091fc6e.  Same-team
               reference code; informative only.
 
    [MUNOZ-PERMIT]
@@ -2380,6 +2571,13 @@ Internet-Draft          Action Evidence Boundary          September 2026
               <https://datatracker.ietf.org/doc/draft-rosomakho-oauth-
               txn-challenge/>.
 
+
+
+Schrock                   Expires 29 March 2027                [Page 46]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
    [OAUTH-TXN-TOKENS]
               Tulshibagwale, A., Fletcher, G., and P. Kasselman,
               "Transaction Tokens", Work in Progress, Internet-Draft,
@@ -2398,17 +2596,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
               ep-authorization-receipts-13, 12 September 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-receipts/>.
-
-
-
-
-
-
-
-Schrock                   Expires 29 March 2027                [Page 43]
-
-Internet-Draft          Action Evidence Boundary          September 2026
-
 
    [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
               Code: The Implementation Status Section", BCP 205,
@@ -2439,6 +2626,14 @@ Internet-Draft          Action Evidence Boundary          September 2026
               wimse-wpt-02, 27 August 2026,
               <https://datatracker.ietf.org/doc/draft-ietf-wimse-wpt/>.
 
+
+
+
+Schrock                   Expires 29 March 2027                [Page 47]
+
+Internet-Draft          Action Evidence Boundary          September 2026
+
+
 Acknowledgments
 
    External review sharpened the boundaries between workload and message
@@ -2461,4 +2656,33 @@ Author's Address
 
 
 
-Schrock                   Expires 29 March 2027                [Page 44]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 29 March 2027                [Page 48]
