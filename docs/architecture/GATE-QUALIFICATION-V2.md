@@ -352,12 +352,14 @@ legacy path.
 The repository release chain is dependency ordered:
 
 1. publish and verify the exact registry bytes for
-   `@emilia-protocol/verify@4.1.0`;
+   `@emilia-protocol/verify@5.0.0`;
 2. only after that pinned tarball is available, release
-   `@emilia-protocol/gate@0.26.0` and/or `ep-qualify@0.1.0`.
+   `@emilia-protocol/gate@0.27.0`.
 
-Gate and `ep-qualify` are downstream siblings and may release independently
-after Verify. The release registry pins Verify's exact tarball digest for both.
+`ep-qualify@0.1.5` pins `@emilia-protocol/verify@3.21.0` exactly, so its
+release is not ordered after this Verify release. Gate and `ep-qualify` are
+downstream siblings and may release independently. The release registry pins
+the exact Verify tarball digest that each of them depends on.
 Versions, changelogs, workflows, or locally passing package tests do not prove
 that any npm package has been published.
 

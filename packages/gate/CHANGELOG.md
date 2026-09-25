@@ -4,7 +4,7 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.27.0 (2026-09-25)
 
 ### Security
 
@@ -450,10 +450,10 @@ This package follows [Semantic Versioning](https://semver.org/).
   exactly `true` proves the stop.
 - Gate now imports `verifyAebNativeAuthorizationPins()` from
   `@emilia-protocol/verify`, which verify 4.1.0 does not export, and relies on
-  that release's one-namespace-per-issuer pin rule. Release order is a hard
-  dependency: publish `@emilia-protocol/verify` 5.0.0 first, then change
-  Gate's exact `@emilia-protocol/verify` dependency from `4.1.0` to `5.0.0`
-  in the same commit that prepares the Gate release, then publish Gate. A Gate published while it still pins 4.1.0 fails to
+  that release's one-namespace-per-issuer pin rule. This release pins
+  `@emilia-protocol/verify` exactly at 5.0.0, and release order is a hard
+  dependency: publish `@emilia-protocol/verify` 5.0.0 first, then publish
+  this Gate. A Gate published while it still pins 4.1.0 fails to
   load its root entry, `@emilia-protocol/gate`, and every subpath that
   imports `@emilia-protocol/verify/aeb`, not only `./aeb`: in a packed check
   against the published 4.1.0, `.`, `./aeb`, `./consequence-boundary`, and
@@ -542,8 +542,7 @@ independent interoperability.
   reservation for the caller-supplied operation ID without proof that the
   call created it.
 
-All of these are repaired in the Unreleased section above; no fixed version
-has been published yet.
+All of these are repaired in 0.27.0 above.
 
 ## 0.25.0 (2026-09-13)
 

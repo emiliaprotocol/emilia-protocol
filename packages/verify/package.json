@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/verify",
-  "version": "4.1.0",
+  "version": "5.0.0",
   "description": "Offline verification for native evidence joins, AEB lifecycle records, and action-bound EMILIA receipts.",
   "license": "Apache-2.0",
   "type": "module",

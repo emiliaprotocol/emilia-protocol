@@ -3,7 +3,7 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 5.0.0 (2026-09-25)
 
 ### Security
 
