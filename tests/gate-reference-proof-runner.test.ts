@@ -41,7 +41,7 @@ describe('Gate reference proof release contract', () => {
 
   it('is a public npm command exercised by the Node 20 Gate product job', () => {
     expect(packageJson.scripts['proof:gate:reference']).toBe('node scripts/run-gate-reference-proof.mjs');
-    const gateProduct = workflowJob('gate-product');
+    const gateProduct = workflowJob('gate-product-suite');
     expect(gateProduct).toContain('node-version: 20');
     expect(gateProduct).toContain('npm run proof:gate:reference');
   });
