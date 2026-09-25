@@ -583,7 +583,7 @@
     },
     {
       "path": "packages/gate/dist/aeb-consumption-store.js",
-      "sha256": "12df21f525f2c25d9e301fcff3fbdbb7c8a68ae9d0f6640de63e33d235a52837"
+      "sha256": "6a848f48c2c9f1db31f4030d5d659042dbe39ec609f12eb58a0d5a3da329c4d3"
     },
     {
       "path": "packages/gate/dist/aec-execution.js",
@@ -644,6 +644,10 @@
     {
       "path": "packages/gate/dist/consequence-actuator.js",
       "sha256": "9d1a1cc2fb81571ef1b11bc70a0ea2eb4d1a5870b062f084817f44359cea35bc"
+    },
+    {
+      "path": "packages/gate/dist/consequence-boundary.js",
+      "sha256": "e9fa3fbc19923e8ee1219995bbd1979031e57d31939eededeca82396d05ffcd0"
     },
     {
       "path": "packages/gate/dist/coverage-reconciliation-attestation.js",
@@ -871,7 +875,7 @@
     },
     {
       "path": "packages/gate/src/aeb-consumption-store.ts",
-      "sha256": "e1e5c8b284f084e9ed56dcb43eae5d4395489dd6c964b8aea9a443d097fb3728"
+      "sha256": "bf4845de202ce1b9653da1aee8c04c1fed8daeeed4416ffe14a153ee3a0acf71"
     },
     {
       "path": "packages/gate/src/aec-execution.ts",
@@ -1034,6 +1038,10 @@
       "sha256": "1039e1f85b78d714bfdbac0ad5236195d312e66060cbc97e36c064ff85b635db"
     },
     {
+      "path": "packages/verify/aeb.js",
+      "sha256": "c2bc12a1effec5c55e6ae7a330d0fd9d1183441a0c2a4ee11e677348fcac5600"
+    },
+    {
       "path": "packages/verify/ap2-native-adapter.js",
       "sha256": "7dd2dd1edaf38d9c6d35f1695c0f0ae88e5ef7dfdb6aade59ae2a05ce552366d"
     },
@@ -1102,6 +1110,10 @@
       "sha256": "2662043d35d99e32aa9b39abd2cf9e4d6d5d1f4ecb1e49dc3e088b0cb6569800"
     },
     {
+      "path": "packages/verify/dist/aeb-native-authorization-handoff.js",
+      "sha256": "bb55a9453b75005e991754f2e3d67c75f638f579777d68f5af585bef901dbb25"
+    },
+    {
       "path": "packages/verify/dist/aeb-oasnt-adapter.js",
       "sha256": "aa7564f727ffe207249a1d336bcbec002cc449b2f6cff243020ea27f4d344703"
     },
@@ -1116,6 +1128,10 @@
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
       "sha256": "1512b1fd04fd2261c7b9a224eb01544e8ebd40bdc053b3f81a8d909d37e051d0"
+    },
+    {
+      "path": "packages/verify/dist/aeb.js",
+      "sha256": "eda271db2a637924c43c3d4d5783116944332475f5fd154525ff6bd3aede919f"
     },
     {
       "path": "packages/verify/dist/agent-edge-continuity.js",
