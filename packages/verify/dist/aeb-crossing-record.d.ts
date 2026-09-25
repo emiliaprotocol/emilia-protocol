@@ -135,6 +135,33 @@ export interface AebCrossingRecordV2 {
     signatures: AgileSignature[];
 }
 export type AebCrossingEvaluationProfile = typeof AEB_EVALUATION_VERSION | typeof AEB_EVALUATION_V2_VERSION;
+/**
+ * Whether a verifier joined the cited evaluation record to this crossing.
+ *
+ * BOUND: the caller supplied the evaluation, its record digest equals the
+ * committed digest, and it evaluated the same operation, CAID, action, and
+ * (for crossing records) native authority. BOUND never means the evaluation's
+ * own signature or re-derivation was checked; that remains the job of
+ * verifyAebEvaluation or verifyAebEvaluationV2 under relying-party pins.
+ * INDETERMINATE: no evaluation was supplied, or the record was refused before
+ * the join ran. The committed digest is then an unverified pointer.
+ * MISMATCH: the supplied evaluation failed the join; the record is refused.
+ */
+export type AebCrossingEvaluationBinding = "BOUND" | "INDETERMINATE" | "MISMATCH";
+/**
+ * The only evaluation reference a lifecycle index (and a crossing record's
+ * lifecycle_records.evaluation_digest) carries: the untyped digestAeb over the
+ * complete signed evaluation record. This equals the record_digest returned by
+ * verifyAebEvaluation (AEB-EVALUATION-v1) and verifyAebEvaluationV2
+ * (AEB-EVALUATION-v2). It is NOT aebEvaluationV2Digest, which is a typed
+ * digest over the unsigned v2 body. The profile label is bound to this digest
+ * because the digested bytes contain the record's "@type" member, which a
+ * verifier holding the evaluation compares with the label.
+ */
+export interface AebCrossingEvaluationReference {
+    profile: AebCrossingEvaluationProfile;
+    digest: AebDigest;
+}
 export type AebCrossingCustodyReferencePhase = "NOT_APPLICABLE" | "RESERVATION" | "CONSUMPTION" | "INDETERMINATE";
 export interface AebCrossingCustodyReference {
     phase: AebCrossingCustodyReferencePhase;
@@ -155,8 +182,13 @@ export interface AebCrossingLifecycleIndexV2Body {
     };
     admission_domain_digest: AebDigest;
     lifecycle: {
+        /**
+         * `profile` is null only in an INDETERMINATE conversion from a legacy
+         * crossing record whose unlabeled evaluation digest could not be bound to
+         * a supplied evaluation (reason `evaluation_reference_unverified`).
+         */
         evaluation: {
-            profile: AebCrossingEvaluationProfile;
+            profile: AebCrossingEvaluationProfile | null;
             digest: AebDigest;
         };
         /** Reference only. The native/local decision remains authoritative. */
@@ -193,7 +225,12 @@ export interface AebCrossingLifecycleIndexV2Context {
 export interface AebCrossingLifecycleIndexV2VerifyOptions extends AebCrossingRecordVerifyOptions {
     expected_action: AebCrossingRecordBody["action"];
     admission_domain: CrossingAdmissionDomain;
-    expected_evaluation: AebCrossingLifecycleIndexV2Body["lifecycle"]["evaluation"];
+    /**
+     * Caller-pinned evaluation pointer. Optional when `evaluation` is supplied;
+     * at least one of the two is required. A pointer alone cannot establish the
+     * join, so the result then reports evaluation_binding INDETERMINATE.
+     */
+    expected_evaluation?: AebCrossingLifecycleIndexV2Body["lifecycle"]["evaluation"];
 }
 export interface AebCrossingLifecycleIndexV2VerifyResult {
     verified: boolean;
@@ -201,12 +238,15 @@ export interface AebCrossingLifecycleIndexV2VerifyResult {
     execution_authorizing: false;
     record_digest: AebDigest | null;
     conversion_status: AebCrossingLifecycleIndexConversionStatus | null;
+    evaluation_binding: AebCrossingEvaluationBinding;
     checks: {
         schema: boolean;
         algorithm_set: boolean | null;
         action: boolean | null;
         admission_domain: boolean | null;
         evaluation: boolean | null;
+        /** null when no evaluation record was supplied. */
+        evaluation_binding: boolean | null;
         contract_digest: boolean | null;
         lifecycle_order: boolean | null;
         signature_set: boolean | null;
@@ -223,16 +263,30 @@ export interface AebCrossingRecordIssueOptions extends AgilityOptions {
 }
 export interface AebCrossingRecordVerifyOptions extends AgilityOptions {
     verification_keys: AgileVerificationKey[];
+    /**
+     * Optional AEB-EVALUATION-v1 or AEB-EVALUATION-v2 record the crossing cites.
+     * When supplied, the verifier joins it to the record (see
+     * AebCrossingEvaluationBinding) and refuses a mismatch. When absent, the
+     * result reports evaluation_binding INDETERMINATE.
+     */
+    evaluation?: unknown;
 }
 export interface AebCrossingRecordV1UpgradeOptions extends AebCrossingRecordIssueOptions {
     /** Pinned keys used to verify the source before a converted index is signed. */
     source_verification_keys: AgileVerificationKey[];
+    /**
+     * Optional evaluation record the v1 source cites. Only a supplied evaluation
+     * that binds to the source lets the conversion carry an evaluation profile
+     * label and report COMPLETE.
+     */
+    source_evaluation?: unknown;
 }
 export interface AebCrossingRecordVerifyResult {
     verified: boolean;
     reason: string | null;
     execution_authorizing: false;
     record_digest: AebDigest | null;
+    evaluation_binding: AebCrossingEvaluationBinding;
     checks: {
         schema: boolean;
         algorithm_set: boolean | null;
@@ -240,6 +294,8 @@ export interface AebCrossingRecordVerifyResult {
         contract_digest: boolean | null;
         admission_reference: boolean | null;
         semantics: boolean | null;
+        /** null when no evaluation record was supplied. */
+        evaluation_binding: boolean | null;
         signature_set: boolean | null;
     };
 }
@@ -297,6 +353,13 @@ export declare function crossingLifecycleIndexV2AdmissionDomainDigest(boundary: 
 export declare function crossingLifecycleIndexV2ContractDigest(body: Pick<AebCrossingLifecycleIndexV2Body, "operation_id" | "action" | "admission_domain_digest" | "lifecycle">): AebDigest;
 export declare function crossingLifecycleIndexV2SignedBytes(body: AebCrossingLifecycleIndexV2Body): Uint8Array;
 export declare function crossingLifecycleIndexV2Digest(body: AebCrossingLifecycleIndexV2Body): AebDigest;
+/**
+ * Returns the evaluation reference a crossing record or lifecycle index
+ * commits to for `evaluation`: its "@type" as the profile label and the
+ * untyped digestAeb over the complete signed record. Issuers SHOULD use this
+ * instead of computing a digest themselves. Throws on a malformed record.
+ */
+export declare function aebCrossingEvaluationReference(evaluation: unknown): AebCrossingEvaluationReference;
 export declare function mapWimseOAuthCrossingAuthority(input: WimseOAuthCrossingInput): CrossingAuthorityMappingResult;
 export declare function mapBcrCrossingAuthority(input: BcrCrossingInput): CrossingAuthorityMappingResult;
 export declare const WIMSE_OAUTH_CROSSING_ADAPTER: AebCrossingAuthorityAdapter<WimseOAuthCrossingInput>;
@@ -314,6 +377,16 @@ export declare function issueAebCrossingLifecycleIndexV2(draft: AebCrossingLifec
  * new lifecycle index.  Any v1 axis that asserted later lifecycle state
  * without a corresponding record digest is reported as INDETERMINATE rather
  * than copied as if it were independently verifiable.
+ *
+ * v1 carries an unlabeled evaluation digest. Unless the caller supplies the
+ * source evaluation and it binds to the source record, the index carries that
+ * digest with a null profile and the conversion is INDETERMINATE
+ * (`evaluation_reference_unverified`). A supplied evaluation that does not
+ * bind is refused with `source_evaluation_mismatch`; nothing is signed.
+ * References that v1 recorded out of lifecycle order (custody or provider
+ * entry without a local admission reference, or provider entry without a
+ * custody reference) are reported INDETERMINATE instead of being signed as
+ * an ordered lifecycle.
  */
 export declare function upgradeAebCrossingRecordV1ToLifecycleIndexV2(source: AebCrossingRecord, options: AebCrossingRecordV1UpgradeOptions): Promise<AebCrossingLifecycleIndexV2>;
 export declare function verifyAebCrossingRecord(value: unknown, options: AebCrossingRecordVerifyOptions): Promise<AebCrossingRecordVerifyResult>;

@@ -5,7 +5,7 @@
     "name": "EMILIA reference runner",
     "affiliation": "EMILIA Protocol",
     "revision": "repository-working-tree",
-    "executed_at": "2026-08-22T16:32:10.176Z",
+    "executed_at": "2026-09-25T03:56:18.000Z",
     "execution_owner": "runner-asserted",
     "implementation_owner": "EMILIA Protocol",
     "independent_implementation": false
@@ -214,6 +214,6 @@
     "One OASNT native check is pinned to the published draft-thallapelly-oasnt-02 token vector and archived text sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603; the two-leg composition uses a synthetic action-only token under the same verifier rules.",
     "A passing report is not IETF adoption, endorsement, certification, or proof of deployment."
   ],
-  "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA reference composition at repository-working-tree on 2026-08-22T16:32:10.176Z: 7/7 pinned native-protocol checks and 7/7 AEB composition checks passed against AEB-ADAPTER-v1 (sha256:976c7da78180a251834c12e6f27b6b886391521c0f0717d5f8d95422b115f9c9). This is a reproduction of the EMILIA reference runner, not an independent implementation or IETF endorsement.",
-  "report_digest": "sha256:885868e8e04d56318c28651aea9f26d1a45c0a10019233ca1ce667b2d1d15da4"
+  "implementation_status_markdown": "EMILIA reference runner (EMILIA Protocol) reproduced the EMILIA reference composition at repository-working-tree on 2026-09-25T03:56:18.000Z: 7/7 pinned native-protocol checks and 7/7 AEB composition checks passed against AEB-ADAPTER-v1 (sha256:976c7da78180a251834c12e6f27b6b886391521c0f0717d5f8d95422b115f9c9). This is a reproduction of the EMILIA reference runner, not an independent implementation or IETF endorsement.",
+  "report_digest": "sha256:074ec26c8f755c75e540f8feeaaf96a21092b7d6151b434f740182d22850be34"
 }

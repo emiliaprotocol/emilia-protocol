@@ -3,9 +3,10 @@
  *
  * Native evidence stays native. The direct path verifies a relying-party-
  * pinned gateway handoff; it does not re-verify the native permit or artifact.
- * The boundary durably fences every native replay unit, records dispatch
- * custody, and invokes one provider adapter. It does not acquire approvals,
- * mint authority, or require an EMILIA receipt.
+ * The boundary durably fences every native replay unit and every exact action
+ * while an attempt for it is in flight, records dispatch custody, and invokes
+ * one provider adapter. It does not acquire approvals, mint authority, or
+ * require an EMILIA receipt.
  */
 import { type AebAdapter, type AebConsumptionState, type AebDigest, type AebDurableConsumptionStore, type AebEvaluationRecord, type AebPinnedConfig, type AebStatusInput } from '@emilia-protocol/verify/aeb-adapter-contract';
 import type { AebExecutionConditionsResult } from '@emilia-protocol/verify/aeb-execution-conditions';
@@ -17,7 +18,6 @@ export declare const NATIVE_CONSEQUENCE_BOUNDARY_VERSION = "EMILIA-NATIVE-CONSEQ
 export declare const NATIVE_CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN = "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1";
 export declare const NATIVE_CONSEQUENCE_BOUNDARY_TRUST_SNAPSHOT_DOMAIN = "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-TRUST-SNAPSHOT-v1";
 export declare const NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN = "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-LOCAL-DECISION-v1";
-type JsonObject = Record<string, unknown>;
 export interface ConsequenceBoundaryProvider {
     tenant_id: string;
     provider_id: string;
@@ -231,11 +231,23 @@ export interface NativeConsequenceBoundaryOptions<TResult> {
     executor_id: string;
     provider: ConsequenceBoundaryProvider;
     native_authorization: {
+        /** `pins.relying_party_id` must also satisfy the Gate identifier grammar. */
         pins: AebNativeAuthorizationPins;
         /** Stable operator identifier for the exact accepted pins below. */
         trust_snapshot_id: string;
+        /**
+         * Durable consumption store. It holds the operation reservation with the
+         * native replay key, and a second reservation per operation that holds
+         * the exact-action in-flight fence. `state()` must be a durable read.
+         * A store whose commit and release are fenced to the reserving process
+         * (the shipped PostgreSQL store) must also declare
+         * `recoveryClaimSupported: true` so reconciliation after a restart can
+         * claim both reservations with the caller's `recovery_authorization`.
+         */
         store: AebDurableConsumptionStore & {
             state(key: string): AebConsumptionState | Promise<AebConsumptionState>;
+            recoveryClaimSupported?: true;
+            claimReservation?(key: string, authorization: unknown): Promise<boolean>;
         };
         /** Trusted status source. It receives only a preverified pinned handoff. */
         resolve_status(handoff: Readonly<AebNativeAuthorizationHandoff>): AebNativeAuthorizationStatus | Promise<AebNativeAuthorizationStatus>;
@@ -359,6 +371,31 @@ export declare function nativeConsequenceBoundaryRequestDigest(input: {
     provider_idempotency_key: string;
 }): AebDigest;
 /**
+ * Durable identity of one exact action at one effecting target: the relying
+ * party, the provider coordinates the boundary invokes, and the canonical
+ * action digest. While an attempt for this identity is RESERVED, INVOKING, or
+ * INDETERMINATE, a new attempt is refused as `native_action_in_flight` even
+ * when it carries a fresh native authorization and a fresh operation ID.
+ * Intentional repeats must differ in the canonical action itself, for example
+ * through a caller-chosen instance field that the action digest covers.
+ */
+export declare function nativeConsequenceBoundaryActionFenceKey(input: {
+    relying_party_id: string;
+    provider: ConsequenceBoundaryProvider;
+    action_digest: AebNativeAuthorizationDigest;
+}): string;
+/**
+ * Consumption-store key of the reservation that holds the action fence for
+ * one operation. It is derived from the operation reservation key, so a
+ * reconciliation can only ever close the fence holder of its own operation,
+ * never the holder of a later attempt for the same action.
+ */
+export declare function nativeConsequenceBoundaryActionFenceHolderKey(input: {
+    relying_party_id: string;
+    operation_id: string;
+    action_digest: AebNativeAuthorizationDigest;
+}): string;
+/**
  * Build one relying-party-controlled consequence boundary. Presented evidence
  * never selects adapters, trust roots, requirements, or local policy.
  */
@@ -378,7 +415,7 @@ export declare function createConsequenceBoundary<TResult>(options: ConsequenceB
 export declare function createNativeConsequenceBoundary<TResult>(options: NativeConsequenceBoundaryOptions<TResult>): Readonly<{
     version: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-v1";
     executor_id: string;
-    provider: ConsequenceBoundaryProvider & JsonObject;
+    provider: ConsequenceBoundaryProvider;
     run: (input: NativeConsequenceBoundaryRunInput) => Promise<ConsequenceBoundaryResult<TResult>>;
     reconcile: (input: NativeConsequenceBoundaryReconcileInput<TResult>) => Promise<ConsequenceBoundaryResult<TResult>>;
 }>;
@@ -393,6 +430,8 @@ declare const _default: Readonly<{
     NATIVE_CONSEQUENCE_BOUNDARY_TRUST_SNAPSHOT_DOMAIN: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-TRUST-SNAPSHOT-v1";
     NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-LOCAL-DECISION-v1";
     nativeConsequenceBoundaryReservationKey: typeof nativeConsequenceBoundaryReservationKey;
+    nativeConsequenceBoundaryActionFenceKey: typeof nativeConsequenceBoundaryActionFenceKey;
+    nativeConsequenceBoundaryActionFenceHolderKey: typeof nativeConsequenceBoundaryActionFenceHolderKey;
     nativeConsequenceBoundaryProviderIdempotencyKey: typeof nativeConsequenceBoundaryProviderIdempotencyKey;
     nativeConsequenceBoundaryRequestDigest: typeof nativeConsequenceBoundaryRequestDigest;
     createNativeConsequenceBoundary: typeof createNativeConsequenceBoundary;

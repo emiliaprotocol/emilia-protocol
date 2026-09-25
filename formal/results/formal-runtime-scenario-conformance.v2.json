@@ -583,7 +583,7 @@
     },
     {
       "path": "packages/gate/dist/aeb-consumption-store.js",
-      "sha256": "c68c892245294e075af7c401d285a510f7168f921925eeee058ed745dee7eeb0"
+      "sha256": "256bffe5424289cb3d17fa67ffdfcfdf7033bd2f21d9cdd6c4087bcee16bbb75"
     },
     {
       "path": "packages/gate/dist/aec-execution.js",
@@ -871,7 +871,7 @@
     },
     {
       "path": "packages/gate/src/aeb-consumption-store.ts",
-      "sha256": "077c52aae193aed6467a302b2098d2be628ff6e08b00ba9fc89bd0bc8f1e803c"
+      "sha256": "cbf3881f0eaec1b8c9775a52f4a561d01bc67149e937cb5afbdc2df635c5f9b4"
     },
     {
       "path": "packages/gate/src/aec-execution.ts",
@@ -1083,7 +1083,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-crossing-record.js",
-      "sha256": "d22417d88eb2aca2e3ea4a8b2c96dae18b738e63f29d6d0f86a08007976fca12"
+      "sha256": "462d70c7f7d91e63caebcb269cd3d9373fb74be6786085c66e98c1586a643f74"
     },
     {
       "path": "packages/verify/dist/aeb-discovery-permit-adapter.js",
@@ -1207,7 +1207,7 @@
     },
     {
       "path": "packages/verify/dist/index.js",
-      "sha256": "621b38bd32119dafd37304829c6875c8b352429c09256729bf3f0d68b79372ae"
+      "sha256": "3b95b5a6bf09f945b3350a5033f3f51373beaa58285e4a16d9f571b882ecfab8"
     },
     {
       "path": "packages/verify/dist/initiator-attestation.js",
@@ -1359,7 +1359,7 @@
     },
     {
       "path": "packages/verify/src/index.ts",
-      "sha256": "5c09ae211fe5e67861e1901221ec377ae86973b550f541d0987155024c24f91d"
+      "sha256": "6a78166b8a8c39d9d7083af3c54cb95e8c494e6a7ea8614a95a20fc5eb407f4c"
     },
     {
       "path": "packages/verify/src/outcome-binding.ts",

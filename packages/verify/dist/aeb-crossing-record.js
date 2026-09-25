@@ -11,7 +11,8 @@
  * a bounded-capability receipt without claiming that the native systems are
  * equivalent. They share the record schema and verifier, not record bytes.
  */
-import { AEB_EVALUATION_VERSION, AEB_EVALUATION_V2_VERSION, canonicalizeAeb, digestAebTyped, } from "./aeb-adapter-contract.js";
+import { AEB_EVALUATION_VERSION, AEB_EVALUATION_V2_VERSION, canonicalizeAeb, digestAeb, digestAebTyped, } from "./aeb-adapter-contract.js";
+import { actionDigest as aecActionDigest } from "./evidence-chain.js";
 import { SIGNATURE_AGILITY_VERSION, signAgileSet, verifyAgileSignatureSet, } from "./pq-signature-agility.js";
 export const AEB_CROSSING_RECORD_VERSION = "EP-AEB-CROSSING-RECORD-v1";
 export const AEB_CROSSING_RECORD_DOMAIN = `${AEB_CROSSING_RECORD_VERSION}\0`;
@@ -520,6 +521,162 @@ function validateV2Body(body) {
 function nullableDigest(value) {
     return value === null || digest(value);
 }
+const EVALUATION_VERDICTS = new Set(["SATISFIED", "UNSATISFIED", "INDETERMINATE"]);
+/**
+ * Reads only the members the join needs from a pinned (plain JSON) copy of
+ * an AEB-EVALUATION-v1 or -v2 record. Anything else is malformed.
+ */
+function evaluationFacts(value) {
+    if (!isRecord(value))
+        return null;
+    let profile;
+    let caid;
+    let verdict;
+    let commitment;
+    if (value["@type"] === AEB_EVALUATION_VERSION) {
+        if (!isRecord(value.composition))
+            return null;
+        profile = AEB_EVALUATION_VERSION;
+        caid = value.caid;
+        verdict = value.verdict;
+        commitment = value.composition.action_digest;
+    }
+    else if (value["@type"] === AEB_EVALUATION_V2_VERSION) {
+        if (!isRecord(value.action) || !isRecord(value.satisfaction))
+            return null;
+        profile = AEB_EVALUATION_V2_VERSION;
+        caid = value.action.caid;
+        verdict = value.satisfaction.verdict;
+        commitment = value.action.normalized_action_digest;
+    }
+    else {
+        return null;
+    }
+    if (typeof value.operation_id !== "string" ||
+        value.operation_id.length === 0 ||
+        typeof caid !== "string" ||
+        typeof verdict !== "string" ||
+        !EVALUATION_VERDICTS.has(verdict) ||
+        !digest(commitment) ||
+        !Array.isArray(value.legs))
+        return null;
+    const legs = [];
+    for (const leg of value.legs) {
+        if (!isRecord(leg) || !digest(leg.evidence_digest))
+            return null;
+        legs.push({
+            evidence_digest: leg.evidence_digest,
+            verdict: leg.verdict,
+            native_verification: leg.native_verification,
+            acceptance: leg.acceptance,
+            mapping: leg.mapping,
+            caid: leg.caid,
+            action_digest: leg.action_digest,
+        });
+    }
+    return {
+        profile,
+        operation_id: value.operation_id,
+        caid,
+        verdict,
+        action_commitment: commitment,
+        legs,
+    };
+}
+/** Same AEC action commitment AEB-EVALUATION-v1 composition computes. */
+function evaluationActionCommitment(caid, normalizedActionDigest) {
+    const raw = aecActionDigest({
+        caid,
+        normalized_action_digest: normalizedActionDigest,
+    });
+    return raw.startsWith("sha256:") ? raw : `sha256:${raw}`;
+}
+/**
+ * Joins a caller-supplied evaluation record to the crossing that cites it.
+ * Returns null when bound, otherwise a refusal reason. Never throws.
+ *
+ * The join key between native_authority and an evaluated leg is
+ * evidence_digest: the digest of the exact native artifact. The crossing's
+ * replay_unit and adapter_id are derived under the crossing mapping profile
+ * and are not expected to equal the leg's adapter-derived values.
+ */
+function evaluationJoinReason(evaluation, target) {
+    let pinned;
+    let evaluationDigest;
+    try {
+        // The strict canonicalizer reads members through property descriptors, so
+        // getters never run, and refuses accessors, symbols, and sparse arrays. A
+        // Proxy's traps can run during that read; the join then uses only the
+        // plain snapshot, and any throw is reported as evaluation_malformed.
+        pinned = JSON.parse(canonicalizeAeb(evaluation));
+        evaluationDigest = digestAeb(pinned);
+    }
+    catch {
+        return "evaluation_malformed";
+    }
+    const facts = evaluationFacts(pinned);
+    if (!facts)
+        return "evaluation_malformed";
+    if (evaluationDigest !== target.digest)
+        return "evaluation_digest_mismatch";
+    if (target.profile !== undefined &&
+        target.profile !== null &&
+        facts.profile !== target.profile)
+        return "evaluation_profile_mismatch";
+    if (facts.operation_id !== target.operation_id)
+        return "evaluation_operation_mismatch";
+    if (facts.caid !== target.action.caid)
+        return "evaluation_action_mismatch";
+    // An evaluation that committed to a normalized action, or that is
+    // SATISFIED, must have committed to exactly this action.
+    const committedToAction = facts.action_commitment !==
+        evaluationActionCommitment(facts.caid, null);
+    if ((committedToAction || facts.verdict === "SATISFIED") &&
+        facts.action_commitment !==
+            evaluationActionCommitment(facts.caid, target.action.action_digest))
+        return "evaluation_action_mismatch";
+    if (target.referee?.admission === "ADMIT" && facts.verdict !== "SATISFIED")
+        return "evaluation_verdict_inconsistent";
+    const authority = target.native_authority;
+    if (authority) {
+        const candidates = facts.legs.filter((leg) => leg.evidence_digest === authority.evidence_digest);
+        if (candidates.length === 0)
+            return "evaluation_authority_unmatched";
+        const exactMatch = target.referee?.action_relation === "EXACT_MATCH";
+        const admitted = target.referee?.admission === "ADMIT";
+        const consistent = candidates.some((leg) => (!admitted || leg.verdict === "SATISFIED") &&
+            (authority.native_verification !== "VERIFIED" ||
+                leg.native_verification === "VERIFIED") &&
+            (authority.rp_acceptance !== "ACCEPTED" ||
+                leg.acceptance === "ACCEPTED") &&
+            (!exactMatch ||
+                (leg.mapping === "MATCH" &&
+                    leg.caid === target.action.caid &&
+                    leg.action_digest === target.action.action_digest)));
+        if (!consistent)
+            return "evaluation_authority_inconsistent";
+    }
+    return null;
+}
+/**
+ * Returns the evaluation reference a crossing record or lifecycle index
+ * commits to for `evaluation`: its "@type" as the profile label and the
+ * untyped digestAeb over the complete signed record. Issuers SHOULD use this
+ * instead of computing a digest themselves. Throws on a malformed record.
+ */
+export function aebCrossingEvaluationReference(evaluation) {
+    let pinned;
+    try {
+        pinned = JSON.parse(canonicalizeAeb(evaluation));
+    }
+    catch {
+        throw new CrossingRecordError("evaluation_malformed");
+    }
+    const facts = evaluationFacts(pinned);
+    if (!facts)
+        throw new CrossingRecordError("evaluation_malformed");
+    return { profile: facts.profile, digest: digestAeb(pinned) };
+}
 function validateLifecycleIndexV2Body(body) {
     if (!isRecord(body) || !exactKeys(body, LIFECYCLE_INDEX_V2_BODY_KEYS))
         return "malformed_lifecycle_index";
@@ -546,7 +703,7 @@ function validateLifecycleIndexV2Body(body) {
     const lifecycle = body.lifecycle;
     if (!isRecord(lifecycle.evaluation) ||
         !exactKeys(lifecycle.evaluation, LIFECYCLE_EVALUATION_KEYS) ||
-        ![AEB_EVALUATION_VERSION, AEB_EVALUATION_V2_VERSION].includes(lifecycle.evaluation.profile) ||
+        ![AEB_EVALUATION_VERSION, AEB_EVALUATION_V2_VERSION, null].includes(lifecycle.evaluation.profile) ||
         !digest(lifecycle.evaluation.digest) ||
         !nullableDigest(lifecycle.local_admission_digest) ||
         !nullableDigest(lifecycle.provider_entry_digest) ||
@@ -602,6 +759,16 @@ function validateLifecycleIndexV2Body(body) {
     if (body.conversion.status === "INDETERMINATE" &&
         body.conversion.reason_codes.length === 0)
         return "conversion_report_invalid";
+    // An unlabeled evaluation reference exists only as the honest output of a
+    // legacy conversion that could not bind the source evaluation.
+    if (lifecycle.evaluation.profile === null &&
+        (body.conversion.status !== "INDETERMINATE" ||
+            !body.conversion.reason_codes.includes("evaluation_reference_unverified")))
+        return "conversion_report_invalid";
+    // A conversion that could not resolve custody is not COMPLETE.
+    if (body.conversion.status === "COMPLETE" &&
+        lifecycle.authority_custody.phase === "INDETERMINATE")
+        return "conversion_report_invalid";
     if (!digest(body.contract_digest))
         return "malformed_lifecycle_index";
     const typed = body;
@@ -621,6 +788,17 @@ function validateLifecycleIndexV2Body(body) {
             lifecycle.provider_outcome_digest !== null ||
             lifecycle.reconciliation_digest !== null))
         return "lifecycle_order_invalid";
+    // Provider entry (and therefore any outcome, observation, or
+    // reconciliation) requires a referenced authority reservation or
+    // consumption. Only a conversion that reports INDETERMINATE may carry a
+    // legacy provider entry whose custody record it could not resolve.
+    if (lifecycle.provider_entry_digest !== null) {
+        const phase = lifecycle.authority_custody.phase;
+        if (phase === "NOT_APPLICABLE")
+            return "lifecycle_order_invalid";
+        if (phase === "INDETERMINATE" && body.conversion.status !== "INDETERMINATE")
+            return "lifecycle_order_invalid";
+    }
     return null;
 }
 function mappingCommonValid(input) {
@@ -860,9 +1038,28 @@ export async function issueAebCrossingLifecycleIndexV2(draft, context, options) 
  * new lifecycle index.  Any v1 axis that asserted later lifecycle state
  * without a corresponding record digest is reported as INDETERMINATE rather
  * than copied as if it were independently verifiable.
+ *
+ * v1 carries an unlabeled evaluation digest. Unless the caller supplies the
+ * source evaluation and it binds to the source record, the index carries that
+ * digest with a null profile and the conversion is INDETERMINATE
+ * (`evaluation_reference_unverified`). A supplied evaluation that does not
+ * bind is refused with `source_evaluation_mismatch`; nothing is signed.
+ * References that v1 recorded out of lifecycle order (custody or provider
+ * entry without a local admission reference, or provider entry without a
+ * custody reference) are reported INDETERMINATE instead of being signed as
+ * an ordered lifecycle.
  */
 export async function upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, options) {
     const pinnedSource = JSON.parse(canonicalizeAeb(source));
+    let pinnedEvaluation;
+    if (options?.source_evaluation !== undefined) {
+        try {
+            pinnedEvaluation = JSON.parse(canonicalizeAeb(options.source_evaluation));
+        }
+        catch {
+            throw new CrossingRecordError("source_evaluation_mismatch");
+        }
+    }
     if (!isRecord(pinnedSource) ||
         !exactKeys(pinnedSource, DOCUMENT_KEYS) ||
         pinnedSource["@version"] !== AEB_CROSSING_RECORD_VERSION ||
@@ -874,9 +1071,14 @@ export async function upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, optio
         verification_keys: options.source_verification_keys,
         mldsaBackend: options.mldsaBackend,
         mldsaBackendLoader: options.mldsaBackendLoader,
+        ...(pinnedEvaluation === undefined ? {} : { evaluation: pinnedEvaluation }),
     });
-    if (!sourceVerification.verified)
+    if (!sourceVerification.verified) {
+        if (sourceVerification.checks.evaluation_binding === false)
+            throw new CrossingRecordError("source_evaluation_mismatch");
         throw new CrossingRecordError("source_crossing_record_unverified");
+    }
+    const evaluationBound = sourceVerification.evaluation_binding === "BOUND";
     const sourceBody = pinnedSource.body;
     const reasonCodes = [];
     const localAdmissionDigest = sourceBody.admission_reference.state === "PRESENT"
@@ -913,6 +1115,28 @@ export async function upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, optio
         custody = { phase: "INDETERMINATE", digest: null };
         reasonCodes.push("custody_reference_unavailable");
     }
+    // v1 never enforced lifecycle order. Nothing may follow a missing local
+    // admission reference, and provider entry requires a custody reference.
+    let providerEntryDigest = sourceBody.lifecycle_records.provider_entry_digest;
+    if (localAdmissionDigest === null) {
+        if (custody.digest !== null) {
+            custody = { phase: "INDETERMINATE", digest: null };
+            reasonCodes.push("custody_reference_without_admission");
+        }
+        if (providerEntryDigest !== null) {
+            providerEntryDigest = null;
+            reasonCodes.push("provider_entry_reference_without_admission");
+        }
+    }
+    else if (providerEntryDigest !== null && custody.phase === "NOT_APPLICABLE") {
+        custody = { phase: "INDETERMINATE", digest: null };
+        reasonCodes.push("provider_entry_without_custody_reference");
+    }
+    if (sourceBody.lifecycle_records.provider_entry_digest !== null &&
+        sourceBody.referee.admission !== "ADMIT")
+        reasonCodes.push("provider_entry_without_admit");
+    if (!evaluationBound)
+        reasonCodes.push("evaluation_reference_unverified");
     if (sourceBody.referee.provider_commitment !== "NOT_INVOKED")
         reasonCodes.push("provider_outcome_reference_unavailable");
     if (sourceBody.referee.observed_effect !== "NOT_OBSERVED")
@@ -921,8 +1145,11 @@ export async function upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, optio
         reasonCodes.push("reconciliation_reference_unavailable");
     const reasons = [...new Set(reasonCodes)].sort();
     const conversionStatus = reasons.length === 0 ? "COMPLETE" : "INDETERMINATE";
+    // Only a bound evaluation supplies the profile label; v1 never carried one.
     const evaluation = {
-        profile: AEB_EVALUATION_VERSION,
+        profile: evaluationBound
+            ? (evaluationFacts(pinnedEvaluation)?.profile ?? null)
+            : null,
         digest: sourceBody.lifecycle_records.evaluation_digest,
     };
     return issueAebCrossingLifecycleIndexV2({
@@ -934,7 +1161,7 @@ export async function upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, optio
             evaluation,
             local_admission_digest: localAdmissionDigest,
             authority_custody: custody,
-            provider_entry_digest: sourceBody.lifecycle_records.provider_entry_digest,
+            provider_entry_digest: providerEntryDigest,
             effect_observation_digest: null,
             provider_outcome_digest: null,
             reconciliation_digest: null,
@@ -951,13 +1178,23 @@ export async function upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, optio
         evaluation,
     }, options);
 }
-function refusal(reason, checks, recordDigest = null) {
+function refusal(reason, checks, recordDigest = null, evaluationBinding = "INDETERMINATE") {
     return {
         verified: false,
         reason,
         execution_authorizing: false,
         record_digest: recordDigest,
+        evaluation_binding: evaluationBinding,
         checks,
+    };
+}
+function crossingEvaluationTarget(body) {
+    return {
+        digest: body.lifecycle_records.evaluation_digest,
+        operation_id: body.operation_id,
+        action: body.action,
+        native_authority: body.native_authority,
+        referee: body.referee,
     };
 }
 export async function verifyAebCrossingRecord(value, options) {
@@ -968,9 +1205,12 @@ export async function verifyAebCrossingRecord(value, options) {
         contract_digest: null,
         admission_reference: null,
         semantics: null,
+        evaluation_binding: null,
         signature_set: null,
     };
+    let evaluationBinding = "INDETERMINATE";
     try {
+        const suppliedEvaluation = options?.evaluation;
         if (!isRecord(value) ||
             !exactKeys(value, DOCUMENT_KEYS) ||
             value["@version"] !== AEB_CROSSING_RECORD_VERSION ||
@@ -1008,6 +1248,13 @@ export async function verifyAebCrossingRecord(value, options) {
         checks.semantics = true;
         const body = value.body;
         const bodyDigest = crossingRecordDigest(body);
+        if (suppliedEvaluation !== undefined) {
+            const joinReason = evaluationJoinReason(suppliedEvaluation, crossingEvaluationTarget(body));
+            checks.evaluation_binding = joinReason === null;
+            if (joinReason)
+                return refusal(joinReason, checks, bodyDigest, "MISMATCH");
+            evaluationBinding = "BOUND";
+        }
         if (!signatureArray(value.signatures)) {
             checks.signature_set = false;
             const algorithms = Array.isArray(value.signatures)
@@ -1035,6 +1282,7 @@ export async function verifyAebCrossingRecord(value, options) {
             reason: null,
             execution_authorizing: false,
             record_digest: bodyDigest,
+            evaluation_binding: evaluationBinding,
             checks,
         };
     }
@@ -1051,16 +1299,20 @@ export async function verifyAebCrossingRecordV2(value, options) {
         admission_domain: null,
         admission_reference: null,
         semantics: null,
+        evaluation_binding: null,
         signature_set: null,
     };
-    const refuse = (reason, recordDigest = null) => ({
+    let evaluationBinding = "INDETERMINATE";
+    const refuse = (reason, recordDigest = null, binding = "INDETERMINATE") => ({
         verified: false,
         reason,
         execution_authorizing: false,
         record_digest: recordDigest,
+        evaluation_binding: binding,
         checks,
     });
     try {
+        const suppliedEvaluation = options?.evaluation;
         if (!isRecord(value) ||
             !exactKeys(value, DOCUMENT_KEYS) ||
             value["@version"] !== AEB_CROSSING_RECORD_V2_VERSION ||
@@ -1099,6 +1351,13 @@ export async function verifyAebCrossingRecordV2(value, options) {
         checks.semantics = true;
         const body = value.body;
         const bodyDigest = crossingRecordV2Digest(body);
+        if (suppliedEvaluation !== undefined) {
+            const joinReason = evaluationJoinReason(suppliedEvaluation, crossingEvaluationTarget(body));
+            checks.evaluation_binding = joinReason === null;
+            if (joinReason)
+                return refuse(joinReason, bodyDigest, "MISMATCH");
+            evaluationBinding = "BOUND";
+        }
         if (!signatureArray(value.signatures)) {
             checks.signature_set = false;
             const algorithms = Array.isArray(value.signatures)
@@ -1125,6 +1384,7 @@ export async function verifyAebCrossingRecordV2(value, options) {
             reason: null,
             execution_authorizing: false,
             record_digest: bodyDigest,
+            evaluation_binding: evaluationBinding,
             checks,
         };
     }
@@ -1139,20 +1399,25 @@ export async function verifyAebCrossingLifecycleIndexV2(value, options) {
         action: null,
         admission_domain: null,
         evaluation: null,
+        evaluation_binding: null,
         contract_digest: null,
         lifecycle_order: null,
         signature_set: null,
     };
     let conversionStatus = null;
-    const refuse = (reason, recordDigest = null) => ({
+    let evaluationBinding = "INDETERMINATE";
+    const refuse = (reason, recordDigest = null, binding = "INDETERMINATE") => ({
         verified: false,
         reason,
         execution_authorizing: false,
         record_digest: recordDigest,
         conversion_status: conversionStatus,
+        evaluation_binding: binding,
         checks,
     });
     try {
+        const expectedEvaluation = options?.expected_evaluation;
+        const suppliedEvaluation = options?.evaluation;
         if (!isRecord(value) ||
             !exactKeys(value, DOCUMENT_KEYS) ||
             value["@version"] !== AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION ||
@@ -1185,10 +1450,30 @@ export async function verifyAebCrossingLifecycleIndexV2(value, options) {
             crossingLifecycleIndexV2AdmissionDomainDigest(options?.admission_domain) === body.admission_domain_digest;
         if (!checks.admission_domain)
             return refuse("admission_domain_mismatch");
-        checks.evaluation = canonicalizeAeb(options?.expected_evaluation)
-            === canonicalizeAeb(body.lifecycle.evaluation);
-        if (!checks.evaluation)
-            return refuse("evaluation_reference_mismatch");
+        if (expectedEvaluation === undefined && suppliedEvaluation === undefined) {
+            checks.evaluation = false;
+            return refuse("evaluation_reference_required");
+        }
+        if (expectedEvaluation !== undefined) {
+            checks.evaluation = canonicalizeAeb(expectedEvaluation)
+                === canonicalizeAeb(body.lifecycle.evaluation);
+            if (!checks.evaluation)
+                return refuse("evaluation_reference_mismatch");
+        }
+        if (suppliedEvaluation !== undefined) {
+            const joinReason = evaluationJoinReason(suppliedEvaluation, {
+                digest: body.lifecycle.evaluation.digest,
+                profile: body.lifecycle.evaluation.profile,
+                operation_id: body.operation_id,
+                action: body.action,
+            });
+            checks.evaluation_binding = joinReason === null;
+            if (joinReason)
+                return refuse(joinReason, null, "MISMATCH");
+            if (expectedEvaluation === undefined)
+                checks.evaluation = true;
+            evaluationBinding = "BOUND";
+        }
         const bodyDigest = crossingLifecycleIndexV2Digest(body);
         if (!signatureArray(value.signatures)) {
             checks.signature_set = false;
@@ -1217,6 +1502,7 @@ export async function verifyAebCrossingLifecycleIndexV2(value, options) {
             execution_authorizing: false,
             record_digest: bodyDigest,
             conversion_status: conversionStatus,
+            evaluation_binding: evaluationBinding,
             checks,
         };
     }

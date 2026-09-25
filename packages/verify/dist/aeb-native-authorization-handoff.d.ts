@@ -9,8 +9,14 @@
 import { type KeyObject } from 'node:crypto';
 export declare const AEB_NATIVE_AUTHORIZATION_HANDOFF_VERSION = "AEB-NATIVE-AUTHORIZATION-HANDOFF-v1";
 export declare const AEB_NATIVE_AUTHORIZATION_HANDOFF_DOMAIN = "AEB-NATIVE-AUTHORIZATION-HANDOFF-v1\0";
-export declare const AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN = "AEB-NATIVE-AUTHORIZATION-REPLAY-v1";
-export declare const AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN = "AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v1";
+/**
+ * v2 replay derivations hash only the authority namespace, issuer, and native
+ * authorization identifier. The v1 derivations also hashed the wire labels
+ * `system` and `profile`, so one grant relabelled under a second pinned
+ * profile derived a second replay key and could be spent twice.
+ */
+export declare const AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN = "AEB-NATIVE-AUTHORIZATION-REPLAY-v2";
+export declare const AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN = "AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2";
 export declare const AEB_NATIVE_AUTHORIZATION_ACTION_DOMAIN = "AEB-NATIVE-AUTHORIZATION-ACTION-v1";
 export declare const AEB_NATIVE_AUTHORIZATION_GATEWAY_KEY_VERSION = "AEB-NATIVE-AUTHORIZATION-GATEWAY-KEY-v1";
 export declare const AEB_NATIVE_AUTHORIZATION_SOURCE_PIN_VERSION = "AEB-NATIVE-AUTHORIZATION-SOURCE-PIN-v1";
@@ -29,7 +35,13 @@ export interface AebNativeAuthorizationSource {
     profile: string;
     issuer: string;
     authorization_id: string;
-    /** Stable across wrapper and operation identifiers for this native grant. */
+    /**
+     * Gateway-computed replay unit under the default authority namespace (the
+     * issuer). It is derived from the issuer and authorization identifier only:
+     * wrapper IDs, operation IDs, and the `system` and `profile` labels are not
+     * inputs. A relying party that pins a distinct `authority_namespace`
+     * recomputes its own unit; see AebNativeAuthorizationHandoffVerification.
+     */
     replay_unit: AebNativeAuthorizationDigest;
 }
 export interface AebNativeAuthorizationHandoffBody {
@@ -68,6 +80,14 @@ export interface AebNativeAuthorizationSourcePin {
     system: AebNativeAuthorizationSystem;
     profile: string;
     issuer: string;
+    /**
+     * Relying-party-pinned namespace for this issuer's authorization
+     * identifiers. When omitted the namespace is the issuer. Every pin that
+     * accepts one issuer shares one namespace unless each of those pins declares
+     * one explicitly; a pin set that mixes declared and default namespaces for
+     * one issuer is refused.
+     */
+    authority_namespace?: string;
 }
 export interface AebNativeAuthorizationPins {
     '@version': typeof AEB_NATIVE_AUTHORIZATION_PINS_VERSION;
@@ -131,13 +151,35 @@ export interface AebNativeAuthorizationHandoffVerification {
     checks: Readonly<AebNativeAuthorizationHandoffChecks>;
     record_digest: AebNativeAuthorizationDigest;
     action_digest: AebNativeAuthorizationDigest | null;
+    /**
+     * Replay unit under the matched pin's authority namespace. Null unless the
+     * native source is pinned. It equals `handoff.native_authorization
+     * .replay_unit` when the pin declares no namespace.
+     */
     native_replay_unit: AebNativeAuthorizationDigest | null;
+    /** Relying-party-scoped durable replay key for `native_replay_unit`. */
     replay_key: string | null;
     handoff: Readonly<AebNativeAuthorizationHandoff> | null;
 }
 export declare function digestAebNativeAuthorizationAction(action: unknown): AebNativeAuthorizationDigest;
-export declare function deriveAebNativeAuthorizationReplayUnit(source: Omit<AebNativeAuthorizationSource, 'replay_unit'>): AebNativeAuthorizationDigest;
-export declare function aebNativeAuthorizationReplayKey(input: Pick<AebNativeAuthorizationHandoffBody, 'relying_party_id' | 'native_authorization'>): string;
+/**
+ * Derive the replay unit for one native authority: (authority namespace,
+ * issuer, native authorization identifier). The `system` and `profile` labels
+ * are validated but are never inputs, so relabelling one grant cannot make it
+ * spendable again. Without an explicit namespace the issuer is the namespace;
+ * that default is what a gateway signs on the wire.
+ */
+export declare function deriveAebNativeAuthorizationReplayUnit(source: Omit<AebNativeAuthorizationSource, 'replay_unit'>, options?: {
+    authority_namespace?: string;
+}): AebNativeAuthorizationDigest;
+/**
+ * Relying-party-scoped durable replay key. `authority_namespace` is the value
+ * pinned by the relying party for the accepted source; omit it for the default
+ * (issuer) namespace.
+ */
+export declare function aebNativeAuthorizationReplayKey(input: Pick<AebNativeAuthorizationHandoffBody, 'relying_party_id' | 'native_authorization'> & {
+    authority_namespace?: string;
+}): string;
 /**
  * Issue a gateway statement for one native PERMIT. The caller supplies the
  * native system's stable authorization identifier. Operation and wrapper IDs
@@ -160,8 +202,8 @@ export declare function verifyAebNativeAuthorizationHandoff(handoffValue: unknow
 declare const _default: Readonly<{
     AEB_NATIVE_AUTHORIZATION_HANDOFF_VERSION: "AEB-NATIVE-AUTHORIZATION-HANDOFF-v1";
     AEB_NATIVE_AUTHORIZATION_HANDOFF_DOMAIN: "AEB-NATIVE-AUTHORIZATION-HANDOFF-v1\0";
-    AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN: "AEB-NATIVE-AUTHORIZATION-REPLAY-v1";
-    AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN: "AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v1";
+    AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN: "AEB-NATIVE-AUTHORIZATION-REPLAY-v2";
+    AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN: "AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2";
     AEB_NATIVE_AUTHORIZATION_ACTION_DOMAIN: "AEB-NATIVE-AUTHORIZATION-ACTION-v1";
     AEB_NATIVE_AUTHORIZATION_GATEWAY_KEY_VERSION: "AEB-NATIVE-AUTHORIZATION-GATEWAY-KEY-v1";
     AEB_NATIVE_AUTHORIZATION_SOURCE_PIN_VERSION: "AEB-NATIVE-AUTHORIZATION-SOURCE-PIN-v1";
