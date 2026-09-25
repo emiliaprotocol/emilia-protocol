@@ -19,6 +19,10 @@ import {
   verifyAebNativeAuthorizationHandoff,
   verifyAebNativeAuthorizationPins,
 } from './aeb.js';
+import {
+  AEB_ISSUER_COMPARISON_MAX_LENGTH,
+  aebIssuerComparisonForm,
+} from './dist/aeb-issuer-comparison.js';
 
 const ACTION = Object.freeze({
   action_type: 'payment.release.1',
@@ -877,4 +881,115 @@ test('S6: did:web host case and spiffe trust-domain case are issuer aliases', ()
     const distinct = withSources(f, [sourcePin(f, { issuer: first }), sourcePin(f, { issuer: second })]);
     assert.deepEqual(verifyAebNativeAuthorizationPins(distinct), { valid: true, reasons: [] }, `${first} ${second}`);
   }
+});
+
+// T5: issuer normalization is linear. The reference below is the round-four
+// regular-expression implementation, kept only to prove that the linear
+// rewrite gives the same comparison form for every issuer the pin grammar
+// admits (S6 alias behavior unchanged).
+function referenceIssuerComparisonForm(issuer) {
+  const ports = { 'http:': '80', 'https:': '443', 'ws:': '80', 'wss:': '443', 'ftp:': '21' };
+  const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(issuer);
+  if (!scheme) return issuer;
+  const protocol = `${scheme[1].toLowerCase()}:`;
+  const rest = issuer.slice(scheme[0].length);
+  if (protocol === 'urn:') {
+    const nid = /^([A-Za-z0-9][A-Za-z0-9-]{0,31}):/.exec(rest);
+    return nid ? `urn:${nid[1].toLowerCase()}:${rest.slice(nid[0].length)}` : `urn:${rest}`;
+  }
+  if (protocol === 'did:') {
+    const method = /^([A-Za-z0-9]+):/.exec(rest);
+    if (!method) return `did:${rest}`;
+    const methodName = method[1].toLowerCase();
+    const id = rest.slice(method[0].length);
+    if (methodName !== 'web') return `did:${methodName}:${id}`;
+    const [host, ...path] = id.split(':');
+    const normalizedHost = host.toLowerCase().replace(/\.+$/, '');
+    return `did:web:${normalizedHost}${path.length > 0 ? `:${path.join(':')}` : ''}`;
+  }
+  if (protocol === 'spiffe:') {
+    const authority = /^\/\/([^/?#]*)(.*)$/.exec(rest);
+    if (!authority) return `spiffe:${rest}`;
+    const trustDomain = authority[1].toLowerCase().replace(/\.+$/, '');
+    return `spiffe://${trustDomain}${authority[2].replace(/\/+$/, '')}`;
+  }
+  if (!Object.hasOwn(ports, protocol)) return `${protocol}${rest}`;
+  let url;
+  try { url = new URL(issuer); } catch { return `${protocol}${rest}`; }
+  const port = url.port !== '' && url.port !== ports[url.protocol] ? `:${url.port}` : '';
+  const userinfo = url.username !== '' || url.password !== ''
+    ? `${url.username}${url.password !== '' ? `:${url.password}` : ''}@`
+    : '';
+  const host = url.hostname.toLowerCase().replace(/\.+$/, '');
+  const path = url.pathname.replace(/\/+$/, '');
+  return `${url.protocol}//${userinfo}${host}${port}${path}${url.search}${url.hash}`;
+}
+
+test('T5: issuer normalization gives the round-four comparison form for every grammar issuer', () => {
+  const alphabet = 'aAzZ09_.:@/#-';
+  const prefixes = [
+    '', 'did:web:', 'DID:WEB:', 'did:key:', 'did:', 'did:Web:', 'spiffe://', 'SPIFFE://', 'spiffe:',
+    'urn:', 'URN:Example:', 'urn:x-y:', 'https://', 'HTTPS://', 'http:', 'ws://', 'wss://h:443',
+    'ftp://h:21/', 'https://u:p@h.', 'mailto:', 'x+y.z-w:',
+  ];
+  let seed = 0x5eed;
+  const next = () => {
+    seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+    return seed;
+  };
+  let compared = 0;
+  for (const prefix of prefixes) {
+    for (let round = 0; round < 400; round += 1) {
+      const length = next() % 40;
+      let tail = '';
+      for (let index = 0; index < length; index += 1) tail += alphabet[next() % alphabet.length];
+      const issuer = `${prefix}${tail}`;
+      if (!/^[A-Za-z0-9][A-Za-z0-9_.:@/#-]{0,511}$/.test(issuer)) continue;
+      assert.equal(aebIssuerComparisonForm(issuer), referenceIssuerComparisonForm(issuer), issuer);
+      compared += 1;
+    }
+  }
+  for (const issuer of [
+    'did:web:Authz.Example.:users:pay', 'did:web:authz.example...', 'spiffe://AUTHZ.EXAMPLE./ns/pay//',
+    'spiffe://a#frag/', 'spiffe://', 'spiffe:/x', 'urn:ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456:x',
+    'urn:ABCDEFGHIJKLMNOPQRSTUVWXYZ012345:x', 'https://Authz.Example.:443/a//', 'https://h/p/#x',
+    `did:web:${'.'.repeat(503)}x`, `spiffe://a${'/'.repeat(501)}`, `https://h/${'/'.repeat(502)}`,
+  ]) {
+    assert.equal(aebIssuerComparisonForm(issuer), referenceIssuerComparisonForm(issuer), issuer);
+    compared += 1;
+  }
+  assert.ok(compared > 5000, `compared ${compared}`);
+});
+
+test('T5: adversarial issuers are normalized in bounded time (no polynomial backtracking)', () => {
+  const huge = 200_000;
+  const adversarial = [
+    `did:web:${'.'.repeat(huge)}x`,
+    `did:web:a${'.'.repeat(huge)}:p`,
+    `spiffe://a${'.'.repeat(huge)}x/`,
+    `spiffe://a${'/'.repeat(huge)}x`,
+    `spiffe://${'"'.repeat(huge)}\n`,
+    `spiffe://${'"'.repeat(huge)}`,
+    `https://h/${'/'.repeat(huge)}x`,
+    // Grammar-length inputs take the full linear path.
+    `did:web:${'.'.repeat(AEB_ISSUER_COMPARISON_MAX_LENGTH - 9)}x`,
+    `spiffe://a${'/'.repeat(AEB_ISSUER_COMPARISON_MAX_LENGTH - 11)}x`,
+    `spiffe://${'.'.repeat(AEB_ISSUER_COMPARISON_MAX_LENGTH - 10)}x`,
+  ];
+  for (const issuer of adversarial) {
+    const started = process.hrtime.bigint();
+    for (let repeat = 0; repeat < 20; repeat += 1) aebIssuerComparisonForm(issuer);
+    const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
+    assert.ok(elapsedMs < 250, `${issuer.slice(0, 24)}... (${issuer.length} chars) took ${elapsedMs.toFixed(1)} ms for 20 runs`);
+  }
+  // Longer than the pin grammar admits: returned unchanged, never parsed.
+  const tooLong = `did:web:${'.'.repeat(AEB_ISSUER_COMPARISON_MAX_LENGTH)}`;
+  assert.equal(aebIssuerComparisonForm(tooLong), tooLong);
+  // The pin grammar refuses such issuers before normalization is reached.
+  const f = fixture();
+  const pins = withSources(f, [sourcePin(f, { issuer: `spiffe://${'"'.repeat(64)}` })]);
+  const started = process.hrtime.bigint();
+  const result = verifyAebNativeAuthorizationPins(pins);
+  assert.equal(result.valid, false);
+  assert.ok(Number(process.hrtime.bigint() - started) / 1e6 < 250);
 });

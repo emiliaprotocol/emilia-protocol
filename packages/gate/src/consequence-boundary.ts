@@ -10,9 +10,10 @@
  * approvals, mint authority, or require an EMILIA receipt.
  *
  * Reservation ownership: every reservation a native attempt can release or
- * close is keyed by its attempt ID (the diagnostic executed marker is only
- * ever committed), so a release, close, or recovery claim can only reach rows
- * that attempt created. On the composed boundary the action-fence holder is
+ * close is keyed by its boundary ID and attempt ID (the diagnostic executed
+ * marker is only ever committed), so a release, close, or recovery claim can
+ * only reach rows that attempt created, even on a store that two boundaries
+ * of one kind share. On the composed boundary the action-fence holder is
  * keyed the same way; the evaluation reservation is keyed by the evaluation,
  * and an attempt commits it only while its own holder is still held, which
  * marks it as that reservation's owner. The durable attempt record is written
@@ -26,6 +27,11 @@
  * releases nothing. Pre-entry recovery and terminal reconciliation are
  * separate reconcile() modes, and a pre-entry recovery that loses its
  * RESERVED -> RELEASED transition to the live run releases nothing.
+ *
+ * Provider entry: a run invokes the provider only after a durable read shows
+ * its own move to INVOKING, and never after it has sent any write that could
+ * record not-entered for its attempt. A start that no read confirms is held
+ * (INDETERMINATE attempt_start_unconfirmed) with no not-entered write.
  */
 
 import crypto from 'node:crypto';
@@ -77,6 +83,12 @@ export const NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN =
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$/;
 const AUTHORIZATION_INSTANCE = /^[A-Za-z0-9_.:-]{1,256}$/;
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
+/**
+ * Grammar of a boundary ID (`boundary_id`): 1 to 128 letters, digits, `_`,
+ * `.`, or `-`, starting with a letter or digit. It has no `:`, so a recovery
+ * attempt identity `<kind>:<boundary_id>:<attempt_id>` reads one way.
+ */
+const BOUNDARY_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
 
 type JsonObject = Record<string, unknown>;
 
@@ -247,11 +259,49 @@ export interface ConsequenceBoundaryAuthorizationContext {
 export type ConsequenceBoundaryProviderOutcomePurpose = 'provider_outcome' | 'pre_entry_lookup';
 
 /**
+ * What evidence presented to reconcile() is, in Gate's own input schema: the
+ * provider's terminal outcome for the attempt (`provider_outcome`), or the
+ * provider's lookup for an attempt Gate recorded as never entered
+ * (`pre_entry_lookup`). Terminal reconciliation refuses a `pre_entry_lookup`
+ * and pre-entry recovery refuses a `provider_outcome`, both before the
+ * verifier is called (`evidence_kind_mismatch`). Gate cannot tell whether the
+ * operator labelled the evidence correctly; a mislabel, and a verifier that
+ * affirms whatever it is asked, stay outside what Gate can detect.
+ */
+export type ConsequenceBoundaryEvidenceKind = ConsequenceBoundaryProviderOutcomePurpose;
+
+/**
+ * An outcome presented to reconcile(). EXECUTED and FAILED carry the
+ * `evidence_kind` of their evidence; without it reconcile() refuses
+ * (`evidence_kind_required`). INDETERMINATE carries no evidence and no kind.
+ */
+export type ConsequenceBoundaryPresentedOutcome<TResult> =
+  | {
+    state: 'EXECUTED';
+    evidence_kind: ConsequenceBoundaryEvidenceKind;
+    evidence: ConsequenceBoundaryEvidence;
+    result: TResult;
+  }
+  | {
+    state: 'FAILED';
+    evidence_kind: ConsequenceBoundaryEvidenceKind;
+    evidence: ConsequenceBoundaryEvidence;
+    reason: string;
+  }
+  | {
+    state: 'INDETERMINATE';
+    reason: string;
+  };
+
+/**
  * The only answer from a provider-outcome verifier that Gate accepts. It must
  * restate the purpose it evaluated, the attempt ID, and the attempt's provider
  * idempotency key exactly as the context gave them. Anything else, including
- * a plain `true`, is "not verified": a verifier that ignores `purpose` cannot
- * silently accept a pre-entry lookup as a terminal outcome.
+ * a plain `true`, is "not verified", so a verifier that answers without
+ * reading the context affirms nothing. Gate cannot tell whether a verifier
+ * that restates the context evaluated the evidence for that purpose: a
+ * correctly labelled lookup is kept out of terminal reconciliation by its
+ * evidence kind (ConsequenceBoundaryEvidenceKind), not by this answer.
  */
 export interface ConsequenceBoundaryProviderOutcomeAffirmation {
   verified: true;
@@ -280,6 +330,15 @@ export interface ConsequenceBoundaryProviderOutcomeVerificationContext<TResult> 
 
 export interface ConsequenceBoundaryOptions<TResult> {
   executor_id: string;
+  /**
+   * Stable identifier of this boundary among every boundary that shares its
+   * consumption store (grammar: 1 to 128 of `A-Za-z0-9_.-`, starting with a
+   * letter or digit). Every attempt-derived reservation key and the recovery
+   * attempt identity include it, so two boundaries of the same kind on one
+   * store never collide, even with identical attempt IDs. Keep it unchanged
+   * for as long as the boundary's attempts may still need reconciliation.
+   */
+  boundary_id: string;
   provider: ConsequenceBoundaryProvider;
   aeb: {
     config: AebPinnedConfig;
@@ -333,13 +392,15 @@ export interface ConsequenceBoundaryOptions<TResult> {
   ): ConsequenceBoundaryEffectOutcome<TResult>
     | Promise<ConsequenceBoundaryEffectOutcome<TResult>>;
   /**
-   * Provider-outcome verifier. Terminal reconciliation refuses without it
-   * (`provider_outcome_verifier_required`) and closes nothing unless it
-   * affirms purpose `provider_outcome` for the attempt. When configured, run()
-   * also verifies its own provider result, and pre-entry recovery verifies a
-   * FAILED lookup as `pre_entry_lookup`.
+   * Provider-outcome verifier, required: construction refuses without it
+   * (`provider_outcome_verifier_required`). run() closes a terminal EXECUTED
+   * or FAILED, and terminal reconciliation closes anything, only on its
+   * affirmation of purpose `provider_outcome` for the attempt and its
+   * provider idempotency key; an adapter's unverified FAILED never releases
+   * the fence. Pre-entry recovery verifies a FAILED lookup as
+   * `pre_entry_lookup`.
    */
-  provider_outcomes?: {
+  provider_outcomes: {
     verify(
       context: Readonly<ConsequenceBoundaryProviderOutcomeVerificationContext<TResult>>,
     ): ConsequenceBoundaryProviderOutcomeAnswer
@@ -367,14 +428,20 @@ export interface ConsequenceBoundaryRunInput {
  *
  * `terminal` (the default): close an attempt that reached INVOKING with the
  * provider's terminal outcome for it (EXECUTED, or FAILED meaning the effect
- * did not and will not occur), affirmed by the provider-outcome verifier for
+ * did not and will not occur), presented with `evidence_kind:
+ * 'provider_outcome'` and affirmed by the provider-outcome verifier for
  * purpose `provider_outcome` before anything changes. A RESERVED record, or a
  * RELEASED record carrying the not-entered marker, is `INDETERMINATE`
- * `pre_entry_recovery_required` and nothing changes.
+ * `pre_entry_recovery_required` and nothing changes. An INVOKING record whose
+ * run never called the provider (an unconfirmed start) closes only here, with
+ * provider evidence the verifier accepts as authenticating that no operation
+ * exists under the attempt's provider idempotency key; otherwise it stays
+ * fenced by design.
  *
  * `pre_entry`: close an attempt that stopped before provider entry. The
- * outcome is the provider's lookup for this attempt: FAILED ("not found"),
- * or INDETERMINATE when no lookup exists; EXECUTED contradicts the record.
+ * outcome is the provider's lookup for this attempt, presented with
+ * `evidence_kind: 'pre_entry_lookup'`: FAILED ("not found"), or
+ * INDETERMINATE when no lookup exists; EXECUTED contradicts the record.
  * It succeeds only through this call's own RESERVED -> RELEASED transition
  * with the not-entered marker (or an earlier one, recorded with that marker).
  * If the attempt reached INVOKING first, the lookup is discarded and the
@@ -392,7 +459,8 @@ export interface ConsequenceBoundaryReconcileInput<TResult> {
   action: unknown;
   artifacts: Record<string, unknown>;
   attempt: unknown;
-  outcome: ConsequenceBoundaryEffectOutcome<TResult>;
+  /** See ConsequenceBoundaryPresentedOutcome and ConsequenceBoundaryEvidenceKind. */
+  outcome: ConsequenceBoundaryPresentedOutcome<TResult>;
   recovery_authorization: unknown;
   mode?: ConsequenceBoundaryReconcileMode;
 }
@@ -471,6 +539,8 @@ export interface NativeConsequenceBoundaryEffectContext {
 
 export interface NativeConsequenceBoundaryOptions<TResult> {
   executor_id: string;
+  /** See ConsequenceBoundaryOptions.boundary_id; the same grammar and rule. */
+  boundary_id: string;
   provider: ConsequenceBoundaryProvider;
   native_authorization: {
     /** `pins.relying_party_id` must also satisfy the Gate identifier grammar. */
@@ -491,8 +561,8 @@ export interface NativeConsequenceBoundaryOptions<TResult> {
      * refuses a key that is not one of that attempt's rows
      * (consequenceBoundaryRecoveryClaimKey), so one credential bound to the
      * attempt identity (consequenceBoundaryRecoveryAttemptIdentity: the
-     * boundary kind and the attempt ID) covers all three and no other
-     * attempt's rows, on either boundary.
+     * boundary kind, the boundary ID, and the attempt ID) covers all three
+     * and no other attempt's rows, on any boundary.
      */
     store: AebDurableConsumptionStore & {
       state(key: string): AebConsumptionState | Promise<AebConsumptionState>;
@@ -567,7 +637,8 @@ export interface NativeConsequenceBoundaryReconcileInput<TResult> {
   handoff: unknown;
   action: unknown;
   attempt: unknown;
-  outcome: ConsequenceBoundaryEffectOutcome<TResult>;
+  /** See ConsequenceBoundaryPresentedOutcome and ConsequenceBoundaryEvidenceKind. */
+  outcome: ConsequenceBoundaryPresentedOutcome<TResult>;
   recovery_authorization: unknown;
   /** See ConsequenceBoundaryReconcileMode; `terminal` when omitted. */
   mode?: ConsequenceBoundaryReconcileMode;
@@ -688,6 +759,10 @@ function digest(value: unknown): value is AebDigest {
   return typeof value === 'string' && DIGEST.test(value);
 }
 
+function boundaryIdentifier(value: unknown): value is string {
+  return typeof value === 'string' && BOUNDARY_ID.test(value);
+}
+
 function canonicalInstant(value: unknown): value is string {
   if (typeof value !== 'string') return false;
   const milliseconds = Date.parse(value);
@@ -789,6 +864,34 @@ function normalizeEffectOutcome<TResult>(
       : null;
   }
   return null;
+}
+
+const EVIDENCE_KINDS: readonly ConsequenceBoundaryEvidenceKind[] = ['provider_outcome', 'pre_entry_lookup'];
+
+/**
+ * Read the evidence kind of an outcome presented to reconcile() and check it
+ * against the mode, before anything else looks at the outcome. EXECUTED and
+ * FAILED must carry `evidence_kind`; the rest of the outcome is returned
+ * without it for normalizeEffectOutcome(). INDETERMINATE and malformed
+ * outcomes pass through unchanged and are judged there.
+ */
+function presentedOutcome(
+  value: unknown,
+  mode: ConsequenceBoundaryReconcileMode,
+): { refusal: string } | { refusal: null; outcome: unknown } {
+  const record = dataRecord(value);
+  if (!record || (record.state !== 'EXECUTED' && record.state !== 'FAILED')) {
+    return { refusal: null, outcome: value };
+  }
+  const kind = record.evidence_kind;
+  if (!EVIDENCE_KINDS.includes(kind as ConsequenceBoundaryEvidenceKind)) {
+    return { refusal: 'evidence_kind_required' };
+  }
+  if (kind !== (mode === 'terminal' ? 'provider_outcome' : 'pre_entry_lookup')) {
+    return { refusal: 'evidence_kind_mismatch' };
+  }
+  const { evidence_kind: _kind, ...outcome } = record;
+  return { refusal: null, outcome };
 }
 
 function publicAttempt(
@@ -1168,20 +1271,23 @@ export interface NativeConsequenceBoundaryAttemptReservationKeys {
 
 /**
  * Consumption-store keys of one native attempt. Every row key includes the
- * attempt ID, and the authority and holder keys are derived from the
- * attempt's operation key, so a release, close, or recovery claim for one
- * attempt can never reach a row another attempt wrote, even when both carry
- * the same caller-chosen operation ID.
+ * boundary ID and the attempt ID, and the authority and holder keys are
+ * derived from the attempt's operation key, so a release, close, or recovery
+ * claim for one attempt can never reach a row another attempt wrote, even
+ * when both carry the same caller-chosen operation ID, or when two boundaries
+ * of the same kind on one store reuse an attempt ID.
  */
 export function nativeConsequenceBoundaryAttemptReservationKeys(input: {
   relying_party_id: string;
   provider: ConsequenceBoundaryProvider;
   operation_id: string;
   action_digest: AebNativeAuthorizationDigest;
+  /** The boundary's `boundary_id`. */
+  boundary_id: string;
   attempt_id: string;
 }): NativeConsequenceBoundaryAttemptReservationKeys {
   const record = dataRecord(input);
-  if (!record || !identifier(record.attempt_id)) {
+  if (!record || !identifier(record.attempt_id) || !boundaryIdentifier(record.boundary_id)) {
     throw new TypeError('native_attempt_reservation_binding_invalid');
   }
   const operationFence = nativeConsequenceBoundaryReservationKey({
@@ -1194,7 +1300,7 @@ export function nativeConsequenceBoundaryAttemptReservationKeys(input: {
     provider: record.provider as ConsequenceBoundaryProvider,
     action_digest: record.action_digest as AebNativeAuthorizationDigest,
   });
-  const operation = nativeAttemptOperationKey(operationFence, record.attempt_id);
+  const operation = nativeAttemptOperationKey(operationFence, record.boundary_id, record.attempt_id);
   return {
     operation_fence: operationFence,
     action_fence: actionFence,
@@ -1204,10 +1310,15 @@ export function nativeConsequenceBoundaryAttemptReservationKeys(input: {
   };
 }
 
-function nativeAttemptOperationKey(operationFence: string, attemptId: string): string {
+function nativeAttemptOperationKey(
+  operationFence: string,
+  boundaryId: string,
+  attemptId: string,
+): string {
   return `aeb-native-attempt-operation:${digestAeb({
     domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ATTEMPT-OPERATION`,
     operation_fence: operationFence,
+    boundary_id: boundaryId,
     attempt_id: attemptId,
   })}`;
 }
@@ -1229,29 +1340,32 @@ function nativeAttemptHolderKey(operationKey: string): string {
 const NATIVE_OPERATION_FENCE_KEY = /^aeb-native-operation:sha256:[a-f0-9]{64}$/;
 const COMPOSED_RESERVATION_KEY = /^aeb:sha256:[a-f0-9]{64}$/;
 const RECOVERY_CLAIM_SCOPE_KEYS = [
-  'boundary', 'attemptId', 'operationId', 'recoveryOperationKey', 'reservation',
+  'boundary', 'boundaryId', 'attemptId', 'operationId', 'recoveryOperationKey', 'reservation',
 ];
 
 /**
  * The exact consumption-store row a recovery claim scope names, derived the
- * way the boundaries derive it: from the scope's boundary kind, its recovery
- * operation key (the native operation fence, or the composed evaluation
- * reservation key), its attempt ID, and which reservation it names. A
- * `native` scope derives only native rows and a `composed` scope only
+ * way the boundaries derive it: from the scope's boundary kind, its boundary
+ * ID, its recovery operation key (the native operation fence, or the composed
+ * evaluation reservation key), its attempt ID, and which reservation it
+ * names. A `native` scope derives only native rows and a `composed` scope only
  * composed rows. Null for a scope no boundary produces. A store that is given
  * a scope refuses a claim on any other row, so a credential bound to one
  * attempt identity (consequenceBoundaryRecoveryAttemptIdentity()) cannot
- * claim another attempt's row, on either boundary.
+ * claim another attempt's row, on any boundary. `operationId` is carried for
+ * the authorizer but is caller-asserted: no row key is derived from it.
  */
 export function consequenceBoundaryRecoveryClaimKey(scope: unknown): string | null {
   const record = dataRecord(scope);
   if (!record || !exactKeys(record, RECOVERY_CLAIM_SCOPE_KEYS)
+      || !boundaryIdentifier(record.boundaryId)
       || !identifier(record.attemptId) || typeof record.operationId !== 'string'
       || typeof record.recoveryOperationKey !== 'string') return null;
+  const boundaryId = record.boundaryId;
   const attemptId = record.attemptId;
   const recoveryOperationKey = record.recoveryOperationKey;
   if (record.boundary === 'native' && NATIVE_OPERATION_FENCE_KEY.test(recoveryOperationKey)) {
-    const operation = nativeAttemptOperationKey(recoveryOperationKey, attemptId);
+    const operation = nativeAttemptOperationKey(recoveryOperationKey, boundaryId, attemptId);
     if (record.reservation === 'operation') return operation;
     if (record.reservation === 'native-authority') return nativeAttemptAuthorityKey(operation);
     if (record.reservation === 'action-fence-holder') return nativeAttemptHolderKey(operation);
@@ -1262,6 +1376,7 @@ export function consequenceBoundaryRecoveryClaimKey(scope: unknown): string | nu
     if (record.reservation === 'action-fence-holder') {
       return consequenceBoundaryActionFenceHolderKey({
         reservation_key: recoveryOperationKey,
+        boundary_id: boundaryId,
         attempt_id: attemptId,
       });
     }
@@ -1270,16 +1385,18 @@ export function consequenceBoundaryRecoveryClaimKey(scope: unknown): string | nu
 }
 
 /**
- * The attempt identity a recovery credential binds to: the boundary kind and
- * the attempt ID, as `native:<attemptId>` or `composed:<attemptId>`. Every
- * row of one attempt carries the same identity, and a native and a composed
- * attempt never share one even when their attempt IDs are equal. Null for a
- * scope that consequenceBoundaryRecoveryClaimKey() refuses.
+ * The attempt identity a recovery credential binds to: the boundary kind, the
+ * boundary ID, and the attempt ID, as `native:<boundaryId>:<attemptId>` or
+ * `composed:<boundaryId>:<attemptId>`. The boundary ID grammar has no `:`,
+ * so the identity reads one way. Every row of one attempt carries the same
+ * identity; attempts on two boundaries never share one, whatever their kinds
+ * and attempt IDs. Null for a scope that consequenceBoundaryRecoveryClaimKey()
+ * refuses.
  */
 export function consequenceBoundaryRecoveryAttemptIdentity(scope: unknown): string | null {
   if (consequenceBoundaryRecoveryClaimKey(scope) === null) return null;
   const record = dataRecord(scope)!;
-  return `${record.boundary as string}:${record.attemptId as string}`;
+  return `${record.boundary as string}:${record.boundaryId as string}:${record.attemptId as string}`;
 }
 
 /**
@@ -1306,6 +1423,7 @@ export function nativeConsequenceBoundaryActionFenceHolderKey(input: {
   provider: ConsequenceBoundaryProvider;
   operation_id: string;
   action_digest: AebNativeAuthorizationDigest;
+  boundary_id: string;
   attempt_id: string;
 }): string {
   return nativeConsequenceBoundaryAttemptReservationKeys(input).holder;
@@ -1314,19 +1432,23 @@ export function nativeConsequenceBoundaryActionFenceHolderKey(input: {
 /**
  * Key of the reservation that holds the action fence for one attempt on the
  * composed (AEB evaluation) boundary: derived from the evaluation's
- * consumption reservation key and the attempt ID.
+ * consumption reservation key, the boundary ID, and the attempt ID.
  */
 export function consequenceBoundaryActionFenceHolderKey(input: {
   reservation_key: string;
+  /** The boundary's `boundary_id`. */
+  boundary_id: string;
   attempt_id: string;
 }): string {
   if (!isObject(input) || typeof input.reservation_key !== 'string'
-      || !input.reservation_key.startsWith('aeb:') || !identifier(input.attempt_id)) {
+      || !input.reservation_key.startsWith('aeb:') || !boundaryIdentifier(input.boundary_id)
+      || !identifier(input.attempt_id)) {
     throw new TypeError('action_fence_holder_binding_invalid');
   }
   return `aeb-action-holder:${digestAeb({
     domain: `${CONSEQUENCE_BOUNDARY_VERSION}:ACTION-FENCE-HOLDER`,
     reservation_key: input.reservation_key,
+    boundary_id: input.boundary_id,
     attempt_id: input.attempt_id,
   })}`;
 }
@@ -1348,6 +1470,7 @@ function deriveNativeConsumptionKeys(input: {
   provider: ConsequenceBoundaryProvider;
   operation_id: string;
   action_digest: AebNativeAuthorizationDigest;
+  boundary_id: string;
   attempt_id: string;
 }): NativeConsumptionKeys | null {
   try {
@@ -1389,9 +1512,15 @@ type AttemptSnapshot = { state: AttemptState; evidence?: unknown };
 
 /**
  * How many durable reads a run makes to resolve an unconfirmed move to
- * INVOKING before it closes the attempt as not entered without one.
+ * INVOKING. If none settles it, the run holds everything: it never invokes
+ * and never writes the not-entered marker for that attempt.
  */
 const START_CONFIRM_READS = 3;
+
+/** A consumption-store reserve() answer that proves this call wrote nothing. */
+function definedReservationConflict(answer: unknown): boolean {
+  return answer === false || answer === 'CONSUMPTION_CONFLICT' || answer === 'NATIVE_REPLAY_CONFLICT';
+}
 
 function notEnteredMarker(attemptId: string): ConsequenceBoundaryNotEnteredMarker {
   return Object.freeze({ kind: CONSEQUENCE_BOUNDARY_NOT_ENTERED, attempt_id: attemptId });
@@ -1500,9 +1629,6 @@ export function createConsequenceBoundary<TResult>(
       || typeof options.attempts.recover !== 'function'
       || typeof options.local_authorize !== 'function'
       || typeof options.invoke !== 'function'
-      || (options.provider_outcomes !== undefined
-        && (!isObject(options.provider_outcomes)
-          || typeof options.provider_outcomes.verify !== 'function'))
       || (options.consequence_envelope !== undefined
         && !secureConsequenceEnvelope(options.consequence_envelope))
       || (options.consequence_envelope?.guaranteeClass === 'test-only-process-local'
@@ -1510,8 +1636,19 @@ export function createConsequenceBoundary<TResult>(
       || (options.now !== undefined && typeof options.now !== 'function')) {
     throw new TypeError('consequence_boundary_configuration_invalid');
   }
+  if (!boundaryIdentifier(options.boundary_id)) {
+    throw new TypeError('consequence_boundary_configuration_invalid: boundary_id_invalid');
+  }
+  // As on the native boundary, a verifier is required: without one no
+  // terminal outcome, the boundary's own provider result included, could be
+  // authenticated before it releases or commits the fence.
+  if (!isObject(options.provider_outcomes)
+      || typeof options.provider_outcomes.verify !== 'function') {
+    throw new TypeError('consequence_boundary_configuration_invalid: provider_outcome_verifier_required');
+  }
 
   const provider: ConsequenceBoundaryProvider = cloneFrozen(options.provider);
+  const boundaryId = options.boundary_id;
   const now = options.now ?? (() => new Date().toISOString());
   const createAttemptId = options.attempts.create_id
     ?? (() => `attempt:${crypto.randomUUID()}`);
@@ -1531,9 +1668,7 @@ export function createConsequenceBoundary<TResult>(
     && typeof attemptStore.state === 'function'
     ? attemptStore.state.bind(attemptStore)
     : null;
-  const verifyComposedOutcome = options.provider_outcomes
-    ? options.provider_outcomes.verify.bind(options.provider_outcomes)
-    : null;
+  const verifyComposedOutcome = options.provider_outcomes.verify.bind(options.provider_outcomes);
 
   /**
    * Ask the configured provider-outcome verifier about one terminal outcome.
@@ -1548,7 +1683,6 @@ export function createConsequenceBoundary<TResult>(
     outcome: Exclude<ConsequenceBoundaryEffectOutcome<TResult>, { state: 'INDETERMINATE' }>,
     purpose: ConsequenceBoundaryProviderOutcomePurpose,
   ): Promise<boolean> {
-    if (!verifyComposedOutcome) return false;
     const answer = await guarded(() => verifyComposedOutcome(cloneFrozen({
       provider,
       operation_id: evaluation.operation_id,
@@ -1624,24 +1758,6 @@ export function createConsequenceBoundary<TResult>(
       snapshot = await composedAttemptState(reference);
     }
     return snapshot;
-  }
-
-  /**
-   * Close an attempt whose move to INVOKING was not confirmed, from a run
-   * that has not called the provider and never will. The store's
-   * compare-and-swap applies at most one of the two moves. Returns the state
-   * it was closed from, 'READ' when only a later durable read shows the
-   * not-entered marker, or null when nothing is confirmed.
-   */
-  async function closeUnconfirmedStart(
-    reference: ConsequenceBoundaryAttemptReference,
-  ): Promise<'RESERVED' | 'INVOKING' | 'READ' | null> {
-    if ((await composedTransition(reference, 'RESERVED', 'RELEASED')).confirmed) return 'RESERVED';
-    if ((await composedTransition(reference, 'INVOKING', 'RELEASED')).confirmed) return 'INVOKING';
-    if (!readComposedAttemptState) return null;
-    return isNotEntered(await composedAttemptStateRetried(reference), reference.attempt_id)
-      ? 'READ'
-      : null;
   }
 
   /** Only called with a durable read, whose store returns stored evidence. */
@@ -1941,6 +2057,7 @@ export function createConsequenceBoundary<TResult>(
       if (!identifier(attemptId)) throw new Error('attempt_id_invalid');
       holderKey = consequenceBoundaryActionFenceHolderKey({
         reservation_key: reservationKey,
+        boundary_id: boundaryId,
         attempt_id: attemptId,
       });
     } catch {
@@ -1989,6 +2106,7 @@ export function createConsequenceBoundary<TResult>(
       holderMayBeHeld: boolean,
       envelopeEntered: boolean,
       alreadyReleased = false,
+      reservationUnconfirmed = false,
     ): Promise<ConsequenceBoundaryResult<TResult>> {
       if (!alreadyReleased) {
         const released = await composedTransition(attempt, 'RESERVED', 'RELEASED');
@@ -2014,22 +2132,37 @@ export function createConsequenceBoundary<TResult>(
       if (!await releaseEvaluation()) {
         return indeterminate('evaluation_release_unconfirmed', false, publicBinding);
       }
-      return refused(reason);
+      // After an unknown reserve answer a write still in flight can land
+      // after these releases, so the stop is never reported as clean.
+      return reservationUnconfirmed
+        ? indeterminate('consumption_reservation_unconfirmed', false, publicBinding)
+        : refused(reason);
     }
 
     // The holder reservation is keyed by this attempt and fences the exact
     // action at this provider. It is written after the attempt record, so an
     // attempt that stops before entry can be found and its holder released by
     // reconcile().
-    let holderReserved = false;
+    let fenced: unknown;
+    let fenceThrew = false;
     try {
-      const fenced = await custody!.reserve(holderKey, [actionFence]);
-      holderReserved = fenced === true || fenced === 'RESERVED';
+      fenced = await custody!.reserve(holderKey, [actionFence]);
     } catch {
-      return stopBeforeEntry('consumption_store_unavailable', true, false);
+      fenceThrew = true;
     }
-    if (!holderReserved) {
-      return stopBeforeEntry(await custody!.actionFenceRefusal(executedMarker), false, false);
+    if (fenceThrew || (fenced !== true && fenced !== 'RESERVED')) {
+      if (!fenceThrew && definedReservationConflict(fenced)) {
+        return stopBeforeEntry(await custody!.actionFenceRefusal(executedMarker), false, false);
+      }
+      // A throw or an unknown answer may hide a holder write that landed or
+      // is still in flight. A durable read showing the key terminal proves
+      // this call wrote nothing; otherwise the holder is treated as held and
+      // the stop is INDETERMINATE even when every release is confirmed.
+      const observed = await custody!.state(holderKey);
+      if (observed === 'CONSUMED' || observed === 'RELEASED_NOT_ENTERED') {
+        return stopBeforeEntry(await custody!.actionFenceRefusal(executedMarker), false, false);
+      }
+      return stopBeforeEntry('consumption_reservation_unconfirmed', true, false, false, true);
     }
 
     let envelopeEntered = false;
@@ -2052,12 +2185,15 @@ export function createConsequenceBoundary<TResult>(
 
     // Provider entry. An answer other than exactly `true` is resolved by the
     // durable record, never by assumption: INVOKING means this owner's write
-    // landed and it proceeds; RESERVED means it did not, so the attempt is
-    // closed as not entered first; RELEASED with the not-entered marker means
-    // a pre-entry recovery linearized first; anything else holds every
-    // reservation. An unreadable record is read again, and if it stays
-    // unreadable this run, which has not called the provider and never will,
-    // closes the attempt as not entered from either state without a read.
+    // landed and it proceeds as the owner; RESERVED means it had not landed,
+    // so the attempt is closed as not entered and this run never invokes;
+    // RELEASED with the not-entered marker means a pre-entry recovery
+    // linearized first. An unreadable record is read again. If no read
+    // settles it (or the store has no durable read), the start is
+    // unconfirmed: the run holds every reservation and returns INDETERMINATE
+    // attempt_start_unconfirmed without invoking and without writing the
+    // not-entered marker. A run never invokes after it has sent a write that
+    // could record not-entered for its attempt.
     let start = await composedTransition(attempt, 'RESERVED', 'INVOKING');
     if (!start.confirmed && readComposedAttemptState && start.snapshot === null) {
       const reread = await composedAttemptStateRetried(attempt);
@@ -2069,17 +2205,6 @@ export function createConsequenceBoundary<TResult>(
       }
       if (readComposedAttemptState && isNotEntered(start.snapshot, attemptId)) {
         return stopBeforeEntry('attempt_released_by_recovery', true, envelopeEntered, true);
-      }
-      if (!readComposedAttemptState || start.snapshot === null) {
-        const closedFrom = await closeUnconfirmedStart(attempt);
-        if (closedFrom !== null) {
-          return stopBeforeEntry(
-            closedFrom === 'RESERVED' ? 'attempt_start_conflict' : 'attempt_start_unconfirmed',
-            true,
-            envelopeEntered,
-            true,
-          );
-        }
       }
       if (envelopeReservation) {
         await guarded(() => envelopeBoundary!.settle(envelopeReservation!, 'INDETERMINATE'), null);
@@ -2124,9 +2249,9 @@ export function createConsequenceBoundary<TResult>(
         return indeterminate('consequence_envelope_indeterminate_unconfirmed', true, publicBinding);
       }
     }
-    // With a verifier the result is snapshotted, as on the native path, so
-    // what was verified is what is returned.
-    const outcome = normalizeEffectOutcome<TResult>(rawOutcome, verifyComposedOutcome !== null);
+    // The result is snapshotted, as on the native path, so what was verified
+    // is what is returned.
+    const outcome = normalizeEffectOutcome<TResult>(rawOutcome, true);
     if (!outcome) {
       return indeterminate('provider_outcome_invalid', true, publicBinding);
     }
@@ -2140,7 +2265,10 @@ export function createConsequenceBoundary<TResult>(
     if (!validEvidence(outcome.evidence)) {
       return indeterminate('provider_evidence_invalid', true, publicBinding);
     }
-    if (verifyComposedOutcome && !await composedOutcomeVerified(
+    // An adapter's own classification never closes the fence: only the
+    // verifier's affirmation of purpose provider_outcome for this attempt and
+    // its provider idempotency key does, for EXECUTED and FAILED alike.
+    if (!await composedOutcomeVerified(
       attemptBinding,
       evaluation,
       evaluationDigest,
@@ -2249,6 +2377,12 @@ export function createConsequenceBoundary<TResult>(
     } catch {
       return refused('reconciliation_input_invalid');
     }
+    // The evidence kind is checked against the mode before anything else, so
+    // a lookup labelled as one never reaches the verifier as a terminal
+    // outcome, and a terminal outcome never serves as a pre-entry lookup.
+    const presented = presentedOutcome(rawOutcome, mode);
+    if (presented.refusal !== null) return refused(presented.refusal);
+    rawOutcome = presented.outcome;
     if (evaluation.executor_id !== options.executor_id) {
       return refused('executor_binding_mismatch');
     }
@@ -2289,9 +2423,8 @@ export function createConsequenceBoundary<TResult>(
         || attemptBinding.request_digest !== expectedRequestDigest) {
       return refused('reconciliation_binding_mismatch');
     }
-    // Snapshotted when a verifier will see it, so what was verified is what
-    // is returned.
-    const outcome = normalizeEffectOutcome<TResult>(rawOutcome, verifyComposedOutcome !== null);
+    // Snapshotted, so what was verified is what is returned.
+    const outcome = normalizeEffectOutcome<TResult>(rawOutcome, true);
 
     let recovered: ConsequenceBoundaryAttemptReference | null = null;
     try {
@@ -2319,6 +2452,7 @@ export function createConsequenceBoundary<TResult>(
       if (!relyingPartyText(relyingPartyId) || !custody) throw new Error('fence_unkeyable');
       holderKey = consequenceBoundaryActionFenceHolderKey({
         reservation_key: reservationKey,
+        boundary_id: boundaryId,
         attempt_id: attemptBinding.attempt_id,
       });
       executedMarker = nativeActionExecutedMarkerKey(actionFenceKeyUnchecked(
@@ -2331,6 +2465,7 @@ export function createConsequenceBoundary<TResult>(
     }
     const scope = (reservation: AebRecoveryClaimScope['reservation']): AebRecoveryClaimScope => ({
       boundary: 'composed',
+      boundaryId,
       attemptId: attemptBinding.attempt_id,
       operationId: evaluation.operation_id,
       recoveryOperationKey: reservationKey,
@@ -2363,9 +2498,9 @@ export function createConsequenceBoundary<TResult>(
           return indeterminate('recovery_lost_to_live_attempt', true, attemptBinding);
         }
       }
-      // A configured verifier must affirm the lookup as a pre-entry lookup.
-      // It is never used as a terminal outcome.
-      if (verifyComposedOutcome && outcome.state === 'FAILED' && !await composedOutcomeVerified(
+      // The verifier must affirm the lookup as a pre-entry lookup. It is never
+      // used as a terminal outcome.
+      if (outcome.state === 'FAILED' && !await composedOutcomeVerified(
         attemptBinding,
         evaluation,
         evaluationDigest,
@@ -2425,7 +2560,6 @@ export function createConsequenceBoundary<TResult>(
     if (!outcome || outcome.state === 'INDETERMINATE') {
       return indeterminate('provider_outcome_indeterminate', true, attemptBinding);
     }
-    if (!verifyComposedOutcome) return refused('provider_outcome_verifier_required');
     const terminalState = outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED';
     const providerEvidence: ConsequenceBoundaryProviderEvidence = cloneFrozen({
       ...attemptBinding,
@@ -2521,6 +2655,7 @@ export function createConsequenceBoundary<TResult>(
   return Object.freeze({
     version: CONSEQUENCE_BOUNDARY_VERSION,
     executor_id: options.executor_id,
+    boundary_id: boundaryId,
     provider,
     run,
     reconcile,
@@ -2713,6 +2848,7 @@ export function createNativeConsequenceBoundary<TResult>(
   let pins: AebNativeAuthorizationPins;
   let configured = false;
   let pinRefusal: string | null = null;
+  let configurationRefusal: string | null = null;
   try {
     provider = cloneFrozen(options?.provider);
     pins = cloneFrozen(options?.native_authorization?.pins);
@@ -2749,16 +2885,22 @@ export function createNativeConsequenceBoundary<TResult>(
       && digest(options.local_authorization_program_digest)
       && typeof options.local_authorize === 'function'
       && typeof options.invoke === 'function'
-      && isObject(options.provider_outcomes)
-      && digest(options.provider_outcomes.verification_program_digest)
-      && typeof options.provider_outcomes.verify === 'function'
+      && (!isObject(options.provider_outcomes)
+        || digest(options.provider_outcomes.verification_program_digest))
       && (options.now === undefined || typeof options.now === 'function');
+    if (configured && !boundaryIdentifier(options.boundary_id)) {
+      configurationRefusal = 'boundary_id_invalid';
+    } else if (configured && (!isObject(options.provider_outcomes)
+        || typeof options.provider_outcomes.verify !== 'function')) {
+      configurationRefusal = 'provider_outcome_verifier_required';
+    }
   } catch {
     configured = false;
   }
-  if (!configured) {
-    throw new TypeError(pinRefusal
-      ? `native_consequence_boundary_configuration_invalid: ${pinRefusal}`
+  if (!configured || configurationRefusal !== null) {
+    const refusal = pinRefusal ?? configurationRefusal;
+    throw new TypeError(refusal
+      ? `native_consequence_boundary_configuration_invalid: ${refusal}`
       : 'native_consequence_boundary_configuration_invalid');
   }
   provider = provider!;
@@ -2766,6 +2908,7 @@ export function createNativeConsequenceBoundary<TResult>(
 
   const attemptStore = options.attempts.store;
   const executorId = options.executor_id;
+  const boundaryId = options.boundary_id;
   const relyingPartyId = pins.relying_party_id;
   const now = options.now?.bind(options) ?? (() => new Date().toISOString());
   const createAttemptId = options.attempts.create_id?.bind(options.attempts)
@@ -2991,6 +3134,7 @@ export function createNativeConsequenceBoundary<TResult>(
   ): AebRecoveryClaimScope {
     return {
       boundary: 'native',
+      boundaryId,
       attemptId: attempt.attempt_id,
       operationId: attempt.operation_id,
       recoveryOperationKey: keys.operation_fence,
@@ -3203,6 +3347,7 @@ export function createNativeConsequenceBoundary<TResult>(
       provider,
       operation_id: operationId,
       action_digest: verification.action_digest,
+      boundary_id: boundaryId,
       attempt_id: attemptId,
     });
     if (!derivedKeys) return refused('native_consequence_binding_invalid');
@@ -3257,6 +3402,7 @@ export function createNativeConsequenceBoundary<TResult>(
     async function stopBeforeEntry(
       expected: 'RESERVED' | 'INVOKING',
       reason: string,
+      reservationUnconfirmed = false,
     ): Promise<ConsequenceBoundaryResult<TResult>> {
       const attemptReleased = notEntered(
         await transitionAttempt(attempt, expected, 'RELEASED'),
@@ -3270,9 +3416,16 @@ export function createNativeConsequenceBoundary<TResult>(
       for (const key of [...held].reverse()) {
         released = await custody.releaseConfirmed(key) && released;
       }
-      return released
-        ? refused(reason)
-        : indeterminate('native_pre_entry_release_unconfirmed', false, publicNativeAttempt(attempt));
+      if (!released) {
+        return indeterminate('native_pre_entry_release_unconfirmed', false, publicNativeAttempt(attempt));
+      }
+      // After an unknown reserve answer a write still in flight can land
+      // after these releases. The attempt record carries the not-entered
+      // marker, so pre-entry recovery can release such a row, but the stop
+      // is never reported as clean.
+      return reservationUnconfirmed
+        ? indeterminate('consumption_reservation_unconfirmed', false, publicNativeAttempt(attempt))
+        : refused(reason);
     }
 
     // 2. Three attempt-bound reservations, in refusal-precedence order: the
@@ -3296,16 +3449,31 @@ export function createNativeConsequenceBoundary<TResult>(
     ];
     for (const [key, fences, conflictReason] of reservations) {
       let reservation: unknown;
+      let threw = false;
       try {
         reservation = await custody.reserve(key, fences);
       } catch {
-        held.push(key);
-        return stopBeforeEntry('RESERVED', 'consumption_store_unavailable');
+        threw = true;
       }
-      if (reservation !== true && reservation !== 'RESERVED') {
+      if (!threw && (reservation === true || reservation === 'RESERVED')) {
+        held.push(key);
+        continue;
+      }
+      // A defined conflict proves this call wrote nothing.
+      if (!threw && definedReservationConflict(reservation)) {
+        return stopBeforeEntry('RESERVED', await conflictReason());
+      }
+      // A throw or an answer that is neither exactly true/'RESERVED' nor a
+      // defined conflict is unknown: the write may have landed or may still
+      // land. Only a durable read showing the key terminal proves this call
+      // wrote nothing; otherwise the key counts as held and the run stops
+      // before entry with an INDETERMINATE result, never a clean refusal.
+      const observed = await custody.state(key);
+      if (observed === 'CONSUMED' || observed === 'RELEASED_NOT_ENTERED') {
         return stopBeforeEntry('RESERVED', await conflictReason());
       }
       held.push(key);
+      return stopBeforeEntry('RESERVED', 'consumption_reservation_unconfirmed', true);
     }
 
     let entryVerification: AebNativeAuthorizationHandoffVerification;
@@ -3339,34 +3507,23 @@ export function createNativeConsequenceBoundary<TResult>(
 
     // Provider entry. The durable record decides: INVOKING means this owner's
     // write landed (a lost acknowledgement included) and it proceeds as the
-    // owner; RESERVED means it did not, so the attempt is first closed as not
-    // entered and then released; RELEASED with the not-entered marker means a
+    // owner, having sent no not-entered write; RESERVED means it had not
+    // landed, so the attempt is closed as not entered, its rows are released,
+    // and this run never invokes; RELEASED with the not-entered marker means a
     // pre-entry recovery linearized first, so this run hands back the rows it
-    // still holds. An unreadable record is read again; if it stays
-    // unreadable, this run, which has not called the provider and never will,
-    // closes the attempt as not entered from either state without a read (the
-    // store's compare-and-swap applies at most one), and hands its rows back
-    // only once a read shows the marker. Otherwise everything stays held.
+    // still holds. An unreadable record is read again. If no read settles it,
+    // the start is unconfirmed: the run holds every reservation and returns
+    // INDETERMINATE attempt_start_unconfirmed, without invoking and without
+    // sending any not-entered write. A run never invokes after it has sent a
+    // write that could record not-entered for its attempt.
     let started = await transitionAttempt(attempt, 'RESERVED', 'INVOKING');
     if (started === null) started = await attemptStateRetried(attempt);
-    let startReason = 'attempt_start_conflict';
-    if (started === null) {
-      await writeTransition(attempt, 'RESERVED', 'RELEASED');
-      await writeTransition(attempt, 'INVOKING', 'RELEASED');
-      started = await attemptStateRetried(attempt);
-      startReason = 'attempt_start_unconfirmed';
-    }
     if (started?.state !== 'INVOKING') {
       if (started?.state === 'RESERVED') {
-        return stopBeforeEntry('RESERVED', startReason);
+        return stopBeforeEntry('RESERVED', 'attempt_start_conflict');
       }
       if (notEntered(started, attempt)) {
-        return stopBeforeEntry(
-          'RESERVED',
-          startReason === 'attempt_start_unconfirmed'
-            ? 'attempt_start_unconfirmed'
-            : 'attempt_released_by_recovery',
-        );
+        return stopBeforeEntry('RESERVED', 'attempt_released_by_recovery');
       }
       return indeterminate('attempt_start_unconfirmed', false, publicNativeAttempt(attempt));
     }
@@ -3544,6 +3701,12 @@ export function createNativeConsequenceBoundary<TResult>(
     } catch {
       return refused('native_reconciliation_input_invalid');
     }
+    // The evidence kind is checked against the mode before anything else, so
+    // a lookup labelled as one never reaches the verifier as a terminal
+    // outcome, and a terminal outcome never serves as a pre-entry lookup.
+    const presented = presentedOutcome(rawOutcome, mode);
+    if (presented.refusal !== null) return refused(presented.refusal);
+    rawOutcome = presented.outcome;
     if (attemptBinding.tenant_id !== provider.tenant_id
         || attemptBinding.provider_id !== provider.provider_id
         || attemptBinding.provider_account_id !== provider.provider_account_id
@@ -3604,6 +3767,7 @@ export function createNativeConsequenceBoundary<TResult>(
       provider,
       operation_id: operationId,
       action_digest: verification.action_digest,
+      boundary_id: boundaryId,
       attempt_id: attemptBinding.attempt_id,
     });
     if (!derivedKeys) return refused('native_consequence_binding_invalid');
@@ -3770,6 +3934,7 @@ export function createNativeConsequenceBoundary<TResult>(
   return Object.freeze({
     version: NATIVE_CONSEQUENCE_BOUNDARY_VERSION,
     executor_id: executorId,
+    boundary_id: boundaryId,
     provider,
     run,
     reconcile,

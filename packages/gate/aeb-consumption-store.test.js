@@ -9,9 +9,12 @@ import { consequenceBoundaryActionFenceHolderKey, consequenceBoundaryRecoveryCla
  * A row a recovery claim can name: every claim carries a scope, and the store
  * accepts only the key that scope derives.
  */
-function nativeRow(label, reservation = 'operation') {
+const NATIVE_BOUNDARY_ID = 'native-boundary-1';
+const COMPOSED_BOUNDARY_ID = 'composed-boundary-1';
+function nativeRow(label, reservation = 'operation', boundaryId = NATIVE_BOUNDARY_ID) {
     const scope = {
         boundary: 'native',
+        boundaryId,
         attemptId: `attempt:${label}`,
         operationId: `operation:${label}`,
         recoveryOperationKey: nativeConsequenceBoundaryReservationKey({
@@ -348,7 +351,7 @@ test('a restarted store can recover a RESERVED operation through an authorized c
             relyingPartyId: 'rp-a',
             operationKey: row.key,
             requiredState: 'RESERVED',
-            attemptIdentity: 'native:attempt:restart',
+            attemptIdentity: `native:${NATIVE_BOUNDARY_ID}:attempt:restart`,
             scope: row.scope,
         }]);
     assert.equal(await afterRestart.commit(row.key), true);
@@ -589,8 +592,13 @@ test('S4: a malformed or mismatched scope is a refusal with a reason, never a th
     const { boundary: _kind, ...kindless } = row.scope;
     const getter = { ...row.scope };
     Object.defineProperty(getter, 'attemptId', { enumerable: true, get() { throw new Error('getter ran'); } });
+    const { boundaryId: _boundaryId, ...boundaryIdless } = row.scope;
     for (const [label, scope, reason] of [
         ['no boundary kind', kindless, 'recovery_claim_scope_invalid'],
+        ['no boundary ID', boundaryIdless, 'recovery_claim_scope_invalid'],
+        ['boundary ID outside the grammar', { ...row.scope, boundaryId: 'has:colon' }, 'recovery_claim_scope_invalid'],
+        ['boundary ID not a string', { ...row.scope, boundaryId: 7 }, 'recovery_claim_scope_invalid'],
+        ['another boundary of the same kind', { ...row.scope, boundaryId: 'native-boundary-2' }, 'recovery_claim_key_mismatch'],
         ['extra member', { ...row.scope, extra: 1 }, 'recovery_claim_scope_invalid'],
         ['accessor', getter, 'recovery_claim_scope_invalid'],
         ['unknown kind', { ...row.scope, boundary: 'other' }, 'recovery_claim_scope_invalid'],
@@ -610,6 +618,7 @@ test('S4 PGX3: a native and a composed attempt with the same attempt ID never sh
     const evaluationKey = `aeb:sha256:${'b'.repeat(64)}`;
     const composedScope = {
         boundary: 'composed',
+        boundaryId: COMPOSED_BOUNDARY_ID,
         attemptId: sharedAttemptId,
         operationId: 'operation:composed:shared',
         recoveryOperationKey: evaluationKey,
@@ -617,6 +626,7 @@ test('S4 PGX3: a native and a composed attempt with the same attempt ID never sh
     };
     const composedHolder = consequenceBoundaryActionFenceHolderKey({
         reservation_key: evaluationKey,
+        boundary_id: COMPOSED_BOUNDARY_ID,
         attempt_id: sharedAttemptId,
     });
     assert.equal(consequenceBoundaryRecoveryClaimKey(composedScope), composedHolder);
@@ -633,7 +643,7 @@ test('S4 PGX3: a native and a composed attempt with the same attempt ID never sh
         authorizeRecoveryClaim: async (claim) => {
             seen.push(claim.attemptIdentity);
             return claim.authorization === 'credential:native-attempt'
-                && claim.attemptIdentity === `native:${sharedAttemptId}`
+                && claim.attemptIdentity === `native:${NATIVE_BOUNDARY_ID}:${sharedAttemptId}`
                 && claim.tenantId === 'tenant-a'
                 && claim.relyingPartyId === 'rp-a';
         },
@@ -644,7 +654,7 @@ test('S4 PGX3: a native and a composed attempt with the same attempt ID never sh
     // Presented with a native scope, the store derives a native row, not this one.
     assert.deepEqual(await recovery.claimReservationResult(composedHolder, 'credential:native-attempt', nativeScope), { claimed: false, reason: 'recovery_claim_key_mismatch' });
     assert.deepEqual(await recovery.claimReservationResult(composedHolder, 'credential:native-attempt', { ...composedScope, boundary: 'native' }), { claimed: false, reason: 'recovery_claim_key_mismatch' });
-    assert.deepEqual(seen, [`composed:${sharedAttemptId}`]);
+    assert.deepEqual(seen, [`composed:${COMPOSED_BOUNDARY_ID}:${sharedAttemptId}`]);
     assert.equal(pool.operation('tenant-a', 'rp-a', composedHolder)?.state, 'RESERVED');
     assert.equal(await composedOwner.release(composedHolder), true);
     // The same credential still recovers the native attempt's own row.
@@ -660,6 +670,7 @@ test('S4: the composed evaluation row is claimable only while the attempt holds 
     const evaluationKey = `aeb:sha256:${'c'.repeat(64)}`;
     const scope = {
         boundary: 'composed',
+        boundaryId: COMPOSED_BOUNDARY_ID,
         attemptId: 'attempt:marker:1',
         operationId: 'operation:composed:marker',
         recoveryOperationKey: evaluationKey,
@@ -669,6 +680,7 @@ test('S4: the composed evaluation row is claimable only while the attempt holds 
     assert.deepEqual(await recovery.claimReservationResult(evaluationKey, 'approved', scope), { claimed: false, reason: 'recovery_claim_owner_marker_absent' });
     const holder = consequenceBoundaryActionFenceHolderKey({
         reservation_key: evaluationKey,
+        boundary_id: COMPOSED_BOUNDARY_ID,
         attempt_id: 'attempt:marker:1',
     });
     assert.equal(await owner.reserve(holder, ['fence-action']), 'RESERVED');
@@ -677,4 +689,35 @@ test('S4: the composed evaluation row is claimable only while the attempt holds 
     assert.equal(await recovery.release(evaluationKey), true);
     const fresh = makeStore(pool, { tokenPrefix: 'fresh' });
     assert.deepEqual(await fresh.claimReservationResult(evaluationKey, 'approved', scope), { claimed: false, reason: 'recovery_claim_row_not_reserved' });
+});
+test('T4 PG4c: two boundaries of one kind that reuse an attempt ID never share a row or a recovery credential', async () => {
+    // Port of the round-4 PG4c probe onto the store: N1's attempt X crashed and
+    // its operator holds a credential bound to N1's attempt identity; N2's
+    // attempt X is live. Round 4 derived the same identity, native:X, for
+    // both, so the credential claimed N2's live holder.
+    const pool = createDeterministicFakePool();
+    const n2Owner = makeStore(pool, { tokenPrefix: 'n2-owner' });
+    const n1 = nativeRow('same-kind-X', 'action-fence-holder', 'native-boundary-n1');
+    const n2 = nativeRow('same-kind-X', 'action-fence-holder', 'native-boundary-n2');
+    assert.equal(n1.scope.attemptId, n2.scope.attemptId);
+    assert.notEqual(n1.key, n2.key);
+    const seen = [];
+    const recovery = makeStore(pool, {
+        tokenPrefix: 'recovery',
+        authorizeRecoveryClaim: async (claim) => {
+            seen.push(claim.attemptIdentity);
+            return claim.authorization === 'credential:n1-X'
+                && claim.attemptIdentity === `native:native-boundary-n1:${n1.scope.attemptId}`;
+        },
+    });
+    assert.equal(await n2Owner.reserve(n2.key, ['action-fence-n2']), 'RESERVED');
+    assert.deepEqual(await recovery.claimReservationResult(n2.key, 'credential:n1-X', n2.scope), { claimed: false, reason: 'recovery_claim_unauthorized' });
+    assert.deepEqual(await recovery.claimReservationResult(n2.key, 'credential:n1-X', n1.scope), { claimed: false, reason: 'recovery_claim_key_mismatch' });
+    assert.deepEqual(seen, [`native:native-boundary-n2:${n2.scope.attemptId}`]);
+    assert.equal(pool.operation('tenant-a', 'rp-a', n2.key)?.state, 'RESERVED');
+    assert.equal(await n2Owner.release(n2.key), true);
+    // The credential still recovers N1's own row.
+    const n1Owner = makeStore(pool, { tokenPrefix: 'n1-owner' });
+    assert.equal(await n1Owner.reserve(n1.key, ['action-fence-n1']), 'RESERVED');
+    assert.deepEqual(await recovery.claimReservationResult(n1.key, 'credential:n1-X', n1.scope), { claimed: true });
 });

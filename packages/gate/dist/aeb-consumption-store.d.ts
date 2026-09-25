@@ -43,9 +43,9 @@ export interface PostgresAebDurableConsumptionStoreOptions {
      * runs it only for a claim whose scope names exactly `operationKey`
      * (consequenceBoundaryRecoveryClaimKey()), so one credential bound to the
      * attempt authorizes every reservation that attempt holds: bind it to
-     * `attemptIdentity` (the boundary kind and the attempt ID) together with
-     * `tenantId` and `relyingPartyId`. Never bind it to `scope.attemptId`
-     * alone, which a native and a composed attempt on one store can share, to
+     * `attemptIdentity` (the boundary kind, the boundary ID, and the attempt
+     * ID) together with `tenantId` and `relyingPartyId`. Never bind it to
+     * `scope.attemptId` alone, which attempts on two boundaries can share, to
      * `scope.recoveryOperationKey` alone, which every attempt with the same
      * operation ID and action (native) or the same evaluation (composed)
      * shares, or to `operationKey`, or restart reconciliation cannot finish in
@@ -70,13 +70,22 @@ export interface AebRecoveryClaimScope {
      */
     boundary: 'native' | 'composed';
     /**
+     * The `boundary_id` of the boundary that wrote the attempt. Every
+     * attempt-derived row key includes it, so two boundaries of the same kind
+     * that share a consumption store never name each other's rows, even with
+     * identical attempt IDs.
+     */
+    boundaryId: string;
+    /**
      * Boundary attempt whose reservation is being claimed. Attempt IDs are
      * unique per attempt store: it refuses a second reservation of one ID.
-     * Boundaries of one kind that share a consumption store must also never
-     * reuse an attempt ID across their attempt stores.
      */
     attemptId: string;
-    /** Caller operation identifier the attempt carried. */
+    /**
+     * Caller operation identifier the attempt carried. It is caller-asserted:
+     * the store checks that the scope names the claimed row, but no row key is
+     * derived from `operationId`, so an authorizer must not rely on it.
+     */
     operationId: string;
     /**
      * Operation identity the attempt's row keys are derived from: the native
@@ -98,11 +107,14 @@ export interface AebRecoveryClaimAuthorization {
     requiredState: 'RESERVED';
     /**
      * The attempt identity to bind a credential to:
-     * consequenceBoundaryRecoveryAttemptIdentity(scope), `native:<attemptId>`
-     * or `composed:<attemptId>`.
+     * consequenceBoundaryRecoveryAttemptIdentity(scope),
+     * `native:<boundaryId>:<attemptId>` or `composed:<boundaryId>:<attemptId>`.
      */
     attemptIdentity: string;
-    /** The validated scope. */
+    /**
+     * The validated scope. Every member except `operationId` is checked
+     * against the claimed row; `operationId` is caller-asserted.
+     */
     scope: Readonly<AebRecoveryClaimScope>;
 }
 /**

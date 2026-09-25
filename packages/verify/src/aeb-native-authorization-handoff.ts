@@ -10,6 +10,7 @@
 import crypto, { type KeyObject } from 'node:crypto';
 import { types as nodeTypes } from 'node:util';
 import { canonicalizeStrictJson } from './strict-json.js';
+import { aebIssuerComparisonForm } from './aeb-issuer-comparison.js';
 
 type JsonObject = Record<string, unknown>;
 
@@ -615,90 +616,6 @@ function deriveReplayIdentityUnchecked(
   });
 }
 
-const DEFAULT_PORTS: Readonly<Record<string, string>> = Object.freeze({
-  'http:': '80',
-  'https:': '443',
-  'ws:': '80',
-  'wss:': '443',
-  'ftp:': '21',
-});
-
-/** Remove one repeated trailing character in linear time. */
-function trimTrailingCharacter(value: string, character: '.' | '/'): string {
-  let end = value.length;
-  while (end > 0 && value[end - 1] === character) end -= 1;
-  return end === value.length ? value : value.slice(0, end);
-}
-
-/** Split a `//authority` suffix without a backtracking regular expression. */
-function splitUriAuthority(rest: string): readonly [authority: string, suffix: string] | null {
-  if (!rest.startsWith('//')) return null;
-  let end = 2;
-  while (end < rest.length) {
-    const character = rest[end];
-    if (character === '/' || character === '?' || character === '#') break;
-    end += 1;
-  }
-  return [rest.slice(2, end), rest.slice(end)];
-}
-
-/**
- * Comparison form of an issuer, used only to detect aliased pins; the replay
- * identity never hashes this form. The scheme compares case-insensitively.
- * For the special URL schemes (http, https, ws, wss, ftp) the issuer is parsed
- * as a WHATWG URL, which also accepts a missing `//` and resolves dot
- * segments; the host compares lower-case without trailing dots, a default
- * port is dropped, and trailing slashes on the path are dropped. For `urn:`
- * the namespace identifier compares case-insensitively (RFC 8141). For `did:`
- * the method name compares lower-case, and for `did:web` the host compares
- * lower-case without trailing dots. For `spiffe://` the trust
- * domain compares lower-case without trailing dots and trailing slashes on
- * the path are dropped. Any other identifier, and every path, compares as
- * written. This finds common aliases, not every alias.
- */
-function issuerComparisonForm(issuer: string): string {
-  const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(issuer);
-  if (!scheme) return issuer;
-  const protocol = `${scheme[1].toLowerCase()}:`;
-  const rest = issuer.slice(scheme[0].length);
-  if (protocol === 'urn:') {
-    const nid = /^([A-Za-z0-9][A-Za-z0-9-]{0,31}):/.exec(rest);
-    return nid ? `urn:${nid[1].toLowerCase()}:${rest.slice(nid[0].length)}` : `urn:${rest}`;
-  }
-  if (protocol === 'did:') {
-    const method = /^([A-Za-z0-9]+):/.exec(rest);
-    if (!method) return `did:${rest}`;
-    const methodName = method[1].toLowerCase();
-    const id = rest.slice(method[0].length);
-    if (methodName !== 'web') return `did:${methodName}:${id}`;
-    // The pin identifier grammar has no `%`, so a did:web issuer here never
-    // carries an encoded port: the host is the first colon-separated part.
-    const [host, ...path] = id.split(':');
-    const normalizedHost = trimTrailingCharacter(host.toLowerCase(), '.');
-    return `did:web:${normalizedHost}${path.length > 0 ? `:${path.join(':')}` : ''}`;
-  }
-  if (protocol === 'spiffe:') {
-    const authority = splitUriAuthority(rest);
-    if (!authority) return `spiffe:${rest}`;
-    const trustDomain = trimTrailingCharacter(authority[0].toLowerCase(), '.');
-    return `spiffe://${trustDomain}${trimTrailingCharacter(authority[1], '/')}`;
-  }
-  if (!Object.hasOwn(DEFAULT_PORTS, protocol)) return `${protocol}${rest}`;
-  let url: URL;
-  try {
-    url = new URL(issuer);
-  } catch {
-    return `${protocol}${rest}`;
-  }
-  const port = url.port !== '' && url.port !== DEFAULT_PORTS[url.protocol] ? `:${url.port}` : '';
-  const userinfo = url.username !== '' || url.password !== ''
-    ? `${url.username}${url.password !== '' ? `:${url.password}` : ''}@`
-    : '';
-  const host = trimTrailingCharacter(url.hostname.toLowerCase(), '.');
-  const path = trimTrailingCharacter(url.pathname, '/');
-  return `${url.protocol}//${userinfo}${host}${port}${path}${url.search}${url.hash}`;
-}
-
 /** The namespace a pin's replay identity is derived under. */
 function effectiveNamespace(source: AebNativeAuthorizationSourcePin): string {
   return source.authority_namespace ?? source.issuer;
@@ -808,7 +725,7 @@ function parseSourcePin(value: unknown): AebNativeAuthorizationSourcePin | null 
 function issuerAliasRefusal(sources: readonly AebNativeAuthorizationSourcePin[]): boolean {
   const groups = new Map<string, AebNativeAuthorizationSourcePin[]>();
   for (const source of sources) {
-    const form = issuerComparisonForm(source.issuer);
+    const form = aebIssuerComparisonForm(source.issuer);
     groups.set(form, [...(groups.get(form) ?? []), source]);
   }
   for (const group of groups.values()) {

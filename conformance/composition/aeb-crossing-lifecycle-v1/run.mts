@@ -592,6 +592,8 @@ function boundaryHarness(
   let attemptCounter = 0;
   const boundary = createConsequenceBoundary({
     executor_id: EXECUTOR,
+    // Unique among the boundaries that share this consumption store.
+    boundary_id: 'aeb-crossing-lifecycle-conformance',
     provider: PROVIDER,
     aeb: { config: fixture.config, adapters: fixture.adapters, store },
     attempts: {
@@ -880,6 +882,8 @@ export async function buildReferenceReport() {
     attempt: lostResult.attempt,
     outcome: {
       state: 'EXECUTED',
+      // The provider's terminal outcome for the attempt, not a lookup.
+      evidence_kind: 'provider_outcome',
       evidence: {
         evidence_id: 'provider-evidence:reconciled',
         observed_at: '2027-01-15T08:00:45.000Z',

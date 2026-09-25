@@ -14,11 +14,12 @@
  *
  * Ownership is per store instance and per key, so two callers in one process
  * that reserve the same key share one owner token. The native consequence
- * boundary therefore writes only keys that include its attempt ID, which no
- * other attempt can produce. The composed boundary's evaluation reservation
- * is keyed by the evaluation; it closes or commits that row for an attempt
- * only while the attempt's own holder row, keyed by the evaluation
- * reservation and the attempt ID, is still RESERVED.
+ * boundary therefore writes only keys that include its boundary ID and
+ * attempt ID, which no other attempt can produce. The composed boundary's
+ * evaluation reservation is keyed by the evaluation; it closes or commits that
+ * row for an attempt only while the attempt's own holder row, keyed by the
+ * evaluation reservation, the boundary ID, and the attempt ID, is still
+ * RESERVED.
  *
  * Every recovery claim must carry a scope naming the claimed row. A claim
  * without one is refused before the authorizer runs
@@ -373,6 +374,8 @@ function assertOwnerToken(value) {
 }
 const RECOVERY_CLAIM_RESERVATIONS = new Set(['operation', 'native-authority', 'action-fence-holder']);
 const RECOVERY_CLAIM_BOUNDARIES = new Set(['native', 'composed']);
+/** Same grammar as the boundaries' `boundary_id`. */
+const RECOVERY_CLAIM_BOUNDARY_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
 function validText(value, maximumBytes) {
     return typeof value === 'string'
         && Buffer.byteLength(value, 'utf8') >= 1
@@ -401,8 +404,10 @@ function recoveryClaimScope(value) {
     for (const key of keys)
         record[key] = descriptors[key].value;
     if (Object.keys(record).sort().join(',')
-        !== 'attemptId,boundary,operationId,recoveryOperationKey,reservation'
+        !== 'attemptId,boundary,boundaryId,operationId,recoveryOperationKey,reservation'
         || !RECOVERY_CLAIM_BOUNDARIES.has(record.boundary)
+        || typeof record.boundaryId !== 'string'
+        || !RECOVERY_CLAIM_BOUNDARY_ID.test(record.boundaryId)
         || !RECOVERY_CLAIM_RESERVATIONS.has(record.reservation)
         || !validText(record.attemptId, 512)
         || !validText(record.operationId, 512)
@@ -411,6 +416,7 @@ function recoveryClaimScope(value) {
     }
     return Object.freeze({
         boundary: record.boundary,
+        boundaryId: record.boundaryId,
         attemptId: record.attemptId,
         operationId: record.operationId,
         recoveryOperationKey: record.recoveryOperationKey,

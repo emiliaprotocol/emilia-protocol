@@ -2563,10 +2563,13 @@ export async function authorizeAebExecutionDurable(
   if (!threw && (reservation === 'CONSUMPTION_CONFLICT' || reservation === false)) {
     return decision('REFUSED', 'consumption_conflict');
   }
-  // A throw or an unrecognized answer may hide a reservation that landed.
-  // It is a clean refusal only when a durable read shows the key was not
-  // reserved by this call; otherwise the reservation may be RESERVED, and
-  // the caller must not treat the evaluation as untouched.
+  // A throw or an unrecognized answer may hide a reservation that landed, or
+  // one still in flight that lands later. A durable read that shows the key
+  // CONSUMED or RELEASED_NOT_ENTERED proves this call could not have
+  // reserved it, so that is a clean conflict. Every other result, AVAILABLE
+  // included, is RECONCILIATION_REQUIRED: an AVAILABLE read is not proof that
+  // no reservation exists, because a write still in flight can land after it
+  // and leave the evaluation RESERVED.
   const readState = typeof (store as { state?: unknown }).state === 'function'
     ? (store as { state(key: string): unknown }).state.bind(store)
     : null;
@@ -2578,7 +2581,6 @@ export async function authorizeAebExecutionDurable(
       observed = null;
     }
   }
-  if (observed === 'AVAILABLE') return decision('REFUSED', 'consumption_store_unavailable');
   if (observed === 'CONSUMED' || observed === 'RELEASED_NOT_ENTERED') {
     return decision('REFUSED', 'consumption_conflict');
   }
