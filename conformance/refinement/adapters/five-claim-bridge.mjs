@@ -672,7 +672,7 @@ const RECEIPT_PROGRAM_DEFINITIONS = Object.freeze([
       {
         name: "currency",
         type: "enum",
-        values_ref: "ISO 4217 alpha-3",
+        values: ["USD"],
       },
       { name: "beneficiary_account", type: "digest" },
       { name: "payment_instruction_id", type: "string" },

@@ -27,10 +27,21 @@ import { createMemoryBackend } from '../../packages/gate/store.js';
 import { canonicalize, verifyTrustReceipt } from '../../packages/verify/index.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const DEFINITIONS = JSON.parse(fs.readFileSync(
+const REGISTRY_DEFINITIONS = JSON.parse(fs.readFileSync(
   path.resolve(HERE, '../../caid/registry/action-types.json'),
   'utf8',
 )).types;
+const DEFINITIONS = REGISTRY_DEFINITIONS.map((definition: any) => {
+  if (definition.action_type !== 'prior.auth.approve.1') return definition;
+  return {
+    ...definition,
+    required_fields: definition.required_fields.map((field: any) => {
+      if (field.name === 'service_code') return { name: field.name, type: 'enum', values: ['HCPCS:DEMO-0001'] };
+      if (field.name === 'diagnosis_code') return { name: field.name, type: 'enum', values: ['ICD-10-CM:DEMO-0001'] };
+      return field;
+    }),
+  };
+});
 
 export const EVIDENCE_VERSION = 'EP-REGULATORY-MOBILE-EVIDENCE-v1';
 export const TRUST_BUNDLE_VERSION = 'EP-REGULATORY-MOBILE-TRUST-BUNDLE-v1';

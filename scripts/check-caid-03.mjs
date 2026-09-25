@@ -43,7 +43,7 @@ assert(source.includes('Historical v3'), 'v3-to-v4 migration consequence missing
 const canonicalValues = canonicalize(enumSnapshot.values);
 assert(canonicalValues.ok, 'ISO 4217 snapshot values are not JCS-compatible');
 const snapshotHash = 'sha256:' + createHash('sha256')
-  .update(canonicalValues.canonical, 'utf8')
+  .update(/** @type {{ok: true, canonical: string}} */ (canonicalValues).canonical, 'utf8')
   .digest('hex');
 assert(snapshotHash === enumSnapshot.values_sha256, 'ISO 4217 values digest mismatch');
 assert(new Set(enumSnapshot.values).size === 178, 'ISO 4217 snapshot does not contain 178 unique codes');

@@ -239,11 +239,7 @@ function resolveEnumValues(field, enumSnapshots) {
 
   const canonical = canonicalize(declared);
   if (!canonical.ok) return null;
-  const actual =
-    "sha256:" +
-    createHash("sha256")
-      .update(Buffer.from(canonical.canonical, "utf8"))
-      .digest("hex");
+  const actual = "sha256:" + sha256(canonical.canonical).toString("hex");
   return actual === field.values_sha256 ? declared : null;
 }
 

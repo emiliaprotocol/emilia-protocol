@@ -32,7 +32,7 @@ const definitions = [{
   action_type: 'payment.release.1',
   required_fields: [
     { name: 'amount', type: 'amount-string' },
-    { name: 'currency', type: 'enum', values_ref: 'ISO 4217 alpha-3' },
+    { name: 'currency', type: 'enum', values: ['USD'] },
     { name: 'beneficiary_account', type: 'digest' },
     { name: 'payment_instruction_id', type: 'string' },
   ],
