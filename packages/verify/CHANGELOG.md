@@ -3,7 +3,29 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## 4.0.0 (release candidate)
+## 4.1.0 (2026-09-24)
+
+- Add `AEB-NATIVE-AUTHORIZATION-HANDOFF-v1`, a closed Ed25519 gateway statement
+  that binds the stated native authorization identity and `PERMIT` decision to
+  one exact action, relying party, audience, executor, provider, validity
+  window, revocation handle, and wrapper-neutral replay identity. The gateway,
+  source profile, and issuer are relying-party pinned; native-artifact
+  verification remains the native system's responsibility. It provides the
+  direct AIMS, AuthZEN, COAZ, AP2, OAuth, and local handoff without requiring
+  CAID or AEC.
+- Add the stable `./aeb` facade, signed nonauthorizing `AEB-EVALUATION-v2`
+  projections, and the separate
+  `EP-AEB-CROSSING-LIFECYCLE-INDEX-v2`. Deterministic v1 upgrades preserve
+  available provenance and report missing semantic or lifecycle evidence as
+  `INDETERMINATE` instead of inventing it. Existing Crossing Record v1 and v2
+  bytes and verification rules remain unchanged.
+
+The direct handoff is reference implementation work for the proposed, staged
+AEB-06 refinement. Published AEB-05 still requires CAID matching and AEC
+satisfaction. Source labels do not establish native-protocol conformance or
+independent interoperability.
+
+## 4.0.0 (2026-09-09)
 
 - **Breaking change.** The existing
   `./aeb-wimse-oauth-adapter` subpath now implements the receiver-scoped v3

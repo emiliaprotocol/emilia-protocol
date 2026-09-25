@@ -24,6 +24,8 @@ import { canonicalizeStrictJson } from './strict-json.js';
 export const AEB_ADAPTER_VERSION = 'AEB-ADAPTER-v1';
 export const AEB_EVALUATION_VERSION = 'AEB-EVALUATION-v1';
 export const AEB_EVALUATION_DOMAIN = `${AEB_EVALUATION_VERSION}\0`;
+export const AEB_EVALUATION_V2_VERSION = 'AEB-EVALUATION-v2';
+export const AEB_EVALUATION_V2_DOMAIN = `${AEB_EVALUATION_V2_VERSION}\0`;
 export const AEB_REQUIREMENT_VERSION = 'AEB-REQUIREMENT-v1';
 export const AEB_REGISTRY_VERSION = 'EP-EVIDENCE-REGISTRY-v1';
 export const AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION = 'EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v1';
@@ -1208,6 +1210,362 @@ function shapeValid(record) {
         return false;
     return true;
 }
+const AEB_EVALUATION_V2_BODY_KEYS = new Set([
+    '@type',
+    'source_evaluation',
+    'operation_id',
+    'consumption_nonce',
+    'initiator_id',
+    'evaluator',
+    'requirement',
+    'action',
+    'legs',
+    'satisfaction',
+    'authority_constraints',
+    'evaluated_at',
+    'evidence_digest',
+    'reasons',
+    'conversion',
+    'execution_authorizing',
+]);
+const AEB_EVALUATION_V2_BODY_WITH_EXECUTOR_KEYS = new Set([
+    ...AEB_EVALUATION_V2_BODY_KEYS,
+    'executor_id',
+]);
+const AEB_EVALUATION_V2_RECORD_KEYS = new Set([
+    ...AEB_EVALUATION_V2_BODY_KEYS,
+    'signature',
+]);
+const AEB_EVALUATION_V2_RECORD_WITH_EXECUTOR_KEYS = new Set([
+    ...AEB_EVALUATION_V2_BODY_WITH_EXECUTOR_KEYS,
+    'signature',
+]);
+const AEB_NATIVE_DECISION_REFERENCE_KEYS = new Set([
+    'profile',
+    'decision_digest',
+]);
+function validNativeDecisionReference(value) {
+    return isObject(value)
+        && exactKeys(value, AEB_NATIVE_DECISION_REFERENCE_KEYS)
+        && exactString(value.profile)
+        && validDigest(value.decision_digest);
+}
+function conversionReason(code, artifactRef) {
+    return `${code}:${digest({ artifact_ref: artifactRef })}`;
+}
+function evaluationV2Unsigned(record) {
+    const { signature: _signature, ...body } = record;
+    return body;
+}
+function evaluationV2SigningBytes(body) {
+    return Buffer.from(`${AEB_EVALUATION_V2_DOMAIN}${canonicalize(body)}`, 'utf8');
+}
+/** Domain-separated digest of the complete evidence-only v2 body. */
+export function aebEvaluationV2Digest(body) {
+    return typedDigest(body, `${AEB_EVALUATION_V2_VERSION}:record`);
+}
+function semanticLossForV1Leg(leg, profiles) {
+    const conversionReasons = [];
+    const profile = profiles[leg.profile_id];
+    if (!profile) {
+        conversionReasons.push(conversionReason('mapping_profile_unavailable', leg.artifact_ref));
+        return {
+            report: {
+                status: 'INDETERMINATE',
+                omitted_material_fields: [],
+                omitted_nonmaterial_fields: [],
+                reasons: ['mapping_profile_unavailable'],
+            },
+            conversionReasons,
+        };
+    }
+    let recomputed = null;
+    try {
+        recomputed = profileDigest(leg.profile_id, profile);
+    }
+    catch {
+        // The report below stays closed rather than copying malformed profile data.
+    }
+    if (recomputed === null
+        || recomputed !== profile.profile_digest
+        || profile.profile_digest !== leg.profile_digest) {
+        conversionReasons.push(conversionReason('mapping_profile_digest_mismatch', leg.artifact_ref));
+        return {
+            report: {
+                status: 'INDETERMINATE',
+                omitted_material_fields: [],
+                omitted_nonmaterial_fields: [],
+                reasons: ['mapping_profile_digest_mismatch'],
+            },
+            conversionReasons,
+        };
+    }
+    const semantic = profile.semantic_equivalence;
+    if (!isObject(semantic)
+        || semantic.assertion !== 'EQUIVALENT_UNDER_PROFILE'
+        || semantic.loss_policy !== 'NO_MATERIAL_FIELD_LOSS'
+        || !Array.isArray(semantic.omitted_material_fields)
+        || !semantic.omitted_material_fields.every(exactString)
+        || !Array.isArray(semantic.omitted_nonmaterial_fields)
+        || !semantic.omitted_nonmaterial_fields.every(exactString)) {
+        conversionReasons.push(conversionReason('semantic_loss_declaration_invalid', leg.artifact_ref));
+        return {
+            report: {
+                status: 'INDETERMINATE',
+                omitted_material_fields: [],
+                omitted_nonmaterial_fields: [],
+                reasons: ['semantic_loss_declaration_invalid'],
+            },
+            conversionReasons,
+        };
+    }
+    const omittedMaterial = sortedUnique([...semantic.omitted_material_fields]);
+    const omittedNonmaterial = sortedUnique([...semantic.omitted_nonmaterial_fields]);
+    if (omittedMaterial.length > 0) {
+        conversionReasons.push(conversionReason('material_field_loss', leg.artifact_ref));
+        return {
+            report: {
+                status: 'INDETERMINATE',
+                omitted_material_fields: omittedMaterial,
+                omitted_nonmaterial_fields: omittedNonmaterial,
+                reasons: ['material_field_loss'],
+            },
+            conversionReasons,
+        };
+    }
+    return {
+        report: {
+            status: 'NO_MATERIAL_FIELD_LOSS',
+            omitted_material_fields: [],
+            omitted_nonmaterial_fields: omittedNonmaterial,
+            reasons: [],
+        },
+        conversionReasons,
+    };
+}
+/**
+ * Deterministically projects a signed v1 evaluation into the v2 evidence
+ * shape.  This does not verify the v1 signature and does not authorize an
+ * action; verifyAebEvaluationV2 performs the pinned-key verification.
+ */
+export function upgradeAebEvaluationV1ToV2(source, options = {}) {
+    const pinnedSource = JSON.parse(canonicalize(source));
+    if (!shapeValid(pinnedSource)) {
+        throw new TypeError('source_evaluation_malformed');
+    }
+    const profiles = JSON.parse(canonicalize(options.profiles ?? {}));
+    const nativeDecisionReferences = JSON.parse(canonicalize(options.native_decision_references ?? {}));
+    const conversionReasons = [];
+    const artifactRefCounts = new Map();
+    for (const leg of pinnedSource.legs) {
+        artifactRefCounts.set(leg.artifact_ref, (artifactRefCounts.get(leg.artifact_ref) ?? 0) + 1);
+    }
+    for (const artifactRef of Object.keys(nativeDecisionReferences)) {
+        const count = artifactRefCounts.get(artifactRef) ?? 0;
+        if (count !== 1) {
+            conversionReasons.push(conversionReason(count === 0
+                ? 'native_decision_reference_unmatched'
+                : 'native_decision_reference_ambiguous', artifactRef));
+        }
+    }
+    const legs = pinnedSource.legs.map((leg) => {
+        const { report, conversionReasons: legReasons } = semanticLossForV1Leg(leg, profiles);
+        conversionReasons.push(...legReasons);
+        const nativeDecisionReference = nativeDecisionReferences[leg.artifact_ref];
+        const referenceUnique = artifactRefCounts.get(leg.artifact_ref) === 1;
+        if (nativeDecisionReference !== undefined
+            && referenceUnique
+            && !validNativeDecisionReference(nativeDecisionReference)) {
+            conversionReasons.push(conversionReason('native_decision_reference_invalid', leg.artifact_ref));
+        }
+        return {
+            ...leg,
+            semantic_loss: report,
+            ...(referenceUnique && validNativeDecisionReference(nativeDecisionReference)
+                ? { native_decision_reference: nativeDecisionReference }
+                : {}),
+        };
+    });
+    const reasons = sortedUnique(conversionReasons);
+    const status = reasons.length === 0
+        ? 'COMPLETE'
+        : 'INDETERMINATE';
+    const body = {
+        '@type': AEB_EVALUATION_V2_VERSION,
+        source_evaluation: {
+            version: AEB_EVALUATION_VERSION,
+            digest: digest(pinnedSource),
+        },
+        operation_id: pinnedSource.operation_id,
+        consumption_nonce: pinnedSource.consumption_nonce,
+        initiator_id: pinnedSource.initiator_id,
+        ...(pinnedSource.executor_id !== undefined
+            ? { executor_id: pinnedSource.executor_id }
+            : {}),
+        evaluator: safeClone(pinnedSource.evaluator),
+        requirement: {
+            reference: pinnedSource.requirement_ref,
+            digest: pinnedSource.requirement_digest,
+            registry_digest: pinnedSource.registry_digest,
+        },
+        action: {
+            caid: pinnedSource.caid,
+            normalized_action_digest: pinnedSource.composition.action_digest,
+        },
+        legs,
+        satisfaction: {
+            ...safeClone(pinnedSource.composition),
+            verdict: pinnedSource.verdict,
+        },
+        authority_constraints: safeClone(pinnedSource.authority_constraints),
+        evaluated_at: pinnedSource.evaluated_at,
+        evidence_digest: pinnedSource.evidence_digest,
+        reasons: [...pinnedSource.reasons],
+        conversion: { status, reason_codes: reasons },
+        execution_authorizing: false,
+    };
+    return { body, status, reasons };
+}
+/** Issues a separately signed v2 projection without changing the v1 record. */
+export function issueAebEvaluationV2FromV1(source, options) {
+    const signer = options?.signer;
+    const pinnedSource = JSON.parse(canonicalize(source));
+    const projected = upgradeAebEvaluationV1ToV2(pinnedSource, options);
+    if (!signer
+        || signer.key_id !== projected.body.evaluator.key_id
+        || !isEd25519PrivateKey(signer.private_key)) {
+        throw new TypeError('evaluation_v2_signer_invalid');
+    }
+    const sourceSignature = pinnedSource.signature;
+    if (!sourceSignature
+        || sourceSignature.key_id !== signer.key_id
+        || !crypto.verify(null, signingBytes(pinnedSource), crypto.createPublicKey(signer.private_key), Buffer.from(sourceSignature.value, 'base64url'))) {
+        throw new TypeError('evaluation_v2_signer_not_source_signer');
+    }
+    const signature = crypto.sign(null, evaluationV2SigningBytes(projected.body), signer.private_key).toString('base64url');
+    return {
+        ...projected.body,
+        signature: {
+            alg: 'Ed25519',
+            key_id: signer.key_id,
+            value: signature,
+        },
+    };
+}
+function evaluationV2ShapeValid(value) {
+    if (!isObject(value))
+        return false;
+    const expectedKeys = value.executor_id === undefined
+        ? AEB_EVALUATION_V2_RECORD_KEYS
+        : AEB_EVALUATION_V2_RECORD_WITH_EXECUTOR_KEYS;
+    if (!exactKeys(value, expectedKeys)
+        || value['@type'] !== AEB_EVALUATION_V2_VERSION
+        || !isObject(value.source_evaluation)
+        || !exactKeys(value.source_evaluation, new Set(['version', 'digest']))
+        || value.source_evaluation.version !== AEB_EVALUATION_VERSION
+        || !validDigest(value.source_evaluation.digest)
+        || !exactString(value.operation_id)
+        || !exactString(value.consumption_nonce)
+        || !exactString(value.initiator_id)
+        || (value.executor_id !== undefined && !exactString(value.executor_id))
+        || !isObject(value.evaluator)
+        || !isObject(value.requirement)
+        || !isObject(value.action)
+        || typeof value.action.caid !== 'string'
+        || !CAID_RE.test(value.action.caid)
+        || !validDigest(value.action.normalized_action_digest)
+        || !Array.isArray(value.legs)
+        || !isObject(value.satisfaction)
+        || !isObject(value.authority_constraints)
+        || !Number.isFinite(parseInstant(value.evaluated_at))
+        || !validDigest(value.evidence_digest)
+        || !Array.isArray(value.reasons)
+        || !value.reasons.every(exactString)
+        || !isObject(value.conversion)
+        || !['COMPLETE', 'INDETERMINATE'].includes(String(value.conversion.status))
+        || !Array.isArray(value.conversion.reason_codes)
+        || !value.conversion.reason_codes.every(exactString)
+        || value.execution_authorizing !== false
+        || !isObject(value.signature)
+        || !exactKeys(value.signature, NATIVE_SIGNATURE_KEYS)
+        || value.signature.alg !== 'Ed25519'
+        || value.signature.key_id !== value.evaluator.key_id
+        || !validEd25519Signature(value.signature.value)) {
+        return false;
+    }
+    return true;
+}
+/**
+ * Verifies both signatures and re-derives the v2 projection from the supplied
+ * v1 evaluation.  A valid result remains evidence-only.
+ */
+export function verifyAebEvaluationV2(record, options) {
+    const checks = {
+        schema: false,
+        source_binding: false,
+        source_signature: false,
+        rederived: false,
+        signature: false,
+    };
+    const reasons = [];
+    let recordDigest = null;
+    let conversionStatus = null;
+    try {
+        const pinnedRecord = JSON.parse(canonicalize(record));
+        recordDigest = digest(pinnedRecord);
+        checks.schema = evaluationV2ShapeValid(pinnedRecord);
+        if (!checks.schema)
+            throw new TypeError('malformed_evaluation_v2_record');
+        conversionStatus = pinnedRecord.conversion.status;
+        const pinnedSource = JSON.parse(canonicalize(options.source_evaluation));
+        checks.source_binding = shapeValid(pinnedSource)
+            && digest(pinnedSource) === pinnedRecord.source_evaluation.digest;
+        if (!checks.source_binding)
+            reasons.push('source_evaluation_mismatch');
+        const sourceSignature = pinnedSource.signature;
+        const sourceKey = ed25519PublicKey(sourceSignature
+            ? options.evaluator_keys?.[sourceSignature.key_id]?.public_key
+            : undefined);
+        if (sourceKey && sourceSignature) {
+            checks.source_signature = crypto.verify(null, signingBytes(pinnedSource), sourceKey, Buffer.from(sourceSignature.value, 'base64url'));
+        }
+        if (!checks.source_signature)
+            reasons.push('source_evaluation_signature_invalid');
+        const expected = upgradeAebEvaluationV1ToV2(pinnedSource, options).body;
+        checks.rederived = canonicalize(expected)
+            === canonicalize(evaluationV2Unsigned(pinnedRecord));
+        if (!checks.rederived)
+            reasons.push('evaluation_v2_not_rederivable');
+        const key = ed25519PublicKey(options.evaluator_keys?.[pinnedRecord.signature.key_id]?.public_key);
+        if (key) {
+            checks.signature = crypto.verify(null, evaluationV2SigningBytes(evaluationV2Unsigned(pinnedRecord)), key, Buffer.from(pinnedRecord.signature.value, 'base64url'));
+        }
+        if (!checks.signature)
+            reasons.push('evaluation_v2_signature_invalid');
+        return {
+            valid: Object.values(checks).every(Boolean),
+            execution_authorizing: false,
+            record_digest: recordDigest,
+            checks,
+            conversion_status: conversionStatus,
+            reasons: sortedUnique(reasons),
+        };
+    }
+    catch {
+        if (!checks.schema)
+            reasons.push('malformed_evaluation_v2_record');
+        else if (reasons.length === 0)
+            reasons.push('source_evaluation_malformed');
+        return {
+            valid: false,
+            execution_authorizing: false,
+            record_digest: recordDigest,
+            checks,
+            conversion_status: conversionStatus,
+            reasons: sortedUnique(reasons),
+        };
+    }
+}
 function verifyAebEvaluationInner(record, options) {
     let recordDigest = null;
     try {
@@ -1441,7 +1799,7 @@ export function aebReservationKey(record) {
 /**
  * Reconcile one reservation against an authenticated provider outcome.
  *
- * draft-schrock-action-evidence-boundary-04 s5.10 and s5.11 govern this
+ * draft-schrock-action-evidence-boundary-05 s5.10 and s5.11 govern this
  * function. An INDETERMINATE outcome preserves the reservation and refuses a
  * blind replay. An authoritative NOT_COMMITTED outcome does not hand the
  * one-time replay unit back: it marks the reservation permanently

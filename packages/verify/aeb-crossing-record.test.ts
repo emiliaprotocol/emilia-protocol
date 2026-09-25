@@ -10,19 +10,28 @@ import {
   AEB_CROSSING_RECORD_REQUIRED_ALGORITHMS,
   AEB_CROSSING_RECORD_VERSION,
   AEB_CROSSING_RECORD_V2_VERSION,
+  AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION,
   BCR_CROSSING_MAPPING_PROFILE,
   WIMSE_OAUTH_CROSSING_MAPPING_PROFILE,
   crossingRecordContractDigest,
   crossingRecordV2AdmissionDomainDigest,
   crossingRecordV2ContractDigest,
+  crossingLifecycleIndexV2AdmissionDomainDigest,
+  crossingLifecycleIndexV2ContractDigest,
+  issueAebCrossingLifecycleIndexV2,
   issueAebCrossingRecordV2,
   issueAebCrossingRecord,
   mapBcrCrossingAuthority,
   mapWimseOAuthCrossingAuthority,
+  upgradeAebCrossingRecordV1ToLifecycleIndexV2,
+  verifyAebCrossingLifecycleIndexV2,
   verifyAebCrossingRecord,
   verifyAebCrossingRecordV2,
 } from "./dist/aeb-crossing-record.js";
-import { digestAebTyped } from "./dist/aeb-adapter-contract.js";
+import {
+  AEB_EVALUATION_V2_VERSION,
+  digestAebTyped,
+} from "./dist/aeb-adapter-contract.js";
 import { loadDefaultAgilityMldsaBackend } from "./dist/pq-signature-agility.js";
 
 const ED_PRIVATE_JWK = {
@@ -75,6 +84,7 @@ const EVALUATED_EVIDENCE_DIGESTS = Object.freeze([
 ]);
 const ADMISSION_DIGEST = `sha256:${"88".repeat(32)}`;
 const CONSUMPTION_DIGEST = `sha256:${"99".repeat(32)}`;
+const EVALUATION_V2_DIGEST = `sha256:${"de".repeat(32)}`;
 
 const SIGNERS = [
   { alg: "Ed25519", key_id: "crossing-ed", private_key: edPrivate },
@@ -216,6 +226,51 @@ async function issueV2(
     {
       action: ACTION,
       admission_domain: BOUNDARY,
+      ...contextOverrides,
+    },
+    {
+      signing_keys: [...SIGNERS],
+      deterministic: true,
+      mldsaBackend,
+    },
+  );
+}
+
+async function issueLifecycleIndex(
+  overrides: Record<string, unknown> = {},
+  contextOverrides: Record<string, unknown> = {},
+) {
+  const evaluation = {
+    profile: AEB_EVALUATION_V2_VERSION,
+    digest: EVALUATION_V2_DIGEST,
+  } as const;
+  return issueAebCrossingLifecycleIndexV2(
+    {
+      record_id: "crossing-lifecycle:finance:0001",
+      operation_id: "operation:vendor-master:v2:0001",
+      issued_at: NOW,
+      action: ACTION,
+      lifecycle: {
+        evaluation,
+        local_admission_digest: ADMISSION_DIGEST,
+        authority_custody: {
+          phase: "RESERVATION",
+          digest: CONSUMPTION_DIGEST,
+        },
+        provider_entry_digest: null,
+        effect_observation_digest: null,
+        provider_outcome_digest: null,
+        reconciliation_digest: null,
+      },
+      source_crossing_record: { version: null, digest: null },
+      conversion: { status: "NATIVE", reason_codes: [] },
+      execution_authorizing: false,
+      ...overrides,
+    },
+    {
+      action: ACTION,
+      admission_domain: BOUNDARY,
+      evaluation,
       ...contextOverrides,
     },
     {
@@ -448,6 +503,221 @@ test("v1 and v2 reject downgrade, relabeling, and cross-version verification", a
   const relabeledV2 = structuredClone(v2) as any;
   relabeledV2["@version"] = AEB_CROSSING_RECORD_VERSION;
   assert.equal((await verify(relabeledV2)).verified, false);
+});
+
+test("the lifecycle index references separate records without flattening native authority or policy", async () => {
+  const index = await issueLifecycleIndex();
+  assert.equal(
+    index["@version"],
+    AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION,
+  );
+  assert.equal(index.body.execution_authorizing, false);
+  assert.equal("native_authority" in index.body, false);
+  assert.equal("referee" in index.body, false);
+  assert.equal("boundary" in index.body, false);
+  assert.equal(
+    index.body.admission_domain_digest,
+    crossingLifecycleIndexV2AdmissionDomainDigest(BOUNDARY),
+  );
+  assert.equal(
+    index.body.contract_digest,
+    crossingLifecycleIndexV2ContractDigest(index.body),
+  );
+  const result = await verifyAebCrossingLifecycleIndexV2(index, {
+    verification_keys: [...VERIFICATION_KEYS],
+    expected_action: ACTION,
+    admission_domain: BOUNDARY,
+    expected_evaluation: index.body.lifecycle.evaluation,
+    mldsaBackend,
+  });
+  assert.equal(result.verified, true, JSON.stringify(result));
+  assert.equal(result.execution_authorizing, false);
+  assert.equal(result.conversion_status, "NATIVE");
+});
+
+test("the lifecycle index refuses action, admission-domain, evaluation, and digest substitution", async () => {
+  const index = await issueLifecycleIndex();
+  const baseOptions = {
+    verification_keys: [...VERIFICATION_KEYS],
+    expected_action: ACTION,
+    admission_domain: BOUNDARY,
+    expected_evaluation: index.body.lifecycle.evaluation,
+    mldsaBackend,
+  };
+  assert.equal((await verifyAebCrossingLifecycleIndexV2(index, {
+    ...baseOptions,
+    expected_action: {
+      ...ACTION,
+      action_digest: `sha256:${"01".repeat(32)}`,
+    },
+  })).reason, "action_mismatch");
+  assert.equal((await verifyAebCrossingLifecycleIndexV2(index, {
+    ...baseOptions,
+    admission_domain: { ...BOUNDARY, audience: "erp:other" },
+  })).reason, "admission_domain_mismatch");
+  assert.equal((await verifyAebCrossingLifecycleIndexV2(index, {
+    ...baseOptions,
+    expected_evaluation: {
+      ...index.body.lifecycle.evaluation,
+      digest: `sha256:${"02".repeat(32)}`,
+    },
+  })).reason, "evaluation_reference_mismatch");
+
+  for (const mutate of [
+    (value: typeof index) => {
+      value.body.lifecycle.local_admission_digest = `sha256:${"03".repeat(32)}`;
+    },
+    (value: typeof index) => {
+      value.body.lifecycle.authority_custody.digest = `sha256:${"04".repeat(32)}`;
+    },
+    (value: typeof index) => {
+      value.body.lifecycle.provider_entry_digest = `sha256:${"05".repeat(32)}`;
+    },
+  ]) {
+    const changed = structuredClone(index);
+    mutate(changed);
+    const result = await verifyAebCrossingLifecycleIndexV2(changed, baseOptions);
+    assert.equal(result.verified, false);
+  }
+});
+
+test("the lifecycle index refuses impossible ordering before signing", async () => {
+  const evaluation = {
+    profile: AEB_EVALUATION_V2_VERSION,
+    digest: EVALUATION_V2_DIGEST,
+  } as const;
+  await assert.rejects(
+    () => issueLifecycleIndex({
+      lifecycle: {
+        evaluation,
+        local_admission_digest: ADMISSION_DIGEST,
+        authority_custody: {
+          phase: "RESERVATION",
+          digest: CONSUMPTION_DIGEST,
+        },
+        provider_entry_digest: null,
+        effect_observation_digest: null,
+        provider_outcome_digest: `sha256:${"06".repeat(32)}`,
+        reconciliation_digest: null,
+      },
+    }),
+    /lifecycle_order_invalid/,
+  );
+});
+
+test("v1 upgrade preserves resolvable lifecycle references and reports unrecoverable state", async () => {
+  const source = await issue();
+  const converted = await upgradeAebCrossingRecordV1ToLifecycleIndexV2(
+    source,
+    {
+      signing_keys: [...SIGNERS],
+      source_verification_keys: [...VERIFICATION_KEYS],
+      deterministic: true,
+      mldsaBackend,
+    },
+  );
+  assert.equal(converted.body.conversion.status, "COMPLETE");
+  assert.equal(
+    converted.body.source_crossing_record.version,
+    AEB_CROSSING_RECORD_VERSION,
+  );
+  assert.equal(
+    converted.body.lifecycle.evaluation.profile,
+    "AEB-EVALUATION-v1",
+  );
+  assert.equal(
+    converted.body.lifecycle.authority_custody.phase,
+    "RESERVATION",
+  );
+  assert.equal((await verify(source)).verified, true, "v1 remains valid");
+  const convertedResult = await verifyAebCrossingLifecycleIndexV2(converted, {
+    verification_keys: [...VERIFICATION_KEYS],
+    expected_action: ACTION,
+    admission_domain: BOUNDARY,
+    expected_evaluation: converted.body.lifecycle.evaluation,
+    mldsaBackend,
+  });
+  assert.equal(convertedResult.verified, true, JSON.stringify(convertedResult));
+
+  const terminal = await issue(wimseAuthority(), {
+    lifecycle_records: {
+      evaluation_digest: `sha256:${"ee".repeat(32)}`,
+      consumption_digest: CONSUMPTION_DIGEST,
+      provider_entry_digest: `sha256:${"07".repeat(32)}`,
+    },
+    referee: {
+      ...ADMIT_AXES,
+      custody: "TERMINAL",
+      provider_commitment: "COMMITTED",
+      retry: "REFUSE",
+    },
+  });
+  const terminalConverted =
+    await upgradeAebCrossingRecordV1ToLifecycleIndexV2(terminal, {
+      signing_keys: [...SIGNERS],
+      source_verification_keys: [...VERIFICATION_KEYS],
+      deterministic: true,
+      mldsaBackend,
+    });
+  assert.equal(terminalConverted.body.conversion.status, "INDETERMINATE");
+  assert.ok(
+    terminalConverted.body.conversion.reason_codes.includes(
+      "provider_outcome_reference_unavailable",
+    ),
+  );
+  assert.equal(
+    terminalConverted.body.lifecycle.authority_custody.phase,
+    "CONSUMPTION",
+  );
+});
+
+test("v1 lifecycle upgrade refuses an unverified source", async () => {
+  const source = await issue();
+  const tampered = structuredClone(source);
+  tampered.signatures[0].sig = tampered.signatures[0].sig.replace(/.$/, "A");
+  await assert.rejects(
+    () => upgradeAebCrossingRecordV1ToLifecycleIndexV2(tampered, {
+      signing_keys: [...SIGNERS],
+      source_verification_keys: [...VERIFICATION_KEYS],
+      deterministic: true,
+      mldsaBackend,
+    }),
+    /source_crossing_record_unverified/,
+  );
+});
+
+test("crossing records and lifecycle indexes cannot be relabeled across profiles", async () => {
+  const v1 = await issue();
+  const v2 = await issueV2();
+  const index = await issueLifecycleIndex();
+  const indexOptions = {
+    verification_keys: [...VERIFICATION_KEYS],
+    expected_action: ACTION,
+    admission_domain: BOUNDARY,
+    expected_evaluation: index.body.lifecycle.evaluation,
+    mldsaBackend,
+  };
+  assert.equal((await verify(index)).verified, false);
+  assert.equal((await verifyAebCrossingRecordV2(index, {
+    verification_keys: [...VERIFICATION_KEYS],
+    mldsaBackend,
+  })).verified, false);
+  for (const crossing of [v1, v2]) {
+    const relabeled = structuredClone(crossing) as any;
+    relabeled["@version"] = AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION;
+    assert.equal(
+      (await verifyAebCrossingLifecycleIndexV2(relabeled, indexOptions)).verified,
+      false,
+    );
+  }
+  const stripped = structuredClone(index);
+  stripped.signatures = stripped.signatures.filter(
+    (signature) => signature.alg === "Ed25519",
+  );
+  assert.equal(
+    (await verifyAebCrossingLifecycleIndexV2(stripped, indexOptions)).reason,
+    "hybrid_leg_missing",
+  );
 });
 
 test("the committed v2 vector catalog covers the direct hostile cases", () => {

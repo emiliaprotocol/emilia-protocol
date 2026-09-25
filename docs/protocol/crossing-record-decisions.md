@@ -179,6 +179,22 @@ Dossier rendering. Technical invariants only.
     transaction. A deployment may claim joint atomicity only when one
     owning transaction actually covers both records.
 
+## Derived lifecycle index (2026-09-24)
+
+25. (Added 2026-09-24. Reason: a crossing summary must not become a second
+    flattened authority or policy model.) The already shipped
+    `EP-AEB-CROSSING-RECORD-v1` and `EP-AEB-CROSSING-RECORD-v2` schemas and
+    verifiers remain unchanged. A separately domain-separated
+    `EP-AEB-CROSSING-LIFECYCLE-INDEX-v2` MAY join the action and admission
+    domain to digests of the evaluation, local admission, authority custody,
+    provider entry, effect observation, provider outcome, and reconciliation
+    records. The index contains no native-authority projection and no copied
+    native or local authorization verdict. It is evidence-only and explicitly
+    non-authorizing. Every referenced record remains authoritative only under
+    its own verifier and relying-party pins. Conversion from an older crossing
+    record MUST report `INDETERMINATE` instead of synthesizing any lifecycle
+    reference the source record did not carry.
+
 ## Language
 
 16. Native authority systems are an OPEN SET behind one bounded adapter

@@ -1,13 +1,78 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Add Your Protocol to Receipt Required
+# Add Your Protocol to the Consequence Boundary
 
-Receipt Required has one narrow waist: a service describes the proof needed for
+This guide describes the proposed AEB-06 refinement and the 4.1/0.26 reference
+packages. The current published AEB-05 remains the normative source for its
+revision and still requires the CAID and AEC stages. The -06 candidate has not
+been submitted or adopted.
+
+Keep the protocol's native authorization model. EMILIA does not ask an OAuth,
+AuthZEN, AP2, or local-policy implementation to replace its credential, mapping,
+decision, or enforcement rules.
+
+The useful integration starts after that native decision. AEB applies it to one
+receiver-observed operation, derives stable replay identity from the native
+authority, reserves before provider entry, and refuses blind redispatch if the
+outcome is unknown. Read the
+[consequence-admission boundary](protocol/consequence-admission.md) before
+adding a format.
+
+There are two integration paths:
+
+1. **Native authorization into AEB.** Use this when the surrounding protocol
+   already carries a permit, mandate, or policy decision. Preserve that object
+   and its native verifier. Add CAID only if independently encoded
+   representations must be compared. Add AEC only if the relying party needs
+   several evidence legs.
+2. **Receipt Required carrier.** Use this when a service must request and carry
+   a new exact-action approval artifact. A binding profile describes the
+   challenge, proof carrier, and field projection. It does not add a policy
+   engine or make EMILIA the surrounding protocol's native verifier.
+
+## Path A: bring an existing native decision
+
+The minimum contribution is one pinned profile, a deterministic native
+verifier or verifier result, and hostile lifecycle vectors. It must:
+
+- preserve the native issuer, subject, audience, constraints, status, and
+  decision reference where the native profile defines one;
+- bind the final operation under the native mapping rules, using a CAID mapping
+  profile only for a cross-format join;
+- derive the replay unit from the native authorization occurrence rather than
+  an AEB wrapper, request ID, or retry nonce;
+- state which provider credential and execution paths the boundary controls;
+- reserve before provider entry and allow at most one dispatch owner; and
+- keep a post-entry timeout indeterminate until authenticated reconciliation
+  establishes the same provider, operation, and material action.
+
+The adapter never makes a second AuthZEN, OAuth, AP2, or local-policy decision.
+It reports native verification and the information AEB needs to guard provider
+entry.
+
+Use the stable package entry points:
+
+```js
+import {
+  verifyAebNativeAuthorizationHandoff,
+} from '@emilia-protocol/verify/aeb';
+import {
+  createNativeConsequenceBoundary,
+} from '@emilia-protocol/gate/aeb';
+```
+
+The [direct native handoff profile](protocol/aeb-native-authorization-handoff-v1.md)
+defines the signed binding and execution order. The older
+`evaluateAebEvidence()` and `createConsequenceBoundary()` path remains available
+when a deployment actually needs a CAID cross-format join or an AEC multi-leg
+requirement.
+
+## Path B: add a Receipt Required carrier
+
+Receipt Required has a narrower job: a service describes the proof needed for
 an exact action, carries that challenge through the surrounding protocol, and
-accepts an EMILIA receipt only after native verification and exact CAID/action
-binding. A binding profile describes carrier locations and field projection. It
-does not add a new policy engine and does not make EMILIA a native verifier for
-the surrounding protocol.
+accepts an EMILIA receipt only after native verification and exact-action
+binding.
 
 The machine-readable contract is:
 

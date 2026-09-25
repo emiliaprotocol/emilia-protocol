@@ -8,6 +8,24 @@ Historical entries below retain the labels used when they were written.
 
 ## [Unreleased] — source baseline 2026-08-26 (`5d474fd240bc764fa41951c05c39130e38afa7ff`)
 
+### Consequence admission
+
+- Define AEB as the residual control boundary after a native authorization
+  decision: bind the final operation when needed, derive stable replay
+  identity, reserve before provider entry, and keep an uncertain outcome locked
+  until authenticated reconciliation.
+- Add a synthetic 23-case composition corpus covering AuthZEN/COAZ-MCP, AP2,
+  OAuth Transaction Token, and a pinned local mandate. The corpus tests the
+  shared lifecycle without claiming native-protocol conformance or making a
+  second authorization decision.
+- Add stable `@emilia-protocol/verify/aeb` and
+  `@emilia-protocol/gate/aeb` package entry points.
+- Add the signed direct-native authorization handoff for AIMS, AuthZEN, COAZ,
+  AP2, OAuth, and local systems. Gate resolves current status through an
+  operator-controlled callback, applies local admission, atomically fences the
+  native replay identity, and never requires CAID or AEC when no join or
+  multi-leg composition is needed.
+
 ### September 5 security review repairs
 
 - Require the embedded Class-A decision to be `approved`; a valid signature on
