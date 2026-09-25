@@ -157,13 +157,77 @@
         "verified": false
       },
       "passed": true
+    },
+    {
+      "category": "boundary",
+      "expected": "verified; evaluation_binding INDETERMINATE without the evaluation",
+      "id": "EVALUATION-UNCHECKED-IS-INDETERMINATE",
+      "observed": {
+        "evaluation_binding": "INDETERMINATE",
+        "verified": true
+      },
+      "passed": true
+    },
+    {
+      "category": "positive",
+      "expected": "verified; evaluation_binding BOUND",
+      "id": "EVALUATION-BOUND",
+      "observed": {
+        "evaluation_binding": "BOUND",
+        "evaluation_verdict": "SATISFIED",
+        "verified": true
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "evaluation_operation_mismatch",
+      "id": "UNRELATED-EVALUATION-REFUSED",
+      "observed": {
+        "pointer_only_binding": "INDETERMINATE",
+        "reason": "evaluation_operation_mismatch",
+        "verified": false
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "evaluation_digest_mismatch",
+      "id": "EVALUATION-DIGEST-MISMATCH",
+      "observed": {
+        "reason": "evaluation_digest_mismatch",
+        "verified": false
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "evaluation_authority_unmatched",
+      "id": "NATIVE-AUTHORITY-NOT-IN-EVALUATION",
+      "observed": {
+        "reason": "evaluation_authority_unmatched",
+        "verified": false
+      },
+      "passed": true
+    },
+    {
+      "category": "hostile",
+      "expected": "evaluation_verdict_inconsistent",
+      "id": "ADMIT-UNSATISFIED-EVALUATION-REFUSED",
+      "observed": {
+        "evaluation_verdict": "UNSATISFIED",
+        "reason": "evaluation_verdict_inconsistent",
+        "verified": false
+      },
+      "passed": true
     }
   ],
   "known_limits": [
     "This run exercises the EMILIA reference implementation; it is not an independent implementation.",
     "A verified crossing record is evidence of a past boundary decision and never authorizes another action.",
     "The two mappings share a projection contract and verifier; they do not claim native semantic equivalence.",
-    "A passing report does not prove every authority format is supported, IETF adoption, certification, or production deployment."
+    "A passing report does not prove every authority format is supported, IETF adoption, certification, or production deployment.",
+    "Without a supplied evaluation record the evaluation digest is an unverified pointer (evaluation_binding INDETERMINATE); BOUND joins the evaluation to the record but does not verify the evaluation's own signature."
   ],
   "mappings": [
     "EP-AEB-CROSSING-WIMSE-OAUTH-v1",
@@ -176,5 +240,5 @@
     "Ed25519",
     "ML-DSA-65"
   ],
-  "results_digest": "sha256:bb22bb80117e0a5a3d22ac55c5ca71c6d977aa9429149e64908ca6391ae2c34a"
+  "results_digest": "sha256:317676956ba1231014d8471412873d019a1e695e60a1d6f6751fdf2576b0a75a"
 }

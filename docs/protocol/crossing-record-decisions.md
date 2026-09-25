@@ -182,9 +182,15 @@ Dossier rendering. Technical invariants only.
 ## Derived lifecycle index (2026-09-24)
 
 25. (Added 2026-09-24. Reason: a crossing summary must not become a second
-    flattened authority or policy model.) The already shipped
-    `EP-AEB-CROSSING-RECORD-v1` and `EP-AEB-CROSSING-RECORD-v2` schemas and
-    verifiers remain unchanged. A separately domain-separated
+    flattened authority or policy model. Amended 2026-09-24; the second
+    sentence originally read "The already shipped `EP-AEB-CROSSING-RECORD-v1`
+    and `EP-AEB-CROSSING-RECORD-v2` schemas and verifiers remain unchanged."
+    Reason: decision 26 adds an optional evaluation join to those verifiers
+    without changing record bytes or default verification outcomes.) The
+    already shipped `EP-AEB-CROSSING-RECORD-v1` and
+    `EP-AEB-CROSSING-RECORD-v2` schemas and signed bytes remain unchanged;
+    their verifiers gain only the optional evaluation join of decision 26.
+    A separately domain-separated
     `EP-AEB-CROSSING-LIFECYCLE-INDEX-v2` MAY join the action and admission
     domain to digests of the evaluation, local admission, authority custody,
     provider entry, effect observation, provider outcome, and reconciliation
@@ -193,7 +199,54 @@ Dossier rendering. Technical invariants only.
     non-authorizing. Every referenced record remains authoritative only under
     its own verifier and relying-party pins. Conversion from an older crossing
     record MUST report `INDETERMINATE` instead of synthesizing any lifecycle
-    reference the source record did not carry.
+    reference, or any evaluation profile label, the source record did not
+    carry.
+
+## Evaluation binding and lifecycle order (2026-09-24)
+
+26. (Added 2026-09-24. Reason: the v1 and v2 crossing records and the
+    lifecycle index verified while citing an evaluation of a different
+    operation and action, because no verifier joined the cited evaluation to
+    the record; the v1 upgrade labeled an unchecked v1 digest as
+    `AEB-EVALUATION-v1` and reported `COMPLETE`; and the index accepted
+    provider entry with no authority reservation. Decision 4 requires records
+    joined by CAID and operation identifier, and nothing enforced it.)
+    (a) The evaluation reference is the untyped digest over the complete
+    signed evaluation record, which is the `record_digest` the
+    `AEB-EVALUATION-v1` and `AEB-EVALUATION-v2` verifiers return. It is never
+    the typed digest of an unsigned v2 body. The digested bytes contain the
+    record's `@type`, so a verifier holding the record binds the index's
+    profile label to the digest by comparing the two.
+    (b) A verifier MAY be given the evaluation record. It then MUST recompute
+    the reference and require equality, the same operation identifier and
+    CAID, and, when the evaluation committed to a normalized action or is
+    SATISFIED, the same action. For a crossing record it MUST also find an
+    evaluated leg whose evidence digest equals the native authority's
+    evidence digest, whose native verification and acceptance are not weaker
+    than the record states, and which mapped exactly this action when the
+    record claims `EXACT_MATCH`. An `ADMIT` record MUST cite a SATISFIED
+    evaluation in which that leg is SATISFIED. Any failure refuses with a
+    specific `evaluation_` reason.
+    Replay units and adapter identifiers are derived under different
+    profiles on each side and are not join keys.
+    (c) Without the evaluation record, verification reports the binding as
+    `INDETERMINATE`: the digest is an unverified pointer, and no document
+    may describe it as bound. `BOUND` does not verify the evaluation's own
+    signature or re-derivation; that stays with the evaluation verifier under
+    relying-party pins.
+    (d) A lifecycle index MUST NOT reference provider entry, or any later
+    record, unless it references an authority reservation or consumption.
+    Only an `INDETERMINATE` conversion may carry a legacy provider entry whose
+    custody it could not resolve. `COMPLETE` requires a labeled evaluation
+    reference and resolved custody.
+    (e) Conversion from a v1 record carries the v1 evaluation digest with no
+    profile label and reports `INDETERMINATE`
+    (`evaluation_reference_unverified`) unless the source evaluation is
+    supplied and binds. A supplied evaluation that does not bind is refused
+    and nothing is signed. References that v1 recorded out of lifecycle order
+    are reported `INDETERMINATE` and are never signed as an ordered
+    lifecycle; conversion of a verified v1 record never fails for that
+    reason.
 
 ## Language
 

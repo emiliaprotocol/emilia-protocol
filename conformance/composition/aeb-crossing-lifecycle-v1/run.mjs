@@ -537,7 +537,9 @@ async function validCrossingRecord(source) {
         subject: 'agent:payment-orchestrator',
         capability_id: 'capability:canonical-boundary',
         generation: 1,
-        receipt_digest: digestAeb({ receipt: 'canonical-boundary' }),
+        // The authority joins the cited evaluation through the evidence digest of
+        // the evaluated native artifact, the same digest the AEB leg records.
+        receipt_digest: digestAeb(source.native.artifact),
         mapping_profile_digest: digestAeb({ mapping: 'bcr-crossing-v1' }),
         constraints_digest: digestAeb({ limit: 1 }),
         status: {
@@ -606,9 +608,11 @@ async function validCrossingRecord(source) {
             { alg: 'Ed25519', key_id: 'crossing-ed', public_key: EVALUATOR_PUBLIC_SPKI },
             { alg: 'ML-DSA-65', key_id: 'crossing-pq', public_key: Buffer.from(pqPair.publicKey).toString('base64url') },
         ],
+        evaluation: source.evaluation,
     });
     assert.equal(verification.verified, true, JSON.stringify(verification));
-    return record;
+    assert.equal(verification.evaluation_binding, 'BOUND', JSON.stringify(verification));
+    return { record, evaluation_binding: verification.evaluation_binding };
 }
 export async function buildReferenceReport() {
     const cases = [];
@@ -709,7 +713,7 @@ export async function buildReferenceReport() {
     });
     cases.push(result('AUTHENTICATED-RECONCILIATION-NO-REEXECUTION', 'positive', reconciled.state === 'EXECUTED' && lostRun.providerCalls() === 1, 'EXECUTED by reconciliation with original provider-call count unchanged', { state: reconciled.state, provider_calls: lostRun.providerCalls() }));
     const recordFixture = evaluateFixture(oasntFixture(), 'operation:crossing-record-is-not-authority');
-    const crossingRecord = await validCrossingRecord(recordFixture);
+    const { record: crossingRecord, evaluation_binding: crossingEvaluationBinding } = await validCrossingRecord(recordFixture);
     const crossingVerification = await verifyAebCrossingRecord(crossingRecord, {
         verification_keys: [],
     });
@@ -725,6 +729,7 @@ export async function buildReferenceReport() {
     });
     cases.push(result('CROSSING-RECORD-NONAUTHORIZING', 'boundary', crossingResult.state === 'REFUSED' && crossingRun.providerCalls() === 0, 'verified historical evidence cannot replace native authority', {
         crossing_record_valid: true,
+        evaluation_binding: crossingEvaluationBinding,
         state: crossingResult.state,
         reason: crossingResult.state === 'REFUSED' ? crossingResult.reason : null,
         provider_calls: crossingRun.providerCalls(),

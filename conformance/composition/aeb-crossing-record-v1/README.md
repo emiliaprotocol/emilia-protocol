@@ -29,8 +29,17 @@ an admission.
 - wrong relying-party verification key;
 - stale authority flattened into current authority;
 - missing admission evidence reported as admission;
-- native rejection broadened into local admission; and
-- carrier metadata injected into the signed record contract.
+- native rejection broadened into local admission;
+- carrier metadata injected into the signed record contract; and
+- the cited evaluation: without the evaluation record the binding is reported
+  `INDETERMINATE`; with it, an unrelated evaluation, an evaluation the record
+  does not commit to, a native authority that matches no evaluated leg, and an
+  admission citing an unsatisfied evaluation each refuse.
+
+`BOUND` means the supplied evaluation has the committed record digest and
+evaluated the same operation, CAID, action, and native authority evidence. It
+does not verify the evaluation's own signature; that remains the evaluation
+verifier's job under relying-party pins.
 
 The committed report digest is the reproduction contract. Regenerate it only
 for a deliberate semantic change, never to silence a failing test.

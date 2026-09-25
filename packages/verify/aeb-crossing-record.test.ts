@@ -18,6 +18,8 @@ import {
   crossingRecordV2ContractDigest,
   crossingLifecycleIndexV2AdmissionDomainDigest,
   crossingLifecycleIndexV2ContractDigest,
+  crossingLifecycleIndexV2SignedBytes,
+  aebCrossingEvaluationReference,
   issueAebCrossingLifecycleIndexV2,
   issueAebCrossingRecordV2,
   issueAebCrossingRecord,
@@ -29,10 +31,24 @@ import {
   verifyAebCrossingRecordV2,
 } from "./dist/aeb-crossing-record.js";
 import {
+  AEB_EVALUATION_VERSION,
   AEB_EVALUATION_V2_VERSION,
+  adapterPinDigest,
+  aebEvaluationV2Digest,
+  digestAeb,
   digestAebTyped,
+  evaluateAebEvidence,
+  issueAebEvaluationV2FromV1,
+  mappingProfileDigest,
+  registryEntryDigest,
+  unifiedRegistryDigest,
+  verifyAebEvaluation,
+  verifyAebEvaluationV2,
 } from "./dist/aeb-adapter-contract.js";
-import { loadDefaultAgilityMldsaBackend } from "./dist/pq-signature-agility.js";
+import {
+  loadDefaultAgilityMldsaBackend,
+  signAgileSet,
+} from "./dist/pq-signature-agility.js";
 
 const ED_PRIVATE_JWK = {
   crv: "Ed25519",
@@ -110,14 +126,14 @@ const ADMIT_AXES = Object.freeze({
   reason_codes: [],
 } as const);
 
-function wimseAuthority() {
+function wimseAuthority(tokenDigest = `sha256:${"aa".repeat(32)}`) {
   const mapped = mapWimseOAuthCrossingAuthority({
     native_verification: "VERIFIED",
     rp_acceptance: "ACCEPTED",
     authorization_server: "https://as.example",
     subject: "spiffe://example/agent/accounting",
     token_id: "txn-token-123",
-    token_digest: `sha256:${"aa".repeat(32)}`,
+    token_digest: tokenDigest,
     mapping_profile_digest: `sha256:${"ab".repeat(32)}`,
     constraints_digest: `sha256:${"ac".repeat(32)}`,
     status: {
@@ -279,6 +295,198 @@ async function issueLifecycleIndex(
       mldsaBackend,
     },
   );
+}
+
+// A real, signed AEB-EVALUATION-v1 fixture. The crossing verifier joins a
+// supplied evaluation by digest, operation, CAID, action commitment, and the
+// native-authority evidence digest of one evaluated leg.
+const EVALUATION_ADAPTER_ID = "test:crossing-native";
+const EVALUATION_PROFILE_ID = "test:crossing-mapping";
+const EVALUATION_ARTIFACT_REF = "artifact:native-authority";
+const EVALUATION_ARTIFACT = Object.freeze({
+  root: "root:crossing-native",
+  role: "native-authority",
+  caid: ACTION.caid,
+  action_digest: ACTION.action_digest,
+  replay_id: "txn-token-123",
+  subject: { id: "workload:accounting", kind: "workload" },
+});
+const EVALUATION_TOKEN_DIGEST = digestAeb(EVALUATION_ARTIFACT);
+const UNRELATED_CAID =
+  "caid:1:order.purchase.1:jcs-sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+
+function evaluationStatus(overrides: Record<string, unknown> = {}) {
+  return {
+    checked_at: "2026-08-19T04:59:00Z",
+    expires_at: "2026-08-19T06:00:00Z",
+    revocation_checked: true,
+    revoked: false,
+    consumed: false,
+    ...overrides,
+  };
+}
+
+function evaluationAdapter() {
+  return {
+    id: EVALUATION_ADAPTER_ID,
+    version: "1",
+    verifyNative({ artifact, status, trust_roots }: any) {
+      const trusted = trust_roots.includes(artifact.root);
+      return {
+        native_verification: trusted ? "VERIFIED" : "FAILED",
+        acceptance: trusted ? "ACCEPTED" : "REJECTED",
+        evidence_digest: digestAeb(artifact),
+        status_digest: digestAeb({
+          checked_at: status.checked_at,
+          expires_at: status.expires_at,
+          revocation_checked: status.revocation_checked,
+          revoked: status.revoked,
+          consumed: status.consumed,
+          unavailable: status.unavailable === true,
+        }),
+        evidence_role: artifact.role,
+        subject: artifact.subject,
+        replay_unit: digestAeb({
+          adapter: EVALUATION_ADAPTER_ID,
+          replay_id: artifact.replay_id,
+        }),
+        reasons: trusted ? [] : ["native_trust_root_not_pinned"],
+      };
+    },
+    mapAction({ artifact, native }: any) {
+      return {
+        mapping: native.native_verification === "VERIFIED" ? "MATCH" : "INDETERMINATE",
+        caid: artifact.caid,
+        action_digest: artifact.action_digest,
+        reasons: [],
+      };
+    },
+  };
+}
+
+function evaluationRegistryEntry(
+  entryId: string,
+  kind: string,
+  definition: Record<string, unknown>,
+) {
+  const entry: Record<string, unknown> = {
+    kind,
+    version: "1",
+    status: "active",
+    definition,
+  };
+  entry.definition_digest = registryEntryDigest(entryId, entry as any);
+  return entry;
+}
+
+function evaluationConfig() {
+  const profile: Record<string, any> = {
+    version: "crossing-mapping-v1",
+    definition: { source: "crossing-record-test" },
+    registry_entry_ref: "mapping:test:crossing",
+    mapper_id: "mapper:test:crossing",
+    resolver: {
+      id: "resolver:test:crossing",
+      version: "1",
+      implementation_digest: digestAeb({ implementation: "resolver:test:crossing:1" }),
+    },
+    semantic_equivalence: {
+      assertion: "EQUIVALENT_UNDER_PROFILE",
+      loss_policy: "NO_MATERIAL_FIELD_LOSS",
+      omitted_material_fields: [],
+      omitted_nonmaterial_fields: [],
+    },
+  };
+  profile.profile_digest = mappingProfileDigest(EVALUATION_PROFILE_ID, profile as any);
+  const registry: Record<string, any> = {
+    "@version": "EP-EVIDENCE-REGISTRY-v1",
+    registry_id: "registry:crossing-test",
+    epoch: 1,
+    entries: {
+      "mapping:test:crossing": evaluationRegistryEntry(
+        "mapping:test:crossing",
+        "mapping-profile",
+        { profile_digest: profile.profile_digest },
+      ),
+      "role:native-authority": evaluationRegistryEntry(
+        "role:native-authority",
+        "evidence-role",
+        { role: "native-authority", subject_kinds: ["workload"] },
+      ),
+    },
+  };
+  registry.registry_digest = unifiedRegistryDigest(registry as any);
+  const pin: Record<string, any> = {
+    version: "1",
+    trust_roots: ["root:crossing-native"],
+    config: { mode: "offline" },
+    max_status_age_sec: 3600,
+  };
+  pin.config_digest = adapterPinDigest(EVALUATION_ADAPTER_ID, pin as any);
+  return {
+    "@version": "AEB-ADAPTER-v1",
+    relying_party_id: BOUNDARY.relying_party_id,
+    evaluator_keys: { "eval:crossing": { public_key: edPublicSpki } },
+    registry,
+    accepted_mappers: ["mapper:test:crossing"],
+    adapters: { [EVALUATION_ADAPTER_ID]: pin },
+    profiles: { [EVALUATION_PROFILE_ID]: profile },
+    requirements: {
+      "req:crossing": {
+        "@version": "AEB-REQUIREMENT-v1",
+        all_of: ["native-authority"],
+        terms: [{ type: "one-time-consumption" }],
+      },
+    },
+  } as any;
+}
+
+function evaluationFor(
+  operationId: string,
+  options: { caid?: string; status?: Record<string, unknown> } = {},
+) {
+  const config = evaluationConfig();
+  const result = evaluateAebEvidence({
+    config,
+    adapters: { [EVALUATION_ADAPTER_ID]: evaluationAdapter() } as any,
+    operation_id: operationId,
+    consumption_nonce: `nonce:${operationId}`,
+    initiator_id: "agent:accounting-17",
+    requirement_ref: "req:crossing",
+    caid: options.caid ?? ACTION.caid,
+    legs: [
+      {
+        adapter_id: EVALUATION_ADAPTER_ID,
+        profile_id: EVALUATION_PROFILE_ID,
+        artifact_ref: EVALUATION_ARTIFACT_REF,
+        artifact: EVALUATION_ARTIFACT,
+        status: evaluationStatus(options.status) as any,
+      },
+    ],
+    evaluated_at: NOW,
+    signer: { key_id: "eval:crossing", private_key: edPrivate },
+  });
+  return { config, record: result.record };
+}
+
+function boundLifecycleRecords(evaluationRecord: unknown) {
+  return {
+    evaluation_digest: digestAeb(evaluationRecord),
+    consumption_digest: CONSUMPTION_DIGEST,
+    provider_entry_digest: null,
+  };
+}
+
+async function signIndexBody(body: Record<string, any>) {
+  return {
+    "@version": AEB_CROSSING_LIFECYCLE_INDEX_V2_VERSION,
+    body,
+    signatures: await signAgileSet(
+      crossingLifecycleIndexV2SignedBytes(body as any),
+      [...SIGNERS] as any,
+      { deterministic: true, mldsaBackend },
+    ),
+  };
 }
 
 test("both native mappings emit one carrier-neutral authority contract", () => {
@@ -616,14 +824,21 @@ test("v1 upgrade preserves resolvable lifecycle references and reports unrecover
       mldsaBackend,
     },
   );
-  assert.equal(converted.body.conversion.status, "COMPLETE");
+  // Without the source evaluation, v1's unlabeled evaluation digest is
+  // carried as an unverified reference: no profile label is invented and the
+  // conversion is not COMPLETE.
+  assert.equal(converted.body.conversion.status, "INDETERMINATE");
+  assert.deepEqual(converted.body.conversion.reason_codes, [
+    "evaluation_reference_unverified",
+  ]);
   assert.equal(
     converted.body.source_crossing_record.version,
     AEB_CROSSING_RECORD_VERSION,
   );
+  assert.equal(converted.body.lifecycle.evaluation.profile, null);
   assert.equal(
-    converted.body.lifecycle.evaluation.profile,
-    "AEB-EVALUATION-v1",
+    converted.body.lifecycle.evaluation.digest,
+    source.body.lifecycle_records.evaluation_digest,
   );
   assert.equal(
     converted.body.lifecycle.authority_custody.phase,
@@ -638,6 +853,8 @@ test("v1 upgrade preserves resolvable lifecycle references and reports unrecover
     mldsaBackend,
   });
   assert.equal(convertedResult.verified, true, JSON.stringify(convertedResult));
+  assert.equal(convertedResult.conversion_status, "INDETERMINATE");
+  assert.equal(convertedResult.evaluation_binding, "INDETERMINATE");
 
   const terminal = await issue(wimseAuthority(), {
     lifecycle_records: {
@@ -746,6 +963,12 @@ test("the committed v2 vector catalog covers the direct hostile cases", () => {
       "V1-AS-V2",
       "V1-RELABEL-V2",
       "V2-RELABEL-V1",
+      "V2-EVALUATION-UNCHECKED-INDETERMINATE",
+      "V2-EVALUATION-BOUND",
+      "V2-UNRELATED-EVALUATION",
+      "V2-EVALUATION-DIGEST-MISMATCH",
+      "V2-AUTHORITY-NOT-IN-EVALUATION",
+      "V2-ADMIT-UNSATISFIED-EVALUATION",
     ]),
   );
 });
@@ -911,4 +1134,656 @@ test("carrier fields are outside the closed signed record contract", async () =>
   const result = await verify(withCarrier);
   assert.equal(result.verified, false);
   assert.equal(result.reason, "malformed_record");
+});
+
+// Evaluation binding (amendment 26 in docs/protocol/crossing-record-decisions.md).
+
+async function verifyV2(record: unknown, evaluation?: unknown) {
+  return verifyAebCrossingRecordV2(record, {
+    verification_keys: [...VERIFICATION_KEYS],
+    mldsaBackend,
+    ...(evaluation === undefined ? {} : { evaluation }),
+  });
+}
+
+async function verifyV1(record: unknown, evaluation?: unknown) {
+  return verifyAebCrossingRecord(record, {
+    verification_keys: [...VERIFICATION_KEYS],
+    mldsaBackend,
+    ...(evaluation === undefined ? {} : { evaluation }),
+  });
+}
+
+const V1_OPERATION = "operation:vendor-master:0001";
+const V2_OPERATION = "operation:vendor-master:v2:0001";
+
+test("without a supplied evaluation, v1 and v2 report the evaluation binding as INDETERMINATE", async () => {
+  const v1 = await verifyV1(await issue());
+  assert.equal(v1.verified, true, JSON.stringify(v1));
+  assert.equal(v1.evaluation_binding, "INDETERMINATE");
+  assert.equal(v1.checks.evaluation_binding, null);
+  const v2 = await verifyV2(await issueV2());
+  assert.equal(v2.verified, true, JSON.stringify(v2));
+  assert.equal(v2.evaluation_binding, "INDETERMINATE");
+  assert.equal(v2.checks.evaluation_binding, null);
+});
+
+test("a supplied evaluation binds by record digest, operation, CAID, action, and authority leg", async () => {
+  const { config, record: evaluationV1 } = evaluationFor(V1_OPERATION);
+  assert.equal(evaluationV1.verdict, "SATISFIED", JSON.stringify(evaluationV1.reasons));
+  // The committed digest is the evaluation verifier's own record_digest.
+  const evaluationCheck = verifyAebEvaluation(evaluationV1, {
+    config,
+    adapters: { [EVALUATION_ADAPTER_ID]: evaluationAdapter() } as any,
+    artifacts: { [EVALUATION_ARTIFACT_REF]: EVALUATION_ARTIFACT },
+  });
+  assert.equal(evaluationCheck.valid, true, JSON.stringify(evaluationCheck));
+  assert.equal(evaluationCheck.record_digest, digestAeb(evaluationV1));
+
+  const record = await issue(wimseAuthority(EVALUATION_TOKEN_DIGEST), {
+    lifecycle_records: boundLifecycleRecords(evaluationV1),
+  });
+  const bound = await verifyV1(record, evaluationV1);
+  assert.equal(bound.verified, true, JSON.stringify(bound));
+  assert.equal(bound.evaluation_binding, "BOUND");
+  assert.equal(bound.checks.evaluation_binding, true);
+  assert.equal(bound.execution_authorizing, false);
+
+  const { record: evaluationForV2 } = evaluationFor(V2_OPERATION);
+  const recordV2 = await issueV2({
+    native_authority: wimseAuthority(EVALUATION_TOKEN_DIGEST),
+    lifecycle_records: boundLifecycleRecords(evaluationForV2),
+  });
+  const boundV2 = await verifyV2(recordV2, evaluationForV2);
+  assert.equal(boundV2.verified, true, JSON.stringify(boundV2));
+  assert.equal(boundV2.evaluation_binding, "BOUND");
+});
+
+test("v1 and v2 refuse an unrelated evaluation even when the record commits to its digest", async () => {
+  const { record: unrelated } = evaluationFor("op-UNRELATED", {
+    caid: UNRELATED_CAID,
+  });
+  assert.equal(unrelated.verdict, "UNSATISFIED");
+  const v1 = await issue(bcrAuthority(), {
+    lifecycle_records: boundLifecycleRecords(unrelated),
+  });
+  // Pre-fix behaviour: the record verified and the binding was never checked.
+  assert.equal((await verifyV1(v1)).verified, true);
+  const refused = await verifyV1(v1, unrelated);
+  assert.equal(refused.verified, false);
+  assert.equal(refused.reason, "evaluation_operation_mismatch");
+  assert.equal(refused.evaluation_binding, "MISMATCH");
+  assert.equal(refused.checks.evaluation_binding, false);
+
+  const v2 = await issueV2({
+    native_authority: bcrAuthority(),
+    lifecycle_records: boundLifecycleRecords(unrelated),
+  });
+  const refusedV2 = await verifyV2(v2, unrelated);
+  assert.equal(refusedV2.verified, false);
+  assert.equal(refusedV2.reason, "evaluation_operation_mismatch");
+  assert.equal(refusedV2.evaluation_binding, "MISMATCH");
+
+  // Same operation identifier, different CAID: still not this action.
+  const { record: otherAction } = evaluationFor(V1_OPERATION, {
+    caid: UNRELATED_CAID,
+  });
+  const otherActionRecord = await issue(wimseAuthority(EVALUATION_TOKEN_DIGEST), {
+    lifecycle_records: boundLifecycleRecords(otherAction),
+    admission_reference: { state: "NOT_APPLICABLE", digest: null },
+    referee: {
+      ...ADMIT_AXES,
+      admission: "REFUSE",
+      custody: "UNRESERVED",
+      retry: "REQUIRES_NEW_ADMISSION",
+    },
+  });
+  assert.equal(
+    (await verifyV1(otherActionRecord, otherAction)).reason,
+    "evaluation_action_mismatch",
+  );
+});
+
+test("v1 and v2 refuse an evaluation whose digest the record does not commit to", async () => {
+  const { record: evaluationV1 } = evaluationFor(V1_OPERATION);
+  const record = await issue(wimseAuthority(EVALUATION_TOKEN_DIGEST));
+  const refused = await verifyV1(record, evaluationV1);
+  assert.equal(refused.verified, false);
+  assert.equal(refused.reason, "evaluation_digest_mismatch");
+  assert.equal(refused.evaluation_binding, "MISMATCH");
+
+  const { record: evaluationForV2 } = evaluationFor(V2_OPERATION);
+  const recordV2 = await issueV2({
+    native_authority: wimseAuthority(EVALUATION_TOKEN_DIGEST),
+  });
+  assert.equal(
+    (await verifyV2(recordV2, evaluationForV2)).reason,
+    "evaluation_digest_mismatch",
+  );
+});
+
+test("v1 and v2 refuse a native authority that matches no evaluated leg", async () => {
+  const { record: evaluationV1 } = evaluationFor(V1_OPERATION);
+  const record = await issue(wimseAuthority(), {
+    lifecycle_records: boundLifecycleRecords(evaluationV1),
+  });
+  const refused = await verifyV1(record, evaluationV1);
+  assert.equal(refused.verified, false);
+  assert.equal(refused.reason, "evaluation_authority_unmatched");
+
+  const bcrRecord = await issue(bcrAuthority(), {
+    lifecycle_records: boundLifecycleRecords(evaluationV1),
+  });
+  assert.equal(
+    (await verifyV1(bcrRecord, evaluationV1)).reason,
+    "evaluation_authority_unmatched",
+  );
+
+  const { record: evaluationForV2 } = evaluationFor(V2_OPERATION);
+  const recordV2 = await issueV2({
+    lifecycle_records: boundLifecycleRecords(evaluationForV2),
+  });
+  assert.equal(
+    (await verifyV2(recordV2, evaluationForV2)).reason,
+    "evaluation_authority_unmatched",
+  );
+});
+
+test("an admitted crossing cannot cite an evaluation that was not SATISFIED", async () => {
+  const { record: revoked } = evaluationFor(V1_OPERATION, {
+    status: { revoked: true },
+  });
+  assert.equal(revoked.verdict, "UNSATISFIED");
+  const admitted = await issue(wimseAuthority(EVALUATION_TOKEN_DIGEST), {
+    lifecycle_records: boundLifecycleRecords(revoked),
+  });
+  const refused = await verifyV1(admitted, revoked);
+  assert.equal(refused.verified, false);
+  assert.equal(refused.reason, "evaluation_verdict_inconsistent");
+
+  const { record: revokedV2 } = evaluationFor(V2_OPERATION, {
+    status: { revoked: true },
+  });
+  const admittedV2 = await issueV2({
+    native_authority: wimseAuthority(EVALUATION_TOKEN_DIGEST),
+    lifecycle_records: boundLifecycleRecords(revokedV2),
+  });
+  assert.equal(
+    (await verifyV2(admittedV2, revokedV2)).reason,
+    "evaluation_verdict_inconsistent",
+  );
+
+  // A refusal may cite the unsatisfied evaluation that caused it.
+  const refusal = await issue(wimseAuthority(EVALUATION_TOKEN_DIGEST), {
+    lifecycle_records: {
+      ...boundLifecycleRecords(revoked),
+      consumption_digest: null,
+    },
+    admission_reference: { state: "NOT_APPLICABLE", digest: null },
+    referee: {
+      ...ADMIT_AXES,
+      admission: "REFUSE",
+      custody: "UNRESERVED",
+      retry: "REQUIRES_NEW_ADMISSION",
+    },
+  });
+  const refusalCheck = await verifyV1(refusal, revoked);
+  assert.equal(refusalCheck.verified, true, JSON.stringify(refusalCheck));
+  assert.equal(refusalCheck.evaluation_binding, "BOUND");
+});
+
+test("an evaluation that verified authority less strongly than the record claims refuses", async () => {
+  const { record: evaluationV1 } = evaluationFor(V1_OPERATION);
+  const weakened = structuredClone(evaluationV1);
+  weakened.legs[0].acceptance = "INDETERMINATE";
+  const record = await issue(wimseAuthority(EVALUATION_TOKEN_DIGEST), {
+    lifecycle_records: boundLifecycleRecords(weakened),
+  });
+  assert.equal(
+    (await verifyV1(record, weakened)).reason,
+    "evaluation_authority_inconsistent",
+  );
+
+  // An admission cannot rest on an authority leg the evaluation did not
+  // satisfy, even when the evaluation as a whole reports SATISFIED.
+  const unsatisfiedLeg = structuredClone(evaluationV1);
+  unsatisfiedLeg.legs[0].verdict = "UNSATISFIED";
+  assert.equal(unsatisfiedLeg.verdict, "SATISFIED");
+  const admitted = await issue(wimseAuthority(EVALUATION_TOKEN_DIGEST), {
+    lifecycle_records: boundLifecycleRecords(unsatisfiedLeg),
+  });
+  assert.equal(
+    (await verifyV1(admitted, unsatisfiedLeg)).reason,
+    "evaluation_authority_inconsistent",
+  );
+});
+
+test("hostile evaluation inputs refuse with a reason and never throw", async () => {
+  const { record: evaluationV1 } = evaluationFor(V1_OPERATION);
+  const record = await issue(wimseAuthority(EVALUATION_TOKEN_DIGEST), {
+    lifecycle_records: boundLifecycleRecords(evaluationV1),
+  });
+  let getterCalls = 0;
+  const accessor = structuredClone(evaluationV1) as any;
+  Object.defineProperty(accessor, "operation_id", {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return V1_OPERATION;
+    },
+  });
+  const proxy = new Proxy(structuredClone(evaluationV1), {
+    ownKeys() {
+      throw new Error("hostile ownKeys");
+    },
+  });
+  const missingLegs = structuredClone(evaluationV1) as any;
+  delete missingLegs.legs;
+  for (const hostile of [
+    null,
+    "evaluation",
+    [],
+    { "@type": AEB_EVALUATION_VERSION },
+    missingLegs,
+    accessor,
+    proxy,
+  ]) {
+    const result = await verifyV1(record, hostile);
+    assert.equal(result.verified, false);
+    assert.equal(result.evaluation_binding, "MISMATCH");
+    assert.match(result.reason ?? "", /^evaluation_/);
+  }
+  assert.equal(getterCalls, 0);
+});
+
+async function issueBoundIndex(
+  evaluation: { profile: string | null; digest: string },
+  lifecycleOverrides: Record<string, unknown> = {},
+  overrides: Record<string, unknown> = {},
+) {
+  return issueAebCrossingLifecycleIndexV2(
+    {
+      record_id: "crossing-lifecycle:finance:bound",
+      operation_id: V2_OPERATION,
+      issued_at: NOW,
+      action: ACTION,
+      lifecycle: {
+        evaluation,
+        local_admission_digest: ADMISSION_DIGEST,
+        authority_custody: { phase: "RESERVATION", digest: CONSUMPTION_DIGEST },
+        provider_entry_digest: null,
+        effect_observation_digest: null,
+        provider_outcome_digest: null,
+        reconciliation_digest: null,
+        ...lifecycleOverrides,
+      },
+      source_crossing_record: { version: null, digest: null },
+      conversion: { status: "NATIVE", reason_codes: [] },
+      execution_authorizing: false,
+      ...overrides,
+    } as any,
+    { action: ACTION, admission_domain: BOUNDARY, evaluation } as any,
+    { signing_keys: [...SIGNERS], deterministic: true, mldsaBackend },
+  );
+}
+
+function indexOptions(extra: Record<string, unknown> = {}) {
+  return {
+    verification_keys: [...VERIFICATION_KEYS],
+    expected_action: ACTION,
+    admission_domain: BOUNDARY,
+    mldsaBackend,
+    ...extra,
+  } as any;
+}
+
+test("the lifecycle index reports the evaluation binding as INDETERMINATE without the evaluation", async () => {
+  const index = await issueLifecycleIndex();
+  const result = await verifyAebCrossingLifecycleIndexV2(
+    index,
+    indexOptions({ expected_evaluation: index.body.lifecycle.evaluation }),
+  );
+  assert.equal(result.verified, true, JSON.stringify(result));
+  assert.equal(result.evaluation_binding, "INDETERMINATE");
+  assert.equal(result.checks.evaluation_binding, null);
+
+  const noReference = await verifyAebCrossingLifecycleIndexV2(index, indexOptions());
+  assert.equal(noReference.verified, false);
+  assert.equal(noReference.reason, "evaluation_reference_required");
+});
+
+test("the lifecycle index binds AEB-EVALUATION-v1 and -v2 records by the verifier record digest", async () => {
+  const { config, record: evaluationV1 } = evaluationFor(V2_OPERATION);
+  const v1Reference = aebCrossingEvaluationReference(evaluationV1);
+  assert.deepEqual(v1Reference, {
+    profile: AEB_EVALUATION_VERSION,
+    digest: digestAeb(evaluationV1),
+  });
+  const v1Index = await issueBoundIndex(v1Reference);
+  const v1Bound = await verifyAebCrossingLifecycleIndexV2(
+    v1Index,
+    indexOptions({ evaluation: evaluationV1 }),
+  );
+  assert.equal(v1Bound.verified, true, JSON.stringify(v1Bound));
+  assert.equal(v1Bound.evaluation_binding, "BOUND");
+  assert.equal(v1Bound.checks.evaluation, true);
+
+  const evaluationV2 = issueAebEvaluationV2FromV1(evaluationV1, {
+    signer: { key_id: "eval:crossing", private_key: edPrivate },
+    profiles: config.profiles,
+  });
+  const v2Check = verifyAebEvaluationV2(evaluationV2, {
+    source_evaluation: evaluationV1,
+    evaluator_keys: config.evaluator_keys,
+    profiles: config.profiles,
+  });
+  assert.equal(v2Check.valid, true, JSON.stringify(v2Check));
+  const v2Reference = aebCrossingEvaluationReference(evaluationV2);
+  assert.equal(v2Reference.profile, AEB_EVALUATION_V2_VERSION);
+  // The index digest is the v2 verifier's record_digest over the complete
+  // signed record, not the typed digest of the unsigned body.
+  assert.equal(v2Reference.digest, v2Check.record_digest);
+  const { signature: _signature, ...v2Body } = evaluationV2;
+  assert.notEqual(v2Reference.digest, aebEvaluationV2Digest(v2Body as any));
+
+  const v2Index = await issueBoundIndex(v2Reference);
+  const v2Bound = await verifyAebCrossingLifecycleIndexV2(
+    v2Index,
+    indexOptions({
+      expected_evaluation: v2Reference,
+      evaluation: evaluationV2,
+    }),
+  );
+  assert.equal(v2Bound.verified, true, JSON.stringify(v2Bound));
+  assert.equal(v2Bound.evaluation_binding, "BOUND");
+
+  const bodyDigestIndex = await issueBoundIndex({
+    profile: AEB_EVALUATION_V2_VERSION,
+    digest: aebEvaluationV2Digest(v2Body as any),
+  });
+  assert.equal(
+    (await verifyAebCrossingLifecycleIndexV2(
+      bodyDigestIndex,
+      indexOptions({ evaluation: evaluationV2 }),
+    )).reason,
+    "evaluation_digest_mismatch",
+  );
+});
+
+test("the lifecycle index refuses an unrelated or relabeled evaluation", async () => {
+  const { record: unrelated } = evaluationFor("op-UNRELATED", {
+    caid: UNRELATED_CAID,
+  });
+  // The reviewer's case: a v1 digest under the v2 label, pinned by a
+  // self-referential expected pointer.
+  const relabeledReference = {
+    profile: AEB_EVALUATION_V2_VERSION,
+    digest: digestAeb(unrelated),
+  };
+  const relabeled = await issueBoundIndex(relabeledReference);
+  assert.equal((await verifyAebCrossingLifecycleIndexV2(
+    relabeled,
+    indexOptions({ expected_evaluation: relabeledReference }),
+  )).verified, true, "the pointer-only check still cannot see the join");
+  const relabeledResult = await verifyAebCrossingLifecycleIndexV2(
+    relabeled,
+    indexOptions({
+      expected_evaluation: relabeledReference,
+      evaluation: unrelated,
+    }),
+  );
+  assert.equal(relabeledResult.verified, false);
+  assert.equal(relabeledResult.reason, "evaluation_profile_mismatch");
+  assert.equal(relabeledResult.evaluation_binding, "MISMATCH");
+
+  const unrelatedIndex = await issueBoundIndex(
+    aebCrossingEvaluationReference(unrelated),
+  );
+  assert.equal((await verifyAebCrossingLifecycleIndexV2(
+    unrelatedIndex,
+    indexOptions({ evaluation: unrelated }),
+  )).reason, "evaluation_operation_mismatch");
+
+  // Same operation and CAID, but the SATISFIED evaluation committed to a
+  // different normalized action than the one the index names.
+  const { record: evaluationV1 } = evaluationFor(V2_OPERATION);
+  const otherActionIndex = await issueAebCrossingLifecycleIndexV2(
+    {
+      record_id: "crossing-lifecycle:finance:other-action",
+      operation_id: V2_OPERATION,
+      issued_at: NOW,
+      action: { ...ACTION, action_digest: `sha256:${"01".repeat(32)}` },
+      lifecycle: {
+        evaluation: aebCrossingEvaluationReference(evaluationV1),
+        local_admission_digest: ADMISSION_DIGEST,
+        authority_custody: { phase: "RESERVATION", digest: CONSUMPTION_DIGEST },
+        provider_entry_digest: null,
+        effect_observation_digest: null,
+        provider_outcome_digest: null,
+        reconciliation_digest: null,
+      },
+      source_crossing_record: { version: null, digest: null },
+      conversion: { status: "NATIVE", reason_codes: [] },
+      execution_authorizing: false,
+    } as any,
+    {
+      action: { ...ACTION, action_digest: `sha256:${"01".repeat(32)}` },
+      admission_domain: BOUNDARY,
+      evaluation: aebCrossingEvaluationReference(evaluationV1),
+    } as any,
+    { signing_keys: [...SIGNERS], deterministic: true, mldsaBackend },
+  );
+  assert.equal((await verifyAebCrossingLifecycleIndexV2(
+    otherActionIndex,
+    indexOptions({
+      expected_action: otherActionIndex.body.action,
+      evaluation: evaluationV1,
+    }),
+  )).reason, "evaluation_action_mismatch");
+});
+
+test("the lifecycle index refuses provider entry without an authority reservation", async () => {
+  const evaluation = { profile: AEB_EVALUATION_V2_VERSION, digest: EVALUATION_V2_DIGEST };
+  const entry = `sha256:${"07".repeat(32)}`;
+  for (const custody of [
+    { phase: "NOT_APPLICABLE", digest: null },
+    { phase: "INDETERMINATE", digest: null },
+    { phase: "INDETERMINATE", digest: CONSUMPTION_DIGEST },
+  ]) {
+    await assert.rejects(
+      () => issueBoundIndex(evaluation, {
+        authority_custody: custody,
+        provider_entry_digest: entry,
+        provider_outcome_digest: `sha256:${"08".repeat(32)}`,
+      }),
+      /lifecycle_order_invalid/,
+      JSON.stringify(custody),
+    );
+  }
+
+  // A hostile issuer that signs the impossible ordering directly.
+  const valid = await issueBoundIndex(evaluation);
+  const body = structuredClone(valid.body) as any;
+  body.lifecycle.authority_custody = { phase: "NOT_APPLICABLE", digest: null };
+  body.lifecycle.provider_entry_digest = entry;
+  body.lifecycle.reconciliation_digest = `sha256:${"09".repeat(32)}`;
+  body.contract_digest = crossingLifecycleIndexV2ContractDigest(body);
+  const signed = await signIndexBody(body);
+  const result = await verifyAebCrossingLifecycleIndexV2(
+    signed,
+    indexOptions({ expected_evaluation: evaluation }),
+  );
+  assert.equal(result.verified, false);
+  assert.equal(result.reason, "lifecycle_order_invalid");
+  assert.equal(result.checks.lifecycle_order, false);
+});
+
+test("a lifecycle index cannot claim COMPLETE with an unlabeled evaluation or unknown custody", async () => {
+  const source = await issue();
+  const converted = await upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, {
+    signing_keys: [...SIGNERS],
+    source_verification_keys: [...VERIFICATION_KEYS],
+    deterministic: true,
+    mldsaBackend,
+  });
+  const complete = structuredClone(converted.body) as any;
+  complete.conversion = { status: "COMPLETE", reason_codes: [] };
+  complete.contract_digest = crossingLifecycleIndexV2ContractDigest(complete);
+  const result = await verifyAebCrossingLifecycleIndexV2(
+    await signIndexBody(complete),
+    indexOptions({ expected_evaluation: complete.lifecycle.evaluation }),
+  );
+  assert.equal(result.verified, false);
+  assert.equal(result.reason, "conversion_report_invalid");
+
+  const unknownCustody = structuredClone(converted.body) as any;
+  unknownCustody.lifecycle.evaluation = {
+    profile: AEB_EVALUATION_VERSION,
+    digest: converted.body.lifecycle.evaluation.digest,
+  };
+  unknownCustody.lifecycle.authority_custody = {
+    phase: "INDETERMINATE",
+    digest: CONSUMPTION_DIGEST,
+  };
+  unknownCustody.conversion = { status: "COMPLETE", reason_codes: [] };
+  unknownCustody.contract_digest =
+    crossingLifecycleIndexV2ContractDigest(unknownCustody);
+  assert.equal((await verifyAebCrossingLifecycleIndexV2(
+    await signIndexBody(unknownCustody),
+    indexOptions({ expected_evaluation: unknownCustody.lifecycle.evaluation }),
+  )).reason, "conversion_report_invalid");
+
+  const nativeUnlabeled = structuredClone(converted.body) as any;
+  nativeUnlabeled.conversion = { status: "NATIVE", reason_codes: [] };
+  nativeUnlabeled.source_crossing_record = { version: null, digest: null };
+  nativeUnlabeled.contract_digest =
+    crossingLifecycleIndexV2ContractDigest(nativeUnlabeled);
+  assert.equal((await verifyAebCrossingLifecycleIndexV2(
+    await signIndexBody(nativeUnlabeled),
+    indexOptions({ expected_evaluation: nativeUnlabeled.lifecycle.evaluation }),
+  )).reason, "conversion_report_invalid");
+});
+
+test("v1 upgrade with the bound source evaluation is COMPLETE and carries its profile", async () => {
+  const { record: evaluationV1 } = evaluationFor(V1_OPERATION);
+  const source = await issue(wimseAuthority(EVALUATION_TOKEN_DIGEST), {
+    lifecycle_records: boundLifecycleRecords(evaluationV1),
+  });
+  const converted = await upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, {
+    signing_keys: [...SIGNERS],
+    source_verification_keys: [...VERIFICATION_KEYS],
+    source_evaluation: evaluationV1,
+    deterministic: true,
+    mldsaBackend,
+  });
+  assert.equal(converted.body.conversion.status, "COMPLETE");
+  assert.deepEqual(
+    converted.body.lifecycle.evaluation,
+    aebCrossingEvaluationReference(evaluationV1),
+  );
+  const result = await verifyAebCrossingLifecycleIndexV2(
+    converted,
+    indexOptions({
+      expected_action: ACTION,
+      evaluation: evaluationV1,
+    }),
+  );
+  assert.equal(result.verified, true, JSON.stringify(result));
+  assert.equal(result.evaluation_binding, "BOUND");
+  assert.equal(result.conversion_status, "COMPLETE");
+
+  const { record: unrelated } = evaluationFor("op-UNRELATED", {
+    caid: UNRELATED_CAID,
+  });
+  await assert.rejects(
+    () => upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, {
+      signing_keys: [...SIGNERS],
+      source_verification_keys: [...VERIFICATION_KEYS],
+      source_evaluation: unrelated,
+      deterministic: true,
+      mldsaBackend,
+    }),
+    /source_evaluation_mismatch/,
+  );
+});
+
+test("v1 upgrade converts MISSING admission with later references to INDETERMINATE instead of throwing", async () => {
+  const source = await issue(wimseAuthority(), {
+    admission_reference: { state: "MISSING", digest: null },
+    lifecycle_records: {
+      evaluation_digest: `sha256:${"ee".repeat(32)}`,
+      consumption_digest: CONSUMPTION_DIGEST,
+      provider_entry_digest: `sha256:${"07".repeat(32)}`,
+    },
+    referee: {
+      ...ADMIT_AXES,
+      admission: "INDETERMINATE",
+      custody: "TERMINAL",
+      provider_commitment: "INDETERMINATE",
+      retry: "REFUSE",
+      reconciliation: "REQUIRED",
+    },
+  });
+  assert.equal((await verify(source)).verified, true);
+  const converted = await upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, {
+    signing_keys: [...SIGNERS],
+    source_verification_keys: [...VERIFICATION_KEYS],
+    deterministic: true,
+    mldsaBackend,
+  });
+  assert.equal(converted.body.conversion.status, "INDETERMINATE");
+  for (const reason of [
+    "custody_reference_without_admission",
+    "local_admission_reference_indeterminate",
+    "provider_entry_reference_without_admission",
+    "evaluation_reference_unverified",
+  ])
+    assert.ok(converted.body.conversion.reason_codes.includes(reason), reason);
+  assert.deepEqual(converted.body.lifecycle.authority_custody, {
+    phase: "INDETERMINATE",
+    digest: null,
+  });
+  assert.equal(converted.body.lifecycle.provider_entry_digest, null);
+  const result = await verifyAebCrossingLifecycleIndexV2(
+    converted,
+    indexOptions({ expected_evaluation: converted.body.lifecycle.evaluation }),
+  );
+  assert.equal(result.verified, true, JSON.stringify(result));
+});
+
+test("v1 upgrade never reports provider entry without custody or admission as COMPLETE", async () => {
+  const { record: evaluationV1 } = evaluationFor(V1_OPERATION);
+  const source = await issue(wimseAuthority(EVALUATION_TOKEN_DIGEST), {
+    lifecycle_records: {
+      evaluation_digest: digestAeb(evaluationV1),
+      consumption_digest: null,
+      provider_entry_digest: `sha256:${"07".repeat(32)}`,
+    },
+    referee: {
+      ...ADMIT_AXES,
+      admission: "REFUSE",
+      custody: "UNRESERVED",
+      retry: "REQUIRES_NEW_ADMISSION",
+    },
+  });
+  assert.equal((await verify(source)).verified, true);
+  const converted = await upgradeAebCrossingRecordV1ToLifecycleIndexV2(source, {
+    signing_keys: [...SIGNERS],
+    source_verification_keys: [...VERIFICATION_KEYS],
+    source_evaluation: evaluationV1,
+    deterministic: true,
+    mldsaBackend,
+  });
+  assert.equal(converted.body.conversion.status, "INDETERMINATE");
+  assert.deepEqual(converted.body.conversion.reason_codes, [
+    "provider_entry_without_admit",
+    "provider_entry_without_custody_reference",
+  ]);
+  assert.equal(converted.body.lifecycle.authority_custody.phase, "INDETERMINATE");
+  const result = await verifyAebCrossingLifecycleIndexV2(
+    converted,
+    indexOptions({ evaluation: evaluationV1 }),
+  );
+  assert.equal(result.verified, true, JSON.stringify(result));
+  assert.equal(result.evaluation_binding, "BOUND");
 });

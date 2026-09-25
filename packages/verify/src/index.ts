@@ -2403,6 +2403,7 @@ export {
   BCR_CROSSING_MAPPING_PROFILE,
   WIMSE_OAUTH_CROSSING_ADAPTER,
   WIMSE_OAUTH_CROSSING_MAPPING_PROFILE,
+  aebCrossingEvaluationReference,
   crossingRecordContractDigest,
   crossingRecordDigest,
   crossingRecordSignedBytes,
@@ -2428,7 +2429,9 @@ export {
 export type {
   AebCrossingCustodyReference,
   AebCrossingCustodyReferencePhase,
+  AebCrossingEvaluationBinding,
   AebCrossingEvaluationProfile,
+  AebCrossingEvaluationReference,
   AebCrossingLifecycleIndexConversionStatus,
   AebCrossingLifecycleIndexV2,
   AebCrossingLifecycleIndexV2Body,
