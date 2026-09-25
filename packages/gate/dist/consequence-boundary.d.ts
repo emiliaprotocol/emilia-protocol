@@ -3,14 +3,23 @@
  *
  * Native evidence stays native. The direct path verifies a relying-party-
  * pinned gateway handoff; it does not re-verify the native permit or artifact.
- * The boundary durably fences every native replay unit and every exact action
- * while an attempt for it is in flight, records dispatch custody, and invokes
- * one provider adapter. It does not acquire approvals, mint authority, or
- * require an EMILIA receipt.
+ * Both boundaries durably fence every native replay unit, and every exact
+ * action at one provider target while an attempt for it is in flight, record
+ * dispatch custody, and invoke one provider adapter. They do not acquire
+ * approvals, mint authority, or require an EMILIA receipt.
+ *
+ * Reservation ownership: every reservation a native attempt can release or
+ * close is keyed by its attempt ID (the diagnostic executed marker is only
+ * ever committed), so a release, close, or recovery claim can only reach rows
+ * that attempt created. On the composed boundary the action-fence holder is
+ * keyed the same way. The durable attempt record is written before any
+ * attempt-keyed reservation, so an attempt that stops before provider entry
+ * can be found and recovered through reconcile().
  */
 import { type AebAdapter, type AebConsumptionState, type AebDigest, type AebDurableConsumptionStore, type AebEvaluationRecord, type AebPinnedConfig, type AebStatusInput } from '@emilia-protocol/verify/aeb-adapter-contract';
 import type { AebExecutionConditionsResult } from '@emilia-protocol/verify/aeb-execution-conditions';
 import { type AebNativeAuthorizationDigest, type AebNativeAuthorizationHandoff, type AebNativeAuthorizationHandoffVerification, type AebNativeAuthorizationPins, type AebNativeAuthorizationStatus } from '@emilia-protocol/verify/aeb';
+import type { AebRecoveryClaimScope } from './aeb-consumption-store.js';
 import type { ConsequenceEnvelopeBoundary } from './consequence-envelope.js';
 export declare const CONSEQUENCE_BOUNDARY_VERSION = "EMILIA-CONSEQUENCE-BOUNDARY-v1";
 export declare const CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN = "EMILIA-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1";
@@ -129,9 +138,29 @@ export interface ConsequenceBoundaryOptions<TResult> {
     aeb: {
         config: AebPinnedConfig;
         adapters: Record<string, AebAdapter>;
-        store: AebDurableConsumptionStore;
+        /**
+         * Durable consumption store. Besides the evaluation reservation it holds
+         * one action-fence holder per attempt, keyed by the attempt
+         * (consequenceBoundaryActionFenceHolderKey), which fences the exact action
+         * at this provider under `config.relying_party_id`. A durable `state()`
+         * read confirms lost acknowledgements; `terminalRelease` plus
+         * `recoveryClaimSupported` (the shipped PostgreSQL store) let
+         * reconcile() finish after a restart and close a stopped attempt's
+         * evaluation reservation as RELEASED_NOT_ENTERED.
+         */
+        store: AebDurableConsumptionStore & {
+            state?(key: string): AebConsumptionState | Promise<AebConsumptionState>;
+            recoveryClaimSupported?: true;
+            claimReservation?(key: string, authorization: unknown, scope?: AebRecoveryClaimScope): Promise<boolean>;
+        };
     };
     attempts: {
+        /**
+         * Durable attempt custody. With `state()`, reconcile() can prove a stop
+         * before provider entry (RESERVED, or RELEASED without evidence) and
+         * release that attempt's action fence; without it only a terminal
+         * provider outcome can close an attempt.
+         */
         store: ConsequenceBoundaryAttemptStore;
         create_id?: (input: {
             operation_id: string;
@@ -236,18 +265,22 @@ export interface NativeConsequenceBoundaryOptions<TResult> {
         /** Stable operator identifier for the exact accepted pins below. */
         trust_snapshot_id: string;
         /**
-         * Durable consumption store. It holds the operation reservation with the
-         * native replay key, and a second reservation per operation that holds
-         * the exact-action in-flight fence. `state()` must be a durable read.
-         * A store whose commit and release are fenced to the reserving process
-         * (the shipped PostgreSQL store) must also declare
+         * Durable consumption store. Each attempt writes three reservations, all
+         * keyed by its attempt ID (nativeConsequenceBoundaryAttemptReservationKeys):
+         * the operation reservation fences the operation identity, the
+         * authority reservation fences the native replay key, and the holder
+         * reservation fences the exact action at this provider. `state()` must be
+         * a durable read. A store whose commit and release are fenced to the
+         * reserving process (the shipped PostgreSQL store) must also declare
          * `recoveryClaimSupported: true` so reconciliation after a restart can
-         * claim both reservations with the caller's `recovery_authorization`.
+         * claim them. Every claim for one attempt carries the same
+         * `recovery_authorization` and a scope naming the attempt, so one
+         * credential bound to the attempt (or its operation key) covers all three.
          */
         store: AebDurableConsumptionStore & {
             state(key: string): AebConsumptionState | Promise<AebConsumptionState>;
             recoveryClaimSupported?: true;
-            claimReservation?(key: string, authorization: unknown): Promise<boolean>;
+            claimReservation?(key: string, authorization: unknown, scope?: AebRecoveryClaimScope): Promise<boolean>;
         };
         /** Trusted status source. It receives only a preverified pinned handoff. */
         resolve_status(handoff: Readonly<AebNativeAuthorizationHandoff>): AebNativeAuthorizationStatus | Promise<AebNativeAuthorizationStatus>;
@@ -346,6 +379,14 @@ export declare function consequenceBoundaryProviderIdempotencyKey(input: {
     action_digest: AebDigest;
     authorization_instance: string;
 }): string;
+/**
+ * Operation identity of one (relying party, operation ID, exact action). The
+ * native boundary holds it as a fence inside the attempt's operation
+ * reservation, so a second attempt with the same operation ID and action is
+ * refused as `consumption_conflict` while the first holds it, and forever once
+ * the first reached the provider. It is also the operation key a recovery
+ * claim scope names for every reservation of one attempt.
+ */
 export declare function nativeConsequenceBoundaryReservationKey(input: {
     relying_party_id: string;
     operation_id: string;
@@ -373,27 +414,73 @@ export declare function nativeConsequenceBoundaryRequestDigest(input: {
 /**
  * Durable identity of one exact action at one effecting target: the relying
  * party, the provider coordinates the boundary invokes, and the canonical
- * action digest. While an attempt for this identity is RESERVED, INVOKING, or
- * INDETERMINATE, a new attempt is refused as `native_action_in_flight` even
- * when it carries a fresh native authorization and a fresh operation ID.
- * Intentional repeats must differ in the canonical action itself, for example
- * through a caller-chosen instance field that the action digest covers.
+ * action digest (digestAebNativeAuthorizationAction). While an attempt for
+ * this identity is RESERVED, INVOKING, or INDETERMINATE, a new attempt is
+ * refused as `native_action_in_flight` even when it carries a fresh native
+ * authorization and a fresh operation ID; after EXECUTED it is refused as
+ * `native_action_already_executed`. Both boundaries derive the same key, so
+ * they fence each other when they share a store and a relying party ID.
+ *
+ * Identity is byte-level. Gate does not canonicalize amounts, case,
+ * whitespace, or Unicode, and does not know which fields are material: two
+ * encodings of one logical action are two actions, and provider coordinates
+ * are compared exactly as configured. Callers and profiles must canonicalize
+ * the action and configure one spelling per provider account. Intentional
+ * repeats must differ in the canonical action itself, for example through a
+ * caller-chosen instance field that the action digest covers.
  */
 export declare function nativeConsequenceBoundaryActionFenceKey(input: {
     relying_party_id: string;
     provider: ConsequenceBoundaryProvider;
     action_digest: AebNativeAuthorizationDigest;
 }): string;
+/** Keys of the three reservations one native attempt writes, plus its fences. */
+export interface NativeConsequenceBoundaryAttemptReservationKeys {
+    /** Operation identity fence (nativeConsequenceBoundaryReservationKey). */
+    operation_fence: string;
+    /** Exact-action fence (nativeConsequenceBoundaryActionFenceKey). */
+    action_fence: string;
+    /** Attempt-bound reservation that holds `operation_fence`. */
+    operation: string;
+    /** Attempt-bound reservation that holds the native replay key. */
+    authority: string;
+    /** Attempt-bound reservation that holds `action_fence`. */
+    holder: string;
+}
 /**
- * Consumption-store key of the reservation that holds the action fence for
- * one operation. It is derived from the operation reservation key, so a
- * reconciliation can only ever close the fence holder of its own operation,
- * never the holder of a later attempt for the same action.
+ * Consumption-store keys of one native attempt. Every row key includes the
+ * attempt ID, and the authority and holder keys are derived from the
+ * attempt's operation key, so a release, close, or recovery claim for one
+ * attempt can never reach a row another attempt wrote, even when both carry
+ * the same caller-chosen operation ID.
+ */
+export declare function nativeConsequenceBoundaryAttemptReservationKeys(input: {
+    relying_party_id: string;
+    provider: ConsequenceBoundaryProvider;
+    operation_id: string;
+    action_digest: AebNativeAuthorizationDigest;
+    attempt_id: string;
+}): NativeConsequenceBoundaryAttemptReservationKeys;
+/**
+ * Key of the reservation that holds the action fence for one native attempt.
+ * It is derived from that attempt's operation key, which includes the attempt
+ * ID, so reconciliation can only ever close the holder of its own attempt.
  */
 export declare function nativeConsequenceBoundaryActionFenceHolderKey(input: {
     relying_party_id: string;
+    provider: ConsequenceBoundaryProvider;
     operation_id: string;
     action_digest: AebNativeAuthorizationDigest;
+    attempt_id: string;
+}): string;
+/**
+ * Key of the reservation that holds the action fence for one attempt on the
+ * composed (AEB evaluation) boundary: derived from the evaluation's
+ * consumption reservation key and the attempt ID.
+ */
+export declare function consequenceBoundaryActionFenceHolderKey(input: {
+    reservation_key: string;
+    attempt_id: string;
 }): string;
 /**
  * Build one relying-party-controlled consequence boundary. Presented evidence
@@ -410,7 +497,8 @@ export declare function createConsequenceBoundary<TResult>(options: ConsequenceB
  * Build the direct native path. The native system has already made the policy
  * decision; Gate verifies the pinned gateway handoff, not the native permit or
  * artifact. It applies its own operational authorization and atomically fences
- * the operation and native replay unit.
+ * the operation, the native replay unit, and the exact action at this
+ * provider, each in a reservation keyed by the attempt.
  */
 export declare function createNativeConsequenceBoundary<TResult>(options: NativeConsequenceBoundaryOptions<TResult>): Readonly<{
     version: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-v1";
@@ -429,8 +517,10 @@ declare const _default: Readonly<{
     NATIVE_CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1";
     NATIVE_CONSEQUENCE_BOUNDARY_TRUST_SNAPSHOT_DOMAIN: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-TRUST-SNAPSHOT-v1";
     NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN: "EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-LOCAL-DECISION-v1";
+    consequenceBoundaryActionFenceHolderKey: typeof consequenceBoundaryActionFenceHolderKey;
     nativeConsequenceBoundaryReservationKey: typeof nativeConsequenceBoundaryReservationKey;
     nativeConsequenceBoundaryActionFenceKey: typeof nativeConsequenceBoundaryActionFenceKey;
+    nativeConsequenceBoundaryAttemptReservationKeys: typeof nativeConsequenceBoundaryAttemptReservationKeys;
     nativeConsequenceBoundaryActionFenceHolderKey: typeof nativeConsequenceBoundaryActionFenceHolderKey;
     nativeConsequenceBoundaryProviderIdempotencyKey: typeof nativeConsequenceBoundaryProviderIdempotencyKey;
     nativeConsequenceBoundaryRequestDigest: typeof nativeConsequenceBoundaryRequestDigest;

@@ -314,14 +314,14 @@ class ConsequenceAdmissionGate {
         provider: context.provider,
       },
     });
-    if (reservation.conflict) {
+    const { entry } = reservation;
+    if (!entry) {
       return {
         state: 'REFUSED',
         reason: reservation.conflict,
         provider_calls: this.providerCalls,
       };
     }
-    const { entry } = reservation;
     if (mode === 'PRE_ENTRY_CRASH') {
       return {
         state: 'PRE_ENTRY_CRASHED',

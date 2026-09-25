@@ -38,15 +38,45 @@ export interface PostgresAebDurableConsumptionStoreOptions {
     relyingPartyId?: string;
     /** Must return an unpredictable opaque string in production. */
     ownerTokenFactory?: () => string;
-    /** Verify a caller credential bound to the exact reservation being claimed. */
+    /**
+     * Verify a caller credential for the reservation being claimed. When the
+     * claim carries a `scope`, one credential for the attempt must authorize
+     * every reservation that attempt holds: bind it to `scope.attemptId` or
+     * `scope.recoveryOperationKey`, not to `operationKey`, or restart
+     * reconciliation cannot finish in one call.
+     */
     authorizeRecoveryClaim?: AebRecoveryClaimAuthorizer;
+}
+/**
+ * Which attempt a recovery claim is for. The consequence boundary supplies it
+ * from custody it has already authenticated through its attempt store, and
+ * it is the same for every reservation of one attempt, so an authorizer can
+ * bind one credential to the attempt (or to its operation key) instead of to
+ * each row key.
+ */
+export interface AebRecoveryClaimScope {
+    /** Boundary attempt whose reservation is being claimed. */
+    attemptId: string;
+    /** Caller operation identifier the attempt carried. */
+    operationId: string;
+    /**
+     * Operation identity shared by every reservation of the attempt: the
+     * native boundary's nativeConsequenceBoundaryReservationKey() value, or the
+     * composed boundary's AEB evaluation reservation key.
+     */
+    recoveryOperationKey: string;
+    /** Which of the attempt's reservations `operationKey` names. */
+    reservation: 'operation' | 'native-authority' | 'action-fence-holder';
 }
 export interface AebRecoveryClaimAuthorization {
     authorization: unknown;
     tenantId: string;
     relyingPartyId: string;
+    /** Exact store row being claimed. */
     operationKey: string;
     requiredState: 'RESERVED';
+    /** Present when the claim comes from a consequence boundary. */
+    scope?: Readonly<AebRecoveryClaimScope>;
 }
 export type AebRecoveryClaimAuthorizer = (claim: Readonly<AebRecoveryClaimAuthorization>) => boolean | Promise<boolean>;
 export interface PostgresAebDurableConsumptionStore extends AebDurableConsumptionStore {
@@ -75,9 +105,9 @@ export interface PostgresAebDurableConsumptionStore extends AebDurableConsumptio
     /**
      * Rotate ownership of an existing RESERVED row after external authorization.
      * The stored and replacement owner tokens are never returned or passed to
-     * the authorizer.
+     * the authorizer. `scope`, when given, is passed to the authorizer as-is.
      */
-    claimReservation(key: string, authorization: unknown): Promise<boolean>;
+    claimReservation(key: string, authorization: unknown, scope?: AebRecoveryClaimScope): Promise<boolean>;
 }
 /**
  * Create the durable AEB store consumed by authorizeAebExecutionDurable().

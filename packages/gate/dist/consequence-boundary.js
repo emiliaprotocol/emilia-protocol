@@ -5,15 +5,23 @@
  *
  * Native evidence stays native. The direct path verifies a relying-party-
  * pinned gateway handoff; it does not re-verify the native permit or artifact.
- * The boundary durably fences every native replay unit and every exact action
- * while an attempt for it is in flight, records dispatch custody, and invokes
- * one provider adapter. It does not acquire approvals, mint authority, or
- * require an EMILIA receipt.
+ * Both boundaries durably fence every native replay unit, and every exact
+ * action at one provider target while an attempt for it is in flight, record
+ * dispatch custody, and invoke one provider adapter. They do not acquire
+ * approvals, mint authority, or require an EMILIA receipt.
+ *
+ * Reservation ownership: every reservation a native attempt can release or
+ * close is keyed by its attempt ID (the diagnostic executed marker is only
+ * ever committed), so a release, close, or recovery claim can only reach rows
+ * that attempt created. On the composed boundary the action-fence holder is
+ * keyed the same way. The durable attempt record is written before any
+ * attempt-keyed reservation, so an attempt that stops before provider entry
+ * can be found and recovered through reconcile().
  */
 import crypto from 'node:crypto';
 import { types as nodeTypes } from 'node:util';
 import { aebReservationKey, authorizeAebExecutionDurable, canonicalizeAeb, digestAeb, reconcileAebExecutionDurable, verifyAebEvaluation, } from '@emilia-protocol/verify/aeb-adapter-contract';
-import { verifyAebNativeAuthorizationHandoff, } from '@emilia-protocol/verify/aeb';
+import { digestAebNativeAuthorizationAction, verifyAebNativeAuthorizationHandoff, verifyAebNativeAuthorizationPins, } from '@emilia-protocol/verify/aeb';
 export const CONSEQUENCE_BOUNDARY_VERSION = 'EMILIA-CONSEQUENCE-BOUNDARY-v1';
 export const CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN = 'EMILIA-CONSEQUENCE-BOUNDARY-PROVIDER-IDEMPOTENCY-v1';
 export const NATIVE_CONSEQUENCE_BOUNDARY_VERSION = 'EMILIA-NATIVE-CONSEQUENCE-BOUNDARY-v1';
@@ -376,6 +384,14 @@ function nativeTrustSnapshotDigest(pins) {
         pins,
     });
 }
+/**
+ * Operation identity of one (relying party, operation ID, exact action). The
+ * native boundary holds it as a fence inside the attempt's operation
+ * reservation, so a second attempt with the same operation ID and action is
+ * refused as `consumption_conflict` while the first holds it, and forever once
+ * the first reached the provider. It is also the operation key a recovery
+ * claim scope names for every reservation of one attempt.
+ */
 export function nativeConsequenceBoundaryReservationKey(input) {
     if (!identifier(input?.relying_party_id) || !identifier(input?.operation_id)
         || !digest(input?.action_digest)) {
@@ -438,14 +454,37 @@ function providerCoordinates(value) {
         environment: record.environment,
     };
 }
+function relyingPartyText(value) {
+    return typeof value === 'string'
+        && Buffer.byteLength(value, 'utf8') >= 1
+        && Buffer.byteLength(value, 'utf8') <= 512
+        && !/[\u0000-\u001f\u007f]/.test(value);
+}
+function actionFenceKeyUnchecked(relyingPartyId, provider, actionDigest) {
+    return `aeb-native-action:${digestAeb({
+        domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ACTION-FENCE`,
+        relying_party_id: relyingPartyId,
+        provider,
+        action_digest: actionDigest,
+    })}`;
+}
 /**
  * Durable identity of one exact action at one effecting target: the relying
  * party, the provider coordinates the boundary invokes, and the canonical
- * action digest. While an attempt for this identity is RESERVED, INVOKING, or
- * INDETERMINATE, a new attempt is refused as `native_action_in_flight` even
- * when it carries a fresh native authorization and a fresh operation ID.
- * Intentional repeats must differ in the canonical action itself, for example
- * through a caller-chosen instance field that the action digest covers.
+ * action digest (digestAebNativeAuthorizationAction). While an attempt for
+ * this identity is RESERVED, INVOKING, or INDETERMINATE, a new attempt is
+ * refused as `native_action_in_flight` even when it carries a fresh native
+ * authorization and a fresh operation ID; after EXECUTED it is refused as
+ * `native_action_already_executed`. Both boundaries derive the same key, so
+ * they fence each other when they share a store and a relying party ID.
+ *
+ * Identity is byte-level. Gate does not canonicalize amounts, case,
+ * whitespace, or Unicode, and does not know which fields are material: two
+ * encodings of one logical action are two actions, and provider coordinates
+ * are compared exactly as configured. Callers and profiles must canonicalize
+ * the action and configure one spelling per provider account. Intentional
+ * repeats must differ in the canonical action itself, for example through a
+ * caller-chosen instance field that the action digest covers.
  */
 export function nativeConsequenceBoundaryActionFenceKey(input) {
     const record = dataRecord(input);
@@ -454,24 +493,71 @@ export function nativeConsequenceBoundaryActionFenceKey(input) {
         || !digest(record.action_digest)) {
         throw new TypeError('native_action_fence_binding_invalid');
     }
-    return `aeb-native-action:${digestAeb({
-        domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ACTION-FENCE`,
-        relying_party_id: record.relying_party_id,
-        provider,
-        action_digest: record.action_digest,
-    })}`;
+    return actionFenceKeyUnchecked(record.relying_party_id, provider, record.action_digest);
 }
 /**
- * Consumption-store key of the reservation that holds the action fence for
- * one operation. It is derived from the operation reservation key, so a
- * reconciliation can only ever close the fence holder of its own operation,
- * never the holder of a later attempt for the same action.
+ * Consumption-store keys of one native attempt. Every row key includes the
+ * attempt ID, and the authority and holder keys are derived from the
+ * attempt's operation key, so a release, close, or recovery claim for one
+ * attempt can never reach a row another attempt wrote, even when both carry
+ * the same caller-chosen operation ID.
+ */
+export function nativeConsequenceBoundaryAttemptReservationKeys(input) {
+    const record = dataRecord(input);
+    if (!record || !identifier(record.attempt_id)) {
+        throw new TypeError('native_attempt_reservation_binding_invalid');
+    }
+    const operationFence = nativeConsequenceBoundaryReservationKey({
+        relying_party_id: record.relying_party_id,
+        operation_id: record.operation_id,
+        action_digest: record.action_digest,
+    });
+    const actionFence = nativeConsequenceBoundaryActionFenceKey({
+        relying_party_id: record.relying_party_id,
+        provider: record.provider,
+        action_digest: record.action_digest,
+    });
+    const operation = `aeb-native-attempt-operation:${digestAeb({
+        domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ATTEMPT-OPERATION`,
+        operation_fence: operationFence,
+        attempt_id: record.attempt_id,
+    })}`;
+    return {
+        operation_fence: operationFence,
+        action_fence: actionFence,
+        operation,
+        authority: `aeb-native-attempt-authority:${digestAeb({
+            domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ATTEMPT-AUTHORITY`,
+            operation_key: operation,
+        })}`,
+        holder: `aeb-native-action-holder:${digestAeb({
+            domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ACTION-FENCE-HOLDER`,
+            operation_key: operation,
+        })}`,
+    };
+}
+/**
+ * Key of the reservation that holds the action fence for one native attempt.
+ * It is derived from that attempt's operation key, which includes the attempt
+ * ID, so reconciliation can only ever close the holder of its own attempt.
  */
 export function nativeConsequenceBoundaryActionFenceHolderKey(input) {
-    const operationKey = nativeConsequenceBoundaryReservationKey(input);
-    return `aeb-native-action-holder:${digestAeb({
-        domain: `${NATIVE_CONSEQUENCE_BOUNDARY_VERSION}:ACTION-FENCE-HOLDER`,
-        operation_key: operationKey,
+    return nativeConsequenceBoundaryAttemptReservationKeys(input).holder;
+}
+/**
+ * Key of the reservation that holds the action fence for one attempt on the
+ * composed (AEB evaluation) boundary: derived from the evaluation's
+ * consumption reservation key and the attempt ID.
+ */
+export function consequenceBoundaryActionFenceHolderKey(input) {
+    if (!isObject(input) || typeof input.reservation_key !== 'string'
+        || !input.reservation_key.startsWith('aeb:') || !identifier(input.attempt_id)) {
+        throw new TypeError('action_fence_holder_binding_invalid');
+    }
+    return `aeb-action-holder:${digestAeb({
+        domain: `${CONSEQUENCE_BOUNDARY_VERSION}:ACTION-FENCE-HOLDER`,
+        reservation_key: input.reservation_key,
+        attempt_id: input.attempt_id,
     })}`;
 }
 function nativeActionExecutedMarkerKey(actionFenceKey) {
@@ -482,15 +568,8 @@ function nativeActionExecutedMarkerKey(actionFenceKey) {
 }
 function deriveNativeConsumptionKeys(input) {
     try {
-        const operation = nativeConsequenceBoundaryReservationKey(input);
-        const holder = nativeConsequenceBoundaryActionFenceHolderKey(input);
-        const actionFence = nativeConsequenceBoundaryActionFenceKey(input);
-        return {
-            operation,
-            holder,
-            action_fence: actionFence,
-            executed_marker: nativeActionExecutedMarkerKey(actionFence),
-        };
+        const keys = nativeConsequenceBoundaryAttemptReservationKeys(input);
+        return { ...keys, executed_marker: nativeActionExecutedMarkerKey(keys.action_fence) };
     }
     catch {
         return null;
@@ -547,6 +626,47 @@ export function createConsequenceBoundary(options) {
     const now = options.now ?? (() => new Date().toISOString());
     const createAttemptId = options.attempts.create_id
         ?? (() => `attempt:${crypto.randomUUID()}`);
+    // Action-fence custody. A store that fails the secure-store check is
+    // refused by authorizeAebExecutionDurable() before any fence write.
+    const custody = secureAebConsumptionStore(options.aeb.store)
+        ? consumptionCustody(options.aeb.store)
+        : null;
+    // Pre-entry recovery needs a durable attempt-state read. Attempt stores
+    // written for 0.26.0 may lack one; they keep the provider-outcome-only
+    // reconciliation path.
+    const readComposedAttemptState = typeof options.attempts.store.state === 'function'
+        ? options.attempts.store.state.bind(options.attempts.store)
+        : null;
+    /** A throwing or non-boolean attempt-store answer is an unconfirmed write. */
+    async function releaseComposedAttempt(reference) {
+        try {
+            return await options.attempts.store.transition({
+                ...reference,
+                expected_state: 'RESERVED',
+                next_state: 'RELEASED',
+            }) === true;
+        }
+        catch {
+            return false;
+        }
+    }
+    async function composedAttemptState(reference) {
+        if (!readComposedAttemptState)
+            return null;
+        try {
+            const snapshot = dataRecord(await readComposedAttemptState(reference));
+            if (!snapshot || typeof snapshot.state !== 'string'
+                || !['RESERVED', 'INVOKING', 'INDETERMINATE', 'COMMITTED', 'RELEASED']
+                    .includes(snapshot.state))
+                return null;
+            return snapshot.evidence === undefined
+                ? { state: snapshot.state }
+                : { state: snapshot.state, evidence: snapshot.evidence };
+        }
+        catch {
+            return null;
+        }
+    }
     async function run(input) {
         let action;
         let evaluation;
@@ -616,6 +736,21 @@ export function createConsequenceBoundary(options) {
         }
         const reservationKey = authorization.reservation_key;
         const actionDigest = digestAeb(action);
+        // Same-action fence, shared with the native boundary: relying party,
+        // provider coordinates as configured, and the canonical action digest.
+        // Derived before any further write so an unkeyable binding is a refusal.
+        let actionFence;
+        try {
+            const relyingPartyId = options.aeb.config.relying_party_id;
+            if (!relyingPartyText(relyingPartyId) || !custody)
+                throw new Error('fence_unkeyable');
+            actionFence = actionFenceKeyUnchecked(relyingPartyId, provider, digestAebNativeAuthorizationAction(action));
+        }
+        catch {
+            await options.aeb.store.release(reservationKey).catch(() => false);
+            return refused('action_fence_binding_invalid');
+        }
+        const executedMarker = nativeActionExecutedMarkerKey(actionFence);
         let envelopeReservation = null;
         if (options.consequence_envelope) {
             let capacity;
@@ -651,6 +786,7 @@ export function createConsequenceBoundary(options) {
             provider_idempotency_key: providerIdempotencyKey,
         });
         let attemptId;
+        let holderKey;
         try {
             attemptId = await createAttemptId({
                 operation_id: evaluation.operation_id,
@@ -658,6 +794,10 @@ export function createConsequenceBoundary(options) {
             });
             if (!identifier(attemptId))
                 throw new Error('attempt_id_invalid');
+            holderKey = consequenceBoundaryActionFenceHolderKey({
+                reservation_key: reservationKey,
+                attempt_id: attemptId,
+            });
         }
         catch {
             if (envelopeReservation) {
@@ -694,6 +834,49 @@ export function createConsequenceBoundary(options) {
             ...attemptBinding,
             owner: reserved.owner,
         };
+        // The holder reservation is keyed by this attempt and fences the exact
+        // action at this provider. It is written after the attempt record, so an
+        // attempt that stops before entry can be found and its holder released by
+        // reconcile(); and it is handed back before the evaluation reservation,
+        // so a held holder proves this attempt still owns that reservation.
+        let holderReserved = false;
+        let holderMayExist = false;
+        try {
+            const fenced = await custody.reserve(holderKey, [actionFence]);
+            holderReserved = fenced === true || fenced === 'RESERVED';
+            if (!holderReserved) {
+                const reason = await custody.actionFenceRefusal(executedMarker);
+                await releaseComposedAttempt(attempt);
+                if (envelopeReservation) {
+                    await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
+                }
+                await options.aeb.store.release(reservationKey).catch(() => false);
+                return refused(reason);
+            }
+        }
+        catch {
+            holderMayExist = true;
+        }
+        if (holderMayExist) {
+            const attemptReleased = await releaseComposedAttempt(attempt);
+            if (envelopeReservation) {
+                await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
+            }
+            if (!await custody.releaseConfirmed(holderKey)) {
+                return indeterminate('native_pre_entry_release_unconfirmed', false, publicAttempt(attempt));
+            }
+            await options.aeb.store.release(reservationKey).catch(() => false);
+            return attemptReleased
+                ? refused('consumption_store_unavailable')
+                : indeterminate('attempt_release_unconfirmed', false, publicAttempt(attempt));
+        }
+        /** Pre-entry hand-back: the holder first, then the evaluation reservation. */
+        async function releaseBeforeEntry() {
+            if (!await custody.releaseConfirmed(holderKey))
+                return false;
+            await options.aeb.store.release(reservationKey).catch(() => false);
+            return true;
+        }
         if (envelopeReservation) {
             const capacityEntry = await options.consequence_envelope
                 .beginProviderEntry(envelopeReservation)
@@ -705,7 +888,9 @@ export function createConsequenceBoundary(options) {
                     next_state: 'RELEASED',
                 }).catch(() => false);
                 await options.consequence_envelope.releaseNotEntered(envelopeReservation).catch(() => null);
-                await options.aeb.store.release(reservationKey).catch(() => false);
+                if (!await releaseBeforeEntry()) {
+                    return indeterminate('native_pre_entry_release_unconfirmed', false, publicAttempt(attempt));
+                }
                 return attemptReleased
                     ? refused(capacityEntry.reason)
                     : indeterminate('attempt_release_unconfirmed', false, publicAttempt(attempt));
@@ -722,8 +907,9 @@ export function createConsequenceBoundary(options) {
                     await options.consequence_envelope.settle(envelopeReservation, 'INDETERMINATE').catch(() => null);
                     return indeterminate('attempt_start_conflict', false, publicAttempt(attempt));
                 }
-                await options.aeb.store.release(reservationKey).catch(() => false);
-                return refused('attempt_start_conflict');
+                return await releaseBeforeEntry()
+                    ? refused('attempt_start_conflict')
+                    : indeterminate('native_pre_entry_release_unconfirmed', false, publicAttempt(attempt));
             }
         }
         catch {
@@ -731,8 +917,9 @@ export function createConsequenceBoundary(options) {
                 await options.consequence_envelope.settle(envelopeReservation, 'INDETERMINATE').catch(() => null);
                 return indeterminate('attempt_store_unavailable', false, publicAttempt(attempt));
             }
-            await options.aeb.store.release(reservationKey).catch(() => false);
-            return refused('attempt_store_unavailable');
+            return await releaseBeforeEntry()
+                ? refused('attempt_store_unavailable')
+                : indeterminate('native_pre_entry_release_unconfirmed', false, publicAttempt(attempt));
         }
         let rawOutcome;
         try {
@@ -793,6 +980,12 @@ export function createConsequenceBoundary(options) {
         if (consumed.state !== 'CONSUMED') {
             return indeterminate('authorization_consumption_unconfirmed', true, publicAttempt(attempt));
         }
+        // EXECUTED keeps the action fence closed; an authenticated FAILED hands it
+        // back so a fresh authorization may retry the same action. An unconfirmed
+        // release leaves the attempt INDETERMINATE for reconcile() to finish.
+        if (!await closeComposedActionFence(holderKey, executedMarker, outcome.state === 'EXECUTED')) {
+            return indeterminate('native_action_fence_release_unconfirmed', true, publicAttempt(attempt));
+        }
         const terminalState = outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED';
         const providerEvidence = cloneFrozen({
             ...attemptBinding,
@@ -840,6 +1033,21 @@ export function createConsequenceBoundary(options) {
             evidence: outcome.evidence,
             attempt: attemptBinding,
         });
+    }
+    async function closeComposedActionFence(holderKey, executedMarker, executed, recovery) {
+        if (executed) {
+            // A holder left RESERVED still fences the action, so an unconfirmed
+            // commit cannot reopen it.
+            if (!recovery)
+                await custody.closeConfirmed(holderKey, 'CONSUMED');
+            else
+                await custody.closeForRecovery(holderKey, 'CONSUMED', recovery.authorization, recovery.scope);
+            await custody.markActionExecuted(executedMarker);
+            return true;
+        }
+        return !recovery
+            ? custody.releaseConfirmed(holderKey)
+            : custody.releaseForRecovery(holderKey, recovery.authorization, recovery.scope);
     }
     async function reconcile(input) {
         let action;
@@ -898,7 +1106,9 @@ export function createConsequenceBoundary(options) {
             return refused('reconciliation_binding_mismatch');
         }
         const outcome = normalizeEffectOutcome(input.outcome);
-        if (!outcome || outcome.state === 'INDETERMINATE') {
+        // Without a durable attempt-state read the boundary cannot prove a stop
+        // before provider entry, so only a terminal provider outcome can proceed.
+        if ((!outcome || outcome.state === 'INDETERMINATE') && !readComposedAttemptState) {
             return indeterminate('provider_outcome_indeterminate', true, attemptBinding);
         }
         let recovered = null;
@@ -920,9 +1130,86 @@ export function createConsequenceBoundary(options) {
             return refused('attempt_recovery_binding_mismatch');
         }
         const reservationKey = aebReservationKey(evaluation);
+        let holderKey;
+        let executedMarker;
+        try {
+            const relyingPartyId = options.aeb.config.relying_party_id;
+            if (!relyingPartyText(relyingPartyId) || !custody)
+                throw new Error('fence_unkeyable');
+            holderKey = consequenceBoundaryActionFenceHolderKey({
+                reservation_key: reservationKey,
+                attempt_id: attemptBinding.attempt_id,
+            });
+            executedMarker = nativeActionExecutedMarkerKey(actionFenceKeyUnchecked(relyingPartyId, provider, digestAebNativeAuthorizationAction(action)));
+        }
+        catch {
+            return refused('action_fence_binding_invalid');
+        }
+        const scope = (reservation) => ({
+            attemptId: attemptBinding.attempt_id,
+            operationId: evaluation.operation_id,
+            recoveryOperationKey: reservationKey,
+            reservation,
+        });
+        // Pre-entry recovery: a durable record that never reached INVOKING (or was
+        // RELEASED without evidence) proves this boundary never entered the
+        // provider for the attempt. The holder is released; while it is still
+        // held it proves this attempt still owns the evaluation reservation, which
+        // is closed as RELEASED_NOT_ENTERED so it can never be reserved again.
+        if (readComposedAttemptState) {
+            let snapshot = await composedAttemptState(recoveredReference);
+            if (snapshot === null) {
+                return indeterminate('attempt_state_unavailable', true, attemptBinding);
+            }
+            const preEntry = snapshot.state === 'RESERVED'
+                || (snapshot.state === 'RELEASED' && snapshot.evidence === undefined);
+            if (preEntry) {
+                if (!outcome)
+                    return indeterminate('provider_outcome_indeterminate', false, attemptBinding);
+                if (outcome.state === 'EXECUTED')
+                    return refused('reconciliation_outcome_conflict');
+                if (snapshot.state === 'RESERVED') {
+                    await releaseComposedAttempt(recoveredReference);
+                    snapshot = await composedAttemptState(recoveredReference);
+                    if (snapshot === null) {
+                        return indeterminate('attempt_state_unavailable', true, attemptBinding);
+                    }
+                }
+                if (snapshot.state === 'RELEASED' && snapshot.evidence === undefined) {
+                    const holderState = await custody.state(holderKey);
+                    let released = holderState === 'AVAILABLE';
+                    if (holderState === 'RESERVED') {
+                        const evaluationClosed = !custody.hasTerminalRelease
+                            || await custody.closeForRecovery(reservationKey, 'RELEASED_NOT_ENTERED', input.recovery_authorization, scope('operation'));
+                        released = evaluationClosed && await custody.releaseForRecovery(holderKey, input.recovery_authorization, scope('action-fence-holder'));
+                    }
+                    else if (holderState === null && !custody.hasStateRead) {
+                        released = await custody.releaseForRecovery(holderKey, input.recovery_authorization, scope('action-fence-holder'));
+                    }
+                    return released
+                        ? refused('attempt_never_entered_provider')
+                        : indeterminate('native_pre_entry_release_unconfirmed', false, attemptBinding);
+                }
+            }
+            if (!outcome || outcome.state === 'INDETERMINATE') {
+                return indeterminate('provider_outcome_indeterminate', true, attemptBinding);
+            }
+        }
+        if (!outcome || outcome.state === 'INDETERMINATE') {
+            return indeterminate('provider_outcome_indeterminate', true, attemptBinding);
+        }
         const consumed = await reconcileAebExecutionDurable(options.aeb.store, reservationKey, 'COMMITTED');
-        if (consumed.state !== 'CONSUMED') {
+        // After a restart an ownership-fenced store (the shipped PostgreSQL store)
+        // refuses the commit until the authorized recovery claim takes the row.
+        if (consumed.state !== 'CONSUMED'
+            && !await custody.closeForRecovery(reservationKey, 'CONSUMED', input.recovery_authorization, scope('operation'))) {
             return indeterminate('authorization_consumption_unconfirmed', true, attemptBinding);
+        }
+        if (!await closeComposedActionFence(holderKey, executedMarker, outcome.state === 'EXECUTED', {
+            authorization: input.recovery_authorization,
+            scope: scope('action-fence-holder'),
+        })) {
+            return indeterminate('native_action_fence_release_unconfirmed', true, attemptBinding);
         }
         const providerEvidence = cloneFrozen({
             ...attemptBinding,
@@ -983,19 +1270,174 @@ export function createConsequenceBoundary(options) {
     });
 }
 /**
+ * Consumption-store operations with every method pinned at construction.
+ * A write is confirmed by a durable state read when the store has one, and
+ * otherwise only by an explicit `true` acknowledgement. A lost acknowledgement
+ * is resolved by the read, never by assuming the write happened.
+ */
+function consumptionCustody(store) {
+    const readState = typeof store.state === 'function' ? store.state.bind(store) : null;
+    const reserve = store.reserve.bind(store);
+    const commit = store.commit.bind(store);
+    const release = store.release.bind(store);
+    const releaseTerminal = store.terminalRelease === true
+        && typeof store.releaseTerminal === 'function'
+        ? store.releaseTerminal.bind(store)
+        : null;
+    // A store that fences commit/release to the reserving process exposes an
+    // authorized claim so reconciliation after a restart can take ownership.
+    const claim = store.recoveryClaimSupported === true
+        && typeof store.claimReservation === 'function'
+        ? store.claimReservation.bind(store)
+        : null;
+    async function state(key) {
+        if (!readState)
+            return null;
+        try {
+            const value = await readState(key);
+            return value === 'AVAILABLE' || value === 'RESERVED'
+                || value === 'CONSUMED' || value === 'RELEASED_NOT_ENTERED'
+                ? value
+                : null;
+        }
+        catch {
+            return null;
+        }
+    }
+    /** Hand one open reservation back so its key and fences are AVAILABLE. */
+    async function releaseConfirmed(key) {
+        if (readState) {
+            const before = await state(key);
+            if (before === 'AVAILABLE')
+                return true;
+            if (before !== 'RESERVED')
+                return false;
+            try {
+                await release(key);
+            }
+            catch { /* confirm through state */ }
+            return await state(key) === 'AVAILABLE';
+        }
+        try {
+            return await release(key) === true;
+        }
+        catch {
+            return false;
+        }
+    }
+    async function closeConfirmed(key, target) {
+        if (target === 'RELEASED_NOT_ENTERED' && !releaseTerminal)
+            return false;
+        if (readState) {
+            const before = await state(key);
+            if (before === target)
+                return true;
+            if (before !== 'RESERVED')
+                return false;
+            try {
+                if (target === 'CONSUMED')
+                    await commit(key);
+                else
+                    await releaseTerminal(key);
+            }
+            catch {
+                // A lost acknowledgement is resolved by the durable state read below.
+            }
+            return await state(key) === target;
+        }
+        try {
+            return target === 'CONSUMED'
+                ? await commit(key) === true
+                : await releaseTerminal(key) === true;
+        }
+        catch {
+            return false;
+        }
+    }
+    /**
+     * Take ownership of a RESERVED row through the store's authorized recovery
+     * path. Only reconciliation calls this, after it has authenticated custody
+     * of the attempt, and only for keys derived from that attempt.
+     */
+    async function claimFor(key, authorization, scope) {
+        if (!claim)
+            return false;
+        if (readState && await state(key) !== 'RESERVED')
+            return false;
+        try {
+            return await claim(key, authorization, cloneFrozen(scope)) === true;
+        }
+        catch {
+            return false;
+        }
+    }
+    async function closeForRecovery(key, target, authorization, scope) {
+        if (await closeConfirmed(key, target))
+            return true;
+        if (!await claimFor(key, authorization, scope))
+            return false;
+        return closeConfirmed(key, target);
+    }
+    async function releaseForRecovery(key, authorization, scope) {
+        if (await releaseConfirmed(key))
+            return true;
+        if (!await claimFor(key, authorization, scope))
+            return false;
+        return releaseConfirmed(key);
+    }
+    async function markActionExecuted(markerKey) {
+        // Diagnostic only: it lets a later refusal say "already executed" rather
+        // than "in flight". The fence itself is the committed holder reservation.
+        try {
+            const marker = await reserve(markerKey, []);
+            if (marker === true || marker === 'RESERVED')
+                await commit(markerKey);
+        }
+        catch {
+            // The committed or still-reserved holder keeps the action closed.
+        }
+    }
+    async function actionFenceRefusal(markerKey) {
+        return await state(markerKey) === 'CONSUMED'
+            ? 'native_action_already_executed'
+            : 'native_action_in_flight';
+    }
+    return Object.freeze({
+        hasStateRead: readState !== null,
+        hasTerminalRelease: releaseTerminal !== null,
+        reserve,
+        state,
+        releaseConfirmed,
+        closeConfirmed,
+        closeForRecovery,
+        releaseForRecovery,
+        markActionExecuted,
+        actionFenceRefusal,
+    });
+}
+/**
  * Build the direct native path. The native system has already made the policy
  * decision; Gate verifies the pinned gateway handoff, not the native permit or
  * artifact. It applies its own operational authorization and atomically fences
- * the operation and native replay unit.
+ * the operation, the native replay unit, and the exact action at this
+ * provider, each in a reservation keyed by the attempt.
  */
 export function createNativeConsequenceBoundary(options) {
     let provider;
     let pins;
     let configured = false;
+    let pinRefusal = null;
     try {
         provider = cloneFrozen(options?.provider);
         pins = cloneFrozen(options?.native_authorization?.pins);
-        configured = isObject(options)
+        // A pin set the verifier would refuse (aliased issuers without one shared
+        // namespace, mixed namespace declarations, duplicates) is refused here,
+        // before any attempt can run under it.
+        const pinCheck = verifyAebNativeAuthorizationPins(pins);
+        if (!pinCheck.valid)
+            pinRefusal = pinCheck.reasons[0] ?? 'native_pins_invalid';
+        configured = pinRefusal === null
+            && isObject(options)
             && identifier(options.executor_id)
             && isObject(provider)
             && identifier(provider.tenant_id)
@@ -1031,11 +1473,12 @@ export function createNativeConsequenceBoundary(options) {
         configured = false;
     }
     if (!configured) {
-        throw new TypeError('native_consequence_boundary_configuration_invalid');
+        throw new TypeError(pinRefusal
+            ? `native_consequence_boundary_configuration_invalid: ${pinRefusal}`
+            : 'native_consequence_boundary_configuration_invalid');
     }
     provider = provider;
     pins = pins;
-    const store = options.native_authorization.store;
     const attemptStore = options.attempts.store;
     const executorId = options.executor_id;
     const relyingPartyId = pins.relying_party_id;
@@ -1054,20 +1497,7 @@ export function createNativeConsequenceBoundary(options) {
     const localAuthorize = options.local_authorize.bind(options);
     const invoke = options.invoke.bind(options);
     const verifyOutcome = options.provider_outcomes.verify.bind(options.provider_outcomes);
-    const readConsumptionState = store.state.bind(store);
-    const reserveConsumption = store.reserve.bind(store);
-    const commitConsumption = store.commit.bind(store);
-    const releaseConsumption = store.release.bind(store);
-    const releaseTerminalConsumption = store.terminalRelease === true
-        && typeof store.releaseTerminal === 'function'
-        ? store.releaseTerminal.bind(store)
-        : null;
-    // A store that fences commit/release to the reserving process exposes an
-    // authorized claim so reconciliation after a restart can take ownership.
-    const claimConsumption = store.recoveryClaimSupported === true
-        && typeof store.claimReservation === 'function'
-        ? store.claimReservation.bind(store)
-        : null;
+    const custody = consumptionCustody(options.native_authorization.store);
     const readAttemptState = attemptStore.state.bind(attemptStore);
     const reserveAttempt = attemptStore.reserve.bind(attemptStore);
     const transitionAttemptState = attemptStore.transition.bind(attemptStore);
@@ -1111,104 +1541,6 @@ export function createNativeConsequenceBoundary(options) {
             }),
         };
         return cloneFrozen(decision);
-    }
-    async function consumptionState(key) {
-        try {
-            const state = await readConsumptionState(key);
-            return state === 'AVAILABLE' || state === 'RESERVED'
-                || state === 'CONSUMED' || state === 'RELEASED_NOT_ENTERED'
-                ? state
-                : null;
-        }
-        catch {
-            return null;
-        }
-    }
-    async function closeConsumption(key, target) {
-        const before = await consumptionState(key);
-        if (before === target)
-            return true;
-        if (before !== 'RESERVED')
-            return false;
-        try {
-            if (target === 'CONSUMED')
-                await commitConsumption(key);
-            else if (releaseTerminalConsumption) {
-                await releaseTerminalConsumption(key);
-            }
-            else {
-                return false;
-            }
-        }
-        catch {
-            // A lost acknowledgement is resolved by the durable state read below.
-        }
-        return await consumptionState(key) === target;
-    }
-    /** Delete an open reservation and every fence it holds; AVAILABLE after. */
-    async function releaseReservation(key) {
-        const before = await consumptionState(key);
-        if (before === 'AVAILABLE')
-            return true;
-        if (before !== 'RESERVED')
-            return false;
-        try {
-            await releaseConsumption(key);
-        }
-        catch { /* confirm through state */ }
-        return await consumptionState(key) === 'AVAILABLE';
-    }
-    /**
-     * Take ownership of a RESERVED row through the store's authorized recovery
-     * path. Only reconciliation calls this, after it has authenticated the
-     * attempt, its historical trust snapshot, and the provider outcome.
-     */
-    async function claimForRecovery(key, recoveryAuthorization) {
-        if (!claimConsumption || await consumptionState(key) !== 'RESERVED')
-            return false;
-        try {
-            return await claimConsumption(key, recoveryAuthorization) === true;
-        }
-        catch {
-            return false;
-        }
-    }
-    async function closeConsumptionForRecovery(key, target, recoveryAuthorization) {
-        if (await closeConsumption(key, target))
-            return true;
-        if (!await claimForRecovery(key, recoveryAuthorization))
-            return false;
-        return closeConsumption(key, target);
-    }
-    async function releaseReservationForRecovery(key, recoveryAuthorization) {
-        if (await releaseReservation(key))
-            return true;
-        if (!await claimForRecovery(key, recoveryAuthorization))
-            return false;
-        return releaseReservation(key);
-    }
-    /** Pre-entry release: the fence holder first, then the operation. */
-    async function releaseNotEntered(keys) {
-        const fenceReleased = await releaseReservation(keys.holder);
-        const authorizationReleased = await releaseReservation(keys.operation);
-        return fenceReleased && authorizationReleased;
-    }
-    async function actionFenceRefusal(keys) {
-        return await consumptionState(keys.executed_marker) === 'CONSUMED'
-            ? 'native_action_already_executed'
-            : 'native_action_in_flight';
-    }
-    async function markActionExecuted(keys) {
-        // Diagnostic only: it lets a later refusal say "already executed" rather
-        // than "in flight". The fence itself is the committed holder reservation.
-        try {
-            const marker = await reserveConsumption(keys.executed_marker, []);
-            if (marker === true || marker === 'RESERVED')
-                await commitConsumption(keys.executed_marker);
-        }
-        catch {
-            // The committed fence keeps the action closed without the marker.
-        }
     }
     async function attemptState(reference) {
         try {
@@ -1300,25 +1632,34 @@ export function createNativeConsequenceBoundary(options) {
             evidence_digest: outcome.evidence.evidence_digest,
         });
     }
+    function claimScope(keys, attempt, reservation) {
+        return {
+            attemptId: attempt.attempt_id,
+            operationId: attempt.operation_id,
+            recoveryOperationKey: keys.operation_fence,
+            reservation,
+        };
+    }
     /**
      * Close the action fence once the provider outcome is authenticated.
      * EXECUTED keeps it closed for this exact action; an authenticated FAILED
      * releases it so a fresh native authorization may retry the same action.
      */
-    async function closeActionFence(keys, executed, recoveryAuthorization) {
+    async function closeActionFence(keys, executed, recovery) {
         if (executed) {
             // A holder left RESERVED still fences the action, so an unconfirmed
             // commit here cannot reopen it.
-            if (recoveryAuthorization === undefined)
-                await closeConsumption(keys.holder, 'CONSUMED');
-            else
-                await closeConsumptionForRecovery(keys.holder, 'CONSUMED', recoveryAuthorization);
-            await markActionExecuted(keys);
+            if (!recovery)
+                await custody.closeConfirmed(keys.holder, 'CONSUMED');
+            else {
+                await custody.closeForRecovery(keys.holder, 'CONSUMED', recovery.authorization, claimScope(keys, recovery.attempt, 'action-fence-holder'));
+            }
+            await custody.markActionExecuted(keys.executed_marker);
             return true;
         }
-        return recoveryAuthorization === undefined
-            ? releaseReservation(keys.holder)
-            : releaseReservationForRecovery(keys.holder, recoveryAuthorization);
+        return !recovery
+            ? custody.releaseConfirmed(keys.holder)
+            : custody.releaseForRecovery(keys.holder, recovery.authorization, claimScope(keys, recovery.attempt, 'action-fence-holder'));
     }
     function terminalResult(outcome, attemptBinding) {
         if (outcome.state === 'EXECUTED') {
@@ -1383,24 +1724,22 @@ export function createNativeConsequenceBoundary(options) {
             || !verification.native_replay_unit || !verification.replay_key) {
             return refused(verification.reasons[0] ?? 'native_handoff_not_verified');
         }
-        // Derive every durable key before any callback or store write, so a
-        // binding Gate cannot key is a refusal with no side effect.
-        const derivedKeys = deriveNativeConsumptionKeys({
-            relying_party_id: relyingPartyId,
-            provider,
-            operation_id: operationId,
-            action_digest: verification.action_digest,
-        });
-        if (!derivedKeys || verification.handoff.relying_party_id !== relyingPartyId) {
+        if (verification.handoff.relying_party_id !== relyingPartyId) {
             return refused('native_consequence_binding_invalid');
         }
-        const keys = derivedKeys;
         let providerIdempotencyKey;
         try {
             providerIdempotencyKey = nativeConsequenceBoundaryProviderIdempotencyKey({
                 provider,
                 action_digest: verification.action_digest,
                 native_replay_unit: verification.native_replay_unit,
+            });
+            // Every key but the attempt-bound rows is derivable now; a binding Gate
+            // cannot key is a refusal with no callback and no store write.
+            nativeConsequenceBoundaryReservationKey({
+                relying_party_id: relyingPartyId,
+                operation_id: operationId,
+                action_digest: verification.action_digest,
             });
         }
         catch {
@@ -1437,42 +1776,6 @@ export function createNativeConsequenceBoundary(options) {
             native_replay_unit: verification.native_replay_unit,
             program_digest: localAuthorizationProgramDigest,
         });
-        // 1. The operation reservation atomically claims the operation ID and the
-        //    native replay key derived from (namespace, issuer, authorization ID).
-        try {
-            const reservation = await reserveConsumption(keys.operation, [verification.replay_key]);
-            if (reservation !== true && reservation !== 'RESERVED') {
-                return refused(reservation === 'NATIVE_REPLAY_CONFLICT'
-                    ? 'native_replay_conflict'
-                    : 'consumption_conflict');
-            }
-        }
-        catch {
-            const released = await releaseReservation(keys.operation);
-            return released
-                ? refused('consumption_store_unavailable')
-                : indeterminate('consumption_reservation_state_unconfirmed', false);
-        }
-        // 2. The holder reservation claims the exact-action fence. Another
-        //    attempt for the same action that is RESERVED, INVOKING, or
-        //    INDETERMINATE (or EXECUTED) already holds it.
-        let fenceReservation;
-        try {
-            fenceReservation = await reserveConsumption(keys.holder, [keys.action_fence]);
-        }
-        catch {
-            const released = await releaseNotEntered(keys);
-            return released
-                ? refused('consumption_store_unavailable')
-                : indeterminate('consumption_reservation_state_unconfirmed', false);
-        }
-        if (fenceReservation !== true && fenceReservation !== 'RESERVED') {
-            // Never release a holder this call did not reserve.
-            const released = await releaseReservation(keys.operation);
-            return released
-                ? refused(await actionFenceRefusal(keys))
-                : indeterminate('native_pre_entry_release_unconfirmed', false);
-        }
         const requestDigest = nativeConsequenceBoundaryRequestDigest({
             provider,
             operation_id: operationId,
@@ -1497,11 +1800,18 @@ export function createNativeConsequenceBoundary(options) {
                 throw new Error('attempt_id_invalid');
         }
         catch {
-            const released = await releaseNotEntered(keys);
-            return released
-                ? refused('attempt_allocation_failed')
-                : indeterminate('native_pre_entry_release_unconfirmed', false);
+            return refused('attempt_allocation_failed');
         }
+        const derivedKeys = deriveNativeConsumptionKeys({
+            relying_party_id: relyingPartyId,
+            provider,
+            operation_id: operationId,
+            action_digest: verification.action_digest,
+            attempt_id: attemptId,
+        });
+        if (!derivedKeys)
+            return refused('native_consequence_binding_invalid');
+        const keys = derivedKeys;
         const attemptBinding = cloneFrozen({
             ...provider,
             attempt_id: attemptId,
@@ -1519,37 +1829,66 @@ export function createNativeConsequenceBoundary(options) {
             local_decided_at: localDecision.decided_at,
             provider_outcome_verification_program_digest: providerOutcomeVerificationProgramDigest,
         });
+        // 1. The durable attempt record comes before any reservation, so every
+        //    reservation below belongs to an attempt that reconcile() can find
+        //    and prove never reached provider entry.
         let owner;
         try {
             const reserved = dataRecord(await reserveAttempt(attemptBinding));
             if (reserved?.reserved !== true || !opaqueOwner(reserved.owner)) {
-                const released = await releaseNotEntered(keys);
-                return released
-                    ? refused(identifier(reserved?.reason) ? reserved.reason : 'attempt_conflict')
-                    : indeterminate('native_pre_entry_release_unconfirmed', false);
+                return refused(identifier(reserved?.reason) ? reserved.reason : 'attempt_conflict');
             }
             owner = reserved.owner;
         }
         catch {
-            const released = await releaseNotEntered(keys);
-            return released
-                ? refused('attempt_store_unavailable')
-                : indeterminate('native_pre_entry_release_unconfirmed', false);
+            return refused('attempt_store_unavailable');
         }
         const attempt = {
             ...attemptBinding,
             owner,
         };
-        // Reservations are released only after the attempt itself is durably
-        // RELEASED. An attempt that is still RESERVED or INVOKING keeps both the
-        // native authorization and the action fence, so no later attempt can
-        // reuse its operation key while it could still be reconciled.
-        async function refuseBeforeEntry(expected, reason) {
+        // Attempt-bound rows this call wrote or may have written (a reserve that
+        // threw can still have landed). No other attempt can own these keys.
+        const held = [];
+        // Reservations are handed back only after the attempt itself is durably
+        // RELEASED, so an attempt that is still RESERVED or INVOKING keeps its
+        // fences until reconcile() proves it never entered the provider.
+        async function stopBeforeEntry(expected, reason) {
             const attemptReleased = await transitionAttempt(attempt, expected, 'RELEASED');
-            const reservationsReleased = attemptReleased && await releaseNotEntered(keys);
-            return attemptReleased && reservationsReleased
+            if (held.length === 0)
+                return refused(reason);
+            if (!attemptReleased) {
+                return indeterminate('native_pre_entry_release_unconfirmed', false, publicNativeAttempt(attempt));
+            }
+            let released = true;
+            for (const key of [...held].reverse()) {
+                released = await custody.releaseConfirmed(key) && released;
+            }
+            return released
                 ? refused(reason)
                 : indeterminate('native_pre_entry_release_unconfirmed', false, publicNativeAttempt(attempt));
+        }
+        // 2. Three attempt-bound reservations, in refusal-precedence order: the
+        //    operation identity, the native replay key derived from (namespace,
+        //    authorization ID), and the exact-action fence at this provider.
+        const reservations = [
+            [keys.operation, [keys.operation_fence], async () => 'consumption_conflict'],
+            [keys.authority, [verification.replay_key], async () => 'native_replay_conflict'],
+            [keys.holder, [keys.action_fence], () => custody.actionFenceRefusal(keys.executed_marker)],
+        ];
+        for (const [key, fences, conflictReason] of reservations) {
+            let reservation;
+            try {
+                reservation = await custody.reserve(key, fences);
+            }
+            catch {
+                held.push(key);
+                return stopBeforeEntry('RESERVED', 'consumption_store_unavailable');
+            }
+            if (reservation !== true && reservation !== 'RESERVED') {
+                return stopBeforeEntry('RESERVED', await conflictReason());
+            }
+            held.push(key);
         }
         let entryVerification;
         try {
@@ -1574,7 +1913,7 @@ export function createNativeConsequenceBoundary(options) {
             };
         }
         if (!entryVerification.valid || !entryVerification.execution_authorizing) {
-            return refuseBeforeEntry('RESERVED', entryVerification.reasons[0] ?? 'native_handoff_not_verified_at_provider_entry');
+            return stopBeforeEntry('RESERVED', entryVerification.reasons[0] ?? 'native_handoff_not_verified_at_provider_entry');
         }
         const started = await transitionAttempt(attempt, 'RESERVED', 'INVOKING');
         if (!started) {
@@ -1607,7 +1946,7 @@ export function createNativeConsequenceBoundary(options) {
         }
         if (!providerEntryVerification.valid
             || !providerEntryVerification.execution_authorizing) {
-            return refuseBeforeEntry('INVOKING', providerEntryVerification.reasons[0]
+            return stopBeforeEntry('INVOKING', providerEntryVerification.reasons[0]
                 ?? 'native_handoff_not_verified_at_provider_entry');
         }
         let rawOutcome;
@@ -1644,14 +1983,16 @@ export function createNativeConsequenceBoundary(options) {
             return indeterminate('provider_outcome_authentication_failed', true, publicNativeAttempt(attempt));
         }
         // Any terminal provider result follows provider entry and therefore burns
-        // the one-time native authorization, including authenticated NOT_COMMITTED.
-        if (!await closeConsumption(keys.operation, 'CONSUMED')) {
+        // the one-time native authorization and the operation identity, including
+        // an authenticated NOT_COMMITTED.
+        if (!await custody.closeConfirmed(keys.authority, 'CONSUMED')
+            || !await custody.closeConfirmed(keys.operation, 'CONSUMED')) {
             return indeterminate('authorization_consumption_unconfirmed', true, publicNativeAttempt(attempt));
         }
         // The fence closes before the terminal record, so an unconfirmed release
         // leaves the attempt INDETERMINATE and any authenticated reconciliation
-        // can finish it. The holder is scoped to this operation, so a repeated
-        // close can never reach a later attempt's fence.
+        // can finish it. The holder is keyed by this attempt, so a repeated close
+        // can never reach a later attempt's fence.
         if (!await closeActionFence(keys, outcome.state === 'EXECUTED')) {
             return indeterminate('native_action_fence_release_unconfirmed', true, publicNativeAttempt(attempt));
         }
@@ -1762,6 +2103,7 @@ export function createNativeConsequenceBoundary(options) {
             provider,
             operation_id: operationId,
             action_digest: verification.action_digest,
+            attempt_id: attemptBinding.attempt_id,
         });
         if (!derivedKeys)
             return refused('native_consequence_binding_invalid');
@@ -1820,27 +2162,67 @@ export function createNativeConsequenceBoundary(options) {
             return refused('reconciliation_binding_mismatch');
         }
         const outcome = normalizeEffectOutcome(rawOutcome, true);
+        let recoveredState = await attemptState(recoveredReference);
+        if (recoveredState === null) {
+            return indeterminate('attempt_state_unavailable', true, attemptBinding);
+        }
+        // Pre-entry recovery. Gate calls the provider only after moving the
+        // attempt to INVOKING, and records RELEASED without evidence only for a
+        // stop before the provider callback. So a durable record that is RESERVED,
+        // or RELEASED without evidence, proves Gate never entered the provider for
+        // this attempt. The caller's provider lookup, where one exists, must agree:
+        // an authenticated FAILED ("not found") or an explicit INDETERMINATE when
+        // no lookup is available. An EXECUTED claim contradicts the record and
+        // releases nothing.
+        const preEntryRecord = recoveredState.state === 'RESERVED'
+            || (recoveredState.state === 'RELEASED' && recoveredState.evidence === undefined);
+        if (preEntryRecord) {
+            if (!outcome)
+                return indeterminate('provider_outcome_indeterminate', false, attemptBinding);
+            if (outcome.state === 'EXECUTED')
+                return refused('reconciliation_outcome_conflict');
+            if (outcome.state === 'FAILED' && !await verifyProviderOutcome(attemptBinding, outcome)) {
+                return indeterminate('provider_outcome_authentication_failed', false, attemptBinding);
+            }
+            if (recoveredState.state === 'RESERVED'
+                && !await transitionAttempt(recoveredReference, 'RESERVED', 'RELEASED')) {
+                // The original call may have won the race to INVOKING; only a
+                // provider outcome can close an attempt that reached it.
+                recoveredState = await attemptState(recoveredReference);
+                if (recoveredState === null) {
+                    return indeterminate('attempt_state_unavailable', true, attemptBinding);
+                }
+            }
+            else {
+                recoveredState = { state: 'RELEASED' };
+            }
+            if (recoveredState.state === 'RELEASED' && recoveredState.evidence === undefined) {
+                let released = true;
+                for (const [key, reservation] of [
+                    [keys.holder, 'action-fence-holder'],
+                    [keys.authority, 'native-authority'],
+                    [keys.operation, 'operation'],
+                ]) {
+                    released = await custody.releaseForRecovery(key, recoveryAuthorization, claimScope(keys, attemptBinding, reservation)) && released;
+                }
+                return released
+                    ? refused('attempt_never_entered_provider')
+                    : indeterminate('native_pre_entry_release_unconfirmed', false, attemptBinding);
+            }
+        }
         if (!outcome || outcome.state === 'INDETERMINATE') {
             return indeterminate('provider_outcome_indeterminate', true, attemptBinding);
         }
         const evidence = providerEvidence(attemptBinding, outcome);
         const terminalState = outcome.state === 'EXECUTED' ? 'COMMITTED' : 'RELEASED';
-        const recoveredState = await attemptState(recoveredReference);
-        if (recoveredState === null) {
-            return indeterminate('attempt_state_unavailable', true, attemptBinding);
-        }
-        // RESERVED never entered the provider. RELEASED without terminal evidence
-        // is a pre-entry release: its reservations were handed back, and the same
-        // operation key may now belong to a later attempt. Neither is closable.
-        if (recoveredState.state === 'RESERVED'
-            || (recoveredState.state === 'RELEASED' && recoveredState.evidence === undefined)) {
-            return refused('attempt_never_entered_provider');
-        }
         if ((recoveredState.state === 'COMMITTED' || recoveredState.state === 'RELEASED')
             && !terminalRecordMatches(recoveredState, terminalState, evidence)) {
             // A terminal record is never rewritten, and a conflicting outcome must
             // not touch the reservations that record already closed.
             return refused('reconciliation_outcome_conflict');
+        }
+        if (recoveredState.state === 'RESERVED') {
+            return indeterminate('attempt_state_unavailable', true, attemptBinding);
         }
         if (recoveredState.state === 'INVOKING'
             && !await transitionAttempt(recoveredReference, 'INVOKING', 'INDETERMINATE')) {
@@ -1850,14 +2232,18 @@ export function createNativeConsequenceBoundary(options) {
             return indeterminate('provider_outcome_authentication_failed', true, attemptBinding);
         }
         // Any terminal provider result follows provider entry and therefore burns
-        // the one-time native authorization, including authenticated NOT_COMMITTED.
-        // After a restart the reservation may be owned by a dead process; the
-        // store's authorized recovery claim takes it over before the close.
-        const custodyClosed = await closeConsumptionForRecovery(keys.operation, 'CONSUMED', recoveryAuthorization);
+        // the one-time native authorization and the operation identity, including
+        // an authenticated NOT_COMMITTED. After a restart the reservations may be
+        // owned by a dead process; the store's authorized recovery claim takes
+        // them over, one credential scoped to this attempt for all three.
+        const custodyClosed = await custody.closeForRecovery(keys.authority, 'CONSUMED', recoveryAuthorization, claimScope(keys, attemptBinding, 'native-authority')) && await custody.closeForRecovery(keys.operation, 'CONSUMED', recoveryAuthorization, claimScope(keys, attemptBinding, 'operation'));
         if (!custodyClosed) {
             return indeterminate('authorization_consumption_unconfirmed', true, attemptBinding);
         }
-        if (!await closeActionFence(keys, outcome.state === 'EXECUTED', recoveryAuthorization)) {
+        if (!await closeActionFence(keys, outcome.state === 'EXECUTED', {
+            authorization: recoveryAuthorization,
+            attempt: attemptBinding,
+        })) {
             return indeterminate('native_action_fence_release_unconfirmed', true, attemptBinding);
         }
         const terminal = await closeAttempt(recoveredReference, terminalState, evidence);
@@ -1884,8 +2270,10 @@ export default Object.freeze({
     NATIVE_CONSEQUENCE_BOUNDARY_PROVIDER_IDEMPOTENCY_DOMAIN,
     NATIVE_CONSEQUENCE_BOUNDARY_TRUST_SNAPSHOT_DOMAIN,
     NATIVE_CONSEQUENCE_BOUNDARY_LOCAL_DECISION_DOMAIN,
+    consequenceBoundaryActionFenceHolderKey,
     nativeConsequenceBoundaryReservationKey,
     nativeConsequenceBoundaryActionFenceKey,
+    nativeConsequenceBoundaryAttemptReservationKeys,
     nativeConsequenceBoundaryActionFenceHolderKey,
     nativeConsequenceBoundaryProviderIdempotencyKey,
     nativeConsequenceBoundaryRequestDigest,

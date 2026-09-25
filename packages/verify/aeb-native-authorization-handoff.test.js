@@ -4,13 +4,17 @@ import crypto from 'node:crypto';
 import test from 'node:test';
 import {
   AEB_NATIVE_AUTHORIZATION_GATEWAY_KEY_VERSION,
+  AEB_NATIVE_AUTHORIZATION_HANDOFF_VERSION,
   AEB_NATIVE_AUTHORIZATION_PINS_VERSION,
+  AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN,
   AEB_NATIVE_AUTHORIZATION_SOURCE_PIN_VERSION,
   AEB_NATIVE_AUTHORIZATION_STATUS_VERSION,
   aebNativeAuthorizationReplayKey,
+  deriveAebNativeAuthorizationReplayIdentity,
   deriveAebNativeAuthorizationReplayUnit,
   issueAebNativeAuthorizationHandoff,
   verifyAebNativeAuthorizationHandoff,
+  verifyAebNativeAuthorizationPins,
 } from './aeb.js';
 
 const ACTION = Object.freeze({
@@ -282,26 +286,49 @@ test('one native grant relabelled under a second pinned profile or system keeps 
     });
     assert.equal(first.valid, true, JSON.stringify(first.reasons));
     assert.equal(second.valid, true, JSON.stringify(second.reasons));
-    assert.equal(original.native_authorization.replay_unit, relabelled.native_authorization.replay_unit);
+    // The signed wire replay_unit keeps the 4.1.0 label-bearing derivation for
+    // wire compatibility, so it differs; the enforcement identity does not.
+    assert.notEqual(original.native_authorization.replay_unit, relabelled.native_authorization.replay_unit);
     assert.equal(first.native_replay_unit, second.native_replay_unit);
     assert.equal(first.replay_key, second.replay_key);
     assert.equal(aebNativeAuthorizationReplayKey(original), aebNativeAuthorizationReplayKey(relabelled));
   }
 });
 
-test('the replay unit is derived from the authority namespace, issuer, and authorization ID only', () => {
+test('the replay identity is (authority namespace, authorization ID); the wire unit stays the 4.1.0 digest', () => {
   const f = fixture();
   const base = f.input.native_authorization;
-  const unit = deriveAebNativeAuthorizationReplayUnit(base);
-  assert.equal(unit, deriveAebNativeAuthorizationReplayUnit({ ...base, system: 'oauth', profile: 'oauth:other:1' }));
-  assert.equal(unit, deriveAebNativeAuthorizationReplayUnit(base, { authority_namespace: base.issuer }));
-  assert.notEqual(unit, deriveAebNativeAuthorizationReplayUnit({ ...base, issuer: 'https://other.example' }));
-  assert.notEqual(unit, deriveAebNativeAuthorizationReplayUnit({ ...base, authorization_id: 'native-authz:124' }));
-  assert.notEqual(unit, deriveAebNativeAuthorizationReplayUnit(base, { authority_namespace: 'namespace:grants' }));
+  const identity = deriveAebNativeAuthorizationReplayIdentity(base);
+  assert.equal(identity, deriveAebNativeAuthorizationReplayIdentity({ ...base, system: 'oauth', profile: 'oauth:other:1' }));
+  assert.equal(identity, deriveAebNativeAuthorizationReplayIdentity(base, { authority_namespace: base.issuer }));
+  assert.notEqual(identity, deriveAebNativeAuthorizationReplayIdentity({ ...base, issuer: 'https://other.example' }));
+  assert.notEqual(identity, deriveAebNativeAuthorizationReplayIdentity({ ...base, authorization_id: 'native-authz:124' }));
+  // A declared namespace replaces the issuer string: two spellings of one
+  // issuer under one declared namespace derive one identity.
+  const declared = deriveAebNativeAuthorizationReplayIdentity(base, { authority_namespace: 'namespace:grants' });
+  assert.notEqual(identity, declared);
+  assert.equal(declared, deriveAebNativeAuthorizationReplayIdentity(
+    { ...base, issuer: `${base.issuer}/` },
+    { authority_namespace: 'namespace:grants' },
+  ));
   assert.throws(
-    () => deriveAebNativeAuthorizationReplayUnit(base, { authority_namespace: '' }),
+    () => deriveAebNativeAuthorizationReplayIdentity(base, { authority_namespace: '' }),
     /valid native authority namespace required/,
   );
+  // Wire unit: the verify 4.1.0 digest over all four labels, recomputed here
+  // independently of the module under test.
+  const wire = deriveAebNativeAuthorizationReplayUnit(base);
+  const canonical = JSON.stringify({
+    authorization_id: base.authorization_id,
+    issuer: base.issuer,
+    profile: base.profile,
+    system: base.system,
+  });
+  assert.equal(AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN, 'AEB-NATIVE-AUTHORIZATION-REPLAY-v1');
+  assert.equal(wire, `sha256:${crypto.createHash('sha256')
+    .update(`${AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN}\0${canonical}`, 'utf8').digest('hex')}`);
+  assert.notEqual(wire, deriveAebNativeAuthorizationReplayUnit({ ...base, profile: 'authzen:exact-action-result:2' }));
+  assert.notEqual(wire, identity);
 });
 
 test('a pinned authority namespace scopes the replay identity; mixed or duplicate pins are refused', () => {
@@ -422,5 +449,270 @@ test('hostile in-process inputs refuse with a reason instead of throwing', () =>
     assert.equal(result.valid, false, name);
     assert.equal(result.execution_authorizing, false, name);
     assert.ok(result.reasons.includes(reason), `${name}: ${JSON.stringify(result.reasons)}`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Wire compatibility with @emilia-protocol/verify 4.1.0 and issuer aliasing.
+// ---------------------------------------------------------------------------
+
+// Issued by verify 4.1.0 (git tag verify-v4.1.0, dist/aeb-native-authorization-
+// handoff.js) from COMPAT_INPUT with the Ed25519 key whose PKCS#8 seed is 32
+// bytes of 0x07. Ed25519 signatures are deterministic, so the same input and
+// key must reproduce these exact bytes.
+const COMPAT_4_1_0_HANDOFF = Object.freeze({
+  '@version': 'AEB-NATIVE-AUTHORIZATION-HANDOFF-v1',
+  action_digest: 'sha256:da47a2da5c5f8e385353521f008e832fdfb52e466872f422a58b41970563ad0a',
+  audience: 'https://gate.example/payments',
+  decision: 'PERMIT',
+  executor_id: 'executor:gate-1',
+  expires_at: '2026-08-09T12:01:00.000Z',
+  gateway_id: 'gateway:authzen',
+  issued_at: '2026-08-09T12:00:00.000Z',
+  native_authorization: {
+    authorization_id: 'native-authz:authzen:123',
+    issuer: 'https://authzen.example',
+    profile: 'authzen:exact-action-result:1',
+    replay_unit: 'sha256:b803b5d2619ebb90e2322aba7e2354f56ebe3287b95f78ab91af44e3e613c45a',
+    system: 'authzen',
+  },
+  not_before: '2026-08-09T12:00:00.000Z',
+  provider: {
+    environment: 'sandbox',
+    provider_account_id: 'account:one',
+    provider_id: 'provider:bank',
+    tenant_id: 'tenant:acme',
+  },
+  relying_party_id: 'rp:payments',
+  revocation_id: 'revocation:authzen:123',
+  signature: {
+    alg: 'Ed25519',
+    key_id: 'gateway-key:authzen:one',
+    value: '9JVw3k8ls5lWHChX7GgIsqosdHwn8p7GjWFouvM-nJzEE66GCkf0Rg19RPwKexmDK0GwLCZMnwpg-o3E_R-3Ag',
+  },
+});
+// verify 4.1.0's replay_key for the vector (REPLAY-KEY-v1 over the wire unit).
+const COMPAT_4_1_0_REPLAY_KEY = 'aeb-native:sha256:2f64c162dd220199523fbef58b8614fc77d6ea6e39e19bc18842f6c7960b93a7';
+
+function compatFixture() {
+  const privateKey = crypto.createPrivateKey({
+    key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.alloc(32, 7)]),
+    format: 'der',
+    type: 'pkcs8',
+  });
+  const publicKey = crypto.createPublicKey(privateKey);
+  const provider = {
+    tenant_id: 'tenant:acme',
+    provider_id: 'provider:bank',
+    provider_account_id: 'account:one',
+    environment: 'sandbox',
+  };
+  const action = {
+    action_type: 'payment.release.1',
+    transfer_id: 'transfer-1',
+    amount: '500.00',
+    currency: 'USD',
+  };
+  const input = {
+    gateway_id: 'gateway:authzen',
+    native_authorization: {
+      system: 'authzen',
+      profile: 'authzen:exact-action-result:1',
+      issuer: 'https://authzen.example',
+      authorization_id: 'native-authz:authzen:123',
+    },
+    relying_party_id: 'rp:payments',
+    audience: 'https://gate.example/payments',
+    executor_id: 'executor:gate-1',
+    provider,
+    action,
+    issued_at: '2026-08-09T12:00:00.000Z',
+    not_before: '2026-08-09T12:00:00.000Z',
+    expires_at: '2026-08-09T12:01:00.000Z',
+    revocation_id: 'revocation:authzen:123',
+  };
+  const pins = {
+    '@version': AEB_NATIVE_AUTHORIZATION_PINS_VERSION,
+    relying_party_id: 'rp:payments',
+    audience: 'https://gate.example/payments',
+    executor_id: 'executor:gate-1',
+    provider,
+    max_handoff_age_seconds: 120,
+    max_status_age_seconds: 30,
+    clock_skew_seconds: 2,
+    gateway_keys: [{
+      '@version': AEB_NATIVE_AUTHORIZATION_GATEWAY_KEY_VERSION,
+      gateway_id: 'gateway:authzen',
+      key_id: 'gateway-key:authzen:one',
+      algorithm: 'Ed25519',
+      public_key: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    }],
+    accepted_sources: [{
+      '@version': AEB_NATIVE_AUTHORIZATION_SOURCE_PIN_VERSION,
+      gateway_id: 'gateway:authzen',
+      system: 'authzen',
+      profile: 'authzen:exact-action-result:1',
+      issuer: 'https://authzen.example',
+    }],
+  };
+  const statusFor = (handoff) => ({
+    '@version': AEB_NATIVE_AUTHORIZATION_STATUS_VERSION,
+    gateway_id: handoff.gateway_id,
+    native_authorization: handoff.native_authorization,
+    revocation_id: handoff.revocation_id,
+    checked_at: '2026-08-09T12:00:00.000Z',
+    valid_until: '2026-08-09T12:00:30.000Z',
+    revoked: false,
+  });
+  return {
+    input,
+    pins,
+    action,
+    statusFor,
+    signer: { key_id: 'gateway-key:authzen:one', private_key: privateKey },
+    now: '2026-08-09T12:00:01.000Z',
+  };
+}
+
+test('a handoff issued by verify 4.1.0 verifies here and this package issues the same bytes', () => {
+  // Regression for the wire split: the branch that relabel-hardened the
+  // replay identity also changed the signed replay_unit under the same
+  // HANDOFF-v1 label, so 4.1.0 and this package refused each other as
+  // native_handoff_schema_invalid.
+  const c = compatFixture();
+  assert.equal(COMPAT_4_1_0_HANDOFF['@version'], AEB_NATIVE_AUTHORIZATION_HANDOFF_VERSION);
+  const reissued = issueAebNativeAuthorizationHandoff(c.input, c.signer);
+  assert.deepEqual(JSON.parse(JSON.stringify(reissued)), COMPAT_4_1_0_HANDOFF);
+  assert.equal(JSON.stringify(reissued), JSON.stringify(COMPAT_4_1_0_HANDOFF));
+
+  const verified = verifyAebNativeAuthorizationHandoff(structuredClone(COMPAT_4_1_0_HANDOFF), {
+    pins: c.pins,
+    expected_action: c.action,
+    status: c.statusFor(COMPAT_4_1_0_HANDOFF),
+    now: c.now,
+  });
+  assert.equal(verified.valid, true, JSON.stringify(verified.reasons));
+  assert.equal(verified.execution_authorizing, true);
+  // The enforcement key is label-free and uses REPLAY-KEY-v2, so it is not
+  // the key verify 4.1.0 derived for the same handoff: 4.1.0 reservations
+  // must be drained before an upgrade.
+  assert.notEqual(verified.replay_key, COMPAT_4_1_0_REPLAY_KEY);
+  assert.equal(verified.replay_key, aebNativeAuthorizationReplayKey(COMPAT_4_1_0_HANDOFF));
+  assert.equal(
+    verified.native_replay_unit,
+    deriveAebNativeAuthorizationReplayIdentity(c.input.native_authorization),
+  );
+});
+
+test('pins that spell one issuer two ways are refused unless they declare one shared namespace', () => {
+  // Regression for C5/C6: a trailing slash (or case, or a default port) on a
+  // second pin let one authorization ID be spent once per spelling, and a
+  // shared declared namespace did not merge them because the issuer was
+  // still hashed.
+  const f = fixture();
+  const handoff = issueAebNativeAuthorizationHandoff(f.input, f.signer);
+  const aliasSpellings = [
+    'https://authz.example/',
+    'HTTPS://AUTHZ.EXAMPLE',
+    'https://authz.example:443',
+    'https://Authz.Example:443/',
+  ];
+  for (const alias of aliasSpellings) {
+    const aliased = withSources(f, [sourcePin(f), sourcePin(f, { issuer: alias })]);
+    const pinCheck = verifyAebNativeAuthorizationPins(aliased);
+    assert.equal(pinCheck.valid, false, alias);
+    assert.deepEqual(pinCheck.reasons, ['native_pins_issuer_alias_without_shared_namespace'], alias);
+    const refused = verify(f, handoff, ACTION, { pins: aliased });
+    assert.equal(refused.valid, false, alias);
+    assert.ok(refused.reasons.includes('native_handoff_schema_invalid'), alias);
+
+    const distinct = withSources(f, [
+      sourcePin(f, { authority_namespace: 'namespace:one' }),
+      sourcePin(f, { issuer: alias, authority_namespace: 'namespace:two' }),
+    ]);
+    assert.deepEqual(
+      verifyAebNativeAuthorizationPins(distinct).reasons,
+      ['native_pins_issuer_alias_without_shared_namespace'],
+      alias,
+    );
+    const halfDeclared = withSources(f, [
+      sourcePin(f, { authority_namespace: 'namespace:one' }),
+      sourcePin(f, { issuer: alias }),
+    ]);
+    assert.equal(verifyAebNativeAuthorizationPins(halfDeclared).valid, false, alias);
+  }
+
+  // One declared namespace for both spellings: accepted, and both spellings
+  // of one authorization ID derive one replay key.
+  const alias = 'https://authz.example/';
+  const shared = withSources(f, [
+    sourcePin(f, { authority_namespace: 'namespace:authz' }),
+    sourcePin(f, { issuer: alias, authority_namespace: 'namespace:authz' }),
+  ]);
+  assert.deepEqual(verifyAebNativeAuthorizationPins(shared), { valid: true, reasons: [] });
+  const aliasHandoff = issueAebNativeAuthorizationHandoff({
+    ...f.input,
+    native_authorization: { ...f.input.native_authorization, issuer: alias },
+  }, f.signer);
+  const first = verify(f, handoff, ACTION, { pins: shared });
+  const second = verify(f, aliasHandoff, ACTION, {
+    pins: shared,
+    status: { ...f.status, native_authorization: aliasHandoff.native_authorization },
+  });
+  assert.equal(first.valid, true, JSON.stringify(first.reasons));
+  assert.equal(second.valid, true, JSON.stringify(second.reasons));
+  assert.equal(first.replay_key, second.replay_key);
+
+  // Different hosts, paths, or non-default ports are not aliases.
+  for (const other of ['https://authz.example/v2', 'https://authz.example:8443', 'http://authz.example', 'https://other.example']) {
+    assert.equal(
+      verifyAebNativeAuthorizationPins(withSources(f, [sourcePin(f), sourcePin(f, { issuer: other })])).valid,
+      true,
+      other,
+    );
+  }
+});
+
+test('changing a declared authority namespace changes the replay key, so it is a key rotation', () => {
+  // C8: a grant burned under one namespace is a new key under another. The
+  // documented operator rule is to drain in-flight and burned grants before
+  // changing a pin's namespace; this pins the behavior that rule relies on.
+  const f = fixture();
+  const handoff = issueAebNativeAuthorizationHandoff(f.input, f.signer);
+  const before = verify(f, handoff, ACTION, {
+    pins: withSources(f, [sourcePin(f, { authority_namespace: 'namespace:before' })]),
+  });
+  const after = verify(f, handoff, ACTION, {
+    pins: withSources(f, [sourcePin(f, { authority_namespace: 'namespace:after' })]),
+  });
+  const defaulted = verify(f, handoff);
+  assert.equal(before.valid && after.valid && defaulted.valid, true);
+  assert.equal(new Set([before.replay_key, after.replay_key, defaulted.replay_key]).size, 3);
+});
+
+test('the pin-set validator names each refusal and never throws', () => {
+  const f = fixture();
+  assert.deepEqual(verifyAebNativeAuthorizationPins(f.pins), { valid: true, reasons: [] });
+  const cyclic = { ...f.pins };
+  cyclic.self = cyclic;
+  const cases = {
+    null: [null, 'native_pins_schema_invalid'],
+    proxy: [new Proxy({ ...f.pins }, {}), 'native_pins_schema_invalid'],
+    cyclic: [cyclic, 'native_pins_schema_invalid'],
+    emptySources: [withSources(f, []), 'native_pins_schema_invalid'],
+    duplicateKey: [{ ...f.pins, gateway_keys: [f.pins.gateway_keys[0], f.pins.gateway_keys[0]] }, 'native_pins_duplicate_gateway_key'],
+    duplicateSource: [withSources(f, [sourcePin(f), sourcePin(f)]), 'native_pins_duplicate_source'],
+    unpinnedGateway: [withSources(f, [sourcePin(f, { gateway_id: 'gateway:other' })]), 'native_pins_source_gateway_unpinned'],
+    mixed: [withSources(f, [
+      sourcePin(f),
+      sourcePin(f, { profile: 'authzen:exact-action-result:2', authority_namespace: 'namespace:x' }),
+    ]), 'native_pins_namespace_declaration_mixed'],
+  };
+  for (const [name, [pins, reason]] of Object.entries(cases)) {
+    let result;
+    assert.doesNotThrow(() => { result = verifyAebNativeAuthorizationPins(pins); }, name);
+    assert.equal(result.valid, false, name);
+    assert.deepEqual(result.reasons, [reason], name);
+    assert.equal(Object.isFrozen(result), true, name);
   }
 });

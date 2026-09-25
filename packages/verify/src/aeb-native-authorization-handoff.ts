@@ -18,13 +18,26 @@ export const AEB_NATIVE_AUTHORIZATION_HANDOFF_VERSION =
 export const AEB_NATIVE_AUTHORIZATION_HANDOFF_DOMAIN =
   'AEB-NATIVE-AUTHORIZATION-HANDOFF-v1\0';
 /**
- * v2 replay derivations hash only the authority namespace, issuer, and native
- * authorization identifier. The v1 derivations also hashed the wire labels
- * `system` and `profile`, so one grant relabelled under a second pinned
- * profile derived a second replay key and could be spent twice.
+ * Domain of the wire `native_authorization.replay_unit` that a gateway signs.
+ * It is unchanged from verify 4.1.0 and still hashes the `system` and
+ * `profile` labels, so handoffs stay byte-compatible in both directions. The
+ * verifier checks the wire value but never uses it for replay enforcement.
  */
 export const AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN =
-  'AEB-NATIVE-AUTHORIZATION-REPLAY-v2';
+  'AEB-NATIVE-AUTHORIZATION-REPLAY-v1';
+/**
+ * Domain of the label-free native replay identity the verifier derives
+ * locally: (authority namespace, native authorization identifier). The
+ * default namespace is the issuer. A declared namespace replaces the issuer,
+ * so pins that spell one issuer two ways can share one identity.
+ */
+export const AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_DOMAIN =
+  'AEB-NATIVE-AUTHORIZATION-REPLAY-IDENTITY-v1';
+/**
+ * Domain of the relying-party-scoped durable replay key over the native replay
+ * identity. Verify 4.1.0 used `AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v1` over the
+ * label-bearing wire unit, so keys derived by 4.1.0 do not match these.
+ */
 export const AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN =
   'AEB-NATIVE-AUTHORIZATION-REPLAY-KEY-v2';
 export const AEB_NATIVE_AUTHORIZATION_ACTION_DOMAIN =
@@ -60,11 +73,12 @@ export interface AebNativeAuthorizationSource {
   issuer: string;
   authorization_id: string;
   /**
-   * Gateway-computed replay unit under the default authority namespace (the
-   * issuer). It is derived from the issuer and authorization identifier only:
-   * wrapper IDs, operation IDs, and the `system` and `profile` labels are not
-   * inputs. A relying party that pins a distinct `authority_namespace`
-   * recomputes its own unit; see AebNativeAuthorizationHandoffVerification.
+   * Gateway-computed wire digest of (system, profile, issuer, authorization
+   * ID) under `AEB-NATIVE-AUTHORIZATION-REPLAY-v1`, exactly as verify 4.1.0
+   * signs it. The verifier checks it for wire compatibility and never uses it
+   * as a replay identity: it changes when a grant is relabelled. The
+   * enforcement identity is AebNativeAuthorizationHandoffVerification
+   * `.native_replay_unit`.
    */
   replay_unit: AebNativeAuthorizationDigest;
 }
@@ -111,10 +125,16 @@ export interface AebNativeAuthorizationSourcePin {
   issuer: string;
   /**
    * Relying-party-pinned namespace for this issuer's authorization
-   * identifiers. When omitted the namespace is the issuer. Every pin that
-   * accepts one issuer shares one namespace unless each of those pins declares
-   * one explicitly; a pin set that mixes declared and default namespaces for
-   * one issuer is refused.
+   * identifiers. When omitted the namespace is the issuer string. A declared
+   * namespace replaces the issuer in the replay identity, so two pins that
+   * declare one namespace share one replay identity per authorization ID.
+   * Every pin that accepts one issuer shares one namespace unless each of
+   * those pins declares one explicitly; a pin set that mixes declared and
+   * default namespaces for one issuer is refused. Pins whose issuers differ
+   * only by URL spelling (scheme or host case, a default port, a trailing
+   * slash) are refused unless all of them declare the same namespace.
+   * Changing a declared namespace changes every replay key derived under it,
+   * so it is a key rotation: drain in-flight and burned grants first.
    */
   authority_namespace?: string;
 }
@@ -187,9 +207,11 @@ export interface AebNativeAuthorizationHandoffVerification {
   record_digest: AebNativeAuthorizationDigest;
   action_digest: AebNativeAuthorizationDigest | null;
   /**
-   * Replay unit under the matched pin's authority namespace. Null unless the
-   * native source is pinned. It equals `handoff.native_authorization
-   * .replay_unit` when the pin declares no namespace.
+   * Label-free native replay identity under the matched pin's authority
+   * namespace: (namespace, authorization ID), with the issuer as the default
+   * namespace. Null unless the native source is pinned. It never equals the
+   * wire `handoff.native_authorization.replay_unit`, which is a
+   * label-bearing compatibility digest.
    */
   native_replay_unit: AebNativeAuthorizationDigest | null;
   /** Relying-party-scoped durable replay key for `native_replay_unit`. */
@@ -399,13 +421,30 @@ export function digestAebNativeAuthorizationAction(
 }
 
 /**
- * Derive the replay unit for one native authority: (authority namespace,
- * issuer, native authorization identifier). The `system` and `profile` labels
- * are validated but are never inputs, so relabelling one grant cannot make it
- * spendable again. Without an explicit namespace the issuer is the namespace;
- * that default is what a gateway signs on the wire.
+ * Derive the wire `replay_unit` a gateway signs, byte-identical to verify
+ * 4.1.0: a domain-separated digest of (system, profile, issuer,
+ * authorization ID). It is a wire-compatibility value, not a replay identity;
+ * use deriveAebNativeAuthorizationReplayIdentity() for enforcement.
  */
 export function deriveAebNativeAuthorizationReplayUnit(
+  source: Omit<AebNativeAuthorizationSource, 'replay_unit'>,
+): AebNativeAuthorizationDigest {
+  const identity = parseNativeIdentity(source);
+  if (!identity) {
+    throw new TypeError('valid closed native authorization source required');
+  }
+  return deriveWireReplayUnitUnchecked(identity);
+}
+
+/**
+ * Derive the label-free native replay identity used for enforcement:
+ * (authority namespace, native authorization identifier). The namespace is
+ * the relying-party-pinned `authority_namespace`, or the issuer when the pin
+ * declares none. The `system` and `profile` labels are validated but are never
+ * inputs, so relabelling one grant cannot make it spendable again, and a
+ * declared namespace replaces the issuer string entirely.
+ */
+export function deriveAebNativeAuthorizationReplayIdentity(
   source: Omit<AebNativeAuthorizationSource, 'replay_unit'>,
   options: { authority_namespace?: string } = {},
 ): AebNativeAuthorizationDigest {
@@ -417,13 +456,14 @@ export function deriveAebNativeAuthorizationReplayUnit(
   if (!namespace.ok || (namespace.value !== undefined && !identifier(namespace.value))) {
     throw new TypeError('valid native authority namespace required');
   }
-  return deriveReplayUnitUnchecked(identity, namespace.value as string | undefined);
+  return deriveReplayIdentityUnchecked(identity, namespace.value as string | undefined);
 }
 
 /**
- * Relying-party-scoped durable replay key. `authority_namespace` is the value
- * pinned by the relying party for the accepted source; omit it for the default
- * (issuer) namespace.
+ * Relying-party-scoped durable replay key over the native replay identity.
+ * `authority_namespace` is the value pinned by the relying party for the
+ * accepted source; omit it for the default (issuer) namespace. The input's
+ * wire `replay_unit` must be the 4.1.0-compatible value for its labels.
  */
 export function aebNativeAuthorizationReplayKey(
   input: Pick<AebNativeAuthorizationHandoffBody, 'relying_party_id' | 'native_authorization'>
@@ -440,7 +480,7 @@ export function aebNativeAuthorizationReplayKey(
   const { replay_unit: _wireUnit, ...identity } = source;
   return replayKeyUnchecked(
     relyingParty.value,
-    deriveReplayUnitUnchecked(identity, namespace.value as string | undefined),
+    deriveReplayIdentityUnchecked(identity, namespace.value as string | undefined),
   );
 }
 
@@ -484,18 +524,60 @@ function parseNativeSource(input: unknown): AebNativeAuthorizationSource | null 
       || !digest(value.replay_unit)) return null;
   const source = canonicalClone(value) as unknown as AebNativeAuthorizationSource;
   const { replay_unit: _replayUnit, ...identity } = source;
-  return deriveReplayUnitUnchecked(identity) === source.replay_unit ? source : null;
+  return deriveWireReplayUnitUnchecked(identity) === source.replay_unit ? source : null;
 }
 
-function deriveReplayUnitUnchecked(
-  source: Pick<AebNativeAuthorizationSource, 'issuer' | 'authorization_id'>,
-  authorityNamespace?: string,
+/** The 4.1.0 wire digest over the closed four-member native identity. */
+function deriveWireReplayUnitUnchecked(
+  source: Omit<AebNativeAuthorizationSource, 'replay_unit'>,
 ): AebNativeAuthorizationDigest {
   return sha256Domain(AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN, {
-    authority_namespace: authorityNamespace ?? source.issuer,
+    system: source.system,
+    profile: source.profile,
     issuer: source.issuer,
     authorization_id: source.authorization_id,
   });
+}
+
+function deriveReplayIdentityUnchecked(
+  source: Pick<AebNativeAuthorizationSource, 'issuer' | 'authorization_id'>,
+  authorityNamespace?: string,
+): AebNativeAuthorizationDigest {
+  return sha256Domain(AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_DOMAIN, {
+    authority_namespace: authorityNamespace ?? source.issuer,
+    authorization_id: source.authorization_id,
+  });
+}
+
+const DEFAULT_PORTS: Readonly<Record<string, string>> = Object.freeze({
+  'http:': '80',
+  'https:': '443',
+  'ws:': '80',
+  'wss:': '443',
+  'ftp:': '21',
+});
+
+/**
+ * Comparison form of an issuer that is an absolute URL: lower-case scheme and
+ * host, no default port, no trailing slash on the path. Any other identifier
+ * compares as written. Used only to detect aliased pins; the replay identity
+ * never hashes this form.
+ */
+function issuerComparisonForm(issuer: string): string {
+  if (!/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(issuer)) return issuer;
+  let url: URL;
+  try {
+    url = new URL(issuer);
+  } catch {
+    return issuer;
+  }
+  const protocol = url.protocol.toLowerCase();
+  const port = url.port !== '' && url.port !== DEFAULT_PORTS[protocol] ? `:${url.port}` : '';
+  const userinfo = url.username !== '' || url.password !== ''
+    ? `${url.username}${url.password !== '' ? `:${url.password}` : ''}@`
+    : '';
+  const path = url.pathname.replace(/\/+$/, '');
+  return `${protocol}//${userinfo}${url.hostname.toLowerCase()}${port}${path}${url.search}${url.hash}`;
 }
 
 function parseBody(value: unknown): AebNativeAuthorizationHandoffBody | null {
@@ -569,16 +651,40 @@ function parseSourcePin(value: unknown): AebNativeAuthorizationSourcePin | null 
   return canonicalClone(value) as unknown as AebNativeAuthorizationSourcePin;
 }
 
+/**
+ * Pins whose issuers are two spellings of one URL (for example
+ * `https://a.example` and `https://a.example/`) would give one grant one
+ * replay identity per spelling. Such a set is accepted only when every pin in
+ * the alias group declares the same `authority_namespace`, which replaces the
+ * issuer in the replay identity.
+ */
+function issuerAliasRefusal(sources: readonly AebNativeAuthorizationSourcePin[]): boolean {
+  const groups = new Map<string, AebNativeAuthorizationSourcePin[]>();
+  for (const source of sources) {
+    const form = issuerComparisonForm(source.issuer);
+    groups.set(form, [...(groups.get(form) ?? []), source]);
+  }
+  for (const group of groups.values()) {
+    if (new Set(group.map((source) => source.issuer)).size < 2) continue;
+    const namespaces = new Set(group.map((source) => source.authority_namespace));
+    if (namespaces.size !== 1 || namespaces.has(undefined)) return true;
+  }
+  return false;
+}
+
 interface ParsedPins {
   pins: AebNativeAuthorizationPins;
   keys: Array<AebNativeAuthorizationGatewayKey & { key: KeyObject }>;
   sources: AebNativeAuthorizationSourcePin[];
 }
 
-function parsePins(input: unknown): ParsedPins | null {
+type PinsParse = { ok: true; parsed: ParsedPins } | { ok: false; reason: string };
+
+function parsePinsDetailed(input: unknown): PinsParse {
   // Arrays are validated on a dense JSON snapshot: a sparse or accessor-backed
   // pin list is refused here instead of throwing later.
   const value = snapshot(input);
+  const refuse = (reason: string): PinsParse => ({ ok: false, reason });
   if (!isRecord(value) || !exactKeys(value, PINS_KEYS)
       || value['@version'] !== AEB_NATIVE_AUTHORIZATION_PINS_VERSION
       || !identifier(value.relying_party_id) || !identifier(value.audience)
@@ -590,18 +696,26 @@ function parsePins(input: unknown): ParsedPins | null {
       || !nonNegativeInteger(value.clock_skew_seconds)
       || Number(value.clock_skew_seconds) > 300
       || !Array.isArray(value.gateway_keys) || value.gateway_keys.length === 0
-      || !Array.isArray(value.accepted_sources) || value.accepted_sources.length === 0) return null;
+      || !Array.isArray(value.accepted_sources) || value.accepted_sources.length === 0) {
+    return refuse('native_pins_schema_invalid');
+  }
   const keys = value.gateway_keys.map(parseGatewayKey);
   const sources = value.accepted_sources.map(parseSourcePin);
-  if (keys.some((key) => key === null) || sources.some((source) => source === null)) return null;
+  if (keys.some((key) => key === null) || sources.some((source) => source === null)) {
+    return refuse('native_pins_schema_invalid');
+  }
   const parsedKeys = keys as Array<AebNativeAuthorizationGatewayKey & { key: KeyObject }>;
   const parsedSources = sources as AebNativeAuthorizationSourcePin[];
-  if (new Set(parsedKeys.map((key) => `${key.gateway_id}\0${key.key_id}`)).size !== parsedKeys.length
-      || new Set(parsedSources.map((source) => canonicalizeStrictJson([
-        source.gateway_id, source.system, source.profile, source.issuer,
-      ]))).size !== parsedSources.length
-      || parsedSources.some((source) => !parsedKeys.some((key) => key.gateway_id === source.gateway_id))) {
-    return null;
+  if (new Set(parsedKeys.map((key) => `${key.gateway_id}\0${key.key_id}`)).size !== parsedKeys.length) {
+    return refuse('native_pins_duplicate_gateway_key');
+  }
+  if (new Set(parsedSources.map((source) => canonicalizeStrictJson([
+    source.gateway_id, source.system, source.profile, source.issuer,
+  ]))).size !== parsedSources.length) {
+    return refuse('native_pins_duplicate_source');
+  }
+  if (parsedSources.some((source) => !parsedKeys.some((key) => key.gateway_id === source.gateway_id))) {
+    return refuse('native_pins_source_gateway_unpinned');
   }
   // One issuer accepted under several pins shares one authority namespace
   // unless every one of those pins declares its namespace explicitly. A mix
@@ -612,12 +726,51 @@ function parsePins(input: unknown): ParsedPins | null {
     declared.add(Object.hasOwn(source, 'authority_namespace'));
     namespaceDeclarations.set(source.issuer, declared);
   }
-  if ([...namespaceDeclarations.values()].some((declared) => declared.size > 1)) return null;
+  if ([...namespaceDeclarations.values()].some((declared) => declared.size > 1)) {
+    return refuse('native_pins_namespace_declaration_mixed');
+  }
+  if (issuerAliasRefusal(parsedSources)) {
+    return refuse('native_pins_issuer_alias_without_shared_namespace');
+  }
   return {
-    pins: canonicalClone(value) as unknown as AebNativeAuthorizationPins,
-    keys: parsedKeys,
-    sources: parsedSources,
+    ok: true,
+    parsed: {
+      pins: canonicalClone(value) as unknown as AebNativeAuthorizationPins,
+      keys: parsedKeys,
+      sources: parsedSources,
+    },
   };
+}
+
+function parsePins(input: unknown): ParsedPins | null {
+  const result = parsePinsDetailed(input);
+  return result.ok ? result.parsed : null;
+}
+
+export interface AebNativeAuthorizationPinsVerification {
+  valid: boolean;
+  /** Empty when valid; otherwise one `native_pins_*` refusal reason. */
+  reasons: readonly string[];
+}
+
+/**
+ * Validate a relying-party pin set before it is used, so a consequence
+ * boundary can refuse an unsafe configuration at construction instead of at
+ * run time. Never throws: an unreadable value is `native_pins_schema_invalid`.
+ */
+export function verifyAebNativeAuthorizationPins(
+  pins: unknown,
+): AebNativeAuthorizationPinsVerification {
+  let result: PinsParse;
+  try {
+    result = parsePinsDetailed(pins);
+  } catch {
+    result = { ok: false, reason: 'native_pins_schema_invalid' };
+  }
+  return freezeDeep({
+    valid: result.ok,
+    reasons: result.ok ? [] : [result.reason],
+  });
 }
 
 function parseStatus(input: unknown): AebNativeAuthorizationStatus | null {
@@ -670,7 +823,7 @@ export function issueAebNativeAuthorizationHandoff(
   if (!identity) throw new TypeError('valid closed native authorization source required');
   const source = {
     ...identity,
-    replay_unit: deriveReplayUnitUnchecked(identity),
+    replay_unit: deriveWireReplayUnitUnchecked(identity),
   };
   const body = parseBody({
     '@version': AEB_NATIVE_AUTHORIZATION_HANDOFF_VERSION,
@@ -873,9 +1026,10 @@ export function verifyAebNativeAuthorizationHandoff(
   const valid = bindingChecks && reasons.length === 0;
   const frozenHandoff = handoff ? freezeDeep(canonicalClone(handoff)) : null;
   // The replay identity is established only under a pin: the relying party's
-  // namespace (default: the issuer), the issuer, and the authorization ID.
+  // namespace (default: the issuer) and the authorization ID. The signed wire
+  // replay_unit was checked in parseNativeSource and is not used here.
   const nativeReplayUnit = handoff && matchedSource
-    ? deriveReplayUnitUnchecked(handoff.native_authorization, matchedSource.authority_namespace)
+    ? deriveReplayIdentityUnchecked(handoff.native_authorization, matchedSource.authority_namespace)
     : null;
   return freezeDeep({
     mode,
@@ -897,6 +1051,7 @@ export default Object.freeze({
   AEB_NATIVE_AUTHORIZATION_HANDOFF_VERSION,
   AEB_NATIVE_AUTHORIZATION_HANDOFF_DOMAIN,
   AEB_NATIVE_AUTHORIZATION_REPLAY_DOMAIN,
+  AEB_NATIVE_AUTHORIZATION_REPLAY_IDENTITY_DOMAIN,
   AEB_NATIVE_AUTHORIZATION_REPLAY_KEY_DOMAIN,
   AEB_NATIVE_AUTHORIZATION_ACTION_DOMAIN,
   AEB_NATIVE_AUTHORIZATION_GATEWAY_KEY_VERSION,
@@ -905,7 +1060,9 @@ export default Object.freeze({
   AEB_NATIVE_AUTHORIZATION_STATUS_VERSION,
   digestAebNativeAuthorizationAction,
   deriveAebNativeAuthorizationReplayUnit,
+  deriveAebNativeAuthorizationReplayIdentity,
   aebNativeAuthorizationReplayKey,
   issueAebNativeAuthorizationHandoff,
+  verifyAebNativeAuthorizationPins,
   verifyAebNativeAuthorizationHandoff,
 });

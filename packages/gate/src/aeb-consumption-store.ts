@@ -10,6 +10,11 @@
  * RESERVED row only through claimReservation(), which requires the separate
  * recovery pool and an authorized recovery claim. state() is an authenticated
  * durable read, which the direct-native consequence boundary requires.
+ *
+ * Ownership is per store instance and per key, so two callers in one process
+ * that reserve the same key share one owner token. The consequence
+ * boundaries therefore write only keys that include their attempt ID, which
+ * no other attempt can produce.
  */
 import crypto from 'node:crypto';
 import type {
@@ -360,16 +365,47 @@ export interface PostgresAebDurableConsumptionStoreOptions {
   relyingPartyId?: string;
   /** Must return an unpredictable opaque string in production. */
   ownerTokenFactory?: () => string;
-  /** Verify a caller credential bound to the exact reservation being claimed. */
+  /**
+   * Verify a caller credential for the reservation being claimed. When the
+   * claim carries a `scope`, one credential for the attempt must authorize
+   * every reservation that attempt holds: bind it to `scope.attemptId` or
+   * `scope.recoveryOperationKey`, not to `operationKey`, or restart
+   * reconciliation cannot finish in one call.
+   */
   authorizeRecoveryClaim?: AebRecoveryClaimAuthorizer;
+}
+
+/**
+ * Which attempt a recovery claim is for. The consequence boundary supplies it
+ * from custody it has already authenticated through its attempt store, and
+ * it is the same for every reservation of one attempt, so an authorizer can
+ * bind one credential to the attempt (or to its operation key) instead of to
+ * each row key.
+ */
+export interface AebRecoveryClaimScope {
+  /** Boundary attempt whose reservation is being claimed. */
+  attemptId: string;
+  /** Caller operation identifier the attempt carried. */
+  operationId: string;
+  /**
+   * Operation identity shared by every reservation of the attempt: the
+   * native boundary's nativeConsequenceBoundaryReservationKey() value, or the
+   * composed boundary's AEB evaluation reservation key.
+   */
+  recoveryOperationKey: string;
+  /** Which of the attempt's reservations `operationKey` names. */
+  reservation: 'operation' | 'native-authority' | 'action-fence-holder';
 }
 
 export interface AebRecoveryClaimAuthorization {
   authorization: unknown;
   tenantId: string;
   relyingPartyId: string;
+  /** Exact store row being claimed. */
   operationKey: string;
   requiredState: 'RESERVED';
+  /** Present when the claim comes from a consequence boundary. */
+  scope?: Readonly<AebRecoveryClaimScope>;
 }
 
 export type AebRecoveryClaimAuthorizer = (
@@ -402,9 +438,13 @@ export interface PostgresAebDurableConsumptionStore extends AebDurableConsumptio
   /**
    * Rotate ownership of an existing RESERVED row after external authorization.
    * The stored and replacement owner tokens are never returned or passed to
-   * the authorizer.
+   * the authorizer. `scope`, when given, is passed to the authorizer as-is.
    */
-  claimReservation(key: string, authorization: unknown): Promise<boolean>;
+  claimReservation(
+    key: string,
+    authorization: unknown,
+    scope?: AebRecoveryClaimScope,
+  ): Promise<boolean>;
 }
 
 const BEGIN_WRITE = 'BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE';
@@ -444,6 +484,39 @@ function assertOwnerToken(value: unknown): asserts value is string {
       || /[\u0000-\u001f\u007f]/.test(value)) {
     throw new TypeError('AEB consumption ownerTokenFactory must return an opaque string of 16 to 512 bytes');
   }
+}
+
+const RECOVERY_CLAIM_RESERVATIONS = new Set(['operation', 'native-authority', 'action-fence-holder']);
+
+/** Copy a caller scope through data descriptors only; no getter ever runs. */
+function recoveryClaimScope(value: unknown): Readonly<AebRecoveryClaimScope> {
+  const invalid = () => new TypeError('AEB consumption recovery claim scope is invalid');
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) throw invalid();
+  let descriptors: PropertyDescriptorMap;
+  try {
+    descriptors = Object.getOwnPropertyDescriptors(value);
+  } catch {
+    throw invalid();
+  }
+  const keys = Reflect.ownKeys(descriptors);
+  if (keys.some((key) => typeof key !== 'string' || !Object.hasOwn(descriptors[key as string], 'value'))) {
+    throw invalid();
+  }
+  const record: Record<string, unknown> = {};
+  for (const key of keys as string[]) record[key] = descriptors[key].value;
+  if (Object.keys(record).sort().join(',') !== 'attemptId,operationId,recoveryOperationKey,reservation'
+      || !RECOVERY_CLAIM_RESERVATIONS.has(record.reservation as string)) {
+    throw invalid();
+  }
+  assertText(record.attemptId, 'recovery claim attempt ID', 512);
+  assertText(record.operationId, 'recovery claim operation ID', 512);
+  assertText(record.recoveryOperationKey, 'recovery claim operation key', 4096);
+  return Object.freeze({
+    attemptId: record.attemptId as string,
+    operationId: record.operationId as string,
+    recoveryOperationKey: record.recoveryOperationKey as string,
+    reservation: record.reservation as AebRecoveryClaimScope['reservation'],
+  });
 }
 
 function exactRowCount(result: QueryResult, operation: string) {
@@ -611,8 +684,9 @@ export function createPostgresAebDurableConsumptionStore({
       return 'RESERVED';
     },
 
-    async claimReservation(key, authorization): Promise<boolean> {
+    async claimReservation(key, authorization, scope): Promise<boolean> {
       assertText(key, 'operation key', 4096);
+      const claimScope = scope === undefined ? undefined : recoveryClaimScope(scope);
       // Recovery is a restart boundary, not an in-place owner rotation. The
       // base AEB store API fences ownership by store instance (commit/release
       // take only the operation key), so replacing a token already owned by
@@ -624,6 +698,7 @@ export function createPostgresAebDurableConsumptionStore({
         relyingPartyId,
         operationKey: key,
         requiredState: 'RESERVED' as const,
+        ...(claimScope ? { scope: claimScope } : {}),
       });
       if (await authorizeRecoveryClaim(claim) !== true) return false;
 

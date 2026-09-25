@@ -23,7 +23,7 @@ import {
 } from './aeb-consumption-store.js';
 import {
   createNativeConsequenceBoundary,
-  nativeConsequenceBoundaryActionFenceHolderKey,
+  nativeConsequenceBoundaryAttemptReservationKeys,
   nativeConsequenceBoundaryReservationKey,
   type ConsequenceBoundaryAttemptBinding,
   type ConsequenceBoundaryAttemptReference,
@@ -67,6 +67,7 @@ function fakePostgres() {
   let tail = Promise.resolve();
   const statements: string[] = [];
   let failOperationState = 0;
+  const failures = new Map<string, number>();
 
   async function lock(): Promise<() => void> {
     let release!: () => void;
@@ -85,6 +86,11 @@ function fakePostgres() {
         async query(text: string, params: any[] = []) {
           await Promise.resolve();
           statements.push(text);
+          const pending = failures.get(text) ?? 0;
+          if (pending > 0) {
+            failures.set(text, pending - 1);
+            throw new Error('pg: connection reset');
+          }
           if (text === 'BEGIN ISOLATION LEVEL READ COMMITTED READ WRITE') {
             unlock = await lock();
             transaction = cloneDb(committed);
@@ -181,6 +187,10 @@ function fakePostgres() {
     },
     failNextOperationState(count = 1) {
       failOperationState += count;
+    },
+    /** The next `count` executions of this exact statement throw before running. */
+    failNext(text: string, count = 1) {
+      failures.set(text, (failures.get(text) ?? 0) + count);
     },
     restoreOperationState() {
       failOperationState = 0;
@@ -299,7 +309,7 @@ function nativeFixture() {
     native_authorization: { ...source, authorization_id: authorizationId },
     revocation_id: `revocation:${authorizationId}`,
   }, signer);
-  return { pins, handoff: issue(source.authorization_id), issue };
+  return { pins, handoff: issue(source.authorization_id), issue, signer, handoffInput };
 }
 
 function statusFor(handoff: any) {
@@ -327,6 +337,10 @@ function boundary(
   store: ReturnType<typeof pgStore>,
   attempts: ReturnType<typeof attemptStore>,
   invoke: () => Promise<any>,
+  options: {
+    resolveStatus?: (handoff: any) => any;
+    recover?: (input: { attempt: any; recovery_authorization: unknown }) => any;
+  } = {},
 ) {
   let counter = 0;
   return createNativeConsequenceBoundary({
@@ -336,17 +350,17 @@ function boundary(
       pins: f.pins,
       trust_snapshot_id: 'native-trust-snapshot:pg:1',
       store,
-      resolve_status: (handoff) => statusFor(handoff) as any,
+      resolve_status: options.resolveStatus ?? ((handoff) => statusFor(handoff) as any),
       resolve_historical_pins: () => f.pins,
     },
     attempts: {
       store: attempts,
       create_id: () => `native-attempt:pg:${crypto.randomUUID()}:${++counter}`,
-      recover: ({ attempt, recovery_authorization }) => {
+      recover: options.recover ?? (({ attempt, recovery_authorization }) => {
         if (recovery_authorization !== 'recovery:approved') return null;
         const row = attempts.rows.get(attempt.attempt_id);
         return row ? { ...structuredClone(row.binding), owner: row.owner as any } : null;
-      },
+      }),
     },
     local_authorization_program_digest: digestAeb({ program: 'local:pg:1' }),
     local_authorize: () => true,
@@ -359,16 +373,14 @@ function boundary(
   });
 }
 
-function keysFor(operationId: string, actionDigest: string) {
-  const input = {
+function keysFor(attempt: { operation_id: string; action_digest: string; attempt_id: string }) {
+  return nativeConsequenceBoundaryAttemptReservationKeys({
     relying_party_id: RELYING_PARTY,
-    operation_id: operationId,
-    action_digest: actionDigest as `sha256:${string}`,
-  };
-  return {
-    operation: nativeConsequenceBoundaryReservationKey(input),
-    holder: nativeConsequenceBoundaryActionFenceHolderKey(input),
-  };
+    provider: PROVIDER,
+    operation_id: attempt.operation_id,
+    action_digest: attempt.action_digest as `sha256:${string}`,
+    attempt_id: attempt.attempt_id,
+  });
 }
 
 test('the PostgreSQL store declares the durable state read and its DDL grants it to the executor only', async () => {
@@ -400,7 +412,7 @@ test('a malformed operation-state answer throws instead of reporting a state', a
   await assert.rejects(store.state('aeb-native-operation:x'), /malformed PostgreSQL result/);
 });
 
-test('the shipped PostgreSQL store backs the native boundary and closes both reservations', async () => {
+test('the shipped PostgreSQL store backs the native boundary and closes all three reservations', async () => {
   const db = fakePostgres();
   const f = nativeFixture();
   let calls = 0;
@@ -411,8 +423,9 @@ test('the shipped PostgreSQL store backs the native boundary and closes both res
   const result = await h.run({ operation_id: 'operation:pg:1', handoff: f.handoff, action: ACTION });
   assert.equal(result.state, 'EXECUTED');
   assert.ok(result.state === 'EXECUTED');
-  const keys = keysFor('operation:pg:1', result.attempt.action_digest as string);
+  const keys = keysFor(result.attempt as any);
   assert.equal(db.operation(keys.operation)?.state, 'CONSUMED');
+  assert.equal(db.operation(keys.authority)?.state, 'CONSUMED');
   assert.equal(db.operation(keys.holder)?.state, 'CONSUMED');
 
   const again = await h.run({ operation_id: 'operation:pg:2', handoff: f.issue('native-authz:fresh:1'), action: ACTION });
@@ -421,7 +434,7 @@ test('the shipped PostgreSQL store backs the native boundary and closes both res
   assert.equal(calls, 1);
 });
 
-test('after a restart, reconciliation claims both reservations through the authorized recovery path', async () => {
+test('after a restart, reconciliation claims every reservation through the authorized recovery path', async () => {
   const db = fakePostgres();
   const f = nativeFixture();
   const attempts = attemptStore();
@@ -429,8 +442,9 @@ test('after a restart, reconciliation claims both reservations through the autho
   const uncertain = await before.run({ operation_id: 'operation:pg:restart', handoff: f.handoff, action: ACTION });
   assert.equal(uncertain.state, 'INDETERMINATE');
   assert.ok(uncertain.attempt);
-  const keys = keysFor('operation:pg:restart', uncertain.attempt.action_digest as string);
+  const keys = keysFor(uncertain.attempt as any);
   assert.equal(db.operation(keys.operation)?.state, 'RESERVED');
+  assert.equal(db.operation(keys.authority)?.state, 'RESERVED');
   assert.equal(db.operation(keys.holder)?.state, 'RESERVED');
 
   // A fresh authorization for the same action is fenced across the restart.
@@ -458,21 +472,26 @@ test('after a restart, reconciliation claims both reservations through the autho
     recovery_authorization: 'recovery:approved',
   });
   assert.equal(reconciled.state, 'EXECUTED');
-  assert.deepEqual(claims.map((claim) => claim.operationKey), [keys.operation, keys.holder]);
+  assert.deepEqual(claims.map((claim) => claim.operationKey), [keys.authority, keys.operation, keys.holder]);
   assert.ok(claims.every((claim) => claim.authorization === 'recovery:approved'
-    && claim.requiredState === 'RESERVED'));
+    && claim.requiredState === 'RESERVED'
+    && claim.scope?.attemptId === uncertain.attempt!.attempt_id
+    && claim.scope?.recoveryOperationKey === keys.operation_fence));
+  assert.deepEqual(claims.map((claim) => claim.scope?.reservation),
+    ['native-authority', 'operation', 'action-fence-holder']);
   assert.equal(db.operation(keys.operation)?.state, 'CONSUMED');
+  assert.equal(db.operation(keys.authority)?.state, 'CONSUMED');
   assert.equal(db.operation(keys.holder)?.state, 'CONSUMED');
 });
 
-test('an unauthorized restart reconciliation leaves both reservations held', async () => {
+test('an unauthorized restart reconciliation leaves every reservation held', async () => {
   const db = fakePostgres();
   const f = nativeFixture();
   const attempts = attemptStore();
   const before = boundary(f, pgStore(db), attempts, async () => { throw new Error('lost'); });
   const uncertain = await before.run({ operation_id: 'operation:pg:unauthorized', handoff: f.handoff, action: ACTION });
   assert.equal(uncertain.state, 'INDETERMINATE');
-  const keys = keysFor('operation:pg:unauthorized', uncertain.attempt!.action_digest as string);
+  const keys = keysFor(uncertain.attempt as any);
 
   const denied = boundary(f, pgStore(db, () => false), attempts, async () => { throw new Error('no'); });
   const result = await denied.reconcile({
@@ -486,6 +505,7 @@ test('an unauthorized restart reconciliation leaves both reservations held', asy
   assert.equal(result.state, 'INDETERMINATE');
   assert.equal(result.reason, 'authorization_consumption_unconfirmed');
   assert.equal(db.operation(keys.operation)?.state, 'RESERVED');
+  assert.equal(db.operation(keys.authority)?.state, 'RESERVED');
   assert.equal(db.operation(keys.holder)?.state, 'RESERVED');
   assert.equal([...attempts.rows.values()][0]?.state, 'INDETERMINATE');
 });
@@ -497,7 +517,7 @@ test('after a restart, reconciliation to FAILED burns the authorization and rele
   const before = boundary(f, pgStore(db), attempts, async () => { throw new Error('lost'); });
   const uncertain = await before.run({ operation_id: 'operation:pg:failed', handoff: f.handoff, action: ACTION });
   assert.equal(uncertain.state, 'INDETERMINATE');
-  const keys = keysFor('operation:pg:failed', uncertain.attempt!.action_digest as string);
+  const keys = keysFor(uncertain.attempt as any);
 
   let calls = 0;
   const after = boundary(f, pgStore(db), attempts, async () => {
@@ -514,6 +534,7 @@ test('after a restart, reconciliation to FAILED burns the authorization and rele
   });
   assert.equal(failed.state, 'FAILED');
   assert.equal(db.operation(keys.operation)?.state, 'CONSUMED');
+  assert.equal(db.operation(keys.authority)?.state, 'CONSUMED');
   assert.equal(db.operation(keys.holder), undefined, 'fence holder released');
 
   const sameAuthority = await after.run({ operation_id: 'operation:pg:failed:2', handoff: f.handoff, action: ACTION });
@@ -552,4 +573,212 @@ test('an unreadable operation state never becomes a provider entry', async () =>
   assert.equal(retry.state, 'REFUSED');
   assert.equal(retry.reason, 'native_action_in_flight');
   assert.equal(calls, 1);
+});
+
+// ---------------------------------------------------------------------------
+// PR #790 round 2 over the shipped store's exact SQL.
+// ---------------------------------------------------------------------------
+
+function failed(n: number) {
+  return { ...evidence(900 + n), evidence_id: `provider-evidence:not-found-${n}` };
+}
+
+test('PG6: a reserve error on a shared operation ID never deletes the live attempt\'s rows', async () => {
+  // Regression for PG6: the reserve-error catch released the operation key
+  // with the per-instance owner token of a live attempt in the same process,
+  // deleted its row and native replay fence, locked the action, and let the
+  // grant already sent to the provider be spent on a second action.
+  const db = fakePostgres();
+  const f = nativeFixture();
+  const store = pgStore(db);
+  const attempts = attemptStore();
+  let release!: () => void;
+  const providerGate = new Promise<void>((resolve) => { release = resolve; });
+  let calls = 0;
+  const h = boundary(f, store, attempts, async () => {
+    calls += 1;
+    if (calls === 1) await providerGate;
+    return { state: 'EXECUTED', evidence: evidence(calls), result: {} };
+  });
+  const victimHandoff = f.issue('native-authz:victim');
+  const victimRun = h.run({ operation_id: 'operation:pg:shared', handoff: victimHandoff, action: ACTION });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const victimAttempt = [...attempts.rows.values()][0].binding as any;
+  const keys = keysFor(victimAttempt);
+  assert.equal(db.operation(keys.operation)?.state, 'RESERVED');
+  assert.equal(db.operation(keys.authority)?.state, 'RESERVED');
+  assert.equal(db.operation(keys.holder)?.state, 'RESERVED');
+
+  db.failNext(AEB_CONSUMPTION_SQL.reserveOperation);
+  const attacker = await h.run({
+    operation_id: 'operation:pg:shared',
+    handoff: f.issue('native-authz:attacker'),
+    action: ACTION,
+  });
+  assert.equal(attacker.state, 'REFUSED');
+  assert.equal(attacker.reason, 'consumption_store_unavailable');
+  assert.equal(db.operation(keys.operation)?.state, 'RESERVED');
+  assert.equal(db.operation(keys.authority)?.state, 'RESERVED');
+  assert.equal(db.operation(keys.holder)?.state, 'RESERVED');
+
+  release();
+  const victim = await victimRun;
+  assert.equal(victim.state, 'EXECUTED');
+  const secondAction = { ...ACTION, transfer_id: 'transfer-2' };
+  const reuse = await h.run({
+    operation_id: 'operation:pg:shared:B',
+    // The victim's grant, already sent to the provider, on a second action.
+    handoff: issueAebNativeAuthorizationHandoff({
+      ...f.handoffInput,
+      native_authorization: {
+        ...f.handoffInput.native_authorization,
+        authorization_id: victimHandoff.native_authorization.authorization_id,
+      },
+      action: secondAction,
+      revocation_id: 'revocation:victim:B',
+    }, f.signer),
+    action: secondAction,
+  });
+  assert.equal(reuse.state, 'REFUSED');
+  assert.equal(reuse.reason, 'native_replay_conflict');
+  assert.equal(calls, 1);
+});
+
+test('PG5: a transient release error after a pre-entry refusal is recovered after restart', async () => {
+  // Regression for PG5: one connection reset on the holder release left the
+  // holder RESERVED, reconcile refused attempt_never_entered_provider, and every
+  // fresh authority was refused native_action_in_flight forever.
+  const db = fakePostgres();
+  const f = nativeFixture();
+  const attempts = attemptStore();
+  let lookups = 0;
+  const before = boundary(f, pgStore(db), attempts, async () => {
+    throw new Error('must not be called');
+  }, {
+    resolveStatus: (handoff) => {
+      lookups += 1;
+      if (lookups === 2) db.failNext(AEB_CONSUMPTION_SQL.releaseOperation);
+      return { ...statusFor(handoff), revoked: lookups === 2 };
+    },
+  });
+  const first = await before.run({ operation_id: 'operation:pg:pre-entry', handoff: f.handoff, action: ACTION });
+  assert.equal(first.state, 'INDETERMINATE');
+  assert.equal(first.reason, 'native_pre_entry_release_unconfirmed');
+  const keys = keysFor(first.attempt as any);
+  assert.equal(db.operation(keys.holder)?.state, 'RESERVED');
+
+  let calls = 0;
+  const claims: AebRecoveryClaimAuthorization[] = [];
+  const after = boundary(f, pgStore(db, undefined, claims), attempts, async () => {
+    calls += 1;
+    return { state: 'EXECUTED', evidence: evidence(calls), result: {} };
+  });
+  const fenced = await after.run({
+    operation_id: 'operation:pg:pre-entry:early',
+    handoff: f.issue('native-authz:pre-entry-early'),
+    action: ACTION,
+  });
+  assert.equal(fenced.reason, 'native_action_in_flight');
+  const recovered = await after.reconcile({
+    operation_id: 'operation:pg:pre-entry',
+    handoff: f.handoff,
+    action: ACTION,
+    attempt: first.attempt,
+    outcome: { state: 'FAILED', evidence: failed(1), reason: 'not_found' },
+    recovery_authorization: 'recovery:approved',
+  });
+  assert.equal(recovered.state, 'REFUSED');
+  assert.equal(recovered.reason, 'attempt_never_entered_provider');
+  assert.equal(db.operation(keys.holder), undefined);
+  assert.equal(db.operation(keys.operation), undefined);
+  assert.equal(db.operation(keys.authority), undefined);
+  assert.deepEqual(claims.map((claim) => claim.scope?.reservation), ['action-fence-holder']);
+  const fresh = await after.run({
+    operation_id: 'operation:pg:pre-entry:fresh',
+    handoff: f.issue('native-authz:pre-entry-fresh'),
+    action: ACTION,
+  });
+  assert.equal(fresh.state, 'EXECUTED');
+  assert.equal(calls, 1);
+});
+
+test('PG4: one credential bound to the attempt finishes restart reconciliation in one call', async () => {
+  // Regression for PG4: a credential bound to the exact row key left the
+  // holder RESERVED (native_action_fence_release_unconfirmed) until a second
+  // reconcile with a holder-bound credential.
+  for (const terminal of ['FAILED', 'EXECUTED'] as const) {
+    const db = fakePostgres();
+    const f = nativeFixture();
+    const attempts = attemptStore();
+    const before = boundary(f, pgStore(db), attempts, async () => { throw new Error('lost'); });
+    const operationId = `operation:pg:one-credential:${terminal}`;
+    const uncertain = await before.run({ operation_id: operationId, handoff: f.handoff, action: ACTION });
+    assert.equal(uncertain.state, 'INDETERMINATE');
+    const keys = keysFor(uncertain.attempt as any);
+    const claims: AebRecoveryClaimAuthorization[] = [];
+    const strict = (claim: AebRecoveryClaimAuthorization) =>
+      (claim.authorization as any)?.attempt_id === claim.scope?.attemptId
+      && (claim.authorization as any)?.operation_key === claim.scope?.recoveryOperationKey;
+    const credential = { attempt_id: uncertain.attempt!.attempt_id, operation_key: keys.operation_fence };
+    const after = boundary(f, pgStore(db, strict, claims), attempts, async () => {
+      throw new Error('must not be called');
+    }, {
+      recover: ({ attempt, recovery_authorization }) => {
+        if ((recovery_authorization as any)?.attempt_id !== attempt.attempt_id) return null;
+        const row = attempts.rows.get(attempt.attempt_id);
+        return row ? { ...structuredClone(row.binding), owner: row.owner as any } : null;
+      },
+    });
+    const result = await after.reconcile({
+      operation_id: operationId,
+      handoff: f.handoff,
+      action: ACTION,
+      attempt: uncertain.attempt,
+      outcome: terminal === 'FAILED'
+        ? { state: 'FAILED', evidence: failed(2), reason: 'declined' }
+        : { state: 'EXECUTED', evidence: evidence(2), result: {} },
+      recovery_authorization: credential,
+    });
+    assert.equal(result.state, terminal, terminal);
+    assert.equal(claims.length, 3, terminal);
+    assert.equal(db.operation(keys.operation)?.state, 'CONSUMED', terminal);
+    assert.equal(db.operation(keys.authority)?.state, 'CONSUMED', terminal);
+    assert.equal(db.operation(keys.holder)?.state, terminal === 'EXECUTED' ? 'CONSUMED' : undefined, terminal);
+  }
+});
+
+test('a recovery claim scope is validated and passed to the authorizer unchanged', async () => {
+  const db = fakePostgres();
+  const claims: AebRecoveryClaimAuthorization[] = [];
+  const store = pgStore(db, () => true, claims);
+  const scope = {
+    attemptId: 'native-attempt:scope:1',
+    operationId: 'operation:scope:1',
+    recoveryOperationKey: 'aeb-native-operation:sha256:' + '0'.repeat(64),
+    reservation: 'operation' as const,
+  };
+  assert.equal(await store.claimReservation('aeb-native-attempt-operation:missing', 'x', scope), false);
+  assert.deepEqual(claims[0]?.scope, scope);
+  assert.equal(Object.isFrozen(claims[0]?.scope), true);
+  await assert.rejects(
+    store.claimReservation('k', 'x', { ...scope, reservation: 'everything' } as any),
+    /recovery claim scope is invalid/,
+  );
+  await assert.rejects(
+    store.claimReservation('k', 'x', { ...scope, extra: true } as any),
+    /recovery claim scope is invalid/,
+  );
+  let getterRan = false;
+  const getterScope = Object.defineProperty({ ...scope }, 'attemptId', {
+    get() { getterRan = true; return 'native-attempt:scope:1'; },
+    enumerable: true,
+  });
+  await assert.rejects(
+    store.claimReservation('k', 'x', getterScope as any),
+    /recovery claim scope is invalid/,
+  );
+  assert.equal(getterRan, false);
+  assert.equal(await store.claimReservation('aeb-native-attempt-operation:missing', 'x'), false);
+  assert.equal(claims[1]?.scope, undefined);
+  assert.equal(Object.hasOwn(claims[1]!, 'scope'), false);
 });

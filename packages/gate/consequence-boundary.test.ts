@@ -5,6 +5,7 @@ import test from 'node:test';
 import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
 import {
   adapterPinDigest,
+  aebReservationKey,
   digestAeb,
   evaluateAebEvidence,
   mappingProfileDigest,
@@ -16,17 +17,21 @@ import {
   AEB_NATIVE_AUTHORIZATION_PINS_VERSION,
   AEB_NATIVE_AUTHORIZATION_SOURCE_PIN_VERSION,
   AEB_NATIVE_AUTHORIZATION_STATUS_VERSION,
+  digestAebNativeAuthorizationAction,
   issueAebNativeAuthorizationHandoff,
   verifyAebNativeAuthorizationHandoff,
   type AebNativeAuthorizationSystem,
 } from '@emilia-protocol/verify/aeb';
 import { loadDefaultAgilityMldsaBackend } from '@emilia-protocol/verify/pq-signature-agility';
 import {
+  consequenceBoundaryActionFenceHolderKey,
   consequenceBoundaryProviderIdempotencyKey,
   createConsequenceBoundary,
   createNativeConsequenceBoundary,
   nativeConsequenceBoundaryActionFenceKey,
+  nativeConsequenceBoundaryAttemptReservationKeys,
   nativeConsequenceBoundaryProviderIdempotencyKey,
+  nativeConsequenceBoundaryReservationKey,
   type ConsequenceBoundaryAttemptBinding,
   type ConsequenceBoundaryAttemptReference,
   type ConsequenceBoundaryProviderEvidence,
@@ -66,6 +71,7 @@ function fixture({
   operationId = 'operation:release-1',
   executorId = EXECUTOR,
   replayId = 'native-mandate:one',
+  evaluatorKeys = undefined as crypto.KeyPairKeyObjectResult | undefined,
 } = {}) {
   const adapter = {
     id: 'test:native-mandate',
@@ -143,7 +149,7 @@ function fixture({
     max_status_age_sec: 300,
   };
   pin.config_digest = adapterPinDigest('test:native-mandate', pin);
-  const evaluator = crypto.generateKeyPairSync('ed25519');
+  const evaluator = evaluatorKeys ?? crypto.generateKeyPairSync('ed25519');
   const config: any = {
     '@version': 'AEB-ADAPTER-v1',
     relying_party_id: 'rp:consequence-boundary-test',
@@ -204,12 +210,13 @@ function fixture({
     evaluation: evaluation.record,
     artifacts: { 'artifact:native-mandate': artifact },
     current_statuses: { 'artifact:native-mandate': status },
+    evaluatorKeys: evaluator,
   };
 }
 
 function durableAebDatabase() {
   return {
-    operations: new Map<string, 'RESERVED' | 'CONSUMED'>(),
+    operations: new Map<string, 'RESERVED' | 'CONSUMED' | 'RELEASED_NOT_ENTERED'>(),
     ownerTokens: new Map<string, string>(),
     replayOwners: new Map<string, string>(),
   };
@@ -222,9 +229,14 @@ function durableAebDatabase() {
  * process is a new instance over the same database and holds no owner token
  * until an authorized recovery claim.
  */
-function durableAebStore(db = durableAebDatabase()) {
+function durableAebStore(
+  db = durableAebDatabase(),
+  authorizeClaim: (claim: { key: string; authorization: unknown; scope?: any }) => boolean =
+    ({ authorization }) => authorization === 'recovery:approved',
+) {
   const owned = new Map<string, string>();
   const claims: string[] = [];
+  const claimScopes: any[] = [];
   const ownsRow = (key: string) => owned.has(key)
     && db.ownerTokens.get(key) === owned.get(key);
   return {
@@ -237,6 +249,7 @@ function durableAebStore(db = durableAebDatabase()) {
     operations: db.operations,
     replayOwners: db.replayOwners,
     claims,
+    claimScopes,
     async reserve(key: string, replayKeys: readonly string[]) {
       if (db.operations.has(key)) return 'CONSUMPTION_CONFLICT' as const;
       if (replayKeys.some((replayKey) => db.replayOwners.has(replayKey))) {
@@ -266,13 +279,24 @@ function durableAebStore(db = durableAebDatabase()) {
       }
       return true;
     },
-    async claimReservation(key: string, authorization: unknown) {
-      if (owned.has(key) || authorization !== 'recovery:approved'
+    terminalRelease: true as const,
+    async releaseTerminal(key: string) {
+      if (db.operations.get(key) === 'RELEASED_NOT_ENTERED') return true;
+      if (db.operations.get(key) !== 'RESERVED' || !ownsRow(key)) return false;
+      // The row stays, so the key and its replay fences can never be reserved again.
+      db.operations.set(key, 'RELEASED_NOT_ENTERED');
+      db.ownerTokens.delete(key);
+      owned.delete(key);
+      return true;
+    },
+    async claimReservation(key: string, authorization: unknown, scope?: unknown) {
+      if (owned.has(key) || !authorizeClaim({ key, authorization, scope })
           || db.operations.get(key) !== 'RESERVED') return false;
       const token = crypto.randomUUID();
       db.ownerTokens.set(key, token);
       owned.set(key, token);
       claims.push(key);
+      claimScopes.push(scope);
       return true;
     },
     state(key: string) {
@@ -355,7 +379,8 @@ function makeBoundary({
   attempts = attemptStore(),
   consequenceEnvelope = undefined as ConsequenceEnvelopeBoundary | undefined,
   localAuthorize = () => true,
-  invoke = async () => ({ state: 'EXECUTED' as const, evidence: executedEvidence(), result: { id: 'effect-1' } }),
+  invoke = async () => ({ state: 'EXECUTED' as const, evidence: executedEvidence(), result: { id: 'effect-1' } }) as any,
+  attemptPrefix = '',
 } = {}) {
   let attemptCounter = 0;
   const boundary = createConsequenceBoundary({
@@ -364,7 +389,7 @@ function makeBoundary({
     aeb: { config: f.config, adapters: f.adapters, store: aebStore },
     attempts: {
       store: attempts,
-      create_id: () => `attempt:${++attemptCounter}`,
+      create_id: () => `attempt:${attemptPrefix}${++attemptCounter}`,
       recover: ({ attempt, recovery_authorization }) => {
         if (recovery_authorization !== 'recovery:approved') return null;
         const row = attempts.rows.get(attempt.attempt_id);
@@ -855,7 +880,10 @@ test('authoritative non-commitment releases aggregate capacity without reviving 
   assert.equal((await h.boundary.run(input(f))).state, 'REFUSED');
 });
 
-function nativeFixture(system: AebNativeAuthorizationSystem = 'authzen') {
+function nativeFixture(
+  system: AebNativeAuthorizationSystem = 'authzen',
+  relyingPartyId = 'rp:payments',
+) {
   const pair = crypto.generateKeyPairSync('ed25519');
   const gatewayId = `gateway:${system}`;
   const keyId = `gateway-key:${system}:one`;
@@ -867,7 +895,7 @@ function nativeFixture(system: AebNativeAuthorizationSystem = 'authzen') {
   };
   const pins: any = {
     '@version': AEB_NATIVE_AUTHORIZATION_PINS_VERSION,
-    relying_party_id: 'rp:payments',
+    relying_party_id: relyingPartyId,
     audience: 'https://gate.example/payments',
     executor_id: EXECUTOR,
     provider: PROVIDER,
@@ -947,8 +975,10 @@ function makeNativeBoundary({
     state: 'EXECUTED' as const,
     evidence: executedEvidence(),
     result: { id: 'native-effect-1' },
-  }),
+  }) as any,
   now = () => NOW,
+  attemptPrefix = '',
+  createId = undefined as undefined | (() => string | Promise<string>),
 } = {}) {
   let attemptCounter = 0;
   const configuration = {
@@ -963,7 +993,7 @@ function makeNativeBoundary({
     },
     attempts: {
       store: attempts,
-      create_id: () => `native-attempt:${++attemptCounter}`,
+      create_id: createId ?? (() => `native-attempt:${attemptPrefix}${++attemptCounter}`),
       recover: recover ?? (({ attempt, recovery_authorization }: {
         attempt: Readonly<ConsequenceBoundaryAttemptBinding>;
         recovery_authorization: unknown;
@@ -1610,8 +1640,8 @@ test('reconciliation uses the persisted historical trust snapshot after key rota
   });
   assert.equal(requestedSnapshot, 'native-trust-snapshot:old:1');
   assert.equal(result.state, 'EXECUTED');
-  assert.equal(restartedStore.claims.length, 2, 'operation and action-fence holder claimed');
-  assert.deepEqual([...aebStore.operations.values()].slice(0, 2), ['CONSUMED', 'CONSUMED']);
+  assert.equal(restartedStore.claims.length, 3, 'operation, authority, and action-fence holder claimed');
+  assert.deepEqual([...aebStore.operations.values()].slice(0, 3), ['CONSUMED', 'CONSUMED', 'CONSUMED']);
 });
 
 test('direct native security callbacks are pinned when the boundary is constructed', async () => {
@@ -1879,9 +1909,9 @@ test('a fresh native authorization cannot re-enter the provider while the same a
   assert.equal(second.state, 'REFUSED');
   assert.equal(second.reason, 'native_action_in_flight');
   assert.equal(calls, 1);
-  // The refused attempt handed its own operation reservation back: only the
-  // first attempt's operation and fence-holder reservations remain.
-  assert.deepEqual([...h.aebStore.operations.values()], ['RESERVED', 'RESERVED']);
+  // The refused attempt handed its own reservations back: only the first
+  // attempt's operation, authority, and fence-holder reservations remain.
+  assert.deepEqual([...h.aebStore.operations.values()], ['RESERVED', 'RESERVED', 'RESERVED']);
 
   const reconciled = await h.boundary.reconcile({
     operation_id: 'operation:native:fence:1',
@@ -2071,6 +2101,7 @@ test('the action fence is durable across a process restart', async () => {
     f,
     aebStore: durableAebStore(aebStore.db),
     attempts,
+    attemptPrefix: 'restarted:',
     resolveStatus: (handoff: any) => nativeStatusFor(f, handoff),
     invoke: async () => {
       calls += 1;
@@ -2181,26 +2212,21 @@ test('explicit distinct authority namespaces are an operator opt-in; mixed decla
     assert.equal(calls, 2);
   }
   {
+    // A pin set that mixes declared and default namespaces for one issuer is
+    // refused when the boundary is constructed, before any attempt runs.
     const f = nativeFixture();
     f.pins.accepted_sources.push({
       ...f.pins.accepted_sources[0],
       profile: 'authzen:exact-action-result:2',
       authority_namespace: 'namespace:grants',
     });
-    let calls = 0;
-    const h = makeNativeBoundary({
-      f,
-      invoke: async () => {
-        calls += 1;
-        return { state: 'EXECUTED' as const, evidence: providerOutcomeFor(calls), result: {} };
-      },
-    });
-    const result = await h.boundary.run(nativeInput(f, 'operation:native:namespace:mixed'));
-    assert.equal(result.state, 'REFUSED');
-    assert.equal(result.reason, 'native_handoff_schema_invalid');
-    assert.equal(calls, 0);
+    assert.throws(
+      () => makeNativeBoundary({ f }),
+      /native_consequence_boundary_configuration_invalid: native_pins_namespace_declaration_mixed/,
+    );
   }
 });
+
 
 test('reconciling a never-entered RELEASED attempt is refused and cannot burn a later attempt', async () => {
   // Regression for H4e-burn: the reconcile used to commit attempt 2's live
@@ -2236,7 +2262,7 @@ test('reconciling a never-entered RELEASED attempt is refused and cannot burn a 
   const second = h.boundary.run(nativeInput(f, 'operation:native:burn'));
   await new Promise((resolve) => setTimeout(resolve, 10));
   const reservedBySecond = [...aebStore.operations.values()];
-  assert.deepEqual(reservedBySecond, ['RESERVED', 'RESERVED']);
+  assert.deepEqual(reservedBySecond, ['RESERVED', 'RESERVED', 'RESERVED']);
 
   const reconciled = await h.boundary.reconcile({
     operation_id: 'operation:native:burn',
@@ -2252,7 +2278,9 @@ test('reconciling a never-entered RELEASED attempt is refused and cannot burn a 
   });
   assert.equal(reconciled.state, 'REFUSED');
   assert.equal(reconciled.reason, 'attempt_never_entered_provider');
-  assert.deepEqual([...aebStore.operations.values()], ['RESERVED', 'RESERVED']);
+  // Pre-entry recovery of attempt 1 touched only attempt 1's keys; attempt
+  // 2, which reused the operation ID and the grant, keeps all three rows.
+  assert.deepEqual([...aebStore.operations.values()], ['RESERVED', 'RESERVED', 'RESERVED']);
 
   unblock();
   assert.equal((await second).state, 'REFUSED');
@@ -2265,8 +2293,9 @@ test('reservations stay held when a pre-entry attempt release is unconfirmed', a
   const f = nativeFixture();
   const attempts = attemptStore();
   const transition = attempts.transition.bind(attempts);
+  let releasedWritesFail = true;
   attempts.transition = async (entry: any) => {
-    if (entry.next_state === 'RELEASED') throw new Error('attempt store unavailable');
+    if (releasedWritesFail && entry.next_state === 'RELEASED') throw new Error('attempt store unavailable');
     return transition(entry);
   };
   let lookups = 0;
@@ -2288,11 +2317,35 @@ test('reservations stay held when a pre-entry attempt release is unconfirmed', a
   assert.equal(first.reason, 'native_pre_entry_release_unconfirmed');
   assert.equal(first.invoked, false);
   // The attempt is still RESERVED, so its operation key and fence stay held.
-  assert.deepEqual([...h.aebStore.operations.values()], ['RESERVED', 'RESERVED']);
+  assert.deepEqual([...h.aebStore.operations.values()], ['RESERVED', 'RESERVED', 'RESERVED']);
   const reuse = await h.boundary.run(nativeInput(f, 'operation:native:release-unconfirmed'));
   assert.equal(reuse.state, 'REFUSED');
   assert.equal(reuse.reason, 'consumption_conflict');
   assert.equal(calls, 0);
+
+  // While the attempt store still refuses the RELEASED write, recovery cannot
+  // prove the stop and releases nothing.
+  const recovery = {
+    operation_id: 'operation:native:release-unconfirmed',
+    handoff: f.handoff,
+    action: ACTION,
+    attempt: first.attempt,
+    outcome: { state: 'INDETERMINATE' as const, reason: 'provider_lookup_unavailable' },
+    recovery_authorization: 'recovery:approved',
+  };
+  const blocked = await h.boundary.reconcile(recovery);
+  assert.equal(blocked.state, 'INDETERMINATE');
+  assert.deepEqual([...h.aebStore.operations.values()], ['RESERVED', 'RESERVED', 'RESERVED']);
+  // Once the store recovers, the durable RESERVED record proves no provider
+  // entry and one recovery call releases every reservation of the attempt.
+  releasedWritesFail = false;
+  const recovered = await h.boundary.reconcile(recovery);
+  assert.equal(recovered.state, 'REFUSED');
+  assert.equal(recovered.reason, 'attempt_never_entered_provider');
+  assert.equal(h.aebStore.operations.size, 0);
+  const retry = await h.boundary.run(nativeInput(f, 'operation:native:release-unconfirmed'));
+  assert.equal(retry.state, 'EXECUTED');
+  assert.equal(calls, 1);
 });
 
 test('a reconcile outcome that conflicts with the terminal record changes nothing', async () => {
@@ -2501,4 +2554,837 @@ test('an unconfirmed fence release after FAILED stays reconcilable and never ope
   });
   assert.equal(retried.state, 'EXECUTED');
   assert.equal(calls, 2);
+});
+
+// ---------------------------------------------------------------------------
+// PR #790 round 2: reservation ownership, pre-entry recovery, one-credential
+// restart reconciliation, the composed-boundary fence, and issuer aliasing.
+// ---------------------------------------------------------------------------
+
+function failedEvidence(n: number) {
+  return {
+    evidence_id: `provider-evidence:not-found-${n}`,
+    observed_at: '2026-08-09T12:00:02.000Z',
+    evidence_digest: digestAeb({ provider: 'bank', outcome: 'not-found', n }),
+  };
+}
+
+function deferred<T = void>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+function nativeRecovery(
+  f: ReturnType<typeof nativeFixture>,
+  operationId: string,
+  attempt: unknown,
+  outcome: unknown,
+  recoveryAuthorization: unknown = 'recovery:approved',
+) {
+  return {
+    operation_id: operationId,
+    handoff: f.handoff,
+    action: ACTION,
+    attempt,
+    outcome,
+    recovery_authorization: recoveryAuthorization,
+  } as any;
+}
+
+test('B4: a transient store error while handing back a pre-entry refusal is recoverable in one authorized reconcile', async () => {
+  // Regression for B4: the holder release threw after a pre-entry refusal, the
+  // attempt was RELEASED without evidence, and reconcile refused it as
+  // attempt_never_entered_provider while the fence stayed held forever.
+  for (const lookup of ['FAILED', 'INDETERMINATE'] as const) {
+    const f = nativeFixture();
+    const aebStore = durableAebStore();
+    const release = aebStore.release.bind(aebStore);
+    let holderReleaseFailures = 1;
+    aebStore.release = async (key: string) => {
+      if (holderReleaseFailures > 0 && key.startsWith('aeb-native-action-holder:')) {
+        holderReleaseFailures -= 1;
+        throw new Error('pg: connection reset');
+      }
+      return release(key);
+    };
+    let lookups = 0;
+    let calls = 0;
+    const h = makeNativeBoundary({
+      f,
+      aebStore,
+      resolveStatus: (handoff: any) => {
+        lookups += 1;
+        return { ...nativeStatusFor(f, handoff), revoked: lookups === 2 };
+      },
+      invoke: async () => {
+        calls += 1;
+        return { state: 'EXECUTED' as const, evidence: providerOutcomeFor(calls), result: {} };
+      },
+    });
+    const first = await h.boundary.run(nativeInput(f, `operation:native:b4:${lookup}`));
+    assert.equal(first.state, 'INDETERMINATE', lookup);
+    assert.equal(first.reason, 'native_pre_entry_release_unconfirmed', lookup);
+    assert.equal(first.invoked, false, lookup);
+    const row = [...h.attempts.rows.values()][0];
+    assert.equal(row.state, 'RELEASED', lookup);
+    assert.equal(row.evidence, undefined, lookup);
+
+    const early = await h.boundary.run({
+      operation_id: `operation:native:b4:${lookup}:early`,
+      handoff: freshAuthorization(f, `b4-early-${lookup}`),
+      action: ACTION,
+    });
+    assert.equal(early.state, 'REFUSED', lookup);
+    assert.equal(early.reason, 'native_action_in_flight', lookup);
+
+    // A provider claim that the action executed contradicts the durable record
+    // and releases nothing; an unauthorized caller cannot recover at all.
+    const contradicted = await h.boundary.reconcile(nativeRecovery(
+      f, `operation:native:b4:${lookup}`, first.attempt,
+      { state: 'EXECUTED', evidence: providerOutcomeFor(7), result: {} },
+    ));
+    assert.equal(contradicted.state, 'REFUSED', lookup);
+    assert.equal(contradicted.reason, 'reconciliation_outcome_conflict', lookup);
+    const unauthorized = await h.boundary.reconcile(nativeRecovery(
+      f, `operation:native:b4:${lookup}`, first.attempt,
+      { state: 'FAILED', evidence: failedEvidence(1), reason: 'not_found' },
+      'recovery:forged',
+    ));
+    assert.equal(unauthorized.state, 'REFUSED', lookup);
+    assert.equal(unauthorized.reason, 'attempt_recovery_refused', lookup);
+    assert.equal(h.aebStore.operations.size, 1, lookup);
+
+    const recovered = await h.boundary.reconcile(nativeRecovery(
+      f, `operation:native:b4:${lookup}`, first.attempt,
+      lookup === 'FAILED'
+        ? { state: 'FAILED', evidence: failedEvidence(1), reason: 'not_found' }
+        : { state: 'INDETERMINATE', reason: 'provider_lookup_unavailable' },
+    ));
+    assert.equal(recovered.state, 'REFUSED', lookup);
+    assert.equal(recovered.reason, 'attempt_never_entered_provider', lookup);
+    assert.equal(recovered.invoked, false, lookup);
+    assert.equal(h.aebStore.operations.size, 0, lookup);
+    // Idempotent: a repeated recovery finds nothing held.
+    const again = await h.boundary.reconcile(nativeRecovery(
+      f, `operation:native:b4:${lookup}`, first.attempt,
+      { state: 'INDETERMINATE', reason: 'provider_lookup_unavailable' },
+    ));
+    assert.equal(again.reason, 'attempt_never_entered_provider', lookup);
+
+    const fresh = await h.boundary.run({
+      operation_id: `operation:native:b4:${lookup}:fresh`,
+      handoff: freshAuthorization(f, `b4-fresh-${lookup}`),
+      action: ACTION,
+    });
+    assert.equal(fresh.state, 'EXECUTED', lookup);
+    assert.equal(calls, 1, lookup);
+  }
+});
+
+test('B5: a crash while the attempt is RESERVED is recovered after restart with one scoped credential', async () => {
+  // Regression for B5, and the recovery race: the original call resumes after
+  // recovery and cannot enter the provider.
+  const f = nativeFixture();
+  const aebStore = durableAebStore();
+  const attempts = attemptStore();
+  const entryStatus = deferred();
+  let lookups = 0;
+  let calls = 0;
+  const invoke = async () => {
+    calls += 1;
+    return { state: 'EXECUTED' as const, evidence: providerOutcomeFor(calls), result: {} };
+  };
+  const before = makeNativeBoundary({
+    f,
+    aebStore,
+    attempts,
+    resolveStatus: async (handoff: any) => {
+      lookups += 1;
+      if (lookups === 2) await entryStatus.promise;
+      return nativeStatusFor(f, handoff);
+    },
+    invoke,
+  });
+  const stalled = before.boundary.run(nativeInput(f, 'operation:native:b5'));
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  const row = [...attempts.rows.values()][0];
+  assert.equal(row.state, 'RESERVED');
+  assert.equal(aebStore.operations.size, 3);
+
+  // Restart: a new store instance over the same database owns nothing.
+  const scopes: any[] = [];
+  const restartedStore = durableAebStore(aebStore.db, ({ authorization, scope }) => {
+    scopes.push(scope);
+    // One credential, bound to the attempt, not to each row key.
+    return (authorization as any)?.attempt_id === scope?.attemptId;
+  });
+  const after = makeNativeBoundary({
+    f,
+    aebStore: restartedStore,
+    attempts,
+    attemptPrefix: 'restarted:',
+    resolveStatus: (handoff: any) => nativeStatusFor(f, handoff),
+    invoke,
+  });
+  const fenced = await after.boundary.run({
+    operation_id: 'operation:native:b5:fresh-early',
+    handoff: freshAuthorization(f, 'b5-early'),
+    action: ACTION,
+  });
+  assert.equal(fenced.state, 'REFUSED');
+  assert.equal(fenced.reason, 'native_action_in_flight');
+
+  const recovered = await after.boundary.reconcile(nativeRecovery(
+    f, 'operation:native:b5', row.binding,
+    { state: 'INDETERMINATE', reason: 'provider_lookup_unavailable' },
+    { attempt_id: row.binding.attempt_id },
+  ));
+  // recover() in this harness accepts only the literal 'recovery:approved'.
+  assert.equal(recovered.state, 'REFUSED');
+  assert.equal(recovered.reason, 'attempt_recovery_refused');
+
+  const afterWithCustody = makeNativeBoundary({
+    f,
+    aebStore: restartedStore,
+    attempts,
+    attemptPrefix: 'restarted-2:',
+    resolveStatus: (handoff: any) => nativeStatusFor(f, handoff),
+    invoke,
+    recover: ({ attempt, recovery_authorization }: any) => {
+      if ((recovery_authorization as any)?.attempt_id !== attempt.attempt_id) return null;
+      const stored = attempts.rows.get(attempt.attempt_id);
+      return stored ? { ...structuredClone(stored.binding), owner: stored.owner as any } : null;
+    },
+  });
+  const released = await afterWithCustody.boundary.reconcile(nativeRecovery(
+    f, 'operation:native:b5', row.binding,
+    { state: 'INDETERMINATE', reason: 'provider_lookup_unavailable' },
+    { attempt_id: row.binding.attempt_id },
+  ));
+  assert.equal(released.state, 'REFUSED');
+  assert.equal(released.reason, 'attempt_never_entered_provider');
+  assert.equal(row.state, 'RELEASED');
+  assert.equal(restartedStore.claims.length, 3);
+  const keys = nativeConsequenceBoundaryAttemptReservationKeys({
+    relying_party_id: 'rp:payments',
+    provider: PROVIDER,
+    operation_id: 'operation:native:b5',
+    action_digest: row.binding.action_digest,
+    attempt_id: row.binding.attempt_id,
+  });
+  assert.deepEqual(restartedStore.claims, [keys.holder, keys.authority, keys.operation]);
+  assert.deepEqual(restartedStore.claimScopes.map((scope: any) => scope.reservation),
+    ['action-fence-holder', 'native-authority', 'operation']);
+  for (const scope of restartedStore.claimScopes) {
+    assert.equal(scope.attemptId, row.binding.attempt_id);
+    assert.equal(scope.operationId, 'operation:native:b5');
+    assert.equal(scope.recoveryOperationKey, keys.operation_fence);
+    assert.equal(scope.recoveryOperationKey, nativeConsequenceBoundaryReservationKey({
+      relying_party_id: 'rp:payments',
+      operation_id: 'operation:native:b5',
+      action_digest: row.binding.action_digest,
+    }));
+  }
+  assert.equal(aebStore.operations.size, 0);
+
+  // The stalled original call resumes after recovery and cannot enter.
+  entryStatus.resolve();
+  const resumed = await stalled;
+  assert.equal(resumed.state, 'INDETERMINATE');
+  assert.equal(resumed.reason, 'attempt_start_unconfirmed');
+  assert.equal(resumed.invoked, false);
+  assert.equal(calls, 0);
+
+  const fresh = await afterWithCustody.boundary.run({
+    operation_id: 'operation:native:b5:fresh',
+    handoff: freshAuthorization(f, 'b5-fresh'),
+    action: ACTION,
+  });
+  assert.equal(fresh.state, 'EXECUTED');
+  assert.equal(calls, 1);
+});
+
+test('B6: no reservation precedes the durable attempt record, so a crash before it locks nothing', async () => {
+  // Regression for B6: the fence holder was reserved before the attempt row
+  // existed, so a crash there left a holder no recovery could find.
+  {
+    const f = nativeFixture();
+    const aebStore = durableAebStore();
+    const attempts = attemptStore();
+    const never = new Promise<string>(() => {});
+    const before = makeNativeBoundary({ f, aebStore, attempts, createId: () => never });
+    void before.boundary.run(nativeInput(f, 'operation:native:b6'));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(attempts.rows.size, 0);
+    assert.equal(aebStore.operations.size, 0);
+    let calls = 0;
+    const after = makeNativeBoundary({
+      f,
+      aebStore: durableAebStore(aebStore.db),
+      attempts,
+      resolveStatus: (handoff: any) => nativeStatusFor(f, handoff),
+      invoke: async () => {
+        calls += 1;
+        return { state: 'EXECUTED' as const, evidence: providerOutcomeFor(calls), result: {} };
+      },
+    });
+    const fresh = await after.boundary.run({
+      operation_id: 'operation:native:b6:fresh',
+      handoff: freshAuthorization(f, 'b6-fresh'),
+      action: ACTION,
+    });
+    assert.equal(fresh.state, 'EXECUTED');
+  }
+  {
+    // A crash right after the holder write (its acknowledgement never
+    // arrives): the attempt record already exists and recovery finds it.
+    const f = nativeFixture();
+    const aebStore = durableAebStore();
+    const attempts = attemptStore();
+    const reserve = aebStore.reserve.bind(aebStore);
+    aebStore.reserve = async (key: string, replayKeys: readonly string[]) => {
+      const result = await reserve(key, replayKeys);
+      if (key.startsWith('aeb-native-action-holder:')) await new Promise(() => {});
+      return result;
+    };
+    const before = makeNativeBoundary({ f, aebStore, attempts });
+    void before.boundary.run(nativeInput(f, 'operation:native:b6:holder'));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const row = [...attempts.rows.values()][0];
+    assert.equal(row.state, 'RESERVED');
+    assert.equal(aebStore.operations.size, 3);
+    let calls = 0;
+    const after = makeNativeBoundary({
+      f,
+      aebStore: durableAebStore(aebStore.db),
+      attempts,
+      attemptPrefix: 'restarted:',
+      resolveStatus: (handoff: any) => nativeStatusFor(f, handoff),
+      invoke: async () => {
+        calls += 1;
+        return { state: 'EXECUTED' as const, evidence: providerOutcomeFor(calls), result: {} };
+      },
+    });
+    const fenced = await after.boundary.run({
+      operation_id: 'operation:native:b6:holder:early',
+      handoff: freshAuthorization(f, 'b6-holder-early'),
+      action: ACTION,
+    });
+    assert.equal(fenced.reason, 'native_action_in_flight');
+    const recovered = await after.boundary.reconcile(nativeRecovery(
+      f, 'operation:native:b6:holder', row.binding,
+      { state: 'FAILED', evidence: failedEvidence(6), reason: 'not_found' },
+    ));
+    assert.equal(recovered.reason, 'attempt_never_entered_provider');
+    const fresh = await after.boundary.run({
+      operation_id: 'operation:native:b6:holder:fresh',
+      handoff: freshAuthorization(f, 'b6-holder-fresh'),
+      action: ACTION,
+    });
+    assert.equal(fresh.state, 'EXECUTED');
+    assert.equal(calls, 1);
+  }
+});
+
+test('B7: a lost RESERVED to INVOKING write is recoverable; an applied one needs a provider outcome', async () => {
+  // Regression for B7: attempt_start_unconfirmed with invoked=false could not
+  // be reconciled and locked the action forever.
+  {
+    const f = nativeFixture();
+    const attempts = attemptStore();
+    const transition = attempts.transition.bind(attempts);
+    let failStart = true;
+    attempts.transition = async (entry: any) => {
+      if (failStart && entry.expected_state === 'RESERVED' && entry.next_state === 'INVOKING') {
+        failStart = false;
+        throw new Error('timeout before write');
+      }
+      return transition(entry);
+    };
+    let calls = 0;
+    const h = makeNativeBoundary({
+      f,
+      attempts,
+      resolveStatus: (handoff: any) => nativeStatusFor(f, handoff),
+      invoke: async () => {
+        calls += 1;
+        return { state: 'EXECUTED' as const, evidence: providerOutcomeFor(calls), result: {} };
+      },
+    });
+    const first = await h.boundary.run(nativeInput(f, 'operation:native:b7'));
+    assert.equal(first.state, 'INDETERMINATE');
+    assert.equal(first.reason, 'attempt_start_unconfirmed');
+    assert.equal(first.invoked, false);
+    const recovered = await h.boundary.reconcile(nativeRecovery(
+      f, 'operation:native:b7', first.attempt,
+      { state: 'FAILED', evidence: failedEvidence(7), reason: 'not_found' },
+    ));
+    assert.equal(recovered.reason, 'attempt_never_entered_provider');
+    const fresh = await h.boundary.run({
+      operation_id: 'operation:native:b7:fresh',
+      handoff: freshAuthorization(f, 'b7-fresh'),
+      action: ACTION,
+    });
+    assert.equal(fresh.state, 'EXECUTED');
+    assert.equal(calls, 1);
+  }
+  {
+    // The write landed but both the acknowledgement and the confirming read
+    // failed. The durable record says INVOKING, so nothing proves the stop:
+    // without a terminal provider outcome the fence stays held.
+    const f = nativeFixture();
+    const attempts = attemptStore();
+    const transition = attempts.transition.bind(attempts);
+    const state = attempts.state.bind(attempts);
+    let loseStartAck = true;
+    let failNextRead = false;
+    attempts.transition = async (entry: any) => {
+      const result = await transition(entry);
+      if (loseStartAck && entry.expected_state === 'RESERVED' && entry.next_state === 'INVOKING') {
+        loseStartAck = false;
+        failNextRead = true;
+        throw new Error('acknowledgement lost');
+      }
+      return result;
+    };
+    attempts.state = async (entry: any) => {
+      if (failNextRead) {
+        failNextRead = false;
+        throw new Error('read timeout');
+      }
+      return state(entry);
+    };
+    let calls = 0;
+    const h = makeNativeBoundary({
+      f,
+      attempts,
+      resolveStatus: (handoff: any) => nativeStatusFor(f, handoff),
+      invoke: async () => {
+        calls += 1;
+        return { state: 'EXECUTED' as const, evidence: providerOutcomeFor(calls), result: {} };
+      },
+    });
+    const first = await h.boundary.run(nativeInput(f, 'operation:native:b7:applied'));
+    assert.equal(first.reason, 'attempt_start_unconfirmed');
+    assert.equal([...attempts.rows.values()][0].state, 'INVOKING');
+    const unproven = await h.boundary.reconcile(nativeRecovery(
+      f, 'operation:native:b7:applied', first.attempt,
+      { state: 'INDETERMINATE', reason: 'provider_lookup_unavailable' },
+    ));
+    assert.equal(unproven.state, 'INDETERMINATE');
+    assert.equal(unproven.reason, 'provider_outcome_indeterminate');
+    const stillFenced = await h.boundary.run({
+      operation_id: 'operation:native:b7:applied:early',
+      handoff: freshAuthorization(f, 'b7-applied-early'),
+      action: ACTION,
+    });
+    assert.equal(stillFenced.reason, 'native_action_in_flight');
+    const closed = await h.boundary.reconcile(nativeRecovery(
+      f, 'operation:native:b7:applied', first.attempt,
+      { state: 'FAILED', evidence: failedEvidence(8), reason: 'not_found' },
+    ));
+    assert.equal(closed.state, 'FAILED');
+    const fresh = await h.boundary.run({
+      operation_id: 'operation:native:b7:applied:fresh',
+      handoff: freshAuthorization(f, 'b7-applied-fresh'),
+      action: ACTION,
+    });
+    assert.equal(fresh.state, 'EXECUTED');
+    assert.equal(calls, 1);
+  }
+});
+
+test('a reserve error never releases a reservation another attempt holds under the same operation ID', async () => {
+  // Regression for PG6 (in-memory store with the PostgreSQL ownership model):
+  // the reserve-error catch released the operation key using the per-instance
+  // owner token of a live attempt that shared the caller-chosen operation ID,
+  // which dropped its native replay fence and let its grant be spent twice.
+  const f = nativeFixture();
+  const aebStore = durableAebStore();
+  const reserve = aebStore.reserve.bind(aebStore);
+  let failNextOperationReserve = false;
+  aebStore.reserve = async (key: string, replayKeys: readonly string[]) => {
+    if (failNextOperationReserve && key.startsWith('aeb-native-attempt-operation:')) {
+      failNextOperationReserve = false;
+      throw new Error('statement timeout');
+    }
+    return reserve(key, replayKeys);
+  };
+  const providerGate = deferred();
+  let calls = 0;
+  const h = makeNativeBoundary({
+    f,
+    aebStore,
+    resolveStatus: (handoff: any) => nativeStatusFor(f, handoff),
+    invoke: async () => {
+      calls += 1;
+      if (calls === 1) await providerGate.promise;
+      return { state: 'EXECUTED' as const, evidence: providerOutcomeFor(calls), result: {} };
+    },
+  });
+  const victimRun = h.boundary.run(nativeInput(f, 'operation:native:shared-id'));
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  const held = [...aebStore.operations.entries()];
+  assert.equal(held.length, 3);
+  const replayFences = aebStore.replayOwners.size;
+
+  failNextOperationReserve = true;
+  const attacker = await h.boundary.run({
+    operation_id: 'operation:native:shared-id',
+    handoff: freshAuthorization(f, 'shared-id-attacker'),
+    action: ACTION,
+  });
+  assert.equal(attacker.state, 'REFUSED');
+  assert.equal(attacker.reason, 'consumption_store_unavailable');
+  assert.deepEqual([...aebStore.operations.entries()], held, 'victim rows untouched');
+  assert.equal(aebStore.replayOwners.size, replayFences, 'victim fences untouched');
+
+  providerGate.resolve();
+  const victim = await victimRun;
+  assert.equal(victim.state, 'EXECUTED');
+  const reuse = await h.boundary.run({
+    operation_id: 'operation:native:shared-id:reuse',
+    handoff: issueNative(f, { action: { ...ACTION, transfer_id: 'transfer-other' } }),
+    action: { ...ACTION, transfer_id: 'transfer-other' },
+  });
+  assert.equal(reuse.state, 'REFUSED');
+  assert.equal(reuse.reason, 'native_replay_conflict');
+  assert.equal(calls, 1);
+});
+
+test('restart reconciliation completes in one call with one credential bound to the attempt', async () => {
+  // Regression for PG4: an authorizer that binds a credential to one attempt
+  // needed a second reconcile with a holder-bound credential.
+  for (const terminal of ['FAILED', 'EXECUTED'] as const) {
+    const f = nativeFixture();
+    const aebStore = durableAebStore();
+    const attempts = attemptStore();
+    const before = makeNativeBoundary({
+      f,
+      aebStore,
+      attempts,
+      invoke: async () => { throw new Error('process lost the response'); },
+    });
+    const uncertain = await before.boundary.run(nativeInput(f, `operation:native:one-credential:${terminal}`));
+    assert.equal(uncertain.state, 'INDETERMINATE');
+    const restartedStore = durableAebStore(aebStore.db, ({ authorization, scope }) =>
+      (authorization as any)?.attempt_id === scope?.attemptId);
+    const after = makeNativeBoundary({
+      f,
+      aebStore: restartedStore,
+      attempts,
+      attemptPrefix: 'restarted:',
+      recover: ({ attempt, recovery_authorization }: any) => {
+        if ((recovery_authorization as any)?.attempt_id !== attempt.attempt_id) return null;
+        const stored = attempts.rows.get(attempt.attempt_id);
+        return stored ? { ...structuredClone(stored.binding), owner: stored.owner as any } : null;
+      },
+    });
+    const reconciled = await after.boundary.reconcile({
+      operation_id: `operation:native:one-credential:${terminal}`,
+      handoff: f.handoff,
+      action: ACTION,
+      attempt: uncertain.attempt,
+      outcome: terminal === 'FAILED'
+        ? { state: 'FAILED', evidence: providerOutcomeFor(1), reason: 'declined' }
+        : { state: 'EXECUTED', evidence: providerOutcomeFor(1), result: {} },
+      recovery_authorization: { attempt_id: uncertain.attempt!.attempt_id },
+    });
+    assert.equal(reconciled.state, terminal, terminal);
+    assert.equal(restartedStore.claims.length, 3, terminal);
+    const states = [...aebStore.operations.values()].slice(0, 3);
+    assert.deepEqual(states, terminal === 'FAILED' ? ['CONSUMED', 'CONSUMED'] : ['CONSUMED', 'CONSUMED', 'CONSUMED'], terminal);
+  }
+});
+
+test('pins that alias one issuer are refused at construction; one shared namespace makes one spend', async () => {
+  // Regression for C5/C6 at the Gate boundary.
+  const f = nativeFixture();
+  const alias = `${f.handoffInput.native_authorization.issuer}/`;
+  const aliased = nativeFixture();
+  aliased.pins.accepted_sources.push({ ...aliased.pins.accepted_sources[0], issuer: alias });
+  assert.throws(
+    () => makeNativeBoundary({ f: aliased }),
+    /native_consequence_boundary_configuration_invalid: native_pins_issuer_alias_without_shared_namespace/,
+  );
+
+  f.pins.accepted_sources[0].authority_namespace = 'namespace:authzen';
+  f.pins.accepted_sources.push({
+    ...f.pins.accepted_sources[0],
+    issuer: alias,
+    authority_namespace: 'namespace:authzen',
+  });
+  let calls = 0;
+  const h = makeNativeBoundary({
+    f,
+    resolveStatus: (handoff: any) => nativeStatusFor(f, handoff),
+    invoke: async () => {
+      calls += 1;
+      return { state: 'EXECUTED' as const, evidence: providerOutcomeFor(calls), result: {} };
+    },
+  });
+  assert.equal((await h.boundary.run(nativeInput(f, 'operation:native:alias:1'))).state, 'EXECUTED');
+  const other = { ...ACTION, transfer_id: 'transfer-alias' };
+  const second = await h.boundary.run({
+    operation_id: 'operation:native:alias:2',
+    handoff: issueNative(f, {
+      native_authorization: { ...f.handoffInput.native_authorization, issuer: alias },
+      action: other,
+    }),
+    action: other,
+  });
+  assert.equal(second.state, 'REFUSED');
+  assert.equal(second.reason, 'native_replay_conflict');
+  assert.equal(calls, 1);
+});
+
+// ------------------------------ composed path ------------------------------
+
+function composedFresh(base: ReturnType<typeof fixture>, suffix: string) {
+  return fixture({
+    operationId: `operation:composed:${suffix}`,
+    replayId: `native-mandate:composed:${suffix}`,
+    evaluatorKeys: base.evaluatorKeys,
+  });
+}
+
+test('C1 composed: a fresh evaluation cannot re-enter the provider while the same action is INDETERMINATE', async () => {
+  // Regression for OLD1 / the composed C1 probe: createConsequenceBoundary had
+  // no same-action fence, so fresh native evidence for the identical action
+  // was admitted while the first attempt was INDETERMINATE: 2 provider calls.
+  const first = fixture({ operationId: 'operation:composed:1', replayId: 'native-mandate:composed:1' });
+  let calls = 0;
+  const h = makeBoundary({
+    f: first,
+    invoke: async () => {
+      calls += 1;
+      if (calls === 1) throw new Error('provider timeout');
+      return { state: 'EXECUTED' as const, evidence: executedEvidence(), result: { n: calls } };
+    },
+  });
+  const uncertain = await h.boundary.run(input(first));
+  assert.equal(uncertain.state, 'INDETERMINATE');
+  assert.equal(uncertain.reason, 'provider_outcome_indeterminate');
+
+  const second = composedFresh(first, '2');
+  const fenced = await h.boundary.run(input(second));
+  assert.equal(fenced.state, 'REFUSED');
+  assert.equal(fenced.reason, 'native_action_in_flight');
+  assert.equal(calls, 1);
+  // The refused evaluation handed its own reservation back and is still usable.
+  assert.equal(h.aebStore.operations.get(aebReservationKey(second.evaluation)), undefined);
+
+  const reconciled = await h.boundary.reconcile({
+    evaluation: first.evaluation,
+    action: ACTION,
+    artifacts: first.artifacts,
+    attempt: uncertain.attempt,
+    outcome: { state: 'EXECUTED', evidence: executedEvidence(), result: { n: 1 } },
+    recovery_authorization: 'recovery:approved',
+  });
+  assert.equal(reconciled.state, 'EXECUTED');
+  const third = await h.boundary.run(input(composedFresh(first, '3')));
+  assert.equal(third.state, 'REFUSED');
+  assert.equal(third.reason, 'native_action_already_executed');
+  assert.equal(calls, 1);
+});
+
+test('composed: an authenticated FAILED in run or reconcile releases the fence; concurrency enters once', async () => {
+  {
+    const first = fixture({ operationId: 'operation:composed:f1', replayId: 'native-mandate:composed:f1' });
+    let calls = 0;
+    const h = makeBoundary({
+      f: first,
+      invoke: async () => {
+        calls += 1;
+        return calls === 1
+          ? { state: 'FAILED' as const, evidence: failedEvidence(calls), reason: 'declined' }
+          : { state: 'EXECUTED' as const, evidence: executedEvidence(), result: {} };
+      },
+    });
+    assert.equal((await h.boundary.run(input(first))).state, 'FAILED');
+    assert.equal((await h.boundary.run(input(first))).reason, 'consumption_conflict');
+    assert.equal((await h.boundary.run(input(composedFresh(first, 'f2')))).state, 'EXECUTED');
+    assert.equal(calls, 2);
+  }
+  {
+    const first = fixture({ operationId: 'operation:composed:r1', replayId: 'native-mandate:composed:r1' });
+    let calls = 0;
+    const h = makeBoundary({
+      f: first,
+      invoke: async () => {
+        calls += 1;
+        if (calls === 1) throw new Error('lost');
+        return { state: 'EXECUTED' as const, evidence: executedEvidence(), result: {} };
+      },
+    });
+    const uncertain = await h.boundary.run(input(first));
+    const failed = await h.boundary.reconcile({
+      evaluation: first.evaluation,
+      action: ACTION,
+      artifacts: first.artifacts,
+      attempt: uncertain.attempt,
+      outcome: { state: 'FAILED', evidence: failedEvidence(1), reason: 'declined' },
+      recovery_authorization: 'recovery:approved',
+    });
+    assert.equal(failed.state, 'FAILED');
+    assert.equal((await h.boundary.run(input(composedFresh(first, 'r2')))).state, 'EXECUTED');
+    assert.equal(calls, 2);
+  }
+  {
+    const first = fixture({ operationId: 'operation:composed:c0', replayId: 'native-mandate:composed:c0' });
+    let calls = 0;
+    const h = makeBoundary({
+      f: first,
+      invoke: async () => {
+        calls += 1;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return { state: 'EXECUTED' as const, evidence: executedEvidence(), result: {} };
+      },
+    });
+    const evaluations = [first, ...[1, 2, 3, 4, 5].map((n) => composedFresh(first, `c${n}`))];
+    const results = await Promise.all(evaluations.map((f) => h.boundary.run(input(f))));
+    assert.equal(calls, 1);
+    assert.equal(results.filter((result) => result.state === 'EXECUTED').length, 1);
+    for (const result of results) {
+      if (result.state === 'REFUSED') {
+        assert.ok(['native_action_in_flight', 'native_action_already_executed'].includes(result.reason));
+      }
+    }
+  }
+});
+
+test('composed: a pre-entry lockout is recovered by reconcile and burns only that evaluation', async () => {
+  const first = fixture({ operationId: 'operation:composed:lock', replayId: 'native-mandate:composed:lock' });
+  const aebStore = durableAebStore();
+  const release = aebStore.release.bind(aebStore);
+  let failHolderRelease = true;
+  aebStore.release = async (key: string) => {
+    if (failHolderRelease && key.startsWith('aeb-action-holder:')) {
+      failHolderRelease = false;
+      throw new Error('connection reset');
+    }
+    return release(key);
+  };
+  const attempts = attemptStore();
+  const transition = attempts.transition.bind(attempts);
+  attempts.transition = async (entry: any) => (
+    entry.expected_state === 'RESERVED' && entry.next_state === 'INVOKING' && entry.attempt_id === 'attempt:1'
+      ? false
+      : transition(entry)
+  );
+  let calls = 0;
+  const h = makeBoundary({
+    f: first,
+    aebStore,
+    attempts,
+    invoke: async () => {
+      calls += 1;
+      return { state: 'EXECUTED' as const, evidence: executedEvidence(), result: {} };
+    },
+  });
+  const locked = await h.boundary.run(input(first));
+  assert.equal(locked.state, 'INDETERMINATE');
+  assert.equal(locked.reason, 'native_pre_entry_release_unconfirmed');
+  assert.equal(locked.invoked, false);
+  const fenced = await h.boundary.run(input(composedFresh(first, 'lock-2')));
+  assert.equal(fenced.reason, 'native_action_in_flight');
+
+  // While the attempt store cannot record RELEASED (here it throws
+  // synchronously), nothing proves the stop and nothing is released.
+  const pinnedTransition = attempts.transition;
+  (attempts as any).transition = (entry: any) => {
+    if (entry.next_state === 'RELEASED') throw new Error('attempt store unavailable');
+    return pinnedTransition(entry);
+  };
+  const unproven = await h.boundary.reconcile({
+    evaluation: first.evaluation,
+    action: ACTION,
+    artifacts: first.artifacts,
+    attempt: locked.attempt,
+    outcome: { state: 'INDETERMINATE', reason: 'provider_lookup_unavailable' },
+    recovery_authorization: 'recovery:approved',
+  });
+  assert.equal(unproven.state, 'INDETERMINATE');
+  assert.equal(unproven.reason, 'provider_outcome_indeterminate');
+  assert.equal((await h.boundary.run(input(composedFresh(first, 'lock-2b')))).reason, 'native_action_in_flight');
+  (attempts as any).transition = pinnedTransition;
+
+  const recovered = await h.boundary.reconcile({
+    evaluation: first.evaluation,
+    action: ACTION,
+    artifacts: first.artifacts,
+    attempt: locked.attempt,
+    outcome: { state: 'INDETERMINATE', reason: 'provider_lookup_unavailable' },
+    recovery_authorization: 'recovery:approved',
+  });
+  assert.equal(recovered.state, 'REFUSED');
+  assert.equal(recovered.reason, 'attempt_never_entered_provider');
+  // The evaluation this attempt held is closed for good; the fence is open.
+  assert.equal(aebStore.operations.get(aebReservationKey(first.evaluation)), 'RELEASED_NOT_ENTERED');
+  assert.equal(aebStore.operations.get(consequenceBoundaryActionFenceHolderKey({
+    reservation_key: aebReservationKey(first.evaluation),
+    attempt_id: 'attempt:1',
+  })), undefined);
+  assert.equal((await h.boundary.run(input(first))).reason, 'consumption_conflict');
+  assert.equal((await h.boundary.run(input(composedFresh(first, 'lock-3')))).state, 'EXECUTED');
+  assert.equal(calls, 1);
+});
+
+test('composed: restart reconciliation claims the evaluation and the fence holder with one credential', async () => {
+  const first = fixture({ operationId: 'operation:composed:restart', replayId: 'native-mandate:composed:restart' });
+  const aebStore = durableAebStore();
+  const attempts = attemptStore();
+  const before = makeBoundary({ f: first, aebStore, attempts, invoke: async () => { throw new Error('lost'); } });
+  const uncertain = await before.boundary.run(input(first));
+  assert.equal(uncertain.state, 'INDETERMINATE');
+  const restartedStore = durableAebStore(aebStore.db);
+  const after = makeBoundary({ f: first, aebStore: restartedStore, attempts, attemptPrefix: 'restarted:' });
+  const reconciled = await after.boundary.reconcile({
+    evaluation: first.evaluation,
+    action: ACTION,
+    artifacts: first.artifacts,
+    attempt: uncertain.attempt,
+    outcome: { state: 'EXECUTED', evidence: executedEvidence(), result: {} },
+    recovery_authorization: 'recovery:approved',
+  });
+  assert.equal(reconciled.state, 'EXECUTED');
+  assert.deepEqual(restartedStore.claimScopes.map((scope: any) => scope.reservation), ['operation', 'action-fence-holder']);
+  assert.ok(restartedStore.claimScopes.every((scope: any) =>
+    scope.attemptId === uncertain.attempt!.attempt_id
+    && scope.recoveryOperationKey === aebReservationKey(first.evaluation)));
+  assert.equal((await after.boundary.run(input(composedFresh(first, 'restart-2')))).reason, 'native_action_already_executed');
+});
+
+test('the composed and native boundaries share one action fence per relying party and provider', async () => {
+  const composed = fixture({ operationId: 'operation:shared-fence', replayId: 'native-mandate:shared-fence' });
+  const nativeF = nativeFixture('authzen', composed.config.relying_party_id);
+  const aebStore = durableAebStore();
+  let calls = 0;
+  const invoke = async () => {
+    calls += 1;
+    if (calls === 1) throw new Error('provider timeout');
+    return { state: 'EXECUTED' as const, evidence: providerOutcomeFor(calls), result: {} };
+  };
+  const nativeBoundary = makeNativeBoundary({
+    f: nativeF,
+    aebStore,
+    resolveStatus: (handoff: any) => nativeStatusFor(nativeF, handoff),
+    invoke,
+  });
+  const composedBoundary = makeBoundary({ f: composed, aebStore, invoke });
+  assert.equal((await nativeBoundary.boundary.run(nativeInput(nativeF, 'operation:shared-fence:native'))).state, 'INDETERMINATE');
+  const fenced = await composedBoundary.boundary.run(input(composed));
+  assert.equal(fenced.state, 'REFUSED');
+  assert.equal(fenced.reason, 'native_action_in_flight');
+  assert.equal(calls, 1);
+  assert.equal(
+    nativeConsequenceBoundaryActionFenceKey({
+      relying_party_id: composed.config.relying_party_id,
+      provider: PROVIDER,
+      action_digest: digestAebNativeAuthorizationAction(ACTION),
+    }),
+    [...aebStore.replayOwners.keys()].find((key) => key.startsWith('aeb-native-action:')),
+  );
 });

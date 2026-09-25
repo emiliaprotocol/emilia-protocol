@@ -11,6 +11,11 @@
  * RESERVED row only through claimReservation(), which requires the separate
  * recovery pool and an authorized recovery claim. state() is an authenticated
  * durable read, which the direct-native consequence boundary requires.
+ *
+ * Ownership is per store instance and per key, so two callers in one process
+ * that reserve the same key share one owner token. The consequence
+ * boundaries therefore write only keys that include their attempt ID, which
+ * no other attempt can produce.
  */
 import crypto from 'node:crypto';
 export const AEB_PG_CONSUMPTION_STORE_VERSION = 'EP-GATE-AEB-PG-CONSUMPTION-v1';
@@ -358,6 +363,40 @@ function assertOwnerToken(value) {
         throw new TypeError('AEB consumption ownerTokenFactory must return an opaque string of 16 to 512 bytes');
     }
 }
+const RECOVERY_CLAIM_RESERVATIONS = new Set(['operation', 'native-authority', 'action-fence-holder']);
+/** Copy a caller scope through data descriptors only; no getter ever runs. */
+function recoveryClaimScope(value) {
+    const invalid = () => new TypeError('AEB consumption recovery claim scope is invalid');
+    if (value === null || typeof value !== 'object' || Array.isArray(value))
+        throw invalid();
+    let descriptors;
+    try {
+        descriptors = Object.getOwnPropertyDescriptors(value);
+    }
+    catch {
+        throw invalid();
+    }
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.some((key) => typeof key !== 'string' || !Object.hasOwn(descriptors[key], 'value'))) {
+        throw invalid();
+    }
+    const record = {};
+    for (const key of keys)
+        record[key] = descriptors[key].value;
+    if (Object.keys(record).sort().join(',') !== 'attemptId,operationId,recoveryOperationKey,reservation'
+        || !RECOVERY_CLAIM_RESERVATIONS.has(record.reservation)) {
+        throw invalid();
+    }
+    assertText(record.attemptId, 'recovery claim attempt ID', 512);
+    assertText(record.operationId, 'recovery claim operation ID', 512);
+    assertText(record.recoveryOperationKey, 'recovery claim operation key', 4096);
+    return Object.freeze({
+        attemptId: record.attemptId,
+        operationId: record.operationId,
+        recoveryOperationKey: record.recoveryOperationKey,
+        reservation: record.reservation,
+    });
+}
 function exactRowCount(result, operation) {
     if (!result
         || !Number.isSafeInteger(result.rowCount)
@@ -503,8 +542,9 @@ export function createPostgresAebDurableConsumptionStore({ pool, recoveryPool, t
             ownedReservations.set(key, ownerToken);
             return 'RESERVED';
         },
-        async claimReservation(key, authorization) {
+        async claimReservation(key, authorization, scope) {
             assertText(key, 'operation key', 4096);
+            const claimScope = scope === undefined ? undefined : recoveryClaimScope(scope);
             // Recovery is a restart boundary, not an in-place owner rotation. The
             // base AEB store API fences ownership by store instance (commit/release
             // take only the operation key), so replacing a token already owned by
@@ -517,6 +557,7 @@ export function createPostgresAebDurableConsumptionStore({ pool, recoveryPool, t
                 relyingPartyId,
                 operationKey: key,
                 requiredState: 'RESERVED',
+                ...(claimScope ? { scope: claimScope } : {}),
             });
             if (await authorizeRecoveryClaim(claim) !== true)
                 return false;
