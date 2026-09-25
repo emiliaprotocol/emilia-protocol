@@ -1,6 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import crypto from 'crypto';
 
+const TRANSITION_AAAA = vi.hoisted((): Record<string, string> => ({
+  'unspecified.attacker.test': '::',
+  'nat64-private.attacker.test': '64:ff9b::a00:1',
+  'nat64-loopback.attacker.test': '64:ff9b::7f00:1',
+  'nat64-metadata.attacker.test': '64:ff9b::a9fe:a9fe',
+  'nat64-local-use.attacker.test': '64:ff9b:1::a00:1',
+  'sixtofour.attacker.test': '2002:7f00:1::',
+  'v4compat.attacker.test': '::127.0.0.1',
+  'teredo.attacker.test': '2001:0:4136:e378:8000:63bf:3fff:fdd2',
+}));
+
 // Mock @/lib/supabase before importing the module under test
 vi.mock('@/lib/supabase', () => ({
   getServiceClient: vi.fn(),
@@ -13,6 +24,11 @@ vi.mock('node:dns/promises', () => ({
     }
     if (hostname === 'localhost') {
       return [{ address: '127.0.0.1', family: 4 }];
+    }
+    // Attacker-controlled names whose AAAA answer is an IPv6 transition or
+    // unspecified address, as getaddrinfo reports them (GHSA-c6v8-gfwf-wcgh).
+    if (TRANSITION_AAAA[hostname]) {
+      return [{ address: TRANSITION_AAAA[hostname], family: 6 }];
     }
     return [{ address: '93.184.216.34', family: 4 }];
   }),
@@ -235,6 +251,27 @@ describe('registerEndpoint', () => {
     expect(result.error).toMatch(/private|internal/i);
   });
 
+  // GHSA-c6v8-gfwf-wcgh: the deny-list guard refused ::ffff:x.x.x.x but not the
+  // other IPv6 forms that reach an IPv4 target or the local host.
+  it.each(Object.keys(TRANSITION_AAAA))('returns 422 when %s answers AAAA with a transition/unspecified address', async (host) => {
+    const result = await registerEndpoint('tenant-1', `https://${host}/hook`, []);
+    expect(result.status).toBe(422);
+    expect(result.error).toMatch(/must not resolve to a private or internal address/);
+  });
+
+  it.each([
+    'https://[::]/hook',
+    'https://[64:ff9b::10.0.0.1]:8443/api/admin',
+    'https://[64:ff9b::169.254.169.254]/hook',
+    'https://[2002:7f00:1::]/hook',
+    'https://[::10.0.0.1]/hook',
+    'https://[::ffff:127.0.0.1]/hook',
+  ])('returns 422 for transition IPv6 literal %s at the literal-host guard', async (url) => {
+    const result = await registerEndpoint('tenant-1', url, []);
+    expect(result.status).toBe(422);
+    expect(result.error).toMatch(/must not target private or internal addresses/);
+  });
+
   it('returns 422 for .internal hostname', async () => {
     const result = await registerEndpoint('tenant-1', 'http://myservice.internal/hook', []);
     expect(result.status).toBe(422);
@@ -397,6 +434,11 @@ describe('deliverWebhook', () => {
     expect(typeof _https.lastOptions.lookup).toBe('function');
     await new Promise((res) => _https.lastOptions.lookup('example.com', {}, (_e, addr) => {
       expect(addr).toBe('93.184.216.34');
+      res();
+    }));
+    // Node >= 20 (autoSelectFamily) asks for { all: true } and needs an array.
+    await new Promise((res) => _https.lastOptions.lookup('example.com', { all: true }, (_e, addrs) => {
+      expect(addrs).toEqual([{ address: '93.184.216.34', family: 4 }]);
       res();
     }));
   });

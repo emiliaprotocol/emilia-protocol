@@ -7,6 +7,7 @@
 
 import net from 'node:net';
 import dns from 'node:dns/promises';
+import { isPublicAddress } from '../net/public-address.js';
 
 const BLOCKED_HOSTS = new Set([
   'localhost',
@@ -53,7 +54,8 @@ export async function validateSsoProviderUrl(
   if (!resolved.ok) {
     return { valid: false, error: `${field} hostname could not be resolved safely` };
   }
-  if (resolved.addresses.some((address) => isPrivateAddress(address))) {
+  // Every answer must be public unicast; a non-IP answer fails closed too.
+  if (resolved.addresses.some((address) => !isPublicAddress(address))) {
     return { valid: false, error: `${field} resolves to a blocked or private host` };
   }
 
@@ -61,7 +63,7 @@ export async function validateSsoProviderUrl(
   // no second, independent DNS resolution can rebind to an internal address
   // between this check and the fetch (DNS-rebinding TOCTOU). All addresses passed
   // the non-private check above, so the first record is a safe pin target.
-  const pin = resolved.records.find((r) => !isPrivateAddress(r.address)) || resolved.records[0];
+  const pin = resolved.records[0];
 
   url.hash = '';
   return { valid: true, url: url.toString().replace(/\/$/, ''), address: pin.address, family: pin.family };
@@ -137,77 +139,17 @@ function isBlockedHost(hostname: string): boolean {
   return BLOCKED_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
 }
 
+// IP classification is an allowlist (lib/net/public-address.ts). The previous
+// deny-list caught IPv4-mapped IPv6 but not the families that also carry an
+// IPv4 target (NAT64 64:ff9b::/96, 6to4 2002::/16, IPv4-compatible ::a.b.c.d).
+// DNS names return false here; resolveHostname's answers are checked instead.
 function isPrivateAddress(hostname: string): boolean {
-  const ipVersion = net.isIP(hostname);
-  if (ipVersion === 4) return isPrivateIPv4(hostname);
-  if (ipVersion === 6) {
-    // IPv4-mapped IPv6 (::ffff:169.254.169.254 or its hex form ::ffff:a9fe:a9fe)
-    // smuggles a v4 target past the v6-only range checks below — the embedded v4
-    // is what the socket actually connects to. Evaluate it against the v4 ranges.
-    const mapped = embeddedMappedIpv4(hostname);
-    if (mapped) return isPrivateIPv4(mapped);
-    return isPrivateIPv6(hostname);
-  }
-  return false;
-}
-
-// Extract the embedded IPv4 from an IPv4-mapped IPv6 literal (::ffff:0:0/96), or
-// null if `hostname` is not such an address. Both the dotted tail
-// (::ffff:169.254.169.254) and the compressed hex tail (::ffff:a9fe:a9fe) that
-// the URL parser and dns.lookup emit are handled, plus the fully-expanded
-// 0:0:0:0:0:ffff:… prefix. Anchoring on the ::ffff: prefix avoids misreading a
-// genuine public address that merely contains an ffff group (2001:db8::ffff:…).
-function embeddedMappedIpv4(hostname: string): string | null {
-  const host = String(hostname).toLowerCase();
-  if (net.isIP(host) !== 6) return null;
-  const m = host.match(/^(?:::ffff:|(?:0:){5}ffff:)(.+)$/);
-  if (!m) return null;
-  const tail = m[1];
-  if (net.isIPv4(tail)) return tail; // ::ffff:169.254.169.254
-  const hex = tail.match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/); // ::ffff:a9fe:a9fe
-  if (!hex) return null;
-  const hi = parseInt(hex[1], 16);
-  const lo = parseInt(hex[2], 16);
-  if (hi > 0xffff || lo > 0xffff) return null;
-  return [hi >> 8, hi & 0xff, lo >> 8, lo & 0xff].join('.');
-}
-
-function isPrivateIPv4(hostname: string): boolean {
-  const parts = hostname.split('.').map((p) => Number(p));
-  if (parts.length !== 4 || parts.some((p) => !Number.isInteger(p) || p < 0 || p > 255)) {
-    return true;
-  }
-  const [a, b] = parts;
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    (a === 198 && (b === 18 || b === 19)) ||
-    a >= 224
-  );
-}
-
-function isPrivateIPv6(hostname: string): boolean {
-  const normalized = hostname.toLowerCase();
-  return (
-    normalized === '::1' ||
-    normalized === '::' ||
-    normalized.startsWith('fc') ||
-    normalized.startsWith('fd') ||
-    normalized.startsWith('fe80:') ||
-    normalized.startsWith('ff')
-  );
+  if (!net.isIP(hostname)) return false;
+  return !isPublicAddress(hostname);
 }
 
 export const _internals = {
-  isPrivateIPv4,
-  isPrivateIPv6,
   isPrivateAddress,
-  embeddedMappedIpv4,
   normalizeHostname,
   resolveHostname,
 };
