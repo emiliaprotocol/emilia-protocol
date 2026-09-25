@@ -102,6 +102,16 @@ the formal-methods toolchain. The jobs in
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) are authoritative for
 the complete matrix; no single local command represents every CI lane.
 
+A pull request that changes only prose under `docs/`, `standards/` or `papers/`
+(or a root `*.md`), where no code run by a skipped job names the changed file,
+takes the docs lane: every check that reads prose still runs, and the
+security case, Gate product suite, SDK, wheel and package suites are skipped.
+`node scripts/ci/change-lane.mjs --event local --base origin/main` prints the
+lane and the reason before you push. Label a pull request `evidence-autopilot`
+to have CI regenerate the derived evidence files; once the autopilot's GitHub
+App is provisioned it pushes them back (Dependabot pull requests get this
+automatically). See `.github/workflows/evidence-autopilot*.yml`.
+
 ## Contribution workflow
 
 1. Fork the repository and branch from current `main`.
@@ -114,8 +124,11 @@ the complete matrix; no single local command represents every CI lane.
    git commit -s
    ```
 
-   CI checks that each non-Dependabot pull-request commit contains a
-   `Signed-off-by` line matching its commit-author metadata. Repository policy
+   CI checks that each pull-request commit contains a `Signed-off-by` line
+   matching its commit-author metadata. The only exemptions are Dependabot's
+   commits and evidence autopilot commits that change nothing but the
+   regenerated derived-evidence files (see
+   [`.github/workflows/dco.yml`](.github/workflows/dco.yml)). Repository policy
    separately requires the accountable author and signer to be a natural person.
    An AI system cannot provide the DCO sign-off or be a co-author. AI-assisted work must follow
    [`docs/AI-ASSISTED-DEVELOPMENT.md`](docs/AI-ASSISTED-DEVELOPMENT.md).

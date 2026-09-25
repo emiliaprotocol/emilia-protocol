@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import YAML from 'yaml';
 
@@ -64,7 +64,7 @@ describe('DCO workflow contract', () => {
     expect(source).not.toContain('github.event.pull_request.user.login');
   });
 
-  it('exempts only recognized Dependabot commit authors and checks every human commit', () => {
+  it('exempts only Dependabot and derived-evidence-only autopilot commits, and checks every human commit', () => {
     expect(signoff.run).toContain("author_name=\"$(git show -s --format='%an' \"$commit_sha\")\"");
     expect(signoff.run).toContain("author_email=\"$(git show -s --format='%ae' \"$commit_sha\")\"");
     expect(signoff.run).toContain('49699333+dependabot[bot]@users.noreply.github.com');
@@ -115,6 +115,57 @@ describe('DCO workflow contract', () => {
       expect(`${unsignedResult.stdout}${unsignedResult.stderr}`).toContain(
         `Commit ${unsignedHumanHead} is missing Signed-off-by: dependabot[bot] <human@example.com>`,
       );
+
+      // Evidence autopilot: an App bot commit with the trailer that changes
+      // only derived evidence needs no sign-off; the same identity touching
+      // any other path fails.
+      const autopilotName = 'emilia-evidence-autopilot[bot]';
+      const autopilotEmail = '123456+emilia-evidence-autopilot[bot]@users.noreply.github.com';
+      const autopilotCommit = (paths: string[]) => {
+        for (const file of paths) {
+          mkdirSync(dirname(join(repository, file)), { recursive: true });
+          appendFileSync(join(repository, file), `${file}\n`);
+          git(repository, ['add', '--', file]);
+        }
+        execFileSync('git', ['commit', '--quiet', '-m', 'chore(evidence): regenerate\n\nEvidence-Autopilot: v1'], {
+          cwd: repository,
+          env: {
+            ...process.env,
+            GIT_AUTHOR_NAME: autopilotName,
+            GIT_AUTHOR_EMAIL: autopilotEmail,
+            GIT_COMMITTER_NAME: autopilotName,
+            GIT_COMMITTER_EMAIL: autopilotEmail,
+          },
+        });
+        return git(repository, ['rev-parse', 'HEAD']);
+      };
+      git(repository, ['checkout', '--quiet', '--detach', signedHumanHead]);
+      const evidenceOnly = autopilotCommit(['lib/proof-stats.json', 'public/.well-known/emilia-context.json']);
+      expect(runDco(repository, signedHumanHead, evidenceOnly).status).toBe(0);
+      const smuggled = autopilotCommit(['security/security-case.json', 'lib/code.ts']);
+      const smuggledResult = runDco(repository, signedHumanHead, smuggled);
+      expect(smuggledResult.status).toBe(1);
+      expect(`${smuggledResult.stdout}${smuggledResult.stderr}`).toContain(
+        `Commit ${smuggled} claims to be an evidence autopilot commit but is a merge or changes other paths: lib/code.ts`,
+      );
+
+      // Merge groups: GitHub's unsigned queue merge commit is skipped only
+      // when the workflow says the event is a merge group.
+      git(repository, ['checkout', '--quiet', '--detach', signedHumanHead]);
+      commit(repository, 'Pat Example', 'pat@example.com', 'side\n\nSigned-off-by: Pat Example <pat@example.com>');
+      execFileSync('git', ['merge', '--quiet', '--no-ff', '-m', 'Merge pull request #2', evidenceOnly], {
+        cwd: repository,
+        env: { ...process.env, GIT_AUTHOR_NAME: 'Queue', GIT_AUTHOR_EMAIL: 'queue@example.com', GIT_COMMITTER_NAME: 'Queue', GIT_COMMITTER_EMAIL: 'queue@example.com' },
+      });
+      const groupHead = git(repository, ['rev-parse', 'HEAD']);
+      const inGroup = (skip: string) => spawnSync('bash', ['-euo', 'pipefail', '-c', signoff.run], {
+        cwd: repository,
+        encoding: 'utf8',
+        env: { ...process.env, BASE_SHA: signedHumanHead, HEAD_SHA: groupHead, DCO_SKIP_MERGE_COMMITS: skip },
+      });
+      expect(inGroup('true').status).toBe(0);
+      expect(inGroup('false').status).toBe(1);
+      expect(signoff.env.DCO_SKIP_MERGE_COMMITS).toBe("${{ github.event_name == 'merge_group' }}");
     } finally {
       rmSync(repository, { recursive: true, force: true });
     }

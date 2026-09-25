@@ -12,6 +12,9 @@ env:
 on:
   pull_request:
     branches: [main]
+  # The required check must also report on merge-queue candidates.
+  merge_group:
+    types: [checks_requested]
 
 jobs:
   dco:
@@ -23,14 +26,21 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
 
       - name: Check DCO sign-off
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          # A merge group adds only the merge commits GitHub creates for the
+          # queue; every pull request commit inside it is checked as before.
+          DCO_SKIP_MERGE_COMMITS: ${{ github.event_name == 'merge_group' }}
         run: |
           failure=0
+          rev_list_args=(--reverse)
+          if [[ "${DCO_SKIP_MERGE_COMMITS:-false}" == true ]]; then
+            rev_list_args+=(--no-merges)
+          fi
           while IFS= read -r commit_sha; do
             author_name="$(git show -s --format='%an' "$commit_sha")"
             author_email="$(git show -s --format='%ae' "$commit_sha")"
@@ -41,10 +51,39 @@ jobs:
                 continue
                 ;;
             esac
+            # Evidence autopilot commits (.github/workflows/evidence-autopilot-publish.yml)
+            # are machine regeneration by the repository's own writers, like
+            # Dependabot's bumps, so a GitHub App bot cannot and does not sign
+            # them off. The exemption holds only for a single-parent commit by
+            # a GitHub App bot identity that carries the autopilot trailer and
+            # changes nothing but the derived-evidence allowlist; any other
+            # path in such a commit fails the check.
+            if [[ "$author_name" == *'[bot]' \
+              && "$author_email" =~ ^[0-9]+\+[A-Za-z0-9-]+\[bot\]@users\.noreply\.github\.com$ ]] \
+              && git show -s --format='%B' "$commit_sha" | grep --line-regexp --fixed-strings --quiet 'Evidence-Autopilot: v1'; then
+              parents="$(git rev-list --parents -n 1 "$commit_sha" | wc -w)"
+              outside="$(git diff-tree --no-commit-id --name-only -r --no-renames "$commit_sha" \
+                | grep --line-regexp --fixed-strings --invert-match \
+                  -e 'formal/results/formal-runtime-scenario-conformance.v2.json' \
+                  -e 'conformance/conformance-manifest.json' \
+                  -e 'security/security-case.json' \
+                  -e 'lib/proof-stats.json' \
+                  -e 'AI_CONTEXT.md' \
+                  -e 'public/llms.txt' \
+                  -e 'public/llms-full.txt' \
+                  -e 'public/.well-known/emilia-context.json' || true)"
+              if [[ "$parents" -eq 2 && -z "$outside" ]]; then
+                echo "::notice::Commit $commit_sha is an evidence autopilot commit that changes only derived evidence; DCO sign-off is not required."
+                continue
+              fi
+              echo "::error::Commit $commit_sha claims to be an evidence autopilot commit but is a merge or changes other paths: ${outside:-merge commit}"
+              failure=1
+              continue
+            fi
             if ! git show -s --format='%B' "$commit_sha" \
               | grep --fixed-strings --ignore-case --quiet "Signed-off-by: $author"; then
               echo "::error::Commit $commit_sha is missing Signed-off-by: $author"
               failure=1
             fi
-          done < <(git rev-list --reverse "$BASE_SHA..$HEAD_SHA")
+          done < <(git rev-list "${rev_list_args[@]}" "$BASE_SHA..$HEAD_SHA")
           exit "$failure"
