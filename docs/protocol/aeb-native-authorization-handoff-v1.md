@@ -244,9 +244,8 @@ run proceed as the owner, and if the record stays unreadable the run sends
 no not-entered write, holds everything, does not call the provider, and
 returns `INDETERMINATE` with `attempt_start_unconfirmed`. A record that
 then says `INVOKING` although the provider was never called is closable
-only by terminal reconciliation with provider evidence that authenticates
-that no operation exists under the attempt's provider idempotency key, as
-the verifier decides; otherwise the action stays fenced, by design. A
+only by terminal reconciliation with provider evidence that forecloses any execution, now or later, under the attempt's provider idempotency key, as
+the verifier decides; otherwise the action stays fenced, by design. A point-in-time "not found", even from an authenticated provider lookup, does not foreclose execution: a run that is still alive can deliver its call after the lookup. A
 reserve answer that is neither exactly `true` or `'RESERVED'` nor a defined
 conflict, or a reserve call that throws, is resolved by a durable read and
 is otherwise `INDETERMINATE` with `consumption_reservation_unconfirmed`,

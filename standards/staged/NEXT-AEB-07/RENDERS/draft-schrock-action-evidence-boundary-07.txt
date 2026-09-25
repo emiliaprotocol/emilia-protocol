@@ -1434,11 +1434,13 @@ Internet-Draft          Action Evidence Boundary          September 2026
    attempt.  An attempt left in DISPATCH_PENDING without a dispatch is
    INDETERMINATE even though nothing was dispatched: it is closed only
    by reconciliation with terminal evidence under Section 5.13 that
-   authenticates that no operation exists under the attempt's provider
+   forecloses any execution, now or later, under the attempt's provider
    idempotency key, for example an authenticated cancellation of that
    key by the effecting system, and whether presented evidence
    establishes that is the verifier's decision.  Without such evidence
-   its records stay held.
+   its records stay held.  A point-in-time absence of the operation,
+   even when authenticated, does not foreclose execution: a live
+   dispatcher can still deliver its call afterwards.
 
    The boundary MUST invoke only from that durable state.  Where the
    provider supports an idempotency key, the boundary MUST send one
@@ -1448,8 +1450,6 @@ Internet-Draft          Action Evidence Boundary          September 2026
    or a source label.  After dispatch begins, the boundary MUST durably
    record INVOKED or a terminal outcome before reporting success to the
    requester.
-
-
 
 
 

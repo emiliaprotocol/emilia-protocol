@@ -511,3 +511,16 @@ They show that the candidate parses, renders, passes the submission nits
 check, and states the listed requirements. They are not evidence of IETF
 submission, publication, working-group adoption, protocol-owner review,
 implementation conformance, interoperability, or deployment.
+
+## Round-five wording correction (closure of an attempt left INVOKING without dispatch)
+
+Section 5.10 now requires terminal evidence that forecloses any execution, now
+or later, under the attempt's provider idempotency key, and states that a
+point-in-time absence of the operation, even when authenticated, does not
+foreclose execution while a dispatcher may still be live. Re-checked on the
+revised source:
+
+- `xmllint --noout`: PASS.
+- `xml2rfc 3.34.0 --text` and `--html`: PASS; renders replaced in `RENDERS/`.
+- `idnits 3.1.0 -m submission` on the TXT and on the XML: PASS, no nits.
+- `SHA256SUMS.txt` regenerated for the XML and both renders.

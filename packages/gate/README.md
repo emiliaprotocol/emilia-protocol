@@ -167,9 +167,15 @@ contract:
   throws or answers anything but `true`, the run releases nothing on that
   basis and reads the durable record. INVOKING for this attempt means the
   write landed, and the run proceeds as the record's owner. RESERVED means it
-  did not: the run first closes the record as not entered through the same
-  atomic transition, then releases and returns `REFUSED` with
-  `attempt_start_conflict`. RELEASED with the not-entered marker for this
+  had not landed when read: the run closes the record as not entered
+  through the same atomic transition, then releases and returns `REFUSED`
+  with `attempt_start_conflict`. If a delayed start write lands before that
+  close, the close fails; the run still never calls the provider, because it
+  has sent a not-entered write, keeps its reservations, and returns
+  `INDETERMINATE` (`native_pre_entry_release_unconfirmed` on the native
+  boundary, `attempt_release_unconfirmed` on the composed boundary). The
+  record then says INVOKING although the provider was never called, and it
+  is closable only as the next item describes. RELEASED with the not-entered marker for this
   attempt means a pre-entry recovery linearized first: the run releases what
   it holds and returns `attempt_released_by_recovery`. Any other answer,
   including a RELEASED record without the marker, holds everything and
@@ -190,12 +196,14 @@ contract:
   record says INVOKING although the provider was never called; pre-entry
   recovery then answers `recovery_lost_to_live_attempt`, and the record is
   closable only by terminal reconciliation with provider evidence that
-  authenticates that no operation exists under the attempt's provider
-  idempotency key, such as an authenticated cancellation of that key by the
+  forecloses any execution, now or later, under the attempt's provider idempotency key, such as an authenticated cancellation of that key by the
   provider. Whether the presented evidence establishes that is the
   verifier's decision, affirmed as `provider_outcome`; a "not found" lookup
   presented as `pre_entry_lookup` is refused in terminal mode. Without such
   evidence the action stays fenced, by design.
+  A point-in-time "not found", even from an authenticated provider lookup,
+  does not foreclose execution: a run that is still alive can deliver its
+  call after the lookup.
 - **Pre-entry stops report their own code.** Every pre-entry stop releases
   nothing until the record's not-entered transition is confirmed. When it
   cannot be confirmed, the native run returns `INDETERMINATE` with

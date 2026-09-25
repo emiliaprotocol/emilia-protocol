@@ -297,12 +297,14 @@ Both boundaries recover such an attempt under the following contract.
    pre-entry recovery closes it. If it landed, the record says `INVOKING`
    although the provider was never called: pre-entry recovery answers
    `recovery_lost_to_live_attempt`, and the record is closable only by
-   terminal reconciliation with provider evidence that authenticates that
-   no operation exists under the attempt's provider idempotency key, such
+   terminal reconciliation with provider evidence that forecloses any execution, now or later, under the attempt's provider idempotency key, such
    as an authenticated cancellation of that key by the provider. Whether the
    presented evidence establishes that is the verifier's decision, affirmed
    as `provider_outcome`. Without such evidence the action stays fenced, by
-   design. On the composed boundary without `attempts.store.state()`, a run
+   design.
+   A point-in-time "not found", even from an authenticated provider lookup,
+   does not foreclose execution: a run that is still alive can deliver its
+   call after the lookup. On the composed boundary without `attempts.store.state()`, a run
    whose start is unconfirmed cannot read the record, so it sends no
    not-entered write, holds everything, and returns `INDETERMINATE` with
    `attempt_start_unconfirmed` without calling the provider.

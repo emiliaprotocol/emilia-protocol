@@ -289,11 +289,13 @@ This package follows [Semantic Versioning](https://semver.org/).
   `invoked: false`. If the start write did not land, pre-entry recovery
   closes the still-`RESERVED` record. If it landed, the record says
   `INVOKING` although the provider was never called, and it is closable
-  only by terminal reconciliation with provider evidence that authenticates
-  that no operation exists under the attempt's provider idempotency key,
+  only by terminal reconciliation with provider evidence that forecloses any execution, now or later, under the attempt's provider idempotency key,
   such as an authenticated cancellation of that key, which is the
   verifier's decision to affirm as `provider_outcome`; otherwise the action
-  stays fenced, by design. Terminal reconciliation now verifies the
+  stays fenced, by design.
+  A point-in-time "not found", even from an authenticated provider lookup,
+  does not foreclose execution: a run that is still alive can deliver its
+  call after the lookup. Terminal reconciliation now verifies the
   presented outcome before it freezes the record, so an outcome the
   verifier rejects leaves the
   record unchanged and a later reconciliation with verified evidence can
@@ -322,6 +324,15 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Compatibility
 
+- The composed boundary now snapshots the provider result together with
+  its evidence, as the native boundary already did, so what was verified
+  is what is returned. The result must be in the strict canonical JSON
+  domain: plain objects and arrays, strings, booleans, null, and numbers
+  that are safe integers. A fractional number, a `Date` or other class
+  instance, `undefined`, a bigint, a function, or a cyclic value makes
+  `run()` return `INDETERMINATE` `provider_outcome_invalid` after the
+  provider call, so the action then needs reconciliation. Encode amounts
+  as integers or strings in the invoke adapter's result.
 - A mixed fleet is unsafe. A 0.26.0 boundary, native or composed, has no
   same-action fence and does not reserve the label-free identity key, so
   while 0.26.0 and this release serve one consumption store, an action in
@@ -333,7 +344,11 @@ This package follows [Semantic Versioning](https://semver.org/).
   attempts on 0.26.0, with the provider-outcome verifier that 0.26.0
   already uses: a 0.26.0 native boundary counts only a verifier answer of
   exactly `true`, so a verifier that returns the new affirmation fails
-  every 0.26.0 run and reconciliation and the drain cannot finish. Finish
+  every 0.26.0 run and reconciliation and the drain cannot finish. A
+  0.26.0 instance that restarts during the drain no longer owns the
+  reservations its earlier process made, so it closes them only through
+  the store's recovery claim (`claimReservation` with a recovery
+  authorization), as in 0.26.0. Finish
   on 0.26.0 any pre-entry stop whose rows it did not release as well,
   because 0.26.0 wrote those records `RELEASED` without the not-entered
   marker and this release reports them `attempt_record_unproven`. Only then

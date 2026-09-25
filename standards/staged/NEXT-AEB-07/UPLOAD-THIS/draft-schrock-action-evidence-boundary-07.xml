@@ -1066,11 +1066,12 @@
         dispatch is INDETERMINATE even though nothing was dispatched: it is
         closed only by reconciliation
         with terminal evidence under <xref target="outcome"/> that
-        authenticates that no operation exists under the attempt's provider
-        idempotency key, for example an authenticated cancellation of that
+        forecloses any execution, now or later, under the attempt's provider idempotency key, for example an authenticated cancellation of that
         key by the effecting system, and whether presented evidence
         establishes that is the verifier's decision. Without such evidence
-        its records stay held.</t>
+        its records stay held. A point-in-time absence of the operation,
+        even when authenticated, does not foreclose execution: a live
+        dispatcher can still deliver its call afterwards.</t>
         <t>The boundary MUST invoke only from that durable state. Where the
         provider supports an idempotency key, the boundary MUST send one
         derived from the native replay identity; the derivation MAY also bind
