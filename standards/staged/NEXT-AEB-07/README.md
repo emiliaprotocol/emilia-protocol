@@ -237,8 +237,8 @@ or registry.
 - Refresh the date and re-run the checks in `VALIDATION.md`, including the
   Datatracker revision check and the reference-currency check.
 - The `EP-NATIVE-HANDOFF` and `EP-LIFECYCLE-CORPUS` references pin commit
-  `82490c9ff50a2d2a2d24f2c47024932fbae8490a` on branch `fix/pr788-followups`
-  (PR #790), which carries the round-five code and its documentation.
+  `b1b268e7d0538a9e22e379ddb06f55149d352c3b`, the merge of PR #790 on main,
+  which carries the round-five code and its documentation.
   Section 15 describes that code, and each of its statements was checked
   against it: the separate pre-entry recovery mode and its linearization,
   the explicit not-entered marker, no provider call after a not-entered

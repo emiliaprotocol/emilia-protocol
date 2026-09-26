@@ -2950,17 +2950,17 @@ Internet-Draft          Action Evidence Boundary          September 2026
               EMILIA Protocol, "Consequence-Admission Lifecycle
               Composition Corpus v0.1", 25 September 2026,
               <https://github.com/emiliaprotocol/emilia-
-              protocol/tree/82490c9ff50a2d2a2d24f2c47024932fbae8490a/
+              protocol/tree/b1b268e7d0538a9e22e379ddb06f55149d352c3b/
               conformance/composition/consequence-admission-lifecycle-
               v0.1>.  Repository commit
-              82490c9ff50a2d2a2d24f2c47024932fbae8490a.  Synthetic same-
+              b1b268e7d0538a9e22e379ddb06f55149d352c3b.  Synthetic same-
               team corpus.
 
    [EP-NATIVE-HANDOFF]
               EMILIA Protocol, "AEB-NATIVE-AUTHORIZATION-HANDOFF-v1
               Reference Encoding and Native Consequence Boundary", 25
               September 2026, <https://github.com/emiliaprotocol/emilia-
-              protocol/blob/82490c9ff50a2d2a2d24f2c47024932fbae8490a/
+              protocol/blob/b1b268e7d0538a9e22e379ddb06f55149d352c3b/
               docs/protocol/aeb-native-authorization-handoff-v1.md>.
 
 
@@ -2971,7 +2971,7 @@ Internet-Draft          Action Evidence Boundary          September 2026
 
 
               Repository commit
-              82490c9ff50a2d2a2d24f2c47024932fbae8490a.  Same-team
+              b1b268e7d0538a9e22e379ddb06f55149d352c3b.  Same-team
               reference code; informative only.
 
    [MUNOZ-PERMIT]
