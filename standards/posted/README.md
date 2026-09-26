@@ -41,7 +41,7 @@ authoritative for rendered forms.
 - `draft-schrock-agent-qualification-statements-00`
 - `draft-schrock-canonical-action-identifier-03`
 - `draft-schrock-emilia-eye-00`
-- `draft-schrock-ep-architecture-02`
+- `draft-schrock-ep-architecture-03`
 - `draft-schrock-ep-authority-introduction-03`
 - `draft-schrock-ep-authorization-evidence-chain-06`
 - `draft-schrock-ep-authorization-receipts-12`
@@ -77,7 +77,7 @@ subordinate, or demote any active draft.
 
 ## Separate runtime execution spine
 
-The runtime path is [Architecture-02](draft-schrock-ep-architecture-02.xml) →
+The runtime path is [Architecture-03](draft-schrock-ep-architecture-03.xml) →
 [CAID-03](draft-schrock-canonical-action-identifier-03.xml) →
 [AEC-06](draft-schrock-ep-authorization-evidence-chain-06.xml) →
 [AEB-07](draft-schrock-action-evidence-boundary-07.xml): system boundaries,
@@ -104,7 +104,9 @@ immutable artifacts in the IETF archive:
 - `draft-schrock-ep-revocation-statement-00`
 - `draft-schrock-model-to-matter-01`
 
-The superseded `draft-schrock-ae-challenge-00` snapshots moved to `../archive/`.
+All seven have since been superseded, and their snapshots are retained in
+`../archive/`. The superseded `draft-schrock-ae-challenge-00` snapshots moved
+to `../archive/`.
 The longer-named `draft-schrock-authorization-evidence-challenge-00`, Agent
 Action Manifest, Action Evidence Graph, and Enforcement Point series also moved
 to `../archive/` because Datatracker marks them replaced rather than active.
@@ -245,6 +247,24 @@ upload candidate. Its XML is byte-for-byte identical to the posted source.
 AEC-05 is retained in `../archive/`. Publication does not establish
 protocol-owner review, independent implementation, working-group adoption, RFC
 status, or IETF endorsement.
+
+## September 6, 2026 Architecture corrective revision
+
+`draft-schrock-ep-architecture-03` was posted as an active individual
+Internet-Draft through Datatracker submission 168691 (Datatracker time
+2026-09-06T17:31:40Z), one of the four September 6 corrective revisions. The
+snapshot was mirrored into this directory on 2026-09-26. Its XML and TXT are
+byte-for-byte identical to the immutable IETF archive artifacts. The posted
+HTML is the provenance packet's local xml2rfc 3.34.0 render with trailing
+whitespace removed, because the archive delivery path injects request-specific
+Cloudflare markup; the checksum-pinned exact render remains in the provenance
+packet.
+
+The retained `../staged/NEXT-ARCHITECTURE-03` packet is publication provenance,
+not an upload candidate. Its XML is byte-for-byte identical to the posted
+source. Architecture-02 is retained in `../archive/`. Publication does not
+establish protocol-owner review, independent implementation, working-group
+adoption, RFC status, or IETF endorsement.
 
 ## September 24, 2026 AEB maintenance revision
 

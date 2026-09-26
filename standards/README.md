@@ -77,7 +77,7 @@ complete active portfolio remains the 24 records in
 `STATUS.json.active_datatracker`, including 20 sole-authored records and four
 coauthored records, each with its own scope and revision history.
 
-The separate runtime execution spine is **Architecture-02 -> CAID-03 ->
+The separate runtime execution spine is **Architecture-03 -> CAID-03 ->
 AEC-06 -> AEB-07**: architecture and decision boundaries, exact material-action
 identity and matching, evidence satisfaction, then executor-side admission and
 one-time consequence custody. This runtime path is not the four-document
@@ -180,6 +180,24 @@ role constraints, required bindings, and replay contract, and updates
 references without changing the EP-AEC-v1 envelope or converting evidence
 satisfaction into execution authority. It is an individual Internet-Draft, not
 a working-group item, and posting is not protocol-owner review.
+
+## September 6 Architecture corrective revision
+
+`draft-schrock-ep-architecture-03` was posted through Datatracker submission
+168691 (Datatracker time 2026-09-06T17:31:40Z) as one of the four September 6
+corrective revisions. Its XML and TXT match the immutable IETF archive
+byte-for-byte, and the snapshot was mirrored into `posted/` on 2026-09-26. The
+posted HTML follows the same whitespace-normalized local render rule as AEC-06.
+Revision -03 makes provider entry the transition that converts reserved
+authority to consumed authority before provider invocation, defines
+admission-control domains and monotonic epochs without overloading
+witness-independence control domains, and defines serialized emergency freeze,
+restoration, and reconciliation behavior for the three freeze-versus-entry
+races. It states the disconnected-edge stale-admission window, rejects
+immediate global-freeze claims, and adds idempotency, wrong-holder,
+receipt-absence, and unsigned-event claim boundaries. The abstract is
+unchanged from -02. It is an individual Internet-Draft, not a working-group
+item, and posting is not protocol-owner review.
 
 ## September 24 AEB maintenance revision
 
