@@ -240,7 +240,12 @@ export function commitMessage(sourceSha, runUrl) {
  * was force-pushed, rewound or deleted in the meantime is left alone.
  *
  * @param {{ bundle: string, sourceSha: string, repository: string, branch: string, runUrl: string }} options
- * @returns {{ query: string, variables: { input: Record<string, unknown> } }}
+ * @returns {{ query: string, variables: { input: {
+ *   branch: { repositoryNameWithOwner: string, branchName: string },
+ *   expectedHeadOid: string,
+ *   message: { headline: string, body: string },
+ *   fileChanges: { additions: Array<{ path: string, contents: string }> },
+ * } } }}
  */
 export function commitRequest({ bundle, sourceSha, repository, branch, runUrl }) {
   if (!REPOSITORY.test(repository)) throw new Error(`refusing repository ${JSON.stringify(repository)}`);

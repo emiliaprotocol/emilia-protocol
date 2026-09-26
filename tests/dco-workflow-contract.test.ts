@@ -154,6 +154,14 @@ describe('DCO workflow contract', () => {
         `Commit ${spoofed} is missing Signed-off-by: dependabot[bot] <${DEPENDABOT_EMAIL}>`,
       );
 
+      // Setting the committer to GitHub <noreply@github.com> makes the API
+      // resolve the committer login to web-flow, but the commit stays
+      // unsigned, so the signature requirement must still refuse it.
+      s.git(['checkout', '--quiet', '--detach', signedHuman]);
+      const webFlowSpoof = s.commit({ name: 'dependabot[bot]', email: DEPENDABOT_EMAIL }, 'unsigned with a web-flow committer');
+      s.github(webFlowSpoof, false, 'unsigned', 'dependabot[bot]', 'web-flow');
+      expect(s.dco(signedHuman, webFlowSpoof).status).toBe(1);
+
       // Verified, but committed by a person rather than GitHub.
       s.git(['checkout', '--quiet', '--detach', signedHuman]);
       const selfSigned = s.commit({ name: 'dependabot[bot]', email: DEPENDABOT_EMAIL }, 'signed by a person');
