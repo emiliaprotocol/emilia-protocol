@@ -18,12 +18,14 @@ name: schema-security
 # Required secret, held by the `schema-gate` environment (Settings →
 # Environments → schema-gate → Environment secrets), not as a repository
 # secret:
-#   SCHEMA_GATE_DB_URL — pooler connection string for the separately provisioned
-#   `schema_gate_ci_gha` login, inheriting the NOLOGIN `schema_gate_ci` group.
-#   The group has two explicit schema-introspection EXECUTE grants, but also
-#   inherits any function grants to PUBLIC. Audit effective function access
-#   before activating the login; see docs/operations/SCHEMA-GATE-CI.md. The
-#   god-mode service-role key is NOT in CI.
+#   SCHEMA_GATE_DB_URL — pooler connection string for the schema CI login.
+#   docs/operations/SCHEMA-GATE-CI.md moves it from the legacy `schema_gate`
+#   login to `schema_gate_ci_gha`, a member of the NOLOGIN `schema_gate_ci`
+#   group created by migration 20260926035734. The group's explicit grants are
+#   EXECUTE on the two schema-introspection functions and USAGE on public; a
+#   member also holds whatever PUBLIC holds, so the runbook's audit must pass
+#   before the secret points at the new login. The god-mode service-role key
+#   is NOT in CI.
 # Restrict the environment's deployment branches to main. push, schedule,
 # workflow_dispatch on main and pull_request_target all run on refs/heads/main
 # and are admitted; a workflow running on any other ref (including a
