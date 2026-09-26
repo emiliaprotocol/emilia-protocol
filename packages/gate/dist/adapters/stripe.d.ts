@@ -24,7 +24,7 @@ export declare const STRIPE_ACTION_PACK: readonly (Readonly<{
         protocol: string;
         tool: string;
     };
-    why: "Returns funds. Bind the payment and amount so a refund cannot be silently inflated.";
+    why: "Returns funds. Bind the payment, amount, and stable business-operation ID to the approval.";
     execution_binding: {
         required_fields: string[];
     };
@@ -54,6 +54,12 @@ export declare function createStripeManifest(extraActions?: never[]): {
  * @param {object} gate    a gate built with createStripeManifest()
  * @param {object} stripe  a Stripe-like client (the official `stripe` SDK or compatible)
  * @param {object} args    { op:'payout.create'|'refund.create'|'bank_account.change', params, receipt }
+ * Refund params require a business-system-assigned operation_id, not one
+ * minted afresh by the agent. It must stay stable across retries and be bound
+ * into the receipt. Stripe's idempotency cache is finite; callers must keep a
+ * durable operation journal and reconcile uncertain outcomes before retrying
+ * outside the provider's retention window. This adapter alone cannot promise
+ * perpetual exactly-once effects.
  * @throws Error{code:'EMILIA_RECEIPT_REQUIRED'} if refused — the call never reaches Stripe
  */
 export declare function guardStripeMutation(gate: any, stripe: any, args: any): Promise<{
@@ -110,7 +116,7 @@ declare const _default: {
             protocol: string;
             tool: string;
         };
-        why: "Returns funds. Bind the payment and amount so a refund cannot be silently inflated.";
+        why: "Returns funds. Bind the payment, amount, and stable business-operation ID to the approval.";
         execution_binding: {
             required_fields: string[];
         };

@@ -17,8 +17,23 @@
  *     op: 'payout.create', params: { amount: 40000, currency: 'usd', destination: 'acct_x' }, receipt,
  *   });
  */
-import { canonicalActuatorObject, createAdapter, manifestFromPack } from './_kit.js';
+import { canonicalActuatorObject, createAdapter, hashCanonical, manifestFromPack } from './_kit.js';
 import { executeWithGateAllowance } from '../allowance.js';
+function boundedRefundOperationId(value) {
+    if (typeof value !== 'string' || value.length < 8 || value.length > 200
+        || !/^[A-Za-z0-9][A-Za-z0-9:._/@-]*$/.test(value)) {
+        throw new TypeError('Stripe refund operation_id must be a bounded, stable business-operation identifier');
+    }
+    return value;
+}
+function refundIdempotencyKey(operationId) {
+    // The same business operation keeps the same key even when a new receipt or
+    // OAuth token is presented. Identical payment/amount pairs are not a key:
+    // two distinct partial refunds can legitimately have those same fields.
+    return `emilia:stripe:refund:v1:${hashCanonical({
+        purpose: 'stripe.refund.create', operation_id: operationId,
+    })}`;
+}
 export const STRIPE_ACTION_PACK = Object.freeze([
     Object.freeze({
         id: 'stripe.payout.create', label: 'Stripe payout', action_type: 'stripe.payout.create',
@@ -31,8 +46,8 @@ export const STRIPE_ACTION_PACK = Object.freeze([
         id: 'stripe.refund.create', label: 'Stripe refund', action_type: 'stripe.refund.create',
         risk: 'high', receipt_required: true, assurance_class: 'class_a',
         match: { protocol: 'stripe', tool: 'create_refund' },
-        why: 'Returns funds. Bind the payment and amount so a refund cannot be silently inflated.',
-        execution_binding: { required_fields: ['action_type', 'payment_intent', 'amount'] },
+        why: 'Returns funds. Bind the payment, amount, and stable business-operation ID to the approval.',
+        execution_binding: { required_fields: ['action_type', 'payment_intent', 'amount', 'operation_id'] },
     }),
     Object.freeze({
         id: 'stripe.bank_account.change', label: 'Stripe payout-destination change', action_type: 'stripe.bank_account.change',
@@ -53,8 +68,13 @@ const OPS = {
     },
     'refund.create': {
         selector: { protocol: 'stripe', tool: 'create_refund' },
-        observed: (p) => ({ action_type: 'stripe.refund.create', payment_intent: p.payment_intent, amount: p.amount }),
-        perform: (stripe, p) => stripe.refunds.create({ payment_intent: p.payment_intent, amount: p.amount }),
+        observed: (p) => ({
+            action_type: 'stripe.refund.create',
+            payment_intent: p.payment_intent,
+            amount: p.amount,
+            operation_id: boundedRefundOperationId(p.operation_id),
+        }),
+        perform: (stripe, p) => stripe.refunds.create({ payment_intent: p.payment_intent, amount: p.amount }, { idempotencyKey: refundIdempotencyKey(p.operation_id) }),
     },
     'bank_account.change': {
         selector: { protocol: 'stripe', tool: 'update_external_account' },
@@ -89,6 +109,12 @@ export function createStripeManifest(extraActions = []) {
  * @param {object} gate    a gate built with createStripeManifest()
  * @param {object} stripe  a Stripe-like client (the official `stripe` SDK or compatible)
  * @param {object} args    { op:'payout.create'|'refund.create'|'bank_account.change', params, receipt }
+ * Refund params require a business-system-assigned operation_id, not one
+ * minted afresh by the agent. It must stay stable across retries and be bound
+ * into the receipt. Stripe's idempotency cache is finite; callers must keep a
+ * durable operation journal and reconcile uncertain outcomes before retrying
+ * outside the provider's retention window. This adapter alone cannot promise
+ * perpetual exactly-once effects.
  * @throws Error{code:'EMILIA_RECEIPT_REQUIRED'} if refused — the call never reaches Stripe
  */
 export function guardStripeMutation(gate, stripe, args) {
