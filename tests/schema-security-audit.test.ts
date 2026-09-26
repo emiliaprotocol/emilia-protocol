@@ -5,6 +5,24 @@ import { auditMigrationBundle, readMigrationBundle } from '../scripts/schema-sec
 import { contract } from '../scripts/db-contract.manifest.mjs';
 
 describe('static schema-security migration audit', () => {
+  it('reports private SQL exclusions without removing live database requirements', () => {
+    const result = auditMigrationBundle(readMigrationBundle());
+    expect(contract.privateSourceTables).toContain('works_accounts');
+    expect(contract.requiredTables).toContain('works_accounts');
+    expect(contract.rlsRequired).toContain('works_accounts');
+    expect(result.checks.some(check => check.name === 'RLS enabled: works_accounts')).toBe(false);
+    expect(result.limitations.join(' ')).toContain('works_accounts');
+    expect(result.limitations.join(' ')).toContain('Live database requirements are unchanged');
+  });
+
+  it('still rejects public access to privately implemented application tables', () => {
+    const migrations = readMigrationBundle();
+    migrations.push({ file: 'zzzz_test_private_exposure.sql', sql: 'GRANT SELECT ON TABLE public.works_accounts TO anon;' });
+    const result = auditMigrationBundle(migrations);
+    expect(result.status).toBe('failed');
+    expect(result.failures.some(failure => failure.name === 'no direct public table GRANT: works_accounts')).toBe(true);
+  });
+
   it('enrolls every checked-in public table in the RLS contract', () => {
     const source = readMigrationBundle()
       .map((migration) => migration.sql)

@@ -7,6 +7,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 const FORBIDDEN_PREFIXES = [
+    'commercial/',
+    'app/works/',
+    'app/api/works/',
+    'lib/works/',
+    'docs/works/',
+    'tests/works-',
     'docs/ip/',
     'docs/grace-raise/',
     'docs/strategy-private/',
@@ -21,6 +27,10 @@ const FORBIDDEN_PREFIXES = [
     'outreach/',
 ];
 const FORBIDDEN_EXACT = new Set([
+    'e2e/marketplace-entry.spec.ts',
+    'scripts/prepare-works-authority-scan.mjs',
+    'scripts/verify-works-operating-postgres.mjs',
+    'public/marketplace-tool-inspection-v1.webp',
     'docs/TARGET-LIST-AND-OUTREACH.md',
     'docs/INVESTOR-NARRATIVE.md',
     'docs/ECONOMIC-MOAT.md',
@@ -106,7 +116,8 @@ export function findRepositoryBoundaryViolations(files) {
     const violations = [];
     for (const rawFile of files) {
         const file = normalizedPath(rawFile);
-        if (FORBIDDEN_EXACT.has(file) || FORBIDDEN_PREFIXES.some((prefix) => file.startsWith(prefix))) {
+        if (FORBIDDEN_EXACT.has(file) || FORBIDDEN_PREFIXES.some((prefix) => file.startsWith(prefix))
+            || /^supabase\/(?:migrations|migration-archive)\/\d+_works_/.test(file)) {
             violations.push(file);
             continue;
         }

@@ -16,7 +16,6 @@ const SELF_CANONICAL_PAGES = [
   ['app/grace/flex-passport/page.tsx', '/grace/flex-passport'],
   ['app/grace/live/page.tsx', '/grace/live'],
   ['app/grace/demo/page.tsx', '/grace/demo'],
-  ['app/works/page.tsx', '/works'],
 ] as const;
 
 const PRIVATE_CRAWL_PATHS = [

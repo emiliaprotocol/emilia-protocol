@@ -40,7 +40,8 @@ describe('workforce website story and public claim boundaries', () => {
     expect(disabled).toContain('href="/scan#run-local"');
     expect(disabled).not.toContain('href="/works/scan"');
     vi.stubEnv('WORKS_V0', '1');
-    expect(renderToStaticMarkup(createElement(WorkforceIntroduction))).toContain('href="/works/scan"');
+    expect(renderToStaticMarkup(createElement(WorkforceIntroduction))).toContain('href="/scan#run-local"');
+    expect(read('components/workforce/WorkforceStory.tsx')).not.toContain('@/lib/works/');
     expect(introduction).not.toContain('universal authority toll booth');
   });
 
