@@ -5,6 +5,16 @@
 // Generates every LLM-facing project context surface from stable doctrine and
 // current machine-readable evidence. Hand editing the outputs is intentionally
 // unsupported: CI checks byte-for-byte freshness.
+//
+//   --write                     rewrite the four checked-in artifacts
+//   --write --out-dir <dir>     render them under <dir> instead (tests and
+//                               claim audits read the output for the current
+//                               sources without touching the checkout)
+//   --check                     exit 1 when a checked-in artifact is stale
+//   --check --drift-report <f>  record staleness in <f> and exit 0; every
+//                               input assertion still fails the run. CI's
+//                               volatile-evidence policy decides what drift
+//                               means (scripts/ci/volatile-evidence.mjs).
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,13 +22,36 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BASE_URL = 'https://www.emiliaprotocol.ai';
 const REPO_URL = 'https://github.com/emiliaprotocol/emilia-protocol';
-const args = new Set(process.argv.slice(2));
-const write = args.has('--write');
-const check = args.has('--check');
-if (write === check) {
-    console.error('usage: generate-llm-context.mjs (--write | --check)');
+function usage() {
+    console.error('usage: generate-llm-context.mjs (--write [--out-dir <dir>] | --check [--drift-report <file>])');
     process.exit(2);
 }
+let write = false;
+let check = false;
+let outDir;
+let driftReport;
+for (let index = 2; index < process.argv.length; index += 1) {
+    const argument = process.argv[index];
+    if (argument === '--write')
+        write = true;
+    else if (argument === '--check')
+        check = true;
+    else if (argument === '--out-dir' || argument === '--drift-report') {
+        const value = process.argv[index + 1];
+        if (!value || value.startsWith('--'))
+            usage();
+        if (argument === '--out-dir')
+            outDir = value;
+        else
+            driftReport = value;
+        index += 1;
+    }
+    else
+        usage();
+}
+if (write === check || (outDir && !write) || (driftReport && !check))
+    usage();
+const OUTPUT_ROOT = outDir ? path.resolve(outDir) : ROOT;
 const PATHS = {
     source: 'docs/ai/context-source.v1.json',
     generator: 'scripts/generate-llm-context.mts',
@@ -470,10 +503,11 @@ const outputs = new Map([
 ]);
 if (write) {
     for (const [relative, body] of outputs) {
-        fs.mkdirSync(path.dirname(absolute(relative)), { recursive: true });
-        fs.writeFileSync(absolute(relative), body);
+        const target = path.join(OUTPUT_ROOT, relative);
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, body);
     }
-    console.log(`LLM CONTEXT: WROTE ${outputs.size} artifacts (input sha256:${inputDigest})`);
+    console.log(`LLM CONTEXT: WROTE ${outputs.size} artifacts${outDir ? ` under ${OUTPUT_ROOT}` : ''} (input sha256:${inputDigest})`);
 }
 else {
     const stale = [];
@@ -481,10 +515,21 @@ else {
         if (!fs.existsSync(absolute(relative)) || read(relative) !== expected)
             stale.push(relative);
     }
-    if (stale.length) {
-        console.error(`LLM CONTEXT: FAIL - stale generated artifact(s): ${stale.join(', ')}`);
-        console.error('Fix: npm run sync:llm-context');
-        process.exit(1);
+    if (driftReport) {
+        fs.writeFileSync(driftReport, `${JSON.stringify({
+            '@version': 'EP-VOLATILE-EVIDENCE-DRIFT-v1',
+            writer: 'sync:llm-context',
+            current: stale.length === 0,
+            stale,
+        }, null, 2)}\n`);
     }
-    console.log(`LLM CONTEXT: PASS (${outputs.size} artifacts; current ${conformance.totals.vectors} vectors, external time-pinned ${external.conformance.vectors})`);
+    if (stale.length) {
+        console.error(`LLM CONTEXT: ${driftReport ? 'DRIFT (reported, not failed)' : 'FAIL'} - stale generated artifact(s): ${stale.join(', ')}`);
+        console.error('Fix: npm run sync:llm-context');
+        if (!driftReport)
+            process.exit(1);
+    }
+    else {
+        console.log(`LLM CONTEXT: PASS (${outputs.size} artifacts; current ${conformance.totals.vectors} vectors, external time-pinned ${external.conformance.vectors})`);
+    }
 }

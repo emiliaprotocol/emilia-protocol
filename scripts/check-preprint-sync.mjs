@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DOMParser } from '@xmldom/xmldom';
+import { deriveSourceProofStats } from './generate-proof-stats.mjs';
 const TRACKED_DRAFTS = [
     'draft-schrock-ep-authorization-receipts',
     'draft-schrock-ep-quorum',
@@ -53,14 +54,14 @@ export function deriveEvidence({ canonicalMarkdown, manifest, proofStats, proofS
     }
     if (proofStats.conformance?.suites !== manifest.totals?.suites
         || proofStats.conformance?.vectors !== manifest.totals?.vectors) {
-        failures.push('lib/proof-stats.json conformance totals diverge from the manifest');
+        failures.push('proof-stat conformance totals diverge from the manifest');
     }
     const tlaResult = proofStatus.match(/\*\*Result:\*\*\s+([\d,]+) states generated, ([\d,]+) distinct states[\s\S]*?all (\d+) invariants/);
     if (!tlaResult) {
         failures.push('formal/PROOF_STATUS.md has no parseable TLA+ result');
     }
     else if (Number(tlaResult[3]) !== proofStats.tla?.invariants) {
-        failures.push('formal/PROOF_STATUS.md TLA+ invariant count diverges from lib/proof-stats.json');
+        failures.push('formal/PROOF_STATUS.md TLA+ invariant count diverges from formal/ep_handshake.cfg');
     }
     const alloyVersion = String(proofStats.alloy?.version ?? '').replace(/\s+\(.*$/, '');
     if (!alloyVersion || !proofStatus.includes(`Alloy ${alloyVersion}`)) {
@@ -71,10 +72,10 @@ export function deriveEvidence({ canonicalMarkdown, manifest, proofStats, proofS
     }
     const externalHostilityCases = (external.hostility?.structured_cases + external.hostility?.raw_parser_cases);
     if (external.conformance?.vectors !== proofStats.externalImplementation?.vectors) {
-        failures.push('external verifier vector count diverges from lib/proof-stats.json');
+        failures.push('external verifier vector count diverges from the proof statistics');
     }
     if (externalHostilityCases !== proofStats.externalImplementation?.hostilityCases) {
-        failures.push('external hostility total diverges from lib/proof-stats.json');
+        failures.push('external hostility total diverges from the proof statistics');
     }
     const drafts = Object.fromEntries(TRACKED_DRAFTS.map((draft) => [draft, currentDraftRevision(standardsStatus, draft)]));
     return {
@@ -270,7 +271,10 @@ export function checkRepository(root) {
     const evidence = deriveEvidence({
         canonicalMarkdown,
         manifest: readJson(resolve(root, 'conformance/conformance-manifest.json')),
-        proofStats: readJson(resolve(root, 'lib/proof-stats.json')),
+        // Derived from the checked-in sources with the proof-stats writer's own
+        // extraction, not read from lib/proof-stats.json: that file is volatile
+        // evidence main refreshes after merge, so it may lag this checkout.
+        proofStats: deriveSourceProofStats(root),
         proofStatus: readFileSync(resolve(root, 'formal/PROOF_STATUS.md'), 'utf8'),
         standardsStatus: readJson(resolve(root, 'standards/STATUS.json')),
         external: readJson(resolve(root, 'conformance/external/rust-cleanroom-jdieselny.v1.json')),

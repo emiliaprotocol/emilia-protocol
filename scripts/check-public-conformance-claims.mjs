@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generated from check-public-conformance-claims.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
 /* eslint-disable */
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -191,15 +193,42 @@ function filesUnder(target) {
     walk(target);
     return files;
 }
+// The LLM context artifacts are volatile evidence that main refreshes after
+// merge (scripts/ci/volatile-evidence.mjs), so a checked-in copy may lag its
+// sources. The audit reads what the generator renders from the current
+// sources instead, which is exactly what main publishes once refreshed.
+export const GENERATED_LLM_CONTEXT = new Set([
+    'AI_CONTEXT.md',
+    'public/llms.txt',
+    'public/llms-full.txt',
+    'public/.well-known/emilia-context.json',
+]);
+function renderLlmContext() {
+    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-llm-context-'));
+    try {
+        const result = spawnSync(process.execPath, [path.join(ROOT, 'scripts/generate-llm-context.mjs'), '--write', '--out-dir', outDir], { encoding: 'utf8' });
+        if (result.status !== 0) {
+            throw new Error(`generate-llm-context.mjs could not render the current sources:\n${result.stderr || result.stdout}`);
+        }
+        return new Map([...GENERATED_LLM_CONTEXT].map((relative) => [
+            relative,
+            fs.readFileSync(path.join(outDir, relative), 'utf8'),
+        ]));
+    }
+    finally {
+        fs.rmSync(outDir, { recursive: true, force: true });
+    }
+}
 export function auditRepository() {
     const findings = [];
+    const rendered = renderLlmContext();
     for (const root of scanRoots) {
         const target = path.join(ROOT, root);
         if (!fs.existsSync(target))
             continue;
         for (const file of filesUnder(target)) {
             const relative = path.relative(ROOT, file).split(path.sep).join('/');
-            const text = fs.readFileSync(file, 'utf8');
+            const text = rendered.get(relative) ?? fs.readFileSync(file, 'utf8');
             findings.push(...auditClaimText(text, relative));
         }
     }

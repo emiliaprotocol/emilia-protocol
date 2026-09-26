@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { renderedLlmContext } from './helpers/rendered-llm-context';
 
 const readJson = (relative) => JSON.parse(fs.readFileSync(new URL(`../${relative}`, import.meta.url), 'utf8'));
-const context = readJson('public/.well-known/emilia-context.json');
+// The generator's output for the current sources, not the checked-in copies,
+// which main refreshes after merge (see tests/helpers/rendered-llm-context.ts).
+const rendered = renderedLlmContext();
+const context = JSON.parse(rendered.machineContext);
 const manifest = readJson('conformance/conformance-manifest.json');
 const external = readJson('conformance/external/rust-cleanroom-jdieselny.v1.json');
 const securityCase = readJson('security/security-case.json');
 const standardsStatus = readJson('standards/STATUS.json');
-const llms = fs.readFileSync(new URL('../public/llms.txt', import.meta.url), 'utf8');
-const llmsFull = fs.readFileSync(new URL('../public/llms-full.txt', import.meta.url), 'utf8');
+const llms = rendered.llms;
+const llmsFull = rendered.llmsFull;
 
 describe('EMILIA-REPO-CONTEXT-v1', () => {
   it('takes current conformance counts from the executable manifest', () => {

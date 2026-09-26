@@ -3,6 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { renderedLlmContext } from './helpers/rendered-llm-context';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const read = (path: string): string => readFileSync(resolve(ROOT, path), 'utf8');
@@ -18,9 +19,9 @@ const article = read('app/blog/ai-defenders-need-action-authority/page.tsx');
 const articleLayout = read('app/blog/ai-defenders-need-action-authority/layout.tsx');
 const incidentArticle = read('app/blog/credentials-are-not-action-authorization/page.tsx');
 const contextSource = read('docs/ai/context-source.v1.json');
-const llmsIndex = read('public/llms.txt');
-const llmsFull = read('public/llms-full.txt');
-const machineContext = read('public/.well-known/emilia-context.json');
+// Rendered from the current sources; the checked-in copies are volatile
+// evidence main refreshes after merge (tests/helpers/rendered-llm-context.ts).
+const { llms: llmsIndex, llmsFull, machineContext } = renderedLlmContext();
 
 describe('Authority for AI Defenders public campaign', () => {
   it('publishes an indexable audience page with dedicated share metadata', () => {

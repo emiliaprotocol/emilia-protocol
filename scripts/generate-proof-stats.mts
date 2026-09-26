@@ -361,6 +361,22 @@ export function proofStatsTestArgs(reportPath: string, coverage = false): string
   ];
 }
 
+export interface ProofStats {
+  generatedAt: string;
+  tests: Record<string, any>;
+  tla: Record<string, any>;
+  formalScenarioConformance: Record<string, any>;
+  formalEvidenceCoverage: Record<string, any>;
+  alloy: Record<string, any>;
+  tamarin: Record<string, any>;
+  securityCase: Record<string, any>;
+  conformance: Record<string, any>;
+  externalImplementation: Record<string, any>;
+  redTeamCases: number;
+}
+
+export type SourceProofStats = Omit<ProofStats, 'generatedAt' | 'tests'>;
+
 function generateProofStats(): void {
 const check: boolean = process.argv.includes("--check");
 const coverage = process.argv.includes('--coverage');
@@ -370,6 +386,15 @@ const bootstrapDerivedEvidence: boolean = process.argv.includes(
 const securityCasePreverified: boolean = process.argv.includes(
   "--security-case-preverified",
 );
+const driftReportIndex: number = process.argv.indexOf("--drift-report");
+const driftReport: string | undefined =
+  driftReportIndex === -1 ? undefined : process.argv[driftReportIndex + 1];
+if (driftReportIndex !== -1) {
+  if (!check) throw new Error("drift-report is check-mode only");
+  if (!driftReport || driftReport.startsWith("--")) {
+    throw new Error("drift-report requires a file path");
+  }
+}
 if (check && bootstrapDerivedEvidence) {
   throw new Error("bootstrap-derived-evidence cannot be used in check mode");
 }
@@ -470,37 +495,110 @@ if (!securityCasePreverified) {
     );
   }
 }
-const cfg: string = readFileSync("formal/ep_handshake.cfg", "utf8");
+const stats: ProofStats = {
+  generatedAt: new Date().toISOString(),
+  tests: {
+    total: j.numTotalTests,
+    files: j.testResults.length,
+    policy:
+      "all platform-applicable cases must pass; platform-specific cases may skip",
+  },
+  ...deriveSourceProofStats(),
+};
+
+if (check) {
+  const current: Record<string, unknown> = JSON.parse(
+    readFileSync("lib/proof-stats.json", "utf8"),
+  );
+  const measured: Record<string, unknown> = { ...stats };
+  /** @type {Record<string, unknown>} */
+  const recorded = { ...current };
+  delete measured.generatedAt;
+  delete recorded.generatedAt;
+  const matches = isDeepStrictEqual(measured, recorded);
+  if (driftReport) {
+    // Every check above this point (a passing measured suite, the security
+    // case, Tamarin binding, scenario evidence, claim taxonomy) has already
+    // thrown or exited on failure. What is left is whether the checked-in
+    // file matches, which the volatile-evidence policy decides
+    // (scripts/ci/volatile-evidence.mjs), so it is reported, not failed.
+    const fields = [...new Set([...Object.keys(measured), ...Object.keys(recorded)])]
+      .filter((field) => !isDeepStrictEqual(measured[field], recorded[field]))
+      .sort();
+    writeFileSync(driftReport, `${JSON.stringify({
+      "@version": "EP-VOLATILE-EVIDENCE-DRIFT-v1",
+      writer: "sync:proof-stats",
+      current: matches,
+      stale: matches ? [] : ["lib/proof-stats.json"],
+      fields,
+    }, null, 2)}\n`);
+  }
+  if (!matches) {
+    console.error(
+      driftReport
+        ? "PROOF STATS: DRIFT — lib/proof-stats.json does not match the executed suite (reported, not failed)"
+        : "PROOF STATS: FAIL — lib/proof-stats.json does not match the executed suite",
+    );
+    console.error(JSON.stringify({ recorded, measured }, null, 2));
+    console.error(
+      "\nFix: run `npm run sync:proof-stats` and commit lib/proof-stats.json.",
+    );
+    console.error(
+      "(Docs state the count as a floor, so no doc edits are needed — only this one file.)",
+    );
+    if (!driftReport) process.exitCode = 1;
+  } else {
+    console.log(
+      `PROOF STATS: PASS (${stats.tests.total} test cases, ${stats.tests.files} files; ${stats.tamarin.verifiedObligations} verified Tamarin lemmas; ${stats.securityCase.claims} executable security claims; ${stats.conformance.vectors} conformance vectors; ${stats.externalImplementation.hostilityCases} external hostility cases)`,
+    );
+  }
+} else {
+  writeFileSync("lib/proof-stats.json", `${JSON.stringify(stats, null, 2)}\n`);
+  console.log(stats);
+}
+}
+
+/**
+ * Every lib/proof-stats.json field that is derived from checked-in sources:
+ * everything except `generatedAt` and the measured `tests` block. It reads
+ * files only (no test run, no security-case execution) and throws on the same
+ * inconsistent-evidence conditions as the writer, so tests and other checks
+ * can compare their claims with the sources instead of with a proof-stats file
+ * that main's volatile-evidence refresh may not have caught up with yet.
+ */
+export function deriveSourceProofStats(root: string = process.cwd()): SourceProofStats {
+const sourcePath = (relative: string): string => join(root, relative);
+const cfg: string = readFileSync(sourcePath("formal/ep_handshake.cfg"), "utf8");
 const composedLifecycleCfg: string = readFileSync(
-  "formal/ep_composed_trust_lifecycle.cfg",
+  sourcePath("formal/ep_composed_trust_lifecycle.cfg"),
   "utf8",
 );
-const als: string = readFileSync("formal/ep_relations.als", "utf8");
-const fedAls: string = readFileSync("formal/ep_federation.als", "utf8");
-const quorumAls: string = readFileSync("formal/ep_quorum.als", "utf8");
-const delegationAls: string = readFileSync("formal/ep_delegation.als", "utf8");
+const als: string = readFileSync(sourcePath("formal/ep_relations.als"), "utf8");
+const fedAls: string = readFileSync(sourcePath("formal/ep_federation.als"), "utf8");
+const quorumAls: string = readFileSync(sourcePath("formal/ep_quorum.als"), "utf8");
+const delegationAls: string = readFileSync(sourcePath("formal/ep_delegation.als"), "utf8");
 const redTeam: string = readFileSync(
-  "docs/conformance/RED_TEAM_CASES.md",
+  sourcePath("docs/conformance/RED_TEAM_CASES.md"),
   "utf8",
 );
 const tamarinSummary: string = readFileSync(
-  "formal/tamarin/results/ep_reliance_composed.summary.txt",
+  sourcePath("formal/tamarin/results/ep_reliance_composed.summary.txt"),
   "utf8",
 );
 const conformance: Record<string, any> = JSON.parse(
-  readFileSync("conformance/conformance-manifest.json", "utf8"),
+  readFileSync(sourcePath("conformance/conformance-manifest.json"), "utf8"),
 );
 const external: Record<string, any> = JSON.parse(
-  readFileSync("conformance/external/rust-cleanroom-jdieselny.v1.json", "utf8"),
+  readFileSync(sourcePath("conformance/external/rust-cleanroom-jdieselny.v1.json"), "utf8"),
 );
 const securityCase: Record<string, any> = JSON.parse(
-  readFileSync("security/security-case.json", "utf8"),
+  readFileSync(sourcePath("security/security-case.json"), "utf8"),
 );
 const claimSource: Record<string, any> = JSON.parse(
-  readFileSync("security/claims.v1.json", "utf8"),
+  readFileSync(sourcePath("security/claims.v1.json"), "utf8"),
 );
 const scenarioConformanceBytes: Buffer = readFileSync(
-  "formal/results/formal-runtime-scenario-conformance.v2.json",
+  sourcePath("formal/results/formal-runtime-scenario-conformance.v2.json"),
 );
 const scenarioConformance: Record<string, any> = JSON.parse(
   scenarioConformanceBytes.toString("utf8"),
@@ -534,10 +632,10 @@ const currentTamarinModelHashes = [
   "formal/tamarin/ep_reliance_composed.spthy",
   "formal/tamarin/ep_six_claim_composed.spthy",
 ].map((file) =>
-  createHash("sha256").update(readFileSync(file)).digest("hex"),
+  createHash("sha256").update(readFileSync(sourcePath(file))).digest("hex"),
 );
 const currentTamarinRunnerHash = createHash("sha256")
-  .update(readFileSync("formal/tamarin/run-composed.sh"))
+  .update(readFileSync(sourcePath("formal/tamarin/run-composed.sh")))
   .digest("hex");
 if (
   !tamarinVersion ||
@@ -707,28 +805,7 @@ if (
   );
 }
 
-interface ProofStats {
-  generatedAt: string;
-  tests: Record<string, any>;
-  tla: Record<string, any>;
-  formalScenarioConformance: Record<string, any>;
-  formalEvidenceCoverage: Record<string, any>;
-  alloy: Record<string, any>;
-  tamarin: Record<string, any>;
-  securityCase: Record<string, any>;
-  conformance: Record<string, any>;
-  externalImplementation: Record<string, any>;
-  redTeamCases: number;
-}
-
-const stats: ProofStats = {
-  generatedAt: new Date().toISOString(),
-  tests: {
-    total: j.numTotalTests,
-    files: j.testResults.length,
-    policy:
-      "all platform-applicable cases must pass; platform-specific cases may skip",
-  },
+return {
   tla: {
     invariants: (cfg.match(/^INVARIANT/gm) || []).length,
     composedLifecycleInvariants: (
@@ -807,37 +884,6 @@ const stats: ProofStats = {
   },
   redTeamCases: (redTeam.match(/^### /gm) || []).length,
 };
-
-if (check) {
-  const current: Record<string, unknown> = JSON.parse(
-    readFileSync("lib/proof-stats.json", "utf8"),
-  );
-  const measured: Record<string, unknown> = { ...stats };
-  /** @type {Record<string, unknown>} */
-  const recorded = { ...current };
-  delete measured.generatedAt;
-  delete recorded.generatedAt;
-  if (!isDeepStrictEqual(measured, recorded)) {
-    console.error(
-      "PROOF STATS: FAIL — lib/proof-stats.json does not match the executed suite",
-    );
-    console.error(JSON.stringify({ recorded, measured }, null, 2));
-    console.error(
-      "\nFix: run `npm run sync:proof-stats` and commit lib/proof-stats.json.",
-    );
-    console.error(
-      "(Docs state the count as a floor, so no doc edits are needed — only this one file.)",
-    );
-    process.exitCode = 1;
-  } else {
-    console.log(
-      `PROOF STATS: PASS (${stats.tests.total} test cases, ${stats.tests.files} files; ${stats.tamarin.verifiedObligations} verified Tamarin lemmas; ${stats.securityCase.claims} executable security claims; ${stats.conformance.vectors} conformance vectors; ${stats.externalImplementation.hostilityCases} external hostility cases)`,
-    );
-  }
-} else {
-  writeFileSync("lib/proof-stats.json", `${JSON.stringify(stats, null, 2)}\n`);
-  console.log(stats);
-}
 }
 
 const scriptPath = fileURLToPath(import.meta.url);

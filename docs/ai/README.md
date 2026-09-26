@@ -20,13 +20,19 @@ claims drifting away from the repository.
 - `public/.well-known/emilia-context.json` - machine-readable facts, evidence
   pointers, assumptions, and freshness metadata.
 
-Do not edit generated outputs directly. Run:
+Do not edit generated outputs directly. They are volatile evidence that `main`
+regenerates after merge with the official writer
+(`.github/workflows/volatile-evidence-refresh.yml` runs
+`npm run sync:llm-context` and opens an auto-merging refresh pull request).
+Preview a rendering without touching the checkout:
 
 ```bash
-npm run sync:llm-context
-npm run check:llm-context
+node scripts/generate-llm-context.mjs --write --out-dir /tmp/llm-context
 ```
 
-CI executes the check. A conformance, proof-statistics, security-case, or
-external-evidence change therefore cannot land while the LLM surfaces still
-describe the previous state.
+CI runs `npm run check:llm-context` on every pull request and merge group, but
+there it only reports drift; every input assertion still fails the run, and the
+LLM context tests assert on a fresh rendering. On `main`, CI fails once the
+surfaces have described a previous state for more than 24 hours (one scheduled
+refresh cycle), and npm package publication checks them strictly. See
+`CONTRIBUTING.md#volatile-evidence`.

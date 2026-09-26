@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { deriveSourceProofStats } from '../scripts/generate-proof-stats.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -54,22 +55,28 @@ describe('homepage category contract', () => {
   });
 
   it('binds public proof counts to generated repo evidence instead of stale literals', () => {
+    // The pinned counts are derived from the checked-in sources with the
+    // proof-stats writer's own extraction. lib/proof-stats.json is volatile
+    // evidence main refreshes after merge, so pinning its bytes here would
+    // pass on the pull request that changed a source and then fail on main's
+    // refresh pull request instead.
     const proofStats = JSON.parse(read('lib/proof-stats.json'));
+    const derived = deriveSourceProofStats(ROOT);
     const securityCase = JSON.parse(read('security/security-case.json'));
     const page = read('app/HomePageClient.js');
     const proofBlock = read('components/ProofBlock.js');
 
     expect(proofStats.tests.total).toBeGreaterThan(4500);
     expect(proofStats.tests.files).toBeGreaterThan(200);
-    expect(proofStats.tla.invariants).toBe(26);
-    expect(proofStats.alloy.facts).toBe(35);
-    expect(proofStats.tamarin.verifiedObligations).toBe(20);
-    expect(proofStats.tamarin.deliberatelyUnsafeCounterexamples).toBe(8);
-    expect(proofStats.securityCase.claims).toBe(securityCase.claim_count);
-    expect(proofStats.conformance.vectors).toBeGreaterThan(150);
-    expect(proofStats.externalImplementation.hostilityCases).toBeGreaterThan(350);
+    expect(derived.tla.invariants).toBe(26);
+    expect(derived.alloy.facts).toBe(35);
+    expect(derived.tamarin.verifiedObligations).toBe(20);
+    expect(derived.tamarin.deliberatelyUnsafeCounterexamples).toBe(8);
+    expect(derived.securityCase.claims).toBe(securityCase.claim_count);
+    expect(derived.conformance.vectors).toBeGreaterThan(150);
+    expect(derived.externalImplementation.hostilityCases).toBeGreaterThan(350);
     expect(page).not.toContain('TESTS_PASSED');
-    expect(proofStats.redTeamCases).toBe(86);
+    expect(derived.redTeamCases).toBe(86);
 
     expect(page).toContain("proofStats from '@/lib/proof-stats.json'");
     expect(page).not.toContain('4,220');

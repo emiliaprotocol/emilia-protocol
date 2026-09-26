@@ -35,15 +35,23 @@ design notes.
 
 The LLM surfaces are generated. Do not edit `AI_CONTEXT.md`, `public/llms.txt`,
 `public/llms-full.txt`, or `public/.well-known/emilia-context.json` directly.
-Edit `docs/ai/context-source.v1.json` or the underlying evidence, then run:
+Edit `docs/ai/context-source.v1.json` or the underlying evidence.
+
+Those four files and `lib/proof-stats.json` are volatile evidence that `main`
+regenerates after merge (`.github/workflows/volatile-evidence-refresh.yml`).
+Do not regenerate or commit them in a pull request; CI reports their drift
+without failing. The one exception is a change that adds or removes a security
+claim, which must commit `lib/proof-stats.json` refreshed with
+`npm run sync:proof-stats -- --bootstrap-derived-evidence`. Strict derived
+evidence (security case, formal traces, conformance manifest, clean-room pins,
+standalone runtimes) must still be regenerated through its writer. See
+`CONTRIBUTING.md#volatile-evidence`.
+
+Preview the LLM rendering without touching the checkout:
 
 ```bash
-npm run sync:llm-context
-npm run check:llm-context
+node scripts/generate-llm-context.mjs --write --out-dir /tmp/llm-context
 ```
-
-When tests or conformance vectors change, regenerate their source manifests
-before regenerating LLM context.
 
 ## Verification
 
@@ -51,7 +59,7 @@ For claim-bearing changes, run the narrow tests first, then the applicable
 repository gates:
 
 ```bash
-npm run check:llm-context
+npm run check:llm-context -- --drift-report /tmp/llm-context-drift.json
 npm run check:public-conformance-claims
 npm run check:security-case
 npm run test:run
