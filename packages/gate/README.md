@@ -1258,7 +1258,10 @@ For refunds that must survive a lost Stripe response or process restart, use the
 Gate with `createStripeDurableRefundManifest()`; its receipt must bind the
 connector's tenant and environment, the Stripe account returned by the trusted
 account probe, the payment intent, the amount, and the stable business-system
-operation ID. Configure `createStripeRefundDurableStore()` with the existing
+operation ID. The claim's `tenant_id` is also the tenant Gate reads for receipt
+consumption scope and for a pinned business-authorization tenant, so when
+business authorization is configured its pinned tenant must equal the connector
+tenant. Configure `createStripeRefundDurableStore()` with the existing
 Proposal-to-Effect PostgreSQL attempt tables (the exported
 `PROPOSAL_TO_EFFECT_POSTGRES_DDL` is sufficient; recovery reads the attempt by
 its deterministic binding and does not need `lookup_attempt`), separate
