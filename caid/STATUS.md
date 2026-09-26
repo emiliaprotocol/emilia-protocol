@@ -68,15 +68,17 @@ not represented as native support or author endorsement.
 
 ## Standards status
 
-`draft-schrock-canonical-action-identifier-02` was published as an individual
-Internet-Draft on 2026-08-06. It is not an RFC, an adopted IETF working-group
-item, or IETF endorsement. The draft defines the identifier and the
-profile-bounded mapping algorithm; the IETF archive is authoritative for the
-published revision.
+`draft-schrock-canonical-action-identifier-03` was published as an individual
+Internet-Draft on 2026-09-26 through Datatracker submission 169526. It is not
+an RFC, an adopted IETF working-group item, or IETF endorsement. The draft
+defines the identifier and the profile-bounded mapping algorithm; the IETF
+archive is authoritative for the published revision.
 
-The registry-v4 enum correction is staged for the next Internet-Draft
-revision and is not part of the already published `-02` text until the author
-submits that revision.
+Revision -03 specifies the registry-v4 enum behavior described above: pinned,
+digest-checked value-set snapshots resolved locally, and fail-closed refusal of
+bare, unresolved, mismatched, or out-of-set values. The superseded -02 text,
+published 2026-08-06, does not contain it; its snapshot is retained in
+`../standards/archive/`.
 
 ## Explicit boundaries
 

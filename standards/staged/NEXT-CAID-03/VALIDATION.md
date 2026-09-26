@@ -31,5 +31,27 @@ review revision of the enum-form, own-member, and unpaired-surrogate text.
   The draft text did not change; no grammar it states admits a trailing line
   feed.
 
-Datatracker has not published this packet. Author review and submission are
-still required; the published -02 archive remains authoritative until then.
+When these checks ran, Datatracker had not yet published this packet; the
+publication check below records the later posting.
+
+## Publication check
+
+Checked on 2026-09-26 after posting:
+
+- The Datatracker submission API lists submission 169526 for
+  `draft-schrock-canonical-action-identifier` revision 03 in state `posted`,
+  and the document record shows revision 03 at 2026-09-26T16:30:22Z. No later
+  revision exists.
+- The IETF archive XML has SHA-256
+  `867cad1093063b9a54ecc1de99443248069f2dfb51c05dc4a12073202ba25040` and the
+  archive text has SHA-256
+  `065e62f8de5054030e563c6a6c5427ad573aa0d9c8810380c2581157925a6a67`. Both
+  match `SHA256SUMS.txt` byte-for-byte.
+- The archive HTML differs from the retained render. The archive rendered it
+  with xml2rfc 3.34.1 and its delivery path injects request-specific Cloudflare
+  markup, so the retained render stays the checksum-pinned local form. The
+  posted HTML is that render; it already had no trailing whitespace, so it is
+  byte-identical to the retained render.
+
+Publication is not working-group adoption, RFC status, protocol-owner review,
+implementation interoperability, or deployment evidence.

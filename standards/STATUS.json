@@ -1,10 +1,10 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-09-25",
+  "updated": "2026-09-26",
   "active_datatracker_count": 24,
   "active_schrock_datatracker_count": 21,
   "sole_authored_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted holds a published revision of each of the 20 active sole-authored draft-schrock-* Datatracker records represented in this repository, but not always the current one; the revision field in active_datatracker records the current Datatracker revision as of the updated date. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. AEB-07, AEC-06, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status. September 6 exception: the corrective revisions Quorum-04, Bounded Capability Receipts-05, and Architecture-03 are retained as exact archive-verified XML in their standards/staged provenance packets listed in september_6_2026_corrective_wave, and older standards/posted snapshots for these three names are historical. The fourth corrective revision, AEC-06, was mirrored into standards/posted on 2026-09-26 and is recorded in september_6_2026_aec_posted_snapshot. Later revisions not mirrored into standards/posted, checked against the Datatracker API and the IETF archive on 2026-09-25: Authorization Receipts-13 (posted 2026-09-12) and Presentation Binding-01 (posted 2026-09-12) are retained as exact archive-identical XML in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13 and standards/staged/NEXT-PRESENTATION-BINDING-01; Bounded Capability Receipts-06 (posted 2026-09-09) is not retained in this repository, so the IETF archive is its only source. The standards/posted snapshots of those three names are historical.",
+  "posted_snapshot_policy": "standards/posted holds a published revision of each of the 20 active sole-authored draft-schrock-* Datatracker records represented in this repository, but not always the current one; the revision field in active_datatracker records the current Datatracker revision as of the updated date. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. AEB-07, AEC-06, CAID-03, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status. September 6 exception: the corrective revisions Quorum-04, Bounded Capability Receipts-05, and Architecture-03 are retained as exact archive-verified XML in their standards/staged provenance packets listed in september_6_2026_corrective_wave, and older standards/posted snapshots for these three names are historical. The fourth corrective revision, AEC-06, was mirrored into standards/posted on 2026-09-26 and is recorded in september_6_2026_aec_posted_snapshot. Later revisions not mirrored into standards/posted, checked against the Datatracker API and the IETF archive on 2026-09-25: Authorization Receipts-13 (posted 2026-09-12) and Presentation Binding-01 (posted 2026-09-12) are retained as exact archive-identical XML in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13 and standards/staged/NEXT-PRESENTATION-BINDING-01; Bounded Capability Receipts-06 (posted 2026-09-09) is not retained in this repository, so the IETF archive is its only source. The standards/posted snapshots of those three names are historical.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -105,10 +105,10 @@
         "order": 2,
         "label": "CAID",
         "draft": "draft-schrock-canonical-action-identifier",
-        "revision": "02",
-        "source": "standards/posted/draft-schrock-canonical-action-identifier-02.xml",
+        "revision": "03",
+        "source": "standards/posted/draft-schrock-canonical-action-identifier-03.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/",
-        "snapshot_sha256": "777487b04ac473ad70ff2dd8a0c396657744bb7fd9e92499d4ec0bee67762015",
+        "snapshot_sha256": "867cad1093063b9a54ecc1de99443248069f2dfb51c05dc4a12073202ba25040",
         "runtime_role": "Identifies and profile-matches the exact material action without authorizing it."
       },
       {
@@ -235,10 +235,10 @@
     },
     {
       "draft": "draft-schrock-canonical-action-identifier",
-      "revision": "02",
+      "revision": "03",
       "layer": "material_action_identity_mapping",
       "role": "Typed material-action identity and profile-bounded cross-format matching",
-      "next_action": "Published August 6; use -02 for target-bound tool-call identity and profile-bounded cross-format matching"
+      "next_action": "Published September 26 (Datatracker posting 2026-09-26T16:30:22Z) as an individual Internet-Draft, not adopted; use -03 for target-bound tool-call identity and profile-bounded cross-format matching. It makes enum validation replayable: an external enum reference requires a snapshot or edition label and a SHA-256 pin over the complete JCS values array, resolution is local and exact, and bare, unresolved, digest-mismatched, and out-of-set values fail closed. It also makes the enum definition forms exact, defines required-field presence as a member of the action object itself, makes the RFC 8785 refusal of unpaired surrogates explicit, and records the reference registry's version 3 to version 4 migration, under which eleven active types cannot produce a CAID until their external value sets are pinned. It does not change the Action Object, identifier syntax, digest suites, or mapping algorithm. The archive-identical XML is at standards/posted/draft-schrock-canonical-action-identifier-03.xml and is recorded in september_26_2026_caid_maintenance_wave."
     },
     {
       "draft": "draft-schrock-emilia-eye",
@@ -616,9 +616,9 @@
     "items": [
       {
         "draft": "draft-schrock-canonical-action-identifier-02",
-        "source": "standards/posted/draft-schrock-canonical-action-identifier-02.xml",
+        "source": "standards/archive/draft-schrock-canonical-action-identifier-02.xml",
         "snapshot_sha256": "777487b04ac473ad70ff2dd8a0c396657744bb7fd9e92499d4ec0bee67762015",
-        "state": "published_ietf_archive_verified_exact_local_match"
+        "state": "published_ietf_archive_verified_exact_local_match_superseded_by_03"
       },
       {
         "draft": "draft-schrock-ep-authorization-receipts-10",
@@ -847,6 +847,31 @@
       }
     ]
   },
+  "september_26_2026_caid_maintenance_wave": {
+    "filing_date": "2026-09-26",
+    "datatracker_posted_at": "2026-09-26T16:30:22Z",
+    "item_count": 1,
+    "publication_status": "published_and_ietf_archive_verified_2026_09_26",
+    "filing_order": [
+      "draft-schrock-canonical-action-identifier-03"
+    ],
+    "xml_sha256": "867cad1093063b9a54ecc1de99443248069f2dfb51c05dc4a12073202ba25040",
+    "txt_sha256": "065e62f8de5054030e563c6a6c5427ad573aa0d9c8810380c2581157925a6a67",
+    "html_sha256": "f390d41244319b72cfee77036909c10d89511daa96744b173e748172bc418162",
+    "verification": "Checked on 2026-09-26. The posted XML and TXT are byte-for-byte identical to the immutable IETF archive artifacts and to the submitted source and text render retained in the provenance packet. The posted HTML is the provenance packet's local xml2rfc 3.34.0 render, which was recorded with its trailing whitespace already removed, so the posted copy is byte-identical to it. The archive HTML was rendered by xml2rfc 3.34.1 and its delivery path injects request-specific Cloudflare markup; the checksum-pinned local render remains in the provenance packet. Publication is not working-group adoption, RFC status, protocol-owner review, implementation evidence, deployment evidence, or IETF endorsement.",
+    "provenance_packets": [
+      "standards/staged/NEXT-CAID-03"
+    ],
+    "items": [
+      {
+        "draft": "draft-schrock-canonical-action-identifier-03",
+        "source": "standards/posted/draft-schrock-canonical-action-identifier-03.xml",
+        "snapshot_sha256": "867cad1093063b9a54ecc1de99443248069f2dfb51c05dc4a12073202ba25040",
+        "datatracker_submission_id": 169526,
+        "state": "published_ietf_archive_verified_exact_local_match"
+      }
+    ]
+  },
   "retired_absorbed": [
     {
       "draft": "draft-schrock-ep-assurance-classes-00",
@@ -879,7 +904,7 @@
   "held": [],
   "consolidation_rules": [
     "The canonical four-document surface is presentation-only; it does not retire, merge, replace, update, obsolete, or subordinate any active draft.",
-    "The Architecture-02, CAID-02, AEC-06, and AEB-07 runtime execution spine is a separate navigation view; it does not replace the canonical PRESENTATION surface or the active profile portfolio.",
+    "The Architecture-02, CAID-03, AEC-06, and AEB-07 runtime execution spine is a separate navigation view; it does not replace the canonical PRESENTATION surface or the active profile portfolio.",
     "Architecture-02 absorbs the retired Agent Trust Stack map.",
     "AEC owns component verification, action binding, and evidence satisfaction; it does not define effect or ceremony records.",
     "Quorum owns ordered multi-handshake and distinct-human policy semantics.",

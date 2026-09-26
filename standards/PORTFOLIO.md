@@ -126,7 +126,7 @@ Separately, the **runtime execution spine** is:
 
 1. **Architecture-02** defines the system boundaries and non-collapsing
    decision vocabulary.
-2. **CAID-02** identifies and matches the exact material action.
+2. **CAID-03** identifies and matches the exact material action.
 3. **AEC-06** verifies and composes action-matched evidence into a relying-party
    satisfaction result.
 4. **AEB-07** applies the executor-side admission boundary, including authority
@@ -274,6 +274,20 @@ evidence, one native replay identity per grant of native authority, and the
 contents and verification of a native authorization handoff. It is an
 individual Internet-Draft, not an adopted working-group item. Native-owner
 review and the complete multi-profile conformance gate remain open.
+
+On **September 26, 2026**, CAID-03 was posted through Datatracker submission
+169526. Its XML and TXT were verified byte-for-byte against the immutable IETF
+archive. The revision makes enum validation replayable: external enum
+references require a snapshot or edition label and a SHA-256 pin over the
+complete values array, resolve locally and exactly, and fail closed when bare,
+unresolved, digest-mismatched, or out of set. It makes the enum definition
+forms exact, defines required-field presence as a member of the action object
+itself, makes the RFC 8785 refusal of unpaired surrogates explicit, and moves
+the reference registry from version 3 to version 4, under which eleven active
+types cannot produce a CAID until their external value sets are pinned. It does
+not change the Action Object, identifier syntax, digest suites, or mapping
+algorithm. It is an individual Internet-Draft, not an adopted working-group
+item.
 
 The published line also retains Authority Introduction-03, Quorum-03, Bounded
 Capability Receipts-02, and the other current individual drafts listed in
