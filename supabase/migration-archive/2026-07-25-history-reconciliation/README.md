@@ -29,7 +29,8 @@ or use migration-journal repair to hide a filesystem mismatch.
 
 Because the pending set includes retroactive repairs, production deployment
 uses an ignored private migration work directory containing the public tree
-plus the one private journaled version, and runs Supabase with `--include-all`.
+plus every journaled version the ledger lists in `private_remote_versions`, and
+runs Supabase with `--include-all`.
 The ledger's `deployment_sequence` is the required order. A public checkout
 alone is intentionally not a complete production deployment surface.
 

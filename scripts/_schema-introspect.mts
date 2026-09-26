@@ -3,10 +3,12 @@
 // Shared schema-snapshot fetch for the schema-security gate (db-contract.mjs,
 // migration-reconcile.mjs).
 //
-// Least-privilege by default: when SCHEMA_GATE_DB_URL is set (CI), connect as the
-// dedicated `schema_gate` Postgres role — which can EXECUTE only the two
-// metadata introspection functions and read NO table rows — over the Supabase
-// pooler. The god-mode service-role key never enters CI.
+// Least-privilege by default: when SCHEMA_GATE_DB_URL is set (CI), connect over
+// the Supabase pooler as the dedicated schema CI login, whose only explicit
+// grants are EXECUTE on the two metadata introspection functions and USAGE on
+// schema public. It also holds whatever PUBLIC holds, so its effective
+// authority is bounded by the audit in docs/operations/SCHEMA-GATE-CI.md.
+// The god-mode service-role key never enters CI.
 //
 // Local fallback: if SCHEMA_GATE_DB_URL is absent, use supabase-js with the
 // service-role key from .env.local (developer convenience only).

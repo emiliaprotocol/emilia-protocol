@@ -18,10 +18,14 @@ name: schema-security
 # Required secret, held by the `schema-gate` environment (Settings →
 # Environments → schema-gate → Environment secrets), not as a repository
 # secret:
-#   SCHEMA_GATE_DB_URL — least-privilege pooler connection string for the
-#   read-only `schema_gate` Postgres role (EXECUTE on the two metadata-only
-#   schema introspection functions; cannot read any table rows). The god-mode
-#   service-role key is NOT in CI.
+#   SCHEMA_GATE_DB_URL — pooler connection string for the schema CI login.
+#   docs/operations/SCHEMA-GATE-CI.md moves it from the legacy `schema_gate`
+#   login to `schema_gate_ci_gha`, a member of the NOLOGIN `schema_gate_ci`
+#   group created by migration 20260926035734. The group's explicit grants are
+#   EXECUTE on the two schema-introspection functions and USAGE on public; a
+#   member also holds whatever PUBLIC holds, so the runbook's audit must pass
+#   before the secret points at the new login. The god-mode service-role key
+#   is NOT in CI.
 # Restrict the environment's deployment branches to main. push, schedule,
 # workflow_dispatch on main and pull_request_target all run on refs/heads/main
 # and are admitted; a workflow running on any other ref (including a
@@ -127,7 +131,7 @@ jobs:
         run: |
           if [ -n "$SCHEMA_GATE_DB_URL" ]; then
             echo "have_secrets=true" >> "$GITHUB_OUTPUT"
-            echo "schema_gate credential present — running schema truth checks."
+            echo "schema CI credential present — running schema truth checks."
           else
             echo "have_secrets=false" >> "$GITHUB_OUTPUT"
             if [ "${{ github.event_name }}" = "pull_request_target" ]; then

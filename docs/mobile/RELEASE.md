@@ -26,10 +26,11 @@ Changing one without the others intentionally causes refusal.
 1. Run `npm run check:migration-history`, then construct the ignored private
    deployment workdir described by
    `supabase/migration-archive/2026-07-25-history-reconciliation/README.md`.
-   It must contain the public executable migrations plus the one quarantined
-   private historical version. Run `supabase migration list --linked --workdir
-   <private-root>` and verify that the remote column equals the ledger's
-   `remote_versions`, while local-only rows equal `deployment_sequence`.
+   It must contain the public executable migrations plus every private
+   journaled version the ledger lists in `private_remote_versions`. Run
+   `supabase migration list --linked --workdir <private-root>` and verify
+   that the remote column equals the ledger's `remote_versions`, while
+   local-only rows equal `deployment_sequence`.
    Then run `supabase db push --linked --dry-run --include-all --workdir
    <private-root>` and require the exact same pending order. Never create
    placeholders or repair the remote journal to force parity.
