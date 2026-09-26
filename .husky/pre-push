@@ -53,11 +53,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     exit 1
   fi
 
-  # No proof-stats or LLM-context guard here any more. lib/proof-stats.json
-  # and the four LLM context artifacts are volatile evidence that main
-  # regenerates after merge (.github/workflows/volatile-evidence-refresh.yml,
-  # scripts/ci/volatile-evidence.mjs); CI reports their drift without failing
-  # and fails main only if a refresh does not land within one cycle.
+  # No proof-stats or LLM-context guard here any more. The measured test
+  # counts in lib/proof-stats.json (and the four LLM context artifacts) are
+  # volatile evidence that main refreshes after merge
+  # (.github/workflows/volatile-evidence-refresh.yml,
+  # scripts/ci/volatile-evidence.mjs), so CI only reports their drift. Any
+  # other drift in those files fails CI on the pull request, with the fix.
 done
 
 exit 0

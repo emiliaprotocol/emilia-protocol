@@ -20,19 +20,29 @@ claims drifting away from the repository.
 - `public/.well-known/emilia-context.json` - machine-readable facts, evidence
   pointers, assumptions, and freshness metadata.
 
-Do not edit generated outputs directly. They are volatile evidence that `main`
-regenerates after merge with the official writer
-(`.github/workflows/volatile-evidence-refresh.yml` runs
-`npm run sync:llm-context` and opens an auto-merging refresh pull request).
+Do not edit generated outputs directly. Edit their declared source or the
+underlying evidence, then run:
+
+```bash
+npm run sync:llm-context
+npm run check:llm-context
+```
+
+CI runs the check strictly on every pull request, merge group and push: the
+outputs are rendered only from checked-in inputs, so a conformance, security
+case, standards or context-source change cannot land while the LLM surfaces
+still describe the previous state. The one figure that may lag is the
+automated test count, which the surfaces take from `lib/proof-stats.json`:
+`main` refreshes those counts after merge
+(`.github/workflows/volatile-evidence-refresh.yml` runs `npm run
+sync:proof-stats` and `npm run sync:llm-context` and opens an auto-merging
+refresh pull request), so they may lag the source revision by one refresh
+cycle. The surfaces label that value as the test-count snapshot, and npm
+package publication checks all of it strictly. See
+`CONTRIBUTING.md#volatile-evidence`.
+
 Preview a rendering without touching the checkout:
 
 ```bash
 node scripts/generate-llm-context.mjs --write --out-dir /tmp/llm-context
 ```
-
-CI runs `npm run check:llm-context` on every pull request and merge group, but
-there it only reports drift; every input assertion still fails the run, and the
-LLM context tests assert on a fresh rendering. On `main`, CI fails once the
-surfaces have described a previous state for more than 24 hours (one scheduled
-refresh cycle), and npm package publication checks them strictly. See
-`CONTRIBUTING.md#volatile-evidence`.

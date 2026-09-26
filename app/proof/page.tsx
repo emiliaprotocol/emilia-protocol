@@ -252,9 +252,11 @@ export default async function ProofPage() {
               margin: 0,
             }}
           >
-            Evidence snapshot: <time dateTime={proofStats.generatedAt}>{proofStats.generatedAt}</time>
+            Test-count snapshot: <time dateTime={proofStats.generatedAt}>{proofStats.generatedAt}</time>
             {' · '}Source revision: {SOURCE_REVISION === 'main' ? 'local/main preview' : SOURCE_REVISION.slice(0, 12)}
-            {' · '}Generated from repository manifests; CI rejects drift.
+            {' · '}Generated from repository manifests. CI requires the security case, formal traces and conformance
+            manifest to be current for this revision; the test counts are refreshed after merge and may lag it by one
+            refresh cycle.
           </p>
         </section>
 
@@ -805,9 +807,14 @@ echo "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88  /tmp/tla
 TLA2TOOLS_JAR=/tmp/tla2tools.jar npm run check:formal-traces
 npm run conformance:aeb-1
 npm run conformance
-npm run check:proof-stats
+npm run check:proof-stats -- --drift-report /tmp/proof-stats-drift.json
 npm run check:llm-context`}
               </pre>
+              <p style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 16, marginBottom: 0 }}>
+                On <code>main</code>, <code>check:proof-stats</code> with <code>--drift-report</code> re-runs the suite and
+                fails on every derived proof field, but only records a test-count lag, because the test counts are
+                refreshed after merge. Without the flag it also fails on that lag.
+              </p>
               <p style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 16, marginBottom: 0 }}>
                 The Gate reference proof joins local examples and focused service-boundary tests. It uses generated keys,
                 in-memory state, and mock provider behavior; it is not evidence of a real human, external bank,

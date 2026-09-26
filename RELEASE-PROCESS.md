@@ -80,11 +80,12 @@ npm run check:release-chain
 npm run build
 ```
 
-`check:proof-stats` and `check:llm-context` are strict here, unlike on pull
-requests: `lib/proof-stats.json` and the four LLM context artifacts are volatile
-evidence that `main` refreshes after merge, so release from a `main` commit on
-which the `chore(evidence): refresh volatile evidence` pull request has landed
-(see `CONTRIBUTING.md#volatile-evidence`).
+`check:proof-stats` is strict here, unlike on pull requests, where drift in
+the measured test counts is only reported: `main` refreshes those counts in
+`lib/proof-stats.json` and the four LLM context artifacts after merge, so
+release from a `main` commit on which the
+`chore(evidence): refresh volatile evidence` pull request has landed (see
+`CONTRIBUTING.md#volatile-evidence`). `check:llm-context` is strict everywhere.
 
 CI supplies pinned versions of external formal, language, and packaging
 toolchains where required. The package-specific publisher workflow named in the

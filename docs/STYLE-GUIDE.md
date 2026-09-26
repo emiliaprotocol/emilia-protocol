@@ -12,6 +12,6 @@ Do not maintain a second phrase list here. Before changing public copy:
 2. Preserve the complete-mediation and relying-party-pinned trust boundaries.
 3. Run `node scripts/check-language-governance.js`.
 4. If generated LLM surfaces are affected, edit their declared source
-   (`docs/ai/context-source.v1.json`); do not hand-edit generated context
-   files. `main` regenerates them after merge; preview with
-   `node scripts/generate-llm-context.mjs --write --out-dir /tmp/llm-context`.
+   (`docs/ai/context-source.v1.json`) and run `npm run sync:llm-context`
+   followed by `npm run check:llm-context`; do not hand-edit generated context
+   files. Only their test counts are refreshed by `main` after merge.

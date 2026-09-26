@@ -37,16 +37,17 @@ The LLM surfaces are generated. Do not edit `AI_CONTEXT.md`, `public/llms.txt`,
 `public/llms-full.txt`, or `public/.well-known/emilia-context.json` directly.
 Edit `docs/ai/context-source.v1.json` or the underlying evidence.
 
-Those four files and `lib/proof-stats.json` are volatile evidence that `main`
-regenerates after merge (`.github/workflows/volatile-evidence-refresh.yml`).
-Do not regenerate or commit them in a pull request; CI reports their drift
-without failing, but a pull request that changes one of them must change it to
-exactly what the writers produce. The one required refresh is a change that
-adds or removes a security claim, which must commit `lib/proof-stats.json`
-regenerated with `npm run sync:proof-stats`. Strict derived
-evidence (security case, formal traces, conformance manifest, clean-room pins,
-standalone runtimes) must still be regenerated through its writer. See
-`CONTRIBUTING.md#volatile-evidence`.
+The measured test counts in `lib/proof-stats.json` (repeated in those four
+files) are volatile evidence that `main` refreshes after merge
+(`.github/workflows/volatile-evidence-refresh.yml`); do not update them in a
+pull request. Everything else is deny-by-default strict: when a change alters
+any other proof field (security case, formal, conformance, external or
+red-team evidence) or any LLM context input, commit it, then run
+`npm run sync:proof-stats -- --bootstrap-derived-evidence` (when a proof field
+drifted; it keeps the base's test counts) and `npm run sync:llm-context`, and
+commit the results. Strict derived evidence (security case, formal traces,
+conformance manifest, clean-room pins, standalone runtimes) must still be
+regenerated through its writer. See `CONTRIBUTING.md#volatile-evidence`.
 
 Preview the LLM rendering without touching the checkout:
 
@@ -60,7 +61,7 @@ For claim-bearing changes, run the narrow tests first, then the applicable
 repository gates:
 
 ```bash
-npm run check:llm-context -- --drift-report /tmp/llm-context-drift.json
+npm run check:llm-context
 npm run check:public-conformance-claims
 npm run check:security-case
 npm run test:run
