@@ -350,7 +350,7 @@ authenticated reconciliation.
 is used when independently encoded representations must be compared. It is not
 a mandatory second mapping when the consequence-owning PEP already derives and
 enforces a current decision over the final operation.
-[AEC-06](standards/staged/NEXT-AEC-06/UPLOAD-THIS/draft-schrock-ep-authorization-evidence-chain-06.xml)
+[AEC-06](standards/posted/draft-schrock-ep-authorization-evidence-chain-06.xml)
 is used when the relying party requires several evidence legs. Authorization
 Receipts, Human Authorization Binding, and Authority Introduction remain
 available profiles for deployments that need them; they are not prerequisites

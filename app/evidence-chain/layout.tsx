@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Authorization Evidence Chain -05 — Evidence Satisfaction for One Exact Action',
+  title: 'Authorization Evidence Chain -06 — Evidence Satisfaction for One Exact Action',
   description:
-    'Document 04 in the EMILIA canonical path. EP-AEC -05 evaluates whether natively verified, '
+    'Document 04 in the EMILIA canonical path. EP-AEC -06 evaluates whether natively verified, '
     + 'action-matched evidence satisfies a relying party’s explicit requirement for one exact '
     + 'material action. SATISFIED is evidence, not local authorization, execution, or proof of complete mediation.',
   alternates: { canonical: '/evidence-chain' },
   openGraph: {
-    title: 'EP-AEC -05 — evidence satisfaction for one exact action',
+    title: 'EP-AEC -06 — evidence satisfaction for one exact action',
     description:
       'The composition object and verifier that checks required artifacts under their native '
       + 'rules, matches them to one exact material action, and returns SATISFIED or UNSATISFIED. '

@@ -1,10 +1,10 @@
 # Posted Draft Snapshots
 
 This directory keeps local source snapshots for revisions already published on
-the IETF Datatracker. It contains the current published revision of all 20
-sole-authored records represented in this repository, plus the locally retained
-coauthored Memory Projection Record snapshot. Datatracker is
-authoritative for current revisions and status; see
+the IETF Datatracker. It contains a published revision of each of the 20
+sole-authored records represented in this repository, not always the current
+one, plus the locally retained coauthored Memory Projection Record snapshot.
+Datatracker is authoritative for current revisions and status; see
 [`../STATUS.json`](../STATUS.json) for the complete 24-record active inventory,
 including four coauthored records. The GRACE-00 source and renders remain in
 the checksum-pinned `../profiles/NEXT-GRID-CURTAILMENT-00/` packet.
@@ -43,7 +43,7 @@ authoritative for rendered forms.
 - `draft-schrock-emilia-eye-00`
 - `draft-schrock-ep-architecture-02`
 - `draft-schrock-ep-authority-introduction-03`
-- `draft-schrock-ep-authorization-evidence-chain-05`
+- `draft-schrock-ep-authorization-evidence-chain-06`
 - `draft-schrock-ep-authorization-receipts-12`
 - `draft-schrock-ep-bounded-capability-receipts-04`
 - `draft-schrock-ep-bounded-execution-program-00`
@@ -67,7 +67,7 @@ For reader navigation, the canonical evidence path is:
    binds a named-human authorization artifact into an adjacent host record.
 3. [Authority Introduction-03](draft-schrock-ep-authority-introduction-03.xml)
    establishes relying-party-pinned trust roots and scoped authority.
-4. [Authorization Evidence Chain-05](draft-schrock-ep-authorization-evidence-chain-05.xml)
+4. [Authorization Evidence Chain-06](draft-schrock-ep-authorization-evidence-chain-06.xml)
    evaluates whether natively verified, action-matched evidence satisfies the
    relying party's requirement; it never returns `AUTHORIZED`.
 
@@ -79,7 +79,7 @@ subordinate, or demote any active draft.
 
 The runtime path is [Architecture-02](draft-schrock-ep-architecture-02.xml) →
 [CAID-02](draft-schrock-canonical-action-identifier-02.xml) →
-[AEC-05](draft-schrock-ep-authorization-evidence-chain-05.xml) →
+[AEC-06](draft-schrock-ep-authorization-evidence-chain-06.xml) →
 [AEB-07](draft-schrock-action-evidence-boundary-07.xml): system boundaries,
 exact material-action matching, evidence satisfaction, then executor-side
 admission and one-time consequence custody.
@@ -225,6 +225,24 @@ upload candidate. Its XML is byte-for-byte identical to the posted source.
 AEB-04 is retained in `../archive/`. Publication does not establish native-owner
 review, completion of the multi-profile conformance gate, working-group
 adoption, RFC status, or IETF endorsement.
+
+## September 6, 2026 AEC corrective revision
+
+`draft-schrock-ep-authorization-evidence-chain-06` was posted as an active
+individual Internet-Draft through Datatracker submission 168689 (Datatracker
+time 2026-09-06T17:33:02Z), one of the four September 6 corrective revisions.
+The snapshot was mirrored into this directory on 2026-09-26. Its XML and TXT
+are byte-for-byte identical to the immutable IETF archive artifacts. The posted
+HTML is the provenance packet's local xml2rfc 3.34.0 render with trailing
+whitespace removed, because the archive delivery path injects request-specific
+Cloudflare markup; the checksum-pinned exact render remains in the provenance
+packet.
+
+The retained `../staged/NEXT-AEC-06` packet is publication provenance, not an
+upload candidate. Its XML is byte-for-byte identical to the posted source.
+AEC-05 is retained in `../archive/`. Publication does not establish
+protocol-owner review, independent implementation, working-group adoption, RFC
+status, or IETF endorsement.
 
 ## September 24, 2026 AEB maintenance revision
 

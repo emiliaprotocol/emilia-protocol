@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "d1ccca1753db61fa79741ceb803bb4715b41ca9a312e2d62409c2db244d40c6e",
+    "input_digest_sha256": "2eb5e2ba082f82b703d76a3cc122c6ebf88e8d438bff4fafeef33d28db154437",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "ea8739021a2efa4807b671059967ea4abd33b8cca645ef2c1ed74292fa3f8542",
-        "bytes": 56767
+        "sha256": "ff64fec11a7a98d4dc1b931b2b3534a3790880b43ff1b3de6afae3df6611e866",
+        "bytes": 59627
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4612,7 +4612,7 @@
       "identifier": "draft-schrock-ep-authorization-evidence-chain",
       "revision_at_snapshot": "06",
       "role": "Heterogeneous evidence composition",
-      "next_action": "Published September 6; use -06 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
+      "next_action": "Published September 6 (Datatracker posting 2026-09-06T17:33:02Z) as an individual Internet-Draft, not adopted; use -06 as the current individual draft. It adds an explicit pre-execution Authorization Bundle component kept separate from the terminal Trust Receipt component, updates implementation status for the structured requirement, native facts, role constraints, required bindings, and replay contract, and updates references without changing the EP-AEC-v1 envelope or converting evidence satisfaction into execution authority. The archive-identical XML is at standards/posted/draft-schrock-ep-authorization-evidence-chain-06.xml and is recorded in september_6_2026_aec_posted_snapshot. Publication is separate from implementation or package release.",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4791,7 +4791,7 @@
           "label": "Authorization Evidence Chain",
           "draft": "draft-schrock-ep-authorization-evidence-chain",
           "revision": "06",
-          "source": "standards/staged/NEXT-AEC-06/UPLOAD-THIS/draft-schrock-ep-authorization-evidence-chain-06.xml",
+          "source": "standards/posted/draft-schrock-ep-authorization-evidence-chain-06.xml",
           "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
           "snapshot_sha256": "69fef7053014c053e274f6396afdc9ea77943b6538876c8e49707d51796c1585",
           "canonical_question": "Does the natively verified, action-matched bundle satisfy the relying party's evidence requirement?",
@@ -4935,8 +4935,8 @@
         },
         {
           "draft": "draft-schrock-ep-authorization-evidence-chain-05",
-          "source": "standards/posted/draft-schrock-ep-authorization-evidence-chain-05.xml",
-          "state": "published_ietf_archive_verified_exact_local_match",
+          "source": "standards/archive/draft-schrock-ep-authorization-evidence-chain-05.xml",
+          "state": "published_ietf_archive_verified_exact_local_match_superseded_by_06",
           "claim": "Verifier-derived distinct-subject evidence constraints with explicit AEC and AEB term ownership",
           "implementation": [
             "packages/verify/src/evidence-chain.ts",

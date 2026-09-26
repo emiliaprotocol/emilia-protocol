@@ -101,11 +101,11 @@ satisfaction:
    SHA-256:
    `1e9ac4a6b1b480fcec389a6bb42da386d9e394648c1ea6e709b966481247ea9f`.
 4. **Authorization Evidence Chain (AEC)** —
-   [`draft-schrock-ep-authorization-evidence-chain-05`](posted/draft-schrock-ep-authorization-evidence-chain-05.xml)
+   [`draft-schrock-ep-authorization-evidence-chain-06`](posted/draft-schrock-ep-authorization-evidence-chain-06.xml)
    composes natively verified, action-matched evidence against a
    relying-party-pinned requirement and returns `SATISFIED` or `UNSATISFIED`,
    never `AUTHORIZED`. Snapshot SHA-256:
-   `1ae4783a0c8e6e68b247191732d8b372c4032416b447a98f0b1040d54faad220`.
+   `69fef7053014c053e274f6396afdc9ea77943b6538876c8e49707d51796c1585`.
 
 This is a presentation surface, not a consolidation or Datatracker
 relationship. It does not retire, merge, replace, update, obsolete, or
@@ -127,7 +127,7 @@ Separately, the **runtime execution spine** is:
 1. **Architecture-02** defines the system boundaries and non-collapsing
    decision vocabulary.
 2. **CAID-02** identifies and matches the exact material action.
-3. **AEC-05** verifies and composes action-matched evidence into a relying-party
+3. **AEC-06** verifies and composes action-matched evidence into a relying-party
    satisfaction result.
 4. **AEB-07** applies the executor-side admission boundary, including authority
    separation and one-time consequence custody.
@@ -171,8 +171,9 @@ XML sources were verified byte-for-byte against the IETF archive:
    identity and profile-bounded matching baseline, superseded by -02 on August 6.
 3. `draft-schrock-ep-architecture-02`: current ecosystem map, applicability
    test, and decision vocabulary.
-4. `draft-schrock-ep-authorization-evidence-chain-04`: current native
-   verification, action binding, and evidence-satisfaction composition.
+4. `draft-schrock-ep-authorization-evidence-chain-04`: the July 21 native
+   verification, action binding, and evidence-satisfaction composition,
+   superseded by -05 on August 3.
 5. `draft-schrock-ep-authorization-receipts-08`: the July 21 organizational
    approval-evidence profile and extension seam, superseded by -09 on August 3.
 6. `draft-schrock-ep-revocation-statement-00`: signed retraction of authority
@@ -244,6 +245,16 @@ archive. The revision defines a neutral native-compilation contract with
 explicit semantic-loss disclosure, exact-action binding, a stable native replay
 unit, and preservation of the AEB lifecycle axes. Native-owner review and the
 complete multi-profile conformance gate remain open.
+
+On **September 6, 2026**, AEC-06 was posted through Datatracker submission
+168689 as one of four corrective revisions. Its XML and TXT were verified
+byte-for-byte against the immutable IETF archive, and the snapshot was
+mirrored into `posted/` on September 26. The revision adds an explicit
+pre-execution Authorization Bundle component, kept separate from the terminal
+Trust Receipt component, and updates implementation status for the
+structured requirement and replay contract. It does not change the EP-AEC-v1
+envelope or convert evidence satisfaction into execution authority. It is an
+individual Internet-Draft, not an adopted working-group item.
 
 On **September 24, 2026**, AEB-06 was posted through Datatracker submission
 169466. Its XML and TXT were verified byte-for-byte against the immutable IETF

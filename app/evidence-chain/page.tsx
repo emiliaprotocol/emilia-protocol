@@ -6,7 +6,7 @@ import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
 
-const DRAFT = 'draft-schrock-ep-authorization-evidence-chain-05';
+const DRAFT = 'draft-schrock-ep-authorization-evidence-chain-06';
 const DT = 'https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/';
 
 const PROBLEM = [
@@ -86,7 +86,7 @@ const FAQ = [
     + 'relying party still chooses trusted issuers, keys, reference time, freshness, and any '
     + 'current-status evidence; a profile that requires live status can require network access.'],
   ['Is this real, or just a draft?',
-    'Revision -05 is filed as an individual IETF Internet-Draft (draft-schrock-ep-authorization-evidence-chain), with '
+    'Revision -06 is filed as an individual IETF Internet-Draft (draft-schrock-ep-authorization-evidence-chain), with '
     + 'a reference verifier in three languages (JavaScript, Python, Go) — one team’s ports in one '
     + 'repository, a cross-language consistency check, not independent reimplementations — that '
     + 'agree over portable conformance vectors. An outside party has reproduced the EP conformance '
@@ -132,7 +132,7 @@ export default function EvidenceChainPage() {
             to authorize the action.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 30, flexWrap: 'wrap' }}>
-            <a href={DT} target="_blank" rel="noopener noreferrer" style={cta.primary}>Read AEC -05</a>
+            <a href={DT} target="_blank" rel="noopener noreferrer" style={cta.primary}>Read AEC -06</a>
             <a href="/protocol" style={cta.secondary}>Back to the four-document path</a>
           </div>
           <p style={{ fontFamily: font.mono, color: color.t3, fontSize: 11, marginTop: 20 }}>{DRAFT}</p>
@@ -217,7 +217,7 @@ export default function EvidenceChainPage() {
           <div style={styles.eyebrow}>STANDING</div>
           <h2 style={{ ...styles.h2, maxWidth: 760 }}>Filed, implemented, reproducibly tested.</h2>
           <p style={{ ...styles.body, maxWidth: 760 }}>
-            EP-AEC -05 is filed as an individual IETF Internet-Draft,{' '}
+            EP-AEC -06 is filed as an individual IETF Internet-Draft,{' '}
             <a href={DT} target="_blank" rel="noopener noreferrer" style={{ color: color.gold, textDecoration: 'none' }}>draft-schrock-ep-authorization-evidence-chain</a>,
             with a reference verifier in three languages — JavaScript, Python, and Go, one team’s
             ports in one repository, a cross-language consistency check, not independent
