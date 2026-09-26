@@ -8,6 +8,29 @@ Historical entries below retain the labels used when they were written.
 
 ## [Unreleased] — source baseline 2026-08-26 (`5d474fd240bc764fa41951c05c39130e38afa7ff`)
 
+### CAID whole-string grammar checks
+
+- The Python CAID port now matches every grammar against the whole string.
+  It used `re.match` with `^...$`, and in Python `$` also matches before a
+  final line feed, so it accepted an amount such as `"96.12\n"`, a digest
+  field, timestamp, or action type ending in a line feed, and a CAID string
+  with a line feed in its type, after its suite, or after a 42-character
+  digest, all of which the JavaScript and Go ports refuse. It could emit a
+  CAID containing a line feed. Its mapping profile checks likewise accepted a
+  JSON Pointer array index or a target field name ending in a line feed.
+- The integer field type follows the value-based number rule in all three
+  ports: `12.0` and `1.2e1` are the integer 12, which the Python port
+  refused as `mistyped_field`. A finite integer beyond 2^53-1 refuses once,
+  as `unsupported_number`, as in the JavaScript reference; the Go port also
+  reported `mistyped_field`. A literal that overflows to infinity refuses as
+  both in every port. DESIGN.md section 3 states both rules.
+- The core conformance corpus moves to version 3 (88 vectors) and records the
+  version 2 corpus by digest; the mapping corpus gains 2 vectors (25). The
+  JavaScript reference is unchanged. No port emits different CAID bytes for
+  an object it already computed; objects the Python port wrongly accepted now
+  refuse, and an integral-float integer field now computes the same CAID in
+  Python as in JavaScript and Go.
+
 ### CAID registry v4 enum pinning
 
 - Advance the CAID action-type registry from v3 to v4. Every currency field

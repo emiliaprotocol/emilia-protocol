@@ -481,6 +481,37 @@
         { "side": "right", "target": "source", "op": "delete", "path": "/constraints/0/time" }
       ],
       "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:missing_source_field:/constraints/0/time" }
+    },
+    {
+      "id": "array-index-trailing-newline-abstains",
+      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "profile", "op": "set", "path": "/rules/7/source_path", "value": "/constraints/0\n/time" },
+        { "side": "right", "target": "profile", "op": "set", "path": "/material_source_paths/7", "value": "/constraints/0\n/time" }
+      ],
+      "repin_after_mutation": ["right"],
+      "expect": { "verdict": "INDETERMINATE", "reasons": ["right:invalid_source_path:/constraints/0\n/time"] }
+    },
+    {
+      "id": "target-field-trailing-newline-abstains",
+      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
+      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
+      "mutations": [
+        { "side": "right", "target": "profile", "op": "set", "path": "/rules", "value": [
+          { "source_path": "/checkout/order_id", "target_field": "order_id", "transform": "copy" },
+          { "source_path": "/checkout/merchant_id", "target_field": "merchant_ref", "transform": "sha256-utf8" },
+          { "source_path": "/checkout/total_amount", "target_field": "total_amount", "transform": "copy" },
+          { "source_path": "/checkout/currency", "target_field": "currency", "transform": "copy" },
+          { "source_path": "/checkout/line_items", "target_field": "items_digest", "transform": "sha256-jcs" },
+          { "source_path": "/checkout/customer_id", "target_field": "customer_ref", "transform": "sha256-utf8" },
+          { "source_path": "/checkout/fulfillment", "target_field": "fulfillment_ref", "transform": "sha256-jcs" },
+          { "source_path": "/checkout/created_at", "target_field": "created_at\n", "transform": "copy" }
+        ] },
+        { "side": "right", "target": "profile", "op": "set", "path": "/material_source_paths", "value": ["/checkout/order_id", "/checkout/merchant_id", "/checkout/total_amount", "/checkout/currency", "/checkout/line_items", "/checkout/customer_id", "/checkout/fulfillment", "/checkout/created_at"] }
+      ],
+      "repin_after_mutation": ["right"],
+      "expect": { "verdict": "INDETERMINATE", "reasons": ["right:invalid_mapping_profile"] }
     }
   ]
 }

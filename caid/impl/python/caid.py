@@ -29,16 +29,22 @@ SHA256_SUITES = frozenset(["jcs-sha256", "cbor-sha256"])
 SHA256_B64URL_LEN = 43
 
 # Grammar (strict, per DESIGN.md sections 2 and 3).
-TYPE_SEGMENT_RE = re.compile(r"^[a-z][a-z0-9-]*$")
-TYPE_VERSION_RE = re.compile(r"^[1-9][0-9]*$")
-SUITE_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-B64URL_RE = re.compile(r"^[A-Za-z0-9_-]+$")
-AMOUNT_RE = re.compile(r"^-?(0|[1-9][0-9]*)(\.[0-9]+)?$")
-DIGEST_FIELD_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+#
+# Every grammar check must cover the whole string. In Python, "$" also
+# matches just before a final "\n", so re.match(r"^...$") accepts
+# "96.12\n" where the JavaScript and Go implementations refuse it. The
+# patterns are therefore anchored with \A and \Z (Python's \Z is the true
+# end of the string) and applied with fullmatch; each is sufficient alone.
+TYPE_SEGMENT_RE = re.compile(r"\A[a-z][a-z0-9-]*\Z")
+TYPE_VERSION_RE = re.compile(r"\A[1-9][0-9]*\Z")
+SUITE_RE = re.compile(r"\A[a-z0-9]+(-[a-z0-9]+)*\Z")
+B64URL_RE = re.compile(r"\A[A-Za-z0-9_-]+\Z")
+AMOUNT_RE = re.compile(r"\A-?(0|[1-9][0-9]*)(\.[0-9]+)?\Z")
+DIGEST_FIELD_RE = re.compile(r"\Asha256:[0-9a-f]{64}\Z")
 # RFC 3339, UTC, trailing Z required. Optional fractional seconds.
 TIMESTAMP_RE = re.compile(
-    r"^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"
-    r"T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]+)?Z$"
+    r"\A([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"
+    r"T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]+)?Z\Z"
 )
 
 # ECMAScript integer safe range. Normative number rule (DESIGN.md
@@ -63,10 +69,10 @@ def _is_valid_action_type(t):
     segments = t.split(".")
     if len(segments) < 2:
         return False
-    if not TYPE_VERSION_RE.match(segments[-1]):
+    if not TYPE_VERSION_RE.fullmatch(segments[-1]):
         return False
     for seg in segments[:-1]:
-        if not TYPE_SEGMENT_RE.match(seg):
+        if not TYPE_SEGMENT_RE.fullmatch(seg):
             return False
     return True
 
@@ -80,7 +86,7 @@ def _days_in_month(year, month):
 
 
 def _is_valid_timestamp(s):
-    m = TIMESTAMP_RE.match(s)
+    m = TIMESTAMP_RE.fullmatch(s)
     if not m:
         return False
     year = int(m.group(1))
@@ -326,7 +332,7 @@ def _resolve_enum_values(field, enum_snapshots=None):
         or not isinstance(values_snapshot, str)
         or len(values_snapshot) == 0
         or not isinstance(values_sha256, str)
-        or not DIGEST_FIELD_RE.match(values_sha256)
+        or not DIGEST_FIELD_RE.fullmatch(values_sha256)
     ):
         return None
     # An embedded `values` member is the snapshot and must verify on its
@@ -350,6 +356,30 @@ def _resolve_enum_values(field, enum_snapshots=None):
     return declared if actual == values_sha256 else None
 
 
+def _is_integral_number(value):
+    # The integer field type under the value-based number rule (DESIGN.md
+    # section 1): the JSON number's IEEE 754 double value is finite and
+    # integral, whatever its literal form, so 12, 12.0, and 1.2e1 are all
+    # the integer 12. This is the JavaScript Number.isInteger test the
+    # other implementations apply. Magnitude is not checked here: an
+    # integer beyond 2^53-1 is type-valid and refuses once, as
+    # unsupported_number, exactly as it does in an undeclared field.
+    # bool is a subclass of int in Python; a JSON boolean is not a number.
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        try:
+            # A plain integer literal too large for a double is infinite
+            # after JSON.parse, and not an integer there.
+            float(value)
+        except OverflowError:
+            return False
+        return True
+    if isinstance(value, float):
+        return math.isfinite(value) and value.is_integer()
+    return False
+
+
 def _check_field_type(value, field, enum_snapshots=None):
     # Returns None when valid, else "mistyped_field" or "invalid_amount".
     ftype = field.get("type")
@@ -358,11 +388,11 @@ def _check_field_type(value, field, enum_snapshots=None):
     if ftype == "amount-string":
         if not isinstance(value, str):
             return "mistyped_field"
-        return None if AMOUNT_RE.match(value) else "invalid_amount"
+        return None if AMOUNT_RE.fullmatch(value) else "invalid_amount"
     if ftype == "digest":
         if not isinstance(value, str):
             return "mistyped_field"
-        return None if DIGEST_FIELD_RE.match(value) else "mistyped_field"
+        return None if DIGEST_FIELD_RE.fullmatch(value) else "mistyped_field"
     if ftype == "enum":
         if not isinstance(value, str):
             return "mistyped_field"
@@ -373,11 +403,7 @@ def _check_field_type(value, field, enum_snapshots=None):
             return "mistyped_field"
         return None if _is_valid_timestamp(value) else "mistyped_field"
     if ftype == "integer":
-        # bool is a subclass of int in Python; a JSON boolean is not an
-        # integer, matching the JS typeof check.
-        if isinstance(value, bool) or not isinstance(value, int):
-            return "mistyped_field"
-        return None
+        return None if _is_integral_number(value) else "mistyped_field"
     if ftype == "boolean":
         return None if isinstance(value, bool) else "mistyped_field"
     if ftype == "object":
@@ -483,9 +509,9 @@ def parse_caid(caid_input):
         return refuse
     if not _is_valid_action_type(action_type):
         return refuse
-    if not SUITE_RE.match(suite):
+    if not SUITE_RE.fullmatch(suite):
         return refuse
-    if not B64URL_RE.match(digest):  # refuses padding and junk
+    if not B64URL_RE.fullmatch(digest):  # refuses padding and junk
         return refuse
     if suite in SHA256_SUITES and len(digest) != SHA256_B64URL_LEN:
         return refuse

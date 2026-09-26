@@ -250,12 +250,32 @@ func integerFromDouble(f float64) (string, bool) {
 	return strconv.FormatInt(int64(f), 10), true
 }
 
-func isJSONNumber(v interface{}) bool {
-	switch v.(type) {
-	case json.Number, float64, int, int64:
+// isIntegralNumber is the integer field type under the value-based rule
+// (DESIGN.md section 1): the decoded JSON number's IEEE 754 double value
+// is finite and integral, whatever its literal form, which is the
+// ECMAScript Number.isInteger test the JavaScript reference applies.
+// Magnitude is not checked here: an integer beyond 2^53-1 is type-valid
+// and refuses once, as unsupported_number, exactly as it does in an
+// undeclared field and in the JavaScript and Python implementations.
+func isIntegralNumber(v interface{}) bool {
+	var f float64
+	switch n := v.(type) {
+	case json.Number:
+		parsed, err := strconv.ParseFloat(string(n), 64)
+		if err != nil {
+			// ErrRange: the literal overflows a double, which is
+			// infinite after JSON.parse and not an integer there.
+			return false
+		}
+		f = parsed
+	case float64:
+		f = n
+	case int, int64:
 		return true
+	default:
+		return false
 	}
-	return false
+	return !math.IsNaN(f) && !math.IsInf(f, 0) && f == math.Trunc(f)
 }
 
 // ---------------------------------------------------------------------------
@@ -645,10 +665,7 @@ func checkFieldType(value interface{}, field map[string]interface{}, enumSnapsho
 		}
 		return ""
 	case "integer":
-		if !isJSONNumber(value) {
-			return "mistyped_field"
-		}
-		if _, isInt := integerLiteral(value); !isInt {
+		if !isIntegralNumber(value) {
 			return "mistyped_field"
 		}
 		return ""
