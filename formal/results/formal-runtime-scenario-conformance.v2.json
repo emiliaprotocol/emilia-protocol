@@ -23,7 +23,7 @@
     },
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "f377f01c09c54a526c5cb90cf09c6d22454990a401324100a023ab7ec03ecb2e"
+      "sha256": "976b314134e32252da6a81c04c4a462a8b106b54c1a299e0818efd47c8d50833"
     },
     {
       "path": "caid/registry/enum-snapshots.mjs",
@@ -1407,7 +1407,7 @@
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "sha256": "f377f01c09c54a526c5cb90cf09c6d22454990a401324100a023ab7ec03ecb2e"
+      "sha256": "976b314134e32252da6a81c04c4a462a8b106b54c1a299e0818efd47c8d50833"
     },
     {
       "path": "scripts/build-standalone-runtimes.mjs",
