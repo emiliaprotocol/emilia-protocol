@@ -75,7 +75,28 @@ test('durable Stripe refund connector on real PostgreSQL: one provider entry, cr
   const recovPassword = crypto.randomBytes(18).toString('base64url');
   const admin = new pg.Client({ connectionString: url });
   await admin.connect();
-  const pools = [];
+  // pg-pool's end() resolves once its client list is empty, before each
+  // client's socket has closed. Wait for every 'remove' before DROP ... FORCE,
+  // or the drop can terminate a closing client whose error nobody handles.
+  const closers = [];
+  const trackedPool = (options) => {
+    const pool = new pg.Pool(options);
+    let open = 0;
+    let drained = null;
+    pool.on('connect', () => { open += 1; });
+    pool.on('remove', () => { open -= 1; if (open === 0) drained?.(); });
+    pool.on('error', () => {});
+    closers.push(async () => {
+      await pool.end().catch(() => {});
+      if (open > 0) {
+        await new Promise((resolve) => {
+          drained = resolve;
+          setTimeout(resolve, 10_000).unref();
+        });
+      }
+    });
+    return pool;
+  };
   try {
     await admin.query(`CREATE DATABASE ${database}`);
     await admin.query(`DO $$ BEGIN
@@ -116,9 +137,8 @@ test('durable Stripe refund connector on real PostgreSQL: one provider entry, cr
       value.password = password;
       return value.toString();
     };
-    const execPool = new pg.Pool({ connectionString: loginUrl(executor, execPassword), max: 16 });
-    const recovPool = new pg.Pool({ connectionString: loginUrl(recovery, recovPassword), max: 4 });
-    pools.push(execPool, recovPool);
+    const execPool = trackedPool({ connectionString: loginUrl(executor, execPassword), max: 16 });
+    const recovPool = trackedPool({ connectionString: loginUrl(recovery, recovPassword), max: 4 });
     const withTarget = async (work) => {
       const client = new pg.Client({ connectionString: target.toString() });
       await client.connect();
@@ -303,7 +323,7 @@ test('durable Stripe refund connector on real PostgreSQL: one provider entry, cr
       assert.equal(stripe.creates.length, 1);
     });
   } finally {
-    for (const pool of pools) await pool.end().catch(() => {});
+    for (const close of closers) await close();
     await admin.query(`DROP DATABASE IF EXISTS ${database} WITH (FORCE)`).catch(() => {});
     for (const role of [executor, recovery, owner]) {
       await admin.query(`DROP ROLE IF EXISTS ${role}`).catch(() => {});
