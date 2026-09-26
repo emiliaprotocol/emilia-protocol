@@ -63,7 +63,7 @@
     },
     {
       "path": "examples/composition/caid-aec-aeb-capsule-v1/run.mts",
-      "sha256": "sha256:935e33a4a33a46b41e7a6827b508bf311b484deb772a17c6201d8295e6fc2a87"
+      "sha256": "sha256:f306a68756efe864f3bd50d3fc84e0dc2f629fd9ebe15b518cdd2ab6fb07a231"
     }
   ],
   "capsule_verifier_scope": {

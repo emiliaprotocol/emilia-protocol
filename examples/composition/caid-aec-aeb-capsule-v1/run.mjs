@@ -16,7 +16,9 @@
  *   node examples/composition/caid-aec-aeb-capsule-v1/run.mjs --check
  *
  * --check exits nonzero when the checked-in frozen artifacts differ from what
- * --emit would write for the current sources.
+ * --emit would write for the current sources. The signed capsule statements'
+ * COSE header encoding currently differs between Node.js major versions, so
+ * emit and check on the repository's .nvmrc version (Node 24).
  */
 import crypto from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
