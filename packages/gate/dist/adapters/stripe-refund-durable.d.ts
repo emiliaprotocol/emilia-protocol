@@ -62,7 +62,7 @@ type Gate = {
         execution?: unknown;
     }>;
 };
-export type StripeRefundDurableStore = Pick<ProposalToEffectPostgresStore, 'reserve' | 'transition' | 'reconcile' | 'lookup' | 'read' | 'recover' | 'durable' | 'ownershipFenced' | 'compareAndSwap' | 'atomicEvidenceBinding'>;
+export type StripeRefundDurableStore = Pick<ProposalToEffectPostgresStore, 'reserve' | 'transition' | 'reconcile' | 'read' | 'recover' | 'durable' | 'ownershipFenced' | 'compareAndSwap' | 'atomicEvidenceBinding'>;
 export interface StripeRefundDurableConnector {
     readonly profile: typeof PROFILE;
     readonly account_id: string;
@@ -70,9 +70,10 @@ export interface StripeRefundDurableConnector {
     readonly environment: string;
 }
 /**
- * Build a manifest whose refund receipt binds the provider account as well as
- * the payment, amount, and operation. The direct adapter's older manifest is
- * intentionally not changed and is refused by this durable connector.
+ * Build a manifest whose refund receipt binds the connector tenant and
+ * environment and the provider account as well as the payment, amount, and
+ * operation. The direct adapter's older manifest is intentionally not changed
+ * and is refused by this durable connector.
  */
 export declare function createStripeDurableRefundManifest(extraActions?: never[]): {
     '@version': string;
@@ -119,7 +120,7 @@ export declare function guardStripeRefundDurable(connector: StripeRefundDurableC
 }): Promise<{
     ok: boolean;
     state: string;
-    reason: string;
+    reason: string | undefined;
     refund?: undefined;
     reliance?: undefined;
     execution?: undefined;
@@ -133,9 +134,10 @@ export declare function guardStripeRefundDurable(connector: StripeRefundDurableC
 }>;
 /**
  * Recovery never calls refunds.create. A bounded list query supplies positive
- * evidence only if exactly one matching refund is found and the page is
- * complete. Empty, incomplete, unavailable, or conflicting results stay
- * INDETERMINATE; none proves NOT_COMMITTED.
+ * evidence only if exactly one matching refund is found, no other listed refund
+ * carries this operation's metadata, and the page is complete. Empty,
+ * incomplete, unavailable, or conflicting results stay INDETERMINATE; none
+ * proves NOT_COMMITTED.
  * The server-secret tag narrows accidental/external collision, but it can be
  * copied by an actor with access to both the Stripe metadata and refund-write
  * credentials. A matching object proves existence, not exclusive authorship.
@@ -143,7 +145,7 @@ export declare function guardStripeRefundDurable(connector: StripeRefundDurableC
 export declare function reconcileStripeRefundDurable(connector: StripeRefundDurableConnector, operation_reference: string): Promise<{
     ok: boolean;
     state: string;
-    reason: string;
+    reason: string | undefined;
     refund_id?: undefined;
 } | {
     ok: boolean;
