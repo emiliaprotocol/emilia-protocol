@@ -16,8 +16,10 @@ EQUIVALENT_UNDER_PROFILE = "EQUIVALENT_UNDER_PROFILE"
 NOT_EQUIVALENT = "NOT_EQUIVALENT"
 INDETERMINATE = "INDETERMINATE"
 
-_FIELD_RE = re.compile(r"^[a-z][a-z0-9_]*$")
-_INDEX_RE = re.compile(r"^(0|[1-9][0-9]*)$")
+# Anchored with \A and \Z and applied with fullmatch: in Python "$" also
+# matches before a final "\n", which the JavaScript and Go ports refuse.
+_FIELD_RE = re.compile(r"\A[a-z][a-z0-9_]*\Z")
+_INDEX_RE = re.compile(r"\A(0|[1-9][0-9]*)\Z")
 _TRANSFORMS = frozenset(["copy", "sha256-utf8", "sha256-jcs", "sha256-hex-to-digest"])
 _LOSS_POLICIES = frozenset(["no-material-field-loss", "declared-source-semantic-loss"])
 _PROFILE_KEYS = frozenset([
@@ -86,7 +88,7 @@ def _at_pointer(value, pointer):
     current = value
     for segment in segments:
         if isinstance(current, list):
-            if not _INDEX_RE.match(segment):
+            if not _INDEX_RE.fullmatch(segment):
                 return {"found": False, "reason": "invalid_source_path"}
             index = int(segment)
             if index >= len(current):
@@ -151,7 +153,7 @@ def _validate_profile(profile, definitions):
             not _has_only_keys(rule, _RULE_KEYS)
             or not _valid_pointer(rule.get("source_path"))
             or not isinstance(rule.get("target_field"), str)
-            or not _FIELD_RE.match(rule["target_field"])
+            or not _FIELD_RE.fullmatch(rule["target_field"])
             or rule["target_field"] == "action_type"
             or rule.get("transform") not in _TRANSFORMS
             or rule["target_field"] in targets
@@ -195,7 +197,7 @@ def _validate_profile(profile, definitions):
             required = []
         for field in required:
             name = field.get("name") if isinstance(field, dict) else None
-            if not isinstance(name, str) or not _FIELD_RE.match(name) or name not in targets:
+            if not isinstance(name, str) or not _FIELD_RE.fullmatch(name) or name not in targets:
                 reasons.append("unmapped_material_field:" + (name if isinstance(name, str) else "?"))
     return list(dict.fromkeys(reasons))
 

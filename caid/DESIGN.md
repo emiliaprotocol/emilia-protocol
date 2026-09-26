@@ -145,6 +145,16 @@ Field types (closed set v1): `string`, `amount-string`, `digest`
 `integer` (JSON integer, for counts only, never money), `boolean`,
 `object`, `array`.
 
+Every grammar in this document, for the identifier's segments and for these
+field types, matches the whole string: a value followed by any further
+character, including a final line feed, does not match. An `integer` field
+holds a JSON number whose IEEE 754 double value is a finite integer, whatever
+its literal form (`12`, `12.0`, and `1.2e1` are all the integer 12). A finite
+integer beyond 2^53-1 is still an integer, so it is not `mistyped_field`;
+step 6 refuses it once, as `unsupported_number`, exactly as it would in an
+undeclared field. A literal that overflows the double range is infinite, not
+an integer, and refuses as both.
+
 An `enum` is a closed value set, not an unconstrained string with a
 documentation label. A member is present when its key is present: `values`
 or `values_ref` written as `null` is present and malformed, never the same
