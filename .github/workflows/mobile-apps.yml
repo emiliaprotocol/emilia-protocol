@@ -106,14 +106,19 @@ jobs:
           # Swift/CryptoKit and Android execute in their native jobs below.
           MOBILE_CONFORMANCE_PORTS: javascript
         run: npm run mobile:conformance
-      - name: Run production adapters and routes
-        run: npx vitest run tests/mobile-production-attestation.test.ts tests/mobile-production-routes.test.ts tests/mobile-production-runtime.test.ts tests/mobile-production-store.test.ts
       - name: Run mobile package hostility suite
         run: node --test packages/mobile/*.test.js
       - name: Execute the production migration contract
         env:
           MOBILE_TEST_DATABASE_URL: postgresql://postgres:mobile-contract@127.0.0.1:5432/mobile_contract
         run: npm run mobile:db-contract
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # Keep the portable SDK/DB checks on Node 20 above; only Vitest needs 22.12+.
+          node-version: '24'
+          cache: npm
+      - name: Run production adapters and routes
+        run: npx vitest run tests/mobile-production-attestation.test.ts tests/mobile-production-routes.test.ts tests/mobile-production-runtime.test.ts tests/mobile-production-store.test.ts
 
   ios:
     runs-on: macos-15

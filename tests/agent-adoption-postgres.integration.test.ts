@@ -25,7 +25,7 @@ const scimAuthorityMigration = readFileSync(
 );
 
 const suite = process.env.INTEGRATION_POSTGRES === '1'
-  ? describe.sequential
+  ? describe
   : describe.skip;
 
 const DATABASE = 'ep_agent_adoption_test';

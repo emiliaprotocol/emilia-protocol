@@ -18,7 +18,8 @@ function mutationRange(file, startMarker, endMarker) {
 
 /** @type {import('@stryker-mutator/core').PartialStrykerOptions} */
 const config = {
-  testRunner: 'vitest',
+  testRunner: 'vitest-5',
+  plugins: ['./scripts/ci/stryker-vitest5-runner.mjs'],
   vitest: { configFile: 'vitest.config.js', related: false },
   ignorePatterns: [
     'sdks/swift-mobile/.build/**',
@@ -111,9 +112,10 @@ const config = {
   timeoutMS: 30000,
   tempDirName: '.stryker-security-tmp',
   cleanTempDir: true,
-  // Run the complete security suite against every mutant. Table-driven and
-  // dynamically assembled protocol vectors cross helper boundaries that
-  // per-test instrumentation can under-attribute.
+  // Collect coverage from the complete security suite, then run each
+  // non-static mutant against its covering tests. Table-driven and dynamically
+  // assembled vectors cross helper boundaries that per-test instrumentation
+  // can under-attribute.
   coverageAnalysis: 'all',
   mutator: {
     // Reason-message wording is not a security oracle; closed verdict values

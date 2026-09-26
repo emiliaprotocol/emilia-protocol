@@ -56,7 +56,7 @@ if (!fenceColumnMatch) {
 const FENCE_DIGEST_COLUMN = fenceColumnMatch[1];
 
 const suite = process.env.INTEGRATION_POSTGRES === '1'
-  ? describe.sequential
+  ? describe
   : describe.skip;
 const DATABASE = 'ep_capability_action_fence_chain_test';
 const GLOBAL_ROLES = ['anon', 'authenticated', 'service_role'] as const;

@@ -19,7 +19,7 @@ const successor = readFileSync(
   'utf8',
 );
 const suite = process.env.INTEGRATION_POSTGRES === '1'
-  ? describe.sequential
+  ? describe
   : describe.skip;
 const DATABASE = 'ep_authority_fresh_replay_test';
 const baseConnection = {
