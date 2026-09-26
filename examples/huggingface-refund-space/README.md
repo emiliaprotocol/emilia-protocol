@@ -7,13 +7,14 @@ No model, payment account, or API key is needed. No money moves.
 
 **Let your agent prepare the action. Decide what it may execute.**
 
-For a ready-to-run folder, download `EMILIA-Hugging-Face-Space.zip` from the
-[community release](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/smolagents-v0.1.1).
-Unzip it, verify `SHA256SUMS`, then install `requirements.txt` with
-`--require-hashes` in a fresh Python 3.12 virtual environment and run
-`python app.py`. The bundle includes the three required
-EMILIA wheels. This is free, Apache-2.0 source and a synthetic demo, not a hosted
-production Gate.
+For a hash-locked, ready-to-run Space folder, build the bundle from this
+checkout using the steps below. Verify its `SHA256SUMS`, then install its
+`requirements.txt` with `--require-hashes` in a fresh Python 3.12 virtual
+environment and run `python app.py`. The bundle includes the three required
+EMILIA wheels. The earlier `smolagents-v0.1.1` release ZIP predates these
+hash-locked instructions; this change does not replace that published asset.
+This is free, Apache-2.0 source and a synthetic demo, not a hosted production
+Gate.
 
 To install just the adapter in your own Python 3.10+ environment:
 

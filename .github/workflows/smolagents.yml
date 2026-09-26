@@ -11,6 +11,7 @@ on:
       - '.github/workflows/smolagents.yml'
       - '.github/workflows/publish-smolagents.yml'
       - '.github/workflow-requirements/smolagents-test.*'
+      - '.github/workflow-requirements/smolagents-ci*'
   workflow_dispatch:
 
 permissions:
