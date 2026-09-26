@@ -11,9 +11,13 @@ import {
   reconcileStripeRefundDurable,
   stripeRefundAttemptDigests,
 } from './stripe-refund-durable.js';
-import { createStripeManifest } from './stripe.js';
+import { createStripeManifest, guardStripeMutation } from './stripe.js';
 import { deriveOAuthTransactionTokenReplayUnit } from '../../verify/aeb-wimse-oauth-adapter.js';
 
+// Read from the manifest rather than a module constant, so a regression test
+// run against older connector code fails for the defect it targets.
+const DURABLE_ACTION_TYPE = createStripeDurableRefundManifest().actions
+  .find((entry) => entry.match?.tool === 'create_refund').action_type;
 const accountId = 'acct_authorized';
 const job = {
   payment_intent: 'pi_refund_test',
@@ -21,7 +25,7 @@ const job = {
   operation_id: 'refund:order-123:01',
 };
 const action = (p = job, account = accountId, tenant = 'tenant:finance', environment = 'test') => ({
-  action_type: 'stripe.refund.create', tenant_id: tenant, environment,
+  action_type: DURABLE_ACTION_TYPE, tenant_id: tenant, environment,
   provider_account_id: account,
   payment_intent: p.payment_intent, amount: p.amount,
   operation_id: p.operation_id,
@@ -216,8 +220,32 @@ test('old manifest lacking account binding refuses; wrong signed account never r
   const old = await guardStripeRefundDurable(legacy.connector, {
     operation_reference: 'refund-job-01', receipt: legacy.harness.mint({ outcome: 'allow_with_signoff' }),
   });
-  assert.equal(old.reason, 'stripe_account_binding_profile_required');
+  assert.equal(old.state, 'REFUSED');
   assert.equal(legacy.stripe.calls.length, 0);
+  assert.equal(legacy.store.row, null);
+  // A durable-typed entry whose field list omits the namespace and account.
+  const weakened = createStripeDurableRefundManifest();
+  weakened.actions = weakened.actions.map((entry) => entry.action_type === DURABLE_ACTION_TYPE
+    ? { ...entry, execution_binding: { required_fields: ['action_type', 'payment_intent', 'amount', 'operation_id'] } }
+    : entry);
+  const weakHarness = createEg1Harness({ action: action() });
+  const weakStripe = provider();
+  const weakStore = new AttemptStore();
+  const weakConnector = await createStripeRefundDurableConnector({
+    stripe: weakStripe, store: weakStore,
+    gate: createGate({
+      manifest: weakened, trustedKeys: [weakHarness.publicKey], approverKeys: weakHarness.approverKeys,
+      quorumPolicy: weakHarness.quorumPolicy, rpId: weakHarness.rpId,
+      allowedOrigins: weakHarness.allowedOrigins, allowEphemeralStore: true,
+    }),
+    tenant_id: 'tenant:finance', environment: 'test',
+    metadata_hmac_sha256_key: new Uint8Array(32).fill(17), resolve_operation: () => job,
+  });
+  assert.deepEqual(await guardStripeRefundDurable(weakConnector, {
+    operation_reference: 'refund-job-01', receipt: weakHarness.mint({ outcome: 'allow_with_signoff' }),
+  }), { ok: false, state: 'REFUSED', reason: 'stripe_account_binding_profile_required' });
+  assert.equal(weakStripe.calls.length, 0);
+  assert.equal(weakStore.row, null);
   const wrongHarness = createEg1Harness({ action: action(job, 'acct_someone_else') });
   const wrongGate = createGate({
     manifest: createStripeDurableRefundManifest(), trustedKeys: [wrongHarness.publicKey],
@@ -405,8 +433,10 @@ test('concurrent fresh approvals for one operation make only one provider entry'
       operation_reference: 'refund-job-01', receipt: harness.mint({ outcome: 'allow_with_signoff' }),
     }),
   ]);
-  assert.equal(results.filter((result) => result.state === 'COMMITTED').length, 1);
-  assert.equal(results.filter((result) => result.reason === 'operation_already_reserved').length, 1);
+  assert.equal(results.filter((result) => result.ok === true && result.state === 'COMMITTED').length, 1);
+  // The loser reads the winner's attempt: still in flight, or already committed.
+  assert.equal(results.filter((result) => result.ok === false
+    && ['operation_already_reserved', 'operation_already_committed'].includes(result.reason)).length, 1);
   assert.equal(stripe.calls.length, 1);
 });
 
@@ -598,4 +628,264 @@ test('a committed refund for a distinct operation on the same payment intent is 
   assert.deepEqual(await reconcileStripeRefundDurable(first.connector, 'refund-job-01'),
     { ok: true, state: 'COMMITTED', refund_id: 're_1' });
   assert.equal(stripe.calls.length, 1);
+});
+
+/** A job whose field reads return `first` for `reads` reads, then `later`. */
+function shiftingJob(field, later, { reads = 2, first = job[field] } = {}) {
+  const counts = { payment_intent: 0, amount: 0, operation_id: 0 };
+  const value = {};
+  for (const key of Object.keys(counts)) {
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      get() {
+        counts[key] += 1;
+        if (key !== field) return job[key];
+        if (typeof later === 'function' && counts[key] > reads) return later();
+        return counts[key] <= reads ? first : later;
+      },
+    });
+  }
+  return { value, counts };
+}
+
+test('the refund job is read once into a frozen snapshot; values that change between reads never reach Stripe', async () => {
+  const evil = [
+    ['amount', -4200, 2],
+    ['amount', '4200', 2],
+    ['payment_intent', 'ch_3NotAPaymentIntent', 1],
+    ['operation_id', `refund:${'x'.repeat(600)}`, 2],
+  ];
+  for (const [field, later, reads] of evil) {
+    // The approval covers the value a later read returns, so only a missing
+    // validation of that value could let it through.
+    const approved = { ...job, [field]: later };
+    const shifting = shiftingJob(field, later, { reads });
+    const value = await fixture({ harness: createEg1Harness({ action: action(approved) }) });
+    const connector = await createStripeRefundDurableConnector({
+      stripe: value.stripe, gate: value.gate, store: value.store,
+      tenant_id: 'tenant:finance', environment: 'test',
+      metadata_hmac_sha256_key: new Uint8Array(32).fill(17), resolve_operation: () => shifting.value,
+    });
+    const result = await guardStripeRefundDurable(connector, {
+      operation_reference: 'refund-job-01', receipt: value.harness.mint({ outcome: 'allow_with_signoff' }),
+    });
+    assert.equal(result.state, 'REFUSED', `${field}=${String(later).slice(0, 20)}`);
+    assert.equal(value.stripe.calls.length, 0, `${field}=${String(later).slice(0, 20)}`);
+    assert.equal(value.store.row, null, `${field}=${String(later).slice(0, 20)}`);
+    assert.deepEqual(shifting.counts, { payment_intent: 1, amount: 1, operation_id: 1 });
+  }
+
+  // Approval for the first-read values: exactly those values are sent, and a
+  // later non-safe-integer read cannot turn the call into a throw.
+  const shifting = shiftingJob('amount', 42.5);
+  const value = await fixture();
+  const connector = await createStripeRefundDurableConnector({
+    stripe: value.stripe, gate: value.gate, store: value.store,
+    tenant_id: 'tenant:finance', environment: 'test',
+    metadata_hmac_sha256_key: new Uint8Array(32).fill(17), resolve_operation: () => shifting.value,
+  });
+  const committed = await guardStripeRefundDurable(connector, {
+    operation_reference: 'refund-job-01', receipt: value.harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  assert.equal(committed.state, 'COMMITTED');
+  assert.equal(value.stripe.calls.length, 1);
+  assert.deepEqual(
+    { ...value.stripe.calls[0].params, metadata: value.stripe.calls[0].params.metadata.emilia_operation_id },
+    { payment_intent: job.payment_intent, amount: job.amount, metadata: job.operation_id },
+  );
+  assert.deepEqual(shifting.counts, { payment_intent: 1, amount: 1, operation_id: 1 });
+
+  const refusals = {
+    throwingGetter: () => shiftingJob('amount', () => { throw new Error('getter'); }, { reads: 0 }).value,
+    // `then` answers undefined so the await succeeds and the field read throws.
+    throwingProxy: () => new Proxy({}, { get(_t, key) { if (key === 'then') return undefined; throw new Error('trap'); } }),
+    fractional: () => ({ ...job, amount: 42.5 }),
+    stringifiedIntent: () => ({ ...job, payment_intent: { toString: () => job.payment_intent } }),
+  };
+  for (const [name, resolver] of Object.entries(refusals)) {
+    const refused = await fixture();
+    const refusedConnector = await createStripeRefundDurableConnector({
+      stripe: refused.stripe, gate: refused.gate, store: refused.store,
+      tenant_id: 'tenant:finance', environment: 'test',
+      metadata_hmac_sha256_key: new Uint8Array(32).fill(17), resolve_operation: resolver,
+    });
+    assert.deepEqual(await guardStripeRefundDurable(refusedConnector, {
+      operation_reference: 'refund-job-01', receipt: refused.harness.mint({ outcome: 'allow_with_signoff' }),
+    }), { ok: false, state: 'REFUSED', reason: 'refund_operation_invalid' }, name);
+    assert.equal(refused.stripe.calls.length, 0, name);
+    assert.equal(refused.store.row, null, name);
+  }
+});
+
+test('an approval minted for the durable profile cannot execute on the legacy refund adapter, and the reverse', async () => {
+  const legacyCalls = [];
+  const legacyStripe = { refunds: { async create(params, options) {
+    legacyCalls.push({ params, options });
+    return { id: `re_legacy_${legacyCalls.length}`, ...params };
+  } } };
+  const legacyParams = { payment_intent: job.payment_intent, amount: job.amount, operation_id: job.operation_id };
+  const gateFor = (harness, manifest) => createGate({
+    manifest, trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys,
+    quorumPolicy: harness.quorumPolicy, rpId: harness.rpId,
+    allowedOrigins: harness.allowedOrigins, allowEphemeralStore: true,
+  });
+
+  // Durable approval on the legacy path: neither a legacy Gate nor a durable
+  // Gate lets guardStripeMutation() spend it. It still executes once durably.
+  const durable = await fixture();
+  const receipt = durable.harness.mint({ outcome: 'allow_with_signoff' });
+  for (const manifest of [createStripeManifest(), createStripeDurableRefundManifest()]) {
+    await assert.rejects(guardStripeMutation(gateFor(durable.harness, manifest), legacyStripe, {
+      op: 'refund.create', params: legacyParams, receipt,
+    }), (error) => error.code === 'EMILIA_RECEIPT_REQUIRED');
+  }
+  assert.equal(legacyCalls.length, 0);
+  assert.equal((await guardStripeRefundDurable(durable.connector, {
+    operation_reference: 'refund-job-01', receipt,
+  })).state, 'COMMITTED');
+  assert.equal(durable.stripe.calls.length, 1);
+  // The binding is the profile's own action type.
+  assert.notEqual(DURABLE_ACTION_TYPE, 'stripe.refund.create');
+  const { STRIPE_REFUND_DURABLE_ACTION_TYPE } = await import('./stripe-refund-durable.js');
+  assert.equal(STRIPE_REFUND_DURABLE_ACTION_TYPE, DURABLE_ACTION_TYPE);
+
+  // Legacy approval on the durable path, with and without the durable fields.
+  for (const legacyAction of [
+    { action_type: 'stripe.refund.create', ...legacyParams },
+    { ...action(), action_type: 'stripe.refund.create' },
+  ]) {
+    const legacyHarness = createEg1Harness({ action: legacyAction });
+    const value = await fixture({ harness: legacyHarness });
+    const result = await guardStripeRefundDurable(value.connector, {
+      operation_reference: 'refund-job-01', receipt: legacyHarness.mint({ outcome: 'allow_with_signoff' }),
+    });
+    assert.equal(result.state, 'REFUSED');
+    assert.equal(value.stripe.calls.length, 0);
+    assert.equal(value.store.row, null);
+    // That legacy approval still works on the unchanged legacy path.
+    await guardStripeMutation(gateFor(legacyHarness, createStripeManifest()), legacyStripe, {
+      op: 'refund.create', params: legacyParams, receipt: legacyHarness.mint({ outcome: 'allow_with_signoff' }),
+    });
+  }
+  assert.equal(legacyCalls.length, 2);
+  assert.deepEqual(Object.keys(legacyCalls[0].params).sort(), ['amount', 'payment_intent']);
+});
+
+test('a lost attempt row cannot become a second refund: the first create looks for this operation at Stripe', async () => {
+  // Restore from a backup that predates the attempt, after Stripe's
+  // idempotency cache expired: the matching refund commits, no second create.
+  const stripe = provider();
+  const original = await fixture({ stripe });
+  assert.equal((await guardStripeRefundDurable(original.connector, {
+    operation_reference: 'refund-job-01', receipt: original.harness.mint({ outcome: 'allow_with_signoff' }),
+  })).state, 'COMMITTED');
+  stripe.expireIdempotencyCache();
+  const restored = await fixture({ stripe, store: new AttemptStore() });
+  const afterRestore = await guardStripeRefundDurable(restored.connector, {
+    operation_reference: 'refund-job-01', receipt: restored.harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  assert.equal(stripe.calls.length, 1);
+  assert.equal(stripe.records.length, 1);
+  assert.equal(afterRestore.ok, true);
+  assert.equal(afterRestore.state, 'COMMITTED');
+  assert.equal(afterRestore.reason, 'provider_effect_already_present');
+  assert.equal(afterRestore.refund.id, 're_1');
+  assert.equal(restored.store.row.state, 'COMMITTED');
+  assert.equal(restored.store.row.evidence.evidence_id, 're_1');
+
+  // A second tenant on the same account, with its own separately minted
+  // approval: the existing refund carries this operation ID, so it conflicts.
+  const other = await fixture({ stripe, tenantId: 'tenant:other' });
+  assert.deepEqual(await guardStripeRefundDurable(other.connector, {
+    operation_reference: 'refund-job-01', receipt: other.harness.mint({ outcome: 'allow_with_signoff' }),
+  }), { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_conflicting' });
+  assert.equal(stripe.calls.length, 1);
+  assert.equal(other.store.row.state, 'INDETERMINATE');
+
+  // Ambiguous, incomplete, or unavailable views never create and never release.
+  const holds = {
+    provider_effect_ambiguous: (s) => { s.records.push({ ...s.records[0], id: 're_2' }); },
+    provider_lookup_incomplete: (s) => { s.setMore(true); },
+    provider_lookup_unavailable: (s) => { s.setListFailure(true); },
+  };
+  for (const [reason, arrange] of Object.entries(holds)) {
+    const held = provider();
+    const first = await fixture({ stripe: held });
+    assert.equal((await guardStripeRefundDurable(first.connector, {
+      operation_reference: 'refund-job-01', receipt: first.harness.mint({ outcome: 'allow_with_signoff' }),
+    })).state, 'COMMITTED', reason);
+    held.expireIdempotencyCache();
+    arrange(held);
+    const lost = await fixture({ stripe: held, store: new AttemptStore() });
+    assert.deepEqual(await guardStripeRefundDurable(lost.connector, {
+      operation_reference: 'refund-job-01', receipt: lost.harness.mint({ outcome: 'allow_with_signoff' }),
+    }), { ok: false, state: 'INDETERMINATE', reason }, reason);
+    assert.equal(held.calls.length, 1, reason);
+    assert.equal(lost.store.row.state, 'INDETERMINATE', reason);
+  }
+
+  // Negative control: a refund for a distinct operation on the same payment
+  // intent does not block this operation's first create.
+  const shared = provider();
+  const distinct = await fixture({ stripe: shared, p: { ...job, operation_id: 'refund:order-123:02' } });
+  assert.equal((await guardStripeRefundDurable(distinct.connector, {
+    operation_reference: 'refund-job-01', receipt: distinct.harness.mint({ outcome: 'allow_with_signoff' }),
+  })).state, 'COMMITTED');
+  const mine = await fixture({ stripe: shared });
+  const mineResult = await guardStripeRefundDurable(mine.connector, {
+    operation_reference: 'refund-job-01', receipt: mine.harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  assert.equal(mineResult.state, 'COMMITTED');
+  assert.equal(mineResult.reason, undefined);
+  assert.equal(shared.calls.length, 2);
+});
+
+test('an operation that already has an attempt reports what that attempt is', async () => {
+  // A Gate refusal before Stripe releases the attempt: later approvals are
+  // told the operation is closed, not that its outcome is uncertain.
+  const released = await fixture();
+  const refusingGate = {
+    check: released.gate.check.bind(released.gate),
+    async run() { return { ok: false, authorization: { reason: 'receipt_expired' } }; },
+  };
+  const refusingConnector = await createStripeRefundDurableConnector({
+    stripe: released.stripe, gate: refusingGate, store: released.store,
+    tenant_id: 'tenant:finance', environment: 'test',
+    metadata_hmac_sha256_key: new Uint8Array(32).fill(17), resolve_operation: () => job,
+  });
+  assert.deepEqual(await guardStripeRefundDurable(refusingConnector, {
+    operation_reference: 'refund-job-01', receipt: released.harness.mint({ outcome: 'allow_with_signoff' }),
+  }), { ok: false, state: 'RELEASED', reason: 'receipt_expired' });
+  assert.deepEqual(await guardStripeRefundDurable(released.connector, {
+    operation_reference: 'refund-job-01', receipt: released.harness.mint({ outcome: 'allow_with_signoff' }),
+  }), { ok: false, state: 'REFUSED', reason: 'operation_closed_released' });
+  assert.equal(released.stripe.calls.length, 0);
+
+  const committed = await fixture();
+  assert.equal((await guardStripeRefundDurable(committed.connector, {
+    operation_reference: 'refund-job-01', receipt: committed.harness.mint({ outcome: 'allow_with_signoff' }),
+  })).state, 'COMMITTED');
+  assert.deepEqual(await guardStripeRefundDurable(committed.connector, {
+    operation_reference: 'refund-job-01', receipt: committed.harness.mint({ outcome: 'allow_with_signoff' }),
+  }), { ok: false, state: 'COMMITTED', reason: 'operation_already_committed' });
+  assert.equal(committed.stripe.calls.length, 1);
+
+  const uncertain = await fixture({ stripe: provider({ loseFirstResponse: true }) });
+  assert.equal((await guardStripeRefundDurable(uncertain.connector, {
+    operation_reference: 'refund-job-01', receipt: uncertain.harness.mint({ outcome: 'allow_with_signoff' }),
+  })).state, 'INDETERMINATE');
+  assert.deepEqual(await guardStripeRefundDurable(uncertain.connector, {
+    operation_reference: 'refund-job-01', receipt: uncertain.harness.mint({ outcome: 'allow_with_signoff' }),
+  }), { ok: false, state: 'INDETERMINATE', reason: 'operation_already_reserved' });
+  assert.equal(uncertain.stripe.calls.length, 1);
+});
+
+test('a receipt whose shape makes the Gate check throw is refused before anything is recorded', async () => {
+  const value = await fixture();
+  const hostile = { get payload() { throw new Error('boom'); } };
+  assert.deepEqual(await guardStripeRefundDurable(value.connector, {
+    operation_reference: 'refund-job-01', receipt: hostile,
+  }), { ok: false, state: 'REFUSED', reason: 'gate_check_failed' });
+  assert.equal(value.store.row, null);
+  assert.equal(value.stripe.calls.length, 0);
 });

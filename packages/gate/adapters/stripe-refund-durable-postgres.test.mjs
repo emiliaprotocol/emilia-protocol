@@ -17,14 +17,19 @@ import {
   guardStripeRefundDurable,
   reconcileStripeRefundDurable,
 } from './stripe-refund-durable.js';
+import { createStripeManifest, guardStripeMutation } from './stripe.js';
 
 const url = process.env.ADMISSION_STORE_POSTGRES_TEST_URL;
 const ACCOUNT = 'acct_1LivePostgres';
 const TENANT = 'tenant:finance';
 const ENV = 'test';
 const JOB = Object.freeze({ payment_intent: 'pi_live_pg', amount: 5000, operation_id: 'refund:live-pg:01' });
+// Read from the manifest, so this contract fails against older connector code
+// for the defect a subtest targets rather than for a renamed constant.
+const DURABLE_ACTION_TYPE = createStripeDurableRefundManifest().actions
+  .find((entry) => entry.match?.tool === 'create_refund').action_type;
 const APPROVED = Object.freeze({
-  action_type: 'stripe.refund.create', tenant_id: TENANT, environment: ENV,
+  action_type: DURABLE_ACTION_TYPE, tenant_id: TENANT, environment: ENV,
   provider_account_id: ACCOUNT, ...JOB,
 });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -132,12 +137,14 @@ test('durable Stripe refund connector on real PostgreSQL: one provider entry, cr
     // TRUNCATE does not fire the row-level immutability triggers; test reset only.
     const reset = () => withTarget((client) => client.query(
       'TRUNCATE proposal_to_effect_private.provider_evidence, proposal_to_effect_private.consequence_attempts'));
-    const makeExecutor = async (stripe, { harness = createEg1Harness({ action: APPROVED }), environment = ENV } = {}) => {
-      const gate = createGate({
+    const makeExecutor = async (stripe, {
+      harness = createEg1Harness({ action: APPROVED }), environment = ENV, wrapGate = (gate) => gate,
+    } = {}) => {
+      const gate = wrapGate(createGate({
         manifest: createStripeDurableRefundManifest(), trustedKeys: [harness.publicKey],
         approverKeys: harness.approverKeys, quorumPolicy: harness.quorumPolicy,
         rpId: harness.rpId, allowedOrigins: harness.allowedOrigins, allowEphemeralStore: true,
-      });
+      }));
       const store = createStripeRefundDurableStore({
         pool: execPool, recovery_pool: recovPool, owner_hmac_sha256_key: new Uint8Array(32).fill(7),
         tenant_id: TENANT, provider_account_id: ACCOUNT, environment,
@@ -160,8 +167,10 @@ test('durable Stripe refund connector on real PostgreSQL: one provider entry, cr
       const stripe = fakeStripe();
       const executors = await Promise.all(Array.from({ length: 8 }, () => makeExecutor(stripe)));
       const results = await Promise.all(executors.map((value) => value.guard()));
-      assert.equal(results.filter((result) => result.state === 'COMMITTED').length, 1);
-      assert.equal(results.filter((result) => result.reason === 'operation_already_reserved').length, 7);
+      assert.equal(results.filter((result) => result.ok === true && result.state === 'COMMITTED').length, 1);
+      // Each loser reads the winner's attempt: still in flight, or already committed.
+      assert.equal(results.filter((result) => result.ok === false
+        && ['operation_already_reserved', 'operation_already_committed'].includes(result.reason)).length, 7);
       assert.equal(stripe.creates.length, 1);
       assert.deepEqual(await rows(), {
         attempts: [{ state: 'COMMITTED', generation: 0, has_evidence: true }], evidence: ['re_live_1'],
@@ -180,7 +189,8 @@ test('durable Stripe refund connector on real PostgreSQL: one provider entry, cr
       await staleWait();
       assert.deepEqual(await restarted.reconcile(), { ok: true, state: 'COMMITTED', refund_id: 're_live_1' });
       assert.equal((await restarted.reconcile()).reason, 'previously_verified');
-      assert.equal((await restarted.guard()).reason, 'operation_already_reserved');
+      assert.deepEqual(await restarted.guard(),
+        { ok: false, state: 'COMMITTED', reason: 'operation_already_committed' });
       assert.equal(stripe.creates.length, 1);
       assert.deepEqual(await rows(), {
         attempts: [{ state: 'COMMITTED', generation: 1, has_evidence: true }], evidence: ['re_live_1'],
@@ -236,6 +246,60 @@ test('durable Stripe refund connector on real PostgreSQL: one provider entry, cr
       const other = await makeExecutor(stripe, { harness: home.harness, environment: 'test-2' });
       assert.equal((await other.guard(receipt)).state, 'REFUSED');
       assert.equal((await home.guard(receipt)).state, 'COMMITTED');
+      assert.equal(stripe.creates.length, 1);
+    });
+
+    await t.test('a lost attempt row commits from the existing refund instead of creating a second one', async () => {
+      await reset();
+      const stripe = fakeStripe();
+      const first = await makeExecutor(stripe);
+      assert.equal((await first.guard()).state, 'COMMITTED');
+      // A restore from a backup that predates the attempt. The fake keeps no
+      // idempotency cache, as after Stripe's retention window.
+      await reset();
+      const restored = await makeExecutor(stripe);
+      const result = await restored.guard();
+      assert.equal(stripe.creates.length, 1);
+      assert.equal(result.ok, true);
+      assert.equal(result.state, 'COMMITTED');
+      assert.equal(result.reason, 'provider_effect_already_present');
+      assert.deepEqual(await rows(), {
+        attempts: [{ state: 'COMMITTED', generation: 0, has_evidence: true }], evidence: ['re_live_1'],
+      });
+      assert.deepEqual(await restored.guard(),
+        { ok: false, state: 'COMMITTED', reason: 'operation_already_committed' });
+      assert.equal(stripe.creates.length, 1);
+    });
+
+    await t.test('a Gate refusal before Stripe closes the operation; later approvals are told so', async () => {
+      await reset();
+      const stripe = fakeStripe();
+      const refusing = await makeExecutor(stripe, {
+        wrapGate: (gate) => ({ check: gate.check.bind(gate),
+          async run() { return { ok: false, authorization: { reason: 'receipt_expired' } }; } }),
+      });
+      assert.deepEqual(await refusing.guard(), { ok: false, state: 'RELEASED', reason: 'receipt_expired' });
+      const later = await makeExecutor(stripe);
+      assert.deepEqual(await later.guard(), { ok: false, state: 'REFUSED', reason: 'operation_closed_released' });
+      assert.equal(stripe.creates.length, 0);
+      assert.deepEqual((await rows()).attempts, [{ state: 'RELEASED', generation: 0, has_evidence: false }]);
+    });
+
+    await t.test('a durable approval cannot also execute on the legacy refund adapter', async () => {
+      await reset();
+      const stripe = fakeStripe();
+      const durable = await makeExecutor(stripe);
+      const receipt = durable.harness.mint({ outcome: 'allow_with_signoff' });
+      const legacyGate = createGate({
+        manifest: createStripeManifest(), trustedKeys: [durable.harness.publicKey],
+        approverKeys: durable.harness.approverKeys, quorumPolicy: durable.harness.quorumPolicy,
+        rpId: durable.harness.rpId, allowedOrigins: durable.harness.allowedOrigins, allowEphemeralStore: true,
+      });
+      await assert.rejects(guardStripeMutation(legacyGate, stripe, {
+        op: 'refund.create', params: { ...JOB }, receipt,
+      }), (error) => error.code === 'EMILIA_RECEIPT_REQUIRED');
+      assert.equal(stripe.creates.length, 0);
+      assert.equal((await durable.guard(receipt)).state, 'COMMITTED');
       assert.equal(stripe.creates.length, 1);
     });
   } finally {

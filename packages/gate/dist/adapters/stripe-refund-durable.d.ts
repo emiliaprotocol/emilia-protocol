@@ -1,6 +1,15 @@
 import { type CreateProposalToEffectPostgresStoreOptions, type ProposalToEffectPostgresAttemptSnapshot, type ProposalToEffectPostgresStore } from '../proposal-to-effect-postgres.js';
 import type { ConsequenceAttemptBinding } from '../proposal-to-effect.js';
 declare const PROFILE = "EMILIA-STRIPE-REFUND-DURABLE-v1";
+/**
+ * The durable profile's own action type. Gate refuses a receipt whose signed
+ * action_type differs from the resolved manifest entry, and both Stripe refund
+ * paths bind action_type as a material execution field. A receipt minted for
+ * this profile therefore cannot execute on the legacy guardStripeMutation()
+ * refund path ('stripe.refund.create'), and a legacy refund receipt cannot
+ * execute here.
+ */
+export declare const STRIPE_REFUND_DURABLE_ACTION_TYPE = "stripe.refund.durable.create";
 type RefundParameters = {
     payment_intent: string;
     amount: number;
@@ -33,25 +42,22 @@ type StripeClient = {
         }>;
     };
 };
+type GateRequirement = {
+    receipt_required?: boolean;
+    action_type?: string;
+    execution_binding?: {
+        required_fields?: string[];
+    };
+};
 type Gate = {
     check(input: Record<string, unknown>): Promise<{
         allow?: boolean;
         reason?: string;
-        requirement?: {
-            receipt_required?: boolean;
-            execution_binding?: {
-                required_fields?: string[];
-            };
-        };
+        requirement?: GateRequirement;
     }>;
     run(input: Record<string, unknown>, effect: (authorization: {
         allow?: boolean;
-        requirement?: {
-            receipt_required?: boolean;
-            execution_binding?: {
-                required_fields?: string[];
-            };
-        };
+        requirement?: GateRequirement;
     }) => Promise<unknown>): Promise<{
         ok?: boolean;
         result?: unknown;
@@ -70,10 +76,10 @@ export interface StripeRefundDurableConnector {
     readonly environment: string;
 }
 /**
- * Build a manifest whose refund receipt binds the connector tenant and
- * environment and the provider account as well as the payment, amount, and
- * operation. The direct adapter's older manifest is intentionally not changed
- * and is refused by this durable connector.
+ * Build a manifest whose refund receipt uses this profile's own action type
+ * and binds the connector tenant and environment and the provider account as
+ * well as the payment, amount, and operation. The direct adapter's older
+ * manifest is intentionally not changed and is refused by this connector.
  */
 export declare function createStripeDurableRefundManifest(extraActions?: never[]): {
     '@version': string;
@@ -113,6 +119,14 @@ export declare function createStripeRefundDurableConnector(input: {
  * correctly. An existing, uncertain or terminal attempt
  * never calls Stripe again, even with fresh receipts or after Stripe's
  * idempotency-key retention window.
+ *
+ * Before the first refunds.create for an operation, the connector lists the
+ * payment intent's refunds under the recovery rules. A matching refund (for
+ * example after the attempt row was lost to a restore) commits from that
+ * refund without creating; a conflicting, ambiguous, incomplete or unavailable
+ * view leaves the attempt INDETERMINATE without creating. The lookup is not
+ * atomic with the create: two setups that lack each other's attempt row and
+ * create at the same instant can both see no refund.
  */
 export declare function guardStripeRefundDurable(connector: StripeRefundDurableConnector, input: {
     operation_reference: string;
@@ -121,16 +135,13 @@ export declare function guardStripeRefundDurable(connector: StripeRefundDurableC
     ok: boolean;
     state: string;
     reason: string | undefined;
-    refund?: undefined;
-    reliance?: undefined;
-    execution?: undefined;
 } | {
-    ok: boolean;
-    state: string;
     refund: {} | null;
     reliance: {} | null;
     execution: {} | null;
-    reason?: undefined;
+    reason?: string | undefined;
+    ok: boolean;
+    state: string;
 }>;
 /**
  * Recovery never calls refunds.create. A bounded list query supplies positive
@@ -154,6 +165,7 @@ export declare function reconcileStripeRefundDurable(connector: StripeRefundDura
     reason?: undefined;
 }>;
 declare const _default: {
+    STRIPE_REFUND_DURABLE_ACTION_TYPE: string;
     createStripeDurableRefundManifest: typeof createStripeDurableRefundManifest;
     stripeRefundAttemptDigests: typeof stripeRefundAttemptDigests;
     createStripeRefundDurableStore: typeof createStripeRefundDurableStore;
