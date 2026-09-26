@@ -23,7 +23,7 @@ const migration = readFileSync(
 );
 
 const suite = process.env.INTEGRATION_POSTGRES === '1'
-  ? describe.sequential
+  ? describe
   : describe.skip;
 
 const DATABASE = 'ep_agent_record_runtime_test';

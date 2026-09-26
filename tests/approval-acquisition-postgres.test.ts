@@ -4,7 +4,7 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const databaseUrl = process.env.APPROVAL_ACQUISITION_TEST_DATABASE_URL;
-const suite = databaseUrl ? describe.sequential : describe.skip;
+const suite = databaseUrl ? describe : describe.skip;
 const original = readFileSync(new URL(
   '../supabase/migrations/20260721171500_ep_approval_acquisition.sql', import.meta.url,
 ), 'utf8');

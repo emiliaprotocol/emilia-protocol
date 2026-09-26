@@ -53,7 +53,7 @@ const reconcileFunction = rolloutMigration.slice(
   reconcileFunctionEnd + '\n$$;'.length,
 );
 const suite = process.env.INTEGRATION_POSTGRES === '1'
-  ? describe.sequential
+  ? describe
   : describe.skip;
 
 const OWNER_ROLE = 'consequence_actuator_store_owner';

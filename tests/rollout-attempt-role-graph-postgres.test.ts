@@ -13,7 +13,7 @@ const migration = readFileSync(
 );
 const suite =
   process.env.INTEGRATION_POSTGRES === "1"
-    ? describe.sequential
+    ? describe
     : describe.skip;
 
 const OWNER_ROLE = "rollout_attempt_store_owner";

@@ -32,7 +32,7 @@ const assertionFunction = rolloutMigration.slice(
   assertionFunctionEnd + '\n$$;'.length,
 );
 const suite = process.env.INTEGRATION_POSTGRES === '1'
-  ? describe.sequential
+  ? describe
   : describe.skip;
 const DATABASE = 'ep_history_reconciliation_test';
 const baseConnection = {

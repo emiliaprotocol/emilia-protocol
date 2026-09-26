@@ -11,7 +11,7 @@ const migration = readFileSync(
   'utf8',
 );
 const suite = process.env.INTEGRATION_POSTGRES === '1'
-  ? describe.sequential
+  ? describe
   : describe.skip;
 
 const DATABASE = 'ep_open_exposure_ledger_test';

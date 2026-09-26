@@ -65,6 +65,9 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Vitest 5 enables clearMocks by default. Preserve the established
+    // cross-test mock-call behavior for this toolchain-only upgrade.
+    clearMocks: false,
     // Exclude Playwright e2e specs from the vitest test runner — they are run
     // via `playwright test`, not vitest. Without this, vitest tries to load
     // the Playwright `test` global and fails with "did not expect

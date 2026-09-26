@@ -25,7 +25,7 @@ const receipts = {
   ignored: 'finding-7-ignored',
 };
 
-const suite = databaseUrl ? describe.sequential : describe.skip;
+const suite = databaseUrl ? describe : describe.skip;
 let pool: pg.Pool;
 
 function createdEvent(eventId: string, receiptId: string) {
