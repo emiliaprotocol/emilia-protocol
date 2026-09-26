@@ -180,11 +180,12 @@ export function setup() {
     // A 401/403 here is almost always a credential problem, not a perf
     // regression: the PERF_TEST_API_KEY was revoked/rotated (e.g. swept by a
     // dormant-key cleanup). Say so loudly so the fix is obvious — re-provision
-    // the "k6 Perf Initiator" entity key and update the PERF_TEST_API_KEY secret.
+    // the "k6 Perf Initiator" entity key and update PERF_TEST_API_KEY in the
+    // `performance` GitHub environment (never a repository secret).
     const authHint = (res.status === 401 || res.status === 403)
       ? ' — PERF_TEST_API_KEY was rejected (likely revoked/rotated). This is a credential '
         + 'issue, NOT a perf regression: re-provision the "k6 Perf Initiator" entity key and '
-        + 'update the PERF_TEST_API_KEY GitHub secret.'
+        + 'update PERF_TEST_API_KEY in the "performance" GitHub environment.'
       : '';
     throw new Error(
       `[setup] Failed to fetch handshake-policies (HTTP ${res.status}): ${res.body}${authHint}`,

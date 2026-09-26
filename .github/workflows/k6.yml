@@ -10,11 +10,11 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
-  # Manual trigger: run against any environment
+  # Manual trigger from main against an emiliaprotocol.ai origin (see the guard step)
   workflow_dispatch:
     inputs:
       base_url:
-        description: 'Target base URL (e.g. https://www.emiliaprotocol.ai)'
+        description: 'Target https origin on emiliaprotocol.ai, no path (e.g. https://www.emiliaprotocol.ai)'
         required: true
         default: 'https://www.emiliaprotocol.ai'
       entity_id:
@@ -39,10 +39,32 @@ on:
 
 jobs:
   baseline:
+    # PERF_TEST_API_KEY is a production API key, so it lives only in the
+    # `performance` environment, whose deployment branches must stay limited
+    # to main, and never as a repository secret: a repository secret reaches
+    # every workflow on every ref, merge-queue candidates included. With the
+    # environment holding the key, the repository-level PERF_TEST_API_KEY can
+    # be deleted. This workflow has no pull_request, pull_request_target,
+    # merge_group or push trigger; the `if:` keeps a manual dispatch from any
+    # other ref from reaching the environment at all.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    environment: performance
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Send the API key only to an emiliaprotocol.ai origin
+        # workflow_dispatch takes base_url from whoever starts the run, and
+        # every k6 request carries the key as a bearer token. Refuse any
+        # target that is not https on emiliaprotocol.ai or a subdomain.
+        env:
+          BASE_URL: ${{ inputs.base_url || 'https://www.emiliaprotocol.ai' }}
+        run: |
+          if [[ ! "$BASE_URL" =~ ^https://([a-z0-9-]+\.)*emiliaprotocol\.ai$ ]]; then
+            echo "::error::base_url must be https://emiliaprotocol.ai or an https subdomain of it, without a path; refusing to send PERF_TEST_API_KEY to '$BASE_URL'."
+            exit 1
+          fi
 
       - name: Install k6
         run: |
@@ -122,14 +144,16 @@ jobs:
       - name: Annotate with summary
         if: always()
         run: |
-          echo "### k6 Performance Results" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Test | Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|------|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          if [ -f k6-smoke-results.json ]; then
-            p95=$(jq -r '[.[] | select(.type=="Point" and .metric=="http_req_duration") | .data.value] | sort | .[length * 0.95 | floor]' k6-smoke-results.json 2>/dev/null || echo "N/A")
-            echo "| Smoke (5 VUs) | p95 latency | ${p95}ms |" >> "$GITHUB_STEP_SUMMARY"
-          fi
-          if [ -f k6-staircase-results.json ]; then
-            hs_p95=$(jq -r '.slos.handshake_create_p95_ms // "N/A"' k6-staircase-results.json 2>/dev/null || echo "N/A")
-            echo "| Staircase (500 VUs) | handshake p95 | ${hs_p95}ms |" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          {
+            echo "### k6 Performance Results"
+            echo "| Test | Metric | Value |"
+            echo "|------|--------|-------|"
+            if [ -f k6-smoke-results.json ]; then
+              p95=$(jq -r '[.[] | select(.type=="Point" and .metric=="http_req_duration") | .data.value] | sort | .[length * 0.95 | floor]' k6-smoke-results.json 2>/dev/null || echo "N/A")
+              echo "| Smoke (5 VUs) | p95 latency | ${p95}ms |"
+            fi
+            if [ -f k6-staircase-results.json ]; then
+              hs_p95=$(jq -r '.slos.handshake_create_p95_ms // "N/A"' k6-staircase-results.json 2>/dev/null || echo "N/A")
+              echo "| Staircase (500 VUs) | handshake p95 | ${hs_p95}ms |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
