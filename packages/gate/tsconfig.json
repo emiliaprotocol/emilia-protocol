@@ -78,6 +78,7 @@
     "src/adapters/aws.ts",
     "src/adapters/supabase.ts",
     "src/adapters/stripe.ts",
+    "src/adapters/stripe-refund-durable.ts",
     "src/adapters/github.ts",
     "src/metrics.ts",
     "src/evidence.ts",
