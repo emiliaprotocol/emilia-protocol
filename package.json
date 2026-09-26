@@ -211,7 +211,7 @@
     "@node-saml/node-saml": "^5.1.0",
     "@remotion/player": "^4.0.526",
     "@sentry/nextjs": "10.75.0",
-    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^13.3.3",
     "@supabase/supabase-js": "^2.116.0",
     "@xmldom/xmldom": "0.8.15",
