@@ -257,10 +257,11 @@ jobs:
     # starts in the first minute, in parallel with them; the reuse is
     # discharged by the required `gate-product` job, which passes only when
     # security-case, language-governance and this suite all succeeded on the
-    # same SHA. Nothing this job builds leaves the runner. lib/proof-stats.json
-    # byte equality is volatile-evidence policy here (advisory on pull
-    # requests, graced on main), so a CI image may carry a lagging proof-stats
-    # label. Releases stay strict: consequence-control-deploy.yml builds
+    # same SHA. Nothing this job builds leaves the runner. Only the measured
+    # test counts in lib/proof-stats.json may lag in CI (volatile-evidence
+    # policy: advisory on pull requests, graced on main; every other field is
+    # strict), so a CI image may carry lagging test counts. Releases stay
+    # strict: consequence-control-deploy.yml builds
     # without the preverification flag, so its builder runs check:proof-stats,
     # and _publish-npm-package.yml runs check:proof-stats and check:llm-context.
     needs: [changes]
@@ -779,16 +780,20 @@ jobs:
     #
     # Volatile evidence (scripts/ci/volatile-evidence.mjs): lib/proof-stats.json
     # and the four LLM context artifacts are regenerated on main by
-    # volatile-evidence-refresh.yml. Their byte-equality checks here only
-    # report drift, and the policy step turns that into a verdict: advisory on
-    # pull_request and merge_group, except that a pull request which changes
-    # one of the files must change it to exactly what the writers produce;
-    # strict on main's own refresh pull request; and on main a failure once
-    # the drift is older than one scheduled refresh cycle. Everything else the two checks verify (a
-    # passing measured suite, the security case, formal and conformance
-    # evidence, every generator assertion) still fails the job. The security
-    # case, formal traces, conformance manifest and clean-room pins stay
-    # strict in the security-case job.
+    # volatile-evidence-refresh.yml. Deny by default: only drift in the
+    # measured test counts (tests.total, tests.files) may lag. The two checks
+    # below fail on every other drift themselves (any other proof field, any
+    # stale LLM context file) and record the rest in drift reports, and the
+    # policy step checks them again and turns test-count drift into a verdict:
+    # advisory on pull_request and merge_group (a pull request that changes
+    # lib/proof-stats.json must keep the base's counts and generatedAt or make
+    # them exact); strict on main's own refresh pull request, which also fails
+    # on any changed path outside the five files; and on main a failure once
+    # the drift is older than the grace window. Everything else the checks
+    # verify (a passing measured suite, the security case, formal and
+    # conformance evidence, every generator assertion) still fails the job.
+    # The security case, formal traces, conformance manifest and clean-room
+    # pins stay strict in the security-case job.
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -801,7 +806,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The merge commit and its first parent: the policy step diffs them
-          # to find the volatile files a pull request changes itself.
+          # to find what a pull request changes itself.
           fetch-depth: 2
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -843,7 +848,7 @@ jobs:
           # .ts during the migration.
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
         run: npm run check:proof-stats -- --security-case-preverified --drift-report "$RUNNER_TEMP/proof-stats-drift.json"
-      - name: Check generated LLM context inputs and report volatile drift
+      - name: Check generated LLM context against its inputs
         run: npm run check:llm-context -- --drift-report "$RUNNER_TEMP/llm-context-drift.json"
       - name: Apply the volatile evidence policy
         env:

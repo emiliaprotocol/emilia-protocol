@@ -378,37 +378,106 @@ export interface ProofStats {
 export type SourceProofStats = Omit<ProofStats, 'generatedAt' | 'tests'>;
 
 /**
- * `generatedAt` dates the last change in the measured evidence, not each
+ * Deny by default: the only lib/proof-stats.json fields whose drift the
+ * volatile-evidence policy (scripts/ci/volatile-evidence.mjs) may treat as lag
+ * instead of failure. They are the measured test counts, which change with
+ * almost every merge and which main refreshes after merge
+ * (.github/workflows/volatile-evidence-refresh.yml). Every other field is
+ * derived from the security case and the formal, conformance, external and
+ * red-team evidence, and drift in any of them fails in every mode.
+ * volatile-evidence.mjs keeps the same list; a node test pins the two.
+ */
+export const ADVISORY_PROOF_STATS_FIELDS: readonly string[] = Object.freeze([
+  "tests.files",
+  "tests.total",
+]);
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/** True for a canonical ISO-8601 UTC instant, as Date#toISOString writes it. */
+export function isCanonicalInstant(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const time = Date.parse(value);
+  return Number.isFinite(time) && new Date(time).toISOString() === value;
+}
+
+/**
+ * The dotted paths of the leaves that differ between a measured and a
+ * recorded proof-stats object, sorted. Objects are compared field by field,
+ * arrays and scalars as a whole. The top-level `generatedAt` is never
+ * compared: it records when the test counts were measured (see
+ * stableGeneratedAt).
+ */
+export function proofStatsDriftFields(
+  measured: unknown,
+  recorded: unknown,
+  prefix: string = "",
+): string[] {
+  if (!isPlainObject(measured) || !isPlainObject(recorded)) {
+    return isDeepStrictEqual(measured, recorded) ? [] : [prefix || "(root)"];
+  }
+  const fields: string[] = [];
+  for (const key of new Set([...Object.keys(measured), ...Object.keys(recorded)])) {
+    if (!prefix && key === "generatedAt") continue;
+    const path = prefix ? `${prefix}.${key}` : key;
+    const left = measured[key];
+    const right = recorded[key];
+    if (isPlainObject(left) && isPlainObject(right)) {
+      fields.push(...proofStatsDriftFields(left, right, path));
+    } else if (!isDeepStrictEqual(left, right)) {
+      fields.push(path);
+    }
+  }
+  return fields.sort();
+}
+
+/**
+ * `generatedAt` records when the recorded test counts were measured, not each
  * execution of the writer. A refresh commit itself triggers another main
- * refresh; writing a new clock value for otherwise identical evidence would
- * create an endless series of refresh pull requests.
+ * refresh, and writing a new clock value for otherwise identical evidence
+ * would create an endless series of refresh pull requests. So the previous
+ * timestamp is kept whenever the measured `tests` block equals the recorded
+ * one, which covers every regeneration that changes nothing (the byte-
+ * identity case) and also a pull request that refreshes only derived fields
+ * (`--bootstrap-derived-evidence`): the counts, and the time they were
+ * measured, stay main's. Derived fields are never carried by this: check
+ * mode compares every one of them with the sources.
  *
- * Keep the previous timestamp only when every other field is identical and
- * the timestamp is a canonical UTC ISO instant. Malformed or future-dated
- * input is not carried forward as provenance.
+ * A previous timestamp that is not a canonical UTC ISO instant, or is later
+ * than this run's, is not carried forward as provenance.
  */
 export function stableGeneratedAt(
   measured: ProofStats,
   previous: unknown,
 ): string {
-  if (previous === null || typeof previous !== 'object' || Array.isArray(previous)) {
+  if (!isPlainObject(previous)) return measured.generatedAt;
+  const earlier = previous.generatedAt;
+  if (!isCanonicalInstant(earlier) || Date.parse(earlier) > Date.parse(measured.generatedAt)) {
     return measured.generatedAt;
   }
-  const recorded = previous as Record<string, unknown>;
-  const earlier = recorded.generatedAt;
-  if (typeof earlier !== 'string') return measured.generatedAt;
-  const millis = Date.parse(earlier);
-  if (!Number.isFinite(millis) || new Date(millis).toISOString() !== earlier ||
-      millis > Date.parse(measured.generatedAt)) {
-    return measured.generatedAt;
+  return isDeepStrictEqual(previous.tests, measured.tests) ? earlier : measured.generatedAt;
+}
+
+/**
+ * The text the writer stores in lib/proof-stats.json, with `generatedAt`
+ * from stableGeneratedAt. A regeneration that changes nothing therefore
+ * writes the same bytes: main's volatile-evidence refresh then finds main
+ * current (publish skipped) and records the observation its grace clock
+ * starts from.
+ */
+export function proofStatsFileText(stats: ProofStats, previousText?: string): string {
+  let previous: unknown = null;
+  if (previousText !== undefined) {
+    try {
+      previous = JSON.parse(previousText);
+    } catch {
+      previous = null;
+    }
   }
-  const measuredWithoutClock: Record<string, unknown> = { ...measured };
-  const recordedWithoutClock: Record<string, unknown> = { ...recorded };
-  delete measuredWithoutClock.generatedAt;
-  delete recordedWithoutClock.generatedAt;
-  return isDeepStrictEqual(measuredWithoutClock, recordedWithoutClock)
-    ? earlier
-    : measured.generatedAt;
+  const generatedAt: string = stableGeneratedAt(stats, previous);
+  return `${JSON.stringify({ ...stats, generatedAt }, null, 2)}\n`;
 }
 
 function generateProofStats(): void {
@@ -454,12 +523,14 @@ if (securityCasePreverified) {
 
 let j: Record<string, any>;
 if (bootstrapDerivedEvidence) {
-  // Some tests deliberately compare generated proof/LLM surfaces with the
-  // security case. When a claim is added, those tests must remain red until a
-  // ground-truth-derived candidate exists. This one-shot bootstrap updates only
-  // the derived evidence fields while retaining the last measured test count;
-  // the normal unflagged run must follow and replaces that count from a complete
-  // passing Vitest report. CI never uses this mode.
+  // Refreshes every derived field (it still re-executes and re-emits the
+  // security case) while keeping the recorded test counts, and with them the
+  // recorded generatedAt (stableGeneratedAt). Pull requests and the evidence
+  // autopilot use it when a change alters a derived field: the derived fields
+  // must be exact, and the test counts stay main's, which the volatile
+  // evidence refresh measures after merge. It is also the bootstrap for a new
+  // claim, whose tests stay red until a ground-truth-derived candidate
+  // exists. Check mode never uses it.
   const recorded = JSON.parse(
     readFileSync("lib/proof-stats.json", "utf8"),
   ) as Record<string, any>;
@@ -541,24 +612,28 @@ const stats: ProofStats = {
 };
 
 if (check) {
-  const current: Record<string, unknown> = JSON.parse(
+  const current: unknown = JSON.parse(
     readFileSync("lib/proof-stats.json", "utf8"),
   );
   const measured: Record<string, unknown> = { ...stats };
-  /** @type {Record<string, unknown>} */
-  const recorded = { ...current };
+  const recorded: Record<string, unknown> = isPlainObject(current) ? { ...current } : {};
   delete measured.generatedAt;
   delete recorded.generatedAt;
-  const matches = isDeepStrictEqual(measured, recorded);
+  const matches = isPlainObject(current) && isDeepStrictEqual(measured, recorded);
+  const fields: string[] = isPlainObject(current)
+    ? proofStatsDriftFields(measured, recorded)
+    : ["(root)"];
+  if (!matches && fields.length === 0) fields.push("(root)");
+  // Deny by default: anything outside the measured test counts.
+  const denied: string[] = fields.filter(
+    (field) => !ADVISORY_PROOF_STATS_FIELDS.includes(field),
+  );
   if (driftReport) {
     // Every check above this point (a passing measured suite, the security
     // case, Tamarin binding, scenario evidence, claim taxonomy) has already
-    // thrown or exited on failure. What is left is whether the checked-in
-    // file matches, which the volatile-evidence policy decides
-    // (scripts/ci/volatile-evidence.mjs), so it is reported, not failed.
-    const fields = [...new Set([...Object.keys(measured), ...Object.keys(recorded)])]
-      .filter((field) => !isDeepStrictEqual(measured[field], recorded[field]))
-      .sort();
+    // thrown or exited on failure. Drift in the measured test counts is
+    // recorded for the volatile-evidence policy (scripts/ci/volatile-evidence.mjs)
+    // and not failed here; drift in any other field still fails below.
     writeFileSync(driftReport, `${JSON.stringify({
       "@version": "EP-VOLATILE-EVIDENCE-DRIFT-v1",
       writer: "sync:proof-stats",
@@ -568,33 +643,38 @@ if (check) {
     }, null, 2)}\n`);
   }
   if (!matches) {
+    const lagOnly: boolean = Boolean(driftReport) && denied.length === 0;
     console.error(
-      driftReport
-        ? "PROOF STATS: DRIFT — lib/proof-stats.json does not match the executed suite (reported, not failed)"
-        : "PROOF STATS: FAIL — lib/proof-stats.json does not match the executed suite",
+      lagOnly
+        ? `PROOF STATS: DRIFT — only the measured test counts differ (${fields.join(", ")}); reported, not failed, because main refreshes them after merge`
+        : driftReport
+          ? `PROOF STATS: FAIL — lib/proof-stats.json fields other than the measured test counts do not match the sources: ${denied.join(", ")}`
+          : "PROOF STATS: FAIL — lib/proof-stats.json does not match the executed suite",
     );
     console.error(JSON.stringify({ recorded, measured }, null, 2));
-    console.error(
-      "\nFix: run `npm run sync:proof-stats` and commit lib/proof-stats.json.",
-    );
-    console.error(
-      "(Docs state the count as a floor, so no doc edits are needed — only this one file.)",
-    );
-    if (!driftReport) process.exitCode = 1;
+    if (!lagOnly) {
+      console.error(
+        driftReport
+          ? "\nFix: commit your change, run `npm run sync:proof-stats -- --bootstrap-derived-evidence` (refreshes every derived field and keeps main's test counts), then `npm run sync:llm-context`, and commit the results."
+          : "\nFix: run `npm run sync:proof-stats` and commit lib/proof-stats.json.",
+      );
+      console.error(
+        "(Docs state the count as a floor, so no doc edits are needed — only the generated files.)",
+      );
+      process.exitCode = 1;
+    }
   } else {
     console.log(
       `PROOF STATS: PASS (${stats.tests.total} test cases, ${stats.tests.files} files; ${stats.tamarin.verifiedObligations} verified Tamarin lemmas; ${stats.securityCase.claims} executable security claims; ${stats.conformance.vectors} conformance vectors; ${stats.externalImplementation.hostilityCases} external hostility cases)`,
     );
   }
 } else {
-  // Preserve byte identity after the refresh has landed on main. This is
-  // deliberately the same all-fields-except-clock comparison as check mode.
-  const previous: unknown = existsSync('lib/proof-stats.json')
-    ? JSON.parse(readFileSync('lib/proof-stats.json', 'utf8'))
-    : null;
-  stats.generatedAt = stableGeneratedAt(stats, previous);
-  writeFileSync("lib/proof-stats.json", `${JSON.stringify(stats, null, 2)}\n`);
-  console.log(stats);
+  const previousText: string | undefined = existsSync("lib/proof-stats.json")
+    ? readFileSync("lib/proof-stats.json", "utf8")
+    : undefined;
+  const text: string = proofStatsFileText(stats, previousText);
+  writeFileSync("lib/proof-stats.json", text);
+  console.log(JSON.parse(text));
 }
 }
 

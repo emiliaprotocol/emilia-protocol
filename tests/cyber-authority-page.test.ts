@@ -19,8 +19,7 @@ const article = read('app/blog/ai-defenders-need-action-authority/page.tsx');
 const articleLayout = read('app/blog/ai-defenders-need-action-authority/layout.tsx');
 const incidentArticle = read('app/blog/credentials-are-not-action-authorization/page.tsx');
 const contextSource = read('docs/ai/context-source.v1.json');
-// Rendered from the current sources; the checked-in copies are volatile
-// evidence main refreshes after merge (tests/helpers/rendered-llm-context.ts).
+// Rendered from the current sources (tests/helpers/rendered-llm-context.ts).
 const { llms: llmsIndex, llmsFull, machineContext } = renderedLlmContext();
 
 describe('Authority for AI Defenders public campaign', () => {

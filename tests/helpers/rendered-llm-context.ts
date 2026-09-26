@@ -19,13 +19,11 @@ let cached: RenderedLlmContext | undefined;
  * The four LLM context artifacts as scripts/generate-llm-context.mjs renders
  * them from the current sources, written to a temporary directory.
  *
- * Tests assert on this rendering, never on the checked-in copies. Those copies
- * are volatile evidence: main regenerates them after merge
- * (.github/workflows/volatile-evidence-refresh.yml), so on a pull request they
- * may lag the sources, and whether they are current is decided by
- * `npm run check:llm-context` under the volatile-evidence policy, not by the
- * test suite. A content test that read the checked-in bytes would pass or fail
- * with that lag instead of with the generator.
+ * Tests assert on this rendering, never on the checked-in copies, so a content
+ * test reports a source or generator problem directly. Whether the checked-in
+ * copies match is `npm run check:llm-context`'s job (strict in CI). Their test
+ * counts come from lib/proof-stats.json, which main refreshes after merge
+ * (.github/workflows/volatile-evidence-refresh.yml).
  */
 export function renderedLlmContext(): RenderedLlmContext {
   if (cached) return cached;

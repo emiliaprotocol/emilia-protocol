@@ -442,8 +442,9 @@ export function checkRepository(root: string): { evidence: any; failures: string
     canonicalMarkdown,
     manifest: readJson(resolve(root, 'conformance/conformance-manifest.json')),
     // Derived from the checked-in sources with the proof-stats writer's own
-    // extraction, not read from lib/proof-stats.json: that file is volatile
-    // evidence main refreshes after merge, so it may lag this checkout.
+    // extraction, not read from lib/proof-stats.json, so a source change is
+    // reported here directly. CI separately holds that file's derived fields
+    // to the sources; only its test counts may lag (main refreshes them).
     proofStats: deriveSourceProofStats(root),
     proofStatus: readFileSync(resolve(root, 'formal/PROOF_STATUS.md'), 'utf8'),
     standardsStatus: readJson(resolve(root, 'standards/STATUS.json')),

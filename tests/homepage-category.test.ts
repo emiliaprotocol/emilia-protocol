@@ -56,10 +56,9 @@ describe('homepage category contract', () => {
 
   it('binds public proof counts to generated repo evidence instead of stale literals', () => {
     // The pinned counts are derived from the checked-in sources with the
-    // proof-stats writer's own extraction. lib/proof-stats.json is volatile
-    // evidence main refreshes after merge, so pinning its bytes here would
-    // pass on the pull request that changed a source and then fail on main's
-    // refresh pull request instead.
+    // proof-stats writer's own extraction, so a source change fails here
+    // directly. CI separately holds lib/proof-stats.json's derived fields to
+    // the sources; only its test counts may lag (main refreshes them).
     const proofStats = JSON.parse(read('lib/proof-stats.json'));
     const derived = deriveSourceProofStats(ROOT);
     const securityCase = JSON.parse(read('security/security-case.json'));

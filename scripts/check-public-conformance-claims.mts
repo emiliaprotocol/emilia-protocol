@@ -194,10 +194,11 @@ function filesUnder(target: string): string[] {
   return files;
 }
 
-// The LLM context artifacts are volatile evidence that main refreshes after
-// merge (scripts/ci/volatile-evidence.mjs), so a checked-in copy may lag its
-// sources. The audit reads what the generator renders from the current
-// sources instead, which is exactly what main publishes once refreshed.
+// The audit reads what the LLM context generator renders from the current
+// sources, which the checked-in copies must equal (check:llm-context is
+// strict in CI), so a stale copy is reported by that check and a claim
+// problem by this audit. Their test counts come from lib/proof-stats.json,
+// which main refreshes after merge (scripts/ci/volatile-evidence.mjs).
 export const GENERATED_LLM_CONTEXT: ReadonlySet<string> = new Set([
   'AI_CONTEXT.md',
   'public/llms.txt',

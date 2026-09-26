@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { renderedLlmContext } from './helpers/rendered-llm-context';
 
 const readJson = (relative) => JSON.parse(fs.readFileSync(new URL(`../${relative}`, import.meta.url), 'utf8'));
-// The generator's output for the current sources, not the checked-in copies,
-// which main refreshes after merge (see tests/helpers/rendered-llm-context.ts).
+// The generator's output for the current sources, not the checked-in copies
+// (see tests/helpers/rendered-llm-context.ts).
 const rendered = renderedLlmContext();
 const context = JSON.parse(rendered.machineContext);
 const manifest = readJson('conformance/conformance-manifest.json');

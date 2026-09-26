@@ -2,10 +2,13 @@ name: Evidence autopilot
 
 # Regenerates the content-addressed derived evidence on a pull request branch
 # with the repository's official writers, so a lockfile bump or an evidence
-# conflict does not need a human regeneration round trip. It covers the strict
-# evidence only (formal traces, conformance manifest, security case): the five
-# volatile files (lib/proof-stats.json and the LLM context) are main's, see
-# volatile-evidence-refresh.yml.
+# conflict does not need a human regeneration round trip. It regenerates the
+# formal traces, the conformance manifest, the security case, every derived
+# field of lib/proof-stats.json and the LLM context, but never measures the
+# suite: the proof-stats test counts (and their generatedAt) stay the base's,
+# because main owns them (volatile-evidence-refresh.yml). Every other drift
+# fails CI (scripts/ci/volatile-evidence.mjs), so this pull request must carry
+# the rest exactly.
 #
 # Runs for same-repository pull requests only:
 #   - every Dependabot pull request (a root lockfile bump always changes the
@@ -123,21 +126,31 @@ jobs:
           git config user.email 'evidence-autopilot@invalid'
           # The security-case writer packs the reviewed tree and refuses a
           # checkout that differs from HEAD, so each stage is committed
-          # locally. Only the strict derived files are staged; anything else a
-          # writer touches stays dirty and stops the next stage. The volatile
-          # files are left to main, so this pull request does not carry them.
+          # locally. Only allowlisted derived files are staged; anything else
+          # a writer touches stays dirty and stops the next stage.
           checkpoint() {
             git add -- \
               formal/results/formal-runtime-scenario-conformance.v2.json \
               conformance/conformance-manifest.json \
-              security/security-case.json
+              security/security-case.json \
+              lib/proof-stats.json \
+              AI_CONTEXT.md \
+              public/llms.txt \
+              public/llms-full.txt \
+              public/.well-known/emilia-context.json
             git commit --quiet --allow-empty --message "local checkpoint: $1"
           }
           npm run sync:formal-traces
           npm run conformance:manifest
           checkpoint 'formal traces and conformance manifest'
-          npm run security-case:emit
-          checkpoint 'security case'
+          # Re-executes and re-emits the security case and refreshes every
+          # derived proof field; the measured test counts and their
+          # generatedAt stay the base's (no suite run), which the pull
+          # request policy accepts and main's refresh replaces after merge.
+          npm run sync:proof-stats -- --bootstrap-derived-evidence
+          checkpoint 'security case and derived proof fields'
+          npm run sync:llm-context
+          checkpoint 'LLM context'
 
       - name: Re-check the regenerated evidence
         env:
@@ -145,6 +158,7 @@ jobs:
         run: |
           npm run check:formal-traces
           npm run conformance:manifest:check
+          npm run check:llm-context
           npm run check:public-conformance-claims
 
       - name: Bundle only the allowlisted derived files

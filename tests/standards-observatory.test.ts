@@ -129,8 +129,7 @@ describe('standards observatory evidence contract', () => {
 
   it('gives both humans and language models the same discovery surfaces', () => {
     const llms = read('public/standards-observatory.llms.txt');
-    // Rendered from the current sources: the checked-in machine context is
-    // volatile evidence main refreshes after merge.
+    // Rendered from the current sources (tests/helpers/rendered-llm-context.ts).
     const context = JSON.parse(renderedLlmContext().machineContext);
     const page = read('app/observatory/ObservatoryClient.tsx');
     expect(llms).toContain('/.well-known/standards-observatory.json');
