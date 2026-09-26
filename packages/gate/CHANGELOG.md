@@ -8,14 +8,18 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 
-- Stripe refunds now require a bounded, business-assigned `operation_id` in the
-  approved action. The adapter derives the same Stripe idempotency key from
-  that ID across fresh receipts and retries, while distinct partial refunds
-  retain distinct keys. A missing or changed ID refuses provider dispatch.
-- This closes the demonstrated mock-provider lost-response/fresh-receipt
-  duplicate-refund path. Callers still need a durable operation journal and
-  authenticated reconciliation outside Stripe's finite idempotency window;
-  these tests are not evidence of a live Stripe or PostgreSQL run.
+- Stripe refunds now require a bounded `operation_id` in the approved action.
+  The caller must assign it from a durable business record and retain it across
+  retries; Gate checks its shape and action binding, not its provenance. The
+  adapter derives the same Stripe idempotency key from that ID even when a
+  fresh receipt is presented, while distinct partial refunds retain distinct
+  keys. Older callers and receipts without the ID fail closed until migrated.
+- Mock-provider tests close the lost-response/fresh-receipt duplicate-effect
+  case while Stripe still retains the key. The adapter may make a second
+  provider call on retry, and Stripe's key cache is finite. An uncertain refund
+  must not be retried blindly or given a new ID; reconcile it against
+  authenticated provider records first. This release does not add durable
+  refund recovery or establish live Stripe/PostgreSQL behavior.
 
 ## 0.27.0 (2026-09-25)
 

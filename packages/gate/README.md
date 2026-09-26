@@ -1239,6 +1239,18 @@ await guardStripeMutation(gate, stripe, { op: 'payout.create', params: { amount:
 // AWS:      guardAwsMutation(gate, client, { op: 'iam.attach_policy', params: { user, policy_arn }, receipt })
 ```
 
+For `refund.create` in 0.28.0, the approval and call parameters must both bind
+the same `payment_intent`, `amount`, and `operation_id`. Assign that ID in your
+business system and keep it stable across retries; older refund receipts without
+it will refuse before Stripe. Gate checks the supplied ID's shape and binding,
+not whether it truly came from your business record. The adapter derives a
+Stripe idempotency key from the ID, but it can call `refunds.create` again after
+a lost response. Stripe's [idempotency retention is finite](https://docs.stripe.com/api/idempotent_requests).
+Never mint a new ID or blindly retry an uncertain refund. Hold it as
+indeterminate until you reconcile the same operation against authenticated
+provider records. This adapter alone is not durable or exactly-once recovery;
+the regression tests use a mock provider, not live Stripe or PostgreSQL.
+
 Clients are injected (the real `@octokit/rest`, `stripe`, a `pg`/Supabase client, or the AWS SDK), so
 the adapters are testable without credentials. Adding an adapter is ~40 lines: a frozen action pack
 (selectors + tiers + `execution_binding.required_fields`) and an op map (`selector`, `observed(params)`,
