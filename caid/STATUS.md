@@ -11,12 +11,16 @@ Updated: 2026-09-26
   code sets receive pinned snapshots; the registry lists the blocking fields
   in `unresolved_external_enums`.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
-- 73 shared core vectors (corpus version 2) passing in all three ports,
+- 88 shared core vectors (corpus version 3) passing in all three ports,
   including valid USD/XAD, `NOT-A-CURRENCY`, bare/unresolved external
   references, hash mismatch, compact inline-enum enforcement and trimming,
-  null enum members, own-member field presence, and unpaired-surrogate
-  refusals. The Go port adds unit tests for its strict JSON decoder.
-- 23 Action-Mapping Profile vectors passing with byte-for-byte agreement on
+  null enum members, own-member field presence, unpaired-surrogate
+  refusals, whole-string grammar refusals (a value followed by a line feed
+  never matches a grammar), and value-based integer fields (`12.0` and
+  `1.2e1` are the integer 12; an integer beyond 2^53-1 refuses once as
+  `unsupported_number`). The Go port adds unit tests for its strict JSON
+  decoder.
+- 25 Action-Mapping Profile vectors passing with byte-for-byte agreement on
   verdicts and refusal reasons in all three ports, including the SILP IR to
   CAID `CANCEL+EMAIL` profile.
 - 100 candidate Consequential Action Interoperability vectors covering 25

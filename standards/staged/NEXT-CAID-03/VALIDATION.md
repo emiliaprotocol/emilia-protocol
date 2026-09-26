@@ -24,6 +24,12 @@ review revision of the enum-form, own-member, and unpaired-surrogate text.
   members, U+0020-only inline trimming, embedded external values,
   own-member presence, and unpaired-surrogate refusals.
 - `node scripts/check-caid-03.mjs` passed against these files.
+- Re-run the same day after the Python port's whole-string grammar fix and
+  the integer-field alignment: `npm run caid:conformance` passed all 88 core
+  (corpus version 3), 25 mapping, and 100 consequential-action vectors in
+  JavaScript, Python, and Go, and `node scripts/check-caid-03.mjs` passed.
+  The draft text did not change; no grammar it states admits a trailing line
+  feed.
 
 When these checks ran, Datatracker had not yet published this packet; the
 publication check below records the later posting.

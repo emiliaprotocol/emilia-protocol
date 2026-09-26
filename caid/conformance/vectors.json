@@ -1,7 +1,10 @@
 {
  "suite_note": "Shared cross-language CAID conformance vectors. Each vector carries its own inline type definitions and never references the public registry. CAID carries no trust semantics: these vectors test identification only, not authorization, identity, or proof.",
- "version": 2,
- "previous_versions": [{"version": 1, "vectors": 48, "sha256": "sha256:69bac062e94a9abd7d2647dc86f1c2efc7a10a24da52f6c406592f5cf8a1ca63", "note": "Byte digest of the version 1 corpus as last published on main before registry v4. Version 2 adds pinned-enum, inline-enum, own-member, and unpaired-surrogate refusals that the version 1 reference implementations do not enforce."}],
+ "version": 3,
+ "previous_versions": [
+  {"version": 1, "vectors": 48, "sha256": "sha256:69bac062e94a9abd7d2647dc86f1c2efc7a10a24da52f6c406592f5cf8a1ca63", "note": "Byte digest of the version 1 corpus as last published on main before registry v4. Version 2 adds pinned-enum, inline-enum, own-member, and unpaired-surrogate refusals that the version 1 reference implementations do not enforce."},
+  {"version": 2, "vectors": 73, "sha256": "sha256:b63303e79a099063285ca5a5e5351e693104d8540cedddc41a2ff29082babd4a", "note": "Byte digest of the version 2 corpus as last published on main (pull request #789). Version 3 adds whole-string grammar refusals (a trailing line feed in an amount, digest field, timestamp, action type, suite, or CAID digest) that the version 2 Python implementation accepted, and value-based integer-field cases (12.0 and 1.2e1 are the integer 12; an out-of-range integer refuses once as unsupported_number) on which the version 2 Python and Go implementations disagreed with the JavaScript reference."}
+ ],
  "enum_snapshots": [
   {
    "values_ref": "ISO 4217 alpha-3",
@@ -3029,6 +3032,607 @@
     "caid": "caid:1:test.text.1:jcs-sha256:agG0nPtxAPmIVabJzWul9xH1rE2ayq67AYPCMNqgdqU"
    },
    "expect": {"valid": false, "reasons": ["invalid_object"]}
+  },
+  {
+   "id": "refuse-amount-trailing-newline",
+   "kind": "compute",
+   "description": "registry payment.release.1 amount '96.12' followed by a line feed is refused as invalid_amount. A grammar check covers the whole string; a regular-expression end anchor that also matches before a final line feed (Python's $) must not be used.",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3",
+       "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+       "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "96.12\n",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_amount:amount"
+    ]
+   }
+  },
+  {
+   "id": "refuse-digest-field-trailing-newline",
+   "kind": "compute",
+   "description": "a digest field whose sha256:<64 hex> value is followed by a line feed is mistyped. A grammar check covers the whole string; a regular-expression end anchor that also matches before a final line feed (Python's $) must not be used.",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae\n",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 12
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "mistyped_field:document"
+    ]
+   }
+  },
+  {
+   "id": "refuse-timestamp-trailing-newline",
+   "kind": "compute",
+   "description": "an RFC 3339 UTC timestamp followed by a line feed is mistyped. A grammar check covers the whole string; a regular-expression end anchor that also matches before a final line feed (Python's $) must not be used.",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z\n",
+     "page_count": 12
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "mistyped_field:signed_at"
+    ]
+   }
+  },
+  {
+   "id": "refuse-action-type-version-trailing-newline",
+   "kind": "compute",
+   "description": "an action type whose version segment ends in a line feed is invalid even when a supplied definition names that exact string; no CAID containing a line feed may be emitted",
+   "definitions": [
+    {
+     "action_type": "test.text.1\n",
+     "required_fields": [
+      {
+       "name": "c",
+       "type": "string"
+      }
+     ],
+     "optional_fields": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "test.text.1\n",
+     "c": "x"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_action_type"
+    ]
+   }
+  },
+  {
+   "id": "refuse-action-type-segment-trailing-newline",
+   "kind": "compute",
+   "description": "an action type whose name segment ends in a line feed is invalid even when a supplied definition names that exact string",
+   "definitions": [
+    {
+     "action_type": "test\n.text.1",
+     "required_fields": [
+      {
+       "name": "c",
+       "type": "string"
+      }
+     ],
+     "optional_fields": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "test\n.text.1",
+     "c": "x"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_action_type"
+    ]
+   }
+  },
+  {
+   "id": "parse-malformed-action-type-trailing-newline",
+   "kind": "parse",
+   "description": "a line feed after the action-type version segment is refused by the strict parser",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1\n:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "parse-malformed-name-segment-trailing-newline",
+   "kind": "parse",
+   "description": "a line feed at the end of an action-type name segment is refused by the strict parser",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment\n.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "parse-malformed-suite-trailing-newline",
+   "kind": "parse",
+   "description": "a line feed after the suite is refused by the strict parser",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha256\n:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "parse-malformed-digest-trailing-newline",
+   "kind": "parse",
+   "description": "a 42-character digest followed by a line feed has the 43-character length of a sha256 digest and is still refused: a line feed is not a base64url character",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1\n"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "verify-malformed-action-type-trailing-newline",
+   "kind": "verify",
+   "description": "a CAID whose action type ends in a line feed is malformed_caid, never an action_type_mismatch against the object's type",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3",
+       "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+       "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1\n:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "compute-integer-field-integral-float",
+   "kind": "compute",
+   "description": "an integer field written 12.0 is the integer 12 under the value-based rule and yields the CAID of the same object written 12",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 12.0
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:doc.sign.1:jcs-sha256:AK3SFq4VAEbRv-WiSHoi-B5wn6z_VGZl-Wt3T1pdjCU",
+    "digest": "sha256:00add216ae150046d1bfe5a2487a22f81e709facff546665f96b774f5a5d8c25"
+   },
+   "relation": {
+    "same_caid_as": "compute-doc-sign-happy"
+   }
+  },
+  {
+   "id": "compute-integer-field-exponent",
+   "kind": "compute",
+   "description": "an integer field written 1.2e1 is the integer 12 under the value-based rule and yields the CAID of the same object written 12",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 1.2e1
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:doc.sign.1:jcs-sha256:AK3SFq4VAEbRv-WiSHoi-B5wn6z_VGZl-Wt3T1pdjCU",
+    "digest": "sha256:00add216ae150046d1bfe5a2487a22f81e709facff546665f96b774f5a5d8c25"
+   },
+   "relation": {
+    "same_caid_as": "compute-doc-sign-happy"
+   }
+  },
+  {
+   "id": "refuse-integer-field-above-max-safe",
+   "kind": "compute",
+   "description": "an integer field holding 2^53 is an integer, so it is not mistyped; it refuses once, as unsupported_number, exactly as the same value does in an undeclared field",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 9007199254740992
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "unsupported_number"
+    ]
+   }
+  },
+  {
+   "id": "refuse-integer-field-exponent-above-max-safe",
+   "kind": "compute",
+   "description": "an integer field written 1e20 is an integer beyond 2^53-1: not mistyped, refused once as unsupported_number",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 1e20
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "unsupported_number"
+    ]
+   }
+  },
+  {
+   "id": "refuse-integer-field-overflowing-literal",
+   "kind": "compute",
+   "description": "an integer field holding a plain 310-digit literal overflows an IEEE 754 double to infinity, which is not an integer: mistyped and unsupported_number",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "mistyped_field:page_count",
+     "unsupported_number"
+    ]
+   }
   }
  ]
 }
