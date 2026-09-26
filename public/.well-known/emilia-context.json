@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-26T07:42:22.219Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "d9b58b43fd66901feee5515cf621fa9a594c81b5b5230602f528f7a6d557587f",
+    "input_digest_sha256": "9312fc9d464397879e626c35dea77a107f8be09611ce25fca18a76fac13b39dd",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "015d9f6e0c7a75540ef39c5357ac2c7cb63c2135b85833c2a2f51599ab0d87ad",
+        "sha256": "15e4c0f00a88c4bebae8d9fbe08a279d1cf8fa05b0c4f7b947e4b099354dd534",
         "bytes": 391520
       },
       {
