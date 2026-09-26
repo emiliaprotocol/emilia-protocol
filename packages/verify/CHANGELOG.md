@@ -41,6 +41,10 @@ behavior only through an explicit dependency bump.
   `Object.prototype`. A string or member name containing an unpaired
   surrogate now refuses as `unsupported_value`, as RFC 8785 section 3.2.2.2
   requires, instead of being escaped into the digest input.
+- The vendored CAID parser (`parseCaid`, and the strict-parse step of
+  `verifyCaid`) now refuses a suite outside the CAID suite registry and a
+  digest whose final character sets an unused bit, as `malformed_caid`. No
+  Verify export calls either function, so no Verify result changes.
 - CAID bytes are unchanged for every action that both 5.0.0 and this version
   accept; only the set of accepted actions narrowed. This is a behavior change,
   not a wire format change.

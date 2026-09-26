@@ -1,9 +1,10 @@
 {
  "suite_note": "Shared cross-language CAID conformance vectors. Each vector carries its own inline type definitions and never references the public registry. CAID carries no trust semantics: these vectors test identification only, not authorization, identity, or proof.",
- "version": 3,
+ "version": 4,
  "previous_versions": [
   {"version": 1, "vectors": 48, "sha256": "sha256:69bac062e94a9abd7d2647dc86f1c2efc7a10a24da52f6c406592f5cf8a1ca63", "note": "Byte digest of the version 1 corpus as last published on main before registry v4. Version 2 adds pinned-enum, inline-enum, own-member, and unpaired-surrogate refusals that the version 1 reference implementations do not enforce."},
-  {"version": 2, "vectors": 73, "sha256": "sha256:b63303e79a099063285ca5a5e5351e693104d8540cedddc41a2ff29082babd4a", "note": "Byte digest of the version 2 corpus as last published on main (pull request #789). Version 3 adds whole-string grammar refusals (a trailing line feed in an amount, digest field, timestamp, action type, suite, or CAID digest) that the version 2 Python implementation accepted, and value-based integer-field cases (12.0 and 1.2e1 are the integer 12; an out-of-range integer refuses once as unsupported_number) on which the version 2 Python and Go implementations disagreed with the JavaScript reference."}
+  {"version": 2, "vectors": 73, "sha256": "sha256:b63303e79a099063285ca5a5e5351e693104d8540cedddc41a2ff29082babd4a", "note": "Byte digest of the version 2 corpus as last published on main (pull request #789). Version 3 adds whole-string grammar refusals (a trailing line feed in an amount, digest field, timestamp, action type, suite, or CAID digest) that the version 2 Python implementation accepted, and value-based integer-field cases (12.0 and 1.2e1 are the integer 12; an out-of-range integer refuses once as unsupported_number) on which the version 2 Python and Go implementations disagreed with the JavaScript reference."},
+  {"version": 3, "vectors": 88, "sha256": "sha256:9bbce814023e6943bb34bf945a918b99c28926d7a80cfc01b9748f8aaec4d188", "note": "Byte digest of the version 3 corpus as last published on main (pull request #811). Version 4 adds identifier-parse refusals that the version 3 JavaScript, Python, and Go parsers all lacked: a suite that does not begin with a lowercase letter, a suite outside the suite registry, and a digest whose final character sets an unused bit. A registered suite the implementation does not implement still parses."}
  ],
  "enum_snapshots": [
   {
@@ -3631,6 +3632,221 @@
     "refusals": [
      "mistyped_field:page_count",
      "unsupported_number"
+    ]
+   }
+  },
+  {
+   "id": "refuse-suite-leading-digit",
+   "kind": "parse",
+   "description": "the suite ABNF is lower-char *( lower-char / DIGIT / \"-\" ), so no registered suite can begin with a digit and '1x' is refused. The version 3 reference parsers used a different suite pattern that accepted it.",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:1x:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "refuse-suite-unregistered",
+   "kind": "parse",
+   "description": "a suite that matches the suite ABNF but is not in the suite registry is refused by the strict parser, never guessed. The version 3 reference parsers accepted it and left the refusal to verification.",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha512:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "refuse-suite-unregistered-unchecked-digest",
+   "kind": "parse",
+   "description": "an unregistered suite with a 3-character digest. The version 3 reference parsers accepted this string: they checked digest length only for registered suites, so a parser that admits an unknown suite cannot apply the digest-length rule at all.",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:a.b.1:foo:abc"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "parse-registered-suite-not-implemented",
+   "kind": "parse",
+   "description": "cbor-sha256 is in the suite registry, so a CAID naming it parses even in an implementation that does not implement that suite; there, computation and verification report unknown_suite",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:cbor-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": true,
+    "caid": {
+     "version": "1",
+     "action_type": "payment.release.1",
+     "suite": "cbor-sha256",
+     "digest": "liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+    }
+   }
+  },
+  {
+   "id": "refuse-digest-nonzero-unused-bits",
+   "kind": "parse",
+   "description": "43 base64url characters carry 258 bits for a 256-bit digest, so the final character's two low bits are unused and must be zero. 'Z' (value 25) sets one and is refused; 'Y' (value 24) is the only encoding of the same 32 octets.",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Z"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "refuse-digest-too-long",
+   "kind": "parse",
+   "description": "a 44-character digest decodes to 33 octets, not the 32 octets of a jcs-sha256 digest",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1YA"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "verify-malformed-unregistered-suite",
+   "kind": "verify",
+   "description": "an unregistered suite is refused at the strict-parse step as malformed_caid. Version 3 reference verifiers reported unknown_suite for this string.",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3",
+       "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+       "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha512:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "verify-malformed-nonzero-unused-bits",
+   "kind": "verify",
+   "description": "the valid CAID for this object with its final digest character 'Y' replaced by 'Z' decodes to the same 32 octets and is malformed_caid. Version 3 reference verifiers compared the strings and reported digest_mismatch.",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3",
+       "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+       "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Z"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "malformed_caid"
     ]
    }
   }

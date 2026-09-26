@@ -88,11 +88,22 @@ String form (strict ABNF in the I-D):
 - `1` is the CAID version.
 - `<action_type>` lowercase dotted segments, final segment is the integer
   type version, e.g. `payment.release.1`.
-- `<suite>` from the suite registry, lowercase.
-- `<digest-b64url>` RFC 4648 section 5, unpadded, case-sensitive.
+- `<suite>` from the suite registry, lowercase. The grammar is the I-D's
+  `suite = lower-char *( lower-char / DIGIT / "-" )`: a lowercase letter
+  first, then lowercase letters, digits, or hyphens.
+- `<digest-b64url>` RFC 4648 section 5, unpadded, case-sensitive. For both
+  registered suites it is exactly 43 characters encoding 32 octets; the two
+  low bits of the final character are unused and MUST be zero, so it ends in
+  one of `A E I M Q U Y c g k o s w 0 4 8`.
 - Parsers are STRICT: refuse padding, refuse uppercase in type/suite, refuse
-  empty segments, refuse anything after the digest. Unknown version or suite
-  is a refusal, never a guess.
+  empty segments, refuse anything after the digest, and refuse a digest that
+  does not decode to exactly the suite's digest length or whose final
+  character sets an unused bit. Unknown version or suite is a refusal
+  (`malformed_caid`), never a guess. A suite is unknown when it is not in the
+  suite registry; a parser cannot check the digest of a suite it does not
+  know. A registered suite that an implementation does not implement (the
+  reference implementations' `cbor-sha256`) still parses; compute and verify
+  report it as `unknown_suite`.
 
 Equality: two CAIDs are equal iff the strings are byte-equal. Cross-suite
 equivalence is OUT OF SCOPE (an artifact MAY carry multiple CAIDs, one per
@@ -213,7 +224,7 @@ this grammar, such as the `amount` note above, neither narrows nor widens it.
    except that an `amount-string` field holding a string that fails the
    amount-string grammar is `invalid_amount:<name>` (a non-string value there
    stays `mistyped_field:<name>`).
-5. Suite known, else `unknown_suite`.
+5. Suite registered and implemented here, else `unknown_suite`.
 6. No non-integer number anywhere in the object, else `unsupported_number`.
    No string or member name anywhere in the object containing an unpaired
    surrogate code point, else `unsupported_value`: such a string is not a
@@ -229,7 +240,9 @@ on junk input.
 `verifyCaid(actionObject, caidString, {definitions, enumSnapshots})` — conforming verifier:
 1. Strict-parse the string, else `malformed_caid`.
 2. In-object `action_type` equals CAID type, else `action_type_mismatch`.
-3. Recompute under the CAID's suite; digest equal, else `digest_mismatch`.
+3. Recompute under the CAID's suite, else `unknown_suite` when this
+   implementation does not implement that registered suite; digest equal,
+   else `digest_mismatch`.
 4. Run the SAME material validation as compute; a CAID whose object fails
    validation is `invalid_object`, not merely mismatched.
 Result: `{valid: bool, reasons: [...]}`. Same inputs, same reasons, same

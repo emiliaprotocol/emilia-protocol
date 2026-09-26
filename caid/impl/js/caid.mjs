@@ -18,16 +18,22 @@ import { createHash } from "node:crypto";
 
 const CAID_VERSION = "1";
 const SUPPORTED_SUITES = new Set(["jcs-sha256"]);
-// Suites that are defined in the registry and use a SHA-256 digest
-// (43 unpadded base64url characters). Used for strict digest-length
-// checking at parse time.
-const SHA256_SUITES = new Set(["jcs-sha256", "cbor-sha256"]);
-const SHA256_B64URL_LEN = 43;
+// The suite registry (registry/suites.json): each registered suite and the
+// length in octets of its digest. The strict parser refuses any other suite
+// and checks the digest against this length, so every CAID it accepts names
+// a suite some conforming implementation can recompute. A registered suite
+// this implementation does not implement (cbor-sha256) still parses;
+// compute and verify refuse it as unknown_suite. Every registered name
+// matches the draft's suite ABNF (scripts/check-caid-04.mjs checks this), so
+// membership here also enforces that grammar.
+const REGISTERED_SUITE_DIGEST_OCTETS = new Map([
+  ["jcs-sha256", 32],
+  ["cbor-sha256", 32],
+]);
 
 // Grammar (strict, per DESIGN.md section 2 and 3).
 const TYPE_SEGMENT_RE = /^[a-z][a-z0-9-]*$/;
 const TYPE_VERSION_RE = /^[1-9][0-9]*$/;
-const SUITE_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const B64URL_RE = /^[A-Za-z0-9_-]+$/;
 const AMOUNT_RE = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/;
 const DIGEST_FIELD_RE = /^sha256:[0-9a-f]{64}$/;
@@ -429,9 +435,10 @@ export function computeCaid(actionObject, options) {
  *   -> {ok: false, refusals: ["malformed_caid"]}
  *
  * Strict: refuses padding, uppercase in type or suite, empty segments,
- * trailing content, unknown version, and (for known sha256 suites) a
- * digest of the wrong length. Unknown version is a refusal, never a
- * guess.
+ * trailing content, an unknown version, a suite outside the suite
+ * registry, and a digest that does not decode to exactly the suite's
+ * digest length or whose final character sets an unused bit. An unknown
+ * version or suite is a refusal, never a guess.
  */
 export function parseCaid(input) {
   const refuse = { ok: false, refusals: ["malformed_caid"] };
@@ -442,9 +449,14 @@ export function parseCaid(input) {
   if (prefix !== "caid") return refuse;
   if (version !== CAID_VERSION) return refuse;
   if (!isValidActionType(actionType)) return refuse;
-  if (!SUITE_RE.test(suite)) return refuse;
+  const octets = REGISTERED_SUITE_DIGEST_OCTETS.get(suite);
+  if (octets === undefined) return refuse; // unknown suite
   if (!B64URL_RE.test(digest)) return refuse; // refuses padding and junk
-  if (SHA256_SUITES.has(suite) && digest.length !== SHA256_B64URL_LEN) {
+  // Decoding drops the unused low bits of the final character, so the
+  // re-encoding equals the input only when those bits are zero and the
+  // length is canonical for the decoded octets.
+  const bytes = Buffer.from(digest, "base64url");
+  if (bytes.length !== octets || bytes.toString("base64url") !== digest) {
     return refuse;
   }
   return {
@@ -494,7 +506,9 @@ export function verifyCaid(actionObject, caidString, options) {
     reasons.push("action_type_mismatch");
   }
 
-  // Step 3: recompute under the CAID's suite.
+  // Step 3: recompute under the CAID's suite. The parser admits only
+  // registered suites, so unknown_suite here means a registered suite this
+  // implementation does not implement.
   const canon = canonicalize(actionObject);
   if (!SUPPORTED_SUITES.has(parsed.caid.suite)) {
     // cbor-sha256 is defined in the registry but not implemented here.

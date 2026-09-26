@@ -22,11 +22,15 @@ import re
 
 CAID_VERSION = "1"
 SUPPORTED_SUITES = frozenset(["jcs-sha256"])
-# Suites that are defined in the registry and use a SHA-256 digest
-# (43 unpadded base64url characters). Used for strict digest-length
-# checking at parse time.
-SHA256_SUITES = frozenset(["jcs-sha256", "cbor-sha256"])
-SHA256_B64URL_LEN = 43
+# The suite registry (registry/suites.json): each registered suite and the
+# length in octets of its digest. The strict parser refuses any other suite
+# and checks the digest against this length, so every CAID it accepts names
+# a suite some conforming implementation can recompute. A registered suite
+# this implementation does not implement (cbor-sha256) still parses;
+# compute and verify refuse it as unknown_suite. Every registered name
+# matches the draft's suite ABNF (scripts/check-caid-04.mjs checks this), so
+# membership here also enforces that grammar.
+REGISTERED_SUITE_DIGEST_OCTETS = {"jcs-sha256": 32, "cbor-sha256": 32}
 
 # Grammar (strict, per DESIGN.md sections 2 and 3).
 #
@@ -37,7 +41,6 @@ SHA256_B64URL_LEN = 43
 # end of the string) and applied with fullmatch; each is sufficient alone.
 TYPE_SEGMENT_RE = re.compile(r"\A[a-z][a-z0-9-]*\Z")
 TYPE_VERSION_RE = re.compile(r"\A[1-9][0-9]*\Z")
-SUITE_RE = re.compile(r"\A[a-z0-9]+(-[a-z0-9]+)*\Z")
 B64URL_RE = re.compile(r"\A[A-Za-z0-9_-]+\Z")
 AMOUNT_RE = re.compile(r"\A-?(0|[1-9][0-9]*)(\.[0-9]+)?\Z")
 DIGEST_FIELD_RE = re.compile(r"\Asha256:[0-9a-f]{64}\Z")
@@ -492,9 +495,10 @@ def parse_caid(caid_input):
       -> {"ok": False, "refusals": ["malformed_caid"]}
 
     Strict: refuses padding, uppercase in type or suite, empty segments,
-    trailing content, unknown version, and (for known sha256 suites) a
-    digest of the wrong length. Unknown version is a refusal, never a
-    guess.
+    trailing content, an unknown version, a suite outside the suite
+    registry, and a digest that does not decode to exactly the suite's
+    digest length or whose final character sets an unused bit. An unknown
+    version or suite is a refusal, never a guess.
     """
     refuse = {"ok": False, "refusals": ["malformed_caid"]}
     if not isinstance(caid_input, str):
@@ -509,11 +513,19 @@ def parse_caid(caid_input):
         return refuse
     if not _is_valid_action_type(action_type):
         return refuse
-    if not SUITE_RE.fullmatch(suite):
+    octets = REGISTERED_SUITE_DIGEST_OCTETS.get(suite)
+    if octets is None:  # unknown suite
         return refuse
     if not B64URL_RE.fullmatch(digest):  # refuses padding and junk
         return refuse
-    if suite in SHA256_SUITES and len(digest) != SHA256_B64URL_LEN:
+    # Decoding drops the unused low bits of the final character, so the
+    # re-encoding equals the input only when those bits are zero and the
+    # length is canonical for the decoded octets.
+    try:
+        raw = base64.urlsafe_b64decode(digest + "=" * (-len(digest) % 4))
+    except ValueError:  # binascii.Error: a length no encoding produces
+        return refuse
+    if len(raw) != octets or _b64url(raw) != digest:
         return refuse
     return {
         "ok": True,
@@ -564,7 +576,9 @@ def verify_caid(action_object, caid_string, options=None):
     if action_object.get("action_type") != parsed["caid"]["action_type"]:
         reasons.append("action_type_mismatch")
 
-    # Step 3: recompute under the CAID's suite.
+    # Step 3: recompute under the CAID's suite. The parser admits only
+    # registered suites, so unknown_suite here means a registered suite
+    # this implementation does not implement.
     canon = canonicalize(action_object)
     if parsed["caid"]["suite"] not in SUPPORTED_SUITES:
         # cbor-sha256 is defined in the registry but not implemented here.

@@ -8,6 +8,31 @@ Historical entries below retain the labels used when they were written.
 
 ## [Unreleased] — source baseline 2026-08-26 (`5d474fd240bc764fa41951c05c39130e38afa7ff`)
 
+### CAID identifier parsing
+
+- The CAID parsers in JavaScript (and the vendored Verify copy), Python, and
+  Go now follow the draft's Identifier Syntax and Parsing sections, whose
+  rules are unchanged since -00. They refuse a suite that is not in the suite
+  registry as `malformed_caid`, where they accepted any suite matching
+  `[a-z0-9]+(-[a-z0-9]+)*` and left the refusal to `verifyCaid`
+  (`unknown_suite`). This also refuses a suite beginning with a digit, which
+  the suite ABNF excludes. They decode the digest and refuse one that is not
+  exactly the suite's digest length or whose final character sets an unused
+  bit; they had checked only the 43-character length, so a digest ending in
+  `Z` where the canonical encoding ends in `Y` parsed and then reported
+  `digest_mismatch`. A registered suite a port does not implement
+  (`cbor-sha256`) still parses; compute and verify report `unknown_suite`.
+  `computeCaid` output is unchanged.
+- DESIGN.md sections 2 and 4 and the staged CAID -04 draft define an unknown
+  suite as one outside the suite registry and name `unknown_suite` as the
+  verification reason for a registered suite the verifier does not
+  implement. The -04 draft also lists the 16 final digest characters whose
+  unused bits are zero.
+- The core conformance corpus moves to version 4 (96 vectors) and records
+  the version 3 corpus by digest. Six of the eight new vectors fail on the
+  version 3 parsers in all three languages; the other two (a `cbor-sha256`
+  CAID that parses and a 44-character digest) guard the boundary.
+
 ### CAID whole-string grammar checks
 
 - The Python CAID port now matches every grammar against the whole string.
