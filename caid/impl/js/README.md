@@ -65,19 +65,23 @@ const parsed = parseCaid(out.caid);
 const canon = canonicalize(action);
 // { ok: true, canonical: "<RFC 8785 JCS string>" }
 // or { ok: false, refusals: ["unsupported_number"] }
+// or { ok: false, refusals: ["unsupported_value"] } for a string or member
+//    name containing an unpaired surrogate (RFC 8785 section 3.2.2.2)
 ```
 
 All four functions are fail-closed: junk input returns refusals with
 reasons, never throws.
 
 Code inside this repository that uses the full registry definitions can import
-`REGISTRY_ENUM_SNAPSHOTS` from `caid/registry/enum-snapshots.mjs` instead of
-naming value-set files. It loads exactly the files listed in the registry's
-`enum_snapshot_files` and throws if a file's reference, edition label, or
-digest differs from the registry entry. Next.js server code uses
-`CAID_REGISTRY_ENUM_SNAPSHOTS` from `lib/caid-registry.ts`, which imports the
-same files statically. Without a snapshot, a present currency field refuses
-with `mistyped_field:currency`.
+`REGISTRY_ENUM_SNAPSHOTS` and `activeRegistryDefinition()` from
+`caid/registry/enum-snapshots.mjs` instead of naming value-set files or
+copying a registered definition. It loads exactly the files listed in the
+registry's `enum_snapshot_files` and throws if a file's reference, edition
+label, values digest, or whole-file `snapshot_sha256` differs from the
+registry entry. Next.js server code uses `CAID_REGISTRY_ENUM_SNAPSHOTS` from
+`lib/caid-registry.ts`, which imports the same files statically and applies
+the same checks at module load. Without a snapshot, a present currency field
+refuses with `mistyped_field:currency`.
 
 ## Conformance
 

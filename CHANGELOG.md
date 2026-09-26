@@ -11,22 +11,49 @@ Historical entries below retain the labels used when they were written.
 ### CAID registry v4 enum pinning
 
 - Advance the CAID action-type registry from v3 to v4. Every currency field
-  now references a provenance-bearing `2026-09-17` SIX ISO 4217 List One
-  snapshot (`caid/registry/value-sets/`) by `values_ref`, `values_snapshot`,
-  and `values_sha256`. The JavaScript, Python, and Go implementations refuse a
-  present enum field that is open, bare, unresolved, digest-mismatched, or out
-  of set with `mistyped_field:<field>`, without a network fetch. CAID bytes
-  are unchanged for actions whose values are in the pinned set. Historical
-  registry v3 decisions remain v3 decisions.
+  now references a `2026-09-17` SIX ISO 4217 List One snapshot
+  (`caid/registry/value-sets/`) by `values_ref`, `values_snapshot`, and
+  `values_sha256`, and the registry also pins the whole snapshot file by
+  `snapshot_sha256`, which binds its provenance members. The `rx.dispense.1`
+  `daw_code` field, previously the bare label "NCPDP Dispense As Written codes
+  0-9", is pinned in place to the inline list `0` through `9`.
+- The JavaScript, Python, and Go implementations refuse, with
+  `mistyped_field:<field>` and without a network fetch, a present enum field
+  that is open, bare, unresolved, digest-mismatched, or out of set, including
+  a value outside a compact `inline:` list, which the v3-era implementations
+  accepted. They agree on the enum definition forms: a member written as
+  `null` is malformed, inline members are trimmed of U+0020 only, and an
+  embedded `values` array must verify on its own. Field presence means an own
+  member of the object. A string or member name containing an unpaired
+  surrogate refuses as `unsupported_value` (RFC 8785 section 3.2.2.2). CAID
+  bytes are unchanged for actions both versions accept.
+- Eleven active types cannot produce or verify any CAID under v4 because a
+  required field references an external code set with no pinned snapshot:
+  `payment.refund.1`, `ach.debit.originate.1`, `key.create.1`,
+  `key.rotate.1`, `dns.record.delete.1`, `firewall.rule.open.1`,
+  `pii.export.1`, `rx.dispense.1`, `prior.auth.approve.1`, `phi.disclose.1`,
+  and `vendor.onboard.1`. The registry lists their fields in
+  `unresolved_external_enums`, and `npm run caid:conformance` fails if the
+  list drifts.
+- Historical registry v3 decisions remain v3 decisions. Replaying one needs
+  the v3 registry and the pre-v4 implementations together, for example from
+  commit `f46328afc`; the v4 code refuses v3's bare references.
 - Server payment approvals (`POST /api/v1/trust-receipts` and the
   EP-APPROVAL-v1 contract) derive the `payment.release.1` CAID with the
-  registry snapshots from `lib/caid-registry.ts`. A currency outside the
-  pinned ISO 4217 list, for example `ZZZ`, is now refused with
-  `invalid_caid_action` where registry v3 accepted any string.
+  registry snapshots from `lib/caid-registry.ts`, which refuses to load when
+  its snapshot differs from the registry pins. A well-formed currency the
+  snapshot does not list, for example `ZZZ`, `BGN`, or `HRK`, is now refused
+  (`invalid_caid_action` on the trust-receipt route, `invalid_action_caid` in
+  the approval contract) where the previous code accepted any three uppercase
+  letters. A malformed currency such as `usd` keeps its existing
+  `invalid_currency` error.
 - `caid/registry/enum-snapshots.mjs` loads exactly the snapshots the registry
-  pins for in-repository tooling and refuses a file that does not match its
-  registry entry. The Internet-Draft revision describing registry v4 is staged,
-  not submitted.
+  pins for in-repository tooling and refuses a file whose labels, values, or
+  whole-file digest differ from its registry entry. The checkout-evidence
+  package takes its currency pin from it. The CAID conformance corpus moves
+  to version 2 (73 core vectors) and now runs in CI. The WIMSE CAID scope
+  companion profile moves to `WIMSE-CAID-SCOPE-01` for registry v4. The
+  Internet-Draft revision describing registry v4 is staged, not submitted.
 
 ### Consequence admission
 

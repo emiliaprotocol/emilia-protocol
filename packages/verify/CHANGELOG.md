@@ -5,27 +5,45 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+Version type: major, 6.0.0. The vendored CAID now refuses actions and adapter
+mapping profiles that 5.0.0 accepted, and the 5.0.0 entry below treats a
+release that refuses artifacts the previous version accepted as major.
+`@emilia-protocol/gate` pins Verify at exactly 5.0.0, so it reaches this
+behavior only through an explicit dependency bump.
+
 ### Changed
 
 - The vendored CAID implementation (`vendor/caid.mjs`), which the AEB
   adapters, the AP2 native adapter, the FIDO and AP2 bridge, authorization
   server confirmation, the crossing lab, portable state handoff, and policy
-  decision evidence use to compute CAIDs, now applies the
-  enum rules of CAID action-type registry v4. Registry v3 named external code
-  sets such as ISO 4217 without pinning their contents, and 5.0.0 accepted any
-  string for an enum field that had no `values` array. An enum is now closed
-  only by a non-empty `values` array, an `inline:` `values_ref`, or an external
-  `values_ref` that carries `values_snapshot` and `values_sha256` and whose
-  values are supplied and hash to that digest. When the field is present in
-  the action, an open enum (`type: "enum"` with no values), a bare or
-  unresolved external `values_ref`, a digest mismatch, or a value outside the
-  set makes the CAID refuse with `mistyped_field:<field>`. An adapter mapping
-  profile that relied on an open or bare external enum, for example `currency`
-  naming ISO 4217 with no values, now maps to a refusal and must list its
-  accepted values inline. The adapters do not take external snapshots.
+  decision evidence use to compute CAIDs, now applies the enum rules of CAID
+  action-type registry v4. Registry v3 named external code sets such as ISO
+  4217 without pinning their contents, and 5.0.0 accepted any string for an
+  enum field that had no `values` array, and any string for a compact
+  `inline:` enum. An enum must now take exactly one of three forms: a
+  non-empty `values` array with no `values_ref` member; an `inline:`
+  `values_ref`, whose members are split on `|` and trimmed of U+0020 SPACE
+  only, optionally beside a `values` array equal to the parsed list; or an
+  external `values_ref` that carries `values_snapshot` and `values_sha256`
+  and whose pinned array (embedded in `values`, or supplied as a snapshot
+  when `values` is absent) hashes to that digest. A definition in any other
+  form refuses, including a `values` array beside a bare external
+  `values_ref`, which 5.0.0 accepted, and a `values` or `values_ref` member
+  written as `null`. When the field is present in the action, an open enum
+  (`type: "enum"` with no values), a bare or unresolved external
+  `values_ref`, a digest mismatch, or a value outside the set makes the CAID
+  refuse with `mistyped_field:<field>`. An adapter mapping profile that relied
+  on an open or bare external enum, for example `currency` naming ISO 4217
+  with no values, now maps to a refusal and must list its accepted values
+  inline. The adapters do not take external snapshots.
+- A field is present only as an own member of the action object; 5.0.0 also
+  found names such as `__proto__`, `constructor`, and `toString` on
+  `Object.prototype`. A string or member name containing an unpaired
+  surrogate now refuses as `unsupported_value`, as RFC 8785 section 3.2.2.2
+  requires, instead of being escaped into the digest input.
 - CAID bytes are unchanged for every action that both 5.0.0 and this version
-  accept; only the set of accepted actions narrowed. This is a behavior change
-  for callers whose profiles used open enums, not a wire format change.
+  accept; only the set of accepted actions narrowed. This is a behavior change,
+  not a wire format change.
 - None of this shipped in 5.0.0.
 
 ## 5.0.0 (2026-09-25)
