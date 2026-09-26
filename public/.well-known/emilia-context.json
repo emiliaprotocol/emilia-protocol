@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-26T05:21:29.819Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "3d98d956bfd5517c5b11af246d836aaeb608536d3931bdb959398bedcf6883d4",
+    "input_digest_sha256": "3625381b9cfe85ae80fc3351c32ce2a34a440d1605890666585f2ac5996331e6",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -12,8 +12,8 @@
       },
       {
         "path": "scripts/generate-llm-context.mts",
-        "sha256": "c82c670deba3a889c3298770807a69cb1ea33d3d0942f757827fe24a5a67a904",
-        "bytes": 32885
+        "sha256": "08b206cf6686503b1001509680864e1f1d150dba521186a25928dbe3e2b13a28",
+        "bytes": 34445
       },
       {
         "path": "lib/proof-stats.json",
@@ -66,7 +66,8 @@
         "bytes": 136310
       }
     ],
-    "freshness_command": "npm run check:llm-context"
+    "freshness_command": "npm run check:llm-context",
+    "freshness_scope": "Checks these artifacts byte for byte against the checked-in inputs listed in generated_from. It does not re-measure the automated test counts: they come from lib/proof-stats.json, which main refreshes after each merge, so they may lag the source revision by one refresh cycle. npm run check:proof-stats -- --drift-report <file> re-runs the suite, fails on every other proof field, and reports that lag."
   },
   "identity": {
     "name": "EMILIA",
