@@ -7,6 +7,7 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
+import { assertSameOriginWebAuthnResponse } from '@/lib/webauthn-client-data.js';
 import { authenticateRequest } from '@/lib/supabase';
 import { authEntityId } from '@/lib/auth-projections.js';
 import { resolveAuthorizedOrg } from '@/lib/tenant-binding';
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { rpID, origin } = getRpConfig();
     let verification;
     try {
+      assertSameOriginWebAuthnResponse(body.attestation);
       verification = await verifyRegistrationResponse({
         response: body.attestation,
         expectedChallenge: challengeRow.challenge,

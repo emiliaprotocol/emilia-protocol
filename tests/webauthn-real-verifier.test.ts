@@ -13,6 +13,11 @@
 //   rollback), signature integrity, the ES256-only algorithm policy, and the
 //   cross-origin (iframe) rule v14 added.
 //
+// Section 9 pins what the library alone does not refuse: a cross-origin
+// response whose browser omitted topOrigin (and every cross-origin
+// registration), a P-384 key labelled ES256, and malformed attestation
+// formats.
+//
 // Only the database, auth, and signoff-loading seams are mocked.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -32,6 +37,7 @@ import {
   FLAG_UP,
   FLAG_UV,
   mlDsa44CoseKey,
+  p384KeyLabelledEs256,
 } from './helpers/soft-webauthn-authenticator.js';
 import {
   isWebAuthnAuthenticatorTransport,
@@ -131,6 +137,28 @@ const ALGORITHM_NEGATIVES: Array<[string, () => Map<number | string, unknown>]> 
   ['ML-DSA-44 (-48), which the v14 default offers first on PQC runtimes', mlDsa44CoseKey],
 ];
 
+// v14 checks cross-origin client data only in verifyAuthenticationResponse,
+// and there only when the browser reported topOrigin (Safari omits it).
+// EP's offline verifiers refuse any crossOrigin === true, so every online
+// call site refuses these before the library runs.
+const CROSS_ORIGIN_REGISTRATIONS: Array<[string, Record<string, unknown>]> = [
+  ['a framed enrollment (crossOrigin + an attacker topOrigin), which v14 never checks on registration', {
+    clientData: { crossOrigin: true, topOrigin: EVIL_ORIGIN },
+  }],
+  ['a cross-origin registration with no topOrigin', { clientData: { crossOrigin: true } }],
+  ['topOrigin without crossOrigin', { clientData: { topOrigin: EVIL_ORIGIN } }],
+];
+const CROSS_ORIGIN_ASSERTIONS: Array<[string, Record<string, unknown>]> = [
+  ['crossOrigin: true with no topOrigin (the iframe shape v14 still admits)', { clientData: { crossOrigin: true } }],
+  ['a non-boolean crossOrigin member', { clientData: { crossOrigin: 'true' } }],
+];
+const FORMAT_NEGATIVES: Array<[string, Record<string, unknown>, RegExp]> = [
+  ['fmt none carrying an attestation statement', {
+    fmt: 'none', attStmtOverride: new Map<number | string, unknown>([['alg', -7]]),
+  }, /None attestation had unexpected attestation statement/],
+  ['an attestation format outside the library allowlist', { fmt: 'emilia-self' }, /Unsupported Attestation Format/],
+];
+
 // ── 1. Registration: library options policy ───────────────────────────────
 
 describe('registration options: EP pins ES256 independent of the v14 runtime-dependent default', () => {
@@ -202,6 +230,19 @@ describe('verifyMobilePasskeyRegistration against the real verifier', () => {
     await expect(verify(authenticator.register({ ...goodCeremony(), coseKeyOverride: key() as any })))
       .rejects.toThrow(/Unexpected public key alg/);
   });
+
+  it.each(CROSS_ORIGIN_REGISTRATIONS)('refuses %s', async (_label, bend) => {
+    await expect(verify(authenticator.register(goodCeremony(bend)))).rejects.toThrow(/cross-origin/i);
+  });
+
+  it.each(FORMAT_NEGATIVES)('refuses %s', async (_label, bend, reason) => {
+    await expect(verify(authenticator.register({ ...goodCeremony(), ...bend } as any))).rejects.toThrow(reason);
+  });
+
+  it('refuses a P-384 key labelled ES256 after the library admits the label', async () => {
+    await expect(verify(authenticator.register({ ...goodCeremony(), coseKeyOverride: p384KeyLabelledEs256() as any })))
+      .rejects.toThrow(/COSE/);
+  });
 });
 
 // ── 3. Registration: Release Lock passkey enrollment ──────────────────────
@@ -242,6 +283,25 @@ describe('verifyReleaseLockRegistration against the real verifier', () => {
       attestation: authenticator.register({ ...goodCeremony(), coseKeyOverride: key() as any }),
       rpConfig: RP,
     })).rejects.toMatchObject({ status: 400, code: 'attestation_invalid' });
+  });
+
+  it.each([...CROSS_ORIGIN_REGISTRATIONS, ...FORMAT_NEGATIVES.map(([l, b]) => [l, b] as [string, Record<string, unknown>])])(
+    'refuses %s',
+    async (_label, bend) => {
+      await expect(verifyReleaseLockRegistration({
+        challenge: stored,
+        attestation: authenticator.register({ ...goodCeremony(), ...bend } as any),
+        rpConfig: RP,
+      })).rejects.toMatchObject({ status: 400, code: 'attestation_invalid' });
+    },
+  );
+
+  it('refuses a P-384 key labelled ES256 after the library admits the label', async () => {
+    await expect(verifyReleaseLockRegistration({
+      challenge: stored,
+      attestation: authenticator.register({ ...goodCeremony(), coseKeyOverride: p384KeyLabelledEs256() as any }),
+      rpConfig: RP,
+    })).rejects.toMatchObject({ status: 400, code: 'unsupported_credential_key' });
   });
 });
 
@@ -331,6 +391,31 @@ describe('POST /api/v1/approvers/webauthn/register-verify against the real verif
     const body = await res.json();
     expect(body.type).toContain('attestation_invalid');
     expect(body.detail).toMatch(/Unexpected public key alg/);
+    expect(db.calls.rpcs).toHaveLength(0);
+  });
+
+  it.each(CROSS_ORIGIN_REGISTRATIONS)('refuses %s without consuming the challenge', async (_label, bend) => {
+    const res = await post(authenticator.register(goodCeremony(bend)));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.type).toContain('attestation_invalid');
+    expect(body.detail).toMatch(/cross-origin/i);
+    expect(db.calls.rpcs).toHaveLength(0);
+  });
+
+  it.each(FORMAT_NEGATIVES)('refuses %s without consuming the challenge', async (_label, bend, reason) => {
+    const res = await post(authenticator.register({ ...goodCeremony(), ...bend } as any));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.type).toContain('attestation_invalid');
+    expect(body.detail).toMatch(reason);
+    expect(db.calls.rpcs).toHaveLength(0);
+  });
+
+  it('refuses a P-384 key labelled ES256 without consuming the challenge', async () => {
+    const res = await post(authenticator.register({ ...goodCeremony(), coseKeyOverride: p384KeyLabelledEs256() as any }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).type).toContain('unsupported_key');
     expect(db.calls.rpcs).toHaveLength(0);
   });
 });
@@ -492,6 +577,17 @@ describe('POST /api/v1/signoffs/:id/approve-webauthn against the real verifier',
     expect(db.calls.rpcs).toHaveLength(0);
   });
 
+  it.each(CROSS_ORIGIN_ASSERTIONS)('refuses %s and leaves challenge and counter untouched', async (_label, bend) => {
+    const { res, db } = await approve(5, { counter: 6, ...bend });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.type).toContain('assertion_invalid');
+    expect(body.detail).toMatch(/cross-origin/i);
+    expect(db.calls.updates).toHaveLength(0);
+    expect(db.calls.inserts).toHaveLength(0);
+    expect(db.calls.rpcs).toHaveLength(0);
+  });
+
   it('refuses a tampered signature', async () => {
     const db = signoffClient({ signCount: 5 });
     db.bind(authenticator);
@@ -524,7 +620,7 @@ describe('POST /api/v1/mobile/pairings/exchange against the real verifier', () =
     });
   });
 
-  async function exchange(signCount: number, ceremonyOverrides: Record<string, unknown>) {
+  async function exchange(signCount: number, ceremonyOverrides: Record<string, unknown>, assertion?: unknown) {
     mocks.loadMobilePairingIdentityContext.mockReset().mockResolvedValue({
       entityRef: 'entity-1',
       organizationId: 'org_1',
@@ -544,7 +640,7 @@ describe('POST /api/v1/mobile/pairings/exchange against the real verifier', () =
         pairing_code: '2345-6789-ABCD',
         platform: 'ios',
         app_id: 'ai.emiliaprotocol.approver',
-        identity_assertion: authenticator.assert(goodCeremony(ceremonyOverrides)),
+        identity_assertion: assertion ?? authenticator.assert(goodCeremony(ceremonyOverrides)),
       }),
     }) as any);
   }
@@ -560,6 +656,23 @@ describe('POST /api/v1/mobile/pairings/exchange against the real verifier', () =
 
   it.each(AUTHENTICATION_NEGATIVES)('refuses %s and never consumes the pairing', async (_label, bend) => {
     const res = await exchange(5, { counter: 9, ...bend });
+    expect(res.status).toBe(400);
+    expect((await res.json()).type).toContain('pairing_identity_invalid');
+    expect(mocks.exchangePairingVerified).not.toHaveBeenCalled();
+  });
+
+  it.each(CROSS_ORIGIN_ASSERTIONS)('refuses %s and never consumes the pairing', async (_label, bend) => {
+    const res = await exchange(5, { counter: 9, ...bend });
+    expect(res.status).toBe(400);
+    expect((await res.json()).type).toContain('pairing_identity_invalid');
+    expect(mocks.exchangePairingVerified).not.toHaveBeenCalled();
+  });
+
+  it('refuses an assertion a second authenticator signed under the enrolled credential ID', async () => {
+    const impostor = createSoftAuthenticator().assert(goodCeremony({ counter: 9 }));
+    impostor.id = authenticator.credentialId;
+    impostor.rawId = authenticator.credentialId;
+    const res = await exchange(5, {}, impostor);
     expect(res.status).toBe(400);
     expect((await res.json()).type).toContain('pairing_identity_invalid');
     expect(mocks.exchangePairingVerified).not.toHaveBeenCalled();

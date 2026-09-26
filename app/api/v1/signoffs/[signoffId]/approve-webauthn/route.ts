@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
+import { assertSameOriginWebAuthnResponse } from '@/lib/webauthn-client-data.js';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -249,6 +250,7 @@ export async function POST(
     const { rpID, origin } = getRpConfig();
     let verification;
     try {
+      assertSameOriginWebAuthnResponse(body.assertion);
       verification = await verifyAuthenticationResponse({
         response: body.assertion,
         expectedChallenge,

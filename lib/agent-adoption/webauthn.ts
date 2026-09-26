@@ -473,7 +473,10 @@ function verifyClientData(
       || parsed.type !== expectedType
       || parsed.challenge !== challenge
       || parsed.origin !== origin
-      || parsed.crossOrigin === true) {
+      // Same rule as lib/webauthn-client-data.ts: only an absent or false
+      // crossOrigin, and never a topOrigin.
+      || (parsed.crossOrigin !== undefined && parsed.crossOrigin !== false)
+      || parsed.topOrigin !== undefined) {
     throw refusal(
       `${prefix}_client_data_invalid`,
       'WebAuthn client data does not match the exact ceremony.',

@@ -10,6 +10,7 @@ import {
   mobilePairingIdentityChallenge,
 } from '@/lib/mobile/store.js';
 import { getRpConfig } from '@/lib/webauthn.js';
+import { assertSameOriginWebAuthnResponse } from '@/lib/webauthn-client-data.js';
 import {
   isWebAuthnAuthenticatorTransport,
   type WebAuthnAuthenticatorTransport,
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { rpID, origin } = getRpConfig();
     let verification;
     try {
+      assertSameOriginWebAuthnResponse(assertion);
       verification = await verifyAuthenticationResponse({
         response: assertion,
         expectedChallenge: mobilePairingIdentityChallenge(code),

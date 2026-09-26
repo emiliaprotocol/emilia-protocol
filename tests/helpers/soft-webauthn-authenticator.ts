@@ -72,7 +72,8 @@ export interface ClientDataOverrides {
   type?: string;
   challenge?: string;
   origin?: string;
-  crossOrigin?: boolean;
+  /** Normally a boolean; a test may present another JSON value on purpose. */
+  crossOrigin?: unknown;
   topOrigin?: string;
 }
 
@@ -92,8 +93,13 @@ export interface CeremonyInput {
 }
 
 export interface RegistrationInput extends CeremonyInput {
-  /** 'none' (default) or 'packed' self-attestation. */
-  fmt?: 'none' | 'packed';
+  /**
+   * 'none' (default) or 'packed' self-attestation. Any other string is sent
+   * as-is with an empty attStmt, to probe the verifier's format allowlist.
+   */
+  fmt?: string;
+  /** Replace the attestation statement the format would otherwise produce. */
+  attStmtOverride?: CborMap;
   /**
    * Replace the credential public key in authenticatorData with this COSE
    * map. Used to present a non-ES256 algorithm the verifier must refuse.
@@ -152,11 +158,12 @@ export function createSoftAuthenticator() {
       key,
     ]);
     const cdj = clientDataJSON('webauthn.create', input);
-    const attStmt: CborMap = new Map();
+    let attStmt: CborMap = new Map();
     if (input.fmt === 'packed') {
       attStmt.set('alg', -7);
       attStmt.set('sig', sign(Buffer.concat([authData, sha256(cdj)])));
     }
+    if (input.attStmtOverride) attStmt = input.attStmtOverride;
     const attestationObject = cborEncode(new Map<number | string, CborValue>([
       ['fmt', input.fmt ?? 'none'],
       ['attStmt', attStmt],
@@ -218,6 +225,22 @@ export function ed25519CoseKey(): CborMap {
     [3, -8], // alg: EdDSA
     [-1, 6], // crv: Ed25519
     [-2, Buffer.from(jwk.x, 'base64url')],
+  ]);
+}
+
+/**
+ * A P-384 EC2 key that claims alg ES256 (-7). The library's algorithm gate
+ * reads only the alg label, so this passes it; EP must still refuse the curve.
+ */
+export function p384KeyLabelledEs256(): CborMap {
+  const { publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-384' });
+  const jwk = publicKey.export({ format: 'jwk' }) as { x: string; y: string };
+  return new Map<number | string, CborValue>([
+    [1, 2], // kty: EC2
+    [3, -7], // alg: ES256 (the label the gate checks)
+    [-1, 2], // crv: P-384 (what EP must refuse)
+    [-2, Buffer.from(jwk.x, 'base64url')],
+    [-3, Buffer.from(jwk.y, 'base64url')],
   ]);
 }
 

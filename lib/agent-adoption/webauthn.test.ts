@@ -335,6 +335,32 @@ describe('agent-adoption WebAuthn registration', () => {
     expect(mocks.verifyRegistrationResponse).not.toHaveBeenCalled();
   });
 
+  // Only an absent or false crossOrigin, never a topOrigin: the rule every EP
+  // WebAuthn call site shares (lib/webauthn-client-data.ts).
+  it.each([
+    ['crossOrigin: true', { crossOrigin: true }],
+    ['a non-boolean crossOrigin', { crossOrigin: 'true' }],
+    ['a topOrigin', { crossOrigin: false, topOrigin: 'https://evil.example.test' }],
+  ])('refuses client data with %s before the WebAuthn verifier', async (_name, members) => {
+    const ceremony = await createAgentAdoptionRegistrationOptions({
+      context: registrationContext(),
+      now: NOW,
+    });
+    const base = registrationResponse(ceremony.challenge);
+    const attestation = {
+      ...base,
+      response: {
+        ...base.response,
+        clientDataJSON: Buffer.from(JSON.stringify({
+          type: 'webauthn.create', challenge: ceremony.challenge, origin: ORIGIN, ...members,
+        }), 'utf8').toString('base64url'),
+      },
+    };
+    await expect(verifyAgentAdoptionRegistration({ ceremony, attestation, now: NOW }))
+      .rejects.toMatchObject({ code: 'registration_client_data_invalid' });
+    expect(mocks.verifyRegistrationResponse).not.toHaveBeenCalled();
+  });
+
   it('refuses verifier RP drift, missing UV, and a non-P-256 public key', async () => {
     const ceremony = await createAgentAdoptionRegistrationOptions({
       context: registrationContext(),
@@ -404,6 +430,31 @@ describe('agent-adoption WebAuthn assertion', () => {
       expires_at: CONTEXT_INPUT.expiresAt,
       credential_id: CREDENTIAL.credential_id,
     });
+  });
+
+  it.each([
+    ['crossOrigin: true', { crossOrigin: true }],
+    ['a non-boolean crossOrigin', { crossOrigin: 'true' }],
+    ['a topOrigin', { crossOrigin: false, topOrigin: 'https://evil.example.test' }],
+  ])('refuses assertion client data with %s before the WebAuthn verifier', async (_name, members) => {
+    const ceremony = await createAgentAdoptionAssertionOptions({
+      context: assertionContext(),
+      credential: CREDENTIAL,
+      now: NOW,
+    });
+    const base = assertionResponse(ceremony.challenge, 1);
+    const assertion = {
+      ...base,
+      response: {
+        ...base.response,
+        clientDataJSON: Buffer.from(JSON.stringify({
+          type: 'webauthn.get', challenge: ceremony.challenge, origin: ORIGIN, ...members,
+        }), 'utf8').toString('base64url'),
+      },
+    };
+    await expect(verifyAgentAdoptionAssertion({ ceremony, assertion, credential: CREDENTIAL, now: NOW }))
+      .rejects.toMatchObject({ code: 'assertion_client_data_invalid' });
+    expect(mocks.verifyAuthenticationResponse).not.toHaveBeenCalled();
   });
 
   it('verifies the exact credential and returns monotonic counter/device metadata', async () => {
