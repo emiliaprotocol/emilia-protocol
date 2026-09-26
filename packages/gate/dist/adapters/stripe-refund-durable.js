@@ -282,12 +282,22 @@ export async function guardStripeRefundDurable(connector, input) {
         return { ok: false, state: 'INDETERMINATE', reason: 'attempt_transition_failed' };
     }
     let entered = false;
+    let callbackOpen = true;
+    let callbackClaimed = false;
     let providerEvidence = null;
     let gateResult = null;
     try {
         gateResult = await config.gate.run({
             selector: SELECTOR, receipt: input.receipt, observedAction: action,
         }, async (authorization) => {
+            // A Gate implementation must not turn one reserved attempt into more
+            // than one provider call, even if it invokes or resumes the callback
+            // more than once.
+            if (!callbackOpen)
+                throw new Error('stripe_refund_provider_callback_closed');
+            if (callbackClaimed)
+                throw new Error('stripe_refund_provider_callback_already_claimed');
+            callbackClaimed = true;
             const currentRequired = authorization?.requirement?.execution_binding?.required_fields;
             if (authorization?.allow !== true || authorization.requirement?.receipt_required !== true
                 || !Array.isArray(currentRequired)
@@ -300,6 +310,8 @@ export async function guardStripeRefundDurable(connector, input) {
                 throw new Error('stripe_account_binding_profile_changed');
             }
             const account = await config.stripe.accounts.retrieve();
+            if (!callbackOpen)
+                throw new Error('stripe_refund_provider_callback_closed');
             if (account?.id !== config.account_id)
                 throw new Error('stripe_account_changed');
             entered = true;
@@ -315,6 +327,9 @@ export async function guardStripeRefundDurable(connector, input) {
     catch {
         // Even a known client exception can mean Stripe accepted the refund and
         // its response was lost. Do not retry or free the operation ID.
+    }
+    finally {
+        callbackOpen = false;
     }
     if (!await markIndeterminate(config.store, binding, owner).catch(() => false)) {
         return { ok: false, state: 'INDETERMINATE', reason: 'attempt_freeze_failed' };
