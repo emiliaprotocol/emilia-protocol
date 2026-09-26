@@ -138,6 +138,8 @@ export function readMigrationBundle(root = ROOT) {
     return files;
 }
 export function auditMigrationBundle(migrationFiles, schemaContract = contract) {
+    const privateTables = new Set(schemaContract.privateSourceTables || []);
+    const publicSourceTables = (tables = []) => tables.filter((table) => !privateTables.has(table));
     const files = migrationFiles.map((entry) => ({ file: entry.file, sql: entry.sql }));
     const statements = files.flatMap((entry) => statementsFor(entry.sql));
     // Fortress reassertions are forward-only: a service-only table added AFTER the
@@ -160,18 +162,19 @@ export function auditMigrationBundle(migrationFiles, schemaContract = contract) 
             failures.push({ name, detail: detail || 'invariant failed' });
     };
     check('fortress reconciliation migration present', () => invariantFiles.length > 0);
-    for (const table of schemaContract.rlsRequired) {
+    for (const table of publicSourceTables(schemaContract.rlsRequired)) {
         check(`RLS enabled: ${table}`, () => statements.some((statement) => /^ALTER\s+TABLE\b/i.test(statement)
             && hasTableReference(statement, table)
             && /\bENABLE\s+ROW\s+LEVEL\s+SECURITY\b/i.test(statement)));
     }
-    for (const table of schemaContract.forceRlsRequired || []) {
+    for (const table of publicSourceTables(schemaContract.forceRlsRequired)) {
         check(`RLS forced: ${table}`, () => statements.some((statement) => /^ALTER\s+TABLE\b/i.test(statement)
             && hasTableReference(statement, table)
             && /\bFORCE\s+ROW\s+LEVEL\s+SECURITY\b/i.test(statement)));
     }
-    for (const table of schemaContract.tableGrantsNoPublic || []) {
-        check(`public table ACL revoked: ${table}`, () => directTableRevoke(invariantStatements, table, ['PUBLIC', 'anon', 'authenticated']));
+    for (const table of new Set([...(schemaContract.tableGrantsNoPublic || []), ...privateTables])) {
+        if (!privateTables.has(table))
+            check(`public table ACL revoked: ${table}`, () => directTableRevoke(invariantStatements, table, ['PUBLIC', 'anon', 'authenticated']));
         const directPublicGrant = statements.find((statement) => /^GRANT\b/i.test(statement)
             && hasTableReference(statement, table)
             && !/\([^)]*\)\s+ON\b/i.test(statement)
@@ -182,10 +185,10 @@ export function auditMigrationBundle(migrationFiles, schemaContract = contract) 
                 detail: directPublicGrant,
             });
     }
-    for (const table of schemaContract.tableGrantsNoServiceRoleDirect || []) {
+    for (const table of publicSourceTables(schemaContract.tableGrantsNoServiceRoleDirect)) {
         check(`direct service_role table ACL revoked: ${table}`, () => directTableRevoke(invariantStatements, table, ['service_role']));
     }
-    for (const table of schemaContract.tableWriteGrantsNoServiceRole || []) {
+    for (const table of publicSourceTables(schemaContract.tableWriteGrantsNoServiceRole)) {
         check(`direct service_role table writes revoked: ${table}`, () => directTableWriteRevoke(
         // RPC-only mutation boundaries may be introduced by a feature migration
         // before the next fortress reconciliation. The revocation is still an
@@ -193,6 +196,8 @@ export function auditMigrationBundle(migrationFiles, schemaContract = contract) 
         statements, table, ['service_role']));
     }
     for (const [table, columns] of Object.entries(schemaContract.sensitiveColumnsNoPublicGrant || {})) {
+        if (privateTables.has(table))
+            continue;
         for (const column of columns) {
             check(`public column ACL revoked: ${table}.${column}`, () => directSensitiveColumnRevoke(invariantStatements, table, column));
         }
@@ -210,7 +215,7 @@ export function auditMigrationBundle(migrationFiles, schemaContract = contract) 
             && policy.roles.some(isPublicRole));
         check(`no public write policy: ${table}`, () => bad.length === 0 || `policy ${bad.map((p) => p.name).join(', ')}`);
     }
-    for (const table of schemaContract.serviceRolePoliciesRequired || []) {
+    for (const table of publicSourceTables(schemaContract.serviceRolePoliciesRequired)) {
         const good = finalPolicies.some((policy) => policy.table === table && policyIsServiceOnly(policy));
         check(`service_role policy: ${table}`, () => good);
     }
@@ -223,6 +228,7 @@ export function auditMigrationBundle(migrationFiles, schemaContract = contract) 
         checks,
         failures,
         limitations: [
+            ...(privateTables.size ? [`Defining SQL for private application tables is outside this source audit: ${[...privateTables].sort().join(', ')}. Live database requirements are unchanged; public grants and policies remain checked.`] : []),
             'This is static migration-source evidence, not proof that production applied every migration.',
             'Pair with scripts/db-contract.mjs for live catalog ACL/RLS/policy state and scripts/migration-reconcile.mjs for object existence.',
             'The audit does not inspect application routes, escrow behavior, key custody, or cryptographic algorithm negotiation.',

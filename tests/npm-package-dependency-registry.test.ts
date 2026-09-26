@@ -56,7 +56,7 @@ describe('npm internal dependency registry guard', () => {
       {
         metadata: GATE_METADATA,
         directory: 'packages/gate',
-        version: '0.27.0',
+        version: '0.28.0',
         expectedPins: [
           {
             spec: '@emilia-protocol/require-receipt@0.8.1',
