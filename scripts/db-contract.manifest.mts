@@ -662,6 +662,7 @@ export const contract: DbContract = {
     'mark_works_notification_read',
     'lease_works_notification_email',
     'mark_works_notification_email_delivered',
+    'read_agent_record_refusal_source',
     ...RELEASE_LOCK_SERVICE_RPCS,
   ],
 

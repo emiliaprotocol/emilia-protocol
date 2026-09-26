@@ -176,3 +176,10 @@ matching capability is stored only as a private hash and can be checked through
 a boolean-only server RPC; neither the capability table nor its configuration
 function is granted to `service_role`. The database validates closed structure
 and exact source bindings; it does not claim to verify Ed25519.
+
+The Arena refusal-source reader, `read_agent_record_refusal_source`, is owned
+by a separate `NOLOGIN` role, `agent_record_source_reader`, whose only table
+access is `SELECT` on the two Arena source tables through explicit forced-RLS
+policies. Only `service_role` and the Agent Record owner can execute
+it. The Agent Record owner holds `EXECUTE` on `read_agent_adoption_session`,
+which trial binding and creation call to recheck the active adoption.
