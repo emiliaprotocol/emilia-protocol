@@ -23,6 +23,16 @@ import type {
 } from '../proposal-to-effect.js';
 
 const PROFILE = 'EMILIA-STRIPE-REFUND-DURABLE-v1';
+/**
+ * The durable profile's own action type. Gate refuses a receipt whose signed
+ * action_type differs from the resolved manifest entry, and both Stripe refund
+ * paths bind action_type as a material execution field. A receipt minted for
+ * this profile therefore cannot execute on the legacy guardStripeMutation()
+ * refund path ('stripe.refund.create'), and a legacy refund receipt cannot
+ * execute here.
+ */
+export const STRIPE_REFUND_DURABLE_ACTION_TYPE = 'stripe.refund.durable.create';
+const ACTION_TYPE = STRIPE_REFUND_DURABLE_ACTION_TYPE;
 const PROVIDER_ID = 'stripe';
 const SELECTOR = Object.freeze({ protocol: 'stripe', tool: 'create_refund' });
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9:_.@/-]{2,255}$/;
@@ -61,14 +71,17 @@ type StripeClient = {
   };
 };
 
+type GateRequirement = {
+  receipt_required?: boolean; action_type?: string;
+  execution_binding?: { required_fields?: string[] };
+};
+
 type Gate = {
   check(input: Record<string, unknown>): Promise<{
-    allow?: boolean; reason?: string;
-    requirement?: { receipt_required?: boolean; execution_binding?: { required_fields?: string[] } };
+    allow?: boolean; reason?: string; requirement?: GateRequirement;
   }>;
   run(input: Record<string, unknown>, effect: (authorization: {
-    allow?: boolean;
-    requirement?: { receipt_required?: boolean; execution_binding?: { required_fields?: string[] } };
+    allow?: boolean; requirement?: GateRequirement;
   }) => Promise<unknown>): Promise<{
     ok?: boolean; result?: unknown; authorization?: { reason?: string };
     packet?: unknown; execution?: unknown;
@@ -102,19 +115,35 @@ type Configured = {
 const connectors = new WeakMap<object, Configured>();
 
 /**
- * Build a manifest whose refund receipt binds the connector tenant and
- * environment and the provider account as well as the payment, amount, and
- * operation. The direct adapter's older manifest is intentionally not changed
- * and is refused by this durable connector.
+ * Build a manifest whose refund receipt uses this profile's own action type
+ * and binds the connector tenant and environment and the provider account as
+ * well as the payment, amount, and operation. The direct adapter's older
+ * manifest is intentionally not changed and is refused by this connector.
  */
 export function createStripeDurableRefundManifest(extraActions = []) {
   const pack = STRIPE_ACTION_PACK.map((item) => item.id === 'stripe.refund.create'
     ? {
       ...item,
+      // The selector stays the legacy refund selector on purpose. A legacy
+      // guardStripeMutation() refund sent to this Gate still resolves a guarded
+      // entry, never an unguarded pass-through, and is refused because its
+      // receipt and observed action name the legacy action type.
+      id: ACTION_TYPE,
+      label: 'Stripe refund (durable recovery profile)',
+      action_type: ACTION_TYPE,
       execution_binding: { required_fields: [...REQUIRED_FIELDS] },
     }
     : item);
   return manifestFromPack(pack, extraActions);
+}
+
+/** True only for a Gate requirement resolved from this profile's manifest entry. */
+function durableRequirement(requirement: GateRequirement | undefined): boolean {
+  const required = requirement?.execution_binding?.required_fields;
+  return requirement?.receipt_required === true
+    && requirement.action_type === ACTION_TYPE
+    && Array.isArray(required)
+    && REQUIRED_FIELDS.every((field) => required.includes(field));
 }
 
 function digest(value: unknown): `sha256:${string}` {
@@ -127,21 +156,34 @@ function assertIdentifier(value: unknown, name: string): asserts value is string
   }
 }
 
-function assertRefund(value: unknown): asserts value is RefundParameters {
+/**
+ * Read each refund field from the business system's object exactly once into
+ * a frozen snapshot, then validate only that snapshot. A getter, proxy, or
+ * shared object whose values change between reads cannot put an unchecked
+ * value on the wire, because nothing reads the source object again.
+ */
+function snapshotRefund(value: unknown): RefundParameters {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new TypeError('trusted refund operation is invalid');
   }
-  const p = value as Record<string, unknown>;
-  if (!PAYMENT_INTENT.test(String(p.payment_intent ?? ''))
-      || !Number.isSafeInteger(p.amount) || Number(p.amount) <= 0
-      || typeof p.operation_id !== 'string' || !OPERATION_ID.test(p.operation_id)) {
+  const source = value as Record<string, unknown>;
+  const snapshot = Object.freeze({
+    payment_intent: source.payment_intent,
+    amount: source.amount,
+    operation_id: source.operation_id,
+  });
+  if (typeof snapshot.payment_intent !== 'string' || !PAYMENT_INTENT.test(snapshot.payment_intent)
+      || typeof snapshot.amount !== 'number' || !Number.isSafeInteger(snapshot.amount)
+      || snapshot.amount <= 0
+      || typeof snapshot.operation_id !== 'string' || !OPERATION_ID.test(snapshot.operation_id)) {
     throw new TypeError('trusted refund operation is invalid');
   }
+  return snapshot as RefundParameters;
 }
 
 function context(config: Configured, p: RefundParameters) {
   const action = canonicalActuatorObject({
-    action_type: 'stripe.refund.create',
+    action_type: ACTION_TYPE,
     tenant_id: config.tenant_id,
     environment: config.environment,
     provider_account_id: config.account_id,
@@ -176,10 +218,10 @@ function context(config: Configured, p: RefundParameters) {
   // not a claim of a registered global Stripe action definition. The connector
   // namespace is carried by the attempt binding, not by the action identifier.
   const caidAction = {
-    action_type: 'stripe.refund.create.1', provider_account_id: config.account_id,
+    action_type: `${ACTION_TYPE}.1`, provider_account_id: config.account_id,
     payment_intent: p.payment_intent, amount: p.amount, operation_id: p.operation_id,
   };
-  const caid = `caid:1:stripe.refund.create.1:jcs-sha256:${Buffer.from(hashCanonical(caidAction), 'hex').toString('base64url')}`;
+  const caid = `caid:1:${ACTION_TYPE}.1:jcs-sha256:${Buffer.from(hashCanonical(caidAction), 'hex').toString('base64url')}`;
   const metadata = {
     emilia_operation_id: p.operation_id,
     emilia_request_digest: binding.request_digest,
@@ -311,17 +353,14 @@ async function resolve(connector: StripeRefundDurableConnector, reference: unkno
   } catch {
     throw new ResolveRefusal('refund_operation_unavailable');
   }
+  // Copy, then validate the copy; a throwing getter or proxy trap refuses here.
+  // Only the frozen snapshot is used from this point on.
+  let p: RefundParameters;
   try {
-    assertRefund(trusted);
+    p = snapshotRefund(trusted);
   } catch {
     throw new ResolveRefusal('refund_operation_invalid');
   }
-  // Never retain a mutable business-system object across async Gate/store work.
-  const p = canonicalActuatorObject({
-    payment_intent: trusted.payment_intent,
-    amount: trusted.amount,
-    operation_id: trusted.operation_id,
-  }) as RefundParameters;
   return { config, p, ...context(config, p) };
 }
 
@@ -334,18 +373,47 @@ async function resolveOrRefuse(connector: StripeRefundDurableConnector, referenc
   }
 }
 
+type Resolved = Awaited<ReturnType<typeof resolve>>;
+
+/** Provider refund fields, each read once from the provider object. */
+type RefundView = Readonly<{
+  id: unknown;
+  payment_intent: unknown;
+  amount: unknown;
+  created: unknown;
+  metadata: Readonly<Record<
+    'emilia_operation_id' | 'emilia_request_digest' | 'emilia_idempotency_key' | 'emilia_origin_tag',
+    unknown
+  >> | null;
+}>;
+
+function refundView(record: unknown): RefundView | null {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return null;
+  const r = record as StripeRefundRecord;
+  const rawMetadata = r.metadata;
+  let metadata: RefundView['metadata'] = null;
+  if (rawMetadata && typeof rawMetadata === 'object' && !Array.isArray(rawMetadata)) {
+    const m = rawMetadata as Record<string, unknown>;
+    metadata = Object.freeze({
+      emilia_operation_id: m.emilia_operation_id,
+      emilia_request_digest: m.emilia_request_digest,
+      emilia_idempotency_key: m.emilia_idempotency_key,
+      emilia_origin_tag: m.emilia_origin_tag,
+    });
+  }
+  return Object.freeze({
+    id: r.id, payment_intent: r.payment_intent, amount: r.amount, created: r.created, metadata,
+  });
+}
+
 /**
  * True when a provider record carries any of this operation's identifying
  * metadata. Such a record that is not a complete positive match means the
  * provider view conflicts with the attempt, so it cannot support COMMITTED.
  */
-function carriesOperationMetadata(
-  record: unknown, resolved: Awaited<ReturnType<typeof resolve>>,
-): boolean {
-  if (!record || typeof record !== 'object' || Array.isArray(record)) return false;
-  const metadata = (record as StripeRefundRecord).metadata;
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
-  const m = metadata as Record<string, unknown>;
+function carriesOperationMetadata(view: RefundView | null, resolved: Resolved): boolean {
+  const m = view?.metadata;
+  if (!m) return false;
   return m.emilia_operation_id === resolved.p.operation_id
     || m.emilia_request_digest === resolved.binding.request_digest
     || m.emilia_idempotency_key === resolved.idempotencyKey
@@ -353,40 +421,136 @@ function carriesOperationMetadata(
 }
 
 function positiveRefundEvidence(
-  record: StripeRefundRecord, resolved: Awaited<ReturnType<typeof resolve>>,
+  view: RefundView | null, resolved: Resolved,
 ): AuthenticatedProviderEvidenceBinding | null {
-  if (!record || !REFUND_ID.test(String(record.id ?? ''))
-      || record.payment_intent !== resolved.p.payment_intent
-      || record.amount !== resolved.p.amount
-      || !Number.isSafeInteger(record.created)
-      || Number(record.created) <= 0 || Number(record.created) * 1000 > Date.now() + 300_000
-      || !record.metadata || typeof record.metadata !== 'object'
-      || Array.isArray(record.metadata)) return null;
-  const metadata = record.metadata as Record<string, unknown>;
+  if (!view || typeof view.id !== 'string' || !REFUND_ID.test(view.id)
+      || view.payment_intent !== resolved.p.payment_intent
+      || view.amount !== resolved.p.amount
+      || typeof view.created !== 'number' || !Number.isSafeInteger(view.created)
+      || view.created <= 0 || view.created * 1000 > Date.now() + 300_000
+      || !view.metadata) return null;
+  const metadata = view.metadata;
   if (metadata.emilia_operation_id !== resolved.p.operation_id
       || metadata.emilia_request_digest !== resolved.binding.request_digest
       || metadata.emilia_idempotency_key !== resolved.idempotencyKey
       || metadata.emilia_origin_tag !== resolved.metadata.emilia_origin_tag) return null;
-  const observedAt = new Date(Number(record.created) * 1000).toISOString();
+  const observedAt = new Date(view.created * 1000).toISOString();
   return {
     ...resolved.binding,
     operation_id: resolved.p.operation_id,
     caid: resolved.caid,
     action_digest: resolved.binding.request_digest,
-    evidence_id: record.id as string,
+    evidence_id: view.id,
     observed_at: observedAt,
     outcome: 'COMMITTED',
     evidence_digest: digest({
       profile: PROFILE, provider_id: PROVIDER_ID,
-      account_id: resolved.config.account_id, id: record.id,
-      payment_intent: record.payment_intent, amount: record.amount,
-      created: record.created, metadata: resolved.metadata,
+      account_id: resolved.config.account_id, id: view.id,
+      payment_intent: view.payment_intent, amount: view.amount,
+      created: view.created, metadata: resolved.metadata,
     }),
   };
 }
 
+type ProviderHoldReason =
+  | 'provider_lookup_unavailable' | 'provider_lookup_incomplete'
+  | 'provider_effect_conflicting' | 'provider_effect_ambiguous';
+
+type ProviderView =
+  | { outcome: 'match'; evidence: AuthenticatedProviderEvidenceBinding; record: unknown }
+  | { outcome: 'absent' }
+  | { outcome: 'held'; reason: ProviderHoldReason };
+
+/**
+ * One bounded Stripe list over this payment intent, classified by the rules
+ * both recovery and the pre-create lookup use. Only an exact, uniquely tagged
+ * refund on a complete page is a match; only a complete page with no refund
+ * carrying any of this operation's metadata is absent. Everything else holds.
+ */
+async function inspectProviderRefunds(resolved: Resolved): Promise<ProviderView> {
+  let page: { data?: unknown; has_more?: unknown };
+  try {
+    page = await resolved.config.stripe.refunds.list({ payment_intent: resolved.p.payment_intent, limit: 100 });
+  } catch {
+    return { outcome: 'held', reason: 'provider_lookup_unavailable' };
+  }
+  try {
+    const data = page?.data;
+    const hasMore = page?.has_more;
+    if (!Array.isArray(data) || hasMore !== false) {
+      return { outcome: 'held', reason: 'provider_lookup_incomplete' };
+    }
+    const records = Array.from(data as unknown[]);
+    const views = records.map((record) => refundView(record));
+    const evidence = views.map((view) => positiveRefundEvidence(view, resolved));
+    if (views.some((view, index) => !evidence[index] && carriesOperationMetadata(view, resolved))) {
+      return { outcome: 'held', reason: 'provider_effect_conflicting' };
+    }
+    const matches = evidence.flatMap((item, index) => item ? [index] : []);
+    if (matches.length === 0) return { outcome: 'absent' };
+    if (matches.length > 1) return { outcome: 'held', reason: 'provider_effect_ambiguous' };
+    return { outcome: 'match', evidence: evidence[matches[0]!]!, record: records[matches[0]!] };
+  } catch {
+    // A page that cannot be read consistently is not a complete provider view.
+    return { outcome: 'held', reason: 'provider_lookup_incomplete' };
+  }
+}
+
 function attemptRef(binding: ConsequenceAttemptBinding, owner: ConsequenceAttemptOwnerHandle) {
   return { tenant_id: binding.tenant_id, attempt_id: binding.attempt_id, owner };
+}
+
+function attemptReference(binding: ConsequenceAttemptBinding) {
+  return {
+    tenant_id: binding.tenant_id, provider_id: binding.provider_id,
+    provider_account_id: binding.provider_account_id, environment: binding.environment,
+    attempt_id: binding.attempt_id, request_digest: binding.request_digest,
+  };
+}
+
+/**
+ * Read the attempt by its deterministic binding. This works on the exported
+ * PTE DDL, which has no lookup_attempt function.
+ */
+async function readAttempt(store: StripeRefundDurableStore, binding: ConsequenceAttemptBinding) {
+  const snapshot = await store.read(attemptReference(binding)).catch(() => null);
+  if (!snapshot) return { found: false } as const;
+  const expectedDigests = stripeRefundAttemptDigests(binding);
+  if (snapshot.tenant_id !== binding.tenant_id || snapshot.provider_id !== binding.provider_id
+      || snapshot.provider_account_id !== binding.provider_account_id
+      || snapshot.environment !== binding.environment
+      || snapshot.attempt_id !== binding.attempt_id
+      || snapshot.request_digest !== binding.request_digest
+      || snapshot.operation_digest !== expectedDigests.operation_digest
+      || snapshot.action_digest !== expectedDigests.action_digest
+      || snapshot.config_digest !== expectedDigests.config_digest) {
+    return { found: true, matches: false } as const;
+  }
+  return { found: true, matches: true, snapshot } as const;
+}
+
+const hasEvidenceDigest = (snapshot: ProposalToEffectPostgresAttemptSnapshot) =>
+  /^sha256:[0-9a-f]{64}$/.test(String(snapshot.evidence_digest ?? ''));
+
+/**
+ * The operation already has an attempt. Report what that attempt is, without
+ * claiming an uncertainty that does not exist: a RELEASED attempt is closed
+ * (Stripe was not entered), a COMMITTED one is done. Only a nonterminal or
+ * unreadable attempt is reported as held.
+ */
+async function existingAttemptOutcome(store: StripeRefundDurableStore, binding: ConsequenceAttemptBinding) {
+  const read = await readAttempt(store, binding);
+  const snapshot = read.found && read.matches ? read.snapshot : null;
+  if (snapshot?.state === 'RELEASED') {
+    return { ok: false, state: 'REFUSED', reason: 'operation_closed_released' };
+  }
+  if (snapshot?.state === 'COMMITTED' && hasEvidenceDigest(snapshot)) {
+    return { ok: false, state: 'COMMITTED', reason: 'operation_already_committed' };
+  }
+  if (snapshot?.state === 'ESCALATED') {
+    return { ok: false, state: 'ESCALATED', reason: 'operation_escalated' };
+  }
+  return { ok: false, state: 'INDETERMINATE', reason: 'operation_already_reserved' };
 }
 
 async function markIndeterminate(store: StripeRefundDurableStore, binding: ConsequenceAttemptBinding, owner: ConsequenceAttemptOwnerHandle) {
@@ -410,6 +574,14 @@ async function commitVerified(
  * correctly. An existing, uncertain or terminal attempt
  * never calls Stripe again, even with fresh receipts or after Stripe's
  * idempotency-key retention window.
+ *
+ * Before the first refunds.create for an operation, the connector lists the
+ * payment intent's refunds under the recovery rules. A matching refund (for
+ * example after the attempt row was lost to a restore) commits from that
+ * refund without creating; a conflicting, ambiguous, incomplete or unavailable
+ * view leaves the attempt INDETERMINATE without creating. The lookup is not
+ * atomic with the create: two setups that lack each other's attempt row and
+ * create at the same instant can both see no refund.
  */
 export async function guardStripeRefundDurable(
   connector: StripeRefundDurableConnector,
@@ -419,17 +591,19 @@ export async function guardStripeRefundDurable(
   if ('refusal' in outcome) return { ok: false, state: 'REFUSED', reason: outcome.refusal };
   const { resolved } = outcome;
   const { config, p, action, binding, idempotencyKey, metadata } = resolved;
-  const preflight = await config.gate.check({
-    selector: SELECTOR, receipt: input.receipt, observedAction: action,
-    consumptionMode: 'none',
-  });
-  if (preflight.allow !== true) {
-    return { ok: false, state: 'REFUSED', reason: preflight.reason || 'gate_refused' };
+  let preflight: Awaited<ReturnType<Gate['check']>>;
+  try {
+    preflight = await config.gate.check({
+      selector: SELECTOR, receipt: input?.receipt, observedAction: action,
+      consumptionMode: 'none',
+    });
+  } catch {
+    return { ok: false, state: 'REFUSED', reason: 'gate_check_failed' };
   }
-  const required = preflight.requirement?.execution_binding?.required_fields;
-  if (preflight.requirement?.receipt_required !== true
-      || !Array.isArray(required)
-      || REQUIRED_FIELDS.some((field) => !required.includes(field))) {
+  if (preflight?.allow !== true) {
+    return { ok: false, state: 'REFUSED', reason: preflight?.reason || 'gate_refused' };
+  }
+  if (!durableRequirement(preflight.requirement)) {
     return { ok: false, state: 'REFUSED', reason: 'stripe_account_binding_profile_required' };
   }
   let reservation: Awaited<ReturnType<StripeRefundDurableStore['reserve']>>;
@@ -438,9 +612,7 @@ export async function guardStripeRefundDurable(
   } catch {
     return { ok: false, state: 'INDETERMINATE', reason: 'attempt_store_unavailable' };
   }
-  if (!reservation.reserved) {
-    return { ok: false, state: 'INDETERMINATE', reason: 'operation_already_reserved' };
-  }
+  if (!reservation.reserved) return existingAttemptOutcome(config.store, binding);
   const { owner } = reservation;
   if (!await config.store.transition({
     ...attemptRef(binding, owner), expected_state: 'RESERVED', next_state: 'INVOKING',
@@ -450,6 +622,8 @@ export async function guardStripeRefundDurable(
   let entered = false;
   let callbackOpen = true;
   let callbackClaimed = false;
+  let foundExisting = false;
+  let providerHold: ProviderHoldReason | null = null;
   let providerEvidence: AuthenticatedProviderEvidenceBinding | null = null;
   let gateResult: Awaited<ReturnType<Gate['run']>> | null = null;
   try {
@@ -462,10 +636,7 @@ export async function guardStripeRefundDurable(
       if (!callbackOpen) throw new Error('stripe_refund_provider_callback_closed');
       if (callbackClaimed) throw new Error('stripe_refund_provider_callback_already_claimed');
       callbackClaimed = true;
-      const currentRequired = authorization?.requirement?.execution_binding?.required_fields;
-      if (authorization?.allow !== true || authorization.requirement?.receipt_required !== true
-          || !Array.isArray(currentRequired)
-          || REQUIRED_FIELDS.some((field) => !currentRequired.includes(field))
+      if (authorization?.allow !== true || !durableRequirement(authorization.requirement)
           || verifyExecutionBinding({
             requirement: authorization.requirement,
             receipt: input.receipt,
@@ -476,11 +647,25 @@ export async function guardStripeRefundDurable(
       const account = await config.stripe.accounts.retrieve();
       if (!callbackOpen) throw new Error('stripe_refund_provider_callback_closed');
       if (account?.id !== config.account_id) throw new Error('stripe_account_changed');
+      // The attempt row is the primary fence. If it was lost (a restore from an
+      // older backup, or a second setup on this account), Stripe's idempotency
+      // cache may have expired too, so look for this operation's refund first.
+      const existing = await inspectProviderRefunds(resolved);
+      if (!callbackOpen) throw new Error('stripe_refund_provider_callback_closed');
+      if (existing.outcome === 'match') {
+        foundExisting = true;
+        providerEvidence = existing.evidence;
+        return existing.record;
+      }
+      if (existing.outcome === 'held') {
+        providerHold = existing.reason;
+        throw new Error(existing.reason);
+      }
       entered = true;
       const result = await config.stripe.refunds.create({
         payment_intent: p.payment_intent, amount: p.amount, metadata,
       }, { idempotencyKey });
-      providerEvidence = positiveRefundEvidence(result, resolved);
+      providerEvidence = positiveRefundEvidence(refundView(result), resolved);
       if (!providerEvidence) throw new Error('stripe_refund_response_unverified');
       return result;
     });
@@ -497,12 +682,17 @@ export async function guardStripeRefundDurable(
     const committed = await commitVerified(config.store, binding, owner, providerEvidence).catch(() => false);
     if (committed) {
       return gateResult?.ok === true
-        ? { ok: true, state: 'COMMITTED', refund: gateResult.result ?? null,
+        ? { ok: true, state: 'COMMITTED',
+          ...(foundExisting ? { reason: 'provider_effect_already_present' } : {}),
+          refund: gateResult.result ?? null,
           reliance: gateResult.packet ?? null, execution: gateResult.execution ?? null }
         : { ok: false, state: 'COMMITTED', reason: 'provider_created_gate_outcome_unknown' };
     }
     return { ok: false, state: 'INDETERMINATE', reason: 'attempt_commit_failed' };
   }
+  // A held provider view means a refund for this operation may already exist.
+  // Never release that attempt, whatever the Gate reported.
+  if (providerHold) return { ok: false, state: 'INDETERMINATE', reason: providerHold };
   if (!entered && gateResult?.ok === false) {
     const released = await config.store.transition({
       ...attemptRef(binding, owner), expected_state: 'INDETERMINATE', next_state: 'RELEASED',
@@ -531,30 +721,13 @@ export async function reconcileStripeRefundDurable(
   const outcome = await resolveOrRefuse(connector, operation_reference);
   if ('refusal' in outcome) return { ok: false, state: 'INDETERMINATE', reason: outcome.refusal };
   const { resolved } = outcome;
-  const { config, binding, p } = resolved;
-  // The attempt ID and request digest are deterministic, so read the exact
-  // binding directly. This works on the exported PTE DDL, which has no
-  // lookup_attempt function.
-  const reference = {
-    tenant_id: binding.tenant_id, provider_id: binding.provider_id,
-    provider_account_id: binding.provider_account_id, environment: binding.environment,
-    attempt_id: binding.attempt_id, request_digest: binding.request_digest,
-  };
-  const snapshot = await config.store.read(reference).catch(() => null);
-  if (!snapshot) return { ok: false, state: 'INDETERMINATE', reason: 'attempt_not_found_or_unavailable' };
-  const expectedDigests = stripeRefundAttemptDigests(binding);
-  if (snapshot.tenant_id !== binding.tenant_id || snapshot.provider_id !== binding.provider_id
-      || snapshot.provider_account_id !== binding.provider_account_id
-      || snapshot.environment !== binding.environment
-      || snapshot.attempt_id !== binding.attempt_id
-      || snapshot.request_digest !== binding.request_digest
-      || snapshot.operation_digest !== expectedDigests.operation_digest
-      || snapshot.action_digest !== expectedDigests.action_digest
-      || snapshot.config_digest !== expectedDigests.config_digest) {
-    return { ok: false, state: 'INDETERMINATE', reason: 'attempt_binding_mismatch' };
-  }
+  const { config, binding } = resolved;
+  const read = await readAttempt(config.store, binding);
+  if (!read.found) return { ok: false, state: 'INDETERMINATE', reason: 'attempt_not_found_or_unavailable' };
+  if (!read.matches) return { ok: false, state: 'INDETERMINATE', reason: 'attempt_binding_mismatch' };
+  const { snapshot } = read;
   if (snapshot.state === 'COMMITTED') {
-    return /^sha256:[0-9a-f]{64}$/.test(String(snapshot.evidence_digest ?? ''))
+    return hasEvidenceDigest(snapshot)
       ? { ok: true, state: 'COMMITTED', reason: 'previously_verified' }
       : { ok: false, state: 'INDETERMINATE', reason: 'terminal_without_provider_evidence' };
   }
@@ -565,7 +738,8 @@ export async function reconcileStripeRefundDurable(
   if (!snapshot.lease_stale) {
     return { ok: false, state: 'INDETERMINATE', reason: 'attempt_owner_active' };
   }
-  const recovered = await config.store.recover(reference).catch(() => ({ recovered: false as const }));
+  const recovered = await config.store.recover(attemptReference(binding))
+    .catch(() => ({ recovered: false as const }));
   if (!recovered.recovered) {
     return { ok: false, state: 'INDETERMINATE', reason: 'attempt_recovery_refused' };
   }
@@ -574,31 +748,19 @@ export async function reconcileStripeRefundDurable(
     // the operation remains held for an explicit owner decision.
     return { ok: false, state: 'RESERVED', reason: 'attempt_not_invoked' };
   }
-  let page: { data?: unknown; has_more?: unknown };
-  try {
-    page = await config.stripe.refunds.list({ payment_intent: p.payment_intent, limit: 100 });
-  } catch {
-    return { ok: false, state: 'INDETERMINATE', reason: 'provider_lookup_unavailable' };
+  const view = await inspectProviderRefunds(resolved);
+  if (view.outcome === 'held') return { ok: false, state: 'INDETERMINATE', reason: view.reason };
+  if (view.outcome === 'absent') {
+    return { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_unproven' };
   }
-  if (!Array.isArray(page?.data) || page.has_more !== false) {
-    return { ok: false, state: 'INDETERMINATE', reason: 'provider_lookup_incomplete' };
-  }
-  const evidence = page.data.map((item) => positiveRefundEvidence(item as StripeRefundRecord, resolved));
-  if (page.data.some((item, index) => !evidence[index] && carriesOperationMetadata(item, resolved))) {
-    return { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_conflicting' };
-  }
-  const matches = evidence.filter(Boolean);
-  if (matches.length !== 1) {
-    return { ok: false, state: 'INDETERMINATE',
-      reason: matches.length === 0 ? 'provider_effect_unproven' : 'provider_effect_ambiguous' };
-  }
-  const committed = await commitVerified(config.store, binding, recovered.owner, matches[0]!).catch(() => false);
+  const committed = await commitVerified(config.store, binding, recovered.owner, view.evidence).catch(() => false);
   return committed
-    ? { ok: true, state: 'COMMITTED', refund_id: matches[0]!.evidence_id }
+    ? { ok: true, state: 'COMMITTED', refund_id: view.evidence.evidence_id }
     : { ok: false, state: 'INDETERMINATE', reason: 'attempt_commit_failed' };
 }
 
 export default {
+  STRIPE_REFUND_DURABLE_ACTION_TYPE,
   createStripeDurableRefundManifest,
   stripeRefundAttemptDigests,
   createStripeRefundDurableStore,
