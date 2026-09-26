@@ -36,10 +36,13 @@ their own project copies.
 
 ## Residual hardening (tracked, not blocking)
 
-- A handful of generic `SECURITY DEFINER` functions remain anon/authenticated-
-  executable (e.g. `create_profile_on_user_insert`, `rls_auto_enable`) — review
-  whether each is intentionally callable; lock down those that aren't (pattern:
-  migration 112).
+- Reviewed 2026-09-26. `complete_verified_activation` (both overloads) and
+  `create_profile_on_user_insert` had no dependents, no trigger, and no `rk_*`
+  or `hc_*` tables behind them; migration `20260926120100` drops them.
+  `rls_auto_enable` stays: it backs the `ensure_rls` `ddl_command_end` event
+  trigger that enables RLS on new public tables, and PostgreSQL rejects a
+  direct call to an event-trigger function, so its default `EXECUTE` grant is
+  not a call path.
 - Audit any remaining always-true PUBLIC policies surfaced by the advisor.
 - `schema:security` + `schema:reconcile` now guard EP's surface every PR/push/night.
 

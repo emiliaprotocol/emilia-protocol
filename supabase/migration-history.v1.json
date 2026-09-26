@@ -17,7 +17,9 @@
     "20260901190000"
   ],
   "forward_pending_versions": [
-    "20260925010000"
+    "20260925010000",
+    "20260926120000",
+    "20260926120100"
   ],
   "deployment_sequence": [
     "20260826140000",
@@ -25,7 +27,9 @@
     "20260826160000",
     "20260826170000",
     "20260901190000",
-    "20260925010000"
+    "20260925010000",
+    "20260926120000",
+    "20260926120100"
   ],
   "requires_include_all": true,
   "remote_versions": [
@@ -443,6 +447,8 @@
     "20260826160000_continuity_and_pairing_residual_closure.sql": "60a2c0571620db6fc7f8e4e69288866ad3a9dfbd4e18124b7dc4f9a05d864d86",
     "20260826170000_identity_runtime_residual_closure.sql": "b211532e1e33923a34f0c9a998704244eae78ee083b7dce503934133ac140b91",
     "20260901190000_aeb_released_not_entered.sql": "f736ca3f444d9027e110f5368fe79c060378b1da465cd4c3c7417ba7f1119f92",
-    "20260925010000_aeb_operation_state.sql": "b35327842c026446956c139776fcac6af3d941649bf4b143396ac29067b152ff"
+    "20260925010000_aeb_operation_state.sql": "b35327842c026446956c139776fcac6af3d941649bf4b143396ac29067b152ff",
+    "20260926120000_agent_record_acl_repair.sql": "469946079cb1f364f04eec23a0618dd35de9ae1a3db88ac8f4f5715314300274",
+    "20260926120100_drop_foreign_activation_definers.sql": "d6a84d78797ce7e2f1fcf6166cfae95e10dfab5396d99e5b798cb37c14eb95d5"
   }
 }
