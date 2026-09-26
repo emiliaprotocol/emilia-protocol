@@ -20,8 +20,9 @@ const job = {
   amount: 5000,
   operation_id: 'refund:order-123:01',
 };
-const action = (p = job, account = accountId) => ({
-  action_type: 'stripe.refund.create', provider_account_id: account,
+const action = (p = job, account = accountId, tenant = 'tenant:finance', environment = 'test') => ({
+  action_type: 'stripe.refund.create', tenant_id: tenant, environment,
+  provider_account_id: account,
   payment_intent: p.payment_intent, amount: p.amount,
   operation_id: p.operation_id,
 });
@@ -68,11 +69,8 @@ class AttemptStore {
     return true;
   }
 
-  async lookup(query) {
-    const row = [...this.rows.values()].find((candidate) =>
-      Object.entries(query).every(([key, value]) => candidate.binding[key] === value));
-    return row?.binding ?? null;
-  }
+  // No lookup(): recovery must work on the exported PTE DDL, which has no
+  // lookup_attempt function, by reading the deterministic binding directly.
 
   async read(binding) {
     const row = this.rows.get(binding.attempt_id);
@@ -137,8 +135,8 @@ function provider({ loseFirstResponse = false } = {}) {
 
 async function fixture({ p = job, store = new AttemptStore(), stripe = provider(),
   legacyManifest = false, metadataKey = new Uint8Array(32).fill(17),
-  tenantId = 'tenant:finance' } = {}) {
-  const harness = createEg1Harness({ action: action(p) });
+  tenantId = 'tenant:finance', environment = 'test', harness: sharedHarness } = {}) {
+  const harness = sharedHarness ?? createEg1Harness({ action: action(p, accountId, tenantId, environment) });
   const gate = createGate({
     manifest: legacyManifest ? createStripeManifest() : createStripeDurableRefundManifest(),
     trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys,
@@ -146,7 +144,7 @@ async function fixture({ p = job, store = new AttemptStore(), stripe = provider(
     allowedOrigins: harness.allowedOrigins, allowEphemeralStore: true,
   });
   const connector = await createStripeRefundDurableConnector({
-    stripe, gate, store, tenant_id: tenantId, environment: 'test',
+    stripe, gate, store, tenant_id: tenantId, environment,
     metadata_hmac_sha256_key: metadataKey,
     resolve_operation: (reference) => {
       assert.equal(reference, 'refund-job-01');
@@ -240,10 +238,11 @@ test('old manifest lacking account binding refuses; wrong signed account never r
   assert.equal(wrongStripe.calls.length, 0);
   const current = await fixture();
   current.stripe.setAccount('acct_other');
-  await assert.rejects(() => guardStripeRefundDurable(current.connector, {
+  assert.deepEqual(await guardStripeRefundDurable(current.connector, {
     operation_reference: 'refund-job-01', receipt: current.harness.mint({ outcome: 'allow_with_signoff' }),
-  }), /stripe_account_changed/);
+  }), { ok: false, state: 'REFUSED', reason: 'stripe_account_changed' });
   assert.equal(current.stripe.calls.length, 0);
+  assert.equal(current.store.row, null);
 });
 
 test('a weaker manifest resolved between preflight and Gate callback cannot enter Stripe', async () => {
@@ -378,7 +377,9 @@ test('metadata HMAC rotation prevents unverifiable recovery instead of guessing 
   store.stale = true;
   const result = await reconcileStripeRefundDurable(changedKey.connector, 'refund-job-01');
   assert.equal(result.state, 'INDETERMINATE');
-  assert.equal(result.reason, 'provider_effect_unproven');
+  // The genuine refund still carries this operation's ID and digests, so a tag
+  // under the rotated key is a conflict, never positive evidence.
+  assert.equal(result.reason, 'provider_effect_conflicting');
   assert.equal(stripe.calls.length, 1);
 });
 
@@ -499,4 +500,82 @@ test('missing, incomplete, unavailable, mismatched, and duplicate provider resul
     assert.equal(store.row.state, 'INDETERMINATE', mode);
     assert.equal(stripe.calls.length, 1, mode);
   }
+});
+
+test('one approval cannot be spent under a second environment or tenant namespace', async () => {
+  const stripe = provider();
+  const home = await fixture({ stripe });
+  const receipt = home.harness.mint({ outcome: 'allow_with_signoff' });
+  for (const other of [
+    await fixture({ stripe, harness: home.harness, environment: 'test-2' }),
+    await fixture({ stripe, harness: home.harness, tenantId: 'tenant:other' }),
+  ]) {
+    const result = await guardStripeRefundDurable(other.connector, {
+      operation_reference: 'refund-job-01', receipt,
+    });
+    assert.equal(result.state, 'REFUSED');
+    assert.equal(other.store.row, null);
+  }
+  assert.equal(stripe.calls.length, 0);
+  assert.equal((await guardStripeRefundDurable(home.connector, {
+    operation_reference: 'refund-job-01', receipt,
+  })).state, 'COMMITTED');
+  assert.equal(stripe.calls.length, 1);
+});
+
+test('a listed refund carrying this operation metadata but mismatched fields keeps recovery indeterminate', async () => {
+  const conflicts = {
+    amount: (refund) => ({ ...refund, id: 're_conflict', amount: refund.amount - 1 }),
+    request_digest: (refund) => ({ ...refund, id: 're_conflict',
+      metadata: { ...refund.metadata, emilia_request_digest: `sha256:${'0'.repeat(64)}` } }),
+    origin_tag: (refund) => ({ ...refund, id: 're_conflict',
+      metadata: { ...refund.metadata, emilia_origin_tag: 'f'.repeat(64) } }),
+  };
+  for (const [name, conflict] of Object.entries(conflicts)) {
+    const store = new AttemptStore();
+    const stripe = provider({ loseFirstResponse: true });
+    const { connector, harness } = await fixture({ store, stripe });
+    assert.equal((await guardStripeRefundDurable(connector, {
+      operation_reference: 'refund-job-01', receipt: harness.mint({ outcome: 'allow_with_signoff' }),
+    })).state, 'INDETERMINATE', name);
+    stripe.records.push(conflict(stripe.records[0]));
+    store.stale = true;
+    assert.deepEqual(await reconcileStripeRefundDurable(connector, 'refund-job-01'),
+      { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_conflicting' }, name);
+    assert.equal(store.row.state, 'INDETERMINATE', name);
+    assert.equal(stripe.calls.length, 1, name);
+  }
+});
+
+test('pre-reservation failures return refusals with reasons and record nothing', async () => {
+  const cases = [
+    ['stripe_account_probe_failed', (f) => { f.stripe.accounts.retrieve = async () => { throw new Error('down'); }; }],
+    ['refund_operation_unavailable', null, () => { throw new Error('job store down'); }],
+    ['refund_operation_invalid', null, () => ({ ...job, amount: -1 })],
+    ['refund_operation_invalid', null, () => ({ ...job, payment_intent: 'ch_not_a_pi' })],
+  ];
+  for (const [reason, mutate, resolver] of cases) {
+    const value = await fixture();
+    const connector = resolver
+      ? await createStripeRefundDurableConnector({
+        stripe: value.stripe, gate: value.gate, store: value.store,
+        tenant_id: 'tenant:finance', environment: 'test',
+        metadata_hmac_sha256_key: new Uint8Array(32).fill(17), resolve_operation: resolver,
+      })
+      : value.connector;
+    if (mutate) mutate(value);
+    assert.deepEqual(await guardStripeRefundDurable(connector, {
+      operation_reference: 'refund-job-01', receipt: value.harness.mint({ outcome: 'allow_with_signoff' }),
+    }), { ok: false, state: 'REFUSED', reason }, reason);
+    assert.deepEqual(await reconcileStripeRefundDurable(connector, 'refund-job-01'),
+      { ok: false, state: 'INDETERMINATE', reason }, reason);
+    assert.equal(value.store.row, null, reason);
+    assert.equal(value.stripe.calls.length, 0, reason);
+  }
+  const value = await fixture();
+  assert.deepEqual(await guardStripeRefundDurable(value.connector, { operation_reference: 'x', receipt: null }),
+    { ok: false, state: 'REFUSED', reason: 'refund_operation_reference_invalid' });
+  assert.deepEqual(await guardStripeRefundDurable({}, { operation_reference: 'refund-job-01', receipt: null }),
+    { ok: false, state: 'REFUSED', reason: 'stripe_refund_connector_unconfigured' });
+  assert.equal(value.stripe.calls.length, 0);
 });
