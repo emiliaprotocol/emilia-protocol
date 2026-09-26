@@ -63,15 +63,16 @@ Merge the pull request. This lands the migration file and its ledger entry in
 
 ### 2. Apply the migration (maintainer, database administrator connection)
 
-Apply `20260926035734` with the procedure used for the versions in
-`deployment_sequence` of `supabase/migration-history.v1.json`:
+Apply `20260926035734` with the migration deployment procedure in
+`docs/mobile/RELEASE.md` (Backend, steps 1 and 2):
 `supabase db push --include-all` applies every version the target journal
 lacks, in version order. In that order it comes after `20260925010000` and
-before `20260926120000` and `20260926120100`; it is not the last pending
-version. Journaling it ahead of an earlier pending version makes that version
-retroactive: the ledger must then list it in `retroactive_pending_versions`
-with `requires_include_all` true, because the ledger check refuses a
-forward-pending version that precedes `remote_head`.
+before `20260926120000` and `20260926120100`, so in a journal that also lacks
+those two it is not the last version applied. Journaling it ahead of an
+earlier pending version makes that version retroactive: the ledger must then
+list it in `retroactive_pending_versions` with `requires_include_all` true,
+because the ledger check refuses a forward-pending version that precedes
+`remote_head`.
 
 If the tool you apply it with journals its own timestamp, change that row's
 `version` in `supabase_migrations.schema_migrations` to `20260926035734` so the
