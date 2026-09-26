@@ -295,6 +295,7 @@ const SERVICE_ONLY_TABLES: string[] = [
 ];
 
 interface DbContract {
+  privateSourceTables: string[];
   requiredTables: string[];
   requiredQualifiedTables: string[];
   requiredQualifiedRpcs: string[];
@@ -317,6 +318,15 @@ interface DbContract {
 }
 
 export const contract: DbContract = {
+  // Their defining migrations moved to private emilia-company. Live catalog
+  // checks below still apply; public source evidence must not claim to audit
+  // SQL it no longer contains.
+  privateSourceTables: [
+    'works_records', 'works_authority_records', 'works_authority_stripe_events',
+    'works_authority_demand_requests', 'works_authority_entitlements',
+    'works_authority_events', 'works_authority_invitations', 'works_authority_record_versions',
+    ...WORKS_TABLES,
+  ],
   // Tables that MUST exist. Missing => hard FAIL.
   requiredTables: [
     'entities', 'receipts', 'score_history', 'needs', 'waitlist',
