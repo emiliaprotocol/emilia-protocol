@@ -77,7 +77,7 @@ complete active portfolio remains the 24 records in
 `STATUS.json.active_datatracker`, including 20 sole-authored records and four
 coauthored records, each with its own scope and revision history.
 
-The separate runtime execution spine is **Architecture-02 -> CAID-02 ->
+The separate runtime execution spine is **Architecture-02 -> CAID-03 ->
 AEC-06 -> AEB-07**: architecture and decision boundaries, exact material-action
 identity and matching, evidence satisfaction, then executor-side admission and
 one-time consequence custody. This runtime path is not the four-document
@@ -213,6 +213,27 @@ attests and how the boundary verifies it, leaving the encoding to deployment
 pins. It is an individual Internet-Draft, not a working-group item, and posting
 is not protocol-owner review. Native-owner review and the complete
 multi-profile conformance gate remain open.
+
+## September 26 CAID maintenance revision
+
+`draft-schrock-canonical-action-identifier-03` was posted through Datatracker
+submission 169526 (Datatracker time 2026-09-26T16:30:22Z). Its XML and TXT
+match the immutable IETF archive byte-for-byte. The posted HTML is the
+provenance packet's local xml2rfc 3.34.0 render, which was recorded with its
+trailing whitespace already removed. Revision -03 makes enum validation
+replayable: an external enum reference requires a snapshot or edition label, a
+SHA-256 pin over the complete JCS values array, exact local resolution, and a
+verified membership check, and bare, unresolved, digest-mismatched, and
+out-of-set values fail closed. It makes the enum definition forms exact,
+defines required-field presence as a member of the action object itself, and
+makes explicit the refusal of unpaired surrogates that RFC 8785 already
+requires. The reference registry advances from version 3 to version 4:
+existing Action Objects whose codes are in the pinned ISO 4217 snapshot keep
+the same CAID bytes, a code outside it is refused, and eleven active types
+cannot produce a CAID until their external value sets are pinned. The Action
+Object, identifier syntax, digest suites, and mapping algorithm are unchanged.
+It is an individual Internet-Draft, not a working-group item, and posting is
+not protocol-owner review.
 
 ## New-filing freeze
 

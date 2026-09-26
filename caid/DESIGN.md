@@ -285,7 +285,7 @@ from this domain. Pronounce "kay-eye-dee" or "kade".
 
 - DESIGN.md (this file, normative core)
 - README.md (adoption-facing: "the missing join key; works with whatever you already issue")
-- ../standards/posted/draft-schrock-canonical-action-identifier-02.xml
+- ../standards/posted/draft-schrock-canonical-action-identifier-03.xml
 - registry/action-types.json, registry/suites.json, registry/GOVERNANCE.md,
   registry/value-sets/ (immutable external enum snapshots)
 - impl/js/caid.mjs, impl/python/caid.py, impl/go/caid.go (+ per-impl vector runners)

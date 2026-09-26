@@ -2,7 +2,9 @@
 
 This directory stages `draft-schrock-canonical-action-identifier-02` for
 review. It was published on 2026-08-06 and is retained as exact-submission
-provenance.
+provenance. The posted snapshot, superseded by -03 on 2026-09-26, is retained
+at
+[`../../archive/draft-schrock-canonical-action-identifier-02.xml`](../../archive/draft-schrock-canonical-action-identifier-02.xml).
 
 - The submitted file was
   `UPLOAD-THIS/draft-schrock-canonical-action-identifier-02.xml` to
