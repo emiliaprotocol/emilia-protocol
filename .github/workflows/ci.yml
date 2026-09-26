@@ -257,7 +257,13 @@ jobs:
     # starts in the first minute, in parallel with them; the reuse is
     # discharged by the required `gate-product` job, which passes only when
     # security-case, language-governance and this suite all succeeded on the
-    # same SHA. Nothing this job builds leaves the runner.
+    # same SHA. Nothing this job builds leaves the runner. Only the measured
+    # test counts in lib/proof-stats.json may lag in CI (volatile-evidence
+    # policy: advisory on pull requests, graced on main; every other field is
+    # strict), so a CI image may carry lagging test counts. Releases stay
+    # strict: consequence-control-deploy.yml builds
+    # without the preverification flag, so its builder runs check:proof-stats,
+    # and _publish-npm-package.yml runs check:proof-stats and check:llm-context.
     needs: [changes]
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
@@ -771,11 +777,37 @@ jobs:
     # parallel with security-case; the required `language-governance` job
     # below accepts its result only after security-case succeeded on the same
     # SHA. Every step here reads prose, so the docs lane keeps this job.
+    #
+    # Volatile evidence (scripts/ci/volatile-evidence.mjs): lib/proof-stats.json
+    # and the four LLM context artifacts are regenerated on main by
+    # volatile-evidence-refresh.yml. Deny by default: only drift in the
+    # measured test counts (tests.total, tests.files) may lag. The two checks
+    # below fail on every other drift themselves (any other proof field, any
+    # stale LLM context file) and record the rest in drift reports, and the
+    # policy step checks them again and turns test-count drift into a verdict:
+    # advisory on pull_request and merge_group (a pull request that changes
+    # lib/proof-stats.json must keep the base's counts and generatedAt or make
+    # them exact); strict on main's own refresh pull request, which also fails
+    # on any changed path outside the five files; and on main a failure once
+    # the drift is older than the grace window. Everything else the checks
+    # verify (a passing measured suite, the security case, formal and
+    # conformance evidence, every generator assertion) still fails the job.
+    # The security case, formal traces, conformance manifest and clean-room
+    # pins stay strict in the security-case job.
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # The policy step dates stale evidence on main from the refresh
+      # workflow's runs and jobs.
+      actions: read
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge commit and its first parent: the policy step diffs them
+          # to find what a pull request changes itself.
+          fetch-depth: 2
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           # check:proof-stats executes the full suite, including scripts whose
@@ -804,7 +836,7 @@ jobs:
         run: node scripts/check-language-governance.js
       - name: Check public conformance claims against the current manifest
         run: npm run check:public-conformance-claims
-      - name: Check published proof statistics against an executed test run
+      - name: Measure proof statistics and report volatile drift
         env:
           SECURITY_CASE_PREVERIFIED_SHA: ${{ github.sha }}
           # generate-proof-stats.mjs runs the full vitest suite, and
@@ -815,9 +847,24 @@ jobs:
           # still needs the loader hook to resolve .js specifiers renamed to
           # .ts during the migration.
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
-        run: npm run check:proof-stats -- --security-case-preverified
-      - name: Check generated LLM context against current evidence manifests
-        run: npm run check:llm-context
+        run: npm run check:proof-stats -- --security-case-preverified --drift-report "$RUNNER_TEMP/proof-stats-drift.json"
+      - name: Check generated LLM context against its inputs
+        run: npm run check:llm-context -- --drift-report "$RUNNER_TEMP/llm-context-drift.json"
+      - name: Apply the volatile evidence policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: >-
+          node scripts/ci/volatile-evidence.mjs policy
+          --report "$RUNNER_TEMP/proof-stats-drift.json"
+          --report "$RUNNER_TEMP/llm-context-drift.json"
+          --event "$EVENT_NAME"
+          --ref "$GITHUB_REF"
+          --head-ref "$HEAD_REF"
+          --touched-base HEAD^1
+          --sha "$GITHUB_SHA"
+          --repository "$GITHUB_REPOSITORY"
       - name: Check standards observatory snapshot freshness
         run: npm run observatory:check
 

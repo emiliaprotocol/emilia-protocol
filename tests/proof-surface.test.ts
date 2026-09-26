@@ -45,6 +45,11 @@ describe('public engineering evidence surface', () => {
   });
 
   it('renders the five-way formal-evidence taxonomy from executed generated evidence', () => {
+    // This reads the checked-in lib/proof-stats.json on purpose, unlike the
+    // other volatile-evidence tests: app/proof/page.tsx throws at build time
+    // when that file's taxonomy misses a claim, so a pull request that adds
+    // or removes a security claim must refresh it
+    // (`npm run sync:proof-stats -- --bootstrap-derived-evidence`).
     const source = JSON.parse(read('security/claims.v1.json')) as {
       claims: Array<{ claim_id: string }>;
     };

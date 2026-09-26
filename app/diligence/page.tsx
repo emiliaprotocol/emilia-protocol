@@ -218,7 +218,9 @@ export default async function DiligencePage(): Promise<React.ReactElement> {
             <h2 style={{ ...styles.h2, marginTop: 12 }}>The diligence path is executable.</h2>
             <p style={{ ...styles.body, maxWidth: 780, color: color.t2, marginTop: 14 }}>
               Clone the public repository and run the checked-in evidence gates. The security case and
-              machine context fail when their source artifacts drift.
+              machine context fail when their source artifacts drift. The automated test counts are refreshed on
+              main after each merge and may lag by one refresh cycle, so the proof-statistics check records that
+              lag instead of failing on it; it still fails on every other proof field.
             </p>
             <pre style={{
               marginTop: 22,
@@ -233,7 +235,7 @@ export default async function DiligencePage(): Promise<React.ReactElement> {
             }}><code>{`git clone https://github.com/emiliaprotocol/emilia-protocol.git
 cd emilia-protocol
 npm ci
-npm run check:proof-stats
+npm run check:proof-stats -- --drift-report /tmp/proof-stats-drift.json
 npm run check:security-case
 npm run check:public-conformance-claims
 npm run check:llm-context`}</code></pre>

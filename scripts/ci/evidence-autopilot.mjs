@@ -74,6 +74,24 @@ export const DERIVED_EVIDENCE = Object.freeze([
   'public/.well-known/emilia-context.json',
 ]);
 
+/**
+ * Resolves the paths a bundle may carry. A caller may narrow the allowlist
+ * (scripts/ci/volatile-evidence.mjs publishes five of these files) but never
+ * widen it: dco.yml exempts an autopilot commit only for DERIVED_EVIDENCE.
+ *
+ * @param {readonly string[]} [allowlist]
+ * @returns {readonly string[]}
+ */
+function allowedPaths(allowlist = DERIVED_EVIDENCE) {
+  const derived = new Set(DERIVED_EVIDENCE);
+  if (!Array.isArray(allowlist) || allowlist.length === 0 || new Set(allowlist).size !== allowlist.length) {
+    throw new Error('the allowlist must be a non-empty list of distinct paths');
+  }
+  const outside = allowlist.filter((path) => !derived.has(path));
+  if (outside.length > 0) throw new Error(`not derived-evidence paths: ${outside.join(', ')}`);
+  return allowlist;
+}
+
 const MAX_FILE_BYTES = 16 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 64 * 1024;
 const SHA = /^[0-9a-f]{40}$/;
@@ -116,27 +134,29 @@ function assertEvidenceText(path, bytes) {
 }
 
 /**
- * Bundles every DERIVED_EVIDENCE file that differs between `sourceSha` and
- * HEAD. Refuses a dirty tree and any other changed path.
+ * Bundles every allowlisted file (DERIVED_EVIDENCE unless narrowed) that
+ * differs between `sourceSha` and HEAD. Refuses a dirty tree and any other
+ * changed path.
  *
- * @param {{ repo: string, sourceSha: string, out: string }} options
+ * @param {{ repo: string, sourceSha: string, out: string, allowlist?: readonly string[] }} options
  * @returns {Manifest}
  */
-export function collect({ repo, sourceSha, out }) {
+export function collect({ repo, sourceSha, out, allowlist }) {
+  const paths = allowedPaths(allowlist);
   if (!SHA.test(sourceSha)) throw new Error('source sha must be a 40-character lowercase hex commit');
   const dirty = git(['status', '--porcelain', '--untracked-files=no'], repo).trim();
   if (dirty) throw new Error(`the writers left uncommitted tracked changes:\n${dirty}`);
   const changed = git(['diff', '--name-only', '-z', '--no-renames', sourceSha, 'HEAD'], repo)
     .split('\0')
     .filter(Boolean);
-  const allowed = new Set(DERIVED_EVIDENCE);
+  const allowed = new Set(paths);
   const outside = changed.filter((path) => !allowed.has(path));
   if (outside.length > 0) {
     throw new Error(`the writers changed paths outside the derived-evidence allowlist:\n${outside.join('\n')}`);
   }
   /** @type {BundleFile[]} */
   const files = [];
-  for (const path of DERIVED_EVIDENCE.filter((candidate) => changed.includes(candidate))) {
+  for (const path of paths.filter((candidate) => changed.includes(candidate))) {
     const source = join(repo, path);
     const stat = lstatSync(source);
     if (!stat.isFile()) throw new Error(`${path}: is not a regular file`);
@@ -162,10 +182,11 @@ export function collect({ repo, sourceSha, out }) {
  * parses, and a manifest that claims `sourceSha`. The manifest comes from
  * the unprivileged job, so this is not evidence that the content is correct.
  *
- * @param {{ bundle: string, sourceSha: string }} options
+ * @param {{ bundle: string, sourceSha: string, allowlist?: readonly string[] }} options
  * @returns {{ manifest: Manifest, contents: Map<string, Buffer> }}
  */
-export function inspect({ bundle, sourceSha }) {
+export function inspect({ bundle, sourceSha, allowlist }) {
+  const paths = allowedPaths(allowlist);
   if (!SHA.test(sourceSha)) throw new Error('source sha must be a 40-character lowercase hex commit');
   const manifestPath = join(bundle, 'manifest.json');
   const manifestStat = lstatSync(manifestPath);
@@ -179,10 +200,10 @@ export function inspect({ bundle, sourceSha }) {
   if (manifest.source_sha !== sourceSha) {
     throw new Error(`bundle was generated from ${manifest.source_sha}, expected ${sourceSha}`);
   }
-  if (!Array.isArray(manifest.files) || manifest.files.length > DERIVED_EVIDENCE.length) {
+  if (!Array.isArray(manifest.files) || manifest.files.length > paths.length) {
     throw new Error('manifest files must be an array no longer than the allowlist');
   }
-  const allowed = new Set(DERIVED_EVIDENCE);
+  const allowed = new Set(paths);
   /** @type {Map<string, Buffer>} */
   const contents = new Map();
   for (const entry of manifest.files) {
@@ -239,7 +260,12 @@ export function commitMessage(sourceSha, runUrl) {
  * refuses it unless `branch` still points at `sourceSha`, so a branch that
  * was force-pushed, rewound or deleted in the meantime is left alone.
  *
- * @param {{ bundle: string, sourceSha: string, repository: string, branch: string, runUrl: string }} options
+ * `allowlist` narrows the publishable paths and `message` replaces the
+ * default headline and body; any replacement body must still carry
+ * COMMIT_TRAILER, which dco.yml requires for the exemption.
+ *
+ * @param {{ bundle: string, sourceSha: string, repository: string, branch: string, runUrl: string,
+ *   allowlist?: readonly string[], message?: { headline: string, body: string } }} options
  * @returns {{ query: string, variables: { input: {
  *   branch: { repositoryNameWithOwner: string, branchName: string },
  *   expectedHeadOid: string,
@@ -247,7 +273,7 @@ export function commitMessage(sourceSha, runUrl) {
  *   fileChanges: { additions: Array<{ path: string, contents: string }> },
  * } } }}
  */
-export function commitRequest({ bundle, sourceSha, repository, branch, runUrl }) {
+export function commitRequest({ bundle, sourceSha, repository, branch, runUrl, allowlist, message }) {
   if (!REPOSITORY.test(repository)) throw new Error(`refusing repository ${JSON.stringify(repository)}`);
   if (
     !BRANCH.test(branch) || branch === 'main' || branch.startsWith('-') || branch.startsWith('/')
@@ -259,7 +285,14 @@ export function commitRequest({ bundle, sourceSha, repository, branch, runUrl })
   if (!runUrl.startsWith(runPrefix) || !/^\d+(?:\/attempts\/\d+)?$/.test(runUrl.slice(runPrefix.length))) {
     throw new Error(`refusing run URL ${JSON.stringify(runUrl)}`);
   }
-  const { contents } = inspect({ bundle, sourceSha });
+  const commit = message ?? commitMessage(sourceSha, runUrl);
+  if (
+    typeof commit?.headline !== 'string' || !commit.headline || commit.headline.includes('\n')
+    || typeof commit.body !== 'string' || !commit.body.split('\n').includes(COMMIT_TRAILER)
+  ) {
+    throw new Error(`the commit message needs a one-line headline and a body carrying ${COMMIT_TRAILER}`);
+  }
+  const { contents } = inspect({ bundle, sourceSha, allowlist });
   if (contents.size === 0) throw new Error('the bundle carries no files; there is nothing to publish');
   return {
     query: CREATE_COMMIT_ON_BRANCH,
@@ -267,7 +300,7 @@ export function commitRequest({ bundle, sourceSha, repository, branch, runUrl })
       input: {
         branch: { repositoryNameWithOwner: repository, branchName: branch },
         expectedHeadOid: sourceSha,
-        message: commitMessage(sourceSha, runUrl),
+        message: commit,
         fileChanges: {
           additions: [...contents].map(([path, bytes]) => ({ path, contents: bytes.toString('base64') })),
         },
