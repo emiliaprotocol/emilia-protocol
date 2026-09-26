@@ -1,12 +1,15 @@
 # Consequence admission
 
-This guide describes the consequence-admission lifecycle of AEB-06 and its
-reference implementation. AEB-06 was posted on 2026-09-24 as an individual
-Internet-Draft; it is not adopted by any working group. It makes CAID
-conditional on a cross-format join and AEC conditional on a multi-leg evidence
-requirement. The published AEB-05 required both. The signed gateway handoff and
-the same-action fence described below are repository implementation profiles;
-AEB-06 does not specify them.
+This guide describes the consequence-admission lifecycle of AEB-07 and its
+reference implementation. AEB-07 was posted on 2026-09-25 as an individual
+Internet-Draft; it is not adopted by any working group. Like AEB-06, it makes
+CAID conditional on a cross-format join and AEC conditional on a multi-leg
+evidence requirement. The published AEB-05 required both. AEB-07 also
+specifies the same-action in-flight fence (Section 5.10) and what a native
+authorization handoff binds and how the boundary verifies it (Section 5.8),
+but defines no handoff encoding. The signed gateway handoff described below is
+a repository implementation profile that AEB-07 cites informatively as one
+reference encoding.
 
 Authorization answers whether an operation may proceed. Consequence admission
 handles the narrower problem that begins after that answer: admitting one

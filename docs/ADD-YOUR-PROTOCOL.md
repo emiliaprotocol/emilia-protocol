@@ -2,11 +2,11 @@
 
 # Add Your Protocol to the Consequence Boundary
 
-This guide describes AEB-06 and the 4.1/0.26 reference packages. AEB-06 was
-posted on 2026-09-24 as an individual Internet-Draft and is not adopted by any
-working group. It makes the CAID stage conditional on a cross-format join and
-the AEC stage conditional on a multi-leg evidence requirement; the published
-AEB-05 required both.
+This guide describes AEB-07 and the repository's reference packages. AEB-07
+was posted on 2026-09-25 as an individual Internet-Draft and is not adopted by
+any working group. Like AEB-06, it makes the CAID stage conditional on a
+cross-format join and the AEC stage conditional on a multi-leg evidence
+requirement; the published AEB-05 required both.
 
 Keep the protocol's native authorization model. EMILIA does not ask an OAuth,
 AuthZEN, AP2, or local-policy implementation to replace its credential, mapping,

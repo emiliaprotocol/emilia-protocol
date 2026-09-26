@@ -9,9 +9,10 @@ and posting is not review by the referenced protocol owners.
 The XML under `UPLOAD-THIS/` is the exact submitted -06 source and matches the
 immutable IETF archive byte-for-byte. The text under `RENDERS/` also matches
 the archive byte-for-byte. The packet is retained for publication provenance,
-not as an upload candidate. The posted snapshot is
-[`../../posted/draft-schrock-action-evidence-boundary-06.xml`](../../posted/draft-schrock-action-evidence-boundary-06.xml);
-AEB-05 is retained in `../../archive/`.
+not as an upload candidate. The posted snapshot, superseded by -07, is
+retained at
+[`../../archive/draft-schrock-action-evidence-boundary-06.xml`](../../archive/draft-schrock-action-evidence-boundary-06.xml);
+AEB-05 is also retained in `../../archive/`.
 
 The revision was built from the exact published
 `draft-schrock-action-evidence-boundary-05` source. That base XML has SHA-256

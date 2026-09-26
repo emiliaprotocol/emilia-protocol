@@ -535,3 +535,23 @@ pinned URLs return HTTP 200. The front-page date is 2026-09-25. Re-checked on
 the revised source: `xmllint --noout` PASS; `xml2rfc 3.34.0 --text` and
 `--html` PASS, renders replaced; `idnits 3.1.0 -m submission` on the TXT and
 the XML PASS, no nits; `SHA256SUMS.txt` regenerated.
+
+## Publication check
+
+Checked on 2026-09-25 after posting:
+
+- The Datatracker submission API lists submission 169495 for
+  `draft-schrock-action-evidence-boundary` revision 07 in state `posted`, and
+  the document record shows revision 07 at 2026-09-26T00:11:40Z, the time of
+  its "New version available" event.
+- The IETF archive XML has SHA-256
+  `938f4d6538dc5e9b40da7934090013fa91906638d587e7dec05c940922ad6045` and the
+  archive text has SHA-256
+  `58c7d004193deed53550177ab5a69e1066ed12f5c8a7427aa77c8c7acdc4b04a`. Both
+  match `SHA256SUMS.txt` byte-for-byte.
+- The archive HTML differs from the retained render. The archive rendered it
+  with xml2rfc 3.34.1 and its delivery path injects request-specific Cloudflare
+  markup, so the retained render stays the checksum-pinned local form.
+
+Publication is not working-group adoption, RFC status, protocol-owner review,
+implementation interoperability, or deployment evidence.

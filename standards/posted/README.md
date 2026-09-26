@@ -36,7 +36,7 @@ authoritative for rendered forms.
 
 - `draft-ferro-schrock-memory-projection-record-01`
 - `draft-schrock-ae-challenge-07`
-- `draft-schrock-action-evidence-boundary-06`
+- `draft-schrock-action-evidence-boundary-07`
 - `draft-schrock-action-remedy-receipts-00`
 - `draft-schrock-agent-qualification-statements-00`
 - `draft-schrock-canonical-action-identifier-02`
@@ -80,7 +80,7 @@ subordinate, or demote any active draft.
 The runtime path is [Architecture-02](draft-schrock-ep-architecture-02.xml) →
 [CAID-02](draft-schrock-canonical-action-identifier-02.xml) →
 [AEC-05](draft-schrock-ep-authorization-evidence-chain-05.xml) →
-[AEB-06](draft-schrock-action-evidence-boundary-06.xml): system boundaries,
+[AEB-07](draft-schrock-action-evidence-boundary-07.xml): system boundaries,
 exact material-action matching, evidence satisfaction, then executor-side
 admission and one-time consequence custody.
 
@@ -239,5 +239,21 @@ checksum-pinned exact render remains in the provenance packet.
 The retained `../staged/NEXT-AEB-06` packet is publication provenance, not an
 upload candidate. Its XML is byte-for-byte identical to the posted source.
 AEB-05 is retained in `../archive/`. Publication does not establish
+native-owner review, completion of the multi-profile conformance gate,
+working-group adoption, RFC status, or IETF endorsement.
+
+## September 25, 2026 AEB maintenance revision
+
+`draft-schrock-action-evidence-boundary-07` was posted as an active individual
+Internet-Draft through Datatracker submission 169495 (Datatracker time
+2026-09-26T00:11:40Z). Its XML and TXT are byte-for-byte identical to the
+immutable IETF archive artifacts. The posted HTML is the provenance packet's
+local xml2rfc 3.34.0 render with trailing whitespace removed, because the
+archive delivery path injects request-specific Cloudflare markup; the
+checksum-pinned exact render remains in the provenance packet.
+
+The retained `../staged/NEXT-AEB-07` packet is publication provenance, not an
+upload candidate. Its XML is byte-for-byte identical to the posted source.
+AEB-06 is retained in `../archive/`. Publication does not establish
 native-owner review, completion of the multi-profile conformance gate,
 working-group adoption, RFC status, or IETF endorsement.

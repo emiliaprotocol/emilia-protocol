@@ -22,8 +22,8 @@ The EMILIA source locks are the checked-in snapshots recorded by
   (byte-identical to the IETF archive copy; -13 adds only Section 13.13,
   "What Successful Verification Does Not Establish", to the -12 text this
   mapping was first written against);
-- `draft-schrock-action-evidence-boundary-06`, XML SHA-256
-  `82eaf5eea816c037cb8dcb4608c8735a96f09850aad0a6df5bac021964bf17c5`;
+- `draft-schrock-action-evidence-boundary-07`, XML SHA-256
+  `938f4d6538dc5e9b40da7934090013fa91906638d587e7dec05c940922ad6045`;
 - `draft-schrock-canonical-action-identifier-02`, XML SHA-256
   `777487b04ac473ad70ff2dd8a0c396657744bb7fd9e92499d4ec0bee67762015`;
   and
@@ -287,7 +287,7 @@ complete mediation at the actual consequence boundary.
 
 ### Specification status and Dependency
 
-Specified by `draft-schrock-action-evidence-boundary-06` and the authorization
+Specified by `draft-schrock-action-evidence-boundary-07` and the authorization
 evidence and CAID snapshots named above. Deployment depends on the resource
 owner's non-bypassable Gate placement, durable store, authenticated current
 status, and provider or system-of-record evidence verifier. This mapping does

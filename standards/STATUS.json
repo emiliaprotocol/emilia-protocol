@@ -4,7 +4,7 @@
   "active_datatracker_count": 24,
   "active_schrock_datatracker_count": 21,
   "sole_authored_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted holds a published revision of each of the 20 active sole-authored draft-schrock-* Datatracker records represented in this repository, but not always the current one; the revision field in active_datatracker records the current Datatracker revision as of the updated date. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. AEB-06, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status. September 6 exception: the four corrective revisions are retained as exact archive-verified XML in their standards/staged provenance packets listed in september_6_2026_corrective_wave; older standards/posted snapshots for these four names are historical. Later revisions not mirrored into standards/posted, checked against the Datatracker API and the IETF archive on 2026-09-25: Authorization Receipts-13 (posted 2026-09-12) and Presentation Binding-01 (posted 2026-09-12) are retained as exact archive-identical XML in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13 and standards/staged/NEXT-PRESENTATION-BINDING-01; Bounded Capability Receipts-06 (posted 2026-09-09) is not retained in this repository, so the IETF archive is its only source. The standards/posted snapshots of those three names are historical.",
+  "posted_snapshot_policy": "standards/posted holds a published revision of each of the 20 active sole-authored draft-schrock-* Datatracker records represented in this repository, but not always the current one; the revision field in active_datatracker records the current Datatracker revision as of the updated date. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. AEB-07, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status. September 6 exception: the four corrective revisions are retained as exact archive-verified XML in their standards/staged provenance packets listed in september_6_2026_corrective_wave; older standards/posted snapshots for these four names are historical. Later revisions not mirrored into standards/posted, checked against the Datatracker API and the IETF archive on 2026-09-25: Authorization Receipts-13 (posted 2026-09-12) and Presentation Binding-01 (posted 2026-09-12) are retained as exact archive-identical XML in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13 and standards/staged/NEXT-PRESENTATION-BINDING-01; Bounded Capability Receipts-06 (posted 2026-09-09) is not retained in this repository, so the IETF archive is its only source. The standards/posted snapshots of those three names are historical.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -125,10 +125,10 @@
         "order": 4,
         "label": "AEB",
         "draft": "draft-schrock-action-evidence-boundary",
-        "revision": "06",
-        "source": "standards/posted/draft-schrock-action-evidence-boundary-06.xml",
+        "revision": "07",
+        "source": "standards/posted/draft-schrock-action-evidence-boundary-07.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/",
-        "snapshot_sha256": "82eaf5eea816c037cb8dcb4608c8735a96f09850aad0a6df5bac021964bf17c5",
+        "snapshot_sha256": "938f4d6538dc5e9b40da7934090013fa91906638d587e7dec05c940922ad6045",
         "runtime_role": "Applies executor-side admission, authority separation, current-status checks, and one-time consequence custody."
       }
     ]
@@ -214,10 +214,10 @@
     },
     {
       "draft": "draft-schrock-action-evidence-boundary",
-      "revision": "06",
+      "revision": "07",
       "layer": "execution_lifecycle",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published September 24 (Datatracker posting 2026-09-25T02:15:03Z) as an individual Internet-Draft, not adopted; use -06 as the current consequence-admission baseline: CAID only for a cross-format join, AEC only for a multi-leg evidence requirement, no second PDP, stable replay identity, durable consume or reserve before provider entry, terminal or indeterminate outcome, and authenticated reconciliation without blind retry. The gateway handoff used by the reference packages is a repository implementation profile and is not specified by -06. Native-owner review and the complete multi-profile conformance gate remain open"
+      "next_action": "Published September 25 (Datatracker posting 2026-09-26T00:11:40Z) as an individual Internet-Draft, not adopted; use -07 as the current consequence-admission baseline. It keeps the -06 structure (CAID only for a cross-format join, AEC only for a multi-leg evidence requirement, no second PDP when the effect-owning PEP accepts and enforces the native decision, durable consume or reserve before provider entry, and authenticated reconciliation with no blind replay) and adds a durable same-action in-flight fence, pre-entry recovery that releases only on proof of non-entry, purpose-bound verification of terminal provider evidence, one native replay identity derived from the relying-party-pinned authority namespace and the native authorization identifier, and the contents and verification of a native authorization handoff. The handoff encoding stays deployment-pinned; the repository reference encoding is cited informatively. Native-owner review and the complete multi-profile conformance gate remain open"
     },
     {
       "draft": "draft-schrock-action-remedy-receipts",
@@ -815,9 +815,34 @@
     "items": [
       {
         "draft": "draft-schrock-action-evidence-boundary-06",
-        "source": "standards/posted/draft-schrock-action-evidence-boundary-06.xml",
+        "source": "standards/archive/draft-schrock-action-evidence-boundary-06.xml",
         "snapshot_sha256": "82eaf5eea816c037cb8dcb4608c8735a96f09850aad0a6df5bac021964bf17c5",
         "datatracker_submission_id": 169466,
+        "state": "published_ietf_archive_verified_exact_local_match_superseded_by_07"
+      }
+    ]
+  },
+  "september_25_2026_aeb_maintenance_wave": {
+    "filing_date": "2026-09-25",
+    "datatracker_posted_at": "2026-09-26T00:11:40Z",
+    "item_count": 1,
+    "publication_status": "published_and_ietf_archive_verified_2026_09_25",
+    "filing_order": [
+      "draft-schrock-action-evidence-boundary-07"
+    ],
+    "xml_sha256": "938f4d6538dc5e9b40da7934090013fa91906638d587e7dec05c940922ad6045",
+    "txt_sha256": "58c7d004193deed53550177ab5a69e1066ed12f5c8a7427aa77c8c7acdc4b04a",
+    "html_sha256": "4b5fb2c2b73289ea6494d984a8bbd55c809287dea207839044ee5d6f002fe790",
+    "verification": "The posted XML and TXT are byte-for-byte identical to the immutable IETF archive artifacts. The posted HTML is the provenance packet's local xml2rfc 3.34.0 render with trailing whitespace removed, because the archive delivery path injects request-specific Cloudflare markup; the checksum-pinned exact render remains in the provenance packet. The XML is byte-for-byte identical to the submitted source retained there. Publication is not working-group adoption, RFC status, protocol-owner review, implementation evidence, deployment evidence, or IETF endorsement.",
+    "provenance_packets": [
+      "standards/staged/NEXT-AEB-07"
+    ],
+    "items": [
+      {
+        "draft": "draft-schrock-action-evidence-boundary-07",
+        "source": "standards/posted/draft-schrock-action-evidence-boundary-07.xml",
+        "snapshot_sha256": "938f4d6538dc5e9b40da7934090013fa91906638d587e7dec05c940922ad6045",
+        "datatracker_submission_id": 169495,
         "state": "published_ietf_archive_verified_exact_local_match"
       }
     ]
@@ -854,7 +879,7 @@
   "held": [],
   "consolidation_rules": [
     "The canonical four-document surface is presentation-only; it does not retire, merge, replace, update, obsolete, or subordinate any active draft.",
-    "The Architecture-02, CAID-02, AEC-05, and AEB-06 runtime execution spine is a separate navigation view; it does not replace the canonical PRESENTATION surface or the active profile portfolio.",
+    "The Architecture-02, CAID-02, AEC-05, and AEB-07 runtime execution spine is a separate navigation view; it does not replace the canonical PRESENTATION surface or the active profile portfolio.",
     "Architecture-02 absorbs the retired Agent Trust Stack map.",
     "AEC owns component verification, action binding, and evidence satisfaction; it does not define effect or ceremony records.",
     "Quorum owns ordered multi-handshake and distinct-human policy semantics.",
