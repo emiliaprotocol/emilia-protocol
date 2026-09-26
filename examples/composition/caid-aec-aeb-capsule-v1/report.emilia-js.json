@@ -3,8 +3,8 @@
   "implementation": "emilia-js-candidate",
   "implementation_owner": "EMILIA Protocol",
   "generated_at": "2026-08-04T20:00:00Z",
-  "manifest_digest": "sha256:d3d39b73a9626265459714cba4cd6bdef8ba1d313993aface799b7c1eea26bb1",
-  "bundle_digest": "sha256:bfcce4dfae5d49134c03352b612799d41adfe88fb584d2db886ed60e2dedcd89",
+  "manifest_digest": "sha256:d4084d6da0a457bf2b7cf8bfe932a6cb5ea7608570d1438a1af3b91064eca4ed",
+  "bundle_digest": "sha256:879b9e08f2b2d3c4ff9e5491a642de7570b57fd2f587928a15855b82d3a4bb1d",
   "passed": true,
   "case_count": 8,
   "checks": [

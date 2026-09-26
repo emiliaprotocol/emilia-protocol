@@ -1416,12 +1416,14 @@ jobs:
       # the registry enum-coverage check, and the Go decoder tests had no CI
       # runner, so a Python or Go refusal regression could merge green. The
       # staged -03 packet check and the WIMSE companion profile consume the
-      # same registry and snapshot pins.
-      - name: CAID conformance (JS + Python + Go), staged CAID -03 packet, WIMSE CAID scope profile
+      # same registry and snapshot pins, and the CAID/AEC/AEB capsule vector's
+      # frozen manifest pins their bytes (refresh it with run.mjs --emit).
+      - name: CAID conformance (JS + Python + Go), staged CAID -03 packet, WIMSE CAID scope profile, capsule vector freshness
         run: |
           npm run caid:conformance
           node scripts/check-caid-03.mjs
           node standards/profiles/NEXT-WIMSE-CAID-SCOPE-01/validate.mjs
+          node examples/composition/caid-aec-aeb-capsule-v1/run.mjs --check
       - name: SCITT statement identity and Capsule seam profile conformance
         run: |
           npm run conformance:composition:scitt-statement-identity

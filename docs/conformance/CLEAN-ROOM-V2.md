@@ -7,9 +7,9 @@ immutable source commit is supplied separately when the kit is built:
 - 21 counted suites;
 - 340 counted vectors;
 - current manifest byte SHA-256
-  `70e0af721e8cf047a705f40abc2904f78a25af7d122a883a71ee1d185800c545`;
+  `bc55ef4d17b8c673e5843c50b71fc0b4cc28709936bf2c92fd3855f947017754`;
 - current manifest canonical claim SHA-256
-  `c8ad3ad3d1af18b251abcda8e9341505b06ed4c6dc3ed54a4a43f9818703953a`;
+  `d31e2f7173c51e2f98b9235bc67778929506f05d0d10f9982a59b02dd03e2ff7`;
   and
 - Authority Document execution companion SHA-256
   `121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959`.

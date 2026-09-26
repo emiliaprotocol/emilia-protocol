@@ -30,6 +30,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import { canonicalize, computeCaid, parseCaid, verifyCaid } from '../../../caid/impl/js/caid.mjs';
+import { REGISTRY_ENUM_SNAPSHOTS } from '../../../caid/registry/enum-snapshots.mjs';
 
 export const PROFILE = 'EP-COAZ-TRANSLATION-VECTOR-v0.1';
 
@@ -37,12 +38,10 @@ const REGISTRY = JSON.parse(
   readFileSync(new URL('../../../caid/registry/action-types.json', import.meta.url), 'utf8'),
 );
 export const DEFINITIONS = REGISTRY.types;
-export const ENUM_SNAPSHOTS = [JSON.parse(
-  readFileSync(
-    new URL('../../../caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json', import.meta.url),
-    'utf8',
-  ),
-)];
+// The registry loader checks each value-set file against the registry's
+// labels, values digest, and whole-file digest, so the runner never adopts an
+// edited snapshot.
+export const ENUM_SNAPSHOTS = REGISTRY_ENUM_SNAPSHOTS;
 const ACTION_TYPE = 'payment.release.1';
 
 // ---------------------------------------------------------------------------

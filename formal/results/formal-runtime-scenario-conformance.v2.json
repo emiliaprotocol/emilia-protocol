@@ -23,7 +23,11 @@
     },
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "d4b511410d16b3f493d450090a90523496377167b993d4f42efcfd05bc0b8419"
+      "sha256": "f377f01c09c54a526c5cb90cf09c6d22454990a401324100a023ab7ec03ecb2e"
+    },
+    {
+      "path": "caid/registry/enum-snapshots.mjs",
+      "sha256": "734bca3f995ac3d59a1c9b4573ce258ffac238e0b4eb578218663375b8ee0b50"
     },
     {
       "path": "conformance/refinement/adapters/action-escrow.mjs",
@@ -59,11 +63,11 @@
     },
     {
       "path": "conformance/refinement/adapters/composed-trust-lifecycle.mjs",
-      "sha256": "11750f514f828742d81bfd577d590b5799fbb078c26cc090ccceb7fe508d96c9"
+      "sha256": "db7b934f8d0728c40f66192311679f30e043d9e33d5bd04bf0ad270fd16bd54c"
     },
     {
       "path": "conformance/refinement/adapters/composed-trust-lifecycle.mts",
-      "sha256": "a7bb7e2b22db51d17dd1e91308be3970ec1ca77a2ca1c829e946cc52b342cb63"
+      "sha256": "1c1e08abc728367b617b93d6740d0dd356c8d750dd2b834fb8305db4e0c848b4"
     },
     {
       "path": "conformance/refinement/adapters/consequence-lifecycle.mjs",
@@ -91,7 +95,7 @@
     },
     {
       "path": "conformance/refinement/adapters/five-claim-bridge.mjs",
-      "sha256": "2765725ea5dea8218cedff33d64674122673456caf68e84737288f3153f21eec"
+      "sha256": "ef716b4f169a9192f335c4d27d21e38df11551c1d39fd1e10da1d15a379b40de"
     },
     {
       "path": "conformance/refinement/adapters/grace-curtailment.mjs",
@@ -1403,7 +1407,7 @@
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "sha256": "d4b511410d16b3f493d450090a90523496377167b993d4f42efcfd05bc0b8419"
+      "sha256": "f377f01c09c54a526c5cb90cf09c6d22454990a401324100a023ab7ec03ecb2e"
     },
     {
       "path": "scripts/build-standalone-runtimes.mjs",
