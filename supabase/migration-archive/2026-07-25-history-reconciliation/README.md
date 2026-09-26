@@ -27,12 +27,12 @@ Run `npm run check:migration-history` before changing migration history. Never
 restore an archived alias to `supabase/migrations`, edit a journaled migration,
 or use migration-journal repair to hide a filesystem mismatch.
 
-Because the pending set includes retroactive repairs, production deployment
-uses an ignored private migration work directory containing the public tree
-plus every journaled version the ledger lists in `private_remote_versions`, and
-runs Supabase with `--include-all`.
-The ledger's `deployment_sequence` is the required order. A public checkout
-alone is intentionally not a complete production deployment surface.
+Production deployment uses an ignored private migration work directory
+containing the public tree plus every journaled version the ledger lists in
+`private_remote_versions`, and runs Supabase with `--include-all`, which the
+ledger's `requires_include_all` makes mandatory while retroactive repairs are
+pending. The ledger's `deployment_sequence` is the required order. A public
+checkout alone is intentionally not a complete production deployment surface.
 
 The security invariants that were still required but had no journaled
 equivalent are reintroduced idempotently by
