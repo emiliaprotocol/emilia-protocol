@@ -12,39 +12,110 @@ env:
 on:
   pull_request:
     branches: [main]
+  # The required check must also report on merge-queue candidates.
+  merge_group:
+    types: [checks_requested]
 
 jobs:
   dco:
-    # Keep the required job and checkout present for every pull request. The
-    # commit loop recognizes only Dependabot's exact author identities; any
-    # human commit added to the same branch must carry its own DCO trailer.
+    # Keep the required job and checkout present for every pull request.
+    # Every commit needs a Signed-off-by line matching its author, except:
+    #   - Dependabot's commits and evidence autopilot commits, and only on
+    #     GitHub's own evidence from the commits API (a GitHub-verified
+    #     signature and the author and committer accounts GitHub resolved),
+    #     never on author names, emails or trailers, which anyone can write;
+    #   - on merge_group only, the first-parent merge commits GitHub creates
+    #     for the queue. Every other commit in the group, including merge
+    #     commits inside pull request branches, is checked as usual.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
 
       - name: Check DCO sign-off
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          DCO_MERGE_GROUP: ${{ github.event_name == 'merge_group' }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          # The evidence autopilot App's bot login, for example
+          # emilia-evidence-autopilot[bot]. While this repository variable is
+          # unset the autopilot exemption is off; it is never widened.
+          EVIDENCE_AUTOPILOT_BOT_LOGIN: ${{ vars.EVIDENCE_AUTOPILOT_BOT_LOGIN }}
         run: |
           failure=0
+          autopilot_login="${EVIDENCE_AUTOPILOT_BOT_LOGIN:-}"
+          if [[ -n "$autopilot_login" && ! "$autopilot_login" =~ ^[A-Za-z0-9][A-Za-z0-9-]*\[bot\]$ ]]; then
+            echo "::warning::vars.EVIDENCE_AUTOPILOT_BOT_LOGIN is not an App bot login (name[bot]); the evidence autopilot exemption is off."
+            autopilot_login=""
+          fi
+          # GitHub's record of a commit: whether GitHub verified its signature
+          # (and why), and the accounts it resolved as author and committer.
+          # Commits GitHub creates and signs itself report committer web-flow.
+          github_identity() {
+            gh api "repos/$REPOSITORY/commits/$1" \
+              --jq '[(.commit.verification.verified | tostring), (.commit.verification.reason // "-"), (.author.login // "-"), (.committer.login // "-")] | join(" ")' \
+              2> /dev/null || true
+          }
+          queue_merges=""
+          if [[ "${DCO_MERGE_GROUP:-false}" == true ]]; then
+            queue_merges="$(git rev-list --first-parent --merges "$BASE_SHA..$HEAD_SHA")"
+          fi
           while IFS= read -r commit_sha; do
+            if [[ -n "$queue_merges" ]] && grep --line-regexp --fixed-strings --quiet "$commit_sha" <<< "$queue_merges" \
+              && [[ "$(git show -s --format='%cn <%ce>' "$commit_sha")" == 'GitHub <noreply@github.com>' ]]; then
+              echo "::notice::Commit $commit_sha is a merge-queue merge commit created by GitHub; DCO sign-off is not required."
+              continue
+            fi
             author_name="$(git show -s --format='%an' "$commit_sha")"
             author_email="$(git show -s --format='%ae' "$commit_sha")"
             author="$author_name <$author_email>"
-            case "$author" in
-              'dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>'|'dependabot[bot] <support@github.com>')
-                echo "::notice::Commit $commit_sha uses a recognized Dependabot author identity; DCO sign-off is not required."
-                continue
-                ;;
-            esac
-            if ! git show -s --format='%B' "$commit_sha" \
-              | grep --fixed-strings --ignore-case --quiet "Signed-off-by: $author"; then
-              echo "::error::Commit $commit_sha is missing Signed-off-by: $author"
-              failure=1
+            message="$(git show -s --format='%B' "$commit_sha")"
+            if grep --fixed-strings --ignore-case --quiet "Signed-off-by: $author" <<< "$message"; then
+              continue
             fi
+            read -r verified reason author_login committer_login <<< "$(github_identity "$commit_sha")"
+            github_signed=false
+            if [[ "${verified:-}" == true && "${reason:-}" == valid ]]; then
+              github_signed=true
+            fi
+            if [[ "$github_signed" == true && "$author_login" == 'dependabot[bot]' && "$committer_login" == web-flow ]]; then
+              echo "::notice::Commit $commit_sha is a GitHub-verified Dependabot commit; DCO sign-off is not required."
+              continue
+            fi
+            # Evidence autopilot commits (.github/workflows/evidence-autopilot-publish.yml)
+            # are machine regeneration by the repository's own writers, so the
+            # App bot cannot and does not sign them off. The exemption needs a
+            # GitHub-verified signature, the pinned App bot as author and as
+            # (or with GitHub as) committer, the autopilot trailer, a single
+            # parent, and nothing changed outside the derived-evidence
+            # allowlist. A bot-authored commit that fails the last two fails.
+            if [[ -n "$autopilot_login" && "$github_signed" == true && "$author_login" == "$autopilot_login" \
+              && ( "$committer_login" == "$autopilot_login" || "$committer_login" == web-flow ) ]] \
+              && grep --line-regexp --fixed-strings --quiet 'Evidence-Autopilot: v1' <<< "$message"; then
+              parents="$(git rev-list --parents -n 1 "$commit_sha" | wc -w)"
+              outside="$(git diff-tree --no-commit-id --name-only -r --no-renames "$commit_sha" \
+                | grep --line-regexp --fixed-strings --invert-match \
+                  -e 'formal/results/formal-runtime-scenario-conformance.v2.json' \
+                  -e 'conformance/conformance-manifest.json' \
+                  -e 'security/security-case.json' \
+                  -e 'lib/proof-stats.json' \
+                  -e 'AI_CONTEXT.md' \
+                  -e 'public/llms.txt' \
+                  -e 'public/llms-full.txt' \
+                  -e 'public/.well-known/emilia-context.json' || true)"
+              if [[ "$parents" -eq 2 && -z "$outside" ]]; then
+                echo "::notice::Commit $commit_sha is a GitHub-verified evidence autopilot commit that changes only derived evidence; DCO sign-off is not required."
+                continue
+              fi
+              echo "::error::Commit $commit_sha is an evidence autopilot commit but is not single-parent or changes other paths: ${outside:-merge commit}"
+              failure=1
+              continue
+            fi
+            echo "::error::Commit $commit_sha is missing Signed-off-by: $author (GitHub reports verified=${verified:--} reason=${reason:--} author=${author_login:--} committer=${committer_login:--})"
+            failure=1
           done < <(git rev-list --reverse "$BASE_SHA..$HEAD_SHA")
           exit "$failure"

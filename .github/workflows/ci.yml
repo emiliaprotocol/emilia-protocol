@@ -18,6 +18,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Required checks must also report on merge-queue candidates. Merge groups
+  # always run the full lane (see the changes job).
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch: # enables manual run; required for the gated e2e job
 
 concurrency:
@@ -25,6 +29,114 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── Job 0: Change lane ───────────────────────────────────────────
+  # Classifies a pull request as `docs` or `full` (scripts/ci/change-lane.mjs).
+  # `docs` means every changed path is prose under docs/, standards/ or
+  # papers/ (or a root *.md) AND no source that a docs-lane-skipped job runs
+  # names a changed path or its directory. Jobs whose `if:` carries
+  # `(github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs')`
+  # are skipped for such pull requests; a job skipped by its own `if:`
+  # reports success to branch protection. Every job that reads prose (test,
+  # build, e2e, docker-build, lint, the typechecks, language governance and
+  # proof statistics, preprint, docs consistency and secrets, protocol
+  # discipline, conformance docs counts, secret scanning) still runs.
+  #
+  # The decision never trusts the pull request's own tooling:
+  #   - a pull request that changes .github/ or scripts/ci/ is `full` before
+  #     any classifier runs;
+  #   - the classifier and its self-test are taken from the base commit (the
+  #     merge commit's first parent), so an edit to the classifier is judged
+  #     by the previous one;
+  #   - `docs` also requires that main's latest push run of this workflow
+  #     passed security-case, because the docs lane skips it here;
+  #   - pushes, merge groups and manual runs, a missing base classifier, a
+  #     failed self-test, a classifier error, an Actions API failure and an
+  #     empty output all mean `full`, and every skippable job also runs
+  #     `if: !cancelled()`, so a broken classifier can only make CI slower.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      lane: ${{ steps.classify.outputs.lane }}
+      main_security_case: ${{ steps.classify.outputs.main_security_case }}
+      main_security_case_run: ${{ steps.classify.outputs.main_security_case_run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          # The pull_request merge commit and its first parent (the base).
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: github.event_name == 'pull_request'
+        with:
+          node-version: 24
+      - name: Decide the lane with the base commit's classifier
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          classifier_log="$RUNNER_TEMP/change-lane.md"
+          : > "$classifier_log"
+          # Writes the step summary, then the outputs, the lane last: a
+          # failure before that line leaves the lane empty, which is `full`.
+          finish() {
+            {
+              # shellcheck disable=SC2016 # literal Markdown backticks
+              printf '### CI lane: `%s`\n\n%s\n' "$1" "$2"
+              if [[ -s "$classifier_log" ]]; then
+                printf '\n<details><summary>Base classifier output</summary>\n\n'
+                cat "$classifier_log"
+                printf '\n</details>\n'
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+            if [[ "$1" == docs ]]; then
+              echo "main_security_case=success" >> "$GITHUB_OUTPUT"
+              echo "main_security_case_run=$run_id" >> "$GITHUB_OUTPUT"
+            fi
+            echo "lane=$1" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+          [[ "$EVENT_NAME" == pull_request ]] || finish full "Event \`$EVENT_NAME\` always runs the full lane."
+          read -r -a merge <<< "$(git rev-list --parents -n 1 HEAD)"
+          [[ ${#merge[@]} -eq 3 ]] || finish full "HEAD is not the pull request's two-parent merge commit."
+          base="${merge[1]}"
+          git diff --name-only -z --no-renames --no-ext-diff "$base" HEAD > "$RUNNER_TEMP/changed-paths"
+          if grep -qzE '^(\.github|scripts/ci)/' "$RUNNER_TEMP/changed-paths"; then
+            finish full "The pull request changes .github/ or scripts/ci/, which always runs the full lane."
+          fi
+          lane_dir="$RUNNER_TEMP/base-change-lane"
+          mkdir -p "$lane_dir"
+          for file in change-lane.mjs change-lane.node-test.mjs; do
+            git show "$base:scripts/ci/$file" > "$lane_dir/$file" 2> /dev/null \
+              || finish full "The base commit $base has no scripts/ci/$file."
+          done
+          env -u GITHUB_STEP_SUMMARY node --test "$lane_dir/change-lane.node-test.mjs"
+          env -u GITHUB_STEP_SUMMARY node "$lane_dir/change-lane.mjs" \
+            --event pull_request --github-output "$RUNNER_TEMP/lane.out" > "$classifier_log"
+          cat "$classifier_log"
+          candidate="$(cat "$RUNNER_TEMP/lane.out" 2> /dev/null || true)"
+          [[ "$candidate" == lane=docs ]] || finish full "The base classifier chose \`${candidate#lane=}\`."
+          # The docs lane skips security-case on this pull request, so it is
+          # taken only while main's latest push run of ci.yml passed it.
+          run_id="$(gh api "repos/$REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=1" \
+            --jq '.workflow_runs[0].id // empty')" \
+            || finish full "The Actions API did not answer, so main's security-case is unknown."
+          [[ "$run_id" =~ ^[0-9]+$ ]] || finish full "No push run of ci.yml on main was found."
+          conclusions="$(gh api --paginate "repos/$REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
+            --jq '.jobs[] | select(.name == "security-case") | (.conclusion // .status)')" \
+            || finish full "The Actions API did not answer, so main's security-case is unknown."
+          conclusion="${conclusions%%$'\n'*}"
+          [[ "$conclusion" == success ]] \
+            || finish full "security-case on main's latest push run ($run_id) is \`${conclusion:-missing}\`, so this pull request runs it too."
+          finish docs "Prose-only change; main's latest push run ($run_id) passed security-case."
+
   # ── Job 1: Tests — must pass 100% ────────────────────────────────
   test:
     runs-on: ubuntu-latest
@@ -71,7 +183,10 @@ jobs:
         # or a different path must refuse. They are named here as well as
         # discovered by scripts/run-package-suites.mjs — the redundancy is
         # deliberate, because a receipt bound to nothing fails silently.
-        run: node --test packages/verify/test.js packages/verify/*.test.js packages/issue/test.js packages/issue/*.test.js packages/attest/test.js packages/require-receipt/*.test.js packages/grpc-guard/*.test.mjs packages/gateway-authz/*.test.mjs integrations/github-authority-map-action/tests/*.node-test.mjs integrations/github-merge-gate-action/tests/*.node-test.mjs
+        # scripts/ci/ holds the CI lane classifier and the evidence autopilot
+        # bundle tool; their suites prove the fail-closed lane decision and
+        # the derived-evidence-only bundle.
+        run: node --test packages/verify/test.js packages/verify/*.test.js packages/issue/test.js packages/issue/*.test.js packages/attest/test.js packages/require-receipt/*.test.js packages/grpc-guard/*.test.mjs packages/gateway-authz/*.test.mjs integrations/github-authority-map-action/tests/*.node-test.mjs integrations/github-merge-gate-action/tests/*.node-test.mjs scripts/ci/*.node-test.mjs
       - name: Verify AAE x PSEA x Gate attempt pair (node:test)
         run: node --test interop/aae-psea-gate/verify.test.mjs interop/aae-psea-gate/reperform.test.mjs
       - name: Verify the public verifier-forgery corpus (node:test)
@@ -106,6 +221,8 @@ jobs:
   # access. Keep its real adapter execution on a runtime exposing --allow-net;
   # the main Node 24 suite separately exercises the operational refusal path.
   crossing-lab-node26:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -131,12 +248,18 @@ jobs:
           node --test packages/verify/crossing-lab.test.js packages/verify/crossing-lab-cli.test.js
 
   # ── Job 1b: Consequence Firewall product + deployment ───────────
-  gate-product:
+  gate-product-suite:
     # The release-image builder normally executes the governed security case,
     # conformance manifest, and proof-stat suite itself. In this workflow those
-    # checks run in the SHA-identical jobs below, so wait for them and pass the
-    # explicit CI-only preverification flag instead of executing them twice.
-    needs: [security-case, language-governance]
+    # checks run in the SHA-identical security-case and
+    # language-governance-checks jobs, so the builder takes the explicit
+    # CI-only preverification flag instead of executing them twice. This suite
+    # starts in the first minute, in parallel with them; the reuse is
+    # discharged by the required `gate-product` job, which passes only when
+    # security-case, language-governance and this suite all succeeded on the
+    # same SHA. Nothing this job builds leaves the runner.
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
@@ -298,6 +421,55 @@ jobs:
           exit-code: '1'
           hide-progress: true
 
+  # ── Job 1c (required check): Gate product ──────────────────────
+  # Discharges the preverified release seal in gate-product-suite: passes only
+  # when security-case, language-governance and gate-product-suite succeeded
+  # on this SHA (full lane), or, on a pull_request run the changes job put in
+  # the prose-only docs lane after seeing main's latest push run pass
+  # security-case, when the skipped jobs were skipped and language governance
+  # still succeeded. Any other combination takes the full-lane branch.
+  gate-product:
+    needs: [changes, security-case, language-governance, gate-product-suite]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Accept the preverified release seal only after its governed inputs pass
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          LANE: ${{ needs.changes.outputs.lane }}
+          MAIN_SECURITY_CASE: ${{ needs.changes.outputs.main_security_case }}
+          MAIN_SECURITY_CASE_RUN: ${{ needs.changes.outputs.main_security_case_run }}
+          SECURITY_CASE: ${{ needs.security-case.result }}
+          LANGUAGE_GOVERNANCE: ${{ needs.language-governance.result }}
+          SUITE: ${{ needs.gate-product-suite.result }}
+        run: |
+          set -euo pipefail
+          [[ "$LANGUAGE_GOVERNANCE" == success ]] || {
+            echo "::error::language-governance did not succeed: $LANGUAGE_GOVERNANCE"
+            exit 1
+          }
+          if [[ "$EVENT_NAME" == pull_request && "$LANE" == docs && "$MAIN_SECURITY_CASE" == success \
+            && "$MAIN_SECURITY_CASE_RUN" =~ ^[0-9]+$ ]]; then
+            for result in "$SECURITY_CASE" "$SUITE"; do
+              [[ "$result" == skipped || "$result" == success ]] || {
+                echo "::error::docs lane dependency did not pass: $result"
+                exit 1
+              }
+            done
+            echo "Prose-only change: security-case and gate-product-suite inputs are unchanged; main's push run $MAIN_SECURITY_CASE_RUN passed security-case."
+          else
+            [[ "$SECURITY_CASE" == success ]] || {
+              echo "::error::security-case did not succeed: $SECURITY_CASE"
+              exit 1
+            }
+            [[ "$SUITE" == success ]] || {
+              echo "::error::gate-product-suite did not succeed: $SUITE"
+              exit 1
+            }
+          fi
+          echo '"gate-product" is satisfied.'
+
   # ── Job 2: Build — Next.js production build must succeed ─────────
   build:
     runs-on: ubuntu-latest
@@ -420,6 +592,8 @@ jobs:
   # runtime now imports the repository-local Verify SDK for algorithm-agile
   # signatures, so install the locked root graph before executing it.
   fuzz:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -438,6 +612,8 @@ jobs:
   # deploy-kit mechanism; independent administration remains an external
   # operational property and is not claimed by this in-process test.
   witness-equivocation:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -482,9 +658,17 @@ jobs:
 
   # ── Job 4: Exact, content-addressed security case ────────────────
   security-case:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
+    # id-token and attestations serve only the attest steps, which run on
+    # push and manual runs. The job keeps them while merge-queue candidate
+    # code runs, so a candidate could mint its own GitHub attestation with
+    # source ref refs/heads/gh-readonly-queue/main/...; anyone verifying
+    # these attestations must pin --source-ref refs/heads/main and this
+    # workflow as the signer.
     permissions:
       contents: read
       id-token: write
@@ -555,17 +739,17 @@ jobs:
       - name: Verify exact frozen clean-room evidence baseline
         run: npm run conformance:manifest:clean-room
       - name: Attest exact security case on protected-branch runs
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: security/security-case.json
       - name: Attest exact conformance manifest on protected-branch runs
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: conformance/conformance-manifest.json
       - name: Attest exact frozen clean-room manifest on protected-branch runs
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: conformance/clean-room/conformance-manifest.v1.json
@@ -580,11 +764,13 @@ jobs:
           retention-days: 90
 
   # ── Job 5: Language governance ───────────────────────────────────
-  language-governance:
-    # Proof-stat measurement consumes the checked-in security-case data after
-    # this exact SHA's executable security job succeeds. This prevents the
-    # generator from executing that seven-minute case a second time.
-    needs: [security-case]
+  language-governance-checks:
+    # Proof-stat measurement consumes the checked-in security-case data for
+    # this exact SHA (--security-case-preverified) instead of executing that
+    # seven-minute case a second time. It starts in the first minute, in
+    # parallel with security-case; the required `language-governance` job
+    # below accepts its result only after security-case succeeded on the same
+    # SHA. Every step here reads prose, so the docs lane keeps this job.
     runs-on: ubuntu-latest
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
@@ -635,6 +821,47 @@ jobs:
       - name: Check standards observatory snapshot freshness
         run: npm run observatory:check
 
+  # ── Job 5b (required check): Language governance ────────────────
+  # Discharges --security-case-preverified in language-governance-checks:
+  # passes only when those checks succeeded and security-case succeeded on
+  # this SHA, or, on a pull_request run the changes job put in the docs lane
+  # after seeing main's latest push run pass security-case, when the security
+  # case was skipped. Any other combination takes the full-lane branch.
+  language-governance:
+    needs: [changes, security-case, language-governance-checks]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Accept preverified proof statistics only after the security case passes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          LANE: ${{ needs.changes.outputs.lane }}
+          MAIN_SECURITY_CASE: ${{ needs.changes.outputs.main_security_case }}
+          MAIN_SECURITY_CASE_RUN: ${{ needs.changes.outputs.main_security_case_run }}
+          SECURITY_CASE: ${{ needs.security-case.result }}
+          CHECKS: ${{ needs.language-governance-checks.result }}
+        run: |
+          set -euo pipefail
+          [[ "$CHECKS" == success ]] || {
+            echo "::error::language-governance-checks did not succeed: $CHECKS"
+            exit 1
+          }
+          if [[ "$EVENT_NAME" == pull_request && "$LANE" == docs && "$MAIN_SECURITY_CASE" == success \
+            && "$MAIN_SECURITY_CASE_RUN" =~ ^[0-9]+$ ]]; then
+            [[ "$SECURITY_CASE" == skipped || "$SECURITY_CASE" == success ]] || {
+              echo "::error::security-case did not pass: $SECURITY_CASE"
+              exit 1
+            }
+            echo "Prose-only change: security-case inputs are unchanged; main's push run $MAIN_SECURITY_CASE_RUN passed security-case."
+          else
+            [[ "$SECURITY_CASE" == success ]] || {
+              echo "::error::security-case did not succeed: $SECURITY_CASE"
+              exit 1
+            }
+          fi
+          echo '"language-governance" is satisfied.'
+
   # ── Job 6a: License headers ──────────────────────────────────────
   license-headers:
     runs-on: ubuntu-latest
@@ -679,6 +906,8 @@ jobs:
   # Proves the native Secure App produces a Class-A signoff that verifies
   # offline under @emilia-protocol/verify. Needs no install (node + repo only).
   secure-app-signoff:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -756,6 +985,8 @@ jobs:
 
   # ── Job 9: MCP server packaging smoke test ───────────────────────
   mcp-server-pack:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -787,6 +1018,8 @@ jobs:
 
   # ── Job 9b: Benchmark gate — performance regression check ────────
   benchmark:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -802,6 +1035,8 @@ jobs:
 
   # ── Job 10: TypeScript SDK ───────────────────────────────────────
   sdk-typescript:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -827,6 +1062,8 @@ jobs:
   # 22.12+. Prove the consumer/runtime floor against the built package without
   # weakening the normal Node 22 build, type-check, and unit-test lane above.
   sdk-typescript-node18-runtime:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -900,6 +1137,8 @@ jobs:
 
   # ── Job 11: Python SDK ──────────────────────────────────────────
   sdk-python:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -930,6 +1169,8 @@ jobs:
   # isolated staging tree. The package source is deliberately absent from that
   # tree, so an import can only succeed through the installed wheel.
   pypi-installed-wheels:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     name: PyPI wheel ${{ matrix.distribution }} (Python ${{ matrix.python }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -1188,6 +1429,8 @@ jobs:
   # Both lanes must pass; a green standard suite cannot conceal parser or
   # type-confusion failures in the adversarial corpus.
   external-rust-evidence:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1279,8 +1522,11 @@ jobs:
   # it cannot promote implementer-signed legacy evidence to strict independent
   # clean-room acceptance.
   aggregate-conformance-case:
-    needs: [security-case, external-rust-evidence]
+    needs: [changes, security-case, external-rust-evidence]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') && needs.security-case.result == 'success' && needs.external-rust-evidence.result == 'success' }}
     runs-on: ubuntu-latest
+    # Same attestation boundary as security-case: verifiers pin
+    # --source-ref refs/heads/main, never a merge-queue ref.
     permissions:
       contents: read
       id-token: write
@@ -1310,7 +1556,7 @@ jobs:
           --evaluator-commit "$GITHUB_SHA"
           --emit conformance/conformance-case.json
       - name: Attest aggregate conformance case on protected-branch runs
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: conformance/conformance-case.json
@@ -1323,6 +1569,8 @@ jobs:
 
   # ── langchain-emilia (Python) — executor-side guard for LangChain tools ──
   langchain-emilia:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1363,6 +1611,8 @@ jobs:
   # Uses the local JS-signed fixture + locally generated attacker keys — NO
   # network and NO production access. Also exercises the pure-Python verifier.
   examples-grok-guard-redteam:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1594,6 +1844,8 @@ jobs:
 
   # ── Job 18: Postgres integration tests ───────────────────────────
   integration-postgres:
+    needs: [changes]
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
     services:
       postgres:

@@ -8,14 +8,27 @@ name: schema-security
 # Secret policy:
 #   - pull_request_target: the workflow and executable reconciliation code come
 #     only from the trusted base commit. Candidate SQL/ledger bytes are data.
+#   - merge_group: only candidate-reconciliation runs (trusted base code
+#     parsing candidate bytes as data, no secret). GitHub reads this workflow
+#     file from the merge-queue candidate, so the secret-using live leg never
+#     runs on merge_group; push and the nightly run cover it with base code.
 #   - push to main / nightly schedule: secrets are REQUIRED; their absence or any
 #     drift FAILS the workflow.
 #
-# Required repo secret (Settings → Secrets → Actions):
+# Required secret, held by the `schema-gate` environment (Settings →
+# Environments → schema-gate → Environment secrets), not as a repository
+# secret:
 #   SCHEMA_GATE_DB_URL — least-privilege pooler connection string for the
 #   read-only `schema_gate` Postgres role (EXECUTE on the two metadata-only
 #   schema introspection functions; cannot read any table rows). The god-mode
 #   service-role key is NOT in CI.
+# Restrict the environment's deployment branches to main. push, schedule,
+# workflow_dispatch on main and pull_request_target all run on refs/heads/main
+# and are admitted; a workflow running on any other ref (including a
+# merge-queue ref, refs/heads/gh-readonly-queue/main/...) is refused. Until the
+# environment exists GitHub creates it on first use with no restriction, and a
+# copy of the secret left at repository level stays readable by candidate
+# workflow files on merge_group, so moving it is a manual settings step.
 #
 # To make this a true deploy gate: require the unique
 # `emilia-production-schema-contract-v2` GitHub check on main and configure the
@@ -32,6 +45,10 @@ on:
     branches: [main]
   pull_request_target:
     branches: [main]
+  # Merge-queue candidates run only candidate-reconciliation: candidate
+  # migration bytes parsed as data by base-commit code, with no secret.
+  merge_group:
+    types: [checks_requested]
   schedule:
     - cron: '17 7 * * *'   # nightly 07:17 UTC drift sweep
   workflow_dispatch:
@@ -42,13 +59,13 @@ concurrency:
 
 jobs:
   candidate-reconciliation:
-    if: github.event_name == 'pull_request_target'
+    if: github.event_name == 'pull_request_target' || github.event_name == 'merge_group'
     runs-on: ubuntu-latest
     steps:
       - name: Check out trusted base reconciliation code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           fetch-depth: 1
           persist-credentials: false
           path: trusted-base
@@ -56,7 +73,7 @@ jobs:
       - name: Check out candidate migration bytes as data only
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
           fetch-depth: 1
           persist-credentials: false
           # This is the narrow pull_request_target exception the checkout action
@@ -77,7 +94,12 @@ jobs:
             --candidate-root candidate-data
 
   live-schema-contract:
+    # Never on merge_group: that run reads this file from the candidate.
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-latest
+    # The schema-gate credential lives in this environment, whose deployment
+    # branches must be restricted to main (see the header).
+    environment: schema-gate
     steps:
       - name: Check out only the trusted live-contract implementation
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -143,11 +165,20 @@ jobs:
           LIVE_RESULT: ${{ needs.live-schema-contract.result }}
         run: |
           set -euo pipefail
-          [[ "$LIVE_RESULT" == success ]] || {
-            echo "::error::live schema contract did not succeed: $LIVE_RESULT"
-            exit 1
-          }
-          if [[ "$EVENT_NAME" == pull_request_target ]]; then
+          if [[ "$EVENT_NAME" == merge_group ]]; then
+            # The live leg is excluded on merge_group (candidate workflow
+            # file); push to main runs it with base code after the merge.
+            [[ "$LIVE_RESULT" == skipped ]] || {
+              echo "::error::live schema contract must not run on merge_group: $LIVE_RESULT"
+              exit 1
+            }
+          else
+            [[ "$LIVE_RESULT" == success ]] || {
+              echo "::error::live schema contract did not succeed: $LIVE_RESULT"
+              exit 1
+            }
+          fi
+          if [[ "$EVENT_NAME" == pull_request_target || "$EVENT_NAME" == merge_group ]]; then
             [[ "$CANDIDATE_RESULT" == success ]] || {
               echo "::error::candidate reconciliation did not succeed: $CANDIDATE_RESULT"
               exit 1

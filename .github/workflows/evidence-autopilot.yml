@@ -1,0 +1,173 @@
+name: Evidence autopilot
+
+# Regenerates the content-addressed derived evidence on a pull request branch
+# with the repository's official writers, so a lockfile bump or an evidence
+# conflict does not need a human regeneration round trip.
+#
+# Runs for same-repository pull requests only:
+#   - every Dependabot pull request (a root lockfile bump always changes the
+#     formal trace hashes, and a GitHub Actions bump changes hashed workflows);
+#   - any pull request labeled `evidence-autopilot`, on every later push.
+# Never for forks.
+#
+# Trust split. This workflow runs the pull request's code, so it holds a
+# read-only token and no secrets, and it only uploads a bundle of the
+# allowlisted derived files (scripts/ci/evidence-autopilot.mjs). Publishing
+# happens in evidence-autopilot-publish.yml, a workflow_run workflow that
+# executes only default-branch code. It checks the bundle's shape and
+# transit integrity (allowlisted paths, digests against the manifest this job
+# wrote, UTF-8, JSON), not its correctness, and creates one
+# derived-evidence-only commit with a GitHub App token through a
+# compare-and-swap createCommitOnBranch call, so the commit starts CI again.
+# Whether the evidence is correct is decided by the required checks on that
+# commit. dco.yml exempts it from sign-off only on GitHub's own evidence that
+# the pinned App bot created it.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evidence-autopilot-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'labeled' || github.event.label.name == 'evidence-autopilot') &&
+      (github.event.pull_request.user.login == 'dependabot[bot]' ||
+      contains(github.event.pull_request.labels.*.name, 'evidence-autopilot'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - name: Skip the autopilot's own evidence commit
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          message=$(gh api "repos/$REPOSITORY/commits/$SOURCE_SHA" --jq .commit.message)
+          if printf '%s\n' "$message" | grep -qx 'Evidence-Autopilot: v1'; then
+            echo "::notice::The head commit is an evidence autopilot commit; nothing to regenerate."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  generate:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+      TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
+    steps:
+      - name: Check out the exact pull request head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.0'
+
+      - name: Install governed dependencies
+        run: |
+          python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
+          npm ci --ignore-scripts
+
+      - name: Download pinned TLC model checker
+        env:
+          TLA_VERSION: v1.7.4
+          TLA_ASSET_ID: '184694200'
+          TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/download-tla2tools.sh "$TLA2TOOLS_JAR"
+
+      - name: Regenerate derived evidence with the official writers
+        env:
+          NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
+        run: |
+          set -euo pipefail
+          git config user.name 'evidence-autopilot (local, never pushed)'
+          git config user.email 'evidence-autopilot@invalid'
+          # The security-case writer packs the reviewed tree and refuses a
+          # checkout that differs from HEAD, so each stage is committed
+          # locally. Only allowlisted derived files are staged; anything else
+          # a writer touches stays dirty and stops the next stage.
+          checkpoint() {
+            git add -- \
+              formal/results/formal-runtime-scenario-conformance.v2.json \
+              conformance/conformance-manifest.json \
+              security/security-case.json \
+              lib/proof-stats.json \
+              AI_CONTEXT.md \
+              public/llms.txt \
+              public/llms-full.txt \
+              public/.well-known/emilia-context.json
+            git commit --quiet --allow-empty --message "local checkpoint: $1"
+          }
+          npm run sync:formal-traces
+          npm run conformance:manifest
+          checkpoint 'formal traces and conformance manifest'
+          # A changed security case must reach the generated proof and LLM
+          # surfaces before the measured run, whose suite compares them.
+          npm run sync:proof-stats -- --bootstrap-derived-evidence
+          checkpoint 'security case and derived proof fields'
+          npm run sync:llm-context
+          checkpoint 'LLM context for the new security case'
+          npm run sync:proof-stats
+          checkpoint 'measured proof statistics'
+          npm run sync:llm-context
+          checkpoint 'LLM context'
+
+      - name: Re-check the regenerated evidence
+        env:
+          NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
+        run: |
+          npm run check:formal-traces
+          npm run conformance:manifest:check
+          npm run check:llm-context
+          npm run check:public-conformance-claims
+
+      - name: Bundle only the allowlisted derived files
+        run: >-
+          node scripts/ci/evidence-autopilot.mjs collect
+          --source-sha "$SOURCE_SHA"
+          --out "$RUNNER_TEMP/evidence-autopilot"
+
+      - name: Upload the evidence bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-autopilot
+          path: ${{ runner.temp }}/evidence-autopilot
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 3
