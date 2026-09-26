@@ -8,15 +8,23 @@
  */
 
 import crypto from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { canonicalizeStrictJson } from '../verify/strict-json.js';
 import { computeCaid, verifyCaid } from '../../caid/impl/js/caid.mjs';
+import { REGISTRY_ENUM_SNAPSHOTS } from '../../caid/registry/enum-snapshots.mjs';
 
-const ISO_4217_SNAPSHOT = JSON.parse(readFileSync(
-  new URL('../../caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json', import.meta.url),
-  'utf8',
-));
-const ENUM_SNAPSHOTS = Object.freeze([ISO_4217_SNAPSHOT]);
+// The currency pin comes from the CAID registry, never from the value-set
+// file it is meant to check. REGISTRY_ENUM_SNAPSHOTS loads only the files the
+// registry lists and throws unless each file's labels, values digest and
+// whole-file digest equal the registry's enum_snapshot_files entry, so an
+// edited value set (for example an extra code with a recomputed
+// values_sha256) fails at import instead of becoming this package's pin.
+const ISO_4217_SNAPSHOT = REGISTRY_ENUM_SNAPSHOTS.find(
+  (snapshot) => snapshot.values_ref === 'ISO 4217 alpha-3',
+);
+if (!ISO_4217_SNAPSHOT) {
+  throw new Error('the CAID registry pins no ISO 4217 alpha-3 value-set snapshot');
+}
+const ENUM_SNAPSHOTS = REGISTRY_ENUM_SNAPSHOTS;
 
 export const CHECKOUT_EVIDENCE_PROFILE = 'EP-CHECKOUT-EVIDENCE-v0';
 export const CHECKOUT_DISPUTE_DOSSIER_PROFILE = 'EP-CHECKOUT-DISPUTE-DOSSIER-v0';

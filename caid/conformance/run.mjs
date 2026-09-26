@@ -37,6 +37,29 @@ for (const definition of interopCorpus.definitions) {
   }
 }
 console.log(`PASS registry identity: ${registry.types.length} unique types; mapping definitions match exact public entries`);
+
+// Every active enum field must either resolve under this registry version or
+// be listed in unresolved_external_enums, so a type that cannot produce a
+// CAID is never silently counted as usable.
+const pinnedSets = new Set((registry.enum_snapshot_files ?? []).map((entry) =>
+  JSON.stringify([entry.values_ref, entry.values_snapshot, entry.values_sha256])));
+const unresolved = new Set();
+for (const type of registry.types.filter((entry) => entry.status === 'active')) {
+  for (const field of [...(type.required_fields ?? []), ...(type.optional_fields ?? [])]) {
+    if (field.type !== 'enum') continue;
+    const inline = Array.isArray(field.values) && !('values_ref' in field);
+    const compact = typeof field.values_ref === 'string' && field.values_ref.startsWith('inline:');
+    const pinned = pinnedSets.has(JSON.stringify([field.values_ref, field.values_snapshot, field.values_sha256]));
+    if (!inline && !compact && !pinned) unresolved.add(`${type.action_type}.${field.name}`);
+  }
+}
+const listedUnresolved = new Set((registry.unresolved_external_enums ?? []).map((item) => `${item.action_type}.${item.field}`));
+if (JSON.stringify([...unresolved].sort()) !== JSON.stringify([...listedUnresolved].sort())) {
+  throw new Error(`unresolved_external_enums differs from the active enum fields without a pinned snapshot: ${[...unresolved].sort().join(', ')}`);
+}
+const blockedTypes = new Set((registry.unresolved_external_enums ?? []).filter((item) => item.required).map((item) => item.action_type));
+const activeTypes = registry.types.filter((entry) => entry.status === 'active').length;
+console.log(`PASS registry enum coverage: ${activeTypes - blockedTypes.size} of ${activeTypes} active types resolve every enum; ${blockedTypes.size} listed as blocked by ${listedUnresolved.size} unpinned external enums`);
 console.log(`PASS local interop identity: ${interopCorpus.definitions.length} definition does not modify the public registry`);
 
 function run(label, command, args, cwd = ROOT) {

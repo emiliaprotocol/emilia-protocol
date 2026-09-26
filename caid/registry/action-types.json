@@ -5,7 +5,7 @@
     "updated": "2026-09-24",
     "license": "CC0-1.0",
     "trust_note": "CAID carries no trust semantics. A registered type defines WHAT must be inside the digested content, never whether the action was authorized, executed, safe, or wise. See GOVERNANCE.md.",
-    "entry_schema_note": "Each entry in 'types' conforms to the normative type entry schema in DESIGN.md section 3. Local (private) definition files MUST use the same entry schema; there is no reserved private-use syntax. Field types are the closed v1 set: string, amount-string, digest, enum, timestamp, integer, boolean, object, array. An enum is closed by a non-empty inline values array, an inline pipe-separated values_ref prefixed 'inline:', or an external values_ref with immutable values_snapshot and values_sha256 metadata plus an exactly matching locally supplied snapshot. A bare or unresolved external values_ref fails closed. Date-only values use type string with an ISO 8601 date note; type timestamp is always full RFC 3339 UTC with Z.",
+    "entry_schema_note": "Each entry in 'types' conforms to the normative type entry schema in DESIGN.md section 3. Local (private) definition files MUST use the same entry schema; there is no reserved private-use syntax. Field types are the closed v1 set: string, amount-string, digest, enum, timestamp, integer, boolean, object, array. An enum is closed by a non-empty inline values array, an inline pipe-separated values_ref prefixed 'inline:', or an external values_ref with immutable values_snapshot and values_sha256 metadata plus an exactly matching locally supplied snapshot. A bare or unresolved external values_ref fails closed. Each enum_snapshot_files entry pins the value-set file's labels and snapshot_sha256, the SHA-256 of the RFC 8785 canonical JSON of the whole file, so its provenance members are bound to this registry. unresolved_external_enums lists every active field whose external values_ref has no pinned snapshot in this registry version; such a field refuses whenever it is present, so an active type with a required entry there cannot produce or verify a CAID until a reviewed value-set snapshot is pinned. Date-only values use type string with an ISO 8601 date note; type timestamp is always full RFC 3339 UTC with Z.",
     "risk_classes": {
       "irreversible-financial": "Money or financial obligation moves or is created and cannot be unilaterally recalled.",
       "irreversible-data": "Data or state is destroyed, or leaves a boundary it cannot be pulled back across.",
@@ -21,8 +21,23 @@
       "values_ref": "ISO 4217 alpha-3",
       "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
       "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
-      "path": "value-sets/iso-4217-alpha-3.2026-09-17.json"
+      "path": "value-sets/iso-4217-alpha-3.2026-09-17.json",
+      "snapshot_sha256": "sha256:bb87aa48b66998fc919a8fbb9d2eff34fb92f18c2a2bf9e7bcf585ca2e56c678"
     }
+  ],
+  "unresolved_external_enums": [
+    {"action_type": "payment.refund.1", "field": "reason_code", "required": true},
+    {"action_type": "ach.debit.originate.1", "field": "sec_code", "required": true},
+    {"action_type": "key.create.1", "field": "algorithm", "required": true},
+    {"action_type": "key.rotate.1", "field": "new_algorithm", "required": true},
+    {"action_type": "dns.record.delete.1", "field": "record_type", "required": true},
+    {"action_type": "firewall.rule.open.1", "field": "protocol", "required": true},
+    {"action_type": "pii.export.1", "field": "legal_basis", "required": true},
+    {"action_type": "rx.dispense.1", "field": "ndc_code", "required": true},
+    {"action_type": "prior.auth.approve.1", "field": "service_code", "required": true},
+    {"action_type": "prior.auth.approve.1", "field": "diagnosis_code", "required": true},
+    {"action_type": "phi.disclose.1", "field": "purpose", "required": true},
+    {"action_type": "vendor.onboard.1", "field": "jurisdiction", "required": true}
   ],
   "types": [
     {
