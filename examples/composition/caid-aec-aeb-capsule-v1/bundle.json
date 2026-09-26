@@ -1,6 +1,6 @@
 {
   "@version": "EP-CAID-AEC-AEB-CAPSULE-COMPOSITION-v1",
-  "manifest_digest": "sha256:d3d39b73a9626265459714cba4cd6bdef8ba1d313993aface799b7c1eea26bb1",
+  "manifest_digest": "sha256:687608b3c7f34d3eafe2588477ddac00a37c9ead8375d78d658d6ad9ca6a8baf",
   "action": {
     "action_type": "payment.release.1",
     "amount": "250000.00",

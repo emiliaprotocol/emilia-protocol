@@ -2,6 +2,10 @@
 
 import { computeCaid } from "../../../caid/impl/js/caid.mjs";
 import {
+  activeRegistryDefinition,
+  REGISTRY_ENUM_SNAPSHOTS,
+} from "../../../caid/registry/enum-snapshots.mjs";
+import {
   createRemedyMemoryStore,
   createRemedyProgramKernel,
 } from "../../../packages/gate/dist/remedy-program.js";
@@ -133,22 +137,9 @@ function bindExactCaid(): void {
     },
     {
       suite: "jcs-sha256",
-      definitions: [
-        {
-          action_type: "payment.release.1",
-          required_fields: [
-            { name: "amount", type: "amount-string" },
-            {
-              name: "currency",
-              type: "enum",
-              values_ref: "ISO 4217 alpha-3",
-            },
-            { name: "beneficiary_account", type: "digest" },
-            { name: "payment_instruction_id", type: "string" },
-          ],
-          optional_fields: [],
-        },
-      ],
+      // The registered payment.release.1 with its pinned ISO 4217 snapshot.
+      definitions: [activeRegistryDefinition("payment.release.1")],
+      enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
     },
   );
   requireRuntime(

@@ -18,7 +18,7 @@ const ACTION_DEFINITIONS = Object.freeze([{
         action_type: 'payment.release.1',
         required_fields: [
             { name: 'amount', type: 'amount-string' },
-            { name: 'currency', type: 'enum' },
+            { name: 'currency', type: 'enum', values: ['USD'] },
             { name: 'beneficiary_account', type: 'digest' },
             { name: 'payment_instruction_id', type: 'string' },
         ],

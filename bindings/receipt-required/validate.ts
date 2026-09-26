@@ -423,6 +423,10 @@ export function projectBoundAction(
 export function evaluateBindingVectors(
   registry: JsonRecord,
   suite: JsonRecord,
+  // Pinned external enum value sets (CAID registry v4). The suite definitions
+  // reference them by values_ref, values_snapshot and values_sha256; without
+  // the exact snapshot the CAID refuses and the suite cannot recompute.
+  { enumSnapshots }: { enumSnapshots?: readonly unknown[] } = {},
 ): Array<{
   id: string;
   valid: boolean;
@@ -444,6 +448,7 @@ export function evaluateBindingVectors(
   const computed = computeCaid(suite.canonical_action, {
     suite: "jcs-sha256",
     definitions: suite.definitions,
+    enumSnapshots,
   });
   if (
     computed.caid !== suite.expected_caid ||

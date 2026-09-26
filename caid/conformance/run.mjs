@@ -37,6 +37,29 @@ for (const definition of interopCorpus.definitions) {
   }
 }
 console.log(`PASS registry identity: ${registry.types.length} unique types; mapping definitions match exact public entries`);
+
+// Every active enum field must either resolve under this registry version or
+// be listed in unresolved_external_enums, so a type that cannot produce a
+// CAID is never silently counted as usable.
+const pinnedSets = new Set((registry.enum_snapshot_files ?? []).map((entry) =>
+  JSON.stringify([entry.values_ref, entry.values_snapshot, entry.values_sha256])));
+const unresolved = new Set();
+for (const type of registry.types.filter((entry) => entry.status === 'active')) {
+  for (const field of [...(type.required_fields ?? []), ...(type.optional_fields ?? [])]) {
+    if (field.type !== 'enum') continue;
+    const inline = Array.isArray(field.values) && !('values_ref' in field);
+    const compact = typeof field.values_ref === 'string' && field.values_ref.startsWith('inline:');
+    const pinned = pinnedSets.has(JSON.stringify([field.values_ref, field.values_snapshot, field.values_sha256]));
+    if (!inline && !compact && !pinned) unresolved.add(`${type.action_type}.${field.name}`);
+  }
+}
+const listedUnresolved = new Set((registry.unresolved_external_enums ?? []).map((item) => `${item.action_type}.${item.field}`));
+if (JSON.stringify([...unresolved].sort()) !== JSON.stringify([...listedUnresolved].sort())) {
+  throw new Error(`unresolved_external_enums differs from the active enum fields without a pinned snapshot: ${[...unresolved].sort().join(', ')}`);
+}
+const blockedTypes = new Set((registry.unresolved_external_enums ?? []).filter((item) => item.required).map((item) => item.action_type));
+const activeTypes = registry.types.filter((entry) => entry.status === 'active').length;
+console.log(`PASS registry enum coverage: ${activeTypes - blockedTypes.size} of ${activeTypes} active types resolve every enum; ${blockedTypes.size} listed as blocked by ${listedUnresolved.size} unpinned external enums`);
 console.log(`PASS local interop identity: ${interopCorpus.definitions.length} definition does not modify the public registry`);
 
 function run(label, command, args, cwd = ROOT) {
@@ -53,9 +76,11 @@ function run(label, command, args, cwd = ROOT) {
   return result.stdout.trim();
 }
 
-run('JavaScript core: 48 vectors', 'node', ['impl/js/run-vectors.mjs']);
-run('Python core: 48 vectors', 'python3', ['impl/python/run_vectors.py']);
-run('Go core: 48 vectors', 'go', ['run', './cmd/core-vectors'], GO_ROOT);
+const coreCorpus = JSON.parse(readFileSync(path.join(ROOT, 'conformance/vectors.json'), 'utf8'));
+run(`JavaScript core: ${coreCorpus.vectors.length} vectors`, 'node', ['impl/js/run-vectors.mjs']);
+run(`Python core: ${coreCorpus.vectors.length} vectors`, 'python3', ['impl/python/run_vectors.py']);
+run(`Go core: ${coreCorpus.vectors.length} vectors`, 'go', ['run', './cmd/core-vectors'], GO_ROOT);
+run('Go unit tests (strict JSON decoding, UTF-8 refusal)', 'go', ['test', '-count=1', './...'], GO_ROOT);
 
 const mappingOutputs = [
   ['JavaScript', run(`JavaScript mapping: ${mappingCorpus.vectors.length} vectors`, 'node', ['impl/js/run-mapping-vectors.mjs', '--json'])],
@@ -87,4 +112,4 @@ for (const [language, output] of interopOutputs.slice(1)) {
 }
 
 console.log('PASS cross-language consequential-interoperability verdict and reason parity');
-console.log(`CAID conformance: 48 core + ${mappingCorpus.vectors.length} base mapping + ${interopCorpus.vectors.length} consequential-interoperability vectors green in JS, Python, and Go.`);
+console.log(`CAID conformance: ${coreCorpus.vectors.length} core + ${mappingCorpus.vectors.length} base mapping + ${interopCorpus.vectors.length} consequential-interoperability vectors green in JS, Python, and Go.`);

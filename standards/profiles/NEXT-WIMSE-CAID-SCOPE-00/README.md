@@ -4,6 +4,15 @@ Status: experimental review draft, 2026-09-23. This directory has been shared
 for review, but it has not been adopted by WIMSE or published as an
 Internet-Draft.
 
+Superseded by `../NEXT-WIMSE-CAID-SCOPE-01/` on 2026-09-26. This packet pins
+CAID registry version 3 by digest, and its PROFILE.md section 3 makes any
+change to those bytes a new profile version. Registry version 4 changed them,
+so on a checkout that carries registry version 4, `validate.mjs` reports the
+digest and version mismatch and exits nonzero instead of evaluating. That is
+the fail-closed behavior section 3 requires. To replay this packet as shared,
+run it from commit `f46328afc`, the last `main` commit before registry version
+4, where it passes all 22 vectors.
+
 This packet tests one narrow answer to the operation-vocabulary gap Rafael
 Asor identified on the public WIMSE list: bind two delegation scope families
 to two immutable CAID action-type definitions, then refuse ambiguity rather

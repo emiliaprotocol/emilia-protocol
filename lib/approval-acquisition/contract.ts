@@ -7,7 +7,7 @@
 
 import { approvalActionHash } from '@emilia-protocol/require-receipt';
 import { computeCaid } from '@/caid/impl/js/caid.mjs';
-import caidActionTypeRegistry from '@/caid/registry/action-types.json';
+import { activeCaidDefinition, CAID_REGISTRY_ENUM_SNAPSHOTS } from '@/lib/caid-registry';
 
 type JsonObject = Record<string, any>;
 
@@ -49,10 +49,7 @@ const APPROVER = /^[A-Za-z0-9:_.@-]{3,128}$/;
 const PAYMENT_REFERENCE = /^[A-Za-z0-9][A-Za-z0-9:._/-]{2,199}$/;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 
-const paymentDefinition = caidActionTypeRegistry.types.find(
-  (definition) => definition.action_type === APPROVAL_CAID_ACTION_TYPE
-    && definition.status === 'active',
-);
+const paymentDefinition = activeCaidDefinition(APPROVAL_CAID_ACTION_TYPE);
 
 export type ApprovalCreateValue = {
   normalizedBody: JsonObject;
@@ -144,6 +141,7 @@ export function buildPaymentReleaseActionIdentity(material: JsonObject):
   const result = computeCaid(caidAction, {
     suite: 'jcs-sha256',
     definitions: [paymentDefinition],
+    enumSnapshots: CAID_REGISTRY_ENUM_SNAPSHOTS,
   });
   if (!result?.caid || !result?.digest) {
     return { ok: false, detail: `payment material cannot form a CAID (${(result?.refusals || []).join(', ')})` };

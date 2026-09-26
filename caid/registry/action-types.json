@@ -1,11 +1,11 @@
 {
   "meta": {
     "registry": "caid-action-types",
-    "registry_version": 3,
-    "updated": "2026-08-21",
+    "registry_version": 4,
+    "updated": "2026-09-24",
     "license": "CC0-1.0",
     "trust_note": "CAID carries no trust semantics. A registered type defines WHAT must be inside the digested content, never whether the action was authorized, executed, safe, or wise. See GOVERNANCE.md.",
-    "entry_schema_note": "Each entry in 'types' conforms to the normative type entry schema in DESIGN.md section 3. Local (private) definition files MUST use the same entry schema; there is no reserved private-use syntax. Field types are the closed v1 set: string, amount-string, digest, enum, timestamp, integer, boolean, object, array. 'values_ref' on an enum either names an external code set or is an inline pipe-separated list prefixed 'inline:'. Date-only values use type string with an ISO 8601 date note; type timestamp is always full RFC 3339 UTC with Z.",
+    "entry_schema_note": "Each entry in 'types' conforms to the normative type entry schema in DESIGN.md section 3. Local (private) definition files MUST use the same entry schema; there is no reserved private-use syntax. Field types are the closed v1 set: string, amount-string, digest, enum, timestamp, integer, boolean, object, array. An enum is closed by a non-empty inline values array, an inline pipe-separated values_ref prefixed 'inline:', or an external values_ref with immutable values_snapshot and values_sha256 metadata plus an exactly matching locally supplied snapshot. A bare or unresolved external values_ref fails closed. Each enum_snapshot_files entry pins the value-set file's labels and snapshot_sha256, the SHA-256 of the RFC 8785 canonical JSON of the whole file, so its provenance members are bound to this registry. unresolved_external_enums lists every active field whose external values_ref has no pinned snapshot in this registry version; such a field refuses whenever it is present, so an active type with a required entry there cannot produce or verify a CAID until a reviewed value-set snapshot is pinned. Date-only values use type string with an ISO 8601 date note; type timestamp is always full RFC 3339 UTC with Z.",
     "risk_classes": {
       "irreversible-financial": "Money or financial obligation moves or is created and cannot be unilaterally recalled.",
       "irreversible-data": "Data or state is destroyed, or leaves a boundary it cannot be pulled back across.",
@@ -16,6 +16,29 @@
       "varies-by-tool": "The consequence class is determined by the named tool and complete arguments; registration does not classify or authorize the tool."
     }
   },
+  "enum_snapshot_files": [
+    {
+      "values_ref": "ISO 4217 alpha-3",
+      "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+      "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+      "path": "value-sets/iso-4217-alpha-3.2026-09-17.json",
+      "snapshot_sha256": "sha256:bb87aa48b66998fc919a8fbb9d2eff34fb92f18c2a2bf9e7bcf585ca2e56c678"
+    }
+  ],
+  "unresolved_external_enums": [
+    {"action_type": "payment.refund.1", "field": "reason_code", "required": true},
+    {"action_type": "ach.debit.originate.1", "field": "sec_code", "required": true},
+    {"action_type": "key.create.1", "field": "algorithm", "required": true},
+    {"action_type": "key.rotate.1", "field": "new_algorithm", "required": true},
+    {"action_type": "dns.record.delete.1", "field": "record_type", "required": true},
+    {"action_type": "firewall.rule.open.1", "field": "protocol", "required": true},
+    {"action_type": "pii.export.1", "field": "legal_basis", "required": true},
+    {"action_type": "rx.dispense.1", "field": "ndc_code", "required": true},
+    {"action_type": "prior.auth.approve.1", "field": "service_code", "required": true},
+    {"action_type": "prior.auth.approve.1", "field": "diagnosis_code", "required": true},
+    {"action_type": "phi.disclose.1", "field": "purpose", "required": true},
+    {"action_type": "vendor.onboard.1", "field": "jurisdiction", "required": true}
+  ],
   "types": [
     {
       "action_type": "payment.release.1",
@@ -25,7 +48,7 @@
       "required_fields": [
         {"name": "amount", "type": "amount-string",
          "notes": "decimal string, no exponent, no leading '+', no thousands separators"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"},
+        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
         {"name": "beneficiary_account", "type": "digest",
          "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"},
         {"name": "payment_instruction_id", "type": "string"}
@@ -44,7 +67,7 @@
          "notes": "identifier of the settled payment in the issuing system of record"},
         {"name": "amount", "type": "amount-string",
          "notes": "refunded amount; may be less than or equal to the original"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"},
+        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
         {"name": "destination_account", "type": "digest",
          "notes": "sha256:<lowercase hex> of the normalized destination account identifier"},
         {"name": "reason_code", "type": "enum",
@@ -63,7 +86,7 @@
         {"name": "batch_id", "type": "string"},
         {"name": "total_amount", "type": "amount-string",
          "notes": "sum of all items in the batch, in batch currency"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"},
+        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
         {"name": "item_count", "type": "integer",
          "notes": "number of individual payout items in the batch"},
         {"name": "manifest_digest", "type": "digest",
@@ -82,7 +105,7 @@
       "summary": "Origination of a wire transfer (e.g. Fedwire, CHIPS, SWIFT).",
       "required_fields": [
         {"name": "amount", "type": "amount-string"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"},
+        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
         {"name": "debtor_account", "type": "digest",
          "notes": "sha256:<lowercase hex> of the normalized debtor account identifier (e.g. IBAN uppercased, no spaces)"},
         {"name": "creditor_account", "type": "digest",
@@ -106,7 +129,7 @@
       "summary": "Origination of an ACH debit entry against a receiver's account.",
       "required_fields": [
         {"name": "amount", "type": "amount-string"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3",
+        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
          "notes": "USD for domestic ACH"},
         {"name": "sec_code", "type": "enum",
          "values_ref": "Nacha Operating Rules, Standard Entry Class codes (PPD, CCD, WEB, TEL, ...)"},
@@ -666,7 +689,7 @@
          "notes": "sha256:<lowercase hex> of the normalized merchant identifier"},
         {"name": "total_amount", "type": "amount-string",
          "notes": "grand total including tax and shipping, in order currency"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"},
+        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
         {"name": "items_digest", "type": "digest",
          "notes": "sha256:<lowercase hex> of the canonical line-item list (sku, quantity, unit price per line)"},
         {"name": "customer_ref", "type": "digest",
@@ -707,7 +730,7 @@
       "required_fields": [
         {"name": "original_order_id", "type": "string"},
         {"name": "amount", "type": "amount-string"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"},
+        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
         {"name": "destination", "type": "enum",
          "values_ref": "inline: original-payment-method | store-credit | bank-transfer"},
         {"name": "customer_ref", "type": "digest",
@@ -756,7 +779,7 @@
       "optional_fields": [
         {"name": "contract_value", "type": "amount-string",
          "notes": "total contract value where a single value is stated"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"},
+        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
         {"name": "term_months", "type": "integer"}
       ],
       "digest_notes": "contract_digest is over the exact executed bytes; a redlined draft and the executed document are different CAIDs",
@@ -825,7 +848,8 @@
          "notes": "dispensed quantity in the product's billing unit; fractional quantities occur (e.g. 7.5 mL), hence amount-string"},
         {"name": "days_supply", "type": "integer"},
         {"name": "daw_code", "type": "enum",
-         "values_ref": "NCPDP Dispense As Written codes 0-9"},
+         "values_ref": "inline: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9",
+         "notes": "NCPDP Dispense As Written code carried as a one-character string"},
         {"name": "prescriber_npi", "type": "string",
          "notes": "10-digit National Provider Identifier; NPIs are public registry data"}
       ],
@@ -900,7 +924,7 @@
         {"name": "beneficiary_ref", "type": "digest",
          "notes": "sha256:<lowercase hex> of the normalized beneficiary identifier; beneficiary identity is PII and never appears raw"},
         {"name": "amount", "type": "amount-string"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"},
+        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
         {"name": "benefit_period", "type": "string",
          "notes": "ISO 8601 year-month YYYY-MM, or an explicit date range, per program rules"},
         {"name": "channel", "type": "enum",
@@ -924,7 +948,7 @@
         {"name": "vendor_id", "type": "string",
          "notes": "the payer's internal vendor master identifier"},
         {"name": "amount", "type": "amount-string"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"},
+        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
         {"name": "invoice_digest", "type": "digest",
          "notes": "sha256:<lowercase hex> of the invoice document bytes; binds approval to the exact document seen"}
       ],

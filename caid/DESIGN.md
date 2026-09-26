@@ -1,6 +1,6 @@
 # CAID — Canonical Action IDentifier (v1 normative design)
 
-Date: 2026-07-14. Author: EMILIA Protocol maintainers.
+Date: 2026-09-26. Author: EMILIA Protocol maintainers.
 This file is the normative core. Every implementation, vector, draft, and
 binding in this directory conforms to THIS file. Change it here first.
 
@@ -126,7 +126,10 @@ not interoperability.
   "required_fields": [
     {"name": "amount", "type": "amount-string",
      "notes": "decimal string, no exponent, no leading '+', no thousands separators"},
-    {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"},
+    {"name": "currency", "type": "enum",
+     "values_ref": "ISO 4217 alpha-3",
+     "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
     {"name": "beneficiary_account", "type": "digest",
      "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"},
     {"name": "payment_instruction_id", "type": "string"}
@@ -142,21 +145,61 @@ Field types (closed set v1): `string`, `amount-string`, `digest`
 `integer` (JSON integer, for counts only, never money), `boolean`,
 `object`, `array`.
 
+An `enum` is a closed value set, not an unconstrained string with a
+documentation label. A member is present when its key is present: `values`
+or `values_ref` written as `null` is present and malformed, never the same
+as an absent member. An enum MUST take exactly one of these forms:
+
+- inline array: a non-empty, duplicate-free array of non-empty strings in
+  `values`, and no `values_ref` member;
+- compact inline: a `values_ref` string beginning `inline:`. The text after
+  that prefix is split on every `|`, and each member is trimmed of leading
+  and trailing U+0020 SPACE characters only (no other whitespace or control
+  character is trimmed). The resulting members MUST be non-empty and
+  duplicate-free. A `values` member MAY accompany it only when it equals the
+  parsed list exactly, in order; or
+- external: any other non-empty `values_ref` string together with non-empty
+  `values_snapshot` and `values_sha256` (`sha256:` plus lowercase hex). The
+  pinned array is the definition's own `values` member when present, and
+  otherwise a locally supplied snapshot whose `values_ref`,
+  `values_snapshot`, and `values_sha256` all match exactly. An embedded
+  `values` member is never replaced by a supplied snapshot. The issuer or
+  verifier MUST verify that the array is a non-empty, duplicate-free array
+  of non-empty strings and that `values_sha256` is SHA-256 over its RFC 8785
+  canonical JSON encoding.
+
+A definition in none of these forms, and a bare, unresolved, or
+digest-mismatched external `values_ref`, is not a value constraint and MUST
+fail closed as `mistyped_field:<name>` whenever the field is present. Resolution is
+local and offline; implementations MUST NOT fetch a mutable URL while
+computing or verifying a CAID. Changing the pinned array changes validation
+semantics and therefore requires a new action-type version. A registry
+snapshot may correct the machine-readable pin for an already named immutable
+set only by incrementing the registry version and documenting the migration.
+
 ## 4. Computation and verification (closed refusal set)
 
-`computeCaid(actionObject, {suite, definitions})` — conforming issuer:
+`computeCaid(actionObject, {suite, definitions, enumSnapshots})` — conforming issuer:
 1. `action_type` present and grammar-valid, else `invalid_action_type`.
 2. Type resolvable in definitions, else `unknown_action_type`.
-3. Every required field present, else `missing_material_field:<name>`.
+3. Every required field present as an own member of the object, else
+   `missing_material_field:<name>`.
 4. Every present declared field type-valid, else `mistyped_field:<name>`
    (amount-string violations may refine to `invalid_amount:<name>`).
 5. Suite known, else `unknown_suite`.
 6. No non-integer number anywhere in the object, else `unsupported_number`.
+   No string or member name anywhere in the object containing an unpaired
+   surrogate code point, else `unsupported_value`: such a string is not a
+   sequence of Unicode scalar values, has no UTF-8 encoding, and RFC 8785
+   section 3.2.2.2 requires a JCS implementation to refuse it. A raw JSON
+   parser feeding CAID computation MUST NOT replace an unpaired surrogate
+   escape with U+FFFD (that silently changes the identified content), and
+   MUST reject duplicate member names.
 7. Canonicalize, digest, emit `{caid, digest}`.
 Any failure returns `{refusals:[...]}` and NO caid. Fail-closed, never throw
 on junk input.
 
-`verifyCaid(actionObject, caidString, {definitions})` — conforming verifier:
+`verifyCaid(actionObject, caidString, {definitions, enumSnapshots})` — conforming verifier:
 1. Strict-parse the string, else `malformed_caid`.
 2. In-object `action_type` equals CAID type, else `action_type_mismatch`.
 3. Recompute under the CAID's suite; digest equal, else `digest_mismatch`.
@@ -227,6 +270,9 @@ verifier's evidence into its own trust boundary.
   profile-bounded material equivalence and MUST abstain on loss or ambiguity.
 - Type definitions are immutable within a version; cross-domain verifiers
   pin the definition source or registry snapshot.
+- Mutable enum sources create time-of-check drift. External enum values are
+  used only through an exact snapshot label and verified digest; missing,
+  unresolved, or mismatched snapshots fail closed without network access.
 
 ## 8. Naming note
 
@@ -239,8 +285,9 @@ from this domain. Pronounce "kay-eye-dee" or "kade".
 
 - DESIGN.md (this file, normative core)
 - README.md (adoption-facing: "the missing join key; works with whatever you already issue")
-- ../standards/posted/draft-schrock-canonical-action-identifier-00.xml
-- registry/action-types.json, registry/suites.json, registry/GOVERNANCE.md
+- ../standards/posted/draft-schrock-canonical-action-identifier-02.xml
+- registry/action-types.json, registry/suites.json, registry/GOVERNANCE.md,
+  registry/value-sets/ (immutable external enum snapshots)
 - impl/js/caid.mjs, impl/python/caid.py, impl/go/caid.go (+ per-impl vector runners)
 - conformance/vectors.json and mapping-vectors.json (shared; all impls must agree; vectors carry
   their own INLINE type definitions so conformance never depends on the

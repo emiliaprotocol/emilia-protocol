@@ -14,14 +14,26 @@ signatures, identity, or authorization.
 ## Usage
 
 ```js
+import { readFileSync } from "node:fs";
 import { computeCaid, verifyCaid, parseCaid, canonicalize } from "./caid.mjs";
+
+const iso4217 = JSON.parse(readFileSync(
+  new URL("../../registry/value-sets/iso-4217-alpha-3.2026-09-17.json", import.meta.url),
+  "utf8",
+));
 
 const definitions = [
   {
     action_type: "payment.release.1",
     required_fields: [
       { name: "amount", type: "amount-string" },
-      { name: "currency", type: "enum", values_ref: "ISO 4217 alpha-3" },
+      {
+        name: "currency",
+        type: "enum",
+        values_ref: iso4217.values_ref,
+        values_snapshot: iso4217.values_snapshot,
+        values_sha256: iso4217.values_sha256,
+      },
       { name: "beneficiary_account", type: "digest" },
       { name: "payment_instruction_id", type: "string" },
     ],
@@ -37,11 +49,12 @@ const action = {
   payment_instruction_id: "pi-2026-000117",
 };
 
-const out = computeCaid(action, { suite: "jcs-sha256", definitions });
+const enumSnapshots = [iso4217];
+const out = computeCaid(action, { suite: "jcs-sha256", definitions, enumSnapshots });
 // success: { caid: "caid:1:payment.release.1:jcs-sha256:<b64url>", digest: "sha256:<hex>" }
 // failure: { refusals: ["missing_material_field:currency", ...] } and no caid
 
-const check = verifyCaid(action, out.caid, { definitions });
+const check = verifyCaid(action, out.caid, { definitions, enumSnapshots });
 // { valid: true, reasons: [] }
 // or { valid: false, reasons: ["digest_mismatch"] } etc.
 
@@ -52,10 +65,23 @@ const parsed = parseCaid(out.caid);
 const canon = canonicalize(action);
 // { ok: true, canonical: "<RFC 8785 JCS string>" }
 // or { ok: false, refusals: ["unsupported_number"] }
+// or { ok: false, refusals: ["unsupported_value"] } for a string or member
+//    name containing an unpaired surrogate (RFC 8785 section 3.2.2.2)
 ```
 
 All four functions are fail-closed: junk input returns refusals with
 reasons, never throws.
+
+Code inside this repository that uses the full registry definitions can import
+`REGISTRY_ENUM_SNAPSHOTS` and `activeRegistryDefinition()` from
+`caid/registry/enum-snapshots.mjs` instead of naming value-set files or
+copying a registered definition. It loads exactly the files listed in the
+registry's `enum_snapshot_files` and throws if a file's reference, edition
+label, values digest, or whole-file `snapshot_sha256` differs from the
+registry entry. Next.js server code uses `CAID_REGISTRY_ENUM_SNAPSHOTS` from
+`lib/caid-registry.ts`, which imports the same files statically and applies
+the same checks at module load. Without a snapshot, a present currency field
+refuses with `mistyped_field:currency`.
 
 ## Conformance
 
@@ -64,5 +90,6 @@ node run-vectors.mjs
 ```
 
 Runs every vector in `../../conformance/vectors.json` and exits nonzero on
-any failure. The vectors carry their own inline type definitions, so
-conformance never depends on the public registry's contents.
+any failure. The vectors carry their own type definitions and enum snapshot,
+so conformance never depends on mutable network state or the public registry's
+current contents.

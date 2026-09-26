@@ -11,6 +11,12 @@
  * Run:
  *   node examples/composition/caid-aec-aeb-capsule-v1/run.mjs
  *   node examples/composition/caid-aec-aeb-capsule-v1/run.mjs --emit
+ *   node examples/composition/caid-aec-aeb-capsule-v1/run.mjs --check
+ *
+ * --check exits nonzero when the checked-in frozen artifacts differ from what
+ * --emit would write for the current sources. The signed capsule statements'
+ * COSE header encoding currently differs between Node.js major versions, so
+ * emit and check on the repository's .nvmrc version (Node 24).
  */
 
 import crypto from 'node:crypto';
@@ -19,6 +25,7 @@ import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { computeCaid, verifyCaid } from '../../../caid/impl/js/caid.mjs';
+import { REGISTRY_ENUM_SNAPSHOTS } from '../../../caid/registry/enum-snapshots.mjs';
 import {
   AEC_VERSION,
   actionDigest,
@@ -114,6 +121,7 @@ function computeAction(action: RecordValue): { caid: string; digest: string } {
   const computed = computeCaid(action, {
     suite: 'jcs-sha256',
     definitions: actionDefinitions(),
+    enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
   });
   if (!('caid' in computed) || typeof computed.caid !== 'string'
       || typeof computed.digest !== 'string') {
@@ -724,6 +732,7 @@ export function evaluateCase(item: CaseDefinition): RecordValue {
     const computed = computeAction(ACTION);
     const caidVerification = verifyCaid(ACTION, computed.caid, {
       definitions: actionDefinitions(),
+      enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
     });
     const aec = evaluateAec(item);
     const capsule = buildCapsule(item.id, item.capsule_kind, item.reason_code);
@@ -851,6 +860,8 @@ function verifyExpected(item: CaseDefinition, result: RecordValue): RecordValue 
 function sourceManifest(): RecordValue {
   const implementationSources = [
     'caid/registry/action-types.json',
+    'caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json',
+    'caid/registry/enum-snapshots.mjs',
     'packages/verify/evidence-chain.js',
     'packages/verify/aeb-consequence-conformance.js',
     'lib/grace/mobile-grid.js',
@@ -948,7 +959,7 @@ export function runSuite(): RecordValue {
   return { manifest, bundle, report };
 }
 
-function emitArtifacts(run: RecordValue): void {
+function artifactFiles(run: RecordValue): Array<[string, string]> {
   const files: Array<[string, RecordValue]> = [
     ['manifest.json', run.manifest],
     ['bundle.json', run.bundle],
@@ -968,13 +979,25 @@ function emitArtifacts(run: RecordValue): void {
       generated_at: null,
     }],
   ];
-  for (const [name, value] of files) {
-    writeFileSync(resolve(HERE, name), `${JSON.stringify(value, null, 2)}\n`);
-  }
-  const checksums = files
-    .map(([name]) => `${fileDigest(relative(ROOT, resolve(HERE, name))).slice(7)}  ${name}`)
-    .join('\n');
-  writeFileSync(resolve(HERE, 'CHECKSUMS.sha256'), `${checksums}\n`);
+  const texts: Array<[string, string]> = files.map(([name, value]) => [name, `${JSON.stringify(value, null, 2)}\n`]);
+  const checksums = texts.map(([name, text]) => `${sha256(text).slice(7)}  ${name}`).join('\n');
+  return [...texts, ['CHECKSUMS.sha256', `${checksums}\n`]];
+}
+
+function emitArtifacts(run: RecordValue): void {
+  for (const [name, text] of artifactFiles(run)) writeFileSync(resolve(HERE, name), text);
+}
+
+function staleArtifacts(run: RecordValue): string[] {
+  return artifactFiles(run)
+    .filter(([name, text]) => {
+      try {
+        return readFileSync(resolve(HERE, name), 'utf8') !== text;
+      } catch {
+        return true;
+      }
+    })
+    .map(([name]) => name);
 }
 
 function main(): void {
@@ -989,6 +1012,14 @@ function main(): void {
   if (process.argv.includes('--emit')) {
     emitArtifacts(run);
     process.stdout.write(`wrote frozen candidate artifacts under ${relative(ROOT, HERE)}\n`);
+  } else if (process.argv.includes('--check')) {
+    const stale = staleArtifacts(run);
+    if (stale.length > 0) {
+      process.stdout.write(`STALE frozen artifacts (run --emit): ${stale.join(', ')}\n`);
+      process.exitCode = 1;
+    } else {
+      process.stdout.write('frozen candidate artifacts are current\n');
+    }
   }
   if (!run.report.passed) process.exitCode = 1;
 }

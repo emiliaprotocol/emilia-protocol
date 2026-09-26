@@ -239,3 +239,70 @@ test('AP2 capture requires the complete four-artifact dispute chain', () => {
     payment_mandate: 'eyJhbGciOiJFUzI1NiJ9.payment.signature',
   }), /payment_receipt/);
 });
+
+test('the currency pin is the registry entry, and an edited value-set file fails at import', async () => {
+  const { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const path = await import('node:path');
+  const { fileURLToPath, pathToFileURL } = await import('node:url');
+  const { createHash } = await import('node:crypto');
+  const { canonicalize } = await import('../../caid/impl/js/caid.mjs');
+  const { PURCHASE_ACTION_DEFINITION } = await import('./index.mjs');
+
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+  const registry = JSON.parse(readFileSync(path.join(root, 'caid/registry/action-types.json'), 'utf8'));
+  const entry = registry.enum_snapshot_files.find((item) => item.values_ref === 'ISO 4217 alpha-3');
+  const currency = PURCHASE_ACTION_DEFINITION.required_fields.find((field) => field.name === 'currency');
+  assert.deepEqual(
+    [currency.values_ref, currency.values_snapshot, currency.values_sha256],
+    [entry.values_ref, entry.values_snapshot, entry.values_sha256],
+  );
+
+  // Copy exactly the files the package loads into scratch trees, then widen
+  // one tree's value set with ZZZ and recompute its own values_sha256,
+  // leaving the registry unchanged. Each tree is a separate module graph.
+  // The package must refuse to load rather than adopt the edited file's
+  // digest as its pin.
+  const files = [
+    'packages/checkout-evidence/index.mjs',
+    'packages/verify/strict-json.js',
+    'packages/verify/dist/strict-json.js',
+    'caid/impl/js/caid.mjs',
+    'caid/registry/action-types.json',
+    'caid/registry/enum-snapshots.mjs',
+    `caid/registry/${entry.path}`,
+  ];
+  const copyTree = () => {
+    const scratch = mkdtempSync(path.join(tmpdir(), 'checkout-evidence-pin-'));
+    for (const relative of files) {
+      mkdirSync(path.dirname(path.join(scratch, relative)), { recursive: true });
+      cpSync(path.join(root, relative), path.join(scratch, relative));
+    }
+    return scratch;
+  };
+  const intactTree = copyTree();
+  const tamperedTree = copyTree();
+  try {
+    const intact = await import(pathToFileURL(path.join(intactTree, 'packages/checkout-evidence/index.mjs')).href);
+    const zzz = terms();
+    zzz.totals.currency = 'ZZZ';
+    assert.throws(
+      () => intact.buildPurchaseAction({ checkoutTerms: zzz, paymentInstructionId: 'pi_checkout_001' }),
+      /mistyped_field:currency/,
+    );
+
+    const snapshotPath = path.join(tamperedTree, 'caid/registry', entry.path);
+    const snapshot = JSON.parse(readFileSync(snapshotPath, 'utf8'));
+    snapshot.values = [...snapshot.values, 'ZZZ'];
+    snapshot.values_sha256 = 'sha256:' + createHash('sha256')
+      .update(canonicalize(snapshot.values).canonical, 'utf8').digest('hex');
+    writeFileSync(snapshotPath, JSON.stringify(snapshot));
+    await assert.rejects(
+      import(pathToFileURL(path.join(tamperedTree, 'packages/checkout-evidence/index.mjs')).href),
+      /values_sha256 does not match the registry pin/,
+    );
+  } finally {
+    rmSync(intactTree, { recursive: true, force: true });
+    rmSync(tamperedTree, { recursive: true, force: true });
+  }
+});

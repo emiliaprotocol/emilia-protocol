@@ -30,6 +30,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 import { canonicalize, computeCaid, parseCaid, verifyCaid } from '../../../caid/impl/js/caid.mjs';
+import { REGISTRY_ENUM_SNAPSHOTS } from '../../../caid/registry/enum-snapshots.mjs';
 
 export const PROFILE = 'EP-COAZ-TRANSLATION-VECTOR-v0.1';
 
@@ -37,6 +38,10 @@ const REGISTRY = JSON.parse(
   readFileSync(new URL('../../../caid/registry/action-types.json', import.meta.url), 'utf8'),
 );
 export const DEFINITIONS = REGISTRY.types;
+// The registry loader checks each value-set file against the registry's
+// labels, values digest, and whole-file digest, so the runner never adopts an
+// edited snapshot.
+export const ENUM_SNAPSHOTS = REGISTRY_ENUM_SNAPSHOTS;
 const ACTION_TYPE = 'payment.release.1';
 
 // ---------------------------------------------------------------------------
@@ -194,7 +199,9 @@ export function typedSourceAction(mcpCall) {
  */
 export function translateWithCaid(mapping, mcpCall, tokenClaims) {
   const action = typedSourceAction(mcpCall);
-  const computed = computeCaid(action, { suite: 'jcs-sha256', definitions: DEFINITIONS });
+  const computed = computeCaid(action, {
+    suite: 'jcs-sha256', definitions: DEFINITIONS, enumSnapshots: ENUM_SNAPSHOTS,
+  });
   if (!computed.caid) {
     const refusals = computed.refusals ?? ['unspecified_refusal'];
     return { ok: false, reason: `caid_refused:${refusals[0]}`, refusals };
@@ -254,11 +261,15 @@ export function relyingCheck({ observedAction, presentedCaid, approvedAction }) 
   if (parseCaid(presentedCaid).ok === false) {
     return { allowed: false, reason: 'caid_invalid:malformed_caid' };
   }
-  const observed = verifyCaid(observedAction, presentedCaid, { definitions: DEFINITIONS });
+  const observed = verifyCaid(observedAction, presentedCaid, {
+    definitions: DEFINITIONS, enumSnapshots: ENUM_SNAPSHOTS,
+  });
   if (!observed.valid) {
     return { allowed: false, reason: `caid_invalid:${observed.reasons[0]}` };
   }
-  const approved = computeCaid(approvedAction, { suite: 'jcs-sha256', definitions: DEFINITIONS });
+  const approved = computeCaid(approvedAction, {
+    suite: 'jcs-sha256', definitions: DEFINITIONS, enumSnapshots: ENUM_SNAPSHOTS,
+  });
   if (!approved.caid) {
     return { allowed: false, reason: `approved_action_invalid:${(approved.refusals ?? ['unspecified_refusal'])[0]}` };
   }
@@ -393,7 +404,9 @@ export function runCorpus(corpus) {
           );
         }
         if (expect.caid_differs_from_approved === true) {
-          const approved = computeCaid(approvedAction, { suite: 'jcs-sha256', definitions: DEFINITIONS });
+          const approved = computeCaid(approvedAction, {
+            suite: 'jcs-sha256', definitions: DEFINITIONS, enumSnapshots: ENUM_SNAPSHOTS,
+          });
           if (!approved.caid || approved.caid === request.context?.caid) {
             failures.push('expected the presented CAID to differ from the approved CAID');
           }

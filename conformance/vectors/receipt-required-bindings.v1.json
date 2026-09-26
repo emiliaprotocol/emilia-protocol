@@ -10,7 +10,9 @@
         {
           "name": "currency",
           "type": "enum",
-          "values_ref": "ISO 4217 alpha-3"
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
         },
         { "name": "beneficiary_account", "type": "digest" },
         { "name": "payment_instruction_id", "type": "string" }

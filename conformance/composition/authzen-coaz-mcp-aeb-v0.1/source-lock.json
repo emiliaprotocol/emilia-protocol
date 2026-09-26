@@ -5,7 +5,7 @@
   "fetch_note": "This profile inherits the exact OpenID source facts refreshed by coaz-translation-v0.1 on 2026-08-25. No newer upstream status is claimed here.",
   "inherits": {
     "path": "conformance/composition/coaz-translation-v0.1/source-lock.json",
-    "sha256": "3e5a09c72eba78f67757c2d424c12405ca7ad698576bb2d7ed95138086f918ef"
+    "sha256": "61be065b4ad1e78621a3236ed0dc56256e8856b9d86be9b05102cb72e7c7d547"
   },
   "upstream_repository": {
     "url": "https://github.com/openid/authzen",
@@ -70,7 +70,11 @@
     },
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"
+      "sha256": "f377f01c09c54a526c5cb90cf09c6d22454990a401324100a023ab7ec03ecb2e"
+    },
+    {
+      "path": "caid/registry/enum-snapshots.mjs",
+      "sha256": "734bca3f995ac3d59a1c9b4573ce258ffac238e0b4eb578218663375b8ee0b50"
     },
     {
       "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/README.md",
@@ -106,7 +110,7 @@
     },
     {
       "path": "conformance/composition/coaz-translation-v0.1/run.mjs",
-      "sha256": "46ef7675504ea3ce6d84d891026ce5d7bf6a16541678e158618793894cfd36fd"
+      "sha256": "26fa11e3e20d5f206e1a94729ed99a49dd8d4b0856ce61e808c96e807eed9d5e"
     },
     {
       "path": "conformance/composition/coaz-translation-v0.1/vectors.json",
@@ -610,7 +614,7 @@
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"
+      "sha256": "f377f01c09c54a526c5cb90cf09c6d22454990a401324100a023ab7ec03ecb2e"
     }
   ],
   "public_dependency_base": "761ff724cb3c96fe5863023f978512d406d6b84c",

@@ -82,6 +82,7 @@ type MapActionOptions struct {
 	ExpectedProfileHash string
 	NativeVerified      bool
 	Definitions         []interface{}
+	EnumSnapshots       []interface{}
 	Suite               string
 }
 
@@ -416,7 +417,11 @@ func MapAction(source interface{}, opts MapActionOptions) (result MapActionResul
 	if suite == "" {
 		suite = "jcs-sha256"
 	}
-	computed := ComputeCaid(action, ComputeOptions{Suite: suite, Definitions: opts.Definitions})
+	computed := ComputeCaid(action, ComputeOptions{
+		Suite:         suite,
+		Definitions:   opts.Definitions,
+		EnumSnapshots: opts.EnumSnapshots,
+	})
 	if computed.Caid == "" {
 		mappedReasons := make([]string, 0, len(computed.Refusals))
 		for _, reason := range computed.Refusals {
@@ -438,7 +443,7 @@ func MapAction(source interface{}, opts MapActionOptions) (result MapActionResul
 	}
 }
 
-func mapComparisonSide(side map[string]interface{}, definitions []interface{}, suite string) MapActionResult {
+func mapComparisonSide(side map[string]interface{}, definitions []interface{}, enumSnapshots []interface{}, suite string) MapActionResult {
 	if side == nil {
 		side = map[string]interface{}{}
 	}
@@ -452,13 +457,20 @@ func mapComparisonSide(side map[string]interface{}, definitions []interface{}, s
 		ExpectedProfileHash: expected,
 		NativeVerified:      nativeVerified,
 		Definitions:         definitions,
+		EnumSnapshots:       enumSnapshots,
 		Suite:               suite,
 	})
 }
 
 func CompareMappedActions(left, right map[string]interface{}, definitions []interface{}, suite string) MappingComparison {
-	mappedLeft := mapComparisonSide(left, definitions, suite)
-	mappedRight := mapComparisonSide(right, definitions, suite)
+	return CompareMappedActionsWithEnumSnapshots(left, right, definitions, nil, suite)
+}
+
+// CompareMappedActionsWithEnumSnapshots preserves the legacy comparison API
+// while allowing callers to supply integrity-pinned external enum snapshots.
+func CompareMappedActionsWithEnumSnapshots(left, right map[string]interface{}, definitions []interface{}, enumSnapshots []interface{}, suite string) MappingComparison {
+	mappedLeft := mapComparisonSide(left, definitions, enumSnapshots, suite)
+	mappedRight := mapComparisonSide(right, definitions, enumSnapshots, suite)
 	if !mappedLeft.OK || !mappedRight.OK {
 		reasons := []string{}
 		if !mappedLeft.OK {

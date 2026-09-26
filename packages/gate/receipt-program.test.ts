@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync, sign as cryptoSign } from 'node:crypto';
 
 import { computeCaid } from '../../caid/impl/js/caid.mjs';
+import { activeRegistryDefinition, REGISTRY_ENUM_SNAPSHOTS } from '../../caid/registry/enum-snapshots.mjs';
 import {
   CAPABILITY_CAID_SCOPE_PROFILE,
   createDefaultActionRiskManifest,
@@ -43,16 +44,8 @@ const OBSERVED_ACTION = Object.freeze({
   beneficiary_account_hash: BENEFICIARY,
   payment_instruction_id: 'pi_receipt_program_1',
 });
-const CAID_DEFINITIONS = Object.freeze([{
-  action_type: 'payment.release.1',
-  required_fields: [
-    { name: 'amount', type: 'amount-string' },
-    { name: 'currency', type: 'enum', values_ref: 'ISO 4217 alpha-3' },
-    { name: 'beneficiary_account', type: 'digest' },
-    { name: 'payment_instruction_id', type: 'string' },
-  ],
-  optional_fields: [],
-}]);
+// The registered payment.release.1, with its pinned ISO 4217 snapshot.
+const CAID_DEFINITIONS = Object.freeze([activeRegistryDefinition('payment.release.1')]);
 
 function caidAction(action) {
   return {
@@ -68,6 +61,7 @@ function resolveCaid(action) {
   const result = computeCaid(caidAction(action), {
     suite: 'jcs-sha256',
     definitions: CAID_DEFINITIONS,
+    enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
   });
   if (!result.caid) throw new Error(result.refusals.join(','));
   return result.caid;

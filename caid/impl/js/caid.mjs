@@ -102,10 +102,15 @@ function resolveDefinition(actionType, definitions) {
  *   unsupported_number - a number whose IEEE 754 double value is not an
  *                        integer with magnitude at most 2^53-1
  *                        (fractional, NaN, infinite, or out of range)
- *   unsupported_value  - a value not representable in JSON (undefined,
- *                        function, symbol, bigint). Cannot arise from
- *                        JSON.parse input; exists so junk JS input fails
- *                        closed instead of being silently dropped.
+ *   unsupported_value  - a value outside the I-JSON data model: a string
+ *                        or member name containing an unpaired UTF-16
+ *                        surrogate (RFC 8785 section 3.2.2.2 requires a
+ *                        JCS implementation to refuse it; JSON.parse
+ *                        preserves "\ud800" escapes as lone surrogates),
+ *                        or a value not representable in JSON at all
+ *                        (undefined, function, symbol, bigint), so junk
+ *                        JS input fails closed instead of being silently
+ *                        dropped or rewritten.
  *
  * @param {*} value
  * @returns {{ok: true, canonical: string} | {ok: false, refusals: string[]}}
@@ -138,15 +143,22 @@ function serialize(v, refusals) {
     }
     return JSON.stringify(v);
   }
-  if (t === "string") return JSON.stringify(v);
+  if (t === "string") {
+    if (hasUnpairedSurrogate(v)) {
+      refusals.push("unsupported_value");
+      return "";
+    }
+    return JSON.stringify(v);
+  }
   if (Array.isArray(v)) {
     return "[" + v.map((x) => serialize(x, refusals)).join(",") + "]";
   }
   if (t === "object") {
     const keys = Object.keys(v).sort(); // UTF-16 code unit order
-    const parts = keys.map(
-      (k) => JSON.stringify(k) + ":" + serialize(v[k], refusals)
-    );
+    const parts = keys.map((k) => {
+      if (hasUnpairedSurrogate(k)) refusals.push("unsupported_value");
+      return JSON.stringify(k) + ":" + serialize(v[k], refusals);
+    });
     return "{" + parts.join(",") + "}";
   }
   refusals.push("unsupported_value");
@@ -155,6 +167,23 @@ function serialize(v, refusals) {
 
 function dedupe(arr) {
   return [...new Set(arr)];
+}
+
+// True when s contains a UTF-16 surrogate code unit that is not half of a
+// well-formed high/low pair. Such a string is not a sequence of Unicode
+// scalar values, so it has no UTF-8 encoding and no RFC 8785 form.
+function hasUnpairedSurrogate(s) {
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = s.charCodeAt(i + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+      i++;
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,27 +197,125 @@ function fieldList(def, key) {
   return Array.isArray(def[key]) ? def[key].filter(isPlainObject) : [];
 }
 
-function validateAgainstDefinition(obj, def) {
+// A field is present only as an own member of the action object. The `in`
+// operator would also find names on Object.prototype (`__proto__`,
+// `constructor`, `toString`, ...), which a JSON object never carries.
+function hasOwnField(obj, name) {
+  return Object.prototype.hasOwnProperty.call(obj, name) && obj[name] !== undefined;
+}
+
+function validateAgainstDefinition(obj, def, enumSnapshots) {
   const refusals = [];
   const required = fieldList(def, "required_fields");
   const optional = fieldList(def, "optional_fields");
   for (const f of required) {
     if (typeof f.name !== "string") continue;
-    if (!(f.name in obj) || obj[f.name] === undefined) {
+    if (!hasOwnField(obj, f.name)) {
       refusals.push("missing_material_field:" + f.name);
     }
   }
   for (const f of [...required, ...optional]) {
     if (typeof f.name !== "string") continue;
-    if (!(f.name in obj) || obj[f.name] === undefined) continue;
-    const code = checkFieldType(obj[f.name], f);
+    if (!hasOwnField(obj, f.name)) continue;
+    const code = checkFieldType(obj[f.name], f, enumSnapshots);
     if (code) refusals.push(code + ":" + f.name);
   }
   return refusals;
 }
 
+// Resolve the closed value set declared by an enum field (DESIGN.md
+// section 3). Presence is key presence: a member written as null is present
+// and malformed, never the same as an absent member.
+//
+// - `values: [...]` without values_ref is the inline form.
+// - `values_ref: "inline: a | b"` is the registry's compact inline form:
+//   the text after "inline:" is split on "|" and each member is trimmed of
+//   leading and trailing U+0020 SPACE only. A `values` member beside it must
+//   equal the parsed list exactly.
+// - An external values_ref is usable only with a non-empty values_snapshot
+//   label and the SHA-256 digest of the JCS values array, resolved from an
+//   embedded `values` array or an exactly matching local snapshot. A mutable
+//   name or URL by itself never constrains an enum.
+function resolveEnumValues(field, enumSnapshots) {
+  const hasRef = Object.prototype.hasOwnProperty.call(field, "values_ref");
+  const hasValues = Object.prototype.hasOwnProperty.call(field, "values");
+  const ref = hasRef ? field.values_ref : undefined;
+  let declared = hasValues ? field.values : undefined;
+
+  if (typeof ref === "string" && ref.startsWith("inline:")) {
+    const values = ref
+      .slice("inline:".length)
+      .split("|")
+      .map(trimInlineMember);
+    if (!validEnumValues(values)) return null;
+    if (hasValues && !sameStringArray(declared, values)) return null;
+    return values;
+  }
+
+  // A values array with no values_ref member is the inline form.
+  if (!hasRef) return validEnumValues(declared) ? declared : null;
+
+  if (
+    typeof ref !== "string" ||
+    ref.length === 0 ||
+    typeof field.values_snapshot !== "string" ||
+    field.values_snapshot.length === 0 ||
+    typeof field.values_sha256 !== "string" ||
+    !DIGEST_FIELD_RE.test(field.values_sha256)
+  ) {
+    return null;
+  }
+
+  // An embedded `values` member is the snapshot and must verify on its own;
+  // only a definition without one resolves from the supplied snapshots.
+  if (!hasValues && Array.isArray(enumSnapshots)) {
+    const resolved = enumSnapshots.find(
+      (snapshot) =>
+        isPlainObject(snapshot) &&
+        snapshot.values_ref === ref &&
+        snapshot.values_snapshot === field.values_snapshot &&
+        snapshot.values_sha256 === field.values_sha256
+    );
+    declared = resolved?.values;
+  }
+  if (!validEnumValues(declared)) return null;
+
+  const canonical = canonicalize(declared);
+  if (!canonical.ok) return null;
+  const actual = "sha256:" + sha256(canonical.canonical).toString("hex");
+  return actual === field.values_sha256 ? declared : null;
+}
+
+// Trim only U+0020 SPACE from both ends of an inline enum member. Every
+// implementation trims exactly this set; other whitespace or control
+// characters stay part of the member.
+function trimInlineMember(value) {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value.charCodeAt(start) === 0x20) start++;
+  while (end > start && value.charCodeAt(end - 1) === 0x20) end--;
+  return value.slice(start, end);
+}
+
+function validEnumValues(values) {
+  return (
+    Array.isArray(values) &&
+    values.length > 0 &&
+    values.every((value) => typeof value === "string" && value.length > 0) &&
+    new Set(values).size === values.length
+  );
+}
+
+function sameStringArray(left, right) {
+  return (
+    Array.isArray(left) &&
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
 // Returns null when valid, else "mistyped_field" or "invalid_amount".
-function checkFieldType(value, field) {
+function checkFieldType(value, field, enumSnapshots) {
   switch (field.type) {
     case "string":
       return typeof value === "string" ? null : "mistyped_field";
@@ -200,10 +327,9 @@ function checkFieldType(value, field) {
       return DIGEST_FIELD_RE.test(value) ? null : "mistyped_field";
     case "enum":
       if (typeof value !== "string") return "mistyped_field";
-      if (Array.isArray(field.values) && !field.values.includes(value)) {
-        return "mistyped_field";
-      }
-      return null;
+      return resolveEnumValues(field, enumSnapshots)?.includes(value)
+        ? null
+        : "mistyped_field";
     case "timestamp":
       if (typeof value !== "string") return "mistyped_field";
       return isValidTimestamp(value) ? null : "mistyped_field";
@@ -234,7 +360,7 @@ function sha256(canonical) {
 // ---------------------------------------------------------------------------
 
 /**
- * computeCaid(actionObject, {suite, definitions})
+ * computeCaid(actionObject, {suite, definitions, enumSnapshots})
  *   -> {caid: string, digest: string}   on success
  *   -> {refusals: [string]}             on any failure (never throws)
  *
@@ -261,7 +387,7 @@ export function computeCaid(actionObject, options) {
   const refusals = [];
 
   // Steps 3-4: material fields present and type-valid.
-  refusals.push(...validateAgainstDefinition(actionObject, def));
+  refusals.push(...validateAgainstDefinition(actionObject, def, opts.enumSnapshots));
 
   // Step 5: suite known (and implemented here).
   const suite = opts.suite;
@@ -269,7 +395,8 @@ export function computeCaid(actionObject, options) {
     refusals.push("unknown_suite");
   }
 
-  // Step 6: no non-integer number anywhere in the object.
+  // Step 6: no non-integer number and no unpaired surrogate anywhere in
+  // the object (unsupported_number / unsupported_value).
   const canon = canonicalize(actionObject);
   if (!canon.ok) {
     refusals.push(...canon.refusals);
@@ -391,7 +518,9 @@ export function verifyCaid(actionObject, caidString, options) {
     if (def === null) {
       validationRefusals.push("unknown_action_type");
     } else {
-      validationRefusals.push(...validateAgainstDefinition(actionObject, def));
+      validationRefusals.push(
+        ...validateAgainstDefinition(actionObject, def, opts.enumSnapshots)
+      );
     }
   }
   if (!canon.ok) {

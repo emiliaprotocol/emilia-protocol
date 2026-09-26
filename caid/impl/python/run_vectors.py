@@ -50,7 +50,11 @@ for v in suite["vectors"]:
     if kind == "compute":
         actual = compute_caid(
             v["input"]["object"],
-            {"suite": v["input"].get("suite"), "definitions": v["definitions"]},
+            {
+                "suite": v["input"].get("suite"),
+                "definitions": v["definitions"],
+                "enum_snapshots": suite.get("enum_snapshots"),
+            },
         )
         if isinstance(actual, dict) and isinstance(actual.get("caid"), str):
             actual_caids[v["id"]] = actual["caid"]
@@ -58,7 +62,10 @@ for v in suite["vectors"]:
         actual = verify_caid(
             v["input"]["object"],
             v["input"]["caid"],
-            {"definitions": v["definitions"]},
+            {
+                "definitions": v["definitions"],
+                "enum_snapshots": suite.get("enum_snapshots"),
+            },
         )
     elif kind == "parse":
         actual = parse_caid(v["input"]["caid"])

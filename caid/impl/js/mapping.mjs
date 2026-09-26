@@ -220,6 +220,7 @@ export function mappingProfileHash(profile) {
  * @param {string} [params.expectedProfileHash]
  * @param {boolean} [params.nativeVerified]
  * @param {any[]} [params.definitions]
+ * @param {any[]} [params.enumSnapshots]
  * @param {string} [params.suite]
  * @returns {MapActionFailure|MapActionSuccess}
  */
@@ -229,6 +230,7 @@ export function mapAction(source, {
   expectedProfileHash,
   nativeVerified = false,
   definitions,
+  enumSnapshots,
   suite = 'jcs-sha256',
 } = {}) {
   try {
@@ -270,7 +272,7 @@ export function mapAction(source, {
       return { ok: false, reasons, profile_hash: profileHash, source_digest: sourceDigest };
     }
 
-    const computed = computeCaid(action, { suite, definitions });
+    const computed = computeCaid(action, { suite, definitions, enumSnapshots });
     if (!computed.caid) {
       return {
         ok: false,
@@ -298,15 +300,17 @@ export function mapAction(source, {
  * @param {any} right
  * @param {Object} [params]
  * @param {any[]} [params.definitions]
+ * @param {any[]} [params.enumSnapshots]
  * @param {string} [params.suite]
  */
-export function compareMappedActions(left, right, { definitions, suite = 'jcs-sha256' } = {}) {
+export function compareMappedActions(left, right, { definitions, enumSnapshots, suite = 'jcs-sha256' } = {}) {
   const mapOne = (side) => mapAction(side?.source, {
     profile: side?.profile,
     sourceDescriptor: side?.source_descriptor,
     expectedProfileHash: side?.expected_profile_hash,
     nativeVerified: side?.native_verified,
     definitions,
+    enumSnapshots,
     suite,
   });
   const l = mapOne(left);

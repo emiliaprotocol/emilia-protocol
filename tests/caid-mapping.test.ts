@@ -42,6 +42,7 @@ describe('CAID Action-Mapping Profile', () => {
 
     const result = compareMappedActions(side, unpinned, {
       definitions: corpus.definitions,
+      enumSnapshots: corpus.enum_snapshots,
       suite: corpus.suite,
     });
 
@@ -63,7 +64,11 @@ describe('CAID Action-Mapping Profile', () => {
     const result = compareMappedActions(
       buildSide('ep-order', 'ep-action-v1'),
       buildSide('ap2-order', 'ap2-checkout-v1'),
-      { definitions: corpus.definitions, suite: corpus.suite },
+      {
+        definitions: corpus.definitions,
+        enumSnapshots: corpus.enum_snapshots,
+        suite: corpus.suite,
+      },
     );
 
     expect(result.verdict).toBe(MAPPING_VERDICTS.equivalent);

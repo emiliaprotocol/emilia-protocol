@@ -43,6 +43,27 @@ artifact against the same versioned definition must get the same result.
   reordered, retyped, or semantically redefined within an active version.
 - Normalization rules, enum sets, and `digest_notes` MUST NOT change within
   an active version.
+- A human-readable external enum name is not an immutable set. External enums
+  MUST name an edition or snapshot and pin the SHA-256 digest of the RFC 8785
+  canonical JSON values array. A verifier resolves only an exact
+  `values_ref` / `values_snapshot` / `values_sha256` match and verifies the
+  digest locally. Missing, unresolved, or mismatched pins fail closed.
+- Each governed value-set file is listed in `enum_snapshot_files` with its
+  three labels, its `path` under `value-sets/`, and `snapshot_sha256`, the
+  SHA-256 of the RFC 8785 canonical JSON of the whole file. The last pin binds
+  the file's provenance members (source URL and digest, publication and
+  retrieval dates, `hash_input`, `@version`) to the registry, so they cannot
+  change without a new registry version. The pin makes the file's provenance
+  record tamper-evident; re-deriving the values from the upstream source still
+  means fetching that source and comparing it with `source_sha256`.
+- Corrective pin exception. A new registry version MAY replace the
+  machine-readable pin of a value set that an active type already names,
+  without a new type version, only when the pin identifies the set the
+  existing name already denoted, and the migration is documented field by
+  field, including every type whose ability to compute changes. Changing
+  which values the name denotes, or adding or removing values, is never a
+  correction and needs a new type version (section 3). Section 3.1 records
+  the only use of this exception so far.
 - Non-normative references and editorial summaries MAY be corrected only
   when the change cannot alter validation or interpretation.
 - Status MAY move from `active` to `deprecated`; deprecation never makes an
@@ -58,6 +79,58 @@ Any of the following requires publishing a NEW version of the type
 - changing a field's type,
 - changing a field's meaning or normalization rule,
 - changing the enum code set a values_ref points at in a non-additive way.
+
+Additive upstream code-set changes also require a new action-type version if
+the accepted array changes. The point of the pin is that validation remains
+replayable; an upstream maintainer's compatibility policy cannot silently
+alter an active CAID type.
+
+## 3.1 Registry v3 to v4 corrective migration
+
+Registry v3 named external enum sources but did not identify an immutable
+edition or provide bytes that a verifier could integrity-check. Implementations
+therefore could not enforce those fields consistently. Registry v4 does not
+silently reinterpret the file labeled v3: it is a new registry snapshot that
+uses the corrective pin exception in section 2 for these fields:
+
+- the `currency` field of the 10 active types that carry one
+  (`payment.release.1`, `payment.refund.1`, `payout.batch.execute.1`,
+  `wire.transfer.1`, `ach.debit.originate.1`, `order.place.1`,
+  `refund.issue.1`, `contract.execute.1`, `benefit.disburse.1`, and
+  `invoice.approve.1`), pinned to the `2026-09-17` SIX ISO 4217 List One
+  value set; and
+- `rx.dispense.1` `daw_code`, from the bare label "NCPDP Dispense As Written
+  codes 0-9" to the inline list `0 | 1 | ... | 9` that label names.
+
+The action objects and resulting CAID strings for values in those sets do not
+change. A currency code that v3 accepted but List One omits (for example `BGN`
+or `HRK`) refuses under v4. List One is pinned verbatim, so it includes codes
+such as `XXX` (no currency involved), `XTS` (reserved for testing), and the
+precious-metal codes; a type that must exclude them needs its own narrower set
+in a new type version.
+
+Issuers and verifiers moving to v4 MUST pin the v4 registry snapshot and load
+the referenced value-set artifact. A bare v3-style external `values_ref`, an
+unresolved snapshot, a digest mismatch, a value outside the set, and a value
+outside a compact `inline:` list all refuse as `mistyped_field:<name>`. The
+v3-era implementations did not enforce `inline:` lists either; v4 enforces
+all 15 of them. Historical decisions made with registry v3 remain decisions
+under that pinned historical registry; callers MUST NOT report them as v4
+validation without replaying them, and replay needs the v3 registry with the
+pre-v4 implementations (for example from commit `f46328afc`).
+
+Twelve external references in active types still have no reviewed snapshot.
+They are listed in `unresolved_external_enums` and refuse whenever present.
+All twelve are required fields, so these 11 types cannot produce or verify any
+CAID under v4: `payment.refund.1`, `ach.debit.originate.1`, `key.create.1`,
+`key.rotate.1`, `dns.record.delete.1`, `firewall.rule.open.1`,
+`pii.export.1`, `rx.dispense.1`, `prior.auth.approve.1`, `phi.disclose.1`, and
+`vendor.onboard.1`. Each needs a reviewed value-set artifact before use. They
+stay `active` because their definitions are unchanged; they are not counted as
+usable, and `npm run caid:conformance` fails if the list drifts from the
+registry. `contract.execute.1` keeps `currency` optional beside an optional
+`contract_value`; requiring it is a validation change and needs
+`contract.execute.2`.
 
 Old versions are never deleted. A superseded version's status moves from
 `active` to `deprecated`; deprecated types still validate, and verifiers
@@ -103,8 +176,11 @@ The quality bar is the material-fields test:
   identifiers, personal emails, tax IDs, authorization codes) are
   `digest` typed, with the normalization rule stated in notes. Raw
   personal data and secrets never sit in an action object.
-- Enums carry a `values_ref` naming a real code set (an ISO standard, an
-  IANA registry, a regulator's catalog) or an explicit inline list.
+- Enums carry a non-empty inline list, or an external `values_ref` plus an
+  immutable edition/snapshot, a canonical values array, and its verified
+  SHA-256 pin. A mutable standard, registry, catalog, or URL by itself is not
+  sufficient. The fields in `unresolved_external_enums` predate this bar and
+  do not meet it; section 3.1 lists the types they block.
 - Timestamps are RFC 3339 UTC with `Z`; date-only values are strings with
   an ISO 8601 date note.
 - A practitioner from the type's industry should recognize the fields as
@@ -116,7 +192,7 @@ will be under this governance.
 
 ## 6. Licensing
 
-- Registry data (`action-types.json`, `suites.json`, and this document)
+- Registry data (`action-types.json`, `suites.json`, `value-sets/`, and this document)
   is dedicated to the public domain under CC0-1.0.
 - Reference implementation code in this package is licensed Apache-2.0.
 

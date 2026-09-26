@@ -23,7 +23,7 @@ const mandateDefinitions = [{
   action_type: 'travel.book.1',
   required_fields: [
     { name: 'amount', type: 'amount-string' },
-    { name: 'currency', type: 'enum', values_ref: 'ISO 4217 alpha-3' },
+    { name: 'currency', type: 'enum', values: ['USD'] },
     { name: 'route', type: 'string' },
     { name: 'booking_reference', type: 'string' },
   ],
@@ -300,7 +300,7 @@ const agentClaimedCaid = computeCaid({
     action_type: 'purchase.alcohol.1',
     required_fields: [
       { name: 'amount', type: 'amount-string' },
-      { name: 'currency', type: 'enum', values_ref: 'ISO 4217 alpha-3' },
+      { name: 'currency', type: 'enum', values: ['USD'] },
       { name: 'vendor', type: 'string' },
       { name: 'booking_reference', type: 'string' },
     ],

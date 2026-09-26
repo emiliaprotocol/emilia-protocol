@@ -23,6 +23,7 @@ import {
 import { gateMcpTool } from '../../packages/gate/mcp.js';
 import { verifyReceipt } from '../../packages/verify/index.js';
 import { computeCaid } from '../../caid/impl/js/caid.mjs';
+import { REGISTRY_ENUM_SNAPSHOTS } from '../../caid/registry/enum-snapshots.mjs';
 
 export const ADAPTER_VERSION = 'EP-MUSE-CODE-GATE-v2';
 export const LEGACY_OUTCOME_PROFILE = 'EP-MUSE-CODE-GATE-OUTCOME-v1';
@@ -155,7 +156,9 @@ export function canonicalizePaymentRelease(input) {
     currency: clean.currency,
     payment_instruction_id: clean.operation,
   });
-  const computed = computeCaid(action, { suite: 'jcs-sha256', definitions: DEFINITIONS });
+  const computed = computeCaid(action, {
+    suite: 'jcs-sha256', definitions: DEFINITIONS, enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
+  });
   if (!computed || typeof computed.caid !== 'string') {
     throw new TypeError(`caid_refused:${(computed?.refusals || ['unknown']).join(',')}`);
   }

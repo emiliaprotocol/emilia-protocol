@@ -3,6 +3,7 @@
 /* eslint-disable */
 import { generateKeyPairSync } from 'node:crypto';
 import { computeCaid } from '../../caid/impl/js/caid.mjs';
+import { activeRegistryDefinition, REGISTRY_ENUM_SNAPSHOTS } from '../../caid/registry/enum-snapshots.mjs';
 import { CAPABILITY_CAID_SCOPE_PROFILE, createDefaultActionRiskManifest, createEg1Harness, createGate, createMemoryCapabilityStore, createReceiptProgramKernel, createRuntimeMonitor, delegateCapabilityReceipt, mintCapabilityReceipt, verifyReceiptProgramCertificate, } from '../../packages/gate/index.js';
 const now = Date.parse('2026-07-20T22:00:00.000Z');
 const operationId = 'pi_receipt_program_demo';
@@ -16,16 +17,8 @@ const action = Object.freeze({
     beneficiary_account_hash: beneficiary,
     payment_instruction_id: operationId,
 });
-const definitions = [{
-        action_type: 'payment.release.1',
-        required_fields: [
-            { name: 'amount', type: 'amount-string' },
-            { name: 'currency', type: 'enum', values_ref: 'ISO 4217 alpha-3' },
-            { name: 'beneficiary_account', type: 'digest' },
-            { name: 'payment_instruction_id', type: 'string' },
-        ],
-        optional_fields: [],
-    }];
+// The registered payment.release.1, with its pinned ISO 4217 snapshot.
+const definitions = [activeRegistryDefinition('payment.release.1')];
 function resolveCaid(observed) {
     const materialAction = {
         action_type: 'payment.release.1',
@@ -34,7 +27,7 @@ function resolveCaid(observed) {
         beneficiary_account: observed.beneficiary_account,
         payment_instruction_id: observed.payment_instruction_id,
     };
-    const computed = computeCaid(materialAction, { suite: 'jcs-sha256', definitions });
+    const computed = computeCaid(materialAction, { suite: 'jcs-sha256', definitions, enumSnapshots: REGISTRY_ENUM_SNAPSHOTS });
     if (!computed.caid)
         throw new Error(`CAID refused: ${computed.refusals?.join(',') ?? 'unknown reason'}`);
     return computed.caid;

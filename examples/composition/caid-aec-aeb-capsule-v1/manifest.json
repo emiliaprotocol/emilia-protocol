@@ -39,7 +39,15 @@
   "implementation_sources": [
     {
       "path": "caid/registry/action-types.json",
-      "sha256": "sha256:8352b1d5e33d608999d6e285cf67fa3bdd7ac5b818d54700193b09ad49daf9d6"
+      "sha256": "sha256:73a31f4a4156e3de02e1c3a9ef355f73c07ba25e6b1bb3da8fde8677c2e23d26"
+    },
+    {
+      "path": "caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json",
+      "sha256": "sha256:9adf5f1aa87926d33923523b20eb11e0e1808ebae4b7d16bc6d0fa190114d525"
+    },
+    {
+      "path": "caid/registry/enum-snapshots.mjs",
+      "sha256": "sha256:734bca3f995ac3d59a1c9b4573ce258ffac238e0b4eb578218663375b8ee0b50"
     },
     {
       "path": "packages/verify/evidence-chain.js",
@@ -51,11 +59,11 @@
     },
     {
       "path": "lib/grace/mobile-grid.js",
-      "sha256": "sha256:59e8e6560c3ab5ed3facb8fc2bc3e2039692402e73994f8b3060579728229d72"
+      "sha256": "sha256:2b7299f3c1c2568ce96b31f322c645620c12b453b868dfe773d1b1b99cf7f639"
     },
     {
       "path": "examples/composition/caid-aec-aeb-capsule-v1/run.mts",
-      "sha256": "sha256:ca120a51518c61c0bbdc3c30dfde5f4bd86cc6278ff090bead6a1be97b50cfc5"
+      "sha256": "sha256:f306a68756efe864f3bd50d3fc84e0dc2f629fd9ebe15b518cdd2ab6fb07a231"
     }
   ],
   "capsule_verifier_scope": {

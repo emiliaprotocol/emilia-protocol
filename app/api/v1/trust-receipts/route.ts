@@ -52,7 +52,7 @@ import {
   validateGuardActionInput,
 } from '@/lib/guard-action-inputs';
 import { computeCaid } from '@/caid/impl/js/caid.mjs';
-import caidActionTypeRegistry from '@/caid/registry/action-types.json';
+import { activeCaidDefinition, CAID_REGISTRY_ENUM_SNAPSHOTS } from '@/lib/caid-registry';
 
 // Receipt expiry: 24 hours by default AND hard maximum. Per MD §2.3, expires_at
 // is required on every receipt. Higher-risk actions should live for minutes, not
@@ -65,10 +65,7 @@ const MAX_TRUST_RECEIPT_CREATE_BYTES = 256 * 1024;
 const SHA256_DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const ACQUISITION_REQUEST_PATTERN = /^apr_[a-f0-9]{32}$/;
 const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
-const PAYMENT_RELEASE_CAID_DEFINITION = caidActionTypeRegistry.types.find(
-  (definition) => definition.action_type === 'payment.release.1'
-    && definition.status === 'active',
-);
+const PAYMENT_RELEASE_CAID_DEFINITION = activeCaidDefinition('payment.release.1');
 
 function resolveReceiptTtlMs(expiresInSec: any, maxTtlMs: number = RECEIPT_TTL_MS): number {
   const n = Number(expiresInSec);
@@ -188,6 +185,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           );
         }
 
+        // A malformed currency keeps the invalid_currency error the general
+        // input validation below has always returned. Only a well-formed code
+        // outside the pinned ISO 4217 snapshot reaches the CAID step and
+        // refuses there as invalid_caid_action.
+        if (body.currency !== undefined
+            && (typeof body.currency !== 'string' || !/^[A-Z]{3}$/.test(body.currency))) {
+          return epProblem(400, 'invalid_currency', 'currency must be a three-letter uppercase ISO-style code');
+        }
+
         // CAID is derived by the server from the same typed material the
         // executor must later observe. A caller-supplied identifier is ignored:
         // CAID equality identifies content but never grants authority.
@@ -204,6 +210,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const caidResult = computeCaid(caidAction, {
           suite: 'jcs-sha256',
           definitions: [PAYMENT_RELEASE_CAID_DEFINITION],
+          enumSnapshots: CAID_REGISTRY_ENUM_SNAPSHOTS,
         });
         if (!caidResult.caid || !caidResult.digest) {
           return epProblem(

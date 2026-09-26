@@ -10,6 +10,21 @@
 import crypto from 'node:crypto';
 import { canonicalizeStrictJson } from '../verify/strict-json.js';
 import { computeCaid, verifyCaid } from '../../caid/impl/js/caid.mjs';
+import { REGISTRY_ENUM_SNAPSHOTS } from '../../caid/registry/enum-snapshots.mjs';
+
+// The currency pin comes from the CAID registry, never from the value-set
+// file it is meant to check. REGISTRY_ENUM_SNAPSHOTS loads only the files the
+// registry lists and throws unless each file's labels, values digest and
+// whole-file digest equal the registry's enum_snapshot_files entry, so an
+// edited value set (for example an extra code with a recomputed
+// values_sha256) fails at import instead of becoming this package's pin.
+const ISO_4217_SNAPSHOT = REGISTRY_ENUM_SNAPSHOTS.find(
+  (snapshot) => snapshot.values_ref === 'ISO 4217 alpha-3',
+);
+if (!ISO_4217_SNAPSHOT) {
+  throw new Error('the CAID registry pins no ISO 4217 alpha-3 value-set snapshot');
+}
+const ENUM_SNAPSHOTS = REGISTRY_ENUM_SNAPSHOTS;
 
 export const CHECKOUT_EVIDENCE_PROFILE = 'EP-CHECKOUT-EVIDENCE-v0';
 export const CHECKOUT_DISPUTE_DOSSIER_PROFILE = 'EP-CHECKOUT-DISPUTE-DOSSIER-v0';
@@ -24,7 +39,13 @@ export const PURCHASE_ACTION_DEFINITION = Object.freeze({
     Object.freeze({ name: 'merchant_account', type: 'digest' }),
     Object.freeze({ name: 'checkout_digest', type: 'digest' }),
     Object.freeze({ name: 'amount', type: 'amount-string' }),
-    Object.freeze({ name: 'currency', type: 'enum', values_ref: 'ISO 4217 alpha-3' }),
+    Object.freeze({
+      name: 'currency',
+      type: 'enum',
+      values_ref: ISO_4217_SNAPSHOT.values_ref,
+      values_snapshot: ISO_4217_SNAPSHOT.values_snapshot,
+      values_sha256: ISO_4217_SNAPSHOT.values_sha256,
+    }),
     Object.freeze({ name: 'payment_instruction_id', type: 'string' }),
   ]),
   optional_fields: Object.freeze([]),
@@ -206,6 +227,7 @@ export function buildPurchaseAction({ checkoutTerms, paymentInstructionId }) {
   const computed = computeCaid(action, {
     suite: 'jcs-sha256',
     definitions: [PURCHASE_ACTION_DEFINITION],
+    enumSnapshots: ENUM_SNAPSHOTS,
   });
   if (!computed.caid || !computed.digest) throw new Error(`purchase action cannot form CAID: ${(computed.refusals ?? []).join(', ')}`);
   return Object.freeze({
@@ -273,7 +295,9 @@ function normalizeExecution(input) {
   assertTimestamp(input.observed_at, 'execution.observed_at');
   if (!EFFECT_STATES.has(input.status)) throw new Error('execution.status is invalid');
   const observed = strictClone(input.observed_action);
-  const computed = computeCaid(observed, { suite: 'jcs-sha256', definitions: [PURCHASE_ACTION_DEFINITION] });
+  const computed = computeCaid(observed, {
+    suite: 'jcs-sha256', definitions: [PURCHASE_ACTION_DEFINITION], enumSnapshots: ENUM_SNAPSHOTS,
+  });
   if (!computed.caid) throw new Error(`execution.observed_action cannot form CAID: ${(computed.refusals ?? []).join(', ')}`);
   return {
     provider: input.provider,
@@ -418,7 +442,9 @@ export async function verifyCheckoutEvidencePacket(packet, {
     if (core.action_caid !== rebuilt.action_caid) invalid.push('action_caid_mismatch');
   }
   if (!CAID.test(core.action_caid ?? '')
-      || !verifyCaid(core.action, core.action_caid, { definitions: [PURCHASE_ACTION_DEFINITION] }).valid) {
+      || !verifyCaid(core.action, core.action_caid, {
+        definitions: [PURCHASE_ACTION_DEFINITION], enumSnapshots: ENUM_SNAPSHOTS,
+      }).valid) {
     invalid.push('action_caid_invalid');
   }
 
@@ -459,6 +485,7 @@ export async function verifyCheckoutEvidencePacket(packet, {
   } else {
     const observed = verifyCaid(execution.observed_action, execution.observed_action_caid, {
       definitions: [PURCHASE_ACTION_DEFINITION],
+      enumSnapshots: ENUM_SNAPSHOTS,
     });
     if (!observed.valid || execution.observed_action_caid !== core.action_caid
         || canonical(execution.observed_action) !== canonical(core.action)) {

@@ -54,15 +54,23 @@
     },
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"
+      "sha256": "f377f01c09c54a526c5cb90cf09c6d22454990a401324100a023ab7ec03ecb2e"
     },
     {
       "path": "caid/registry/action-types.json",
-      "sha256": "e3e1e3052461ad9279b7f38b3df502c2d4e2293aea40636d2da8766f205240e7"
+      "sha256": "73a31f4a4156e3de02e1c3a9ef355f73c07ba25e6b1bb3da8fde8677c2e23d26"
+    },
+    {
+      "path": "caid/registry/enum-snapshots.mjs",
+      "sha256": "734bca3f995ac3d59a1c9b4573ce258ffac238e0b4eb578218663375b8ee0b50"
+    },
+    {
+      "path": "caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json",
+      "sha256": "9adf5f1aa87926d33923523b20eb11e0e1808ebae4b7d16bc6d0fa190114d525"
     },
     {
       "path": "conformance/composition/coaz-translation-v0.1/run.mjs",
-      "sha256": "46ef7675504ea3ce6d84d891026ce5d7bf6a16541678e158618793894cfd36fd"
+      "sha256": "26fa11e3e20d5f206e1a94729ed99a49dd8d4b0856ce61e808c96e807eed9d5e"
     },
     {
       "path": "conformance/composition/coaz-translation-v0.1/vectors.json",

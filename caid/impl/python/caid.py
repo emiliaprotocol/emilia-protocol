@@ -126,7 +126,7 @@ _SHORT_ESCAPES = {
 }
 
 
-def _quote(s):
+def _quote(s, refusals):
     out = ['"']
     for ch in s:
         esc = _SHORT_ESCAPES.get(ch)
@@ -137,11 +137,12 @@ def _quote(s):
         if cp < 0x20:
             out.append("\\u%04x" % cp)
         elif 0xD800 <= cp <= 0xDFFF:
-            # Lone surrogate (possible via json.loads of an escaped
-            # surrogate). ECMAScript JSON.stringify emits these as
-            # lowercase \u escapes; matching that keeps the canonical
-            # text pure ASCII here and UTF-8 encodable.
-            out.append("\\u%04x" % cp)
+            # Lone surrogate (json.loads preserves an escaped "\ud800" as
+            # one). It is not a Unicode scalar value, has no UTF-8
+            # encoding, and RFC 8785 section 3.2.2.2 requires a JCS
+            # implementation to refuse it.
+            refusals.append("unsupported_value")
+            return ""
         else:
             out.append(ch)
     out.append('"')
@@ -150,8 +151,8 @@ def _quote(s):
 
 def _utf16_key(s):
     # UTF-16 code unit order == lexicographic order of UTF-16BE bytes.
-    # surrogatepass so a lone-surrogate key still sorts (it is escaped
-    # at serialization time, matching JSON.stringify).
+    # surrogatepass so a lone-surrogate key still sorts before
+    # serialization refuses it as unsupported_value.
     return s.encode("utf-16-be", "surrogatepass")
 
 
@@ -174,11 +175,13 @@ def canonicalize(value):
       unsupported_number - a number whose IEEE 754 double value is not
                            an integer with magnitude at most 2^53-1
                            (fractional, NaN, infinite, or out of range)
-      unsupported_value  - a value not representable in JSON (bytes,
-                           set, tuple, arbitrary object, non-string
-                           dict key). Cannot arise from json.loads
-                           input; exists so junk Python input fails
-                           closed instead of being silently dropped.
+      unsupported_value  - a value outside the I-JSON data model: a
+                           string or member name containing a lone
+                           surrogate code point (RFC 8785 section
+                           3.2.2.2; json.loads preserves "\\ud800"
+                           escapes as lone surrogates), or a value not
+                           representable in JSON at all (bytes, set,
+                           tuple, arbitrary object, non-string dict key).
     """
     refusals = []
     canonical = _serialize(value, refusals)
@@ -205,7 +208,7 @@ def _serialize(v, refusals):
         refusals.append("unsupported_number")
         return ""
     if isinstance(v, str):
-        return _quote(v)
+        return _quote(v, refusals)
     if isinstance(v, list):
         return "[" + ",".join(_serialize(x, refusals) for x in v) + "]"
     if isinstance(v, dict):
@@ -215,7 +218,7 @@ def _serialize(v, refusals):
                 refusals.append("unsupported_value")
                 return ""
         keys.sort(key=_utf16_key)  # UTF-16 code unit order
-        parts = [_quote(k) + ":" + _serialize(v[k], refusals) for k in keys]
+        parts = [_quote(k, refusals) + ":" + _serialize(v[k], refusals) for k in keys]
         return "{" + ",".join(parts) + "}"
     refusals.append("unsupported_value")
     return ""
@@ -246,7 +249,7 @@ def _field_list(definition, key):
     return [f for f in v if _is_plain_object(f)]
 
 
-def _validate_against_definition(obj, definition):
+def _validate_against_definition(obj, definition, enum_snapshots=None):
     refusals = []
     required = _field_list(definition, "required_fields")
     optional = _field_list(definition, "optional_fields")
@@ -254,7 +257,7 @@ def _validate_against_definition(obj, definition):
         name = f.get("name")
         if not isinstance(name, str):
             continue
-        if name not in obj:
+        if name not in obj:  # dict membership is own-key membership
             refusals.append("missing_material_field:" + name)
     for f in required + optional:
         name = f.get("name")
@@ -262,13 +265,92 @@ def _validate_against_definition(obj, definition):
             continue
         if name not in obj:
             continue
-        code = _check_field_type(obj[name], f)
+        code = _check_field_type(obj[name], f, enum_snapshots)
         if code:
             refusals.append(code + ":" + name)
     return refusals
 
 
-def _check_field_type(value, field):
+def _valid_enum_values(values):
+    return (
+        isinstance(values, list)
+        and len(values) > 0
+        and all(isinstance(value, str) and len(value) > 0 for value in values)
+        and len(set(values)) == len(values)
+    )
+
+
+def _trim_inline_member(value):
+    # Trim only U+0020 SPACE from both ends. str.strip() would also remove
+    # other Unicode whitespace and the C0 separators, which the JavaScript
+    # and Go implementations keep as part of the member.
+    return value.strip(" ")
+
+
+def _resolve_enum_values(field, enum_snapshots=None):
+    """Resolve an enum to a closed, integrity-checked string list.
+
+    Presence is key presence: a member written as null is present and
+    malformed, never the same as an absent member (DESIGN.md section 3).
+
+    `values` without a values_ref member is the inline form. The registry's
+    compact `inline: a | b` form splits on "|" and trims U+0020 SPACE only;
+    a `values` member beside it must equal the parsed list. An external
+    values_ref fails closed unless the definition names its
+    edition/snapshot and pins the JCS values array by SHA-256, and the array
+    resolves from an embedded `values` member or, without one, from an
+    exactly matching local snapshot.
+    """
+    has_ref = "values_ref" in field
+    has_values = "values" in field
+    values_ref = field.get("values_ref")
+    declared = field.get("values")
+
+    if isinstance(values_ref, str) and values_ref.startswith("inline:"):
+        values = [_trim_inline_member(value) for value in values_ref[len("inline:") :].split("|")]
+        if not _valid_enum_values(values):
+            return None
+        if has_values and declared != values:
+            return None
+        return values
+
+    # A values array with no values_ref member is the inline form.
+    if not has_ref:
+        return declared if _valid_enum_values(declared) else None
+
+    values_snapshot = field.get("values_snapshot")
+    values_sha256 = field.get("values_sha256")
+    if (
+        not isinstance(values_ref, str)
+        or len(values_ref) == 0
+        or not isinstance(values_snapshot, str)
+        or len(values_snapshot) == 0
+        or not isinstance(values_sha256, str)
+        or not DIGEST_FIELD_RE.match(values_sha256)
+    ):
+        return None
+    # An embedded `values` member is the snapshot and must verify on its
+    # own; only a definition without one resolves from supplied snapshots.
+    if not has_values and isinstance(enum_snapshots, list):
+        for snapshot in enum_snapshots:
+            if (
+                _is_plain_object(snapshot)
+                and snapshot.get("values_ref") == values_ref
+                and snapshot.get("values_snapshot") == values_snapshot
+                and snapshot.get("values_sha256") == values_sha256
+            ):
+                declared = snapshot.get("values")
+                break
+    if not _valid_enum_values(declared):
+        return None
+    canonical = canonicalize(declared)
+    if not canonical["ok"]:
+        return None
+    actual = "sha256:" + hashlib.sha256(canonical["canonical"].encode("utf-8")).hexdigest()
+    return declared if actual == values_sha256 else None
+
+
+def _check_field_type(value, field, enum_snapshots=None):
     # Returns None when valid, else "mistyped_field" or "invalid_amount".
     ftype = field.get("type")
     if ftype == "string":
@@ -284,10 +366,8 @@ def _check_field_type(value, field):
     if ftype == "enum":
         if not isinstance(value, str):
             return "mistyped_field"
-        values = field.get("values")
-        if isinstance(values, list) and value not in values:
-            return "mistyped_field"
-        return None
+        values = _resolve_enum_values(field, enum_snapshots)
+        return None if values is not None and value in values else "mistyped_field"
     if ftype == "timestamp":
         if not isinstance(value, str):
             return "mistyped_field"
@@ -322,7 +402,8 @@ def _b64url(digest_bytes):
 
 
 def compute_caid(action_object, options=None):
-    """compute_caid(action_object, {"suite": ..., "definitions": [...]})
+    """compute_caid(action_object, {"suite": ..., "definitions": [...],
+                                     "enum_snapshots": [...]})
       -> {"caid": str, "digest": str}     on success
       -> {"refusals": [str]}              on any failure (never throws)
 
@@ -345,14 +426,19 @@ def compute_caid(action_object, options=None):
     refusals = []
 
     # Steps 3-4: material fields present and type-valid.
-    refusals.extend(_validate_against_definition(action_object, definition))
+    refusals.extend(
+        _validate_against_definition(
+            action_object, definition, opts.get("enum_snapshots")
+        )
+    )
 
     # Step 5: suite known (and implemented here).
     suite = opts.get("suite")
     if suite not in SUPPORTED_SUITES:
         refusals.append("unknown_suite")
 
-    # Step 6: no non-integer number anywhere in the object.
+    # Step 6: no non-integer number and no unpaired surrogate anywhere in
+    # the object (unsupported_number / unsupported_value).
     canon = canonicalize(action_object)
     if not canon["ok"]:
         refusals.extend(canon["refusals"])
@@ -420,7 +506,8 @@ def parse_caid(caid_input):
 
 
 def verify_caid(action_object, caid_string, options=None):
-    """verify_caid(action_object, caid_string, {"definitions": [...]})
+    """verify_caid(action_object, caid_string,
+                    {"definitions": [...], "enum_snapshots": [...]})
       -> {"valid": bool, "reasons": [str]}
 
     Same inputs, same reasons, same order, replayable offline. Reason
@@ -476,7 +563,9 @@ def verify_caid(action_object, caid_string, options=None):
             validation_refusals.append("unknown_action_type")
         else:
             validation_refusals.extend(
-                _validate_against_definition(action_object, definition)
+                _validate_against_definition(
+                    action_object, definition, opts.get("enum_snapshots")
+                )
             )
     if not canon["ok"]:
         validation_refusals.extend(canon["refusals"])

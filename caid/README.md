@@ -32,6 +32,11 @@ CAID addresses both problems with one small object and one string:
   conforming issuer cannot mint an identifier for an underspecified action.
   This is the unilateral win: your artifact stops being challengeable on
   "the digest did not cover the amount."
+- **Replayable enums**: inline enums are closed sets. External enums resolve
+  only through a locally supplied snapshot whose reference, edition label,
+  and SHA-256 pin all match the type definition. Mutable names, missing
+  snapshots, digest mismatches, and out-of-set values fail closed without a
+  network fetch.
 - **Joinable**: under the selected suite and pinned type definition, matching
   CAIDs commit to matching canonical typed content. Each artifact still
   verifies under its own specification and trust boundary. A shared action
@@ -81,7 +86,10 @@ boundary.
   published individual Internet-Draft source (xml2rfc v3)
 - `registry/` — action-type registry seed, suites, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations
-- `conformance/vectors.json` — 48 core identifier vectors
+- `conformance/vectors.json` — 73 core identifier vectors (corpus version 2),
+  including pinned, unresolved, mismatched, and out-of-set enum cases,
+  compact-inline trimming, own-member presence, and unpaired-surrogate
+  refusals
 - `conformance/mapping-vectors.json` — 23 cross-format mapping vectors,
   including the SILP IR to CAID `CANCEL+EMAIL` profile
 - `interop/consequential-action-v1/` — 25 candidate, revision-pinned
@@ -94,3 +102,38 @@ boundary.
 Stewardship: currently maintained by EMILIA Protocol with a standing
 commitment, stated in `registry/GOVERNANCE.md`, to transition the registry
 to IANA or another neutral body upon adoption.
+
+## Registry v4 migration
+
+Registry v4 adds an immutable `2026-09-17` SIX ISO 4217 snapshot. A currency
+action object whose code is in that snapshot produces the same CAID bytes as
+before. A code that registry v3 accepted but the snapshot does not list (for
+example `BGN`, `HRK`, or `ZZZ`) is refused under v4. Issuers and verifiers must
+move their registry pin from v3 to v4 and supply the referenced snapshot.
+
+What else now refuses, in every implementation:
+
+- a v3-style bare external `values_ref`, and an unresolved or
+  digest-mismatched one, whenever the field is present;
+- a value outside a compact `inline:` list. The v3-era implementations
+  accepted any string there; there are 15 such fields across 15 registered
+  types, and local definitions using the form are affected the same way;
+- an enum definition in none of the three forms DESIGN.md section 3 allows,
+  including a `values` or `values_ref` member written as `null`; and
+- a string or member name containing an unpaired surrogate
+  (`unsupported_value`).
+
+Eleven active types cannot produce or verify any CAID under registry v4,
+because a required field references an external code set that has no pinned
+snapshot yet: `payment.refund.1`, `ach.debit.originate.1`, `key.create.1`, `key.rotate.1`, `dns.record.delete.1`, `firewall.rule.open.1`, `pii.export.1`, `rx.dispense.1`, `prior.auth.approve.1`, `phi.disclose.1`, and `vendor.onboard.1`. The registry lists their twelve fields in
+`unresolved_external_enums`, and `npm run caid:conformance` fails if that list
+drifts. They need a reviewed value-set snapshot before use. The ISO 4217
+snapshot is List One verbatim, so it also contains codes such as `XXX` (no
+currency involved) and `XTS` (reserved for testing); a type that must exclude
+them needs its own narrower pinned set in a new type version.
+
+Historical v3 decisions remain v3 decisions. The v4 code refuses v3's bare
+external references, so replaying a v3 decision requires the v3 registry and
+the pre-v4 implementations together, for example from commit `f46328afc`, the
+last `main` commit before registry v4. The version 1 core corpus from that
+commit is recorded by digest in `conformance/vectors.json`.

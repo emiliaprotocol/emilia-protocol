@@ -44,12 +44,13 @@ type Vector struct {
 }
 
 type Corpus struct {
-	Version     string                            `json:"@version"`
-	Suite       string                            `json:"suite"`
-	Definitions []interface{}                     `json:"definitions"`
-	Profiles    map[string]map[string]interface{} `json:"profiles"`
-	Sources     map[string]map[string]interface{} `json:"sources"`
-	Vectors     []Vector                          `json:"vectors"`
+	Version       string                            `json:"@version"`
+	Suite         string                            `json:"suite"`
+	Definitions   []interface{}                     `json:"definitions"`
+	EnumSnapshots []interface{}                     `json:"enum_snapshots"`
+	Profiles      map[string]map[string]interface{} `json:"profiles"`
+	Sources       map[string]map[string]interface{} `json:"sources"`
+	Vectors       []Vector                          `json:"vectors"`
 }
 
 type Output struct {
@@ -187,6 +188,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	// The strict decoder refuses duplicate member names and non-UTF-8 input
+	// before the typed decode below reads the corpus structure.
+	if _, err := caidlib.DecodeJSON(data); err != nil {
+		panic(err)
+	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
 	var corpus Corpus
@@ -213,7 +219,13 @@ func main() {
 			profile, _ := side["profile"].(map[string]interface{})
 			side["expected_profile_hash"] = caidlib.MappingProfileHash(profile)
 		}
-		result := caidlib.CompareMappedActions(left, right, corpus.Definitions, corpus.Suite)
+		result := caidlib.CompareMappedActionsWithEnumSnapshots(
+			left,
+			right,
+			corpus.Definitions,
+			corpus.EnumSnapshots,
+			corpus.Suite,
+		)
 		verdictOK := result.Verdict == vector.Expect.Verdict
 		reasonsOK := equalStrings(result.Reasons, vector.Expect.Reasons)
 		if vector.Expect.ReasonContains != "" {

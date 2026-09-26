@@ -930,7 +930,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/TrustReceipt'
         '400':
-          description: Request is malformed or an action field is invalid.
+          description: |
+            Request is malformed or an action field is invalid. For a Cloud
+            payment approval, a currency that is not three uppercase letters
+            returns `invalid_currency`, and payment material that cannot form
+            the server-computed `payment.release.1` CAID returns
+            `invalid_caid_action` with the CAID refusal reasons in `detail`.
+            That includes a well-formed currency absent from the SIX ISO 4217
+            List One snapshot published 2026-09-17 that CAID registry v4 pins
+            (`mistyped_field:currency`).
         '401':
           description: Missing or invalid bearer credential.
         '403':
@@ -5156,7 +5164,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/CloudApprovalCreateResponse'
         '400':
-          description: Invalid payment or approver input
+          description: |
+            Invalid payment or approver input. A currency that is not three
+            uppercase letters returns `invalid_currency`. A well-formed
+            currency absent from the SIX ISO 4217 List One snapshot published
+            2026-09-17 that CAID registry v4 pins is refused by the delegated
+            Trust Receipt step as `invalid_caid_action`, which this route
+            relays.
         '401':
           description: A valid Cloud API key is required
         '403':
@@ -7595,6 +7609,11 @@ components:
         currency:
           type: string
           pattern: '^[A-Z]{3}$'
+          description: |
+            Must also be a code in the SIX ISO 4217 List One snapshot
+            published 2026-09-17 that CAID registry v4 pins; otherwise the
+            action CAID cannot be computed and the request refuses as
+            `invalid_action_caid`.
         payment_instruction_id:
           type: string
           minLength: 3
@@ -7876,7 +7895,11 @@ components:
         currency:
           type: string
           pattern: '^[A-Z]{3}$'
-          description: Three-letter uppercase ISO-style currency code
+          description: |
+            Three-letter uppercase currency code. It must also be a code in
+            the SIX ISO 4217 List One snapshot published 2026-09-17 that CAID
+            registry v4 pins; the pattern alone does not make a code
+            acceptable.
         counterparty_name:
           type: string
           minLength: 1

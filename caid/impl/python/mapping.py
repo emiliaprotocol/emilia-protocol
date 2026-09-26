@@ -237,6 +237,7 @@ def map_action(
     expected_profile_hash=None,
     native_verified=False,
     definitions=None,
+    enum_snapshots=None,
     suite="jcs-sha256"
 ):
     try:
@@ -287,7 +288,14 @@ def map_action(
                 "source_digest": source_digest,
             }
 
-        computed = compute_caid(action, {"suite": suite, "definitions": definitions})
+        computed = compute_caid(
+            action,
+            {
+                "suite": suite,
+                "definitions": definitions,
+                "enum_snapshots": enum_snapshots,
+            },
+        )
         if "caid" not in computed:
             return {
                 "ok": False,
@@ -313,7 +321,9 @@ def map_action(
         }
 
 
-def compare_mapped_actions(left, right, *, definitions=None, suite="jcs-sha256"):
+def compare_mapped_actions(
+    left, right, *, definitions=None, enum_snapshots=None, suite="jcs-sha256"
+):
     def map_one(side):
         side = side if isinstance(side, dict) else {}
         return map_action(
@@ -323,6 +333,7 @@ def compare_mapped_actions(left, right, *, definitions=None, suite="jcs-sha256")
             expected_profile_hash=side.get("expected_profile_hash"),
             native_verified=side.get("native_verified"),
             definitions=definitions,
+            enum_snapshots=enum_snapshots,
             suite=suite,
         )
 
