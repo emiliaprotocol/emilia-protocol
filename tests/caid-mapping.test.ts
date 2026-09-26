@@ -16,7 +16,7 @@ describe('CAID Action-Mapping Profile', () => {
   it('passes every shared material-equivalence vector', () => {
     const results = runMappingVectors(corpus);
     expect(results).toHaveLength(corpus.vectors.length);
-    expect(results).toHaveLength(23);
+    expect(results).toHaveLength(25);
     expect(results.filter((result) => !result.pass)).toEqual([]);
   });
 
