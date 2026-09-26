@@ -1,0 +1,379 @@
+name: Volatile evidence refresh
+
+# Keeps main's volatile evidence current so pull requests never carry the
+# measured test counts.
+#
+# lib/proof-stats.json and the four LLM context artifacts rendered from it
+# (AI_CONTEXT.md, public/llms.txt, public/llms-full.txt,
+# public/.well-known/emilia-context.json) embed the exact test counts, which
+# change on almost every merge. Pull requests no longer regenerate those
+# counts: CI reports test-count drift without failing
+# (scripts/ci/volatile-evidence.mjs; every other drift still fails), and this
+# workflow regenerates the five files on every push to main and every 12
+# hours, then publishes ONE pull request titled
+# "chore(evidence): refresh volatile evidence" with auto-merge enabled. The
+# writers are idempotent (an unchanged test count keeps its generatedAt), so a
+# run on a current main publishes nothing and records the "current"
+# observation the grace clock starts from.
+#
+# Trust split, as in evidence-autopilot*.yml:
+#   - `regenerate` runs main's code (the official writers and the full test
+#     suite) with a read-only token and no secrets, and uploads a bundle of the
+#     five files only (`volatile-evidence.mjs collect` refuses any other
+#     changed path, so a writer that touched the security case fails the run).
+#   - `publish` is the only job that can read the evidence autopilot App's
+#     credentials (environment `evidence-autopilot`, deployment branches:
+#     main). It runs nothing from the bundle and installs nothing: it checks
+#     the bundle's shape and transit integrity with main's
+#     scripts/ci/volatile-evidence.mjs, plans against the open refresh pull
+#     requests (`plan`: it reuses the pull request on its own branch only when
+#     the App bot made it as one commit on the source commit, closes only
+#     refresh pull requests whose source is an ancestor of this one, and
+#     publishes nothing when a newer refresh is open), creates a fresh branch
+#     at the source commit, adds one commit with createCommitOnBranch
+#     (compare-and-swap on that commit; GitHub signs it, and dco.yml exempts
+#     it only on GitHub's evidence that the pinned App bot made it and it
+#     changes nothing but derived evidence), opens the pull request and
+#     enables auto-merge pinned to that commit. A new branch per refresh,
+#     instead of force-moving one, means the App never rewrites a branch
+#     across workflow file changes, which it has no permission for.
+#   - Correctness is decided by the required checks on the refresh pull
+#     request (policy mode `strict`): a stale volatile file fails, and so does
+#     any changed path outside the five files, so a later push to the branch
+#     cannot ride the App's auto-merge with other changes.
+#   - `grace` fails this run once main's volatile evidence has been stale for
+#     more than GRACE_HOURS (volatile-evidence.mjs), dated from this
+#     workflow's trusted runs on main; ci.yml's push run applies the same
+#     rule. On a quiet main the first run that can see an expired grace is a
+#     scheduled one, so the failure appears within about 36 hours of the push
+#     that staled the files (later if GitHub delays the schedule). A push run
+#     of ci.yml can be cancelled by the next push to main; that push's own
+#     runs check again.
+#
+# Settings this workflow depends on (see the pull request that added it):
+#   - the evidence autopilot GitHub App with repository permissions
+#     Contents: read and write, Pull requests: read and write and Metadata:
+#     read, installed on this repository only;
+#   - EVIDENCE_AUTOPILOT_CLIENT_ID and EVIDENCE_AUTOPILOT_PRIVATE_KEY as
+#     secrets of the `evidence-autopilot` environment (deployment branches:
+#     main), and the repository variable EVIDENCE_AUTOPILOT_BOT_LOGIN;
+#   - "Allow auto-merge" enabled on the repository.
+# Optional hardening: a ruleset on refs/heads/automation/volatile-evidence-*
+# that restricts updates (and creation and deletion) with the evidence
+# autopilot App as its only bypass actor, so nobody else can push to a
+# refresh branch at all. The strict path check above already refuses any
+# such push that changes other files.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Every 12 hours, so a quiet main still gets a refresh cycle and a
+    # stale-evidence verdict within about 36 hours of going stale.
+    - cron: '41 4,16 * * *'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+# Runs finish in order; a newer pending run replaces an older pending one.
+concurrency:
+  group: volatile-evidence-refresh
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    # volatile-evidence.mjs reads this job's and `publish`'s conclusions to
+    # date staleness: keep both names.
+    name: regenerate
+    if: github.repository == 'emiliaprotocol/emilia-protocol' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.collect.outputs.changed }}
+      stale: ${{ steps.collect.outputs.stale }}
+    env:
+      SOURCE_SHA: ${{ github.sha }}
+      TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
+    steps:
+      - name: Check out the exact main commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.0'
+
+      - name: Install governed dependencies
+        run: |
+          python -m pip install --require-hashes -r .github/workflow-requirements/cryptography.txt
+          npm ci --ignore-scripts
+
+      - name: Download pinned TLC model checker
+        env:
+          TLA_VERSION: v1.7.4
+          TLA_ASSET_ID: '184694200'
+          TLA_SHA256: 936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/download-tla2tools.sh "$TLA2TOOLS_JAR"
+
+      - name: Regenerate the volatile evidence with the official writers
+        env:
+          NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
+        run: |
+          set -euo pipefail
+          git config user.name 'volatile-evidence-refresh (local, never pushed)'
+          git config user.email 'volatile-evidence-refresh@invalid'
+          # The proof-stats writer re-executes and re-emits the security case,
+          # which packs the reviewed tree and refuses a dirty checkout, so each
+          # stage is committed locally. Only the five volatile files are
+          # staged; anything else a writer changes stays dirty and stops the
+          # run at `collect`.
+          checkpoint() {
+            git add -- \
+              lib/proof-stats.json \
+              AI_CONTEXT.md \
+              public/llms.txt \
+              public/llms-full.txt \
+              public/.well-known/emilia-context.json
+            git commit --quiet --allow-empty --message "local checkpoint: $1"
+          }
+          npm run sync:proof-stats
+          checkpoint 'measured proof statistics'
+          npm run sync:llm-context
+          checkpoint 'LLM context'
+
+      - name: Re-check the regenerated evidence
+        run: |
+          npm run check:llm-context
+          npm run check:public-conformance-claims
+
+      - name: Bundle only the volatile files
+        id: collect
+        run: >-
+          node scripts/ci/volatile-evidence.mjs collect
+          --source-sha "$SOURCE_SHA"
+          --out "$RUNNER_TEMP/volatile-evidence"
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Upload the volatile evidence bundle
+        if: steps.collect.outputs.changed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: volatile-evidence
+          path: ${{ runner.temp }}/volatile-evidence
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 3
+
+  publish:
+    name: publish
+    needs: regenerate
+    if: needs.regenerate.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Deployment branches of this environment must stay limited to main; it
+    # alone holds the App credentials.
+    environment: evidence-autopilot
+    permissions:
+      contents: read
+    env:
+      REPOSITORY: ${{ github.repository }}
+      SOURCE_SHA: ${{ github.sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Check out main's trusted tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: trusted
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Download the bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: volatile-evidence
+          path: bundle
+
+      - name: Build the compare-and-swap commit request with trusted code
+        id: request
+        run: >-
+          node trusted/scripts/ci/volatile-evidence.mjs request
+          --bundle bundle
+          --source-sha "$SOURCE_SHA"
+          --repository "$REPOSITORY"
+          --run-url "$RUN_URL"
+          --out "$RUNNER_TEMP/create-commit.json"
+          --pr-body-out "$RUNNER_TEMP/pull-request.md"
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Require the evidence autopilot app credentials
+        env:
+          CLIENT_ID_SET: ${{ secrets.EVIDENCE_AUTOPILOT_CLIENT_ID != '' }}
+          PRIVATE_KEY_SET: ${{ secrets.EVIDENCE_AUTOPILOT_PRIVATE_KEY != '' }}
+        run: |
+          if [[ "$CLIENT_ID_SET" != true || "$PRIVATE_KEY_SET" != true ]]; then
+            echo "::error title=Evidence autopilot is not provisioned::Main's volatile evidence is stale and the regenerated files are ready in this run (artifact volatile-evidence), but they cannot be published: EVIDENCE_AUTOPILOT_CLIENT_ID and EVIDENCE_AUTOPILOT_PRIVATE_KEY are not both set in the evidence-autopilot environment."
+            exit 1
+          fi
+
+      - name: Mint a repository-scoped App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.EVIDENCE_AUTOPILOT_CLIENT_ID }}
+          private-key: ${{ secrets.EVIDENCE_AUTOPILOT_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Plan against the open refresh pull requests with trusted code
+        id: plan
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BOT_LOGIN: ${{ vars.EVIDENCE_AUTOPILOT_BOT_LOGIN }}
+        run: >-
+          node trusted/scripts/ci/volatile-evidence.mjs plan
+          --source-sha "$SOURCE_SHA"
+          --repository "$REPOSITORY"
+          --bot-login "$BOT_LOGIN"
+          --github-output "$GITHUB_OUTPUT"
+
+      # No DCO sign-off: a bot cannot certify origin. dco.yml exempts this
+      # commit only on GitHub's own evidence (verified signature, author and
+      # committer logins) plus the derived-evidence path allowlist.
+      - name: Open the refresh pull request, enable auto-merge, close superseded ones
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BRANCH: ${{ steps.request.outputs.branch }}
+          TITLE: ${{ steps.request.outputs.title }}
+          ACTION: ${{ steps.plan.outputs.action }}
+          PLAN_BRANCH: ${{ steps.plan.outputs.branch }}
+          REUSE: ${{ steps.plan.outputs.reuse }}
+          REUSE_NODE_ID: ${{ steps.plan.outputs.reuse_node_id }}
+          REUSE_HEAD: ${{ steps.plan.outputs.reuse_head }}
+          REPLACE: ${{ steps.plan.outputs.replace }}
+          SUPERSEDE: ${{ steps.plan.outputs.supersede }}
+        run: |
+          set -euo pipefail
+          # Every REST path below is built only from values that pass these
+          # patterns.
+          refresh_ref='^automation/volatile-evidence-[0-9a-f]{12}$'
+          number_re='^[1-9][0-9]*$'
+          [[ "$BRANCH" =~ $refresh_ref && "$PLAN_BRANCH" == "$BRANCH" ]] || { echo "::error::refusing branch '$BRANCH'"; exit 1; }
+          if [[ "$ACTION" == skip ]]; then
+            echo "::notice::A newer refresh pull request is open; nothing to publish for $SOURCE_SHA."
+            exit 0
+          fi
+          [[ "$ACTION" == publish ]] || { echo "::error::unknown plan action '$ACTION'"; exit 1; }
+          close_and_delete() {
+            local number="$1" ref="$2"
+            [[ "$number" =~ $number_re && "$ref" =~ $refresh_ref ]] || { echo "::error::refusing to close '$number' on '$ref'"; exit 1; }
+            if ! gh api -X PATCH "repos/$REPOSITORY/pulls/$number" -f state=closed > /dev/null; then
+              echo "::warning::Could not close #$number (merged or closed meanwhile?)."
+            fi
+            gh api -X DELETE "repos/$REPOSITORY/git/refs/heads/$ref" > /dev/null 2>&1 || true
+          }
+          if [[ -n "$REPLACE" ]]; then
+            close_and_delete "$REPLACE" "$BRANCH"
+            echo "::warning::Closed #$REPLACE on $BRANCH: it was not the evidence autopilot's single commit on $SOURCE_SHA."
+          fi
+          if [[ -n "$REUSE" ]]; then
+            [[ "$REUSE" =~ $number_re && "$REUSE_HEAD" =~ ^[0-9a-f]{40}$ && -n "$REUSE_NODE_ID" ]] || { echo "::error::malformed reuse plan"; exit 1; }
+            pull="$REUSE"
+            node_id="$REUSE_NODE_ID"
+            head="$REUSE_HEAD"
+            echo "::notice::#$pull already carries the evidence autopilot's refresh for $SOURCE_SHA."
+          else
+            # A leftover branch without an open pull request (closed by hand,
+            # or replaced above) is deleted; the new branch starts at the
+            # exact source commit.
+            if gh api "repos/$REPOSITORY/git/ref/heads/$BRANCH" > /dev/null 2>&1; then
+              gh api -X DELETE "repos/$REPOSITORY/git/refs/heads/$BRANCH"
+            fi
+            gh api -X POST "repos/$REPOSITORY/git/refs" -f ref="refs/heads/$BRANCH" -f sha="$SOURCE_SHA" > /dev/null
+            # expectedHeadOid is SOURCE_SHA: GitHub refuses the commit if the
+            # branch moved after it was created.
+            head=$(gh api graphql --input "$RUNNER_TEMP/create-commit.json" --jq '.data.createCommitOnBranch.commit.oid')
+            [[ "$head" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::createCommitOnBranch returned no commit"; exit 1; }
+            created=$(gh api -X POST "repos/$REPOSITORY/pulls" \
+              -f title="$TITLE" -f head="$BRANCH" -f base=main -F body=@"$RUNNER_TEMP/pull-request.md" \
+              --jq '[.number, .node_id] | @tsv')
+            IFS=$'\t' read -r pull node_id <<< "$created"
+            [[ "$pull" =~ $number_re && -n "$node_id" ]] || { echo "::error::the pull request was not created"; exit 1; }
+            echo "::notice::Opened #$pull with $head on $BRANCH (parent $SOURCE_SHA)."
+          fi
+          # shellcheck disable=SC2016 # $id is a GraphQL variable, not shell
+          enabled=$(gh api graphql -f id="$node_id" \
+            -f query='query($id: ID!) { node(id: $id) { ... on PullRequest { autoMergeRequest { enabledAt } } } }' \
+            --jq '.data.node.autoMergeRequest.enabledAt // empty')
+          if [[ -z "$enabled" ]]; then
+            # expectedHeadOid: auto-merge is enabled only for the commit this
+            # run created or validated, never for one pushed in between.
+            # shellcheck disable=SC2016 # $id and $head are GraphQL variables, not shell
+            gh api graphql -f id="$node_id" -f head="$head" \
+              -f query='mutation($id: ID!, $head: GitObjectID!) { enablePullRequestAutoMerge(input: { pullRequestId: $id, expectedHeadOid: $head }) { pullRequest { number } } }' \
+              > /dev/null
+          fi
+          read -r -a superseded <<< "$SUPERSEDE"
+          for pair in "${superseded[@]}"; do
+            number="${pair%%:*}"
+            ref="${pair#*:}"
+            close_and_delete "$number" "$ref"
+            echo "::notice::Closed #$number ($ref), superseded by #$pull."
+          done
+
+  grace:
+    name: grace
+    needs: regenerate
+    if: ${{ !cancelled() && needs.regenerate.result == 'success' && needs.regenerate.outputs.changed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out main's trusted tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Fail once main's volatile evidence outlives the grace window
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          STALE: ${{ needs.regenerate.outputs.stale }}
+        run: >-
+          node scripts/ci/volatile-evidence.mjs policy
+          --stale "$STALE"
+          --event "$EVENT_NAME"
+          --ref "$GITHUB_REF"
+          --sha "$GITHUB_SHA"
+          --repository "$GITHUB_REPOSITORY"

@@ -88,7 +88,7 @@ checks below:
 npm run check:protocol
 npm run conformance:manifest:check
 npm run check:security-case
-npm run check:proof-stats
+npm run check:proof-stats -- --drift-report /tmp/proof-stats-drift.json
 npm run check:public-conformance-claims
 npm run check:llm-context
 npm run check:standalone-runtimes
@@ -96,6 +96,12 @@ npm run check:packed-package-exports
 npm run check:release-chain
 node scripts/check-language-governance.js
 ```
+
+With `--drift-report`, the proof-stats check still fails on everything it
+verifies (a failing measured suite, the security case, formal and conformance
+evidence, every derived proof field) and only records drift in the measured
+test counts, which `main` refreshes after merge; see
+[Volatile evidence](#volatile-evidence).
 
 Some governed checks need pinned external runtimes installed by CI, including
 the formal-methods toolchain. The jobs in
@@ -112,11 +118,66 @@ runs the full lane, and so does every pull request while `main`'s latest push
 run has not passed the security case.
 `node scripts/ci/change-lane.mjs --event local --base origin/main` prints the
 classifier's lane and reason before you push. Label a pull request
-`evidence-autopilot` to have CI regenerate the derived evidence files; once the
+`evidence-autopilot` to have CI regenerate the derived evidence files
+(formal traces, conformance manifest, security case, the derived proof fields
+and the LLM context, keeping `main`'s test counts); once the
 autopilot's GitHub App is provisioned it commits them back (Dependabot pull
 requests get this automatically). The publisher checks only the bundle's shape
 and transit integrity; the required checks on the new commit decide whether the
 evidence is correct. See `.github/workflows/evidence-autopilot*.yml`.
+
+### Volatile evidence
+
+`lib/proof-stats.json` records the exact number of test cases and test files,
+and the four LLM context artifacts (`AI_CONTEXT.md`, `public/llms.txt`,
+`public/llms-full.txt`, `public/.well-known/emilia-context.json`) repeat those
+counts. The counts change on almost every merge, so `main` owns them and pull
+requests do not carry them. Everything else in these five files stays strict.
+
+What this means for a pull request:
+
+- Do not update the test counts. On `pull_request` and `merge_group` runs,
+  the `language-governance` job reports test-count drift in its job summary
+  and does not fail on it.
+- Deny by default: drift in anything else fails the job. That covers every
+  other `lib/proof-stats.json` field (security case, formal evidence taxonomy,
+  Tamarin, TLA+, Alloy, selected-scenario conformance, conformance vectors,
+  external implementation, red-team catalog) and every LLM context file. If
+  your change alters any of their inputs, commit it, then run:
+
+  ```bash
+  npm run sync:proof-stats -- --bootstrap-derived-evidence  # when a proof field drifted
+  npm run sync:llm-context
+  ```
+
+  and commit the results. The first command re-executes and re-emits the
+  security case and refreshes every derived proof field without running the
+  suite; it keeps the base's test counts and their `generatedAt`. Labeling
+  the pull request `evidence-autopilot` does the same in CI. A new or removed
+  security claim is one such change, and `/proof` refuses to build without it.
+- A pull request that changes `lib/proof-stats.json` must leave its test
+  counts and `generatedAt` exactly as the base has them, or make the counts
+  exactly what the suite measures for the merge commit (`npm run
+  sync:proof-stats`), with a `generatedAt` no earlier than the base's and not
+  in the future. Hand-edited public evidence does not merge.
+- The strict derived evidence is unchanged: `security/security-case.json`, the
+  formal traces, the conformance manifest, the clean-room pins and the
+  standalone runtimes must still be current in your pull request. The LLM
+  context tests and the public-claim audit read the generator's output for
+  your sources, and pinned proof counts are derived from the sources.
+
+After a merge, `.github/workflows/volatile-evidence-refresh.yml` regenerates the
+five files on `main` with the official writers and opens (or supersedes) one
+pull request, `chore(evidence): refresh volatile evidence`, committed by the
+evidence autopilot App and set to auto-merge. On that pull request a stale file
+fails CI, and so does any change to another path. The writers are idempotent,
+so a run on a current `main` publishes nothing. On `main`, the push run and the
+refresh run fail once the test counts have lagged for more than 24 hours; the
+refresh also runs every 12 hours, so on a quiet `main` that failure appears
+within about 36 hours of the merge that staled them. Releases stay strict
+(npm package publication checks all five files, the protected
+consequence-control deployment checks `lib/proof-stats.json`), so cut them from
+a `main` commit after the refresh has landed.
 
 ## Contribution workflow
 
@@ -197,11 +258,13 @@ entry, `EXECUTED`, and `INDETERMINATE` distinct.
 
 Do not edit `AI_CONTEXT.md`, `public/llms.txt`, `public/llms-full.txt`, or
 `public/.well-known/emilia-context.json` directly. Edit their declared source
-or underlying evidence, then run:
+(`docs/ai/context-source.v1.json`) or the underlying evidence, then run
+`npm run sync:llm-context` and commit the four artifacts; CI fails a stale one
+(see [Volatile evidence](#volatile-evidence)). To preview the rendering without
+touching the checkout:
 
 ```bash
-npm run sync:llm-context
-npm run check:llm-context
+node scripts/generate-llm-context.mjs --write --out-dir /tmp/llm-context
 ```
 
 ## License and contact

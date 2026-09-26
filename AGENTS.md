@@ -35,15 +35,25 @@ design notes.
 
 The LLM surfaces are generated. Do not edit `AI_CONTEXT.md`, `public/llms.txt`,
 `public/llms-full.txt`, or `public/.well-known/emilia-context.json` directly.
-Edit `docs/ai/context-source.v1.json` or the underlying evidence, then run:
+Edit `docs/ai/context-source.v1.json` or the underlying evidence.
+
+The measured test counts in `lib/proof-stats.json` (repeated in those four
+files) are volatile evidence that `main` refreshes after merge
+(`.github/workflows/volatile-evidence-refresh.yml`); do not update them in a
+pull request. Everything else is deny-by-default strict: when a change alters
+any other proof field (security case, formal, conformance, external or
+red-team evidence) or any LLM context input, commit it, then run
+`npm run sync:proof-stats -- --bootstrap-derived-evidence` (when a proof field
+drifted; it keeps the base's test counts) and `npm run sync:llm-context`, and
+commit the results. Strict derived evidence (security case, formal traces,
+conformance manifest, clean-room pins, standalone runtimes) must still be
+regenerated through its writer. See `CONTRIBUTING.md#volatile-evidence`.
+
+Preview the LLM rendering without touching the checkout:
 
 ```bash
-npm run sync:llm-context
-npm run check:llm-context
+node scripts/generate-llm-context.mjs --write --out-dir /tmp/llm-context
 ```
-
-When tests or conformance vectors change, regenerate their source manifests
-before regenerating LLM context.
 
 ## Verification
 

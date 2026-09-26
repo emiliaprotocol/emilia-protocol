@@ -2,7 +2,13 @@ name: Evidence autopilot
 
 # Regenerates the content-addressed derived evidence on a pull request branch
 # with the repository's official writers, so a lockfile bump or an evidence
-# conflict does not need a human regeneration round trip.
+# conflict does not need a human regeneration round trip. It regenerates the
+# formal traces, the conformance manifest, the security case, every derived
+# field of lib/proof-stats.json and the LLM context, but never measures the
+# suite: the proof-stats test counts (and their generatedAt) stay the base's,
+# because main owns them (volatile-evidence-refresh.yml). Every other drift
+# fails CI (scripts/ci/volatile-evidence.mjs), so this pull request must carry
+# the rest exactly.
 #
 # Runs for same-repository pull requests only:
 #   - every Dependabot pull request (a root lockfile bump always changes the
@@ -137,14 +143,12 @@ jobs:
           npm run sync:formal-traces
           npm run conformance:manifest
           checkpoint 'formal traces and conformance manifest'
-          # A changed security case must reach the generated proof and LLM
-          # surfaces before the measured run, whose suite compares them.
+          # Re-executes and re-emits the security case and refreshes every
+          # derived proof field; the measured test counts and their
+          # generatedAt stay the base's (no suite run), which the pull
+          # request policy accepts and main's refresh replaces after merge.
           npm run sync:proof-stats -- --bootstrap-derived-evidence
           checkpoint 'security case and derived proof fields'
-          npm run sync:llm-context
-          checkpoint 'LLM context for the new security case'
-          npm run sync:proof-stats
-          checkpoint 'measured proof statistics'
           npm run sync:llm-context
           checkpoint 'LLM context'
 
