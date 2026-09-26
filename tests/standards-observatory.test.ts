@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { renderedLlmContext } from './helpers/rendered-llm-context';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
@@ -128,7 +129,8 @@ describe('standards observatory evidence contract', () => {
 
   it('gives both humans and language models the same discovery surfaces', () => {
     const llms = read('public/standards-observatory.llms.txt');
-    const context = json('public/.well-known/emilia-context.json');
+    // Rendered from the current sources (tests/helpers/rendered-llm-context.ts).
+    const context = JSON.parse(renderedLlmContext().machineContext);
     const page = read('app/observatory/ObservatoryClient.tsx');
     expect(llms).toContain('/.well-known/standards-observatory.json');
     expect(llms).toContain('correlated discovery');

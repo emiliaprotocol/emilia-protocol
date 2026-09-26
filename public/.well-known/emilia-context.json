@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-09-26T11:34:30.668Z",
+  "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "714aa224c65d95d7b40afaba2749a032a45c650e55e295adce34cffc619b1289",
+    "input_digest_sha256": "4e2d54f256a482916f5c8262cbc24a52ee4557ab66b1717514aa7e6f7739b794",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -12,12 +12,12 @@
       },
       {
         "path": "scripts/generate-llm-context.mts",
-        "sha256": "a514dbf916a872e78e29dc4f0ace7f9bc05909f6d444a8db6966d4dd83608ee3",
-        "bytes": 31169
+        "sha256": "08b206cf6686503b1001509680864e1f1d150dba521186a25928dbe3e2b13a28",
+        "bytes": 34445
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "53efa7c5ca7271e3195ab5ee8f28f812f81abc68fd9aedf2a1c1215522b731b3",
+        "sha256": "84fd4b53ca152a3272705b34a593bbfe2011fb365067d23c19d831b32083df47",
         "bytes": 4299
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "d2a524cf2e7a1d1f94a05e600c6d0badb8c9ff6023b2ae0c89694094482bf4cc",
+        "sha256": "9a5d755abc4442d3c2ffedab7ea1abd2d2ff2e6967f961ce3666587eaf05e051",
         "bytes": 391520
       },
       {
@@ -66,7 +66,8 @@
         "bytes": 136310
       }
     ],
-    "freshness_command": "npm run check:llm-context"
+    "freshness_command": "npm run check:llm-context",
+    "freshness_scope": "Checks these artifacts byte for byte against the checked-in inputs listed in generated_from. It does not re-measure the automated test counts: they come from lib/proof-stats.json, which main refreshes after each merge, so they may lag the source revision by one refresh cycle. npm run check:proof-stats -- --drift-report <file> re-runs the suite, fails on every other proof field, and reports that lag."
   },
   "identity": {
     "name": "EMILIA",
@@ -349,7 +350,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "2b6e830326e29bef235aee1191f7a567449f73612afacfc6f0e611856b05a129",
+        "evidenceSha256": "e53dc1095166dba9190721c51be3d07a1e0f1f059344823b70afda332d29bc85",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -419,7 +420,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 264,
-      "evidence_bundle_sha256": "30d74e153c86b7b5a54514bedd13a771505153726706e4fc4e02de1eef242526"
+      "evidence_bundle_sha256": "e07ca0df12c7c686fd63866a2e9ae381bb0c01db0a0c60e402cc14bd4cb14a12"
     },
     "caid": {
       "core_vectors": 48,
