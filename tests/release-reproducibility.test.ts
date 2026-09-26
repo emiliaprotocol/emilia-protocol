@@ -26,7 +26,10 @@ import {
 } from '../scripts/verify-reproducible-package.mjs';
 import { assertPythonArtifactBytesMatch } from '../scripts/python-artifact-integrity.mjs';
 
-describe('release byte reproducibility', () => {
+// The fixture cases create Git snapshots and perform two independent npm
+// builds. Under the full CI suite they can exceed Vitest's 5-second default;
+// keep this allowance local to the release-reproducibility tests.
+describe('release byte reproducibility', { timeout: 15_000 }, () => {
   const commitFixture = (root: string): string => {
     execFileSync('git', ['init', '-q'], { cwd: root });
     execFileSync('git', ['config', 'user.name', 'Release Fixture'], { cwd: root });
@@ -310,8 +313,6 @@ describe('release byte reproducibility', () => {
     }
   });
 
-  // This case deliberately runs two isolated npm builds; under full CI load it
-  // can exceed Vitest's 5-second default without weakening either assertion.
   it('removes an inherited GITHUB_WORKSPACE from both independent builds', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-workspace-seed-'));
     const hostWorkspace = path.join(root, 'host-workspace');
@@ -354,7 +355,7 @@ describe('release byte reproducibility', () => {
       else process.env.GITHUB_WORKSPACE = priorWorkspace;
       rmSync(root, { recursive: true, force: true });
     }
-  }, 15_000);
+  });
 
   it('rejects a deterministic build-time package version rewrite', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-version-rewrite-'));
