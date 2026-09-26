@@ -10,7 +10,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
-  # Manual trigger: run against any environment
+  # Manual trigger: run from main against the selected target environment.
+  # The job-level guard below skips dispatches from other refs.
   workflow_dispatch:
     inputs:
       base_url:
@@ -39,6 +40,15 @@ on:
 
 jobs:
   baseline:
+    # Keep the production test key out of merge-queue candidate code. This
+    # environment must be configured in GitHub with a selected-branch rule
+    # for main, and PERF_TEST_API_KEY must exist only as its environment
+    # secret (not as a repository or organization secret).
+    if: >-
+      github.repository == 'emiliaprotocol/emilia-protocol' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    environment: performance
     runs-on: ubuntu-latest
 
     steps:
@@ -122,14 +132,16 @@ jobs:
       - name: Annotate with summary
         if: always()
         run: |
-          echo "### k6 Performance Results" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Test | Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|------|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          if [ -f k6-smoke-results.json ]; then
-            p95=$(jq -r '[.[] | select(.type=="Point" and .metric=="http_req_duration") | .data.value] | sort | .[length * 0.95 | floor]' k6-smoke-results.json 2>/dev/null || echo "N/A")
-            echo "| Smoke (5 VUs) | p95 latency | ${p95}ms |" >> "$GITHUB_STEP_SUMMARY"
-          fi
-          if [ -f k6-staircase-results.json ]; then
-            hs_p95=$(jq -r '.slos.handshake_create_p95_ms // "N/A"' k6-staircase-results.json 2>/dev/null || echo "N/A")
-            echo "| Staircase (500 VUs) | handshake p95 | ${hs_p95}ms |" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          {
+            echo "### k6 Performance Results"
+            echo "| Test | Metric | Value |"
+            echo "|------|--------|-------|"
+            if [ -f k6-smoke-results.json ]; then
+              p95=$(jq -r '[.[] | select(.type=="Point" and .metric=="http_req_duration") | .data.value] | sort | .[length * 0.95 | floor]' k6-smoke-results.json 2>/dev/null || echo "N/A")
+              echo "| Smoke (5 VUs) | p95 latency | ${p95}ms |"
+            fi
+            if [ -f k6-staircase-results.json ]; then
+              hs_p95=$(jq -r '.slos.handshake_create_p95_ms // "N/A"' k6-staircase-results.json 2>/dev/null || echo "N/A")
+              echo "| Staircase (500 VUs) | handshake p95 | ${hs_p95}ms |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
