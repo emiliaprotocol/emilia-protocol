@@ -1734,11 +1734,17 @@ lower-char    = %x61-7A          ; a-z
         is "1" for this document. action-type is one or more lowercase
         dotted name segments followed by a final segment that is the
         integer version of the type (for example, payment.release.1).
-        suite is a name from the suite registry, lowercase. digest is
+        suite is a name from the suite registry, lowercase; the ABNF
+        bounds the names a registry can assign, and a parser accepts
+        only registered names (<a href="#parsing" class="auto internal xref">Section 3.4</a>). digest is
         the digest encoded in base64url
         (<span><a href="https://rfc-editor.org/rfc/rfc4648#section-5" class="relref">Section 5</a> of [<a href="#RFC4648" class="cite xref">RFC4648</a>]</span>),
         unpadded and case-sensitive; for the two suites defined here
-        the digest is exactly 43 characters, encoding 32 octets.<a href="#section-3.3-9" class="pilcrow">¶</a></p>
+        the digest is exactly 43 characters, encoding 32 octets. Those
+        43 characters carry 258 bits, so the two low bits of the final
+        character are unused and zero: the final character is one of
+        "A", "E", "I", "M", "Q", "U", "Y", "c", "g", "k", "o", "s", "w",
+        "0", "4", or "8".<a href="#section-3.3-9" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="parsing">
@@ -1768,10 +1774,16 @@ lower-char    = %x61-7A          ; a-z
           <li class="normal" id="section-3.4-2.6">MUST treat an unknown caid-version as a refusal, never
           as a value to be guessed at or parsed leniently.<a href="#section-3.4-2.6" class="pilcrow">¶</a>
 </li>
-          <li class="normal" id="section-3.4-2.7">MUST treat an unknown suite as a refusal, never as a
-          suite to be guessed.<a href="#section-3.4-2.7" class="pilcrow">¶</a>
+          <li class="normal" id="section-3.4-2.7">MUST treat an unknown suite, one that is not in the suite
+          registry (<a href="#suites" class="auto internal xref">Section 3.1</a>), as a refusal, never as a
+          suite to be guessed. A parser has no digest length against
+          which to check the digest of an unknown suite.<a href="#section-3.4-2.7" class="pilcrow">¶</a>
 </li>
         </ul>
+<p id="section-3.4-3">A registered suite that an implementation does not implement
+        is not unknown to its parser: the identifier is well formed, and
+        computation and verification report the suite as
+        unknown_suite.<a href="#section-3.4-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="equality">
@@ -2221,7 +2233,8 @@ XVQaDaZLQQQ
         validation includes the local snapshot
         resolution and integrity check in <a href="#enum-resolution" class="auto internal xref">Section 4.4</a>.<a href="#section-5-2.4" class="pilcrow">¶</a>
 </li>
-        <li id="section-5-2.5">The requested suite is known, else unknown_suite.<a href="#section-5-2.5" class="pilcrow">¶</a>
+        <li id="section-5-2.5">The requested suite is a registered suite that the
+        implementation implements, else unknown_suite.<a href="#section-5-2.5" class="pilcrow">¶</a>
 </li>
         <li id="section-5-2.6">Every number in the object, at any depth, satisfies the
         value-based rule of <a href="#object" class="auto internal xref">Section 2</a> (an integer with
@@ -2262,8 +2275,9 @@ XVQaDaZLQQQ
         <a href="#security" class="auto internal xref">Section 10</a>.<a href="#section-6-2.2" class="pilcrow">¶</a>
 </li>
         <li id="section-6-2.3">Recompute the digest over the presented object under the
-        suite named in the CAID; the recomputed digest is equal to the
-        presented digest, else digest_mismatch.<a href="#section-6-2.3" class="pilcrow">¶</a>
+        suite named in the CAID, else unknown_suite if the verifier does
+        not implement that registered suite; the recomputed digest is
+        equal to the presented digest, else digest_mismatch.<a href="#section-6-2.3" class="pilcrow">¶</a>
 </li>
         <li id="section-6-2.4">Run the same material validation as computation
         (<a href="#computation" class="auto internal xref">Section 5</a>, steps 1 through 6). An
@@ -2691,8 +2705,19 @@ XVQaDaZLQQQ
       mistyped_field:&lt;name&gt;, where -03 allowed either reason for the
       former. The type definition schema now states that field notes never
       change validation.<a href="#section-12-1" class="pilcrow">¶</a></p>
-<p id="section-12-2">No other normative text changes. Action Objects that the reference
-      implementations accept produce the same CAID bytes as under -03.<a href="#section-12-2" class="pilcrow">¶</a></p>
+<p id="section-12-2">An unknown suite is now defined as one not in the suite registry.
+      A registered suite that an implementation does not implement still
+      parses, and computation and verification report it as unknown_suite;
+      the Verification section now names that reason, which -03 left
+      unstated. The Identifier Syntax section now lists the final digest
+      characters whose unused bits are zero. The identifier grammar and the
+      other parsing rules are unchanged. An implementation that accepted a
+      suite outside the registry, a suite beginning with a digit, or a
+      digest whose final character sets an unused bit did not conform to
+      -03 or any earlier revision; the reference implementations did so
+      and now refuse all three as malformed_caid.<a href="#section-12-2" class="pilcrow">¶</a></p>
+<p id="section-12-3">No other normative text changes. Action Objects that the reference
+      implementations accept produce the same CAID bytes as under -03.<a href="#section-12-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="changes">

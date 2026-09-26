@@ -260,11 +260,17 @@ lower-char    = %x61-7A          ; a-z
         is "1" for this document. action-type is one or more lowercase
         dotted name segments followed by a final segment that is the
         integer version of the type (for example, payment.release.1).
-        suite is a name from the suite registry, lowercase. digest is
+        suite is a name from the suite registry, lowercase; the ABNF
+        bounds the names a registry can assign, and a parser accepts
+        only registered names (<xref target="parsing"/>). digest is
         the digest encoded in base64url
         (<xref target="RFC4648" sectionFormat="of" section="5"/>),
         unpadded and case-sensitive; for the two suites defined here
-        the digest is exactly 43 characters, encoding 32 octets.</t>
+        the digest is exactly 43 characters, encoding 32 octets. Those
+        43 characters carry 258 bits, so the two low bits of the final
+        character are unused and zero: the final character is one of
+        "A", "E", "I", "M", "Q", "U", "Y", "c", "g", "k", "o", "s", "w",
+        "0", "4", or "8".</t>
       </section>
       <section anchor="parsing">
         <name>Parsing</name>
@@ -284,9 +290,15 @@ lower-char    = %x61-7A          ; a-z
           encodes nonzero unused bits.</li>
           <li>MUST treat an unknown caid-version as a refusal, never
           as a value to be guessed at or parsed leniently.</li>
-          <li>MUST treat an unknown suite as a refusal, never as a
-          suite to be guessed.</li>
+          <li>MUST treat an unknown suite, one that is not in the suite
+          registry (<xref target="suites"/>), as a refusal, never as a
+          suite to be guessed. A parser has no digest length against
+          which to check the digest of an unknown suite.</li>
         </ul>
+        <t>A registered suite that an implementation does not implement
+        is not unknown to its parser: the identifier is well formed, and
+        computation and verification report the suite as
+        unknown_suite.</t>
       </section>
       <section anchor="equality">
         <name>Equality</name>
@@ -658,7 +670,8 @@ XVQaDaZLQQQ
         non-string value there remains mistyped_field:&lt;name&gt;. Enum
         validation includes the local snapshot
         resolution and integrity check in <xref target="enum-resolution"/>.</li>
-        <li>The requested suite is known, else unknown_suite.</li>
+        <li>The requested suite is a registered suite that the
+        implementation implements, else unknown_suite.</li>
         <li>Every number in the object, at any depth, satisfies the
         value-based rule of <xref target="object"/> (an integer with
         magnitude at most 2^53-1 after IEEE 754 double-precision
@@ -690,8 +703,9 @@ XVQaDaZLQQQ
         mandatory; see <xref target="digest"/> and
         <xref target="security"/>.</li>
         <li>Recompute the digest over the presented object under the
-        suite named in the CAID; the recomputed digest is equal to the
-        presented digest, else digest_mismatch.</li>
+        suite named in the CAID, else unknown_suite if the verifier does
+        not implement that registered suite; the recomputed digest is
+        equal to the presented digest, else digest_mismatch.</li>
         <li>Run the same material validation as computation
         (<xref target="computation"/>, steps 1 through 6). An
         identifier whose object fails that validation is
@@ -1049,6 +1063,17 @@ XVQaDaZLQQQ
       mistyped_field:&lt;name&gt;, where -03 allowed either reason for the
       former. The type definition schema now states that field notes never
       change validation.</t>
+      <t>An unknown suite is now defined as one not in the suite registry.
+      A registered suite that an implementation does not implement still
+      parses, and computation and verification report it as unknown_suite;
+      the Verification section now names that reason, which -03 left
+      unstated. The Identifier Syntax section now lists the final digest
+      characters whose unused bits are zero. The identifier grammar and the
+      other parsing rules are unchanged. An implementation that accepted a
+      suite outside the registry, a suite beginning with a digit, or a
+      digest whose final character sets an unused bit did not conform to
+      -03 or any earlier revision; the reference implementations did so
+      and now refuse all three as malformed_caid.</t>
       <t>No other normative text changes. Action Objects that the reference
       implementations accept produce the same CAID bytes as under -03.</t>
     </section>

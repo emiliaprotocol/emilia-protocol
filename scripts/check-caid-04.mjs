@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { canonicalize, computeCaid } from '../caid/impl/js/caid.mjs';
+import { canonicalize, computeCaid, parseCaid } from '../caid/impl/js/caid.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packet = path.join(root, 'standards/staged/NEXT-CAID-04');
@@ -135,6 +135,75 @@ assert(
   'a non-string amount is not mistyped_field',
 );
 
+// Revision -04: identifier parsing. The suite ABNF and the parsing rules are
+// unchanged since -00; -04 defines an unknown suite as one outside the suite
+// registry and lists the digest's permitted final characters. A parser model
+// written from those rules, independently of any port, must agree with the
+// JavaScript reference. The shared corpus holds Python and Go to the same
+// refusals.
+const suiteRegistry = JSON.parse(readFileSync(path.join(root, 'caid/registry/suites.json'), 'utf8'));
+const suiteAbnf = 'suite         = lower-char *( lower-char / DIGIT / "-" )';
+assert(source.includes(suiteAbnf), 'suite ABNF missing from source');
+assert(text.includes(`   ${suiteAbnf}\n`), 'suite ABNF missing from TXT render');
+assert(design.includes('`suite = lower-char *( lower-char / DIGIT / "-" )`'), 'DESIGN.md suite grammar differs from the draft');
+const isLowerChar = (char) => char >= 'a' && char <= 'z';
+const matchesSuiteAbnf = (value) => value.length > 0
+  && isLowerChar(value[0])
+  && [...value.slice(1)].every((char) => isLowerChar(char) || (char >= '0' && char <= '9') || char === '-');
+const registeredSuites = new Map(suiteRegistry.suites.map((entry) => {
+  assert(matchesSuiteAbnf(entry.suite), `registered suite ${entry.suite} does not match the suite ABNF`);
+  assert(entry.digest?.name === 'SHA-256', `registered suite ${entry.suite} does not use SHA-256`);
+  return [entry.suite, 32];
+}));
+assert(registeredSuites.size === 2 && registeredSuites.has('jcs-sha256') && registeredSuites.has('cbor-sha256'),
+  'suite registry is not jcs-sha256 and cbor-sha256');
+for (const [needle, what] of [
+  ['MUST treat an unknown suite, one that is not in the suite registry', 'unknown-suite definition'],
+  ['is not unknown to its parser', 'registered-but-unimplemented rule'],
+  ['else unknown_suite if the verifier does not implement that registered suite', 'verification unknown_suite reason'],
+  ['a registered suite that the implementation implements, else unknown_suite', 'computation unknown_suite rule'],
+  ['An unknown suite is now defined as one not in the suite registry.', 'unknown-suite change record'],
+  ['or whose final character encodes nonzero unused bits', 'unused-bit parsing rule'],
+]) assert(flat(source).includes(needle), `missing ${what}`);
+const B64URL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const encodedLength = (octets) => Math.ceil((octets * 8) / 6);
+const finalMask = (octets) => (1 << (encodedLength(octets) * 6 - octets * 8)) - 1;
+const permittedFinals = [...B64URL].filter((char) => (B64URL.indexOf(char) & finalMask(32)) === 0);
+const quotedFinals = permittedFinals.map((char) => `"${char}"`);
+const finalsProse = `${quotedFinals.slice(0, -1).join(', ')}, or ${quotedFinals.at(-1)}`;
+assert(permittedFinals.length === 16, 'a 32-octet digest does not leave two unused bits');
+assert(flat(source).includes(finalsProse), 'draft does not list the permitted final digest characters');
+assert(flat(text).includes(finalsProse), 'TXT render does not list the permitted final digest characters');
+assert(design.includes(`\`${permittedFinals.join(' ')}\``), 'DESIGN.md final digest characters differ from the draft');
+// Written from the ABNF, the registry, and the digest rules above.
+const modelParse = (suite, digest) => {
+  if (!matchesSuiteAbnf(suite) || !registeredSuites.has(suite)) return false;
+  const octets = registeredSuites.get(suite);
+  if (digest.length !== encodedLength(octets) || ![...digest].every((char) => B64URL.includes(char))) return false;
+  return (B64URL.indexOf(digest.at(-1)) & finalMask(octets)) === 0;
+};
+const validDigest = createHash('sha256').update('CAID-04 parse check', 'utf8').digest('base64url');
+const suiteAlphabet = ['a', 'z', '0', '9', '-', 'A', '_'];
+const suiteNames = [...registeredSuites.keys(), 'jcs-sha512', 'JCS-SHA256', 'jcs-sha256-', 'jcs--sha256', 'x--y', 'x-', '1x', ''];
+let suiteCandidates = [''];
+for (let length = 1; length <= 4; length += 1) {
+  suiteCandidates = suiteCandidates.flatMap((prefix) => suiteAlphabet.map((char) => prefix + char));
+  suiteNames.push(...suiteCandidates);
+}
+const digestNames = [validDigest, validDigest.slice(0, -1), `${validDigest}A`, `${validDigest.slice(0, -1)}=`,
+  ...[...B64URL, '=', '.', '+', '/', ' ', '\n'].map((char) => validDigest.slice(0, -1) + char)];
+const parseVerdict = (suite, digest) => parseCaid(`caid:1:payment.release.1:${suite}:${digest}`).ok;
+let parseCases = 0;
+for (const suite of suiteNames) {
+  const digests = registeredSuites.has(suite) || suite === 'jcs-sha512' ? digestNames : [validDigest];
+  for (const digest of digests) {
+    parseCases += 1;
+    assert(parseVerdict(suite, digest) === modelParse(suite, digest),
+      `JavaScript parse verdict for suite ${JSON.stringify(suite)} and digest ${JSON.stringify(digest)} differs from the draft`);
+  }
+}
+assert(parseCases > 2_900, 'parse comparison covered too few identifiers');
+
 const canonicalValues = canonicalize(enumSnapshot.values);
 assert(canonicalValues.ok, 'ISO 4217 snapshot values are not JCS-compatible');
 const snapshotHash = 'sha256:' + createHash('sha256')
@@ -211,4 +280,4 @@ for (const line of sums) {
 }
 assert(expectedPaths.size === 0, `missing checksum path ${[...expectedPaths].join(', ')}`);
 
-console.log('CAID-04: amount-string ABNF, enum snapshot, registry v4, draft source, example, renders, and checksums PASS.');
+console.log(`CAID-04: amount-string ABNF, identifier parsing (${parseCases} identifiers), enum snapshot, registry v4, draft source, example, renders, and checksums PASS.`);

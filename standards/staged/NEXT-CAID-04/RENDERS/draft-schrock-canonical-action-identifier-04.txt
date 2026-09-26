@@ -81,29 +81,29 @@ Table of Contents
      3.6.  Coexistence with Other Identifier Profiles  . . . . . . .   8
    4.  Action Types and the Registry . . . . . . . . . . . . . . . .   9
      4.1.  Type Names and Versioning . . . . . . . . . . . . . . . .   9
-     4.2.  The Type Definition Schema  . . . . . . . . . . . . . . .   9
-     4.3.  Field Types . . . . . . . . . . . . . . . . . . . . . . .  10
+     4.2.  The Type Definition Schema  . . . . . . . . . . . . . . .  10
+     4.3.  Field Types . . . . . . . . . . . . . . . . . . . . . . .  11
      4.4.  Enum Value-Set Resolution . . . . . . . . . . . . . . . .  11
      4.5.  Definition Sources and Unknown Types  . . . . . . . . . .  12
-     4.6.  The tool.call.1 Type  . . . . . . . . . . . . . . . . . .  12
+     4.6.  The tool.call.1 Type  . . . . . . . . . . . . . . . . . .  13
    5.  Computation . . . . . . . . . . . . . . . . . . . . . . . . .  15
    6.  Verification  . . . . . . . . . . . . . . . . . . . . . . . .  16
-   7.  Effect-Boundary Use . . . . . . . . . . . . . . . . . . . . .  16
+   7.  Effect-Boundary Use . . . . . . . . . . . . . . . . . . . . .  17
    8.  Action-Mapping Profile  . . . . . . . . . . . . . . . . . . .  17
-     8.1.  Native Verification Boundary  . . . . . . . . . . . . . .  17
+     8.1.  Native Verification Boundary  . . . . . . . . . . . . . .  18
      8.2.  Mapping Profile Object  . . . . . . . . . . . . . . . . .  18
-     8.3.  Mapping and Comparison Algorithm  . . . . . . . . . . . .  19
-     8.4.  Completeness Assumption . . . . . . . . . . . . . . . . .  20
+     8.3.  Mapping and Comparison Algorithm  . . . . . . . . . . . .  20
+     8.4.  Completeness Assumption . . . . . . . . . . . . . . . . .  21
    9.  What a CAID Is Not  . . . . . . . . . . . . . . . . . . . . .  21
    10. Security Considerations . . . . . . . . . . . . . . . . . . .  22
-   11. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  23
-   12. Changes since -03 . . . . . . . . . . . . . . . . . . . . . .  24
-   13. Changes since -02 . . . . . . . . . . . . . . . . . . . . . .  24
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  25
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  25
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  26
-   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  27
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  27
+   11. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  24
+   12. Changes since -03 . . . . . . . . . . . . . . . . . . . . . .  25
+   13. Changes since -02 . . . . . . . . . . . . . . . . . . . . . .  25
+   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  26
+     14.1.  Normative References . . . . . . . . . . . . . . . . . .  26
+     14.2.  Informative References . . . . . . . . . . . . . . . . .  27
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  28
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  28
 
 
 
@@ -362,10 +362,14 @@ Internet-Draft                    CAID                    September 2026
    this document. action-type is one or more lowercase dotted name
    segments followed by a final segment that is the integer version of
    the type (for example, payment.release.1).  suite is a name from the
-   suite registry, lowercase. digest is the digest encoded in base64url
-   (Section 5 of [RFC4648]), unpadded and case-sensitive; for the two
-   suites defined here the digest is exactly 43 characters, encoding 32
-   octets.
+   suite registry, lowercase; the ABNF bounds the names a registry can
+   assign, and a parser accepts only registered names (Section 3.4).
+   digest is the digest encoded in base64url (Section 5 of [RFC4648]),
+   unpadded and case-sensitive; for the two suites defined here the
+   digest is exactly 43 characters, encoding 32 octets.  Those 43
+   characters carry 258 bits, so the two low bits of the final character
+   are unused and zero: the final character is one of "A", "E", "I",
+   "M", "Q", "U", "Y", "c", "g", "k", "o", "s", "w", "0", "4", or "8".
 
 3.4.  Parsing
 
@@ -383,10 +387,6 @@ Internet-Draft                    CAID                    September 2026
    *  MUST refuse any content after the digest, including trailing
       separators, whitespace, or additional fields.
 
-   *  MUST refuse a digest that does not decode to exactly the digest
-      length of the named suite, or whose final character encodes
-      nonzero unused bits.
-
 
 
 Schrock                   Expires 30 March 2027                 [Page 7]
@@ -394,11 +394,21 @@ Schrock                   Expires 30 March 2027                 [Page 7]
 Internet-Draft                    CAID                    September 2026
 
 
+   *  MUST refuse a digest that does not decode to exactly the digest
+      length of the named suite, or whose final character encodes
+      nonzero unused bits.
+
    *  MUST treat an unknown caid-version as a refusal, never as a value
       to be guessed at or parsed leniently.
 
-   *  MUST treat an unknown suite as a refusal, never as a suite to be
-      guessed.
+   *  MUST treat an unknown suite, one that is not in the suite registry
+      (Section 3.1), as a refusal, never as a suite to be guessed.  A
+      parser has no digest length against which to check the digest of
+      an unknown suite.
+
+   A registered suite that an implementation does not implement is not
+   unknown to its parser: the identifier is well formed, and computation
+   and verification report the suite as unknown_suite.
 
 3.5.  Equality
 
@@ -431,6 +441,15 @@ Internet-Draft                    CAID                    September 2026
    comparable, and this section states the consequence plainly because a
    reader could otherwise infer the opposite.
 
+
+
+
+
+Schrock                   Expires 30 March 2027                 [Page 8]
+
+Internet-Draft                    CAID                    September 2026
+
+
    An identifier derived under a different profile MUST NOT be compared
    for equality with a CAID derived under this document, in either
    direction, and a verifier MUST NOT treat inequality between them as
@@ -442,14 +461,6 @@ Internet-Draft                    CAID                    September 2026
    representation of the effect, compares within each profile, and joins
    on that representation rather than on the identifier strings.  Where
    a relying party needs a stronger statement than same-representation,
-
-
-
-Schrock                   Expires 30 March 2027                 [Page 8]
-
-Internet-Draft                    CAID                    September 2026
-
-
    the Action-Mapping Profile in Section 8 is the mechanism, and its
    result is equivalence of a material projection under pinned profiles,
    not identifier equality.
@@ -487,17 +498,6 @@ Internet-Draft                    CAID                    September 2026
    never such a correction.  Decisions made under the earlier registry
    version remain decisions under that version.
 
-4.2.  The Type Definition Schema
-
-   The entry schema below is normative, and it is normative for local
-   definitions too: a private deployment carries its own definitions in
-   this same schema (Section 4.5).
-
-
-
-
-
-
 
 
 
@@ -505,6 +505,12 @@ Schrock                   Expires 30 March 2027                 [Page 9]
 
 Internet-Draft                    CAID                    September 2026
 
+
+4.2.  The Type Definition Schema
+
+   The entry schema below is normative, and it is normative for local
+   definitions too: a private deployment carries its own definitions in
+   this same schema (Section 4.5).
 
    {
      "action_type": "payment.release.1",
@@ -545,6 +551,17 @@ Internet-Draft                    CAID                    September 2026
    require.  digest_notes carries per-type normalization guidance for
    issuers. references carries citations for the type's semantics.
 
+
+
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 10]
+
+Internet-Draft                    CAID                    September 2026
+
+
 4.3.  Field Types
 
    The set of field types in version 1 is closed:
@@ -554,13 +571,6 @@ Internet-Draft                    CAID                    September 2026
    amount-string:  A decimal amount carried as a JSON string.  The whole
       string value, as parsed from JSON, matches the following ABNF
       [RFC5234], in which DIGIT is the core rule:
-
-
-
-Schrock                   Expires 30 March 2027                [Page 10]
-
-Internet-Draft                    CAID                    September 2026
-
 
       amount-string = [ "-" ] int-part [ "." frac-part ]
       int-part      = "0" / ( %x31-39 *DIGIT )  ; no leading zero
@@ -600,6 +610,14 @@ Internet-Draft                    CAID                    September 2026
    malformed, not absent.  An enum definition MUST take exactly one of
    three forms:
 
+
+
+
+Schrock                   Expires 30 March 2027                [Page 11]
+
+Internet-Draft                    CAID                    September 2026
+
+
    Inline array:  A non-empty, duplicate-free array of non-empty strings
       in values, and no values_ref member.
 
@@ -610,13 +628,6 @@ Internet-Draft                    CAID                    September 2026
       members MUST be non-empty and duplicate-free.  A values member MAY
       accompany this form only if it equals the resulting list exactly,
       in order.
-
-
-
-Schrock                   Expires 30 March 2027                [Page 11]
-
-Internet-Draft                    CAID                    September 2026
-
 
    External:  Any other non-empty values_ref string, together with non-
       empty values_snapshot and values_sha256 members.  The pinned array
@@ -654,6 +665,15 @@ Internet-Draft                    CAID                    September 2026
    snapshot.  A local definition that collides by name with a different
    registered definition MUST NOT be treated as interoperable.
 
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 12]
+
+Internet-Draft                    CAID                    September 2026
+
+
    An unknown type is a refusal for a conforming issuer (Section 5).
    For a verifier, accepting an identifier whose type is unknown is a
    policy decision: a verifier MAY offer an accept-unregistered option,
@@ -666,13 +686,6 @@ Internet-Draft                    CAID                    September 2026
    revision no registered CAID type described it.  This section
    registers the type so its CAID Action Object is fixed by the registry
    rather than by an implementation.
-
-
-
-Schrock                   Expires 30 March 2027                [Page 12]
-
-Internet-Draft                    CAID                    September 2026
-
 
    {
      "action_type": "tool.call.1",
@@ -708,6 +721,15 @@ Internet-Draft                    CAID                    September 2026
    digest for an identical call, and two conforming-looking adapters
    then emit identifiers that never compare equal.
 
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 13]
+
+Internet-Draft                    CAID                    September 2026
+
+
    A framework-derived selector or routing key MUST NOT be added as a
    member when it is computed from values already present in args.  Such
    a hint adds no material content and, being optional in practice,
@@ -722,14 +744,6 @@ Internet-Draft                    CAID                    September 2026
    recomputes equal against the other.  An issuer MUST NOT omit target
    merely because its deployment currently reaches one provider: the
    identifier can outlive that assumption.  The governing profile
-
-
-
-Schrock                   Expires 30 March 2027                [Page 13]
-
-Internet-Draft                    CAID                    September 2026
-
-
    defines the stable target identifier; implementations compare its
    exact, case-sensitive string and MUST NOT infer it from ambient
    connection state, a display label, or a derived routing hint.
@@ -764,6 +778,14 @@ Internet-Draft                    CAID                    September 2026
    This registration is motivated by observed divergence in one such
    framework-local binding profile: two adapters shipped by the same
    project hashed the same argument object under different member names,
+
+
+
+Schrock                   Expires 30 March 2027                [Page 14]
+
+Internet-Draft                    CAID                    September 2026
+
+
    and one additionally hashed a derived selector.  The resulting
    strings were not CAIDs, but the incident showed why a future cross-
    framework CAID profile cannot leave its material member names to
@@ -774,17 +796,6 @@ Internet-Draft                    CAID                    September 2026
    can use its own exact-action binding profile, or map the quantity to
    a CAID type that carries the value as a string; it is not a
    conforming tool.call.1 CAID.
-
-
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 14]
-
-Internet-Draft                    CAID                    September 2026
-
 
 5.  Computation
 
@@ -813,7 +824,23 @@ Internet-Draft                    CAID                    September 2026
        mistyped_field:<name>.  Enum validation includes the local
        snapshot resolution and integrity check in Section 4.4.
 
-   5.  The requested suite is known, else unknown_suite.
+   5.  The requested suite is a registered suite that the implementation
+       implements, else unknown_suite.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 15]
+
+Internet-Draft                    CAID                    September 2026
+
 
    6.  Every number in the object, at any depth, satisfies the value-
        based rule of Section 2 (an integer with magnitude at most 2^53-1
@@ -833,15 +860,6 @@ Internet-Draft                    CAID                    September 2026
    any shape, yields refusal reasons, never an exception or a partial
    identifier.
 
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 15]
-
-Internet-Draft                    CAID                    September 2026
-
-
 6.  Verification
 
    A conforming verifier checks a presented CAID string against a
@@ -856,8 +874,9 @@ Internet-Draft                    CAID                    September 2026
        see Section 3.2 and Section 10.
 
    3.  Recompute the digest over the presented object under the suite
-       named in the CAID; the recomputed digest is equal to the
-       presented digest, else digest_mismatch.
+       named in the CAID, else unknown_suite if the verifier does not
+       implement that registered suite; the recomputed digest is equal
+       to the presented digest, else digest_mismatch.
 
    4.  Run the same material validation as computation (Section 5, steps
        1 through 6).  An identifier whose object fails that validation
@@ -869,6 +888,15 @@ Internet-Draft                    CAID                    September 2026
    reasons in the same order, and any third party with the object, the
    identifier, the definitions, and any referenced enum snapshots can
    replay the check without contacting anyone.
+
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 16]
+
+Internet-Draft                    CAID                    September 2026
+
 
 7.  Effect-Boundary Use
 
@@ -887,16 +915,6 @@ Internet-Draft                    CAID                    September 2026
    pass its native verifier.  If the native representation differs from
    the CAID Action Object, comparison MUST use an exact, relying-party-
    pinned Action-Mapping Profile as specified in Section 8.
-
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 16]
-
-Internet-Draft                    CAID                    September 2026
-
 
    A successful comparison establishes only the matching result in this
    document.  Evidence satisfaction, local authorization, one-time
@@ -927,6 +945,15 @@ Internet-Draft                    CAID                    September 2026
    identity, authority, authorization, provenance, execution, or legal
    reliance.
 
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 17]
+
+Internet-Draft                    CAID                    September 2026
+
+
 8.1.  Native Verification Boundary
 
    Before mapping, each source artifact MUST be verified under its
@@ -944,16 +971,6 @@ Internet-Draft                    CAID                    September 2026
    presenter-controlled artifact.  CAID mapping does not replace native
    verification.
 
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 17]
-
-Internet-Draft                    CAID                    September 2026
-
-
    The mapping interface MUST receive an affirmative native verification
    result through a relying-party-controlled adapter or equivalent
    trusted call path.  That result is an API precondition, not a member
@@ -963,6 +980,35 @@ Internet-Draft                    CAID                    September 2026
 8.2.  Mapping Profile Object
 
    A version 1 profile is a JSON object with the following shape:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 18]
+
+Internet-Draft                    CAID                    September 2026
+
 
    {
      "@version": "CAID-MAPPING-PROFILE-v1",
@@ -1001,15 +1047,6 @@ Internet-Draft                    CAID                    September 2026
      ]
    }
 
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 18]
-
-Internet-Draft                    CAID                    September 2026
-
-
    The profile digest is the lowercase hexadecimal SHA-256 digest of the
    profile's JCS serialization, prefixed with "sha256:".  The relying
    party MUST pin that exact digest.  A profile identifier by itself is
@@ -1020,6 +1057,14 @@ Internet-Draft                    CAID                    September 2026
    object.  This prevents a misspelled or future policy member from
    being covered by the profile digest while being silently ignored by
    the mapping algorithm.
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 19]
+
+Internet-Draft                    CAID                    September 2026
+
 
    source_format binds the exact media type, schema identifier, and
    version accepted by the profile. target_action_type names a type from
@@ -1058,14 +1103,6 @@ Internet-Draft                    CAID                    September 2026
    3.  Recomputes the profile digest and compares it to the relying-
        party pin.
 
-
-
-
-Schrock                   Expires 30 March 2027                [Page 19]
-
-Internet-Draft                    CAID                    September 2026
-
-
    4.  Compares the verifier-derived source descriptor to the profile's
        source_format object.
 
@@ -1077,6 +1114,13 @@ Internet-Draft                    CAID                    September 2026
 
    7.  Extracts and transforms every rule.  A missing path or mistyped
        value is a mapping failure.
+
+
+
+Schrock                   Expires 30 March 2027                [Page 20]
+
+Internet-Draft                    CAID                    September 2026
+
 
    8.  Computes a CAID for the projected action under Section 5.
 
@@ -1114,14 +1158,6 @@ Internet-Draft                    CAID                    September 2026
    native source schema.  The relying party's selection and review of
    mapping profiles is therefore an explicit policy assumption.
    Profiles SHOULD be versioned, publicly reviewable, and accompanied by
-
-
-
-Schrock                   Expires 30 March 2027                [Page 20]
-
-Internet-Draft                    CAID                    September 2026
-
-
    positive, negative, and indeterminate conformance vectors.
 
 9.  What a CAID Is Not
@@ -1134,6 +1170,14 @@ Internet-Draft                    CAID                    September 2026
    action was authorized, executed, safe, or wise.  It confers no trust,
    names no humans, and replaces no verifier: every artifact that
    carries a CAID still verifies inside its own trust boundary under its
+
+
+
+Schrock                   Expires 30 March 2027                [Page 21]
+
+Internet-Draft                    CAID                    September 2026
+
+
    own specification, exactly as it did before carrying one.
 
    In particular:
@@ -1167,17 +1211,6 @@ Internet-Draft                    CAID                    September 2026
       anchors, and no verifier imports another's conclusions into its
       own trust boundary.
 
-
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 21]
-
-Internet-Draft                    CAID                    September 2026
-
-
 10.  Security Considerations
 
    Digest strength.  The binding between an identifier and its content
@@ -1185,6 +1218,21 @@ Internet-Draft                    CAID                    September 2026
    weakens, the migration path is suite agility: a new suite is
    registered and issuers move to it, emitting new identifiers.  There
    is no in-place algorithm change within a suite, ever.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 22]
+
+Internet-Draft                    CAID                    September 2026
+
 
    No domain separation.  The digest input carries no domain separation
    prefix, deliberately, so that existing formats can adopt a digest
@@ -1226,18 +1274,21 @@ Internet-Draft                    CAID                    September 2026
    Profile-bounded equivalence.  Direct CAID verification does not infer
    semantic equality.  The Action-Mapping Profile makes only a narrower
    statement about material projections under exact pinned profiles.  A
-
-
-
-Schrock                   Expires 30 March 2027                [Page 22]
-
-Internet-Draft                    CAID                    September 2026
-
-
    malicious or incomplete profile can omit a concept that the relying
    party should have considered material.  Profile selection is
    therefore a relying-party policy decision; unpinned, lossy, or
    ambiguous mappings MUST yield INDETERMINATE.
+
+
+
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 23]
+
+Internet-Draft                    CAID                    September 2026
+
 
    Native integrity coverage.  A valid native signature does not make
    unsigned members beside the signed payload trustworthy.  A native
@@ -1272,24 +1323,6 @@ Internet-Draft                    CAID                    September 2026
 
    This document requests no immediate IANA actions.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 23]
-
-Internet-Draft                    CAID                    September 2026
-
-
    Two registries are described: the CAID action type registry
    (Section 4), whose entries follow the normative schema of
    Section 4.2, and the CAID suite registry (Section 3.1), which for
@@ -1306,6 +1339,13 @@ Internet-Draft                    CAID                    September 2026
    A URN namespace registration for CAID identifiers may be useful in
    the future; it is out of scope for this revision.
 
+
+
+Schrock                   Expires 30 March 2027                [Page 24]
+
+Internet-Draft                    CAID                    September 2026
+
+
 12.  Changes since -03
 
    The amount-string field type is now defined in ABNF.  Its integer
@@ -1317,6 +1357,18 @@ Internet-Draft                    CAID                    September 2026
    non-string value as mistyped_field:<name>, where -03 allowed either
    reason for the former.  The type definition schema now states that
    field notes never change validation.
+
+   An unknown suite is now defined as one not in the suite registry.  A
+   registered suite that an implementation does not implement still
+   parses, and computation and verification report it as unknown_suite;
+   the Verification section now names that reason, which -03 left
+   unstated.  The Identifier Syntax section now lists the final digest
+   characters whose unused bits are zero.  The identifier grammar and
+   the other parsing rules are unchanged.  An implementation that
+   accepted a suite outside the registry, a suite beginning with a
+   digit, or a digest whose final character sets an unused bit did not
+   conform to -03 or any earlier revision; the reference implementations
+   did so and now refuse all three as malformed_caid.
 
    No other normative text changes.  Action Objects that the reference
    implementations accept produce the same CAID bytes as under -03.
@@ -1335,22 +1387,20 @@ Internet-Draft                    CAID                    September 2026
    embedded values array beside an external reference is the pinned
    array.  Values outside a compact inline list now fail closed.
 
-
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 24]
-
-Internet-Draft                    CAID                    September 2026
-
-
    Required-field presence means a member of the action object itself.
    Strings and member names containing an unpaired surrogate are refused
    as unsupported_value, making explicit the refusal that RFC 8785
    already requires.  Registries may correct an existing value-set pin
    in a new registry version under the narrow conditions in Section 4.1.
+
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 25]
+
+Internet-Draft                    CAID                    September 2026
+
 
    The reference registry advances from version 3 to version 4.  It pins
    the SIX ISO 4217 List One snapshot published 2026-09-17 for every
@@ -1392,20 +1442,21 @@ Internet-Draft                    CAID                    September 2026
               DOI 10.17487/RFC5234, January 2008,
               <https://www.rfc-editor.org/info/rfc5234>.
 
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 25]
-
-Internet-Draft                    CAID                    September 2026
-
-
    [RFC6234]  Eastlake 3rd, D. and T. Hansen, "US Secure Hash Algorithms
               (SHA and SHA-based HMAC and HKDF)", RFC 6234,
               DOI 10.17487/RFC6234, May 2011,
               <https://www.rfc-editor.org/info/rfc6234>.
+
+
+
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 26]
+
+Internet-Draft                    CAID                    September 2026
+
 
    [RFC6901]  Bryan, P., Ed., Zyp, K., and M. Nottingham, Ed.,
               "JavaScript Object Notation (JSON) Pointer", RFC 6901,
@@ -1453,7 +1504,12 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 30 March 2027                [Page 26]
+
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 27]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1509,4 +1565,4 @@ Author's Address
 
 
 
-Schrock                   Expires 30 March 2027                [Page 27]
+Schrock                   Expires 30 March 2027                [Page 28]
