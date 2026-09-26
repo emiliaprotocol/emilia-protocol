@@ -14,7 +14,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const manifest = JSON.parse(readFileSync(resolve(HERE, '../public/.well-known/agent-actions.json'), 'utf8'));
 
 const TARGET_ARGS = {
-  release_payment: { destination: 'acct:vendor-acme-250000', amount_usd: 250000, currency: 'USD' },
+  release_payment: { destination: 'acct:vendor-acme-250000', amount_minor: 25000000, currency: 'USD', vendor: 'Acme Industrial LLC' },
   delete_repo: { repo: 'emilia/prod-ledger' },
   deploy_production: { service: 'payments-api', environment: 'prod' },
   run_destructive_sql: { database: 'prod-ledger', sql: 'DROP TABLE payouts;' },

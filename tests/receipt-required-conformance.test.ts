@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { receiptRequiredConformance } from '../packages/require-receipt/index.js';
-import { makeGuardedServer, signAction } from '../examples/mcp/_kit.mjs';
+import { actionForCall, makeGuardedServer, signAction } from '../examples/mcp/_kit.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const manifest = JSON.parse(readFileSync(resolve(HERE, '../public/.well-known/agent-actions.json'), 'utf8'));
@@ -27,12 +27,16 @@ describe('Receipt Required conformance — example servers earn level RR-1', () 
   for (const [tool, action] of TARGETS) {
     it(`${tool}: RR-1 (challenge -> runs -> replay refused -> forged refused)`, async () => {
       const req = manifest.actions.find((a) => a.match?.protocol === 'mcp' && a.match?.tool === tool);
+      const args = tool === 'release_payment'
+        ? { amount_minor: 8200000, currency: 'USD', vendor: 'Acme Industrial LLC', destination: 'acct_new_4471' }
+        : { demo: true };
+      const boundAction = actionForCall(tool, action, args);
       const report = await receiptRequiredConformance({
         dispatch: makeGuardedServer({ tool }),
         tool,
-        args: { demo: true },
-        action,
-        issueReceipt: () => signAction(action, {
+        args,
+        action: boundAction,
+        issueReceipt: () => signAction(boundAction, {
           approver: 'ep:approver:conformance-test',
           quorum: req?.quorum,
         }),

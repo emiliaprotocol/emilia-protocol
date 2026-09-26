@@ -11,74 +11,51 @@
 
 ---
 
-## Every consequential agent action enters with authority and exits with a receipt.
+## Let your agent prepare the payment. Control what it can release.
 
-**EMILIA is building the universal authority toll booth for autonomous work.** Gate is the
-customer-owned consequence boundary where an agent's credentialed intent can become a change to
-money, code, permissions, records, infrastructure, or machines. A human or institution defines a
-finite operating mandate; agents exercise it; Gate ensures the agent cannot quietly widen it.
+An agent prepares an $82,000 supplier payment. Someone approves it. Then the amount or
+bank destination changes. The earlier approval must not release the changed payment.
 
-At a configured protected boundary, Gate verifies the authority the owner
-requires for the exact action, reserves that authority before provider entry, permits one admitted
-provider attempt for the covered authorization instance within its durable authority domain, and
-leaves portable evidence of what the protected path admitted and later observed. When the result is
-unknown, it requires reconciliation instead of a blind retry. **Protocol proves. Gate prevents**
-on the covered paths a deployment completely mediates; it constrains no path that bypasses the
-enforcement point.
+**EMILIA Gate checks authority before a protected tool runs.** The open protocol makes
+the resulting evidence independently checkable under the verifier's own trusted keys
+and rules. Keep your existing identity provider, agent framework, and business systems.
 
-"Universal" describes the intended cross-stack contract, not current coverage or adoption. EMILIA
-does not operate a central global network today. The toll booth repeats at customer-owned protected
-boundaries and composes with native identity, authorization, approval, and policy evidence.
+### Run the payment example
 
-- **Authority Map** maps supported declared action surfaces locally. No account, upload, or
-  callback is required. Discovery creates no authority; the owner reviews the map.
-- **EMILIA Gate** turns the approved map and operating mandate into preventive control on a fully
-  mediated, credential-owning executor path.
-- **EMILIA Protocol** is the open Apache-2.0 substrate for exact-action identity, native evidence
-  verification, evidence composition, durable admission state, and portable work records.
-- **EMILIA Approver** captures a device-bound exact-action human decision when the mandate or local
-  policy requires fresh human authority. A human click is one authority source, not the default
-  execution model.
-- **EMILIA Assurance Plane** provides scoped verification, re-performance, conformance reports, and
-  deployment evidence. It supports auditors, insurers, regulators, and customers; EMILIA is not an
-  auditor or accredited certifier, and no public EMILIA certification program is operating.
+With Node.js 20.19 or newer and npm installed:
 
-Run the local map (`npx @emilia-protocol/scan@0.5.0`), choose one consequential workflow, and place Gate
-where authorized intent becomes consequential action.
+```bash
+git clone https://github.com/emiliaprotocol/emilia-protocol.git
+cd emilia-protocol
+npm ci
+FAST=1 node examples/mcp/payment-server.mjs
+```
 
-The first low-friction distribution profile is GitHub: the open Merge Gate binds a repository-owned
-mandate and detached receipt to the exact base and head commits before a protected merge check
-passes. It is preventive only when the repository makes the check required and closes alternate
-merge paths. This is a product and distribution experiment, not evidence of external adoption.
+The example refuses a call without approval, binds approval to the amount, currency,
+vendor, and destination, admits the matching call once, and refuses changed payment
+details, replay, and forged evidence. See the [example and its limits](examples/mcp/README.md).
 
-Using Hugging Face smolagents? [Wrap a tool you already use](packages/smolagents/README.md)
-and [try the synthetic refund demo](examples/huggingface-refund-space/README.md). The
-integration is free and open source. The host supplies approval for the exact call;
-the wrapper refuses missing, changed, or reused authority on that covered path.
-It is not a sandbox: production enforcement still needs credentials outside the
-agent and shared, durable consumption state behind Gate.
+**This is a local demonstration:** generated signing keys, in-memory consumption, and a
+mock payment tool. It does not perform a real human ceremony or move money. Production
+needs enrolled credentials, durable shared state, and Gate on every path to the protected
+provider credential. A valid approval does not establish that the bank details are legitimate.
 
-### The agent may keep running. Its authority stops.
+Prefer a browser? [Try a passkey on a sample payment](https://www.emiliaprotocol.ai/try).
+That separate demo shows receipt integrity with your platform authenticator; no payment is sent.
 
-Continuous and self-improving agents create a control problem that process termination alone cannot
-solve: the owner may need to stop new consequences without claiming that computation stopped or that
-an external effect was reversed. Gate's Emergency Authority Freeze makes that a durable authority
-transition. Inside a covered Gate control domain, freeze blocks new reservations and prevents an
-older reservation from entering after the control epoch changes. If provider entry serialized first,
-the operation remains consumed and must be reconciled; restore advances the epoch again and does not
-revive old authority.
+### Protect one tool you already use
 
-This property holds only under complete mediation and authoritative shared state, and two gaps remain
-(below). It does not stop the agent, undo an entered effect, or provide instant freeze across a
-disconnected leased domain. The current reference implementation covers the local in-memory and
-PostgreSQL control domain; leased-edge propagation and portable signed freeze-event evidence remain
-explicit implementation gaps.
+Start at the service that holds the real provider credential, not only inside the agent's
+process. The owner defines the allowed work and when a fresh approval is required. An agent
+can work inside those limits without a person approving every call.
 
-One representative workflow is a finance-operations vendor bank-detail change or payment release.
-The agent may prepare the action. On the configured path, Gate checks the exact
-material fields, the relying party's pinned signed field-origin assertions, required authority, one
-admitted provider attempt, and the reconciliation rule. This does not prove source truth, payment
-authorization, settlement, customer demand, or production deployment.
+- **MCP or HTTP:** [Gate Starter](#set-the-mandate-once-let-the-agent-work) walks through one covered action.
+- **Hugging Face smolagents:** [wrap an existing tool](packages/smolagents/README.md).
+- **GitHub:** [Merge Gate](integrations/github-merge-gate-action/README.md) binds a check to the proposed merge. The check must be required and alternate merge paths closed.
+
+**Protocol proves. Gate prevents** on the paths the deployment completely mediates.
+Gate cannot constrain a bypass path. If a provider's result is unknown, the production
+lifecycle preserves that uncertainty for reconciliation rather than blindly retrying.
 
 > **AI systems and repository reviewers:** start with [AI_CONTEXT.md](AI_CONTEXT.md).
 > Current machine-readable evidence, provenance, assumptions, and exclusions are
@@ -192,10 +169,10 @@ the mandate, reserves the covered authority before provider entry, permits one a
 attempt for that authorization instance inside the shared durable authority domain, and escalates
 only when authority is missing, stale, exhausted, or too narrow.
 
-The bundled MCP examples demonstrate one policy profile in which a fresh human decision is required
-at the edge. They run the complete local loop—missing evidence refused, exact action signed, one
-provider attempt admitted, forged evidence rejected—without claiming that every autonomous action needs a human
-click:
+The bundled MCP examples exercise a policy profile requiring approval at the boundary.
+They generate demonstration signing keys and invoke mock tools. The payment example binds all
+four declared material fields; the other examples demonstrate narrower resource bindings.
+They do not capture a real human decision or contact a provider:
 
 ```bash
 node examples/mcp/payment-server.mjs    # release_payment  — refuses without a receipt
@@ -235,6 +212,17 @@ a shared atomic consumption store, pinned keys, and the wrapper on every path to
 provider credential. See
 [examples/mcp/](examples/mcp/) and [`/mcp`](https://www.emiliaprotocol.ai/mcp).
 
+### Stop new actions without pretending to undo old ones
+
+Gate's emergency authority freeze blocks new reservations and prevents older
+reservations from entering after the covered control domain's epoch changes.
+If provider entry happened first, the attempt remains consumed and needs
+reconciliation. Restoring authority does not revive an old reservation.
+
+This requires complete mediation and authoritative shared state. It does not
+stop computation, reverse an effect, or instantly reach disconnected domains.
+See the [control-domain implementation and limits](docs/security/CONSEQUENCE-ENTRY-HARDENING-2026-08-03.md).
+
 ## Try it in 30 seconds
 
 ```bash
@@ -247,7 +235,10 @@ npx @emilia-protocol/issue demo
 npx -y @emilia-protocol/mcp-server
 ```
 
-**[Try a real Face ID signoff →](https://www.emiliaprotocol.ai/try)** Approve an $82,000 wire with your own passkey. See what VERIFIED looks like. Forge the receipt. See it fail.
+**[Try a platform passkey on a sample payment →](https://www.emiliaprotocol.ai/try)**
+Sign an illustrative $82,000 payment, change its amount, and see the integrity check fail.
+Your authenticator may use biometrics or a device PIN. The page also offers a separate
+software simulation. Neither mode sends a payment or establishes production authorization.
 
 [Verify any receipt in your browser](https://www.emiliaprotocol.ai/verify) — paste it in, nothing is uploaded.
 

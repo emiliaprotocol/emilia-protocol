@@ -7,17 +7,17 @@
 // The gate is MANIFEST-DRIVEN: it reads /.well-known/agent-actions.json to
 // learn which tools require a receipt (and at what assurance/quorum), then
 // enforces the full ritual against the REAL verifier in
-// @emilia-protocol/require-receipt — no API, no key, no EP server trusted:
+// @emilia-protocol/require-receipt, using process-local demo keys:
 //
 //   1. dangerous tool, NO receipt        -> 428 Receipt Required (refused)
-//   2. named human signs the exact action -> EP-RECEIPT-v1, retry -> runs
+//   2. script simulates an action signoff -> EP-RECEIPT-v1, retry -> mock runs
 //   3. the SAME receipt replayed          -> refused (one-time consumption)
 //   4. a forged receipt                   -> refused (signature fails)
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { receiptChallenge, findActionRequirement, RECEIPT_REQUIRED_STATUS, } from '../../packages/require-receipt/index.js';
+import { receiptChallenge, findActionRequirement, RECEIPT_REQUIRED_STATUS, bindExecutorAction, canonicalizeStrictJson, snapshotToolArguments, } from '../../packages/require-receipt/index.js';
 import { makeReceiptGate } from '../../packages/require-receipt/gate.js';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(readFileSync(resolve(HERE, '../../public/.well-known/agent-actions.json'), 'utf8'));
@@ -27,11 +27,7 @@ const FAST = !!process.env.FAST;
 const pause = (ms) => (FAST ? Promise.resolve() : new Promise((r) => setTimeout(r, ms)));
 export const line = (s = '') => console.log(s);
 const rule = () => line('─'.repeat(66));
-// EP-RECEIPT-v1 canonical signer (byte-identical to @emilia-protocol/verify).
-const canonicalize = (v) => (v === null || v === undefined ? JSON.stringify(v)
-    : Array.isArray(v) ? `[${v.map(canonicalize).join(',')}]`
-        : typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`
-            : JSON.stringify(v));
+const canonicalize = canonicalizeStrictJson;
 // Self-contained DEMO ceremony. The gate still verifies a real P-256
 // WebAuthn-shaped assertion against relying-party-pinned keys, RP ID, origin,
 // and quorum policy. Production integrations replace these process-local demo
@@ -119,8 +115,8 @@ function demoAssuranceProof(payload, { outcome, quorum, duplicateQuorum = false 
         signoffs: signed.map((entry) => entry.signoff),
     };
 }
-// A named human's device signs the EXACT action. Minted locally here so the
-// demo is self-contained; in production it's a real Face ID / passkey signoff.
+// Script-generated signoff fixture, not a human/device ceremony. Production
+// requires separately enrolled credentials and the relying party's trust pins.
 export function signAction(action, { approver, outcome = 'allow_with_signoff', quorum = null, tamper = false } = {}) {
     const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
     const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
@@ -156,36 +152,69 @@ export function signAction(action, { approver, outcome = 'allow_with_signoff', q
         doc.payload = { ...payload, claim: { ...payload.claim, action_type: 'something.harmless' } };
     return doc;
 }
-// Per-tool identifying argument — the resource a dangerous tool actually acts on.
+// Non-payment examples bind their identifying resource argument only.
 // The receipt is bound to action_type PLUS this target id, so a receipt approving
 // (e.g.) "delete repo acme/billing-core" can't be replayed to delete a different
 // repo. Tools/args not listed here bind to the bare action_type.
 const TARGET_ARG = {
-    release_payment: 'destination',
     delete_repo: 'repo',
     deploy_production: 'service',
     run_destructive_sql: 'database',
     export_customer_data: 'workspace',
 };
+const PAYMENT_FIELDS = Object.freeze(['amount_minor', 'currency', 'vendor', 'destination']);
+// This local example accepts one closed payment schema. Integer minor units
+// avoid rounding a decimal amount; currency is a three-letter token, not a
+// claim that the code, payee, or destination was checked against a registry.
+function paymentSnapshot(args) {
+    if (!args || typeof args !== 'object' || Array.isArray(args)
+        || Reflect.ownKeys(args).length !== PAYMENT_FIELDS.length
+        || Reflect.ownKeys(args).some((key) => typeof key !== 'string' || !PAYMENT_FIELDS.includes(key))) {
+        throw new TypeError('payment_arguments_invalid');
+    }
+    // The shared snapshot rejects accessors, hidden properties, symbols,
+    // non-plain objects and non-JSON values before any executor sees them.
+    const snapshot = snapshotToolArguments(args);
+    // Validate the captured data too: a Proxy can change its keys between the
+    // caller-side shape check and snapshot capture. Only this plain snapshot
+    // is hashed and executed, so its complete schema must pass independently.
+    const capturedKeys = Object.keys(snapshot);
+    if (capturedKeys.length !== PAYMENT_FIELDS.length
+        || capturedKeys.some((key) => !PAYMENT_FIELDS.includes(key))
+        || !Number.isSafeInteger(snapshot.amount_minor) || snapshot.amount_minor <= 0
+        || typeof snapshot.currency !== 'string' || !/^[A-Z]{3}$/.test(snapshot.currency)
+        || !['vendor', 'destination'].every((key) => typeof snapshot[key] === 'string'
+            && snapshot[key].length > 0 && snapshot[key].length <= 256
+            && snapshot[key] === snapshot[key].trim() && !/[\u0000-\u001f\u007f]/.test(snapshot[key]))) {
+        throw new TypeError('payment_arguments_invalid');
+    }
+    return Object.freeze(snapshot);
+}
+class PaymentArgumentsChanged extends Error {
+}
 // The exact action a receipt must be bound to for this call: action_type, plus
-// the specific target id when the tool acts on an identifiable resource.
+// all material payment fields, or the identifying target in the other demos.
 export function actionForCall(tool, action, args = {}) {
+    if (tool === 'release_payment')
+        return bindExecutorAction(action, paymentSnapshot(args));
     const target = args?.[TARGET_ARG[tool]];
     return target != null ? `${action}:${target}` : action;
 }
 // A manifest-driven MCP tool dispatcher. The manifest decides whether a tool
-// requires a receipt; the canonical makeReceiptGate enforces verify + per-target
+// requires a receipt; the canonical makeReceiptGate enforces verification +
 // action-binding + reserve→run→commit-after-invocation (replay-safe, one-time
 // consumption) + sanitized {reason} rejections. Read-only / unlisted
 // tools pass straight through. One gate PER action_type (each keeps its own
-// consumed store) so the binding/replay guarantees are per-resource.
-export function makeGuardedServer({ tool }) {
+// consumed store). Receipt replay state lasts only for this server instance.
+export function makeGuardedServer({ tool, perform = async (_name, args) => ({ ran: true, ...args }) }) {
     const gates = new Map(); // action_type -> makeReceiptGate (own consumed store)
     const gateFor = (req) => {
         let gate = gates.get(req.action_type);
         if (!gate) {
             gate = makeReceiptGate({
-                action: req.action_type, // gate appends ":<target>" for the bound action
+                action: req.match.tool === 'release_payment'
+                    ? (snapshot) => bindExecutorAction(req.action_type, snapshot)
+                    : req.action_type,
                 allowInlineKey: true,
                 maxAgeSec: req.max_age_sec,
                 statusCode: RR,
@@ -206,15 +235,47 @@ export function makeGuardedServer({ tool }) {
         if (!req || !req.receipt_required) {
             return { status: 200, body: { ran: true, note: 'read-only / unlisted in manifest — passes through' } };
         }
-        // The identifying arg (the resource this dangerous tool acts on); the gate
-        // folds it into the bound action as action_type:<target>, so a receipt for
-        // one resource can't drive another. null -> binds to the bare action_type.
-        const target = args?.[TARGET_ARG[name]] ?? undefined;
+        const isPayment = name === 'release_payment';
+        const refuse = (reason) => ({
+            status: RR,
+            body: { ...receiptChallenge(req.action_type, `Receipt rejected: ${reason}.`), rejected: { reason } },
+        });
+        let snapshot;
+        try {
+            snapshot = isPayment ? paymentSnapshot(args) : args;
+        }
+        catch {
+            return refuse('payment_arguments_invalid');
+        }
+        const target = isPayment ? snapshot : args?.[TARGET_ARG[name]] ?? undefined;
         const gate = gateFor(req);
         const action = gate.boundActionFor(target);
         // run() = verify+reserve → perform → commit after any invocation attempt.
         // An exception is indeterminate and burns the approval to prevent replay.
-        const res = await gate.run(receipt, { target }, async () => ({ ran: true, action, ...args }));
+        let res;
+        try {
+            res = await gate.run(receipt, { target }, async () => {
+                if (isPayment) {
+                    // check() awaits reservation. Refuse caller changes across that wait,
+                    // then pass only the frozen bound snapshot into the mock executor.
+                    let currentAction;
+                    try {
+                        currentAction = actionForCall(name, req.action_type, args);
+                    }
+                    catch {
+                        throw new PaymentArgumentsChanged();
+                    }
+                    if (currentAction !== action)
+                        throw new PaymentArgumentsChanged();
+                }
+                return { ...await perform(name, snapshot), action };
+            });
+        }
+        catch (error) {
+            if (error instanceof PaymentArgumentsChanged)
+                return refuse('payment_arguments_changed');
+            throw error;
+        }
         if (!res.ok)
             return { status: res.status, body: res.body }; // 428 challenge / {rejected:{reason}}
         return {
@@ -234,6 +295,8 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
     line();
     line(`  ${title}`);
     rule();
+    line('  Offline simulation: generated demo keys, in-memory consumption, mock executor.');
+    line('  No funds move; no real human or device ceremony is performed.');
     line(`  manifest: ${tool} → ${action} · receipt_required=${req.receipt_required} · assurance=${req.assurance_class}${req.quorum?.required ? ` · quorum ${req.quorum.m}-of-N` : ''}`);
     await pause(700);
     line(`\n  [agent]  ${agentLine}`);
@@ -242,12 +305,23 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
     line('\n  1. Agent calls the tool with NO receipt');
     let res = await server(tool, args, null);
     show(res);
-    line(`     ${res.status} Receipt-Required → bring an ${res.body?.required?.proof_header || 'X-EMILIA-Receipt'} bound to "${action}"`);
+    line(`     ${res.status} Receipt-Required → bring an ${res.body?.required?.proof_header || 'X-EMILIA-Receipt'} bound to "${res.body?.required?.action || action}"`);
     await pause(1000);
-    line(`\n  2. A named human reviews the exact action and signs it (${approver})`);
-    // The signoff is bound to the SPECIFIC target (action_type:<resource>), so it
-    // authorizes exactly this resource — not any other repo/payment/deploy.
+    line(`\n  2. The script creates a simulated signoff (${approver})`);
     const boundAction = actionForCall(tool, action, args);
+    if (tool === 'release_payment') {
+        line('     signed material: amount_minor, currency, vendor, destination');
+        for (const [field, changed] of Object.entries({
+            amount_minor: args.amount_minor + 1,
+            currency: args.currency === 'USD' ? 'EUR' : 'USD',
+            vendor: `${args.vendor} (substituted)`,
+            destination: `${args.destination}_substituted`,
+        })) {
+            const freshReceipt = signAction(boundAction, { approver, quorum: req.quorum });
+            line(`     substitute ${field} with a fresh, unused receipt:`);
+            show(await server(tool, { ...args, [field]: changed }, freshReceipt));
+        }
+    }
     const receipt = signAction(boundAction, { approver, quorum: req.quorum });
     line(`     receipt_id ${receipt.payload.receipt_id} · outcome ${receipt.payload.claim.outcome}`);
     if (receipt.payload.claim.quorum) {
@@ -257,7 +331,7 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
     res = await server(tool, args, receipt);
     show(res);
     if (res.status === 200)
-        line(`     tool performed; evidence ${res.body.evidence.receipt_id} verifies offline, trusting no one`);
+        line(`     mock tool performed; receipt ${res.body.evidence.receipt_id} verified under demo trust pins`);
     await pause(900);
     line('\n  3. The SAME receipt is presented again (replay)');
     res = await server(tool, args, receipt);
@@ -268,8 +342,8 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
     show(res);
     if (req.quorum?.required) {
         line(`\n  note: the manifest escalates ${tool} to a ${req.quorum.m}-of-N quorum (EP-QUORUM-v1);`);
-        line('        the demo receipt carries two distinct human approvers, and a single-signoff receipt is refused.');
+        line('        the fixture uses two generated approver keys; a single-signoff receipt is refused.');
     }
-    line('\n  No receipt, no irreversible action. If it ran, anyone can verify who authorized exactly what.');
+    line('\n  No accepted receipt, no mock executor entry on this covered path.');
     line();
 }
