@@ -34,12 +34,13 @@ describe('/spec source contract', () => {
 });
 
 describe('/evidence-chain source contract', () => {
-  it('presents AEC -05 as document 04 and keeps satisfaction separate from authorization', () => {
-    expect(evidenceChainPage).toContain("draft-schrock-ep-authorization-evidence-chain-05");
+  it('presents AEC -06 as document 04 and keeps satisfaction separate from authorization', () => {
+    expect(evidenceChainPage).toContain("draft-schrock-ep-authorization-evidence-chain-06");
+    expect(evidenceChainPage).not.toContain('draft-schrock-ep-authorization-evidence-chain-05');
     expect(evidenceChainPage).toContain('Canonical path · 04 of 04');
     expect(evidenceChainPage).toContain('The executor separately decides whether');
     expect(evidenceChainPage).toContain('local authorization, execution, or complete mediation');
-    expect(evidenceChainLayout).toContain('Authorization Evidence Chain -05');
+    expect(evidenceChainLayout).toContain('Authorization Evidence Chain -06');
     expect(evidenceChainLayout).toContain('SATISFIED is evidence, not local authorization');
   });
 });
