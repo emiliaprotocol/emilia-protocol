@@ -1329,9 +1329,10 @@ configuration's refund carries this operation ID. The lookup is not atomic with
 the create. Two setups that each lack the other's attempt row and create at the
 same instant can both see no refund and both create; Stripe's idempotency key
 collapses that race only within one tenant and environment, and only while
-Stripe retains the key. The lookup only sees refunds on the same payment
-intent, within the 1,000-refund bound, tagged under the retained HMAC key.
-Treat a restore of the attempt store as an incident: keep the PTE operation row at
+Stripe retains the key. The lookup only sees refunds that Stripe's list
+already returns, on the same payment intent, within the 1,000-refund bound, and
+tagged under the retained HMAC key; a refund that Stripe has created but does
+not list yet is invisible to it. Treat a restore of the attempt store as an incident: keep the PTE operation row at
 least as long as duplicate submission remains possible, including after
 Stripe's idempotency cache expires, and reconcile before resuming refunds.
 
