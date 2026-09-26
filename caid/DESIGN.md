@@ -187,6 +187,21 @@ semantics and therefore requires a new action-type version. A registry
 snapshot may correct the machine-readable pin for an already named immutable
 set only by incrementing the registry version and documenting the migration.
 
+An `amount-string` is a JSON string whose whole value, as parsed from JSON,
+matches this RFC 5234 ABNF (`DIGIT` is the core rule; the staged -04 draft
+carries the same rule):
+
+    amount-string = [ "-" ] int-part [ "." frac-part ]
+    int-part      = "0" / ( %x31-39 *DIGIT )  ; no leading zero
+    frac-part     = 1*DIGIT
+
+No exponent, leading `+`, whitespace, or thousands separator, and no leading
+zero in the integer part: `0`, `0.50`, `-0`, and `-0.50` match; `01.5`,
+`00`, `+1`, `1e3`, `.5`, `1.`, and `1,000` do not. The rule is lexical and
+never normalizes (`0.50` and `0.5` are different digests). A field's `notes`
+guide issuers and never change validation, so a note that restates part of
+this grammar, such as the `amount` note above, neither narrows nor widens it.
+
 ## 4. Computation and verification (closed refusal set)
 
 `computeCaid(actionObject, {suite, definitions, enumSnapshots})` — conforming issuer:
@@ -194,8 +209,10 @@ set only by incrementing the registry version and documenting the migration.
 2. Type resolvable in definitions, else `unknown_action_type`.
 3. Every required field present as an own member of the object, else
    `missing_material_field:<name>`.
-4. Every present declared field type-valid, else `mistyped_field:<name>`
-   (amount-string violations may refine to `invalid_amount:<name>`).
+4. Every present declared field type-valid, else `mistyped_field:<name>`,
+   except that an `amount-string` field holding a string that fails the
+   amount-string grammar is `invalid_amount:<name>` (a non-string value there
+   stays `mistyped_field:<name>`).
 5. Suite known, else `unknown_suite`.
 6. No non-integer number anywhere in the object, else `unsupported_number`.
    No string or member name anywhere in the object containing an unpaired

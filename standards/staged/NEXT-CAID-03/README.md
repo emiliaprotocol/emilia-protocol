@@ -52,3 +52,5 @@ text and HTML produced from that source by xml2rfc 3.34.0; the HTML's trailing
 spaces were removed before its checksum was recorded. `SHA256SUMS.txt` covers
 all three files. `VALIDATION.md` records the checks run before submission and
 the publication check.
+
+Later normative changes are staged in [`../NEXT-CAID-04/`](../NEXT-CAID-04/) and are not part of this posted revision.

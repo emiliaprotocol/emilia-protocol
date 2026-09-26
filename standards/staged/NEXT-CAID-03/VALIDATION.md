@@ -55,3 +55,5 @@ Checked on 2026-09-26 after posting:
 
 Publication is not working-group adoption, RFC status, protocol-owner review,
 implementation interoperability, or deployment evidence.
+
+Later normative changes are staged in `../NEXT-CAID-04/`.
