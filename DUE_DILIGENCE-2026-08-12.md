@@ -30,7 +30,6 @@ baseline. It changes the evidence map, not the reviewed implementation.
 | Dependencies and releases | Root and nested production audits report zero known vulnerabilities; release-chain validation covers **26 packages**; packed exports pass for 12 packages. | Publish an SBOM and third-party notice bundle with each release. |
 | Secrets and licensing | Full-history Gitleaks scan found no secret; repository-boundary and Apache-2.0 header checks pass; every public package manifest declares a license. | Repeat scans in CI and during a transaction-specific data-room export. |
 | GitHub controls | `main` has 16 strict required checks, one approval, conversation resolution, no force-push, no deletion, read-only workflow tokens, two-factor authentication required at the organization, and immutable release-tag rules. | Add a second human owner/reviewer, require Code Owner and latest-push approval, dismiss stale reviews, enforce rules for administrators, require signed commits, and verify the organization domain. |
-| AI-assisted development | Human accountability and future attribution rules are public in [`docs/AI-ASSISTED-DEVELOPMENT.md`](https://github.com/emiliaprotocol/emilia-protocol/blob/f6f6a1c771a12f794144e1d04faffe42ce7d4184/docs/AI-ASSISTED-DEVELOPMENT.md). | Complete counsel-led chain-of-title review in the private data room. |
 
 ## Emergency Authority Freeze implementation baseline
 
