@@ -1,0 +1,236 @@
+name: Evidence autopilot publish
+
+# Publishes the bundle produced by evidence-autopilot.yml to its pull request
+# branch as one commit that changes only derived evidence.
+#
+# What this workflow does and does not establish:
+#   - workflow_run always executes this file and scripts/ci/evidence-autopilot.mjs
+#     from the default branch, never from the pull request, and nothing from
+#     the pull request is checked out, installed, built or executed here.
+#   - `inspect` checks the bundle's shape and transit integrity only:
+#     allowlisted paths, the sizes and sha256 digests its own manifest lists,
+#     UTF-8 text, JSON that parses, and the expected source commit. That
+#     manifest was written by the unprivileged job that ran the pull
+#     request's code, so this is not evidence that the content is correct.
+#     Correctness comes from the required checks that run again on the
+#     published commit (which also run the pull request's code: for a
+#     Dependabot pull request, main plus the new dependencies).
+#   - The commit is created with the GraphQL createCommitOnBranch mutation
+#     with expectedHeadOid set to the source commit, so it is compare-and-swap:
+#     GitHub refuses it unless the branch still points at that commit, and a
+#     branch that was force-pushed, rewound or deleted meanwhile is left alone
+#     (the autopilot runs again for any new head). GitHub signs the commit;
+#     dco.yml exempts it from sign-off only when the commits API reports it
+#     verified, authored by vars.EVIDENCE_AUTOPILOT_BOT_LOGIN, and changing
+#     nothing but derived evidence.
+#   - The message carries `[dependabot skip]`, so Dependabot keeps rebasing
+#     its pull request over the evidence commit; the autopilot regenerates.
+#   - After the App's commit, the next pull_request run on a Dependabot
+#     branch executes the new dependency code as the App actor rather than as
+#     Dependabot, so it receives Actions secrets instead of Dependabot
+#     secrets. No pull_request or unfiltered push workflow uses a secret other
+#     than GITHUB_TOKEN today; keep it that way.
+#
+# A commit created with GITHUB_TOKEN does not start new workflow runs, which
+# would leave every required check pending, so the publish job uses a GitHub
+# App installation token. Settings this job depends on (not provisioned as
+# of 2026-09-25; see the pull request that added this file):
+#   - a GitHub App with Contents: read and write only (no Workflows
+#     permission), installed on this repository only, on no bypass list;
+#   - the `evidence-autopilot` environment, with deployment branches limited
+#     to main, holding the App's credentials as environment secrets:
+#       EVIDENCE_AUTOPILOT_CLIENT_ID    GitHub App client ID
+#       EVIDENCE_AUTOPILOT_PRIVATE_KEY  GitHub App private key (PEM)
+#     workflow_run runs on the default branch, so the restriction admits
+#     this job and refuses a workflow on any other ref. If the environment
+#     does not exist yet, GitHub creates it on the first run with no branch
+#     restriction; the restriction is a manual settings step. No Dependabot
+#     secret copy is configured: GitHub lists push, pull_request and the two
+#     review events as the Dependabot-restricted triggers, not workflow_run.
+#     That reading is unverified until the first Dependabot-driven publish;
+#     if it reports the credentials missing, it was wrong.
+#   - the repository variable EVIDENCE_AUTOPILOT_BOT_LOGIN (for example
+#     `emilia-evidence-autopilot[bot]`), read by dco.yml.
+
+on:
+  workflow_run:
+    workflows: [Evidence autopilot]
+    types: [completed]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evidence-autopilot-publish-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  # Unprivileged: decides whether there is anything to publish. It holds no
+  # secret and no write token, and it does not enter the environment, so
+  # runs with nothing to publish create no deployment.
+  inspect:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    env:
+      REPOSITORY: ${{ github.repository }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+    outputs:
+      changed: ${{ steps.inspect.outputs.changed }}
+      pull: ${{ steps.locate.outputs.pull }}
+    steps:
+      - name: Check out trusted default-branch tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: trusted
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Find the evidence bundle and its open pull request
+        id: locate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::malformed head sha"; exit 1; }
+          [[ "$HEAD_BRANCH" =~ ^[A-Za-z0-9._/-]+$ && "$HEAD_BRANCH" != -* && "$HEAD_BRANCH" != main ]] || {
+            echo "::error::refusing head branch '$HEAD_BRANCH'"
+            exit 1
+          }
+          artifacts=$(gh api "repos/$REPOSITORY/actions/runs/$RUN_ID/artifacts" \
+            --jq '[.artifacts[] | select(.name == "evidence-autopilot" and (.expired | not))] | length')
+          if [[ "$artifacts" != 1 ]]; then
+            echo "::notice::No evidence bundle in run $RUN_ID (the autopilot did not run for this head)."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pull=$(gh api "repos/$REPOSITORY/commits/$SOURCE_SHA/pulls" \
+            --jq "[.[] | select(.state == \"open\" and .head.sha == \"$SOURCE_SHA\" and .head.ref == \"$HEAD_BRANCH\" and .head.repo.full_name == \"$REPOSITORY\")] | first | .number // empty")
+          if [[ -z "$pull" ]]; then
+            echo "::notice::No open same-repository pull request still has head $SOURCE_SHA; nothing to publish."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "pull=$pull" >> "$GITHUB_OUTPUT"
+
+      - name: Download the untrusted bundle
+        if: steps.locate.outputs.found == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: evidence-autopilot
+          path: bundle
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Check the bundle's shape and transit integrity with trusted code
+        id: inspect
+        if: steps.locate.outputs.found == 'true'
+        run: >-
+          node trusted/scripts/ci/evidence-autopilot.mjs inspect
+          --bundle bundle
+          --source-sha "$SOURCE_SHA"
+          --github-output "$GITHUB_OUTPUT"
+
+  # Privileged: the only job that can read the App credentials. It re-runs
+  # the trusted inspection itself rather than trusting the job above, and it
+  # never checks out or runs anything from the pull request.
+  publish:
+    needs: inspect
+    if: needs.inspect.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Restrict this environment's deployment branches to main and keep the
+    # App credentials only here (see the header).
+    environment: evidence-autopilot
+    permissions:
+      contents: read
+      actions: read
+    env:
+      REPOSITORY: ${{ github.repository }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_URL: ${{ github.event.workflow_run.html_url }}
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+      PULL: ${{ needs.inspect.outputs.pull }}
+    steps:
+      - name: Check out trusted default-branch tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: trusted
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Download the untrusted bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: evidence-autopilot
+          path: bundle
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Build the compare-and-swap commit request with trusted code
+        run: >-
+          node trusted/scripts/ci/evidence-autopilot.mjs request
+          --bundle bundle
+          --source-sha "$SOURCE_SHA"
+          --repository "$REPOSITORY"
+          --branch "$HEAD_BRANCH"
+          --run-url "$RUN_URL"
+          --out "$RUNNER_TEMP/create-commit.json"
+
+      - name: Require the evidence autopilot app credentials
+        env:
+          CLIENT_ID_SET: ${{ secrets.EVIDENCE_AUTOPILOT_CLIENT_ID != '' }}
+          PRIVATE_KEY_SET: ${{ secrets.EVIDENCE_AUTOPILOT_PRIVATE_KEY != '' }}
+        run: |
+          if [[ "$CLIENT_ID_SET" != true || "$PRIVATE_KEY_SET" != true ]]; then
+            echo "::error title=Evidence autopilot is not provisioned::Regenerated evidence for #$PULL is ready in run $RUN_ID (artifact evidence-autopilot), but it cannot be published: EVIDENCE_AUTOPILOT_CLIENT_ID and EVIDENCE_AUTOPILOT_PRIVATE_KEY are not set in the evidence-autopilot environment. Create a GitHub App with Contents read/write only, install it on $REPOSITORY, and store both values as secrets of that environment (deployment branches: main). A GITHUB_TOKEN commit would not start the required checks."
+            exit 1
+          fi
+
+      - name: Mint a repository-scoped App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.EVIDENCE_AUTOPILOT_CLIENT_ID }}
+          private-key: ${{ secrets.EVIDENCE_AUTOPILOT_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+
+      # No DCO sign-off: a bot cannot certify origin. dco.yml exempts this
+      # commit only on GitHub's own evidence (verified signature, author and
+      # committer logins) plus the derived-evidence path allowlist.
+      - name: Publish the evidence commit if the branch is still at the source commit
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          head=$(gh api "repos/$REPOSITORY/git/ref/heads/$HEAD_BRANCH" --jq .object.sha 2> /dev/null || true)
+          if [[ "$head" != "$SOURCE_SHA" ]]; then
+            echo "::notice::$HEAD_BRANCH is at ${head:-nothing}, not $SOURCE_SHA; nothing is published and the autopilot runs again for a new head."
+            exit 0
+          fi
+          # expectedHeadOid closes the window between that read and the
+          # write: GitHub refuses the commit if the branch moved.
+          oid=$(gh api graphql --input "$RUNNER_TEMP/create-commit.json" --jq '.data.createCommitOnBranch.commit.oid')
+          [[ "$oid" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::createCommitOnBranch returned no commit"; exit 1; }
+          echo "::notice::Published derived evidence for #$PULL as $oid on $HEAD_BRANCH (parent $SOURCE_SHA)."

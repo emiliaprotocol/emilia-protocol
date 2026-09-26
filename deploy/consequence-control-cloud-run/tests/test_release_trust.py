@@ -1188,18 +1188,48 @@ class WorkflowTrustContractTests(unittest.TestCase):
         self.assertIn("build-release-images.sh", workflow)
         self.assertIn("--expected-commit \"$GITHUB_SHA\"", workflow)
 
-    def test_ci_release_sealing_reuses_governed_evidence_only_after_dependencies_pass(self) -> None:
+    def test_ci_accepts_preverified_governed_evidence_only_after_dependencies_pass(self) -> None:
+        # The preverified flags skip re-executing the security case. The jobs
+        # that pass them run in parallel with security-case, so neither may
+        # carry a required check name. The required gate-product and
+        # language-governance checks are aggregators that pass only when
+        # security-case (and the preverifying job) succeeded on the same SHA.
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
-        gate_product = workflow.split("  gate-product:", 1)[1].split("\n  build:", 1)[0]
-        self.assertIn("needs: [security-case, language-governance]", gate_product)
-        self.assertIn("--governed-evidence-preverified", gate_product)
 
-        language_governance = workflow.split("  language-governance:", 1)[1].split(
-            "\n  license-headers:", 1
-        )[0]
-        self.assertIn("needs: [security-case]", language_governance)
-        self.assertIn("SECURITY_CASE_PREVERIFIED_SHA: ${{ github.sha }}", language_governance)
-        self.assertIn("npm run check:proof-stats -- --security-case-preverified", language_governance)
+        def job(name: str) -> str:
+            marker = f"\n  {name}:\n"
+            self.assertEqual(workflow.count(marker), 1, name)
+            body = workflow.split(marker, 1)[1]
+            match = re.search(r"\n  [A-Za-z0-9_-]+:\n", body)
+            return body[: match.start()] if match else body
+
+        suite = job("gate-product-suite")
+        self.assertIn("--governed-evidence-preverified", suite)
+        self.assertNotIn("needs: [security-case", suite)
+
+        gate_product = job("gate-product")
+        self.assertIn("needs: [changes, security-case, language-governance, gate-product-suite]", gate_product)
+        self.assertIn("if: ${{ !cancelled() }}", gate_product)
+        self.assertIn('[[ "$SECURITY_CASE" == success ]]', gate_product)
+        self.assertIn('[[ "$SUITE" == success ]]', gate_product)
+        self.assertIn('[[ "$LANGUAGE_GOVERNANCE" == success ]]', gate_product)
+        self.assertNotIn("preverified", gate_product.replace("preverified release seal", ""))
+
+        checks = job("language-governance-checks")
+        self.assertIn("SECURITY_CASE_PREVERIFIED_SHA: ${{ github.sha }}", checks)
+        self.assertIn("npm run check:proof-stats -- --security-case-preverified", checks)
+
+        language_governance = job("language-governance")
+        self.assertIn("needs: [changes, security-case, language-governance-checks]", language_governance)
+        self.assertIn("if: ${{ !cancelled() }}", language_governance)
+        self.assertIn('[[ "$SECURITY_CASE" == success ]]', language_governance)
+        self.assertIn('[[ "$CHECKS" == success ]]', language_governance)
+
+        commands = "\n".join(
+            line for line in workflow.splitlines() if not line.lstrip().startswith("#")
+        )
+        self.assertEqual(commands.count("--governed-evidence-preverified"), 1)
+        self.assertEqual(commands.count("--security-case-preverified"), 1)
 
         builder = (
             ROOT / "deploy/consequence-control-cloud-run/build-release-images.sh"
