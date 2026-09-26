@@ -44,7 +44,11 @@ name: Evidence autopilot publish
 #     workflow_run runs on the default branch, so the restriction admits
 #     this job and refuses a workflow on any other ref. If the environment
 #     does not exist yet, GitHub creates it on the first run with no branch
-#     restriction; the restriction is a manual settings step.
+#     restriction; the restriction is a manual settings step. No Dependabot
+#     secret copy is configured: GitHub lists push, pull_request and the two
+#     review events as the Dependabot-restricted triggers, not workflow_run.
+#     That reading is unverified until the first Dependabot-driven publish;
+#     if it reports the credentials missing, it was wrong.
 #   - the repository variable EVIDENCE_AUTOPILOT_BOT_LOGIN (for example
 #     `emilia-evidence-autopilot[bot]`), read by dco.yml.
 
