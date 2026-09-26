@@ -1,22 +1,14 @@
-# WIMSE delegation scope to CAID companion profile
+# WIMSE delegation scope to CAID companion profile, version 01
 
-Status: experimental review draft, 2026-09-23. This directory has been shared
-for review, but it has not been adopted by WIMSE or published as an
-Internet-Draft.
-
-Superseded by `../NEXT-WIMSE-CAID-SCOPE-01/` on 2026-09-26. This packet pins
-CAID registry version 3 by digest, and its PROFILE.md section 3 makes any
-change to those bytes a new profile version. Registry version 4 changed them,
-so on a checkout that carries registry version 4, `validate.mjs` reports the
-digest and version mismatch and exits nonzero instead of evaluating. That is
-the fail-closed behavior section 3 requires. To replay this packet as shared,
-run it from commit `f46328afc`, the last `main` commit before registry version
-4, where it passes all 22 vectors.
+Status: experimental review draft, 2026-09-26. It supersedes
+`NEXT-WIMSE-CAID-SCOPE-00`, which has been shared for review. Neither version
+has been adopted by WIMSE or published as an Internet-Draft.
 
 This packet tests one narrow answer to the operation-vocabulary gap Rafael
 Asor identified on the public WIMSE list: bind two delegation scope families
 to two immutable CAID action-type definitions, then refuse ambiguity rather
-than guessing.
+than guessing. Version 01 moves the registry pin from version 3 to version 4;
+PROFILE.md section 8 lists the changes.
 
 The two mappings are:
 
@@ -34,7 +26,8 @@ delegation chain and any other required evidence.
 ## Packet
 
 - `PROFILE.md` defines the boundary and deterministic evaluation rules.
-- `profile.json` pins the source revisions, registry bytes, and two mappings.
+- `profile.json` pins the source revisions, registry bytes, the ISO 4217
+  snapshot behind the currency subset, and two mappings.
 - `vectors.json` contains accepted cases and hostile refusals, including
   malformed details, segment-bounded wildcards, and tool-call retries.
 - `validate.mjs` validates the pins and executes every vector using the
@@ -43,12 +36,13 @@ delegation chain and any other required evidence.
 Run from the repository root:
 
 ```sh
-node standards/profiles/NEXT-WIMSE-CAID-SCOPE-00/validate.mjs
+node standards/profiles/NEXT-WIMSE-CAID-SCOPE-01/validate.mjs
 ```
 
 When the packet is sent outside the repository, `validate.mjs` MUST be
-included. It imports the pinned repository CAID implementation and registry;
-the packet is not a standalone replacement for those source files.
+included. It imports the pinned repository CAID implementation, registry, and
+value-set snapshot loader; the packet is not a standalone replacement for
+those source files.
 
 ## Claim boundary
 

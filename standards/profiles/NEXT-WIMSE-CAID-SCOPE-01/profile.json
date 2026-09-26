@@ -1,0 +1,73 @@
+{
+  "profile_id": "WIMSE-CAID-SCOPE-01",
+  "supersedes": "WIMSE-CAID-SCOPE-00",
+  "status": "experimental-review-draft",
+  "updated": "2026-09-26",
+  "authorization_details_type": "agent_delegation",
+  "authorization_details_cardinality": {
+    "min": 1,
+    "max": 1
+  },
+  "caid_suite": "jcs-sha256",
+  "registry": {
+    "name": "caid-action-types",
+    "version": 4,
+    "updated": "2026-09-24",
+    "sha256": "73a31f4a4156e3de02e1c3a9ef355f73c07ba25e6b1bb3da8fde8677c2e23d26",
+    "path_from_repository_root": "caid/registry/action-types.json",
+    "stewardship": "EMILIA Protocol maintainers",
+    "license": "CC0-1.0"
+  },
+  "sources": {
+    "delegation_draft": {
+      "id": "draft-asor-wimse-agent-delegation-chain-01",
+      "published": "2026-09-03",
+      "url": "https://datatracker.ietf.org/doc/html/draft-asor-wimse-agent-delegation-chain-01"
+    },
+    "delegation_followup": {
+      "date": "2026-09-23",
+      "list": "wimse@ietf.org",
+      "message_id": "<CAESAJSUsabSeDKC2yVxtuTPZxoeWwxSN8VWy1tGf6GeMD7kPhg@mail.gmail.com>",
+      "status": "author-stated plan for -02; not published -02 text"
+    },
+    "caid_draft": {
+      "id": "draft-schrock-canonical-action-identifier-02",
+      "published": "2026-08-06",
+      "url": "https://datatracker.ietf.org/doc/html/draft-schrock-canonical-action-identifier-02"
+    }
+  },
+  "mappings": [
+    {
+      "scope_family": "payment.release",
+      "caid_action_type": "payment.release.1"
+    },
+    {
+      "scope_family": "tool.call",
+      "caid_action_type": "tool.call.1"
+    }
+  ],
+  "action_type_rules": {
+    "tool.call.1": {
+      "required_profile_fields": ["occurrence_id"],
+      "retry_semantics": {
+        "same_logical_invocation": "reuse_identical_occurrence_id_and_caid",
+        "new_logical_invocation": "new_occurrence_id_and_caid"
+      }
+    }
+  },
+  "external_value_pins": {
+    "payment.release.1": {
+      "currency": {
+        "values_ref": "ISO 4217 alpha-3",
+        "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+        "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+        "allowed_values": ["EUR", "USD"],
+        "note": "Closed subset of the ISO 4217 snapshot that registry v4 pins. CAID validation refuses a code outside that snapshot; this profile additionally refuses any other listed code until a new profile version is agreed."
+      }
+    }
+  },
+  "result_vocabulary": {
+    "success": "COVERED",
+    "failure": "REFUSED"
+  }
+}

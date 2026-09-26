@@ -1,0 +1,683 @@
+{
+  "suite": "WIMSE-CAID-SCOPE-01-vectors",
+  "version": 2,
+  "note": "COVERED is operation-family plus exact-action correlation under pinned inputs. It is not authorization or execution.",
+  "vectors": [
+    {
+      "id": "payment-literal-covered",
+      "description": "A verified leaf scope names payment.release and the action is a valid payment.release.1 object.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117",
+          "memo": "invoice 4471"
+        },
+        "presented_caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+      },
+      "expect": {
+        "decision": "COVERED",
+        "reason": "covered",
+        "scope_family": "payment.release",
+        "caid_action_type": "payment.release.1",
+        "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+      }
+    },
+    {
+      "id": "payment-terminal-wildcard-covered",
+      "description": "The Asor terminal wildcard rule allows payment.* to cover payment.release.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.*"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117",
+          "memo": "invoice 4471"
+        },
+        "presented_caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+      },
+      "expect": {
+        "decision": "COVERED",
+        "reason": "covered",
+        "scope_family": "payment.release",
+        "caid_action_type": "payment.release.1",
+        "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+      }
+    },
+    {
+      "id": "tool-call-literal-covered",
+      "description": "A tool.call scope binds to the complete target, tool name, and post-default argument object in tool.call.1.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["tool.call"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "tool.call",
+        "action_object": {
+          "action_type": "tool.call.1",
+          "target": "github.example.internal",
+          "tool": "repository.archive",
+          "args": {
+            "owner": "acme",
+            "repository": "quarterly-ledger",
+            "reason": "retention-policy-17"
+          },
+          "occurrence_id": "call-2026-09-23-0001"
+        },
+        "presented_caid": "caid:1:tool.call.1:jcs-sha256:08mwE09lqZdrg9d6uOHJkJYBzGV9F3IeVA9lEXCySyU"
+      },
+      "expect": {
+        "decision": "COVERED",
+        "reason": "covered",
+        "scope_family": "tool.call",
+        "caid_action_type": "tool.call.1",
+        "caid": "caid:1:tool.call.1:jcs-sha256:08mwE09lqZdrg9d6uOHJkJYBzGV9F3IeVA9lEXCySyU"
+      }
+    },
+    {
+      "id": "tool-call-transport-retry-covered",
+      "description": "A transport retry of the same logical invocation presents the identical occurrence_id, action object, and CAID.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["tool.call"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "tool.call",
+        "action_object": {
+          "action_type": "tool.call.1",
+          "target": "github.example.internal",
+          "tool": "repository.archive",
+          "args": {
+            "owner": "acme",
+            "repository": "quarterly-ledger",
+            "reason": "retention-policy-17"
+          },
+          "occurrence_id": "call-2026-09-23-0001"
+        },
+        "presented_caid": "caid:1:tool.call.1:jcs-sha256:08mwE09lqZdrg9d6uOHJkJYBzGV9F3IeVA9lEXCySyU"
+      },
+      "expect": {
+        "decision": "COVERED",
+        "reason": "covered",
+        "scope_family": "tool.call",
+        "caid_action_type": "tool.call.1",
+        "caid": "caid:1:tool.call.1:jcs-sha256:08mwE09lqZdrg9d6uOHJkJYBzGV9F3IeVA9lEXCySyU"
+      }
+    },
+    {
+      "id": "tool-call-missing-occurrence-id-refused",
+      "description": "This profile requires occurrence_id even though the general tool.call.1 registry type makes it optional.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["tool.call"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "tool.call",
+        "action_object": {
+          "action_type": "tool.call.1",
+          "target": "github.example.internal",
+          "tool": "repository.archive",
+          "args": {
+            "owner": "acme",
+            "repository": "quarterly-ledger",
+            "reason": "retention-policy-17"
+          }
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "invalid_action_object",
+        "caid_reasons": ["missing_or_empty_profile_field:occurrence_id"]
+      }
+    },
+    {
+      "id": "tool-call-new-occurrence-requires-new-caid",
+      "description": "A second intended invocation uses a new occurrence_id and cannot reuse the first invocation's CAID.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["tool.call"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "tool.call",
+        "action_object": {
+          "action_type": "tool.call.1",
+          "target": "github.example.internal",
+          "tool": "repository.archive",
+          "args": {
+            "owner": "acme",
+            "repository": "quarterly-ledger",
+            "reason": "retention-policy-17"
+          },
+          "occurrence_id": "call-2026-09-23-0002"
+        },
+        "presented_caid": "caid:1:tool.call.1:jcs-sha256:08mwE09lqZdrg9d6uOHJkJYBzGV9F3IeVA9lEXCySyU"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "caid_mismatch"
+      }
+    },
+    {
+      "id": "tool-call-reused-occurrence-mutated-material-refused",
+      "description": "A retry cannot change the action material while reusing the original occurrence_id and CAID.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["tool.call"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "tool.call",
+        "action_object": {
+          "action_type": "tool.call.1",
+          "target": "github.example.internal",
+          "tool": "repository.archive",
+          "args": {
+            "owner": "acme",
+            "repository": "annual-ledger",
+            "reason": "retention-policy-17"
+          },
+          "occurrence_id": "call-2026-09-23-0001"
+        },
+        "presented_caid": "caid:1:tool.call.1:jcs-sha256:08mwE09lqZdrg9d6uOHJkJYBzGV9F3IeVA9lEXCySyU"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "caid_mismatch"
+      }
+    },
+    {
+      "id": "same-verb-different-semantics-refused",
+      "description": "The terminal verb release does not make release of a legal hold equivalent to payment.release.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "legal.hold.release.1",
+          "hold_id": "hold-449",
+          "matter_id": "matter-2026-13",
+          "custodian_set_digest": "sha256:771d28a286d30a69dc223d01a4f19aa8c58d49332fe4bdd4fce7dced03dbd285",
+          "authorized_by": "legal-ops"
+        },
+        "presented_caid": "caid:1:legal.hold.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "action_type_mismatch"
+      }
+    },
+    {
+      "id": "unknown-authorization-detail-type-refused",
+      "description": "A verifier does not skip an authorization detail type whose semantics it cannot evaluate.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "https://other.example/delegation",
+            "scopes": ["payment.release"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "unknown_authorization_details_type"
+      }
+    },
+    {
+      "id": "malformed-authorization-detail-refused",
+      "description": "An otherwise recognizable detail with an unknown member is refused rather than partially evaluated.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": [],
+            "unrecognized_policy": true
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "malformed_authorization_detail"
+      }
+    },
+    {
+      "id": "non-array-constraints-refused",
+      "description": "A recognized detail with a non-array constraints member is malformed and cannot be partially evaluated.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": {
+              "amount_max": "250.00"
+            }
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "malformed_authorization_detail"
+      }
+    },
+    {
+      "id": "multi-detail-refused",
+      "description": "This version has no multi-detail composition rule and must not evaluate only authorization_details[0].",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": []
+          },
+          {
+            "type": "https://other.example/delegation",
+            "scopes": ["admin.everything"]
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "unsupported_authorization_details_cardinality"
+      }
+    },
+    {
+      "id": "numeric-caid-version-not-a-scope-refused",
+      "description": "payment.release.1 is a CAID type, not a valid Asor scope because its final scope segment starts with a digit.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release.1"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "malformed_scope"
+      }
+    },
+    {
+      "id": "unmapped-family-refused",
+      "description": "A syntactically valid but unprofiled family is not inferred from a similar registry type.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["email.send"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "email.send",
+        "action_object": {
+          "action_type": "email.send.external.1"
+        },
+        "presented_caid": "caid:1:email.send.external.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "unknown_scope_family"
+      }
+    },
+    {
+      "id": "scope-not-covered-refused",
+      "description": "A valid payment scope for another family does not cover payment.release.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.refund"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "scope_not_covered"
+      }
+    },
+    {
+      "id": "terminal-wildcard-adjacent-namespace-refused",
+      "description": "The terminal wildcard pay.* does not cover the adjacent namespace payment.release when the dot boundary is retained.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["pay.*"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "scope_not_covered"
+      }
+    },
+    {
+      "id": "terminal-wildcard-bare-prefix-refused",
+      "description": "The terminal wildcard payment.* does not turn the invalid bare name payment into a covered requested scope.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.*"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "unknown_scope_family"
+      }
+    },
+    {
+      "id": "missing-payment-material-refused",
+      "description": "The family is covered but CAID material validation fails closed when currency is absent.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "caid:1:payment.release.1:jcs-sha256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "invalid_action_object",
+        "caid_reasons": ["missing_material_field:currency"]
+      }
+    },
+    {
+      "id": "caid-mutation-refused",
+      "description": "A byte-valid CAID for another payment object does not cover a mutated amount.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "251.00",
+          "currency": "EUR",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117",
+          "memo": "invoice 4471"
+        },
+        "presented_caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "caid_mismatch"
+      }
+    },
+    {
+      "id": "currency-outside-pinned-snapshot-refused",
+      "description": "Registry v4 pins currency to the 2026-09-17 ISO 4217 snapshot, so CAID validation itself refuses a value outside it.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "NOT-A-CURRENCY",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "invalid_action_object",
+        "caid_reasons": ["mistyped_field:currency"]
+      }
+    },
+    {
+      "id": "iso-currency-outside-profile-subset-refused",
+      "description": "GBP is in the pinned ISO 4217 snapshot, so CAID validation accepts it, but this profile narrows currency to EUR and USD and refuses it.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1",
+          "amount": "250.00",
+          "currency": "GBP",
+          "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+          "payment_instruction_id": "pi-2026-000117"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "invalid_action_object",
+        "caid_reasons": ["external_enum_not_allowed:currency"]
+      }
+    },
+    {
+      "id": "native-chain-unverified-refused",
+      "description": "The companion mapping cannot replace native delegation-chain verification.",
+      "input": {
+        "native_chain_verified": false,
+        "constraints_satisfied": true,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["payment.release"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "payment.release",
+        "action_object": {
+          "action_type": "payment.release.1"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "native_chain_unverified"
+      }
+    },
+    {
+      "id": "native-constraints-unsatisfied-refused",
+      "description": "The mapping does not ignore a native constraint failure.",
+      "input": {
+        "native_chain_verified": true,
+        "constraints_satisfied": false,
+        "authorization_details": [
+          {
+            "type": "agent_delegation",
+            "scopes": ["tool.call"],
+            "constraints": []
+          }
+        ],
+        "requested_scope": "tool.call",
+        "action_object": {
+          "action_type": "tool.call.1"
+        },
+        "presented_caid": "not-evaluated"
+      },
+      "expect": {
+        "decision": "REFUSED",
+        "reason": "constraints_not_satisfied"
+      }
+    }
+  ]
+}
