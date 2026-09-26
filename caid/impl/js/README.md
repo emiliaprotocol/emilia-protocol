@@ -3,8 +3,9 @@
 Pure ESM, `node:crypto` only, zero dependencies. Conforms to `../../DESIGN.md`.
 
 Suite support: `jcs-sha256` only. `cbor-sha256` is defined in the suite
-registry but is not implemented here; this implementation refuses it as
-`unknown_suite`.
+registry but is not implemented here: a `cbor-sha256` CAID parses, and
+`computeCaid` and `verifyCaid` refuse the suite as `unknown_suite`. A suite
+outside the registry is `malformed_caid` at parse.
 
 Scope, stated plainly: CAID carries no trust semantics. A CAID proves that
 artifacts reference the same typed content. It does not prove the action was

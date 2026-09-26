@@ -47,18 +47,20 @@ const maxSafeInteger int64 = 1<<53 - 1
 
 var supportedSuites = map[string]bool{"jcs-sha256": true}
 
-// sha256Suites are the suites defined in the registry that use a SHA-256
-// digest (43 unpadded base64url characters). Used for strict
-// digest-length checking at parse time.
-var sha256Suites = map[string]bool{"jcs-sha256": true, "cbor-sha256": true}
-
-const sha256B64urlLen = 43
+// registeredSuiteDigestOctets is the suite registry (registry/suites.json):
+// each registered suite and the length in octets of its digest. The strict
+// parser refuses any other suite and checks the digest against this length,
+// so every CAID it accepts names a suite some conforming implementation can
+// recompute. A registered suite this implementation does not implement
+// (cbor-sha256) still parses; compute and verify refuse it as unknown_suite.
+// Every registered name matches the draft's suite ABNF (checked by
+// scripts/check-caid-04.mjs), so membership here also enforces that grammar.
+var registeredSuiteDigestOctets = map[string]int{"jcs-sha256": 32, "cbor-sha256": 32}
 
 // Grammar (strict, per DESIGN.md sections 2 and 3).
 var (
 	typeSegmentRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 	typeVersionRe = regexp.MustCompile(`^[1-9][0-9]*$`)
-	suiteRe       = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 	b64urlRe      = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 	amountRe      = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`)
 	digestFieldRe = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
@@ -759,9 +761,10 @@ func ComputeCaid(actionObject interface{}, opts ComputeOptions) ComputeResult {
 // ---------------------------------------------------------------------------
 
 // ParseCaid strict-parses a CAID string. It refuses padding, uppercase
-// in type or suite, empty segments, trailing content, unknown version,
-// and (for known sha256 suites) a digest of the wrong length. Unknown
-// version is a refusal, never a guess.
+// in type or suite, empty segments, trailing content, an unknown version,
+// a suite outside the suite registry, and a digest that does not decode to
+// exactly the suite's digest length or whose final character sets an
+// unused bit. An unknown version or suite is a refusal, never a guess.
 func ParseCaid(input string) ParseResult {
 	refuse := ParseResult{OK: false, Refusals: []string{"malformed_caid"}}
 	parts := strings.Split(input, ":")
@@ -778,13 +781,17 @@ func ParseCaid(input string) ParseResult {
 	if !isValidActionType(actionType) {
 		return refuse
 	}
-	if !suiteRe.MatchString(suite) {
-		return refuse
+	octets, registered := registeredSuiteDigestOctets[suite]
+	if !registered {
+		return refuse // unknown suite
 	}
 	if !b64urlRe.MatchString(digest) {
 		return refuse // refuses padding and junk
 	}
-	if sha256Suites[suite] && len(digest) != sha256B64urlLen {
+	// Strict decoding refuses a final character with a nonzero unused bit
+	// and a length no encoding produces.
+	raw, err := base64.RawURLEncoding.Strict().DecodeString(digest)
+	if err != nil || len(raw) != octets {
 		return refuse
 	}
 	return ParseResult{
@@ -834,7 +841,9 @@ func VerifyCaid(actionObject interface{}, caidString string, opts VerifyOptions)
 		reasons = append(reasons, "action_type_mismatch")
 	}
 
-	// Step 3: recompute under the CAID's suite.
+	// Step 3: recompute under the CAID's suite. The parser admits only
+	// registered suites, so unknown_suite here means a registered suite
+	// this implementation does not implement.
 	canon := Canonicalize(actionObject)
 	if !supportedSuites[parsed.Caid.Suite] {
 		// cbor-sha256 is defined in the registry but not implemented
