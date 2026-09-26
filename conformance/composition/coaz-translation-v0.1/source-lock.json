@@ -54,15 +54,19 @@
     },
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "a7dbd92e25924d2c57e7ef6b3b2f4cb629917262943932a48b7caa5a5ec5fff5"
+      "sha256": "d4b511410d16b3f493d450090a90523496377167b993d4f42efcfd05bc0b8419"
     },
     {
       "path": "caid/registry/action-types.json",
-      "sha256": "e3e1e3052461ad9279b7f38b3df502c2d4e2293aea40636d2da8766f205240e7"
+      "sha256": "2becee2803a94dec1ecffa2977d8519eab2c7926d78223e55337744dd4ee28d8"
+    },
+    {
+      "path": "caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json",
+      "sha256": "9adf5f1aa87926d33923523b20eb11e0e1808ebae4b7d16bc6d0fa190114d525"
     },
     {
       "path": "conformance/composition/coaz-translation-v0.1/run.mjs",
-      "sha256": "46ef7675504ea3ce6d84d891026ce5d7bf6a16541678e158618793894cfd36fd"
+      "sha256": "b968398d0046e8b22a63bc0e76fa7cd2359bc7e2fa347fbd55eee456dd2a18ce"
     },
     {
       "path": "conformance/composition/coaz-translation-v0.1/vectors.json",
