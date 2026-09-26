@@ -116,6 +116,29 @@ describe('EPClient constructor', () => {
     expect(url).toBe('https://example.com/api/health');
   });
 
+  it('strips every trailing slash but preserves interior slashes', () => {
+    const mockFetch = makeFetch({ status: 'ok' });
+    const client = new EPClient({
+      baseUrl: 'https://example.com/path///',
+      fetchImpl: mockFetch as unknown as typeof fetch,
+    });
+    client.health();
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://example.com/path/api/health');
+  });
+
+  it('handles a long non-trailing slash run without backtracking', () => {
+    const mockFetch = makeFetch({ status: 'ok' });
+    const baseUrl = `https://example.com/${'/'.repeat(100_000)}path`;
+    const client = new EPClient({
+      baseUrl,
+      fetchImpl: mockFetch as unknown as typeof fetch,
+    });
+    client.health();
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${baseUrl}/api/health`);
+  });
+
   it('uses a custom base URL', () => {
     const { client, mockFetch } = makeClient({ status: 'ok' });
     const customClient = new EPClient({

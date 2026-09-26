@@ -119,11 +119,14 @@ export class EPClient {
   private readonly fetchImpl: typeof fetch;
 
   constructor(options: EPClientOptions = {}) {
-    this.baseUrl = (
+    const baseUrl = (
       options.baseUrl ??
       (typeof process !== 'undefined' ? process.env['EP_BASE_URL'] : undefined) ??
       DEFAULT_BASE_URL
-    ).replace(/\/+$/, '');
+    );
+    let end = baseUrl.length;
+    while (end > 0 && baseUrl[end - 1] === '/') end--;
+    this.baseUrl = baseUrl.slice(0, end);
 
     this.apiKey =
       options.apiKey ??
