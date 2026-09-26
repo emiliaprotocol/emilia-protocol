@@ -24,7 +24,7 @@ const PINS = {
     'actions/setup-node@v7': 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0',
     'actions/setup-python@v7': 'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0',
     'actions/upload-artifact@v7': 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1',
-    'actions/setup-java@v6': 'actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c  # v6.0.0',
+    'actions/setup-java@v6': 'actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6  # v6.0.1',
     'actions/attest@v4': 'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6  # v4.2.2',
     // ── CodeQL ───────────────────────────────────────────────────────────────
     'github/codeql-action/init@v4': 'github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd  # v4.37.7',

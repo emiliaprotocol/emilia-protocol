@@ -49,7 +49,7 @@ describe('derived-evidence refresh workflow', () => {
     const uses = steps.map((step: { uses?: string }) => step.uses).filter(Boolean);
     expect(uses).toEqual(expect.arrayContaining([
       'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020',
-      'actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c',
+      'actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6',
       'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97',
       'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e',
     ]));
