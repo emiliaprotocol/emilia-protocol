@@ -31,17 +31,29 @@ const REGISTRY_DEFINITIONS = JSON.parse(fs.readFileSync(
   path.resolve(HERE, '../../caid/registry/action-types.json'),
   'utf8',
 )).types;
-const DEFINITIONS = REGISTRY_DEFINITIONS.map((definition: any) => {
-  if (definition.action_type !== 'prior.auth.approve.1') return definition;
-  return {
-    ...definition,
-    required_fields: definition.required_fields.map((field: any) => {
-      if (field.name === 'service_code') return { name: field.name, type: 'enum', values: ['HCPCS:DEMO-0001'] };
-      if (field.name === 'diagnosis_code') return { name: field.name, type: 'enum', values: ['ICD-10-CM:DEMO-0001'] };
-      return field;
-    }),
-  };
-});
+// The registered prior.auth.approve.1 cannot produce a CAID under registry v4:
+// its service_code and diagnosis_code point at external code sets (CPT/HCPCS,
+// ICD-10-CM) with no pinned snapshot, so they refuse whenever present. This
+// synthetic demo therefore uses its own local type under an example-scoped
+// name, with the registered fields and two demo-only inline codes. It is not
+// the registered type and is not interoperable with it (GOVERNANCE.md
+// section 4).
+export const DEMO_ACTION_TYPE = 'example.prior.auth.approve.1';
+const REGISTERED_PRIOR_AUTH = REGISTRY_DEFINITIONS.find(
+  (definition: any) => definition.action_type === 'prior.auth.approve.1',
+);
+const DEMO_DEFINITION = {
+  ...REGISTERED_PRIOR_AUTH,
+  action_type: DEMO_ACTION_TYPE,
+  status: 'local-experimental',
+  summary: 'Synthetic demo approval of a prior authorization; local to this example, not the registered prior.auth.approve.1.',
+  required_fields: REGISTERED_PRIOR_AUTH.required_fields.map((field: any) => {
+    if (field.name === 'service_code') return { name: field.name, type: 'enum', values: ['HCPCS:DEMO-0001'] };
+    if (field.name === 'diagnosis_code') return { name: field.name, type: 'enum', values: ['ICD-10-CM:DEMO-0001'] };
+    return field;
+  }),
+};
+const DEFINITIONS = [...REGISTRY_DEFINITIONS, DEMO_DEFINITION];
 
 export const EVIDENCE_VERSION = 'EP-REGULATORY-MOBILE-EVIDENCE-v1';
 export const TRUST_BUNDLE_VERSION = 'EP-REGULATORY-MOBILE-TRUST-BUNDLE-v1';
@@ -126,7 +138,7 @@ function durableAuditLog() {
 function makeSyntheticAction() {
   return {
     ep_version: '1.0',
-    action_type: 'prior.auth.approve.1',
+    action_type: DEMO_ACTION_TYPE,
     patient_ref: `sha256:${sha256('synthetic-member-reference-0001')}`,
     service_code: 'HCPCS:DEMO-0001',
     diagnosis_code: 'ICD-10-CM:DEMO-0001',
@@ -597,7 +609,7 @@ export async function buildSyntheticRegulatoryDemo() {
   const trustBundle = {
     '@version': TRUST_BUNDLE_VERSION,
     provisioned_out_of_band: true,
-    allowed_action_types: ['prior.auth.approve.1'],
+    allowed_action_types: [DEMO_ACTION_TYPE],
     expected_policy_hash: challenge.authorization_context.policy_hash,
     mobile_profile: profile,
     approver_keys: { [DEVICE_KEY_ID]: approverKeyEntry(profile) },

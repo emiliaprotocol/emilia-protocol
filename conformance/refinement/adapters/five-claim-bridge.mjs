@@ -9,6 +9,10 @@ import {
 import { readFileSync } from "node:fs";
 
 import { computeCaid } from "../../../caid/impl/js/caid.mjs";
+import {
+  activeRegistryDefinition,
+  REGISTRY_ENUM_SNAPSHOTS,
+} from "../../../caid/registry/enum-snapshots.mjs";
 import { verifyAuthorityProofViaDocument } from "../../../lib/authority/document-proof-join.js";
 import {
   evaluateBranchAllocation,
@@ -664,21 +668,9 @@ const RECEIPT_PROGRAM_ACTION = Object.freeze({
   beneficiary_account_hash: RECEIPT_PROGRAM_BENEFICIARY,
   payment_instruction_id: "pi_five_claim_bridge_1",
 });
+// The registered payment.release.1 with its pinned ISO 4217 snapshot.
 const RECEIPT_PROGRAM_DEFINITIONS = Object.freeze([
-  {
-    action_type: "payment.release.1",
-    required_fields: [
-      { name: "amount", type: "amount-string" },
-      {
-        name: "currency",
-        type: "enum",
-        values: ["USD"],
-      },
-      { name: "beneficiary_account", type: "digest" },
-      { name: "payment_instruction_id", type: "string" },
-    ],
-    optional_fields: [],
-  },
+  activeRegistryDefinition("payment.release.1"),
 ]);
 
 function receiptProgramCaidAction(action) {
@@ -695,6 +687,7 @@ function resolveReceiptProgramCaid(action) {
   const result = computeCaid(receiptProgramCaidAction(action), {
     suite: "jcs-sha256",
     definitions: RECEIPT_PROGRAM_DEFINITIONS,
+    enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
   });
   if (!result.caid) throw new Error(result.refusals?.join(",") ?? "caid_failed");
   return result.caid;

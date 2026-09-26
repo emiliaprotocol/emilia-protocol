@@ -89,5 +89,23 @@ export function loadRegistryEnumSnapshots(
   return /** @type {Array<Record<string, any>>} */ (Object.freeze(snapshots));
 }
 
+const CHECKED_IN_REGISTRY = JSON.parse(readFileSync(REGISTRY_URL, 'utf8'));
+
 /** Snapshots pinned by the checked-in registry, loaded once. */
-export const REGISTRY_ENUM_SNAPSHOTS = loadRegistryEnumSnapshots();
+export const REGISTRY_ENUM_SNAPSHOTS = loadRegistryEnumSnapshots(CHECKED_IN_REGISTRY);
+
+/**
+ * The single active checked-in registry definition for an action type. Code
+ * that means a registered type uses this definition with
+ * REGISTRY_ENUM_SNAPSHOTS instead of a same-name local copy.
+ *
+ * @param {string} actionType
+ * @returns {Record<string, any>}
+ */
+export function activeRegistryDefinition(actionType) {
+  const definition = CHECKED_IN_REGISTRY.types.find(
+    (/** @type {any} */ entry) => entry.action_type === actionType && entry.status === 'active',
+  );
+  if (!definition) throw new Error(`CAID registry has no active ${actionType}`);
+  return definition;
+}

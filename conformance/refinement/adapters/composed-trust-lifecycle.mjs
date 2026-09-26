@@ -2,6 +2,7 @@
 // Generated from composed-trust-lifecycle.mts by scripts/build-standalone-runtimes.mjs. Do not edit.
 /* eslint-disable */
 import { computeCaid } from "../../../caid/impl/js/caid.mjs";
+import { activeRegistryDefinition, REGISTRY_ENUM_SNAPSHOTS, } from "../../../caid/registry/enum-snapshots.mjs";
 import { createRemedyMemoryStore, createRemedyProgramKernel, } from "../../../packages/gate/dist/remedy-program.js";
 import { runActionEscrowScenario } from "./action-escrow.mjs";
 import { runAecScenario } from "./aec.mjs";
@@ -74,22 +75,9 @@ function bindExactCaid() {
         payment_instruction_id: "instruction:formal-composed-1",
     }, {
         suite: "jcs-sha256",
-        definitions: [
-            {
-                action_type: "payment.release.1",
-                required_fields: [
-                    { name: "amount", type: "amount-string" },
-                    {
-                        name: "currency",
-                        type: "enum",
-                        values: ["USD"],
-                    },
-                    { name: "beneficiary_account", type: "digest" },
-                    { name: "payment_instruction_id", type: "string" },
-                ],
-                optional_fields: [],
-            },
-        ],
+        // The registered payment.release.1 with its pinned ISO 4217 snapshot.
+        definitions: [activeRegistryDefinition("payment.release.1")],
+        enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
     });
     requireRuntime(typeof result.caid === "string" && typeof result.digest === "string", `CAID issuer refused the exact action: ${JSON.stringify(result)}`);
 }

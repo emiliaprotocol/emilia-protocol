@@ -502,13 +502,21 @@ describe('POST /api/v1/trust-receipts', () => {
     expect((await missingDestination.json()).type).toContain('invalid_payment_destination_hash');
 
     // Registry v4 closes currency against the pinned ISO 4217 snapshot: a
-    // well-formed but unlisted code is refused with the CAID reason.
-    for (const currency of ['ZZZ', 'usd', 'NOT-A-CURRENCY']) {
+    // well-formed code absent from the 2026-09-17 edition (ZZZ, BGN, HRK) is
+    // refused with the CAID reason.
+    for (const currency of ['ZZZ', 'BGN', 'HRK']) {
       const unlisted = await createReceipt(req({ ...body, currency }, 'ept_live_approval'));
       expect(unlisted.status).toBe(400);
       const problem = await unlisted.json();
       expect(problem.type).toContain('invalid_caid_action');
       expect(problem.detail).toContain('mistyped_field:currency');
+    }
+    // A malformed code was already refused before registry v4 and keeps its
+    // invalid_currency error type instead of changing to invalid_caid_action.
+    for (const currency of ['usd', 'NOT-A-CURRENCY', 42]) {
+      const malformed = await createReceipt(req({ ...body, currency }, 'ept_live_approval'));
+      expect(malformed.status).toBe(400);
+      expect((await malformed.json()).type).toContain('invalid_currency');
     }
   });
 

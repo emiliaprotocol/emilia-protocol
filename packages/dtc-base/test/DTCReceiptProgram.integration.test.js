@@ -10,6 +10,7 @@ describe('DTC Base x EMILIA receipt-program kernel', function () {
   async function fixture(label) {
     const gateApi = await import('../../gate/index.js');
     const { computeCaid } = await import('../../../caid/impl/js/caid.mjs');
+    const { activeRegistryDefinition, REGISTRY_ENUM_SNAPSHOTS } = await import('../../../caid/registry/enum-snapshots.mjs');
     const { createReceiptProgramBaseBridge } = await import('../dist/lib/receipt-program-bridge.js');
     const nowMs = Date.parse('2026-07-20T22:00:00.000Z');
     const operationId = `dtc_receipt_program_${label}`;
@@ -23,16 +24,8 @@ describe('DTC Base x EMILIA receipt-program kernel', function () {
       beneficiary_account_hash: beneficiary,
       payment_instruction_id: operationId,
     });
-    const definitions = [{
-      action_type: 'payment.release.1',
-      required_fields: [
-        { name: 'amount', type: 'amount-string' },
-        { name: 'currency', type: 'enum', values: ['USD'] },
-        { name: 'beneficiary_account', type: 'digest' },
-        { name: 'payment_instruction_id', type: 'string' },
-      ],
-      optional_fields: [],
-    }];
+    // The registered payment.release.1 with its pinned ISO 4217 snapshot.
+    const definitions = [activeRegistryDefinition('payment.release.1')];
     const resolveCaid = (observed) => {
       const material = {
         action_type: 'payment.release.1',
@@ -41,7 +34,7 @@ describe('DTC Base x EMILIA receipt-program kernel', function () {
         beneficiary_account: observed.beneficiary_account,
         payment_instruction_id: observed.payment_instruction_id,
       };
-      const computed = computeCaid(material, { suite: 'jcs-sha256', definitions });
+      const computed = computeCaid(material, { suite: 'jcs-sha256', definitions, enumSnapshots: REGISTRY_ENUM_SNAPSHOTS });
       if (!computed.caid) throw new Error(`CAID refused: ${computed.refusals?.join(',')}`);
       return computed.caid;
     };

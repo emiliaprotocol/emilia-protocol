@@ -185,6 +185,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           );
         }
 
+        // A malformed currency keeps the invalid_currency error the general
+        // input validation below has always returned. Only a well-formed code
+        // outside the pinned ISO 4217 snapshot reaches the CAID step and
+        // refuses there as invalid_caid_action.
+        if (body.currency !== undefined
+            && (typeof body.currency !== 'string' || !/^[A-Z]{3}$/.test(body.currency))) {
+          return epProblem(400, 'invalid_currency', 'currency must be a three-letter uppercase ISO-style code');
+        }
+
         // CAID is derived by the server from the same typed material the
         // executor must later observe. A caller-supplied identifier is ignored:
         // CAID equality identifies content but never grants authority.
