@@ -10,13 +10,16 @@
  * re-run. Main now owns them:
  *
  *   - On pull_request and merge_group, `policy` reports their drift in the job
- *     summary and never fails. The checks that produce the drift reports
- *     (check:proof-stats and check:llm-context with --drift-report) still fail
- *     on everything else they verify: a failing measured suite, the security
- *     case, formal and conformance evidence, and every generator assertion.
- *     The one exception is main's own refresh pull request (head branch
- *     REFRESH_BRANCH_PREFIX...), whose whole content is these files: there a
- *     stale file fails, so auto-merge lands only content CI re-derived itself.
+ *     summary and does not fail on it. The checks that produce the drift
+ *     reports (check:proof-stats and check:llm-context with --drift-report)
+ *     still fail on everything else they verify: a failing measured suite, the
+ *     security case, formal and conformance evidence, and every generator
+ *     assertion. Two cases stay strict, because a pull request that writes
+ *     these files must write what the writers produce (hand-edited public
+ *     evidence must not merge): a pull request that changes one of the files
+ *     fails if that file is stale (--touched-base), and main's own refresh
+ *     pull request (head branch REFRESH_BRANCH_PREFIX...) fails on any stale
+ *     file, so auto-merge lands only content CI re-derived itself.
  *   - .github/workflows/volatile-evidence-refresh.yml runs on every push to
  *     main and daily. It regenerates the five files with the official writers
  *     in an unprivileged job, and a privileged job publishes them as ONE open
@@ -32,12 +35,13 @@
  * Usage:
  *   node scripts/ci/volatile-evidence.mjs policy --event <name> --ref <ref>
  *     (--report <drift.json> --report <drift.json> | --stale <json array>)
- *     [--head-ref <branch>] [--sha <commit>] [--repository <owner/name>]
+ *     [--head-ref <branch>] [--touched-base <rev>] [--sha <commit>] [--repository <owner/name>]
  *   node scripts/ci/volatile-evidence.mjs collect --source-sha <sha> --out <dir> [--github-output <file>]
  *   node scripts/ci/volatile-evidence.mjs request --bundle <dir> --source-sha <sha> \
  *     --repository <owner/name> --run-url <url> --out <file> [--pr-body-out <file>] [--github-output <file>]
  */
 
+import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -114,9 +118,29 @@ export function mergeDriftReports(reports) {
 }
 
 /**
+ * The volatile files a pull request changes: `git diff base..HEAD` limited to
+ * VOLATILE_EVIDENCE. On a pull_request run HEAD is GitHub's merge commit and
+ * its first parent (HEAD^1) is the base.
+ *
+ * @param {string} base
+ * @param {string} [repo]
+ * @returns {string[]}
+ */
+export function touchedVolatile(base, repo = process.cwd()) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9^~._/-]*$/.test(base)) throw new Error(`refusing base revision ${JSON.stringify(base)}`);
+  const output = execFileSync(
+    'git',
+    ['diff', '--name-only', '-z', '--no-renames', base, 'HEAD', '--', ...VOLATILE_EVIDENCE],
+    { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+  return staleList(output.split('\0').filter(Boolean));
+}
+
+/**
  * How a run treats drift in the five files.
  *   strict   main's refresh pull request: stale fails.
- *   advisory any other pull request, merge-queue candidates, other refs.
+ *   advisory any other pull request (except a stale file it changes itself),
+ *            merge-queue candidates, other refs.
  *   grace    main: stale fails after GRACE_HOURS.
  *
  * @param {{ event: string, ref: string, headRef?: string }} run
@@ -241,17 +265,26 @@ export function githubClient({ token, repository, apiUrl = 'https://api.github.c
 }
 
 /**
- * @param {{ mode: string, stale: string[], fields: string[], decision?: GraceDecision }} input
+ * @param {{ mode: string, stale: string[], fields: string[], touched?: string[], decision?: GraceDecision }} input
  * @returns {string}
  */
-export function summaryMarkdown({ mode, stale, fields, decision }) {
+export function summaryMarkdown({ mode, stale, fields, touched = [], decision }) {
   const lines = ['### Volatile evidence', ''];
   lines.push('| File | State |', '| --- | --- |');
-  for (const path of VOLATILE_EVIDENCE) lines.push(`| \`${path}\` | ${stale.includes(path) ? 'stale' : 'current'} |`);
+  for (const path of VOLATILE_EVIDENCE) {
+    const state = stale.includes(path) ? 'stale' : 'current';
+    lines.push(`| \`${path}\` | ${state}${touched.includes(path) ? ' (changed by this pull request)' : ''} |`);
+  }
   lines.push('');
   if (fields.length > 0) lines.push(`Changed \`lib/proof-stats.json\` fields: ${fields.map((field) => `\`${field}\``).join(', ')}.`, '');
   if (stale.length === 0) {
     lines.push('All five files match what the official writers produce for this commit.');
+  } else if (mode === 'advisory' && stale.some((path) => touched.includes(path))) {
+    lines.push(
+      'Failing: this pull request changes a volatile file to something the writers do not produce.',
+      'Drop that change (main regenerates these files after merge) or regenerate it exactly',
+      '(`npm run sync:proof-stats`, then `npm run sync:llm-context`).',
+    );
   } else if (mode === 'advisory') {
     lines.push(
       'Advisory only; this never fails the check. Main regenerates these files after merge',
@@ -267,13 +300,23 @@ export function summaryMarkdown({ mode, stale, fields, decision }) {
 }
 
 /**
- * @param {{ mode: 'strict' | 'advisory' | 'grace', stale: string[], sha?: string,
+ * `touched` lists the volatile files the pull request itself changes; in
+ * advisory mode a stale one of those fails.
+ *
+ * @param {{ mode: 'strict' | 'advisory' | 'grace', stale: string[], touched?: string[], sha?: string,
  *   client?: ReturnType<typeof githubClient>, now?: Date }} input
  * @returns {Promise<{ exitCode: number, decision?: GraceDecision, annotation: string }>}
  */
-export async function evaluatePolicy({ mode, stale, sha, client, now = new Date() }) {
+export async function evaluatePolicy({ mode, stale, touched = [], sha, client, now = new Date() }) {
   if (stale.length === 0) return { exitCode: 0, annotation: '' };
   const files = stale.join(', ');
+  const wrong = stale.filter((path) => touched.includes(path));
+  if (mode === 'advisory' && wrong.length > 0) {
+    return {
+      exitCode: 1,
+      annotation: `::error title=Changed volatile evidence is not current::This pull request changes ${wrong.join(', ')}, but not to what the writers produce for the merge commit. Drop the change (main regenerates these files) or regenerate it exactly.`,
+    };
+  }
   if (mode === 'advisory') {
     return { exitCode: 0, annotation: `::notice title=Volatile evidence drift (advisory)::${files} differ from the writers' output; main refreshes them after merge.` };
   }
@@ -395,7 +438,14 @@ export async function main(argv, { env = process.env, fetchImpl = fetch, now = n
     const merged = reports.length > 0
       ? mergeDriftReports(reports.map((file) => JSON.parse(readFileSync(file, 'utf8'))))
       : { stale: staleList(JSON.parse(staleJson)), fields: [] };
-    const mode = policyMode({ event: one(options, 'event'), ref: one(options, 'ref'), headRef: one(options, 'head-ref') });
+    const event = one(options, 'event');
+    const mode = policyMode({ event, ref: one(options, 'ref'), headRef: one(options, 'head-ref') });
+    const touchedBase = one(options, 'touched-base');
+    // Only a pull request's own changes count; a merge-queue candidate may be
+    // stale only because of the pull requests queued ahead of it.
+    const touched = mode === 'advisory' && event === 'pull_request' && touchedBase
+      ? touchedVolatile(touchedBase, one(options, 'repo') || process.cwd())
+      : [];
     const client = mode === 'grace' && merged.stale.length > 0
       ? githubClient({
         token: env.GH_TOKEN || env.GITHUB_TOKEN || '',
@@ -404,8 +454,8 @@ export async function main(argv, { env = process.env, fetchImpl = fetch, now = n
         fetchImpl,
       })
       : undefined;
-    const result = await evaluatePolicy({ mode, stale: merged.stale, sha: one(options, 'sha'), client, now });
-    const summary = summaryMarkdown({ mode, stale: merged.stale, fields: merged.fields, decision: result.decision });
+    const result = await evaluatePolicy({ mode, stale: merged.stale, touched, sha: one(options, 'sha'), client, now });
+    const summary = summaryMarkdown({ mode, stale: merged.stale, fields: merged.fields, touched, decision: result.decision });
     if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, summary);
     console.log(summary);
     if (result.annotation) console.log(result.annotation);

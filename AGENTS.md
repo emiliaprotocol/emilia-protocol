@@ -40,9 +40,10 @@ Edit `docs/ai/context-source.v1.json` or the underlying evidence.
 Those four files and `lib/proof-stats.json` are volatile evidence that `main`
 regenerates after merge (`.github/workflows/volatile-evidence-refresh.yml`).
 Do not regenerate or commit them in a pull request; CI reports their drift
-without failing. The one exception is a change that adds or removes a security
-claim, which must commit `lib/proof-stats.json` refreshed with
-`npm run sync:proof-stats -- --bootstrap-derived-evidence`. Strict derived
+without failing, but a pull request that changes one of them must change it to
+exactly what the writers produce. The one required refresh is a change that
+adds or removes a security claim, which must commit `lib/proof-stats.json`
+regenerated with `npm run sync:proof-stats`. Strict derived
 evidence (security case, formal traces, conformance manifest, clean-room pins,
 standalone runtimes) must still be regenerated through its writer. See
 `CONTRIBUTING.md#volatile-evidence`.

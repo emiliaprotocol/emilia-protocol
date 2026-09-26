@@ -781,9 +781,10 @@ jobs:
     # and the four LLM context artifacts are regenerated on main by
     # volatile-evidence-refresh.yml. Their byte-equality checks here only
     # report drift, and the policy step turns that into a verdict: advisory on
-    # pull_request and merge_group (it never fails), strict on main's own
-    # refresh pull request, and on main a failure once the drift is older than
-    # one scheduled refresh cycle. Everything else the two checks verify (a
+    # pull_request and merge_group, except that a pull request which changes
+    # one of the files must change it to exactly what the writers produce;
+    # strict on main's own refresh pull request; and on main a failure once
+    # the drift is older than one scheduled refresh cycle. Everything else the two checks verify (a
     # passing measured suite, the security case, formal and conformance
     # evidence, every generator assertion) still fails the job. The security
     # case, formal traces, conformance manifest and clean-room pins stay
@@ -798,6 +799,10 @@ jobs:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge commit and its first parent: the policy step diffs them
+          # to find the volatile files a pull request changes itself.
+          fetch-depth: 2
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           # check:proof-stats executes the full suite, including scripts whose
@@ -855,6 +860,7 @@ jobs:
           --event "$EVENT_NAME"
           --ref "$GITHUB_REF"
           --head-ref "$HEAD_REF"
+          --touched-base HEAD^1
           --sha "$GITHUB_SHA"
           --repository "$GITHUB_REPOSITORY"
       - name: Check standards observatory snapshot freshness

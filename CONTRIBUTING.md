@@ -117,7 +117,8 @@ runs the full lane, and so does every pull request while `main`'s latest push
 run has not passed the security case.
 `node scripts/ci/change-lane.mjs --event local --base origin/main` prints the
 classifier's lane and reason before you push. Label a pull request
-`evidence-autopilot` to have CI regenerate the derived evidence files; once the
+`evidence-autopilot` to have CI regenerate the strict derived evidence files
+(formal traces, conformance manifest, security case); once the
 autopilot's GitHub App is provisioned it commits them back (Dependabot pull
 requests get this automatically). The publisher checks only the bundle's shape
 and transit integrity; the required checks on the new commit decide whether the
@@ -136,7 +137,9 @@ What this means for a pull request:
 
 - Do not regenerate or commit these files. On `pull_request` and `merge_group`
   runs, the `language-governance` job reports their drift in its job summary
-  and never fails on it. The LLM context tests and the public-claim audit read
+  and does not fail on it. If a pull request does change one of them, that
+  file must be exactly what the writers produce for the merge commit, or the
+  job fails: hand-edited public evidence does not merge. The LLM context tests and the public-claim audit read
   the generator's output for your sources, and pinned proof counts are derived
   from the sources, so they do not depend on these files being current.
 - The strict derived evidence is unchanged: `security/security-case.json`, the
@@ -144,9 +147,10 @@ What this means for a pull request:
   standalone runtimes must still be current in your pull request.
 - One exception: a pull request that adds or removes a security claim must
   refresh `lib/proof-stats.json`, because `/proof` refuses to build when the
-  file's claim taxonomy misses a claim. Commit your change, then run
-  `npm run sync:proof-stats -- --bootstrap-derived-evidence` (it re-emits the
-  security case and keeps the recorded test counts) and commit the result.
+  file's claim taxonomy misses a claim. Commit your change, run
+  `npm run sync:proof-stats` (it re-emits the security case and measures the
+  suite) and commit the result; it must match the merge commit exactly, so
+  regenerate it again if `main` moves.
 
 After a merge, `.github/workflows/volatile-evidence-refresh.yml` regenerates the
 five files on `main` with the official writers and opens (or supersedes) one
