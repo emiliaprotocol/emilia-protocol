@@ -4,6 +4,19 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 0.28.0 (2026-09-25)
+
+### Security
+
+- Stripe refunds now require a bounded, business-assigned `operation_id` in the
+  approved action. The adapter derives the same Stripe idempotency key from
+  that ID across fresh receipts and retries, while distinct partial refunds
+  retain distinct keys. A missing or changed ID refuses provider dispatch.
+- This closes the demonstrated mock-provider lost-response/fresh-receipt
+  duplicate-refund path. Callers still need a durable operation journal and
+  authenticated reconciliation outside Stripe's finite idempotency window;
+  these tests are not evidence of a live Stripe or PostgreSQL run.
+
 ## 0.27.0 (2026-09-25)
 
 ### Security
