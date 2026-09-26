@@ -18,8 +18,15 @@
  * carries SKIP_CONDITION, and it derives that set from ci.yml at run time.
  * Pushes to main and merge groups always run the full lane.
  *
- * Usage (CI):
- *   node scripts/ci/change-lane.mjs --event pull_request --github-output "$GITHUB_OUTPUT"
+ * In CI this file is never taken from the pull request: the `changes` job in
+ * ci.yml runs the copy (and self-test) from the base commit, and sends any
+ * pull request that touches .github/ or scripts/ci/ to the full lane before
+ * a classifier runs at all. A change to the classifier is therefore
+ * classified by the previous classifier, which cannot be edited to pass
+ * itself.
+ *
+ * Usage (CI, from a copy of the base commit's file):
+ *   node "$RUNNER_TEMP/lane/change-lane.mjs" --event pull_request --github-output <file>
  * Usage (local):
  *   node scripts/ci/change-lane.mjs --event local --base origin/main --head HEAD
  */
@@ -32,8 +39,13 @@ import { pathToFileURL } from 'node:url';
 export const DOCS_LANE = 'docs';
 export const FULL_LANE = 'full';
 
-/** The exact job-level condition that marks a ci.yml job as docs-lane-skipped. */
-export const SKIP_CONDITION = "needs.changes.outputs.lane != 'docs'";
+/**
+ * The exact job-level condition that marks a ci.yml job as docs-lane-skipped.
+ * It names the event as well as the lane, so a job is skipped only on a
+ * pull_request run: pushes, merge groups and manual runs execute it whatever
+ * the `changes` job reports.
+ */
+export const SKIP_CONDITION = "(github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs')";
 
 /** Directories whose prose files are docs-lane candidates. */
 export const DOCS_ROOTS = ['docs/', 'standards/', 'papers/'];
@@ -57,14 +69,14 @@ export const GENERATED_ROOT_PROSE = new Set(['AI_CONTEXT.md']);
 
 /**
  * scripts/ checkers whose job is to read prose (standards packets, public
- * claims, conformance doc counts, language, LLM context, proof statistics,
- * observatory, docs secrets). They run in jobs the docs lane keeps, so their references to
+ * claims, conformance doc counts, artifact lifecycle tags, language, LLM
+ * context, proof statistics, observatory, docs secrets). They run in jobs the docs lane keeps, so their references to
  * docs/ and standards/ are exercised on every docs-lane run and do not bind a
  * path to the full lane. `reachableKeptCheckers` re-proves on every run that
  * no docs-lane-skipped job reaches one of them; if one does, the lane is full.
  */
 export const KEPT_CHECKER =
-  /^scripts\/(?:check-(?:ae-challenge-\d+|authorization-receipts-\d+|bounded-capability-\d+|caid-\d+|model-to-matter-\d+|grace-[a-z0-9-]+|emergency-authority-freeze-drafts|standards-staged|authority-claims|conformance-doc-counts|docs-secrets|language-governance|preprint-sync|public-conformance-claims|repository-boundary)|build-standards-observatory|generate-llm-context|generate-proof-stats|gov-readiness-check)\.(?:mjs|mts|js|ts)$/;
+  /^scripts\/(?:check-(?:ae-challenge-\d+|authorization-receipts-\d+|bounded-capability-\d+|caid-\d+|model-to-matter-\d+|grace-[a-z0-9-]+|emergency-authority-freeze-drafts|standards-staged|artifact-lifecycle|authority-claims|conformance-doc-counts|docs-secrets|language-governance|preprint-sync|public-conformance-claims|repository-boundary)|build-standards-observatory|generate-llm-context|generate-proof-stats|gov-readiness-check)\.(?:mjs|mts|js|ts)$/;
 
 /**
  * Tracked trees whose consumers are jobs the docs lane keeps: the vitest
@@ -99,6 +111,16 @@ const TOP_LEVEL = '(docs|standards|papers)';
 const SEGMENT = '[A-Za-z0-9_.@+-]+';
 
 /**
+ * Every segment of a docs-lane candidate must be made of these characters.
+ * Reference extraction can only see paths spelled with them, and tree parsers
+ * elsewhere in CI (verify-reproducible-package.mjs reads `git ls-tree` line
+ * by line) reject line terminators, so a path with a newline, carriage
+ * return, U+2028, a space or any non-ASCII character always runs the full
+ * lane.
+ */
+export const PATH_SEGMENT = new RegExp(`^${SEGMENT}$`);
+
+/**
  * @param {string} path
  * @returns {string}
  */
@@ -114,7 +136,8 @@ function extensionOf(path) {
  */
 export function isDocsCandidate(path) {
   if (typeof path !== 'string' || path.length === 0) return false;
-  if (path.includes('\\') || path.split('/').some((part) => part === '..' || part === '.' || part === '')) {
+  const parts = path.split('/');
+  if (parts.some((part) => part === '..' || part === '.' || !PATH_SEGMENT.test(part))) {
     return false;
   }
   if (!path.includes('/')) {
@@ -291,29 +314,57 @@ function nonSpace(text, from, step) {
 }
 
 /**
- * The nearest unclosed '(' or '[' before `index` (within 400 characters).
- * Tells join(ROOT, 'docs') apart from ['docs', 'tests'].
+ * The index of the nearest unclosed '(', '[' or '{' before `index` (within
+ * 400 characters), or -1. Tells join(ROOT, 'docs') apart from
+ * ['docs', 'tests'] and []string{"docs"}.
  *
  * @param {string} text
  * @param {number} index
- * @returns {string}
+ * @returns {number}
  */
-function enclosingOpener(text, index) {
+function enclosingOpenerIndex(text, index) {
   let parens = 0;
   let brackets = 0;
+  let braces = 0;
   for (let i = index - 1; i >= 0 && i >= index - 400; i -= 1) {
     const c = text[i];
     if (c === ')') parens += 1;
     else if (c === ']') brackets += 1;
+    else if (c === '}') braces += 1;
     else if (c === '(') {
-      if (parens === 0) return '(';
+      if (parens === 0) return i;
       parens -= 1;
     } else if (c === '[') {
-      if (brackets === 0) return '[';
+      if (brackets === 0) return i;
       brackets -= 1;
+    } else if (c === '{') {
+      if (braces === 0) return i;
+      braces -= 1;
     }
   }
-  return '';
+  return -1;
+}
+
+/** Words after which '[' opens a list rather than indexing a value. */
+const LIST_KEYWORDS = new Set(['in', 'of', 'return', 'yield', 'await', 'case', 'else', 'and', 'or', 'not', 'is', 'from', 'default']);
+
+/**
+ * Whether the '[' at `at` opens a list literal (['docs']) rather than a
+ * subscript (v["docs"], rows[0]["docs"], call()["docs"]).
+ *
+ * @param {string} text
+ * @param {number} at
+ * @returns {boolean}
+ */
+function opensListLiteral(text, at) {
+  let i = at - 1;
+  while (i >= 0 && /\s/.test(text[i])) i -= 1;
+  if (i < 0) return true;
+  if (!/[A-Za-z0-9_$)\]]/.test(text[i])) return true;
+  if (!/[A-Za-z0-9_$]/.test(text[i])) return false;
+  let start = i;
+  while (start > 0 && /[A-Za-z0-9_$]/.test(text[start - 1])) start -= 1;
+  return LIST_KEYWORDS.has(text.slice(start, i + 1));
 }
 
 /**
@@ -354,6 +405,9 @@ export function extractProseReferences(path, text, rootProse = []) {
   //    join(ROOT, 'docs'), join(ROOT, 'standards', 'staged', name) or
   //    os.path.join(root, "papers"). Literal trailing segments narrow the
   //    reference; the first non-literal argument leaves it directory-wide.
+  //    An element of an array or list literal (['docs', 'standards'],
+  //    []string{"papers"}) binds the whole directory: such lists are how
+  //    walkers such as check-artifact-lifecycle.mjs enumerate their roots.
   if (isCode) {
     const quoted = new RegExp(`(['"\`])((?:\\.{1,2}/)*)${TOP_LEVEL}/?\\1`, 'g');
     for (const match of text.matchAll(quoted)) {
@@ -367,8 +421,17 @@ export function extractProseReferences(path, text, rootProse = []) {
         refs.add(match[3]);
         continue;
       }
-      if (before !== '(' && before !== ',') continue;
-      if (enclosingOpener(text, start) !== '(') continue;
+      if (before !== '(' && before !== ',' && before !== '[' && before !== '{') continue;
+      const openerAt = enclosingOpenerIndex(text, start);
+      const opener = openerAt < 0 ? '' : text[openerAt];
+      if (opener === '[' || opener === '{') {
+        // A list element, unless it is a mapping key ({'docs': x}) or a
+        // subscript (v["docs"]).
+        const key = nonSpace(text, start + match[0].length, 1) === ':';
+        if (!key && (opener === '{' || opensListLiteral(text, openerAt))) refs.add(match[3]);
+        continue;
+      }
+      if (opener !== '(') continue;
       let cursor = start + match[0].length;
       let full = match[3];
       for (;;) {
@@ -630,8 +693,10 @@ export function run(argv, cwd = process.cwd()) {
     '',
   ].join('\n');
   process.stdout.write(`${summary}\n`);
-  if (options['github-output']) appendFileSync(options['github-output'], `lane=${decision.lane}\n`);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
+  // The lane is written last: if anything above throws, the output stays
+  // empty and every gated job reads that as the full lane.
+  if (options['github-output']) appendFileSync(options['github-output'], `lane=${decision.lane}\n`);
   return decision;
 }
 

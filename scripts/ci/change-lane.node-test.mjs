@@ -66,6 +66,29 @@ test('prose candidates: docs, standards and papers prose plus root markdown only
   }
 });
 
+test('prose candidates: a segment outside [A-Za-z0-9_.@+-] is never prose', () => {
+  // Reference extraction cannot see such names, and `git ls-tree` parsers in
+  // the security case reject line terminators, so they must run everything.
+  for (const path of [
+    'docs/protocol/new\nfile.md',
+    'docs/protocol/new\rfile.md',
+    'docs/protocol/new\u2028file.md',
+    'docs/protocol/new\u2029file.md',
+    'docs/protocol/new file.md',
+    'docs/pr\u00f6tocol/x.md',
+    'docs/protocol/caf\u00e9.md',
+    'standards/staged/\tx.md',
+    'docs\\x.md',
+    'README\n.md',
+  ]) {
+    assert.equal(isDocsCandidate(path), false, JSON.stringify(path));
+    const decision = classify([modified(path)], audit());
+    assert.equal(decision.lane, FULL_LANE, JSON.stringify(path));
+    assert.ok(decision.reasons[0].endsWith('not a prose path'), decision.reasons[0]);
+  }
+  assert.equal(isDocsCandidate('docs/release@1.2+build_x-y.md'), true);
+});
+
 test('audited sources: code a skipped job may run, not trees only kept jobs read', () => {
   for (const path of [
     'packages/gate/src/index.ts',
@@ -89,6 +112,7 @@ test('audited sources: code a skipped job may run, not trees only kept jobs read
     'standards/aiuc/incident-fields-v0/validate.selftest.mjs',
     'scripts/check-standards-staged.mjs',
     'scripts/check-ae-challenge-08.mjs',
+    'scripts/check-artifact-lifecycle.mjs',
     'scripts/generate-proof-stats.mts',
     'integrations/github-merge-gate-action/tests/merge-gate.node-test.mjs',
     '.gitleaks.toml',
@@ -118,11 +142,26 @@ test('references: file paths, directory operands and variable roots bind', () =>
   assert.deepEqual(refs('lib/a.ts', "readFileSync('README.md')", ['README.md']), ['README.md']);
 });
 
-test('references: URLs, routes inside longer paths, arrays and prose do not bind', () => {
+test('references: array and list elements bind the whole directory', () => {
+  const refs = (path, text) => [...extractProseReferences(path, text)].sort();
+  // scripts/check-artifact-lifecycle.mjs walks its roots from such a list.
+  assert.deepEqual(refs('lib/a.ts', "const keywords = ['docs', 'standards'];"), ['docs', 'standards']);
+  assert.deepEqual(refs('lib/a.mjs', "  documentationDirectories = ['docs', 'standards', 'PIPs'],"), ['docs', 'standards']);
+  assert.deepEqual(refs('lib/a.ts', "for (const d of ['papers']) walk(d);"), ['papers']);
+  assert.deepEqual(refs('tool.py', 'for root in ["docs", "standards"]:'), ['docs', 'standards']);
+  assert.deepEqual(refs('tool.py', 'ROOTS = {"papers", "docs"}'), ['docs', 'papers']);
+  assert.deepEqual(refs('cmd/main.go', 'roots := []string{"standards"}'), ['standards']);
+  assert.deepEqual(refs('lib/a.ts', "walk(['standards', 'docs'])"), ['docs', 'standards']);
+  // A subscript or a mapping key is not a list element.
+  assert.deepEqual(refs('tool.py', 'digest(v["docs"], v["opts"])'), []);
+  assert.deepEqual(refs('lib/a.ts', "rows[0]['docs'] + call()['standards']"), []);
+  assert.deepEqual(refs('tool.py', "counts = {'docs': 1, 'papers': 2}"), []);
+});
+
+test('references: URLs, routes inside longer paths and prose do not bind', () => {
   const refs = (path, text, root = []) => [...extractProseReferences(path, text, root)];
   assert.deepEqual(refs('lib/a.ts', "fetch('https://emiliaprotocol.ai/docs/api')"), []);
   assert.deepEqual(refs('lib/a.ts', "readFileSync('apps/x/docs/y.md')"), []);
-  assert.deepEqual(refs('lib/a.ts', "const keywords = ['docs', 'standards'];"), []);
   assert.deepEqual(refs('lib/a.ts', '// every standards effort in the landscape'), []);
   assert.deepEqual(refs('lib/a.ts', 'meta: { docs: { description: "x" } }'), []);
   assert.deepEqual(refs('cmd/main.go', 'Documents []string `json:"docs"`'), []);
@@ -253,16 +292,23 @@ test('end to end on a pull_request merge commit, failing closed on anything odd'
     writeFileSync(join(repo, path), text);
   };
   const output = join(repo, '..', `${repo.split('/').pop()}-output`);
-  const lane = (args, expectedOutput) => {
+  // run() appends to GITHUB_STEP_SUMMARY when it is set; in CI that would
+  // put these fixture decisions in the job summary above the real one.
+  const lane = (args, expectedOutput, summary) => {
     writeFileSync(output, '');
     const originalWrite = process.stdout.write;
+    const originalSummary = process.env.GITHUB_STEP_SUMMARY;
     process.stdout.write = () => true;
+    if (summary === undefined) delete process.env.GITHUB_STEP_SUMMARY;
+    else process.env.GITHUB_STEP_SUMMARY = summary;
     try {
       const decision = run([...args, '--github-output', output], repo);
       assert.equal(readFileSync(output, 'utf8'), expectedOutput ?? `lane=${decision.lane}\n`);
       return decision;
     } finally {
       process.stdout.write = originalWrite;
+      if (originalSummary === undefined) delete process.env.GITHUB_STEP_SUMMARY;
+      else process.env.GITHUB_STEP_SUMMARY = originalSummary;
     }
   };
   const mergePullRequest = (branch, edit) => {
@@ -296,12 +342,21 @@ test('end to end on a pull_request merge commit, failing closed on anything odd'
 
     mergePullRequest('prose', () => write('docs/free.md', 'free, edited\n'));
     assert.equal(lane(['--event', 'pull_request']).lane, DOCS_LANE);
+    // The lane is written last: a summary that cannot be written throws
+    // before it, and the empty output reads as the full lane.
+    assert.throws(() => lane(['--event', 'pull_request'], '', tmpdir()), /EISDIR|illegal operation/);
+    assert.equal(readFileSync(output, 'utf8'), '');
     assert.equal(lane(['--event', 'local', '--base', 'main', '--head', 'prose']).lane, DOCS_LANE);
     assert.equal(lane(['--event', 'push']).lane, FULL_LANE);
     assert.equal(lane(['--event', 'merge_group']).lane, FULL_LANE);
 
     mergePullRequest('bound', () => write('docs/bound.md', 'bound, edited\n'));
     assert.equal(lane(['--event', 'pull_request']).lane, FULL_LANE);
+
+    mergePullRequest('newline', () => write('docs/new\nline.md', 'free\n'));
+    const newline = lane(['--event', 'pull_request']);
+    assert.equal(newline.lane, FULL_LANE);
+    assert.match(newline.reasons[0], /not a prose path/);
 
     mergePullRequest('code', () => write('lib/code.ts', 'export const x = 1;\n'));
     assert.equal(lane(['--event', 'pull_request']).lane, FULL_LANE);
