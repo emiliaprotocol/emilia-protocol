@@ -1255,36 +1255,71 @@ the regression tests use a mock provider, not live Stripe or PostgreSQL.
 
 For refunds that must survive a lost Stripe response or process restart, use the
 **opt-in** `@emilia-protocol/gate/adapters/stripe-refund-durable` path. Build
-Gate with `createStripeDurableRefundManifest()`; its receipt must bind the
-connector's tenant and environment, the Stripe account returned by the trusted
-account probe, the payment intent, the amount, and the stable business-system
-operation ID. The claim's `tenant_id` is also the tenant Gate reads for receipt
-consumption scope and for a pinned business-authorization tenant, so when
-business authorization is configured its pinned tenant must equal the connector
-tenant. Configure `createStripeRefundDurableStore()` with the existing
-Proposal-to-Effect PostgreSQL attempt tables (the exported
-`PROPOSAL_TO_EFFECT_POSTGRES_DDL` is sufficient; recovery reads the attempt by
-its deterministic binding and does not need `lookup_attempt`), separate
-executor/recovery roles, and a recovery authorization callback. Supply a server-side `resolve_operation` that reads an
-immutable refund job, not agent-provided payment details. The connector also
-requires a server-only metadata HMAC key; retain that same key for the entire
-recovery window. Key rotation without a retained prior key leaves an uncertain
-attempt unreconciled. Keep the PTE operation row at least as long as duplicate
-submission remains possible, including after Stripe's idempotency cache expires.
-The Stripe client must probe, create, and list under the same account; a
-platform client that silently switches to a Connect account for only one call
-is not supported.
+Gate with `createStripeDurableRefundManifest()`. Its refund entry has its own
+action type, `stripe.refund.durable.create` (exported as
+`STRIPE_REFUND_DURABLE_ACTION_TYPE`), and its receipt must bind that action
+type, the connector's tenant and environment, the Stripe account returned by
+the trusted account probe, the payment intent, the amount, and the stable
+business-system operation ID. Mint approvals for that action type. The claim's
+`tenant_id` is also the tenant Gate reads for receipt consumption scope and for
+a pinned business-authorization tenant, so when business authorization is
+configured its pinned tenant must equal the connector tenant. Configure
+`createStripeRefundDurableStore()` with the existing Proposal-to-Effect
+PostgreSQL attempt tables (the exported `PROPOSAL_TO_EFFECT_POSTGRES_DDL` is
+sufficient; the connector reads the attempt by its deterministic binding and
+does not need `lookup_attempt`), separate executor/recovery roles, and a
+recovery authorization callback. Supply a server-side `resolve_operation` that
+reads an immutable refund job, not agent-provided payment details. The
+connector reads each job field once into a frozen snapshot, validates that
+snapshot, and uses only the snapshot afterwards. The connector also requires a
+server-only metadata HMAC key; retain that same key for the entire recovery
+window. Key rotation without a retained prior key leaves an uncertain attempt
+unreconciled. The Stripe client must probe, create, and list under the same
+account; a platform client that silently switches to a Connect account for only
+one call is not supported.
+
+Because the action types differ, one approval cannot be spent on both refund
+paths: the legacy `guardStripeMutation()` refund path refuses a durable
+approval, and this connector refuses a legacy one. The durable manifest keeps
+the legacy refund selector, so a legacy refund call sent to a durable Gate is
+refused rather than passed through as unguarded. Do not also serve refunds for
+an account under this profile through the legacy path: two approvals minted
+separately, one per path, still produce two refunds, because legacy refunds
+carry no metadata this connector can find and their idempotency keys differ.
 
 `guardStripeRefundDurable()` records the attempt before Stripe entry and makes
 at most one provider-entry attempt per operation when all refund writes use
 this covered path, the PTE store is configured as described, and each Stripe
 account belongs to one tenant and one environment label for this profile. The
-store and idempotency key are tenant- and environment-scoped: pointing two
-tenant or environment configurations at the same Stripe account does not
-deduplicate the same physical refund job across them. One approval cannot be
-spent under both, because it binds tenant and environment, but two separately
-minted approvals can. A fresh receipt or OAuth token cannot turn a lost
-response into a second create call.
+store and idempotency key are tenant- and environment-scoped. One approval
+cannot be spent under two namespaces, because it binds tenant and environment,
+but two separately minted approvals can reach both. A fresh receipt or OAuth
+token cannot turn a lost response into a second create call.
+An operation that already has an attempt reports that attempt: `REFUSED` /
+`operation_closed_released` when a Gate refusal before Stripe released it,
+`COMMITTED` / `operation_already_committed` when it is done, and
+`INDETERMINATE` / `operation_already_reserved` only while it is in flight or
+uncertain. None of these calls Stripe again.
+
+Before the first `refunds.create` for an operation, the connector lists the
+payment intent's refunds (one page of up to 100) and classifies them by the
+same signed-tag and match rules recovery uses. A single exact match commits
+from that refund without creating one (`provider_effect_already_present`). A
+conflicting, ambiguous, incomplete, or unavailable view leaves the attempt
+`INDETERMINATE` and does not create; it is never released. This catches a
+refund whose attempt row is missing: a store restored from a backup taken
+before the attempt commits from the existing refund, and a second tenant or
+environment configuration on the same account is held, because the first
+configuration's refund carries this operation ID. The lookup is not atomic with
+the create. Two setups that each lack the other's attempt row and create at the
+same instant can both see no refund and both create; Stripe's idempotency key
+collapses that race only within one tenant and environment, and only while
+Stripe retains the key. The lookup only sees refunds on the same payment
+intent, within that first page, tagged under the retained HMAC key. Treat a
+restore of the attempt store as an incident: keep the PTE operation row at
+least as long as duplicate submission remains possible, including after
+Stripe's idempotency cache expires, and reconcile before resuming refunds.
+
 After the owner lease is stale, `reconcileStripeRefundDurable()` can mark the
 attempt COMMITTED only from a single matching refund returned by the trusted
 Stripe client. Empty, incomplete, unavailable, or conflicting lookup results
@@ -1295,15 +1330,15 @@ attempt, or an INDETERMINATE one with no matching refund, stays held; this
 connector never re-dispatches or releases it. Refunding that job again is an
 explicit operator decision under a new business operation ID, which the
 connector cannot deduplicate against the held one. Failures before the attempt
-is recorded, such as a changed Stripe account or an unavailable refund job,
-return `REFUSED` with a reason. The
-HMAC metadata tag helps identify the matching object, but an actor who can
-read its metadata and create refunds could copy it, so the match proves a
-Stripe object exists rather than exclusive authorship by this connector. The
-legacy `guardStripeMutation()`
-refund path above is **not** durable recovery and is unchanged. The new path is
-tested against a real PostgreSQL attempt store installed from the exported DDL,
-with a recording fake Stripe client; it has not been run against live Stripe.
+is recorded, such as a changed Stripe account, an unavailable or invalid refund
+job, or a receipt the Gate check cannot evaluate, return `REFUSED` with a
+reason. The HMAC metadata tag helps identify the matching object, but an actor
+who can read its metadata and create refunds could copy it, so the match proves
+a Stripe object exists rather than exclusive authorship by this connector. The
+legacy `guardStripeMutation()` refund path above is **not** durable recovery
+and is unchanged. The new path is tested against a real PostgreSQL attempt
+store installed from the exported DDL, with a recording fake Stripe client; it
+has not been run against live Stripe.
 
 Clients are injected (the real `@octokit/rest`, `stripe`, a `pg`/Supabase client, or the AWS SDK), so
 the adapters are testable without credentials. Adding an adapter is ~40 lines: a frozen action pack
