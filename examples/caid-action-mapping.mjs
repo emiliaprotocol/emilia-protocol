@@ -66,7 +66,11 @@ export function runCaidActionMappingDemo() {
     const epNative = verifyNative(epEnvelope, epKeys.publicKey, 'example-ep-action-v1', epProfile.source_format);
     const checkoutNative = verifyNative(checkoutEnvelope, checkoutKeys.publicKey, 'example-ap2-shaped-checkout-v1', checkoutProfile.source_format);
     const equivalent = compareMappedActions(mappingSide(epNative, epProfile), mappingSide(checkoutNative, checkoutProfile), 
-    /** @type {any} */ ({ definitions: corpus.definitions, suite: corpus.suite }));
+    /** @type {any} */ ({
+        definitions: corpus.definitions,
+        enumSnapshots: corpus.enum_snapshots,
+        suite: corpus.suite,
+    }));
     const tampered = clone(checkoutEnvelope);
     tampered.payload.checkout.total_amount = '0.01';
     const tamperedNative = verifyNative(tampered, checkoutKeys.publicKey, 'example-ap2-shaped-checkout-v1', checkoutProfile.source_format);
@@ -75,23 +79,39 @@ export function runCaidActionMappingDemo() {
     const wrongMerchantEnvelope = signNative(wrongMerchantPayload, checkoutKeys.privateKey, 'example-ap2-shaped-checkout-v1');
     const wrongMerchantNative = verifyNative(wrongMerchantEnvelope, checkoutKeys.publicKey, 'example-ap2-shaped-checkout-v1', checkoutProfile.source_format);
     const wrongMerchant = compareMappedActions(mappingSide(epNative, epProfile), mappingSide(wrongMerchantNative, checkoutProfile), 
-    /** @type {any} */ ({ definitions: corpus.definitions, suite: corpus.suite }));
+    /** @type {any} */ ({
+        definitions: corpus.definitions,
+        enumSnapshots: corpus.enum_snapshots,
+        suite: corpus.suite,
+    }));
     const substitutedProfile = clone(checkoutProfile);
     substitutedProfile.profile_id = 'urn:attacker:weaker-map:1';
     const profileSubstitutionSide = mappingSide(checkoutNative, substitutedProfile);
     profileSubstitutionSide.expected_profile_hash = mappingProfileHash(checkoutProfile);
     const profileSubstitution = compareMappedActions(mappingSide(epNative, epProfile), profileSubstitutionSide, 
-    /** @type {any} */ ({ definitions: corpus.definitions, suite: corpus.suite }));
+    /** @type {any} */ ({
+        definitions: corpus.definitions,
+        enumSnapshots: corpus.enum_snapshots,
+        suite: corpus.suite,
+    }));
     const unsignedShadow = clone(checkoutEnvelope);
     unsignedShadow.checkout = { ...unsignedShadow.payload.checkout, total_amount: '0.01' };
     const shadowNative = verifyNative(unsignedShadow, checkoutKeys.publicKey, 'example-ap2-shaped-checkout-v1', checkoutProfile.source_format);
     const shadowIgnored = compareMappedActions(mappingSide(epNative, epProfile), mappingSide(shadowNative, checkoutProfile), 
-    /** @type {any} */ ({ definitions: corpus.definitions, suite: corpus.suite }));
+    /** @type {any} */ ({
+        definitions: corpus.definitions,
+        enumSnapshots: corpus.enum_snapshots,
+        suite: corpus.suite,
+    }));
     const missingNativeVerification = compareMappedActions(mappingSide(epNative, epProfile), {
         ...mappingSide(checkoutNative, checkoutProfile),
         native_verified: false,
     }, 
-    /** @type {any} */ ({ definitions: corpus.definitions, suite: corpus.suite }));
+    /** @type {any} */ ({
+        definitions: corpus.definitions,
+        enumSnapshots: corpus.enum_snapshots,
+        suite: corpus.suite,
+    }));
     return {
         equivalent: equivalent.verdict,
         tampered_native: tamperedNative,

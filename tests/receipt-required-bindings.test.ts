@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { computeCaid } from "../caid/impl/js/caid.mjs";
+import { REGISTRY_ENUM_SNAPSHOTS } from "../caid/registry/enum-snapshots.mjs";
 import {
   evaluateBindingVectors,
   projectBoundAction,
@@ -80,7 +81,12 @@ describe("Receipt Required protocol binding registry", () => {
   });
 
   it("binds every carrier to the same real CAID and action hash", () => {
-    const results = evaluateBindingVectors(registry, vectors);
+    expect(() => evaluateBindingVectors(registry, vectors)).toThrow(
+      /does not recompute/,
+    );
+    const results = evaluateBindingVectors(registry, vectors, {
+      enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
+    });
     expect(results).toEqual([
       { id: "accept_same_action", valid: true, reason: null },
       { id: "reject_caid_mismatch", valid: false, reason: "caid_mismatch" },
@@ -99,6 +105,7 @@ describe("Receipt Required protocol binding registry", () => {
     const computed = computeCaid(vectors.canonical_action, {
       suite: "jcs-sha256",
       definitions: vectors.definitions,
+      enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
     });
     expect(computed).toMatchObject({
       caid: vectors.expected_caid,

@@ -70,6 +70,15 @@ const canon = canonicalize(action);
 All four functions are fail-closed: junk input returns refusals with
 reasons, never throws.
 
+Code inside this repository that uses the full registry definitions can import
+`REGISTRY_ENUM_SNAPSHOTS` from `caid/registry/enum-snapshots.mjs` instead of
+naming value-set files. It loads exactly the files listed in the registry's
+`enum_snapshot_files` and throws if a file's reference, edition label, or
+digest differs from the registry entry. Next.js server code uses
+`CAID_REGISTRY_ENUM_SNAPSHOTS` from `lib/caid-registry.ts`, which imports the
+same files statically. Without a snapshot, a present currency field refuses
+with `mistyped_field:currency`.
+
 ## Conformance
 
 ```

@@ -500,6 +500,16 @@ describe('POST /api/v1/trust-receipts', () => {
     }, 'ept_live_approval'));
     expect(missingDestination.status).toBe(400);
     expect((await missingDestination.json()).type).toContain('invalid_payment_destination_hash');
+
+    // Registry v4 closes currency against the pinned ISO 4217 snapshot: a
+    // well-formed but unlisted code is refused with the CAID reason.
+    for (const currency of ['ZZZ', 'usd', 'NOT-A-CURRENCY']) {
+      const unlisted = await createReceipt(req({ ...body, currency }, 'ept_live_approval'));
+      expect(unlisted.status).toBe(400);
+      const problem = await unlisted.json();
+      expect(problem.type).toContain('invalid_caid_action');
+      expect(problem.detail).toContain('mistyped_field:currency');
+    }
   });
 
   it('issues a pending_signoff receipt for money-destination changes', async () => {

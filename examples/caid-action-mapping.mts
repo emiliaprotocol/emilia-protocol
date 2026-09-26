@@ -100,7 +100,11 @@ export function runCaidActionMappingDemo() {
   const equivalent = compareMappedActions(
     mappingSide(epNative, epProfile),
     mappingSide(checkoutNative, checkoutProfile),
-    /** @type {any} */ ({ definitions: corpus.definitions, suite: corpus.suite }),
+    /** @type {any} */ ({
+      definitions: corpus.definitions,
+      enumSnapshots: corpus.enum_snapshots,
+      suite: corpus.suite,
+    }),
   );
 
   const tampered = clone(checkoutEnvelope);
@@ -128,7 +132,11 @@ export function runCaidActionMappingDemo() {
   const wrongMerchant = compareMappedActions(
     mappingSide(epNative, epProfile),
     mappingSide(wrongMerchantNative, checkoutProfile),
-    /** @type {any} */ ({ definitions: corpus.definitions, suite: corpus.suite }),
+    /** @type {any} */ ({
+      definitions: corpus.definitions,
+      enumSnapshots: corpus.enum_snapshots,
+      suite: corpus.suite,
+    }),
   );
 
   const substitutedProfile = clone(checkoutProfile);
@@ -138,7 +146,11 @@ export function runCaidActionMappingDemo() {
   const profileSubstitution = compareMappedActions(
     mappingSide(epNative, epProfile),
     profileSubstitutionSide,
-    /** @type {any} */ ({ definitions: corpus.definitions, suite: corpus.suite }),
+    /** @type {any} */ ({
+      definitions: corpus.definitions,
+      enumSnapshots: corpus.enum_snapshots,
+      suite: corpus.suite,
+    }),
   );
 
   const unsignedShadow = clone(checkoutEnvelope);
@@ -152,7 +164,11 @@ export function runCaidActionMappingDemo() {
   const shadowIgnored = compareMappedActions(
     mappingSide(epNative, epProfile),
     mappingSide(shadowNative, checkoutProfile),
-    /** @type {any} */ ({ definitions: corpus.definitions, suite: corpus.suite }),
+    /** @type {any} */ ({
+      definitions: corpus.definitions,
+      enumSnapshots: corpus.enum_snapshots,
+      suite: corpus.suite,
+    }),
   );
 
   const missingNativeVerification = compareMappedActions(
@@ -161,7 +177,11 @@ export function runCaidActionMappingDemo() {
       ...mappingSide(checkoutNative, checkoutProfile),
       native_verified: false,
     },
-    /** @type {any} */ ({ definitions: corpus.definitions, suite: corpus.suite }),
+    /** @type {any} */ ({
+      definitions: corpus.definitions,
+      enumSnapshots: corpus.enum_snapshots,
+      suite: corpus.suite,
+    }),
   );
 
   return {

@@ -44,6 +44,7 @@ import { canonicalize, verifyReceipt } from '../packages/verify/src/index.ts';
 // Reference CAID implementation (jcs-sha256 suite) + registry definitions.
 // @ts-expect-error plain .mjs reference implementation without types
 import { computeCaid } from '../caid/impl/js/caid.mjs';
+import { REGISTRY_ENUM_SNAPSHOTS } from '../caid/registry/enum-snapshots.mjs';
 
 const ROOT = path.join(__dirname, '..');
 const suite = JSON.parse(
@@ -122,6 +123,7 @@ describe('canonical JSON leg', () => {
     const ref = computeCaid(receipt.payload.action, {
       suite: 'jcs-sha256',
       definitions: registry.types,
+      enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
     });
     expect(ref.caid).toBe(expected.caid);
     expect(ref.digest).toBe(expected.caid_action_digest);

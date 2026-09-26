@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { canonicalize } from '../../packages/verify/index.js';
 import { actionDigest } from '../../packages/verify/evidence-chain.js';
 import { mapAction, mappingProfileHash, } from '../../caid/impl/js/mapping.mjs';
+import { REGISTRY_ENUM_SNAPSHOTS } from '../../caid/registry/enum-snapshots.mjs';
 export const ACTA_COMPONENT_TYPE = 'acta-decision';
 export const ACTA_RECEIPT_TYPE = 'protectmcp:decision';
 export const ACTA_PROFILE_REVISION = 'draft-farley-acta-signed-receipts-02';
@@ -144,6 +145,7 @@ export function mapPaymentReleaseCaid(action, policy = {}) {
         expectedProfileHash,
         nativeVerified: true,
         definitions,
+        enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
         suite: 'jcs-sha256',
     });
 }

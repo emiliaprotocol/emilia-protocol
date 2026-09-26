@@ -10,6 +10,7 @@ import {
   mapAction,
   mappingProfileHash,
 } from '../../caid/impl/js/mapping.mjs';
+import { REGISTRY_ENUM_SNAPSHOTS } from '../../caid/registry/enum-snapshots.mjs';
 
 export const ACTA_COMPONENT_TYPE = 'acta-decision';
 export const ACTA_RECEIPT_TYPE = 'protectmcp:decision';
@@ -152,6 +153,7 @@ export function mapPaymentReleaseCaid(action: unknown, policy: any = {}): any {
     expectedProfileHash,
     nativeVerified: true,
     definitions,
+    enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
     suite: 'jcs-sha256',
   });
 }

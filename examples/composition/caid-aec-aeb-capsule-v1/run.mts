@@ -19,6 +19,7 @@ import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { computeCaid, verifyCaid } from '../../../caid/impl/js/caid.mjs';
+import { REGISTRY_ENUM_SNAPSHOTS } from '../../../caid/registry/enum-snapshots.mjs';
 import {
   AEC_VERSION,
   actionDigest,
@@ -114,6 +115,7 @@ function computeAction(action: RecordValue): { caid: string; digest: string } {
   const computed = computeCaid(action, {
     suite: 'jcs-sha256',
     definitions: actionDefinitions(),
+    enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
   });
   if (!('caid' in computed) || typeof computed.caid !== 'string'
       || typeof computed.digest !== 'string') {
@@ -724,6 +726,7 @@ export function evaluateCase(item: CaseDefinition): RecordValue {
     const computed = computeAction(ACTION);
     const caidVerification = verifyCaid(ACTION, computed.caid, {
       definitions: actionDefinitions(),
+      enumSnapshots: REGISTRY_ENUM_SNAPSHOTS,
     });
     const aec = evaluateAec(item);
     const capsule = buildCapsule(item.id, item.capsule_kind, item.reason_code);
@@ -851,6 +854,7 @@ function verifyExpected(item: CaseDefinition, result: RecordValue): RecordValue 
 function sourceManifest(): RecordValue {
   const implementationSources = [
     'caid/registry/action-types.json',
+    'caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json',
     'packages/verify/evidence-chain.js',
     'packages/verify/aeb-consequence-conformance.js',
     'lib/grace/mobile-grid.js',
