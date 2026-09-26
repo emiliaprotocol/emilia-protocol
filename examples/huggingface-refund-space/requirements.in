@@ -1,0 +1,5 @@
+# Third-party runtime dependencies of the Docker Space.
+# The bundle appends hashes of its three locally built EMILIA wheels.
+cryptography==50.0.0
+gradio==6.26.0
+smolagents==1.26.0

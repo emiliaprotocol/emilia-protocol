@@ -19,7 +19,9 @@ WHEEL_NAMES = {
 def stub_builds(monkeypatch):
     def build(command, *, check):
         assert check is True
-        assert command[1:5] == ["-m", "pip", "wheel", "--no-deps"]
+        assert command[1:6] == [
+            "-m", "pip", "wheel", "--no-deps", "--no-build-isolation"
+        ]
         destination = Path(command[command.index("--wheel-dir") + 1])
         package = Path(command[-1]).name
         (destination / WHEEL_NAMES[package]).write_bytes(
@@ -76,12 +78,14 @@ def test_bundle_copies_docker_runtime_and_hashes_every_packaged_file(
     for name, digest in checksums.items():
         assert hashlib.sha256((output / name).read_bytes()).hexdigest() == digest
 
-    requirements = (output / "requirements.txt").read_text().splitlines()
-    assert set(requirements) == {
-        "gradio==6.26.0",
-        "smolagents==1.26.0",
-        *(f"./wheels/{name}" for name in WHEEL_NAMES.values()),
-    }
+    requirements = (output / "requirements.txt").read_text()
+    assert requirements.startswith(bundle_space.RUNTIME_LOCK.read_text().rstrip() + "\n")
+    for name in WHEEL_NAMES.values():
+        wheel = output / "wheels" / name
+        assert (
+            f"./wheels/{name} --hash=sha256:{hashlib.sha256(wheel.read_bytes()).hexdigest()}"
+            in requirements
+        )
     assert json.loads((output / "BUNDLE.json").read_text()) == {
         "source_commit": "a" * 40,
         "source_tree_dirty": False,

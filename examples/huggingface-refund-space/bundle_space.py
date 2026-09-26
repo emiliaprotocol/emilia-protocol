@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = Path(__file__).resolve().parent
 PACKAGES = ("packages/python-verify", "packages/crewai", "packages/smolagents")
+RUNTIME_LOCK = EXAMPLE / "requirements.lock"
 
 
 def bundle(output):
@@ -26,6 +27,8 @@ def bundle(output):
     wheels = output / "wheels"
     wheels.mkdir()
     for package in PACKAGES:
+        # CI preinstalls hashed build tools; avoid an isolated build fetching
+        # a new, unverified build backend from the package index.
         subprocess.run(
             [
                 sys.executable,
@@ -33,6 +36,7 @@ def bundle(output):
                 "pip",
                 "wheel",
                 "--no-deps",
+                "--no-build-isolation",
                 "--wheel-dir",
                 str(wheels),
                 str(ROOT / package),
@@ -44,12 +48,13 @@ def bundle(output):
         raise RuntimeError(
             "Expected one wheel for each of the three local EMILIA packages."
         )
-    requirements = [
-        "gradio==6.26.0",
-        "smolagents==1.26.0",
-        *(f"./wheels/{wheel.name}" for wheel in artifacts),
-    ]
-    (output / "requirements.txt").write_text("\n".join(requirements) + "\n")
+    # pip checks every third-party artifact and every checkout-built wheel.
+    requirements = RUNTIME_LOCK.read_text().rstrip() + "\n"
+    requirements += "\n".join(
+        f"./wheels/{wheel.name} --hash=sha256:{hashlib.sha256(wheel.read_bytes()).hexdigest()}"
+        for wheel in artifacts
+    ) + "\n"
+    (output / "requirements.txt").write_text(requirements)
     for name in ("app.py", "demo.py", "test_demo.py", "Dockerfile"):
         shutil.copy2(EXAMPLE / name, output / name)
     shutil.copy2(ROOT / "LICENSE", output / "LICENSE")
@@ -70,8 +75,9 @@ def bundle(output):
         "wheels before installing requirements, verifies the bundled file hashes, and runs as "
         "an unprivileged user on port 7860. The managed Gradio builder installs requirements "
         "before copying app files, so it cannot install these bundled wheel paths.\n\n"
-        "To run locally, verify the hashes, create a Python virtual environment, upgrade pip, "
-        "install `requirements.txt`, and run `python app.py`. The adapter and demo are free "
+        "To run locally, verify the hashes, create a Python 3.12 virtual environment, "
+        "install `requirements.txt` with pip's `--require-hashes` mode, and run `python app.py`. "
+        "The adapter and demo are free "
         "and open source under Apache-2.0.\n\n"
         "To test the container locally, run `docker build -t emilia-refund-space .` and "
         "`docker run --rm -p 127.0.0.1:7860:7860 emilia-refund-space`. No runtime package "

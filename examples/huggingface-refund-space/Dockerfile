@@ -20,8 +20,8 @@ COPY --chown=1000:1000 wheels/*.whl ./wheels/
 
 RUN sha256sum --check SHA256SUMS \
     && python -m venv /home/user/venv \
-    && python -m pip install --no-cache-dir --upgrade pip==26.2.1 \
-    && python -m pip install --no-cache-dir -r requirements.txt \
+    && python -m pip install --no-cache-dir --require-hashes \
+        --only-binary=:all: -r requirements.txt \
     && python -m pip check
 
 EXPOSE 7860

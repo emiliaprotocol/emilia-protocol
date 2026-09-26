@@ -1,0 +1,8 @@
+# Third-party build and test tools for the smolagents source and Space jobs.
+# Local EMILIA wheels are built from this checkout and installed separately.
+cryptography==50.0.0
+gradio==6.26.0
+hatchling==1.32.0
+pytest==9.1.1
+ruff==0.16.6
+smolagents==1.26.0

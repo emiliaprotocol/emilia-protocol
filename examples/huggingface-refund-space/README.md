@@ -7,12 +7,14 @@ No model, payment account, or API key is needed. No money moves.
 
 **Let your agent prepare the action. Decide what it may execute.**
 
-For a ready-to-run folder, download `EMILIA-Hugging-Face-Space.zip` from the
-[community release](https://github.com/emiliaprotocol/emilia-protocol/releases/tag/smolagents-v0.1.1).
-Unzip it, verify `SHA256SUMS`, then install `requirements.txt` in a fresh virtual
+For a hash-locked, ready-to-run Space folder, build the bundle from this
+checkout using the steps below. Verify its `SHA256SUMS`, then install its
+`requirements.txt` with `--require-hashes` in a fresh Python 3.12 virtual
 environment and run `python app.py`. The bundle includes the three required
-EMILIA wheels. This is free, Apache-2.0 source and a synthetic demo, not a hosted
-production Gate.
+EMILIA wheels. The earlier `smolagents-v0.1.1` release ZIP predates these
+hash-locked instructions; this change does not replace that published asset.
+This is free, Apache-2.0 source and a synthetic demo, not a hosted production
+Gate.
 
 To install just the adapter in your own Python 3.10+ environment:
 
@@ -54,13 +56,17 @@ business-operation deduplication or provider settlement evidence.
 ## Make a Hugging Face Space bundle
 
 ```sh
-python examples/huggingface-refund-space/bundle_space.py --output /tmp/emilia-refund-space
+python3.12 -m venv /tmp/emilia-space-builder
+/tmp/emilia-space-builder/bin/python -m pip install --require-hashes --only-binary=:all: \
+  -r .github/workflow-requirements/release.txt
+/tmp/emilia-space-builder/bin/python examples/huggingface-refund-space/bundle_space.py \
+  --output /tmp/emilia-refund-space
 ```
 
 Choose a new output directory. The script refuses to overwrite an existing one.
-It builds the three local EMILIA wheels, copies the app, demo tests, Dockerfile,
-and documentation, adds Docker Space metadata, and records the source commit and
-file hashes. It does **not**
+It builds the three local EMILIA wheels without fetching a build backend,
+copies the app, demo tests, Dockerfile, and documentation, adds Docker Space
+metadata, and records the source commit and file hashes. It does **not**
 create an account, upload files, or publish anything.
 
 To validate that folder separately:
@@ -68,9 +74,9 @@ To validate that folder separately:
 ```sh
 cd /tmp/emilia-refund-space
 shasum -a 256 -c SHA256SUMS
-python3 -m venv /tmp/emilia-refund-space-venv
-/tmp/emilia-refund-space-venv/bin/python -m pip install --upgrade pip
-/tmp/emilia-refund-space-venv/bin/python -m pip install -r requirements.txt
+python3.12 -m venv /tmp/emilia-refund-space-venv
+/tmp/emilia-refund-space-venv/bin/python -m pip install --require-hashes \
+  --only-binary=:all: -r requirements.txt
 /tmp/emilia-refund-space-venv/bin/python demo.py
 ```
 
@@ -90,9 +96,11 @@ builder installs `requirements.txt` before copying the app, so the included
 wheels before installation and verifies every file listed in `SHA256SUMS`.
 
 The container uses the pinned official Python 3.12.14 slim image, a dedicated
-virtual environment, and an unprivileged UID 1000. It installs dependencies at
-build time and serves on port 7860 without model credentials or runtime package
-installation. The local Python commands above remain supported.
+virtual environment, and an unprivileged UID 1000. It installs a hash-locked
+third-party dependency graph and the bundle's own hashed EMILIA wheels at build
+time, then serves on port 7860 without model credentials or runtime package
+installation. The local Python commands above remain supported on platforms
+where the pinned wheels are available.
 
 Use the included wheels: the adapter requires `emilia-crewai>=0.3.5` and
 `emilia-verify>=2.8.5`. These minimum versions include required security fixes;
