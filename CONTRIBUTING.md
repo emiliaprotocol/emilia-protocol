@@ -106,11 +106,17 @@ A pull request that changes only prose under `docs/`, `standards/` or `papers/`
 (or a root `*.md`), where no code run by a skipped job names the changed file,
 takes the docs lane: every check that reads prose still runs, and the
 security case, Gate product suite, SDK, wheel and package suites are skipped.
+CI decides this with the classifier as it is on `main`, never the pull
+request's copy; a pull request that touches `.github/` or `scripts/ci/` always
+runs the full lane, and so does every pull request while `main`'s latest push
+run has not passed the security case.
 `node scripts/ci/change-lane.mjs --event local --base origin/main` prints the
-lane and the reason before you push. Label a pull request `evidence-autopilot`
-to have CI regenerate the derived evidence files; once the autopilot's GitHub
-App is provisioned it pushes them back (Dependabot pull requests get this
-automatically). See `.github/workflows/evidence-autopilot*.yml`.
+classifier's lane and reason before you push. Label a pull request
+`evidence-autopilot` to have CI regenerate the derived evidence files; once the
+autopilot's GitHub App is provisioned it commits them back (Dependabot pull
+requests get this automatically). The publisher checks only the bundle's shape
+and transit integrity; the required checks on the new commit decide whether the
+evidence is correct. See `.github/workflows/evidence-autopilot*.yml`.
 
 ## Contribution workflow
 
@@ -125,9 +131,12 @@ automatically). See `.github/workflows/evidence-autopilot*.yml`.
    ```
 
    CI checks that each pull-request commit contains a `Signed-off-by` line
-   matching its commit-author metadata. The only exemptions are Dependabot's
-   commits and evidence autopilot commits that change nothing but the
-   regenerated derived-evidence files (see
+   matching its commit-author metadata. The only exemptions rest on what
+   GitHub itself reports, never on the author name or email written into the
+   commit: commits GitHub verified as created by Dependabot, commits GitHub
+   verified as created by the evidence autopilot App that change nothing but
+   the regenerated derived-evidence files, and, in the merge queue, the merge
+   commits GitHub creates (see
    [`.github/workflows/dco.yml`](.github/workflows/dco.yml)). Repository policy
    separately requires the accountable author and signer to be a natural person.
    An AI system cannot provide the DCO sign-off or be a co-author. AI-assisted work must follow

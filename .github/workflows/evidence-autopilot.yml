@@ -12,12 +12,16 @@ name: Evidence autopilot
 #
 # Trust split. This workflow runs the pull request's code, so it holds a
 # read-only token and no secrets, and it only uploads a bundle of the
-# allowlisted derived files (scripts/ci/evidence-autopilot.mjs). The push
+# allowlisted derived files (scripts/ci/evidence-autopilot.mjs). Publishing
 # happens in evidence-autopilot-publish.yml, a workflow_run workflow that
-# executes only default-branch code, re-validates every byte of the bundle,
-# and pushes one derived-evidence-only commit with a GitHub App token so the
-# push starts CI again. Every required check then re-verifies the pushed
-# evidence, and dco.yml exempts only that exact commit shape.
+# executes only default-branch code. It checks the bundle's shape and
+# transit integrity (allowlisted paths, digests against the manifest this job
+# wrote, UTF-8, JSON), not its correctness, and creates one
+# derived-evidence-only commit with a GitHub App token through a
+# compare-and-swap createCommitOnBranch call, so the commit starts CI again.
+# Whether the evidence is correct is decided by the required checks on that
+# commit. dco.yml exempts it from sign-off only on GitHub's own evidence that
+# the pinned App bot created it.
 
 on:
   pull_request:

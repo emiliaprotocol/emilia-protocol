@@ -7,19 +7,30 @@
  * derived evidence on a pull request branch with the repository's official
  * writers, in an unprivileged job, and `collect`s the result into a bundle.
  * .github/workflows/evidence-autopilot-publish.yml runs this file from the
- * default branch (never from the pull request), `inspect`s and `apply`s the
- * bundle onto the exact source commit, and pushes one commit. dco.yml exempts
- * that commit from sign-off only while it changes nothing but
- * DERIVED_EVIDENCE.
+ * default branch (never from the pull request), `inspect`s the bundle and
+ * turns it into one GraphQL createCommitOnBranch `request` whose
+ * expectedHeadOid is the exact source commit. GitHub applies that request
+ * only if the branch still points at the source commit, and signs the
+ * commit it creates.
  *
- * The bundle can only ever carry DERIVED_EVIDENCE paths. Anything else the
- * writers touched stops the run: the autopilot regenerates evidence, it
- * never edits code.
+ * What `inspect` proves is shape and transit integrity: the bundle names
+ * only DERIVED_EVIDENCE paths, each file matches the size and sha256 the
+ * manifest lists, is UTF-8 (JSON parses), and the manifest claims the
+ * expected source commit. It does not regenerate anything, and the manifest
+ * was written by the same unprivileged job that ran the pull request's code,
+ * so it cannot show the content is correct. Correctness comes from the
+ * required checks that run again on the pushed commit (and those run the
+ * pull request's code too).
+ *
+ * dco.yml exempts the published commit from sign-off only when GitHub
+ * reports it verified and authored by the pinned App bot, and it changes
+ * nothing but DERIVED_EVIDENCE.
  *
  * Usage:
  *   node scripts/ci/evidence-autopilot.mjs collect --source-sha <sha> --out <dir> [--github-output <file>]
  *   node scripts/ci/evidence-autopilot.mjs inspect --bundle <dir> --source-sha <sha> [--github-output <file>]
- *   node scripts/ci/evidence-autopilot.mjs apply   --bundle <dir> --source-sha <sha> --repo <dir>
+ *   node scripts/ci/evidence-autopilot.mjs request --bundle <dir> --source-sha <sha> \
+ *     --repository <owner/name> --branch <name> --run-url <url> --out <file>
  */
 
 import { execFileSync } from 'node:child_process';
@@ -30,6 +41,18 @@ import { pathToFileURL } from 'node:url';
 
 export const BUNDLE_VERSION = 'EP-EVIDENCE-AUTOPILOT-v1';
 export const COMMIT_TRAILER = 'Evidence-Autopilot: v1';
+/**
+ * Lets Dependabot keep rebasing its pull request over the autopilot commit
+ * (Dependabot stops rebasing once another author's commit lands, unless the
+ * commit message carries this marker); the autopilot then regenerates.
+ */
+export const DEPENDABOT_SKIP = '[dependabot skip]';
+
+const CREATE_COMMIT_ON_BRANCH = `mutation EvidenceAutopilot($input: CreateCommitOnBranchInput!) {
+  createCommitOnBranch(input: $input) {
+    commit { oid }
+  }
+}`;
 
 /**
  * Files the official writers derive from repository content, in the order a
@@ -54,6 +77,8 @@ export const DERIVED_EVIDENCE = Object.freeze([
 const MAX_FILE_BYTES = 16 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 64 * 1024;
 const SHA = /^[0-9a-f]{40}$/;
+const REPOSITORY = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}$/;
+const BRANCH = /^[A-Za-z0-9._/-]{1,200}$/;
 
 /**
  * @typedef {{ path: string, sha256: string, bytes: number }} BundleFile
@@ -131,8 +156,11 @@ export function collect({ repo, sourceSha, out }) {
 }
 
 /**
- * Validates an untrusted bundle and returns its manifest. Every byte is
- * checked against the manifest, the allowlist and the expected source.
+ * Validates the shape and transit integrity of an untrusted bundle and
+ * returns its manifest and contents: allowlisted paths only, no duplicates,
+ * each file's size and sha256 as the manifest lists, UTF-8 text, JSON that
+ * parses, and a manifest that claims `sourceSha`. The manifest comes from
+ * the unprivileged job, so this is not evidence that the content is correct.
  *
  * @param {{ bundle: string, sourceSha: string }} options
  * @returns {{ manifest: Manifest, contents: Map<string, Buffer> }}
@@ -179,31 +207,68 @@ export function inspect({ bundle, sourceSha }) {
 }
 
 /**
- * Writes an inspected bundle into a checkout that is exactly at `sourceSha`.
+ * The commit message of a published evidence commit: a headline, the
+ * provenance paragraph, the Dependabot rebase marker and the trailers.
  *
- * @param {{ bundle: string, sourceSha: string, repo: string }} options
- * @returns {string[]} written paths
+ * @param {string} sourceSha
+ * @param {string} runUrl
+ * @returns {{ headline: string, body: string }}
  */
-export function apply({ bundle, sourceSha, repo }) {
-  const { contents } = inspect({ bundle, sourceSha });
-  const head = git(['rev-parse', 'HEAD'], repo).trim();
-  if (head !== sourceSha) throw new Error(`checkout is at ${head}, expected ${sourceSha}`);
-  const dirty = git(['status', '--porcelain', '--untracked-files=no'], repo).trim();
-  if (dirty) throw new Error(`target checkout is not clean:\n${dirty}`);
-  for (const [path, bytes] of contents) {
-    // Never write through a symlinked directory or file in the checkout.
-    const parts = path.split('/');
-    for (let depth = 1; depth < parts.length; depth += 1) {
-      const directory = lstatSync(join(repo, ...parts.slice(0, depth)), { throwIfNoEntry: false });
-      if (directory && !directory.isDirectory()) throw new Error(`${path}: an ancestor is not a plain directory`);
-    }
-    const target = join(repo, path);
-    const current = lstatSync(target, { throwIfNoEntry: false });
-    if (current && !current.isFile()) throw new Error(`${path}: target is not a regular file`);
-    mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, bytes);
+export function commitMessage(sourceSha, runUrl) {
+  return {
+    headline: `chore(evidence): regenerate derived evidence for ${sourceSha.slice(0, 12)}`,
+    body: [
+      `Regenerated from ${sourceSha} by the evidence autopilot with the`,
+      'official writers (sync:formal-traces, conformance:manifest,',
+      'sync:proof-stats, sync:llm-context). The publisher checked only the',
+      "bundle's shape and transit integrity; the required checks on this",
+      'commit decide whether the evidence is correct.',
+      '',
+      DEPENDABOT_SKIP,
+      '',
+      COMMIT_TRAILER,
+      `Evidence-Autopilot-Run: ${runUrl}`,
+      '',
+    ].join('\n'),
+  };
+}
+
+/**
+ * Builds the GraphQL createCommitOnBranch request that publishes an
+ * inspected bundle. expectedHeadOid makes it compare-and-swap: GitHub
+ * refuses it unless `branch` still points at `sourceSha`, so a branch that
+ * was force-pushed, rewound or deleted in the meantime is left alone.
+ *
+ * @param {{ bundle: string, sourceSha: string, repository: string, branch: string, runUrl: string }} options
+ * @returns {{ query: string, variables: { input: Record<string, unknown> } }}
+ */
+export function commitRequest({ bundle, sourceSha, repository, branch, runUrl }) {
+  if (!REPOSITORY.test(repository)) throw new Error(`refusing repository ${JSON.stringify(repository)}`);
+  if (
+    !BRANCH.test(branch) || branch === 'main' || branch.startsWith('-') || branch.startsWith('/')
+    || branch.endsWith('/') || branch.endsWith('.lock') || branch.includes('..') || branch.includes('//')
+  ) {
+    throw new Error(`refusing branch ${JSON.stringify(branch)}`);
   }
-  return [...contents.keys()];
+  const runPrefix = `https://github.com/${repository}/actions/runs/`;
+  if (!runUrl.startsWith(runPrefix) || !/^\d+(?:\/attempts\/\d+)?$/.test(runUrl.slice(runPrefix.length))) {
+    throw new Error(`refusing run URL ${JSON.stringify(runUrl)}`);
+  }
+  const { contents } = inspect({ bundle, sourceSha });
+  if (contents.size === 0) throw new Error('the bundle carries no files; there is nothing to publish');
+  return {
+    query: CREATE_COMMIT_ON_BRANCH,
+    variables: {
+      input: {
+        branch: { repositoryNameWithOwner: repository, branchName: branch },
+        expectedHeadOid: sourceSha,
+        message: commitMessage(sourceSha, runUrl),
+        fileChanges: {
+          additions: [...contents].map(([path, bytes]) => ({ path, contents: bytes.toString('base64') })),
+        },
+      },
+    },
+  };
 }
 
 /**
@@ -248,12 +313,21 @@ export function main(argv) {
     if (output) appendFileSync(output, `changed=${changed}\n`);
     return 0;
   }
-  if (command === 'apply') {
-    const written = apply({ bundle: options.bundle ?? '', sourceSha: options['source-sha'] ?? '', repo: options.repo ?? '' });
-    console.log(`EVIDENCE AUTOPILOT: wrote ${written.length} file(s):\n${written.map((path) => `  ${path}`).join('\n')}`);
+  if (command === 'request') {
+    if (!options.out) throw new Error('request requires --out <file>');
+    const request = commitRequest({
+      bundle: options.bundle ?? '',
+      sourceSha: options['source-sha'] ?? '',
+      repository: options.repository ?? '',
+      branch: options.branch ?? '',
+      runUrl: options['run-url'] ?? '',
+    });
+    writeFileSync(options.out, JSON.stringify(request));
+    const paths = request.variables.input.fileChanges.additions.map((file) => `  ${file.path}`);
+    console.log(`EVIDENCE AUTOPILOT: createCommitOnBranch request for ${options.branch} at ${options['source-sha']}:\n${paths.join('\n')}`);
     return 0;
   }
-  throw new Error('usage: evidence-autopilot.mjs collect|inspect|apply --option value ...');
+  throw new Error('usage: evidence-autopilot.mjs collect|inspect|request --option value ...');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
