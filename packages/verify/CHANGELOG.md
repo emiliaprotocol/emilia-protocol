@@ -3,6 +3,31 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- The vendored CAID implementation (`vendor/caid.mjs`), which the AEB
+  adapters, the AP2 native adapter, the FIDO and AP2 bridge, authorization
+  server confirmation, the crossing lab, portable state handoff, and policy
+  decision evidence use to compute CAIDs, now applies the
+  enum rules of CAID action-type registry v4. Registry v3 named external code
+  sets such as ISO 4217 without pinning their contents, and 5.0.0 accepted any
+  string for an enum field that had no `values` array. An enum is now closed
+  only by a non-empty `values` array, an `inline:` `values_ref`, or an external
+  `values_ref` that carries `values_snapshot` and `values_sha256` and whose
+  values are supplied and hash to that digest. When the field is present in
+  the action, an open enum (`type: "enum"` with no values), a bare or
+  unresolved external `values_ref`, a digest mismatch, or a value outside the
+  set makes the CAID refuse with `mistyped_field:<field>`. An adapter mapping
+  profile that relied on an open or bare external enum, for example `currency`
+  naming ISO 4217 with no values, now maps to a refusal and must list its
+  accepted values inline. The adapters do not take external snapshots.
+- CAID bytes are unchanged for every action that both 5.0.0 and this version
+  accept; only the set of accepted actions narrowed. This is a behavior change
+  for callers whose profiles used open enums, not a wire format change.
+- None of this shipped in 5.0.0.
+
 ## 5.0.0 (2026-09-25)
 
 ### Security

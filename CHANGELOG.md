@@ -8,6 +8,26 @@ Historical entries below retain the labels used when they were written.
 
 ## [Unreleased] — source baseline 2026-08-26 (`5d474fd240bc764fa41951c05c39130e38afa7ff`)
 
+### CAID registry v4 enum pinning
+
+- Advance the CAID action-type registry from v3 to v4. Every currency field
+  now references a provenance-bearing `2026-09-17` SIX ISO 4217 List One
+  snapshot (`caid/registry/value-sets/`) by `values_ref`, `values_snapshot`,
+  and `values_sha256`. The JavaScript, Python, and Go implementations refuse a
+  present enum field that is open, bare, unresolved, digest-mismatched, or out
+  of set with `mistyped_field:<field>`, without a network fetch. CAID bytes
+  are unchanged for actions whose values are in the pinned set. Historical
+  registry v3 decisions remain v3 decisions.
+- Server payment approvals (`POST /api/v1/trust-receipts` and the
+  EP-APPROVAL-v1 contract) derive the `payment.release.1` CAID with the
+  registry snapshots from `lib/caid-registry.ts`. A currency outside the
+  pinned ISO 4217 list, for example `ZZZ`, is now refused with
+  `invalid_caid_action` where registry v3 accepted any string.
+- `caid/registry/enum-snapshots.mjs` loads exactly the snapshots the registry
+  pins for in-repository tooling and refuses a file that does not match its
+  registry entry. The Internet-Draft revision describing registry v4 is staged,
+  not submitted.
+
 ### Consequence admission
 
 - Define AEB as the residual control boundary after a native authorization
