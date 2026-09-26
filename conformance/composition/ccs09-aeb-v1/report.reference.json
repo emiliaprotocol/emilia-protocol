@@ -1,0 +1,766 @@
+{
+  "@version": "CCS09-RECEIPT-COMPATIBILITY-REPORT-v1",
+  "profile": "ccs09-aeb-v1",
+  "target": {
+    "draft": "draft-correctover-ccs-09",
+    "url": "https://www.ietf.org/archive/id/draft-correctover-ccs-09.txt",
+    "sha256": "8fe3b74e378b793fbd9d218949278cd21def73ff329101316bd83f0d240c958a",
+    "bytes": 160739,
+    "receipt_shape": "v1.3; 22 fields; detached Ed25519 over fields 1-21"
+  },
+  "mapping_policy": "OPTIONAL",
+  "claim_scope": {
+    "bounded_receipt_compatibility": true,
+    "full_ccs09_conformance": false,
+    "external_operator_run": false,
+    "upstream_package_execution": false,
+    "source_bytes_verified_by_this_runner": false,
+    "pre_effect_enforcement": false,
+    "durable_consumption": false,
+    "provider_effect_proof": false
+  },
+  "pins": {
+    "adapter_id": "native:ccs-05-v1.3-ed25519",
+    "adapter_version": "1",
+    "adapter_source_lock": "draft-correctover-ccs-05-v1.3-c91f0fa31b1b9e5",
+    "mapping_profile_digest": "sha256:0cc7a31b09bbb13d8d4c0a53f53c17c7911668795d2820b9837c029594eeffe8",
+    "sample_set_digest": "sha256:61cec39c0e4a28359c82d84ee64887728ca807bbef18065f673e8fbc8b3a31a0"
+  },
+  "checks": [
+    {
+      "id": "CCS09-SHAPE",
+      "layer": "RECEIPT",
+      "description": "The local fixture has the 22-field v1.3 shape, not the distinct PyPI receipt_version shape.",
+      "passed": true,
+      "observed": [
+        "trace_id",
+        "verdict",
+        "timestamp",
+        "tool",
+        "params_hash",
+        "rule_summary",
+        "verified_at",
+        "block_reason",
+        "request_hash",
+        "response_hash",
+        "runtime_context_hash",
+        "action",
+        "config_hash",
+        "issuer",
+        "audience",
+        "nonce",
+        "sequence",
+        "issued_at",
+        "expires_at",
+        "max_clock_skew",
+        "receipt",
+        "signature"
+      ]
+    },
+    {
+      "id": "CCS09-SIGNED-21-FIELDS",
+      "layer": "RECEIPT",
+      "description": "Ed25519 authenticates all fields except the detached signature.",
+      "passed": true,
+      "observed": {
+        "signed_fields": 21,
+        "signature_bytes": 64
+      }
+    },
+    {
+      "id": "CCS09-NATIVE-WITHOUT-MAPPING",
+      "layer": "RECEIPT",
+      "description": "Native receipt acceptance does not require an AEB profile or expected action.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "evidence_digest": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:717fb2b1662ca3d0ccc37f34d87de75ab8709cabb1951278a8f4183ac8962b8b",
+        "reasons": []
+      }
+    },
+    {
+      "id": "CCS09-OPTIONAL-EXACT-MAP",
+      "layer": "OPTIONAL-MAPPING",
+      "description": "An explicitly selected pinned profile maps the exact tool and arguments.",
+      "passed": true,
+      "observed": {
+        "mapping": "MATCH",
+        "caid": "caid:1:agent.tool-invocation.1:jcs-sha256:_LFyAn12aDcYZKSnTSI1eb083dtqB15wDQ47Eynm5Ec",
+        "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
+        "reasons": []
+      }
+    },
+    {
+      "id": "CCS09-ABSENT-MAPPING",
+      "layer": "OPTIONAL-MAPPING",
+      "description": "Without an opted-in mapping profile the receipt remains valid but no AEB MATCH is inferred.",
+      "passed": true,
+      "observed": {
+        "mapping": "INDETERMINATE",
+        "caid": null,
+        "action_digest": null,
+        "reasons": [
+          "mapping_profile_invalid"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-MAPPING-PIN-DRIFT",
+      "layer": "OPTIONAL-MAPPING",
+      "description": "Changed mapping pins refuse correlation.",
+      "passed": true,
+      "observed": {
+        "mapping": "INDETERMINATE",
+        "caid": null,
+        "action_digest": null,
+        "reasons": [
+          "mapping_profile_invalid"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-ARGUMENT-SUBSTITUTION",
+      "layer": "OPTIONAL-MAPPING",
+      "description": "Different executor-owned arguments do not match.",
+      "passed": true,
+      "observed": {
+        "mapping": "MISMATCH",
+        "caid": null,
+        "action_digest": "sha256:25dd2cac3db9f934ea3b3f9c50e9a670a2bc737acfaf4c0dbe45674bec646b79",
+        "reasons": [
+          "ccs:v13_exact_action_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-FULL-ACTION-DIGEST",
+      "layer": "OPTIONAL-MAPPING",
+      "description": "Changing the full signed digest while retaining its short prefix refuses the match.",
+      "passed": true,
+      "observed": {
+        "mapping": "MISMATCH",
+        "caid": null,
+        "action_digest": "sha256:fcb172027d7668371864a4a74d223579bd3cdddb6a075e700d0e3b1329e6e447",
+        "reasons": [
+          "ccs:v13_exact_action_projection_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-SIGNATURE-TAMPER",
+      "layer": "RECEIPT",
+      "description": "A response digest cannot be changed without invalidating the signature.",
+      "passed": true,
+      "observed": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:841da05c970915e5f4dadbacb4620590bf1adeb695179ded468c369976ce491b",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:841da05c970915e5f4dadbacb4620590bf1adeb695179ded468c369976ce491b",
+        "reasons": [
+          "ccs:v13_signature_invalid"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-UNTRUSTED-KEY",
+      "layer": "RECEIPT",
+      "description": "A different relying-party key cannot validate this signature.",
+      "passed": true,
+      "observed": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "reasons": [
+          "ccs:v13_signature_invalid"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-AUDIENCE",
+      "layer": "RP-POLICY",
+      "description": "A cryptographically valid receipt for another audience is rejected.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "reasons": [
+          "ccs:v13_audience_mismatch"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-EXPIRY",
+      "layer": "RP-POLICY",
+      "description": "A receipt outside its validity window is rejected.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "reasons": [
+          "ccs:v13_receipt_expired"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-NOT-YET-VALID",
+      "layer": "RP-POLICY",
+      "description": "A future receipt is rejected before its allowed clock-skew window.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "reasons": [
+          "ccs:v13_receipt_not_yet_valid"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-DENY",
+      "layer": "RP-POLICY",
+      "description": "A valid deny remains rejected and cannot yield a match.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:f7cd00e9af00f9a86b54573798ee5286fda8e868f7b8c9c8d117e009c7ea0272",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:654efae5f8c0cd2f027a7cdc63e82b3fc0f5b5267aff3c5289fc2ef75d21292d",
+        "reasons": [
+          "ccs:deny"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-ESCALATE",
+      "layer": "RP-POLICY",
+      "description": "A valid escalate remains indeterminate and cannot yield a match.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "INDETERMINATE",
+        "evidence_digest": "sha256:b00002bd6ced8be6acb37bfca42ffc5f580f61b075d00047d29e2f929dcd0223",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:717fb2b1662ca3d0ccc37f34d87de75ab8709cabb1951278a8f4183ac8962b8b",
+        "reasons": [
+          "ccs:escalate"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-CONSUMED-STATUS",
+      "layer": "RP-POLICY",
+      "description": "A supplied consumed status refuses receipt acceptance; no durable store is claimed.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "status_digest": "sha256:ab725954c84e9f81d531d2c97e023da7b7988344ffe73d456813ffb23c3881b8",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:717fb2b1662ca3d0ccc37f34d87de75ab8709cabb1951278a8f4183ac8962b8b",
+        "reasons": [
+          "evidence_consumed"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-UNKNOWN-STATUS",
+      "layer": "RP-POLICY",
+      "description": "Unavailable status cannot be promoted into acceptance.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "INDETERMINATE",
+        "evidence_digest": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "status_digest": "sha256:b2d5777d4f1298d618d9250274c50ef7ba52c42953c2bffa81efc1ec5ee19c4f",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:717fb2b1662ca3d0ccc37f34d87de75ab8709cabb1951278a8f4183ac8962b8b",
+        "reasons": [
+          "status_unavailable"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-REVOKED-STATUS",
+      "layer": "RP-POLICY",
+      "description": "A supplied revoked status refuses acceptance.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "status_digest": "sha256:6d3ac6f219f474e0d9c533b7e4f6fcbbead4a4ce199635968ac030c06b763bff",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:717fb2b1662ca3d0ccc37f34d87de75ab8709cabb1951278a8f4183ac8962b8b",
+        "reasons": [
+          "evidence_revoked"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-MACHINE-POLICY-ROLE",
+      "layer": "RP-POLICY",
+      "description": "This pinned profile emits only system machine-policy evidence, never human approval or authorization.",
+      "passed": true,
+      "observed": {
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        }
+      }
+    },
+    {
+      "id": "CCS09-EVERY-FIELD-TAMPER",
+      "layer": "RECEIPT",
+      "description": "Mutating each of the 22 fields separately invalidates cryptography and native verification.",
+      "passed": true,
+      "observed": [
+        {
+          "field": "trace_id",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "verdict",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "timestamp",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "tool",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "params_hash",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "rule_summary",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "verified_at",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "block_reason",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "request_hash",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "response_hash",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "runtime_context_hash",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "action",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "config_hash",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "issuer",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "audience",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "nonce",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "sequence",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "issued_at",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "expires_at",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "max_clock_skew",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "receipt",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        },
+        {
+          "field": "signature",
+          "signature_valid": false,
+          "native_verification": "FAILED"
+        }
+      ]
+    },
+    {
+      "id": "CCS09-CLOSED-KEYSET-EXTRA",
+      "layer": "RECEIPT",
+      "description": "Even a correctly signed extra field is outside this closed compatibility profile.",
+      "passed": true,
+      "observed": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:def69cf54114e2198bc9896aea61627f518d56f637405559c66685b5e0959dc2",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:def69cf54114e2198bc9896aea61627f518d56f637405559c66685b5e0959dc2",
+        "reasons": [
+          "ccs:v13_artifact_malformed"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-CLOSED-KEYSET-MISSING",
+      "layer": "RECEIPT",
+      "description": "Even a correctly signed receipt missing a required field is refused.",
+      "passed": true,
+      "observed": {
+        "native_verification": "FAILED",
+        "acceptance": "REJECTED",
+        "evidence_digest": "sha256:bd51beabd0855eed20840a65ec7cf20f6d463639916a1c98a0597d9164365936",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:bd51beabd0855eed20840a65ec7cf20f6d463639916a1c98a0597d9164365936",
+        "reasons": [
+          "ccs:v13_artifact_malformed"
+        ]
+      }
+    },
+    {
+      "id": "CCS09-UNICODE-SIGNED-TEXT",
+      "layer": "RECEIPT",
+      "description": "UTF-8 signed metadata round-trips through canonicalization and Ed25519.",
+      "passed": true,
+      "observed": {
+        "native": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "evidence_digest": "sha256:b9587544dacfec40512039eedd7ae6b32c5931e8b5d01cb4af3bbee0fc1a1592",
+          "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+          "evidence_role": "machine-policy-decision",
+          "subject": {
+            "id": "system:ccs09-fixture-issuer",
+            "kind": "system"
+          },
+          "replay_unit": "sha256:717fb2b1662ca3d0ccc37f34d87de75ab8709cabb1951278a8f4183ac8962b8b",
+          "reasons": []
+        },
+        "canonical_utf8_hex": "7b2261223a22636166c3a920f09f8cb1222c227a223a2265cc81227d",
+        "expected_utf8_hex": "7b2261223a22636166c3a920f09f8cb1222c227a223a2265cc81227d"
+      }
+    },
+    {
+      "id": "CCS09-UNICODE-ARGUMENT-BOUNDARY",
+      "layer": "OPTIONAL-MAPPING",
+      "description": "Valid signed Unicode arguments are outside the existing ASCII-only mapping subset.",
+      "passed": true,
+      "observed": {
+        "native": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "evidence_digest": "sha256:afb3b05e1041401e1f73e08c3666d62185f27c5a08efddba7a94cd208a57c3dc",
+          "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+          "evidence_role": "machine-policy-decision",
+          "subject": {
+            "id": "system:ccs09-fixture-issuer",
+            "kind": "system"
+          },
+          "replay_unit": "sha256:39fdbf84ca17e602221671d1d7cdadcd99dc009e6b3071759a6e71de8b377b0e",
+          "reasons": []
+        },
+        "mapping": {
+          "mapping": "INDETERMINATE",
+          "caid": null,
+          "action_digest": null,
+          "reasons": [
+            "missing_or_ambiguous_exact_action"
+          ]
+        }
+      }
+    },
+    {
+      "id": "CCS09-FRACTIONAL-ARGUMENT-BOUNDARY",
+      "layer": "OPTIONAL-MAPPING",
+      "description": "Valid signed fractional arguments are outside the existing safe-integer mapping subset.",
+      "passed": true,
+      "observed": {
+        "native": {
+          "native_verification": "VERIFIED",
+          "acceptance": "ACCEPTED",
+          "evidence_digest": "sha256:c8ad9839b2603ce5ce23d627e9fde08ecd971d263c7b8dfe29a98be405610353",
+          "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+          "evidence_role": "machine-policy-decision",
+          "subject": {
+            "id": "system:ccs09-fixture-issuer",
+            "kind": "system"
+          },
+          "replay_unit": "sha256:6c0b00f303da3b0597b4874c441a5f17a512141fbd66723d47c4f268b9b00698",
+          "reasons": []
+        },
+        "mapping": {
+          "mapping": "INDETERMINATE",
+          "caid": null,
+          "action_digest": null,
+          "reasons": [
+            "missing_or_ambiguous_exact_action"
+          ]
+        }
+      }
+    },
+    {
+      "id": "CCS09-OBJECT-ORDER",
+      "layer": "RECEIPT",
+      "description": "Object insertion order does not change canonical signed bytes.",
+      "passed": true,
+      "observed": {
+        "native_verification": "VERIFIED",
+        "acceptance": "ACCEPTED",
+        "evidence_digest": "sha256:3f12ecbe60827f785983b6dd951fe22168932a923db59a97b50b0b0851bb06b0",
+        "status_digest": "sha256:489716e475030717d440e2826c01899748685ab724b3ee83cf2bb6133850230a",
+        "evidence_role": "machine-policy-decision",
+        "subject": {
+          "id": "system:ccs09-fixture-issuer",
+          "kind": "system"
+        },
+        "replay_unit": "sha256:717fb2b1662ca3d0ccc37f34d87de75ab8709cabb1951278a8f4183ac8962b8b",
+        "reasons": []
+      }
+    }
+  ],
+  "field_mutations": [
+    {
+      "field": "trace_id",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "verdict",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "timestamp",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "tool",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "params_hash",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "rule_summary",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "verified_at",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "block_reason",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "request_hash",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "response_hash",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "runtime_context_hash",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "action",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "config_hash",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "issuer",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "audience",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "nonce",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "sequence",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "issued_at",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "expires_at",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "max_clock_skew",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "receipt",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    },
+    {
+      "field": "signature",
+      "signature_valid": false,
+      "native_verification": "FAILED"
+    }
+  ],
+  "passed": true,
+  "known_limits": [
+    "The target source coordinates are pins, not a source-byte verification result. Run verify-sources.mjs separately.",
+    "This is self-run compatibility evidence over local fixtures, not full CCS-09 conformance or a newer external interoperability result.",
+    "The historical CCS-05 adapter and its source lock are unchanged and are identified separately from the CCS-09 target.",
+    "The opted-in mapping supports safe integers and printable ASCII argument keys and strings, not every JSON/JCS value.",
+    "A verified CCS allow reports machine policy only. Mapping is optional and never grants execution authority.",
+    "Status is supplied by the test fixture, not fetched from a production authority or persisted in a durable store.",
+    "The legacy HMAC field is authenticated issuer data, not independently checked as a cross-domain trust anchor.",
+    "No receipt lifecycle deployment, independent key distribution, provider execution, or effect verification is exercised.",
+    "The private fixture key is public deterministic test material."
+  ],
+  "report_digest": "sha256:2ce22e17d2339daef92ff671894b85e8167a7b9e2c05ac12045b9bd2f69ef9f3"
+}

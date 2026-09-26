@@ -1,0 +1,31 @@
+{
+  "@version": "CCS-09-COMPATIBILITY-SOURCE-LOCK-v1",
+  "observed_on": "2026-09-14",
+  "draft": {
+    "name": "draft-correctover-ccs-09",
+    "url": "https://www.ietf.org/archive/id/draft-correctover-ccs-09.txt",
+    "bytes": 160739,
+    "sha256": "8fe3b74e378b793fbd9d218949278cd21def73ff329101316bd83f0d240c958a"
+  },
+  "previous_draft": {
+    "name": "draft-correctover-ccs-08",
+    "url": "https://www.ietf.org/archive/id/draft-correctover-ccs-08.txt",
+    "bytes": 153156,
+    "sha256": "fbac2a025f11baec104687ee04ba5c9fb0dad1b5bbb5ad38494965565a977cd3"
+  },
+  "scope": {
+    "receipt_shape": "CCS v1.3, 22 fields",
+    "receipt_signature": "Ed25519 over RFC 8785 canonical fields 1-21",
+    "action_construction": "ccs:tool-invoke:{tool_name}:{full_sha256_canonical_parameters}",
+    "external_mapping": "optional relying-party-pinned AEB/CAID mapping, outside CCS-09",
+    "sections": ["4.1", "4.2", "6.4", "6.5", "6.6", "6.7", "6.8", "6.9"],
+    "claim": "bounded receipt compatibility and optional mapping, not full CCS-09 conformance"
+  },
+  "historical_credit": {
+    "draft": "draft-correctover-ccs-05",
+    "repository_commit": "5fb2eae9b20d17685e1ecbe061eb4ced03dbe64e",
+    "profile": "conformance/composition/ccs-v13-aeb-v1",
+    "checks": 14,
+    "relationship": "CCS-09 section 20.5 credits this historical profile, not this new run"
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "@version": "CCS09-RECEIPT-COMPATIBILITY-FIXTURES-v1",
+  "provenance": "emilia-generated-deterministic-test-fixtures",
+  "target": {
+    "draft": "draft-correctover-ccs-09",
+    "url": "https://www.ietf.org/archive/id/draft-correctover-ccs-09.txt",
+    "sha256": "8fe3b74e378b793fbd9d218949278cd21def73ff329101316bd83f0d240c958a",
+    "bytes": 160739,
+    "receipt_shape": "v1.3; 22 fields; detached Ed25519 over fields 1-21"
+  },
+  "command": {
+    "intake_version": "1.3",
+    "agent_id": "agent:ccs09-public-fixture",
+    "tool": "sum",
+    "params": {
+      "left": 19,
+      "right": 23
+    },
+    "timestamp": 1914451200,
+    "trace_id": "0123456789abcdef",
+    "runtime_context": {
+      "environment": "deterministic-fixture",
+      "tenant": "public-interop"
+    }
+  },
+  "issuer_asserted_response": {
+    "result": 42
+  },
+  "receipts": [
+    {
+      "id": "allow",
+      "receipt": {
+        "trace_id": "0123456789abcdef",
+        "verdict": "allow",
+        "timestamp": 1914451200,
+        "tool": "sum",
+        "params_hash": "e03c3c56f2455b23",
+        "rule_summary": "bounded_integer_inputs=allow",
+        "verified_at": 1914451200,
+        "block_reason": "",
+        "request_hash": "sha256:d6265f1be7b5f53861e682160b7356315dadc5e6da6292f1017e2ccd73f7f4cc",
+        "response_hash": "sha256:0773698cf701d4082d365abcd08181974a52141a62ec0bf2eb2ab14996d02674",
+        "runtime_context_hash": "sha256:8a9de8c62fb5216f5d727a4e2b5ae5d00401c3b1d0ecef3297b75ce1f8570843",
+        "action": "ccs:tool-invoke:sum:e03c3c56f2455b2399296bb3267095aa2be601675a1da50d973657002a920824",
+        "config_hash": "sha256:0a2cb5833fd0e709463b8660e5a34d9434005e2b3d9b786ac30341e36f327e58",
+        "issuer": "https://emilia-protocol.example/interop/ccs09-fixture",
+        "audience": "https://gate.example/admit",
+        "nonce": "00112233445566778899aabbccddeeff",
+        "sequence": 1,
+        "issued_at": 1914451200,
+        "expires_at": 1914451260,
+        "max_clock_skew": 5,
+        "receipt": "d6315fb252ebd8989884c3d86f1a019d",
+        "signature": "8e463c7359ab903d4005ed3e6bfa66549808b614a9c3f3e7d61647f7d071fc9273ef8d5319a7480746b2e2639754d87c3ec9b8bf6631567b3dc5b3bcf099700e"
+      }
+    },
+    {
+      "id": "deny",
+      "receipt": {
+        "trace_id": "fedcba9876543210",
+        "verdict": "deny",
+        "timestamp": 1914451200,
+        "tool": "sum",
+        "params_hash": "78258af9dfbd5730",
+        "rule_summary": "bounded_integer_inputs=deny",
+        "verified_at": 1914451200,
+        "block_reason": "bounded_integer_inputs",
+        "request_hash": "sha256:e798114fe35d1200e6091ee3fdfcfea4af358fa91b5fc35bd16f9f131ce1c8a4",
+        "response_hash": "",
+        "runtime_context_hash": "sha256:8a9de8c62fb5216f5d727a4e2b5ae5d00401c3b1d0ecef3297b75ce1f8570843",
+        "action": "ccs:tool-invoke:sum:78258af9dfbd5730d1661fb419d5b5edd2b8e5e7a7aa1cee9b4665d3b0bfbd6f",
+        "config_hash": "sha256:0a2cb5833fd0e709463b8660e5a34d9434005e2b3d9b786ac30341e36f327e58",
+        "issuer": "https://emilia-protocol.example/interop/ccs09-fixture",
+        "audience": "https://gate.example/admit",
+        "nonce": "ffeeddccbbaa99887766554433221100",
+        "sequence": 2,
+        "issued_at": 1914451200,
+        "expires_at": 1914451260,
+        "max_clock_skew": 5,
+        "receipt": "665b3164428fa447afe97162dd1b1ab8",
+        "signature": "04d3cd896435c37e43fb452cd82f53ff3b92481e52fb447f2fca71c46e028349ca8cddd180fe7edd525d59799fd6856b11921bf0f541f346cb71bce9b5f8620a"
+      }
+    },
+    {
+      "id": "escalate",
+      "receipt": {
+        "trace_id": "0123456789abcdef",
+        "verdict": "escalate",
+        "timestamp": 1914451200,
+        "tool": "sum",
+        "params_hash": "e03c3c56f2455b23",
+        "rule_summary": "review_required",
+        "verified_at": 1914451200,
+        "block_reason": "review_required",
+        "request_hash": "sha256:d6265f1be7b5f53861e682160b7356315dadc5e6da6292f1017e2ccd73f7f4cc",
+        "response_hash": "",
+        "runtime_context_hash": "sha256:8a9de8c62fb5216f5d727a4e2b5ae5d00401c3b1d0ecef3297b75ce1f8570843",
+        "action": "ccs:tool-invoke:sum:e03c3c56f2455b2399296bb3267095aa2be601675a1da50d973657002a920824",
+        "config_hash": "sha256:0a2cb5833fd0e709463b8660e5a34d9434005e2b3d9b786ac30341e36f327e58",
+        "issuer": "https://emilia-protocol.example/interop/ccs09-fixture",
+        "audience": "https://gate.example/admit",
+        "nonce": "00000000000000000000000000000003",
+        "sequence": 3,
+        "issued_at": 1914451200,
+        "expires_at": 1914451260,
+        "max_clock_skew": 5,
+        "receipt": "fa9a544b67a164ebffdf2568f747816c",
+        "signature": "0d0e591c7427e88bedd7771429f9285799dda32ad7c6b0d92312c98ce3272d379b95b3a2c3e8eeced598c50614336693e7649d4e43d5d9a06be3714ebb12580f"
+      }
+    }
+  ],
+  "relying_party_trust_root": {
+    "@version": "AEB-CCS-05-V1.3-ROOT-v1",
+    "issuer": "https://emilia-protocol.example/interop/ccs09-fixture",
+    "key_id": "emilia-ccs09-public-test-key-1",
+    "algorithm": "Ed25519",
+    "public_key_raw_base64": "9t9tU+Ws6HYEPuu82sV/fam0eGmQXxs9++gbifgGVcE=",
+    "public_key_fingerprint_sha256_16": "e3b96cae126bcda4"
+  },
+  "limitations": [
+    "The deterministic Ed25519 and legacy HMAC keys are public test material, never production keys.",
+    "These fixtures were generated by EMILIA; they are not upstream CCS output or an external operator run.",
+    "Response bytes are issuer assertions; there is no Gate, provider call, durable status store, or effect proof in this runner.",
+    "The historical CCS-05 adapter ID and source lock are retained deliberately; the target revision is a separate compatibility claim."
+  ]
+}

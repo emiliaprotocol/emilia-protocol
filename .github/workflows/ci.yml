@@ -1125,6 +1125,10 @@ jobs:
           npm run conformance:composition:scitt-capsule-seam
       - name: WIMSE WPT and OAuth transaction boundary conformance
         run: npm run conformance:composition:wimse-wpt02-oauth-txn-aeb
+      - name: CCS historical evidence and CCS-09 optional mapping compatibility
+        run: |
+          npm run conformance:composition:ccs-v13-aeb
+          npm run conformance:composition:ccs09-aeb
       - name: Crossing-record and adjacent native-authority compositions
         run: |
           npm run conformance:composition:crossing-record

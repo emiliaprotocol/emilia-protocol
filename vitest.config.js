@@ -120,6 +120,8 @@ export default defineConfig({
       // The CCS-05 v1.3/AEB independent implementation uses the same portable
       // node:test contract and is executed by its dedicated conformance command.
       'conformance/composition/ccs-v13-aeb-v1/run.test.mts',
+      // CCS-09 compatibility and source-byte tests run in the conformance lane.
+      'conformance/composition/ccs09-aeb-v1/*.test.mts',
       // Portable State Handoff's report and schema suites are public
       // node:test programs, matching the other composition runners above.
       'conformance/composition/portable-state-handoff-v0.1/run.test.mts',
