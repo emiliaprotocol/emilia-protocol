@@ -1,20 +1,28 @@
-# Action Evidence Boundary -07 review candidate
+# AEB-07 publication provenance packet
 
-This packet is a staged review candidate for
-`draft-schrock-action-evidence-boundary-07`. It has not been submitted,
-published, adopted by a working group, or reviewed by the referenced protocol
-owners. Filing requires an explicit decision by the author; nothing in this
-packet is a filing.
+Status: posted on 2026-09-25 as
+`draft-schrock-action-evidence-boundary-07` through Datatracker submission
+169495 (Datatracker time 2026-09-26T00:11:40Z). It is an active individual
+Internet-Draft. It is not a working-group item, an RFC, or IETF endorsement,
+and posting is not review by the referenced protocol owners.
+
+The XML under `UPLOAD-THIS/` is the exact submitted -07 source and matches the
+immutable IETF archive byte-for-byte. The text under `RENDERS/` also matches
+the archive byte-for-byte. The packet is retained for publication provenance,
+not as an upload candidate. The posted snapshot is
+[`../../posted/draft-schrock-action-evidence-boundary-07.xml`](../../posted/draft-schrock-action-evidence-boundary-07.xml);
+AEB-06 is retained in `../../archive/`. The publication check is recorded at
+the end of `VALIDATION.md`.
 
 ## Base
 
-The candidate is built from the posted -06 source,
+The revision was built from the posted -06 source,
 `standards/staged/NEXT-AEB-06/UPLOAD-THIS/draft-schrock-action-evidence-boundary-06.xml`
 at commit `69cc928eeb3b39cb8878c9af328da8c3599e86a6` (SHA-256
 `82eaf5eea816c037cb8dcb4608c8735a96f09850aad0a6df5bac021964bf17c5`). That file
-is byte-identical to the IETF archive copy of -06. Datatracker lists -06 as the
-latest revision (posted 2026-09-25T02:15:03Z), and no -07 exists in the
-archive, so -07 is the next revision number. See `VALIDATION.md`.
+is byte-identical to the IETF archive copy of -06. When the packet was
+prepared, Datatracker listed -06 as the latest revision (posted
+2026-09-25T02:15:03Z) and no -07 existed in the archive. See `VALIDATION.md`.
 
 ## Substantive changes from -06
 
@@ -232,38 +240,23 @@ wording-only edit.
 AEB still defines no receipt, token, handoff encoding, policy language, PDP,
 or registry.
 
-## Before any filing
+## Reference pins in the posted text
 
-- Refresh the date and re-run the checks in `VALIDATION.md`, including the
-  Datatracker revision check and the reference-currency check.
-- The `EP-NATIVE-HANDOFF` and `EP-LIFECYCLE-CORPUS` references pin commit
-  `b1b268e7d0538a9e22e379ddb06f55149d352c3b`, the merge of PR #790 on main,
-  which carries the round-five code and its documentation.
-  Section 15 describes that code, and each of its statements was checked
-  against it: the separate pre-entry recovery mode and its linearization,
-  the explicit not-entered marker, no provider call after a not-entered
-  write (an unconfirmed start sends none and holds every record), release
-  only after a confirmed transition, exact affirmative store answers,
-  terminal-evidence verification with a purpose required on both
-  boundaries (including the dispatch's own result), evidence kinds refused
-  per mode before the verifier, recovery claims bound to one attempt,
-  refused without a scope, and scoped by boundary kind and boundary
-  identifier, the owner check on the composed boundary's evaluation
-  reservation, one namespace per issuer in the verifier, and Gate's
-  additional fence over the carried wire `replay_unit` for every pinned
-  label. It is same-team reference code, not an independent
-  implementation. The PR was not merged when this candidate was prepared.
-  Before filing, re-pin both references to the merge commit on `main`,
-  re-render, regenerate `SHA256SUMS.txt`, and re-run idnits. The handoff
-  still carries its 4.1.0 wire `replay_unit`, which covers the labels, and
-  the reference Gate still has no material-field inventory or
-  canonical-form equivalence; Section 15 says both.
+The `EP-NATIVE-HANDOFF` and `EP-LIFECYCLE-CORPUS` references pin commit
+`b1b268e7d0538a9e22e379ddb06f55149d352c3b`, the merge of PR #790 on `main`.
+Section 15 describes the reference code at that commit and what it does not
+do: for wire compatibility with earlier releases the signed handoff still
+carries a `replay_unit` computed over the source labels, which the verifier
+checks but never uses as the replay identity, and the reference Gate
+implements no material-field inventory and no canonical-form equivalence. It
+is same-team reference code, not an independent implementation, and it is
+cited informatively.
 
 ## Layout
 
-`UPLOAD-THIS/` contains the candidate XML source. `RENDERS/` contains the text
-and HTML produced from that source by xml2rfc. `SHA256SUMS.txt` covers all
-three files.
+`UPLOAD-THIS/` contains the exact submitted XML source. `RENDERS/` contains the
+text and HTML produced from that source by xml2rfc 3.34.0. `SHA256SUMS.txt`
+covers all three files.
 
 ## Claim boundary
 

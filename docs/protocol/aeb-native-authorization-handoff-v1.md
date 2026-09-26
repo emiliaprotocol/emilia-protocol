@@ -5,9 +5,12 @@ authorization system to EMILIA Gate. Use it when the native result already
 identifies the final action exactly. It does not require CAID or AEC.
 
 This is a repository implementation profile for the direct native path that
-AEB-06 describes. AEB-06 was posted on 2026-09-24 as an individual
-Internet-Draft and is not adopted by any working group. The draft does not
-specify this gateway handoff, and the handoff was not part of AEB-05.
+AEB-07 describes. AEB-07 was posted on 2026-09-25 as an individual
+Internet-Draft and is not adopted by any working group. Its Section 5.8
+specifies what a native authorization handoff binds and how the boundary
+verifies it, but defines no encoding; AEB-07 cites this profile, at a pinned
+commit, as one informative reference encoding. AEB-06 did not specify the
+handoff, and it was not part of AEB-05.
 
 The native system still owns the authorization decision. A
 relying-party-pinned gateway signs a closed handoff that records:
