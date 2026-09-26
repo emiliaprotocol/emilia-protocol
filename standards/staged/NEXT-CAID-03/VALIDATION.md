@@ -25,5 +25,7 @@ review revision of the enum-form, own-member, and unpaired-surrogate text.
   own-member presence, and unpaired-surrogate refusals.
 - `node scripts/check-caid-03.mjs` passed against these files.
 
-Datatracker has not published this packet. Author review and submission are
-still required; the published -02 archive remains authoritative until then.
+Datatracker published this packet as CAID-03 on 2026-09-26. The immutable
+IETF archive XML is byte-identical to the retained source pinned in
+`SHA256SUMS.txt`, and the archive TXT is byte-identical to the retained TXT
+render. Later normative changes are staged in `../NEXT-CAID-04/`.

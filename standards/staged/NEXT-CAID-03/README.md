@@ -1,11 +1,12 @@
 # CAID revision 03 working packet
 
-This directory stages `draft-schrock-canonical-action-identifier-03` for
-author review and submission. It is not yet published; the Datatracker copy of
-revision -02 remains the latest public revision.
+This directory staged `draft-schrock-canonical-action-identifier-03` for
+review. Datatracker published it on 2026-09-26, and it is retained as
+exact-submission provenance. Later changes are staged in `../NEXT-CAID-04/`.
 
-- The file to submit after review is
-  `UPLOAD-THIS/draft-schrock-canonical-action-identifier-03.xml`.
+- The submitted file was
+  `UPLOAD-THIS/draft-schrock-canonical-action-identifier-03.xml`; the IETF
+  archive copy is byte-identical to it.
 - `RENDERS/` contains the TXT and HTML review renderings generated from that
   XML.
 - `SHA256SUMS.txt` pins the source and both renderings.
@@ -21,5 +22,5 @@ objects whose values are in the pinned set, codes outside it now refuse, and
 eleven registered types cannot compute until their external value sets are
 pinned.
 
-Publication remains a separate author action. Do not describe these staged
-files as an IETF publication until Datatracker accepts revision -03.
+Revision -03 is an individual Internet-Draft. Do not describe it as adopted
+or endorsed by the IETF.
