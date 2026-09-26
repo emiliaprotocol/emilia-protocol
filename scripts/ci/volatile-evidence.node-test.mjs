@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 
 import { COMMIT_TRAILER, DERIVED_EVIDENCE, collect as collectDerived } from './evidence-autopilot.mjs';
+import { stableGeneratedAt } from '../generate-proof-stats.mjs';
 import {
   DRIFT_REPORT_VERSION,
   GRACE_HOURS,
@@ -68,6 +69,26 @@ function run(id, sha, createdHoursAgo, observation, overrides = {}) {
   };
 }
 const observe = async (r) => (r.observation === 'failed' ? 'unknown' : r.observation);
+
+test('a refresh merged to main does not create a new proof-stats timestamp on its own', () => {
+  const first = {
+    generatedAt: '2026-09-26T04:00:00.000Z',
+    tests: { total: 120, files: 12 },
+    securityCase: { claims: 35, evidenceBundleSha256: 'a'.repeat(64) },
+  };
+  const refreshed = {
+    ...first,
+    generatedAt: '2026-09-27T04:00:00.000Z',
+  };
+  // The next push caused only by merging the refresh has identical evidence.
+  // The writer must reproduce byte-identical JSON, so collect opens no PR.
+  const repeated = { ...refreshed, generatedAt: stableGeneratedAt(refreshed, first) };
+  assert.equal(JSON.stringify(repeated), JSON.stringify(first));
+  assert.equal(stableGeneratedAt(refreshed, { ...first, tests: { total: 119, files: 12 } }), refreshed.generatedAt);
+  assert.equal(stableGeneratedAt(refreshed, { ...first, generatedAt: 'invalid' }), refreshed.generatedAt);
+  assert.equal(stableGeneratedAt(refreshed, { ...first, generatedAt: '2026-09-28T00:00:00.000Z' }), refreshed.generatedAt);
+  assert.equal(stableGeneratedAt(refreshed, { ...first, extra: 'forged' }), refreshed.generatedAt);
+});
 
 test('the volatile set is exactly the five main-owned files, inside the DCO allowlist', () => {
   assert.deepEqual([...VOLATILE_EVIDENCE].sort(), [
@@ -454,6 +475,9 @@ test('the refresh workflow keeps the App key away from the writers and is wired 
   const checkout = publish.steps.find((step) => String(step.uses).startsWith('actions/checkout@'));
   assert.equal(checkout.with.ref, '${{ github.sha }}');
   assert.equal(checkout.with.path, 'trusted');
+  const appToken = publish.steps.find((step) => String(step.uses).startsWith('actions/create-github-app-token@'));
+  assert.equal(appToken.with['permission-contents'], 'write');
+  assert.equal(appToken.with['permission-pull-requests'], 'write', 'the publisher cannot create a PR with the App\'s current Contents-only grant');
   assert.ok(publishText.includes('node trusted/scripts/ci/volatile-evidence.mjs request'));
   assert.ok(publishText.includes('createCommitOnBranch') || publishText.includes('create-commit.json'));
   assert.ok(publishText.includes('enablePullRequestAutoMerge'));

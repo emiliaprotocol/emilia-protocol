@@ -288,6 +288,37 @@ export function proofStatsTestArgs(reportPath, coverage = false) {
         ...(coverage ? ['--coverage'] : []),
     ];
 }
+/**
+ * `generatedAt` dates the last change in the measured evidence, not each
+ * execution of the writer. A refresh commit itself triggers another main
+ * refresh; writing a new clock value for otherwise identical evidence would
+ * create an endless series of refresh pull requests.
+ *
+ * Keep the previous timestamp only when every other field is identical and
+ * the timestamp is a canonical UTC ISO instant. Malformed or future-dated
+ * input is not carried forward as provenance.
+ */
+export function stableGeneratedAt(measured, previous) {
+    if (previous === null || typeof previous !== 'object' || Array.isArray(previous)) {
+        return measured.generatedAt;
+    }
+    const recorded = previous;
+    const earlier = recorded.generatedAt;
+    if (typeof earlier !== 'string')
+        return measured.generatedAt;
+    const millis = Date.parse(earlier);
+    if (!Number.isFinite(millis) || new Date(millis).toISOString() !== earlier ||
+        millis > Date.parse(measured.generatedAt)) {
+        return measured.generatedAt;
+    }
+    const measuredWithoutClock = { ...measured };
+    const recordedWithoutClock = { ...recorded };
+    delete measuredWithoutClock.generatedAt;
+    delete recordedWithoutClock.generatedAt;
+    return isDeepStrictEqual(measuredWithoutClock, recordedWithoutClock)
+        ? earlier
+        : measured.generatedAt;
+}
 function generateProofStats() {
     const check = process.argv.includes("--check");
     const coverage = process.argv.includes('--coverage');
@@ -436,6 +467,12 @@ function generateProofStats() {
         }
     }
     else {
+        // Preserve byte identity after the refresh has landed on main. This is
+        // deliberately the same all-fields-except-clock comparison as check mode.
+        const previous = existsSync('lib/proof-stats.json')
+            ? JSON.parse(readFileSync('lib/proof-stats.json', 'utf8'))
+            : null;
+        stats.generatedAt = stableGeneratedAt(stats, previous);
         writeFileSync("lib/proof-stats.json", `${JSON.stringify(stats, null, 2)}\n`);
         console.log(stats);
     }
