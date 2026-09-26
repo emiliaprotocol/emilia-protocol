@@ -12,6 +12,8 @@ const manifest = readJson('conformance/conformance-manifest.json');
 const external = readJson('conformance/external/rust-cleanroom-jdieselny.v1.json');
 const securityCase = readJson('security/security-case.json');
 const standardsStatus = readJson('standards/STATUS.json');
+const caidCore = readJson('caid/conformance/vectors.json');
+const caidMapping = readJson('caid/conformance/mapping-vectors.json');
 const llms = rendered.llms;
 const llmsFull = rendered.llmsFull;
 
@@ -111,8 +113,8 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
 
   it('surfaces the executable CAID mapping boundary', () => {
     expect(context.current_evidence.caid).toMatchObject({
-      core_vectors: 48,
-      mapping_vectors: 23,
+      core_vectors: caidCore.vectors.length,
+      mapping_vectors: caidMapping.vectors.length,
       same_team_ports: ['javascript', 'python', 'go'],
     });
     expect(context.current_evidence.caid.mapping_verdicts).toContain('INDETERMINATE');
