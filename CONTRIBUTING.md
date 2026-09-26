@@ -139,8 +139,6 @@ evidence is correct. See `.github/workflows/evidence-autopilot*.yml`.
    commits GitHub creates (see
    [`.github/workflows/dco.yml`](.github/workflows/dco.yml)). Repository policy
    separately requires the accountable author and signer to be a natural person.
-   An AI system cannot provide the DCO sign-off or be a co-author. AI-assisted work must follow
-   [`docs/AI-ASSISTED-DEVELOPMENT.md`](docs/AI-ASSISTED-DEVELOPMENT.md).
 5. Open a pull request against `main`. Describe the trust boundary changed,
    the refusal or negative controls exercised, and the commands you ran.
 
