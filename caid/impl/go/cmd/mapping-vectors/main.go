@@ -188,6 +188,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	// The strict decoder refuses duplicate member names and non-UTF-8 input
+	// before the typed decode below reads the corpus structure.
+	if _, err := caidlib.DecodeJSON(data); err != nil {
+		panic(err)
+	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
 	var corpus Corpus

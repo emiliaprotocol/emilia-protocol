@@ -57,6 +57,7 @@ const coreCorpus = JSON.parse(readFileSync(path.join(ROOT, 'conformance/vectors.
 run(`JavaScript core: ${coreCorpus.vectors.length} vectors`, 'node', ['impl/js/run-vectors.mjs']);
 run(`Python core: ${coreCorpus.vectors.length} vectors`, 'python3', ['impl/python/run_vectors.py']);
 run(`Go core: ${coreCorpus.vectors.length} vectors`, 'go', ['run', './cmd/core-vectors'], GO_ROOT);
+run('Go unit tests (strict JSON decoding, UTF-8 refusal)', 'go', ['test', '-count=1', './...'], GO_ROOT);
 
 const mappingOutputs = [
   ['JavaScript', run(`JavaScript mapping: ${mappingCorpus.vectors.length} vectors`, 'node', ['impl/js/run-mapping-vectors.mjs', '--json'])],

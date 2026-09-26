@@ -5,14 +5,13 @@
 // Default path: ../../conformance/vectors.json relative to the module
 // root (impl/go), with fallbacks for other working directories.
 //
-// The vectors file is decoded with UseNumber so numbers reach the
-// implementation as json.Number, exactly as a conforming Go caller
-// would provide them.
+// The vectors file is decoded with caid.DecodeJSON, so numbers reach the
+// implementation as json.Number, duplicate member names are refused, and
+// an unpaired surrogate escape is preserved for the canonicalizer to
+// refuse, exactly as a conforming Go caller would provide them.
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,11 +31,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-	var doc map[string]interface{}
-	if err := dec.Decode(&doc); err != nil {
+	decoded, err := caid.DecodeJSON(data)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "FAIL: cannot decode %s: %v\n", path, err)
+		os.Exit(1)
+	}
+	doc, isObject := decoded.(map[string]interface{})
+	if !isObject {
+		fmt.Fprintf(os.Stderr, "FAIL: %s is not a JSON object\n", path)
 		os.Exit(1)
 	}
 	vectorsRaw, ok := doc["vectors"].([]interface{})

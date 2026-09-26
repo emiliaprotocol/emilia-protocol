@@ -126,7 +126,7 @@ _SHORT_ESCAPES = {
 }
 
 
-def _quote(s):
+def _quote(s, refusals):
     out = ['"']
     for ch in s:
         esc = _SHORT_ESCAPES.get(ch)
@@ -137,11 +137,12 @@ def _quote(s):
         if cp < 0x20:
             out.append("\\u%04x" % cp)
         elif 0xD800 <= cp <= 0xDFFF:
-            # Lone surrogate (possible via json.loads of an escaped
-            # surrogate). ECMAScript JSON.stringify emits these as
-            # lowercase \u escapes; matching that keeps the canonical
-            # text pure ASCII here and UTF-8 encodable.
-            out.append("\\u%04x" % cp)
+            # Lone surrogate (json.loads preserves an escaped "\ud800" as
+            # one). It is not a Unicode scalar value, has no UTF-8
+            # encoding, and RFC 8785 section 3.2.2.2 requires a JCS
+            # implementation to refuse it.
+            refusals.append("unsupported_value")
+            return ""
         else:
             out.append(ch)
     out.append('"')
@@ -150,8 +151,8 @@ def _quote(s):
 
 def _utf16_key(s):
     # UTF-16 code unit order == lexicographic order of UTF-16BE bytes.
-    # surrogatepass so a lone-surrogate key still sorts (it is escaped
-    # at serialization time, matching JSON.stringify).
+    # surrogatepass so a lone-surrogate key still sorts before
+    # serialization refuses it as unsupported_value.
     return s.encode("utf-16-be", "surrogatepass")
 
 
@@ -174,11 +175,13 @@ def canonicalize(value):
       unsupported_number - a number whose IEEE 754 double value is not
                            an integer with magnitude at most 2^53-1
                            (fractional, NaN, infinite, or out of range)
-      unsupported_value  - a value not representable in JSON (bytes,
-                           set, tuple, arbitrary object, non-string
-                           dict key). Cannot arise from json.loads
-                           input; exists so junk Python input fails
-                           closed instead of being silently dropped.
+      unsupported_value  - a value outside the I-JSON data model: a
+                           string or member name containing a lone
+                           surrogate code point (RFC 8785 section
+                           3.2.2.2; json.loads preserves "\\ud800"
+                           escapes as lone surrogates), or a value not
+                           representable in JSON at all (bytes, set,
+                           tuple, arbitrary object, non-string dict key).
     """
     refusals = []
     canonical = _serialize(value, refusals)
@@ -205,7 +208,7 @@ def _serialize(v, refusals):
         refusals.append("unsupported_number")
         return ""
     if isinstance(v, str):
-        return _quote(v)
+        return _quote(v, refusals)
     if isinstance(v, list):
         return "[" + ",".join(_serialize(x, refusals) for x in v) + "]"
     if isinstance(v, dict):
@@ -215,7 +218,7 @@ def _serialize(v, refusals):
                 refusals.append("unsupported_value")
                 return ""
         keys.sort(key=_utf16_key)  # UTF-16 code unit order
-        parts = [_quote(k) + ":" + _serialize(v[k], refusals) for k in keys]
+        parts = [_quote(k, refusals) + ":" + _serialize(v[k], refusals) for k in keys]
         return "{" + ",".join(parts) + "}"
     refusals.append("unsupported_value")
     return ""
@@ -254,7 +257,7 @@ def _validate_against_definition(obj, definition, enum_snapshots=None):
         name = f.get("name")
         if not isinstance(name, str):
             continue
-        if name not in obj:
+        if name not in obj:  # dict membership is own-key membership
             refusals.append("missing_material_field:" + name)
     for f in required + optional:
         name = f.get("name")
@@ -277,27 +280,42 @@ def _valid_enum_values(values):
     )
 
 
+def _trim_inline_member(value):
+    # Trim only U+0020 SPACE from both ends. str.strip() would also remove
+    # other Unicode whitespace and the C0 separators, which the JavaScript
+    # and Go implementations keep as part of the member.
+    return value.strip(" ")
+
+
 def _resolve_enum_values(field, enum_snapshots=None):
     """Resolve an enum to a closed, integrity-checked string list.
 
-    `values` without values_ref remains the legacy inline form, and the
-    registry's compact `inline: a | b` form is parsed directly. External
-    references fail closed unless the definition embeds a non-empty snapshot,
-    names its edition/snapshot, and pins the JCS values array by SHA-256.
+    Presence is key presence: a member written as null is present and
+    malformed, never the same as an absent member (DESIGN.md section 3).
+
+    `values` without a values_ref member is the inline form. The registry's
+    compact `inline: a | b` form splits on "|" and trims U+0020 SPACE only;
+    a `values` member beside it must equal the parsed list. An external
+    values_ref fails closed unless the definition names its
+    edition/snapshot and pins the JCS values array by SHA-256, and the array
+    resolves from an embedded `values` member or, without one, from an
+    exactly matching local snapshot.
     """
+    has_ref = "values_ref" in field
+    has_values = "values" in field
     values_ref = field.get("values_ref")
     declared = field.get("values")
 
     if isinstance(values_ref, str) and values_ref.startswith("inline:"):
-        values = [value.strip() for value in values_ref[len("inline:") :].split("|")]
+        values = [_trim_inline_member(value) for value in values_ref[len("inline:") :].split("|")]
         if not _valid_enum_values(values):
             return None
-        if declared is not None and declared != values:
+        if has_values and declared != values:
             return None
         return values
 
-    # A values array with no external reference is the legacy inline form.
-    if values_ref is None:
+    # A values array with no values_ref member is the inline form.
+    if not has_ref:
         return declared if _valid_enum_values(declared) else None
 
     values_snapshot = field.get("values_snapshot")
@@ -311,7 +329,9 @@ def _resolve_enum_values(field, enum_snapshots=None):
         or not DIGEST_FIELD_RE.match(values_sha256)
     ):
         return None
-    if not _valid_enum_values(declared) and isinstance(enum_snapshots, list):
+    # An embedded `values` member is the snapshot and must verify on its
+    # own; only a definition without one resolves from supplied snapshots.
+    if not has_values and isinstance(enum_snapshots, list):
         for snapshot in enum_snapshots:
             if (
                 _is_plain_object(snapshot)
@@ -417,7 +437,8 @@ def compute_caid(action_object, options=None):
     if suite not in SUPPORTED_SUITES:
         refusals.append("unknown_suite")
 
-    # Step 6: no non-integer number anywhere in the object.
+    # Step 6: no non-integer number and no unpaired surrogate anywhere in
+    # the object (unsupported_number / unsupported_value).
     canon = canonicalize(action_object)
     if not canon["ok"]:
         refusals.extend(canon["refusals"])

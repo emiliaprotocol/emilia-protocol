@@ -36,6 +36,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf16"
+	"unicode/utf8"
 )
 
 const caidVersion = "1"
@@ -280,10 +281,14 @@ func isJSONNumber(v interface{}) bool {
 //	unsupported_number - a number whose IEEE 754 double value is not an
 //	                     integer with magnitude at most 2^53-1
 //	                     (fractional, NaN, infinite, or out of range)
-//	unsupported_value  - a Go value with no JSON representation (a type
-//	                     json.Decoder never produces). Cannot arise from
-//	                     decoded JSON input; exists so junk Go input
-//	                     fails closed instead of being silently dropped.
+//	unsupported_value  - a value outside the I-JSON data model: a string
+//	                     or member name that is not valid UTF-8 (the form
+//	                     an unpaired surrogate takes in a Go string, for
+//	                     example after DecodeJSON; RFC 8785 section
+//	                     3.2.2.2 requires refusing it), or a Go value with
+//	                     no JSON representation at all, so junk Go input
+//	                     fails closed instead of being silently dropped or
+//	                     rewritten to U+FFFD.
 func Canonicalize(value interface{}) CanonicalizeResult {
 	var refusals []string
 	var sb strings.Builder
@@ -314,6 +319,10 @@ func serialize(sb *strings.Builder, v interface{}, refusals *[]string) {
 		}
 		sb.WriteString(lit)
 	case string:
+		if !utf8.ValidString(t) {
+			*refusals = append(*refusals, "unsupported_value")
+			return
+		}
 		writeJCSString(sb, t)
 	case []interface{}:
 		sb.WriteByte('[')
@@ -334,6 +343,9 @@ func serialize(sb *strings.Builder, v interface{}, refusals *[]string) {
 		for i, k := range keys {
 			if i > 0 {
 				sb.WriteByte(',')
+			}
+			if !utf8.ValidString(k) {
+				*refusals = append(*refusals, "unsupported_value")
 			}
 			writeJCSString(sb, k)
 			sb.WriteByte(':')
@@ -470,10 +482,14 @@ func validateAgainstDefinition(obj map[string]interface{}, def map[string]interf
 }
 
 // resolveEnumValues resolves an enum to a closed, integrity-checked string
-// list. A values array without values_ref remains the legacy inline form, and
-// values_ref="inline: a | b" is parsed directly. External references fail
-// closed unless the definition embeds a non-empty value snapshot, names its
-// edition/snapshot, and pins the JCS values array by SHA-256.
+// list (DESIGN.md section 3). Presence is key presence: a member decoded as
+// nil is present and malformed. A values array without a values_ref member
+// is the inline form. values_ref="inline: a | b" splits on "|" and trims
+// U+0020 SPACE only; a values member beside it must equal the parsed list.
+// External references fail closed unless the definition names its
+// edition/snapshot and pins the JCS values array by SHA-256, and the array
+// resolves from an embedded values member or, without one, from an exactly
+// matching local snapshot.
 func resolveEnumValues(field map[string]interface{}, enumSnapshots []interface{}) ([]string, bool) {
 	ref, hasRef := field["values_ref"]
 	declaredRaw, hasDeclared := field["values"]
@@ -483,7 +499,10 @@ func resolveEnumValues(field map[string]interface{}, enumSnapshots []interface{}
 		values := make([]string, 0, len(parts))
 		seen := make(map[string]bool, len(parts))
 		for _, part := range parts {
-			value := strings.TrimSpace(part)
+			// U+0020 SPACE only: strings.TrimSpace would also strip
+			// U+0085, U+00A0 and other Unicode spaces that the JavaScript
+			// and Python implementations keep.
+			value := strings.Trim(part, " ")
 			if value == "" || seen[value] {
 				return nil, false
 			}
@@ -513,8 +532,13 @@ func resolveEnumValues(field map[string]interface{}, enumSnapshots []interface{}
 	if !refOK || refString == "" || !snapshotOK || snapshot == "" || !pinOK || !digestFieldRe.MatchString(pin) {
 		return nil, false
 	}
-	declared, ok := validEnumValues(declaredRaw)
-	if !ok {
+	// An embedded values member is the snapshot and must verify on its own;
+	// only a definition without one resolves from the supplied snapshots.
+	var declared []string
+	ok := false
+	if hasDeclared {
+		declared, ok = validEnumValues(declaredRaw)
+	} else {
 		for _, candidate := range enumSnapshots {
 			resolved, isObject := asObject(candidate)
 			if !isObject || resolved["values_ref"] != refString || resolved["values_snapshot"] != snapshot || resolved["values_sha256"] != pin {
@@ -692,7 +716,9 @@ func ComputeCaid(actionObject interface{}, opts ComputeOptions) ComputeResult {
 		refusals = append(refusals, "unknown_suite")
 	}
 
-	// Step 6: no non-integer number anywhere in the object.
+	// Step 6: no non-integer number and no invalid UTF-8 (the Go form of an
+	// unpaired surrogate) anywhere in the object (unsupported_number /
+	// unsupported_value).
 	canon := Canonicalize(actionObject)
 	if !canon.OK {
 		refusals = append(refusals, canon.Refusals...)

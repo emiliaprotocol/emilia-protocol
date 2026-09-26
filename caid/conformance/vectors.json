@@ -1,6 +1,7 @@
 {
  "suite_note": "Shared cross-language CAID conformance vectors. Each vector carries its own inline type definitions and never references the public registry. CAID carries no trust semantics: these vectors test identification only, not authorization, identity, or proof.",
- "version": 1,
+ "version": 2,
+ "previous_versions": [{"version": 1, "vectors": 48, "sha256": "sha256:69bac062e94a9abd7d2647dc86f1c2efc7a10a24da52f6c406592f5cf8a1ca63", "note": "Byte digest of the version 1 corpus as last published on main before registry v4. Version 2 adds pinned-enum, inline-enum, own-member, and unpaired-surrogate refusals that the version 1 reference implementations do not enforce."}],
  "enum_snapshots": [
   {
    "values_ref": "ISO 4217 alpha-3",
@@ -2758,6 +2759,276 @@
     "suite": "jcs-sha256"
    },
    "expect": {"refusals": ["mistyped_field:channel"]}
+  },
+  {
+   "id": "refuse-enum-values-ref-null",
+   "kind": "compute",
+   "description": "a values_ref member written as null is present and malformed; it is not the absent-values_ref inline form, even beside a valid values array",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": null, "values": ["USD"]}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "refuse-enum-inline-with-values-null",
+   "kind": "compute",
+   "description": "a values member written as null beside an inline values_ref is present and must equal the parsed list, so it refuses",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline: USD | EUR", "values": null}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "compute-inline-enum-space-trimmed",
+   "kind": "compute",
+   "description": "inline members are split on | and trimmed of leading and trailing U+0020 SPACE only",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline:  USD |EUR  "}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"caid": "caid:1:test.enum.1:jcs-sha256:opusq78tZPmSj5nsoOwUBeuInu0unlLCUEDhI-fRUWc", "digest": "sha256:a29bacabbf2d64f9928f99eca0ec1405eb889eed2e9e52c25040e123e7d15167"}
+  },
+  {
+   "id": "refuse-inline-enum-tab-not-trimmed",
+   "kind": "compute",
+   "description": "a horizontal tab around an inline member is not trimmed, so the member is \"\\tUSD\\t\" and USD is outside the set",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline:\tUSD\t|EUR"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "refuse-inline-enum-nel-not-trimmed",
+   "kind": "compute",
+   "description": "U+0085 NEXT LINE around an inline member is not trimmed",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline:\u0085USD\u0085|EUR"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "refuse-inline-enum-bom-not-trimmed",
+   "kind": "compute",
+   "description": "U+FEFF around an inline member is not trimmed",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline:\ufeffUSD\ufeff|EUR"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "refuse-inline-enum-c0-separator-not-trimmed",
+   "kind": "compute",
+   "description": "U+001C FILE SEPARATOR around an inline member is not trimmed",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline:\u001cUSD\u001c|EUR"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "compute-inline-enum-with-equal-values",
+   "kind": "compute",
+   "description": "a values array beside an inline values_ref is accepted only when it equals the parsed list exactly",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline: USD | EUR", "values": ["USD", "EUR"]}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "EUR"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"caid": "caid:1:test.enum.1:jcs-sha256:LJWNcclMh7RFXp12_WybL7U9LFy-brwgQDIIlijFjRM", "digest": "sha256:2c958d71c94c87b4455e9d76fd6c9b2fb53d2c5cbe6ebc204032089628c58d13"}
+  },
+  {
+   "id": "refuse-inline-enum-with-different-values",
+   "kind": "compute",
+   "description": "a values array beside an inline values_ref that differs from the parsed list (here only in order) refuses",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline: USD | EUR", "values": ["EUR", "USD"]}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "EUR"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "compute-external-enum-embedded-values",
+   "kind": "compute",
+   "description": "an external values_ref may embed its pinned array in values; the embedded array is digest-checked like a supplied snapshot",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "Example currency pair", "values_snapshot": "example edition 1", "values_sha256": "sha256:240025105d266f8b899d3bc2f47f4152c9a17136a89442152a3305d13ede4039", "values": ["EUR", "USD"]}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"caid": "caid:1:test.enum.1:jcs-sha256:opusq78tZPmSj5nsoOwUBeuInu0unlLCUEDhI-fRUWc", "digest": "sha256:a29bacabbf2d64f9928f99eca0ec1405eb889eed2e9e52c25040e123e7d15167"}
+  },
+  {
+   "id": "refuse-external-enum-embedded-values-malformed",
+   "kind": "compute",
+   "description": "an embedded values member is the snapshot and must verify on its own; an empty one refuses even when a matching snapshot is supplied",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270", "values": []}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:currency"]}
+  },
+  {
+   "id": "refuse-required-proto-field-absent",
+   "kind": "compute",
+   "description": "a required field named __proto__ that the object does not carry as its own member is missing",
+   "definitions": [{
+    "action_type": "test.proto.1",
+    "required_fields": [{"name": "c", "type": "string"}, {"name": "__proto__", "type": "object"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.proto.1", "c": "x"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["missing_material_field:__proto__"]}
+  },
+  {
+   "id": "compute-optional-constructor-field-absent",
+   "kind": "compute",
+   "description": "an absent optional field named constructor is absent, not an inherited value to type-check",
+   "definitions": [{
+    "action_type": "test.proto.1",
+    "required_fields": [{"name": "c", "type": "string"}],
+    "optional_fields": [{"name": "constructor", "type": "string"}, {"name": "toString", "type": "string"}]
+   }],
+   "input": {
+    "object": {"action_type": "test.proto.1", "c": "x"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"caid": "caid:1:test.proto.1:jcs-sha256:GmcuadSjOlpRPsoJm9EnoXawgA-__esGs_8Sm-CVmHY", "digest": "sha256:1a672e69d4a33a5a513eca099bd127a176b0800fbffdeb06b3ff129be0959876"}
+  },
+  {
+   "id": "refuse-required-tostring-field-absent",
+   "kind": "compute",
+   "description": "a required field named toString that the object does not carry is missing, not mistyped",
+   "definitions": [{
+    "action_type": "test.proto.1",
+    "required_fields": [{"name": "c", "type": "string"}, {"name": "toString", "type": "string"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.proto.1", "c": "x"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["missing_material_field:toString"]}
+  },
+  {
+   "id": "refuse-lone-surrogate-string-value",
+   "kind": "compute",
+   "description": "a string value containing an unpaired surrogate has no UTF-8 encoding and no RFC 8785 form, so it refuses as unsupported_value",
+   "definitions": [{
+    "action_type": "test.text.1",
+    "required_fields": [{"name": "c", "type": "string"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.text.1", "c": "\ud800"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["unsupported_value"]}
+  },
+  {
+   "id": "refuse-lone-surrogate-member-name",
+   "kind": "compute",
+   "description": "a member name containing an unpaired surrogate refuses as unsupported_value",
+   "definitions": [{
+    "action_type": "test.text.1",
+    "required_fields": [{"name": "c", "type": "string"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.text.1", "c": "x", "\udc00": "y"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["unsupported_value"]}
+  },
+  {
+   "id": "compute-replacement-character",
+   "kind": "compute",
+   "description": "U+FFFD is an ordinary scalar value and computes; a lone surrogate must not be rewritten into it",
+   "definitions": [{
+    "action_type": "test.text.1",
+    "required_fields": [{"name": "c", "type": "string"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.text.1", "c": "\ufffd"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"caid": "caid:1:test.text.1:jcs-sha256:agG0nPtxAPmIVabJzWul9xH1rE2ayq67AYPCMNqgdqU", "digest": "sha256:6a01b49cfb7100f98855a6c9cd6ba5f711f5ac4d9acaaebb0183c230daa076a5"}
+  },
+  {
+   "id": "verify-lone-surrogate-against-replacement-caid",
+   "kind": "verify",
+   "description": "an object whose string holds a lone surrogate never verifies against the CAID of the same object with U+FFFD; it is invalid_object",
+   "definitions": [{
+    "action_type": "test.text.1",
+    "required_fields": [{"name": "c", "type": "string"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.text.1", "c": "\ud800"},
+    "caid": "caid:1:test.text.1:jcs-sha256:agG0nPtxAPmIVabJzWul9xH1rE2ayq67AYPCMNqgdqU"
+   },
+   "expect": {"valid": false, "reasons": ["invalid_object"]}
   }
  ]
 }

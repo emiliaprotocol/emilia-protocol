@@ -146,19 +146,31 @@ Field types (closed set v1): `string`, `amount-string`, `digest`
 `object`, `array`.
 
 An `enum` is a closed value set, not an unconstrained string with a
-documentation label. It MUST use exactly one of these forms:
+documentation label. A member is present when its key is present: `values`
+or `values_ref` written as `null` is present and malformed, never the same
+as an absent member. An enum MUST take exactly one of these forms:
 
-- a non-empty, duplicate-free `values` array with no `values_ref`;
-- `values_ref` beginning `inline:`, followed by a non-empty pipe-separated
-  list; or
-- an external `values_ref` together with non-empty `values_snapshot` and
-  `values_sha256` (`sha256:` plus lowercase hex). The issuer or verifier MUST
-  resolve an exact match for all three fields to a non-empty, duplicate-free
-  string array, then verify that `values_sha256` is SHA-256 over the RFC 8785
-  canonical JSON encoding of that array.
+- inline array: a non-empty, duplicate-free array of non-empty strings in
+  `values`, and no `values_ref` member;
+- compact inline: a `values_ref` string beginning `inline:`. The text after
+  that prefix is split on every `|`, and each member is trimmed of leading
+  and trailing U+0020 SPACE characters only (no other whitespace or control
+  character is trimmed). The resulting members MUST be non-empty and
+  duplicate-free. A `values` member MAY accompany it only when it equals the
+  parsed list exactly, in order; or
+- external: any other non-empty `values_ref` string together with non-empty
+  `values_snapshot` and `values_sha256` (`sha256:` plus lowercase hex). The
+  pinned array is the definition's own `values` member when present, and
+  otherwise a locally supplied snapshot whose `values_ref`,
+  `values_snapshot`, and `values_sha256` all match exactly. An embedded
+  `values` member is never replaced by a supplied snapshot. The issuer or
+  verifier MUST verify that the array is a non-empty, duplicate-free array
+  of non-empty strings and that `values_sha256` is SHA-256 over its RFC 8785
+  canonical JSON encoding.
 
-A bare, unresolved, or digest-mismatched external `values_ref` is not a value
-constraint and MUST fail closed as `mistyped_field:<name>`. Resolution is
+A definition in none of these forms, and a bare, unresolved, or
+digest-mismatched external `values_ref`, is not a value constraint and MUST
+fail closed as `mistyped_field:<name>` whenever the field is present. Resolution is
 local and offline; implementations MUST NOT fetch a mutable URL while
 computing or verifying a CAID. Changing the pinned array changes validation
 semantics and therefore requires a new action-type version. A registry
@@ -170,11 +182,19 @@ set only by incrementing the registry version and documenting the migration.
 `computeCaid(actionObject, {suite, definitions, enumSnapshots})` — conforming issuer:
 1. `action_type` present and grammar-valid, else `invalid_action_type`.
 2. Type resolvable in definitions, else `unknown_action_type`.
-3. Every required field present, else `missing_material_field:<name>`.
+3. Every required field present as an own member of the object, else
+   `missing_material_field:<name>`.
 4. Every present declared field type-valid, else `mistyped_field:<name>`
    (amount-string violations may refine to `invalid_amount:<name>`).
 5. Suite known, else `unknown_suite`.
 6. No non-integer number anywhere in the object, else `unsupported_number`.
+   No string or member name anywhere in the object containing an unpaired
+   surrogate code point, else `unsupported_value`: such a string is not a
+   sequence of Unicode scalar values, has no UTF-8 encoding, and RFC 8785
+   section 3.2.2.2 requires a JCS implementation to refuse it. A raw JSON
+   parser feeding CAID computation MUST NOT replace an unpaired surrogate
+   escape with U+FFFD (that silently changes the identified content), and
+   MUST reject duplicate member names.
 7. Canonicalize, digest, emit `{caid, digest}`.
 Any failure returns `{refusals:[...]}` and NO caid. Fail-closed, never throw
 on junk input.
