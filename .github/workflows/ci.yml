@@ -842,10 +842,7 @@ jobs:
           # still needs the loader hook to resolve .js specifiers renamed to
           # .ts during the migration.
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
-        run: >-
-          npm run check:proof-stats --
-          --security-case-preverified
-          --drift-report "$RUNNER_TEMP/proof-stats-drift.json"
+        run: npm run check:proof-stats -- --security-case-preverified --drift-report "$RUNNER_TEMP/proof-stats-drift.json"
       - name: Check generated LLM context inputs and report volatile drift
         run: npm run check:llm-context -- --drift-report "$RUNNER_TEMP/llm-context-drift.json"
       - name: Apply the volatile evidence policy
