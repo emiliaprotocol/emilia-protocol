@@ -177,6 +177,9 @@ const SAFE_HOSTS: Set<string> = new Set([
   "iso.org",
   "hl7.org",
   "aiuc-1.com",
+  // Independently operated verifier whose public surface is pinned in
+  // docs/EP-SYNC-INTEROP.md
+  "openverifier.org",
   // Government / grant-program domains (referenced in archived grant/application drafts)
   "nsf.gov",
   "sam.gov",

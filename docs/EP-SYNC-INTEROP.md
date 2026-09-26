@@ -53,8 +53,8 @@ it is not silently converted into an independently reproduced EMILIA result.
 
 ## Pinned external public-surface observation
 
-On 2026-09-23, EMILIA independently reran the OpenVerifier 13.8.3 public
-surface package identified as:
+On 2026-09-23, EMILIA reran the OpenVerifier 13.8.3 public surface package
+identified as:
 
 * source revision: `openverifier-public-surface-v13.8.3-p3`;
 * deployment revision: `ov-public-v13.8.3-20260923.3`;
