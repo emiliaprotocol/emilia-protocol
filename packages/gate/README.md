@@ -487,7 +487,7 @@ Build and download a plan at `https://www.emiliaprotocol.ai/protect`, then sign
 that exact plan locally with a customer-owned Ed25519 key:
 
 ```bash
-npx --package @emilia-protocol/gate@0.27.0 ep-protect activate plan.json \
+npx --package @emilia-protocol/gate@0.28.0 ep-protect activate plan.json \
   --private-key owner.pem \
   --tenant my-tenant \
   --gateway my-mcp-gateway \
@@ -858,13 +858,13 @@ compliance, external effect truth, program safety, or complete mediation. See
 
 ### Install the Gate Qualification v2 SQL artifact
 
-Pin the package artifact to `@emilia-protocol/gate@0.27.0` and verify the exact
+Pin the package artifact to `@emilia-protocol/gate@0.28.0` and verify the exact
 shipped migration before applying it. The SHA-256 below identifies this source
 artifact; it is not a statement that the migration is already deployed:
 
 ```bash
 GATE_SQL_PATH=node_modules/@emilia-protocol/gate/sql/gate-qualification-v2.sql
-test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.27.0"
+test "$(node -p "require('./node_modules/@emilia-protocol/gate/package.json').version")" = "0.28.0"
 printf '%s  %s\n' \
   'e9b55e29c90cf7061bd62a8afd7c97402927e1eeb87649d4a38952a4b08df6b3' \
   "$GATE_SQL_PATH" | shasum -a 256 -c -
@@ -1238,6 +1238,18 @@ await guardStripeMutation(gate, stripe, { op: 'payout.create', params: { amount:
 // Supabase: guardSupabaseMutation(gate, db, { op: 'sql.destructive', params: { sql }, receipt })  // binds the exact statement
 // AWS:      guardAwsMutation(gate, client, { op: 'iam.attach_policy', params: { user, policy_arn }, receipt })
 ```
+
+For `refund.create` in 0.28.0, the approval and call parameters must both bind
+the same `payment_intent`, `amount`, and `operation_id`. Assign that ID in your
+business system and keep it stable across retries; older refund receipts without
+it will refuse before Stripe. Gate checks the supplied ID's shape and binding,
+not whether it truly came from your business record. The adapter derives a
+Stripe idempotency key from the ID, but it can call `refunds.create` again after
+a lost response. Stripe's [idempotency retention is finite](https://docs.stripe.com/api/idempotent_requests).
+Never mint a new ID or blindly retry an uncertain refund. Hold it as
+indeterminate until you reconcile the same operation against authenticated
+provider records. This adapter alone is not durable or exactly-once recovery;
+the regression tests use a mock provider, not live Stripe or PostgreSQL.
 
 Clients are injected (the real `@octokit/rest`, `stripe`, a `pg`/Supabase client, or the AWS SDK), so
 the adapters are testable without credentials. Adding an adapter is ~40 lines: a frozen action pack
