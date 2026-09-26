@@ -94,6 +94,9 @@ export async function verifyReleaseLockRegistration({
       expectedOrigin: challenge.origin,
       expectedRPID: challenge.rp_id,
       requireUserVerification: true,
+      // Same ES256-only list the registration options offered; never the
+      // library default, which is runtime-dependent from @simplewebauthn v14.
+      supportedAlgorithmIDs: [-7],
     });
   } catch {
     throw releaseLockRefusal(400, 'attestation_invalid', 'Passkey registration did not verify.');
