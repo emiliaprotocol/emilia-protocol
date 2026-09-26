@@ -13,9 +13,13 @@ revision -02 remains the latest public revision.
 
 Revision -03 makes external enum validation replayable: a definition must pin
 an immutable snapshot label and SHA-256 digest, resolution is local and exact,
-and bare, unresolved, mismatched, or out-of-set values fail closed. It records
-the reference registry's v3-to-v4 migration without changing CAID bytes for
-existing action objects whose values are in the pinned set.
+and bare, unresolved, mismatched, or out-of-set values fail closed. It makes
+the enum definition forms exact, requires own-member field presence, and makes
+RFC 8785's refusal of unpaired surrogates explicit. It records the reference
+registry's v3-to-v4 migration: CAID bytes are unchanged for existing action
+objects whose values are in the pinned set, codes outside it now refuse, and
+eleven registered types cannot compute until their external value sets are
+pinned.
 
 Publication remains a separate author action. Do not describe these staged
 files as an IETF publication until Datatracker accepts revision -03.

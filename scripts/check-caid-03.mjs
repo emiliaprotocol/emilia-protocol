@@ -40,6 +40,23 @@ assert(registry.meta.updated === '2026-09-24', 'reference registry has wrong upd
 assert(source.includes('<name>Enum Value-Set Resolution</name>'), 'enum resolution text missing');
 assert(source.includes('<name>Changes since -02</name>'), 'revision history does not name -02');
 assert(source.includes('Historical v3'), 'v3-to-v4 migration consequence missing');
+// Review revision: the enum forms, trimming set, presence rule, unpaired
+// surrogate refusal, and the corrective pin exception are normative text.
+for (const [needle, what] of [
+  ['trimmed of leading and trailing U+0020 SPACE characters only', 'inline trimming rule'],
+  ['is present and malformed, not absent', 'null-member presence rule'],
+  ['A supplied snapshot never replaces an embedded', 'embedded external values rule'],
+  ['member of the action object itself', 'own-member presence rule'],
+  ['else unsupported_value', 'unpaired surrogate refusal'],
+  ['MUST NOT replace an unpaired surrogate escape', 'raw parser surrogate rule'],
+  ['One narrow correction is permitted.', 'corrective pin exception'],
+  ['Eleven active types in the reference registry', 'blocked-type migration consequence'],
+]) assert(source.includes(needle), `missing ${what}`);
+assert(
+  Array.isArray(registry.unresolved_external_enums)
+    && new Set(registry.unresolved_external_enums.filter((item) => item.required).map((item) => item.action_type)).size === 11,
+  'registry does not list the eleven blocked types',
+);
 const canonicalValues = canonicalize(enumSnapshot.values);
 assert(canonicalValues.ok, 'ISO 4217 snapshot values are not JCS-compatible');
 const snapshotHash = 'sha256:' + createHash('sha256')
