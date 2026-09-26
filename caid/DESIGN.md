@@ -1,6 +1,6 @@
 # CAID — Canonical Action IDentifier (v1 normative design)
 
-Date: 2026-09-24. Author: EMILIA Protocol maintainers.
+Date: 2026-09-26. Author: EMILIA Protocol maintainers.
 This file is the normative core. Every implementation, vector, draft, and
 binding in this directory conforms to THIS file. Change it here first.
 
