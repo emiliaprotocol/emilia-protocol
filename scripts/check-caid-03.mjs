@@ -8,7 +8,10 @@ import { fileURLToPath } from 'node:url';
 import { canonicalize, computeCaid } from '../caid/impl/js/caid.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// The packet is publication provenance for the posted -03 revision; the
+// posted snapshot must stay byte-identical to it.
 const packet = path.join(root, 'standards/staged/NEXT-CAID-03');
+const posted = path.join(root, 'standards/posted');
 const sourceRel = 'UPLOAD-THIS/draft-schrock-canonical-action-identifier-03.xml';
 const textRel = 'RENDERS/draft-schrock-canonical-action-identifier-03.txt';
 const htmlRel = 'RENDERS/draft-schrock-canonical-action-identifier-03.html';
@@ -26,7 +29,7 @@ const assert = (condition, message) => {
 };
 
 assert(source.includes('docName="draft-schrock-canonical-action-identifier-03"'), 'wrong source revision');
-assert(source.includes('category="std"'), 'candidate is not Standards Track');
+assert(source.includes('category="std"'), 'source is not Standards Track');
 assert(!source.includes('submissionType='), 'individual draft must not claim an adopted stream');
 for (const retainedReference of [
   'draft-schrock-ep-authorization-receipts-09',
@@ -133,4 +136,11 @@ for (const line of sums) {
 }
 assert(expectedPaths.size === 0, `missing checksum path ${[...expectedPaths].join(', ')}`);
 
-console.log('CAID-03: enum snapshot, registry v4, draft source, example, renders, and checksums PASS.');
+for (const relative of [sourceRel, textRel]) {
+  const postedBytes = readFileSync(path.join(posted, path.basename(relative)));
+  assert(postedBytes.equals(readFileSync(path.join(packet, relative))), `posted ${path.basename(relative)} differs from the packet`);
+}
+const postedHtml = readFileSync(path.join(posted, path.basename(htmlRel)), 'utf8');
+assert(postedHtml === html.replace(/[ \t]+$/gm, ''), 'posted HTML is not the packet render with trailing whitespace removed');
+
+console.log('CAID-03: enum snapshot, registry v4, draft source, example, renders, checksums, and posted snapshot PASS.');

@@ -11,12 +11,16 @@ Updated: 2026-09-26
   code sets receive pinned snapshots; the registry lists the blocking fields
   in `unresolved_external_enums`.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
-- 73 shared core vectors (corpus version 2) passing in all three ports,
+- 88 shared core vectors (corpus version 3) passing in all three ports,
   including valid USD/XAD, `NOT-A-CURRENCY`, bare/unresolved external
   references, hash mismatch, compact inline-enum enforcement and trimming,
-  null enum members, own-member field presence, and unpaired-surrogate
-  refusals. The Go port adds unit tests for its strict JSON decoder.
-- 23 Action-Mapping Profile vectors passing with byte-for-byte agreement on
+  null enum members, own-member field presence, unpaired-surrogate
+  refusals, whole-string grammar refusals (a value followed by a line feed
+  never matches a grammar), and value-based integer fields (`12.0` and
+  `1.2e1` are the integer 12; an integer beyond 2^53-1 refuses once as
+  `unsupported_number`). The Go port adds unit tests for its strict JSON
+  decoder.
+- 25 Action-Mapping Profile vectors passing with byte-for-byte agreement on
   verdicts and refusal reasons in all three ports, including the SILP IR to
   CAID `CANCEL+EMAIL` profile.
 - 100 candidate Consequential Action Interoperability vectors covering 25
@@ -64,15 +68,17 @@ not represented as native support or author endorsement.
 
 ## Standards status
 
-`draft-schrock-canonical-action-identifier-02` was published as an individual
-Internet-Draft on 2026-08-06. It is not an RFC, an adopted IETF working-group
-item, or IETF endorsement. The draft defines the identifier and the
-profile-bounded mapping algorithm; the IETF archive is authoritative for the
-published revision.
+`draft-schrock-canonical-action-identifier-03` was published as an individual
+Internet-Draft on 2026-09-26 through Datatracker submission 169526. It is not
+an RFC, an adopted IETF working-group item, or IETF endorsement. The draft
+defines the identifier and the profile-bounded mapping algorithm; the IETF
+archive is authoritative for the published revision.
 
-The registry-v4 enum correction is staged for the next Internet-Draft
-revision and is not part of the already published `-02` text until the author
-submits that revision.
+Revision -03 specifies the registry-v4 enum behavior described above: pinned,
+digest-checked value-set snapshots resolved locally, and fail-closed refusal of
+bare, unresolved, mismatched, or out-of-set values. The superseded -02 text,
+published 2026-08-06, does not contain it; its snapshot is retained in
+`../standards/archive/`.
 
 ## Explicit boundaries
 

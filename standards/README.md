@@ -77,7 +77,7 @@ complete active portfolio remains the 24 records in
 `STATUS.json.active_datatracker`, including 20 sole-authored records and four
 coauthored records, each with its own scope and revision history.
 
-The separate runtime execution spine is **Architecture-02 -> CAID-02 ->
+The separate runtime execution spine is **Architecture-03 -> CAID-03 ->
 AEC-06 -> AEB-07**: architecture and decision boundaries, exact material-action
 identity and matching, evidence satisfaction, then executor-side admission and
 one-time consequence custody. This runtime path is not the four-document
@@ -181,6 +181,24 @@ references without changing the EP-AEC-v1 envelope or converting evidence
 satisfaction into execution authority. It is an individual Internet-Draft, not
 a working-group item, and posting is not protocol-owner review.
 
+## September 6 Architecture corrective revision
+
+`draft-schrock-ep-architecture-03` was posted through Datatracker submission
+168691 (Datatracker time 2026-09-06T17:31:40Z) as one of the four September 6
+corrective revisions. Its XML and TXT match the immutable IETF archive
+byte-for-byte, and the snapshot was mirrored into `posted/` on 2026-09-26. The
+posted HTML follows the same whitespace-normalized local render rule as AEC-06.
+Revision -03 makes provider entry the transition that converts reserved
+authority to consumed authority before provider invocation, defines
+admission-control domains and monotonic epochs without overloading
+witness-independence control domains, and defines serialized emergency freeze,
+restoration, and reconciliation behavior for the three freeze-versus-entry
+races. It states the disconnected-edge stale-admission window, rejects
+immediate global-freeze claims, and adds idempotency, wrong-holder,
+receipt-absence, and unsigned-event claim boundaries. The abstract is
+unchanged from -02. It is an individual Internet-Draft, not a working-group
+item, and posting is not protocol-owner review.
+
 ## September 24 AEB maintenance revision
 
 `draft-schrock-action-evidence-boundary-06` was posted through Datatracker
@@ -213,6 +231,27 @@ attests and how the boundary verifies it, leaving the encoding to deployment
 pins. It is an individual Internet-Draft, not a working-group item, and posting
 is not protocol-owner review. Native-owner review and the complete
 multi-profile conformance gate remain open.
+
+## September 26 CAID maintenance revision
+
+`draft-schrock-canonical-action-identifier-03` was posted through Datatracker
+submission 169526 (Datatracker time 2026-09-26T16:30:22Z). Its XML and TXT
+match the immutable IETF archive byte-for-byte. The posted HTML is the
+provenance packet's local xml2rfc 3.34.0 render, which was recorded with its
+trailing whitespace already removed. Revision -03 makes enum validation
+replayable: an external enum reference requires a snapshot or edition label, a
+SHA-256 pin over the complete JCS values array, exact local resolution, and a
+verified membership check, and bare, unresolved, digest-mismatched, and
+out-of-set values fail closed. It makes the enum definition forms exact,
+defines required-field presence as a member of the action object itself, and
+makes explicit the refusal of unpaired surrogates that RFC 8785 already
+requires. The reference registry advances from version 3 to version 4:
+existing Action Objects whose codes are in the pinned ISO 4217 snapshot keep
+the same CAID bytes, a code outside it is refused, and eleven active types
+cannot produce a CAID until their external value sets are pinned. The Action
+Object, identifier syntax, digest suites, and mapping algorithm are unchanged.
+It is an individual Internet-Draft, not a working-group item, and posting is
+not protocol-owner review.
 
 ## New-filing freeze
 

@@ -82,16 +82,19 @@ boundary.
 ## Layout
 
 - `DESIGN.md` — normative core
-- `../standards/posted/draft-schrock-canonical-action-identifier-02.xml` —
+- `../standards/posted/draft-schrock-canonical-action-identifier-03.xml` —
   published individual Internet-Draft source (xml2rfc v3)
 - `registry/` — action-type registry seed, suites, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations
-- `conformance/vectors.json` — 73 core identifier vectors (corpus version 2),
+- `conformance/vectors.json` — 88 core identifier vectors (corpus version 3),
   including pinned, unresolved, mismatched, and out-of-set enum cases,
-  compact-inline trimming, own-member presence, and unpaired-surrogate
-  refusals
-- `conformance/mapping-vectors.json` — 23 cross-format mapping vectors,
-  including the SILP IR to CAID `CANCEL+EMAIL` profile
+  compact-inline trimming, own-member presence, unpaired-surrogate
+  refusals, whole-string grammar refusals (a trailing line feed in an amount,
+  digest field, timestamp, action type, suite, or CAID digest), and
+  value-based integer-field cases
+- `conformance/mapping-vectors.json` — 25 cross-format mapping vectors,
+  including the SILP IR to CAID `CANCEL+EMAIL` profile and trailing line
+  feeds in a JSON Pointer array index and a target field name
 - `interop/consequential-action-v1/` — 25 candidate, revision-pinned
   mechanism mappings with 100 positive, refusal, and abstention vectors;
   all await author review
@@ -136,4 +139,6 @@ Historical v3 decisions remain v3 decisions. The v4 code refuses v3's bare
 external references, so replaying a v3 decision requires the v3 registry and
 the pre-v4 implementations together, for example from commit `f46328afc`, the
 last `main` commit before registry v4. The version 1 core corpus from that
-commit is recorded by digest in `conformance/vectors.json`.
+commit is recorded by digest in `conformance/vectors.json`, as is the
+version 2 corpus that preceded the whole-string grammar and integer-field
+vectors.

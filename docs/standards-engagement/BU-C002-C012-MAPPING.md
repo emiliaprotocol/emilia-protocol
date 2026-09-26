@@ -24,9 +24,11 @@ The EMILIA source locks are the checked-in snapshots recorded by
   mapping was first written against);
 - `draft-schrock-action-evidence-boundary-07`, XML SHA-256
   `938f4d6538dc5e9b40da7934090013fa91906638d587e7dec05c940922ad6045`;
-- `draft-schrock-canonical-action-identifier-02`, XML SHA-256
-  `777487b04ac473ad70ff2dd8a0c396657744bb7fd9e92499d4ec0bee67762015`;
-  and
+- `draft-schrock-canonical-action-identifier-03`, XML SHA-256
+  `867cad1093063b9a54ecc1de99443248069f2dfb51c05dc4a12073202ba25040`
+  (byte-identical to the IETF archive copy; -03 changes enum validation and
+  the reference registry version but not the Action Object, identifier
+  syntax, digest suites, or mapping algorithm this mapping relies on); and
 - `draft-schrock-ep-quorum-03`, XML SHA-256
   `2c534bead66095bdf1d378100c2d7dd01e157702b3acef945bbfdf1edd0bf557`.
 

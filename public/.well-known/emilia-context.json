@@ -3,11 +3,11 @@
   "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "d5ad02ea0584264977828c338fe9b34270eda22f9ff72e5c53fde3f0b2909af6",
+    "input_digest_sha256": "df2faf4f3a57a7ba4a3e038915165dd84d29413df1c163646775f3c639aec859",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "34f253e23fb4037ff0ed22349d3a366a2b5cc909f69c0b89fbe6eb9470734219",
+        "sha256": "a28b767a80042bb1ad62d2795a3a4e3098eae826d3219565e312cdcc268ecee2",
         "bytes": 51148
       },
       {
@@ -47,18 +47,18 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "ff64fec11a7a98d4dc1b931b2b3534a3790880b43ff1b3de6afae3df6611e866",
-        "bytes": 59627
+        "sha256": "c0811cf691c60ede67515eca48814996878ef43a4a4b215220e5b297983f6810",
+        "bytes": 65252
       },
       {
         "path": "caid/conformance/vectors.json",
-        "sha256": "b63303e79a099063285ca5a5e5351e693104d8540cedddc41a2ff29082babd4a",
-        "bytes": 96456
+        "sha256": "9bbce814023e6943bb34bf945a918b99c28926d7a80cfc01b9748f8aaec4d188",
+        "bytes": 113703
       },
       {
         "path": "caid/conformance/mapping-vectors.json",
-        "sha256": "63e4af299b5a69406e0f7b1039c0a4232935f1910c0d9de1aabea2de715b0946",
-        "bytes": 25168
+        "sha256": "6941463cdb42ad5242d1e44efa6937a9db3edbfa77ea2c5df5573ce301be6f24",
+        "bytes": 27560
       },
       {
         "path": "conformance/vectors/model-to-matter.v1.json",
@@ -423,8 +423,8 @@
       "evidence_bundle_sha256": "5278732f21d8c598aef56af9aae97adc94ca260ea0d539f0acbfc09f36720596"
     },
     "caid": {
-      "core_vectors": 73,
-      "mapping_vectors": 23,
+      "core_vectors": 88,
+      "mapping_vectors": 25,
       "same_team_ports": [
         "javascript",
         "python",
@@ -4578,9 +4578,9 @@
     },
     {
       "identifier": "draft-schrock-canonical-action-identifier",
-      "revision_at_snapshot": "02",
+      "revision_at_snapshot": "03",
       "role": "Typed material-action identity and profile-bounded cross-format matching",
-      "next_action": "Published August 6; use -02 for target-bound tool-call identity and profile-bounded cross-format matching",
+      "next_action": "Published September 26 (Datatracker posting 2026-09-26T16:30:22Z) as an individual Internet-Draft, not adopted; use -03 for target-bound tool-call identity and profile-bounded cross-format matching. It makes enum validation replayable: an external enum reference requires a snapshot or edition label and a SHA-256 pin over the complete JCS values array, resolution is local and exact, and bare, unresolved, digest-mismatched, and out-of-set values fail closed. It also makes the enum definition forms exact, defines required-field presence as a member of the action object itself, makes the RFC 8785 refusal of unpaired surrogates explicit, and records the reference registry's version 3 to version 4 migration, under which eleven active types cannot produce a CAID until their external value sets are pinned. It does not change the Action Object, identifier syntax, digest suites, or mapping algorithm. The archive-identical XML is at standards/posted/draft-schrock-canonical-action-identifier-03.xml and is recorded in september_26_2026_caid_maintenance_wave.",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4596,7 +4596,7 @@
       "identifier": "draft-schrock-ep-architecture",
       "revision_at_snapshot": "03",
       "role": "Portfolio architecture",
-      "next_action": "Published September 6; use -03 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
+      "next_action": "Published September 6 (Datatracker posting 2026-09-06T17:31:40Z) as an individual Internet-Draft, not adopted; use -03 as the current individual draft. It makes provider entry the transition that converts reserved authority to consumed authority before provider invocation; defines admission-control domains and monotonic epochs without overloading witness-independence control domains; defines serialized emergency freeze, restoration, and reconciliation behavior for the three freeze-versus-entry races; states the disconnected-edge stale-admission window and rejects immediate global-freeze claims; and adds idempotency, wrong-holder, receipt-absence, and unsigned-event claim boundaries. The abstract is unchanged from -02. The archive-identical XML is at standards/posted/draft-schrock-ep-architecture-03.xml and is recorded in september_6_2026_architecture_posted_snapshot. Publication is separate from implementation or package release.",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-architecture/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4738,7 +4738,7 @@
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-09-25",
+    "updated": "2026-09-26",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -5006,7 +5006,7 @@
       },
       {
         "draft": "draft-schrock-ep-agent-trust-stack-00",
-        "canonical_owner": "draft-schrock-ep-architecture-02",
+        "canonical_owner": "draft-schrock-ep-architecture-03",
         "reason": "Its composition map is fully absorbed by Architecture-02."
       },
       {
@@ -5324,7 +5324,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 25, 2026, the repository tracks 24 active records: 20 sole-authored series and four coauthored series. Current Datatracker revisions include CAID -02, Authorization Receipts -13, AEB -07, Bounded Capability Receipts -06, Presentation Binding -01, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 26, 2026, the repository tracks 24 active records: 20 sole-authored series and four coauthored series. Current Datatracker revisions include CAID -03, Authorization Receipts -13, AEB -07, Bounded Capability Receipts -06, Presentation Binding -01, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",

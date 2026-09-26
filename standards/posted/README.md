@@ -39,9 +39,9 @@ authoritative for rendered forms.
 - `draft-schrock-action-evidence-boundary-07`
 - `draft-schrock-action-remedy-receipts-00`
 - `draft-schrock-agent-qualification-statements-00`
-- `draft-schrock-canonical-action-identifier-02`
+- `draft-schrock-canonical-action-identifier-03`
 - `draft-schrock-emilia-eye-00`
-- `draft-schrock-ep-architecture-02`
+- `draft-schrock-ep-architecture-03`
 - `draft-schrock-ep-authority-introduction-03`
 - `draft-schrock-ep-authorization-evidence-chain-06`
 - `draft-schrock-ep-authorization-receipts-12`
@@ -77,8 +77,8 @@ subordinate, or demote any active draft.
 
 ## Separate runtime execution spine
 
-The runtime path is [Architecture-02](draft-schrock-ep-architecture-02.xml) →
-[CAID-02](draft-schrock-canonical-action-identifier-02.xml) →
+The runtime path is [Architecture-03](draft-schrock-ep-architecture-03.xml) →
+[CAID-03](draft-schrock-canonical-action-identifier-03.xml) →
 [AEC-06](draft-schrock-ep-authorization-evidence-chain-06.xml) →
 [AEB-07](draft-schrock-action-evidence-boundary-07.xml): system boundaries,
 exact material-action matching, evidence satisfaction, then executor-side
@@ -104,7 +104,9 @@ immutable artifacts in the IETF archive:
 - `draft-schrock-ep-revocation-statement-00`
 - `draft-schrock-model-to-matter-01`
 
-The superseded `draft-schrock-ae-challenge-00` snapshots moved to `../archive/`.
+All seven have since been superseded, and their snapshots are retained in
+`../archive/`. The superseded `draft-schrock-ae-challenge-00` snapshots moved
+to `../archive/`.
 The longer-named `draft-schrock-authorization-evidence-challenge-00`, Agent
 Action Manifest, Action Evidence Graph, and Enforcement Point series also moved
 to `../archive/` because Datatracker marks them replaced rather than active.
@@ -135,7 +137,7 @@ posted receipt revision in this inventory.
 
 ## August 6, 2026 maintenance set
 
-The following current XML snapshots were verified byte-for-byte against the
+The following XML snapshots were verified byte-for-byte against the
 immutable IETF archive before promotion into this directory:
 
 - `draft-schrock-canonical-action-identifier-02`
@@ -145,6 +147,8 @@ immutable IETF archive before promotion into this directory:
 
 The isolated `../staged/NEXT-*` packets retain the exact submitted bytes,
 review renders, checksums, and validation records as publication provenance.
+CAID-02, Authorization Receipts-10, and Bounded Capability Receipts-02 have
+since been superseded and are retained in `../archive/`.
 
 ## August 8, 2026 maintenance set
 
@@ -244,6 +248,24 @@ AEC-05 is retained in `../archive/`. Publication does not establish
 protocol-owner review, independent implementation, working-group adoption, RFC
 status, or IETF endorsement.
 
+## September 6, 2026 Architecture corrective revision
+
+`draft-schrock-ep-architecture-03` was posted as an active individual
+Internet-Draft through Datatracker submission 168691 (Datatracker time
+2026-09-06T17:31:40Z), one of the four September 6 corrective revisions. The
+snapshot was mirrored into this directory on 2026-09-26. Its XML and TXT are
+byte-for-byte identical to the immutable IETF archive artifacts. The posted
+HTML is the provenance packet's local xml2rfc 3.34.0 render with trailing
+whitespace removed, because the archive delivery path injects request-specific
+Cloudflare markup; the checksum-pinned exact render remains in the provenance
+packet.
+
+The retained `../staged/NEXT-ARCHITECTURE-03` packet is publication provenance,
+not an upload candidate. Its XML is byte-for-byte identical to the posted
+source. Architecture-02 is retained in `../archive/`. Publication does not
+establish protocol-owner review, independent implementation, working-group
+adoption, RFC status, or IETF endorsement.
+
 ## September 24, 2026 AEB maintenance revision
 
 `draft-schrock-action-evidence-boundary-06` was posted as an active individual
@@ -275,3 +297,21 @@ upload candidate. Its XML is byte-for-byte identical to the posted source.
 AEB-06 is retained in `../archive/`. Publication does not establish
 native-owner review, completion of the multi-profile conformance gate,
 working-group adoption, RFC status, or IETF endorsement.
+
+## September 26, 2026 CAID maintenance revision
+
+`draft-schrock-canonical-action-identifier-03` was posted as an active
+individual Internet-Draft through Datatracker submission 169526 (Datatracker
+time 2026-09-26T16:30:22Z). Its XML and TXT are byte-for-byte identical to the
+immutable IETF archive artifacts. The posted HTML is the provenance packet's
+local xml2rfc 3.34.0 render, which was recorded with its trailing whitespace
+already removed, so the posted copy is byte-identical to it. The archive HTML
+was rendered by xml2rfc 3.34.1 and its delivery path injects request-specific
+Cloudflare markup; the checksum-pinned local render remains in the provenance
+packet.
+
+The retained `../staged/NEXT-CAID-03` packet is publication provenance, not an
+upload candidate. Its XML is byte-for-byte identical to the posted source.
+CAID-02 is retained in `../archive/`. Publication does not establish
+protocol-owner review, independent implementation, working-group adoption, RFC
+status, or IETF endorsement.
