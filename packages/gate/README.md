@@ -1270,13 +1270,22 @@ sufficient; the connector reads the attempt by its deterministic binding and
 does not need `lookup_attempt`), separate executor/recovery roles, and a
 recovery authorization callback. Supply a server-side `resolve_operation` that
 reads an immutable refund job, not agent-provided payment details. The
-connector reads each job field once into a frozen snapshot, validates that
-snapshot, and uses only the snapshot afterwards. The connector also requires a
-server-only metadata HMAC key; retain that same key for the entire recovery
-window. Key rotation without a retained prior key leaves an uncertain attempt
+connector reads each job field once, as an own property only, into a frozen
+snapshot, validates that snapshot, and uses only the snapshot afterwards; a
+value inherited from a polluted `Object.prototype` never stands in for a missing
+field. Stripe list and refund fields are read the same way. The connector also
+requires a server-only metadata HMAC key; retain that same key for the entire
+recovery window. Key rotation without a retained prior key leaves an uncertain attempt
 unreconciled. The Stripe client must probe, create, and list under the same
 account; a platform client that silently switches to a Connect account for only
 one call is not supported.
+
+Load `createStripeDurableRefundManifest()` only into Gates whose refund effect
+is `guardStripeRefundDurable()`. A Gate built from that manifest will also
+authorize a plain `gate.run()` tool call, such as an MCP or HTTP tool path,
+whose effect calls Stripe directly. If that Gate and the connector's Gate do
+not share one receipt consumption store, the same approval can run once there
+and once through the connector, producing two refunds.
 
 Because the action types differ, one approval cannot be spent on both refund
 paths: the legacy `guardStripeMutation()` refund path refuses a durable
@@ -1286,6 +1295,9 @@ refused rather than passed through as unguarded. Do not also serve refunds for
 an account under this profile through the legacy path: two approvals minted
 separately, one per path, still produce two refunds, because legacy refunds
 carry no metadata this connector can find and their idempotency keys differ.
+For the same reason, when migrating, never retry on the durable path an
+operation that was ever attempted on the legacy path, including one whose
+legacy response was lost. Reconcile it against Stripe by hand instead.
 
 `guardStripeRefundDurable()` records the attempt before Stripe entry and makes
 at most one provider-entry attempt per operation when all refund writes use
@@ -1302,12 +1314,15 @@ An operation that already has an attempt reports that attempt: `REFUSED` /
 uncertain. None of these calls Stripe again.
 
 Before the first `refunds.create` for an operation, the connector lists the
-payment intent's refunds (one page of up to 100) and classifies them by the
-same signed-tag and match rules recovery uses. A single exact match commits
-from that refund without creating one (`provider_effect_already_present`). A
-conflicting, ambiguous, incomplete, or unavailable view leaves the attempt
-`INDETERMINATE` and does not create; it is never released. This catches a
-refund whose attempt row is missing: a store restored from a backup taken
+payment intent's refunds, paging with `starting_after` through at most 10 pages
+of 100 (1,000 refunds), and classifies them by the same signed-tag and match
+rules recovery uses. A single exact match commits from that refund without
+creating one (`provider_effect_already_present`). A conflicting, ambiguous,
+incomplete, or unavailable view leaves the attempt `INDETERMINATE` and does not
+create; it is never released. A payment intent with more refunds than the
+bound, a page that does not advance, or a repeated refund ID is
+`provider_lookup_incomplete`. This catches a refund whose attempt row is
+missing: a store restored from a backup taken
 before the attempt commits from the existing refund, and a second tenant or
 environment configuration on the same account is held, because the first
 configuration's refund carries this operation ID. The lookup is not atomic with
@@ -1315,21 +1330,43 @@ the create. Two setups that each lack the other's attempt row and create at the
 same instant can both see no refund and both create; Stripe's idempotency key
 collapses that race only within one tenant and environment, and only while
 Stripe retains the key. The lookup only sees refunds on the same payment
-intent, within that first page, tagged under the retained HMAC key. Treat a
-restore of the attempt store as an incident: keep the PTE operation row at
+intent, within the 1,000-refund bound, tagged under the retained HMAC key.
+Treat a restore of the attempt store as an incident: keep the PTE operation row at
 least as long as duplicate submission remains possible, including after
 Stripe's idempotency cache expires, and reconcile before resuming refunds.
+
+The lookup can outlast the owner's lease. Immediately before `refunds.create`,
+the owner renews its lease through the attempt store's owner-fenced
+`heartbeat()`; the connector requires a store that provides it. If recovery has
+already taken the attempt over, the old owner gets `INDETERMINATE` /
+`attempt_ownership_lost` and never calls Stripe, so an owner that stalled
+before entering Stripe cannot create after recovery reported
+`provider_effect_unproven`. The create itself is not fenced: a create still in
+flight when the renewed lease expires can land after recovery has looked. Keep the Stripe client's
+worst-case request time (its `timeout` for each of the attempts its
+`maxNetworkRetries` allows, plus retry delays) below the store's
+`lease_seconds`. stripe-node's default request timeout is 80 seconds, longer
+than the store's default 30-second lease, so set them explicitly.
+
+When the refund is verified but the Gate did not report success (for example,
+`gate.run()` failed after the effect returned), the result is `ok: false`,
+`state: 'COMMITTED'`, with `provider_created_gate_outcome_unknown` when this
+call created the refund, or `provider_effect_already_present_gate_outcome_unknown`
+when the pre-create lookup found it.
 
 After the owner lease is stale, `reconcileStripeRefundDurable()` can mark the
 attempt COMMITTED only from a single matching refund returned by the trusted
 Stripe client. Empty, incomplete, unavailable, or conflicting lookup results
 stay INDETERMINATE, including a listed refund that carries this operation's
-metadata without matching it exactly; they never prove no effect. COMMITTED
-means Stripe created a refund object, not that funds settled. A stale RESERVED
-attempt, or an INDETERMINATE one with no matching refund, stays held; this
-connector never re-dispatches or releases it. Refunding that job again is an
-explicit operator decision under a new business operation ID, which the
-connector cannot deduplicate against the held one. Failures before the attempt
+metadata without matching it exactly; they never prove no effect. Recovery
+pages through the payment intent's refunds under the same 1,000-refund bound.
+COMMITTED means Stripe created a refund object, not that funds settled. A stale
+RESERVED attempt, or an INDETERMINATE one with no matching refund, stays held;
+this connector never re-dispatches or releases it. Refunding that job again is
+an explicit operator decision under a new business operation ID, which the
+connector cannot deduplicate against the held one. Before making it, wait out
+the Stripe client's worst-case request time and reconcile again, so a create
+that was in flight when recovery looked has landed and can match. Failures before the attempt
 is recorded, such as a changed Stripe account, an unavailable or invalid refund
 job, or a receipt the Gate check cannot evaluate, return `REFUSED` with a
 reason. The HMAC metadata tag helps identify the matching object, but an actor
