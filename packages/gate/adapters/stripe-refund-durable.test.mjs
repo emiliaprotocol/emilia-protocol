@@ -579,3 +579,23 @@ test('pre-reservation failures return refusals with reasons and record nothing',
     { ok: false, state: 'REFUSED', reason: 'stripe_refund_connector_unconfigured' });
   assert.equal(value.stripe.calls.length, 0);
 });
+
+test('a committed refund for a distinct operation on the same payment intent is not a conflict', async () => {
+  const store = new AttemptStore();
+  const stripe = provider({ loseFirstResponse: true });
+  const first = await fixture({ store, stripe });
+  assert.equal((await guardStripeRefundDurable(first.connector, {
+    operation_reference: 'refund-job-01', receipt: first.harness.mint({ outcome: 'allow_with_signoff' }),
+  })).state, 'INDETERMINATE');
+  const second = await fixture({ store, stripe: provider(), p: { ...job, operation_id: 'refund:order-123:02' } });
+  const secondRefund = await guardStripeRefundDurable(second.connector, {
+    operation_reference: 'refund-job-01', receipt: second.harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  assert.equal(secondRefund.state, 'COMMITTED');
+  // Same payment intent and amount, different operation: listed beside ours.
+  stripe.records.push({ ...secondRefund.refund, id: 're_other_operation' });
+  store.stale = true;
+  assert.deepEqual(await reconcileStripeRefundDurable(first.connector, 'refund-job-01'),
+    { ok: true, state: 'COMMITTED', refund_id: 're_1' });
+  assert.equal(stripe.calls.length, 1);
+});
