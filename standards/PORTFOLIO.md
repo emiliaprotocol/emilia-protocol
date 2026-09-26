@@ -124,7 +124,7 @@ retires, merges, replaces, or demotes an active draft.
 
 Separately, the **runtime execution spine** is:
 
-1. **Architecture-02** defines the system boundaries and non-collapsing
+1. **Architecture-03** defines the system boundaries and non-collapsing
    decision vocabulary.
 2. **CAID-03** identifies and matches the exact material action.
 3. **AEC-06** verifies and composes action-matched evidence into a relying-party
@@ -169,8 +169,9 @@ XML sources were verified byte-for-byte against the IETF archive:
    independently verified evidence and one material action.
 2. `draft-schrock-canonical-action-identifier-01`: the July 21 material-action
    identity and profile-bounded matching baseline, superseded by -02 on August 6.
-3. `draft-schrock-ep-architecture-02`: current ecosystem map, applicability
-   test, and decision vocabulary.
+3. `draft-schrock-ep-architecture-02`: the July 21 ecosystem map,
+   applicability test, and decision vocabulary, superseded by -03 on
+   September 6.
 4. `draft-schrock-ep-authorization-evidence-chain-04`: the July 21 native
    verification, action binding, and evidence-satisfaction composition,
    superseded by -05 on August 3.
@@ -256,6 +257,19 @@ structured requirement and replay contract. It does not change the EP-AEC-v1
 envelope or convert evidence satisfaction into execution authority. It is an
 individual Internet-Draft, not an adopted working-group item.
 
+On **September 6, 2026**, Architecture-03 was posted through Datatracker
+submission 168691 as one of four corrective revisions. Its XML and TXT were
+verified byte-for-byte against the immutable IETF archive, and the snapshot
+was mirrored into `posted/` on September 26. The revision makes provider entry
+the transition that converts reserved authority to consumed authority before
+provider invocation, defines admission-control domains and monotonic epochs,
+and defines serialized emergency freeze, restoration, and reconciliation
+behavior for the three freeze-versus-entry races. It states the
+disconnected-edge stale-admission window, rejects immediate global-freeze
+claims, and adds idempotency, wrong-holder, receipt-absence, and unsigned-event
+claim boundaries. It is an individual Internet-Draft, not an adopted
+working-group item.
+
 On **September 24, 2026**, AEB-06 was posted through Datatracker submission
 169466. Its XML and TXT were verified byte-for-byte against the immutable IETF
 archive. The revision places AEB after the native authorization decision,
@@ -327,7 +341,7 @@ These are decisions, not an indefinite waiting room:
 | --- | --- | --- |
 | Assurance Classes | Retired before filing | Verifier-visible proof predicates and profile-local aliases |
 | Authority Registry | Retired and absorbed | Authority Introduction-03 |
-| Agent Trust Stack | Retired and absorbed | Architecture-02 |
+| Agent Trust Stack | Retired and absorbed | Architecture-03 |
 | PQC | Retired as a standalone draft | Evidence Record crypto agility and anti-stripping |
 | Model-to-Matter | Active Experimental profile; current -04 published August 6 | Seven-role clearance, physical-state source claims, and program and requirement digest binding are current; deployment claims require a real executor |
 | Human Oversight | Partner-triggered profile | A regulator or management-system standards partner validates the mapping |
