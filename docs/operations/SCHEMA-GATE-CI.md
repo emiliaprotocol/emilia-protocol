@@ -6,9 +6,13 @@ The live `schema-security` job reads production schema metadata through
 from a group role created by a reviewed migration.
 
 Merging the pull request that adds this file changes no database and no GitHub
-setting. The live job keeps using the current secret until step 7 below.
-Every step is a maintainer action; CI never applies the migration, creates the
-login or edits the secret.
+setting. Every step is a maintainer action; CI never applies the migration,
+creates the login or edits the secret.
+
+Status in the deployed environment: steps 2, 7, 9 and 10 are complete. The
+migration-history ledger records step 2 by listing `20260926035734` in
+`remote_versions`. The steps below remain the procedure for any other
+environment.
 
 ## What the role can and cannot do
 
@@ -59,11 +63,15 @@ Merge the pull request. This lands the migration file and its ledger entry in
 
 ### 2. Apply the migration (maintainer, database administrator connection)
 
-Apply `20260926035734` with the procedure used for the other versions in
-`deployment_sequence` of `supabase/migration-history.v1.json`. It is the last
-entry, and `supabase db push --include-all` applies every pending version in
-that list in order. Do not journal it ahead of an earlier pending version: the
-ledger check refuses a remote head that skips a forward-pending version.
+Apply `20260926035734` with the procedure used for the versions in
+`deployment_sequence` of `supabase/migration-history.v1.json`:
+`supabase db push --include-all` applies every version the target journal
+lacks, in version order. In that order it comes after `20260925010000` and
+before `20260926120000` and `20260926120100`; it is not the last pending
+version. Journaling it ahead of an earlier pending version makes that version
+retroactive: the ledger must then list it in `retroactive_pending_versions`
+with `requires_include_all` true, because the ledger check refuses a
+forward-pending version that precedes `remote_head`.
 
 If the tool you apply it with journals its own timestamp, change that row's
 `version` in `supabase_migrations.schema_migrations` to `20260926035734` so the
