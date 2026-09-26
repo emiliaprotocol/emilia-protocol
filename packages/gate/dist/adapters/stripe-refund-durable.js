@@ -29,6 +29,10 @@ const OPERATION_ID = /^[A-Za-z0-9][A-Za-z0-9:._/@-]{7,199}$/;
 const PAYMENT_INTENT = /^pi_[A-Za-z0-9_]{1,240}$/;
 const STRIPE_ACCOUNT = /^acct_[A-Za-z0-9_]{1,240}$/;
 const REFUND_ID = /^re_[A-Za-z0-9_]{1,240}$/;
+// The pre-create lookup and recovery page through the payment intent's
+// refunds up to this bound. A longer list is not a complete provider view.
+const LOOKUP_PAGE_LIMIT = 100;
+const LOOKUP_MAX_PAGES = 10;
 // The approval binds the connector namespace (tenant and environment) as well
 // as the Stripe account and refund material, so one receipt cannot be spent
 // under a second connector configuration whose attempt store does not fence it.
@@ -70,6 +74,17 @@ function durableRequirement(requirement) {
 function digest(value) {
     return `sha256:${hashCanonical(value)}`;
 }
+/**
+ * Read an own property only. An inherited value, for example one planted on
+ * Object.prototype, never stands in for a field the source object lacks.
+ */
+function own(source, key) {
+    if (source === null || (typeof source !== 'object' && typeof source !== 'function'))
+        return undefined;
+    return Object.prototype.hasOwnProperty.call(source, key)
+        ? source[key]
+        : undefined;
+}
 function assertIdentifier(value, name) {
     if (typeof value !== 'string' || !IDENTIFIER.test(value)) {
         throw new TypeError(`${name} is invalid`);
@@ -85,11 +100,10 @@ function snapshotRefund(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
         throw new TypeError('trusted refund operation is invalid');
     }
-    const source = value;
     const snapshot = Object.freeze({
-        payment_intent: source.payment_intent,
-        amount: source.amount,
-        operation_id: source.operation_id,
+        payment_intent: own(value, 'payment_intent'),
+        amount: own(value, 'amount'),
+        operation_id: own(value, 'operation_id'),
     });
     if (typeof snapshot.payment_intent !== 'string' || !PAYMENT_INTENT.test(snapshot.payment_intent)
         || typeof snapshot.amount !== 'number' || !Number.isSafeInteger(snapshot.amount)
@@ -210,7 +224,7 @@ export async function createStripeRefundDurableConnector(input) {
         || !input.store.compareAndSwap || !input.store.atomicEvidenceBinding
         || typeof input.store.reserve !== 'function' || typeof input.store.transition !== 'function'
         || typeof input.store.reconcile !== 'function' || typeof input.store.read !== 'function'
-        || typeof input.store.recover !== 'function') {
+        || typeof input.store.recover !== 'function' || typeof input.store.heartbeat !== 'function') {
         throw new TypeError('durable Stripe refund connector configuration is invalid');
     }
     assertIdentifier(input.tenant_id, 'tenant_id');
@@ -284,20 +298,19 @@ async function resolveOrRefuse(connector, reference) {
 function refundView(record) {
     if (!record || typeof record !== 'object' || Array.isArray(record))
         return null;
-    const r = record;
-    const rawMetadata = r.metadata;
+    const rawMetadata = own(record, 'metadata');
     let metadata = null;
     if (rawMetadata && typeof rawMetadata === 'object' && !Array.isArray(rawMetadata)) {
-        const m = rawMetadata;
         metadata = Object.freeze({
-            emilia_operation_id: m.emilia_operation_id,
-            emilia_request_digest: m.emilia_request_digest,
-            emilia_idempotency_key: m.emilia_idempotency_key,
-            emilia_origin_tag: m.emilia_origin_tag,
+            emilia_operation_id: own(rawMetadata, 'emilia_operation_id'),
+            emilia_request_digest: own(rawMetadata, 'emilia_request_digest'),
+            emilia_idempotency_key: own(rawMetadata, 'emilia_idempotency_key'),
+            emilia_origin_tag: own(rawMetadata, 'emilia_origin_tag'),
         });
     }
     return Object.freeze({
-        id: r.id, payment_intent: r.payment_intent, amount: r.amount, created: r.created, metadata,
+        id: own(record, 'id'), payment_intent: own(record, 'payment_intent'),
+        amount: own(record, 'amount'), created: own(record, 'created'), metadata,
     });
 }
 /**
@@ -346,26 +359,62 @@ function positiveRefundEvidence(view, resolved) {
     };
 }
 /**
- * One bounded Stripe list over this payment intent, classified by the rules
- * both recovery and the pre-create lookup use. Only an exact, uniquely tagged
- * refund on a complete page is a match; only a complete page with no refund
- * carrying any of this operation's metadata is absent. Everything else holds.
+ * A bounded Stripe list over this payment intent, classified by the rules both
+ * recovery and the pre-create lookup use. The list is paged with starting_after
+ * up to LOOKUP_MAX_PAGES pages of LOOKUP_PAGE_LIMIT refunds. Only an exact,
+ * uniquely tagged refund in a complete list is a match; only a complete list
+ * with no refund carrying any of this operation's metadata is absent. A list
+ * longer than the bound, a page that does not advance, or a refund ID seen
+ * twice is incomplete. Everything that is not a match or absent holds.
  */
 async function inspectProviderRefunds(resolved) {
-    let page;
-    try {
-        page = await resolved.config.stripe.refunds.list({ payment_intent: resolved.p.payment_intent, limit: 100 });
-    }
-    catch {
-        return { outcome: 'held', reason: 'provider_lookup_unavailable' };
-    }
-    try {
-        const data = page?.data;
-        const hasMore = page?.has_more;
-        if (!Array.isArray(data) || hasMore !== false) {
+    const records = [];
+    const seen = new Set();
+    let startingAfter = null;
+    for (let pageIndex = 0;; pageIndex += 1) {
+        if (pageIndex >= LOOKUP_MAX_PAGES)
+            return { outcome: 'held', reason: 'provider_lookup_incomplete' };
+        let page;
+        try {
+            page = await resolved.config.stripe.refunds.list({
+                payment_intent: resolved.p.payment_intent, limit: LOOKUP_PAGE_LIMIT,
+                ...(startingAfter === null ? {} : { starting_after: startingAfter }),
+            });
+        }
+        catch {
+            return { outcome: 'held', reason: 'provider_lookup_unavailable' };
+        }
+        try {
+            const data = own(page, 'data');
+            const hasMore = own(page, 'has_more');
+            if (!Array.isArray(data) || (hasMore !== false && hasMore !== true)) {
+                return { outcome: 'held', reason: 'provider_lookup_incomplete' };
+            }
+            // Own indices only: a hole never reads an inherited element.
+            const items = Array.from({ length: data.length }, (_, index) => own(data, String(index)));
+            for (const item of items) {
+                const id = own(item, 'id');
+                if (typeof id === 'string') {
+                    if (seen.has(id))
+                        return { outcome: 'held', reason: 'provider_lookup_incomplete' };
+                    seen.add(id);
+                }
+                records.push(item);
+            }
+            if (hasMore === false)
+                break;
+            const cursor = items.length > 0 ? own(items[items.length - 1], 'id') : undefined;
+            if (typeof cursor !== 'string' || !REFUND_ID.test(cursor)) {
+                return { outcome: 'held', reason: 'provider_lookup_incomplete' };
+            }
+            startingAfter = cursor;
+        }
+        catch {
+            // A page that cannot be read consistently is not a complete provider view.
             return { outcome: 'held', reason: 'provider_lookup_incomplete' };
         }
-        const records = Array.from(data);
+    }
+    try {
         const views = records.map((record) => refundView(record));
         const evidence = views.map((view) => positiveRefundEvidence(view, resolved));
         if (views.some((view, index) => !evidence[index] && carriesOperationMetadata(view, resolved))) {
@@ -459,6 +508,12 @@ async function commitVerified(store, binding, owner, evidence) {
  * view leaves the attempt INDETERMINATE without creating. The lookup is not
  * atomic with the create: two setups that lack each other's attempt row and
  * create at the same instant can both see no refund.
+ *
+ * Immediately before refunds.create the owner renews its lease through the
+ * attempt store's owner-fenced heartbeat. An owner whose lease went stale and
+ * whose attempt recovery took over gets attempt_ownership_lost and never
+ * calls Stripe. The create itself is not fenced: a create still in flight
+ * when a renewed lease expires can land after recovery has looked.
  */
 export async function guardStripeRefundDurable(connector, input) {
     const outcome = await resolveOrRefuse(connector, input?.operation_reference);
@@ -501,6 +556,7 @@ export async function guardStripeRefundDurable(connector, input) {
     let callbackOpen = true;
     let callbackClaimed = false;
     let foundExisting = false;
+    let ownershipLost = false;
     let providerHold = null;
     let providerEvidence = null;
     let gateResult = null;
@@ -544,6 +600,15 @@ export async function guardStripeRefundDurable(connector, input) {
                 providerHold = existing.reason;
                 throw new Error(existing.reason);
             }
+            // The lookup can outlast the owner lease. Recovery may then have taken
+            // the attempt over and reported it unproven; a stale owner must not
+            // create after that. Confirm ownership, and renew the lease, last.
+            if (!await config.store.heartbeat(attemptRef(binding, owner)).catch(() => false)) {
+                ownershipLost = true;
+                throw new Error('attempt_ownership_lost');
+            }
+            if (!callbackOpen)
+                throw new Error('stripe_refund_provider_callback_closed');
             entered = true;
             const result = await config.stripe.refunds.create({
                 payment_intent: p.payment_intent, amount: p.amount, metadata,
@@ -562,7 +627,9 @@ export async function guardStripeRefundDurable(connector, input) {
         callbackOpen = false;
     }
     if (!await markIndeterminate(config.store, binding, owner).catch(() => false)) {
-        return { ok: false, state: 'INDETERMINATE', reason: 'attempt_freeze_failed' };
+        // A lost owner never entered Stripe: the ownership check precedes create.
+        return { ok: false, state: 'INDETERMINATE',
+            reason: ownershipLost ? 'attempt_ownership_lost' : 'attempt_freeze_failed' };
     }
     if (providerEvidence) {
         const committed = await commitVerified(config.store, binding, owner, providerEvidence).catch(() => false);
@@ -572,7 +639,11 @@ export async function guardStripeRefundDurable(connector, input) {
                     ...(foundExisting ? { reason: 'provider_effect_already_present' } : {}),
                     refund: gateResult.result ?? null,
                     reliance: gateResult.packet ?? null, execution: gateResult.execution ?? null }
-                : { ok: false, state: 'COMMITTED', reason: 'provider_created_gate_outcome_unknown' };
+                // The refund is verified, but the Gate did not report success. Say
+                // whether this call created it or the pre-create lookup found it.
+                : { ok: false, state: 'COMMITTED', reason: foundExisting
+                        ? 'provider_effect_already_present_gate_outcome_unknown'
+                        : 'provider_created_gate_outcome_unknown' };
         }
         return { ok: false, state: 'INDETERMINATE', reason: 'attempt_commit_failed' };
     }
@@ -591,9 +662,10 @@ export async function guardStripeRefundDurable(connector, input) {
             ? 'stripe_refund_outcome_unknown' : 'provider_entry_unknown' };
 }
 /**
- * Recovery never calls refunds.create. A bounded list query supplies positive
- * evidence only if exactly one matching refund is found, no other listed refund
- * carries this operation's metadata, and the page is complete. Empty,
+ * Recovery never calls refunds.create. A bounded, paged list query supplies
+ * positive evidence only if exactly one matching refund is found, no other
+ * listed refund carries this operation's metadata, and the list is complete
+ * within the page bound. Empty,
  * incomplete, unavailable, or conflicting results stay INDETERMINATE; none
  * proves NOT_COMMITTED.
  * The server-secret tag narrows accidental/external collision, but it can be

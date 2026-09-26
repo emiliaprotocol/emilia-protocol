@@ -55,8 +55,10 @@ function fakeStripe() {
         if (hooks.afterAccept) await hooks.afterAccept(refund);
         return structuredClone(refund);
       },
-      async list({ payment_intent }) {
-        return { data: refunds.filter((refund) => refund.payment_intent === payment_intent), has_more: false };
+      async list(input) {
+        const page = { data: refunds.filter((refund) => refund.payment_intent === input.payment_intent), has_more: false };
+        if (hooks.list) await hooks.list(input);
+        return page;
       },
     },
   };
@@ -240,22 +242,53 @@ test('durable Stripe refund connector on real PostgreSQL: one provider entry, cr
       let release;
       stripe.hooks.retrieve = async () => {
         probes += 1;
-        // Probe 3 is the in-callback probe after the row is INVOKING.
+        // Probe 3 is the in-callback probe after the row is INVOKING. It
+        // stalls past the lease, then answers the same account, so only the
+        // lost lease can keep the owner out of Stripe.
         if (probes === 3) await new Promise((resolve) => { release = resolve; });
-        return { id: probes === 3 ? 'acct_1Switched' : ACCOUNT };
+        return { id: ACCOUNT };
       };
       const lost = await makeExecutor(stripe);
       const inflight = lost.guard();
       await staleWait();
-      delete stripe.hooks.retrieve;
       const recoverer = await makeExecutor(stripe);
       assert.deepEqual(await recoverer.reconcile(),
         { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_unproven' });
       assert.equal((await recoverer.guard()).reason, 'operation_already_reserved');
       release();
-      assert.equal((await inflight).state, 'INDETERMINATE');
+      const lateOwner = await inflight;
       assert.equal(stripe.creates.length, 0);
+      assert.deepEqual(lateOwner, { ok: false, state: 'INDETERMINATE', reason: 'attempt_ownership_lost' });
       assert.deepEqual((await rows()).attempts, [{ state: 'INDETERMINATE', generation: 1, has_evidence: false }]);
+    });
+
+    await t.test('an owner that stalls in the pre-create lookup past its lease never creates after recovery reported unproven', async () => {
+      await reset();
+      const stripe = fakeStripe();
+      let lists = 0;
+      let release;
+      stripe.hooks.list = async () => {
+        lists += 1;
+        // List 1 is the owner's pre-create lookup; it returns only after
+        // recovery has taken the attempt over and reported it unproven.
+        if (lists === 1) await new Promise((resolve) => { release = resolve; });
+      };
+      const owner = await makeExecutor(stripe);
+      const inflight = owner.guard();
+      await staleWait();
+      const recoverer = await makeExecutor(stripe);
+      assert.deepEqual(await recoverer.reconcile(),
+        { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_unproven' });
+      release();
+      const lateOwner = await inflight;
+      assert.equal(stripe.creates.length, 0);
+      assert.deepEqual(lateOwner, { ok: false, state: 'INDETERMINATE', reason: 'attempt_ownership_lost' });
+      await staleWait();
+      assert.deepEqual(await recoverer.reconcile(),
+        { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_unproven' });
+      assert.equal((await recoverer.guard()).reason, 'operation_already_reserved');
+      assert.equal(stripe.creates.length, 0);
+      assert.deepEqual((await rows()).attempts, [{ state: 'INDETERMINATE', generation: 2, has_evidence: false }]);
     });
 
     await t.test('one approval is refused under a second environment namespace', async () => {

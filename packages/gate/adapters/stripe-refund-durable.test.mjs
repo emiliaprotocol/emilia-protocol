@@ -62,6 +62,14 @@ class AttemptStore {
     return true;
   }
 
+  // Models the PTE owner-fenced heartbeat: only the current owner of a
+  // nonterminal attempt renews it.
+  async heartbeat({ tenant_id, attempt_id, owner }) {
+    const row = this.rows.get(attempt_id);
+    return Boolean(row) && row.binding.tenant_id === tenant_id && row.owner === owner
+      && ['RESERVED', 'INVOKING', 'INDETERMINATE'].includes(row.state);
+  }
+
   async reconcile({ tenant_id, attempt_id, owner, expected_state, next_state, evidence }) {
     const row = this.rows.get(attempt_id);
     if (!row || row.binding.tenant_id !== tenant_id || row.owner !== owner
@@ -102,16 +110,29 @@ class AttemptStore {
 function provider({ loseFirstResponse = false } = {}) {
   const calls = [];
   const refunds = [];
+  const listCalls = [];
   let account = accountId;
   let listFailure = false;
   let more = false;
   let cacheEnabled = true;
+  let listHook = null;
+  let unrelated = 0;
   return {
-    calls, records: refunds,
+    calls, records: refunds, listCalls,
     setAccount(value) { account = value; },
     setListFailure(value) { listFailure = value; },
     setMore(value) { more = value; },
+    setListHook(value) { listHook = value; },
     expireIdempotencyCache() { cacheEnabled = false; },
+    // Refunds for other operations on the payment intent, created after
+    // everything already recorded, so Stripe lists them first.
+    addUnrelated(count, payment_intent = job.payment_intent) {
+      for (let i = 0; i < count; i += 1) {
+        unrelated += 1;
+        refunds.push({ id: `re_other_${unrelated}`, payment_intent, amount: 1, metadata: {},
+          created: Math.floor(Date.now() / 1000), status: 'succeeded' });
+      }
+    },
     accounts: { async retrieve() { return { id: account }; } },
     refunds: {
       async create(params, options) {
@@ -129,9 +150,16 @@ function provider({ loseFirstResponse = false } = {}) {
         if (loseFirstResponse) throw new Error('response lost after Stripe accepted');
         return refund;
       },
-      async list({ payment_intent }) {
+      // Newest first, paged by starting_after, as Stripe lists refunds.
+      async list(input) {
+        listCalls.push({ ...input });
+        if (listHook) return listHook(input);
         if (listFailure) throw new Error('Stripe unavailable');
-        return { data: refunds.filter((refund) => refund.payment_intent === payment_intent), has_more: more };
+        const all = refunds.filter((refund) => refund.payment_intent === input.payment_intent).reverse();
+        const start = input.starting_after === undefined
+          ? 0 : all.findIndex((refund) => refund.id === input.starting_after) + 1;
+        const data = input.starting_after !== undefined && start === 0 ? [] : all.slice(start, start + input.limit);
+        return { data, has_more: more || start + data.length < all.length };
       },
     },
   };
@@ -888,4 +916,235 @@ test('a receipt whose shape makes the Gate check throw is refused before anythin
   }), { ok: false, state: 'REFUSED', reason: 'gate_check_failed' });
   assert.equal(value.store.row, null);
   assert.equal(value.stripe.calls.length, 0);
+});
+
+const guardOnce = (value, receipt = value.harness.mint({ outcome: 'allow_with_signoff' })) =>
+  guardStripeRefundDurable(value.connector, { operation_reference: 'refund-job-01', receipt });
+
+test('an owner whose lease went stale during the pre-create lookup never creates after recovery took over', async () => {
+  const store = new AttemptStore();
+  const stripe = provider();
+  let release;
+  let entered;
+  const lookupStarted = new Promise((resolve) => { entered = resolve; });
+  const stalled = new Promise((resolve) => { release = resolve; });
+  let lists = 0;
+  stripe.setListHook(async () => {
+    lists += 1;
+    if (lists === 1) {
+      entered();
+      await stalled;
+    }
+    return { data: [], has_more: false };
+  });
+  const owner = await fixture({ store, stripe });
+  const inflight = guardOnce(owner);
+  await lookupStarted;
+  // The owner's lease is stale while it waits on Stripe; recovery takes over.
+  store.stale = true;
+  assert.deepEqual(await reconcileStripeRefundDurable(owner.connector, 'refund-job-01'),
+    { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_unproven' });
+  release();
+  const lateOwner = await inflight;
+  assert.equal(stripe.calls.length, 0);
+  assert.deepEqual(lateOwner, { ok: false, state: 'INDETERMINATE', reason: 'attempt_ownership_lost' });
+  assert.equal(store.row.state, 'INDETERMINATE');
+  store.stale = true;
+  assert.deepEqual(await reconcileStripeRefundDurable(owner.connector, 'refund-job-01'),
+    { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_unproven' });
+  assert.equal((await guardOnce(owner)).reason, 'operation_already_reserved');
+  assert.equal(stripe.calls.length, 0);
+
+  // An ownership check that cannot run is not ownership: no create either.
+  const unreachable = new AttemptStore();
+  unreachable.heartbeat = async () => { throw new Error('store unavailable'); };
+  const blind = await fixture({ store: unreachable });
+  const result = await guardOnce(blind);
+  assert.equal(result.state, 'INDETERMINATE');
+  assert.equal(blind.stripe.calls.length, 0);
+  assert.equal(unreachable.row.state, 'INDETERMINATE');
+
+  // The connector requires a store that can confirm ownership.
+  const noHeartbeat = new AttemptStore();
+  noHeartbeat.heartbeat = undefined;
+  await assert.rejects(fixture({ store: noHeartbeat }), /configuration is invalid/);
+});
+
+test('inherited properties never stand in for refund job fields or Stripe list and refund fields', async () => {
+  // A job without its own amount, next to a polluted Object.prototype.amount.
+  const value = await fixture();
+  const partial = await createStripeRefundDurableConnector({
+    stripe: value.stripe, gate: value.gate, store: value.store,
+    tenant_id: 'tenant:finance', environment: 'test', metadata_hmac_sha256_key: new Uint8Array(32).fill(17),
+    resolve_operation: () => ({ payment_intent: job.payment_intent, operation_id: job.operation_id }),
+  });
+  Object.prototype.amount = job.amount; // eslint-disable-line no-extend-native
+  let refused;
+  try {
+    refused = await guardStripeRefundDurable(partial, {
+      operation_reference: 'refund-job-01', receipt: value.harness.mint({ outcome: 'allow_with_signoff' }),
+    });
+  } finally {
+    delete Object.prototype.amount;
+  }
+  assert.deepEqual(refused, { ok: false, state: 'REFUSED', reason: 'refund_operation_invalid' });
+  assert.equal(value.stripe.calls.length, 0);
+  assert.equal(value.store.row, null);
+
+  // A list page without its own has_more (or data), next to polluted values.
+  for (const [key, polluted, page] of [
+    ['has_more', false, { data: [] }],
+    ['data', [], { has_more: false }],
+  ]) {
+    const listed = provider();
+    listed.setListHook(async () => page);
+    const lookup = await fixture({ stripe: listed });
+    Object.prototype[key] = polluted; // eslint-disable-line no-extend-native
+    let result;
+    try {
+      result = await guardOnce(lookup);
+    } finally {
+      delete Object.prototype[key];
+    }
+    assert.deepEqual(result, { ok: false, state: 'INDETERMINATE', reason: 'provider_lookup_incomplete' }, key);
+    assert.equal(listed.calls.length, 0, key);
+  }
+
+  // A sparse data array whose hole would read a polluted Object.prototype[0]:
+  // recovery never commits from an inherited element.
+  const holed = provider({ loseFirstResponse: true });
+  const holedStore = new AttemptStore();
+  const holedValue = await fixture({ stripe: holed, store: holedStore });
+  assert.equal((await guardOnce(holedValue)).reason, 'stripe_refund_outcome_unknown');
+  const planted = holed.records[0];
+  holed.setListHook(async () => ({ data: new Array(1), has_more: false }));
+  holedStore.stale = true;
+  Object.prototype[0] = planted; // eslint-disable-line no-extend-native
+  let holedResult;
+  try {
+    holedResult = await reconcileStripeRefundDurable(holedValue.connector, 'refund-job-01');
+  } finally {
+    delete Object.prototype[0];
+  }
+  assert.deepEqual(holedResult, { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_unproven' });
+  assert.equal(holedStore.row.state, 'INDETERMINATE');
+  assert.equal(holed.calls.length, 1);
+
+  // A lost row next to a refund whose metadata lacks its own origin tag, while
+  // Object.prototype carries the genuine one: a conflict, never a match.
+  const stripe = provider();
+  const original = await fixture({ stripe });
+  assert.equal((await guardOnce(original)).state, 'COMMITTED');
+  stripe.expireIdempotencyCache();
+  const genuineTag = stripe.records[0].metadata.emilia_origin_tag;
+  const { emilia_origin_tag: _dropped, ...untagged } = stripe.records[0].metadata;
+  stripe.records[0].metadata = untagged;
+  const restored = await fixture({ stripe, store: new AttemptStore() });
+  Object.prototype.emilia_origin_tag = genuineTag; // eslint-disable-line no-extend-native
+  let restoredResult;
+  try {
+    restoredResult = await guardOnce(restored);
+  } finally {
+    delete Object.prototype.emilia_origin_tag;
+  }
+  assert.deepEqual(restoredResult, { ok: false, state: 'INDETERMINATE', reason: 'provider_effect_conflicting' });
+  assert.equal(stripe.calls.length, 1);
+});
+
+test('a verified refund whose Gate outcome is unknown says whether this call created it or the lookup found it', async () => {
+  // The effect runs, then the Gate fails after it (for example while
+  // committing receipt consumption), so gate.run throws.
+  const failAfterEffect = (gate) => ({
+    check: gate.check.bind(gate),
+    async run(input, effect) {
+      await effect(await gate.check({ ...input, consumptionMode: 'none' }));
+      throw new Error('receipt consumption commit failed');
+    },
+  });
+  const withGate = async (value, store = value.store) => createStripeRefundDurableConnector({
+    stripe: value.stripe, gate: failAfterEffect(value.gate), store,
+    tenant_id: 'tenant:finance', environment: 'test',
+    metadata_hmac_sha256_key: new Uint8Array(32).fill(17), resolve_operation: () => job,
+  });
+  const value = await fixture();
+  const created = await guardStripeRefundDurable(await withGate(value), {
+    operation_reference: 'refund-job-01', receipt: value.harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  assert.deepEqual(created, { ok: false, state: 'COMMITTED', reason: 'provider_created_gate_outcome_unknown' });
+  assert.equal(value.stripe.calls.length, 1);
+
+  // The attempt row is lost; the pre-create lookup finds the refund, no create.
+  value.stripe.expireIdempotencyCache();
+  const store = new AttemptStore();
+  const found = await guardStripeRefundDurable(await withGate(value, store), {
+    operation_reference: 'refund-job-01', receipt: value.harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  assert.deepEqual(found,
+    { ok: false, state: 'COMMITTED', reason: 'provider_effect_already_present_gate_outcome_unknown' });
+  assert.equal(value.stripe.calls.length, 1);
+  assert.equal(store.row.state, 'COMMITTED');
+  assert.equal(store.row.evidence.evidence_id, 're_1');
+});
+
+test('the pre-create lookup and recovery page through a long refund list, within a bound', async () => {
+  // A payment intent with 150 other refunds after this operation's refund:
+  // the match is on page 2. A lost row commits from it without creating.
+  const stripe = provider();
+  const original = await fixture({ stripe });
+  assert.equal((await guardOnce(original)).state, 'COMMITTED');
+  stripe.addUnrelated(150);
+  stripe.expireIdempotencyCache();
+  stripe.listCalls.length = 0;
+  const restored = await fixture({ stripe, store: new AttemptStore() });
+  const found = await guardOnce(restored);
+  assert.equal(found.state, 'COMMITTED');
+  assert.equal(found.reason, 'provider_effect_already_present');
+  assert.equal(found.refund.id, 're_1');
+  assert.equal(stripe.calls.length, 1);
+  assert.deepEqual(stripe.listCalls.map((call) => [call.limit, call.starting_after]),
+    [[100, undefined], [100, 're_other_51']]);
+
+  // Recovery pages too: a lost response behind 150 later refunds commits.
+  const lost = provider({ loseFirstResponse: true });
+  const lostStore = new AttemptStore();
+  const lostValue = await fixture({ stripe: lost, store: lostStore });
+  assert.equal((await guardOnce(lostValue)).reason, 'stripe_refund_outcome_unknown');
+  lost.addUnrelated(150);
+  lostStore.stale = true;
+  assert.deepEqual(await reconcileStripeRefundDurable(lostValue.connector, 'refund-job-01'),
+    { ok: true, state: 'COMMITTED', refund_id: 're_1' });
+
+  // 150 other refunds and none for this operation: the first create proceeds.
+  const busy = provider();
+  busy.addUnrelated(150);
+  const fresh = await fixture({ stripe: busy });
+  assert.equal((await guardOnce(fresh)).state, 'COMMITTED');
+  assert.equal(busy.calls.length, 1);
+  assert.equal(busy.listCalls.length, 2);
+
+  // Past the bound, or a page that cannot be followed, the view is incomplete.
+  const cases = {
+    // 10 full pages and Stripe still reports more.
+    beyondBound: (s) => { s.addUnrelated(1000); s.setMore(true); },
+    emptyPageWithMore: (s) => s.setListHook(async () => ({ data: [], has_more: true })),
+    cursorWithoutId: (s) => s.setListHook(async () => ({ data: [{ amount: 1 }], has_more: true })),
+    // A client that ignores starting_after returns page 1 again.
+    repeatedPage: (s) => {
+      s.addUnrelated(150);
+      s.setListHook(async ({ payment_intent }) => ({
+        data: s.records.filter((r) => r.payment_intent === payment_intent).slice(0, 100), has_more: true,
+      }));
+    },
+    hasMoreString: (s) => s.setListHook(async () => ({ data: [], has_more: 'false' })),
+  };
+  for (const [name, arrange] of Object.entries(cases)) {
+    const held = provider();
+    arrange(held);
+    const heldValue = await fixture({ stripe: held });
+    assert.deepEqual(await guardOnce(heldValue),
+      { ok: false, state: 'INDETERMINATE', reason: 'provider_lookup_incomplete' }, name);
+    assert.equal(held.calls.length, 0, name);
+    assert.equal(held.listCalls.length, { beyondBound: 10, repeatedPage: 2 }[name] ?? 1, name);
+    assert.equal(heldValue.store.row.state, 'INDETERMINATE', name);
+  }
 });

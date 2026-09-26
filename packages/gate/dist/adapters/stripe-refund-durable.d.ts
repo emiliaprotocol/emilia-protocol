@@ -36,6 +36,7 @@ type StripeClient = {
         list(input: {
             payment_intent: string;
             limit: number;
+            starting_after?: string;
         }): Promise<{
             data?: unknown;
             has_more?: unknown;
@@ -68,7 +69,7 @@ type Gate = {
         execution?: unknown;
     }>;
 };
-export type StripeRefundDurableStore = Pick<ProposalToEffectPostgresStore, 'reserve' | 'transition' | 'reconcile' | 'read' | 'recover' | 'durable' | 'ownershipFenced' | 'compareAndSwap' | 'atomicEvidenceBinding'>;
+export type StripeRefundDurableStore = Pick<ProposalToEffectPostgresStore, 'reserve' | 'transition' | 'reconcile' | 'read' | 'recover' | 'heartbeat' | 'durable' | 'ownershipFenced' | 'compareAndSwap' | 'atomicEvidenceBinding'>;
 export interface StripeRefundDurableConnector {
     readonly profile: typeof PROFILE;
     readonly account_id: string;
@@ -127,6 +128,12 @@ export declare function createStripeRefundDurableConnector(input: {
  * view leaves the attempt INDETERMINATE without creating. The lookup is not
  * atomic with the create: two setups that lack each other's attempt row and
  * create at the same instant can both see no refund.
+ *
+ * Immediately before refunds.create the owner renews its lease through the
+ * attempt store's owner-fenced heartbeat. An owner whose lease went stale and
+ * whose attempt recovery took over gets attempt_ownership_lost and never
+ * calls Stripe. The create itself is not fenced: a create still in flight
+ * when a renewed lease expires can land after recovery has looked.
  */
 export declare function guardStripeRefundDurable(connector: StripeRefundDurableConnector, input: {
     operation_reference: string;
@@ -144,9 +151,10 @@ export declare function guardStripeRefundDurable(connector: StripeRefundDurableC
     state: string;
 }>;
 /**
- * Recovery never calls refunds.create. A bounded list query supplies positive
- * evidence only if exactly one matching refund is found, no other listed refund
- * carries this operation's metadata, and the page is complete. Empty,
+ * Recovery never calls refunds.create. A bounded, paged list query supplies
+ * positive evidence only if exactly one matching refund is found, no other
+ * listed refund carries this operation's metadata, and the list is complete
+ * within the page bound. Empty,
  * incomplete, unavailable, or conflicting results stay INDETERMINATE; none
  * proves NOT_COMMITTED.
  * The server-secret tag narrows accidental/external collision, but it can be
