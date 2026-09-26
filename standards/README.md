@@ -60,7 +60,7 @@ The reader-facing canonical surface is:
    [`draft-schrock-ep-authority-introduction-03`](posted/draft-schrock-ep-authority-introduction-03.xml):
    relying-party-pinned trust-root introduction and scoped authority.
 4. **Authorization Evidence Chain (AEC)** —
-   [`draft-schrock-ep-authorization-evidence-chain-05`](posted/draft-schrock-ep-authorization-evidence-chain-05.xml):
+   [`draft-schrock-ep-authorization-evidence-chain-06`](posted/draft-schrock-ep-authorization-evidence-chain-06.xml):
    composition of verified, action-matched evidence against a relying-party
    requirement.
 
@@ -78,7 +78,7 @@ complete active portfolio remains the 24 records in
 coauthored records, each with its own scope and revision history.
 
 The separate runtime execution spine is **Architecture-02 -> CAID-02 ->
-AEC-05 -> AEB-07**: architecture and decision boundaries, exact material-action
+AEC-06 -> AEB-07**: architecture and decision boundaries, exact material-action
 identity and matching, evidence satisfaction, then executor-side admission and
 one-time consequence custody. This runtime path is not the four-document
 presentation surface and does not retire, merge, or demote any active profile.
@@ -165,6 +165,21 @@ Revision -05 makes AEB a neutral native-compilation target while requiring
 explicit semantic-loss disclosure, exact-action binding, a stable native replay
 unit, and preservation of the AEB lifecycle axes. Native-owner review and the
 complete multi-profile conformance gate remain open.
+
+## September 6 AEC corrective revision
+
+`draft-schrock-ep-authorization-evidence-chain-06` was posted through
+Datatracker submission 168689 (Datatracker time 2026-09-06T17:33:02Z) as one of
+the four September 6 corrective revisions. Its XML and TXT match the immutable
+IETF archive byte-for-byte, and the snapshot was mirrored into `posted/` on
+2026-09-26. The posted HTML follows the same whitespace-normalized local render
+rule as AEB-06. Revision -06 adds an explicit pre-execution Authorization
+Bundle component, kept separate from the terminal Trust Receipt component,
+updates implementation status for the structured requirement, native facts,
+role constraints, required bindings, and replay contract, and updates
+references without changing the EP-AEC-v1 envelope or converting evidence
+satisfaction into execution authority. It is an individual Internet-Draft, not
+a working-group item, and posting is not protocol-owner review.
 
 ## September 24 AEB maintenance revision
 
