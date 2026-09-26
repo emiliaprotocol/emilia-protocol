@@ -10,9 +10,13 @@ import {
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
 } from '@simplewebauthn/server';
-import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 import { canonicalize } from '../canonical-json.js';
 import { coseToSpkiP256 } from '../webauthn.js';
+import {
+  isWebAuthnAuthenticatorTransport,
+  WEBAUTHN_AUTHENTICATOR_TRANSPORTS,
+  type WebAuthnAuthenticatorTransport,
+} from '../webauthn-transports.js';
 
 export const AGENT_ADOPTION_WEBAUTHN_VERSION = 'EP-AGENT-ADOPTION-WEBAUTHN-v1';
 export const AGENT_ADOPTION_WEBAUTHN_REGISTRATION_CONTEXT_TYPE =
@@ -44,9 +48,6 @@ const CONTEXT_KEYS = new Set([
   'expires_at',
   'rp_id',
   'origin',
-]);
-const TRANSPORTS = new Set<AuthenticatorTransportFuture>([
-  'ble', 'cable', 'hybrid', 'internal', 'nfc', 'smart-card', 'usb',
 ]);
 const MAX_RESPONSE_BYTES = 256 * 1024;
 const MAX_CLIENT_DATA_BYTES = 8 * 1024;
@@ -109,7 +110,7 @@ export interface AgentAdoptionCredentialMaterial {
   credential_id: string;
   public_key_cose: string;
   public_key_spki: string;
-  transports: AuthenticatorTransportFuture[] | null;
+  transports: WebAuthnAuthenticatorTransport[] | null;
   device_type: 'singleDevice' | 'multiDevice';
   backed_up: boolean;
   sign_count: number;
@@ -140,7 +141,7 @@ export interface AgentAdoptionAssertionCeremony {
 export interface AgentAdoptionAssertionVerification {
   claim_boundary: typeof AGENT_ADOPTION_WEBAUTHN_CLAIM_BOUNDARY;
   credential_id: string;
-  transports: AuthenticatorTransportFuture[] | null;
+  transports: WebAuthnAuthenticatorTransport[] | null;
   device_type: 'singleDevice' | 'multiDevice';
   backed_up: boolean;
   sign_count: number;
@@ -330,19 +331,17 @@ function credentialId(value: unknown): value is string {
   return validBase64url(value, MAX_CREDENTIAL_ID_CHARS);
 }
 
-function transports(value: unknown): AuthenticatorTransportFuture[] | null {
+function transports(value: unknown): WebAuthnAuthenticatorTransport[] | null {
   if (value === undefined || value === null) return null;
-  if (!Array.isArray(value) || value.length > TRANSPORTS.size) {
+  if (!Array.isArray(value) || value.length > WEBAUTHN_AUTHENTICATOR_TRANSPORTS.length) {
     throw refusal('credential_invalid', 'Credential transports are invalid.');
   }
-  const result: AuthenticatorTransportFuture[] = [];
+  const result: WebAuthnAuthenticatorTransport[] = [];
   for (const transport of value) {
-    if (typeof transport !== 'string'
-        || !TRANSPORTS.has(transport as AuthenticatorTransportFuture)
-        || result.includes(transport as AuthenticatorTransportFuture)) {
+    if (!isWebAuthnAuthenticatorTransport(transport) || result.includes(transport)) {
       throw refusal('credential_invalid', 'Credential transports are invalid.');
     }
-    result.push(transport as AuthenticatorTransportFuture);
+    result.push(transport);
   }
   return result;
 }
@@ -474,7 +473,10 @@ function verifyClientData(
       || parsed.type !== expectedType
       || parsed.challenge !== challenge
       || parsed.origin !== origin
-      || parsed.crossOrigin === true) {
+      // Same rule as lib/webauthn-client-data.ts: only an absent or false
+      // crossOrigin, and never a topOrigin.
+      || (parsed.crossOrigin !== undefined && parsed.crossOrigin !== false)
+      || parsed.topOrigin !== undefined) {
     throw refusal(
       `${prefix}_client_data_invalid`,
       'WebAuthn client data does not match the exact ceremony.',
@@ -583,7 +585,7 @@ export async function createAgentAdoptionRegistrationOptions({
   rpName?: string;
   existingCredentials?: Array<{
     credential_id: string;
-    transports?: AuthenticatorTransportFuture[] | null;
+    transports?: WebAuthnAuthenticatorTransport[] | null;
   }>;
   now?: NowInput;
 }): Promise<AgentAdoptionRegistrationCeremony> {

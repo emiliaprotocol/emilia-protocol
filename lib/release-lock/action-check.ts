@@ -2,6 +2,7 @@
 
 import crypto from 'node:crypto';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
+import { assertSameOriginWebAuthnResponse } from '../webauthn-client-data.js';
 import { canonicalize } from '../../packages/verify/index.js';
 import {
   computeBindingMomentHash,
@@ -635,6 +636,7 @@ export async function verifyReleaseLockActionCheck({
 
   let authentication;
   try {
+    assertSameOriginWebAuthnResponse(assertion);
     authentication = await verifyAuthenticationResponse({
       response: assertion,
       expectedChallenge: challenge.challenge,

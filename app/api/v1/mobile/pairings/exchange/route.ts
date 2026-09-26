@@ -2,7 +2,6 @@
 import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
-import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 import { getGuardedClient } from '@/lib/write-guard.js';
 import { readLimitedJson } from '@/lib/http/body-limit.js';
 import {
@@ -11,6 +10,11 @@ import {
   mobilePairingIdentityChallenge,
 } from '@/lib/mobile/store.js';
 import { getRpConfig } from '@/lib/webauthn.js';
+import { assertSameOriginWebAuthnResponse } from '@/lib/webauthn-client-data.js';
+import {
+  isWebAuthnAuthenticatorTransport,
+  type WebAuthnAuthenticatorTransport,
+} from '@/lib/webauthn-transports.js';
 import { mobileJson, mobileProblem } from '@/lib/mobile/response.js';
 import { logger } from '@/lib/logger.js';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit.js';
@@ -19,14 +23,10 @@ const CODE = /^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$/;
 const APP_ID = /^[A-Za-z0-9:_.@-]{3,256}$/;
 const MAX_BODY_BYTES = 128 * 1024;
 const MEMBERS: Set<string> = new Set(['pairing_code', 'platform', 'app_id', 'identity_assertion']);
-const SUPPORTED_TRANSPORTS = new Set<AuthenticatorTransportFuture>([
-  'ble', 'cable', 'hybrid', 'internal', 'nfc', 'smart-card', 'usb',
-]);
 
-function supportedTransports(value: string[] | null | undefined): AuthenticatorTransportFuture[] | undefined {
+function supportedTransports(value: string[] | null | undefined): WebAuthnAuthenticatorTransport[] | undefined {
   if (!Array.isArray(value)) return undefined;
-  const result = value.filter((item): item is AuthenticatorTransportFuture =>
-    SUPPORTED_TRANSPORTS.has(item as AuthenticatorTransportFuture));
+  const result = value.filter(isWebAuthnAuthenticatorTransport);
   return result.length > 0 ? result : undefined;
 }
 
@@ -71,6 +71,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { rpID, origin } = getRpConfig();
     let verification;
     try {
+      assertSameOriginWebAuthnResponse(assertion);
       verification = await verifyAuthenticationResponse({
         response: assertion,
         expectedChallenge: mobilePairingIdentityChallenge(code),

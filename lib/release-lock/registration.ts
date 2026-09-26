@@ -5,6 +5,7 @@ import {
   verifyRegistrationResponse,
 } from '@simplewebauthn/server';
 import { coseToSpkiP256, getRpConfig } from '../webauthn.js';
+import { assertSameOriginWebAuthnResponse } from '../webauthn-client-data.js';
 import {
   RELEASE_LOCK_CHALLENGE_TTL_MS,
   RELEASE_LOCK_CREDENTIAL_ID_PATTERN,
@@ -88,12 +89,16 @@ export async function verifyReleaseLockRegistration({
   }
   let verification: any;
   try {
+    assertSameOriginWebAuthnResponse(attestation);
     verification = await verifyRegistrationResponse({
       response: attestation,
       expectedChallenge: challenge.challenge,
       expectedOrigin: challenge.origin,
       expectedRPID: challenge.rp_id,
       requireUserVerification: true,
+      // Same ES256-only list the registration options offered; never the
+      // library default, which is runtime-dependent from @simplewebauthn v14.
+      supportedAlgorithmIDs: [-7],
     });
   } catch {
     throw releaseLockRefusal(400, 'attestation_invalid', 'Passkey registration did not verify.');

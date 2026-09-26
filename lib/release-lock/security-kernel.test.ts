@@ -19,6 +19,7 @@ import {
   authorityAssertionBytes,
 } from './crypto.js';
 import { mapReleaseLockRpcError } from './errors.js';
+import { createSoftAuthenticator } from '../../tests/helpers/soft-webauthn-authenticator.js';
 import { createReleaseLockService } from './service.js';
 import {
   releaseLockValidationInternals,
@@ -708,6 +709,91 @@ describe('Release Lock Action Check hostility', () => {
         code: 'assertion_invalid',
       });
     }
+  });
+});
+
+describe('Release Lock Action Check against the real WebAuthn verifier', () => {
+  const RP_ID = 'example.com';
+  const ORIGIN = 'https://example.com';
+  const CREDENTIAL_ID = 'credential_1234567890';
+
+  function ceremony() {
+    const { co } = builtActions();
+    const built = buildReleaseLockActionCheck({
+      lockId: LOCK_ID,
+      version: 1,
+      round: 'CO_ACCEPTED',
+      role: 'contractor',
+      contactBindingId: '11111111-1111-4111-8111-111111111111',
+      contractorEntityId: ACTOR,
+      credentialId: CREDENTIAL_ID,
+      action: co.action,
+      actionHash: co.actionHash,
+      now: () => NOW,
+      randomBytes: () => Buffer.alloc(32, 5),
+      randomInt: () => 0,
+    });
+    const stored = {
+      lock_id: LOCK_ID,
+      version: 1,
+      round: 'CO_ACCEPTED',
+      role: 'contractor',
+      contact_binding_id: '11111111-1111-4111-8111-111111111111',
+      credential_id: CREDENTIAL_ID,
+      action_hash: co.actionHash,
+      prompt_set: built.promptSet,
+      prompt_set_digest: built.promptSetDigest,
+      answer_digest: built.answerDigest,
+      binding_moment: built.bindingMoment,
+      random_nonce: built.randomNonce,
+      nonce: built.nonce,
+      resolution_context: built.context,
+      challenge: built.challenge,
+      issued_at: built.issuedAt,
+      expires_at: built.expiresAt,
+    };
+    const authenticator = createSoftAuthenticator();
+    const credential = {
+      credential_id: CREDENTIAL_ID,
+      public_key_cose: authenticator.cosePublicKeyB64u,
+      public_key_spki: authenticator.spkiB64u,
+      sign_count: 4,
+    };
+    function check(overrides: Record<string, unknown> = {}) {
+      const assertion: any = authenticator.assert({
+        challenge: stored.challenge, origin: ORIGIN, rpId: RP_ID, counter: 5, ...overrides,
+      });
+      assertion.id = CREDENTIAL_ID;
+      assertion.rawId = CREDENTIAL_ID;
+      return verifyReleaseLockActionCheck({
+        challenge: stored,
+        submittedAnswers: built.expectedAnswers,
+        assertion,
+        credential,
+        rpId: RP_ID,
+        allowedOrigins: [ORIGIN],
+        evaluationTime: new Date(Date.parse(built.issuedAt) + 1_000),
+      });
+    }
+    return { check };
+  }
+
+  it('accepts a same-origin, UV assertion over the bound challenge', async () => {
+    const result = await ceremony().check();
+    expect(result.newCounter).toBe(5);
+    expect(result.verification).toMatchObject({ valid: true, authorizes_action: true, outcome: 'approved' });
+  });
+
+  it.each([
+    ['crossOrigin: true with no topOrigin (admitted by the library alone)', { clientData: { crossOrigin: true } }],
+    ['a non-boolean crossOrigin member', { clientData: { crossOrigin: 'true' } }],
+    ['crossOrigin with an attacker topOrigin', { clientData: { crossOrigin: true, topOrigin: 'https://evil.example' } }],
+    ['a rolled-back signature counter', { counter: 3 }],
+    ['a replayed signature counter', { counter: 4 }],
+    ['an unlisted origin', { origin: 'https://evil.example' }],
+    ['user presence without user verification', { flags: 0x01 }],
+  ])('refuses %s at the WebAuthn gate', async (_label, overrides) => {
+    await expect(ceremony().check(overrides)).rejects.toMatchObject({ status: 400, code: 'assertion_invalid' });
   });
 });
 

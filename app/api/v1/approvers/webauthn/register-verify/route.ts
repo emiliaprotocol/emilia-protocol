@@ -7,6 +7,7 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
+import { assertSameOriginWebAuthnResponse } from '@/lib/webauthn-client-data.js';
 import { authenticateRequest } from '@/lib/supabase';
 import { authEntityId } from '@/lib/auth-projections.js';
 import { resolveAuthorizedOrg } from '@/lib/tenant-binding';
@@ -112,12 +113,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { rpID, origin } = getRpConfig();
     let verification;
     try {
+      assertSameOriginWebAuthnResponse(body.attestation);
       verification = await verifyRegistrationResponse({
         response: body.attestation,
         expectedChallenge: challengeRow.challenge,
         expectedOrigin: origin,
         expectedRPID: rpID,
         requireUserVerification: true,
+        // Same ES256-only list register-options offered. Pinned rather than
+        // left to the library default, which @simplewebauthn v14 narrowed and
+        // made runtime-dependent (ML-DSA-44 first where WebCrypto supports it).
+        supportedAlgorithmIDs: [-7],
       });
     } catch (e) {
       return epProblem(400, 'attestation_invalid', `Attestation verification failed: ${e.message}`);

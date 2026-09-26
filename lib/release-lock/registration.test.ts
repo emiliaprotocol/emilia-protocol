@@ -250,6 +250,7 @@ describe('Release Lock passkey registration', () => {
       expectedOrigin: RP.origin,
       expectedRPID: RP.rpID,
       requireUserVerification: true,
+      supportedAlgorithmIDs: [-7],
     });
   });
 

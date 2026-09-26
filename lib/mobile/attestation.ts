@@ -7,6 +7,7 @@ import { verifyAssertion, verifyAttestation } from 'node-app-attest';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
 import { canonicalize } from '@/packages/verify/index.js';
 import { coseToSpkiP256 } from '@/lib/webauthn.js';
+import { assertSameOriginWebAuthnResponse } from '@/lib/webauthn-client-data.js';
 import {
   createAppleAppAttestVerifier,
   createPlayIntegrityAttestationVerifier,
@@ -211,6 +212,7 @@ export async function verifyMobilePasskeyRegistration({
   expectedRPID,
   requireUserVerification = true,
 }: any = {}): Promise<any> {
+  assertSameOriginWebAuthnResponse(response);
   const verification = await verifyRegistrationResponse({
     response,
     expectedChallenge,
