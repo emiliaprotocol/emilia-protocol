@@ -26,10 +26,12 @@ import {
 } from '../scripts/verify-reproducible-package.mjs';
 import { assertPythonArtifactBytesMatch } from '../scripts/python-artifact-integrity.mjs';
 
-// The fixture cases create Git snapshots and perform two independent npm
-// builds. Under the full CI suite they can exceed Vitest's 5-second default;
-// keep this allowance local to the release-reproducibility tests.
-describe('release byte reproducibility', { timeout: 15_000 }, () => {
+// Synthetic release fixtures create Git snapshots and can perform two clean npm
+// builds. Match the 60-second limit used by the measured proof runner without
+// relaxing Vitest's default for the simple assertions in this file.
+const FIXTURE_TIMEOUT_MS = 60_000;
+
+describe('release byte reproducibility', () => {
   const commitFixture = (root: string): string => {
     execFileSync('git', ['init', '-q'], { cwd: root });
     execFileSync('git', ['config', 'user.name', 'Release Fixture'], { cwd: root });
@@ -124,7 +126,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
       rmSync(root, { recursive: true, force: true });
       rmSync(scratchParent, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it('removes scratch state and reports child details after a locked install fails', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-install-failure-'));
@@ -153,7 +155,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
       rmSync(root, { recursive: true, force: true });
       rmSync(scratchParent, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it('packs @emilia-protocol/verify twice to byte-identical tarballs', () => {
     const result = verifyReproduciblePackage('packages/verify');
@@ -197,7 +199,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  }, 60_000);
+  }, FIXTURE_TIMEOUT_MS);
 
   it('rejects nondeterministic output from independent clean package builds', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-nondeterministic-'));
@@ -229,7 +231,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it('rejects randomness shared through a writable repository dependency tree', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-shared-seed-'));
@@ -268,7 +270,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
       rmSync(repositorySeedPath, { force: true });
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it('rejects randomness shared through an inherited RUNNER_TEMP', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-runner-temp-seed-'));
@@ -311,7 +313,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
       else process.env.RUNNER_TEMP = priorRunnerTemp;
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it('removes an inherited GITHUB_WORKSPACE from both independent builds', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-workspace-seed-'));
@@ -355,7 +357,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
       else process.env.GITHUB_WORKSPACE = priorWorkspace;
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it('rejects a deterministic build-time package version rewrite', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-version-rewrite-'));
@@ -384,7 +386,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it.each([
     ['dependency', { dependencies: { hostile: '9.9.9' } }],
@@ -413,7 +415,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it('fails closed when tracked checkout bytes differ from the reviewed commit', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-checkout-mutation-'));
@@ -433,7 +435,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it('keeps prepack and postpack restoration hooks inert', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-inert-hooks-'));
@@ -464,9 +466,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  // This integration fixture performs real Git snapshot and independent npm
-  // build/pack operations; allow the same 60-second budget as the mode fixture.
-  }, 60_000);
+  }, FIXTURE_TIMEOUT_MS);
 
   it('rejects a reviewed Git tree containing a symlink', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-source-symlink-'));
@@ -486,7 +486,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it('rejects a build that injects a symlink into package runtime output', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-build-symlink-'));
@@ -508,7 +508,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it('rejects symbolic refs and alternate-ref bytes instead of silently packing them', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-alternate-ref-'));
@@ -537,7 +537,7 @@ describe('release byte reproducibility', { timeout: 15_000 }, () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, FIXTURE_TIMEOUT_MS);
 
   it('canonicalizes different host gzip streams to identical publish bytes', () => {
     const tarPayload = Buffer.from('stable tar payload'.repeat(64));
