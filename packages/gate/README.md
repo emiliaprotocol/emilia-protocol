@@ -415,14 +415,16 @@ call. Gate 0.26.0 shipped the PostgreSQL store without `state()`; existing
 databases need the `ep_aeb_private.operation_state` function from
 `supabase/migrations/20260925010000_aeb_operation_state.sql`.
 
-This direct path follows AEB-06, which was posted on 2026-09-24 as an
-individual Internet-Draft and is not adopted by any working group. AEB-06 makes
+This direct path is same-team reference code for the direct native path that
+AEB-07 describes. AEB-07 was posted on 2026-09-25 as an individual
+Internet-Draft and is not adopted by any working group. Like AEB-06, it makes
 CAID conditional on a cross-format join and AEC conditional on a multi-leg
-evidence requirement. The signed gateway handoff and the same-action fence are
-repository implementation profiles that AEB-06 does not specify; a staged -07
-candidate that specifies the fence has not been submitted. The named
-source labels and same-repository vectors do not establish native-protocol
-conformance or independent interoperability.
+evidence requirement. AEB-07 also specifies the same-action in-flight fence
+and what a native authorization handoff binds and how the boundary verifies
+it, but defines no handoff encoding; the signed gateway handoff is a
+repository implementation profile that AEB-07 cites informatively as one
+reference encoding. The named source labels and same-repository vectors do not
+establish native-protocol conformance or independent interoperability.
 
 See the [consequence-admission boundary](../../docs/protocol/consequence-admission.md)
 for the division of responsibility between the native authorization system,

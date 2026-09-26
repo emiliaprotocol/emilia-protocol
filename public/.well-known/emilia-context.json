@@ -3,11 +3,11 @@
   "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "4e2d54f256a482916f5c8262cbc24a52ee4557ab66b1717514aa7e6f7739b794",
+    "input_digest_sha256": "d1ccca1753db61fa79741ceb803bb4715b41ca9a312e2d62409c2db244d40c6e",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "bfae959ed0bde4fa3cd7c469ab097aa726b84c14c8eeb652b68cb93b7e7b2b32",
+        "sha256": "34f253e23fb4037ff0ed22349d3a366a2b5cc909f69c0b89fbe6eb9470734219",
         "bytes": 51148
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "9a5d755abc4442d3c2ffedab7ea1abd2d2ff2e6967f961ce3666587eaf05e051",
+        "sha256": "290932d382f88fe1b0daa71802c367c0ecbd3b6c6c2ea312fb6d048e6855a9ee",
         "bytes": 391520
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "64d3a06d1b764936c48b0dcd717cbe5742b15df0ec7b46259bf7e95de6d041ab",
-        "bytes": 54743
+        "sha256": "ea8739021a2efa4807b671059967ea4abd33b8cca645ef2c1ed74292fa3f8542",
+        "bytes": 56767
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4554,9 +4554,9 @@
     },
     {
       "identifier": "draft-schrock-action-evidence-boundary",
-      "revision_at_snapshot": "06",
+      "revision_at_snapshot": "07",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published September 24 (Datatracker posting 2026-09-25T02:15:03Z) as an individual Internet-Draft, not adopted; use -06 as the current consequence-admission baseline: CAID only for a cross-format join, AEC only for a multi-leg evidence requirement, no second PDP, stable replay identity, durable consume or reserve before provider entry, terminal or indeterminate outcome, and authenticated reconciliation without blind retry. The gateway handoff used by the reference packages is a repository implementation profile and is not specified by -06. Native-owner review and the complete multi-profile conformance gate remain open",
+      "next_action": "Published September 25 (Datatracker posting 2026-09-26T00:11:40Z) as an individual Internet-Draft, not adopted; use -07 as the current consequence-admission baseline. It keeps the -06 structure (CAID only for a cross-format join, AEC only for a multi-leg evidence requirement, no second PDP when the effect-owning PEP accepts and enforces the native decision, durable consume or reserve before provider entry, and authenticated reconciliation with no blind replay) and adds a durable same-action in-flight fence, pre-entry recovery that releases only on proof of non-entry, purpose-bound verification of terminal provider evidence, one native replay identity derived from the relying-party-pinned authority namespace and the native authorization identifier, and the contents and verification of a native authorization handoff. The handoff encoding stays deployment-pinned; the repository reference encoding is cited informatively. Native-owner review and the complete multi-profile conformance gate remain open",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -5324,7 +5324,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 25, 2026, the repository tracks 24 active records: 20 sole-authored series and four coauthored series. Current Datatracker revisions include CAID -02, Authorization Receipts -13, AEB -06, Bounded Capability Receipts -06, Presentation Binding -01, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 25, 2026, the repository tracks 24 active records: 20 sole-authored series and four coauthored series. Current Datatracker revisions include CAID -02, Authorization Receipts -13, AEB -07, Bounded Capability Receipts -06, Presentation Binding -01, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",

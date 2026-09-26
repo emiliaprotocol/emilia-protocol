@@ -78,7 +78,7 @@ complete active portfolio remains the 24 records in
 coauthored records, each with its own scope and revision history.
 
 The separate runtime execution spine is **Architecture-02 -> CAID-02 ->
-AEC-05 -> AEB-06**: architecture and decision boundaries, exact material-action
+AEC-05 -> AEB-07**: architecture and decision boundaries, exact material-action
 identity and matching, evidence satisfaction, then executor-side admission and
 one-time consequence custody. This runtime path is not the four-document
 presentation surface and does not retire, merge, or demote any active profile.
@@ -179,6 +179,25 @@ before provider entry, and authenticated reconciliation without blind retry.
 It is an individual Internet-Draft, not a working-group item, and posting is
 not protocol-owner review. Native-owner review and the complete multi-profile
 conformance gate remain open.
+
+## September 25 AEB maintenance revision
+
+`draft-schrock-action-evidence-boundary-07` was posted through Datatracker
+submission 169495 (Datatracker time 2026-09-26T00:11:40Z). Its XML and TXT
+match the immutable IETF archive byte-for-byte. The posted HTML follows the
+same whitespace-normalized local render rule as -06. Revision -07 keeps the -06
+structure and adds a durable same-action in-flight fence, which refuses a new
+attempt for an action whose earlier attempt is still in flight or uncertain,
+even when fresh authority is presented. An attempt that stopped before provider
+entry is released only with proof that it never entered. Terminal provider
+evidence is accepted only after a relying-party-configured verifier affirms it
+for the attempt and the stated purpose. One native replay identity is derived
+from the relying-party-pinned authority namespace and the native authorization
+identifier, and the revision specifies what a native authorization handoff
+attests and how the boundary verifies it, leaving the encoding to deployment
+pins. It is an individual Internet-Draft, not a working-group item, and posting
+is not protocol-owner review. Native-owner review and the complete
+multi-profile conformance gate remain open.
 
 ## New-filing freeze
 

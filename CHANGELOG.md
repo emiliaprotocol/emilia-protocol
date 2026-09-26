@@ -149,8 +149,10 @@ Historical entries below retain the labels used when they were written.
   release ordering, and recovery authorization bound to one attempt and
   refused without one), purpose-bound verification of terminal provider
   evidence, one native replay identity with one namespace per issuer, and
-  the native authorization handoff is staged in
-  `standards/staged/NEXT-AEB-07/`. It has not been submitted.
+  the native authorization handoff is retained in
+  `standards/staged/NEXT-AEB-07/`. That revision was posted on 2026-09-25
+  through Datatracker submission 169495 as an individual Internet-Draft, not
+  adopted, and the packet is now its publication provenance.
 - The `verify-receipt` action installs the verifier into an isolated
   temporary directory, so the caller's repository dependencies no longer
   affect the install.

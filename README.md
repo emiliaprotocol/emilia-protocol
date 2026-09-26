@@ -108,7 +108,7 @@ It is format-neutral and self-run. A passing report is self-attested
 conformance evidence, not an audit, certification, production-deployment
 claim, or permission to execute an action.
 
-Under AEB-06, posted on 2026-09-24 as an individual Internet-Draft and not
+Under AEB-07, posted on 2026-09-25 as an individual Internet-Draft and not
 adopted by any working group, CAID is used only when independently encoded
 actions must be joined, and AEC is used only when local policy requires several
 evidence legs. A separate 26-case synthetic corpus models that direct-native
@@ -123,7 +123,7 @@ The corpus runner is a standalone lifecycle model with its own in-memory store
 and admission logic. It does not execute the shipped `@emilia-protocol/verify`
 or `@emilia-protocol/gate` code, so it is not evidence for those packages,
 which have their own test suites. It is also not evidence that the named
-native protocols conform to AEB-06.
+native protocols conform to AEB-07.
 
 For a focused executable proof of the repository's Gate path, run:
 
@@ -333,16 +333,18 @@ authoritative for revision and status.
 ### One consequence-boundary surface
 
 The current published
-[AEB-06](standards/posted/draft-schrock-action-evidence-boundary-06.xml),
-posted on 2026-09-24 as an individual Internet-Draft and not adopted, makes AEB
+[AEB-07](standards/posted/draft-schrock-action-evidence-boundary-07.xml),
+posted on 2026-09-25 as an individual Internet-Draft and not adopted, makes AEB
 the composition point after a native decision. OAuth, AuthZEN, COAZ, AP2, and
 local systems keep ownership of their credentials, operation mappings, and
 authorization decisions. AIMS (`draft-ietf-wimse-aims`) is an Informational
 WIMSE working-group document that profiles existing standards such as WIMSE
 and OAuth; it does not itself issue credentials or decisions. AEB applies the
 native decision at the protected provider boundary: it binds the final action
-when needed, derives stable replay identity, reserves before provider entry,
-and keeps an uncertain result locked until authenticated reconciliation.
+when needed, derives one native replay identity per grant, reserves before
+provider entry, refuses a second attempt at the same action while an earlier
+one is in flight or uncertain, and keeps an uncertain result locked until
+authenticated reconciliation.
 
 [CAID-02](standards/posted/draft-schrock-canonical-action-identifier-02.xml)
 is used when independently encoded representations must be compared. It is not
@@ -358,10 +360,12 @@ for every AEB integration. Architecture-03 remains the navigation document.
 the implementation boundary and the cases where AEB is unnecessary.
 The [direct native handoff profile](docs/protocol/aeb-native-authorization-handoff-v1.md)
 is a repository implementation profile that shows how an existing permit
-reaches Gate without a second CAID or AEC layer; AEB-06 does not itself specify
-that gateway handoff. The exact submitted -06 bytes and their publication
-record are retained in
-[`standards/staged/NEXT-AEB-06`](standards/staged/NEXT-AEB-06).
+reaches Gate without a second CAID or AEC layer. AEB-07 specifies what such a
+gateway handoff attests and how the boundary verifies it, but leaves the
+encoding to deployment pins; it cites a pinned snapshot of this profile as one
+informative reference encoding. The exact submitted -07 bytes and their
+publication record are retained in
+[`standards/staged/NEXT-AEB-07`](standards/staged/NEXT-AEB-07).
 
 The complete active portfolio remains 24 Datatracker records: 20 sole-authored
 records and four coauthored records, each with its own scope and revision
