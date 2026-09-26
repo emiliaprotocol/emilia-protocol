@@ -51,6 +51,35 @@ fail-closed result for a consequential action:
 The external OpenVerifier result is retained as an external verification claim;
 it is not silently converted into an independently reproduced EMILIA result.
 
+## Pinned external public-surface observation
+
+On 2026-09-23, EMILIA reran the OpenVerifier 13.8.3 public surface package
+identified as:
+
+* source revision: `openverifier-public-surface-v13.8.3-p3`;
+* deployment revision: `ov-public-v13.8.3-20260923.3`;
+* deployment ZIP SHA-256:
+  `fc676e975bb679c2f5971a8209c5dd07bb828dfd95fee8ba0a33bb6847823e3d`;
+* public-surface SHA-256:
+  `f3e995d89393771928f070d23b98775e38b5f1e1a6cd9097264b1f022e3c905f`;
+  and
+* unchanged frozen 13.8 verifier ZIP SHA-256:
+  `e6d2324baf13d09d7c2cee74d905f74230bfddaf3fdcae343661bbeee1d6697d`.
+
+The downloaded ZIP hash matched the stated value and its package test suite
+passed. The packaged and live
+[`DEPLOYMENT_MANIFEST.json`](https://openverifier.org/DEPLOYMENT_MANIFEST.json)
+were byte-identical at SHA-256
+`af266f31a84d7fbab44cff4b7d23223ccfcbeaf809a646ca57024f63019a62f7`.
+All 27 manifest-listed files, including the six HTML pages, matched their
+published byte lengths and SHA-256 values when retrieved from the live site.
+
+This pins a reproducible observation of an independently operated verifier
+surface. It is not EMILIA certification, endorsement, deployment control, or
+evidence of external adoption. It does not turn the OpenVerifier result into
+an EMILIA admission decision, and it does not change the `INDETERMINATE`
+continuity result above.
+
 ## Composition boundary
 
 An adapter can compose the systems without absorbing either one:
