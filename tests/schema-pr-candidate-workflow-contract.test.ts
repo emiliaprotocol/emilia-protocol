@@ -46,4 +46,22 @@ describe('fork-safe schema candidate workflow contract', () => {
     expect(parserStep.run).not.toMatch(/(?:node|bash|sh|npm|npx)\s+candidate-data(?:\/|\s)/);
     expect(JSON.stringify(job)).not.toContain('secrets.');
   });
+
+  it('never runs the secret-using live leg on merge_group, and binds it to the main-only environment', () => {
+    const live = workflow.jobs['live-schema-contract'];
+    // On merge_group GitHub reads this file from the candidate, so the job
+    // that can read the schema-gate secret must not run there at all.
+    expect(live.if).toBe("github.event_name != 'merge_group'");
+    expect(live.environment).toBe('schema-gate');
+    const liveCheckout = live.steps.find((step: { uses?: string }) => step.uses?.startsWith('actions/checkout@'));
+    expect(liveCheckout.with.ref).toBe('${{ github.event.pull_request.base.sha || github.sha }}');
+    for (const [name, other] of Object.entries(workflow.jobs)) {
+      if (name === 'live-schema-contract') continue;
+      expect(JSON.stringify(other), name).not.toContain('secrets.');
+    }
+    const aggregator = workflow.jobs['schema-contract'].steps[0].run;
+    expect(aggregator).toContain('if [[ "$EVENT_NAME" == merge_group ]]; then');
+    expect(aggregator).toContain('[[ "$LIVE_RESULT" == skipped ]]');
+    expect(aggregator).toContain('[[ "$LIVE_RESULT" == success ]]');
+  });
 });
