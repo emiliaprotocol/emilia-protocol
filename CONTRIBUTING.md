@@ -39,9 +39,10 @@ npm run check:repository-boundary
 
 ## Development environment
 
-The root package requires Node.js 20.19 or later; `.nvmrc` selects Node 20.
-GitHub Actions also exercises supported surfaces on Node 24. Use the committed
-npm lockfile rather than refreshing dependencies incidentally.
+Use Node.js 24 for root development and tests; `.nvmrc` selects it because
+Vitest 5 does not support Node 20. The package runtime compatibility boundary
+remains Node.js 20.19 or later and is exercised separately in CI. Use the
+committed npm lockfile rather than refreshing dependencies incidentally.
 
 ```bash
 git clone https://github.com/emiliaprotocol/emilia-protocol.git

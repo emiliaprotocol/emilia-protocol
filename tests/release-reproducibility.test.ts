@@ -310,6 +310,8 @@ describe('release byte reproducibility', () => {
     }
   });
 
+  // This case deliberately runs two isolated npm builds; under full CI load it
+  // can exceed Vitest's 5-second default without weakening either assertion.
   it('removes an inherited GITHUB_WORKSPACE from both independent builds', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-workspace-seed-'));
     const hostWorkspace = path.join(root, 'host-workspace');
@@ -352,7 +354,7 @@ describe('release byte reproducibility', () => {
       else process.env.GITHUB_WORKSPACE = priorWorkspace;
       rmSync(root, { recursive: true, force: true });
     }
-  });
+  }, 15_000);
 
   it('rejects a deterministic build-time package version rewrite', () => {
     const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-version-rewrite-'));

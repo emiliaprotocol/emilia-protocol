@@ -29,7 +29,8 @@
 
 /** @type {import('@stryker-mutator/core').PartialStrykerOptions} */
 const config = {
-  testRunner: 'vitest',
+  testRunner: 'vitest-5',
+  plugins: ['./scripts/ci/stryker-vitest5-runner.mjs'],
   vitest: {
     configFile: 'vitest.config.js',
   },
@@ -89,10 +90,11 @@ const config = {
   },
 
   // ── Reporters ──────────────────────────────────────────────────────────────
-  reporters: ['html', 'clear-text', 'progress'],
+  reporters: ['html', 'clear-text', 'progress', 'json'],
   htmlReporter: {
     fileName: 'reports/mutation/mutation.html',
   },
+  jsonReporter: { fileName: 'reports/mutation/core.json' },
 
   // ── Performance ────────────────────────────────────────────────────────────
   concurrency: 4,        // parallel test runners

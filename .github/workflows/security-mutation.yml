@@ -9,6 +9,15 @@ permissions:
 on:
   pull_request:
     paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.js'
+      - 'stryker.config.js'
+      - 'scripts/ci/stryker-vitest5-runner.mjs'
+      - 'scripts/ci/stryker-vitest5-runner.node-test.mjs'
+      - 'scripts/ci/run-validated-mutation.mjs'
+      - 'scripts/ci/validate-mutation-report.mjs'
+      - 'scripts/ci/validate-mutation-report.node-test.mjs'
       - 'packages/gate/store.js'
       - 'packages/gate/src/store.ts'
       - 'packages/gate/src/index.ts'
@@ -19,6 +28,8 @@ on:
       - 'packages/verify/src/reliance.ts'
       - 'lib/authority/resolver.ts'
       - 'tests/mutation-security-kernel.test.ts'
+      - 'tests/gate-security-remediation.test.ts'
+      - 'tests/gate-execution-binding-failclosed.test.ts'
       - 'tests/reliance-kernel.test.ts'
       - 'tests/authority-registry.test.ts'
       - 'tests/audit-regression.test.ts'
@@ -32,6 +43,7 @@ on:
       - 'packages/gate/src/evidence.ts'
       - 'conformance/vectors/aec-role.v1.json'
       - 'tests/aec-safety-critical.test.ts'
+      - 'tests/aec-platform-attestation.test.ts'
       - 'tests/aec-role-conformance.test.ts'
       - 'tests/aec-mutation-oracles.test.ts'
       - 'tests/aec-isolated-refusals.test.ts'
@@ -44,6 +56,8 @@ on:
       - 'lib/negotiate/evidence-challenge.ts'
       - 'packages/gate/challenge-store.js'
       - 'tests/model-to-matter.test.ts'
+      - 'tests/model-to-matter-hybrid.test.ts'
+      - 'tests/model-to-matter-physical-state.test.ts'
       - 'tests/model-to-matter-security-branches.test.ts'
       - 'tests/model-to-matter-mutation-oracles.test.ts'
       - 'stryker.model-to-matter.config.js'
@@ -52,6 +66,15 @@ on:
   push:
     branches: [main]
     paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.js'
+      - 'stryker.config.js'
+      - 'scripts/ci/stryker-vitest5-runner.mjs'
+      - 'scripts/ci/stryker-vitest5-runner.node-test.mjs'
+      - 'scripts/ci/run-validated-mutation.mjs'
+      - 'scripts/ci/validate-mutation-report.mjs'
+      - 'scripts/ci/validate-mutation-report.node-test.mjs'
       - 'packages/gate/store.js'
       - 'packages/gate/src/store.ts'
       - 'packages/gate/src/index.ts'
@@ -62,6 +85,8 @@ on:
       - 'packages/verify/src/reliance.ts'
       - 'lib/authority/resolver.ts'
       - 'tests/mutation-security-kernel.test.ts'
+      - 'tests/gate-security-remediation.test.ts'
+      - 'tests/gate-execution-binding-failclosed.test.ts'
       - 'tests/reliance-kernel.test.ts'
       - 'tests/authority-registry.test.ts'
       - 'tests/audit-regression.test.ts'
@@ -75,6 +100,7 @@ on:
       - 'packages/gate/src/evidence.ts'
       - 'conformance/vectors/aec-role.v1.json'
       - 'tests/aec-safety-critical.test.ts'
+      - 'tests/aec-platform-attestation.test.ts'
       - 'tests/aec-role-conformance.test.ts'
       - 'tests/aec-mutation-oracles.test.ts'
       - 'tests/aec-isolated-refusals.test.ts'
@@ -87,6 +113,8 @@ on:
       - 'lib/negotiate/evidence-challenge.ts'
       - 'packages/gate/challenge-store.js'
       - 'tests/model-to-matter.test.ts'
+      - 'tests/model-to-matter-hybrid.test.ts'
+      - 'tests/model-to-matter-physical-state.test.ts'
       - 'tests/model-to-matter-security-branches.test.ts'
       - 'tests/model-to-matter-mutation-oracles.test.ts'
       - 'stryker.model-to-matter.config.js'
@@ -107,6 +135,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: node --test scripts/ci/stryker-vitest5-runner.node-test.mjs scripts/ci/validate-mutation-report.node-test.mjs
       - run: npm run test:mutation:security
       - name: Upload mutation report
         if: always()
@@ -127,6 +156,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: node --test scripts/ci/stryker-vitest5-runner.node-test.mjs scripts/ci/validate-mutation-report.node-test.mjs
       - run: npm run test:mutation:aec
       - name: Upload AEC mutation report
         if: always()
@@ -147,6 +177,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: node --test scripts/ci/stryker-vitest5-runner.node-test.mjs scripts/ci/validate-mutation-report.node-test.mjs
       - run: npm run test:mutation:model-to-matter
       - name: Upload Model-to-Matter mutation report
         if: always()
