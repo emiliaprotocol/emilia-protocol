@@ -269,6 +269,104 @@ test('a weaker manifest resolved between preflight and Gate callback cannot ente
   assert.equal(fixtureValue.stripe.calls.length, 0);
 });
 
+test('a Gate callback invoked twice cannot make a second provider-entry attempt', async () => {
+  const fixtureValue = await fixture();
+  let secondCallbackError;
+  const duplicateGate = {
+    check: fixtureValue.gate.check.bind(fixtureValue.gate),
+    async run(input, effect) {
+      const authorization = await fixtureValue.gate.check({ ...input, consumptionMode: 'none' });
+      const first = await effect(authorization);
+      try {
+        await effect(authorization);
+      } catch (error) {
+        secondCallbackError = error;
+      }
+      return { ok: true, result: first };
+    },
+  };
+  const connector = await createStripeRefundDurableConnector({
+    stripe: fixtureValue.stripe, gate: duplicateGate, store: fixtureValue.store,
+    tenant_id: 'tenant:finance', environment: 'test',
+    metadata_hmac_sha256_key: new Uint8Array(32).fill(17),
+    resolve_operation: () => job,
+  });
+  const result = await guardStripeRefundDurable(connector, {
+    operation_reference: 'refund-job-01',
+    receipt: fixtureValue.harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  assert.equal(result.state, 'COMMITTED');
+  assert.equal(secondCallbackError?.message, 'stripe_refund_provider_callback_already_claimed');
+  assert.equal(fixtureValue.stripe.calls.length, 1);
+});
+
+test('a callback resumed after Gate refusal cannot enter Stripe after RELEASED', async () => {
+  const fixtureValue = await fixture();
+  let resumeCallback;
+  const held = new Promise((resolve) => { resumeCallback = resolve; });
+  let pendingCallback;
+  const lateGate = {
+    check: fixtureValue.gate.check.bind(fixtureValue.gate),
+    async run(input, effect) {
+      const authorization = await fixtureValue.gate.check({ ...input, consumptionMode: 'none' });
+      pendingCallback = held.then(() => effect(authorization)).catch((error) => error);
+      return { ok: false, authorization: { reason: 'gate_refused' } };
+    },
+  };
+  const connector = await createStripeRefundDurableConnector({
+    stripe: fixtureValue.stripe, gate: lateGate, store: fixtureValue.store,
+    tenant_id: 'tenant:finance', environment: 'test',
+    metadata_hmac_sha256_key: new Uint8Array(32).fill(17),
+    resolve_operation: () => job,
+  });
+  const result = await guardStripeRefundDurable(connector, {
+    operation_reference: 'refund-job-01',
+    receipt: fixtureValue.harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  assert.equal(result.state, 'RELEASED');
+  resumeCallback();
+  assert.equal((await pendingCallback)?.message, 'stripe_refund_provider_callback_closed');
+  assert.equal(fixtureValue.stripe.calls.length, 0);
+  assert.equal(fixtureValue.store.row.state, 'RELEASED');
+});
+
+test('an in-flight account probe cannot enter Stripe after Gate returns refusal', async () => {
+  const stripe = provider();
+  let resumeProbe;
+  const held = new Promise((resolve) => { resumeProbe = resolve; });
+  const retrieve = stripe.accounts.retrieve;
+  let probes = 0;
+  stripe.accounts.retrieve = async () => {
+    probes += 1;
+    if (probes === 4) await held;
+    return retrieve();
+  };
+  const fixtureValue = await fixture({ stripe });
+  let pendingCallback;
+  const earlyGate = {
+    check: fixtureValue.gate.check.bind(fixtureValue.gate),
+    async run(input, effect) {
+      const authorization = await fixtureValue.gate.check({ ...input, consumptionMode: 'none' });
+      pendingCallback = effect(authorization).catch((error) => error);
+      return { ok: false, authorization: { reason: 'gate_refused' } };
+    },
+  };
+  const connector = await createStripeRefundDurableConnector({
+    stripe, gate: earlyGate, store: fixtureValue.store,
+    tenant_id: 'tenant:finance', environment: 'test',
+    metadata_hmac_sha256_key: new Uint8Array(32).fill(17),
+    resolve_operation: () => job,
+  });
+  const result = await guardStripeRefundDurable(connector, {
+    operation_reference: 'refund-job-01',
+    receipt: fixtureValue.harness.mint({ outcome: 'allow_with_signoff' }),
+  });
+  assert.equal(result.state, 'RELEASED');
+  resumeProbe();
+  assert.equal((await pendingCallback)?.message, 'stripe_refund_provider_callback_closed');
+  assert.equal(stripe.calls.length, 0);
+});
+
 test('metadata HMAC rotation prevents unverifiable recovery instead of guessing success', async () => {
   const store = new AttemptStore();
   const stripe = provider({ loseFirstResponse: true });
