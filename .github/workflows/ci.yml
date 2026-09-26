@@ -121,7 +121,7 @@ jobs:
           env -u GITHUB_STEP_SUMMARY node "$lane_dir/change-lane.mjs" \
             --event pull_request --github-output "$RUNNER_TEMP/lane.out" > "$classifier_log"
           cat "$classifier_log"
-          candidate="$(cat "$RUNNER_TEMP/lane.out")"
+          candidate="$(cat "$RUNNER_TEMP/lane.out" 2> /dev/null || true)"
           [[ "$candidate" == lane=docs ]] || finish full "The base classifier chose \`${candidate#lane=}\`."
           # The docs lane skips security-case on this pull request, so it is
           # taken only while main's latest push run of ci.yml passed it.

@@ -35,7 +35,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync, copyFileSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -330,7 +330,9 @@ export function main(argv) {
   throw new Error('usage: evidence-autopilot.mjs collect|inspect|request --option value ...');
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// import.meta.url names the resolved file, so compare against the resolved
+// argv path: CI runs a copy from $RUNNER_TEMP, which may sit behind a symlink.
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   try {
     process.exitCode = main(process.argv.slice(2));
   } catch (error) {
