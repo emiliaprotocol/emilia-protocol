@@ -86,12 +86,14 @@ boundary.
   published individual Internet-Draft source (xml2rfc v3)
 - `registry/` — action-type registry seed, suites, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations
-- `conformance/vectors.json` — 88 core identifier vectors (corpus version 3),
+- `conformance/vectors.json` — 96 core identifier vectors (corpus version 4),
   including pinned, unresolved, mismatched, and out-of-set enum cases,
   compact-inline trimming, own-member presence, unpaired-surrogate
   refusals, whole-string grammar refusals (a trailing line feed in an amount,
-  digest field, timestamp, action type, suite, or CAID digest), and
-  value-based integer-field cases
+  digest field, timestamp, action type, suite, or CAID digest),
+  value-based integer-field cases, and identifier-parse refusals (a suite
+  outside the suite registry and a digest whose final character sets an
+  unused bit)
 - `conformance/mapping-vectors.json` — 25 cross-format mapping vectors,
   including the SILP IR to CAID `CANCEL+EMAIL` profile and trailing line
   feeds in a JSON Pointer array index and a target field name
