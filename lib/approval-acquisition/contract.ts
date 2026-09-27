@@ -7,7 +7,7 @@
 
 import { approvalActionHash } from '@emilia-protocol/require-receipt';
 import { computeCaid } from '@/caid/impl/js/caid.mjs';
-import { activeCaidDefinition, CAID_REGISTRY_ENUM_SNAPSHOTS } from '@/lib/caid-registry';
+import { activeCaidDefinition, CAID_REGISTRY_ENUM_SNAPSHOTS, registryDefinition } from '@/lib/caid-registry';
 
 type JsonObject = Record<string, any>;
 
@@ -49,7 +49,13 @@ const APPROVER = /^[A-Za-z0-9:_.@-]{3,128}$/;
 const PAYMENT_REFERENCE = /^[A-Za-z0-9][A-Za-z0-9:._/-]{2,199}$/;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 
-const paymentDefinition = activeCaidDefinition(APPROVAL_CAID_ACTION_TYPE);
+// Minting a new approval CAID uses the type only while it is active, so an
+// issuer moves to the successor once it is deprecated. Recomputing the CAID
+// of an approval that was already issued is verification, and status never
+// gates that: a deprecated type still resolves, computes and verifies
+// (draft-schrock-canonical-action-identifier-04, Section 4.2.4).
+const issuerPaymentDefinition = activeCaidDefinition(APPROVAL_CAID_ACTION_TYPE);
+const verifierPaymentDefinition = registryDefinition(APPROVAL_CAID_ACTION_TYPE);
 
 export type ApprovalCreateValue = {
   normalizedBody: JsonObject;
@@ -123,9 +129,27 @@ function amountString(value: number): string | null {
   return value.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
 }
 
-export function buildPaymentReleaseActionIdentity(material: JsonObject):
+type PaymentReleaseActionIdentity =
   | { ok: true; actionCaid: string; caidDigest: string; caidAction: JsonObject }
-  | { ok: false; detail: string } {
+  | { ok: false; detail: string };
+
+/** Mint the CAID for a new approval. Refuses once payment.release.1 is deprecated. */
+export function buildPaymentReleaseActionIdentity(material: JsonObject): PaymentReleaseActionIdentity {
+  if (!issuerPaymentDefinition) {
+    return { ok: false, detail: `${APPROVAL_CAID_ACTION_TYPE} is not an active CAID action type` };
+  }
+  return paymentReleaseActionIdentity(material, issuerPaymentDefinition);
+}
+
+/** Recompute the CAID of an approval that was already issued, whatever the type's status. */
+export function recomputePaymentReleaseActionIdentity(material: JsonObject): PaymentReleaseActionIdentity {
+  if (!verifierPaymentDefinition) {
+    return { ok: false, detail: `${APPROVAL_CAID_ACTION_TYPE} is not a registered CAID action type` };
+  }
+  return paymentReleaseActionIdentity(material, verifierPaymentDefinition);
+}
+
+function paymentReleaseActionIdentity(material: JsonObject, definition: unknown): PaymentReleaseActionIdentity {
   const amount = amountString(material.amount_usd);
   if (!amount) return { ok: false, detail: 'amount_usd must be positive, finite, bounded, and have at most two decimals' };
   const caidAction = {
@@ -140,7 +164,7 @@ export function buildPaymentReleaseActionIdentity(material: JsonObject):
   };
   const result = computeCaid(caidAction, {
     suite: 'jcs-sha256',
-    definitions: [paymentDefinition],
+    definitions: [definition],
     enumSnapshots: CAID_REGISTRY_ENUM_SNAPSHOTS,
   });
   if (!result?.caid || !result?.digest) {

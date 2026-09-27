@@ -8,7 +8,7 @@ import {
   getEvidenceSigningKeypair,
 } from '@/lib/guard-evidence-receipt.js';
 import { buildPortableSignoffDecision } from '@/lib/signoff/decision-evidence.js';
-import { buildPaymentReleaseActionIdentity } from './contract.js';
+import { recomputePaymentReleaseActionIdentity } from './contract.js';
 import type { ApprovalAcquisitionRow } from './store.js';
 
 type Event = {
@@ -44,7 +44,7 @@ function digest(value: unknown): string {
 
 function samePaymentMaterial(row: ApprovalAcquisitionRow, canonicalAction: Record<string, any>): boolean {
   const action = row.action;
-  const identity = buildPaymentReleaseActionIdentity(action);
+  const identity = recomputePaymentReleaseActionIdentity(action);
   return identity.ok
     && approvalActionHash(action) === row.action_hash
     && identity.actionCaid === row.action_caid
