@@ -915,6 +915,15 @@ export const CAID_SUITE_DIGEST_PATTERNS = caidSpecData({
 });
 // END GENERATED CAID SPEC
 
+/**
+ * @typedef {{caid: string, digest: string, definition_sha256: string, refusals?: undefined}} CaidComputed
+ * @typedef {{refusals: string[], caid?: undefined, digest?: undefined, definition_sha256?: undefined}} CaidRefused
+ * @typedef {{reason: string, field: string | null, rule: string, observed: string | null}} CaidDetail
+ * @typedef {{valid: boolean, reasons: string[], details: CaidDetail[], definition_sha256?: string}} CaidVerifyResult
+ * @typedef {{ok: true, caid: {version: string, action_type: string, suite: string, digest: string}} | {ok: false, refusals: string[]}} CaidParseResult
+ * @typedef {{ok: true, value: any} | {ok: false, refusals: string[]}} CaidDecodeResult
+ */
+
 // ---------------------------------------------------------------------------
 // Constants derived from the generated region
 // ---------------------------------------------------------------------------
@@ -964,6 +973,10 @@ const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 class OutsideDataModel {}
 const UNSUPPORTED = Object.freeze(new OutsideDataModel());
 
+/**
+ * @param {any} v
+ * @returns {v is Record<string, any>}
+ */
 function isDataObject(v) {
   return typeof v === "object" && v !== null && v !== UNSUPPORTED && !Array.isArray(v);
 }
@@ -1088,13 +1101,22 @@ function readOption(options, key, type) {
 // a Proxy anywhere in an action object refuses it (outside: true).
 // ---------------------------------------------------------------------------
 
+/**
+ * @param {any} root
+ * @param {boolean} [proxyCheck]
+ * @returns {{value: any, outside: boolean, clean: boolean}}
+ */
 function snapshot(root, proxyCheck = false) {
+  /** @type {SnapshotState} */
   const st = { units: 0, truncated: false, unsupported: false };
+  /** @type {Set<any>} */
   const path = new Set();
   const top = admit(root, 1, st, path);
   let value = top.value;
   if (top.pending) {
+    /** @type {Array<{p: Pending, children: Pending[], next: number}>} */
     const stack = [];
+    /** @param {Pending} p */
     const enter = (p) => {
       path.add(p.src);
       const children = expand(p, st, path);
@@ -1102,8 +1124,8 @@ function snapshot(root, proxyCheck = false) {
         path.delete(p.src);
         st.unsupported = true;
         if (p.parent === null) value = UNSUPPORTED;
-        else if (Array.isArray(p.parent)) p.parent[p.key] = UNSUPPORTED;
-        else defineMember(p.parent, p.key, UNSUPPORTED);
+        else if (Array.isArray(p.parent)) p.parent[/** @type {number} */ (p.key)] = UNSUPPORTED;
+        else defineMember(p.parent, /** @type {string} */ (p.key), UNSUPPORTED);
         return;
       }
       stack.push({ p, children, next: 0 });
@@ -1138,8 +1160,22 @@ function snapshot(root, proxyCheck = false) {
   return { value, outside, clean: !outside && !st.unsupported };
 }
 
+/**
+ * @typedef {{src: any, dst: any, isArray: boolean, depth: number, parent: any, key: string | number | null}} Pending
+ * @typedef {{units: number, truncated: boolean, unsupported: boolean}} SnapshotState
+ */
+
 // Classifies one host value: a scalar copy, UNSUPPORTED, or an empty
 // container plus the work item that fills it.
+/**
+ * @param {any} v
+ * @param {number} depth
+ * @param {SnapshotState} st
+ * @param {Set<any>} path
+ * @param {any} [parent]
+ * @param {string | number | null} [key]
+ * @returns {{value: any, pending: Pending | null}}
+ */
 function admit(v, depth, st, path, parent = null, key = null) {
   switch (typeof v) {
     case "string":
@@ -1184,8 +1220,19 @@ function admit(v, depth, st, path, parent = null, key = null) {
 // Returns the pending child containers, or null when the container itself
 // is outside the data model: it cannot be read, has a symbol-keyed
 // property, or is an array with properties other than its elements.
+/**
+ * @param {Pending} p
+ * @param {SnapshotState} st
+ * @param {Set<any>} path
+ * @returns {Pending[] | null}
+ */
 function expand(p, st, path) {
+  /** @type {Pending[]} */
   const pending = [];
+  /**
+   * @param {string | number} key
+   * @param {PropertyDescriptor} d
+   */
   const place = (key, d) => {
     if (!hasOwn(d, "value") || d.enumerable !== true) {
       st.unsupported = true;
@@ -1212,10 +1259,10 @@ function expand(p, st, path) {
       }
       return Reflect.ownKeys(p.src).length === present + 1 ? pending : null;
     }
-    const descriptors = Object.getOwnPropertyDescriptors(p.src);
-    const keys = Reflect.ownKeys(descriptors);
-    for (const key of keys) if (typeof key !== "string") return null;
-    for (const key of keys) {
+    const descriptors = /** @type {Record<string, PropertyDescriptor>} */ (Object.getOwnPropertyDescriptors(p.src));
+    const allKeys = Reflect.ownKeys(descriptors);
+    for (const key of allKeys) if (typeof key !== "string") return null;
+    for (const key of /** @type {string[]} */ (allKeys)) {
       const d = descriptors[key];
       if (hasOwn(d, "value") && d.enumerable === true && d.value === undefined) continue;
       st.units += key.length;
@@ -1241,12 +1288,20 @@ function expand(p, st, path) {
 // an encoding longer than capOctets octets is unsupported_value.
 // ---------------------------------------------------------------------------
 
+/**
+ * @param {any} root
+ * @param {number | null} capOctets
+ * @param {boolean} outside
+ * @returns {{ok: true, canonical: string} | {ok: false, refusals: string[]}}
+ */
 function serialize(root, capOctets, outside) {
   let number = false;
   let other = outside === true;
   let oversize = false;
   let units = 0;
+  /** @type {string[]} */
   const parts = [];
+  /** @param {string} text */
   const emit = (text) => {
     if (number || other || oversize) return;
     units += text.length;
@@ -1260,11 +1315,12 @@ function serialize(root, capOctets, outside) {
   };
   // Work items: [value, level] where level counts the enclosing containers
   // plus one, or [null, -1, text] for literal text.
+  /** @type {Array<[any, number, string?]>} */
   const work = [[root, 1]];
   while (work.length > 0 && !(number && other)) {
-    const item = work.pop();
+    const item = /** @type {[any, number, string?]} */ (work.pop());
     if (item[1] === -1) {
-      emit(item[2]);
+      emit(/** @type {string} */ (item[2]));
       continue;
     }
     const v = item[0];
@@ -1317,14 +1373,8 @@ function serialize(root, capOctets, outside) {
     work.push([null, -1, "{"]);
   }
   if (!number && !other && oversize) other = true;
-  let canonical = null;
-  if (!number && !other) {
-    canonical = parts.join("");
-    if (capOctets !== null && Buffer.byteLength(canonical, "utf8") > capOctets) {
-      other = true;
-      canonical = null;
-    }
-  }
+  const canonical = number || other ? "" : parts.join("");
+  if (!number && !other && capOctets !== null && Buffer.byteLength(canonical, "utf8") > capOctets) other = true;
   if (number || other) {
     const refusals = [];
     if (number) refusals.push("unsupported_number");
@@ -1363,6 +1413,7 @@ export function canonicalize(value) {
  * canonicalization still decides whether they are in the model.
  *
  * @param {*} value
+ * @returns {{ok: true, value: any} | {ok: false, refusals: string[]}}
  */
 export function toCaidData(value) {
   const snap = snapshot(value, true);
@@ -1389,21 +1440,29 @@ export function toCaidData(value) {
 // ---------------------------------------------------------------------------
 
 const MALFORMED_JSON = Object.freeze(["malformed_json"]);
+/** @returns {{ok: false, refusals: string[]}} */
 const refusedJson = () => ({ ok: false, refusals: [...MALFORMED_JSON] });
 
 const TYPED_ARRAY_PROTO = Object.getPrototypeOf(Uint8Array.prototype);
-const TYPED_ARRAY_TAG = Object.getOwnPropertyDescriptor(TYPED_ARRAY_PROTO, Symbol.toStringTag).get;
-const TYPED_ARRAY_BYTE_LENGTH = Object.getOwnPropertyDescriptor(TYPED_ARRAY_PROTO, "byteLength").get;
+const TYPED_ARRAY_TAG = /** @type {(this: unknown) => unknown} */ (
+  /** @type {PropertyDescriptor} */ (Object.getOwnPropertyDescriptor(TYPED_ARRAY_PROTO, Symbol.toStringTag)).get);
+const TYPED_ARRAY_BYTE_LENGTH = /** @type {(this: unknown) => number} */ (
+  /** @type {PropertyDescriptor} */ (Object.getOwnPropertyDescriptor(TYPED_ARRAY_PROTO, "byteLength")).get);
 const UTF8_DECODER = new TextDecoder("utf-8", { ignoreBOM: true });
 
 // A private copy of the octets, or null when the input is not a Uint8Array.
 // The brand check and the copy read internal slots only.
+/**
+ * @param {unknown} input
+ * @param {number | null} capOctets
+ * @returns {Uint8Array | null}
+ */
 function copyOctets(input, capOctets) {
   try {
     if (TYPED_ARRAY_TAG.call(input) !== "Uint8Array") return null;
     const length = TYPED_ARRAY_BYTE_LENGTH.call(input);
     if (capOctets !== null && length > capOctets) return null;
-    return new Uint8Array(input);
+    return new Uint8Array(/** @type {Uint8Array} */ (input));
   } catch {
     return null;
   }
@@ -1599,6 +1658,7 @@ function parseJsonText(s) {
     return key;
   };
 
+  /** @type {Array<{container: any, isArray: boolean, key: string | null}>} */
   const stack = [];
   skipWs();
   for (;;) {
@@ -1653,8 +1713,9 @@ function parseJsonText(s) {
       if (frame.isArray) {
         frame.container.push(value);
       } else {
-        if (hasOwn(frame.container, frame.key)) fail();
-        defineMember(frame.container, frame.key, value);
+        const key = /** @type {string} */ (frame.key);
+        if (hasOwn(frame.container, key)) fail();
+        defineMember(frame.container, key, value);
       }
       skipWs();
       const d = s.charCodeAt(i);
@@ -1672,6 +1733,11 @@ function parseJsonText(s) {
   }
 }
 
+/**
+ * @param {unknown} bytes
+ * @param {number | null} capOctets
+ * @returns {CaidDecodeResult}
+ */
 function decodeWith(bytes, capOctets) {
   const octets = copyOctets(bytes, capOctets);
   if (octets === null) return refusedJson();
@@ -1698,7 +1764,8 @@ function decodeWith(bytes, capOctets) {
  * JSON text (-04 Section 2.4), including the 33554432-octet cap. Objects in
  * the result are plain, with every member an own data property.
  *
- * @param {Uint8Array} bytes
+ * @param {unknown} bytes
+ * @returns {CaidDecodeResult}
  */
 export function decodeCaidJson(bytes) {
   return decodeWith(bytes, LIMITS.json_text_octets);
@@ -1708,7 +1775,8 @@ export function decodeCaidJson(bytes) {
  * decodeCaidDocument(bytes): decodeCaidJson's rules without the size cap,
  * for type definitions, registries, enum snapshots and mapping profiles.
  *
- * @param {Uint8Array} bytes
+ * @param {unknown} bytes
+ * @returns {CaidDecodeResult}
  */
 export function decodeCaidDocument(bytes) {
   return decodeWith(bytes, null);
@@ -1782,6 +1850,10 @@ function conforms(d) {
 
 // A host definition copied into the data model, or UNSUPPORTED when any
 // part of it is outside the model.
+/**
+ * @param {unknown} entry
+ * @returns {any}
+ */
 function definitionData(entry) {
   const snap = snapshot(entry, false);
   return snap.clean ? snap.value : UNSUPPORTED;
@@ -1791,6 +1863,11 @@ function definitionData(entry) {
 // the object's; none is unknown_action_type; any nonconforming candidate, or
 // two whose definition_sha256 differ, is invalid_definition; candidates
 // with equal projections count once.
+/**
+ * @param {string} actionType
+ * @param {unknown} definitions
+ * @returns {{reason: string, definition?: undefined, definition_sha256?: undefined} | {reason?: undefined, definition: any, definition_sha256: string}}
+ */
 function resolve(actionType, definitions) {
   const items = readHostArray(definitions) ?? [];
   const candidates = [];
@@ -1805,7 +1882,7 @@ function resolve(actionType, definitions) {
     digests.add(digestOfDefinition(d));
   }
   if (digests.size !== 1) return { reason: DEFINITION.resolution.conflict };
-  return { definition: candidates[0], definition_sha256: [...digests][0] };
+  return { definition: candidates[0], definition_sha256: /** @type {string} */ ([...digests][0]) };
 }
 
 /**
@@ -1818,11 +1895,12 @@ function resolve(actionType, definitions) {
  * Refuses a definition that does not conform.
  *
  * @param {*} definition
+ * @returns {{definition_sha256: string, refusals?: undefined} | {refusals: string[], definition_sha256?: undefined}}
  */
 export function definitionSha256(definition) {
   const d = definitionData(definition);
   if (!conforms(d)) return { refusals: [CAID_SPEC.results.definition_sha256.refusal] };
-  return { definition_sha256: digestOfDefinition(d) };
+  return { definition_sha256: /** @type {string} */ (digestOfDefinition(d)) };
 }
 
 /**
@@ -1835,12 +1913,13 @@ export function definitionSha256(definition) {
  *
  * @param {string} actionType
  * @param {any[]} definitions
+ * @returns {{ok: true, definition: any, definition_sha256: string} | {ok: false, refusals: string[]}}
  */
 export function resolveCaidDefinition(actionType, definitions) {
   if (typeof actionType !== "string") return { ok: false, refusals: [DEFINITION.resolution.none] };
   const r = resolve(actionType, definitions);
-  if (r.reason) return { ok: false, refusals: [r.reason] };
-  return { ok: true, definition: r.definition, definition_sha256: r.definition_sha256 };
+  if (r.reason !== undefined) return { ok: false, refusals: [r.reason] };
+  return { ok: true, definition: r.definition, definition_sha256: /** @type {string} */ (r.definition_sha256) };
 }
 
 // ---------------------------------------------------------------------------
@@ -1939,21 +2018,32 @@ function checkField(value, field, enumSnapshots) {
 // ordered, deduplicated reasons, the resolution and the canonical text.
 // With checkSuite false the suite phase is skipped (verification checks the
 // suite of the CAID it is given instead).
+/**
+ * @param {any} obj
+ * @param {boolean} outside
+ * @param {unknown} definitions
+ * @param {unknown} enumSnapshots
+ * @param {unknown} suite
+ * @param {boolean} checkSuite
+ * @returns {{refusals: string[], resolved: {definition: any, definition_sha256: string} | null, canonical: string | null}}
+ */
 function evaluate(obj, outside, definitions, enumSnapshots, suite, checkSuite) {
   if (!isDataObject(obj) || !hasOwn(obj, "action_type") || typeof obj.action_type !== "string"
       || !CAID_PATTERNS.action_type.test(obj.action_type)) {
     return { refusals: ["invalid_action_type"], resolved: null, canonical: null };
   }
-  const resolved = resolve(obj.action_type, definitions);
-  if (resolved.reason) return { refusals: [resolved.reason], resolved: null, canonical: null };
+  const resolution = resolve(obj.action_type, definitions);
+  if (resolution.reason !== undefined) return { refusals: [resolution.reason], resolved: null, canonical: null };
+  const resolved = { definition: resolution.definition, definition_sha256: /** @type {string} */ (resolution.definition_sha256) };
   const d = resolved.definition;
   const required = d.required_fields;
   const all = [...required, ...(hasOwn(d, "optional_fields") ? d.optional_fields : [])];
+  /** @type {Array<[number, number, string]>} */
   const found = [];
-  required.forEach((f, i) => {
+  required.forEach((/** @type {any} */ f, /** @type {number} */ i) => {
     if (!hasOwn(obj, f.name)) found.push([COMPUTE_RANK.missing_material_field, i, "missing_material_field:" + f.name]);
   });
-  all.forEach((f, i) => {
+  all.forEach((/** @type {any} */ f, /** @type {number} */ i) => {
     if (!hasOwn(obj, f.name)) return;
     const r = checkField(obj[f.name], f, enumSnapshots);
     if (r !== null) found.push([COMPUTE_RANK[r], i, r + ":" + f.name]);
@@ -1967,6 +2057,12 @@ function evaluate(obj, outside, definitions, enumSnapshots, suite, checkSuite) {
   return { refusals: [...new Set(found.map((f) => f[2]))], resolved, canonical: c.ok ? c.canonical : null };
 }
 
+/**
+ * @param {any} obj
+ * @param {boolean} outside
+ * @param {unknown} options
+ * @returns {CaidComputed | CaidRefused}
+ */
 function computeData(obj, outside, options) {
   const suite = readOption(options, "suite", "string");
   const definitions = readOption(options, "definitions", "array");
@@ -1977,7 +2073,7 @@ function computeData(obj, outside, options) {
   return {
     caid: `${ID.scheme}${ID.separator}${ID.version}${ID.separator}${obj.action_type}${ID.separator}${suite}${ID.separator}${bytes.toString("base64url")}`,
     digest: "sha256:" + bytes.toString("hex"),
-    definition_sha256: /** @type {any} */ (r.resolved).definition_sha256,
+    definition_sha256: /** @type {{definition_sha256: string}} */ (r.resolved).definition_sha256,
   };
 }
 
@@ -1991,6 +2087,7 @@ function computeData(obj, outside, options) {
  *
  * @param {*} actionObject
  * @param {*} [options]
+ * @returns {CaidComputed | CaidRefused}
  */
 export function computeCaid(actionObject, options) {
   const snap = snapshot(actionObject, true);
@@ -2001,8 +2098,9 @@ export function computeCaid(actionObject, options) {
  * computeCaidJson(bytes, options): computeCaid over received JSON text. A
  * text the strict decoder refuses yields exactly {refusals: ["malformed_json"]}.
  *
- * @param {Uint8Array} bytes
+ * @param {unknown} bytes
  * @param {*} [options]
+ * @returns {CaidComputed | CaidRefused}
  */
 export function computeCaidJson(bytes, options) {
   const decoded = decodeCaidJson(bytes);
@@ -2025,6 +2123,7 @@ export function computeCaidJson(bytes, options) {
  * trimming, case folding, normalization or percent-decoding.
  *
  * @param {*} input
+ * @returns {CaidParseResult}
  */
 export function parseCaid(input) {
   if (typeof input !== "string" || !CAID_PATTERNS.caid.test(input)) {
@@ -2042,6 +2141,12 @@ export function parseCaid(input) {
 // ---------------------------------------------------------------------------
 
 // The closed-shape detail of one reason: {reason, field, rule, observed}.
+/**
+ * @param {string} reason
+ * @param {any} value
+ * @param {unknown} caidArgument
+ * @returns {CaidDetail}
+ */
 function detailOf(reason, value, caidArgument) {
   const colon = reason.indexOf(":");
   const code = colon < 0 ? reason : reason.slice(0, colon);
@@ -2056,10 +2161,24 @@ function detailOf(reason, value, caidArgument) {
   return { reason, field, rule: rule.rule, observed };
 }
 
+/**
+ * @param {string[]} reasons
+ * @param {any} value
+ * @param {unknown} caidArgument
+ * @returns {CaidVerifyResult}
+ */
 function refusedVerify(reasons, value, caidArgument) {
   return { valid: false, reasons, details: reasons.map((r) => detailOf(r, value, caidArgument)) };
 }
 
+/**
+ * @param {any} obj
+ * @param {boolean} outside
+ * @param {unknown} caidString
+ * @param {{version: string, action_type: string, suite: string, digest: string}} parsed
+ * @param {unknown} options
+ * @returns {CaidVerifyResult}
+ */
 function verifyData(obj, outside, caidString, parsed, options) {
   const definitions = readOption(options, "definitions", "array");
   const enumSnapshots = readOption(options, "enumSnapshots", "array");
@@ -2069,8 +2188,11 @@ function verifyData(obj, outside, caidString, parsed, options) {
     const r = evaluate(obj, outside, definitions, enumSnapshots, undefined, checkSuite);
     return { valid: false, reasons: ["invalid_object"], details: r.refusals.map((x) => detailOf(x, obj, caidString)) };
   }
+  /** @type {string[]} */
   const reasons = [];
+  /** @type {CaidDetail[]} */
   const details = [];
+  /** @param {string} r */
   const add = (r) => {
     reasons.push(r);
     details.push(detailOf(r, obj, caidString));
@@ -2093,6 +2215,7 @@ function verifyData(obj, outside, caidString, parsed, options) {
     reasons.push("invalid_object");
     for (const x of r.refusals) details.push(detailOf(x, obj, caidString));
   }
+  /** @type {CaidVerifyResult} */
   const out = { valid: reasons.length === 0, reasons, details };
   if (definitionDigest !== undefined) out.definition_sha256 = definitionDigest;
   return out;
@@ -2118,6 +2241,7 @@ function verifyData(obj, outside, caidString, parsed, options) {
  * @param {*} actionObject
  * @param {*} caidString
  * @param {*} [options]
+ * @returns {CaidVerifyResult}
  */
 export function verifyCaid(actionObject, caidString, options) {
   const parsed = parseCaid(caidString);
@@ -2131,9 +2255,10 @@ export function verifyCaid(actionObject, caidString, options) {
  * text. The parse gate comes first; a text the strict decoder refuses then
  * yields exactly the reason malformed_json.
  *
- * @param {Uint8Array} bytes
+ * @param {unknown} bytes
  * @param {*} caidString
  * @param {*} [options]
+ * @returns {CaidVerifyResult}
  */
 export function verifyCaidJson(bytes, caidString, options) {
   const parsed = parseCaid(caidString);

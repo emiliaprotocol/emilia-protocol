@@ -70,7 +70,10 @@ const computeField = (field, value) => computeCaid(
   { action_type: TYPE, v: value },
   { suite: "jcs-sha256", definitions: oneField({ name: "v", ...field }) },
 );
+/** @param {{caid?: string}} r */
 const isCaid = (r) => typeof r.caid === "string";
+/** @param {{refusals?: string[]}} r */
+const first = (r) => (r.refusals ? first(r) : undefined);
 
 function daysInMonth(year, month) {
   if (month === 2) return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 29 : 28;
@@ -114,13 +117,13 @@ function check(rule, input, match) {
   if (family === "code_format") {
     const r = computeField({ type: "code", code_system: CODE_SYSTEM, format: name }, input);
     if (match) return isCaid(r) ? null : `computeCaid refused ${JSON.stringify(r.refusals)}`;
-    return !isCaid(r) && r.refusals[0] === "invalid_code:v" ? null : `computeCaid gave ${JSON.stringify(r)}`;
+    return !isCaid(r) && first(r) === "invalid_code:v" ? null : `computeCaid gave ${JSON.stringify(r)}`;
   }
   switch (name) {
     case "caid": {
       const r = parseCaid(input);
-      if (!match) return !r.ok && r.refusals[0] === "malformed_caid" ? null : `parseCaid gave ${JSON.stringify(r)}`;
-      return r.ok || r.refusals[0] !== "malformed_caid" || !/^[\x2d0-9A-Z_a-z]{42}[048AEIMQUYcgkosw]$/.test(input.split(":")[4] ?? "")
+      if (!match) return !r.ok && first(r) === "malformed_caid" ? null : `parseCaid gave ${JSON.stringify(r)}`;
+      return r.ok || first(r) !== "malformed_caid" || !/^[\x2d0-9A-Z_a-z]{42}[048AEIMQUYcgkosw]$/.test(input.split(":")[4] ?? "")
         ? null : "parseCaid refused a matching identifier with a well-formed digest";
     }
     case "action_type": {
@@ -130,43 +133,43 @@ function check(rule, input, match) {
         suite: "jcs-sha256",
         definitions: [{ action_type: input, required_fields: [{ name: "v", type: "string" }] }],
       });
-      const refusal = isCaid(r) ? null : r.refusals[0];
+      const refusal = isCaid(r) ? null : first(r);
       if (match) return refusal === "missing_material_field:v" ? null : `computeCaid gave ${JSON.stringify(r)}`;
       return refusal === "invalid_action_type" ? null : `computeCaid gave ${JSON.stringify(r)}`;
     }
     case "suite": {
       const r = parseCaid(`caid:1:${TYPE}:${input}:${DIGEST}`);
-      const malformed = !r.ok && r.refusals[0] === "malformed_caid";
+      const malformed = !r.ok && first(r) === "malformed_caid";
       return malformed === !match ? null : `parseCaid gave ${JSON.stringify(r)}`;
     }
     case "digest": {
       const r = parseCaid(`caid:1:${TYPE}:jcs-sha256:${input}`);
-      if (!match) return !r.ok && r.refusals[0] === "malformed_caid" ? null : `parseCaid gave ${JSON.stringify(r)}`;
+      if (!match) return !r.ok && first(r) === "malformed_caid" ? null : `parseCaid gave ${JSON.stringify(r)}`;
       return null;
     }
     case "amount_string": {
       const r = computeField({ type: "amount-string" }, input);
       if (match) return isCaid(r) ? null : `computeCaid refused ${JSON.stringify(r.refusals)}`;
-      return !isCaid(r) && r.refusals[0] === "invalid_amount:v" ? null : `computeCaid gave ${JSON.stringify(r)}`;
+      return !isCaid(r) && first(r) === "invalid_amount:v" ? null : `computeCaid gave ${JSON.stringify(r)}`;
     }
     case "digest_field": {
       const r = computeField({ type: "digest" }, input);
       if (match) return isCaid(r) ? null : `computeCaid refused ${JSON.stringify(r.refusals)}`;
-      return !isCaid(r) && r.refusals[0] === "mistyped_field:v" ? null : `computeCaid gave ${JSON.stringify(r)}`;
+      return !isCaid(r) && first(r) === "mistyped_field:v" ? null : `computeCaid gave ${JSON.stringify(r)}`;
     }
     case "timestamp": {
       const r = computeField({ type: "timestamp" }, input);
-      if (!match) return !isCaid(r) && r.refusals[0] === "mistyped_field:v" ? null : `computeCaid gave ${JSON.stringify(r)}`;
+      if (!match) return !isCaid(r) && first(r) === "mistyped_field:v" ? null : `computeCaid gave ${JSON.stringify(r)}`;
       const inMonth = Number(input.slice(8, 10)) <= daysInMonth(Number(input.slice(0, 4)), Number(input.slice(5, 7)));
       if (inMonth) return isCaid(r) ? null : `computeCaid refused ${JSON.stringify(r.refusals)}`;
-      return !isCaid(r) && r.refusals[0] === "mistyped_field:v" ? null : `computeCaid accepted a day outside the month`;
+      return !isCaid(r) && first(r) === "mistyped_field:v" ? null : `computeCaid accepted a day outside the month`;
     }
     case "format_name":
     case "code_system": {
       const field = { type: "code", code_system: CODE_SYSTEM, format: "nacha-sec" };
       field[name === "format_name" ? "format" : "code_system"] = input;
       const r = computeCaid({ action_type: TYPE }, { suite: "jcs-sha256", definitions: oneField({ name: "v", ...field }) });
-      const invalid = !isCaid(r) && r.refusals[0] === "invalid_definition";
+      const invalid = !isCaid(r) && first(r) === "invalid_definition";
       return invalid === !match ? null : `computeCaid gave ${JSON.stringify(r)}`;
     }
     case "array_index": {

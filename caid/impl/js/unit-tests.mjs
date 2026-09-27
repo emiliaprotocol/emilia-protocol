@@ -39,6 +39,7 @@ const DEF = {
 const DEFS = [DEF];
 const OPTS = { suite: S, definitions: DEFS };
 const text = (s) => Buffer.from(s, "utf8");
+/** @returns {any} */
 const bare = (extra = {}) => ({ action_type: "test.unit.1", a: "x", ...extra });
 const refusalsOf = (r) => r.refusals;
 
@@ -123,9 +124,8 @@ test("non-enumerable, symbol-keyed, sparse and decorated values are refused", ()
   assert.deepEqual(refusalsOf(computeCaid(hiddenField, OPTS)), ["mistyped_field:n", "unsupported_value"]);
   assert.deepEqual(refusalsOf(computeCaid({ ...bare(), [Symbol("s")]: 1 }, OPTS)), ["invalid_action_type"]);
   assert.deepEqual(refusalsOf(computeCaid(bare({ o: { [Symbol("s")]: 1 } }), OPTS)), ["mistyped_field:o", "unsupported_value"]);
-  // eslint-disable-next-line no-sparse-arrays
   assert.deepEqual(refusalsOf(computeCaid(bare({ l: [1, , 3] }), OPTS)), ["unsupported_value"]);
-  const decorated = [1];
+  const decorated = /** @type {any} */ ([1]);
   decorated.extra = 2;
   assert.deepEqual(refusalsOf(computeCaid(bare({ l: decorated }), OPTS)), ["mistyped_field:l", "unsupported_value"]);
   for (const junk of [() => 1, Symbol("s"), 1n]) {
@@ -150,7 +150,7 @@ test("__proto__ is an ordinary own member in both entry points", () => {
   assert.ok(a.caid);
   assert.deepEqual(a, b);
   assert.notEqual(a.caid, computeCaid(bare(), OPTS).caid);
-  assert.equal(canonicalize(native).canonical, '{"__proto__":{"p":1},"a":"x","action_type":"test.unit.1"}');
+  assert.equal(/** @type {any} */ (canonicalize(native)).canonical, '{"__proto__":{"p":1},"a":"x","action_type":"test.unit.1"}');
 });
 
 test("null-prototype objects are plain objects", () => {
@@ -159,7 +159,8 @@ test("null-prototype objects are plain objects", () => {
 });
 
 test("nesting: depth 64 computes, 65 is unsupported_value, 5000 never throws", () => {
-  const nest = (n) => {
+  const nest = (/** @type {number} */ n) => {
+    /** @type {any} */
     let v = 0;
     for (let i = 0; i < n; i++) v = [v];
     return v;
@@ -173,6 +174,7 @@ test("nesting: depth 64 computes, 65 is unsupported_value, 5000 never throws", (
 });
 
 test("a host value whose shared references fan out is refused in bounded time", () => {
+  /** @type {any} */
   let v = { leaf: "x".repeat(64) };
   for (let i = 0; i < 40; i++) v = { a: v, b: v };
   const t0 = Date.now();
@@ -275,7 +277,7 @@ test("byte and native paths agree on every decodable text", () => {
     '{"action_type":"Bad"}',
   ];
   for (const s of texts) {
-    const decoded = decodeCaidJson(text(s));
+    const decoded = /** @type {any} */ (decodeCaidJson(text(s)));
     assert.deepEqual(computeCaidJson(text(s), OPTS), computeCaid(decoded.value, OPTS), s);
   }
 });
@@ -498,7 +500,7 @@ test("verify: gates, closed-shape details, and the byte path", () => {
     { reason: "mistyped_field:n", field: "n", rule: "field-type", observed: "number" },
     { reason: "unsupported_number", field: null, rule: "number", observed: null },
   ]);
-  const cbor = verifyCaid(bare(), c.caid.replace(S, "cbor-sha256"), { definitions: DEFS });
+  const cbor = verifyCaid(bare(), String(c.caid).replace(S, "cbor-sha256"), { definitions: DEFS });
   assert.deepEqual(cbor.reasons, ["unknown_suite"]);
   const other = verifyCaid(bare({ n: 1 }), c.caid, { definitions: DEFS });
   assert.deepEqual(other.reasons, ["digest_mismatch"]);
@@ -521,7 +523,7 @@ test("verify details carry exactly the four members for every reason", () => {
 
 test("canonical size: at most 16 MiB of RFC 8785 output", () => {
   const cap = CAID_SPEC.limits.canonical_octets;
-  const base = canonicalize(bare({ o: { b: "" } })).canonical.length;
+  const base = /** @type {any} */ (canonicalize(bare({ o: { b: "" } }))).canonical.length;
   const at = bare({ o: { b: "y".repeat(cap - base) } });
   assert.ok(computeCaid(at, OPTS).caid);
   const over = bare({ o: { b: "y".repeat(cap - base + 1) } });
@@ -541,6 +543,7 @@ const MAP_DEF = {
   required_fields: [{ name: "amount", type: "amount-string" }, { name: "ref", type: "digest" }],
   optional_fields: [{ name: "memo", type: "string" }],
 };
+/** @returns {any} */
 const PROFILE = () => ({
   "@version": "CAID-MAPPING-PROFILE-v1",
   profile_id: "unit",
@@ -554,7 +557,7 @@ const PROFILE = () => ({
   ],
 });
 const SOURCE = { amt: "1.00", h: "a".repeat(64), noise: 1 };
-const map = (profile, source = SOURCE, extra = {}) => mapAction(source, {
+const map = (/** @type {any} */ profile, /** @type {any} */ source = SOURCE, extra = {}) => mapAction(source, {
   profile,
   sourceDescriptor: profile.source_format,
   expectedProfileHash: mappingProfileHash(profile),
@@ -562,7 +565,7 @@ const map = (profile, source = SOURCE, extra = {}) => mapAction(source, {
   definitions: [MAP_DEF],
   ...extra,
 });
-const reasons = (r) => (r.ok ? [] : r.reasons);
+const reasons = (/** @type {any} */ r) => (r.ok ? [] : r.reasons);
 
 test("mapping: a valid profile maps and computes", () => {
   const r = map(PROFILE());
@@ -626,7 +629,7 @@ test("mapping: sha256-hex-to-digest refuses anything but 64 lowercase hex", () =
 test("mapping: stages A and B sort by rank, C follows rule order, D follows compute order", () => {
   const p = { ...PROFILE(), target_action_type: "no.such.1" };
   const r = mapAction(SOURCE, { profile: p, sourceDescriptor: { x: 1 }, definitions: [MAP_DEF] });
-  assert.deepEqual(r.reasons, ["unknown_action_type", "native_verification_required", "mapping_profile_unpinned", "source_format_mismatch"]);
+  assert.deepEqual(reasons(r), ["unknown_action_type", "native_verification_required", "mapping_profile_unpinned", "source_format_mismatch"]);
   assert.deepEqual(reasons(map(PROFILE(), { h: 7 })), ["missing_source_field:/amt", "source_value_type_mismatch:/h"]);
   assert.deepEqual(reasons(map(PROFILE(), { amt: "1.", h: "a".repeat(64) })), ["mapped_action:invalid_amount:amount"]);
   assert.deepEqual(reasons(map(PROFILE(), SOURCE, { suite: "" })), ["mapped_action:unknown_suite"]);

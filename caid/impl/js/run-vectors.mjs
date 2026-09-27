@@ -148,7 +148,8 @@ for (const v of corpus.vectors) {
     report(v.id, false, "runner error: " + (error && error.message));
     continue;
   }
-  const { actual, native } = result;
+  const { native } = result;
+  const actual = /** @type {any} */ (result.actual);
   if (v.kind === "compute" && actual && typeof actual.caid === "string") actualCaids.set(v.id, actual.caid);
   const ok = stable(actual) === stable(v.expect);
   report(v.id, ok, ok ? null : "expected " + stable(v.expect) + " got " + stable(actual));

@@ -333,14 +333,7 @@ export function mappingProfileHash(profile) {
  * first. The suite defaults to jcs-sha256 only when it is absent.
  *
  * @param {any} source
- * @param {Object} [params]
- * @param {object} [params.profile]
- * @param {object} [params.sourceDescriptor]
- * @param {string} [params.expectedProfileHash]
- * @param {boolean} [params.nativeVerified]
- * @param {any[]} [params.definitions]
- * @param {any[]} [params.enumSnapshots]
- * @param {string} [params.suite]
+ * @param {{profile?: any, sourceDescriptor?: any, expectedProfileHash?: any, nativeVerified?: any, definitions?: any, enumSnapshots?: any, suite?: any}} [params]
  * @returns {MapActionFailure|MapActionSuccess}
  */
 export function mapAction(source, params = {}) {
@@ -423,10 +416,7 @@ export function mapAction(source, params = {}) {
 /**
  * @param {any} left
  * @param {any} right
- * @param {Object} [params]
- * @param {any[]} [params.definitions]
- * @param {any[]} [params.enumSnapshots]
- * @param {string} [params.suite]
+ * @param {{definitions?: any, enumSnapshots?: any, suite?: any}} [params]
  */
 export function compareMappedActions(left, right, params = {}) {
   const definitions = ownData(params, 'definitions');
