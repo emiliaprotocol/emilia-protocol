@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   sha256V2,
   validateBundleDefinitionV2,
+  validateSourceManifestV2,
 } from './verify-clean-room-submission-v2.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -107,6 +108,12 @@ export function collectCleanRoomKitV2Files(
     throw new Error(`v2 bundle at ${commit} is not valid JSON: ${errorMessage(error)}`);
   }
   validateBundleDefinitionV2(bundle);
+  const manifestBytes = readAt(commit, bundle.source_manifest.path);
+  try {
+    validateSourceManifestV2(bundle, manifestBytes, JSON.parse(manifestBytes.toString('utf8')));
+  } catch (error) {
+    throw new Error(`v2 bundle at ${commit} does not pin its conformance manifest: ${errorMessage(error)}`);
+  }
   const expectedHashes = new Map<string, string>([
     [bundle.source_manifest.path, bundle.source_manifest.sha256],
   ]);
