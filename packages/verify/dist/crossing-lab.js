@@ -933,7 +933,8 @@ export default Object.freeze({
       definitions: EXPECTED_DEFINITION.definitions,
     });
     if (!computed || typeof computed.caid !== 'string' || typeof computed.digest !== 'string') {
-      return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+      const refusals = computed && Array.isArray(computed.refusals) ? computed.refusals.filter((r) => typeof r === 'string') : [];
+      return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed', ...refusals.map((r) => 'caid_mapping_failed:' + r)] };
     }
     return { mapping: 'MATCH', caid: computed.caid, action_digest: computed.digest, reasons: [] };
   },
