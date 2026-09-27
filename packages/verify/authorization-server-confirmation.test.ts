@@ -319,6 +319,31 @@ test('presenter cannot nominate an AS key, downgrade the algorithm, or use the a
   assert.notEqual(header, downgradedHeader);
 });
 
+test('a correctly signed grant whose claims are not strict UTF-8 JSON never verifies', () => {
+  // CAID -04 Section 2.4: the claims carry the action object, so a leading
+  // byte order mark or invalid UTF-8 refuses even under a valid signature.
+  const fixture = makeFixture();
+  const [header, payload] = fixture.artifact.grant.split('.');
+  const claims = Buffer.from(payload, 'base64url');
+  const resign = (claimsBytes: Buffer): string => {
+    const signingInput = `${header}.${claimsBytes.toString('base64url')}`;
+    const signature = crypto.sign(null, Buffer.from(signingInput, 'ascii'), fixture.asKey.privateKey);
+    return `${signingInput}.${signature.toString('base64url')}`;
+  };
+  const control = fixture.adapter.verifyNative({ ...fixture.input, artifact: { ...fixture.artifact, grant: resign(claims) } });
+  assert.equal(control.native_verification, 'VERIFIED');
+  const withBom = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), claims]);
+  const payee = claims.indexOf(Buffer.from('merchant:7'));
+  assert.ok(payee > 0);
+  const invalidUtf8 = Buffer.from(claims);
+  invalidUtf8[payee + 'merchant:'.length] = 0xff;
+  for (const claimsBytes of [withBom, invalidUtf8]) {
+    const native = fixture.adapter.verifyNative({ ...fixture.input, artifact: { ...fixture.artifact, grant: resign(claimsBytes) } });
+    assert.equal(native.native_verification, 'FAILED');
+    assert.equal(native.acceptance, 'REJECTED');
+  }
+});
+
 test('reference AS signer refuses open or internally inconsistent claims before signing', () => {
   const fixture = makeFixture();
   assert.throws(() => signAuthorizationServerConfirmation({

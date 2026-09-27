@@ -720,9 +720,13 @@ function decodeB64url(segment) {
         return null;
     }
 }
+// ignoreBOM keeps a leading byte order mark in the text, where JSON.parse
+// refuses it; the default silently drops it. The claims carry the action
+// object this adapter computes a CAID over, and CAID -04 Section 2.4 refuses
+// JSON text that begins with a BOM.
 function decodeUtf8(value) {
     try {
-        return new TextDecoder('utf-8', { fatal: true }).decode(value);
+        return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(value);
     }
     catch {
         return null;

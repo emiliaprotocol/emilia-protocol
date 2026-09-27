@@ -123,11 +123,22 @@ function publicKey(spki) {
         return null;
     }
 }
+// Fatal and BOM-preserving. Buffer#toString('utf8') replaced invalid UTF-8
+// with U+FFFD, so a correctly signed segment that is not UTF-8 decoded to
+// claims nobody signed, and the CAID was computed over them. CAID -04
+// Section 2.4 refuses that text for the action object it carries.
+const STRICT_UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 function parseJsonSegment(value) {
     const decoded = decodeBase64url(value);
     if (!decoded)
         return null;
-    const text = decoded.toString('utf8');
+    let text;
+    try {
+        text = STRICT_UTF8.decode(decoded);
+    }
+    catch {
+        return null;
+    }
     if (!strictJsonGate(text).ok)
         return null;
     try {
