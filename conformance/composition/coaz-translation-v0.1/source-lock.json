@@ -57,12 +57,12 @@
       "sha256": "976b314134e32252da6a81c04c4a462a8b106b54c1a299e0818efd47c8d50833"
     },
     {
-      "path": "caid/registry/action-types.json",
+      "path": "caid/registry/history/action-types.v4.json",
       "sha256": "73a31f4a4156e3de02e1c3a9ef355f73c07ba25e6b1bb3da8fde8677c2e23d26"
     },
     {
       "path": "caid/registry/enum-snapshots.mjs",
-      "sha256": "734bca3f995ac3d59a1c9b4573ce258ffac238e0b4eb578218663375b8ee0b50"
+      "sha256": "9723d33087744b2ffe319209cac1d4cb3fad4f1e78c7aa9a4cdb41406377cbad"
     },
     {
       "path": "caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json",
@@ -70,7 +70,7 @@
     },
     {
       "path": "conformance/composition/coaz-translation-v0.1/run.mjs",
-      "sha256": "26fa11e3e20d5f206e1a94729ed99a49dd8d4b0856ce61e808c96e807eed9d5e"
+      "sha256": "352c08dbd47c94e7f7f3b7af5f1becd251288ade0966825b7f478f4e086a8aa5"
     },
     {
       "path": "conformance/composition/coaz-translation-v0.1/vectors.json",

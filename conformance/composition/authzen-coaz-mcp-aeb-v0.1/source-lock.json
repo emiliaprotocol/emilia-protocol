@@ -5,7 +5,7 @@
   "fetch_note": "This profile inherits the exact OpenID source facts refreshed by coaz-translation-v0.1 on 2026-08-25. No newer upstream status is claimed here.",
   "inherits": {
     "path": "conformance/composition/coaz-translation-v0.1/source-lock.json",
-    "sha256": "829d33997023130d8e58285e0b6fd9556857d2e443b78efe5bdc4e20df052d21"
+    "sha256": "a52151cacfdd2be4d2bef4b71aedb4476ae8238ab3a441ddbce94a54bfed3ae5"
   },
   "upstream_repository": {
     "url": "https://github.com/openid/authzen",
@@ -53,9 +53,9 @@
   "native_attestation_bridge": {
     "version": "EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v1",
     "path": "packages/verify/dist/aeb-adapter-contract.js",
-    "sha256": "47fcf14535ce14b48ef77e926bce06333af28a9a51cb2d50525ae070afb76d32",
+    "sha256": "f39af543e1524cd109d129263ba9cc25aeb77dda8aedb8c27913b7c45e4eb7a4",
     "source_path": "packages/verify/src/aeb-adapter-contract.ts",
-    "source_sha256": "e6ebc6b0e44e05f850268d3b31f63a0104442db07d3fc5ff180b14e903ae17ad",
+    "source_sha256": "452bb2fad6ddd6cbae1b8f2da3e15dd711a6514a1e87ada4b702768a80cdce5f",
     "signer_scope": "deterministic public test-only local PEP harness key; not an AuthZEN or OpenID signature"
   },
   "aeb_kernel": {
@@ -74,7 +74,7 @@
     },
     {
       "path": "caid/registry/enum-snapshots.mjs",
-      "sha256": "734bca3f995ac3d59a1c9b4573ce258ffac238e0b4eb578218663375b8ee0b50"
+      "sha256": "9723d33087744b2ffe319209cac1d4cb3fad4f1e78c7aa9a4cdb41406377cbad"
     },
     {
       "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/README.md",
@@ -98,7 +98,7 @@
     },
     {
       "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/run.mjs",
-      "sha256": "abc95f1f06ae86e4eeff7daa2259dd6419385558e882f4a61aacdd4d1904bd12"
+      "sha256": "bddc3ff5b01c376d4b6143aea6c34a3ceed87670708fae159467fd8e5c8bead8"
     },
     {
       "path": "conformance/composition/authzen-coaz-mcp-aeb-v0.1/run.node-test.mjs",
@@ -110,7 +110,7 @@
     },
     {
       "path": "conformance/composition/coaz-translation-v0.1/run.mjs",
-      "sha256": "26fa11e3e20d5f206e1a94729ed99a49dd8d4b0856ce61e808c96e807eed9d5e"
+      "sha256": "352c08dbd47c94e7f7f3b7af5f1becd251288ade0966825b7f478f4e086a8aa5"
     },
     {
       "path": "conformance/composition/coaz-translation-v0.1/vectors.json",
@@ -134,7 +134,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "47fcf14535ce14b48ef77e926bce06333af28a9a51cb2d50525ae070afb76d32"
+      "sha256": "f39af543e1524cd109d129263ba9cc25aeb77dda8aedb8c27913b7c45e4eb7a4"
     },
     {
       "path": "packages/verify/dist/aeb-aic-crossing-adapter.js",
@@ -142,11 +142,11 @@
     },
     {
       "path": "packages/verify/dist/aeb-aps-adapter.js",
-      "sha256": "4fa18a0bfd4bf7bbfab96be86c9173b961725f15700ec802aa1bcd4445cf60a9"
+      "sha256": "2997a32418e31c0b892ee3ebb7ba0fe1cb135f8d95d152d3a269f1508e6401cd"
     },
     {
       "path": "packages/verify/dist/aeb-chap-adapter.js",
-      "sha256": "bcbfaace3a1912d23c3c7852f222f5aec7d6348851119dfad89470e9ffcaafe5"
+      "sha256": "0362686bd196202f0bc89aa386f39b47f1a0b27e70644d07e8a4fc340532681a"
     },
     {
       "path": "packages/verify/dist/aeb-consequence-conformance.js",
@@ -166,7 +166,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-mcgraw-delegation-adapter.js",
-      "sha256": "2bdabd215c6f2d0d1d16c3435b138125dfe33a381386249cfd19b92f7a884fd5"
+      "sha256": "fdb4e81e809225f0e63befad0485ca6d1c9c0e33078b47b112565d050985604e"
     },
     {
       "path": "packages/verify/dist/aeb-native-adapters.js",
@@ -174,11 +174,11 @@
     },
     {
       "path": "packages/verify/dist/aeb-oasnt-adapter.js",
-      "sha256": "aa7564f727ffe207249a1d336bcbec002cc449b2f6cff243020ea27f4d344703"
+      "sha256": "b8758c443607ccee4eeb8553a4deabd10277a56f1be36c6b80225a35521aca4b"
     },
     {
       "path": "packages/verify/dist/aeb-oauth-transaction-challenge-adapter.js",
-      "sha256": "a3d3a193214a0e310eebc6fac38af3d6bff5915feaeb9db2151b665d6ddc6c85"
+      "sha256": "07c212eaa9285746c49b2b0fc6a8bc4597205db50c1e2cf1cdbf552396223e61"
     },
     {
       "path": "packages/verify/dist/aeb-psea-adapter.js",
@@ -186,7 +186,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
-      "sha256": "1512b1fd04fd2261c7b9a224eb01544e8ebd40bdc053b3f81a8d909d37e051d0"
+      "sha256": "4d4cdb90ddc91361aa07141b7b3781734bcb015b847ef13206abc164de130680"
     },
     {
       "path": "packages/verify/dist/agent-edge-continuity.js",
@@ -210,7 +210,7 @@
     },
     {
       "path": "packages/verify/dist/authorization-server-confirmation.js",
-      "sha256": "eb7cfd662b3569d960543ab76805d68746f483f957822c1b1ca941ec4526f8d8"
+      "sha256": "7f1e56517521849f8d0e60953c9c4089d4199da1a7adcd41bcf2ede43b0391a8"
     },
     {
       "path": "packages/verify/dist/claim-assurance.js",
@@ -298,7 +298,7 @@
     },
     {
       "path": "packages/verify/dist/policy-decision-evidence.js",
-      "sha256": "d5a71f276c808faad49b21487511cabaaa5868675ab9404d23f8f5568cc227ce"
+      "sha256": "09e36230b441a5d030e963b219dfd1458a8b62debf86c79a514c610baad3a95f"
     },
     {
       "path": "packages/verify/dist/portable-state-handoff.js",
@@ -382,7 +382,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "e6ebc6b0e44e05f850268d3b31f63a0104442db07d3fc5ff180b14e903ae17ad"
+      "sha256": "452bb2fad6ddd6cbae1b8f2da3e15dd711a6514a1e87ada4b702768a80cdce5f"
     },
     {
       "path": "packages/verify/src/aeb-aic-crossing-adapter.ts",
@@ -390,11 +390,11 @@
     },
     {
       "path": "packages/verify/src/aeb-aps-adapter.ts",
-      "sha256": "5bf37a953d00433a9499fa4ca48ad7e0b1099c3bed8ec90d1d5807c987daec24"
+      "sha256": "e1aba69023a7b13f54bfbb46d355f48b5ac8b6251766c210db9f2944aa7a1ab6"
     },
     {
       "path": "packages/verify/src/aeb-chap-adapter.ts",
-      "sha256": "d24c289f2fc9cbe4f573d5a635f45122206230642bc7252c2b9a0c7b6aefc401"
+      "sha256": "c87fe33afa47cbbe0968914873485b39aba82f6675ef4cee1b411bc60b54c75e"
     },
     {
       "path": "packages/verify/src/aeb-consequence-conformance.ts",
@@ -414,7 +414,7 @@
     },
     {
       "path": "packages/verify/src/aeb-mcgraw-delegation-adapter.ts",
-      "sha256": "4d527b31334b27a6f51f5c7319094aae8ea0fb72946562c24df3fbc8ced3494b"
+      "sha256": "d767c56ffba6b80572cb0fc6f8ecc4f1ae20de7301068439219d300382e9a3e8"
     },
     {
       "path": "packages/verify/src/aeb-native-adapters.ts",
@@ -422,11 +422,11 @@
     },
     {
       "path": "packages/verify/src/aeb-oasnt-adapter.ts",
-      "sha256": "059a3f99aa9d34231a242a2bcdb943a26baef92eb372c8a2ea2f2de12e9ab953"
+      "sha256": "bc9a8d04d998da7a02555b23014ce3983c16fdc7d353dee5afc66defa664ac9f"
     },
     {
       "path": "packages/verify/src/aeb-oauth-transaction-challenge-adapter.ts",
-      "sha256": "780238bd17996a336550c40206a47f25f285f8e16ebd3cc6e8e9665710e14b62"
+      "sha256": "33ef7c1aa493d144870aa8500efed33a93a43a85a05584df146d415ae820a86b"
     },
     {
       "path": "packages/verify/src/aeb-psea-adapter.ts",
@@ -434,7 +434,7 @@
     },
     {
       "path": "packages/verify/src/aeb-wimse-oauth-adapter.ts",
-      "sha256": "a2b29e3e9b43f8d2404f4ee76689bad6403f828fafddbfe0971383a888af7b1b"
+      "sha256": "f31be26fb4d4f84101acc829f1014fc1f08bf5502c45da4cb8847719d5cd979d"
     },
     {
       "path": "packages/verify/src/agent-edge-continuity.ts",
@@ -458,7 +458,7 @@
     },
     {
       "path": "packages/verify/src/authorization-server-confirmation.ts",
-      "sha256": "ecba6e39e0dda6f3b38b8e802da5e02620877d1412c99098e22381fa37ecacb7"
+      "sha256": "23de6fa61ba855a794aa63c922094fb4339252c21992ee10ae58a8fdbc42fc63"
     },
     {
       "path": "packages/verify/src/claim-assurance.ts",
@@ -546,7 +546,7 @@
     },
     {
       "path": "packages/verify/src/policy-decision-evidence.ts",
-      "sha256": "da11b50f0ef3c6b3ffed05497f30fd49b1aa0c372f3827dcf0e8f6164d567e76"
+      "sha256": "245d6e3217c4f5845c05b870e2c37c017ce7bd99baffb5addc5c3ab6a32d3be1"
     },
     {
       "path": "packages/verify/src/portable-state-handoff.ts",
@@ -623,7 +623,7 @@
     "path": "packages/verify/dist/aeb-adapter-contract.js",
     "source_path": "packages/verify/src/aeb-adapter-contract.ts",
     "claim_scope": "unsigned local preflight; not an accepted evaluation credential or local authorization",
-    "sha256": "47fcf14535ce14b48ef77e926bce06333af28a9a51cb2d50525ae070afb76d32",
-    "source_sha256": "e6ebc6b0e44e05f850268d3b31f63a0104442db07d3fc5ff180b14e903ae17ad"
+    "sha256": "f39af543e1524cd109d129263ba9cc25aeb77dda8aedb8c27913b7c45e4eb7a4",
+    "source_sha256": "452bb2fad6ddd6cbae1b8f2da3e15dd711a6514a1e87ada4b702768a80cdce5f"
   }
 }
