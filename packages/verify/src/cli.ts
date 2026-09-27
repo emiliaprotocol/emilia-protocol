@@ -33,17 +33,21 @@ const CROSSING_LAB_DIAGNOSTIC_TEXT_LIMIT = 160;
 
 // Fatal and BOM-preserving: invalid UTF-8 is refused instead of replaced
 // with U+FFFD, and a leading byte order mark stays in the text, where
-// JSON.parse refuses it. CAID -04 Section 2.4 requires both for any action
-// object or mapping source received as JSON text, and the AEB and Crossing
-// Lab inputs this CLI reads carry them.
+// JSON.parse refuses it.
 const STRICT_UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 
-function loadStrictJson(path: string): any {
+// Reads a JSON input file strictly. With caidText the file carries CAID
+// action objects (the AEB-1 suite and submissions), so CAID -04 Section 2.4
+// also refuses a string or member name holding a Unicode noncharacter
+// (I-JSON). Receipts, bundles, proofs and the other documents this CLI
+// verifies are signed as they are, and a noncharacter inside one is not
+// refused.
+function loadStrictJson(path: string, { caidText = false }: { caidText?: boolean } = {}): any {
   const bytes = readFileSync(path);
   if (bytes.byteLength > MAX_CLI_JSON_BYTES) throw new Error(`JSON input exceeds ${MAX_CLI_JSON_BYTES} bytes`);
   let raw: string;
   try { raw = STRICT_UTF8.decode(bytes); } catch { throw new Error('strict JSON required: invalid UTF-8'); }
-  const strict = strictJsonGate(raw, { refuseNoncharacters: true });
+  const strict = strictJsonGate(raw, { refuseNoncharacters: caidText });
   if (!strict.ok) throw new Error(`strict JSON required: ${strict.reason}`);
   return JSON.parse(raw);
 }
@@ -391,7 +395,7 @@ if (args[0] === 'aeb-conformance') {
   }
   let suite: any;
   try {
-    suite = loadStrictJson(suitePath);
+    suite = loadStrictJson(suitePath, { caidText: true });
   } catch (error: any) {
     console.error(`error: governed AEB-1 suite is unavailable or invalid (${error.message})`);
     process.exit(1);
@@ -409,7 +413,7 @@ if (args[0] === 'aeb-conformance') {
       });
       conformant = output.summary.failed === 0;
     } else {
-      const report = loadStrictJson(submissionPath as string);
+      const report = loadStrictJson(submissionPath as string, { caidText: true });
       output = validateAebConsequenceSubmission(suite, report);
       conformant = output.valid === true && output.conformant === true;
     }

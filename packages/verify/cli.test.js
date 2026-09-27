@@ -122,6 +122,19 @@ test('CLI refuses JSON that is not strict UTF-8 instead of substituting U+FFFD',
     assert.strictEqual(bom.code, 1);
     assert.match(bom.out, /strict JSON required.*invalid JSON syntax/i);
 });
+test('CLI refuses a noncharacter only in inputs that carry CAID action objects', () => {
+    // A receipt is verified as it was signed: a noncharacter inside it is not
+    // a strict-JSON refusal (5.0.0 did not refuse one either).
+    const receipt = runCliRaw(Buffer.from('{"@version":"EP-RECEIPT-v1","payload":{"memo":"\uffff"}}'));
+    assert.doesNotMatch(receipt.out, /noncharacter/i);
+    // An AEB-1 submission carries action objects, so CAID -04 Section 2.4
+    // (I-JSON) refuses it.
+    const submission = join(dir, 'noncharacter-submission.json');
+    writeFileSync(submission, '{"@version":"AEB-1","note":"\uffff"}');
+    const refused = runCommand(['aeb-conformance', '--submission', submission]);
+    assert.strictEqual(refused.code, 1);
+    assert.match(refused.out, /strict JSON required.*noncharacter/i);
+});
 test('CLI emits the complete governed AEB-1 reference result', () => {
     const result = runCommand(['aeb-conformance', '--reference']);
     assert.strictEqual(result.code, 0, result.out);

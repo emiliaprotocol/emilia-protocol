@@ -418,16 +418,29 @@ export function adapterPinDigest(id, pin) {
 export function mappingProfileDigest(id, pin) {
     return profileDigest(id, pin);
 }
+/**
+ * The reasons an adapter reports when the vendored CAID refuses its
+ * projected action: caid_mapping_failed, then caid_mapping_failed:<reason>
+ * for each CAID refusal, so a mapping profile written for an earlier Verify
+ * shows why it no longer maps (for example
+ * caid_mapping_failed:invalid_definition for a definition that declares a
+ * field named action_type, which CAID -04 refuses).
+ */
+export function caidMappingFailureReasons(computed) {
+    const refusals = isObject(computed) && Array.isArray(computed.refusals)
+        ? computed.refusals.filter((reason) => typeof reason === 'string')
+        : [];
+    return ['caid_mapping_failed', ...refusals.map((reason) => `caid_mapping_failed:${reason}`)];
+}
 /** The value an entry carries as registry_entry_sha256 (see AebRegistryEntry). */
 export function registryEntryDigest(id, entry) {
     return registryEntryDigestInternal(id, entry);
 }
 /**
  * The digest a registry entry pins, or null. An entry carries it as
- * registry_entry_sha256. An EP-EVIDENCE-REGISTRY-v1 entry written before
- * Verify 6.0.0 carries the same value as definition_digest, which stays
- * readable so existing AEB-ADAPTER-v1 configurations keep verifying; an
- * entry with both members, or neither, pins nothing.
+ * registry_entry_sha256 or as definition_digest, the EP-EVIDENCE-REGISTRY-v1
+ * name that Verify 5.x reads; an entry with both members, or neither, pins
+ * nothing.
  */
 export function registryEntryPin(entry) {
     if (!isObject(entry))

@@ -163,26 +163,32 @@ describe('readLimitedJson — real stream path', () => {
     expect(r).toEqual({ ok: true, value: { k: 'v' } });
   });
 
-  // CAID -04 Section 2.4 (rules 3 and 4): a byte order mark, or any character
-  // other than the four JSON whitespace characters around the value, is not
-  // JSON text. String#trim() used to drop U+FEFF and U+00A0 before parsing.
-  it('refuses a byte order mark or non-JSON whitespace around the value', async () => {
-    for (const text of ['\uFEFF{"k":"v"}', '\u00A0{"k":"v"}', '{"k":"v"}\u2028', '\uFEFF']) {
-      const r = await readLimitedJson(streamFrom(text), 64);
-      expect(r, JSON.stringify(text)).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+  // CAID -04 Section 2.4 (rules 3 and 4): under strictJsonText a byte order
+  // mark, or any character other than the four JSON whitespace characters
+  // around the value, is not JSON text. Every other route keeps its reading:
+  // the decoder drops a leading BOM and String#trim() removes Unicode spaces.
+  it('refuses a byte order mark or non-JSON whitespace only under strictJsonText', async () => {
+    for (const text of ['\uFEFF{"k":"v"}', '\u00A0{"k":"v"}', '{"k":"v"}\u2028']) {
+      const strict = await readLimitedJson(streamFrom(text), 64, { strictJsonText: true });
+      expect(strict, JSON.stringify(text)).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+      expect(await readLimitedJson(streamFrom(text), 64), JSON.stringify(text)).toEqual({ ok: true, value: { k: 'v' } });
+      expect(await readLimitedJson(streamFrom(text), 64, { invalidValue: {} }), JSON.stringify(text)).toEqual({ ok: true, value: { k: 'v' } });
     }
+    expect(await readLimitedJson(streamFrom('\uFEFF'), 64, { strictJsonText: true })).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+    expect(await readLimitedJson(streamFrom('\uFEFF'), 64)).toEqual({ ok: true, value: {} });
   });
 
   // CAID -04 Section 2.4 rule 2 (I-JSON): routes whose body carries an action
-  // object ask the reader to refuse noncharacters; other routes are unchanged.
-  it('refuses a noncharacter only when the route asks for I-JSON', async () => {
+  // object ask the reader for strict JSON text, which refuses noncharacters;
+  // other routes are unchanged.
+  it('refuses a noncharacter only when the route asks for strict JSON text', async () => {
     for (const text of [String.raw`{"k":"\uffff"}`, '{"k":"\uFDD0"}', String.raw`{"\udbff\udfff":1}`]) {
       expect(await readLimitedJson(streamFrom(text), 64), JSON.stringify(text)).toMatchObject({ ok: true });
-      const refused = await readLimitedJson(streamFrom(text), 64, { refuseNoncharacters: true });
+      const refused = await readLimitedJson(streamFrom(text), 64, { strictJsonText: true });
       expect(refused, JSON.stringify(text)).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
       expect(refused.detail).toMatch(/noncharacter/);
     }
-    expect(await readLimitedJson(streamFrom(String.raw`{"k":"\ufffd"}`), 64, { refuseNoncharacters: true }))
+    expect(await readLimitedJson(streamFrom(String.raw`{"k":"\ufffd"}`), 64, { strictJsonText: true }))
       .toEqual({ ok: true, value: { k: '\ufffd' } });
   });
 

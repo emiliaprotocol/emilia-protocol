@@ -8,6 +8,20 @@ Historical entries below retain the labels used when they were written.
 
 ## [Unreleased] — source baseline 2026-08-26 (`5d474fd240bc764fa41951c05c39130e38afa7ff`)
 
+### Action-bearing request bodies (CAID -04 Section 2.4)
+
+- The hospice-claim precheck, execute and reconcile routes read their bodies
+  with `readLimitedJson(request, max, { strictJsonText: true })`, which
+  refuses, as 400 `invalid_json`, a body that begins with a byte order mark,
+  carries anything but the four JSON whitespace characters around the value,
+  or holds a Unicode noncharacter in a string or member name. Every other
+  route that reads its body through `readLimitedJson` reads it as before:
+  a leading byte order mark is dropped and surrounding Unicode spaces are
+  trimmed.
+- The consequence control and consequence actuator services, whose JSON
+  bodies are proposals carrying action objects, refuse a byte order mark and
+  a noncharacter in any JSON body as `json_invalid`.
+
 ### CAID conformance corpora and fuzz for draft -04
 
 - The core conformance corpus moves to version 5 (527 vectors). Every compute
@@ -54,10 +68,11 @@ Historical entries below retain the labels used when they were written.
 - The CAID parsers in JavaScript (and the vendored Verify copy), Python, and
   Go now follow the draft's Identifier Syntax and Parsing sections, whose
   rules are unchanged since -00. They refuse a suite that is not in the suite
-  registry as `malformed_caid`, where they accepted any suite matching
-  `[a-z0-9]+(-[a-z0-9]+)*` and left the refusal to `verifyCaid`
-  (`unknown_suite`). This also refuses a suite beginning with a digit, which
-  the suite ABNF excludes. They decode the digest and refuse one that is not
+  registry, where they accepted any suite matching
+  `[a-z0-9]+(-[a-z0-9]+)*` and left the refusal to `verifyCaid`. Under -04
+  (see the corpora entry above) the parse reason for a grammatical suite
+  outside the registry is `unknown_suite`; a suite beginning with a digit,
+  which the suite ABNF excludes, is `malformed_caid`. They decode the digest and refuse one that is not
   exactly the suite's digest length or whose final character sets an unused
   bit; they had checked only the 43-character length, so a digest ending in
   `Z` where the canonical encoding ends in `Y` parsed and then reported

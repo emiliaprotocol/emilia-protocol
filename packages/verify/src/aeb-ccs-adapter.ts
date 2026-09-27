@@ -31,6 +31,7 @@ import {
   type AebNativeResult,
   type AebPinnedProfile,
   type AebStatusInput,
+  caidMappingFailureReasons,
 } from './aeb-adapter-contract.js';
 import { canonicalizeFiniteJson } from './strict-json.js';
 
@@ -742,7 +743,7 @@ export function createCcsPyPiHmacAebAdapter(constructorPins: {
         } catch { computed = null; }
         if (!isRecord(computed) || typeof computed.caid !== 'string'
             || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)) {
-          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
         }
         if (computed.digest !== actionDigest) {
           return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_digest_disagreement'] };
@@ -1179,7 +1180,7 @@ export function createCcsPyPiL1AebAdapter(constructorPins: {
         if (!isRecord(computed) || typeof computed.caid !== 'string'
             || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)
             || computed.digest !== actionDigest) {
-          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
         }
         return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
       } catch {
@@ -1628,7 +1629,7 @@ export function createCcsV13AebAdapter(constructorPins: {
         if (!isRecord(computed) || typeof computed.caid !== 'string'
             || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)
             || computed.digest !== actionDigest) {
-          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+          return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
         }
         return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
       } catch {

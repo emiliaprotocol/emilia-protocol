@@ -16,6 +16,7 @@ import {
   evaluateAebEvidence,
   issueAebEvaluationV2FromV1,
   mappingProfileDigest,
+  caidMappingFailureReasons,
   registryEntryDigest,
   registryEntryPin,
   unifiedRegistryDigest,
@@ -29,6 +30,7 @@ import {
   verifyAebEvaluation,
   verifyAebEvaluationV2,
 } from './aeb-adapter-contract.js';
+import { computeCaid } from './vendor/caid.mjs';
 
 const vectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/aeb-adapter.v1.json', import.meta.url), 'utf8'));
 
@@ -595,6 +597,18 @@ test('AEB evaluates and re-derives a multi-leg CAID join', () => {
   assert.equal(result.record.authority_constraints.executor_exclusion, true);
   assert.equal(result.record.authority_constraints.one_time_consumption, true);
   assert.equal(result.record.executor_id, 'workload:executor');
+});
+
+test('a CAID refusal behind caid_mapping_failed is reported beside it', () => {
+  // A 5.0.0 adapter mapping profile declared a field named action_type,
+  // which CAID -04 refuses as a nonconforming definition.
+  const refused = computeCaid({ action_type: 'legacy.map.1', amount: '1' }, {
+    suite: 'jcs-sha256',
+    definitions: [{ action_type: 'legacy.map.1', required_fields: [{ name: 'action_type', type: 'string' }, { name: 'amount', type: 'string' }] }],
+  });
+  assert.deepEqual(caidMappingFailureReasons(refused), ['caid_mapping_failed', 'caid_mapping_failed:invalid_definition']);
+  assert.deepEqual(caidMappingFailureReasons(null), ['caid_mapping_failed']);
+  assert.deepEqual(caidMappingFailureReasons({ refusals: [7, 'unsupported_value'] }), ['caid_mapping_failed', 'caid_mapping_failed:unsupported_value']);
 });
 
 test('registry entries pin registry_entry_sha256 and still read the pre-6.0.0 definition_digest spelling', () => {

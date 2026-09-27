@@ -15,7 +15,7 @@ import crypto from 'node:crypto';
 // The governed CAID implementation is JavaScript and has no declaration file.
 // @ts-expect-error -- runtime shape is checked before use.
 import { computeCaid } from '../vendor/caid.mjs';
-import { digestAeb, } from './aeb-adapter-contract.js';
+import { digestAeb, caidMappingFailureReasons, } from './aeb-adapter-contract.js';
 import { canonicalizeStrictJson } from './strict-json.js';
 export const CHAP_SOURCE_REPOSITORY = 'https://github.com/BrightbeamAI/chap';
 export const CHAP_SOURCE_COMMIT = '9e7af2b811d3368b4afba7c6d318764959c2fd0d';
@@ -625,7 +625,7 @@ function mapAction(input, pins) {
     }
     if (!isRecord(computed) || typeof computed.caid !== 'string'
         || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)) {
-        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
     }
     if (computed.digest !== actionDigest) {
         return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_digest_disagreement'] };

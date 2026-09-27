@@ -13,7 +13,7 @@
 import crypto from 'node:crypto';
 // @ts-expect-error -- governed JavaScript implementation, runtime checked.
 import { computeCaid } from '../vendor/caid.mjs';
-import { digestAeb, } from './aeb-adapter-contract.js';
+import { digestAeb, caidMappingFailureReasons, } from './aeb-adapter-contract.js';
 import { strictJsonGate } from './strict-json.js';
 export const OAUTH_TXN_CHALLENGE_DRAFT_REVISION = 'draft-rosomakho-oauth-txn-challenge-00';
 export const OAUTH_TXN_CHALLENGE_AEB_ADAPTER_ID = 'native:oauth-transaction-challenge';
@@ -451,7 +451,7 @@ function mapAction(input, pins) {
     }
     if (!isRecord(computed) || typeof computed.caid !== 'string'
         || computed.digest !== actionDigest || typeof computed.digest !== 'string') {
-        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
     }
     return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
 }

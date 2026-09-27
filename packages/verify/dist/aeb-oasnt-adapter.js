@@ -27,7 +27,7 @@ import crypto from 'node:crypto';
 // The governed CAID implementation is JavaScript and has no declaration file.
 // @ts-expect-error -- runtime shape is checked before use.
 import { computeCaid } from '../vendor/caid.mjs';
-import { digestAeb, } from './aeb-adapter-contract.js';
+import { digestAeb, caidMappingFailureReasons, } from './aeb-adapter-contract.js';
 import { strictJsonGate } from './strict-json.js';
 export const OASNT_DRAFT_REVISION = 'draft-thallapelly-oasnt-02';
 export const OASNT_DRAFT_TXT_SHA256 = 'sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603';
@@ -597,7 +597,7 @@ function mapAction(input, pins) {
     }
     if (!isRecord(computed) || typeof computed.caid !== 'string'
         || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)) {
-        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
     }
     if (computed.digest !== actionDigest) {
         return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_digest_disagreement'] };

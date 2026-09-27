@@ -3,11 +3,11 @@
 import { strictJsonGate } from '../strict-json.js';
 
 const TEXT_DECODER = new TextDecoder('utf-8', { fatal: true });
-// JSON bodies keep a leading byte order mark (ignoreBOM), so JSON.parse
-// refuses it instead of the decoder dropping it silently. Action objects
-// arrive through this reader, and CAID -04 Section 2.4 refuses JSON text that
-// begins with a BOM or carries anything but JSON whitespace around the value.
-const JSON_TEXT_DECODER = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+// For a body read under strictJsonText the decoder keeps a leading byte
+// order mark (ignoreBOM), so JSON.parse refuses it instead of the decoder
+// dropping it silently, and only JSON whitespace may surround the value:
+// CAID -04 Section 2.4 requires both of an action object received as text.
+const STRICT_TEXT_DECODER = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const JSON_WHITESPACE_ONLY = /^[\t\n\r ]*$/;
 
 export type BodyLimitError = {
@@ -27,11 +27,14 @@ export interface ReadLimitedJsonOptions {
   emptyValue?: Record<string, unknown>;
   invalidValue?: any;
   /**
-   * Refuse a string or member name holding a Unicode noncharacter (I-JSON).
-   * Routes whose body carries a CAID action object pass it, so the text meets
-   * draft-schrock-canonical-action-identifier-04 Section 2.4.
+   * The body carries a CAID action object, so the text must meet
+   * draft-schrock-canonical-action-identifier-04 Section 2.4 in full: no
+   * leading byte order mark (the default reader drops one), only the four
+   * JSON whitespace characters around the value (the default reader trims
+   * any Unicode space), and no string or member name holding a Unicode
+   * noncharacter (I-JSON). Every other route reads its body as before.
    */
-  refuseNoncharacters?: boolean;
+  strictJsonText?: boolean;
 }
 
 function declaredLength(request: Request): number {
@@ -130,7 +133,7 @@ export async function enforceBodyByteLimit(request: Request, maxBytes: number): 
 export async function readLimitedJson(
   request: Request,
   maxBytes: number,
-  { emptyValue = {}, invalidValue, refuseNoncharacters = false }: ReadLimitedJsonOptions = {},
+  { emptyValue = {}, invalidValue, strictJsonText = false }: ReadLimitedJsonOptions = {},
 ): Promise<LimitedJsonResult> {
   // Real runtime requests carrying a payload always expose a ReadableStream
   // `.body`, so those go through the byte-enforcing path below. Unit-test
@@ -149,14 +152,14 @@ export async function readLimitedJson(
     }
   }
 
-  const read = await readLimitedTextWith(request, maxBytes, JSON_TEXT_DECODER);
+  const read = await readLimitedTextWith(request, maxBytes, strictJsonText ? STRICT_TEXT_DECODER : TEXT_DECODER);
   if (!read.ok) return read;
-  // Only the four JSON whitespace characters may surround the value.
-  // String#trim() also removed U+FEFF, U+00A0 and the other Unicode spaces,
-  // which JSON.parse refuses and which a byte-exact reader must not drop.
-  const text = read.text;
-  if (JSON_WHITESPACE_ONLY.test(text)) return { ok: true, value: emptyValue };
-  const strict = strictJsonGate(text, { refuseNoncharacters });
+  // Under strictJsonText only the four JSON whitespace characters may
+  // surround the value: String#trim() also removes U+FEFF, U+00A0 and the
+  // other Unicode spaces, which a byte-exact reader must not drop.
+  const text = strictJsonText ? read.text : read.text.trim();
+  if (strictJsonText ? JSON_WHITESPACE_ONLY.test(text) : !text) return { ok: true, value: emptyValue };
+  const strict = strictJsonGate(text, { refuseNoncharacters: strictJsonText });
   if (!strict.ok) {
     if (arguments.length >= 3 && Object.prototype.hasOwnProperty.call(arguments[2] || {}, 'invalidValue')) {
       return { ok: true, value: invalidValue };

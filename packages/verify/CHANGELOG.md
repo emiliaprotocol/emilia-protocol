@@ -13,15 +13,19 @@ behavior only through an explicit dependency bump.
 
 ### Changed
 
-- AEB unified-registry entries pin `registry_entry_sha256` instead of
-  `definition_digest`. The value is unchanged: SHA-256 over the entry's
-  identifier, kind, version, status and definition. Configurations written
-  for 5.0.0 still verify, since `definition_digest` is read when
-  `registry_entry_sha256` is absent; an entry that carries both, or neither,
-  is invalid. `registryEntryDigest()` and the `AebRegistryEntry` type use the
-  new name. The rename keeps it distinct from the CAID `definition_sha256`,
+- AEB unified-registry entries may pin their digest as
+  `registry_entry_sha256` as well as `definition_digest`. The value is the
+  same under either name: SHA-256 over the entry's identifier, kind, version,
+  status and definition. An entry carries exactly one of the two; one that
+  carries both, or neither, is invalid. The new export `registryEntryPin()`
+  returns the pinned value, and `registryEntryDigest()` computes it. The
+  second name keeps the value distinct from the CAID `definition_sha256`,
   which covers only the validation projection of one CAID action-type
-  definition and never its status.
+  definition and never its status. Verify 5.x reads only
+  `definition_digest`, so the Crossing Lab keeps writing that name under
+  AEB-ADAPTER-v1, and its workspaces verify under 5.x and under the Gate
+  releases pinned to it; a Gate release that reads `registry_entry_sha256`
+  entries needs this Verify release.
 - Text that carries an action object is decoded as CAID
   draft-schrock-canonical-action-identifier-04 Section 2.4 requires, which
   refuses some inputs 5.0.0 accepted:
@@ -32,10 +36,13 @@ behavior only through an explicit dependency bump.
     that begins with a UTF-8 byte order mark (5.0.0 dropped the BOM);
   - a CLI input file, or a Crossing Lab workspace, artifact, seed or reviewed
     manifest, that is not valid UTF-8 (5.0.0 substituted U+FFFD);
-  - any of those texts, and the policy decision, WIMSE OAuth, Authorization
-    Server confirmation, PSEA, OASNT, WAG and OAuth transaction-challenge
-    segments, when a string or member name holds a Unicode noncharacter after
-    unescaping, which I-JSON excludes.
+  - the policy decision, WIMSE OAuth, Authorization Server confirmation,
+    PSEA, OASNT, WAG and OAuth transaction-challenge segments, the claims
+    segments above, and the AEB-1 suite and submission files the
+    `aeb-conformance` CLI command reads, when a string or member name holds
+    a Unicode noncharacter after unescaping, which I-JSON excludes. Other
+    CLI inputs (receipts, bundles, proofs) are verified as they were signed,
+    and a noncharacter in one is not refused.
     `strictJsonGate(text, { refuseNoncharacters: true })` is the new opt-in
     that these callers use; without the option the gate is unchanged.
   The OASNT, WAG and OAuth transaction-challenge adapters already refused
@@ -43,7 +50,14 @@ behavior only through an explicit dependency bump.
   WebAuthn's decoding.
 - The adapter mapping profiles no longer declare a field named `action_type`;
   the action object's `action_type` member is always required, so the entry
-  bound nothing, and -04 refuses such a definition.
+  bound nothing, and -04 refuses such a definition. An AEB configuration
+  whose pinned mapping profile was built by the 5.0.0 adapter helpers carries
+  such a definition, maps to `INDETERMINATE`, and must be regenerated and
+  re-pinned. When the vendored CAID refuses a projected action, the adapters
+  now report `caid_mapping_failed` followed by `caid_mapping_failed:<reason>`
+  for each CAID refusal (here `caid_mapping_failed:invalid_definition`),
+  where 5.0.0 reported `caid_mapping_failed` alone. The helper is exported as
+  `caidMappingFailureReasons()`.
 - The vendored CAID implementation (`vendor/caid.mjs`), which the AEB
   adapters, the AP2 native adapter, the FIDO and AP2 bridge, authorization
   server confirmation, the crossing lab, portable state handoff, and policy

@@ -1057,9 +1057,12 @@ export default Object.freeze({
 });
 `;
 
+// A new entry pins its digest as definition_digest, the name every Verify
+// release reads, so a workspace the lab creates also verifies under Verify
+// 5.x and the Gate releases pinned to it.
 function registryEntry(id: string, kind: AebRegistryEntry['kind'], definition: unknown): AebRegistryEntry {
-  const entry: AebRegistryEntry = { kind, version: '1', status: 'active', definition, registry_entry_sha256: digestAeb(null) };
-  entry.registry_entry_sha256 = registryEntryDigest(id, entry);
+  const entry: AebRegistryEntry = { kind, version: '1', status: 'active', definition, definition_digest: digestAeb(null) };
+  entry.definition_digest = registryEntryDigest(id, entry);
   return entry;
 }
 
@@ -1337,8 +1340,10 @@ function recomputeConfigPins(config: AebPinnedConfig): void {
       entry.definition = { ...entry.definition, profile_digest: profile.profile_digest };
     }
   }
+  // Each entry keeps the name it pins its digest under.
   for (const [id, entry] of Object.entries(config.registry.entries)) {
-    entry.registry_entry_sha256 = registryEntryDigest(id, entry);
+    if (Object.prototype.hasOwnProperty.call(entry, 'registry_entry_sha256')) entry.registry_entry_sha256 = registryEntryDigest(id, entry);
+    else entry.definition_digest = registryEntryDigest(id, entry);
   }
   config.registry.registry_digest = unifiedRegistryDigest(config.registry);
 }

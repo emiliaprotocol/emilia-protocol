@@ -26,6 +26,7 @@ import {
   type AebNativeResult,
   type AebPinnedProfile,
   type AebStatusInput,
+  caidMappingFailureReasons,
 } from './aeb-adapter-contract.js';
 import { canonicalizeStrictJson } from './strict-json.js';
 
@@ -665,7 +666,7 @@ function mapAction(
   } catch { computed = null; }
   if (!isRecord(computed) || typeof computed.caid !== 'string'
       || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)) {
-    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
   }
   if (computed.digest !== actionDigest) {
     return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_digest_disagreement'] };

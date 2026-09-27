@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import test from 'node:test';
-import { AEB_EVALUATION_DOMAIN, AEB_EVALUATION_V2_VERSION, AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION, InMemoryAebConsumptionStore, aebReservationKey, adapterPinDigest, canonicalizeAeb, digestAeb, digestAebTyped, evaluateAebEvidence, issueAebEvaluationV2FromV1, mappingProfileDigest, registryEntryDigest, registryEntryPin, unifiedRegistryDigest, authorizeAebExecution, authorizeAebExecutionDurable, createAebNativeVerificationAttestationAdapter, reconcileAebExecution, reconcileAebExecutionDurable, signAebNativeVerificationAttestation, upgradeAebEvaluationV1ToV2, verifyAebEvaluation, verifyAebEvaluationV2, } from './aeb-adapter-contract.js';
+import { AEB_EVALUATION_DOMAIN, AEB_EVALUATION_V2_VERSION, AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION, InMemoryAebConsumptionStore, aebReservationKey, adapterPinDigest, canonicalizeAeb, digestAeb, digestAebTyped, evaluateAebEvidence, issueAebEvaluationV2FromV1, mappingProfileDigest, caidMappingFailureReasons, registryEntryDigest, registryEntryPin, unifiedRegistryDigest, authorizeAebExecution, authorizeAebExecutionDurable, createAebNativeVerificationAttestationAdapter, reconcileAebExecution, reconcileAebExecutionDurable, signAebNativeVerificationAttestation, upgradeAebEvaluationV1ToV2, verifyAebEvaluation, verifyAebEvaluationV2, } from './aeb-adapter-contract.js';
+import { computeCaid } from './vendor/caid.mjs';
 const vectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/aeb-adapter.v1.json', import.meta.url), 'utf8'));
 const CAID = `caid:1:order.purchase.1:jcs-sha256:${'A'.repeat(43)}`;
 const OTHER_CAID = `caid:1:order.purchase.1:jcs-sha256:${'B'.repeat(43)}`;
@@ -491,6 +492,17 @@ test('AEB evaluates and re-derives a multi-leg CAID join', () => {
     assert.equal(result.record.authority_constraints.executor_exclusion, true);
     assert.equal(result.record.authority_constraints.one_time_consumption, true);
     assert.equal(result.record.executor_id, 'workload:executor');
+});
+test('a CAID refusal behind caid_mapping_failed is reported beside it', () => {
+    // A 5.0.0 adapter mapping profile declared a field named action_type,
+    // which CAID -04 refuses as a nonconforming definition.
+    const refused = computeCaid({ action_type: 'legacy.map.1', amount: '1' }, {
+        suite: 'jcs-sha256',
+        definitions: [{ action_type: 'legacy.map.1', required_fields: [{ name: 'action_type', type: 'string' }, { name: 'amount', type: 'string' }] }],
+    });
+    assert.deepEqual(caidMappingFailureReasons(refused), ['caid_mapping_failed', 'caid_mapping_failed:invalid_definition']);
+    assert.deepEqual(caidMappingFailureReasons(null), ['caid_mapping_failed']);
+    assert.deepEqual(caidMappingFailureReasons({ refusals: [7, 'unsupported_value'] }), ['caid_mapping_failed', 'caid_mapping_failed:unsupported_value']);
 });
 test('registry entries pin registry_entry_sha256 and still read the pre-6.0.0 definition_digest spelling', () => {
     const current = setup();

@@ -24,6 +24,7 @@ import {
   type AebNativeResult,
   type AebPinnedProfile,
   type AebStatusInput,
+  caidMappingFailureReasons,
 } from './aeb-adapter-contract.js';
 import { strictJsonGate } from './strict-json.js';
 
@@ -478,7 +479,7 @@ function mapAction(input: AebAdapterInput & { native: AebNativeResult }, pins: P
   } catch { computed = null; }
   if (!isRecord(computed) || typeof computed.caid !== 'string'
       || computed.digest !== actionDigest || typeof computed.digest !== 'string') {
-    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
   }
   return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
 }
