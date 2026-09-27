@@ -324,16 +324,20 @@ register; the draft lists them apart, in its Appendix D.2:
   A registered name is never reassigned, so the misnomer stays out of the
   IANA registry.
 
-No other type in registry version 5 names a vendor or cites a vendor
+No other type is named for a vendor or product, or cites a vendor
 specification.
 
 These eight stay in registry version 5 unchanged, and they resolve, compute
 and verify like every other type. Removing one would make objects that are
 valid under registry version 4 invalid (section 2), and the draft pins the
 SHA-256 of `action-types.json`. Once IANA creates the CAID Action Types
-registry, each can be registered under its Specification Required policy,
-with its own specification and its own change controller, which need not
-be the IETF. The IETF is the change controller of the initial entries the
+registry, each of the seven types defined by another specification can be
+registered under its Specification Required policy, with its own
+specification and its own change controller, which need not be the IETF.
+`dns.zone.transfer.1` is not a candidate: a registered name is never
+reassigned, so the path for the registrar-transfer type is a successor
+whose name describes it, citing RFC 5730 and RFC 5731, in a later registry
+version. The IETF is the change controller of the initial entries the
 draft registers, and of no other entry. Because the draft pins the bytes of
 registry version 5, even an editorial correction to these entries, such as
 a change controller or a newer revision of a cited draft, waits for a later

@@ -154,7 +154,9 @@ generated region or file by hand; the checks fail on it.
    the two Appendix D listings, and the Appendix C.1 cbor-sha256 example,
    a processing change needs a `chg-` item mapped to
    vectors in `CHANGES-VECTORS.json`, and the renders follow the procedure
-   in its `VALIDATION.md`.
+   in its `VALIDATION.md`; `node scripts/check-caid-04.mjs --renders`
+   compares them with a fresh `xml2rfc 3.34.0` render. Before filing,
+   `--prefiling` also requires origin/main to carry this `caid/` tree.
 6. A change to the vendored copy moves pins outside `caid/`: the source
    locks of the composition profiles that pin `vendor/caid.mjs`
    (`conformance/composition/*/source-lock.json`),
