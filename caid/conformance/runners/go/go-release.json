@@ -1,0 +1,6 @@
+{
+  "@version": "EP-GO-MODULE-RELEASE-v1",
+  "module": "caidconformance",
+  "private": true,
+  "reason": "Repository-local runner that drives the CAID Go implementation through the shared core and grammar conformance corpora; not a public Go import path."
+}

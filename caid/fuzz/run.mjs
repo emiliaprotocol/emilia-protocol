@@ -33,6 +33,7 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import { closeSync, copyFileSync, createReadStream, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { lines } from "./lines.mjs";
@@ -48,7 +49,9 @@ const arg = (n, d) => {
   const i = args.indexOf(n);
   return i === -1 ? d : args[i + 1];
 };
-const OUT = path.resolve(arg("--out", path.join(HERE, "out", "run")));
+// The default output directory is outside the checkout: the scratch Go
+// module it holds must not be mistaken for a repository module.
+const OUT = path.resolve(arg("--out", path.join(os.tmpdir(), "caid-fuzz", "run")));
 const SELFTEST = args.includes("--selftest");
 let ROOT = path.resolve(arg("--root", path.resolve(HERE, "../..")));
 if (SELFTEST) {

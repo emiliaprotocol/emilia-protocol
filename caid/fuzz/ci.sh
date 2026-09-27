@@ -13,5 +13,5 @@ set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=${1:-$(cd "$HERE/../.." && pwd)}
 ALLOW=${2:-$HERE/allow.json}
-OUT=${OUT:-${RUNNER_TEMP:-$HERE/out}/caid-fuzz}
+OUT=${OUT:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/caid-fuzz}
 exec node "$HERE/run.mjs" --root "$ROOT" --out "$OUT" --ci --allow "$ALLOW"

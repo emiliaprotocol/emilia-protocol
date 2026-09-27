@@ -54,5 +54,6 @@ fails with the known classes, among them J1 (duplicate member names), J2
 (`unknown_suite` at parse), C1 (the code type) and D1 (definition
 conformance), which shows the harness detects them.
 
-Outputs under `--out` (default `caid/fuzz/out/run`, ignored by git):
-`summary.json`, `classes.json`, `rootcauses.json`.
+Outputs under `--out` (default: `caid-fuzz/run` in the system temporary
+directory, outside the checkout): `summary.json`, `classes.json`,
+`rootcauses.json`.
