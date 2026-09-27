@@ -1,11 +1,11 @@
 {
   "meta": {
     "registry": "caid-action-types",
-    "registry_version": 4,
-    "updated": "2026-09-24",
+    "registry_version": 5,
+    "updated": "2026-09-26",
     "license": "CC0-1.0",
     "trust_note": "CAID carries no trust semantics. A registered type defines WHAT must be inside the digested content, never whether the action was authorized, executed, safe, or wise. See GOVERNANCE.md.",
-    "entry_schema_note": "Each entry in 'types' conforms to the normative type entry schema in DESIGN.md section 3. Local (private) definition files MUST use the same entry schema; there is no reserved private-use syntax. Field types are the closed v1 set: string, amount-string, digest, enum, timestamp, integer, boolean, object, array. An enum is closed by a non-empty inline values array, an inline pipe-separated values_ref prefixed 'inline:', or an external values_ref with immutable values_snapshot and values_sha256 metadata plus an exactly matching locally supplied snapshot. A bare or unresolved external values_ref fails closed. Each enum_snapshot_files entry pins the value-set file's labels and snapshot_sha256, the SHA-256 of the RFC 8785 canonical JSON of the whole file, so its provenance members are bound to this registry. unresolved_external_enums lists every active field whose external values_ref has no pinned snapshot in this registry version; such a field refuses whenever it is present, so an active type with a required entry there cannot produce or verify a CAID until a reviewed value-set snapshot is pinned. Date-only values use type string with an ISO 8601 date note; type timestamp is always full RFC 3339 UTC with Z.",
+    "entry_schema_note": "Each entry in types conforms to the type definition schema of draft-schrock-canonical-action-identifier-04 (Section 4.2; caid/spec/core.json holds the same rules as data). Local (private) definition files MUST use the same schema; there is no reserved private-use syntax. Field types: string, amount-string, digest, enum, code, timestamp, integer, boolean, object, array. An enum is closed by a non-empty inline values array, an inline pipe-separated values_ref prefixed inline:, or an external values_ref with values_snapshot and values_sha256 metadata plus an exactly matching locally supplied snapshot; a bare or unresolved external values_ref fails closed. A code field carries code_system (a URI naming the code system) and format (a code format registered in Appendix A of the draft) and holds a JSON string that the format matches as a whole; CAID checks syntax, never membership in any edition of the code system, and code_systems records each system a field names. Each enum_snapshot_files entry pins the value-set file's labels and snapshot_sha256, the SHA-256 of the RFC 8785 canonical JSON of the whole file, so its provenance members are bound to this registry. unresolved_external_enums lists every field, of either status, whose external values_ref has no pinned snapshot in this registry version; such a field refuses whenever it is present, and no active type may have one. Date-only values use type string with an ISO 8601 date note; type timestamp is always full RFC 3339 UTC with Z. digests.json lists every type's definition_sha256.",
     "risk_classes": {
       "irreversible-financial": "Money or financial obligation moves or is created and cannot be unilaterally recalled.",
       "irreversible-data": "Data or state is destroyed, or leaves a boundary it cannot be pulled back across.",
@@ -14,30 +14,245 @@
       "safety-critical": "Direct impact on human health, safety, or live critical service delivery.",
       "legal-effect": "Creates, releases, or submits a legally binding obligation or record.",
       "varies-by-tool": "The consequence class is determined by the named tool and complete arguments; registration does not classify or authorize the tool."
-    }
+    },
+    "lifecycle_note": "status is active or deprecated. A deprecated type still resolves, computes and verifies wherever its fields resolve; deprecation only tells issuers to use its successor. supersedes (on the successor) and superseded_by (on the predecessor) are informative and outside definition_sha256. A registry version changes a published type only by deprecating it or by advancing an enum pin in place to a later edition that contains every previous member (the first pin of a field that resolved no set is such an advance); any other change is a new type version. Every published registry version is kept byte-identical under history/."
   },
+  "code_systems": [
+    {
+      "code_system": "http://hl7.org/fhir/sid/icd-10-cm",
+      "title": "ICD-10-CM (International Classification of Diseases, 10th Revision, Clinical Modification)",
+      "authority": "U.S. National Center for Health Statistics",
+      "formats": [
+        "icd-10-cm"
+      ],
+      "identifier_source": {
+        "url": "https://terminology.hl7.org/en/NamingSystem-icd10CM.html",
+        "retrieved": "2026-09-26",
+        "statement": "HL7 THO 7.4.0 NamingSystem icd10CM: preferred URI http://hl7.org/fhir/sid/icd-10-cm, \"the URL as specified by the terminology owner\""
+      },
+      "syntax_sources": [
+        {
+          "url": "https://www.cms.gov/files/document/fy-2026-icd-10-cm-coding-guidelines.pdf",
+          "retrieved": "2026-09-26",
+          "statement": "ICD-10-CM Official Guidelines FY 2026, Section I.A.2: categories are 3 characters, codes 3 to 7; characters may be a letter or a number"
+        },
+        {
+          "url": "https://terminology.hl7.org/en/ICD.html",
+          "retrieved": "2026-09-26",
+          "statement": "ICD codes SHALL be represented with the period included"
+        }
+      ],
+      "license_note": "CAID carries no ICD-10-CM code list; the format fixes syntax only."
+    },
+    {
+      "code_system": "http://hl7.org/fhir/sid/ndc",
+      "title": "National Drug Code",
+      "authority": "U.S. Food and Drug Administration",
+      "formats": [
+        "ndc-11",
+        "ndc-10-hyphenated"
+      ],
+      "identifier_source": {
+        "url": "https://terminology.hl7.org/en/NamingSystem-v3-ndc.html",
+        "retrieved": "2026-09-26",
+        "statement": "HL7 THO 7.4.0 NamingSystem v3-ndc: preferred URI http://hl7.org/fhir/sid/ndc"
+      },
+      "syntax_sources": [
+        {
+          "url": "https://terminology.hl7.org/en/NDC.html",
+          "retrieved": "2026-09-26",
+          "statement": "the 10-digit code with \"-\": 1234-5678-90, 12345-6789-0, or 12345-678-90"
+        },
+        {
+          "url": "https://www.fda.gov/drugs/electronic-drug-registration-and-listing-system-edrls/national-drug-code-format",
+          "retrieved": "2026-09-26",
+          "statement": "the HIPAA standard 11-digit format used for reimbursement; FDA-assigned NDCs become 12 digits on 2033-03-07"
+        }
+      ],
+      "license_note": "HL7 THO 7.4.0: \"NDC codes have no copyright acknowledgment or license requirements.\" CAID carries no NDC list."
+    },
+    {
+      "code_system": "https://www.cms.gov/medicare/coding-billing/healthcare-common-procedure-system",
+      "title": "Healthcare Common Procedure Coding System (HCPCS), Levels I and II",
+      "authority": "American Medical Association (Level I, CPT) and U.S. Centers for Medicare & Medicaid Services (Level II)",
+      "formats": [
+        "hcpcs"
+      ],
+      "identifier_source": {
+        "url": "https://www.cms.gov/medicare/coding-billing/healthcare-common-procedure-system",
+        "retrieved": "2026-09-26",
+        "statement": "CMS: \"HCPCS is divided into 2 main subsystems - Level I and Level II\". No authority-assigned URI names both levels together: HL7 THO 7.4.0 assigns http://www.ama-assn.org/go/cpt (NamingSystem CPT) to Level I and http://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets (NamingSystem hcpcs-Level-II) to Level II. This URI is the CMS page that defines the two levels."
+      },
+      "syntax_sources": [
+        {
+          "url": "https://www.cms.gov/medicare/coding-billing/healthcare-common-procedure-system",
+          "retrieved": "2026-09-26",
+          "statement": "HCPCS Level II codes consist of a single alphabetical letter followed by 4 numeric digits"
+        },
+        {
+          "url": "https://www.ama-assn.org/practice-management/cpt/category-ii-codes",
+          "retrieved": "2026-09-26",
+          "statement": "All CPT codes are five-digits and can be either numeric or alphanumeric, depending on the category; Category II codes are 4 digits followed by the letter F"
+        }
+      ],
+      "license_note": "The AMA holds the copyright in CPT and a license is required for use (HL7 THO 7.4.0, Using CPT). CAID MUST NOT publish CPT codes, descriptors, or value sets: this registry and its vectors carry syntax and synthetic examples only."
+    },
+    {
+      "code_system": "urn:iso:std:iso:20022:tech:xsd:externalcodeset",
+      "title": "ISO 20022 external code sets (ExternalReturnReason1Code for payment returns)",
+      "authority": "ISO 20022 Registration Authority",
+      "formats": [
+        "iso20022-external-code"
+      ],
+      "identifier_source": {
+        "url": "https://www.iso20022.org/sites/default/files/media/file/ExternalCodeSets_XSD.zip",
+        "retrieved": "2026-09-26",
+        "statement": "targetNamespace urn:iso:std:iso:20022:tech:xsd:externalcodeset of the ISO 20022 External Code Sets XSD (2Q2026_externalcodesets_v3.xsd in the archive served at this URL on 2026-09-26). The namespace names every external code set; the field notes name the set."
+      },
+      "syntax_sources": [
+        {
+          "url": "https://www.iso20022.org/sites/default/files/media/file/ExternalCodeSets_XSD.zip",
+          "retrieved": "2026-09-26",
+          "statement": "ExternalReturnReason1Code: xs:string, minLength 1, maxLength 4; all 104 codes of 2Q2026 v3 are four uppercase letters or digits"
+        }
+      ],
+      "license_note": "The ISO 20022 terms of use page (https://www.iso20022.org/terms-use) answered HTTP 403 on 2026-09-26, so no licence was read. CAID carries no code list."
+    },
+    {
+      "code_system": "https://www.nacha.org/rules",
+      "title": "Nacha Standard Entry Class codes",
+      "authority": "Nacha",
+      "formats": [
+        "nacha-sec"
+      ],
+      "identifier_source": {
+        "url": "https://www.nacha.org/rules",
+        "retrieved": "2026-09-26",
+        "statement": "No authority-assigned identifier for SEC codes is known. This URI is the Nacha Operating Rules page; the Rules define the codes."
+      },
+      "syntax_sources": [
+        {
+          "url": "https://achdevguide.nacha.org/ach-file-details",
+          "retrieved": "2026-09-26",
+          "statement": "Batch header field 6, Standard Entry Class Code, positions 51-53, length 3, alphanumeric"
+        }
+      ],
+      "license_note": "The complete SEC code list is in the licensed Nacha Operating Rules; the public guide lists commonly used codes only. CAID carries no SEC code list."
+    }
+  ],
   "enum_snapshot_files": [
     {
       "values_ref": "ISO 4217 alpha-3",
       "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
       "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
       "path": "value-sets/iso-4217-alpha-3.2026-09-17.json",
-      "snapshot_sha256": "sha256:bb87aa48b66998fc919a8fbb9d2eff34fb92f18c2a2bf9e7bcf585ca2e56c678"
+      "snapshot_sha256": "sha256:bb87aa48b66998fc919a8fbb9d2eff34fb92f18c2a2bf9e7bcf585ca2e56c678",
+      "source_url": "https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml",
+      "retrieved": "2026-09-24",
+      "license": "No licence terms accompany the file. SIX, as ISO 4217 Maintenance Agency, states that it makes the code lists available online and free of charge (https://www.six-group.com/en/products-services/financial-information/data-standards.html, retrieved 2026-09-26); that statement is not a licence grant, and no other terms were found."
+    },
+    {
+      "values_ref": "IANA DNS Resource Record TYPEs (RFC 1035 and successors)",
+      "values_snapshot": "IANA Domain Name System (DNS) Parameters, Resource Record (RR) TYPEs, file updated 2026-08-28",
+      "values_sha256": "sha256:eb101cb0979b524c8056ca75bf67fe0dce3eef9e61a0d1ccc6a4a0676812db84",
+      "path": "value-sets/iana-dns-rr-types.2026-08-28.json",
+      "snapshot_sha256": "sha256:05b2c82310b6c2c24979d23522c40b2bb695da48ed78e2e1cd4b5a3b713d9ea5",
+      "source_url": "https://www.iana.org/assignments/dns-parameters/dns-parameters.xml",
+      "retrieved": "2026-09-26",
+      "license": "CC0-1.0: Joint Statement of IANA and IETF Concerning Copyright Rights in the Protocol Registries, 2021-11-10, https://www.iana.org/help/licensing-terms"
+    },
+    {
+      "values_ref": "IANA JSON Web Signature and Encryption Algorithms",
+      "values_snapshot": "IANA JSON Object Signing and Encryption (JOSE) registries, file updated 2026-05-22",
+      "values_sha256": "sha256:ff0b77ff62864ebe4aad79b4660ce9c520046375bd40c393009fccedd6c46d6c",
+      "path": "value-sets/iana-jose-algorithms.2026-05-22.json",
+      "snapshot_sha256": "sha256:4d6279a019fdb14ca243e3eba946f6ceb32dbedcd1a2eaa4fa47e53c770dbbf1",
+      "source_url": "https://www.iana.org/assignments/jose/jose.xml",
+      "retrieved": "2026-09-26",
+      "license": "CC0-1.0: Joint Statement of IANA and IETF Concerning Copyright Rights in the Protocol Registries, 2021-11-10, https://www.iana.org/help/licensing-terms"
+    },
+    {
+      "values_ref": "IANA JSON Web Key Elliptic Curve",
+      "values_snapshot": "IANA JSON Object Signing and Encryption (JOSE) registries, file updated 2026-05-22",
+      "values_sha256": "sha256:f3f10bf7aa117b27b63681769ba17468b4f924d46cbfcfb6e6602acdea95e947",
+      "path": "value-sets/iana-jose-elliptic-curves.2026-05-22.json",
+      "snapshot_sha256": "sha256:3d6f9df296445962f27778925e4d71829b6c1badc1462bdedba9032cdc0cb465",
+      "source_url": "https://www.iana.org/assignments/jose/jose.xml",
+      "retrieved": "2026-09-26",
+      "license": "CC0-1.0: Joint Statement of IANA and IETF Concerning Copyright Rights in the Protocol Registries, 2021-11-10, https://www.iana.org/help/licensing-terms"
+    },
+    {
+      "values_ref": "ISO 3166-1 alpha-2",
+      "values_snapshot": "ISO 3166-1 alpha-2 officially assigned codes as carried by the IANA Language Subtag Registry, File-Date 2026-09-17",
+      "values_sha256": "sha256:bad3b0ab6d1073f237d176df4d3ec9297269c1c13c73f714c0736a87912b1523",
+      "path": "value-sets/iso-3166-1-alpha-2.2026-09-17.json",
+      "snapshot_sha256": "sha256:10bd75ff9a67e0d705e15c6f9d055a48b2f863608734fb98390e108c7d7d8d60",
+      "source_url": "https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry",
+      "retrieved": "2026-09-26",
+      "license": "CC0-1.0: Joint Statement of IANA and IETF Concerning Copyright Rights in the Protocol Registries, 2021-11-10, https://www.iana.org/help/licensing-terms. The dedication covers IANA and IETF rights only; ISO asserts copyright in the ISO 3166 code lists, and no list was taken from ISO."
     }
   ],
   "unresolved_external_enums": [
-    {"action_type": "payment.refund.1", "field": "reason_code", "required": true},
-    {"action_type": "ach.debit.originate.1", "field": "sec_code", "required": true},
-    {"action_type": "key.create.1", "field": "algorithm", "required": true},
-    {"action_type": "key.rotate.1", "field": "new_algorithm", "required": true},
-    {"action_type": "dns.record.delete.1", "field": "record_type", "required": true},
-    {"action_type": "firewall.rule.open.1", "field": "protocol", "required": true},
-    {"action_type": "pii.export.1", "field": "legal_basis", "required": true},
-    {"action_type": "rx.dispense.1", "field": "ndc_code", "required": true},
-    {"action_type": "prior.auth.approve.1", "field": "service_code", "required": true},
-    {"action_type": "prior.auth.approve.1", "field": "diagnosis_code", "required": true},
-    {"action_type": "phi.disclose.1", "field": "purpose", "required": true},
-    {"action_type": "vendor.onboard.1", "field": "jurisdiction", "required": true}
+    {
+      "action_type": "payment.refund.1",
+      "status": "deprecated",
+      "field": "reason_code",
+      "required": true
+    },
+    {
+      "action_type": "ach.debit.originate.1",
+      "status": "deprecated",
+      "field": "sec_code",
+      "required": true
+    },
+    {
+      "action_type": "key.create.1",
+      "status": "deprecated",
+      "field": "algorithm",
+      "required": true
+    },
+    {
+      "action_type": "key.rotate.1",
+      "status": "deprecated",
+      "field": "new_algorithm",
+      "required": true
+    },
+    {
+      "action_type": "firewall.rule.open.1",
+      "status": "deprecated",
+      "field": "protocol",
+      "required": true
+    },
+    {
+      "action_type": "pii.export.1",
+      "status": "deprecated",
+      "field": "legal_basis",
+      "required": true
+    },
+    {
+      "action_type": "rx.dispense.1",
+      "status": "deprecated",
+      "field": "ndc_code",
+      "required": true
+    },
+    {
+      "action_type": "prior.auth.approve.1",
+      "status": "deprecated",
+      "field": "service_code",
+      "required": true
+    },
+    {
+      "action_type": "prior.auth.approve.1",
+      "status": "deprecated",
+      "field": "diagnosis_code",
+      "required": true
+    },
+    {
+      "action_type": "phi.disclose.1",
+      "status": "deprecated",
+      "field": "purpose",
+      "required": true
+    }
   ],
   "types": [
     {
@@ -46,36 +261,126 @@
       "risk_class": "irreversible-financial",
       "summary": "Release of a payment instruction to settlement.",
       "required_fields": [
-        {"name": "amount", "type": "amount-string",
-         "notes": "decimal string, no exponent, no leading '+', no thousands separators"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
-        {"name": "beneficiary_account", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"},
-        {"name": "payment_instruction_id", "type": "string"}
+        {
+          "name": "amount",
+          "type": "amount-string",
+          "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+        },
+        {
+          "name": "beneficiary_account",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+        },
+        {
+          "name": "payment_instruction_id",
+          "type": "string"
+        }
       ],
-      "optional_fields": [{"name": "memo", "type": "string"}],
+      "optional_fields": [
+        {
+          "name": "memo",
+          "type": "string"
+        }
+      ],
       "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
       "references": []
     },
     {
       "action_type": "payment.refund.1",
+      "status": "deprecated",
+      "risk_class": "irreversible-financial",
+      "summary": "Return of funds against a previously settled payment.",
+      "required_fields": [
+        {
+          "name": "original_payment_id",
+          "type": "string",
+          "notes": "identifier of the settled payment in the issuing system of record"
+        },
+        {
+          "name": "amount",
+          "type": "amount-string",
+          "notes": "refunded amount; may be less than or equal to the original"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+        },
+        {
+          "name": "destination_account",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized destination account identifier"
+        },
+        {
+          "name": "reason_code",
+          "type": "enum",
+          "values_ref": "ISO 20022 ExternalReturnReason1Code"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "memo",
+          "type": "string"
+        }
+      ],
+      "digest_notes": "amount string taken verbatim from the refund instruction; partial refunds against the same original produce distinct CAIDs",
+      "references": [],
+      "superseded_by": "payment.refund.2"
+    },
+    {
+      "action_type": "payment.refund.2",
       "status": "active",
       "risk_class": "irreversible-financial",
       "summary": "Return of funds against a previously settled payment.",
       "required_fields": [
-        {"name": "original_payment_id", "type": "string",
-         "notes": "identifier of the settled payment in the issuing system of record"},
-        {"name": "amount", "type": "amount-string",
-         "notes": "refunded amount; may be less than or equal to the original"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
-        {"name": "destination_account", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized destination account identifier"},
-        {"name": "reason_code", "type": "enum",
-         "values_ref": "ISO 20022 ExternalReturnReason1Code"}
+        {
+          "name": "original_payment_id",
+          "type": "string",
+          "notes": "identifier of the settled payment in the issuing system of record"
+        },
+        {
+          "name": "amount",
+          "type": "amount-string",
+          "notes": "refunded amount; may be less than or equal to the original"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+        },
+        {
+          "name": "destination_account",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized destination account identifier"
+        },
+        {
+          "name": "reason_code",
+          "type": "code",
+          "code_system": "urn:iso:std:iso:20022:tech:xsd:externalcodeset",
+          "format": "iso20022-external-code",
+          "notes": "ISO 20022 ExternalReturnReason1Code value, for example AC04 (ClosedAccountNumber) or MD06 (RefundRequestByEndCustomer); the code, never its name; syntax only"
+        }
       ],
-      "optional_fields": [{"name": "memo", "type": "string"}],
+      "optional_fields": [
+        {
+          "name": "memo",
+          "type": "string"
+        }
+      ],
       "digest_notes": "amount string taken verbatim from the refund instruction; partial refunds against the same original produce distinct CAIDs",
-      "references": []
+      "references": [],
+      "supersedes": "payment.refund.1"
     },
     {
       "action_type": "payout.batch.execute.1",
@@ -83,17 +388,39 @@
       "risk_class": "irreversible-financial",
       "summary": "Execution of a batch of payout instructions as a single unit.",
       "required_fields": [
-        {"name": "batch_id", "type": "string"},
-        {"name": "total_amount", "type": "amount-string",
-         "notes": "sum of all items in the batch, in batch currency"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
-        {"name": "item_count", "type": "integer",
-         "notes": "number of individual payout items in the batch"},
-        {"name": "manifest_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the canonical batch manifest listing every item; binds the batch content without inlining beneficiary data"}
+        {
+          "name": "batch_id",
+          "type": "string"
+        },
+        {
+          "name": "total_amount",
+          "type": "amount-string",
+          "notes": "sum of all items in the batch, in batch currency"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+        },
+        {
+          "name": "item_count",
+          "type": "integer",
+          "notes": "number of individual payout items in the batch"
+        },
+        {
+          "name": "manifest_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the canonical batch manifest listing every item; binds the batch content without inlining beneficiary data"
+        }
       ],
       "optional_fields": [
-        {"name": "value_date", "type": "string", "notes": "ISO 8601 date, YYYY-MM-DD"}
+        {
+          "name": "value_date",
+          "type": "string",
+          "notes": "ISO 8601 date, YYYY-MM-DD"
+        }
       ],
       "digest_notes": "the manifest, not this object, carries per-item detail; changing any item changes manifest_digest and therefore the CAID",
       "references": []
@@ -104,47 +431,160 @@
       "risk_class": "irreversible-financial",
       "summary": "Origination of a wire transfer (e.g. Fedwire, CHIPS, SWIFT).",
       "required_fields": [
-        {"name": "amount", "type": "amount-string"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
-        {"name": "debtor_account", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized debtor account identifier (e.g. IBAN uppercased, no spaces)"},
-        {"name": "creditor_account", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized creditor account identifier"},
-        {"name": "creditor_agent_bic", "type": "string",
-         "notes": "ISO 9362 BIC, 8 or 11 characters, uppercase; BICs are public routing identifiers"},
-        {"name": "end_to_end_id", "type": "string",
-         "notes": "ISO 20022 EndToEndIdentification supplied by the originator"}
+        {
+          "name": "amount",
+          "type": "amount-string"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+        },
+        {
+          "name": "debtor_account",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized debtor account identifier (e.g. IBAN uppercased, no spaces)"
+        },
+        {
+          "name": "creditor_account",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized creditor account identifier"
+        },
+        {
+          "name": "creditor_agent_bic",
+          "type": "string",
+          "notes": "ISO 9362 BIC, 8 or 11 characters, uppercase; BICs are public routing identifiers"
+        },
+        {
+          "name": "end_to_end_id",
+          "type": "string",
+          "notes": "ISO 20022 EndToEndIdentification supplied by the originator"
+        }
       ],
       "optional_fields": [
-        {"name": "remittance_info", "type": "string"},
-        {"name": "requested_execution_date", "type": "string", "notes": "ISO 8601 date, YYYY-MM-DD"}
+        {
+          "name": "remittance_info",
+          "type": "string"
+        },
+        {
+          "name": "requested_execution_date",
+          "type": "string",
+          "notes": "ISO 8601 date, YYYY-MM-DD"
+        }
       ],
       "digest_notes": "account normalization is the originating institution's stated rule; the digest binds the normalized form",
-      "references": ["ISO 20022 pain.001", "ISO 9362"]
+      "references": [
+        "ISO 20022 pain.001",
+        "ISO 9362"
+      ]
     },
     {
       "action_type": "ach.debit.originate.1",
+      "status": "deprecated",
+      "risk_class": "irreversible-financial",
+      "summary": "Origination of an ACH debit entry against a receiver's account.",
+      "required_fields": [
+        {
+          "name": "amount",
+          "type": "amount-string"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+          "notes": "USD for domestic ACH"
+        },
+        {
+          "name": "sec_code",
+          "type": "enum",
+          "values_ref": "Nacha Operating Rules, Standard Entry Class codes (PPD, CCD, WEB, TEL, ...)"
+        },
+        {
+          "name": "receiver_account",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized receiver DFI account number"
+        },
+        {
+          "name": "receiver_routing",
+          "type": "string",
+          "notes": "9-digit ABA routing number of the receiving DFI; routing numbers are public"
+        },
+        {
+          "name": "company_entry_description",
+          "type": "string",
+          "notes": "10-character Nacha company entry description as it will appear to the receiver"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "effective_entry_date",
+          "type": "string",
+          "notes": "ISO 8601 date, YYYY-MM-DD"
+        }
+      ],
+      "digest_notes": "account number normalized per the ODFI's stated rule before hashing; amount verbatim from the entry detail record",
+      "references": [
+        "Nacha Operating Rules"
+      ],
+      "superseded_by": "ach.debit.originate.2"
+    },
+    {
+      "action_type": "ach.debit.originate.2",
       "status": "active",
       "risk_class": "irreversible-financial",
       "summary": "Origination of an ACH debit entry against a receiver's account.",
       "required_fields": [
-        {"name": "amount", "type": "amount-string"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
-         "notes": "USD for domestic ACH"},
-        {"name": "sec_code", "type": "enum",
-         "values_ref": "Nacha Operating Rules, Standard Entry Class codes (PPD, CCD, WEB, TEL, ...)"},
-        {"name": "receiver_account", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized receiver DFI account number"},
-        {"name": "receiver_routing", "type": "string",
-         "notes": "9-digit ABA routing number of the receiving DFI; routing numbers are public"},
-        {"name": "company_entry_description", "type": "string",
-         "notes": "10-character Nacha company entry description as it will appear to the receiver"}
+        {
+          "name": "amount",
+          "type": "amount-string"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+          "notes": "USD for domestic ACH"
+        },
+        {
+          "name": "sec_code",
+          "type": "code",
+          "code_system": "https://www.nacha.org/rules",
+          "format": "nacha-sec",
+          "notes": "Standard Entry Class code the entry is originated under, as in the batch header; whether that code permits a debit is a Nacha rule, not a CAID check"
+        },
+        {
+          "name": "receiver_account",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized receiver DFI account number"
+        },
+        {
+          "name": "receiver_routing",
+          "type": "string",
+          "notes": "9-digit ABA routing number of the receiving DFI; routing numbers are public"
+        },
+        {
+          "name": "company_entry_description",
+          "type": "string",
+          "notes": "10-character Nacha company entry description as it will appear to the receiver"
+        }
       ],
       "optional_fields": [
-        {"name": "effective_entry_date", "type": "string", "notes": "ISO 8601 date, YYYY-MM-DD"}
+        {
+          "name": "effective_entry_date",
+          "type": "string",
+          "notes": "ISO 8601 date, YYYY-MM-DD"
+        }
       ],
       "digest_notes": "account number normalized per the ODFI's stated rule before hashing; amount verbatim from the entry detail record",
-      "references": ["Nacha Operating Rules"]
+      "references": [
+        "Nacha Operating Rules"
+      ],
+      "supersedes": "ach.debit.originate.1"
     },
     {
       "action_type": "iam.role.grant.1",
@@ -152,16 +592,32 @@
       "risk_class": "irreversible-access",
       "summary": "Grant of a role or permission set to a principal within a scope.",
       "required_fields": [
-        {"name": "principal", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized principal identifier (user id, service account id); avoids raw identity in the object"},
-        {"name": "role", "type": "string",
-         "notes": "role identifier as defined by the target system, e.g. roles/owner or arn:aws:iam::...:role/name"},
-        {"name": "scope", "type": "string",
-         "notes": "resource, project, folder, or organization the grant applies to"}
+        {
+          "name": "principal",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized principal identifier (user id, service account id); avoids raw identity in the object"
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "notes": "role identifier as defined by the target system, e.g. roles/owner or arn:aws:iam::...:role/name"
+        },
+        {
+          "name": "scope",
+          "type": "string",
+          "notes": "resource, project, folder, or organization the grant applies to"
+        }
       ],
       "optional_fields": [
-        {"name": "expires_at", "type": "timestamp"},
-        {"name": "condition", "type": "string", "notes": "condition expression if the target system supports conditional grants"}
+        {
+          "name": "expires_at",
+          "type": "timestamp"
+        },
+        {
+          "name": "condition",
+          "type": "string",
+          "notes": "condition expression if the target system supports conditional grants"
+        }
       ],
       "digest_notes": "principal normalization (case, provider prefix) is stated by the identity system of record",
       "references": []
@@ -172,10 +628,19 @@
       "risk_class": "irreversible-access",
       "summary": "Revocation of a role or permission set from a principal within a scope.",
       "required_fields": [
-        {"name": "principal", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized principal identifier"},
-        {"name": "role", "type": "string"},
-        {"name": "scope", "type": "string"}
+        {
+          "name": "principal",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized principal identifier"
+        },
+        {
+          "name": "role",
+          "type": "string"
+        },
+        {
+          "name": "scope",
+          "type": "string"
+        }
       ],
       "optional_fields": [],
       "digest_notes": "same principal normalization rule as iam.role.grant.1 so grant and revoke over the same principal hash identically",
@@ -187,41 +652,137 @@
       "risk_class": "irreversible-access",
       "summary": "Deletion of a user account from a directory or tenant.",
       "required_fields": [
-        {"name": "user_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized user identifier"},
-        {"name": "directory", "type": "string",
-         "notes": "tenant, directory, or realm identifier"},
-        {"name": "cascade_owned_resources", "type": "boolean",
-         "notes": "true if resources owned by the user are deleted with the account"}
+        {
+          "name": "user_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized user identifier"
+        },
+        {
+          "name": "directory",
+          "type": "string",
+          "notes": "tenant, directory, or realm identifier"
+        },
+        {
+          "name": "cascade_owned_resources",
+          "type": "boolean",
+          "notes": "true if resources owned by the user are deleted with the account"
+        }
       ],
       "optional_fields": [
-        {"name": "retention_until", "type": "timestamp",
-         "notes": "soft-delete retention deadline if the directory supports one"}
+        {
+          "name": "retention_until",
+          "type": "timestamp",
+          "notes": "soft-delete retention deadline if the directory supports one"
+        }
       ],
       "digest_notes": "user identifier normalized per the directory's stated rule (typically lowercase UPN or immutable object id)",
       "references": []
     },
     {
       "action_type": "key.create.1",
+      "status": "deprecated",
+      "risk_class": "irreversible-access",
+      "summary": "Creation of a cryptographic key in a key store or HSM.",
+      "required_fields": [
+        {
+          "name": "key_id",
+          "type": "string",
+          "notes": "key identifier or full key resource path in the target store"
+        },
+        {
+          "name": "algorithm",
+          "type": "enum",
+          "values_ref": "IANA JOSE algorithms registry (RFC 7518) or the store's documented algorithm list"
+        },
+        {
+          "name": "key_ops",
+          "type": "array",
+          "notes": "permitted operations; values from RFC 7517 section 4.3 key_ops (sign, verify, encrypt, decrypt, wrapKey, unwrapKey, deriveKey, deriveBits)"
+        },
+        {
+          "name": "exportable",
+          "type": "boolean",
+          "notes": "true if key material may leave the store"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "rotation_period_days",
+          "type": "integer"
+        },
+        {
+          "name": "protection_level",
+          "type": "enum",
+          "values_ref": "inline: software | hsm"
+        }
+      ],
+      "digest_notes": "no key material or public key bytes in this object; the object identifies the creation request, not the resulting key",
+      "references": [
+        "RFC 7517",
+        "RFC 7518"
+      ],
+      "superseded_by": "key.create.2"
+    },
+    {
+      "action_type": "key.create.2",
       "status": "active",
       "risk_class": "irreversible-access",
       "summary": "Creation of a cryptographic key in a key store or HSM.",
       "required_fields": [
-        {"name": "key_id", "type": "string",
-         "notes": "key identifier or full key resource path in the target store"},
-        {"name": "algorithm", "type": "enum",
-         "values_ref": "IANA JOSE algorithms registry (RFC 7518) or the store's documented algorithm list"},
-        {"name": "key_ops", "type": "array",
-         "notes": "permitted operations; values from RFC 7517 section 4.3 key_ops (sign, verify, encrypt, decrypt, wrapKey, unwrapKey, deriveKey, deriveBits)"},
-        {"name": "exportable", "type": "boolean",
-         "notes": "true if key material may leave the store"}
+        {
+          "name": "key_id",
+          "type": "string",
+          "notes": "key identifier or full key resource path in the target store"
+        },
+        {
+          "name": "algorithm",
+          "type": "enum",
+          "values_ref": "IANA JSON Web Signature and Encryption Algorithms",
+          "values_snapshot": "IANA JSON Object Signing and Encryption (JOSE) registries, file updated 2026-05-22",
+          "values_sha256": "sha256:ff0b77ff62864ebe4aad79b4660ce9c520046375bd40c393009fccedd6c46d6c",
+          "notes": "JOSE alg (RFC 7517 section 4.4) the key is created for; the issuer maps a store-native key spec to exactly one registered alg and uses Ed25519 or Ed448 rather than EdDSA"
+        },
+        {
+          "name": "key_ops",
+          "type": "array",
+          "notes": "permitted operations, from RFC 7517 section 4.3 key_ops values, without duplicates, sorted in code point order"
+        },
+        {
+          "name": "exportable",
+          "type": "boolean",
+          "notes": "true if key material may leave the store"
+        }
       ],
       "optional_fields": [
-        {"name": "rotation_period_days", "type": "integer"},
-        {"name": "protection_level", "type": "enum", "values_ref": "inline: software | hsm"}
+        {
+          "name": "rotation_period_days",
+          "type": "integer"
+        },
+        {
+          "name": "protection_level",
+          "type": "enum",
+          "values_ref": "inline: software | hsm"
+        },
+        {
+          "name": "key_size_bits",
+          "type": "integer",
+          "notes": "Present exactly when the key is an RSA or symmetric key (JWK kty RSA or oct): the RSA modulus length or the secret key length in bits. Absent for every other key."
+        },
+        {
+          "name": "curve",
+          "type": "enum",
+          "values_ref": "IANA JSON Web Key Elliptic Curve",
+          "values_snapshot": "IANA JSON Object Signing and Encryption (JOSE) registries, file updated 2026-05-22",
+          "values_sha256": "sha256:f3f10bf7aa117b27b63681769ba17468b4f924d46cbfcfb6e6602acdea95e947",
+          "notes": "Present exactly when the key is an elliptic-curve key (JWK kty EC or OKP), even when the algorithm fixes the curve. Absent for every other key."
+        }
       ],
       "digest_notes": "no key material or public key bytes in this object; the object identifies the creation request, not the resulting key",
-      "references": ["RFC 7517", "RFC 7518"]
+      "references": [
+        "RFC 7517",
+        "RFC 7518"
+      ],
+      "supersedes": "key.create.1"
     },
     {
       "action_type": "key.delete.1",
@@ -229,37 +790,109 @@
       "risk_class": "irreversible-data",
       "summary": "Deletion or scheduled destruction of a cryptographic key. Destroying key material can permanently orphan ciphertext.",
       "required_fields": [
-        {"name": "key_id", "type": "string"},
-        {"name": "key_store", "type": "string",
-         "notes": "identifier of the KMS, HSM partition, or vault holding the key"},
-        {"name": "destroy_material", "type": "boolean",
-         "notes": "true for irreversible destruction of key material, false for disable-only"}
+        {
+          "name": "key_id",
+          "type": "string"
+        },
+        {
+          "name": "key_store",
+          "type": "string",
+          "notes": "identifier of the KMS, HSM partition, or vault holding the key"
+        },
+        {
+          "name": "destroy_material",
+          "type": "boolean",
+          "notes": "true for irreversible destruction of key material, false for disable-only"
+        }
       ],
       "optional_fields": [
-        {"name": "scheduled_destruction_at", "type": "timestamp",
-         "notes": "end of the pending-deletion window if the store supports one"}
+        {
+          "name": "scheduled_destruction_at",
+          "type": "timestamp",
+          "notes": "end of the pending-deletion window if the store supports one"
+        }
       ],
       "digest_notes": "key_id verbatim as the store names it; no material fields carry key bytes",
       "references": []
     },
     {
       "action_type": "key.rotate.1",
+      "status": "deprecated",
+      "risk_class": "irreversible-access",
+      "summary": "Rotation of a cryptographic key to a new version.",
+      "required_fields": [
+        {
+          "name": "key_id",
+          "type": "string"
+        },
+        {
+          "name": "key_store",
+          "type": "string"
+        },
+        {
+          "name": "new_algorithm",
+          "type": "enum",
+          "values_ref": "IANA JOSE algorithms registry (RFC 7518) or the store's documented algorithm list",
+          "notes": "algorithm of the new version; equal to the old algorithm for a like-for-like rotation"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "retire_old_at",
+          "type": "timestamp",
+          "notes": "when the prior version stops being usable for its primary operation"
+        }
+      ],
+      "digest_notes": "identifies the rotation request; new version identifiers are assigned by the store after execution and are not in this object",
+      "references": [],
+      "superseded_by": "key.rotate.2"
+    },
+    {
+      "action_type": "key.rotate.2",
       "status": "active",
       "risk_class": "irreversible-access",
       "summary": "Rotation of a cryptographic key to a new version.",
       "required_fields": [
-        {"name": "key_id", "type": "string"},
-        {"name": "key_store", "type": "string"},
-        {"name": "new_algorithm", "type": "enum",
-         "values_ref": "IANA JOSE algorithms registry (RFC 7518) or the store's documented algorithm list",
-         "notes": "algorithm of the new version; equal to the old algorithm for a like-for-like rotation"}
+        {
+          "name": "key_id",
+          "type": "string"
+        },
+        {
+          "name": "key_store",
+          "type": "string"
+        },
+        {
+          "name": "new_algorithm",
+          "type": "enum",
+          "values_ref": "IANA JSON Web Signature and Encryption Algorithms",
+          "values_snapshot": "IANA JSON Object Signing and Encryption (JOSE) registries, file updated 2026-05-22",
+          "values_sha256": "sha256:ff0b77ff62864ebe4aad79b4660ce9c520046375bd40c393009fccedd6c46d6c",
+          "notes": "JOSE alg of the new key version; the issuer maps a store-native key spec to exactly one registered alg and uses Ed25519 or Ed448 rather than EdDSA"
+        }
       ],
       "optional_fields": [
-        {"name": "retire_old_at", "type": "timestamp",
-         "notes": "when the prior version stops being usable for its primary operation"}
+        {
+          "name": "retire_old_at",
+          "type": "timestamp",
+          "notes": "when the prior version stops being usable for its primary operation"
+        },
+        {
+          "name": "new_key_size_bits",
+          "type": "integer",
+          "notes": "Present exactly when the key is an RSA or symmetric key (JWK kty RSA or oct): the RSA modulus length or the secret key length in bits. Absent for every other key."
+        },
+        {
+          "name": "new_curve",
+          "type": "enum",
+          "values_ref": "IANA JSON Web Key Elliptic Curve",
+          "values_snapshot": "IANA JSON Object Signing and Encryption (JOSE) registries, file updated 2026-05-22",
+          "values_sha256": "sha256:f3f10bf7aa117b27b63681769ba17468b4f924d46cbfcfb6e6602acdea95e947",
+          "notes": "Present exactly when the key is an elliptic-curve key (JWK kty EC or OKP), even when the algorithm fixes the curve. Absent for every other key."
+        }
       ],
       "digest_notes": "identifies the rotation request; new version identifiers are assigned by the store after execution and are not in this object",
-      "references": []
+      "references": [],
+      "supersedes": "key.rotate.1"
     },
     {
       "action_type": "mfa.disable.1",
@@ -267,15 +900,27 @@
       "risk_class": "irreversible-access",
       "summary": "Disabling a multi-factor authentication factor on a user account.",
       "required_fields": [
-        {"name": "user_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized user identifier"},
-        {"name": "factor_type", "type": "enum",
-         "values_ref": "inline: totp | webauthn | sms | voice | push | recovery-codes | all"},
-        {"name": "directory", "type": "string"}
+        {
+          "name": "user_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized user identifier"
+        },
+        {
+          "name": "factor_type",
+          "type": "enum",
+          "values_ref": "inline: totp | webauthn | sms | voice | push | recovery-codes | all"
+        },
+        {
+          "name": "directory",
+          "type": "string"
+        }
       ],
       "optional_fields": [
-        {"name": "reenroll_required", "type": "boolean",
-         "notes": "true if the user must re-enroll a factor at next sign-in"}
+        {
+          "name": "reenroll_required",
+          "type": "boolean",
+          "notes": "true if the user must re-enroll a factor at next sign-in"
+        }
       ],
       "digest_notes": "factor_type 'all' means every enrolled factor; a per-factor disable names the single factor type",
       "references": []
@@ -286,20 +931,40 @@
       "risk_class": "irreversible-data",
       "summary": "Deletion of a DNS resource record set from a zone.",
       "required_fields": [
-        {"name": "zone", "type": "string",
-         "notes": "zone apex as a fully qualified lowercase domain name without trailing dot"},
-        {"name": "record_name", "type": "string",
-         "notes": "owner name, fully qualified, lowercase"},
-        {"name": "record_type", "type": "enum",
-         "values_ref": "IANA DNS Resource Record TYPEs (RFC 1035 and successors)"},
-        {"name": "rdata", "type": "string",
-         "notes": "presentation-format RDATA of the record set being deleted; DNS data is public"}
+        {
+          "name": "zone",
+          "type": "string",
+          "notes": "zone apex as a fully qualified lowercase domain name without trailing dot"
+        },
+        {
+          "name": "record_name",
+          "type": "string",
+          "notes": "owner name, fully qualified, lowercase"
+        },
+        {
+          "name": "record_type",
+          "type": "enum",
+          "values_ref": "IANA DNS Resource Record TYPEs (RFC 1035 and successors)",
+          "values_snapshot": "IANA Domain Name System (DNS) Parameters, Resource Record (RR) TYPEs, file updated 2026-08-28",
+          "values_sha256": "sha256:eb101cb0979b524c8056ca75bf67fe0dce3eef9e61a0d1ccc6a4a0676812db84"
+        },
+        {
+          "name": "rdata",
+          "type": "string",
+          "notes": "presentation-format RDATA of the record set being deleted; DNS data is public"
+        }
       ],
       "optional_fields": [
-        {"name": "ttl", "type": "integer", "notes": "TTL in seconds of the record set at deletion time"}
+        {
+          "name": "ttl",
+          "type": "integer",
+          "notes": "TTL in seconds of the record set at deletion time"
+        }
       ],
       "digest_notes": "names lowercased and fully qualified before digesting; rdata in the zone's presentation format verbatim",
-      "references": ["RFC 1035"]
+      "references": [
+        "RFC 1035"
+      ]
     },
     {
       "action_type": "dns.zone.transfer.1",
@@ -307,18 +972,32 @@
       "risk_class": "irreversible-access",
       "summary": "Registrar transfer of a domain to a gaining registrar.",
       "required_fields": [
-        {"name": "domain", "type": "string",
-         "notes": "lowercase fully qualified domain name"},
-        {"name": "gaining_registrar", "type": "string",
-         "notes": "IANA registrar name or ID of the gaining registrar"},
-        {"name": "auth_code_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the EPP authorization code; the code itself is secret and never appears in the object"}
+        {
+          "name": "domain",
+          "type": "string",
+          "notes": "lowercase fully qualified domain name"
+        },
+        {
+          "name": "gaining_registrar",
+          "type": "string",
+          "notes": "IANA registrar name or ID of the gaining registrar"
+        },
+        {
+          "name": "auth_code_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the EPP authorization code; the code itself is secret and never appears in the object"
+        }
       ],
       "optional_fields": [
-        {"name": "requested_at", "type": "timestamp"}
+        {
+          "name": "requested_at",
+          "type": "timestamp"
+        }
       ],
       "digest_notes": "binds the transfer to the specific auth code issued for it without disclosing the code",
-      "references": ["RFC 5730"]
+      "references": [
+        "RFC 5730"
+      ]
     },
     {
       "action_type": "instance.terminate.1",
@@ -326,16 +1005,31 @@
       "risk_class": "irreversible-data",
       "summary": "Termination of a compute instance or virtual machine.",
       "required_fields": [
-        {"name": "instance_id", "type": "string",
-         "notes": "provider-assigned instance identifier"},
-        {"name": "provider", "type": "string",
-         "notes": "cloud or virtualization provider, e.g. aws, gcp, azure, vsphere"},
-        {"name": "region", "type": "string"},
-        {"name": "delete_attached_storage", "type": "boolean",
-         "notes": "true if non-root volumes are deleted with the instance"}
+        {
+          "name": "instance_id",
+          "type": "string",
+          "notes": "provider-assigned instance identifier"
+        },
+        {
+          "name": "provider",
+          "type": "string",
+          "notes": "cloud or virtualization provider, e.g. aws, gcp, azure, vsphere"
+        },
+        {
+          "name": "region",
+          "type": "string"
+        },
+        {
+          "name": "delete_attached_storage",
+          "type": "boolean",
+          "notes": "true if non-root volumes are deleted with the instance"
+        }
       ],
       "optional_fields": [
-        {"name": "final_snapshot", "type": "boolean"}
+        {
+          "name": "final_snapshot",
+          "type": "boolean"
+        }
       ],
       "digest_notes": "instance_id verbatim as the provider assigns it",
       "references": []
@@ -346,43 +1040,390 @@
       "risk_class": "irreversible-data",
       "summary": "Deletion of a compute, database, or orchestration cluster.",
       "required_fields": [
-        {"name": "cluster_id", "type": "string"},
-        {"name": "provider", "type": "string"},
-        {"name": "region", "type": "string"},
-        {"name": "delete_persistent_volumes", "type": "boolean",
-         "notes": "true if persistent volumes and their data are destroyed with the cluster"}
+        {
+          "name": "cluster_id",
+          "type": "string"
+        },
+        {
+          "name": "provider",
+          "type": "string"
+        },
+        {
+          "name": "region",
+          "type": "string"
+        },
+        {
+          "name": "delete_persistent_volumes",
+          "type": "boolean",
+          "notes": "true if persistent volumes and their data are destroyed with the cluster"
+        }
       ],
       "optional_fields": [
-        {"name": "node_count", "type": "integer",
-         "notes": "node count at deletion time, as a blast-radius signal"},
-        {"name": "final_backup", "type": "boolean"}
+        {
+          "name": "node_count",
+          "type": "integer",
+          "notes": "node count at deletion time, as a blast-radius signal"
+        },
+        {
+          "name": "final_backup",
+          "type": "boolean"
+        }
       ],
       "digest_notes": "cluster_id verbatim as the control plane names it",
       "references": []
     },
     {
       "action_type": "firewall.rule.open.1",
+      "status": "deprecated",
+      "risk_class": "irreversible-access",
+      "summary": "Creation of a firewall or security-group rule that permits traffic.",
+      "required_fields": [
+        {
+          "name": "target",
+          "type": "string",
+          "notes": "network, security group, or host the rule attaches to"
+        },
+        {
+          "name": "direction",
+          "type": "enum",
+          "values_ref": "inline: ingress | egress"
+        },
+        {
+          "name": "protocol",
+          "type": "enum",
+          "values_ref": "IANA Assigned Internet Protocol Numbers (tcp, udp, icmp, ...) or 'any'"
+        },
+        {
+          "name": "port_range",
+          "type": "string",
+          "notes": "single port '443', range '1024-65535', or 'any'"
+        },
+        {
+          "name": "remote_cidr",
+          "type": "string",
+          "notes": "CIDR the rule permits, e.g. 0.0.0.0/0; the source for ingress, the destination for egress"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp",
+          "notes": "for time-boxed exceptions"
+        }
+      ],
+      "digest_notes": "CIDRs in canonical form (no host bits set); port_range verbatim from the rule request",
+      "references": [],
+      "superseded_by": "firewall.rule.open.2"
+    },
+    {
+      "action_type": "firewall.rule.open.2",
       "status": "active",
       "risk_class": "irreversible-access",
       "summary": "Creation of a firewall or security-group rule that permits traffic.",
       "required_fields": [
-        {"name": "target", "type": "string",
-         "notes": "network, security group, or host the rule attaches to"},
-        {"name": "direction", "type": "enum", "values_ref": "inline: ingress | egress"},
-        {"name": "protocol", "type": "enum",
-         "values_ref": "IANA Assigned Internet Protocol Numbers (tcp, udp, icmp, ...) or 'any'"},
-        {"name": "port_range", "type": "string",
-         "notes": "single port '443', range '1024-65535', or 'any'"},
-        {"name": "remote_cidr", "type": "string",
-         "notes": "CIDR the rule permits, e.g. 0.0.0.0/0; the source for ingress, the destination for egress"}
+        {
+          "name": "target",
+          "type": "string",
+          "notes": "network, security group, or host the rule attaches to"
+        },
+        {
+          "name": "direction",
+          "type": "enum",
+          "values_ref": "inline: ingress | egress"
+        },
+        {
+          "name": "protocol",
+          "type": "enum",
+          "values": [
+            "any",
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34",
+            "35",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46",
+            "47",
+            "48",
+            "49",
+            "50",
+            "51",
+            "52",
+            "53",
+            "54",
+            "55",
+            "56",
+            "57",
+            "58",
+            "59",
+            "60",
+            "61",
+            "62",
+            "63",
+            "64",
+            "65",
+            "66",
+            "67",
+            "68",
+            "69",
+            "70",
+            "71",
+            "72",
+            "73",
+            "74",
+            "75",
+            "76",
+            "77",
+            "78",
+            "79",
+            "80",
+            "81",
+            "82",
+            "83",
+            "84",
+            "85",
+            "86",
+            "87",
+            "88",
+            "89",
+            "90",
+            "91",
+            "92",
+            "93",
+            "94",
+            "95",
+            "96",
+            "97",
+            "98",
+            "99",
+            "100",
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "106",
+            "107",
+            "108",
+            "109",
+            "110",
+            "111",
+            "112",
+            "113",
+            "114",
+            "115",
+            "116",
+            "117",
+            "118",
+            "119",
+            "120",
+            "121",
+            "122",
+            "123",
+            "124",
+            "125",
+            "126",
+            "127",
+            "128",
+            "129",
+            "130",
+            "131",
+            "132",
+            "133",
+            "134",
+            "135",
+            "136",
+            "137",
+            "138",
+            "139",
+            "140",
+            "141",
+            "142",
+            "143",
+            "144",
+            "145",
+            "146",
+            "147",
+            "148",
+            "149",
+            "150",
+            "151",
+            "152",
+            "153",
+            "154",
+            "155",
+            "156",
+            "157",
+            "158",
+            "159",
+            "160",
+            "161",
+            "162",
+            "163",
+            "164",
+            "165",
+            "166",
+            "167",
+            "168",
+            "169",
+            "170",
+            "171",
+            "172",
+            "173",
+            "174",
+            "175",
+            "176",
+            "177",
+            "178",
+            "179",
+            "180",
+            "181",
+            "182",
+            "183",
+            "184",
+            "185",
+            "186",
+            "187",
+            "188",
+            "189",
+            "190",
+            "191",
+            "192",
+            "193",
+            "194",
+            "195",
+            "196",
+            "197",
+            "198",
+            "199",
+            "200",
+            "201",
+            "202",
+            "203",
+            "204",
+            "205",
+            "206",
+            "207",
+            "208",
+            "209",
+            "210",
+            "211",
+            "212",
+            "213",
+            "214",
+            "215",
+            "216",
+            "217",
+            "218",
+            "219",
+            "220",
+            "221",
+            "222",
+            "223",
+            "224",
+            "225",
+            "226",
+            "227",
+            "228",
+            "229",
+            "230",
+            "231",
+            "232",
+            "233",
+            "234",
+            "235",
+            "236",
+            "237",
+            "238",
+            "239",
+            "240",
+            "241",
+            "242",
+            "243",
+            "244",
+            "245",
+            "246",
+            "247",
+            "248",
+            "249",
+            "250",
+            "251",
+            "252",
+            "253",
+            "254",
+            "255"
+          ],
+          "notes": "IPv4 Protocol or IPv6 Next Header value in decimal without leading zeros (tcp 6, udp 17, icmp 1, ipv6-icmp 58), or any for every protocol. IANA keywords are not used: they are mixed case and seven assigned numbers have none."
+        },
+        {
+          "name": "port_range",
+          "type": "string",
+          "notes": "single port '443', range '1024-65535', or 'any'; 'any' for a protocol without ports; a one-port range is written as the single port"
+        },
+        {
+          "name": "remote_cidr",
+          "type": "string",
+          "notes": "CIDR the rule permits, no host bits set; IPv6 in RFC 5952 canonical text form; the source for ingress, the destination for egress"
+        }
       ],
       "optional_fields": [
-        {"name": "description", "type": "string"},
-        {"name": "expires_at", "type": "timestamp",
-         "notes": "for time-boxed exceptions"}
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp",
+          "notes": "for time-boxed exceptions"
+        }
       ],
       "digest_notes": "CIDRs in canonical form (no host bits set); port_range verbatim from the rule request",
-      "references": []
+      "references": [],
+      "supersedes": "firewall.rule.open.1"
     },
     {
       "action_type": "storage.bucket.public.1",
@@ -390,17 +1431,32 @@
       "risk_class": "irreversible-data",
       "summary": "Making an object storage bucket publicly accessible. Once public, contents may be copied and cannot be recalled.",
       "required_fields": [
-        {"name": "bucket", "type": "string",
-         "notes": "bucket name as the provider addresses it"},
-        {"name": "provider", "type": "string"},
-        {"name": "access_level", "type": "enum",
-         "values_ref": "inline: public-read | public-read-write"}
+        {
+          "name": "bucket",
+          "type": "string",
+          "notes": "bucket name as the provider addresses it"
+        },
+        {
+          "name": "provider",
+          "type": "string"
+        },
+        {
+          "name": "access_level",
+          "type": "enum",
+          "values_ref": "inline: public-read | public-read-write"
+        }
       ],
       "optional_fields": [
-        {"name": "object_count", "type": "integer",
-         "notes": "object count at change time, as a blast-radius signal"},
-        {"name": "prefix", "type": "string",
-         "notes": "restrict the public grant to a key prefix if the provider supports it"}
+        {
+          "name": "object_count",
+          "type": "integer",
+          "notes": "object count at change time, as a blast-radius signal"
+        },
+        {
+          "name": "prefix",
+          "type": "string",
+          "notes": "restrict the public grant to a key prefix if the provider supports it"
+        }
       ],
       "digest_notes": "bucket name verbatim; absence of prefix means the whole bucket",
       "references": []
@@ -411,16 +1467,28 @@
       "risk_class": "irreversible-data",
       "summary": "Deletion of a dataset, table, or collection from a data store.",
       "required_fields": [
-        {"name": "dataset_id", "type": "string",
-         "notes": "fully qualified dataset, table, or collection identifier in the store's addressing scheme"},
-        {"name": "store", "type": "string",
-         "notes": "data store or warehouse identifier"},
-        {"name": "snapshot_before_delete", "type": "boolean",
-         "notes": "true if a recoverable snapshot is taken immediately before deletion"}
+        {
+          "name": "dataset_id",
+          "type": "string",
+          "notes": "fully qualified dataset, table, or collection identifier in the store's addressing scheme"
+        },
+        {
+          "name": "store",
+          "type": "string",
+          "notes": "data store or warehouse identifier"
+        },
+        {
+          "name": "snapshot_before_delete",
+          "type": "boolean",
+          "notes": "true if a recoverable snapshot is taken immediately before deletion"
+        }
       ],
       "optional_fields": [
-        {"name": "record_count", "type": "integer",
-         "notes": "approximate record count at deletion time, as a blast-radius signal"}
+        {
+          "name": "record_count",
+          "type": "integer",
+          "notes": "approximate record count at deletion time, as a blast-radius signal"
+        }
       ],
       "digest_notes": "dataset_id verbatim in the store's fully qualified form",
       "references": []
@@ -431,13 +1499,25 @@
       "risk_class": "irreversible-data",
       "summary": "Deletion of a backup or recovery point.",
       "required_fields": [
-        {"name": "backup_id", "type": "string"},
-        {"name": "backup_set", "type": "string",
-         "notes": "the protected resource or backup plan the recovery point belongs to"},
-        {"name": "backup_created_at", "type": "timestamp",
-         "notes": "creation time of the recovery point being deleted"},
-        {"name": "is_last_recovery_point", "type": "boolean",
-         "notes": "true if no other recovery point for the protected resource will remain"}
+        {
+          "name": "backup_id",
+          "type": "string"
+        },
+        {
+          "name": "backup_set",
+          "type": "string",
+          "notes": "the protected resource or backup plan the recovery point belongs to"
+        },
+        {
+          "name": "backup_created_at",
+          "type": "timestamp",
+          "notes": "creation time of the recovery point being deleted"
+        },
+        {
+          "name": "is_last_recovery_point",
+          "type": "boolean",
+          "notes": "true if no other recovery point for the protected resource will remain"
+        }
       ],
       "optional_fields": [],
       "digest_notes": "is_last_recovery_point is material precisely because it distinguishes pruning from total loss of recoverability",
@@ -449,42 +1529,137 @@
       "risk_class": "irreversible-data",
       "summary": "Override of a data retention policy, enabling earlier destruction or longer holding than the policy prescribes.",
       "required_fields": [
-        {"name": "policy_id", "type": "string"},
-        {"name": "scope", "type": "string",
-         "notes": "data class, dataset, or organizational scope the override applies to"},
-        {"name": "original_retention_days", "type": "integer"},
-        {"name": "override_retention_days", "type": "integer"}
+        {
+          "name": "policy_id",
+          "type": "string"
+        },
+        {
+          "name": "scope",
+          "type": "string",
+          "notes": "data class, dataset, or organizational scope the override applies to"
+        },
+        {
+          "name": "original_retention_days",
+          "type": "integer"
+        },
+        {
+          "name": "override_retention_days",
+          "type": "integer"
+        }
       ],
       "optional_fields": [
-        {"name": "override_expires_at", "type": "timestamp"},
-        {"name": "justification", "type": "string"}
+        {
+          "name": "override_expires_at",
+          "type": "timestamp"
+        },
+        {
+          "name": "justification",
+          "type": "string"
+        }
       ],
       "digest_notes": "both retention values are material so shortening and lengthening are distinguishable in the digested content",
       "references": []
     },
     {
       "action_type": "pii.export.1",
+      "status": "deprecated",
+      "risk_class": "irreversible-data",
+      "summary": "Export of personal data outside its governed store.",
+      "required_fields": [
+        {
+          "name": "dataset_id",
+          "type": "string"
+        },
+        {
+          "name": "subject_count",
+          "type": "integer",
+          "notes": "number of data subjects represented in the export"
+        },
+        {
+          "name": "field_classes",
+          "type": "array",
+          "notes": "PII field classes included, e.g. name, email, government-id, financial, health; the operator's classification taxonomy governs"
+        },
+        {
+          "name": "destination_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized destination identifier (URL, account, or system id)"
+        },
+        {
+          "name": "legal_basis",
+          "type": "enum",
+          "values_ref": "GDPR Article 6(1) lawful bases (consent, contract, legal-obligation, vital-interests, public-task, legitimate-interests) or the applicable regime's equivalent"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "purpose",
+          "type": "string"
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp",
+          "notes": "agreed deletion deadline at the destination, if any"
+        }
+      ],
+      "digest_notes": "no subject-level data in the object; destination normalization stated by the exporting system",
+      "references": [],
+      "superseded_by": "pii.export.2"
+    },
+    {
+      "action_type": "pii.export.2",
       "status": "active",
       "risk_class": "irreversible-data",
       "summary": "Export of personal data outside its governed store.",
       "required_fields": [
-        {"name": "dataset_id", "type": "string"},
-        {"name": "subject_count", "type": "integer",
-         "notes": "number of data subjects represented in the export"},
-        {"name": "field_classes", "type": "array",
-         "notes": "PII field classes included, e.g. name, email, government-id, financial, health; the operator's classification taxonomy governs"},
-        {"name": "destination_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized destination identifier (URL, account, or system id)"},
-        {"name": "legal_basis", "type": "enum",
-         "values_ref": "GDPR Article 6(1) lawful bases (consent, contract, legal-obligation, vital-interests, public-task, legitimate-interests) or the applicable regime's equivalent"}
+        {
+          "name": "dataset_id",
+          "type": "string"
+        },
+        {
+          "name": "subject_count",
+          "type": "integer",
+          "notes": "number of data subjects represented in the export"
+        },
+        {
+          "name": "field_classes",
+          "type": "array",
+          "notes": "PII field classes included, e.g. name, email, government-id, financial, health; the operator's classification taxonomy governs"
+        },
+        {
+          "name": "destination_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized destination identifier (URL, account, or system id)"
+        },
+        {
+          "name": "legal_basis",
+          "type": "enum",
+          "values": [
+            "consent",
+            "contract",
+            "legal-obligation",
+            "vital-interests",
+            "public-task",
+            "legitimate-interests",
+            "not-subject-to-gdpr"
+          ],
+          "notes": "the first six are points (a) to (f) of Article 6(1) of Regulation (EU) 2016/679, in that order, which the UK GDPR repeats; not-subject-to-gdpr means Article 6(1) does not apply to the export"
+        }
       ],
       "optional_fields": [
-        {"name": "purpose", "type": "string"},
-        {"name": "expires_at", "type": "timestamp",
-         "notes": "agreed deletion deadline at the destination, if any"}
+        {
+          "name": "purpose",
+          "type": "string"
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp",
+          "notes": "agreed deletion deadline at the destination, if any"
+        }
       ],
       "digest_notes": "no subject-level data in the object; destination normalization stated by the exporting system",
-      "references": []
+      "references": [],
+      "supersedes": "pii.export.1"
     },
     {
       "action_type": "email.send.external.1",
@@ -492,19 +1667,37 @@
       "risk_class": "external-communication",
       "summary": "Sending an email to recipients outside the operator's domain.",
       "required_fields": [
-        {"name": "recipients_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> over the newline-joined, lowercased, sorted list of recipient addresses; addresses are PII and never appear raw"},
-        {"name": "recipient_count", "type": "integer"},
-        {"name": "subject", "type": "string",
-         "notes": "verbatim subject line"},
-        {"name": "body_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the exact message body bytes as they will be sent"}
+        {
+          "name": "recipients_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> over the newline-joined, lowercased, sorted list of recipient addresses; addresses are PII and never appear raw"
+        },
+        {
+          "name": "recipient_count",
+          "type": "integer"
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "notes": "verbatim subject line"
+        },
+        {
+          "name": "body_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the exact message body bytes as they will be sent"
+        }
       ],
       "optional_fields": [
-        {"name": "attachments_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> over the concatenated sha256 hex digests of each attachment, in attachment order"},
-        {"name": "from_address", "type": "string",
-         "notes": "sending address; typically a shared organizational address, not personal PII"}
+        {
+          "name": "attachments_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> over the concatenated sha256 hex digests of each attachment, in attachment order"
+        },
+        {
+          "name": "from_address",
+          "type": "string",
+          "notes": "sending address; typically a shared organizational address, not personal PII"
+        }
       ],
       "digest_notes": "any edit to recipients or body after CAID issuance changes the digest; that is the point",
       "references": []
@@ -515,16 +1708,31 @@
       "risk_class": "external-communication",
       "summary": "Publishing an announcement to a channel or audience.",
       "required_fields": [
-        {"name": "channel", "type": "string",
-         "notes": "destination channel identifier, e.g. status-page, blog, changelog, in-app banner"},
-        {"name": "audience_scope", "type": "enum",
-         "values_ref": "inline: internal | customers | public"},
-        {"name": "title", "type": "string"},
-        {"name": "body_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the exact content bytes to be published"}
+        {
+          "name": "channel",
+          "type": "string",
+          "notes": "destination channel identifier, e.g. status-page, blog, changelog, in-app banner"
+        },
+        {
+          "name": "audience_scope",
+          "type": "enum",
+          "values_ref": "inline: internal | customers | public"
+        },
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "body_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the exact content bytes to be published"
+        }
       ],
       "optional_fields": [
-        {"name": "publish_at", "type": "timestamp"}
+        {
+          "name": "publish_at",
+          "type": "timestamp"
+        }
       ],
       "digest_notes": "title is inlined for human review surfaces; the body binds by digest",
       "references": []
@@ -535,19 +1743,37 @@
       "risk_class": "external-communication",
       "summary": "Publishing a post to a social platform account.",
       "required_fields": [
-        {"name": "platform", "type": "string",
-         "notes": "e.g. x, linkedin, mastodon, bluesky"},
-        {"name": "account_handle", "type": "string",
-         "notes": "the publishing account's public handle"},
-        {"name": "content_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the exact post text bytes"}
+        {
+          "name": "platform",
+          "type": "string",
+          "notes": "e.g. x, linkedin, mastodon, bluesky"
+        },
+        {
+          "name": "account_handle",
+          "type": "string",
+          "notes": "the publishing account's public handle"
+        },
+        {
+          "name": "content_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the exact post text bytes"
+        }
       ],
       "optional_fields": [
-        {"name": "media_digests", "type": "array",
-         "notes": "array of sha256:<lowercase hex> digests of attached media, in attachment order"},
-        {"name": "scheduled_at", "type": "timestamp"},
-        {"name": "in_reply_to", "type": "string",
-         "notes": "platform identifier of the post being replied to"}
+        {
+          "name": "media_digests",
+          "type": "array",
+          "notes": "array of sha256:<lowercase hex> digests of attached media, in attachment order"
+        },
+        {
+          "name": "scheduled_at",
+          "type": "timestamp"
+        },
+        {
+          "name": "in_reply_to",
+          "type": "string",
+          "notes": "platform identifier of the post being replied to"
+        }
       ],
       "digest_notes": "handles are public; content binds by digest so drafts and the published post are distinguishable",
       "references": []
@@ -558,16 +1784,31 @@
       "risk_class": "external-communication",
       "summary": "Distribution of a press release through a wire or distribution service.",
       "required_fields": [
-        {"name": "headline", "type": "string"},
-        {"name": "body_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the final release body bytes"},
-        {"name": "distribution_service", "type": "string",
-         "notes": "e.g. businesswire, prnewswire, globenewswire"},
-        {"name": "circuits", "type": "array",
-         "notes": "distribution circuits or lists, e.g. national, trade-tech, emea"}
+        {
+          "name": "headline",
+          "type": "string"
+        },
+        {
+          "name": "body_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the final release body bytes"
+        },
+        {
+          "name": "distribution_service",
+          "type": "string",
+          "notes": "e.g. businesswire, prnewswire, globenewswire"
+        },
+        {
+          "name": "circuits",
+          "type": "array",
+          "notes": "distribution circuits or lists, e.g. national, trade-tech, emea"
+        }
       ],
       "optional_fields": [
-        {"name": "embargo_until", "type": "timestamp"}
+        {
+          "name": "embargo_until",
+          "type": "timestamp"
+        }
       ],
       "digest_notes": "material-news releases may be market-moving; embargo time, when present, is material and digested",
       "references": []
@@ -578,19 +1819,38 @@
       "risk_class": "external-communication",
       "summary": "Publishing a package version to a public or third-party registry. Most registries treat published versions as immutable.",
       "required_fields": [
-        {"name": "registry", "type": "string",
-         "notes": "e.g. npm, pypi, crates.io, maven-central, rubygems"},
-        {"name": "package_name", "type": "string",
-         "notes": "verbatim, including scope or group where applicable"},
-        {"name": "version", "type": "string",
-         "notes": "the exact version string being published, e.g. SemVer 2.0.0"},
-        {"name": "artifact_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the exact artifact bytes uploaded (tarball, wheel, crate)"}
+        {
+          "name": "registry",
+          "type": "string",
+          "notes": "e.g. npm, pypi, crates.io, maven-central, rubygems"
+        },
+        {
+          "name": "package_name",
+          "type": "string",
+          "notes": "verbatim, including scope or group where applicable"
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "notes": "the exact version string being published, e.g. SemVer 2.0.0"
+        },
+        {
+          "name": "artifact_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the exact artifact bytes uploaded (tarball, wheel, crate)"
+        }
       ],
       "optional_fields": [
-        {"name": "dist_tag", "type": "string", "notes": "e.g. latest, beta"},
-        {"name": "provenance_attached", "type": "boolean",
-         "notes": "true if a build provenance attestation is published alongside"}
+        {
+          "name": "dist_tag",
+          "type": "string",
+          "notes": "e.g. latest, beta"
+        },
+        {
+          "name": "provenance_attached",
+          "type": "boolean",
+          "notes": "true if a build provenance attestation is published alongside"
+        }
       ],
       "digest_notes": "artifact_digest binds the exact bytes; rebuilding, even from the same source, produces a different CAID unless the build is reproducible",
       "references": []
@@ -601,20 +1861,38 @@
       "risk_class": "safety-critical",
       "summary": "Deployment of an artifact to a production environment serving live traffic.",
       "required_fields": [
-        {"name": "service", "type": "string",
-         "notes": "deployable service or application identifier"},
-        {"name": "environment", "type": "string",
-         "notes": "the production environment identifier, e.g. prod, prod-eu"},
-        {"name": "artifact_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the deployed artifact (image manifest, bundle, or binary)"},
-        {"name": "source_ref", "type": "string",
-         "notes": "full VCS commit hash the artifact was built from"}
+        {
+          "name": "service",
+          "type": "string",
+          "notes": "deployable service or application identifier"
+        },
+        {
+          "name": "environment",
+          "type": "string",
+          "notes": "the production environment identifier, e.g. prod, prod-eu"
+        },
+        {
+          "name": "artifact_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the deployed artifact (image manifest, bundle, or binary)"
+        },
+        {
+          "name": "source_ref",
+          "type": "string",
+          "notes": "full VCS commit hash the artifact was built from"
+        }
       ],
       "optional_fields": [
-        {"name": "rollout_strategy", "type": "enum",
-         "values_ref": "inline: all-at-once | rolling | canary | blue-green"},
-        {"name": "rollback_ref", "type": "string",
-         "notes": "commit hash or artifact reference the deployment would roll back to"}
+        {
+          "name": "rollout_strategy",
+          "type": "enum",
+          "values_ref": "inline: all-at-once | rolling | canary | blue-green"
+        },
+        {
+          "name": "rollback_ref",
+          "type": "string",
+          "notes": "commit hash or artifact reference the deployment would roll back to"
+        }
       ],
       "digest_notes": "artifact_digest, not source_ref, is the ground truth of what runs; source_ref is material for human review",
       "references": []
@@ -625,15 +1903,27 @@
       "risk_class": "irreversible-access",
       "summary": "Rotation of an application secret, credential, or token to a new value.",
       "required_fields": [
-        {"name": "secret_id", "type": "string",
-         "notes": "path or identifier of the secret in the store; never the secret value"},
-        {"name": "secret_store", "type": "string"},
-        {"name": "consumers_notified", "type": "boolean",
-         "notes": "true if dependent systems are updated or notified as part of the rotation"}
+        {
+          "name": "secret_id",
+          "type": "string",
+          "notes": "path or identifier of the secret in the store; never the secret value"
+        },
+        {
+          "name": "secret_store",
+          "type": "string"
+        },
+        {
+          "name": "consumers_notified",
+          "type": "boolean",
+          "notes": "true if dependent systems are updated or notified as part of the rotation"
+        }
       ],
       "optional_fields": [
-        {"name": "invalidate_old_at", "type": "timestamp",
-         "notes": "when the prior value stops being accepted"}
+        {
+          "name": "invalidate_old_at",
+          "type": "timestamp",
+          "notes": "when the prior value stops being accepted"
+        }
       ],
       "digest_notes": "no field carries a secret value, old or new, in any form including its hash; the object identifies the rotation event only",
       "references": []
@@ -644,16 +1934,28 @@
       "risk_class": "irreversible-data",
       "summary": "Deletion of a source code repository including its history, issues, and metadata.",
       "required_fields": [
-        {"name": "repo", "type": "string",
-         "notes": "owner/name form, e.g. acme/billing-service"},
-        {"name": "host", "type": "string",
-         "notes": "e.g. github.com, gitlab.com, or a self-hosted instance hostname"}
+        {
+          "name": "repo",
+          "type": "string",
+          "notes": "owner/name form, e.g. acme/billing-service"
+        },
+        {
+          "name": "host",
+          "type": "string",
+          "notes": "e.g. github.com, gitlab.com, or a self-hosted instance hostname"
+        }
       ],
       "optional_fields": [
-        {"name": "archive_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of a final archive taken before deletion, if one was taken"},
-        {"name": "fork_count", "type": "integer",
-         "notes": "public fork count at deletion time; forks survive deletion on most hosts"}
+        {
+          "name": "archive_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of a final archive taken before deletion, if one was taken"
+        },
+        {
+          "name": "fork_count",
+          "type": "integer",
+          "notes": "public fork count at deletion time; forks survive deletion on most hosts"
+        }
       ],
       "digest_notes": "repo names lowercased per the host's rules before digesting",
       "references": []
@@ -664,16 +1966,32 @@
       "risk_class": "irreversible-access",
       "summary": "Disabling branch protection rules on a repository branch.",
       "required_fields": [
-        {"name": "repo", "type": "string", "notes": "owner/name form"},
-        {"name": "host", "type": "string"},
-        {"name": "branch", "type": "string",
-         "notes": "branch name or protection rule pattern being disabled"}
+        {
+          "name": "repo",
+          "type": "string",
+          "notes": "owner/name form"
+        },
+        {
+          "name": "host",
+          "type": "string"
+        },
+        {
+          "name": "branch",
+          "type": "string",
+          "notes": "branch name or protection rule pattern being disabled"
+        }
       ],
       "optional_fields": [
-        {"name": "reenable_at", "type": "timestamp",
-         "notes": "for time-boxed maintenance windows"},
-        {"name": "rules_disabled", "type": "array",
-         "notes": "the specific rules turned off, e.g. required-reviews, required-status-checks, force-push-block"}
+        {
+          "name": "reenable_at",
+          "type": "timestamp",
+          "notes": "for time-boxed maintenance windows"
+        },
+        {
+          "name": "rules_disabled",
+          "type": "array",
+          "notes": "the specific rules turned off, e.g. required-reviews, required-status-checks, force-push-block"
+        }
       ],
       "digest_notes": "absence of rules_disabled means the whole protection rule is removed",
       "references": []
@@ -684,21 +2002,48 @@
       "risk_class": "irreversible-financial",
       "summary": "Placement of a purchase order committing the buyer to payment.",
       "required_fields": [
-        {"name": "order_id", "type": "string"},
-        {"name": "merchant_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized merchant identifier"},
-        {"name": "total_amount", "type": "amount-string",
-         "notes": "grand total including tax and shipping, in order currency"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
-        {"name": "items_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the canonical line-item list (sku, quantity, unit price per line)"},
-        {"name": "customer_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized customer identifier"},
-        {"name": "fulfillment_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the canonical delivery, pickup, or digital-fulfillment target"}
+        {
+          "name": "order_id",
+          "type": "string"
+        },
+        {
+          "name": "merchant_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized merchant identifier"
+        },
+        {
+          "name": "total_amount",
+          "type": "amount-string",
+          "notes": "grand total including tax and shipping, in order currency"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+        },
+        {
+          "name": "items_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the canonical line-item list (sku, quantity, unit price per line)"
+        },
+        {
+          "name": "customer_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized customer identifier"
+        },
+        {
+          "name": "fulfillment_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the canonical delivery, pickup, or digital-fulfillment target"
+        }
       ],
       "optional_fields": [
-        {"name": "shipping_method", "type": "string"}
+        {
+          "name": "shipping_method",
+          "type": "string"
+        }
       ],
       "digest_notes": "merchant, customer, fulfillment target, and canonical line items are material; an order identifier alone is not globally sufficient",
       "references": []
@@ -709,15 +2054,30 @@
       "risk_class": "irreversible-financial",
       "summary": "Cancellation of a recurring subscription.",
       "required_fields": [
-        {"name": "subscription_id", "type": "string"},
-        {"name": "customer_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized customer identifier"},
-        {"name": "effective_at", "type": "timestamp",
-         "notes": "immediate cancellation uses the request time; end-of-period uses the period end"},
-        {"name": "refund_prorated", "type": "boolean"}
+        {
+          "name": "subscription_id",
+          "type": "string"
+        },
+        {
+          "name": "customer_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized customer identifier"
+        },
+        {
+          "name": "effective_at",
+          "type": "timestamp",
+          "notes": "immediate cancellation uses the request time; end-of-period uses the period end"
+        },
+        {
+          "name": "refund_prorated",
+          "type": "boolean"
+        }
       ],
       "optional_fields": [
-        {"name": "cancellation_reason", "type": "string"}
+        {
+          "name": "cancellation_reason",
+          "type": "string"
+        }
       ],
       "digest_notes": "effective_at distinguishes cancel-now from cancel-at-period-end in the digested content",
       "references": []
@@ -728,16 +2088,37 @@
       "risk_class": "irreversible-financial",
       "summary": "Issuing a refund to a customer against a prior order or charge.",
       "required_fields": [
-        {"name": "original_order_id", "type": "string"},
-        {"name": "amount", "type": "amount-string"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
-        {"name": "destination", "type": "enum",
-         "values_ref": "inline: original-payment-method | store-credit | bank-transfer"},
-        {"name": "customer_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized customer identifier"}
+        {
+          "name": "original_order_id",
+          "type": "string"
+        },
+        {
+          "name": "amount",
+          "type": "amount-string"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+        },
+        {
+          "name": "destination",
+          "type": "enum",
+          "values_ref": "inline: original-payment-method | store-credit | bank-transfer"
+        },
+        {
+          "name": "customer_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized customer identifier"
+        }
       ],
       "optional_fields": [
-        {"name": "reason", "type": "string"}
+        {
+          "name": "reason",
+          "type": "string"
+        }
       ],
       "digest_notes": "multiple partial refunds against the same order produce distinct CAIDs via distinct amounts or an issuer-added sequence field",
       "references": []
@@ -748,15 +2129,30 @@
       "risk_class": "external-communication",
       "summary": "Removal of a listing from a public marketplace or catalog.",
       "required_fields": [
-        {"name": "listing_id", "type": "string"},
-        {"name": "marketplace", "type": "string"},
-        {"name": "reason_code", "type": "enum",
-         "values_ref": "inline: policy-violation | seller-request | legal-demand | safety-recall | inventory"}
+        {
+          "name": "listing_id",
+          "type": "string"
+        },
+        {
+          "name": "marketplace",
+          "type": "string"
+        },
+        {
+          "name": "reason_code",
+          "type": "enum",
+          "values_ref": "inline: policy-violation | seller-request | legal-demand | safety-recall | inventory"
+        }
       ],
       "optional_fields": [
-        {"name": "effective_at", "type": "timestamp"},
-        {"name": "seller_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized seller identifier"}
+        {
+          "name": "effective_at",
+          "type": "timestamp"
+        },
+        {
+          "name": "seller_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized seller identifier"
+        }
       ],
       "digest_notes": "reason_code is material because legal-demand and safety-recall delistings carry obligations that seller-request does not",
       "references": []
@@ -767,22 +2163,95 @@
       "risk_class": "legal-effect",
       "summary": "Execution (signing) of a contract, binding the executing party.",
       "required_fields": [
-        {"name": "contract_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the final contract document bytes as executed"},
-        {"name": "counterparty_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized counterparty legal identifier (legal name plus jurisdiction, or registry number); counterparties may be natural persons"},
-        {"name": "governing_law", "type": "string",
-         "notes": "governing jurisdiction, e.g. 'State of Delaware, USA' or 'England and Wales'"},
-        {"name": "effective_date", "type": "string",
-         "notes": "ISO 8601 date, YYYY-MM-DD"}
+        {
+          "name": "contract_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the final contract document bytes as executed"
+        },
+        {
+          "name": "counterparty_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized counterparty legal identifier (legal name plus jurisdiction, or registry number); counterparties may be natural persons"
+        },
+        {
+          "name": "governing_law",
+          "type": "string",
+          "notes": "governing jurisdiction, e.g. 'State of Delaware, USA' or 'England and Wales'"
+        },
+        {
+          "name": "effective_date",
+          "type": "string",
+          "notes": "ISO 8601 date, YYYY-MM-DD"
+        }
       ],
       "optional_fields": [
-        {"name": "contract_value", "type": "amount-string",
-         "notes": "total contract value where a single value is stated"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
-        {"name": "term_months", "type": "integer"}
+        {
+          "name": "contract_value",
+          "type": "amount-string",
+          "notes": "total contract value where a single value is stated"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+        },
+        {
+          "name": "term_months",
+          "type": "integer"
+        }
       ],
       "digest_notes": "contract_digest is over the exact executed bytes; a redlined draft and the executed document are different CAIDs",
+      "references": []
+    },
+    {
+      "action_type": "contract.execute.2",
+      "status": "active",
+      "risk_class": "legal-effect",
+      "summary": "Execution (signing) of a contract that states a single total monetary value, binding the executing party. A contract that states no monetary value uses contract.execute.1.",
+      "required_fields": [
+        {
+          "name": "contract_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the final contract document bytes as executed"
+        },
+        {
+          "name": "counterparty_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized counterparty legal identifier (legal name plus jurisdiction, or registry number); counterparties may be natural persons"
+        },
+        {
+          "name": "governing_law",
+          "type": "string",
+          "notes": "governing jurisdiction, e.g. 'State of Delaware, USA' or 'England and Wales'"
+        },
+        {
+          "name": "effective_date",
+          "type": "string",
+          "notes": "ISO 8601 date, YYYY-MM-DD"
+        },
+        {
+          "name": "contract_value",
+          "type": "amount-string",
+          "notes": "total contract value, in currency"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+          "notes": "currency of contract_value"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "term_months",
+          "type": "integer"
+        }
+      ],
+      "digest_notes": "contract_digest is over the exact executed bytes; a redlined draft and the executed document are different CAIDs; contract_value and currency are material together, so the same value in another currency is a different CAID",
       "references": []
     },
     {
@@ -791,20 +2260,38 @@
       "risk_class": "legal-effect",
       "summary": "Submission of a filing to a regulator.",
       "required_fields": [
-        {"name": "regulator", "type": "string",
-         "notes": "e.g. SEC, FCA, BaFin, FinCEN, state insurance commissioner"},
-        {"name": "filing_type", "type": "string",
-         "notes": "form identifier in the regulator's catalog, e.g. 10-K, SAR, MDR"},
-        {"name": "period_end", "type": "string",
-         "notes": "ISO 8601 date, YYYY-MM-DD; the reporting period the filing covers"},
-        {"name": "document_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the exact submission package bytes"},
-        {"name": "filer_id", "type": "string",
-         "notes": "regulator-assigned filer identifier, e.g. SEC CIK; these are public identifiers"}
+        {
+          "name": "regulator",
+          "type": "string",
+          "notes": "e.g. SEC, FCA, BaFin, FinCEN, state insurance commissioner"
+        },
+        {
+          "name": "filing_type",
+          "type": "string",
+          "notes": "form identifier in the regulator's catalog, e.g. 10-K, SAR, MDR"
+        },
+        {
+          "name": "period_end",
+          "type": "string",
+          "notes": "ISO 8601 date, YYYY-MM-DD; the reporting period the filing covers"
+        },
+        {
+          "name": "document_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the exact submission package bytes"
+        },
+        {
+          "name": "filer_id",
+          "type": "string",
+          "notes": "regulator-assigned filer identifier, e.g. SEC CIK; these are public identifiers"
+        }
       ],
       "optional_fields": [
-        {"name": "amendment_of", "type": "string",
-         "notes": "accession or reference number of the filing being amended"}
+        {
+          "name": "amendment_of",
+          "type": "string",
+          "notes": "accession or reference number of the filing being amended"
+        }
       ],
       "digest_notes": "document_digest binds the submitted bytes; an amended filing is a new action object",
       "references": []
@@ -815,103 +2302,399 @@
       "risk_class": "legal-effect",
       "summary": "Release of a legal hold, allowing normal retention and deletion to resume over the held material.",
       "required_fields": [
-        {"name": "hold_id", "type": "string"},
-        {"name": "matter_id", "type": "string",
-         "notes": "the litigation or investigation matter the hold belongs to"},
-        {"name": "custodian_count", "type": "integer",
-         "notes": "number of custodians whose material is released"},
-        {"name": "counsel_approved", "type": "boolean",
-         "notes": "true if counsel of record approved the release"}
+        {
+          "name": "hold_id",
+          "type": "string"
+        },
+        {
+          "name": "matter_id",
+          "type": "string",
+          "notes": "the litigation or investigation matter the hold belongs to"
+        },
+        {
+          "name": "custodian_count",
+          "type": "integer",
+          "notes": "number of custodians whose material is released"
+        },
+        {
+          "name": "counsel_approved",
+          "type": "boolean",
+          "notes": "true if counsel of record approved the release"
+        }
       ],
       "optional_fields": [
-        {"name": "released_scope", "type": "string",
-         "notes": "description of the data sources and date ranges released"},
-        {"name": "effective_at", "type": "timestamp"}
+        {
+          "name": "released_scope",
+          "type": "string",
+          "notes": "description of the data sources and date ranges released"
+        },
+        {
+          "name": "effective_at",
+          "type": "timestamp"
+        }
       ],
       "digest_notes": "custodian identities never appear in the object; scope is descriptive, custodian_count is the blast-radius signal",
       "references": []
     },
     {
       "action_type": "rx.dispense.1",
+      "status": "deprecated",
+      "risk_class": "safety-critical",
+      "summary": "Dispensing of a prescription medication to a patient.",
+      "required_fields": [
+        {
+          "name": "patient_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized patient identifier per the pharmacy system of record; raw patient identifiers never appear"
+        },
+        {
+          "name": "ndc_code",
+          "type": "enum",
+          "values_ref": "FDA National Drug Code directory",
+          "notes": "11-digit NDC in 5-4-2 format identifying the exact product and package"
+        },
+        {
+          "name": "drug_name",
+          "type": "string",
+          "notes": "label name for human review; ndc_code is authoritative"
+        },
+        {
+          "name": "quantity",
+          "type": "amount-string",
+          "notes": "dispensed quantity in the product's billing unit; fractional quantities occur (e.g. 7.5 mL), hence amount-string"
+        },
+        {
+          "name": "days_supply",
+          "type": "integer"
+        },
+        {
+          "name": "daw_code",
+          "type": "enum",
+          "values_ref": "inline: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9",
+          "notes": "NCPDP Dispense As Written code carried as a one-character string"
+        },
+        {
+          "name": "prescriber_npi",
+          "type": "string",
+          "notes": "10-digit National Provider Identifier; NPIs are public registry data"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "refill_number",
+          "type": "integer",
+          "notes": "0 for the original fill"
+        },
+        {
+          "name": "rx_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized prescription number; prescription numbers are patient-linkable"
+        }
+      ],
+      "digest_notes": "NDC and quantity together identify what physically leaves the pharmacy; both verbatim from the fill record",
+      "references": [
+        "NCPDP Telecommunication Standard"
+      ],
+      "superseded_by": "rx.dispense.2"
+    },
+    {
+      "action_type": "rx.dispense.2",
       "status": "active",
       "risk_class": "safety-critical",
       "summary": "Dispensing of a prescription medication to a patient.",
       "required_fields": [
-        {"name": "patient_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized patient identifier per the pharmacy system of record; raw patient identifiers never appear"},
-        {"name": "ndc_code", "type": "enum",
-         "values_ref": "FDA National Drug Code directory",
-         "notes": "11-digit NDC in 5-4-2 format identifying the exact product and package"},
-        {"name": "drug_name", "type": "string",
-         "notes": "label name for human review; ndc_code is authoritative"},
-        {"name": "quantity", "type": "amount-string",
-         "notes": "dispensed quantity in the product's billing unit; fractional quantities occur (e.g. 7.5 mL), hence amount-string"},
-        {"name": "days_supply", "type": "integer"},
-        {"name": "daw_code", "type": "enum",
-         "values_ref": "inline: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9",
-         "notes": "NCPDP Dispense As Written code carried as a one-character string"},
-        {"name": "prescriber_npi", "type": "string",
-         "notes": "10-digit National Provider Identifier; NPIs are public registry data"}
+        {
+          "name": "patient_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized patient identifier per the pharmacy system of record; raw patient identifiers never appear"
+        },
+        {
+          "name": "ndc_code",
+          "type": "code",
+          "code_system": "http://hl7.org/fhir/sid/ndc",
+          "format": "ndc-11",
+          "notes": "HIPAA 11-digit NDC, 5-4-2 without hyphens; identifies the exact product and package. A 10-digit NDC is converted by left-padding its short segment with one 0; a 12-digit NDC (FDA rule effective 2033-03-07) needs a new type version"
+        },
+        {
+          "name": "drug_name",
+          "type": "string",
+          "notes": "label name for human review; ndc_code is authoritative"
+        },
+        {
+          "name": "quantity",
+          "type": "amount-string",
+          "notes": "dispensed quantity in the product's billing unit; fractional quantities occur (e.g. 7.5 mL), hence amount-string"
+        },
+        {
+          "name": "days_supply",
+          "type": "integer"
+        },
+        {
+          "name": "daw_code",
+          "type": "enum",
+          "values_ref": "inline: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9",
+          "notes": "NCPDP Dispense As Written code carried as a one-character string"
+        },
+        {
+          "name": "prescriber_npi",
+          "type": "string",
+          "notes": "10-digit National Provider Identifier; NPIs are public registry data"
+        }
       ],
       "optional_fields": [
-        {"name": "refill_number", "type": "integer",
-         "notes": "0 for the original fill"},
-        {"name": "rx_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized prescription number; prescription numbers are patient-linkable"}
+        {
+          "name": "refill_number",
+          "type": "integer",
+          "notes": "0 for the original fill"
+        },
+        {
+          "name": "rx_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized prescription number; prescription numbers are patient-linkable"
+        }
       ],
       "digest_notes": "NDC and quantity together identify what physically leaves the pharmacy; both verbatim from the fill record",
-      "references": ["NCPDP Telecommunication Standard"]
+      "references": [
+        "NCPDP Telecommunication Standard"
+      ],
+      "supersedes": "rx.dispense.1"
     },
     {
       "action_type": "prior.auth.approve.1",
-      "status": "active",
+      "status": "deprecated",
       "risk_class": "safety-critical",
       "summary": "Approval of a prior authorization request for a procedure, service, or drug.",
       "required_fields": [
-        {"name": "patient_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized member or patient identifier"},
-        {"name": "service_code", "type": "enum",
-         "values_ref": "AMA CPT or CMS HCPCS Level II code sets (or NDC for drug authorizations)"},
-        {"name": "diagnosis_code", "type": "enum",
-         "values_ref": "ICD-10-CM"},
-        {"name": "authorization_number", "type": "string",
-         "notes": "payer-assigned authorization number"},
-        {"name": "valid_from", "type": "timestamp"},
-        {"name": "valid_until", "type": "timestamp"}
+        {
+          "name": "patient_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized member or patient identifier"
+        },
+        {
+          "name": "service_code",
+          "type": "enum",
+          "values_ref": "AMA CPT or CMS HCPCS Level II code sets (or NDC for drug authorizations)"
+        },
+        {
+          "name": "diagnosis_code",
+          "type": "enum",
+          "values_ref": "ICD-10-CM"
+        },
+        {
+          "name": "authorization_number",
+          "type": "string",
+          "notes": "payer-assigned authorization number"
+        },
+        {
+          "name": "valid_from",
+          "type": "timestamp"
+        },
+        {
+          "name": "valid_until",
+          "type": "timestamp"
+        }
       ],
       "optional_fields": [
-        {"name": "units_approved", "type": "integer",
-         "notes": "approved units, visits, or fills"},
-        {"name": "provider_npi", "type": "string",
-         "notes": "10-digit NPI of the requesting provider; public registry data"}
+        {
+          "name": "units_approved",
+          "type": "integer",
+          "notes": "approved units, visits, or fills"
+        },
+        {
+          "name": "provider_npi",
+          "type": "string",
+          "notes": "10-digit NPI of the requesting provider; public registry data"
+        }
       ],
       "digest_notes": "the validity window is material; extending an authorization is a new action object",
-      "references": []
+      "references": [],
+      "superseded_by": "prior.auth.approve.2"
+    },
+    {
+      "action_type": "prior.auth.approve.2",
+      "status": "active",
+      "risk_class": "safety-critical",
+      "summary": "Approval of a prior authorization request for a procedure or service identified by an HCPCS code.",
+      "required_fields": [
+        {
+          "name": "patient_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized member or patient identifier"
+        },
+        {
+          "name": "service_code",
+          "type": "code",
+          "code_system": "https://www.cms.gov/medicare/coding-billing/healthcare-common-procedure-system",
+          "format": "hcpcs",
+          "notes": "authorized procedure or service, the 5-character HCPCS Level I (CPT) or Level II base code without modifiers; drug authorizations under a pharmacy benefit and inpatient ICD-10-PCS authorizations are separate action types"
+        },
+        {
+          "name": "diagnosis_code",
+          "type": "code",
+          "code_system": "http://hl7.org/fhir/sid/icd-10-cm",
+          "format": "icd-10-cm",
+          "notes": "principal diagnosis supporting the request, uppercase, with the period after the third character when there are more than three"
+        },
+        {
+          "name": "authorization_number",
+          "type": "string",
+          "notes": "payer-assigned authorization number"
+        },
+        {
+          "name": "valid_from",
+          "type": "timestamp"
+        },
+        {
+          "name": "valid_until",
+          "type": "timestamp"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "units_approved",
+          "type": "integer",
+          "notes": "approved units, visits, or fills"
+        },
+        {
+          "name": "provider_npi",
+          "type": "string",
+          "notes": "10-digit NPI of the requesting provider; public registry data"
+        }
+      ],
+      "digest_notes": "the validity window is material; extending an authorization is a new action object",
+      "references": [],
+      "supersedes": "prior.auth.approve.1"
     },
     {
       "action_type": "phi.disclose.1",
+      "status": "deprecated",
+      "risk_class": "irreversible-data",
+      "summary": "Disclosure of protected health information to a recipient outside the disclosing covered entity.",
+      "required_fields": [
+        {
+          "name": "patient_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized patient identifier"
+        },
+        {
+          "name": "recipient_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized recipient identifier (organization or individual)"
+        },
+        {
+          "name": "purpose",
+          "type": "enum",
+          "values_ref": "45 CFR 164.506 and 164.512 disclosure purposes (treatment, payment, health-care-operations, required-by-law, public-health, ...)"
+        },
+        {
+          "name": "record_scope",
+          "type": "string",
+          "notes": "description of the records disclosed, e.g. 'encounter notes 2025-01-01 to 2025-06-30'"
+        },
+        {
+          "name": "minimum_necessary_applied",
+          "type": "boolean",
+          "notes": "true if the minimum-necessary standard was applied; false is permitted (e.g. treatment disclosures) but must be explicit"
+        }
+      ],
+      "optional_fields": [
+        {
+          "name": "authorization_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the patient authorization document where the purpose requires one"
+        },
+        {
+          "name": "disclosed_at",
+          "type": "timestamp"
+        }
+      ],
+      "digest_notes": "no PHI in the object itself; the object is accounting-of-disclosures material, not the disclosure",
+      "references": [
+        "45 CFR 164.506",
+        "45 CFR 164.512",
+        "45 CFR 164.528"
+      ],
+      "superseded_by": "phi.disclose.2"
+    },
+    {
+      "action_type": "phi.disclose.2",
       "status": "active",
       "risk_class": "irreversible-data",
       "summary": "Disclosure of protected health information to a recipient outside the disclosing covered entity.",
       "required_fields": [
-        {"name": "patient_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized patient identifier"},
-        {"name": "recipient_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized recipient identifier (organization or individual)"},
-        {"name": "purpose", "type": "enum",
-         "values_ref": "45 CFR 164.506 and 164.512 disclosure purposes (treatment, payment, health-care-operations, required-by-law, public-health, ...)"},
-        {"name": "record_scope", "type": "string",
-         "notes": "description of the records disclosed, e.g. 'encounter notes 2025-01-01 to 2025-06-30'"},
-        {"name": "minimum_necessary_applied", "type": "boolean",
-         "notes": "true if the minimum-necessary standard was applied; false is permitted (e.g. treatment disclosures) but must be explicit"}
+        {
+          "name": "patient_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized patient identifier"
+        },
+        {
+          "name": "recipient_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized recipient identifier (organization or individual)"
+        },
+        {
+          "name": "purpose",
+          "type": "enum",
+          "values": [
+            "individual",
+            "treatment",
+            "payment",
+            "health-care-operations",
+            "authorization",
+            "facility-directory",
+            "care-involvement-notification",
+            "required-by-law",
+            "public-health",
+            "abuse-neglect-violence",
+            "health-oversight",
+            "judicial-administrative",
+            "law-enforcement",
+            "decedents",
+            "organ-tissue-donation",
+            "research",
+            "serious-threat",
+            "specialized-government",
+            "workers-compensation",
+            "limited-data-set",
+            "fundraising",
+            "underwriting",
+            "secretary-compliance"
+          ],
+          "notes": "45 CFR (eCFR, title 45 as of 2026-09-24): individual 164.502(a)(1)(i) and (a)(2)(i); treatment, payment, health-care-operations 164.506(c); authorization 164.508; facility-directory 164.510(a); care-involvement-notification 164.510(b); required-by-law through workers-compensation 164.512(a) to (l) in order; limited-data-set 164.514(e); fundraising 164.514(f); underwriting 164.514(g); secretary-compliance 164.502(a)(2)(ii)"
+        },
+        {
+          "name": "record_scope",
+          "type": "string",
+          "notes": "description of the records disclosed, e.g. 'encounter notes 2025-01-01 to 2025-06-30'"
+        },
+        {
+          "name": "minimum_necessary_applied",
+          "type": "boolean",
+          "notes": "true if the minimum-necessary standard was applied; false is permitted (e.g. treatment disclosures) but must be explicit"
+        }
       ],
       "optional_fields": [
-        {"name": "authorization_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the patient authorization document where the purpose requires one"},
-        {"name": "disclosed_at", "type": "timestamp"}
+        {
+          "name": "authorization_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the patient authorization document where the purpose requires one"
+        },
+        {
+          "name": "disclosed_at",
+          "type": "timestamp"
+        }
       ],
       "digest_notes": "no PHI in the object itself; the object is accounting-of-disclosures material, not the disclosure",
-      "references": ["45 CFR 164.506", "45 CFR 164.512", "45 CFR 164.528"]
+      "references": [
+        "45 CFR 164.502",
+        "45 CFR 164.506",
+        "45 CFR 164.508",
+        "45 CFR 164.510",
+        "45 CFR 164.512",
+        "45 CFR 164.514",
+        "45 CFR 164.528"
+      ],
+      "supersedes": "phi.disclose.1"
     },
     {
       "action_type": "benefit.disburse.1",
@@ -919,20 +2702,44 @@
       "risk_class": "irreversible-financial",
       "summary": "Disbursement of a government or program benefit payment to a beneficiary.",
       "required_fields": [
-        {"name": "program", "type": "string",
-         "notes": "benefit program identifier, e.g. snap, unemployment-insurance, housing-assistance"},
-        {"name": "beneficiary_ref", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized beneficiary identifier; beneficiary identity is PII and never appears raw"},
-        {"name": "amount", "type": "amount-string"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
-        {"name": "benefit_period", "type": "string",
-         "notes": "ISO 8601 year-month YYYY-MM, or an explicit date range, per program rules"},
-        {"name": "channel", "type": "enum",
-         "values_ref": "inline: ach | check | prepaid-card | ebt"}
+        {
+          "name": "program",
+          "type": "string",
+          "notes": "benefit program identifier, e.g. snap, unemployment-insurance, housing-assistance"
+        },
+        {
+          "name": "beneficiary_ref",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized beneficiary identifier; beneficiary identity is PII and never appears raw"
+        },
+        {
+          "name": "amount",
+          "type": "amount-string"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+        },
+        {
+          "name": "benefit_period",
+          "type": "string",
+          "notes": "ISO 8601 year-month YYYY-MM, or an explicit date range, per program rules"
+        },
+        {
+          "name": "channel",
+          "type": "enum",
+          "values_ref": "inline: ach | check | prepaid-card | ebt"
+        }
       ],
       "optional_fields": [
-        {"name": "case_id", "type": "string",
-         "notes": "program case identifier where it is not itself PII-linkable outside the agency"}
+        {
+          "name": "case_id",
+          "type": "string",
+          "notes": "program case identifier where it is not itself PII-linkable outside the agency"
+        }
       ],
       "digest_notes": "benefit_period plus beneficiary_ref distinguishes recurring disbursements from duplicates",
       "references": []
@@ -943,18 +2750,43 @@
       "risk_class": "irreversible-financial",
       "summary": "Approval of a vendor invoice for payment.",
       "required_fields": [
-        {"name": "invoice_id", "type": "string",
-         "notes": "the vendor's invoice number as presented"},
-        {"name": "vendor_id", "type": "string",
-         "notes": "the payer's internal vendor master identifier"},
-        {"name": "amount", "type": "amount-string"},
-        {"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
-        {"name": "invoice_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the invoice document bytes; binds approval to the exact document seen"}
+        {
+          "name": "invoice_id",
+          "type": "string",
+          "notes": "the vendor's invoice number as presented"
+        },
+        {
+          "name": "vendor_id",
+          "type": "string",
+          "notes": "the payer's internal vendor master identifier"
+        },
+        {
+          "name": "amount",
+          "type": "amount-string"
+        },
+        {
+          "name": "currency",
+          "type": "enum",
+          "values_ref": "ISO 4217 alpha-3",
+          "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+          "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+        },
+        {
+          "name": "invoice_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the invoice document bytes; binds approval to the exact document seen"
+        }
       ],
       "optional_fields": [
-        {"name": "po_number", "type": "string"},
-        {"name": "due_date", "type": "string", "notes": "ISO 8601 date, YYYY-MM-DD"}
+        {
+          "name": "po_number",
+          "type": "string"
+        },
+        {
+          "name": "due_date",
+          "type": "string",
+          "notes": "ISO 8601 date, YYYY-MM-DD"
+        }
       ],
       "digest_notes": "invoice_digest defeats invoice-swap fraud between approval and payment",
       "references": []
@@ -965,19 +2797,40 @@
       "risk_class": "irreversible-financial",
       "summary": "Onboarding a vendor into the vendor master, establishing payment rails. A common target of payment-diversion fraud.",
       "required_fields": [
-        {"name": "vendor_legal_name", "type": "string",
-         "notes": "registered legal name; organizational names are public record"},
-        {"name": "jurisdiction", "type": "enum",
-         "values_ref": "ISO 3166-1 alpha-2",
-         "notes": "country of registration"},
-        {"name": "tax_id_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized tax identifier (EIN, VAT number); tax IDs are sensitive and never appear raw"},
-        {"name": "bank_account_digest", "type": "digest",
-         "notes": "sha256:<lowercase hex> of the normalized remit-to bank account identifier; the field fraud aims to swap"}
+        {
+          "name": "vendor_legal_name",
+          "type": "string",
+          "notes": "registered legal name; organizational names are public record"
+        },
+        {
+          "name": "jurisdiction",
+          "type": "enum",
+          "values_ref": "ISO 3166-1 alpha-2",
+          "notes": "country of registration",
+          "values_snapshot": "ISO 3166-1 alpha-2 officially assigned codes as carried by the IANA Language Subtag Registry, File-Date 2026-09-17",
+          "values_sha256": "sha256:bad3b0ab6d1073f237d176df4d3ec9297269c1c13c73f714c0736a87912b1523"
+        },
+        {
+          "name": "tax_id_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized tax identifier (EIN, VAT number); tax IDs are sensitive and never appear raw"
+        },
+        {
+          "name": "bank_account_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the normalized remit-to bank account identifier; the field fraud aims to swap"
+        }
       ],
       "optional_fields": [
-        {"name": "procurement_category", "type": "string"},
-        {"name": "payment_terms", "type": "string", "notes": "e.g. net-30"}
+        {
+          "name": "procurement_category",
+          "type": "string"
+        },
+        {
+          "name": "payment_terms",
+          "type": "string",
+          "notes": "e.g. net-30"
+        }
       ],
       "digest_notes": "bank_account_digest is material precisely so a later remit-to change cannot reuse the onboarding CAID",
       "references": []
@@ -988,23 +2841,73 @@
       "risk_class": "external-communication",
       "summary": "Cancellation of a travel reservation with a time constraint and a secondary notification action.",
       "required_fields": [
-        {"name": "primary_action", "type": "string", "notes": "SILP root intent, for example !CANCEL"},
-        {"name": "resource", "type": "string", "notes": "The primary action's material target"},
-        {"name": "cancel_time", "type": "string", "notes": "The primary action's material time slot"},
-        {"name": "secondary_action", "type": "string", "notes": "A material secondary action, for example !EMAIL"},
-        {"name": "notification_recipient", "type": "string", "notes": "The secondary action's material recipient"},
-        {"name": "constraint_type", "type": "string"},
-        {"name": "constraint_value", "type": "string"},
-        {"name": "constraint_time", "type": "string"},
-        {"name": "constraint_subject", "type": "string"},
-        {"name": "entities_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete ordered SILP entity list, including entity/action associations"},
-        {"name": "constraints_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete ordered SILP constraint list"},
-        {"name": "alternatives_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete SILP alternatives list"},
-        {"name": "sequence_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the declared SILP action sequence"}
+        {
+          "name": "primary_action",
+          "type": "string",
+          "notes": "SILP root intent, for example !CANCEL"
+        },
+        {
+          "name": "resource",
+          "type": "string",
+          "notes": "The primary action's material target"
+        },
+        {
+          "name": "cancel_time",
+          "type": "string",
+          "notes": "The primary action's material time slot"
+        },
+        {
+          "name": "secondary_action",
+          "type": "string",
+          "notes": "A material secondary action, for example !EMAIL"
+        },
+        {
+          "name": "notification_recipient",
+          "type": "string",
+          "notes": "The secondary action's material recipient"
+        },
+        {
+          "name": "constraint_type",
+          "type": "string"
+        },
+        {
+          "name": "constraint_value",
+          "type": "string"
+        },
+        {
+          "name": "constraint_time",
+          "type": "string"
+        },
+        {
+          "name": "constraint_subject",
+          "type": "string"
+        },
+        {
+          "name": "entities_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the complete ordered SILP entity list, including entity/action associations"
+        },
+        {
+          "name": "constraints_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the complete ordered SILP constraint list"
+        },
+        {
+          "name": "alternatives_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the complete SILP alternatives list"
+        },
+        {
+          "name": "sequence_digest",
+          "type": "digest",
+          "notes": "sha256:<lowercase hex> of the declared SILP action sequence"
+        }
       ],
       "optional_fields": [],
       "digest_notes": "The root intent, complete ordered entity and constraint collections, declared action sequence, all alternatives, primary target and timing, and secondary action and recipient are material. SILP correlation metadata such as req_id, session_id, priority, confidence, and output hints are not material unless a separate action profile says otherwise.",
-      "references": ["draft-hwang-silp-protocol-01"]
+      "references": [
+        "draft-hwang-silp-protocol-01"
+      ]
     },
     {
       "action_type": "science.bio.experiment.execute.1",
@@ -1012,19 +2915,50 @@
       "risk_class": "safety-critical",
       "summary": "Execution of a model-directed physical experiment under an executor-owned evidence profile.",
       "required_fields": [
-        {"name": "@version", "type": "enum", "values_ref": "inline: EP-MODEL-TO-MATTER-ACTION-v1"},
-        {"name": "model", "type": "object"},
-        {"name": "experiment", "type": "object"},
-        {"name": "principal", "type": "object"},
-        {"name": "executor", "type": "object"},
-        {"name": "purpose", "type": "object"},
-        {"name": "destination_digest", "type": "digest"},
-        {"name": "requested_at", "type": "string", "notes": "RFC 3339 instant validated by the Model-to-Matter profile"},
-        {"name": "max_executions", "type": "integer"}
+        {
+          "name": "@version",
+          "type": "enum",
+          "values_ref": "inline: EP-MODEL-TO-MATTER-ACTION-v1"
+        },
+        {
+          "name": "model",
+          "type": "object"
+        },
+        {
+          "name": "experiment",
+          "type": "object"
+        },
+        {
+          "name": "principal",
+          "type": "object"
+        },
+        {
+          "name": "executor",
+          "type": "object"
+        },
+        {
+          "name": "purpose",
+          "type": "object"
+        },
+        {
+          "name": "destination_digest",
+          "type": "digest"
+        },
+        {
+          "name": "requested_at",
+          "type": "string",
+          "notes": "RFC 3339 instant validated by the Model-to-Matter profile"
+        },
+        {
+          "name": "max_executions",
+          "type": "integer"
+        }
       ],
       "optional_fields": [],
       "digest_notes": "All nested object members are material. The Model-to-Matter closed-shape validator runs before CAID computation.",
-      "references": ["draft-schrock-model-to-matter-00"]
+      "references": [
+        "draft-schrock-model-to-matter-00"
+      ]
     },
     {
       "action_type": "tool.call.1",
@@ -1032,16 +2966,28 @@
       "risk_class": "varies-by-tool",
       "summary": "Invocation of a named agent-framework tool with a complete argument object.",
       "required_fields": [
-        {"name": "target", "type": "string",
-         "notes": "stable identity of the service that will execute the call, supplied by the governing profile and compared case-sensitively; use the literal local only when execution occurs in the caller process; never infer this value from ambient routing metadata"},
-        {"name": "tool", "type": "string",
-         "notes": "tool name exactly as the invoking framework declares it"},
-        {"name": "args", "type": "object",
-         "notes": "complete argument object handed to the tool after framework defaults; all nested values remain subject to the CAID numeric profile"}
+        {
+          "name": "target",
+          "type": "string",
+          "notes": "stable identity of the service that will execute the call, supplied by the governing profile and compared case-sensitively; use the literal local only when execution occurs in the caller process; never infer this value from ambient routing metadata"
+        },
+        {
+          "name": "tool",
+          "type": "string",
+          "notes": "tool name exactly as the invoking framework declares it"
+        },
+        {
+          "name": "args",
+          "type": "object",
+          "notes": "complete argument object handed to the tool after framework defaults; all nested values remain subject to the CAID numeric profile"
+        }
       ],
       "optional_fields": [
-        {"name": "occurrence_id", "type": "string",
-         "notes": "executor occurrence identity when the relying profile requires two otherwise identical invocations to remain distinct"}
+        {
+          "name": "occurrence_id",
+          "type": "string",
+          "notes": "executor occurrence identity when the relying profile requires two otherwise identical invocations to remain distinct"
+        }
       ],
       "digest_notes": "The CAID Action Object includes action_type, target, tool, args, and occurrence_id when present. Framework-local selector or routing hints derived from args are not separate members. Existing base:sha256:<hex> executor-binding strings are a different profile and are not CAIDs.",
       "references": []
@@ -1052,8 +2998,14 @@
       "risk_class": "external-communication",
       "summary": "Exact authoritative action presented for a device-bound EMILIA decision.",
       "required_fields": [
-        {"name": "source_action_type", "type": "string"},
-        {"name": "source_action_digest", "type": "digest"}
+        {
+          "name": "source_action_type",
+          "type": "string"
+        },
+        {
+          "name": "source_action_digest",
+          "type": "digest"
+        }
       ],
       "optional_fields": [],
       "digest_notes": "The source digest commits the complete authoritative action object.",
@@ -1065,22 +3017,61 @@
       "risk_class": "irreversible-data",
       "summary": "Release of one exact, signed portable-state manifest from a named source to a named recipient.",
       "required_fields": [
-        {"name": "handoff_id", "type": "string"},
-        {"name": "manifest_digest", "type": "digest"},
-        {"name": "payload_profile", "type": "string"},
-        {"name": "transfer_mode", "type": "enum", "values_ref": "inline: COPY"},
-        {"name": "source_agent", "type": "string"},
-        {"name": "source_boundary_id", "type": "string"},
-        {"name": "recipient_agent", "type": "string"},
-        {"name": "recipient_boundary_id", "type": "string"},
-        {"name": "relying_party_id", "type": "string"},
-        {"name": "scope_digest", "type": "digest"},
-        {"name": "expires_at", "type": "timestamp"},
-        {"name": "nonce", "type": "string"}
+        {
+          "name": "handoff_id",
+          "type": "string"
+        },
+        {
+          "name": "manifest_digest",
+          "type": "digest"
+        },
+        {
+          "name": "payload_profile",
+          "type": "string"
+        },
+        {
+          "name": "transfer_mode",
+          "type": "enum",
+          "values_ref": "inline: COPY"
+        },
+        {
+          "name": "source_agent",
+          "type": "string"
+        },
+        {
+          "name": "source_boundary_id",
+          "type": "string"
+        },
+        {
+          "name": "recipient_agent",
+          "type": "string"
+        },
+        {
+          "name": "recipient_boundary_id",
+          "type": "string"
+        },
+        {
+          "name": "relying_party_id",
+          "type": "string"
+        },
+        {
+          "name": "scope_digest",
+          "type": "digest"
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp"
+        },
+        {
+          "name": "nonce",
+          "type": "string"
+        }
       ],
       "optional_fields": [],
       "digest_notes": "Every field is material. Export authority releases only the manifest identified by manifest_digest to the named recipient; it grants no recipient-side import authority.",
-      "references": ["EP-PORTABLE-STATE-HANDOFF-v0.1"]
+      "references": [
+        "EP-PORTABLE-STATE-HANDOFF-v0.1"
+      ]
     },
     {
       "action_type": "agent.state.import.1",
@@ -1088,22 +3079,61 @@
       "risk_class": "irreversible-data",
       "summary": "Atomic recipient-side admission and commit of one exact portable-state manifest.",
       "required_fields": [
-        {"name": "handoff_id", "type": "string"},
-        {"name": "manifest_digest", "type": "digest"},
-        {"name": "payload_profile", "type": "string"},
-        {"name": "transfer_mode", "type": "enum", "values_ref": "inline: COPY"},
-        {"name": "source_agent", "type": "string"},
-        {"name": "source_boundary_id", "type": "string"},
-        {"name": "recipient_agent", "type": "string"},
-        {"name": "recipient_boundary_id", "type": "string"},
-        {"name": "relying_party_id", "type": "string"},
-        {"name": "scope_digest", "type": "digest"},
-        {"name": "expires_at", "type": "timestamp"},
-        {"name": "nonce", "type": "string"}
+        {
+          "name": "handoff_id",
+          "type": "string"
+        },
+        {
+          "name": "manifest_digest",
+          "type": "digest"
+        },
+        {
+          "name": "payload_profile",
+          "type": "string"
+        },
+        {
+          "name": "transfer_mode",
+          "type": "enum",
+          "values_ref": "inline: COPY"
+        },
+        {
+          "name": "source_agent",
+          "type": "string"
+        },
+        {
+          "name": "source_boundary_id",
+          "type": "string"
+        },
+        {
+          "name": "recipient_agent",
+          "type": "string"
+        },
+        {
+          "name": "recipient_boundary_id",
+          "type": "string"
+        },
+        {
+          "name": "relying_party_id",
+          "type": "string"
+        },
+        {
+          "name": "scope_digest",
+          "type": "digest"
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp"
+        },
+        {
+          "name": "nonce",
+          "type": "string"
+        }
       ],
       "optional_fields": [],
       "digest_notes": "Every field is material. A conforming boundary consumes this action and commits the declared state heads in one local atomic transition.",
-      "references": ["EP-PORTABLE-STATE-HANDOFF-v0.1"]
+      "references": [
+        "EP-PORTABLE-STATE-HANDOFF-v0.1"
+      ]
     },
     {
       "action_type": "agent.state.key-release.1",
@@ -1111,23 +3141,65 @@
       "risk_class": "irreversible-access",
       "summary": "Release of key access for the exact VAULT object set in a portable-state handoff.",
       "required_fields": [
-        {"name": "handoff_id", "type": "string"},
-        {"name": "manifest_digest", "type": "digest"},
-        {"name": "payload_profile", "type": "string"},
-        {"name": "transfer_mode", "type": "enum", "values_ref": "inline: COPY"},
-        {"name": "source_agent", "type": "string"},
-        {"name": "source_boundary_id", "type": "string"},
-        {"name": "recipient_agent", "type": "string"},
-        {"name": "recipient_boundary_id", "type": "string"},
-        {"name": "relying_party_id", "type": "string"},
-        {"name": "scope_digest", "type": "digest"},
-        {"name": "expires_at", "type": "timestamp"},
-        {"name": "nonce", "type": "string"},
-        {"name": "vault_set_digest", "type": "digest"}
+        {
+          "name": "handoff_id",
+          "type": "string"
+        },
+        {
+          "name": "manifest_digest",
+          "type": "digest"
+        },
+        {
+          "name": "payload_profile",
+          "type": "string"
+        },
+        {
+          "name": "transfer_mode",
+          "type": "enum",
+          "values_ref": "inline: COPY"
+        },
+        {
+          "name": "source_agent",
+          "type": "string"
+        },
+        {
+          "name": "source_boundary_id",
+          "type": "string"
+        },
+        {
+          "name": "recipient_agent",
+          "type": "string"
+        },
+        {
+          "name": "recipient_boundary_id",
+          "type": "string"
+        },
+        {
+          "name": "relying_party_id",
+          "type": "string"
+        },
+        {
+          "name": "scope_digest",
+          "type": "digest"
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp"
+        },
+        {
+          "name": "nonce",
+          "type": "string"
+        },
+        {
+          "name": "vault_set_digest",
+          "type": "digest"
+        }
       ],
       "optional_fields": [],
       "digest_notes": "vault_set_digest commits the ordered VAULT object identifiers and object digests. It does not claim that a key was usable at the recipient.",
-      "references": ["EP-PORTABLE-STATE-HANDOFF-v0.1"]
+      "references": [
+        "EP-PORTABLE-STATE-HANDOFF-v0.1"
+      ]
     },
     {
       "action_type": "agent.state.retire-source.1",
@@ -1135,24 +3207,69 @@
       "risk_class": "irreversible-data",
       "summary": "Retirement of source-side state only after a matching recipient import receipt exists.",
       "required_fields": [
-        {"name": "handoff_id", "type": "string"},
-        {"name": "manifest_digest", "type": "digest"},
-        {"name": "payload_profile", "type": "string"},
-        {"name": "transfer_mode", "type": "enum", "values_ref": "inline: COPY"},
-        {"name": "source_agent", "type": "string"},
-        {"name": "source_boundary_id", "type": "string"},
-        {"name": "recipient_agent", "type": "string"},
-        {"name": "recipient_boundary_id", "type": "string"},
-        {"name": "relying_party_id", "type": "string"},
-        {"name": "scope_digest", "type": "digest"},
-        {"name": "expires_at", "type": "timestamp"},
-        {"name": "nonce", "type": "string"},
-        {"name": "import_receipt_digest", "type": "digest"},
-        {"name": "retirement_set_digest", "type": "digest"}
+        {
+          "name": "handoff_id",
+          "type": "string"
+        },
+        {
+          "name": "manifest_digest",
+          "type": "digest"
+        },
+        {
+          "name": "payload_profile",
+          "type": "string"
+        },
+        {
+          "name": "transfer_mode",
+          "type": "enum",
+          "values_ref": "inline: COPY"
+        },
+        {
+          "name": "source_agent",
+          "type": "string"
+        },
+        {
+          "name": "source_boundary_id",
+          "type": "string"
+        },
+        {
+          "name": "recipient_agent",
+          "type": "string"
+        },
+        {
+          "name": "recipient_boundary_id",
+          "type": "string"
+        },
+        {
+          "name": "relying_party_id",
+          "type": "string"
+        },
+        {
+          "name": "scope_digest",
+          "type": "digest"
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp"
+        },
+        {
+          "name": "nonce",
+          "type": "string"
+        },
+        {
+          "name": "import_receipt_digest",
+          "type": "digest"
+        },
+        {
+          "name": "retirement_set_digest",
+          "type": "digest"
+        }
       ],
       "optional_fields": [],
       "digest_notes": "import_receipt_digest binds retirement to one matching ACCEPTED or PARTIAL import receipt. retirement_set_digest binds exactly the accepted object identifiers and object digests, excluding unavailable objects. Retirement is separate from copy and never transfers operational authority.",
-      "references": ["EP-PORTABLE-STATE-HANDOFF-v0.1"]
+      "references": [
+        "EP-PORTABLE-STATE-HANDOFF-v0.1"
+      ]
     }
   ]
 }

@@ -49,4 +49,4 @@ those source files.
 This is an interoperability experiment, not evidence that Rafael,
 WIMSE, the IETF, or another implementation adopted CAID or this profile. It
 does not define a neutral global registry, and it does not review the other
-50 entries in the current 52-type EMILIA-maintained seed registry.
+50 entries of the 52-type registry version 4 it pins.

@@ -18,7 +18,10 @@ const htmlRel = 'RENDERS/draft-schrock-canonical-action-identifier-03.html';
 const source = readFileSync(path.join(packet, sourceRel), 'utf8');
 const text = readFileSync(path.join(packet, textRel), 'utf8');
 const html = readFileSync(path.join(packet, htmlRel), 'utf8');
-const registry = JSON.parse(readFileSync(path.join(root, 'caid/registry/action-types.json'), 'utf8'));
+// The posted -03 revision describes registry version 4. Read the frozen
+// byte-identical v4 file (caid/registry/history/), never the live registry,
+// so later registry versions cannot break the check of a published draft.
+const registry = JSON.parse(readFileSync(path.join(root, 'caid/registry/history/action-types.v4.json'), 'utf8'));
 const enumSnapshot = JSON.parse(readFileSync(
   path.join(root, 'caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json'),
   'utf8',

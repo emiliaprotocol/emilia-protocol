@@ -1,0 +1,155 @@
+; Collected ABNF [RFC5234] with case-sensitive strings [RFC7405].
+; A string matches a rule only as a whole: nothing precedes or
+; follows it, not even a final line feed.
+
+; A.1 Identifier
+
+caid          = %s"caid" ":" caid-version ":" action-type ":"
+                suite ":" digest
+
+caid-version  = "1"
+
+action-type   = 1*( name-segment "." ) type-version
+name-segment  = lower-char *( lower-char / DIGIT / "-" )
+type-version  = pos-int
+pos-int       = %x31-39 *DIGIT   ; positive integer, no leading zero
+
+suite         = lower-char *( lower-char / DIGIT / "-" )
+
+digest        = 1*b64url-char
+b64url-char   = %x41-5A / %x61-7A / DIGIT / "-" / "_"
+                                 ; A-Z / a-z / 0-9 / "-" / "_"
+
+lower-char    = %x61-7A          ; a-z
+
+; A.2 Digest syntax per suite
+;
+; A suite whose digest is n octets encodes it in c = ceil(8n/6)
+; base64url characters. The final character carries u = 6c - 8n
+; unused low bits, which are zero: of the 64 base64url characters,
+; only those whose 6-bit value is a multiple of 2^u may end the
+; digest. For n = 32 (jcs-sha256 and cbor-sha256), c = 43 and
+; u = 2.
+
+digest-256    = 42b64url-char b64url-z2
+b64url-z2     = %x41 / %x45 / %x49 / %x4D / %x51 / %x55 / %x59
+              / %x63 / %x67 / %x6B / %x6F / %x73 / %x77
+              / %x30 / %x34 / %x38
+                                 ; A E I M Q U Y c g k o s w 0 4 8
+
+; A.3 Field types
+
+amount-string = [ "-" ] int-part [ "." frac-part ]
+int-part      = "0" / ( %x31-39 *DIGIT )  ; no leading zero
+frac-part     = 1*DIGIT
+
+digest-field  = %s"sha256:" 64hex-lower
+hex-lower     = DIGIT / %x61-66  ; 0-9 / a-f
+
+timestamp     = full-date %x54 utc-time %x5A   ; "T" and "Z"
+full-date     = date-year "-" date-month "-" date-mday
+date-year     = 4DIGIT
+date-month    = "0" %x31-39 / "1" %x30-32      ; 01-12
+date-mday     = "0" %x31-39 / %x31-32 DIGIT / "3" %x30-31
+                                 ; 01-31, within the month
+utc-time      = time-hour ":" time-minute ":" time-second
+                [ time-fraction ]
+time-hour     = %x30-31 DIGIT / "2" %x30-33    ; 00-23
+time-minute   = %x30-35 DIGIT                  ; 00-59
+time-second   = %x30-35 DIGIT                  ; 00-59, never 60
+time-fraction = "." 1*DIGIT
+
+; A.4 Code formats
+;
+; The rule name of each code format is its registered format name.
+; A format fixes syntax only, never which codes exist.
+
+icd-10-cm     = UALPHA 2UALNUM [ "." 1*4UALNUM ]
+ndc-11        = 11DIGIT
+ndc-10-hyphenated
+              = 4DIGIT "-" 4DIGIT "-" 2DIGIT
+              / 5DIGIT "-" 4DIGIT "-" 1DIGIT
+              / 5DIGIT "-" 3DIGIT "-" 2DIGIT
+cpt           = 4DIGIT ( DIGIT / UALPHA )
+hcpcs-level-ii
+              = UALPHA 4DIGIT
+hcpcs         = cpt / hcpcs-level-ii
+iso-3166-1-alpha-2
+              = 2UALPHA
+iso-3166-2    = 2UALPHA "-" 1*3UALNUM
+iso20022-external-code
+              = 1*4UALNUM
+nacha-sec     = 3UALNUM
+
+UALPHA        = %x41-5A          ; A-Z
+UALNUM        = UALPHA / DIGIT
+
+; A.5 Definitions
+
+field-name    = 1*field-char
+field-char    = %x00-39 / %x3B-D7FF / %xE000-10FFFF
+                                 ; any scalar value except ":"
+
+format-name   = lower-char *( lower-char / DIGIT / "-" )
+                                 ; the registered formats are A.4
+
+code-system   = uri-scheme ":" 1*uri-char
+                                 ; an absolute URI [RFC3986] with no
+                                 ; fragment, in these characters only
+uri-scheme    = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+uri-char      = ALPHA / DIGIT / "-" / "." / "_" / "~"
+              / "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+"
+              / "," / ";" / "=" / ":" / "@" / "/" / "?"
+              / pct-encoded
+pct-encoded   = "%" HEXDIG HEXDIG
+
+; A.6 Action-Mapping Profile
+
+json-pointer  = *( "/" reference-token )       ; [RFC6901]
+source-path   = "/" reference-token json-pointer
+                                 ; a json-pointer other than ""
+reference-token
+              = *( unescaped / escaped )
+unescaped     = %x00-2E / %x30-7D / %x7F-D7FF / %xE000-10FFFF
+escaped       = "~" ( "0" / "1" )
+array-index   = "0" / ( %x31-39 *DIGIT )
+hex-sha256    = 64hex-lower
+
+; A.7 Reasons
+
+reason        = core-reason / mapping-reason / comparison-reason
+
+core-reason   = compute-reason / core-only
+core-only     = %s"malformed_json" / %s"malformed_caid"
+              / %s"action_type_mismatch"
+              / %s"definition_mismatch" / %s"digest_mismatch"
+              / %s"invalid_object"
+compute-reason
+              = compute-bare / field-code ":" field-name
+compute-bare  = %s"invalid_action_type" / %s"unknown_action_type"
+              / %s"invalid_definition" / %s"unknown_suite"
+              / %s"unsupported_number" / %s"unsupported_value"
+field-code    = %s"missing_material_field" / %s"mistyped_field"
+              / %s"invalid_amount" / %s"invalid_code"
+
+mapping-reason
+              = mapping-bare
+              / %s"unmapped_material_field" ":" field-name
+              / pointer-code ":" source-path
+              / %s"mapped_action" ":" compute-reason
+mapping-bare  = %s"invalid_mapping_profile"
+              / %s"unknown_action_type" / %s"invalid_definition"
+              / %s"native_verification_required"
+              / %s"mapping_profile_unpinned"
+              / %s"source_format_mismatch" / %s"source_not_object"
+              / %s"source_not_canonicalizable"
+              / %s"declared_source_semantic_loss"
+pointer-code  = %s"invalid_source_path" / %s"missing_source_field"
+              / %s"source_value_type_mismatch"
+              / %s"source_value_not_canonicalizable"
+              / %s"unknown_transform"
+
+comparison-reason
+              = ( %s"left" / %s"right" ) ":" mapping-reason
+              / %s"target_action_type_mismatch"
+              / %s"material_projection_mismatch"

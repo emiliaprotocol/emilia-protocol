@@ -1,0 +1,348 @@
+{
+  "@version": "CAID-REGISTRY-DIGESTS-v1",
+  "registry": "caid-action-types",
+  "registry_version": 5,
+  "definition_sha256": "sha256: followed by the lowercase hexadecimal SHA-256 of the RFC 8785 encoding of the validation projection: action_type, required_fields and optional_fields (absent is []), each field entry without notes (draft-schrock-canonical-action-identifier-04 Section 4.2; caid/spec/core.json definition.projection).",
+  "registry_files": [
+    {
+      "registry_version": 4,
+      "path": "history/action-types.v4.json",
+      "sha256": "sha256:73a31f4a4156e3de02e1c3a9ef355f73c07ba25e6b1bb3da8fde8677c2e23d26",
+      "jcs_sha256": "sha256:206d05e0eb687f4d4b952e41745a6e3d14e5d78fefa88a0b0bdb2c27ad7c0577"
+    },
+    {
+      "registry_version": 5,
+      "path": "action-types.json",
+      "sha256": "sha256:1e30ddd312c888f6a27055dac0ed453398e20b64cfdcb7c5019fcf0e1ac2551a",
+      "jcs_sha256": "sha256:4cb5b235cbf092ab8d703b279581e221c5699e580754264c6d9cdb2cb0de5fef"
+    }
+  ],
+  "changed_since_v4": [
+    {
+      "action_type": "dns.record.delete.1",
+      "field": "record_type",
+      "change": "first pin",
+      "v4_definition_sha256": "sha256:9bb2d9827ce7385e84212879185db5112acc65517e45b129d12f533cf54497b8",
+      "v5_definition_sha256": "sha256:0b320a2b0e944df0820439683032e2ce216c6601300d71368cd6cbc2245cc9e4"
+    },
+    {
+      "action_type": "vendor.onboard.1",
+      "field": "jurisdiction",
+      "change": "first pin",
+      "v4_definition_sha256": "sha256:3c3f77e090e1565049c4070175ca8f36cb03991be3f51930732afe83a69ebeb6",
+      "v5_definition_sha256": "sha256:716562ad88964db0c27e99594917e55a624565ccabb051ef293707984fde3dcc"
+    }
+  ],
+  "types": [
+    {
+      "action_type": "payment.release.1",
+      "status": "active",
+      "definition_sha256": "sha256:3a5ad4c0a3a8dbf7eb9ea5f4c3b2ceb07ba1972fac49acc6006dcac64726ff12"
+    },
+    {
+      "action_type": "payment.refund.1",
+      "status": "deprecated",
+      "definition_sha256": "sha256:4fd20a272ef42f027c832b3cab3500219d695f2516e030a1d9cb1c1402a17df3"
+    },
+    {
+      "action_type": "payment.refund.2",
+      "status": "active",
+      "definition_sha256": "sha256:9421a7b0166e9c4e69aa1d166c779b93cff1236ae4940ee883d75cb45d2bdb50"
+    },
+    {
+      "action_type": "payout.batch.execute.1",
+      "status": "active",
+      "definition_sha256": "sha256:f717a2a675fc94abf61cad351a6e7698da335b8bce18ece4f904cb3f3d873c3b"
+    },
+    {
+      "action_type": "wire.transfer.1",
+      "status": "active",
+      "definition_sha256": "sha256:29ae2cafd17694e2ca65096bfc7cbd86c8c309082e7e9fc8cf92b67928fdfef2"
+    },
+    {
+      "action_type": "ach.debit.originate.1",
+      "status": "deprecated",
+      "definition_sha256": "sha256:b3875a1ee1855fd8ab9a8481578af72f13e151a8297c283ec3a68ea9c482b4ee"
+    },
+    {
+      "action_type": "ach.debit.originate.2",
+      "status": "active",
+      "definition_sha256": "sha256:2ac0e6c6cbd6c8c0acc5ac4b71f9aaeb0adb9ed7511b5b7d0bf11b90425b7aba"
+    },
+    {
+      "action_type": "iam.role.grant.1",
+      "status": "active",
+      "definition_sha256": "sha256:24950ca02a77db28221df4f2e2bb81b20162ac9c7f8c5cc75db306374606509a"
+    },
+    {
+      "action_type": "iam.role.revoke.1",
+      "status": "active",
+      "definition_sha256": "sha256:7ed8339092856720580669a5e2692cb4350f37ddafd97afad51672043e2163ea"
+    },
+    {
+      "action_type": "iam.user.delete.1",
+      "status": "active",
+      "definition_sha256": "sha256:f5365e3dc46b2a04b9e804d5921b5debc129a9eee0d1b916679fdf9232ce068f"
+    },
+    {
+      "action_type": "key.create.1",
+      "status": "deprecated",
+      "definition_sha256": "sha256:739b77a1dbf3fd164f2ed047368bd8cdc55757c3a840db9140f43dc923111778"
+    },
+    {
+      "action_type": "key.create.2",
+      "status": "active",
+      "definition_sha256": "sha256:a6fcdb0e1644ad65449ba2bfe48baea60cd97f8ed1063f15fb5510b1affe1c5c"
+    },
+    {
+      "action_type": "key.delete.1",
+      "status": "active",
+      "definition_sha256": "sha256:2840d845e32c5f09b3ba2a2b952a2ef495a2f28180a23e33bacf39a6d37ba3cd"
+    },
+    {
+      "action_type": "key.rotate.1",
+      "status": "deprecated",
+      "definition_sha256": "sha256:f2c43de398bc9d1bd62554f867fdec194cb07bb241415d6dc8165f860a32725d"
+    },
+    {
+      "action_type": "key.rotate.2",
+      "status": "active",
+      "definition_sha256": "sha256:d0aa8847da551efe214d27c3e5fe0a341654b8682b0dc03e30c64242142a24aa"
+    },
+    {
+      "action_type": "mfa.disable.1",
+      "status": "active",
+      "definition_sha256": "sha256:dc15633426de52ba4862948414a50182105ed839cc7c221ca46ac95913b19b8d"
+    },
+    {
+      "action_type": "dns.record.delete.1",
+      "status": "active",
+      "definition_sha256": "sha256:0b320a2b0e944df0820439683032e2ce216c6601300d71368cd6cbc2245cc9e4"
+    },
+    {
+      "action_type": "dns.zone.transfer.1",
+      "status": "active",
+      "definition_sha256": "sha256:b83fb16d90f9c61eedb802454b150cd5f2ee841b493935e5adcf2361b9575279"
+    },
+    {
+      "action_type": "instance.terminate.1",
+      "status": "active",
+      "definition_sha256": "sha256:ebb2e0a621a000f7dced69226a60ffc0b034781b412fceb99fc147414de782c4"
+    },
+    {
+      "action_type": "cluster.delete.1",
+      "status": "active",
+      "definition_sha256": "sha256:25345b085c2bc02d92eeb5c909ec035d327eef33f0f1b0f56e890a0f26b9be29"
+    },
+    {
+      "action_type": "firewall.rule.open.1",
+      "status": "deprecated",
+      "definition_sha256": "sha256:4a768f2ed30354b053c40f3b6ca0bfdd4dc29d78fc5b6d5558f8f6970e890e8a"
+    },
+    {
+      "action_type": "firewall.rule.open.2",
+      "status": "active",
+      "definition_sha256": "sha256:254b72b169a6675fed28ff2e5da97a10cb0332965ab222deccd3c48ffa8d2f74"
+    },
+    {
+      "action_type": "storage.bucket.public.1",
+      "status": "active",
+      "definition_sha256": "sha256:fab030e96ff68a3ccf2b9ce53a732ed95d8c2053d95f1a826b8da19a8b9e8aa1"
+    },
+    {
+      "action_type": "dataset.delete.1",
+      "status": "active",
+      "definition_sha256": "sha256:1caf662180cbfc278f9d8d4549481b22198ea77d72243bef0accebc48663f0bf"
+    },
+    {
+      "action_type": "backup.delete.1",
+      "status": "active",
+      "definition_sha256": "sha256:4cd79cec67565c65f7c99e14fc3b36a6ac18a352a9bf7d9f9475bd300f0b5d15"
+    },
+    {
+      "action_type": "retention.policy.override.1",
+      "status": "active",
+      "definition_sha256": "sha256:cbc581e8642f85425b300bef9c83c7ed86b04b998aaf0b62d72ebc2d3fbed508"
+    },
+    {
+      "action_type": "pii.export.1",
+      "status": "deprecated",
+      "definition_sha256": "sha256:842fd0e6d0f7c7ec168e6c29fa992230dea8da1dcb8295e4b56e044eea6e1648"
+    },
+    {
+      "action_type": "pii.export.2",
+      "status": "active",
+      "definition_sha256": "sha256:fbef9a2810f87e8df07c84c0a71964f4f4606408df59a5d302dc22ca70556075"
+    },
+    {
+      "action_type": "email.send.external.1",
+      "status": "active",
+      "definition_sha256": "sha256:04c79261361a0db6caf4a2c69a19a3b9d19a39c5df7e3fb7ace8d29fe100d589"
+    },
+    {
+      "action_type": "announcement.publish.1",
+      "status": "active",
+      "definition_sha256": "sha256:ed2f14b052e7ac7ba84c58391cf360176a8084b37cca55cd86faba4f2c551890"
+    },
+    {
+      "action_type": "social.post.publish.1",
+      "status": "active",
+      "definition_sha256": "sha256:f56db5382d2a7ca5a7640664408778c1b6b4da8a632978a6337872ab08a16459"
+    },
+    {
+      "action_type": "press.release.distribute.1",
+      "status": "active",
+      "definition_sha256": "sha256:33b97769d9edbad183d13907468dbfaa85010629c305aaa70d8c0dc44814557a"
+    },
+    {
+      "action_type": "package.publish.1",
+      "status": "active",
+      "definition_sha256": "sha256:31af7ddad65e14e9b5577e812934db3098fe8c23e53468e3ac0476aac110818b"
+    },
+    {
+      "action_type": "release.deploy.prod.1",
+      "status": "active",
+      "definition_sha256": "sha256:103c8410093d6b0d15994a65e2cc3afbb725fc5c1db229178c743019a1448de7"
+    },
+    {
+      "action_type": "secret.rotate.1",
+      "status": "active",
+      "definition_sha256": "sha256:5244e9721e4d97321bc45e2512860949092a650de0693f6ef48d11bf4704e527"
+    },
+    {
+      "action_type": "repo.delete.1",
+      "status": "active",
+      "definition_sha256": "sha256:8a18c77f7a211bfc64e64014d9f3ee8ab6122406d440a26ad180f7820baafb1f"
+    },
+    {
+      "action_type": "branch.protection.disable.1",
+      "status": "active",
+      "definition_sha256": "sha256:6b0cf385a056e763c9a1a705ef96267af9c854ec0498e9e0828258a6daeb94a9"
+    },
+    {
+      "action_type": "order.place.1",
+      "status": "active",
+      "definition_sha256": "sha256:7ba6606177cad27ac3d12ac7875cf2b52e653229ccc3890097eb24129d0cac81"
+    },
+    {
+      "action_type": "subscription.cancel.1",
+      "status": "active",
+      "definition_sha256": "sha256:7ed8974c8f020de6aa6da1984f86a7feacbf4dcf4a859e170144d6143971e192"
+    },
+    {
+      "action_type": "refund.issue.1",
+      "status": "active",
+      "definition_sha256": "sha256:f5819f5e049731f3490d8a3d0a19b4079ebc629c8370cc51e16095da9a3d506c"
+    },
+    {
+      "action_type": "listing.delist.1",
+      "status": "active",
+      "definition_sha256": "sha256:8b14243a3c9cf02f6d92a4d725be08fd38f12e74be91c60a60291eb507aa4c73"
+    },
+    {
+      "action_type": "contract.execute.1",
+      "status": "active",
+      "definition_sha256": "sha256:468e056e3c1b3993af7cf0da05b7ab2c098421b25d631a792ac112ddb52fa250"
+    },
+    {
+      "action_type": "contract.execute.2",
+      "status": "active",
+      "definition_sha256": "sha256:d1f43cb28204cae2d330abb9a51a8e7934a966c15eea10695149f904083b4dbc"
+    },
+    {
+      "action_type": "regulatory.filing.submit.1",
+      "status": "active",
+      "definition_sha256": "sha256:4b57279dd56a3007fda65844f90c4ffd5271a884685f37c485154f00b1a16a73"
+    },
+    {
+      "action_type": "legal.hold.release.1",
+      "status": "active",
+      "definition_sha256": "sha256:9e8f90820e84ea12a51dac9ba678a66df2aaba3b64e1f77f53c14a1568cf0c0c"
+    },
+    {
+      "action_type": "rx.dispense.1",
+      "status": "deprecated",
+      "definition_sha256": "sha256:54d81e6db3cb38b0e5b8a53d476100558f4c211a074c2543423eb6cde38338f7"
+    },
+    {
+      "action_type": "rx.dispense.2",
+      "status": "active",
+      "definition_sha256": "sha256:943609964f09155f5509b045c23a7a0dc1003aec09f2d3b833cdf4fdabb79012"
+    },
+    {
+      "action_type": "prior.auth.approve.1",
+      "status": "deprecated",
+      "definition_sha256": "sha256:7b1f54c3dde91b1c7faa656859021a775e27f2d36bbe88cf6a1deafe6deb6d76"
+    },
+    {
+      "action_type": "prior.auth.approve.2",
+      "status": "active",
+      "definition_sha256": "sha256:c25345a298c9b0ec96d019e4e2bcfd6ddd259ad064a7cb75b581999eaaf10086"
+    },
+    {
+      "action_type": "phi.disclose.1",
+      "status": "deprecated",
+      "definition_sha256": "sha256:bde03fd967ff8129af1b9ed23a6de6259ecc3dde0ac0a88b7ef06d74f28c8b69"
+    },
+    {
+      "action_type": "phi.disclose.2",
+      "status": "active",
+      "definition_sha256": "sha256:23beb6c5da8d75d8443b314ef59fd46459b9d1378d6356fbb721cbf6e985ef80"
+    },
+    {
+      "action_type": "benefit.disburse.1",
+      "status": "active",
+      "definition_sha256": "sha256:5b5fbca19b3c59a0fa3594b67f8321ed02b5f1473b2ab739b2359f8de589ef76"
+    },
+    {
+      "action_type": "invoice.approve.1",
+      "status": "active",
+      "definition_sha256": "sha256:2a5424eb4ac66ff7bdd1e10473c7c0384e5ea9d1b8645b8f2a022a30e77a05f3"
+    },
+    {
+      "action_type": "vendor.onboard.1",
+      "status": "active",
+      "definition_sha256": "sha256:716562ad88964db0c27e99594917e55a624565ccabb051ef293707984fde3dcc"
+    },
+    {
+      "action_type": "travel.cancel-notify.1",
+      "status": "active",
+      "definition_sha256": "sha256:1599e98a6409c57ef3d022d586f4eb21bc7821a75f3316e2e6ae2a5e509d39c1"
+    },
+    {
+      "action_type": "science.bio.experiment.execute.1",
+      "status": "active",
+      "definition_sha256": "sha256:e80d210c9e009a1e1e1bd6ec4d2afa902d0620ac10eaab51d4e49c25e744a819"
+    },
+    {
+      "action_type": "tool.call.1",
+      "status": "active",
+      "definition_sha256": "sha256:c95e21136fd8b6df646be2957fe42fbf18935add20da6bc9569aa2d1a771afa2"
+    },
+    {
+      "action_type": "emilia.mobile.authorized-action.1",
+      "status": "active",
+      "definition_sha256": "sha256:a3007f508e4d84e07a7c90a728496a5665f893919f2c7cde25de96c98d50fcb7"
+    },
+    {
+      "action_type": "agent.state.export.1",
+      "status": "active",
+      "definition_sha256": "sha256:057c9aee5a661416e510bc620f0bbb6efdf3870a92ca389d535bbf0064b67285"
+    },
+    {
+      "action_type": "agent.state.import.1",
+      "status": "active",
+      "definition_sha256": "sha256:e539901b9f14afe604952b0cd071337bb6269ab5d1d11ceee2a1292e46c9ab32"
+    },
+    {
+      "action_type": "agent.state.key-release.1",
+      "status": "active",
+      "definition_sha256": "sha256:939f6a2b8ccfb4fed835e6bac211681b7ec51032270761c19b711f349839386f"
+    },
+    {
+      "action_type": "agent.state.retire-source.1",
+      "status": "active",
+      "definition_sha256": "sha256:d95b4a14ab5b7989bbc0d0047acf564648b381e1f48e0cc1411d8d911018a365"
+    }
+  ]
+}

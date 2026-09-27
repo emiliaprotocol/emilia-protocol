@@ -95,17 +95,37 @@ const CHECKED_IN_REGISTRY = JSON.parse(readFileSync(REGISTRY_URL, 'utf8'));
 export const REGISTRY_ENUM_SNAPSHOTS = loadRegistryEnumSnapshots(CHECKED_IN_REGISTRY);
 
 /**
- * The single active checked-in registry definition for an action type. Code
- * that means a registered type uses this definition with
- * REGISTRY_ENUM_SNAPSHOTS instead of a same-name local copy.
+ * The checked-in registry definition for an action type, whatever its
+ * status. Status never affects computation or verification: a deprecated
+ * type still resolves, computes and verifies (draft-schrock-canonical-action-
+ * identifier-04, Section 4), so verifiers and replay tooling use this
+ * resolver. Throws only when the registry has no such type.
+ *
+ * @param {string} actionType
+ * @returns {Record<string, any>}
+ */
+export function registryDefinition(actionType) {
+  const definition = CHECKED_IN_REGISTRY.types.find(
+    (/** @type {any} */ entry) => entry.action_type === actionType,
+  );
+  if (!definition) throw new Error(`CAID registry has no ${actionType}`);
+  return definition;
+}
+
+/**
+ * The checked-in registry definition for an action type while it is active.
+ * Issuers that mean a registered type use this definition with
+ * REGISTRY_ENUM_SNAPSHOTS instead of a same-name local copy; it throws for a
+ * deprecated type so an issuer moves to the successor. It is never a gate on
+ * verifying an existing CAID (use registryDefinition).
  *
  * @param {string} actionType
  * @returns {Record<string, any>}
  */
 export function activeRegistryDefinition(actionType) {
-  const definition = CHECKED_IN_REGISTRY.types.find(
-    (/** @type {any} */ entry) => entry.action_type === actionType && entry.status === 'active',
-  );
-  if (!definition) throw new Error(`CAID registry has no active ${actionType}`);
+  const definition = registryDefinition(actionType);
+  if (definition.status !== 'active') {
+    throw new Error(`CAID registry type ${actionType} is ${definition.status}${definition.superseded_by ? `; use ${definition.superseded_by}` : ''}`);
+  }
   return definition;
 }
