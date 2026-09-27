@@ -403,7 +403,8 @@ Internet-Draft                    CAID                    September 2026
      phase 3  required fields present
      phase 4  present fields valid for their types
      phase 5  suite registered and implemented
-     phase 6  every number, down to depth 64, in the data model
+     phase 6  every number, down to depth 64 and within the
+              value count, in the data model
      phase 7  every other value in the data model
                                                              |
                                                              v
@@ -440,7 +441,6 @@ Internet-Draft                    CAID                    September 2026
       type definition declares the field amount-string.  Floating-point
       and precision malleability across languages makes numeric
       encodings of money unsafe for canonicalization.
-
 
 
 
@@ -493,8 +493,8 @@ Internet-Draft                    CAID                    September 2026
    cycle: it counts as one value, and nothing beyond it is counted or
    examined, since what it refers to is counted and examined where it
    sits.  An action object can be canonicalized when it is a value of
-   the data model whose RFC 8785 encoding is within this limit, whether
-   or not the checks of computation phases 1 through 4 pass.
+   the data model whose RFC 8785 encoding is at most 16,777,216 octets,
+   whether or not the checks of computation phases 1 through 4 pass.
 
 
 
@@ -510,7 +510,10 @@ Internet-Draft                    CAID                    September 2026
    a value inside it.  Computation reports a number outside the model as
    unsupported_number, and anything else, including nesting beyond 64
    and an encoding beyond the limit, as unsupported_value (Section 5,
-   phases 6 and 7).
+   phases 6 and 7).  A number is examined only where an object or array
+   at depth 64 or less holds it, and not at all in a host action object
+   past the value count, which yields unsupported_value instead
+   (Section 2.5).
 
 2.3.  Numbers
 
@@ -548,9 +551,6 @@ Internet-Draft                    CAID                    September 2026
       depth up to 64 (Section 2.2), except in a host action object past
       the value count, which yields unsupported_value instead
       (Section 2.5).  Fractional quantities are carried as strings.
-
-
-
 
 
 
@@ -660,12 +660,12 @@ Internet-Draft                    CAID                    September 2026
    whose prototype is neither Object.prototype nor null is outside the
    model.  Such an implementation:
 
-   *  MUST refuse any host value that is not a value of the data model:
-      a number outside the model as unsupported_number and anything else
-      as unsupported_value (Section 5, phases 6 and 7).  A declared
-      field that holds such a value is also checked under its field type
-      (phase 4) exactly as Section 4.3 states, and fails that check
-      whenever the value is not one that the type accepts.  A host
+   *  MUST refuse any host value that is not a value of the data model.
+      In a host action object within the value count below, a number
+      outside the model that an object or array at depth 64 or less
+      holds is refused as unsupported_number, and anything else as
+      unsupported_value (Section 5, phases 6 and 7).  A host action
+      object past that count is refused as the value count below states,
 
 
 
@@ -674,6 +674,10 @@ Schrock                   Expires 31 March 2027                [Page 12]
 Internet-Draft                    CAID                    September 2026
 
 
+      and any other host value by the step that reads it (Section 2.6).
+      A declared field that holds such a value is also checked under its
+      field type (phase 4) exactly as Section 4.3 states, and fails that
+      check whenever the value is not one that the type accepts.  A host
       number is a host value that the language binding represents as a
       number, such as a Python int or float; its value is its correctly
       rounded binary64 value (Section 2.3), as for a number token.  A
@@ -706,30 +710,6 @@ Internet-Draft                    CAID                    September 2026
       for any host value, including cyclic values and values nested
       deeper than 64.  The depth check precedes any recursive traversal;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 13]
-
-Internet-Draft                    CAID                    September 2026
-
-
    *  MUST refuse a host value made of more than 33,554,432 values
       (Section 2.6), counting the value itself and every value inside it
       once for every path that reaches it, so that a value reached
@@ -742,6 +722,14 @@ Internet-Draft                    CAID                    September 2026
       the value holds, while phases 3 and 4 still run (Section 5); a
       host definition whose validation projection is past it, or a host
       mapping profile or mapping source past it, is refused by the step
+
+
+
+Schrock                   Expires 31 March 2027                [Page 13]
+
+Internet-Draft                    CAID                    September 2026
+
+
       that reads it (Section 2.6).  No JSON text within the limit of
       Section 2.4 holds that many values.  An implementation can process
       a value with shared references without walking its expansion, but
@@ -778,6 +766,18 @@ Internet-Draft                    CAID                    September 2026
    source_not_canonicalizable, and an enum value array that exceeds it
    cannot match its values_sha256, so a present field is
    mistyped_field:<name>.  The nesting limit and the value count apply
+   in the same way to a host value that is not an action object
+   (Section 2.5): a host definition whose validation projection nests
+   deeper than 64 or exceeds the value count is invalid_definition, a
+   host mapping profile that does is invalid_mapping_profile and has no
+   digest (Section 8.3), and a host mapping source that does is
+   source_not_canonicalizable.
+
+
+
+
+
+
 
 
 
@@ -785,13 +785,6 @@ Schrock                   Expires 31 March 2027                [Page 14]
 
 Internet-Draft                    CAID                    September 2026
 
-
-   in the same way to a host value that is not an action object
-   (Section 2.5): a host definition whose validation projection nests
-   deeper than 64 or exceeds the value count is invalid_definition, a
-   host mapping profile that does is invalid_mapping_profile and has no
-   digest (Section 8.3), and a host mapping source that does is
-   source_not_canonicalizable.
 
    +==========+===========+===================+=======================+
    |Limit     |Value      |Applies to         |Refusal                |
@@ -814,7 +807,10 @@ Internet-Draft                    CAID                    September 2026
    |encoding  |octets     |                   |                       |
    +----------+-----------+-------------------+-----------------------+
    |Integer   |2^53-1     |every number held  |unsupported_number     |
-   |magnitude |           |at depth 64 or less|                       |
+   |magnitude |           |at depth 64 or less|(action object);       |
+   |          |           |in a value within  |otherwise the reason of|
+   |          |           |the value count    |the step that reads the|
+   |          |           |                   |value                  |
    +----------+-----------+-------------------+-----------------------+
    |Value     |33,554,432 |a host value, each |unsupported_value and  |
    |count     |values     |value counted once |no unsupported_number  |
@@ -834,6 +830,10 @@ Internet-Draft                    CAID                    September 2026
    +----------+-----------+-------------------+-----------------------+
    |Identifier|1,024      |a CAID string      |malformed_caid         |
    |          |octets     |                   |                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Code      |2,048      |the code_system of |invalid_definition     |
+   |system    |octets     |a code field       |                       |
+   +----------+-----------+-------------------+-----------------------+
 
 
 
@@ -842,14 +842,10 @@ Schrock                   Expires 31 March 2027                [Page 15]
 Internet-Draft                    CAID                    September 2026
 
 
-   +----------+-----------+-------------------+-----------------------+
    |Action    |512 octets |an action type in a|malformed_caid;        |
    |type      |           |CAID, an action    |invalid_action_type;   |
    |          |           |object, or a       |invalid_definition     |
    |          |           |definition         |                       |
-   +----------+-----------+-------------------+-----------------------+
-   |Code      |2,048      |the code_system of |invalid_definition     |
-   |system    |octets     |a code field       |                       |
    +----------+-----------+-------------------+-----------------------+
    |Mapping   |1 to 128   |rules of a mapping |invalid_mapping_profile|
    |rules     |rules      |profile            |                       |
@@ -890,6 +886,10 @@ Internet-Draft                    CAID                    September 2026
    suite.  A registered suite is never removed, reassigned, or
    redefined.
 
+   jcs-sha256:  The JSON Canonicalization Scheme [RFC8785] followed by
+
+
+
 
 
 
@@ -898,7 +898,6 @@ Schrock                   Expires 31 March 2027                [Page 16]
 Internet-Draft                    CAID                    September 2026
 
 
-   jcs-sha256:  The JSON Canonicalization Scheme [RFC8785] followed by
       SHA-256 [RFC6234], with a 32-octet digest.  RFC 8785 sorts member
       names by their UTF-16 code units, not by their code points
       (Section 3.2.3 of [RFC8785]), so a name that begins with U+1F600
@@ -946,6 +945,7 @@ Internet-Draft                    CAID                    September 2026
    that an existing artifact format whose signed or hashed payload is
    itself a valid action object can reuse the digest it already computes
    over the same canonical bytes under the same suite.  The goal is
+   limited to that reuse: it does not make an identifier computed under
 
 
 
@@ -954,7 +954,6 @@ Schrock                   Expires 31 March 2027                [Page 17]
 Internet-Draft                    CAID                    September 2026
 
 
-   limited to that reuse: it does not make an identifier computed under
    another profile comparable with a CAID (Section 3.6).  Conforming
    verifiers MUST check that the in-object action_type equals the action
    type carried in the CAID string (Section 6); that check, not a byte
@@ -1001,6 +1000,7 @@ Internet-Draft                    CAID                    September 2026
    A parser takes an identifier string and the suite registry and yields
    either the four components or exactly one reason.  It applies these
    checks in order and stops at the first that fails:
+
 
 
 
@@ -1437,19 +1437,19 @@ Internet-Draft                    CAID                    September 2026
    integer:  A number whose value (Section 2.3) is a finite integer,
       whatever its literal form: 12, 12.0, and 1.2e1 are the integer 12.
       Magnitude is not part of the type.  A finite integer beyond 2^53-1
-      is type-valid and is refused once, as unsupported_number.  A
-      literal whose correctly rounded value is an infinity (Section 2.3)
-      is not an integer, so it is refused both as mistyped_field:<name>
-      and as unsupported_number.  For counts only, never for money.
+      is type-valid and is refused once, as unsupported_number
+      (unsupported_value in a host action object past the value count,
+      Section 2.5).  A literal whose correctly rounded value is an
+      infinity (Section 2.3) is not an integer, so it is refused both as
+      mistyped_field:<name> and as unsupported_number.  For counts only,
+      never for money.
 
    boolean:  true or false.
 
    object:  An object.  Values nested inside it are checked by
-      computation phases 6 and 7, not by this field type: an object
-      field that holds a fractional number is refused as
-      unsupported_number alone.
 
-   array:  An array.  Values nested inside it are checked by computation
+
+
 
 
 
@@ -1458,6 +1458,12 @@ Schrock                   Expires 31 March 2027                [Page 26]
 Internet-Draft                    CAID                    September 2026
 
 
+      computation phases 6 and 7, not by this field type: an object
+      field that holds a fractional number fails no field type, and the
+      number is refused as unsupported_number wherever phase 6 examines
+      it (Section 5).
+
+   array:  An array.  Values nested inside it are checked by computation
       phases 6 and 7, not by this field type.
 
    Except where stated above, a present field whose value fails its
@@ -1499,12 +1505,6 @@ Internet-Draft                    CAID                    September 2026
       match exactly.  A supplied snapshot never replaces an embedded
       values member.
 
-   For an external reference, the issuer or verifier MUST check that the
-   pinned array is a non-empty, duplicate-free array of non-empty
-   strings, compute SHA-256 over the RFC 8785 canonical JSON encoding of
-   that complete array, and compare the lowercase hexadecimal result,
-   prefixed with sha256:, to values_sha256 before testing membership.
-
 
 
 
@@ -1513,6 +1513,12 @@ Schrock                   Expires 31 March 2027                [Page 27]
 
 Internet-Draft                    CAID                    September 2026
 
+
+   For an external reference, the issuer or verifier MUST check that the
+   pinned array is a non-empty, duplicate-free array of non-empty
+   strings, compute SHA-256 over the RFC 8785 canonical JSON encoding of
+   that complete array, and compare the lowercase hexadecimal result,
+   prefixed with sha256:, to values_sha256 before testing membership.
 
    An enum snapshot read from JSON text is a JSON object whose
    values_ref, values_snapshot, and values_sha256 members are strings
@@ -1556,12 +1562,6 @@ Internet-Draft                    CAID                    September 2026
    *  format names a registered code format.  The code formats of this
       document are the rules of part A.4 of Appendix A, each named by
       its rule name.  Their syntax follows the published code systems:
-      ICD-10-CM [ICD-10-CM], the National Drug Code [NDC], CPT [CPT],
-      HCPCS Level II [HCPCS], ISO 3166-2 [ISO3166-2], the ISO 20022
-      External Code Sets [ISO20022], and the Nacha Standard Entry Class
-      codes [NACHA].  A format fixes syntax only, never which codes
-      exist.
-
 
 
 
@@ -1569,6 +1569,12 @@ Schrock                   Expires 31 March 2027                [Page 28]
 
 Internet-Draft                    CAID                    September 2026
 
+
+      ICD-10-CM [ICD-10-CM], the National Drug Code [NDC], CPT [CPT],
+      HCPCS Level II [HCPCS], ISO 3166-2 [ISO3166-2], the ISO 20022
+      External Code Sets [ISO20022], and the Nacha Standard Entry Class
+      codes [NACHA].  A format fixes syntax only, never which codes
+      exist.
 
    *  The value is a string, valid if and only if the format matches the
       whole string.  There is no normalization: the canonical form is
@@ -1611,12 +1617,6 @@ Internet-Draft                    CAID                    September 2026
    document calls that the linear-matching property.  A new code format
    is registered in the CAID Code Formats registry (Section 12.4) with
    its ABNF and must have this property.
-
-
-
-
-
-
 
 
 
@@ -3034,20 +3034,21 @@ Internet-Draft                    CAID                    September 2026
    The initial CAID Action Types entries rely on identifiers from the
    system of record, such as payment_instruction_id,
    authorization_number, and order_id, that the registry cannot require
-   to be high-entropy.  Where such an identifier is sequential, anyone
-   who holds a CAID of that type can recover its action object by
-   guessing, so the CAID needs the protection its action object needs,
-   including personal-data protection when the object carries personal
-   data.  The notes of a registered type fix what each of its digest
-   fields commits to, and that is part of the entry's immutable meaning
-   (Section 12.2), so a deployment does not carry a keyed commitment,
-   such as HMAC-SHA-256 [RFC6234] under a deployment-scoped key, in a
-   digest field whose notes, like those of patient_ref, describe a plain
-   digest.  A deployment that needs a keyed commitment uses a type whose
-   notes specify it: a local type (Section 4.6) or a new version
-   registered for that purpose.  Nothing in an action object says which
-   scheme a digest field used, so comparison across deployments then
-   needs a mapping profile (Section 8).
+   to be high-entropy.  Where such an identifier is sequential and the
+   other members can be guessed, anyone who holds a CAID of that type
+   can recover its action object, so the CAID needs the protection its
+   action object needs, including personal-data protection when the
+   object carries personal data.  The notes of a registered type fix
+   what each of its digest fields commits to, and that is part of the
+   entry's immutable meaning (Section 12.2), so a deployment does not
+   carry a keyed commitment, such as HMAC-SHA-256 [RFC6234] under a
+   deployment-scoped key, in a digest field whose notes, like those of
+   patient_ref, describe a plain digest.  A deployment that needs a
+   keyed commitment uses a type whose notes specify it: a local type
+   (Section 4.6) or a new version registered for that purpose.  Nothing
+   in an action object says which scheme a digest field used, so
+   comparison across deployments then needs a mapping profile
+   (Section 8).
 
    Action objects, CAIDs, verification details, and their correlations
    should be assumed to travel and to appear in logs.
@@ -3071,9 +3072,8 @@ Internet-Draft                    CAID                    September 2026
    of tool.call.1.  The change controller of every initial entry is the
    IETF.
 
-   Only an entry's change controller may request a change to that entry,
-   such as deprecation with superseded_by or a monotone enum advance,
-   and the designated expert reviews the request under the policy that
+
+
 
 
 
@@ -3082,6 +3082,9 @@ Schrock                   Expires 31 March 2027                [Page 55]
 Internet-Draft                    CAID                    September 2026
 
 
+   Only an entry's change controller may request a change to that entry,
+   such as deprecation with superseded_by or a monotone enum advance,
+   and the designated expert reviews the request under the policy that
    applies to a new registration.  For entries registered by IETF-stream
    documents, the change controller is the IETF, acting through the
    IESG.  The IESG may also act for any other change controller that
@@ -3127,9 +3130,6 @@ Internet-Draft                    CAID                    September 2026
    Section 4.2; its definition_sha256; the status; supersedes and
    superseded_by where they apply; the change controller; and a
    reference.  The expert does not register a name whose first segment
-   is organization-specific (Section 4.6) unless that organization is
-   the change controller.
-
 
 
 
@@ -3137,6 +3137,9 @@ Schrock                   Expires 31 March 2027                [Page 56]
 
 Internet-Draft                    CAID                    September 2026
 
+
+   is organization-specific (Section 4.6) unless that organization is
+   the change controller.
 
    The content of an entry that affects validation or material meaning,
    including the normalization guidance in notes and digest_notes, is
@@ -3183,9 +3186,6 @@ Internet-Draft                    CAID                    September 2026
    and 9 deprecated.  The definition of each entry is the entry with
    that name in the file action-types.json of [CAID-REGISTRY], registry
    version 5 of the reference registry, whose SHA-256 digest over the
-   octets of that file, in hexadecimal, is
-   1e30ddd312c888f6a27055dac0ed453398e20b64cfdcb7c5019fcf0e1ac2551a.
-   Section 4.7 reproduces the tool.call.1 entry member for member.  The
 
 
 
@@ -3194,6 +3194,9 @@ Schrock                   Expires 31 March 2027                [Page 57]
 Internet-Draft                    CAID                    September 2026
 
 
+   octets of that file, in hexadecimal, is
+   1e30ddd312c888f6a27055dac0ed453398e20b64cfdcb7c5019fcf0e1ac2551a.
+   Section 4.7 reproduces the tool.call.1 entry member for member.  The
    reference registry also carries types defined by other
    specifications, and one whose name misdescribes it; they are listed
    in Appendix D.2 and are not initial entries.  Each of the seven types
@@ -3228,9 +3231,6 @@ Internet-Draft                    CAID                    September 2026
    members it defines; its refusal reasons; and a reference.  A
    registered field type is never removed, renamed, or redefined.  The
    initial contents are:
-
-
-
 
 
 

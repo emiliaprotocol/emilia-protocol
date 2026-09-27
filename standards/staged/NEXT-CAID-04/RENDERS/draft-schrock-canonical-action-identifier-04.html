@@ -1902,7 +1902,8 @@ li > p:last-of-type:only-child {
   phase 3  required fields present
   phase 4  present fields valid for their types
   phase 5  suite registered and implemented
-  phase 6  every number, down to depth 64, in the data model
+  phase 6  every number, down to depth 64 and within the
+           value count, in the data model
   phase 7  every other value in the data model
                                                           |
                                                           v
@@ -2011,15 +2012,19 @@ li > p:last-of-type:only-child {
         or less still does. In a host value, a reference back to an enclosing
         object or array is a cycle: it counts as one value, and nothing
         beyond it is counted or examined, since what it refers to is counted
-        and examined where it sits. An action object can be canonicalized when it is a value of the data model
-        whose RFC 8785 encoding is within this limit, whether or not the
-        checks of computation phases 1 through 4 pass.<a href="#section-2.2-4" class="pilcrow">¶</a></p>
+        and examined where it sits. An action object can be canonicalized
+        when it is a value of the data model whose RFC 8785 encoding is at
+        most 16,777,216 octets, whether or not the checks of computation
+        phases 1 through 4 pass.<a href="#section-2.2-4" class="pilcrow">¶</a></p>
 <p id="section-2.2-5">A value outside the data model is refused and is never
         rewritten into a value inside it. Computation reports a number
         outside the model as unsupported_number, and anything else,
         including nesting beyond 64 and an encoding beyond the limit, as
-        unsupported_value (<a href="#computation" class="auto internal xref">Section 5</a>, phases 6 and
-        7).<a href="#section-2.2-5" class="pilcrow">¶</a></p>
+        unsupported_value (<a href="#computation" class="auto internal xref">Section 5</a>, phases 6 and 7).
+        A number is examined only where an object or array at depth 64 or
+        less holds it, and not at all in a host action object past the
+        value count, which yields unsupported_value instead
+        (<a href="#host-values" class="auto internal xref">Section 2.5</a>).<a href="#section-2.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="numbers">
@@ -2170,9 +2175,13 @@ li > p:last-of-type:only-child {
 <ul class="normal">
 <li class="normal" id="section-2.5-2.1">
             <span class="bcp14">MUST</span> refuse any host value that is not a value of the data
-          model: a number outside the model as unsupported_number and
-          anything else as unsupported_value (<a href="#computation" class="auto internal xref">Section 5</a>,
-          phases 6 and 7). A declared field that holds such a value is also
+          model. In a host action object within the value count below, a
+          number outside the model that an object or array at depth 64 or
+          less holds is refused as unsupported_number, and anything else as
+          unsupported_value (<a href="#computation" class="auto internal xref">Section 5</a>, phases 6 and 7).
+          A host action object past that count is refused as the value count
+          below states, and any other host value by the step that reads it
+          (<a href="#limits" class="auto internal xref">Section 2.6</a>). A declared field that holds such a value is also
           checked under its field type (phase 4) exactly as
           <a href="#fieldtypes" class="auto internal xref">Section 4.3</a> states, and fails that check whenever
           the value is not one that the type accepts. A host number is a
@@ -2318,8 +2327,8 @@ li > p:last-of-type:only-child {
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Integer magnitude</td>
               <td class="text-left" rowspan="1" colspan="1">2^53-1</td>
-              <td class="text-left" rowspan="1" colspan="1">every number held at depth 64 or less</td>
-              <td class="text-left" rowspan="1" colspan="1">unsupported_number</td>
+              <td class="text-left" rowspan="1" colspan="1">every number held at depth 64 or less in a value within the value count</td>
+              <td class="text-left" rowspan="1" colspan="1">unsupported_number (action object); otherwise the reason of the step that reads the value</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Value count</td>
@@ -2340,16 +2349,16 @@ li > p:last-of-type:only-child {
               <td class="text-left" rowspan="1" colspan="1">malformed_caid</td>
             </tr>
             <tr>
-              <td class="text-left" rowspan="1" colspan="1">Action type</td>
-              <td class="text-left" rowspan="1" colspan="1">512 octets</td>
-              <td class="text-left" rowspan="1" colspan="1">an action type in a CAID, an action object, or a definition</td>
-              <td class="text-left" rowspan="1" colspan="1">malformed_caid; invalid_action_type; invalid_definition</td>
-            </tr>
-            <tr>
               <td class="text-left" rowspan="1" colspan="1">Code system</td>
               <td class="text-left" rowspan="1" colspan="1">2,048 octets</td>
               <td class="text-left" rowspan="1" colspan="1">the code_system of a code field</td>
               <td class="text-left" rowspan="1" colspan="1">invalid_definition</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">Action type</td>
+              <td class="text-left" rowspan="1" colspan="1">512 octets</td>
+              <td class="text-left" rowspan="1" colspan="1">an action type in a CAID, an action object, or a definition</td>
+              <td class="text-left" rowspan="1" colspan="1">malformed_caid; invalid_action_type; invalid_definition</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Mapping rules</td>
@@ -2987,7 +2996,8 @@ caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB\
           integer, whatever its literal form: 12, 12.0, and 1.2e1 are the
           integer 12. Magnitude is not part of the type. A finite integer
           beyond 2^53-1 is type-valid and is refused once, as
-          unsupported_number. A literal whose correctly rounded value is an
+          unsupported_number (unsupported_value in a host action object past
+          the value count, <a href="#host-values" class="auto internal xref">Section 2.5</a>). A literal whose correctly rounded value is an
           infinity (<a href="#numbers" class="auto internal xref">Section 2.3</a>) is not an integer, so it is
           refused both as mistyped_field:&lt;name&gt; and as
           unsupported_number. For counts only, never for money.<a href="#section-4.3-2.14" class="pilcrow">¶</a>
@@ -3000,8 +3010,9 @@ caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB\
 <dt id="section-4.3-2.17">object:</dt>
           <dd style="margin-left: 1.5em" id="section-4.3-2.18">An object. Values nested inside it are checked by computation
           phases 6 and 7, not by this field type: an object field that
-          holds a fractional number is refused as unsupported_number
-          alone.<a href="#section-4.3-2.18" class="pilcrow">¶</a>
+          holds a fractional number fails no field type, and the number is
+          refused as unsupported_number wherever phase 6 examines it
+          (<a href="#computation" class="auto internal xref">Section 5</a>).<a href="#section-4.3-2.18" class="pilcrow">¶</a>
 </dd>
           <dd class="break"></dd>
 <dt id="section-4.3-2.19">array:</dt>
@@ -4640,10 +4651,11 @@ ZLQQQ
 <p id="section-11-5">The initial CAID Action Types entries rely on identifiers from the
       system of record, such as payment_instruction_id,
       authorization_number, and order_id, that the registry cannot require
-      to be high-entropy. Where such an identifier is sequential, anyone who
-      holds a CAID of that type can recover its action object by guessing,
-      so the CAID needs the protection its action object needs, including
-      personal-data protection when the object carries personal data. The
+      to be high-entropy. Where such an identifier is sequential and the
+      other members can be guessed, anyone who holds a CAID of that type can
+      recover its action object, so the CAID needs the protection its action
+      object needs, including personal-data protection when the object
+      carries personal data. The
       notes of a registered type fix what each of its digest
       fields commits to, and that is part of the entry's immutable meaning
       (<a href="#iana-action-types" class="auto internal xref">Section 12.2</a>), so a deployment does not carry

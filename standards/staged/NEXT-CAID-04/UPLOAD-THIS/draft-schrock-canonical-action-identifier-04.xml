@@ -235,7 +235,8 @@
   phase 3  required fields present
   phase 4  present fields valid for their types
   phase 5  suite registered and implemented
-  phase 6  every number, down to depth 64, in the data model
+  phase 6  every number, down to depth 64 and within the
+           value count, in the data model
   phase 7  every other value in the data model
                                                           |
                                                           v
@@ -317,15 +318,19 @@
         or less still does. In a host value, a reference back to an enclosing
         object or array is a cycle: it counts as one value, and nothing
         beyond it is counted or examined, since what it refers to is counted
-        and examined where it sits. An action object can be canonicalized when it is a value of the data model
-        whose RFC 8785 encoding is within this limit, whether or not the
-        checks of computation phases 1 through 4 pass.</t>
+        and examined where it sits. An action object can be canonicalized
+        when it is a value of the data model whose RFC 8785 encoding is at
+        most 16,777,216 octets, whether or not the checks of computation
+        phases 1 through 4 pass.</t>
         <t>A value outside the data model is refused and is never
         rewritten into a value inside it. Computation reports a number
         outside the model as unsupported_number, and anything else,
         including nesting beyond 64 and an encoding beyond the limit, as
-        unsupported_value (<xref target="computation"/>, phases 6 and
-        7).</t>
+        unsupported_value (<xref target="computation"/>, phases 6 and 7).
+        A number is examined only where an object or array at depth 64 or
+        less holds it, and not at all in a host action object past the
+        value count, which yields unsupported_value instead
+        (<xref target="host-values"/>).</t>
       </section>
       <section anchor="numbers">
         <name>Numbers</name>
@@ -454,9 +459,13 @@
         outside the model. Such an implementation:</t>
         <ul spacing="normal">
           <li><bcp14>MUST</bcp14> refuse any host value that is not a value of the data
-          model: a number outside the model as unsupported_number and
-          anything else as unsupported_value (<xref target="computation"/>,
-          phases 6 and 7). A declared field that holds such a value is also
+          model. In a host action object within the value count below, a
+          number outside the model that an object or array at depth 64 or
+          less holds is refused as unsupported_number, and anything else as
+          unsupported_value (<xref target="computation"/>, phases 6 and 7).
+          A host action object past that count is refused as the value count
+          below states, and any other host value by the step that reads it
+          (<xref target="limits"/>). A declared field that holds such a value is also
           checked under its field type (phase 4) exactly as
           <xref target="fieldtypes"/> states, and fails that check whenever
           the value is not one that the type accepts. A host number is a
@@ -558,12 +567,12 @@
     <tr><td>JSON text</td><td>33,554,432 octets</td><td>an action object or a mapping source received as JSON text (decode)</td><td>malformed_json</td></tr>
     <tr><td>Nesting depth</td><td>64 levels</td><td>every value</td><td>malformed_json (action object or mapping source as JSON text); unsupported_value (host action object); otherwise the reason of the step that reads the value</td></tr>
     <tr><td>Canonical encoding</td><td>16,777,216 octets</td><td>an action object</td><td>unsupported_value</td></tr>
-    <tr><td>Integer magnitude</td><td>2^53-1</td><td>every number held at depth 64 or less</td><td>unsupported_number</td></tr>
+    <tr><td>Integer magnitude</td><td>2^53-1</td><td>every number held at depth 64 or less in a value within the value count</td><td>unsupported_number (action object); otherwise the reason of the step that reads the value</td></tr>
     <tr><td>Value count</td><td>33,554,432 values</td><td>a host value, each value counted once per path; an object or array nested deeper than 64, or a reference back to an enclosing one, counts as one value</td><td>unsupported_value and no unsupported_number (host action object); otherwise the reason of the step that reads the value</td></tr>
     <tr><td>Document encoding</td><td>134,217,728 octets</td><td>the RFC 8785 encoding of a validation projection, an enum value array, or a mapping source</td><td>the reason of the step that needs the encoding</td></tr>
     <tr><td>Identifier</td><td>1,024 octets</td><td>a CAID string</td><td>malformed_caid</td></tr>
-    <tr><td>Action type</td><td>512 octets</td><td>an action type in a CAID, an action object, or a definition</td><td>malformed_caid; invalid_action_type; invalid_definition</td></tr>
     <tr><td>Code system</td><td>2,048 octets</td><td>the code_system of a code field</td><td>invalid_definition</td></tr>
+    <tr><td>Action type</td><td>512 octets</td><td>an action type in a CAID, an action object, or a definition</td><td>malformed_caid; invalid_action_type; invalid_definition</td></tr>
     <tr><td>Mapping rules</td><td>1 to 128 rules</td><td>rules of a mapping profile</td><td>invalid_mapping_profile</td></tr>
     <tr><td>Source path</td><td>at most 2,048 octets</td><td>each source path of a mapping profile</td><td>invalid_mapping_profile</td></tr>
     <tr><td>Profile string</td><td>1 to 512 octets</td><td>profile_id, media_type, schema, version, and target_action_type</td><td>invalid_mapping_profile</td></tr>
@@ -1079,7 +1088,8 @@ caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB\
           integer, whatever its literal form: 12, 12.0, and 1.2e1 are the
           integer 12. Magnitude is not part of the type. A finite integer
           beyond 2^53-1 is type-valid and is refused once, as
-          unsupported_number. A literal whose correctly rounded value is an
+          unsupported_number (unsupported_value in a host action object past
+          the value count, <xref target="host-values"/>). A literal whose correctly rounded value is an
           infinity (<xref target="numbers"/>) is not an integer, so it is
           refused both as mistyped_field:&lt;name&gt; and as
           unsupported_number. For counts only, never for money.</dd>
@@ -1088,8 +1098,9 @@ caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB\
           <dt>object:</dt>
           <dd>An object. Values nested inside it are checked by computation
           phases 6 and 7, not by this field type: an object field that
-          holds a fractional number is refused as unsupported_number
-          alone.</dd>
+          holds a fractional number fails no field type, and the number is
+          refused as unsupported_number wherever phase 6 examines it
+          (<xref target="computation"/>).</dd>
           <dt>array:</dt>
           <dd>An array. Values nested inside it are checked by computation
           phases 6 and 7, not by this field type.</dd>
@@ -2357,10 +2368,11 @@ ZLQQQ
       <t>The initial CAID Action Types entries rely on identifiers from the
       system of record, such as payment_instruction_id,
       authorization_number, and order_id, that the registry cannot require
-      to be high-entropy. Where such an identifier is sequential, anyone who
-      holds a CAID of that type can recover its action object by guessing,
-      so the CAID needs the protection its action object needs, including
-      personal-data protection when the object carries personal data. The
+      to be high-entropy. Where such an identifier is sequential and the
+      other members can be guessed, anyone who holds a CAID of that type can
+      recover its action object, so the CAID needs the protection its action
+      object needs, including personal-data protection when the object
+      carries personal data. The
       notes of a registered type fix what each of its digest
       fields commits to, and that is part of the entry's immutable meaning
       (<xref target="iana-action-types"/>), so a deployment does not carry

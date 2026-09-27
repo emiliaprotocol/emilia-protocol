@@ -93,10 +93,12 @@ Submission is the author's decision. Before it:
    `cea10b85e`, but this packet's branch (`feat/caid-04-prefiling`) also
    carries the JavaScript mapping stage B fix that the draft's Section 8.3
    now states, the Go back-reference fix that Sections 2.2 and 2.5 state,
-   the conditional cbor-sha256 vectors and the runners that skip them, the
-   vectors its change log cites (and the mapping runners' `host` mutation
-   that four of them need), and the `caid.abnf` comment that Appendix A
-   carries. Merge this branch before filing. The
+   the JavaScript fix (in the vendored copy too) that reads a host array
+   of 2^24 or more elements, which Section 2.5 admits within the value
+   count, the conditional cbor-sha256 vectors and the runners that skip
+   them, the vectors its change log cites (and the mapping runners' `host`
+   and `fill` mutations that some of them need), and the `caid.abnf`
+   comment that Appendix A carries. Merge this branch before filing. The
    branch has merged main at `dedd9a24d`; if main moves again, merge it
    and regenerate `AI_CONTEXT.md`, `public/llms-full.txt` and
    `public/.well-known/emilia-context.json` with

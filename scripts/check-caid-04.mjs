@@ -134,6 +134,9 @@ function detailRows() {
 
 // The limits table: one row per limit of scope caid or caid-mapping, a
 // minimum and maximum of one quantity sharing a row. Labels are draft text.
+// The row order is the draft's: the Code system row precedes the Action
+// type row so that the TXT page break inside Table 1 falls on a border
+// line, not inside a row (checked below).
 // The nesting and value-count rows name the reasons the limit itself yields
 // for an action object; any other value too deep, or past the count, is
 // refused by the step that reads it, as all three ports do:
@@ -147,17 +150,19 @@ function detailRows() {
 // unsupported_number, and phases 3 and 4 still run
 // (native-value-count-with-phase-3-and-4), so the row does not say
 // "alone" (R3-VALUECOUNT-ALONE). Phase 6 examines numbers only down to
-// depth 64 (R3-REG-2).
+// depth 64 (R3-REG-2) and only in a value within the count, and a number
+// outside the model in any value but an action object is refused by the
+// step that reads it (F2-ITEMS-1).
 const LIMIT_ROWS = [
   { ids: ['json_text_octets'], label: 'JSON text', unit: 'octets', applies: 'an action object or a mapping source received as JSON text (decode)', refusal: 'malformed_json' },
   { ids: ['nesting_depth'], label: 'Nesting depth', unit: 'levels', applies: 'every value', refusal: 'malformed_json (action object or mapping source as JSON text); unsupported_value (host action object); otherwise the reason of the step that reads the value' },
   { ids: ['canonical_octets'], label: 'Canonical encoding', unit: 'octets', applies: 'an action object', refusal: 'unsupported_value' },
-  { ids: ['max_safe_integer'], label: 'Integer magnitude', unit: '', applies: 'every number held at depth 64 or less', refusal: 'unsupported_number', display: (v) => (v === 2 ** 53 - 1 ? '2^53-1' : null) },
+  { ids: ['max_safe_integer'], label: 'Integer magnitude', unit: '', applies: 'every number held at depth 64 or less in a value within the value count', refusal: 'unsupported_number (action object); otherwise the reason of the step that reads the value', display: (v) => (v === 2 ** 53 - 1 ? '2^53-1' : null) },
   { ids: ['value_count'], label: 'Value count', unit: 'values', applies: 'a host value, each value counted once per path; an object or array nested deeper than 64, or a reference back to an enclosing one, counts as one value', refusal: 'unsupported_value and no unsupported_number (host action object); otherwise the reason of the step that reads the value' },
   { ids: ['document_canonical_octets'], label: 'Document encoding', unit: 'octets', applies: 'the RFC 8785 encoding of a validation projection, an enum value array, or a mapping source', refusal: 'the reason of the step that needs the encoding' },
   { ids: ['caid_octets'], label: 'Identifier', unit: 'octets', applies: 'a CAID string', refusal: 'malformed_caid' },
-  { ids: ['action_type_octets'], label: 'Action type', unit: 'octets', applies: 'an action type in a CAID, an action object, or a definition', refusal: 'malformed_caid; invalid_action_type; invalid_definition' },
   { ids: ['code_system_octets'], label: 'Code system', unit: 'octets', applies: 'the code_system of a code field', refusal: 'invalid_definition' },
+  { ids: ['action_type_octets'], label: 'Action type', unit: 'octets', applies: 'an action type in a CAID, an action object, or a definition', refusal: 'malformed_caid; invalid_action_type; invalid_definition' },
   { ids: ['mapping_rules_min', 'mapping_rules_max'], label: 'Mapping rules', unit: 'rules', applies: 'rules of a mapping profile', refusal: 'invalid_mapping_profile' },
   { ids: ['mapping_pointer_octets_max'], label: 'Source path', unit: 'octets', applies: 'each source path of a mapping profile', refusal: 'invalid_mapping_profile' },
   { ids: ['mapping_string_octets_min', 'mapping_string_octets_max'], label: 'Profile string', unit: 'octets', applies: 'profile_id, media_type, schema, version, and target_action_type', refusal: 'invalid_mapping_profile' },
@@ -1273,6 +1278,13 @@ for (const [needle, what] of [
   ['-03 said that identifiers may be treated as public values', 'F1-ED-LOGGING-03-QUOTE: -03 recommended it (Section 14.5)'],
   ['stay in registry version 5 byte for byte', 'F1-DIG-D2-BYTE-FOR-BYTE: the D.2 entries keep their values, not their octets (Appendix D.2)'],
   ['object, at any depth up to 64, is outside the data model', 'F1-REG-UNIVERSAL-NUMBER: the Table 2 phase 6 row holds only within the value count'],
+  // Round 5 of the fix audit.
+  ['phase 6 every number, down to depth 64, in the data model', 'F2-ITEMS-1: the Section 1.2 figure scopes phase 6 to the value count'],
+  ['fractional number is refused as unsupported_number alone', 'F2-ITEMS-1, F2-REG-UNSCOPED-NUMBER: the Section 4.3 object entry'],
+  ['beyond 2^53-1 is type-valid and is refused once, as unsupported_number. A', 'F2-ITEMS-1, F2-REG-UNSCOPED-NUMBER: the Section 4.3 integer entry'],
+  ['model: a number outside the model as unsupported_number and anything else as unsupported_value', 'F2-REG-UNSCOPED-NUMBER: the first MUST of Section 2.5'],
+  ['whose RFC 8785 encoding is within this limit', 'F2-ITEMS-3: the antecedent of "this limit" (Section 2.2)'],
+  ['Where such an identifier is sequential, anyone who holds', 'F2-ITEMS-2: the recovery needs the other members to be guessable too (Section 11)'],
 ]) check(needle instanceof RegExp ? !needle.test(sourcePlain) : !sourcePlain.includes(needle), `source still carries the wording of ${what}`);
 // ED-13: "action object" is lowercase in running text; titles keep title case.
 // Sourcecode is left out: the Section 4.7 registration quotes the registry
@@ -1332,9 +1344,9 @@ for (const [anchor, needle, what] of [
   ['computation', 'or beyond a reference back to an enclosing object or array, and the value count does not count them', 'R3-REG-1 (Section 5)'],
   ['computation', 'phase 6 yields no reason and phase 7 yields unsupported_value, whatever the value holds; phases 3 and 4 still run', 'R3-VALUECOUNT-ALONE (Section 5)'],
   ['chg-refused-value-count', 'or a reference back to an enclosing object or array, counts as one value: unsupported_value and no unsupported_number, while phases 3 and 4 still run', 'R3-REG-1, R3-VALUECOUNT-ALONE (Section 14.1)'],
-  ['overview', 'phase 6 every number, down to depth 64, in the data model', 'R3-REG-2: the Section 1.2 figure'],
+  ['overview', 'phase 6 every number, down to depth 64 and within the value count, in the data model', 'R3-REG-2, F2-ITEMS-1: the Section 1.2 figure'],
   ['chg-mapping-stage-b', 'read neither member of a profile nested deeper than 64, past the value count, cyclic, or holding a host value of no JSON kind', 'R3-STAGEB-HISTORY, R3-REG-4: what the JavaScript mapper at cea10b85e skipped'],
-  ['privacy', 'anyone who holds a CAID of that type can recover its action object by guessing, so the CAID needs the protection its action object needs', 'R3-PRIVACY-WORDING'],
+  ['privacy', 'Where such an identifier is sequential and the other members can be guessed, anyone who holds a CAID of that type can recover its action object, so the CAID needs the protection its action object needs', 'R3-PRIVACY-WORDING, F2-ITEMS-2'],
   ['privacy', 'A CAID is meant to be recomputed by a party that already holds the action object', 'author: a CAID is recomputed by parties that hold the object (Section 11)'],
   ['privacy', 'receipts and other evidence carry it for such parties. It is not designed as a correlation identifier to propagate to parties that do not hold the object', 'author: not a correlation identifier for parties without the object (Section 11)'],
   ['iana-action-types', "A new version of a registered type name is registered by the change controller of its earlier versions, or with that controller's written agreement", 'IANA-8, R3-GATE-3'],
@@ -1359,6 +1371,14 @@ for (const [anchor, needle, what] of [
   ['ed-iana', 'registers a new version of a type name only by, or with the written agreement of, the change controller of its earlier versions', 'F1-REG-IANA-CHANGES: Section 12.2'],
   ['appendix-action-types-reference-only', 'stay in registry version 5 unchanged member for member (their RFC 8785 encodings are identical)', 'F1-DIG-D2-BYTE-FOR-BYTE (checked against the version 4 file above)'],
   ['changes-03-registry', 'kept byte for byte as history/action-types.v4.json, the last file that declared registry version 4, which digests.json pins by its SHA-256', 'F1-DIG-TWO-V4-FILES'],
+  // Round 5 of the fix audit: the rules that name unsupported_number that
+  // round 4 left unscoped. Each result is pinned by a vector.
+  ['data-model', 'A number is examined only where an object or array at depth 64 or less holds it, and not at all in a host action object past the value count, which yields unsupported_value instead', 'F2-REG-UNSCOPED-NUMBER: native-deep-fraction-not-examined, native-value-budget-over (Section 2.2)'],
+  ['data-model', 'An action object can be canonicalized when it is a value of the data model whose RFC 8785 encoding is at most 16,777,216 octets', 'F2-ITEMS-3 (Section 2.2)'],
+  ['host-values', 'In a host action object within the value count below, a number outside the model that an object or array at depth 64 or less holds is refused as unsupported_number, and anything else as unsupported_value', 'F2-REG-UNSCOPED-NUMBER: the first MUST of Section 2.5'],
+  ['host-values', 'A host action object past that count is refused as the value count below states, and any other host value by the step that reads it', 'F2-REG-UNSCOPED-NUMBER: native-value-count-integer-beyond-range-in-integer-field, native-definition-opaque-in-projection'],
+  ['fieldtypes', 'is refused once, as unsupported_number (unsupported_value in a host action object past the value count', 'F2-ITEMS-1: native-integer-beyond-range-in-integer-field, native-value-count-integer-beyond-range-in-integer-field (Section 4.3)'],
+  ['fieldtypes', 'an object field that holds a fractional number fails no field type, and the number is refused as unsupported_number wherever phase 6 examines it', 'F2-ITEMS-1: native-fraction-in-object-field, native-value-count-fraction-in-object-field, native-deep-fraction-in-object-field (Section 4.3)'],
 ]) check(plain(part(anchor)).includes(needle), `${/^(?:chg|ed)-/.test(anchor) ? 'item' : 'section'} ${anchor} lacks "${needle}" (${what})`);
 // R2-GATE-5: Section 13 says none of the three implementations implements
 // cbor-sha256 and that each skips the corpus vectors that apply only to an

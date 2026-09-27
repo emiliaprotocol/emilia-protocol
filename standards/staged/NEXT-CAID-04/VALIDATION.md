@@ -1,8 +1,8 @@
 # Validation record
 
-Validated on 2026-09-27. The source applies every confirmed finding of the
-pre-filing review, and every finding of the first, second, third and
-fourth audits of those fixes, to the previously staged -04, which carried the
+Validated on 2026-09-28. The source applies every confirmed finding of the
+pre-filing review, and every finding of the first through fifth audits of
+those fixes, to the previously staged -04, which carried the
 amount-string ABNF and the suite and unused-bit parsing changes over -03
 and keeps both.
 
@@ -28,8 +28,10 @@ and keeps both.
   "Refused when" column is 31 columns wide; the paragraph that follows the
   table in the earlier draft now precedes it, and the table sits on one
   page (page 35). Table 1 runs from page 15 to page 16: page 15 ends on the
-  last line of its Identifier row, and page 16 begins with the border above
-  its Action type row. The sentence on definitions
+  border below its Code system row, and page 16 begins with its Action type
+  row. The Code system row now precedes the Action type row: with the
+  scope the Integer magnitude row now states, the earlier order put the
+  page break inside the Action type row. The sentence on definitions
   read from JSON text that nest deeper than 64 now opens the paragraph
   after the table instead of closing the one before it, which keeps the
   nesting row on one page.
@@ -98,16 +100,20 @@ main, and `--prefiling` now fails unless `git rev-parse origin/main` equals
 `git ls-remote origin refs/heads/main`, so a stale fetch cannot pass it.
 Against that main its first checks hold: main carries registry version 5,
 `caid/spec/caid.abnf`, ports that name -04, and the [CAID-REGISTRY]
-commit. Its last check does not: 27 files under `caid/` differ between
-this branch and main, among them the JavaScript mapping stage B fix that
-Section 8.3 states, the Go back-reference fix that Sections 2.2 and 2.5
-state, the conditional cbor-sha256 vectors and the runners that skip
-them, which Section 13 describes, the value-count and cycle vectors, the
-mapping runners' `host` mutation and the stage B vectors it expresses,
-and the `caid.abnf` comment that Appendix A carries. The failure message
-names Sections 2.2, 2.5, 8.3 and 13 and Appendix A, and the paths it
-compares, under `caid/` or `packages/verify/vendor/caid.mjs`; the vendored
-copy itself equals main's. The gate passes only when
+commit. Its last check does not: 34 files differ between this branch and
+main, 33 under `caid/` and the vendored copy
+`packages/verify/vendor/caid.mjs`, among them the JavaScript mapping
+stage B fix that Section 8.3 states, the Go
+back-reference fix that Sections 2.2 and 2.5 state, the JavaScript fix,
+in `caid/impl/js/caid.mjs` and the vendored copy, that reads a host array
+of 2^24 or more elements within the value count of Section 2.5, the
+conditional cbor-sha256 vectors and the runners that skip them, which
+Section 13 describes, the value-count, boundary, long-array and cycle
+vectors, the native `$fill` tag and the mapping runners' `host` and `fill`
+mutations that express some of them, and the `caid.abnf` comment that
+Appendix A carries. The failure message names Sections 2.2, 2.5, 8.3 and
+13 and Appendix A, and the paths it compares, under `caid/` or
+`packages/verify/vendor/caid.mjs`. The gate passes only when
 origin/main holds this branch's `caid/` tree and
 `packages/verify/vendor/caid.mjs` byte for byte and the working tree
 matches HEAD there; it lists every differing file. The checks it runs on
@@ -129,14 +135,40 @@ this tree:
   64 (Sections 2.2, 2.5 and 5, Table 1 and Section 14.1). Past the count a
   host action object yields unsupported_value and no unsupported_number,
   and phases 3 and 4 still run (Sections 2.2, 2.5 and 5, Table 1 and
-  Section 14.1, none of which says "alone" any more), and the rules that
-  name unsupported_number are scoped the same way: the Section 2.3 bullet
-  on fractional, NaN, infinite and out-of-range values, the Table 2 phase 6
-  row, and the Section 2.5 sentence on NaN or 1.5 and on a host number
-  beyond 2^53-1 each say what happens past the count; a host definition,
-  mapping profile or mapping source past it gets the reason of the step
-  that reads it (Sections 2.2, 2.5, 2.6 and 14.1). The script requires that
-  text and bans the "alone" wording. Until this round the Go port followed
+  Section 14.1, none of which says "alone" any more), and every rule that
+  names unsupported_number is scoped the same way, to a number that an
+  object or array at depth 64 or less holds in a value within the count:
+  the phase 6 line of the Section 1.2 figure, the closing paragraph of
+  Section 2.2, the Section 2.3 bullet on fractional, NaN, infinite and
+  out-of-range values, the first requirement of Section 2.5 and its
+  sentence on NaN or 1.5 and on a host number beyond 2^53-1, the Integer
+  magnitude row of Table 1 (whose refusal column, like the nesting and
+  value-count rows, now defers to the reading step for any value but an
+  action object), the integer and object entries of Section 4.3, and the
+  Table 2 phase 6 row. Each says what happens past the count, and the
+  Section 4.3 object entry no longer says "alone"; a host definition,
+  mapping profile or mapping source past the count gets the reason of the
+  step that reads it (Sections 2.2, 2.5, 2.6 and 14.1). The script requires
+  that text and bans the wording each round replaced.
+  `native-fraction-in-object-field`, `native-deep-fraction-in-object-field`,
+  `native-value-count-fraction-in-object-field` and
+  `native-value-count-integer-beyond-range-in-integer-field` pin the two
+  Section 4.3 entries, and vectors at exactly 33,554,432 values and one
+  more (`native-value-count-3355443{2,3}-{acyclic,cyclic}` and their verify
+  twins, and
+  `native-definition-value-count-3355443{2,3}-default-optional-fields`,
+  whose projection count includes the default optional_fields) pin the
+  boundary, so a port that counts with >=, leaves the root out, counts a
+  back-reference as zero or skips the default fails them. Until this round
+  the JavaScript port, and so the vendored copy, refused a host array of
+  2^24 or more elements, which V8 cannot list the keys of at once
+  (`Reflect.ownKeys` throws a `RangeError`), as a value outside the data
+  model, although it is within the count and the Python and Go ports and
+  the oracle read it; it now lists such a container through `Object.keys`
+  and `Object.getOwnPropertySymbols`. Before that change it failed exactly
+  the five `native-*-16777216-*` core vectors, the relation of the
+  definition one, and the two `*-16777216-*` mapping vectors, and passed
+  their `16777215` twins and every boundary vector. Until this round the Go port followed
   a cycle down to the nesting limit, so a branching cycle beside 1.5 passed
   the count and gave `[unsupported_value]` where the JavaScript and Python
   ports and the oracle gave `[unsupported_number, unsupported_value]`; Go
@@ -277,7 +309,13 @@ this tree:
   records it. Section 11 says a CAID is meant to be recomputed by parties
   that already hold the action object and is not designed as a
   correlation identifier for parties that do not, and `ed-privacy`
-  records it.
+  records it. Its sentence on sequential system-of-record identifiers
+  now requires that the other members can be guessed too, since
+  payment.release.1 has an optional free-text memo and order.place.1
+  requires items_digest, whose preimage is generally not guessable.
+- Section 2.2 states the canonical-size condition as "at most 16,777,216
+  octets" where it said "within this limit", whose nearest antecedent had
+  become the value count.
 - [CAID-REGISTRY] targets the raw `action-types.json` at commit
   `cea10b85e`, names no blob URL, and that commit's file hashes to registry
   version 5 (`1e30ddd3...2551a`); the TXT prints that URL once, in angle
@@ -295,10 +333,10 @@ this tree:
 
 ## Conformance and generated sources
 
-- `npm run caid:conformance` passes: 591 core, 1966 grammar, 82 mapping,
+- `npm run caid:conformance` passes: 613 core, 1966 grammar, 86 mapping,
   and 100 consequential-interoperability vectors against the spec oracle,
   with the generated-sources and registry checks. In JavaScript, Python,
-  and Go each runner reports 589 of the 591 core vectors run and passed
+  and Go each runner reports 611 of the 613 core vectors run and passed
   (2 skipped) and all 1966 grammar cases: six vectors apply only where
   cbor-sha256 is, or is not, implemented, and each runner skips those
   whose condition does not hold.
