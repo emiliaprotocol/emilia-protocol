@@ -25,6 +25,14 @@
 //                             elements one shared array: 2^(n+1) - 1 values
 //                             in n + 1 distinct containers and leaves, for
 //                             the value budget of -04 Section 2.6.
+//   {"$fill": {"n": n, "v": v}}
+//                             an array of n elements, each the value v,
+//                             built once (a container v is one shared
+//                             object or array, reached n times): n + 1
+//                             values for a scalar v. With n of 2^24 or more
+//                             it is an array too long for V8 to list its
+//                             keys at once, which a port must still read
+//                             (-04 Section 2.5).
 //   {"$repeat": {"unit": s, "count": n}}
 //                             the string s repeated n times, for a value too
 //                             large to write into the corpus.
@@ -73,6 +81,7 @@ export function buildNative(encoded) {
       return out;
     }
     if (tag === '$repeat') return v.$repeat.unit.repeat(v.$repeat.count);
+    if (tag === '$fill') return new Array(v.$fill.n).fill(build(v.$fill.v, enclosing));
     if (tag === '$nest') {
       const { depth, container, leaf } = v.$nest;
       let value = build(leaf, enclosing);

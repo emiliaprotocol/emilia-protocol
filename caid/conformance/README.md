@@ -16,9 +16,9 @@ npm run caid:fuzz          # the differential fuzz (caid/fuzz)
 
 | Path | What it is |
 |---|---|
-| `vectors.json` | Core corpus, version 5: 591 vectors (decode, parse, compute, verify, definition) |
+| `vectors.json` | Core corpus, version 5: 613 vectors (decode, parse, compute, verify, definition) |
 | `grammar-vectors.json` | Grammar boundary corpus: 1,966 cases over 21 drivers |
-| `mapping-vectors.json` | Mapping corpus, version 2: 82 vectors with exact reason lists; a vector may carry its own suite |
+| `mapping-vectors.json` | Mapping corpus, version 2: 86 vectors with exact reason lists; a vector may carry its own suite |
 | `history/vectors.v4.json` | The version 4 core corpus, byte for byte (`sha256:7a201c87…`) |
 | `history/mapping-vectors.v1.json` | The version 1 mapping corpus, byte for byte (`sha256:6941463c…`) |
 | `check-v4.mjs` | Proves from the files alone that version 5 carries version 4 forward |
@@ -64,6 +64,7 @@ tagged objects:
 | `{"$object": [[k, v], ...]}` | an object with these members in this order; `k` may be a `$units` string |
 | `{"$nest": {"depth", "container", "leaf"}}` | `depth` nested arrays, or objects whose only member is `a`, around `leaf` (any native value, a fraction included) |
 | `{"$dag": {"depth", "leaf"}}` | `depth` nested two-element arrays around `leaf`, both elements one shared array (the value count of Section 2.6) |
+| `{"$fill": {"n", "v"}}` | an array of `n` elements, each the value `v`, built once (a container `v` is shared, and a cyclic `v` refers to the container that holds the array); with `n` of 2^24 or more, an array whose keys V8 cannot list at once |
 | `{"$repeat": {"unit", "count"}}` | the string `unit` repeated `count` times |
 | `{"$host": "nan" / "infinity" / "-infinity" / "negative_zero"}` | the binary64 value |
 | `{"$host": "cyclic"}` | a reference to the nearest enclosing object or array |
@@ -150,6 +151,23 @@ mistyped integer field (`native-value-count-with-phase-3-and-4` and its
 verify twin), and a branching and a single back-reference in an object and
 a branching, a three-way and a single back-reference in an array, each
 beside 1.5 (`native-cyclic-*-with-fraction` and their verify twins).
+The fourth added twenty-two: an array of 2^24 zeros, whose keys V8 cannot
+list at once, and its 2^24 - 1 twin, each in a declared array field, beside
+1.5 and inside a definition's validation projection
+(`native-array-16777216-*`, `native-array-16777215-*`,
+`native-definition-array-*`, and verify twins of the first two); the value
+count at exactly 33,554,432 values and one more, beside 1.5, with the
+shared array's elements plain or referring back to the object
+(`native-value-count-3355443*-acyclic`, `-cyclic` and their verify twins),
+and on a host definition's validation projection with the default
+`optional_fields` counted
+(`native-definition-value-count-3355443*-default-optional-fields`); and the
+object and integer field types against the scope of phase 6: 1.5 in an
+object field within the count, nested past 64, and past the count, and 2^53
+in an integer field past the count (`native-fraction-in-object-field`,
+`native-deep-fraction-in-object-field`,
+`native-value-count-fraction-in-object-field`,
+`native-value-count-integer-beyond-range-in-integer-field`).
 
 **Version 4 carries forward.** Every version 4 vector keeps its id, with its
 object as the version 4 tokens. All 22 version 4 CAIDs are expected
@@ -186,8 +204,9 @@ A set mutation carries its value as `value`, as `units` (the UTF-16 code
 units of a string no strict JSON text can hold), as `nest` (`{depth,
 container, leaf}`, a host value nested deeper than strict JSON text may be),
 as `dag` (`{depth, leaf}`, `depth` nested two-element arrays whose two
-elements are one shared array, a host value past the value count), or as
-`host`, a host value no JSON text carries, as in the core corpus native
+elements are one shared array, a host value past the value count), as
+`fill` (`{n, v}`, an array of `n` elements, each the value `v`, built once),
+or as `host`, a host value no JSON text carries, as in the core corpus native
 lane: `"cyclic"` is a reference to the object or array that holds the
 member, and `"opaque"` a value of no JSON kind (JavaScript `new Map()`,
 Python `set()`, Go `struct{}{}`). Each runner sets the value it builds
@@ -207,7 +226,12 @@ one with a member that refers back to the profile
 (`profile-cyclic-member-declared-loss-abstains`), one with an array that
 holds itself (`profile-cyclic-array-member-declared-loss-abstains`), and
 one holding a value of no JSON kind
-(`profile-opaque-member-declared-loss-abstains`).
+(`profile-opaque-member-declared-loss-abstains`). An array of 2^24 zeros,
+whose keys V8 cannot list at once, and its 2^24 - 1 twin are within the
+value count: beside no rule path of a source the mapping goes on
+(`stage-b-source-array-*-elements-equivalent`), and in an extra member of a
+repinned profile the profile keeps a digest that matches its pin, so it is
+`invalid_mapping_profile` alone (`profile-array-*-elements-pinned-abstains`).
 
 ## Entry points the runners call
 

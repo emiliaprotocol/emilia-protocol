@@ -15,14 +15,15 @@
 // of a string no strict JSON text can hold, built as the generalized UTF-8
 // (WTF-8) a Go string holds for a lone surrogate, as "nest", {depth,
 // container, leaf}: leaf inside depth nested slices (or maps whose only
-// member is "a"), a value nested deeper than strict JSON text may be, or as
+// member is "a"), a value nested deeper than strict JSON text may be, as
 // "dag", {depth, leaf}: leaf inside depth nested two-element slices whose
-// two elements are one shared slice, a value past the value count, or as
-// "host", a host value no JSON text carries, as in the core corpus native
-// lane: "cyclic", a reference to the map or slice that holds the member (its
-// parent), or "opaque", a struct{}{}. Every mutation value is built fresh
-// for the vector and set as built, never deep-copied, so a shared slice
-// stays shared.
+// two elements are one shared slice, a value past the value count, as
+// "fill", {n, v}: a slice of n elements, each the value v (built once and
+// shared), or as "host", a host value no JSON text carries, as in the core
+// corpus native lane: "cyclic", a reference to the map or slice that holds
+// the member (its parent), or "opaque", a struct{}{}. Every mutation value
+// is built fresh for the vector and set as built, never deep-copied, so a
+// shared slice stays shared.
 package main
 
 import (
@@ -110,6 +111,22 @@ func sharedValue(raw interface{}) interface{} {
 		value = []interface{}{value, value}
 	}
 	return value
+}
+
+// filledValue builds a "fill" mutation value: a slice of n elements, each
+// the value v, built once.
+func filledValue(raw interface{}) interface{} {
+	spec, _ := raw.(obj)
+	n := 0
+	if s, ok := spec["n"].(fmt.Stringer); ok {
+		n, _ = strconv.Atoi(s.String())
+	}
+	value := clone(spec["v"])
+	out := make([]interface{}, n)
+	for i := range out {
+		out[i] = value
+	}
+	return out
 }
 
 // cyclicRef is the value of a "host": "cyclic" mutation until mutate sets
@@ -346,6 +363,8 @@ func main() {
 				value = nestedValue(nest)
 			} else if dag, present := operation["dag"]; present {
 				value = sharedValue(dag)
+			} else if fill, present := operation["fill"]; present {
+				value = filledValue(fill)
 			} else if host, present := operation["host"]; present {
 				value = hostValue(host)
 			}

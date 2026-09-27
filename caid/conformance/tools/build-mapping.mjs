@@ -59,14 +59,17 @@ function mutate(root, operation) {
     // code units; "nest" a value nested deeper than a strict JSON text may
     // be, as leaf inside depth arrays (or objects whose only member is "a");
     // "dag" a value past the value count, as depth nested two-element
-    // arrays around leaf whose two elements are one shared array; "host"
-    // a host value no JSON text carries, as in the core corpus native lane:
-    // "cyclic" is a reference to the enclosing object or array (the parent
-    // of the path), "opaque" a value of no JSON kind (new Map()).
+    // arrays around leaf whose two elements are one shared array; "fill"
+    // an array of n elements, each the value v (one shared value), long
+    // enough that V8 cannot list its keys at once; "host" a host value no
+    // JSON text carries, as in the core corpus native lane: "cyclic" is a
+    // reference to the enclosing object or array (the parent of the path),
+    // "opaque" a value of no JSON kind (new Map()).
     const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units)
       : Object.prototype.hasOwnProperty.call(operation, 'nest') ? nested(operation.nest)
         : Object.prototype.hasOwnProperty.call(operation, 'dag') ? shared(operation.dag)
-          : Object.prototype.hasOwnProperty.call(operation, 'host') ? hostValue(operation.host, parent) : clone(operation.value);
+          : Object.prototype.hasOwnProperty.call(operation, 'fill') ? new Array(operation.fill.n).fill(clone(operation.fill.v))
+            : Object.prototype.hasOwnProperty.call(operation, 'host') ? hostValue(operation.host, parent) : clone(operation.value);
     Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else throw new Error(`unsupported mutation ${operation.op}`);
 }
@@ -119,6 +122,7 @@ const setUnits = (side, target, p, units) => ({ side, target, op: 'set', path: p
 const setNest = (side, target, p, depth, leaf = 0) => ({ side, target, op: 'set', path: p, nest: { depth, container: 'array', leaf } });
 const setDag = (side, target, p, depth, leaf = 0) => ({ side, target, op: 'set', path: p, dag: { depth, leaf } });
 const setHost = (side, target, p, host) => ({ side, target, op: 'set', path: p, host });
+const setFill = (side, target, p, n, v = 0) => ({ side, target, op: 'set', path: p, fill: { n, v } });
 const del = (side, target, p) => ({ side, target, op: 'delete', path: p });
 const HEX = 'a'.repeat(64);
 const epRules = v1.profiles['ep-action-v1'].rules;
@@ -240,6 +244,19 @@ const CASES = [
   // never unsupported_value.
   ['stage-b-source-value-count-not-canonicalizable', 'the value count on a host mapping source: a member holding 2^26 - 1 values through shared arrays, beside no rule path, is source_not_canonicalizable (never unsupported_value)', EP, EP,
     [setDag('right', 'source', '/x', 25)], [], 'INDETERMINATE', ['right:source_not_canonicalizable']],
+  // A long host array within the value count is read like any other
+  // (Section 2.5): an array of 2^24 zeros, one V8 cannot list the keys of
+  // at once, gives the result of its 2^24 - 1 twin. Beside no rule path of
+  // a mapping source, the source canonicalizes and the mapping goes on. In
+  // an extra member of a repinned mapping profile, the profile is in the
+  // data model, so it has a digest that matches its pin: the extra member
+  // makes it invalid_mapping_profile, with no mapping_profile_unpinned.
+  ...[['16777216', 2 ** 24], ['16777215', 2 ** 24 - 1]].flatMap(([label, n]) => [
+    [`stage-b-source-array-${label}-elements-equivalent`, `a host mapping source with an extra member holding an array of ${label} zeros, beside no rule path, is within the value count and canonicalizes: the mapping goes on`, EP, EP,
+      [setFill('right', 'source', '/x', n)], [], 'EQUIVALENT_UNDER_PROFILE', []],
+    [`profile-array-${label}-elements-pinned-abstains`, `a repinned host mapping profile with an extra member holding an array of ${label} zeros is within the value count, so its digest matches the pin: invalid_mapping_profile for the extra member, and no mapping_profile_unpinned`, EP, EP,
+      [setFill('right', 'profile', '/x', n)], ['right'], 'INDETERMINATE', ['right:invalid_mapping_profile']],
+  ]),
   ['stage-d-compute-order', 'stage D reports the mapped action\'s compute reasons in compute order', EP, EP,
     [set('right', 'source', '/parameters/currency', 'EURO'), set('right', 'source', '/parameters/total_amount', '01.00')],
     [], 'INDETERMINATE', ['right:mapped_action:invalid_amount:total_amount', 'right:mapped_action:mistyped_field:currency']],
@@ -348,7 +365,7 @@ const { vectors: _v, ...envelope } = corpus;
 const out = {
   '@version': 'CAID-ACTION-MAPPING-VECTORS-v2',
   version: 2,
-  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.3). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is "a", a host value nested deeper than a strict JSON text may be), as dag ({depth, leaf}: leaf inside depth nested two-element arrays whose two elements are one shared array, 2^(depth+1) - 1 values counted once per path, for the value count of Section 2.6), or as host, a host value no JSON text carries: "cyclic", a reference to the object or array that holds the member (its parent), or "opaque", a host value of no JSON kind (JavaScript new Map(), Python set(), Go struct{}{}).`,
+  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.3). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is "a", a host value nested deeper than a strict JSON text may be), as dag ({depth, leaf}: leaf inside depth nested two-element arrays whose two elements are one shared array, 2^(depth+1) - 1 values counted once per path, for the value count of Section 2.6), as fill ({n, v}: an array of n elements, each the value v, built once and shared), or as host, a host value no JSON text carries: "cyclic", a reference to the object or array that holds the member (its parent), or "opaque", a host value of no JSON kind (JavaScript new Map(), Python set(), Go struct{}{}).`,
   previous_versions: [{
     version: 1,
     vectors: v1.vectors.length,

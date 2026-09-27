@@ -25,7 +25,7 @@ Updated: 2026-09-27
   65,536 characters and more, and that every matcher is linear-time: a static
   analysis plus adversarial inputs of 2^20 characters timed in all three.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
-- 589 of the 591 shared core vectors (corpus version 5) pass in all three
+- 611 of the 613 shared core vectors (corpus version 5) pass in all three
   ports through their JSON text entry points; the other two apply only to a
   cbor-sha256 implementation, and every port here skips them. The vectors
   run with native/byte parity on every
@@ -46,7 +46,7 @@ Updated: 2026-09-27
 - 1,966 grammar boundary cases, and the roughly half-million case list that
   `caid/spec/abnf-check.mjs` writes, passing in all three ports through
   `parseCaid` and `computeCaid`, never through the generated matchers.
-- 82 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
+- 86 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
   agreement on verdicts and exact reason lists in all three ports, including
   the SILP IR to CAID `CANCEL+EMAIL` profile.
 - A differential fuzz of about 88,000 seeded cases in which the JavaScript,

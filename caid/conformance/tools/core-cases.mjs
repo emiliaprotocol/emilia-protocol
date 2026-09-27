@@ -742,6 +742,85 @@ export function coreCases({ limits }) {
         { ...object, caid_of: { json: t1('x'), definitions: [T1] } }, { reasons: ['invalid_object'] }),
     );
   }
+  // A long host array within the value count is read like any other
+  // (Section 2.5): only the count and the canonical size limit its length.
+  // An array of 2^24 elements is one that V8 cannot list the keys of at
+  // once (Reflect.ownKeys throws a RangeError), and its 2^24 - 1 twin one
+  // it can; both results are the same. In the declared array field a, the
+  // array keeps its type and the encoding passes the canonical size limit:
+  // unsupported_value alone. Beside the host number 1.5, unsupported_number
+  // alone, since the size limit applies only when nothing else refused. In
+  // a member of an unregistered-type field entry, inside the validation
+  // projection of a definition, it computes.
+  const fill = (n, v = 0) => ({ $fill: { n, v } });
+  /** @type {[string, number][]} */
+  const longArrays = [['16777216', 2 ** 24], ['16777215', 2 ** 24 - 1]];
+  for (const [label, n] of longArrays) {
+    const declared = native({ action_type: 't.obj.1', s: 'x', a: fill(n) });
+    const beside = native({ action_type: 't.obj.1', s: 'x', v: 1.5, z: fill(n) });
+    add(
+      compute(`native-array-${label}-elements-in-declared-field`, `native lane: an array of ${label} zeros in the declared array field a is within the value count, keeps its type and encodes past the canonical size limit: unsupported_value alone`, [OBJ],
+        declared, { refusals: ['unsupported_value'] }),
+      compute(`native-array-${label}-elements-beside-fraction`, `native lane: an array of ${label} zeros beside the host number 1.5 is within the value count: unsupported_number alone`, [OBJ],
+        beside, { refusals: ['unsupported_number'] }),
+      compute(`native-definition-array-${label}-elements-in-projection`, `native lane: an array of ${label} zeros in a member of an unregistered-type field entry is inside the validation projection and within the value count, so the definition conforms and the object computes`, [{ ...R1, optional_fields: [{ name: 'g', type: 'color', palette: fill(n) }] }],
+        r1Object, 'ok', sameAsPlain),
+    );
+    if (n === 2 ** 24) {
+      add(
+        verify(`native-verify-array-${label}-elements-in-declared-field`, `native lane: verification of the array of ${label} zeros in the declared field a is invalid_object with unsupported_value alone behind it, no mistyped_field`, [OBJ],
+          { ...declared, caid: `caid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
+        verify(`native-verify-array-${label}-elements-beside-fraction`, `native lane: verification of the array of ${label} zeros beside 1.5 is invalid_object with unsupported_number alone behind it`, [OBJ],
+          { ...beside, caid: `caid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
+      );
+    }
+  }
+  // The value count at its limit (Section 2.5 refuses more than 33,554,432
+  // values). The member p holds 4,095 references to one shared array of
+  // 8,191 elements, 1 + 4,095 x 8,192 = 33,546,241 values, and q an array
+  // of r elements, 1 + r; with the object itself and its three scalar
+  // members the total is 33,546,246 + r. With r = 8,186 the object holds
+  // exactly 33,554,432 values and is within the count: the host number 1.5
+  // is unsupported_number. With r = 8,187 it holds one more and is past the
+  // count: unsupported_value alone. When every element of the shared array
+  // refers back to the object, each reference counts as one value, so the
+  // totals are the same, and the references add unsupported_value.
+  const atLimit = (r, leaf) => native({ action_type: 't.obj.1', s: 'x', v: 1.5, p: fill(4095, fill(8191, leaf)), q: fill(r) });
+  /** @type {[string, string, any, string[], string[]][]} */
+  const limitCases = [
+    ['acyclic', 'zeros', 0, ['unsupported_number'], ['unsupported_value']],
+    ['cyclic', 'references back to the object', cyc, ['unsupported_number', 'unsupported_value'], ['unsupported_value']],
+  ];
+  for (const [name, leaves, leaf, within, past] of limitCases) {
+    for (const [count, r, expect] of /** @type {[string, number, string[]][]} */ ([['33554432', 8186, within], ['33554433', 8187, past]])) {
+      const object = atLimit(r, leaf);
+      const verdict = count === '33554432' ? 'within the value count' : 'past the value count';
+      add(
+        compute(`native-value-count-${count}-${name}`, `native lane: exactly ${count} values, the shared array's elements being ${leaves}, beside the host number 1.5: ${verdict}, so ${expect.join(', then ')}`, [OBJ],
+          object, { refusals: expect }),
+        verify(`native-verify-value-count-${count}-${name}`, `native lane: verification of the same ${count} values is invalid_object, with ${expect.join(' and ')} behind it`, [OBJ],
+          { ...object, caid: `caid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
+      );
+    }
+  }
+  // The same limit on the validation projection of a host definition that
+  // has no optional_fields member: the projection supplies the default [],
+  // which counts as one value. The projection holds the object, action_type,
+  // required_fields, the entry for a (3 values), the entry for g (3 values
+  // plus its palette) and that default: 10 values plus the palette. The
+  // palette holds a shared-array part of 33,546,241 values and an array of
+  // r elements, 33,546,243 + r in all, so r = 8,179 gives a projection of
+  // exactly 33,554,432 values, within the count: the definition conforms
+  // and the object lacks the required field g. With r = 8,180 the
+  // projection is past the count: invalid_definition.
+  const defAtLimit = (r) => [{ action_type: 'r.1', required_fields: [{ name: 'a', type: 'string' }, { name: 'g', type: 'color', palette: [fill(4095, fill(8191)), fill(r)] }] }];
+  add(
+    compute('native-definition-value-count-33554432-default-optional-fields', 'native lane: a host definition without optional_fields whose validation projection, with the default [] counted, holds exactly 33,554,432 values: within the value count, so the definition conforms and the object lacks the required field g', defAtLimit(8179),
+      r1Object, { refusals: ['missing_material_field:g'] }),
+    compute('native-definition-value-count-33554433-default-optional-fields', 'native lane: the same definition with one more value in its projection, the default [] counted: past the value count, invalid_definition', defAtLimit(8180),
+      r1Object, { refusals: ['invalid_definition'] }),
+  );
+
   // The nesting limit (Section 2.2): the contents of a container nested
   // deeper than 64 are not examined, so a number inside one adds no
   // unsupported_number. A number at depth 64 or less still does.
@@ -752,6 +831,23 @@ export function coreCases({ limits }) {
       native({ action_type: 't.obj.1', s: 'x', a: nest(70, 1.5), v: 1.5 }), { refusals: ['unsupported_number', 'unsupported_value'] }),
     compute('native-fraction-at-depth-64', 'native lane: 1.5 inside the innermost of 63 nested arrays, whose container is at depth 64, is examined: unsupported_number alone', [OBJ],
       native({ action_type: 't.obj.1', s: 'x', a: nest(63, 1.5) }), { refusals: ['unsupported_number'] }),
+  );
+  // The object and integer field types (Section 4.3) against the scope of
+  // phase 6: an object field holding 1.5 fails no field type, and the number
+  // is unsupported_number where phase 6 examines it, but nothing below depth
+  // 64 and nothing in an object past the value count, which is
+  // unsupported_value alone. A finite integer beyond 2^53-1 in an integer
+  // field is type-valid: unsupported_number within the count, and
+  // unsupported_value alone past it.
+  add(
+    compute('native-fraction-in-object-field', 'native lane: 1.5 inside the declared object field o fails no field type: unsupported_number alone', [OBJ],
+      native({ action_type: 't.obj.1', s: 'x', o: { k: 1.5 } }), { refusals: ['unsupported_number'] }),
+    compute('native-deep-fraction-in-object-field', 'native lane: 1.5 inside 70 nested objects in the declared object field o is past the nesting limit and never examined: unsupported_value alone', [OBJ],
+      native({ action_type: 't.obj.1', s: 'x', o: nest(70, 1.5, 'object') }), { refusals: ['unsupported_value'] }),
+    compute('native-value-count-fraction-in-object-field', 'native lane: 1.5 inside the declared object field o beside 2^26 - 1 values in the declared array field a: past the value count, so unsupported_value alone', [OBJ],
+      native({ action_type: 't.obj.1', s: 'x', o: { k: 1.5 }, a: { $dag: { depth: 25, leaf: 0 } } }), { refusals: ['unsupported_value'] }),
+    compute('native-value-count-integer-beyond-range-in-integer-field', 'native lane: the host number 2^53 in the integer field n beside 2^26 - 1 values in the declared array field a: type-valid, and past the value count, so unsupported_value alone', [OBJ],
+      native({ action_type: 't.obj.1', s: 'x', n: 9007199254740992, a: { $dag: { depth: 25, leaf: 0 } } }), { refusals: ['unsupported_value'] }),
   );
 
   // Enum snapshot labels (Section 4.4): values_ref, values_snapshot and

@@ -98,6 +98,14 @@ func buildNative(encoded interface{}, enclosing interface{}) interface{} {
 			out[key] = buildNative(pair[1], out)
 		}
 		return out
+	case "$fill":
+		spec, _ := body.(map[string]interface{})
+		value := buildNative(spec["v"], enclosing)
+		out := make([]interface{}, toInt(spec["n"]))
+		for i := range out {
+			out[i] = value
+		}
+		return out
 	case "$repeat":
 		spec, _ := body.(map[string]interface{})
 		return strings.Repeat(str(spec, "unit"), toInt(spec["count"]))
