@@ -73,7 +73,7 @@ const computeField = (field, value) => computeCaid(
 /** @param {{caid?: string}} r */
 const isCaid = (r) => typeof r.caid === "string";
 /** @param {{refusals?: string[]}} r */
-const first = (r) => (r.refusals ? first(r) : undefined);
+const first = (r) => (r.refusals ? r.refusals[0] : undefined);
 
 function daysInMonth(year, month) {
   if (month === 2) return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 29 : 28;
