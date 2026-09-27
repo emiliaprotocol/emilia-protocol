@@ -13,7 +13,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="August" day="26"/>
+    <date year="2026" month="September" day="27"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>evidence</keyword>
@@ -52,9 +52,9 @@
       <t>An optional evaluation-lineage profile carries an authenticated issuer
       statement about one evaluation of a claimed presentation. It binds the
       predecessor challenge, presentation, action, policy, evaluation
-      semantics, and any successor-challenge reference. A recipient that
-      retains authenticated artifacts can distinguish an earlier refusal or
-      indeterminate result from a later result. The profile carries no
+      semantics, and any successor-challenge reference. A recipient that retains authenticated artifacts can distinguish an earlier
+      unsatisfied result, whether or not its evaluation completed, from a later
+      result. The profile carries no
       authority, does not prove challenge consumption, ordering, completeness,
       or non-omission, and makes no claim that an action was admitted or
       executed.</t>
@@ -144,6 +144,29 @@
 	          mean that evidence was sufficient, that the action was authorized,
 	          or that any external effect was attempted.</dd>
         </dl>
+        <t>The outcome terms VERIFIED, ACCEPTED, SATISFIED, and UNSATISFIED
+        are those of the Authorization Evidence Chain specification
+        <xref target="AEC"/>. They are restated here so that this document
+        does not depend on that specification:</t>
+        <dl>
+          <dt>VERIFIED:</dt>
+          <dd>An evidence artifact's cryptographic and structural checks
+          passed under its native format. VERIFIED says nothing about whether
+          the relying party trusts the key, issuer, or policy behind the
+          artifact.</dd>
+          <dt>ACCEPTED:</dt>
+          <dd>A VERIFIED artifact also meets the relying party's pinned trust
+          inputs for its evidence type, such as trust anchors or key
+          directory, issuer, audience, key class, native policy, and validity
+          at the evaluation time.</dd>
+          <dt>SATISFIED:</dt>
+          <dd>Every evidence requirement of a challenge was met, under the
+          relying party's live policy at the evaluation time, by evidence that
+          is VERIFIED, ACCEPTED, and bound to the exact action.</dd>
+          <dt>UNSATISFIED:</dt>
+          <dd>Every evaluation result other than SATISFIED, including an
+          evaluation that could not complete. Reason identifiers say why.</dd>
+        </dl>
       </section>
     </section>
 
@@ -158,17 +181,23 @@
       properties.</t>
       <t>The JSON format defined by <xref target="RFC8259"/> is the reference
       serialization of the core model. A non-JSON binding MUST define an
-      unambiguous mapping to the same members and value types.</t>
+      unambiguous mapping to the same members and value types. Example lines
+      longer than 69 characters are folded as specified in
+      <xref target="RFC8792"/>.</t>
       <sourcecode type="json"><![CDATA[
+NOTE: '\' line wrapping per RFC 8792
+
 {
   "@version": "AE-CHALLENGE-v1",
   "challenge_id": "7a3120d1-65b4-4d1a-85d4-9128adf76b41",
   "nonce": "ABEiM0RVZneImaq7zN3u_w",
-  "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+      aaaaaaaaaaaaaaaaaaaaaaa",
   "action_profile": "https://example.net/action/payment-v3",
   "audience": "https://gateway-a.example",
   "policy_id": "https://gateway-b.example/policies/high-risk-v4",
-  "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\
+      bbbbbbbbbbbbbbbbbbbbbbb",
   "required_evidence": [
     {
       "requirement_id": "human-approval",
@@ -439,9 +468,9 @@
 	        <t><tt>obtain_hints</tt> are untrusted routing hints. Following a
 	        hint, authenticating to its URI, or receiving an "approved" response
 	        confers no authority at the relying party. Evidence obtained through
-	        a hint remains subject to native verification, exact-action matching,
-	        freshness and status checks, policy evaluation, and one-time
-	        consumption. A presenter MUST NOT send credentials or evidence to a
+	        a hint remains subject to native verification, relying-party
+	        acceptance, exact-action matching, freshness and status checks,
+	        policy evaluation, and one-time consumption. A presenter MUST NOT send credentials or evidence to a
 	        hinted endpoint unless its own policy independently authorizes the
 	        endpoint, scheme, redirect behavior, and disclosed material. Each hint
 	        <tt>requirement_id</tt> MUST identify an entry in the same challenge.
@@ -519,35 +548,42 @@
         MUST be the relying party's authoritative evaluation snapshot time,
         obtained from the relying party's authoritative time source and not
         from the presenter.</t>
-        <t>The closed <tt>outcome</tt> values are
-        <tt>evidence_sufficient</tt>, <tt>evidence_insufficient</tt>, and
-        <tt>evaluation_indeterminate</tt>. <tt>evidence_sufficient</tt> means
-        only that the evidence requirements in the predecessor challenge were
-        satisfied under the bound policy and evaluation profiles at
+        <t>The closed <tt>outcome</tt> values are <tt>SATISFIED</tt> and
+        <tt>UNSATISFIED</tt>, with the meanings in
+        <xref target="terms"/>. <tt>SATISFIED</tt> means only that the
+        evidence requirements in the predecessor challenge were satisfied
+        under the bound policy and evaluation profiles at
         <tt>evaluated_at</tt>. It is not authorization, admission, execution,
-        settlement, or proof that an external fact remains true.
-        <tt>evidence_insufficient</tt> means evaluation completed and at least
-        one bound requirement was not satisfied.
-        <tt>evaluation_indeterminate</tt> means the relying party cannot
-        establish either result and MUST NOT relabel uncertainty as refusal or
-        success.</t>
+        settlement, or proof that an external fact remains true. An
+        <tt>UNSATISFIED</tt> artifact records either a completed evaluation in
+        which at least one bound requirement was not satisfied, or an
+        evaluation that did not complete; its <tt>reason_ids</tt> say which.
+        A recipient MUST NOT read an evaluation that did not complete as a
+        completed refusal or as success.</t>
         <t><tt>reason_ids</tt> MUST contain unique values from the following
-        closed set: <tt>missing_evidence</tt>, <tt>stale_evidence</tt>,
-        <tt>unverifiable_evidence</tt>, <tt>status_unsatisfied</tt>,
-        <tt>policy_unsatisfied</tt>, <tt>evaluation_unavailable</tt>, and
-        <tt>evaluation_state_uncertain</tt>. For
-        <tt>evidence_sufficient</tt>, the array MUST be empty. For
-        <tt>evidence_insufficient</tt>, it MUST contain one or more of the
-        first five values. For <tt>evaluation_indeterminate</tt>, it MUST
-        contain one or both of the final two values.</t>
-        <t><tt>successor_challenge_digest</tt> MAY appear only with
-        <tt>evidence_insufficient</tt> and only after the successor challenge
+        closed set. The completed-evaluation reasons are
+        <tt>missing_evidence</tt> (no artifact was presented for a required
+        evidence type), <tt>evidence_not_verified</tt> (a presented artifact
+        is not VERIFIED), <tt>evidence_not_accepted</tt> (a presented artifact
+        is VERIFIED and not ACCEPTED), <tt>action_not_matched</tt> (a VERIFIED
+        and ACCEPTED artifact is not bound to the exact action under the
+        pinned action profile), <tt>stale_evidence</tt>,
+        <tt>status_unsatisfied</tt>, and <tt>policy_unsatisfied</tt>. The
+        incomplete-evaluation reasons are <tt>evaluation_unavailable</tt> and
+        <tt>evaluation_state_uncertain</tt>. For <tt>SATISFIED</tt>, the array
+        MUST be empty. For <tt>UNSATISFIED</tt>, it MUST contain either one or
+        more completed-evaluation reasons or one or both incomplete-evaluation
+        reasons, and MUST NOT mix the two kinds.</t>
+        <t><tt>successor_challenge_digest</tt> MAY appear only with an
+        <tt>UNSATISFIED</tt> outcome whose <tt>reason_ids</tt> are
+        completed-evaluation reasons, and only after the successor challenge
         has been authoritatively registered or its valid self-describing body
         has been constructed. The successor remains a fresh refusal under the
         live action and policy checks in <xref target="core-lifecycle"/>. The
         digest does not transfer satisfied evidence, authorize the action, or
-        promise another attempt. <tt>evidence_sufficient</tt> and
-        <tt>evaluation_indeterminate</tt> MUST NOT carry a successor digest.
+        promise another attempt. A <tt>SATISFIED</tt> outcome, and an
+        <tt>UNSATISFIED</tt> outcome that records an evaluation that did not
+        complete, MUST NOT carry a successor digest.
         Uncertain evaluation requires a separately authorized recovery path;
         it is not made safe to retry by this artifact.</t>
         <t>An artifact's action profile and digest and policy identifier and
@@ -616,8 +652,8 @@
 	        issuer and presenter-to-audience binding; validation of the registered
 	        or self-describing body; current exact-action agreement; authoritative
 	        routing; one atomic expiry-check, nonce-claim, and
-	        capacity-reservation transition; native evidence verification; and
-	        local policy evaluation.
+	        capacity-reservation transition; native evidence verification and
+	        acceptance; and local policy evaluation.
 	        Before that transition, the relying party refuses without claiming a
 	        nonce or reserving refusal-path capacity when bounded syntax or
 	        structure fails, the issuer or returning presenter cannot be
@@ -669,8 +705,9 @@
         already claimed is a replay result. Failure, timeout, partition, or an
         uncertain result while reaching the owner is temporary unavailability,
         not replay, and MUST NOT be reported as an already-claimed nonce.</t>
-        <t>If evidence remains missing, stale, or unverifiable, the relying
-	        party MAY issue a follow-up challenge. Before doing so, it MUST
+        <t>If evidence remains missing, stale, not VERIFIED, not ACCEPTED, or
+        not bound to the exact action, the relying party MAY issue a follow-up
+        challenge. Before doing so, it MUST
 	        rederive the current proposed action under its pinned action profile.
 	        If that digest no longer equals the consumed challenge digest, it MUST
 	        NOT issue a follow-up for the old action. A valid follow-up MUST use a fresh
@@ -973,50 +1010,6 @@
             unexpired consumed nonce.</li>
           </ul>
         </section>
-        <section anchor="reference-evidence-boundary">
-          <name>Reference Evidence Boundary</name>
-          <t>The same-team TypeScript reference includes an owner state machine
-          and a PostgreSQL transaction backend for the stateful path above. The
-          owner store registers issuance with capacity before exposure, stores
-          the issuance debit, bucket limits, and authenticated presenter instead
-          of recomputing them from the audience, uses PostgreSQL transaction time
-          for expiry, evidence-freshness evaluation, and recovery, locks replay and
-          capacity rows, returns an opaque generation-bound reservation, and
-          atomically finalizes a terminal result or a fresh follow-up. Recovery
-          is deadline-gated, requires a constructor-pinned local authorizer, and
-          replaces the reservation generation so an old token cannot finalize.
-          The production evaluator accepts only the owner-store object created
-          by that factory; copied objects and caller-declared capability flags
-          are refused. Capacity-row validation does not assume that JavaScript
-          and PostgreSQL use the same collation. Caller-selected production
-          follow-up nonces are rejected before claim, and a local follow-up
-          construction failure triggers terminal finalization without exposing
-          replacement state. If that finalization is uncertain, the evaluator
-          returns unavailability rather than claiming terminal state.</t>
-          <t>The reference owner rejects a challenge larger than 65536 UTF-8
-          octets, more than 64 evidence requirements or obtain hints, more than
-          16 presentation or per-requirement profile identifiers, or more than
-          32 proof-predicate or critical identifiers. It also rejects relative
-          security identifiers, duplicate requirement identifiers, unknown
-          nested core members, non-canonical durable nonces, and invalid retry
-          windows before allocating state. Local evidence-type tokens are mapped
-          to exact absolute URIs under <tt>https://emiliaprotocol.ai/ns/</tt> for
-          its experimental profile; consumers use the complete URI and do not
-          infer semantics from that prefix. If authenticated live policy changes,
-          the reference starts a fresh interaction rather than treating old
-          verification work as a continuation.</t>
-          <t>Executable tests cover duplicate claim, capacity refusal without
-          nonce burn, authoritative expiry and freshness time, terminal release of unused capacity,
-          atomic follow-up creation, stale-worker fencing, and the PostgreSQL
-          transaction adapter. They also exercise profile-native verification
-          through the Model-to-Matter path using owner-supplied time. A separate
-          finite same-team harness checks 114
-          small scenarios and exposes unsafe mutations. Neither artifact is an
-          independent implementation, a deployment audit, a proof of PostgreSQL
-          isolation, or a mechanized refinement proof. Deployments remain
-          responsible for installing the schema, pinning the capacity policy,
-          isolating the owner role, and verifying the database configuration.</t>
-        </section>
       </section>
 
       <section anchor="core-extensibility">
@@ -1106,6 +1099,8 @@
 	      current state that the requester can resolve; replay, expiry, and body
 	      collision do not by themselves establish that condition.</t>
       <sourcecode type="http"><![CDATA[
+NOTE: '\' line wrapping per RFC 8792
+
 HTTP/1.1 403 Forbidden
 Content-Type: application/problem+json
 Cache-Control: no-store
@@ -1121,11 +1116,13 @@ Retry-After: 30
     "@version": "AE-CHALLENGE-v1",
     "challenge_id": "7a3120d1-65b4-4d1a-85d4-9128adf76b41",
     "nonce": "ABEiM0RVZneImaq7zN3u_w",
-    "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+        aaaaaaaaaaaaaaaaaaaaaaaaa",
     "action_profile": "https://example.net/action/payment-v3",
     "audience": "https://agent.example",
     "policy_id": "https://resource.example/policies/high-risk-v4",
-    "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\
+        bbbbbbbbbbbbbbbbbbbbbbbbb",
     "required_evidence": [
       { "requirement_id": "human-approval",
         "type": "https://example.net/e/authorization-receipt",
@@ -1231,8 +1228,8 @@ Retry-After: 30
         the exact action under its pinned action profile and refuses because a
         current approval artifact is missing. B returns an AE-CHALLENGE bound
         to B's action digest and local evidence requirement. A obtains and
-        presents the artifact. B verifies it under B's trust anchors, matches
-        it to the same action, and reevaluates B's policy. The case passes only
+        presents the artifact. B verifies it, accepts it under B's trust anchors, matches it to
+        the same action, and reevaluates B's policy. The case passes only
         if A never treats the challenge as authorization and B refuses an
         action-digest mismatch, stale status, replayed nonce, or unsupported
         presentation profile. This is an illustration, not a DMSC conformance
@@ -1244,6 +1241,59 @@ Retry-After: 30
         refuses or returns indeterminate because exclusivity cannot be
         established.</t>
       </section>
+    </section>
+
+    <section anchor="implementation-status" removeInRFC="true">
+      <name>Implementation Status</name>
+      <t>This section describes the same-team reference implementation at the
+      time of posting, for reviewers. It follows the form of the
+      Implementation Status section described in <xref target="RFC7942"/>.
+      That process covers IETF-stream drafts; this document is intended for
+      the Independent Submission Stream.</t>
+          <t>The same-team TypeScript reference includes an owner state machine
+          and a PostgreSQL transaction backend for the stateful path in
+          <xref target="state-bounds"/>. The
+          owner store registers issuance with capacity before exposure, stores
+          the issuance debit, bucket limits, and authenticated presenter instead
+          of recomputing them from the audience, uses PostgreSQL transaction time
+          for expiry, evidence-freshness evaluation, and recovery, locks replay and
+          capacity rows, returns an opaque generation-bound reservation, and
+          atomically finalizes a terminal result or a fresh follow-up. Recovery
+          is deadline-gated, requires a constructor-pinned local authorizer, and
+          replaces the reservation generation so an old token cannot finalize.
+          The production evaluator accepts only the owner-store object created
+          by that factory; copied objects and caller-declared capability flags
+          are refused. Capacity-row validation does not assume that JavaScript
+          and PostgreSQL use the same collation. Caller-selected production
+          follow-up nonces are rejected before claim, and a local follow-up
+          construction failure triggers terminal finalization without exposing
+          replacement state. If that finalization is uncertain, the evaluator
+          returns unavailability rather than claiming terminal state.</t>
+          <t>The reference owner rejects a challenge larger than 65536 UTF-8
+          octets, more than 64 evidence requirements or obtain hints, more than
+          16 presentation or per-requirement profile identifiers, or more than
+          32 proof-predicate or critical identifiers. It also rejects relative
+          security identifiers, duplicate requirement identifiers, unknown
+          nested core members, non-canonical durable nonces, and invalid retry
+          windows before allocating state. Local evidence-type tokens are mapped
+          to exact absolute URIs under <tt>https://emiliaprotocol.ai/ns/</tt> for
+          its experimental profile; consumers use the complete URI and do not
+          infer semantics from that prefix. If authenticated live policy changes,
+          the reference starts a fresh interaction rather than treating old
+          verification work as a continuation.</t>
+          <t>Executable tests cover duplicate claim, capacity refusal without
+          nonce burn, authoritative expiry and freshness time, terminal release of unused capacity,
+          atomic follow-up creation, stale-worker fencing, and the PostgreSQL
+          transaction adapter. They also exercise profile-native verification
+          through the Model-to-Matter path using owner-supplied time. A separate
+          finite same-team harness checks 114
+          small scenarios and exposes unsafe mutations. Neither artifact is an
+          independent implementation, a deployment audit, a proof of PostgreSQL
+          isolation, or a mechanized refinement proof. Deployments remain
+          responsible for installing the schema, pinning the capacity policy,
+          isolating the owner role, and verifying the database configuration.</t>
+          <t>The reference does not implement the optional evaluation-lineage
+          profile of <xref target="evaluation-lineage-profile"/>.</t>
     </section>
 
     <section anchor="security">
@@ -1368,8 +1418,9 @@ Retry-After: 30
       evaluation semantics, and relying-party time inside one authenticated
       artifact. A recipient that retains authenticated artifacts can
       distinguish them as separate issuer statements and rejects unknown
-      outcomes, invalid reason combinations, successor links on sufficient or
-      indeterminate results, and any mismatch in the bound digests. The profile
+      outcomes, invalid reason combinations, successor links on SATISFIED
+      results or on evaluations that did not complete, and any mismatch in
+      the bound digests. The profile
       still proves only the authenticated issuer's evaluation statement. It
       does not prove challenge consumption, ordering, completeness,
       non-omission, or that source evidence was complete or true.</t>
@@ -1440,29 +1491,46 @@ Retry-After: 30
       separate from authority and execution claims.</t>
     </section>
 
-    <section anchor="changes">
+    <section anchor="changes" removeInRFC="true">
       <name>Changes since -07</name>
 	      <ul>
-	        <li>Adds the optional <tt>AE-EVALUATION-LINEAGE-v1</tt> profile for an
-	        authenticated, data-minimized issuer statement about one claimed-
-	        presentation evaluation.</li>
-	        <li>Binds lineage to the predecessor challenge, exact presentation,
-	        evaluation semantics, action, policy, presenter, issuer, and
-	        relying-party evaluation time.</li>
-	        <li>Defines closed sufficient, insufficient, and indeterminate
-	        outcomes with strict reason combinations and optional successor
-	        linkage only after an insufficient evaluation.</li>
-	        <li>Lets a recipient that retains authenticated artifacts distinguish
-	        earlier and later statements across policy changes, corrected
-	        presentations, and action transformations. It does not prove
-	        challenge consumption, ordering, completeness, or non-omission, and
-	        records neither authority nor execution.</li>
-	      </ul>
+        <li>Adds the optional <tt>AE-EVALUATION-LINEAGE-v1</tt> profile for an
+        authenticated, data-minimized issuer statement about one
+        claimed-presentation evaluation, bound to the predecessor challenge,
+        exact presentation, evaluation semantics, action, policy, presenter,
+        issuer, and relying-party evaluation time.</li>
+        <li>Uses the outcome terms of <xref target="AEC"/> (VERIFIED,
+        ACCEPTED, SATISFIED, UNSATISFIED), restated in
+        <xref target="terms"/> so that this document has no normative
+        dependency on it. The lineage outcomes are <tt>SATISFIED</tt> and
+        <tt>UNSATISFIED</tt>; closed reason identifiers keep a verification
+        failure, an acceptance refusal, an action mismatch, and an evaluation
+        that did not complete distinct; a successor link is allowed only after
+        a completed <tt>UNSATISFIED</tt> evaluation.</li>
+        <li>Lets a recipient that retains authenticated artifacts distinguish
+        earlier and later statements across policy changes, corrected
+        presentations, and action transformations. It does not prove
+        challenge consumption, ordering, completeness, or non-omission, and
+        records neither authority nor execution.</li>
+        <li>States that evidence obtained through an obtain hint also needs
+        relying-party acceptance, includes acceptance in the evaluation order,
+        and allows a follow-up challenge when evidence is not VERIFIED, not
+        ACCEPTED, or not bound to the exact action.</li>
+        <li>Moves the description of the reference implementation into an
+        Implementation Status section that is removed on publication.</li>
+        <li>Replaces the reference to draft-klrc-aiagent-auth, which
+        draft-ietf-wimse-aims replaced, with draft-ietf-wimse-aims-00, and
+        updates the other references.</li>
+        <li>Folds example lines longer than 69 characters as specified in
+        <xref target="RFC8792"/>.</li>
+      </ul>
     </section>
   </middle>
 
   <back>
     <references>
+      <name>References</name>
+      <references>
         <name>Normative References</name>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3339.xml"/>
@@ -1499,10 +1567,12 @@ Retry-After: 30
 	          <seriesInfo name="DOI" value="10.17487/RFC9111"/>
 	        </reference>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9457.xml"/>
-    </references>
-    <references>
+      </references>
+      <references>
         <name>Informative References</name>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9470.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7942.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8792.xml"/>
         <reference anchor="OAUTH-TXN-CHALLENGE" target="https://datatracker.ietf.org/doc/draft-rosomakho-oauth-txn-challenge/">
           <front>
             <title>OAuth Transaction Authorization Challenge</title>
@@ -1514,18 +1584,18 @@ Retry-After: 30
           </front>
           <seriesInfo name="Internet-Draft" value="draft-rosomakho-oauth-txn-challenge-00"/>
         </reference>
-        <reference anchor="KLRC" target="https://datatracker.ietf.org/doc/draft-klrc-aiagent-auth/">
+        <reference anchor="AIMS" target="https://datatracker.ietf.org/doc/draft-ietf-wimse-aims/">
           <front>
-            <title>AI Agent Authentication and Authorization</title>
-            <author fullname="Pieter Kasselman"/>
-            <author fullname="Jeff Lombardo"/>
-            <author fullname="Yaroslav Rosomakho"/>
-            <author fullname="Brian Campbell"/>
-            <author fullname="Nick Steele"/>
-            <author fullname="Aaron Parecki"/>
-            <date year="2026" month="July" day="6"/>
+            <title>AI Identity Management System</title>
+            <author fullname="Pieter Kasselman" initials="P." surname="Kasselman"/>
+            <author fullname="Jean-Fran&#231;ois Lombardo" asciiFullname="Jean-Francois Lombardo" initials="J." surname="Lombardo"/>
+            <author fullname="Yaroslav Rosomakho" initials="Y." surname="Rosomakho"/>
+            <author fullname="Brian Campbell" initials="B." surname="Campbell"/>
+            <author fullname="Nick Steele" initials="N." surname="Steele"/>
+            <author fullname="Aaron Parecki" initials="A." surname="Parecki"/>
+            <date year="2026" month="September" day="15"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-klrc-aiagent-auth-03"/>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-wimse-aims-00"/>
         </reference>
         <reference anchor="DMSC-GAPS" target="https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/">
           <front>
@@ -1534,49 +1604,49 @@ Retry-After: 30
             <author fullname="YiFei Wang"/>
             <author fullname="Iman Schrock"/>
             <author fullname="Bing Liu"/>
-            <date year="2026" month="August"/>
+            <date year="2026" month="August" day="14"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-dunbar-dmsc-gw-scenarios-gap-analysis-03"/>
+          <seriesInfo name="Internet-Draft" value="draft-dunbar-dmsc-gw-scenarios-gap-analysis-04"/>
         </reference>
         <reference anchor="CAID" target="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">
           <front>
             <title>The Canonical Action Identifier (CAID)</title>
             <author fullname="Iman Schrock"/>
-            <date year="2026" month="August"/>
+            <date year="2026" month="September" day="26"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-02"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-03"/>
         </reference>
         <reference anchor="AEB" target="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">
           <front>
             <title>The Action Evidence Boundary for Consequential Agent Effects</title>
             <author fullname="Iman Schrock"/>
-            <date year="2026" month="August"/>
+            <date year="2026" month="September" day="25"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-03"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-07"/>
         </reference>
         <reference anchor="BCR" target="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/">
           <front>
             <title>Bounded Capability Receipts and Durable Spend Control for Agent Actions</title>
             <author fullname="Iman Schrock"/>
-            <date year="2026" month="August"/>
+            <date year="2026" month="September" day="9"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-bounded-capability-receipts-03"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-bounded-capability-receipts-06"/>
         </reference>
         <reference anchor="AEC" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/">
           <front>
             <title>Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)</title>
             <author fullname="Iman Schrock"/>
-            <date year="2026" month="August"/>
+            <date year="2026" month="September" day="27"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-05"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-07"/>
         </reference>
         <reference anchor="AUTH-RECEIPTS" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
           <front>
             <title>Authorization Receipts for High-Risk Agent Actions</title>
             <author fullname="Iman Schrock"/>
-            <date year="2026" month="August" day="9"/>
+            <date year="2026" month="September" day="11"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-11"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-13"/>
         </reference>
         <reference anchor="CF538" target="https://www.kaggle.com/code/chrissyserb/538-iman-schrock-missing-evidence-receipt">
           <front>
@@ -1585,6 +1655,7 @@ Retry-After: 30
             <date year="2026" month="August" day="12"/>
           </front>
         </reference>
+      </references>
     </references>
 
     <section anchor="related-work">
@@ -1600,11 +1671,15 @@ Retry-After: 30
       <t>OAuth Transaction Authorization Challenge
       <xref target="OAUTH-TXN-CHALLENGE"/> supplies the OAuth-native
       choreography and transaction-bound grant that this document explicitly
-      does not define. The KLRC architecture <xref target="KLRC"/> describes
-      broader agent authentication and authorization requirements, including
-      human-in-the-loop and externalized authorization patterns. Authorization
-      Receipts <xref target="AUTH-RECEIPTS"/> are one possible portable human-
-      evidence type that an AE-CHALLENGE can request; neither the receipt nor
+      does not define. The WIMSE working group document AI Identity Management System
+      <xref target="AIMS"/> describes how existing workload identity and OAuth
+      specifications apply to agent authentication and authorization. Its
+      human-in-the-loop guidance treats a user confirmation obtained during
+      task execution as authorization only when the confirmation is bound to
+      a verifiable grant issued by the authorization server (Section 10.7 of
+      <xref target="AIMS"/>). That is the native OAuth path that
+      <xref target="oauth-boundary"/> keeps separate from AE-CHALLENGE. Authorization
+      Receipts <xref target="AUTH-RECEIPTS"/> are one possible portable human-evidence type that an AE-CHALLENGE can request; neither the receipt nor
       AE-CHALLENGE replaces a native OAuth grant or a relying party's final
       policy decision.</t>
     </section>

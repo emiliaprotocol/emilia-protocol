@@ -36,7 +36,8 @@ const flatTxt = txt.replace(/\s+/g, ' ');
 for (const required of [
   `docName="${basename}"`,
   `value="${basename}"`,
-  '<date year="2026" month="August" day="26"/>',
+  'submissionType="independent"',
+  '<date year="2026" month="September" day="27"/>',
   'Optional Evaluation Lineage Profile',
   'AE-EVALUATION-LINEAGE-v1',
   'predecessor_challenge_digest',
@@ -45,12 +46,15 @@ for (const required of [
   'evaluation_profile',
   'evaluation_profile_digest',
   'evaluated_at',
-  'evidence_sufficient',
-  'evidence_insufficient',
-  'evaluation_indeterminate',
+  '<dt>VERIFIED:</dt>',
+  '<dt>ACCEPTED:</dt>',
+  '<dt>SATISFIED:</dt>',
+  '<dt>UNSATISFIED:</dt>',
   'missing_evidence',
+  'evidence_not_verified',
+  'evidence_not_accepted',
+  'action_not_matched',
   'stale_evidence',
-  'unverifiable_evidence',
   'status_unsatisfied',
   'policy_unsatisfied',
   'evaluation_unavailable',
@@ -65,6 +69,15 @@ for (const required of [
   'not raw evidence, policy documents, credentials, authority objects',
   'Christine Classy',
   '538: Iman Schrock Missing-Evidence Receipt',
+  '<section anchor="implementation-status" removeInRFC="true">',
+  'reference.RFC.7942.xml',
+  'reference.RFC.8792.xml',
+  "NOTE: '\\' line wrapping per RFC 8792",
+  '<reference anchor="AIMS"',
+  'value="draft-ietf-wimse-aims-00"',
+  'value="draft-schrock-ep-authorization-evidence-chain-07"',
+  '<name>References</name>',
+  'https://iana.org/assignments/http-problem-types#ae-required',
   'Changes since -07',
 ]) invariant(flatXml.includes(required), `XML is missing required -08 text: ${required}`);
 
@@ -73,16 +86,24 @@ for (const required of [
   'AE-EVALUATION-LINEAGE-v1',
   'predecessor_challenge_digest',
   'evaluation_profile_digest',
-  'evidence_sufficient',
-  'evidence_insufficient',
-  'evaluation_indeterminate',
-  'successor_challenge_digest',
+  'The closed outcome values are SATISFIED and UNSATISFIED',
+  'restated here so that this document does not depend on that specification',
+  'VERIFIED says nothing about whether the relying party trusts the key, issuer, or policy',
+  'evidence_not_accepted (a presented artifact is VERIFIED and not ACCEPTED)',
+  'MUST NOT mix the two kinds',
+  'A recipient MUST NOT read an evaluation that did not complete as a completed refusal or as success',
+  'successor_challenge_digest MAY appear only with an UNSATISFIED outcome whose reason_ids are completed-evaluation reasons',
   'not authorization, admission, execution',
   'MUST NOT rewrite an earlier artifact',
   'authenticated issuer statement',
   'does not prove challenge consumption',
   'data-minimized',
   'MUST NOT contain a credential, bearer token, secret, or sensitive query parameter',
+  'This section is to be removed before publishing as an RFC.',
+  'this document is intended for the Independent Submission Stream',
+  'The reference does not implement the optional evaluation-lineage profile',
+  'Section 10.7 of [AIMS]',
+  'draft-ietf-wimse-aims-00',
   'Christine Classy',
   'Changes since -07',
 ]) invariant(flatTxt.includes(required), `TXT rendering is stale or missing: ${required}`);
@@ -96,10 +117,24 @@ for (const forbidden of [
   'absolute legal',
   'un-fudgeable',
   'exactly-once physical execution',
+  // The -08 draft's own third outcome vocabulary, replaced by AEC's terms.
+  'evidence_sufficient',
+  'evidence_insufficient',
+  'evaluation_indeterminate',
+  'unverifiable_evidence',
+  // The replaced KLRC draft is no longer cited.
+  'draft-klrc-aiagent-auth-03',
+  'target="KLRC"',
+  '[KLRC]',
 ]) {
   invariant(!flatXml.includes(forbidden), `retired or unsupported text survived: ${forbidden}`);
   invariant(!flatTxt.includes(forbidden), `retired or unsupported rendered text survived: ${forbidden}`);
 }
+
+invariant(/^[\x09\x0a\x0d\x20-\x7e]*$/.test(xml), 'XML source must be printable ASCII');
+invariant(/^[\x09\x0a\x0c\x0d\x20-\x7e]*$/.test(txt), 'TXT render must be printable ASCII');
+invariant(txt.split('\n').every((line) => line.length <= 72), 'TXT render has a line over 72 columns');
+invariant(!/[\u2013\u2014]/.test(xml) && !/[\u2013\u2014]/.test(txt), 'no en or em dash may appear');
 
 invariant(
   sha256(readFileSync(published07)) === published07Sha256,
@@ -121,4 +156,4 @@ for (const [index, relative] of expectedPaths.entries()) {
   }
 }
 
-console.log('AE Challenge -08: authenticated evaluation statement, closed outcomes, bounded successor reference, renders, checksums, and published -07 integrity PASS.');
+console.log('AE Challenge -08: AEC outcome terms restated without a normative dependency, closed reasons, bounded successor reference, Independent Stream shape, renders, checksums, and published -07 integrity PASS.');
