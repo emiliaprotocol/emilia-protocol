@@ -19,7 +19,7 @@ Abstract
    material action fields differently.  This document defines the
    Canonical Action IDentifier (CAID): a typed action object, a
    canonicalization and digest suite, a compact identifier string, and
-   immutable action-type definitions with required material fields.
+   versioned action-type definitions with required material fields.
    External value sets are bound to integrity-checked snapshots.  The
    document specifies a strict JSON input profile, a closed and ordered
    set of refusal reasons, a digest that identifies the validation
@@ -149,9 +149,9 @@ Internet-Draft                    CAID                    September 2026
      12.8.  Media Types  . . . . . . . . . . . . . . . . . . . . . .  51
    13. Implementation Status . . . . . . . . . . . . . . . . . . . .  52
    14. Changes since -03 . . . . . . . . . . . . . . . . . . . . . .  52
-     14.1.  Newly Refused Inputs . . . . . . . . . . . . . . . . . .  52
+     14.1.  Newly Refused Inputs . . . . . . . . . . . . . . . . . .  53
      14.2.  New Rules and Features . . . . . . . . . . . . . . . . .  54
-     14.3.  Reason Changes . . . . . . . . . . . . . . . . . . . . .  55
+     14.3.  Reason Changes . . . . . . . . . . . . . . . . . . . . .  56
      14.4.  Reference Registry . . . . . . . . . . . . . . . . . . .  56
      14.5.  Other Changes  . . . . . . . . . . . . . . . . . . . . .  56
    15. Changes since -02 . . . . . . . . . . . . . . . . . . . . . .  57
@@ -245,7 +245,7 @@ Internet-Draft                    CAID                    September 2026
    14 [RFC2119] [RFC8174] when, and only when, they appear in all
    capitals, as shown here.
 
-   Action object:  The typed data object, defined in Section 2, over
+   Action object:  The typed data object, defined in Section 2.1, over
       which a CAID's digest is computed.
 
    Action type:  A versioned type name whose definition (Section 4)
@@ -495,7 +495,7 @@ Internet-Draft                    CAID                    September 2026
        UTF-8 [RFC3629]; no string or member name, after unescaping,
        contains a surrogate code point or a noncharacter; and no object
        has two members whose names, after unescaping, are the same
-       sequence of code points.  The names "a" and "a" are the same
+       sequence of code points.  The names "a" and "\u0061" are the same
        name.  A duplicate is refused, never resolved by keeping the
        first or the last member.
 
@@ -540,8 +540,8 @@ Internet-Draft                    CAID                    September 2026
 2.5.  Host Values
 
    An implementation MAY also accept an action object, a type
-   definition, or a mapping source as a host value that the application
-   constructed.  Such an implementation:
+   definition, a mapping profile, or a mapping source as a host value
+   that the application constructed.  Such an implementation:
 
    *  MUST refuse any host value that is not a value of the data model:
       as unsupported_number when it is a number outside the model, and
@@ -1011,10 +1011,10 @@ Internet-Draft                    CAID                    September 2026
 
 
    *  Every entry of either array is an object whose type member is a
-      string and whose name member is a field name.  A field name is a
-      non-empty string that does not contain ":" (U+003A) and is not
-      action_type; the field-name rule of Appendix A is the first two
-      conditions.  No field name appears twice across the two arrays.
+      string and whose name member is a field name: a string that
+      matches the field-name rule of Appendix A, which means it is non-
+      empty and does not contain ":" (U+003A), and that is not
+      action_type.  No field name appears twice across the two arrays.
 
    *  An entry whose type is a field type of Section 4.3 has no members
       other than name, type, notes, and the members that field type
@@ -1320,11 +1320,10 @@ Internet-Draft                    CAID                    September 2026
    sets at all; CPT, whose codes the American Medical Association
    licenses, is the leading example.  The hcpcs format accepts HCPCS
    Level I (CPT) and Level II codes by syntax alone, so a type can carry
-   either without the registry carrying a single CPT code.  Each
-   distinct lexical form is a distinct format: the 11-digit and the
-   hyphenated 10-digit forms of a National Drug Code are the formats
-   ndc-11 and ndc-10-hyphenated, so one package never has two CAIDs
-   under one format.
+   either without the registry carrying a single CPT code.  Each lexical
+   form of a code is its own format, so that no format admits two
+   spellings of one code: the 11-digit and the hyphenated 10-digit forms
+   of a National Drug Code are the formats ndc-11 and ndc-10-hyphenated.
 
    Every code format matches only strings of bounded length and compiles
    to a regular expression with no nested quantifiers and no quantified
@@ -1333,6 +1332,7 @@ Internet-Draft                    CAID                    September 2026
    backtracking and automaton engines alike (Section 10.8).  A new code
    format is registered in the CAID Field Types registry with its ABNF
    and must have this property.
+
 
 
 
@@ -1576,10 +1576,8 @@ Internet-Draft                    CAID                    September 2026
    |       |      |                               | implements         |
    +-------+------+-------------------------------+--------------------+
    | 6     | no   | unsupported_number            | a number anywhere  |
-   |       |      |                               | in the object,     |
-   |       |      |                               | member names and   |
-   |       |      |                               | nested values      |
-   |       |      |                               | included, is       |
+   |       |      |                               | in the object, at  |
+   |       |      |                               | any depth, is      |
    |       |      |                               | outside the data   |
    |       |      |                               | model              |
    +-------+------+-------------------------------+--------------------+
@@ -1587,7 +1585,8 @@ Internet-Draft                    CAID                    September 2026
    |       |      |                               | is outside the     |
    |       |      |                               | data model,        |
    |       |      |                               | including a        |
-   |       |      |                               | string with an     |
+   |       |      |                               | string or member   |
+   |       |      |                               | name with an       |
    |       |      |                               | unpaired           |
    |       |      |                               | surrogate or a     |
    |       |      |                               | noncharacter,      |
@@ -1618,6 +1617,7 @@ Internet-Draft                    CAID                    September 2026
    Identical reason strings are then reduced to the first.  A field
    yields at most one phase 4 reason, and phases 5, 6, and 7 yield at
    most one reason each.
+
 
 
 
@@ -2805,10 +2805,10 @@ Internet-Draft                    CAID                    September 2026
 12.7.  The "caid" URI Scheme
 
    A CAID is a syntactically valid URI [RFC3986]: the scheme "caid"
-   followed by ":" and a rootless path whose segments contain only
-   unreserved characters and ":".  IANA is requested to register the
-   scheme in the "Uniform Resource Identifier (URI) Schemes" registry
-   with the following template [RFC7595]:
+   followed by ":" and a rootless path made of unreserved characters and
+   ":".  IANA is requested to register the scheme in the "Uniform
+   Resource Identifier (URI) Schemes" registry with the following
+   template [RFC7595]:
 
    Scheme name:  caid
 
@@ -2839,14 +2839,14 @@ Internet-Draft                    CAID                    September 2026
 
 12.8.  Media Types
 
-   This document registers no media type.  Type definitions, enum
-   snapshots, and mapping profiles are configuration that a relying
-   party pins by digest (Sections 4.2.2, 4.4, and 8.2).  No step of this
-   document transfers them in a message whose type a recipient must
-   recognize, and an action object travels inside the artifact that
-   carries it.  A specification that defines such a transfer can
-   register a media type [RFC6838] for it.
+   This document registers no media type [RFC6838].  A media type earns
+   registration when a recipient must recognize a message by it, and no
+   step of this document sends one of its objects that way:
 
+   *  A type definition is configuration.  A relying party pins it by
+      definition_sha256 or by a registry digest (Section 4.2.2), and a
+      definition obtained over the network is checked against that pin
+      before use, never trusted for its label.
 
 
 
@@ -2857,6 +2857,19 @@ Schrock                   Expires 30 March 2027                [Page 51]
 
 Internet-Draft                    CAID                    September 2026
 
+
+   *  A mapping profile is pinned by its digest and comes from relying-
+      party configuration; a label inside a presented artifact is never
+      accepted as the profile or its source format (Section 8.1).
+
+   *  An enum snapshot is local by rule: computation and verification
+      never fetch one (Section 4.4).
+
+   *  An action object travels inside the artifact that carries it,
+      under that artifact's own format.
+
+   A specification that defines a transfer of any of these objects can
+   register a media type for it.
 
 13.  Implementation Status
 
@@ -2892,6 +2905,15 @@ Internet-Draft                    CAID                    September 2026
    give every normative change.  Each item in the first four lists is
    pinned by conformance vectors.
 
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 52]
+
+Internet-Draft                    CAID                    September 2026
+
+
 14.1.  Newly Refused Inputs
 
    This revision refuses each of the following inputs, which -03
@@ -2904,15 +2926,6 @@ Internet-Draft                    CAID                    September 2026
 
    *  Action objects whose canonical encoding exceeds 16,777,216 octets:
       unsupported_value (Section 2.2).
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 52]
-
-Internet-Draft                    CAID                    September 2026
-
 
    *  Strings and member names that contain a Unicode noncharacter,
       which I-JSON excludes: malformed_json as JSON text,
@@ -2947,19 +2960,6 @@ Internet-Draft                    CAID                    September 2026
       type that carry members the type does not define:
       invalid_definition (Section 4.2.1).
 
-   *  Timestamps with a lowercase "t" or "z", a second of 60, or a day
-      past the end of its month, which the -03 description "an RFC 3339
-      timestamp in UTC" admitted: mistyped_field (Section 4.3).
-
-   *  Identifiers that begin with "CAID:" or "Caid:", which the -03 ABNF
-      admitted because an [RFC5234] string literal is case-insensitive:
-      malformed_caid (Section 3.4).
-
-   *  Amount strings whose integer part has a leading zero, such as
-      "01.5", which the -03 prose admitted: invalid_amount
-      (Section 4.3).
-
-
 
 
 
@@ -2970,10 +2970,24 @@ Schrock                   Expires 30 March 2027                [Page 53]
 Internet-Draft                    CAID                    September 2026
 
 
-   *  Identifiers whose suite begins with a digit or whose digest's
-      final character sets an unused bit: malformed_caid (Section 3.4).
-      -03 already excluded both; the reference implementations accepted
-      them before this revision.
+   *  Timestamps with a lowercase "t" or "z", or with a second of 60,
+      which [RFC3339] permits and the -03 description "an RFC 3339
+      timestamp in UTC" therefore admitted: mistyped_field
+      (Section 4.3).
+
+   *  Identifiers that begin with "CAID:" or "Caid:", which the -03 ABNF
+      admitted because an [RFC5234] string literal is case-insensitive:
+      malformed_caid (Section 3.4).
+
+   *  Amount strings whose integer part has a leading zero, such as
+      "01.5", which the -03 prose admitted: invalid_amount
+      (Section 4.3).
+
+   *  Identifiers whose suite begins with a digit, which the -03 suite
+      ABNF already excluded, and identifiers whose digest's final
+      character sets an unused bit, which -03 did not address:
+      malformed_caid (Section 3.4).  The reference implementations
+      accepted both before this revision.
 
    *  Mapping profiles with two rules for one source path, which -03
       already forbade, a member whose value is null, a target_field that
@@ -3004,6 +3018,14 @@ Internet-Draft                    CAID                    September 2026
       deduplicated, so unsupported_number always precedes
       unsupported_value.
 
+
+
+
+Schrock                   Expires 30 March 2027                [Page 54]
+
+Internet-Draft                    CAID                    September 2026
+
+
    *  Definition conformance and resolution (Sections 4.2.1 and 4.2.3).
       A field name is a non-empty string without ":", unique, and not
       action_type.  The order of configured definitions no longer
@@ -3017,14 +3039,6 @@ Internet-Draft                    CAID                    September 2026
 
    *  Verification details, one closed-shape entry per underlying reason
       (Section 6.1).
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 54]
-
-Internet-Draft                    CAID                    September 2026
-
 
    *  Status never affects computation or verification, so deprecated
       types resolve, compute, and verify (Section 4.2.4).
@@ -3059,6 +3073,15 @@ Internet-Draft                    CAID                    September 2026
    *  A target_field may be any field name other than action_type, so a
       required field such as @version can be mapped (Section 8.2).
 
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 55]
+
+Internet-Draft                    CAID                    September 2026
+
+
    *  Mapping stages A through D, and the left: and right: composition
       of comparison reasons, are normative (Sections 8.3 and 8.4).
 
@@ -3073,14 +3096,6 @@ Internet-Draft                    CAID                    September 2026
       ..., else malformed_caid": verification phase 1 now yields
       malformed_caid or unknown_suite (Section 6).  The input is refused
       either way.
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 55]
-
-Internet-Draft                    CAID                    September 2026
-
 
    *  An unpaired surrogate escape in JSON text is malformed_json; in a
       host value it remains unsupported_value (Sections 2.4 and 2.5).
@@ -3115,6 +3130,14 @@ Internet-Draft                    CAID                    September 2026
    The following changes add or correct text without changing what an
    implementation accepts, refuses, or reports.
 
+
+
+
+Schrock                   Expires 30 March 2027                [Page 56]
+
+Internet-Draft                    CAID                    September 2026
+
+
    *  A processing overview (Section 1.2) and three appendices: the
       collected ABNF, now the only statement of every grammar, with
       case-sensitive strings [RFC7405]; the reason tables; and worked
@@ -3128,15 +3151,6 @@ Internet-Draft                    CAID                    September 2026
       identifiers, signature coverage, limits, code-format matching,
       confusables, and digest fields under suite migration.  The parser
       requirements moved from Security Considerations to Section 2.4.
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 56]
-
-Internet-Draft                    CAID                    September 2026
-
 
    *  Privacy Considerations replace the statement that identifiers may
       be treated as public values with a confidentiality statement and
@@ -3170,6 +3184,16 @@ Internet-Draft                    CAID                    September 2026
    embedded values array beside an external reference is the pinned
    array.  Values outside a compact inline list now fail closed.
 
+
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 57]
+
+Internet-Draft                    CAID                    September 2026
+
+
    Required-field presence means a member of the action object itself.
    Strings and member names containing an unpaired surrogate are refused
    as unsupported_value, making explicit the refusal that RFC 8785
@@ -3186,14 +3210,6 @@ Internet-Draft                    CAID                    September 2026
    accepted but the snapshot omits is refused.  Eleven active types in
    the reference registry require an external value set that has no
    pinned snapshot yet and cannot produce a CAID under version 4 until
-
-
-
-Schrock                   Expires 30 March 2027                [Page 57]
-
-Internet-Draft                    CAID                    September 2026
-
-
    one is published.  Deployments must update their registry and enum-
    snapshot pins before reporting validation under registry v4.
    Historical v3 decisions remain decisions under the historical
@@ -3225,6 +3241,15 @@ Internet-Draft                    CAID                    September 2026
               RFC 3986, DOI 10.17487/RFC3986, January 2005,
               <https://www.rfc-editor.org/info/rfc3986>.
 
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 58]
+
+Internet-Draft                    CAID                    September 2026
+
+
    [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
               Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
               <https://www.rfc-editor.org/info/rfc4648>.
@@ -3238,17 +3263,6 @@ Internet-Draft                    CAID                    September 2026
               (SHA and SHA-based HMAC and HKDF)", RFC 6234,
               DOI 10.17487/RFC6234, May 2011,
               <https://www.rfc-editor.org/info/rfc6234>.
-
-
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 58]
-
-Internet-Draft                    CAID                    September 2026
-
 
    [RFC6901]  Bryan, P., Ed., Zyp, K., and M. Nottingham, Ed.,
               "JavaScript Object Notation (JSON) Pointer", RFC 6901,
@@ -3284,6 +3298,14 @@ Internet-Draft                    CAID                    September 2026
 
 16.2.  Informative References
 
+
+
+
+Schrock                   Expires 30 March 2027                [Page 59]
+
+Internet-Draft                    CAID                    September 2026
+
+
    [CAID-REGISTRY]
               EMILIA Protocol, Inc., "CAID Reference Registry, Registry
               Version 5", September 2026,
@@ -3298,14 +3320,6 @@ Internet-Draft                    CAID                    September 2026
    [I-D.lee-orprg-permit-receipts]
               Lee, Y. B., "Permit Receipts for Permit-Before-Commit
               Authorization of AI-Agent and Workload External Effects",
-
-
-
-Schrock                   Expires 30 March 2027                [Page 59]
-
-Internet-Draft                    CAID                    September 2026
-
-
               Work in Progress, Internet-Draft, draft-lee-orprg-permit-
               receipts-00, 4 June 2026,
               <https://datatracker.ietf.org/doc/html/draft-lee-orprg-
@@ -3340,6 +3354,14 @@ Internet-Draft                    CAID                    September 2026
               <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
               authorization-receipts-09>.
 
+
+
+
+Schrock                   Expires 30 March 2027                [Page 60]
+
+Internet-Draft                    CAID                    September 2026
+
+
    [I-D.thallapelly-oasnt-caid]
               Thallapelly, A., "OASNT-CAID: Canonical Action Identifier
               Derivation and the Named-Human Binding", Work in Progress,
@@ -3351,16 +3373,6 @@ Internet-Draft                    CAID                    September 2026
               Specifications and Registration Procedures", BCP 13,
               RFC 6838, DOI 10.17487/RFC6838, January 2013,
               <https://www.rfc-editor.org/info/rfc6838>.
-
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 60]
-
-Internet-Draft                    CAID                    September 2026
-
 
    [RFC7595]  Thaler, D., Ed., Hansen, T., and T. Hardie, "Guidelines
               and Registration Procedures for URI Schemes", BCP 35,
@@ -3396,6 +3408,16 @@ Appendix A.  Collected ABNF
    mapped_action:missing_material_field:amount.  A timestamp's day is
    further limited by the length of its month (Section 4.3).
 
+
+
+
+
+
+Schrock                   Expires 30 March 2027                [Page 61]
+
+Internet-Draft                    CAID                    September 2026
+
+
    ; Collected ABNF [RFC5234] with case-sensitive strings [RFC7405].
    ; A string matches a rule only as a whole: nothing precedes or
    ; follows it, not even a final line feed.
@@ -3410,14 +3432,6 @@ Appendix A.  Collected ABNF
    action-type   = 1*( name-segment "." ) type-version
    name-segment  = lower-char *( lower-char / DIGIT / "-" )
    type-version  = pos-int
-
-
-
-Schrock                   Expires 30 March 2027                [Page 61]
-
-Internet-Draft                    CAID                    September 2026
-
-
    pos-int       = %x31-39 *DIGIT   ; positive integer, no leading zero
 
    suite         = lower-char *( lower-char / DIGIT / "-" )
@@ -3452,6 +3466,14 @@ Internet-Draft                    CAID                    September 2026
    digest-field  = %s"sha256:" 64hex-lower
    hex-lower     = DIGIT / %x61-66  ; 0-9 / a-f
 
+
+
+
+Schrock                   Expires 30 March 2027                [Page 62]
+
+Internet-Draft                    CAID                    September 2026
+
+
    timestamp     = full-date %x54 utc-time %x5A   ; "T" and "Z"
    full-date     = date-year "-" date-month "-" date-mday
    date-year     = 4DIGIT
@@ -3466,14 +3488,6 @@ Internet-Draft                    CAID                    September 2026
    time-fraction = "." 1*DIGIT
 
    ; A.4 Code formats
-
-
-
-Schrock                   Expires 30 March 2027                [Page 62]
-
-Internet-Draft                    CAID                    September 2026
-
-
    ;
    ; The rule name of each code format is its registered format name.
    ; A format fixes syntax only, never which codes exist.
@@ -3508,6 +3522,14 @@ Internet-Draft                    CAID                    September 2026
                                     ; the registered formats are A.4
 
    code-system   = uri-scheme ":" 1*uri-char
+
+
+
+Schrock                   Expires 30 March 2027                [Page 63]
+
+Internet-Draft                    CAID                    September 2026
+
+
                                     ; an absolute URI [RFC3986] with no
                                     ; fragment, in these characters only
    uri-scheme    = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
@@ -3522,14 +3544,6 @@ Internet-Draft                    CAID                    September 2026
    json-pointer  = *( "/" reference-token )       ; [RFC6901]
    source-path   = "/" reference-token json-pointer
                                     ; a json-pointer other than ""
-
-
-
-Schrock                   Expires 30 March 2027                [Page 63]
-
-Internet-Draft                    CAID                    September 2026
-
-
    reference-token
                  = *( unescaped / escaped )
    unescaped     = %x00-2E / %x30-7D / %x7F-D7FF / %xE000-10FFFF
@@ -3564,6 +3578,14 @@ Internet-Draft                    CAID                    September 2026
                  / %s"native_verification_required"
                  / %s"mapping_profile_unpinned"
                  / %s"source_format_mismatch" / %s"source_not_object"
+
+
+
+Schrock                   Expires 30 March 2027                [Page 64]
+
+Internet-Draft                    CAID                    September 2026
+
+
                  / %s"source_not_canonicalizable"
                  / %s"declared_source_semantic_loss"
    pointer-code  = %s"invalid_source_path" / %s"missing_source_field"
@@ -3576,16 +3598,6 @@ Internet-Draft                    CAID                    September 2026
                  / %s"target_action_type_mismatch"
                  / %s"material_projection_mismatch"
 
-
-
-
-
-
-Schrock                   Expires 30 March 2027                [Page 64]
-
-Internet-Draft                    CAID                    September 2026
-
-
 Appendix B.  Reason Codes
 
    These tables list every reason.  A reason with a parameter is the
@@ -3596,18 +3608,6 @@ Appendix B.  Reason Codes
    prefixes a failed mapping's reasons with "left:" or "right:".  These
    tables are the initial contents of the CAID Reason Codes registry
    (Section 12.4).
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -3967,7 +3967,7 @@ C.5.  Code Fields
    }
 
    The same object with the codes written "e0601" and "G4733" is
-   refused, because neither format folds case or supplies the dot:
+   refused, because no format folds case or inserts a dot:
 
 
 

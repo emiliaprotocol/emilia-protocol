@@ -13,7 +13,7 @@
       encode material action fields differently. This document defines
       the Canonical Action IDentifier (CAID): a typed action object, a
       canonicalization and digest suite, a compact identifier string,
-      and immutable action-type definitions with required material
+      and versioned action-type definitions with required material
       fields. External value sets are bound to integrity-checked
       snapshots. The document specifies a strict JSON input profile, a
       closed and ordered set of refusal reasons, a digest that identifies
@@ -1279,7 +1279,7 @@ li > p:last-of-type:only-child {
       encode material action fields differently. This document defines
       the Canonical Action IDentifier (CAID): a typed action object, a
       canonicalization and digest suite, a compact identifier string,
-      and immutable action-type definitions with required material
+      and versioned action-type definitions with required material
       fields. External value sets are bound to integrity-checked
       snapshots. The document specifies a strict JSON input profile, a
       closed and ordered set of refusal reasons, a digest that identifies
@@ -1696,7 +1696,7 @@ li > p:last-of-type:only-child {
 <span class="break"></span><dl class="dlParallel" id="section-1.1-2">
           <dt id="section-1.1-2.1">Action object:</dt>
           <dd style="margin-left: 1.5em" id="section-1.1-2.2">The typed data object, defined in
-          <a href="#object" class="auto internal xref">Section 2</a>, over which a CAID's digest is
+          <a href="#action-object" class="auto internal xref">Section 2.1</a>, over which a CAID's digest is
           computed.<a href="#section-1.1-2.2" class="pilcrow">¶</a>
 </dd>
           <dd class="break"></dd>
@@ -2000,7 +2000,7 @@ li > p:last-of-type:only-child {
           string or member name, after unescaping, contains a surrogate
           code point or a noncharacter; and no object has two members
           whose names, after unescaping, are the same sequence of code
-          points. The names "a" and "a" are the same name. A
+          points. The names "a" and "\u0061" are the same name. A
           duplicate is refused, never resolved by keeping the first or
           the last member.<a href="#section-2.4-3.2" class="pilcrow">¶</a>
 </li>
@@ -2044,8 +2044,8 @@ li > p:last-of-type:only-child {
 <a href="#section-2.5" class="section-number selfRef">2.5. </a><a href="#name-host-values" class="section-name selfRef">Host Values</a>
         </h3>
 <p id="section-2.5-1">An implementation MAY also accept an action object, a type
-        definition, or a mapping source as a host value that the
-        application constructed. Such an implementation:<a href="#section-2.5-1" class="pilcrow">¶</a></p>
+        definition, a mapping profile, or a mapping source as a host value
+        that the application constructed. Such an implementation:<a href="#section-2.5-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-2.5-2.1">MUST refuse any host value that is not a value of the data
           model: as unsupported_number when it is a number outside the
@@ -2508,11 +2508,11 @@ caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB\
             optional_fields is absent or an array.<a href="#section-4.2.1-2.2" class="pilcrow">¶</a>
 </li>
             <li class="normal" id="section-4.2.1-2.3">Every entry of either array is an object whose type member
-            is a string and whose name member is a field name. A field
-            name is a non-empty string that does not contain ":" (U+003A)
-            and is not action_type; the field-name rule of
-            <a href="#appendix-abnf" class="auto internal xref">Appendix A</a> is the first two conditions.
-            No field name appears twice across the two arrays.<a href="#section-4.2.1-2.3" class="pilcrow">¶</a>
+            is a string and whose name member is a field name: a string
+            that matches the field-name rule of
+            <a href="#appendix-abnf" class="auto internal xref">Appendix A</a>, which means it is non-empty and
+            does not contain ":" (U+003A), and that is not action_type. No
+            field name appears twice across the two arrays.<a href="#section-4.2.1-2.3" class="pilcrow">¶</a>
 </li>
             <li class="normal" id="section-4.2.1-2.4">An entry whose type is a field type of
             <a href="#fieldtypes" class="auto internal xref">Section 4.3</a> has no members other than name,
@@ -2843,10 +2843,10 @@ caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB\
         Association licenses, is the leading example. The hcpcs format
         accepts HCPCS Level I (CPT) and Level II codes by syntax alone,
         so a type can carry either without the registry carrying a single
-        CPT code. Each distinct lexical form is a distinct format: the
-        11-digit and the hyphenated 10-digit forms of a National Drug
-        Code are the formats ndc-11 and ndc-10-hyphenated, so one package
-        never has two CAIDs under one format.<a href="#section-4.5-4" class="pilcrow">¶</a></p>
+        CPT code. Each lexical form of a code is its own format, so that
+        no format admits two spellings of one code: the 11-digit and the
+        hyphenated 10-digit forms of a National Drug Code are the formats
+        ndc-11 and ndc-10-hyphenated.<a href="#section-4.5-4" class="pilcrow">¶</a></p>
 <p id="section-4.5-5">Every code format matches only strings of bounded length and
         compiles to a regular expression with no nested quantifiers and no
         quantified alternatives that can begin with the same character.
@@ -3095,17 +3095,17 @@ ZLQQQ
             <td class="text-left" rowspan="1" colspan="1">no</td>
             <td class="text-left" rowspan="1" colspan="1">unsupported_number</td>
             <td class="text-left" rowspan="1" colspan="1">a number
-          anywhere in the object, member names and nested values
-          included, is outside the data model</td>
+          anywhere in the object, at any depth, is outside the data
+          model</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">7</td>
             <td class="text-left" rowspan="1" colspan="1">no</td>
             <td class="text-left" rowspan="1" colspan="1">unsupported_value</td>
             <td class="text-left" rowspan="1" colspan="1">any other
-          value is outside the data model, including a string with an
-          unpaired surrogate or a noncharacter, nesting beyond 64, and a
-          canonical encoding beyond 16,777,216 octets</td>
+          value is outside the data model, including a string or member
+          name with an unpaired surrogate or a noncharacter, nesting beyond
+          64, and a canonical encoding beyond 16,777,216 octets</td>
           </tr>
         </tbody>
       </table>
@@ -4463,8 +4463,8 @@ ZLQQQ
 <a href="#section-12.7" class="section-number selfRef">12.7. </a><a href="#name-the-caid-uri-scheme" class="section-name selfRef">The "caid" URI Scheme</a>
         </h3>
 <p id="section-12.7-1">A CAID is a syntactically valid URI <span>[<a href="#RFC3986" class="cite xref">RFC3986</a>]</span>: the
-        scheme "caid" followed by ":" and a rootless path whose segments
-        contain only unreserved characters and ":". IANA is requested to
+        scheme "caid" followed by ":" and a rootless path made of
+        unreserved characters and ":". IANA is requested to
         register the scheme in the "Uniform Resource Identifier (URI)
         Schemes" registry with the following template
         <span>[<a href="#RFC7595" class="cite xref">RFC7595</a>]</span>:<a href="#section-12.7-1" class="pilcrow">¶</a></p>
@@ -4516,14 +4516,31 @@ ZLQQQ
         <h3 id="name-media-types">
 <a href="#section-12.8" class="section-number selfRef">12.8. </a><a href="#name-media-types" class="section-name selfRef">Media Types</a>
         </h3>
-<p id="section-12.8-1">This document registers no media type. Type definitions, enum
-        snapshots, and mapping profiles are configuration that a relying
-        party pins by digest (Sections <a href="#definition-digest" class="auto internal xref">4.2.2</a>, <a href="#enum-resolution" class="auto internal xref">4.4</a>,
-        and <a href="#mapping-object" class="auto internal xref">8.2</a>). No step of
-        this document transfers them in a message whose type a recipient
-        must recognize, and an action object travels inside the artifact
-        that carries it. A specification that defines such a transfer can
-        register a media type <span>[<a href="#RFC6838" class="cite xref">RFC6838</a>]</span> for it.<a href="#section-12.8-1" class="pilcrow">¶</a></p>
+<p id="section-12.8-1">This document registers no media type <span>[<a href="#RFC6838" class="cite xref">RFC6838</a>]</span>.
+        A media type earns registration when a recipient must recognize a
+        message by it, and no step of this document sends one of its
+        objects that way:<a href="#section-12.8-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-12.8-2.1">A type definition is configuration. A relying party pins it
+          by definition_sha256 or by a registry digest
+          (<a href="#definition-digest" class="auto internal xref">Section 4.2.2</a>), and a definition obtained
+          over the network is checked against that pin before use, never
+          trusted for its label.<a href="#section-12.8-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-12.8-2.2">A mapping profile is pinned by its digest and comes from
+          relying-party configuration; a label inside a presented artifact
+          is never accepted as the profile or its source format
+          (<a href="#mapping-boundary" class="auto internal xref">Section 8.1</a>).<a href="#section-12.8-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-12.8-2.3">An enum snapshot is local by rule: computation and
+          verification never fetch one (<a href="#enum-resolution" class="auto internal xref">Section 4.4</a>).<a href="#section-12.8-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-12.8-2.4">An action object travels inside the artifact that carries it,
+          under that artifact's own format.<a href="#section-12.8-2.4" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-12.8-3">A specification that defines a transfer of any of these objects
+        can register a media type for it.<a href="#section-12.8-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -4646,9 +4663,10 @@ ZLQQQ
           </li>
 <li id="section-14.1-2.10" class="normal">
 <div class="normal" id="chg-refused-timestamps">Timestamps with a lowercase
-          "t" or "z", a second of 60, or a day past the end of its month,
-          which the -03 description "an RFC 3339 timestamp in UTC" admitted:
-          mistyped_field (<a href="#fieldtypes" class="auto internal xref">Section 4.3</a>).<a href="#chg-refused-timestamps" class="pilcrow">¶</a>
+          "t" or "z", or with a second of 60, which <span>[<a href="#RFC3339" class="cite xref">RFC3339</a>]</span>
+          permits and the -03 description "an RFC 3339 timestamp in UTC"
+          therefore admitted: mistyped_field
+          (<a href="#fieldtypes" class="auto internal xref">Section 4.3</a>).<a href="#chg-refused-timestamps" class="pilcrow">¶</a>
 </div>
           </li>
 <li id="section-14.1-2.11" class="normal">
@@ -4666,10 +4684,11 @@ ZLQQQ
           </li>
 <li id="section-14.1-2.13" class="normal">
 <div class="normal" id="chg-refused-suite">Identifiers whose suite begins with
-          a digit or whose digest's final character sets an unused bit:
-          malformed_caid (<a href="#parsing" class="auto internal xref">Section 3.4</a>). -03 already excluded
-          both; the reference implementations accepted them before this
-          revision.<a href="#chg-refused-suite" class="pilcrow">¶</a>
+          a digit, which the -03 suite ABNF already excluded, and
+          identifiers whose digest's final character sets an unused bit,
+          which -03 did not address: malformed_caid
+          (<a href="#parsing" class="auto internal xref">Section 3.4</a>). The reference implementations
+          accepted both before this revision.<a href="#chg-refused-suite" class="pilcrow">¶</a>
 </div>
           </li>
 <li id="section-14.1-2.14" class="normal">
@@ -5771,7 +5790,7 @@ fa2
 </div>
 </div>
 <p id="appendix-C.5-4">The same object with the codes written "e0601" and "G4733" is
-        refused, because neither format folds case or supplies the dot:<a href="#appendix-C.5-4" class="pilcrow">¶</a></p>
+        refused, because no format folds case or inserts a dot:<a href="#appendix-C.5-4" class="pilcrow">¶</a></p>
 <div id="exc-code-refusal-object">
 <div class="lang-json sourcecode" id="appendix-C.5-5">
 <pre>

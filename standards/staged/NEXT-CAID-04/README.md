@@ -1,47 +1,63 @@
 # CAID revision 04 working packet
 
-This directory stages `draft-schrock-canonical-action-identifier-04`. It is not
-published. Datatracker's latest revision is -03, published on 2026-09-26; its
-exact source is retained in `../NEXT-CAID-03/`, and this packet starts from
-that source.
+This directory stages `draft-schrock-canonical-action-identifier-04`. It is
+not published. The last posted revision is -03, whose exact source is kept
+in `../NEXT-CAID-03/`. This packet started from that source.
 
-- The working source is
-  `UPLOAD-THIS/draft-schrock-canonical-action-identifier-04.xml`.
-- `RENDERS/` contains the TXT and HTML review renderings generated from that
-  XML.
-- `SHA256SUMS.txt` pins the source and both renderings.
-- `VALIDATION.md` records the checks and the exact hold state.
+-04 is a substantive revision. It makes the processing model complete and
+machine-checkable: strict JSON text input, host values, one data model with
+one limits table, definition conformance, `definition_sha256` and
+resolution, code fields with named formats, the monotone enum advance, a
+fixed reason order with verification details, normative mapping stages, a
+rewritten Security section, a new Privacy section, six IANA registries and
+a provisional `caid` URI scheme, and an Implementation Status section. The
+draft's "Changes since -03" section lists every normative change,
+including the inputs it newly refuses.
 
-Revision -04 so far carries two clarifications.
+## Files
 
-- The amount-string prose becomes ABNF that matches what the reference
-  implementations and the shared corpus enforce: the whole string matches,
-  and the integer part has no leading zero other than a lone "0". A string
-  that fails the rule is `invalid_amount:<name>` and a non-string value is
-  `mistyped_field:<name>`, where -03 allowed either reason. The type
-  definition schema now states that field notes never change validation.
-- An unknown suite is defined as one not in the suite registry. A registered
-  suite that an implementation does not implement still parses, and
-  computation and verification report it as `unknown_suite`; the
-  Verification section now names that reason, which -03 left unstated. The
-  Identifier Syntax section lists the 16 final digest characters whose
-  unused bits are zero. The identifier grammar and the other parsing rules
-  are unchanged since -00. The reference parsers had accepted a suite
-  outside the registry, a suite beginning with a digit, and a digest whose
-  final character sets an unused bit; they now refuse all three, and corpus
-  version 4 holds all three ports to it.
+- `UPLOAD-THIS/draft-schrock-canonical-action-identifier-04.xml`: the
+  source.
+- `RENDERS/`: the TXT and HTML renderings of that source.
+- `SHA256SUMS.txt`: pins the source and both renderings.
+- `CHANGES-VECTORS.json`: maps every "Changes since -03" item that changes
+  processing or the reference registry (anchor `chg-...`) to the
+  conformance vectors that pin it. Items anchored `ed-...` change text
+  only.
+- `VALIDATION.md`: the checks run and their results.
 
-Neither change alters the CAID of any Action Object that the reference
-implementations accept.
+## What the draft restates, and what checks it
 
-Registry field notes are unchanged. They are informative, the grammar is
-defined by the field type, and the registry v4 file is pinned by SHA-256 in
-the WIMSE CAID scope profile, the CAID/AEC/AEB capsule manifest, and the COAZ
-translation source lock. Rewriting a note would change those pinned bytes
-without changing any validation result.
+`node scripts/check-caid-04.mjs` fails unless all of these hold:
 
-Hold: whether these clarifications justify a Datatracker revision is the
-author's decision. Before submission, set the
-date, confirm each cited draft revision against Datatracker (-03 deliberately
-retained its earlier citations), re-render, and refresh `SHA256SUMS.txt` and
-`VALIDATION.md`. Publication is a separate author action.
+- Appendix A equals `caid/spec/caid.abnf` byte for byte.
+- Appendix B (core and mapping reasons), the verification detail table, the
+  limits table, and the IANA initial-contents tables equal the tables the
+  script generates from `caid/spec/core.json`, `caid/registry/suites.json`,
+  and the compiled code formats. `node scripts/check-caid-04.mjs --emit`
+  prints them for editing.
+- Every value in Appendix C, the Section 3.3 identifier example, and the
+  tool.call.1 example recompute, through `caid/spec/reference.mjs` and
+  through hashing done in the script.
+- Every `chg-` item maps to vector ids that exist in the corpora.
+- The normative references, registry version 5 and its counts and file
+  digest, the prose examples against the ABNF, the removed -03 text, both
+  renders, and the checksums.
+
+## Hold
+
+Submission is the author's decision. Before it:
+
+1. Corpus version 5 must carry every vector id in `CHANGES-VECTORS.json`.
+   Until it does, `check-caid-04` fails with the list of missing ids and
+   nothing else.
+2. The JavaScript, Python, and Go implementations must implement the -04
+   features, so that the Implementation Status section is true when the
+   draft posts. That includes refusing Unicode noncharacters, which -04
+   excludes from the data model by profiling I-JSON.
+3. Set the date, confirm each cited draft revision and that -03 is still
+   the latest revision on Datatracker, re-render with the procedure in
+   `VALIDATION.md`, and refresh `SHA256SUMS.txt` and `VALIDATION.md`.
+4. The provisional `caid` URI scheme is requested through the draft's IANA
+   section. Filing it separately with IANA, before an RFC, is a separate
+   author action.

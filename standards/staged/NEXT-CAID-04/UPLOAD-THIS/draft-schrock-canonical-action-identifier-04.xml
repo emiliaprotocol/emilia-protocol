@@ -30,7 +30,7 @@
       encode material action fields differently. This document defines
       the Canonical Action IDentifier (CAID): a typed action object, a
       canonicalization and digest suite, a compact identifier string,
-      and immutable action-type definitions with required material
+      and versioned action-type definitions with required material
       fields. External value sets are bound to integrity-checked
       snapshots. The document specifies a strict JSON input profile, a
       closed and ordered set of refusal reasons, a digest that identifies
@@ -104,7 +104,7 @@
         <dl newline="false" spacing="normal">
           <dt>Action object:</dt>
           <dd>The typed data object, defined in
-          <xref target="object"/>, over which a CAID's digest is
+          <xref target="action-object"/>, over which a CAID's digest is
           computed.</dd>
           <dt>Action type:</dt>
           <dd>A versioned type name whose definition
@@ -325,7 +325,7 @@
           string or member name, after unescaping, contains a surrogate
           code point or a noncharacter; and no object has two members
           whose names, after unescaping, are the same sequence of code
-          points. The names "a" and "a" are the same name. A
+          points. The names "a" and "&#92;u0061" are the same name. A
           duplicate is refused, never resolved by keeping the first or
           the last member.</li>
           <li>It does not begin with the UTF-8 byte order mark (the
@@ -361,8 +361,8 @@
       <section anchor="host-values">
         <name>Host Values</name>
         <t>An implementation MAY also accept an action object, a type
-        definition, or a mapping source as a host value that the
-        application constructed. Such an implementation:</t>
+        definition, a mapping profile, or a mapping source as a host value
+        that the application constructed. Such an implementation:</t>
         <ul spacing="normal">
           <li>MUST refuse any host value that is not a value of the data
           model: as unsupported_number when it is a number outside the
@@ -703,11 +703,11 @@ caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB\
             <li>required_fields is an array of at least one entry, and
             optional_fields is absent or an array.</li>
             <li>Every entry of either array is an object whose type member
-            is a string and whose name member is a field name. A field
-            name is a non-empty string that does not contain ":" (U+003A)
-            and is not action_type; the field-name rule of
-            <xref target="appendix-abnf"/> is the first two conditions.
-            No field name appears twice across the two arrays.</li>
+            is a string and whose name member is a field name: a string
+            that matches the field-name rule of
+            <xref target="appendix-abnf"/>, which means it is non-empty and
+            does not contain ":" (U+003A), and that is not action_type. No
+            field name appears twice across the two arrays.</li>
             <li>An entry whose type is a field type of
             <xref target="fieldtypes"/> has no members other than name,
             type, notes, and the members that field type defines, and it
@@ -974,10 +974,10 @@ caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB\
         Association licenses, is the leading example. The hcpcs format
         accepts HCPCS Level I (CPT) and Level II codes by syntax alone,
         so a type can carry either without the registry carrying a single
-        CPT code. Each distinct lexical form is a distinct format: the
-        11-digit and the hyphenated 10-digit forms of a National Drug
-        Code are the formats ndc-11 and ndc-10-hyphenated, so one package
-        never has two CAIDs under one format.</t>
+        CPT code. Each lexical form of a code is its own format, so that
+        no format admits two spellings of one code: the 11-digit and the
+        hyphenated 10-digit forms of a National Drug Code are the formats
+        ndc-11 and ndc-10-hyphenated.</t>
         <t>Every code format matches only strings of bounded length and
         compiles to a regular expression with no nested quantifiers and no
         quantified alternatives that can begin with the same character.
@@ -1158,12 +1158,12 @@ ZLQQQ
           not a registered suite that the implementation
           implements</td></tr>
           <tr><td>6</td><td>no</td><td>unsupported_number</td><td>a number
-          anywhere in the object, member names and nested values
-          included, is outside the data model</td></tr>
+          anywhere in the object, at any depth, is outside the data
+          model</td></tr>
           <tr><td>7</td><td>no</td><td>unsupported_value</td><td>any other
-          value is outside the data model, including a string with an
-          unpaired surrogate or a noncharacter, nesting beyond 64, and a
-          canonical encoding beyond 16,777,216 octets</td></tr>
+          value is outside the data model, including a string or member
+          name with an unpaired surrogate or a noncharacter, nesting beyond
+          64, and a canonical encoding beyond 16,777,216 octets</td></tr>
         </tbody>
       </table>
       <t>A field is present when the object has a member of that name
@@ -2021,8 +2021,8 @@ ZLQQQ
       <section anchor="iana-uri">
         <name>The "caid" URI Scheme</name>
         <t>A CAID is a syntactically valid URI <xref target="RFC3986"/>: the
-        scheme "caid" followed by ":" and a rootless path whose segments
-        contain only unreserved characters and ":". IANA is requested to
+        scheme "caid" followed by ":" and a rootless path made of
+        unreserved characters and ":". IANA is requested to
         register the scheme in the "Uniform Resource Identifier (URI)
         Schemes" registry with the following template
         <xref target="RFC7595"/>:</t>
@@ -2058,15 +2058,27 @@ ZLQQQ
       </section>
       <section anchor="iana-media-types">
         <name>Media Types</name>
-        <t>This document registers no media type. Type definitions, enum
-        snapshots, and mapping profiles are configuration that a relying
-        party pins by digest (Sections <xref target="definition-digest"
-        format="counter"/>, <xref target="enum-resolution" format="counter"/>,
-        and <xref target="mapping-object" format="counter"/>). No step of
-        this document transfers them in a message whose type a recipient
-        must recognize, and an action object travels inside the artifact
-        that carries it. A specification that defines such a transfer can
-        register a media type <xref target="RFC6838"/> for it.</t>
+        <t>This document registers no media type <xref target="RFC6838"/>.
+        A media type earns registration when a recipient must recognize a
+        message by it, and no step of this document sends one of its
+        objects that way:</t>
+        <ul spacing="normal">
+          <li>A type definition is configuration. A relying party pins it
+          by definition_sha256 or by a registry digest
+          (<xref target="definition-digest"/>), and a definition obtained
+          over the network is checked against that pin before use, never
+          trusted for its label.</li>
+          <li>A mapping profile is pinned by its digest and comes from
+          relying-party configuration; a label inside a presented artifact
+          is never accepted as the profile or its source format
+          (<xref target="mapping-boundary"/>).</li>
+          <li>An enum snapshot is local by rule: computation and
+          verification never fetch one (<xref target="enum-resolution"/>).</li>
+          <li>An action object travels inside the artifact that carries it,
+          under that artifact's own format.</li>
+        </ul>
+        <t>A specification that defines a transfer of any of these objects
+        can register a media type for it.</t>
       </section>
     </section>
     <section anchor="impl-status">
@@ -2151,9 +2163,10 @@ ZLQQQ
           does not define: invalid_definition
           (<xref target="conformance"/>).</li>
           <li anchor="chg-refused-timestamps">Timestamps with a lowercase
-          "t" or "z", a second of 60, or a day past the end of its month,
-          which the -03 description "an RFC 3339 timestamp in UTC" admitted:
-          mistyped_field (<xref target="fieldtypes"/>).</li>
+          "t" or "z", or with a second of 60, which <xref target="RFC3339"/>
+          permits and the -03 description "an RFC 3339 timestamp in UTC"
+          therefore admitted: mistyped_field
+          (<xref target="fieldtypes"/>).</li>
           <li anchor="chg-refused-caid-case">Identifiers that begin with
           "CAID:" or "Caid:", which the -03 ABNF admitted because an
           <xref target="RFC5234"/> string literal is case-insensitive:
@@ -2162,10 +2175,11 @@ ZLQQQ
           has a leading zero, such as "01.5", which the -03 prose admitted:
           invalid_amount (<xref target="fieldtypes"/>).</li>
           <li anchor="chg-refused-suite">Identifiers whose suite begins with
-          a digit or whose digest's final character sets an unused bit:
-          malformed_caid (<xref target="parsing"/>). -03 already excluded
-          both; the reference implementations accepted them before this
-          revision.</li>
+          a digit, which the -03 suite ABNF already excluded, and
+          identifiers whose digest's final character sets an unused bit,
+          which -03 did not address: malformed_caid
+          (<xref target="parsing"/>). The reference implementations
+          accepted both before this revision.</li>
           <li anchor="chg-refused-mapping">Mapping profiles with two rules
           for one source path, which -03 already forbade, a member whose
           value is null, a target_field that is not a string, a string
@@ -2862,7 +2876,7 @@ fa2
 }
 ]]></sourcecode>
         <t>The same object with the codes written "e0601" and "G4733" is
-        refused, because neither format folds case or supplies the dot:</t>
+        refused, because no format folds case or inserts a dot:</t>
 <sourcecode anchor="exc-code-refusal-object" type="json"><![CDATA[
 =============== NOTE: '\' line wrapping per RFC 8792 ================
 

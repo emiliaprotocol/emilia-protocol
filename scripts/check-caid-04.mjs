@@ -355,6 +355,10 @@ check(cites('G4733') && !matches(rules, 'icd-10-cm', 'G4733'), 'icd-10-cm counte
 check(matches(rules, 'reason', 'mapped_action:missing_material_field:amount')
   && matches(rules, 'reason', 'left:mapped_action:invalid_amount:amount'), 'reason rule refuses a nested reason');
 for (const s of ['mapped_action:missing_material_field:amount', 'left:mapped_action:invalid_amount:amount']) check(flat(source).includes(s), `draft does not cite nested reason ${s}`);
+for (const entry of readJson('caid/registry/suites.json').suites) {
+  check(matches(rules, 'suite', entry.suite), `registered suite ${entry.suite} does not match the suite rule of Appendix A`);
+  check(entry.digest_octets === 32 && entry.digest?.name === 'SHA-256', `registered suite ${entry.suite} is not a 32-octet SHA-256 suite, as Section 3.1 states`);
+}
 const B64URL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 const finals = [...B64URL].filter((_, value) => (value & 3) === 0).map((c) => `"${c}"`);
 check(flat(source).includes(`${finals.slice(0, -1).join(', ')}, or ${finals.at(-1)}`), 'draft does not list the 16 final digest characters');
@@ -517,7 +521,7 @@ for (const name of ['CAID Suites', 'CAID Action Types', 'CAID Field Types', 'CAI
   check(source.includes(`<name>${name}</name>`), `IANA registry ${name} missing`);
 }
 const prose = text + source;
-check(!/[–—]/.test(prose), 'an en or em dash appears in the draft');
+check(!/[\u2013\u2014]/.test(prose), 'an en or em dash appears in the draft');
 check(!/[^\n!-]--[^>-]/.test(source.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '')), 'a double hyphen appears in prose');
 check(!/[^\x09\x0a\x20-\x7e]/.test(source), 'the XML source is not printable ASCII');
 

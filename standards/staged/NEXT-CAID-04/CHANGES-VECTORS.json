@@ -35,7 +35,7 @@
       "core": ["refuse-definition-field-name-empty", "refuse-definition-field-name-colon", "refuse-definition-field-name-action-type", "refuse-definition-field-name-repeated", "refuse-definition-field-extra-member"]
     },
     "chg-refused-timestamps": {
-      "core": ["refuse-timestamp-lowercase-t", "refuse-timestamp-lowercase-z", "refuse-timestamp-second-60", "refuse-timestamp-february-29-common-year"]
+      "core": ["refuse-timestamp-lowercase-t", "refuse-timestamp-lowercase-z", "refuse-timestamp-second-60"]
     },
     "chg-refused-caid-case": {
       "core": ["parse-malformed-uppercase-prefix"]
