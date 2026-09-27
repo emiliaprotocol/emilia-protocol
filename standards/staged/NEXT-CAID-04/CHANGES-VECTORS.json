@@ -8,37 +8,37 @@
   },
   "claims": {
     "chg-refused-depth": {
-      "core": ["decode-accept-depth-64", "decode-refuse-depth-65", "native-refuse-depth-65"]
+      "core": ["decode-depth-64", "refuse-decode-depth-65", "refuse-depth-65-native"]
     },
     "chg-refused-canonical-size": {
-      "core": ["compute-canonical-at-limit", "refuse-canonical-over-limit"]
+      "core": ["compute-canonical-size-at-limit", "refuse-canonical-size-over-limit"]
     },
     "chg-refused-noncharacter": {
-      "core": ["decode-refuse-noncharacter", "native-refuse-noncharacter"]
+      "core": ["refuse-decode-noncharacter-escape-ffff", "refuse-noncharacter-native", "refuse-decode-noncharacter-raw-fdd0", "refuse-noncharacter-text"]
     },
     "chg-refused-text-size": {
-      "core": ["decode-accept-text-at-limit", "decode-refuse-text-over-limit"]
+      "core": ["compute-text-size-at-limit", "refuse-text-size-over-limit"]
     },
     "chg-refused-json-text": {
-      "core": ["decode-refuse-byte-order-mark", "decode-refuse-invalid-utf8", "decode-refuse-utf16le", "decode-refuse-trailing-content", "decode-refuse-nan-literal", "decode-refuse-unescaped-control-character"]
+      "core": ["refuse-decode-bom", "refuse-decode-invalid-utf8-byte", "refuse-decode-utf16le", "refuse-decode-trailing-content", "refuse-decode-nan", "refuse-decode-unescaped-nul", "refuse-bom-at-compute", "refuse-invalid-utf8-at-compute"]
     },
     "chg-refused-duplicate-names": {
-      "core": ["decode-refuse-duplicate-member-name", "decode-refuse-duplicate-member-name-escaped"]
+      "core": ["refuse-decode-duplicate-names", "refuse-decode-duplicate-escaped-spelling", "refuse-duplicate-action-type"]
     },
     "chg-refused-host-values": {
-      "core": ["native-refuse-lone-surrogate-string-value", "native-refuse-lone-surrogate-member-name"]
+      "core": ["native-lone-surrogate-string-value", "native-lone-surrogate-member-name"]
     },
     "chg-refused-definitions": {
-      "core": ["refuse-definition-required-fields-absent", "refuse-definition-required-fields-empty", "refuse-definition-field-not-object", "refuse-definition-conflicting-duplicates"]
+      "core": ["definition-required-fields-absent", "definition-required-fields-empty", "definition-entry-null", "definition-conflicting-duplicates"]
     },
     "chg-refused-field-names": {
-      "core": ["refuse-definition-field-name-empty", "refuse-definition-field-name-colon", "refuse-definition-field-name-action-type", "refuse-definition-field-name-repeated", "refuse-definition-field-extra-member"]
+      "core": ["definition-name-empty", "definition-name-with-colon", "definition-name-action-type", "definition-duplicate-name", "definition-member-not-of-type"]
     },
     "chg-refused-timestamps": {
-      "core": ["refuse-timestamp-lowercase-t", "refuse-timestamp-lowercase-z", "refuse-timestamp-second-60"]
+      "core": ["timestamp-refuses-lowercase-t", "timestamp-refuses-lowercase-z", "timestamp-refuses-second-60"]
     },
     "chg-refused-caid-case": {
-      "core": ["parse-malformed-uppercase-prefix"]
+      "core": ["parse-refuses-uppercase-prefix"]
     },
     "chg-refused-amount": {
       "core": ["refuse-invalid-amount-leading-zero"]
@@ -47,61 +47,61 @@
       "core": ["refuse-suite-leading-digit", "refuse-digest-nonzero-unused-bits", "verify-malformed-nonzero-unused-bits"]
     },
     "chg-refused-mapping": {
-      "mapping": ["two-rules-one-source-path-abstains", "null-member-abstains", "target-field-not-string-abstains", "profile-string-513-octets-abstains", "target-action-type-513-octets-abstains"]
+      "mapping": ["two-rules-one-path-abstains", "omitted-source-fields-null-abstains", "target-field-array-abstains", "profile-id-513-octets-abstains", "target-action-type-513-octets-abstains"]
     },
     "chg-json-text": {
-      "core": ["compute-json-malformed-single-reason", "verify-json-malformed"]
+      "core": ["order-gate-malformed-json-first", "verify-gate-malformed-json"]
     },
     "chg-data-model": {
-      "core": ["refuse-integer-field-overflowing-literal", "compute-number-underflow-zero", "compute-number-negative-zero"]
+      "core": ["refuse-integer-field-overflowing-literal", "compute-number-underflow-is-zero", "compute-number-negative-zero"]
     },
     "chg-host-values": {
-      "core": ["native-refuse-lone-surrogate-string-value", "native-refuse-depth-65"]
+      "core": ["native-lone-surrogate-string-value", "refuse-depth-65-native"]
     },
     "chg-reason-order": {
-      "core": ["refuse-gate-invalid-action-type-stops", "refuse-number-before-value", "refuse-multiple-ordered"]
+      "core": ["order-gate-invalid-action-type", "order-phase-6-and-7", "refuse-multiple-ordered"]
     },
     "chg-definition-conformance": {
-      "core": ["compute-definition-equal-duplicates", "refuse-definition-conflicting-duplicates", "compute-definition-order-independent"]
+      "core": ["definition-equal-duplicates", "definition-conflicting-duplicates", "definition-conflicting-duplicates-reversed"]
     },
     "chg-definition-digest": {
-      "core": ["definition-sha256-payment-release-1", "compute-payment-release-happy"]
+      "core": ["definition-sha256-payment-release", "compute-payment-release-happy"]
     },
     "chg-definition-mismatch": {
-      "core": ["verify-definition-mismatch", "verify-definition-match"]
+      "core": ["verify-definition-mismatch", "verify-expected-definition-match"]
     },
     "chg-verify-details": {
-      "core": ["verify-invalid-object-details", "verify-not-an-object", "verify-valid"]
+      "core": ["verify-details-observed-kinds", "verify-not-an-object-array", "verify-valid"]
     },
     "chg-deprecated": {
-      "core": ["compute-deprecated-type"]
+      "core": ["definition-deprecated-status-computes"]
     },
     "chg-code-type": {
-      "core": ["compute-code-fields", "refuse-invalid-code-icd-10-cm-no-dot", "refuse-code-not-string", "refuse-code-unregistered-format", "refuse-definition-code-system-malformed"]
+      "core": ["registry-prior.auth.approve.2", "code-icd-10-cm-refuses-G4733", "code-refuses-number", "definition-unregistered-format-present", "definition-code-system-not-uri"]
     },
     "chg-field-type-rules": {
       "core": ["refuse-amount-trailing-newline", "compute-empty-string-present", "compute-integer-field-integral-float", "refuse-integer-field-above-max-safe"]
     },
     "chg-pin-rule": {
-      "core": ["compute-dns-record-delete-1", "compute-vendor-onboard-1"]
+      "core": ["registry-dns.record.delete.1", "registry-vendor.onboard.1"]
     },
     "chg-option-guards": {
-      "core": ["refuse-suite-option-wrong-type"]
+      "core": ["option-suite-not-a-string"]
     },
     "chg-accept-unregistered": {
       "core": ["verify-unknown-action-type"]
     },
     "chg-mapping-extensions": {
-      "mapping": ["sha256-hex-to-digest-maps", "sha256-hex-to-digest-uppercase-abstains", "declared-source-semantic-loss-abstains", "omitted-fields-on-lossless-profile-abstains"]
+      "mapping": ["hex-to-digest-equivalent", "hex-to-digest-uppercase-abstains", "declared-loss-abstains", "omission-under-no-loss-abstains"]
     },
     "chg-mapping-limits": {
-      "mapping": ["rules-129-abstains", "pointer-2049-octets-abstains", "profile-string-512-octets-maps"]
+      "mapping": ["rules-129-abstains", "pointer-2049-octets-abstains", "profile-id-512-octets-equivalent"]
     },
     "chg-mapping-target-field": {
-      "mapping": ["target-field-at-version-maps"]
+      "mapping": ["target-field-at-version-equivalent"]
     },
     "chg-mapping-order": {
-      "mapping": ["stage-a-reasons-accumulate", "stage-b-follows-stage-a", "stage-c-rule-order", "stage-d-mapped-action-order", "comparison-left-then-right"]
+      "mapping": ["stage-a-order", "stage-a-then-b", "stage-c-rule-order", "stage-d-compute-order", "comparison-left-then-right"]
     },
     "chg-mapping-suite": {
       "mapping": ["empty-suite-not-defaulted"]
@@ -110,7 +110,7 @@
       "core": ["refuse-suite-unregistered", "refuse-suite-unregistered-unchecked-digest", "verify-malformed-unregistered-suite"]
     },
     "chg-reason-surrogate": {
-      "core": ["decode-refuse-lone-high-surrogate-escape", "decode-refuse-lone-low-surrogate-escape", "native-refuse-lone-surrogate-string-value"]
+      "core": ["refuse-decode-lone-high-surrogate-escape", "refuse-decode-lone-low-surrogate-escape", "native-lone-surrogate-string-value"]
     },
     "chg-reason-amount": {
       "core": ["refuse-invalid-amount-exponent", "refuse-invalid-amount-plus-sign", "refuse-amount-not-string"]
@@ -119,7 +119,7 @@
       "core": ["parse-registered-suite-not-implemented", "verify-registered-suite-not-implemented"]
     },
     "chg-registry-v5": {
-      "core": ["compute-payment-refund-2", "compute-contract-execute-2", "compute-prior-auth-approve-2", "compute-key-create-2"]
+      "core": ["registry-payment.refund.2", "registry-contract.execute.2", "registry-prior.auth.approve.2", "registry-key.create.2"]
     }
   }
 }

@@ -81,7 +81,7 @@ def run_mapping_vectors(corpus):
             right,
             definitions=corpus["definitions"],
             enum_snapshots=corpus.get("enum_snapshots"),
-            suite=corpus["suite"],
+            suite=vector["suite"] if "suite" in vector else corpus["suite"],
         )
         expected = vector["expect"]
         verdict_ok = result["verdict"] == expected["verdict"]

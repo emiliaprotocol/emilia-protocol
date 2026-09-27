@@ -76,7 +76,7 @@ export function runMappingVectors(corpus = readCorpus(VECTORS)) {
     const result = compareMappedActions(left, right, {
       definitions: corpus.definitions,
       enumSnapshots: corpus.enum_snapshots,
-      suite: corpus.suite,
+      suite: Object.prototype.hasOwnProperty.call(vector, 'suite') ? vector.suite : corpus.suite,
     });
     const verdictOK = result.verdict === vector.expect.verdict;
     const reasonsOK = vector.expect.reason_contains

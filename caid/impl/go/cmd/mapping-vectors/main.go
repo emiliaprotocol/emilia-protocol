@@ -209,14 +209,7 @@ func main() {
 	}
 	definitions, _ := corpus["definitions"].([]interface{})
 	enumSnapshots, _ := corpus["enum_snapshots"].([]interface{})
-	var suite *string
-	if raw, present := corpus["suite"]; present {
-		s, isString := raw.(string)
-		if !isString {
-			s = "\x00non-string"
-		}
-		suite = &s
-	}
+	corpusSuite := suiteOption(corpus)
 	vectors, _ := corpus["vectors"].([]interface{})
 
 	results := []output{}
@@ -242,6 +235,11 @@ func main() {
 				side = right
 			}
 			side["expected_profile_hash"] = caidlib.MappingProfileHash(side["profile"])
+		}
+		// A vector's own suite, when present, replaces the corpus suite.
+		suite := corpusSuite
+		if _, present := vector["suite"]; present {
+			suite = suiteOption(vector)
 		}
 		result := caidlib.CompareMappedActionsWithOptions(left, right, caidlib.CompareOptions{
 			Definitions:   definitions,
@@ -285,4 +283,19 @@ func main() {
 	if failed {
 		os.Exit(1)
 	}
+}
+
+// suiteOption reads the suite member of a corpus or a vector: nil when it is
+// absent (the default suite), the string as given, or a value no suite
+// matches when it is not a string.
+func suiteOption(o obj) *string {
+	raw, present := o["suite"]
+	if !present {
+		return nil
+	}
+	s, isString := raw.(string)
+	if !isString {
+		s = "\x00non-string"
+	}
+	return &s
 }

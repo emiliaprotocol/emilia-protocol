@@ -76,7 +76,9 @@ function run(corpus, vector) {
     const side = name === 'left' ? left : right;
     side.expected_profile_hash = mappingProfileHash(side.profile);
   }
-  const r = compareMappedActions(left, right, { definitions: corpus.definitions, enumSnapshots: corpus.enum_snapshots, suite: corpus.suite });
+  // A vector's own suite, when present, replaces the corpus suite.
+  const suite = Object.prototype.hasOwnProperty.call(vector, 'suite') ? vector.suite : corpus.suite;
+  const r = compareMappedActions(left, right, { definitions: corpus.definitions, enumSnapshots: corpus.enum_snapshots, suite });
   return { verdict: r.verdict, reasons: r.reasons };
 }
 
@@ -195,6 +197,8 @@ const CASES = [
     [], 'INDETERMINATE', ['left:source_value_type_mismatch:/target/merchant_id', 'right:missing_source_field:/parameters/currency']],
   ['comparison-target-type-mismatch', 'two profiles that map to different action types', EP, { source: 'silp-cancel-email', profile: 'silp-cancel-email-v1', pin: 'profile' },
     [], [], 'INDETERMINATE', ['target_action_type_mismatch']],
+  ['empty-suite-not-defaulted', 'review D10: an empty suite is used as given and refused, never replaced by the default jcs-sha256', EP, EP,
+    [], [], 'INDETERMINATE', ['left:mapped_action:unknown_suite', 'right:mapped_action:unknown_suite'], { suite: '' }],
 ];
 
 // ---------------------------------------------------------------- build
@@ -214,8 +218,9 @@ for (const old of v1.vectors) {
   if (change) out.change_since_v1 = change.rule;
   vectors.push(out);
 }
-for (const [id, description, left, right, mutations, repin, verdict, reasons] of CASES) {
+for (const [id, description, left, right, mutations, repin, verdict, reasons, options] of CASES) {
   const v = { id, description, left, right };
+  if (options && Object.prototype.hasOwnProperty.call(options, 'suite')) v.suite = options.suite;
   if (mutations.length) v.mutations = mutations;
   if (repin.length) v.repin_after_mutation = repin;
   const got = run(corpus, v);
@@ -235,7 +240,7 @@ const { vectors: _v, ...envelope } = corpus;
 const out = {
   '@version': 'CAID-ACTION-MAPPING-VECTORS-v2',
   version: 2,
-  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.5).`,
+  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.5). A vector that carries its own suite member uses it in place of the corpus suite for that comparison.`,
   previous_versions: [{
     version: 1,
     vectors: v1.vectors.length,

@@ -331,6 +331,7 @@ export function coreCases({ limits }) {
       { ...native({ action_type: 'p.1', a: 'x', c: 7, d: 1.5, v: { $units: [0xd800] } }), suite: 'none' },
       { refusals: ['missing_material_field:b', 'invalid_amount:a', 'mistyped_field:c', 'mistyped_field:d', 'unknown_suite', 'unsupported_number', 'unsupported_value'] }),
     compute('order-one-reason-per-field', 'a field gets at most one phase-4 reason', [PX], px({ e: 5 }), { refusals: ['mistyped_field:e'] }),
+    compute('refuse-amount-not-string', 'an amount-string field holding the JSON number 250 is mistyped, never read as the string "250"', [PX], px({ a: 250 }), { refusals: ['mistyped_field:a'] }),
     compute('option-suite-not-a-string', 'a suite option of the wrong type counts as absent: unknown_suite, never an exception', [PX], { ...px({}), suite: ['jcs-sha256'] }, { refusals: ['unknown_suite'] }),
     computeNoSuite('option-suite-absent', 'with no suite option there is no default suite', [PX], px({}), { refusals: ['unknown_suite'] }),
     compute('option-definitions-not-an-array', 'a definitions option of the wrong type counts as absent', { 'p.1': PX }, px({}), { refusals: ['unknown_action_type'] }),
@@ -372,6 +373,8 @@ export function coreCases({ limits }) {
       { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: 7 }, 'valid'),
     verify('verify-expected-definition-malformed-string', 'any other string is compared as given and differs', [PX],
       { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: 'SHA256:' + '0'.repeat(64) }, { reasons: ['definition_mismatch'] }),
+    verify('verify-unknown-action-type', 'no configured definition names the type: invalid_object with unknown_action_type as its detail and no definition_sha256, even though the digest matches (there is no accept-unregistered mode)', [PX],
+      { json: j({ action_type: 'q.1', s: 'x' }), caid_of: { json: j({ action_type: 'q.1', s: 'x' }), definitions: [{ action_type: 'q.1', required_fields: [{ name: 's', type: 'string' }] }] } }, { reasons: ['invalid_object'] }),
     verify('verify-definition-notes-do-not-matter', 'the definition used to verify may differ in notes and status; definition_sha256 is the same', [{ ...PX, status: 'deprecated', summary: 'x', required_fields: PX.required_fields.map((f) => ({ ...f, notes: 'n' })) }],
       { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: { of: PX } }, 'valid'),
   );
@@ -472,7 +475,7 @@ export function coreCases({ limits }) {
   );
   const codeTable = {
     'icd-10-cm': [['A00', true], ['A00.0', true], ['S72.001A', true], ['U07.1', true], ['Z99.89', true], ['C4A.0', true, 'letters are allowed in positions 2 and 3'],
-      ['a00', false, 'never case-folded'], ['A0', false], ['A00.', false], ['A00.12345', false], ['A00-1', false], [' A00', false], ['1A0', false]],
+      ['a00', false, 'never case-folded'], ['A0', false], ['A00.', false], ['A00.12345', false], ['A00-1', false], [' A00', false], ['1A0', false], ['G4733', false, 'the dot after the category is required, never inserted']],
     'ndc-11': [['00002322730', true], ['12345678901', true], ['0002-3227-30', false, 'the hyphenated form is ndc-10-hyphenated'], ['0000232273', false], ['000023227301', false], ['0000232273A', false]],
     'ndc-10-hyphenated': [['0002-3227-30', true, '4-4-2'], ['12345-678-90', true, '5-3-2'], ['12345-6789-0', true, '5-4-1'], ['00002322730', false], ['123456-78-90', false], ['1234-5678-901', false], ['12345-6789-01', false]],
     cpt: [['99213', true], ['0001F', true, 'Category II'], ['0042T', true, 'Category III'], ['9921', false], ['992134', false], ['A9921', false], ['99213 ', false]],

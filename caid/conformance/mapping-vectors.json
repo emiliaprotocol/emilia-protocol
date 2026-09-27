@@ -1,7 +1,7 @@
 {
  "@version": "CAID-ACTION-MAPPING-VECTORS-v2",
  "version": 2,
- "description": "Shared vectors for profile-bounded material-action equivalence. A result is content correlation only; it never authorizes an action. Every expectation is an exact reason list in the -04 stage order (Section 8.5).",
+ "description": "Shared vectors for profile-bounded material-action equivalence. A result is content correlation only; it never authorizes an action. Every expectation is an exact reason list in the -04 stage order (Section 8.5). A vector that carries its own suite member uses it in place of the corpus suite for that comparison.",
  "previous_versions": [
   {
    "version": 1,
@@ -747,6 +747,7 @@
   {"id":"stage-d-compute-order","description":"stage D reports the mapped action's compute reasons in compute order","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/parameters/currency","value":"EURO"},{"side":"right","target":"source","op":"set","path":"/parameters/total_amount","value":"01.00"}],"expect":{"verdict":"INDETERMINATE","reasons":["right:mapped_action:invalid_amount:total_amount","right:mapped_action:mistyped_field:currency"]}},
   {"id":"stage-d-number-in-amount","description":"a copied number in an amount-string field is mistyped_field","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/parameters/total_amount","value":130}],"expect":{"verdict":"INDETERMINATE","reasons":["right:mapped_action:mistyped_field:total_amount"]}},
   {"id":"comparison-left-then-right","description":"left reasons precede right reasons","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"left","target":"source","op":"set","path":"/target/merchant_id","value":1},{"side":"right","target":"source","op":"delete","path":"/parameters/currency"}],"expect":{"verdict":"INDETERMINATE","reasons":["left:source_value_type_mismatch:/target/merchant_id","right:missing_source_field:/parameters/currency"]}},
-  {"id":"comparison-target-type-mismatch","description":"two profiles that map to different action types","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"expect":{"verdict":"INDETERMINATE","reasons":["target_action_type_mismatch"]}}
+  {"id":"comparison-target-type-mismatch","description":"two profiles that map to different action types","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"expect":{"verdict":"INDETERMINATE","reasons":["target_action_type_mismatch"]}},
+  {"id":"empty-suite-not-defaulted","description":"review D10: an empty suite is used as given and refused, never replaced by the default jcs-sha256","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"suite":"","expect":{"verdict":"INDETERMINATE","reasons":["left:mapped_action:unknown_suite","right:mapped_action:unknown_suite"]}}
  ]
 }
