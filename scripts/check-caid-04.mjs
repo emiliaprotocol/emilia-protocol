@@ -660,7 +660,8 @@ const pinnedCommit = new RegExp(`target="https://github\\.com/${REPO}/blob/([0-9
 check(pinnedCommit, '[CAID-REGISTRY] does not target action-types.json at a full 40-digit commit');
 if (pinnedCommit) {
   const raw = `https://raw.githubusercontent.com/${REPO}/${pinnedCommit}/caid/registry/action-types.json`;
-  check(plain(registryRef).includes(raw), `[CAID-REGISTRY] does not give the raw file URL ${raw}, whose octets the digest covers`);
+  // In the annotation text or in an <eref> target: either names the URL.
+  check(registryRef.includes(raw), `[CAID-REGISTRY] does not give the raw file URL ${raw}, whose octets the digest covers`);
   // The commit must carry the pinned bytes. A shallow clone (CI) may lack
   // the commit; --prefiling requires it.
   let blob = null;
