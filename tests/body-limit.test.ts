@@ -158,6 +158,21 @@ describe('readLimitedJson — real stream path', () => {
     expect(r).toEqual({ ok: true, value: { k: 'v' } });
   });
 
+  it('parses JSON surrounded only by JSON whitespace', async () => {
+    const r = await readLimitedJson(streamFrom(' \t\r\n{"k":"v"}\n '), 64);
+    expect(r).toEqual({ ok: true, value: { k: 'v' } });
+  });
+
+  // CAID -04 Section 2.4 (rules 3 and 4): a byte order mark, or any character
+  // other than the four JSON whitespace characters around the value, is not
+  // JSON text. String#trim() used to drop U+FEFF and U+00A0 before parsing.
+  it('refuses a byte order mark or non-JSON whitespace around the value', async () => {
+    for (const text of ['\uFEFF{"k":"v"}', '\u00A0{"k":"v"}', '{"k":"v"}\u2028', '\uFEFF']) {
+      const r = await readLimitedJson(streamFrom(text), 64);
+      expect(r, JSON.stringify(text)).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+    }
+  });
+
   it('rejects duplicate JSON member names before parsing', async () => {
     const r = await readLimitedJson(streamFrom('{"action":"safe","action":"dangerous"}'), 128);
     expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
