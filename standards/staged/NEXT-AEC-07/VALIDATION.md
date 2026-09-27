@@ -121,25 +121,35 @@ passes after the documented refresh, and its two node test files pass 49 of
 
 Three files pin the SHA-256 of `packages/verify/src/evidence-chain.ts`
 (`8539bfde...` before the change, `f3d47a09...` after it), and two of them also
-pin `packages/verify/dist/evidence-chain.js`:
+pin `packages/verify/dist/evidence-chain.js`. All are refreshed on
+`feat/verify-aec-07-evaluator` with the repository's own commands:
 
-- `conformance/composition/authzen-coaz-mcp-aeb-v0.1/source-lock.json`:
-  refreshed on the evaluator branch with its documented commands
-  (`refresh-source-lock.mjs`, `check.mjs --emit`, `check.mjs`), together with
-  `report.reference.json`.
-- `formal/results/formal-runtime-scenario-conformance.v2.json`: not refreshed.
-  `npm run sync:formal-traces` refused to run without `--tlc-jar` or
-  `TLA2TOOLS_JAR`.
-- `security/security-case.json`: not refreshed. `npm run security-case:emit`
-  needs the same pinned TLC jar, and the file also carries an evidence-bundle
-  digest over all pins, so a hand edit of one hash is not a valid re-pin.
+- `conformance/composition/authzen-coaz-mcp-aeb-v0.1/source-lock.json` and
+  `report.reference.json`: `refresh-source-lock.mjs`, `check.mjs --emit`,
+  then `check.mjs` (commit `fbe9b89ec`).
+- `formal/results/formal-runtime-scenario-conformance.v2.json`:
+  `npm run sync:formal-traces` with the pinned TLC jar (SHA-256
+  `936a2620...`, the value the record pins), 78 scenarios, PASS.
+- `security/security-case.json`: `npm run security-case:emit`, then
+  `npm run check:security-case`: OK, 35 executable claims, 264 hashed
+  evidence files, execution passed.
+- Derived from those: `conformance/conformance-manifest.json`, the v2 and v3
+  clean-room bundle pins and the generated LLM context
+  (`npm run conformance:manifest`, `npm run sync:clean-room-pins`,
+  `npm run sync:llm-context`); their checks pass.
 
-The last two must be re-emitted by the evidence workflow before the evaluator
-branch merges.
+## This branch's own evidence pins
+
+The `check:aec-07` script added to `package.json` changed a file that the
+scenario conformance record pins, so this branch also re-pins it
+(`npm run sync:formal-traces`), re-emits the security case and regenerates the
+LLM context. On this branch `npm run check:formal-traces`,
+`npm run check:security-case` (OK, 35 claims, 264 files, execution passed),
+`npm run check:llm-context`, `npm run conformance:manifest:check` and
+`npm run check:clean-room-pins` pass.
 
 ## Not run
 
-`npm run check:security-case` and `npm run check:formal-traces` need the
-pinned TLC jar, which is not on this machine.
+`npm run check:proof-stats` was not re-run for this revision.
 
 Datatracker has not published this packet. Upload is held; see `README.md`.

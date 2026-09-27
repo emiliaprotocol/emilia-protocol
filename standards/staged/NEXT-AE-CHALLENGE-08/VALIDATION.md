@@ -44,9 +44,12 @@ source at SHA-256
 - `npm run check:standards-staged`, `npm run check:repository-boundary`,
   `npm run check:public-conformance-claims`, `npm run check:authority-claims`
   and `npm run check:llm-context`: PASS.
-- `npm run check:proof-stats` on the committed tree ran the governed test
-  measurement to completion and then stopped at the security-case step,
-  which needs the pinned TLC jar that is not on this machine.
+- With the pinned TLC jar (SHA-256 `936a2620...`): `npm run
+  check:formal-traces` PASS and `npm run check:security-case` OK (35
+  executable claims, 264 hashed evidence files, execution passed), after this
+  branch re-pinned the scenario conformance record for the `package.json`
+  change and re-emitted the security case. `npm run check:proof-stats` was
+  not re-run.
 
 ## Sources checked for the new text
 

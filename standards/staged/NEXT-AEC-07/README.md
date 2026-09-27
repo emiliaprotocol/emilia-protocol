@@ -72,10 +72,11 @@ The legacy `verifyAuthorizationChain` API is unchanged.
 Upload is the author's decision. Before it:
 
 1. Merge `feat/verify-aec-07-evaluator` only after the verify 6.0.0 release
-   is published, so that release ships as reviewed, and only after the
-   evidence workflow re-emits the two TLC-backed pins listed in
-   `VALIDATION.md`. Section 21 describes the changed evaluator; if that
-   branch has not merged when -07 is uploaded, revise Section 21 first.
+   is published, so that release ships as reviewed. Its evidence pins are
+   re-emitted as of `dedd9a24d`; rebase it and re-run the commands listed in
+   `VALIDATION.md` if main moves first. Section 21 describes the changed
+   evaluator; if that branch has not merged when -07 is uploaded, revise
+   Section 21 first.
 2. Set the date, confirm that -06 is still the latest AEC revision and that
    each cited draft revision is still the latest on Datatracker (if CAID -04
    has posted, cite it and recheck the Section 7 verdict names against it),
