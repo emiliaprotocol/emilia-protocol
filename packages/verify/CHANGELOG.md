@@ -42,9 +42,62 @@ behavior only through an explicit dependency bump.
   surrogate now refuses as `unsupported_value`, as RFC 8785 section 3.2.2.2
   requires, instead of being escaped into the digest input.
 - The vendored CAID parser (`parseCaid`, and the strict-parse step of
-  `verifyCaid`) now refuses a suite outside the CAID suite registry and a
-  digest whose final character sets an unused bit, as `malformed_caid`. No
-  Verify export calls either function, so no Verify result changes.
+  `verifyCaid`) now refuses a digest whose final character sets an unused
+  bit, as `malformed_caid`, and refuses a grammatical suite outside the CAID
+  suite registry as `unknown_suite`. No Verify export calls either function,
+  so no Verify result changes.
+- The vendored CAID implements draft-schrock-canonical-action-identifier-04.
+  Its grammars, limits, reason codes and reason ranks are generated from the
+  draft's ABNF and the CAID spec data (`node caid/spec/gen.mjs --write`
+  writes `vendor/caid.mjs` as a byte copy of `caid/impl/js/caid.mjs`), and
+  it now refuses these inputs, which 5.0.0 accepted:
+  - A type definition that does not conform, as `invalid_definition`:
+    `required_fields` absent, not an array, or empty; `optional_fields`
+    present and not an array; a field entry that is not an object; a field
+    `name` that is not a non-empty string, contains `:` or an unpaired
+    surrogate, repeats, or is `action_type`; a field `type` that is not a
+    string; a field of a registered type carrying a member that type does not
+    define (for example `pattern` or `description` on a `string` field); a
+    `code` field without a valid `code_system` URI and registered-syntax
+    `format` name; and an enum `values` array that is not canonicalizable.
+    5.0.0 computed a CAID under such a definition, one that bound nothing
+    for a definition with no usable fields. An adapter mapping profile whose
+    definition declares a field named `action_type` (the action object's
+    `action_type` member is always required, so the entry added nothing) now
+    maps to a refusal.
+  - Two definitions of one action type whose validation projections differ,
+    as `invalid_definition`. 5.0.0 used whichever came first. Definitions
+    that differ only in notes, status or other annotations still resolve.
+  - A host value outside the JSON data model, as `unsupported_value`, or as
+    `mistyped_field:<field>` when a declared field holds it: a `Map`, `Set`,
+    `Date`, typed array, boxed primitive or class instance (5.0.0 serialized
+    each as its own enumerable properties, so `new Map([["k", "v"]])` and
+    `new Date(0)` had the CAID of `{}`); an accessor property (5.0.0 invoked
+    it, and threw when it threw); a non-enumerable or symbol-keyed property;
+    a sparse array or an array with extra properties; a `Proxy`; and a
+    cyclic value (5.0.0 threw `RangeError`). The value is read once, without
+    invoking any getter, and nothing throws.
+  - Nesting deeper than 64, and an RFC 8785 encoding longer than 16777216
+    octets, as `unsupported_value`. 5.0.0 computed nesting up to about 2,000
+    levels and threw beyond it, and had no size bound. CAIDs that 5.0.0
+    issued for such objects no longer verify.
+- The vendored CAID reports more, and orders reasons by rank: `computeCaid`
+  results carry `definition_sha256` (SHA-256 over the RFC 8785 encoding of
+  the definition's validation projection); `verifyCaid` results carry
+  `details`, one `{reason, field, rule, observed}` object per reason, and
+  `definition_sha256` whenever a definition resolved, and accept an
+  `expectedDefinitionSha256` option that adds `definition_mismatch`. After
+  the two gates (`invalid_action_type`, then `unknown_action_type` or
+  `invalid_definition`) every check runs, and `unsupported_number` always
+  precedes `unsupported_value`; 5.0.0 ordered those two by traversal.
+  Registry v5 and the `code` field type (named code formats, exact string,
+  refused as `invalid_code:<field>`) are supported. The vendored module also
+  exports strict JSON text entry points (`decodeCaidJson`,
+  `decodeCaidDocument`, `computeCaidJson`, `verifyCaidJson`) that refuse
+  invalid UTF-8, a byte order mark, duplicate member names, surrogate or
+  noncharacter code points, trailing content, nesting beyond 64 and action
+  texts over 33554432 octets, all as `malformed_json`. No Verify export
+  passes JSON text to the vendored core.
 - CAID bytes are unchanged for every action that both 5.0.0 and this version
   accept; only the set of accepted actions narrowed. This is a behavior change,
   not a wire format change.
