@@ -3,12 +3,20 @@
 # conformance vector file. A Windows clone with the default core.autocrlf=true
 # rewrites those files to CRLF on checkout, silently breaking the digest for any
 # external verifier (this bit a real implementer twice). Pin them to verbatim
-# bytes so every clone, on every OS, reproduces our published digests.
-conformance/vectors/** -text
-examples/external-verification/statements/** -text
+# bytes so every clone, on every OS, reproduces our published digests. The
+# verbatim lines come after the catch-all below: when several patterns match,
+# the later line wins.
 
 # Everything else: normalize to LF in the repo and on checkout.
 * text=auto eol=lf
+
+# Verbatim bytes (see the note above). The CAID history files are frozen
+# copies whose SHA-256 other files pin: registry version 4 and the version 4
+# and mapping version 1 corpora.
+conformance/vectors/** -text
+examples/external-verification/statements/** -text
+caid/registry/history/** -text
+caid/conformance/history/** -text
 
 # Source files are always reviewable as text, including cleanup commits that
 # remove accidental control bytes from an older blob.
