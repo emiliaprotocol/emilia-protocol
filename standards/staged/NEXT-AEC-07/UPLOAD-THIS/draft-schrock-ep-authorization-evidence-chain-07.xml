@@ -109,9 +109,11 @@
         implements, and every signature or proof it carries verifies over the
         bytes it covers.
         VERIFIED depends only on the artifact, the format specification, and
-        the verification key. It says nothing about whether the relying party
-        trusts that key, issuer, or policy, and nothing about whether the
-        artifact denotes the expected material action.</dd>
+        the verification key. When a format names its key only by reference,
+        that key is the one resolved from relying-party key material
+        (<xref target="native-contract"/>). VERIFIED says nothing about whether
+        the relying party trusts that key, issuer, or policy, and nothing about
+        whether the artifact denotes the expected material action.</dd>
         <dt>ACCEPTED</dt>
         <dd>A VERIFIED artifact also meets the relying party's pinned trust
         inputs for its component type (<xref target="acceptance-inputs"/>): the
@@ -121,8 +123,10 @@
         revision are ones the relying party pinned; and the verification time
         falls within the artifact's native validity period. ACCEPTED is
         relative to one relying party's pins. A party with different trust
-        inputs can reproduce VERIFIED for the same bytes and reach a different
-        acceptance result.</dd>
+        inputs that holds or resolves the same verification key can reproduce
+        VERIFIED for the same bytes and reach a different acceptance
+        result. ACCEPTED does not depend on the expected material action;
+        MATCH decides that.</dd>
         <dt>MATCH</dt>
         <dd>A VERIFIED and ACCEPTED artifact's integrity-protected native action
         commitment denotes the relying party's expected material action by
@@ -290,10 +294,13 @@
         mapping is used;</li>
         <li>an explicit verification time;</li>
         <li>for each component type, the selected native verifier revision;
-        the pinned trust inputs that decide ACCEPTED, namely trust anchors or
-        key directory, accepted issuers, audiences, key classes, native policy,
-        and format revision; and the freshness inputs and status sources;
-        and</li>
+        the key-resolution material from which the native verifier obtains a
+        verification key that a format names only by reference; the pinned
+        trust inputs that decide ACCEPTED, namely trust anchors or directory
+        entries (for each key, the principal and role it is bound to, its key
+        class, its validity period, and its compromise or revocation state),
+        accepted issuers, audiences, key classes, native policy, and format
+        revision; and the freshness inputs and status sources; and</li>
         <li>documented resource limits for parsing, nesting, component count,
         expression size, and verifier execution.</li>
       </ul>
@@ -303,6 +310,10 @@
       <t>The pinned trust inputs decide ACCEPTED. A verifier MUST NOT report
       an artifact as VERIFIED because its signer is pinned, or as ACCEPTED
       because its signatures verify.</t>
+      <t>Key-resolution material and the pinned trust inputs can live in one
+      directory. Resolution uses only the mapping from a key reference to key
+      bytes. Everything else a directory entry states about that key is a
+      pinned trust input and decides ACCEPTED, not VERIFIED.</t>
     </section>
 
     <section anchor="native-contract">
@@ -311,8 +322,9 @@
       component, a relying-party-selected native verifier first returns a
       bounded internal result containing:</t>
       <ul>
-        <li>the VERIFIED result and, for a VERIFIED artifact, the ACCEPTED
-        result, each with a machine-readable reason when it is negative;</li>
+        <li>the VERIFIED result, or an indication that VERIFIED could not be
+        evaluated, and, for a VERIFIED artifact, the ACCEPTED result, each with
+        a machine-readable reason when it is negative;</li>
         <li>the integrity-protected native action commitment, if any;</li>
         <li>the protected issuance and expiration instants needed by the
         selected freshness check;</li>
@@ -335,11 +347,17 @@
       VERIFIED and ACCEPTED is ineligible.</t>
       <t>When a format identifies its verification key only by reference, the
       native verifier resolves the key from relying-party key material. If no
-      key can be resolved, the artifact is not VERIFIED. Resolving a key does
-      not make the artifact ACCEPTED: whether that key is pinned for the
-      component's role, usable at the verification time, of an accepted class,
-      and bound to the principal the artifact names is decided by
-      ACCEPTED.</t>
+      key can be resolved, VERIFIED cannot be evaluated: the artifact is not
+      VERIFIED, the normalized fact records its native verification as
+      NOT_EVALUATED with a reason such as <tt>key_unresolved</tt>, never as
+      FAILED, and the component is ineligible. Resolving a key does not make
+      the artifact ACCEPTED: whether that key is pinned for the component's
+      role, usable at the verification time, of an accepted class, and bound
+      to the principal the artifact names is decided by ACCEPTED. For such
+      formats VERIFIED depends on the resolved key as well as on the bytes, so
+      relying parties whose key-resolution material resolves the same
+      reference to different keys can reach different VERIFIED results for
+      the same bytes.</t>
       <t>AEC MUST NOT accept a presenter's <tt>verified</tt> or
       <tt>accepted</tt> Boolean, normalized fact, mapping result, key, trust
       anchor, status assertion, or relation as a substitute for native
@@ -379,6 +397,11 @@
       projected CAID and the expected CAID is not MATCH and MUST make that
       component ineligible. CAID carries content identity, not trust or
       authorization semantics.</t>
+      <t>A native verifier evaluates the pinned trust inputs against the
+      action commitment the artifact itself carries and does not compare it
+      with the expected action. An ACCEPTED artifact bound to a different
+      action is ineligible because it is not MATCH, and its record says so; it
+      is not reported as not ACCEPTED.</t>
     </section>
 
     <section anchor="expressions">
@@ -427,6 +450,7 @@ WS       = *(SP / HTAB / CR / LF)
             internal verifier result as constrained by
             <xref target="native-contract"/>, and record the VERIFIED and
             ACCEPTED results separately. Exceptions, unknown verifier types, a
+            component whose VERIFIED result could not be evaluated, a
             component that is not VERIFIED, and a VERIFIED component that is
             not ACCEPTED are ineligible.</li>
             <li>Only after VERIFIED and ACCEPTED, establish material-action
@@ -468,7 +492,9 @@ WS       = *(SP / HTAB / CR / LF)
       bounded per-component reason codes. Each normalized fact MUST carry the
       VERIFIED and ACCEPTED results as separate fields, and a consumer MUST
       NOT derive one from the other. Reason codes SHOULD distinguish a
-      verification failure from an acceptance refusal. An implementation may
+      verification failure, a verification that could not be evaluated, an
+      acceptance refusal, and a failed material-action match from one
+      another. An implementation may
       retain a legacy <tt>allow</tt> alias, but that alias MUST equal
       <tt>satisfied</tt> and MUST NOT be interpreted as local AUTHORIZED.</t>
     </section>
@@ -480,6 +506,7 @@ WS       = *(SP / HTAB / CR / LF)
       <sourcecode type="json"><![CDATA[
 {
   "@version": "EP-AEC-REPLAY-v1",
+  "algorithm_revision": "<evaluator algorithm revision>",
   "aec_digest": "sha256:<hex>",
   "expected_action_digest": "sha256:<hex>",
   "expected_caid": "caid:1:<action-type>:<suite>:<digest-b64url>",
@@ -500,15 +527,24 @@ WS       = *(SP / HTAB / CR / LF)
   "reasons": []
 }
 ]]></sourcecode>
-      <t>The <tt>aec_digest</tt> is the evidence digest of the complete
-      EP-AEC-v1 object. Facts remain in component array order. Object members
+      <t>The <tt>algorithm_revision</tt> identifies the evaluation algorithm
+      and fact members the evaluator implements. Records with different
+      algorithm revisions are not compared digest for digest; a record from an
+      evaluator implementing -06 of this document carries one combined
+      validity member per fact instead of <tt>native_verification</tt> and
+      <tt>acceptance</tt>. The <tt>aec_digest</tt> is the evidence digest of
+      the complete EP-AEC-v1 object. Facts remain in component array order. Object members
       inside each fact use JCS ordering. The replay digest is the evidence
       digest of the complete EP-AEC-REPLAY-v1 record.</t>
       <t>In each fact, <tt>native_verification</tt> is <tt>VERIFIED</tt>,
       <tt>FAILED</tt>, or <tt>NOT_EVALUATED</tt>, and <tt>acceptance</tt> is
       <tt>ACCEPTED</tt>, <tt>REJECTED</tt>, or <tt>NOT_EVALUATED</tt>.
       <tt>acceptance</tt> is <tt>NOT_EVALUATED</tt> whenever
-      <tt>native_verification</tt> is not <tt>VERIFIED</tt>.</t>
+      <tt>native_verification</tt> is not <tt>VERIFIED</tt>.
+      <tt>native_verification</tt> is <tt>NOT_EVALUATED</tt> when the native
+      verifier was not invoked, returned no usable result, or could not
+      evaluate VERIFIED because no verification key could be resolved; it is
+      <tt>FAILED</tt> only when the checks ran and did not pass.</t>
       <t>Given the same AEC object, expected action inputs, requirement
       profile, explicit verification time, normalized native facts, and
       algorithm revision, implementations MUST compute the same replay digest
@@ -516,9 +552,10 @@ WS       = *(SP / HTAB / CR / LF)
       checks depend on status services; therefore the replay record MUST bind
       the selected verifier-profile, trust-snapshot, and status-snapshot
       digests needed to identify those inputs. A party that re-runs the
-      evaluation under different trust inputs can reproduce the VERIFIED
-      results but not necessarily the ACCEPTED results; the trust-snapshot
-      digests identify whose acceptance the record reports. A replay record
+      evaluation with the same verification keys under different trust inputs
+      can reproduce the VERIFIED results but not necessarily the ACCEPTED
+      results; the trust-snapshot digests identify whose acceptance the record
+      reports. A replay record
       without the underlying evidence and identified trust snapshots can
       identify a decision but cannot independently prove that every recorded
       native fact was true.</t>
@@ -538,11 +575,13 @@ WS       = *(SP / HTAB / CR / LF)
       <t>The <tt>ep-authorization-bundle</tt> component carries the
       pre-execution Authorization Bundle of <xref target="EP-RECEIPTS"/>,
       Section 6. Its native verifier reports VERIFIED when the bundle's closed
-      structure, context commitments, and completed signoff signatures verify,
-      and reports ACCEPTED only when the exact expected action,
-      relying-party-selected policy, approver keys and key classes, and
+      structure, action and context commitments, and completed signoff
+      signatures under the keys its signoffs reference verify, and reports
+      ACCEPTED only when the relying-party-selected policy, approver
+      selection, approver keys, their directory status and key classes, and
       required status and presentation evidence are accepted under that
-      profile. Distinct subjects
+      profile. Whether the bundle's action is the exact expected action is
+      established by MATCH under <xref target="matching"/>. Distinct subjects
       MUST come only from verified completed signoffs, not from an unsigned
       label or the wider selected approver roster. A SATISFIED bundle is
       approval evidence, not proof of consumption or execution.</t>
@@ -648,9 +687,16 @@ native VERIFIED
       artifact from a signer the relying party does not trust produce the same
       result, and a replay record states more than the relying party's pins
       support. Keeping the results separate lets a later reader who holds the
-      evidence re-derive VERIFIED without adopting the original relying
-      party's trust decisions, and keeps ACCEPTED attributable to identified
-      trust snapshots. Neither result alone makes a component eligible.</t>
+      evidence and the same verification keys re-derive VERIFIED without
+      adopting the original relying party's trust decisions, and keeps
+      ACCEPTED attributable to identified trust snapshots. Neither result
+      alone makes a component eligible. The separation has limits. An
+      unresolvable key reference is recorded as NOT_EVALUATED, not FAILED.
+      Where a format does not identify its verification key at all, or a
+      native procedure cannot attribute a failure, FAILED does not distinguish
+      a forgery from an intact artifact signed under a key the relying party
+      does not hold. An artifact bound to a different action is a failed
+      MATCH, not a refused acceptance.</t>
       <t><strong>Freshness and status.</strong> Message freshness, artifact
       age, credential validity, credential revocation, authority revocation,
       and policy revision are separate checks. A current credential does not
@@ -739,12 +785,32 @@ native VERIFIED
         <li>Native verifiers report both results, never ACCEPTED without
         VERIFIED, and report the artifact as not VERIFIED when a combined
         native procedure cannot attribute a failure. A key resolved from
-        relying-party key material makes an artifact checkable, not
-        ACCEPTED.</li>
+        relying-party key material makes an artifact checkable, not ACCEPTED;
+        a key reference that cannot be resolved is recorded as NOT_EVALUATED,
+        not FAILED (Section 6).</li>
+        <li>Section 5 lists key-resolution material as its own input and adds
+        the key directory and the status of each entry, accepted issuers, key
+        classes, native policy, and format revision to the pinned trust inputs
+        that decide ACCEPTED.</li>
         <li>Mapping runs only after both results are positive, and eligibility
-        requires both. Each normalized fact and replay record carries them as
+        requires both. Native verifiers evaluate pins against the action the
+        artifact carries, and only MATCH compares it with the expected action
+        (Section 7).</li>
+        <li>Each normalized fact and replay record carries the two results as
         separate <tt>native_verification</tt> and <tt>acceptance</tt> members,
-        and the replay record binds trust-snapshot digests.</li>
+        the replay record gains <tt>algorithm_revision</tt> and binds
+        trust-snapshot digests, and reason codes SHOULD distinguish a
+        verification failure, a verification not evaluated, an acceptance
+        refusal, and a failed match (Sections 9 and 10).</li>
+        <li>Section 11 assigns the built-in checks to the two results: ep-quorum
+        is VERIFIED under the keys its members carry; the Authorization Bundle
+        and Trust Receipt are VERIFIED under the keys their signoffs reference
+        and ACCEPTED under the pinned policy, directory, and key classes; the
+        bundle's exact action moves from acceptance to MATCH.</li>
+        <li>Section 13 adds the relying-party ACCEPTED step to the lifecycle
+        and maps the VERIFIED of <xref target="EP-AEB"/> to VERIFIED and
+        ACCEPTED here. Section 14 adds the verification and acceptance
+        consideration, including where the separation stops.</li>
         <li>Defined UNSATISFIED explicitly as every result other than
         SATISFIED, including an evaluation that could not complete.</li>
         <li>Updated the implementation status and references.</li>
@@ -797,10 +863,15 @@ native VERIFIED
       that carries only the earlier combined validity flag, is refused. The
       built-in ep-quorum verifier checks integrity under the public keys a
       quorum carries. The built-in ep-receipt, ep-authorization-bundle, and
-      platform-attestation verifiers resolve keys from pinned material and
-      report some key-directory failures that their native procedures detect
-      inside the signature step as not VERIFIED, as
-      <xref target="native-contract"/> permits.</t>
+      platform-attestation verifiers resolve each key reference from pinned
+      key material and check signatures under the resolved key only; a
+      reference that cannot be resolved is recorded as NOT_EVALUATED, and the
+      directory entry's approver binding, key class, validity period, and
+      compromise marker are acceptance inputs. The Trust Receipt checkpoint
+      signature is checked under the relying party's log key, so a checkpoint
+      that does not verify under that key is FAILED whether it was forged or
+      signed by another log. The built-ins evaluate pins against the action
+      the artifact carries and leave the expected action to MATCH.</t>
       <t>The older string-requirement API remains a separate legacy interface.
       It does not implement the complete structured contract and keeps one
       combined validity flag per component. The new

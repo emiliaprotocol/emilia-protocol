@@ -18,6 +18,12 @@ signed by a key the relying party does not trust. -07:
 - requires the native verifier to report both, never ACCEPTED without
   VERIFIED, and to report an artifact as not VERIFIED when a combined native
   procedure cannot attribute a failure;
+- keeps key-resolution material apart from the pinned trust inputs: an
+  unresolvable key reference is recorded as NOT_EVALUATED, not FAILED, and a
+  resolved key's directory status decides ACCEPTED;
+- keeps the exact action out of ACCEPTED: native verifiers evaluate pins
+  against the action the artifact carries, and only MATCH compares it with
+  the expected action;
 - carries the split through the acceptance inputs (Section 5), the native
   result contract (Section 6), matching (Section 7), the algorithm
   (Section 9), the replay record (Section 10, with `native_verification` and
@@ -50,23 +56,26 @@ no render line over 72 columns, the cited revisions are the ones listed in
 
 ## Reference implementation
 
-Section 21 describes the evaluator change in commit `52882ef6d`
-(`packages/verify/src/evidence-chain.ts`, tests in
-`packages/verify/aec-current-profile.test.ts`). It changes the public
+Section 21 describes the evaluator on branch `feat/verify-aec-07-evaluator`
+(commits `52882ef6d` and `fbe9b89ec`, `packages/verify/src/evidence-chain.ts`,
+tests in `packages/verify/aec-current-profile.test.ts`). It is kept off this
+branch so the staged packets can land without it. It changes the public
 contract of `createAuthorizationChainEvaluator`: native verifier callbacks
-return `verified` and `accepted` instead of `valid`, and replay facts carry
-`native_verification` and `acceptance` instead of `native_valid`. The
-`packages/verify/CHANGELOG.md` entry records it as a major change meant to
-ship after 6.0.0. The legacy `verifyAuthorizationChain` API is unchanged.
+return `verified` (or `null` when it could not be evaluated) and `accepted`
+instead of `valid`, and replay facts carry `native_verification` and
+`acceptance` instead of `native_valid`. The `packages/verify/CHANGELOG.md`
+entry on that branch records it as a major change meant to ship after 6.0.0.
+The legacy `verifyAuthorizationChain` API is unchanged.
 
 ## Hold
 
 Upload is the author's decision. Before it:
 
-1. Merge the `packages/verify` change only after the verify 6.0.0 release
-   is published, so that release ships as reviewed. Section 21 describes the
-   changed evaluator; if the change has not merged when -07 is uploaded,
-   revise Section 21 first.
+1. Merge `feat/verify-aec-07-evaluator` only after the verify 6.0.0 release
+   is published, so that release ships as reviewed, and only after the
+   evidence workflow re-emits the two TLC-backed pins listed in
+   `VALIDATION.md`. Section 21 describes the changed evaluator; if that
+   branch has not merged when -07 is uploaded, revise Section 21 first.
 2. Set the date, confirm that -06 is still the latest AEC revision and that
    each cited draft revision is still the latest on Datatracker (if CAID -04
    has posted, cite it and recheck the Section 7 verdict names against it),

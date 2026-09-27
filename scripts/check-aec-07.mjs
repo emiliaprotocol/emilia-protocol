@@ -61,9 +61,19 @@ for (const required of [
 // Rendered text is what readers see; check the separation there.
 for (const required of [
   'VERIFIED The native verifier\'s cryptographic and structural checks passed',
-  'It says nothing about whether the relying party trusts that key, issuer, or policy',
+  'VERIFIED says nothing about whether the relying party trusts that key, issuer, or policy',
   'ACCEPTED A VERIFIED artifact also meets the relying party\'s pinned trust inputs',
-  'A party with different trust inputs can reproduce VERIFIED for the same bytes',
+  'that holds or resolves the same verification key can reproduce VERIFIED for the same bytes',
+  'Resolution uses only the mapping from a key reference to key bytes',
+  'never as FAILED, and the component is ineligible',
+  'can reach different VERIFIED results for the same bytes',
+  'An ACCEPTED artifact bound to a different action is ineligible because it is not MATCH',
+  'with the same verification keys under different trust inputs can reproduce the VERIFIED results',
+  'evidence and the same verification keys re-derive VERIFIED',
+  'FAILED does not distinguish a forgery from an intact artifact',
+  'Whether the bundle\'s action is the exact expected action is established by MATCH',
+  'it is FAILED only when the checks ran and did not pass',
+  '"algorithm_revision"',
   'MATCH A VERIFIED and ACCEPTED artifact\'s',
   'The pinned trust inputs decide ACCEPTED.',
   'The native verifier MUST report the two results separately.',
@@ -81,8 +91,14 @@ for (const required of [
   'Changes in -07',
 ]) invariant(flatTxt.includes(required), `TXT rendering is stale or missing: ${required}`);
 
-// The -06 wording that folded pinned trust inputs into VERIFIED.
+// The -06 wording that folded pinned trust inputs into VERIFIED, and the
+// earlier -07 wording that let VERIFIED travel without the same key or put the
+// exact action inside ACCEPTED.
 for (const forbidden of [
+  'A party with different trust inputs can reproduce VERIFIED',
+  'If no key can be resolved, the artifact is not VERIFIED.',
+  'reports ACCEPTED only when the exact expected action',
+  'lets a later reader who holds the evidence re-derive VERIFIED',
   'The native verifier accepted an artifact under the selected native profile',
   'format-specific semantics under pinned trust inputs',
   'A component reaches VERIFIED only when its native verifier succeeds.',

@@ -87,25 +87,25 @@ Table of Contents
    3.  The Authorization Evidence Chain Object . . . . . . . . . . .   5
    4.  The Relying-Party Evidence Requirement  . . . . . . . . . . .   6
    5.  Relying-Party Acceptance Inputs . . . . . . . . . . . . . . .   8
-   6.  Native Verification and Normalized Facts  . . . . . . . . . .   8
+   6.  Native Verification and Normalized Facts  . . . . . . . . . .   9
    7.  Material-Action Matching  . . . . . . . . . . . . . . . . . .  10
-   8.  Requirement Expressions . . . . . . . . . . . . . . . . . . .  10
-   9.  Verification Algorithm  . . . . . . . . . . . . . . . . . . .  11
-   10. Evidence Evaluation Replay  . . . . . . . . . . . . . . . . .  12
-   11. Human-Authorization Components  . . . . . . . . . . . . . . .  14
-   12. Bounded-Capability Operation Components . . . . . . . . . . .  15
-   13. Position in the Effect-Boundary Lifecycle . . . . . . . . . .  15
-   14. Security Considerations . . . . . . . . . . . . . . . . . . .  16
-   15. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  17
-   16. Relationship to Other Work  . . . . . . . . . . . . . . . . .  17
-   17. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  18
-   18. Changes in -07  . . . . . . . . . . . . . . . . . . . . . . .  18
-   19. Changes in -06  . . . . . . . . . . . . . . . . . . . . . . .  19
-   20. Changes in -05  . . . . . . . . . . . . . . . . . . . . . . .  19
-   21. Implementation Status . . . . . . . . . . . . . . . . . . . .  19
-   22. References  . . . . . . . . . . . . . . . . . . . . . . . . .  20
-     22.1.  Normative References . . . . . . . . . . . . . . . . . .  20
-     22.2.  Informative References . . . . . . . . . . . . . . . . .  21
+   8.  Requirement Expressions . . . . . . . . . . . . . . . . . . .  11
+   9.  Verification Algorithm  . . . . . . . . . . . . . . . . . . .  12
+   10. Evidence Evaluation Replay  . . . . . . . . . . . . . . . . .  13
+   11. Human-Authorization Components  . . . . . . . . . . . . . . .  15
+   12. Bounded-Capability Operation Components . . . . . . . . . . .  16
+   13. Position in the Effect-Boundary Lifecycle . . . . . . . . . .  16
+   14. Security Considerations . . . . . . . . . . . . . . . . . . .  17
+   15. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  19
+   16. Relationship to Other Work  . . . . . . . . . . . . . . . . .  19
+   17. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  20
+   18. Changes in -07  . . . . . . . . . . . . . . . . . . . . . . .  20
+   19. Changes in -06  . . . . . . . . . . . . . . . . . . . . . . .  21
+   20. Changes in -05  . . . . . . . . . . . . . . . . . . . . . . .  21
+   21. Implementation Status . . . . . . . . . . . . . . . . . . . .  21
+   22. References  . . . . . . . . . . . . . . . . . . . . . . . . .  22
+     22.1.  Normative References . . . . . . . . . . . . . . . . . .  22
+     22.2.  Informative References . . . . . . . . . . . . . . . . .  23
 
 
 
@@ -114,8 +114,8 @@ Schrock                   Expires 31 March 2027                 [Page 2]
 Internet-Draft        Authorization Evidence Chains       September 2026
 
 
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  22
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  22
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  24
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  24
 
 1.  Introduction
 
@@ -188,7 +188,9 @@ Internet-Draft        Authorization Evidence Chains       September 2026
       passed: the artifact is well formed under the native format rules
       the verifier implements, and every signature or proof it carries
       verifies over the bytes it covers.  VERIFIED depends only on the
-      artifact, the format specification, and the verification key.  It
+      artifact, the format specification, and the verification key.
+      When a format names its key only by reference, that key is the one
+      resolved from relying-party key material (Section 6).  VERIFIED
       says nothing about whether the relying party trusts that key,
       issuer, or policy, and nothing about whether the artifact denotes
       the expected material action.
@@ -201,8 +203,10 @@ Internet-Draft        Authorization Evidence Chains       September 2026
       are ones the relying party pinned; and the verification time falls
       within the artifact's native validity period.  ACCEPTED is
       relative to one relying party's pins.  A party with different
-      trust inputs can reproduce VERIFIED for the same bytes and reach a
-      different acceptance result.
+      trust inputs that holds or resolves the same verification key can
+      reproduce VERIFIED for the same bytes and reach a different
+      acceptance result.  ACCEPTED does not depend on the expected
+      material action; MATCH decides that.
 
    MATCH  A VERIFIED and ACCEPTED artifact's integrity-protected native
       action commitment denotes the relying party's expected material
@@ -213,11 +217,7 @@ Internet-Draft        Authorization Evidence Chains       September 2026
       requirement at the explicit verification time.
 
    UNSATISFIED  Every evaluation result other than SATISFIED, including
-      an evaluation that could not complete.  UNSATISFIED does not by
-      itself mean that evidence was shown to be missing or invalid;
-      bounded reason codes say why.
 
-   AUTHORIZED  A separate local application decision permitting an
 
 
 
@@ -226,6 +226,11 @@ Schrock                   Expires 31 March 2027                 [Page 4]
 Internet-Draft        Authorization Evidence Chains       September 2026
 
 
+      an evaluation that could not complete.  UNSATISFIED does not by
+      itself mean that evidence was shown to be missing or invalid;
+      bounded reason codes say why.
+
+   AUTHORIZED  A separate local application decision permitting an
       invocation.  AEC does not produce this state.
 
    Evidence digest  The string "sha256:" followed by the lowercase
@@ -267,11 +272,6 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    *  action_digest (string, OPTIONAL) is descriptive.  When present, it
       MUST equal the verifier's recomputation over action.
 
-   *  action_caid (string, OPTIONAL) is descriptive.  It MUST NOT
-      establish its own mapping or trust.  When the relying party
-      requires a CAID, the verifier recomputes or independently obtains
-      the expected CAID and compares it as specified in Section 7.
-
 
 
 
@@ -281,6 +281,11 @@ Schrock                   Expires 31 March 2027                 [Page 5]
 
 Internet-Draft        Authorization Evidence Chains       September 2026
 
+
+   *  action_caid (string, OPTIONAL) is descriptive.  It MUST NOT
+      establish its own mapping or trust.  When the relying party
+      requires a CAID, the verifier recomputes or independently obtains
+      the expected CAID and compares it as specified in Section 7.
 
    *  components (array, REQUIRED and non-empty) contains type (string),
       evidence (JSON value suitable for the native format), and optional
@@ -303,6 +308,35 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    Before returning SATISFIED, a verifier MUST receive an EP-AEC-
    REQUIREMENT-v1 object from relying-party-controlled configuration.
    The chain document cannot supply or weaken it.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                 [Page 6]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
 
    {
      "@version": "EP-AEC-REQUIREMENT-v1",
@@ -331,13 +365,6 @@ Internet-Draft        Authorization Evidence Chains       September 2026
      ]
    }
 
-
-
-Schrock                   Expires 31 March 2027                 [Page 6]
-
-Internet-Draft        Authorization Evidence Chains       September 2026
-
-
    *  @version MUST equal EP-AEC-REQUIREMENT-v1.
 
    *  requirement_id is a relying-party identifier for the exact
@@ -352,6 +379,20 @@ Internet-Draft        Authorization Evidence Chains       September 2026
 
    *  status_required is an OPTIONAL array of component types for which
       a fresh authenticated status result is required.
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                 [Page 7]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
 
    *  role_constraints is an OPTIONAL array of closed evidence
       constraints.  This revision defines only distinct-subject-quorum.
@@ -382,18 +423,6 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    MUST NOT report them as satisfied merely because an evidence
    component asserts them.
 
-
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                 [Page 7]
-
-Internet-Draft        Authorization Evidence Chains       September 2026
-
-
 5.  Relying-Party Acceptance Inputs
 
    Internal agreement among presenter-supplied artifacts cannot satisfy
@@ -411,10 +440,22 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    *  an explicit verification time;
 
    *  for each component type, the selected native verifier revision;
-      the pinned trust inputs that decide ACCEPTED, namely trust anchors
-      or key directory, accepted issuers, audiences, key classes, native
-      policy, and format revision; and the freshness inputs and status
-      sources; and
+      the key-resolution material from which the native verifier obtains
+      a verification key that a format names only by reference; the
+
+
+
+Schrock                   Expires 31 March 2027                 [Page 8]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
+
+      pinned trust inputs that decide ACCEPTED, namely trust anchors or
+      directory entries (for each key, the principal and role it is
+      bound to, its key class, its validity period, and its compromise
+      or revocation state), accepted issuers, audiences, key classes,
+      native policy, and format revision; and the freshness inputs and
+      status sources; and
 
    *  documented resource limits for parsing, nesting, component count,
       expression size, and verifier execution.
@@ -428,27 +469,25 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    an artifact as VERIFIED because its signer is pinned, or as ACCEPTED
    because its signatures verify.
 
+   Key-resolution material and the pinned trust inputs can live in one
+   directory.  Resolution uses only the mapping from a key reference to
+   key bytes.  Everything else a directory entry states about that key
+   is a pinned trust input and decides ACCEPTED, not VERIFIED.
+
 6.  Native Verification and Normalized Facts
 
    AEC does not reinterpret a native signature or token.  For each
    component, a relying-party-selected native verifier first returns a
    bounded internal result containing:
 
-   *  the VERIFIED result and, for a VERIFIED artifact, the ACCEPTED
-      result, each with a machine-readable reason when it is negative;
+   *  the VERIFIED result, or an indication that VERIFIED could not be
+      evaluated, and, for a VERIFIED artifact, the ACCEPTED result, each
+      with a machine-readable reason when it is negative;
 
    *  the integrity-protected native action commitment, if any;
 
    *  the protected issuance and expiration instants needed by the
       selected freshness check;
-
-
-
-
-Schrock                   Expires 31 March 2027                 [Page 8]
-
-Internet-Draft        Authorization Evidence Chains       September 2026
-
 
    *  the protected issuer, audience, and format revision relevant to
       the selected native profile;
@@ -458,6 +497,14 @@ Internet-Draft        Authorization Evidence Chains       September 2026
 
    *  zero or more relation and target-evidence-digest bindings
       extracted from integrity-protected native fields.
+
+
+
+
+Schrock                   Expires 31 March 2027                 [Page 9]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
 
    A component reaches VERIFIED only when its native verifier's
    cryptographic and structural checks succeed, and reaches ACCEPTED
@@ -472,11 +519,17 @@ Internet-Draft        Authorization Evidence Chains       September 2026
 
    When a format identifies its verification key only by reference, the
    native verifier resolves the key from relying-party key material.  If
-   no key can be resolved, the artifact is not VERIFIED.  Resolving a
-   key does not make the artifact ACCEPTED: whether that key is pinned
-   for the component's role, usable at the verification time, of an
-   accepted class, and bound to the principal the artifact names is
-   decided by ACCEPTED.
+   no key can be resolved, VERIFIED cannot be evaluated: the artifact is
+   not VERIFIED, the normalized fact records its native verification as
+   NOT_EVALUATED with a reason such as key_unresolved, never as FAILED,
+   and the component is ineligible.  Resolving a key does not make the
+   artifact ACCEPTED: whether that key is pinned for the component's
+   role, usable at the verification time, of an accepted class, and
+   bound to the principal the artifact names is decided by ACCEPTED.
+   For such formats VERIFIED depends on the resolved key as well as on
+   the bytes, so relying parties whose key-resolution material resolves
+   the same reference to different keys can reach different VERIFIED
+   results for the same bytes.
 
    AEC MUST NOT accept a presenter's verified or accepted Boolean,
    normalized fact, mapping result, key, trust anchor, status assertion,
@@ -493,25 +546,21 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    are evidence artifacts of their own and require a native verifier;
    they are not trusted internal results.
 
-
-
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                 [Page 9]
-
-Internet-Draft        Authorization Evidence Chains       September 2026
-
-
 7.  Material-Action Matching
 
    Native verification, relying-party acceptance, and material-action
    matching are distinct and ordered.  Mapping MUST NOT inspect claims
    from an artifact that is not VERIFIED and ACCEPTED as authoritative
    input.
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 10]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
 
    1.  The boundary computes the expected action digest from the frozen
        action it is actually preparing to perform.
@@ -533,6 +582,12 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    projected CAID and the expected CAID is not MATCH and MUST make that
    component ineligible.  CAID carries content identity, not trust or
    authorization semantics.
+
+   A native verifier evaluates the pinned trust inputs against the
+   action commitment the artifact itself carries and does not compare it
+   with the expected action.  An ACCEPTED artifact bound to a different
+   action is ineligible because it is not MATCH, and its record says so;
+   it is not reported as not ACCEPTED.
 
 8.  Requirement Expressions
 
@@ -557,7 +612,8 @@ Internet-Draft        Authorization Evidence Chains       September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 10]
+
+Schrock                   Expires 31 March 2027                [Page 11]
 
 Internet-Draft        Authorization Evidence Chains       September 2026
 
@@ -594,9 +650,10 @@ Internet-Draft        Authorization Evidence Chains       September 2026
        b.  Invoke the selected native verifier or consume a trusted
            internal verifier result as constrained by Section 6, and
            record the VERIFIED and ACCEPTED results separately.
-           Exceptions, unknown verifier types, a component that is not
-           VERIFIED, and a VERIFIED component that is not ACCEPTED are
-           ineligible.
+           Exceptions, unknown verifier types, a component whose
+           VERIFIED result could not be evaluated, a component that is
+           not VERIFIED, and a VERIFIED component that is not ACCEPTED
+           are ineligible.
 
        c.  Only after VERIFIED and ACCEPTED, establish material-action
            MATCH under Section 7.  A different or indeterminate action
@@ -612,8 +669,7 @@ Internet-Draft        Authorization Evidence Chains       September 2026
 
 
 
-
-Schrock                   Expires 31 March 2027                [Page 11]
+Schrock                   Expires 31 March 2027                [Page 12]
 
 Internet-Draft        Authorization Evidence Chains       September 2026
 
@@ -652,9 +708,11 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    per-component reason codes.  Each normalized fact MUST carry the
    VERIFIED and ACCEPTED results as separate fields, and a consumer MUST
    NOT derive one from the other.  Reason codes SHOULD distinguish a
-   verification failure from an acceptance refusal.  An implementation
-   may retain a legacy allow alias, but that alias MUST equal satisfied
-   and MUST NOT be interpreted as local AUTHORIZED.
+   verification failure, a verification that could not be evaluated, an
+   acceptance refusal, and a failed material-action match from one
+   another.  An implementation may retain a legacy allow alias, but that
+   alias MUST equal satisfied and MUST NOT be interpreted as local
+   AUTHORIZED.
 
 10.  Evidence Evaluation Replay
 
@@ -667,15 +725,14 @@ Internet-Draft        Authorization Evidence Chains       September 2026
 
 
 
-
-
-Schrock                   Expires 31 March 2027                [Page 12]
+Schrock                   Expires 31 March 2027                [Page 13]
 
 Internet-Draft        Authorization Evidence Chains       September 2026
 
 
    {
      "@version": "EP-AEC-REPLAY-v1",
+     "algorithm_revision": "<evaluator algorithm revision>",
      "aec_digest": "sha256:<hex>",
      "expected_action_digest": "sha256:<hex>",
      "expected_caid": "caid:1:<action-type>:<suite>:<digest-b64url>",
@@ -696,15 +753,24 @@ Internet-Draft        Authorization Evidence Chains       September 2026
      "reasons": []
    }
 
-   The aec_digest is the evidence digest of the complete EP-AEC-v1
-   object.  Facts remain in component array order.  Object members
-   inside each fact use JCS ordering.  The replay digest is the evidence
-   digest of the complete EP-AEC-REPLAY-v1 record.
+   The algorithm_revision identifies the evaluation algorithm and fact
+   members the evaluator implements.  Records with different algorithm
+   revisions are not compared digest for digest; a record from an
+   evaluator implementing -06 of this document carries one combined
+   validity member per fact instead of native_verification and
+   acceptance.  The aec_digest is the evidence digest of the complete
+   EP-AEC-v1 object.  Facts remain in component array order.  Object
+   members inside each fact use JCS ordering.  The replay digest is the
+   evidence digest of the complete EP-AEC-REPLAY-v1 record.
 
    In each fact, native_verification is VERIFIED, FAILED, or
    NOT_EVALUATED, and acceptance is ACCEPTED, REJECTED, or
    NOT_EVALUATED.  acceptance is NOT_EVALUATED whenever
-   native_verification is not VERIFIED.
+   native_verification is not VERIFIED.  native_verification is
+   NOT_EVALUATED when the native verifier was not invoked, returned no
+   usable result, or could not evaluate VERIFIED because no verification
+   key could be resolved; it is FAILED only when the checks ran and did
+   not pass.
 
    Given the same AEC object, expected action inputs, requirement
    profile, explicit verification time, normalized native facts, and
@@ -712,23 +778,22 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    digest and SATISFIED result.  ACCEPTED depends on trust snapshots,
    and status checks depend on status services; therefore the replay
    record MUST bind the selected verifier-profile, trust-snapshot, and
-   status-snapshot digests needed to identify those inputs.  A party
-   that re-runs the evaluation under different trust inputs can
-   reproduce the VERIFIED results but not necessarily the ACCEPTED
-   results; the trust-snapshot digests identify whose acceptance the
-   record reports.  A replay record without the underlying evidence and
-   identified trust snapshots can identify a decision but cannot
-   independently prove that every recorded native fact was true.
 
 
 
-
-
-
-Schrock                   Expires 31 March 2027                [Page 13]
+Schrock                   Expires 31 March 2027                [Page 14]
 
 Internet-Draft        Authorization Evidence Chains       September 2026
 
+
+   status-snapshot digests needed to identify those inputs.  A party
+   that re-runs the evaluation with the same verification keys under
+   different trust inputs can reproduce the VERIFIED results but not
+   necessarily the ACCEPTED results; the trust-snapshot digests identify
+   whose acceptance the record reports.  A replay record without the
+   underlying evidence and identified trust snapshots can identify a
+   decision but cannot independently prove that every recorded native
+   fact was true.
 
    The replay digest is not a signature, authorization, transparency
    receipt, or current-status proof.  Another format MAY sign or log it.
@@ -745,14 +810,17 @@ Internet-Draft        Authorization Evidence Chains       September 2026
 
    The ep-authorization-bundle component carries the pre-execution
    Authorization Bundle of [EP-RECEIPTS], Section 6.  Its native
-   verifier reports VERIFIED when the bundle's closed structure, context
-   commitments, and completed signoff signatures verify, and reports
-   ACCEPTED only when the exact expected action, relying-party-selected
-   policy, approver keys and key classes, and required status and
-   presentation evidence are accepted under that profile.  Distinct
-   subjects MUST come only from verified completed signoffs, not from an
-   unsigned label or the wider selected approver roster.  A SATISFIED
-   bundle is approval evidence, not proof of consumption or execution.
+   verifier reports VERIFIED when the bundle's closed structure, action
+   and context commitments, and completed signoff signatures under the
+   keys its signoffs reference verify, and reports ACCEPTED only when
+   the relying-party-selected policy, approver selection, approver keys,
+   their directory status and key classes, and required status and
+   presentation evidence are accepted under that profile.  Whether the
+   bundle's action is the exact expected action is established by MATCH
+   under Section 7.  Distinct subjects MUST come only from verified
+   completed signoffs, not from an unsigned label or the wider selected
+   approver roster.  A SATISFIED bundle is approval evidence, not proof
+   of consumption or execution.
 
    The ep-receipt built-in reports ACCEPTED only for a VERIFIED Trust
    Receipt that meets a relying-party profile pinning the approver
@@ -763,6 +831,16 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    leg.  A terminal Trust Receipt and a pre-execution Authorization
    Bundle MUST NOT be substituted for one another.  Verifying a consumed
    receipt does not restore authority or permit another execution.
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 15]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
 
    The ep-quorum built-in reports ACCEPTED only when the presented
    quorum policy equals the relying-party-pinned policy and the selected
@@ -776,15 +854,6 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    credential identifies a key holder under its native profile; it does
    not establish that a human operated an agent for this action,
    reviewed the material fields, or held legal authority.
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 14]
-
-Internet-Draft        Authorization Evidence Chains       September 2026
-
 
 12.  Bounded-Capability Operation Components
 
@@ -819,6 +888,16 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    its native verifier under relying-party-selected trust inputs, is
    VERIFIED and ACCEPTED here.
 
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 16]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
+
    AEC can orchestrate native verification, acceptance, and mapping
    itself or consume trusted internal results from the same protected
    boundary.  In both arrangements, VERIFIED precedes ACCEPTED, ACCEPTED
@@ -832,15 +911,6 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    not already acted.  A consequential executor uses shared atomic state
    keyed by an executor-derived action instance and preserves an
    uncertain operation instead of blindly replaying it.
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 15]
-
-Internet-Draft        Authorization Evidence Chains       September 2026
-
 
 14.  Security Considerations
 
@@ -874,29 +944,37 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    key that is not pinned for its role can be VERIFIED; it is never
    ACCEPTED for that role.
 
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 17]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
+
    *Verification and acceptance.* If trust decisions are folded into
    VERIFIED, a forged or malformed artifact and an intact artifact from
    a signer the relying party does not trust produce the same result,
    and a replay record states more than the relying party's pins
    support.  Keeping the results separate lets a later reader who holds
-   the evidence re-derive VERIFIED without adopting the original relying
-   party's trust decisions, and keeps ACCEPTED attributable to
-   identified trust snapshots.  Neither result alone makes a component
-   eligible.
+   the evidence and the same verification keys re-derive VERIFIED
+   without adopting the original relying party's trust decisions, and
+   keeps ACCEPTED attributable to identified trust snapshots.  Neither
+   result alone makes a component eligible.  The separation has limits.
+   An unresolvable key reference is recorded as NOT_EVALUATED, not
+   FAILED.  Where a format does not identify its verification key at
+   all, or a native procedure cannot attribute a failure, FAILED does
+   not distinguish a forgery from an intact artifact signed under a key
+   the relying party does not hold.  An artifact bound to a different
+   action is a failed MATCH, not a refused acceptance.
 
    *Freshness and status.* Message freshness, artifact age, credential
    validity, credential revocation, authority revocation, and policy
    revision are separate checks.  A current credential does not make old
    per-action evidence fresh.  A replay record captures the checked
    instant and snapshots; it does not establish current status later.
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 16]
-
-Internet-Draft        Authorization Evidence Chains       September 2026
-
 
    *Replay overclaiming.* Deterministic replay shows that the same
    normalized inputs produce the same evidence result.  It is not a
@@ -920,6 +998,17 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    does not inherently prove a natural person's identity, human
    operation, comprehension, legal authority, safety, execution, or
    outcome.
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 18]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
 
 15.  Privacy Considerations
 
@@ -945,15 +1034,6 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    native human-authorization profiles.  AEC composes them without
    generalizing all evidence into those formats.
 
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 17]
-
-Internet-Draft        Authorization Evidence Chains       September 2026
-
-
    The earlier Action Evidence Graph draft (draft-schrock-ep-action-
    evidence-graph-00) described content-addressed graph references,
    relying-party evidence policy replay, a five-verdict classification,
@@ -975,6 +1055,17 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    into AUTHORIZED without the separate boundary decision and controls
    described by AEB.
 
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 19]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
+
 17.  IANA Considerations
 
    This document has no IANA actions.  It creates no universal
@@ -995,20 +1086,46 @@ Internet-Draft        Authorization Evidence Chains       September 2026
       VERIFIED, and report the artifact as not VERIFIED when a combined
       native procedure cannot attribute a failure.  A key resolved from
       relying-party key material makes an artifact checkable, not
-      ACCEPTED.
+      ACCEPTED; a key reference that cannot be resolved is recorded as
+      NOT_EVALUATED, not FAILED (Section 6).
+
+   *  Section 5 lists key-resolution material as its own input and adds
+      the key directory and the status of each entry, accepted issuers,
+      key classes, native policy, and format revision to the pinned
+      trust inputs that decide ACCEPTED.
 
    *  Mapping runs only after both results are positive, and eligibility
-      requires both.  Each normalized fact and replay record carries
-      them as separate native_verification and acceptance members, and
-      the replay record binds trust-snapshot digests.
+      requires both.  Native verifiers evaluate pins against the action
+      the artifact carries, and only MATCH compares it with the expected
+      action (Section 7).
+
+   *  Each normalized fact and replay record carries the two results as
+      separate native_verification and acceptance members, the replay
+      record gains algorithm_revision and binds trust-snapshot digests,
+      and reason codes SHOULD distinguish a verification failure, a
+      verification not evaluated, an acceptance refusal, and a failed
+      match (Sections 9 and 10).
+
+   *  Section 11 assigns the built-in checks to the two results: ep-
+      quorum is VERIFIED under the keys its members carry; the
+      Authorization Bundle and Trust Receipt are VERIFIED under the keys
+      their signoffs reference and ACCEPTED under the pinned policy,
+      directory, and key classes; the bundle's exact action moves from
+      acceptance to MATCH.
 
 
 
 
-Schrock                   Expires 31 March 2027                [Page 18]
+
+Schrock                   Expires 31 March 2027                [Page 20]
 
 Internet-Draft        Authorization Evidence Chains       September 2026
 
+
+   *  Section 13 adds the relying-party ACCEPTED step to the lifecycle
+      and maps the VERIFIED of [EP-AEB] to VERIFIED and ACCEPTED here.
+      Section 14 adds the verification and acceptance consideration,
+      including where the separation stops.
 
    *  Defined UNSATISFIED explicitly as every result other than
       SATISFIED, including an evaluation that could not complete.
@@ -1053,27 +1170,33 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    required byte-backed bindings, required freshness and authenticated
    status checks, and EP-AEC-REPLAY-v1 records.  Replay re-verifies the
    original evidence under those configuration pins; serialized facts
+
+
+
+Schrock                   Expires 31 March 2027                [Page 21]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
+
    are not trusted merely because their digest matches.
 
    The evaluator revision that accompanies this document separates the
    two results.  Native verifier callbacks return separate verified and
    accepted results; every replay fact records native_verification and
-
-
-
-Schrock                   Expires 31 March 2027                [Page 19]
-
-Internet-Draft        Authorization Evidence Chains       September 2026
-
-
    acceptance; a callback result that reports ACCEPTED without VERIFIED,
    or that carries only the earlier combined validity flag, is refused.
    The built-in ep-quorum verifier checks integrity under the public
    keys a quorum carries.  The built-in ep-receipt, ep-authorization-
-   bundle, and platform-attestation verifiers resolve keys from pinned
-   material and report some key-directory failures that their native
-   procedures detect inside the signature step as not VERIFIED, as
-   Section 6 permits.
+   bundle, and platform-attestation verifiers resolve each key reference
+   from pinned key material and check signatures under the resolved key
+   only; a reference that cannot be resolved is recorded as
+   NOT_EVALUATED, and the directory entry's approver binding, key class,
+   validity period, and compromise marker are acceptance inputs.  The
+   Trust Receipt checkpoint signature is checked under the relying
+   party's log key, so a checkpoint that does not verify under that key
+   is FAILED whether it was forged or signed by another log.  The built-
+   ins evaluate pins against the action the artifact carries and leave
+   the expected action to MATCH.
 
    The older string-requirement API remains a separate legacy interface.
    It does not implement the complete structured contract and keeps one
@@ -1103,24 +1226,20 @@ Internet-Draft        Authorization Evidence Chains       September 2026
               <https://datatracker.ietf.org/doc/draft-schrock-canonical-
               action-identifier/>.
 
+
+
+
+Schrock                   Expires 31 March 2027                [Page 22]
+
+Internet-Draft        Authorization Evidence Chains       September 2026
+
+
    [EP-QUORUM]
               Schrock, I., "Multi-Party Quorum Authorization for High-
               Risk Agent Actions (EP-QUORUM)", Work in Progress,
               Internet-Draft, draft-schrock-ep-quorum-04, 6 September
               2026, <https://datatracker.ietf.org/doc/draft-schrock-ep-
               quorum/>.
-
-
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 20]
-
-Internet-Draft        Authorization Evidence Chains       September 2026
-
 
    [EP-RECEIPTS]
               Schrock, I., "Authorization Receipts for High-Risk Agent
@@ -1163,20 +1282,17 @@ Internet-Draft        Authorization Evidence Chains       September 2026
    [EP-QUALIFICATION]
               Schrock, I., "Portable Agent Qualification Statements for
               Consequential Actions", Work in Progress, Internet-Draft,
-              draft-schrock-agent-qualification-statements-00, 27 July
-              2026, <https://datatracker.ietf.org/doc/draft-schrock-
-              agent-qualification-statements/>.
 
 
 
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 21]
+Schrock                   Expires 31 March 2027                [Page 23]
 
 Internet-Draft        Authorization Evidence Chains       September 2026
 
+
+              draft-schrock-agent-qualification-statements-00, 27 July
+              2026, <https://datatracker.ietf.org/doc/draft-schrock-
+              agent-qualification-statements/>.
 
 Acknowledgments
 
@@ -1225,8 +1341,4 @@ Author's Address
 
 
 
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 22]
+Schrock                   Expires 31 March 2027                [Page 24]

@@ -72,8 +72,10 @@ them survives in either -07 file.
 
 ## Implementation claims in Section 21
 
-The new Section 21 paragraph describes commit `52882ef6d`. Each sentence is
-backed by a test in `packages/verify/aec-current-profile.test.ts`:
+The new Section 21 paragraph describes branch `feat/verify-aec-07-evaluator`
+(commits `52882ef6d` and `fbe9b89ec`), which is not on this branch. Each
+sentence is backed by a test in `packages/verify/aec-current-profile.test.ts`
+on that branch:
 
 - separate `verified` and `accepted` results, recorded per fact as
   `native_verification` and `acceptance`: "AEC07 a verified artifact outside
@@ -84,25 +86,60 @@ backed by a test in `packages/verify/aec-current-profile.test.ts`:
   non-Boolean results by name";
 - ep-quorum integrity under carried keys: "AEC07 built-in ep-quorum: an
   attacker quorum is VERIFIED under its carried keys and not ACCEPTED";
-- ep-receipt, ep-authorization-bundle and platform attestation: the three
-  "AEC07 built-in" tests for those types, each showing a pin mismatch as
-  VERIFIED and not ACCEPTED and a broken signature or unknown key as not
-  VERIFIED.
+- ep-receipt, ep-authorization-bundle and platform attestation: the
+  "AEC07 built-in" tests for those types show a pin mismatch as VERIFIED and
+  not ACCEPTED, a broken signature as FAILED, an unresolvable key reference as
+  NOT_EVALUATED (`native_key_unresolved`), a compromised, out-of-window,
+  wrong-class or wrong-principal directory entry as VERIFIED and REJECTED, and
+  a trusted artifact for another action as VERIFIED, ACCEPTED and
+  NOT_EQUIVALENT (`material_action_not_matched`);
+- the receipt checkpoint sentence: `receiptIntegrity` in
+  `packages/verify/src/evidence-chain.ts` passes the relying party's log key
+  to `verifyTrustReceipt`, whose checkpoint check fails when the signature
+  does not verify under that key;
+- a result that could not evaluate VERIFIED: "AEC07 a native result that
+  could not evaluate VERIFIED is NOT_EVALUATED, never FAILED".
 
-Test runs on this tree: `node --test aec-current-profile.test.js
-evidence-chain.test.js` passes 50 of 50 (34 profile tests, 10 of them new,
-and 16 legacy-API vector tests). `npm test` in `packages/verify` builds with
-`tsc` and passes 1,253 of 1,254 node tests with 1 skipped, then 32 of 32
-and 62 of 62 in its two `tsx` suites. The eight AEC vitest suites under `tests/` (safety-critical,
-role conformance, platform attestation, mutation oracles, isolated refusals,
-role non-substitution, execution gate, fleet assurance) pass 120 of 120.
+The action-matching change was also checked with the probe that found it
+(valid-two-of-three bundle vector, `action_type` changed): before the fix
+VERIFIED, REJECTED, INDETERMINATE, `native_acceptance_refused`; after it
+VERIFIED, ACCEPTED, NOT_EQUIVALENT, `material_action_not_matched`.
+
+Test runs on `fbe9b89ec`: `node --test aec-current-profile.test.js
+evidence-chain.test.js` passes 53 of 53 (37 profile tests, 13 of them AEC-07
+tests, and 16 legacy-API vector tests). `npm test` in `packages/verify`
+passes 1,256 of 1,257 node tests with 1 skipped, then 32 of 32 and 62 of 62
+in its two `tsx` suites, after `npm run build` and `npm run
+build:standalone-runtimes`. The eight AEC vitest suites under `tests/`
+(safety-critical, role conformance, platform attestation, mutation oracles,
+isolated refusals, role non-substitution, execution gate, fleet assurance)
+pass 120 of 120. `node conformance/composition/authzen-coaz-mcp-aeb-v0.1/check.mjs`
+passes after the documented refresh, and its two node test files pass 49 of
+49.
+
+## Pins the evaluator branch changes
+
+Three files pin the SHA-256 of `packages/verify/src/evidence-chain.ts`
+(`8539bfde...` before the change, `f3d47a09...` after it), and two of them also
+pin `packages/verify/dist/evidence-chain.js`:
+
+- `conformance/composition/authzen-coaz-mcp-aeb-v0.1/source-lock.json`:
+  refreshed on the evaluator branch with its documented commands
+  (`refresh-source-lock.mjs`, `check.mjs --emit`, `check.mjs`), together with
+  `report.reference.json`.
+- `formal/results/formal-runtime-scenario-conformance.v2.json`: not refreshed.
+  `npm run sync:formal-traces` refused to run without `--tlc-jar` or
+  `TLA2TOOLS_JAR`.
+- `security/security-case.json`: not refreshed. `npm run security-case:emit`
+  needs the same pinned TLC jar, and the file also carries an evidence-bundle
+  digest over all pins, so a hand edit of one hash is not a valid re-pin.
+
+The last two must be re-emitted by the evidence workflow before the evaluator
+branch merges.
 
 ## Not run
 
-`npm run check:security-case` needs the pinned TLC jar, which is not on
-this machine; the check refused to run without it. `security/security-case.json`
-pins the SHA-256 of `packages/verify/src/evidence-chain.ts`, which the code
-commit changes, so the security case must be re-emitted (or re-pinned by the
-evidence workflow) before the code change merges.
+`npm run check:security-case` and `npm run check:formal-traces` need the
+pinned TLC jar, which is not on this machine.
 
 Datatracker has not published this packet. Upload is held; see `README.md`.
