@@ -1,0 +1,3854 @@
+{
+ "suite_note": "Shared cross-language CAID conformance vectors. Each vector carries its own inline type definitions and never references the public registry. CAID carries no trust semantics: these vectors test identification only, not authorization, identity, or proof.",
+ "version": 4,
+ "previous_versions": [
+  {"version": 1, "vectors": 48, "sha256": "sha256:69bac062e94a9abd7d2647dc86f1c2efc7a10a24da52f6c406592f5cf8a1ca63", "note": "Byte digest of the version 1 corpus as last published on main before registry v4. Version 2 adds pinned-enum, inline-enum, own-member, and unpaired-surrogate refusals that the version 1 reference implementations do not enforce."},
+  {"version": 2, "vectors": 73, "sha256": "sha256:b63303e79a099063285ca5a5e5351e693104d8540cedddc41a2ff29082babd4a", "note": "Byte digest of the version 2 corpus as last published on main (pull request #789). Version 3 adds whole-string grammar refusals (a trailing line feed in an amount, digest field, timestamp, action type, suite, or CAID digest) that the version 2 Python implementation accepted, and value-based integer-field cases (12.0 and 1.2e1 are the integer 12; an out-of-range integer refuses once as unsupported_number) on which the version 2 Python and Go implementations disagreed with the JavaScript reference."},
+  {"version": 3, "vectors": 88, "sha256": "sha256:9bbce814023e6943bb34bf945a918b99c28926d7a80cfc01b9748f8aaec4d188", "note": "Byte digest of the version 3 corpus as last published on main (pull request #811). Version 4 adds identifier-parse refusals that the version 3 JavaScript, Python, and Go parsers all lacked: a suite that does not begin with a lowercase letter, a suite outside the suite registry, and a digest whose final character sets an unused bit. A registered suite the implementation does not implement still parses."}
+ ],
+ "enum_snapshots": [
+  {
+   "values_ref": "ISO 4217 alpha-3",
+   "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+   "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+   "values": [
+    "AED", "AFN", "ALL", "AMD", "AOA", "ARS", "AUD", "AWG", "AZN",
+    "BAM", "BBD", "BDT", "BHD", "BIF", "BMD", "BND", "BOB", "BOV",
+    "BRL", "BSD", "BTN", "BWP", "BYN", "BZD", "CAD", "CDF", "CHE",
+    "CHF", "CHW", "CLF", "CLP", "CNY", "COP", "COU", "CRC", "CUP",
+    "CVE", "CZK", "DJF", "DKK", "DOP", "DZD", "EGP", "ERN", "ETB",
+    "EUR", "FJD", "FKP", "GBP", "GEL", "GHS", "GIP", "GMD", "GNF",
+    "GTQ", "GYD", "HKD", "HNL", "HTG", "HUF", "IDR", "ILS", "INR",
+    "IQD", "IRR", "ISK", "JMD", "JOD", "JPY", "KES", "KGS", "KHR",
+    "KMF", "KPW", "KRW", "KWD", "KYD", "KZT", "LAK", "LBP", "LKR",
+    "LRD", "LSL", "LYD", "MAD", "MDL", "MGA", "MKD", "MMK", "MNT",
+    "MOP", "MRU", "MUR", "MVR", "MWK", "MXN", "MXV", "MYR", "MZN",
+    "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "OMR", "PAB", "PEN",
+    "PGK", "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD", "RUB",
+    "RWF", "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE",
+    "SOS", "SRD", "SSP", "STN", "SVC", "SYP", "SZL", "THB", "TJS",
+    "TMT", "TND", "TOP", "TRY", "TTD", "TWD", "TZS", "UAH", "UGX",
+    "USD", "USN", "UYI", "UYU", "UYW", "UZS", "VED", "VES", "VND",
+    "VUV", "WST", "XAD", "XAF", "XAG", "XAU", "XBA", "XBB", "XBC",
+    "XBD", "XCD", "XCG", "XDR", "XOF", "XPD", "XPF", "XPT", "XSU",
+    "XTS", "XUA", "XXX", "YER", "ZAR", "ZMW", "ZWG"
+   ]
+  }
+ ],
+ "vectors": [
+  {
+   "id": "compute-payment-release-happy",
+   "kind": "compute",
+   "description": "payment.release.1 example from DESIGN.md, all required fields plus optional memo",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y",
+    "digest": "sha256:9622c6f692a090bb77b2296b8dfd706b4c481f3e5816b041f4723e6abc6b3b56"
+   }
+  },
+  {
+   "id": "compute-doc-sign-happy",
+   "kind": "compute",
+   "description": "doc.sign.1 with digest, string, timestamp, and optional integer fields",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 12
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:doc.sign.1:jcs-sha256:AK3SFq4VAEbRv-WiSHoi-B5wn6z_VGZl-Wt3T1pdjCU",
+    "digest": "sha256:00add216ae150046d1bfe5a2487a22f81e709facff546665f96b774f5a5d8c25"
+   }
+  },
+  {
+   "id": "compute-inventory-adjust-happy",
+   "kind": "compute",
+   "description": "inventory.adjust.1 with integer, enum, array, object, and boolean fields, plus a negative integer",
+   "definitions": [
+    {
+     "action_type": "inventory.adjust.1",
+     "status": "active",
+     "risk_class": "reversible-operational",
+     "summary": "Adjustment of on-hand inventory for a SKU.",
+     "required_fields": [
+      {
+       "name": "sku",
+       "type": "string"
+      },
+      {
+       "name": "delta",
+       "type": "integer"
+      },
+      {
+       "name": "reason",
+       "type": "enum",
+       "values": [
+        "damage",
+        "recount",
+        "shrinkage"
+       ]
+      },
+      {
+       "name": "locations",
+       "type": "array"
+      },
+      {
+       "name": "metadata",
+       "type": "object"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "confirmed",
+       "type": "boolean"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "inventory.adjust.1",
+     "sku": "SKU-88-XL",
+     "delta": -4,
+     "reason": "damage",
+     "locations": [
+      "warehouse-3",
+      "bay-12"
+     ],
+     "metadata": {
+      "reported_by": "auditor-7",
+      "batch": "B-2026-19",
+      "recount": false
+     },
+     "confirmed": true
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:inventory.adjust.1:jcs-sha256:pwJTjLUIZZKYVMzJLAVmnlql38oJHMFZQspADWJaf8Y",
+    "digest": "sha256:a702538cb50865929854ccc92c05669e5aa5dfca091cc15942ca400d625a7fc6"
+   }
+  },
+  {
+   "id": "compute-key-order-a",
+   "kind": "compute",
+   "description": "same content as compute-key-order-b with source keys in a different order; the caid must be identical",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "75.10",
+     "currency": "USD",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000204"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:aQmhXw3VcUVxkO9_39ZD7f5I3eCAGcv_RzmEZer6Sy8",
+    "digest": "sha256:6909a15f0dd571457190ef7fdfd643edfe48dde08019cbff47398465eafa4b2f"
+   },
+   "relation": {
+    "same_caid_as": "compute-key-order-b"
+   }
+  },
+  {
+   "id": "compute-key-order-b",
+   "kind": "compute",
+   "description": "same content as compute-key-order-a with source keys in a different order; the caid must be identical",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "payment_instruction_id": "pi-2026-000204",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "currency": "USD",
+     "amount": "75.10",
+     "action_type": "payment.release.1"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:aQmhXw3VcUVxkO9_39ZD7f5I3eCAGcv_RzmEZer6Sy8",
+    "digest": "sha256:6909a15f0dd571457190ef7fdfd643edfe48dde08019cbff47398465eafa4b2f"
+   },
+   "relation": {
+    "same_caid_as": "compute-key-order-a"
+   }
+  },
+  {
+   "id": "compute-extra-field-changes-digest",
+   "kind": "compute",
+   "description": "one extra undeclared field on the payment example; extra fields are covered by the digest, so the caid differs",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471",
+     "trace_id": "tr-9c1f"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:57lQT9QLsM9ZLLNrYE07DWXSzpy5qdy_x8zBGd0n4N4",
+    "digest": "sha256:e7b9504fd40bb0cf592cb36b604d3b0d65d2ce9cb9a9dcbfc7ccc119dd27e0de"
+   },
+   "relation": {
+    "different_caid_from": "compute-payment-release-happy"
+   }
+  },
+  {
+   "id": "compute-unicode-strings",
+   "kind": "compute",
+   "description": "unicode string values including a supplementary-plane character (surrogate pair); canonical form is UTF-8 bytes",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "12.00",
+     "currency": "JPY",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000305",
+     "memo": "Grüße aus Tōkyō 東京 🚀"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:DZrLUEXQHWXuFT0wvyX7ymgLtp9rZTV611zcCgoKBeY",
+    "digest": "sha256:0d9acb5045d01d65ee153d30bf25fbca680bb69f6b65357ad75cdc0a0a0a05e6"
+   }
+  },
+  {
+   "id": "compute-amount-negative-fraction",
+   "kind": "compute",
+   "description": "amount-string '-0.50' is grammar-valid and accepted",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "-0.50",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000401",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:M2x57fqKj_4NSEWUMCmvMNkZuSMaOXUqxErdgaH56KE",
+    "digest": "sha256:336c79edfa8a8ffe0d4845943029af30d919b9231a39752ac44add81a1f9e8a1"
+   }
+  },
+  {
+   "id": "compute-amount-precision-1-50",
+   "kind": "compute",
+   "description": "'1.50' and '1.5' are different content and produce different caids; normalization is the issuer's job",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "1.50",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000402",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:yTKA-jdadT5TZfhdxgXIAg2N_ep1-ZLgH4Spel3Ewt4",
+    "digest": "sha256:c93280fa375a753e5365f85dc605c8020d8dfdea75f992e01f84a97a5dc4c2de"
+   },
+   "relation": {
+    "different_caid_from": "compute-amount-precision-1-5"
+   }
+  },
+  {
+   "id": "compute-amount-precision-1-5",
+   "kind": "compute",
+   "description": "'1.5' and '1.50' are different content and produce different caids; normalization is the issuer's job",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "1.5",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000402",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:TCDTjd6ZEM-E37TPgOt032qvwIHIVcLlahsenvQUYpc",
+    "digest": "sha256:4c20d38dde9910cf84dfb4cf80eb74df6aafc081c855c2e56a1b1e9ef4146297"
+   },
+   "relation": {
+    "different_caid_from": "compute-amount-precision-1-50"
+   }
+  },
+  {
+   "id": "refuse-invalid-action-type-uppercase",
+   "kind": "compute",
+   "description": "uppercase in action_type refused",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "Payment.Release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_action_type"
+    ]
+   }
+  },
+  {
+   "id": "refuse-invalid-action-type-missing",
+   "kind": "compute",
+   "description": "object without an action_type field refused",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_action_type"
+    ]
+   }
+  },
+  {
+   "id": "refuse-invalid-action-type-no-version",
+   "kind": "compute",
+   "description": "action_type without a final integer version segment refused",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_action_type"
+    ]
+   }
+  },
+  {
+   "id": "refuse-unknown-action-type",
+   "kind": "compute",
+   "description": "grammar-valid type not present in the supplied definitions refused",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.capture.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "unknown_action_type"
+    ]
+   }
+  },
+  {
+   "id": "refuse-missing-material-field",
+   "kind": "compute",
+   "description": "required field currency absent",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "missing_material_field:currency"
+    ]
+   }
+  },
+  {
+   "id": "refuse-mistyped-field-string",
+   "kind": "compute",
+   "description": "string-typed field carrying a JSON integer refused",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": 117,
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "mistyped_field:payment_instruction_id"
+    ]
+   }
+  },
+  {
+   "id": "refuse-mistyped-field-digest",
+   "kind": "compute",
+   "description": "digest-typed field with uppercase hex refused; grammar is sha256: plus 64 lowercase hex",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9F86D081884C7D659A2FEAA0C55AD015A3BF4F1B2B0B822CD15D6C15B0F00A08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "mistyped_field:beneficiary_account"
+    ]
+   }
+  },
+  {
+   "id": "refuse-mistyped-field-timestamp",
+   "kind": "compute",
+   "description": "timestamp without T separator and Z suffix refused; RFC 3339 UTC with Z is required",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08 09:30:00",
+     "page_count": 12
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "mistyped_field:signed_at"
+    ]
+   }
+  },
+  {
+   "id": "refuse-mistyped-field-enum",
+   "kind": "compute",
+   "description": "enum value outside the inline values list refused",
+   "definitions": [
+    {
+     "action_type": "inventory.adjust.1",
+     "status": "active",
+     "risk_class": "reversible-operational",
+     "summary": "Adjustment of on-hand inventory for a SKU.",
+     "required_fields": [
+      {
+       "name": "sku",
+       "type": "string"
+      },
+      {
+       "name": "delta",
+       "type": "integer"
+      },
+      {
+       "name": "reason",
+       "type": "enum",
+       "values": [
+        "damage",
+        "recount",
+        "shrinkage"
+       ]
+      },
+      {
+       "name": "locations",
+       "type": "array"
+      },
+      {
+       "name": "metadata",
+       "type": "object"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "confirmed",
+       "type": "boolean"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "inventory.adjust.1",
+     "sku": "SKU-88-XL",
+     "delta": 2,
+     "reason": "theft",
+     "locations": [],
+     "metadata": {}
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "mistyped_field:reason"
+    ]
+   }
+  },
+  {
+   "id": "refuse-invalid-amount-leading-zero",
+   "kind": "compute",
+   "description": "amount '01.5' has a leading zero and is refused",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "01.5",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_amount:amount"
+    ]
+   }
+  },
+  {
+   "id": "refuse-invalid-amount-exponent",
+   "kind": "compute",
+   "description": "amount '1e3' uses exponent notation and is refused",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "1e3",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_amount:amount"
+    ]
+   }
+  },
+  {
+   "id": "refuse-invalid-amount-plus-sign",
+   "kind": "compute",
+   "description": "amount '+1' has a leading plus and is refused",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "+1",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_amount:amount"
+    ]
+   }
+  },
+  {
+   "id": "refuse-unknown-suite",
+   "kind": "compute",
+   "description": "suite not in the suite registry refused, never guessed",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha512"
+   },
+   "expect": {
+    "refusals": [
+     "unknown_suite"
+    ]
+   }
+  },
+  {
+   "id": "refuse-unsupported-number",
+   "kind": "compute",
+   "description": "non-integer JSON number in an extra field refused; fractional values are strings by construction",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471",
+     "fee": 1.5
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "unsupported_number"
+    ]
+   }
+  },
+  {
+   "id": "refuse-unsupported-number-nested",
+   "kind": "compute",
+   "description": "non-integer JSON number nested inside an array inside an extra object refused",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471",
+     "routing": {
+      "hops": [
+       1,
+       2.5
+      ]
+     }
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "unsupported_number"
+    ]
+   }
+  },
+  {
+   "id": "refuse-multiple-ordered",
+   "kind": "compute",
+   "description": "multiple failures are all reported, in deterministic order: missing fields first, then field type refusals",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "1e3",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "missing_material_field:currency",
+     "invalid_amount:amount"
+    ]
+   }
+  },
+  {
+   "id": "verify-valid",
+   "kind": "verify",
+   "description": "object matches its caid; valid with empty reasons",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "valid": true,
+    "reasons": []
+   }
+  },
+  {
+   "id": "verify-digest-mismatch",
+   "kind": "verify",
+   "description": "amount altered after the caid was computed; recomputed digest differs",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.01",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "digest_mismatch"
+    ]
+   }
+  },
+  {
+   "id": "verify-action-type-mismatch",
+   "kind": "verify",
+   "description": "caid string carries a different type over the same digest; the in-object action_type check catches it",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.2:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "action_type_mismatch"
+    ]
+   }
+  },
+  {
+   "id": "verify-mismatch-and-digest",
+   "kind": "verify",
+   "description": "object of a different type against a payment caid; reasons are ordered action_type_mismatch then digest_mismatch",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    },
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 12
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "action_type_mismatch",
+     "digest_mismatch"
+    ]
+   }
+  },
+  {
+   "id": "verify-invalid-object",
+   "kind": "verify",
+   "description": "digest matches but the object fails material validation (missing currency); invalid_object, not merely mismatched",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha256:M1KdLp0u8yuFNDKawpXZ-1cdjQm93jlj1DVM36vB230"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "invalid_object"
+    ]
+   }
+  },
+  {
+   "id": "verify-malformed-padded-b64",
+   "kind": "verify",
+   "description": "base64url digest with '=' padding refused; digests are unpadded",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1="
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "verify-malformed-uppercase-suite",
+   "kind": "verify",
+   "description": "uppercase suite refused; type and suite are lowercase",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1:JCS-SHA256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "verify-malformed-empty-segment",
+   "kind": "verify",
+   "description": "empty action_type segment refused",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1::jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "verify-malformed-trailing-junk",
+   "kind": "verify",
+   "description": "content after the digest refused",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y:extra"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "verify-malformed-short-digest",
+   "kind": "verify",
+   "description": "digest shorter than 43 base64url characters for a sha256 suite refused at parse",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha256:abc"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "parse-roundtrip-valid",
+   "kind": "parse",
+   "description": "a caid emitted by compute parses back into its four components",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": true,
+    "caid": {
+     "version": "1",
+     "action_type": "payment.release.1",
+     "suite": "jcs-sha256",
+     "digest": "liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+    }
+   }
+  },
+  {
+   "id": "parse-malformed-padded-b64",
+   "kind": "parse",
+   "description": "padded digest refused by the strict parser",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1="
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "parse-malformed-unknown-version",
+   "kind": "parse",
+   "description": "unknown caid version refused, never guessed",
+   "definitions": [],
+   "input": {
+    "caid": "caid:2:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "compute-number-max-safe",
+   "kind": "compute",
+   "description": "integer at exactly 2^53-1 accepted (value-based number rule upper bound)",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "10.00",
+     "currency": "USD",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000900",
+     "count": 9007199254740991
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:up9inkH-wdzmzctLfrtEGVFcn-rQ7gKkT3t19U0RoRo",
+    "digest": "sha256:ba9f629e41fec1dce6cdcb4b7ebb4419515c9fead0ee02a44f7b75f54d11a11a"
+   }
+  },
+  {
+   "id": "refuse-number-above-max-safe",
+   "kind": "compute",
+   "description": "integer 2^53 refused: outside the safe range in every implementation",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "10.00",
+     "currency": "USD",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000900",
+     "count": 9007199254740992
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "unsupported_number"
+    ]
+   }
+  },
+  {
+   "id": "refuse-number-rounded-literal",
+   "kind": "compute",
+   "description": "literal 9007199254740993 (2^53+1) refused: JS parses it to the rounded double 2^53 and range-refuses; Python and Go see it exactly and range-refuse; same outcome everywhere",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "10.00",
+     "currency": "USD",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000900",
+     "count": 9007199254740992
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "unsupported_number"
+    ]
+   }
+  },
+  {
+   "id": "compute-number-integral-float",
+   "kind": "compute",
+   "description": "literal 1000.0 accepted as the integer 1000 (value-based rule; literal form is irrelevant)",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "10.00",
+     "currency": "USD",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000900",
+     "count": 1000.0
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:IThZt-9TNywvlXfeii4W0jZf_PCFtspAq2uZdjksV70",
+    "digest": "sha256:213859b7ef53372c2f9577de8a2e16d2365ffcf085b6ca40ab6b9976392c57bd"
+   },
+   "relation": {
+    "same_caid_as": "compute-number-plain-integer"
+   }
+  },
+  {
+   "id": "compute-number-plain-integer",
+   "kind": "compute",
+   "description": "plain integer 1000; sibling of compute-number-integral-float, identical caid",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "10.00",
+     "currency": "USD",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000900",
+     "count": 1000
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:IThZt-9TNywvlXfeii4W0jZf_PCFtspAq2uZdjksV70",
+    "digest": "sha256:213859b7ef53372c2f9577de8a2e16d2365ffcf085b6ca40ab6b9976392c57bd"
+   },
+   "relation": {
+    "same_caid_as": "compute-number-integral-float"
+   }
+  },
+  {
+   "id": "refuse-number-exponent-large",
+   "kind": "compute",
+   "description": "literal 1e+21 refused: integral double but far outside the safe range",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "10.00",
+     "currency": "USD",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000900",
+     "count": 1e+21
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "unsupported_number"
+    ]
+   }
+  },
+  {
+   "id": "parse-action-type-hyphen",
+   "kind": "parse",
+   "description": "hyphens are permitted inside lowercase action-type segments",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:cross-domain.payment.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": true,
+    "caid": {
+     "version": "1",
+     "action_type": "cross-domain.payment.1",
+     "suite": "jcs-sha256",
+     "digest": "liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+    }
+   }
+  },
+  {
+   "id": "refuse-action-type-underscore",
+   "kind": "parse",
+   "description": "underscores are outside the registered action-type grammar",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:cross_domain.payment.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "refuse-action-type-version-zero",
+   "kind": "parse",
+   "description": "registered action-type versions start at one",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.0:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "compute-pinned-external-enum-usd",
+   "kind": "compute",
+   "description": "a common code in the integrity-pinned ISO 4217 snapshot is accepted",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{
+     "name": "currency",
+     "type": "enum",
+     "values_ref": "ISO 4217 alpha-3",
+     "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+    }],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:test.currency.1:jcs-sha256:v065Cib6SaT8wd-KWQTtoMgscmKw4_WLxYGaEHRl8xo",
+    "digest": "sha256:bf4eb90a26fa49a4fcc1df8a5904eda0c82c7262b0e3f58bc5819a107465f31a"
+   }
+  },
+  {
+   "id": "compute-pinned-external-enum-xad",
+   "kind": "compute",
+   "description": "a less-common active code in the same pinned ISO 4217 snapshot is accepted",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{
+     "name": "currency",
+     "type": "enum",
+     "values_ref": "ISO 4217 alpha-3",
+     "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+    }],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "XAD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:test.currency.1:jcs-sha256:jREi8-vehQQthNRMyWEPoji23CPAlXWEFo_Trzzs7Sc",
+    "digest": "sha256:8d1122f3ebde85042d84d44cc9610fa238b6dc23c0957584168fd3af3ceced27"
+   }
+  },
+  {
+   "id": "refuse-not-a-currency",
+   "kind": "compute",
+   "description": "a string absent from the pinned ISO 4217 snapshot fails closed",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{
+     "name": "currency",
+     "type": "enum",
+     "values_ref": "ISO 4217 alpha-3",
+     "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+    }],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "NOT-A-CURRENCY"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:currency"]}
+  },
+  {
+   "id": "refuse-bare-external-enum-ref",
+   "kind": "compute",
+   "description": "a mutable external name without snapshot metadata is not a value constraint",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:currency"]}
+  },
+  {
+   "id": "refuse-unresolved-external-enum-snapshot",
+   "kind": "compute",
+   "description": "pin metadata without an exactly matching locally supplied snapshot fails closed",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{
+     "name": "currency",
+     "type": "enum",
+     "values_ref": "Example Currency alpha-3",
+     "values_snapshot": "example edition 1",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+    }],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:currency"]}
+  },
+  {
+   "id": "refuse-external-enum-hash-mismatch",
+   "kind": "compute",
+   "description": "embedded external values are rejected when their JCS array does not match the declared digest",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{
+     "name": "currency",
+     "type": "enum",
+     "values_ref": "ISO 4217 alpha-3",
+     "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+     "values": ["USD", "EUR"]
+    }],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:currency"]}
+  },
+  {
+   "id": "refuse-inline-enum-outside-set",
+   "kind": "compute",
+   "description": "the compact inline values_ref form is a closed set, not documentation",
+   "definitions": [{
+    "action_type": "test.channel.1",
+    "required_fields": [{"name": "channel", "type": "enum", "values_ref": "inline: email | sms"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.channel.1", "channel": "voice"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:channel"]}
+  },
+  {
+   "id": "refuse-enum-values-ref-null",
+   "kind": "compute",
+   "description": "a values_ref member written as null is present and malformed; it is not the absent-values_ref inline form, even beside a valid values array",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": null, "values": ["USD"]}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "refuse-enum-inline-with-values-null",
+   "kind": "compute",
+   "description": "a values member written as null beside an inline values_ref is present and must equal the parsed list, so it refuses",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline: USD | EUR", "values": null}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "compute-inline-enum-space-trimmed",
+   "kind": "compute",
+   "description": "inline members are split on | and trimmed of leading and trailing U+0020 SPACE only",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline:  USD |EUR  "}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"caid": "caid:1:test.enum.1:jcs-sha256:opusq78tZPmSj5nsoOwUBeuInu0unlLCUEDhI-fRUWc", "digest": "sha256:a29bacabbf2d64f9928f99eca0ec1405eb889eed2e9e52c25040e123e7d15167"}
+  },
+  {
+   "id": "refuse-inline-enum-tab-not-trimmed",
+   "kind": "compute",
+   "description": "a horizontal tab around an inline member is not trimmed, so the member is \"\\tUSD\\t\" and USD is outside the set",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline:\tUSD\t|EUR"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "refuse-inline-enum-nel-not-trimmed",
+   "kind": "compute",
+   "description": "U+0085 NEXT LINE around an inline member is not trimmed",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline:\u0085USD\u0085|EUR"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "refuse-inline-enum-bom-not-trimmed",
+   "kind": "compute",
+   "description": "U+FEFF around an inline member is not trimmed",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline:\ufeffUSD\ufeff|EUR"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "refuse-inline-enum-c0-separator-not-trimmed",
+   "kind": "compute",
+   "description": "U+001C FILE SEPARATOR around an inline member is not trimmed",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline:\u001cUSD\u001c|EUR"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "compute-inline-enum-with-equal-values",
+   "kind": "compute",
+   "description": "a values array beside an inline values_ref is accepted only when it equals the parsed list exactly",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline: USD | EUR", "values": ["USD", "EUR"]}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "EUR"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"caid": "caid:1:test.enum.1:jcs-sha256:LJWNcclMh7RFXp12_WybL7U9LFy-brwgQDIIlijFjRM", "digest": "sha256:2c958d71c94c87b4455e9d76fd6c9b2fb53d2c5cbe6ebc204032089628c58d13"}
+  },
+  {
+   "id": "refuse-inline-enum-with-different-values",
+   "kind": "compute",
+   "description": "a values array beside an inline values_ref that differs from the parsed list (here only in order) refuses",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "inline: USD | EUR", "values": ["EUR", "USD"]}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "EUR"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:c"]}
+  },
+  {
+   "id": "compute-external-enum-embedded-values",
+   "kind": "compute",
+   "description": "an external values_ref may embed its pinned array in values; the embedded array is digest-checked like a supplied snapshot",
+   "definitions": [{
+    "action_type": "test.enum.1",
+    "required_fields": [{"name": "c", "type": "enum", "values_ref": "Example currency pair", "values_snapshot": "example edition 1", "values_sha256": "sha256:240025105d266f8b899d3bc2f47f4152c9a17136a89442152a3305d13ede4039", "values": ["EUR", "USD"]}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.enum.1", "c": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"caid": "caid:1:test.enum.1:jcs-sha256:opusq78tZPmSj5nsoOwUBeuInu0unlLCUEDhI-fRUWc", "digest": "sha256:a29bacabbf2d64f9928f99eca0ec1405eb889eed2e9e52c25040e123e7d15167"}
+  },
+  {
+   "id": "refuse-external-enum-embedded-values-malformed",
+   "kind": "compute",
+   "description": "an embedded values member is the snapshot and must verify on its own; an empty one refuses even when a matching snapshot is supplied",
+   "definitions": [{
+    "action_type": "test.currency.1",
+    "required_fields": [{"name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270", "values": []}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.currency.1", "currency": "USD"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["mistyped_field:currency"]}
+  },
+  {
+   "id": "refuse-required-proto-field-absent",
+   "kind": "compute",
+   "description": "a required field named __proto__ that the object does not carry as its own member is missing",
+   "definitions": [{
+    "action_type": "test.proto.1",
+    "required_fields": [{"name": "c", "type": "string"}, {"name": "__proto__", "type": "object"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.proto.1", "c": "x"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["missing_material_field:__proto__"]}
+  },
+  {
+   "id": "compute-optional-constructor-field-absent",
+   "kind": "compute",
+   "description": "an absent optional field named constructor is absent, not an inherited value to type-check",
+   "definitions": [{
+    "action_type": "test.proto.1",
+    "required_fields": [{"name": "c", "type": "string"}],
+    "optional_fields": [{"name": "constructor", "type": "string"}, {"name": "toString", "type": "string"}]
+   }],
+   "input": {
+    "object": {"action_type": "test.proto.1", "c": "x"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"caid": "caid:1:test.proto.1:jcs-sha256:GmcuadSjOlpRPsoJm9EnoXawgA-__esGs_8Sm-CVmHY", "digest": "sha256:1a672e69d4a33a5a513eca099bd127a176b0800fbffdeb06b3ff129be0959876"}
+  },
+  {
+   "id": "refuse-required-tostring-field-absent",
+   "kind": "compute",
+   "description": "a required field named toString that the object does not carry is missing, not mistyped",
+   "definitions": [{
+    "action_type": "test.proto.1",
+    "required_fields": [{"name": "c", "type": "string"}, {"name": "toString", "type": "string"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.proto.1", "c": "x"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["missing_material_field:toString"]}
+  },
+  {
+   "id": "refuse-lone-surrogate-string-value",
+   "kind": "compute",
+   "description": "a string value containing an unpaired surrogate has no UTF-8 encoding and no RFC 8785 form, so it refuses as unsupported_value",
+   "definitions": [{
+    "action_type": "test.text.1",
+    "required_fields": [{"name": "c", "type": "string"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.text.1", "c": "\ud800"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["unsupported_value"]}
+  },
+  {
+   "id": "refuse-lone-surrogate-member-name",
+   "kind": "compute",
+   "description": "a member name containing an unpaired surrogate refuses as unsupported_value",
+   "definitions": [{
+    "action_type": "test.text.1",
+    "required_fields": [{"name": "c", "type": "string"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.text.1", "c": "x", "\udc00": "y"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"refusals": ["unsupported_value"]}
+  },
+  {
+   "id": "compute-replacement-character",
+   "kind": "compute",
+   "description": "U+FFFD is an ordinary scalar value and computes; a lone surrogate must not be rewritten into it",
+   "definitions": [{
+    "action_type": "test.text.1",
+    "required_fields": [{"name": "c", "type": "string"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.text.1", "c": "\ufffd"},
+    "suite": "jcs-sha256"
+   },
+   "expect": {"caid": "caid:1:test.text.1:jcs-sha256:agG0nPtxAPmIVabJzWul9xH1rE2ayq67AYPCMNqgdqU", "digest": "sha256:6a01b49cfb7100f98855a6c9cd6ba5f711f5ac4d9acaaebb0183c230daa076a5"}
+  },
+  {
+   "id": "verify-lone-surrogate-against-replacement-caid",
+   "kind": "verify",
+   "description": "an object whose string holds a lone surrogate never verifies against the CAID of the same object with U+FFFD; it is invalid_object",
+   "definitions": [{
+    "action_type": "test.text.1",
+    "required_fields": [{"name": "c", "type": "string"}],
+    "optional_fields": []
+   }],
+   "input": {
+    "object": {"action_type": "test.text.1", "c": "\ud800"},
+    "caid": "caid:1:test.text.1:jcs-sha256:agG0nPtxAPmIVabJzWul9xH1rE2ayq67AYPCMNqgdqU"
+   },
+   "expect": {"valid": false, "reasons": ["invalid_object"]}
+  },
+  {
+   "id": "refuse-amount-trailing-newline",
+   "kind": "compute",
+   "description": "registry payment.release.1 amount '96.12' followed by a line feed is refused as invalid_amount. A grammar check covers the whole string; a regular-expression end anchor that also matches before a final line feed (Python's $) must not be used.",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3",
+       "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+       "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "96.12\n",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_amount:amount"
+    ]
+   }
+  },
+  {
+   "id": "refuse-digest-field-trailing-newline",
+   "kind": "compute",
+   "description": "a digest field whose sha256:<64 hex> value is followed by a line feed is mistyped. A grammar check covers the whole string; a regular-expression end anchor that also matches before a final line feed (Python's $) must not be used.",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae\n",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 12
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "mistyped_field:document"
+    ]
+   }
+  },
+  {
+   "id": "refuse-timestamp-trailing-newline",
+   "kind": "compute",
+   "description": "an RFC 3339 UTC timestamp followed by a line feed is mistyped. A grammar check covers the whole string; a regular-expression end anchor that also matches before a final line feed (Python's $) must not be used.",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z\n",
+     "page_count": 12
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "mistyped_field:signed_at"
+    ]
+   }
+  },
+  {
+   "id": "refuse-action-type-version-trailing-newline",
+   "kind": "compute",
+   "description": "an action type whose version segment ends in a line feed is invalid even when a supplied definition names that exact string; no CAID containing a line feed may be emitted",
+   "definitions": [
+    {
+     "action_type": "test.text.1\n",
+     "required_fields": [
+      {
+       "name": "c",
+       "type": "string"
+      }
+     ],
+     "optional_fields": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "test.text.1\n",
+     "c": "x"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_action_type"
+    ]
+   }
+  },
+  {
+   "id": "refuse-action-type-segment-trailing-newline",
+   "kind": "compute",
+   "description": "an action type whose name segment ends in a line feed is invalid even when a supplied definition names that exact string",
+   "definitions": [
+    {
+     "action_type": "test\n.text.1",
+     "required_fields": [
+      {
+       "name": "c",
+       "type": "string"
+      }
+     ],
+     "optional_fields": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "test\n.text.1",
+     "c": "x"
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "invalid_action_type"
+    ]
+   }
+  },
+  {
+   "id": "parse-malformed-action-type-trailing-newline",
+   "kind": "parse",
+   "description": "a line feed after the action-type version segment is refused by the strict parser",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1\n:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "parse-malformed-name-segment-trailing-newline",
+   "kind": "parse",
+   "description": "a line feed at the end of an action-type name segment is refused by the strict parser",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment\n.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "parse-malformed-suite-trailing-newline",
+   "kind": "parse",
+   "description": "a line feed after the suite is refused by the strict parser",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha256\n:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "parse-malformed-digest-trailing-newline",
+   "kind": "parse",
+   "description": "a 42-character digest followed by a line feed has the 43-character length of a sha256 digest and is still refused: a line feed is not a base64url character",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1\n"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "verify-malformed-action-type-trailing-newline",
+   "kind": "verify",
+   "description": "a CAID whose action type ends in a line feed is malformed_caid, never an action_type_mismatch against the object's type",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3",
+       "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+       "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1\n:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "compute-integer-field-integral-float",
+   "kind": "compute",
+   "description": "an integer field written 12.0 is the integer 12 under the value-based rule and yields the CAID of the same object written 12",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 12.0
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:doc.sign.1:jcs-sha256:AK3SFq4VAEbRv-WiSHoi-B5wn6z_VGZl-Wt3T1pdjCU",
+    "digest": "sha256:00add216ae150046d1bfe5a2487a22f81e709facff546665f96b774f5a5d8c25"
+   },
+   "relation": {
+    "same_caid_as": "compute-doc-sign-happy"
+   }
+  },
+  {
+   "id": "compute-integer-field-exponent",
+   "kind": "compute",
+   "description": "an integer field written 1.2e1 is the integer 12 under the value-based rule and yields the CAID of the same object written 12",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 1.2e1
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "caid": "caid:1:doc.sign.1:jcs-sha256:AK3SFq4VAEbRv-WiSHoi-B5wn6z_VGZl-Wt3T1pdjCU",
+    "digest": "sha256:00add216ae150046d1bfe5a2487a22f81e709facff546665f96b774f5a5d8c25"
+   },
+   "relation": {
+    "same_caid_as": "compute-doc-sign-happy"
+   }
+  },
+  {
+   "id": "refuse-integer-field-above-max-safe",
+   "kind": "compute",
+   "description": "an integer field holding 2^53 is an integer, so it is not mistyped; it refuses once, as unsupported_number, exactly as the same value does in an undeclared field",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 9007199254740992
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "unsupported_number"
+    ]
+   }
+  },
+  {
+   "id": "refuse-integer-field-exponent-above-max-safe",
+   "kind": "compute",
+   "description": "an integer field written 1e20 is an integer beyond 2^53-1: not mistyped, refused once as unsupported_number",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 1e20
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "unsupported_number"
+    ]
+   }
+  },
+  {
+   "id": "refuse-integer-field-overflowing-literal",
+   "kind": "compute",
+   "description": "an integer field holding a plain 310-digit literal overflows an IEEE 754 double to infinity, which is not an integer: mistyped and unsupported_number",
+   "definitions": [
+    {
+     "action_type": "doc.sign.1",
+     "status": "active",
+     "risk_class": "legal-commitment",
+     "summary": "Application of a signature to a document digest.",
+     "required_fields": [
+      {
+       "name": "document",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the document bytes"
+      },
+      {
+       "name": "signer_hint",
+       "type": "string"
+      },
+      {
+       "name": "signed_at",
+       "type": "timestamp"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "page_count",
+       "type": "integer"
+      }
+     ],
+     "digest_notes": "",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "doc.sign.1",
+     "document": "sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
+     "signer_hint": "s.okafor",
+     "signed_at": "2026-07-08T09:30:00Z",
+     "page_count": 1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+    },
+    "suite": "jcs-sha256"
+   },
+   "expect": {
+    "refusals": [
+     "mistyped_field:page_count",
+     "unsupported_number"
+    ]
+   }
+  },
+  {
+   "id": "refuse-suite-leading-digit",
+   "kind": "parse",
+   "description": "the suite ABNF is lower-char *( lower-char / DIGIT / \"-\" ), so no registered suite can begin with a digit and '1x' is refused. The version 3 reference parsers used a different suite pattern that accepted it.",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:1x:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "refuse-suite-unregistered",
+   "kind": "parse",
+   "description": "a suite that matches the suite ABNF but is not in the suite registry is refused by the strict parser, never guessed. The version 3 reference parsers accepted it and left the refusal to verification.",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha512:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "refuse-suite-unregistered-unchecked-digest",
+   "kind": "parse",
+   "description": "an unregistered suite with a 3-character digest. The version 3 reference parsers accepted this string: they checked digest length only for registered suites, so a parser that admits an unknown suite cannot apply the digest-length rule at all.",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:a.b.1:foo:abc"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "parse-registered-suite-not-implemented",
+   "kind": "parse",
+   "description": "cbor-sha256 is in the suite registry, so a CAID naming it parses even in an implementation that does not implement that suite; there, computation and verification report unknown_suite",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:cbor-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "ok": true,
+    "caid": {
+     "version": "1",
+     "action_type": "payment.release.1",
+     "suite": "cbor-sha256",
+     "digest": "liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+    }
+   }
+  },
+  {
+   "id": "refuse-digest-nonzero-unused-bits",
+   "kind": "parse",
+   "description": "43 base64url characters carry 258 bits for a 256-bit digest, so the final character's two low bits are unused and must be zero. 'Z' (value 25) sets one and is refused; 'Y' (value 24) is the only encoding of the same 32 octets.",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Z"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "refuse-digest-too-long",
+   "kind": "parse",
+   "description": "a 44-character digest decodes to 33 octets, not the 32 octets of a jcs-sha256 digest",
+   "definitions": [],
+   "input": {
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1YA"
+   },
+   "expect": {
+    "ok": false,
+    "refusals": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "verify-malformed-unregistered-suite",
+   "kind": "verify",
+   "description": "an unregistered suite is refused at the strict-parse step as malformed_caid. Version 3 reference verifiers reported unknown_suite for this string.",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3",
+       "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+       "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha512:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "malformed_caid"
+    ]
+   }
+  },
+  {
+   "id": "verify-malformed-nonzero-unused-bits",
+   "kind": "verify",
+   "description": "the valid CAID for this object with its final digest character 'Y' replaced by 'Z' decodes to the same 32 octets and is malformed_caid. Version 3 reference verifiers compared the strings and reported digest_mismatch.",
+   "definitions": [
+    {
+     "action_type": "payment.release.1",
+     "status": "active",
+     "risk_class": "irreversible-financial",
+     "summary": "Release of a payment instruction to settlement.",
+     "required_fields": [
+      {
+       "name": "amount",
+       "type": "amount-string",
+       "notes": "decimal string, no exponent, no leading '+', no thousands separators"
+      },
+      {
+       "name": "currency",
+       "type": "enum",
+       "values_ref": "ISO 4217 alpha-3",
+       "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+       "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+      },
+      {
+       "name": "beneficiary_account",
+       "type": "digest",
+       "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"
+      },
+      {
+       "name": "payment_instruction_id",
+       "type": "string"
+      }
+     ],
+     "optional_fields": [
+      {
+       "name": "memo",
+       "type": "string"
+      }
+     ],
+     "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
+     "references": []
+    }
+   ],
+   "input": {
+    "object": {
+     "action_type": "payment.release.1",
+     "amount": "250.00",
+     "currency": "EUR",
+     "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+     "payment_instruction_id": "pi-2026-000117",
+     "memo": "invoice 4471"
+    },
+    "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Z"
+   },
+   "expect": {
+    "valid": false,
+    "reasons": [
+     "malformed_caid"
+    ]
+   }
+  }
+ ]
+}
