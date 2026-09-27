@@ -940,6 +940,8 @@ const DETAIL_RULES = CAID_SPEC.verify_details.reasons;
 const EXPAND_INVALID_OBJECT = CAID_SPEC.verify_details.expand.invalid_object;
 const FIELD_TYPES = new Map(CAID_SPEC.field_types.map((t) => [t.type, t]));
 const FIELD_COMMON_MEMBERS = new Set(DEFINITION.field_common_members);
+// The members a field entry of each registered type may carry.
+const FIELD_ALLOWED_MEMBERS = new Map(CAID_SPEC.field_types.map((t) => [t.type, new Set([...FIELD_COMMON_MEMBERS, ...t.members])]));
 const FIELD_NAME_FORBIDDEN = new Set(DEFINITION.field_name.forbidden_code_points);
 const FIELD_NAME_RESERVED = new Set(DEFINITION.field_name.reserved);
 const PROJECTION_EXCLUDED = new Set(PROJECTION.field_members_excluded);
@@ -1037,8 +1039,21 @@ function member(obj, key) {
   return hasOwn(obj, key) ? obj[key] : undefined;
 }
 
+// Adds an own data member to a fresh plain object. A name that also exists
+// on Object.prototype (such as __proto__, or toString on a frozen prototype)
+// is defined, never assigned, so no setter runs and nothing is rejected;
+// any other name is assigned, which creates the same own member faster.
+/**
+ * @param {any} obj
+ * @param {string} key
+ * @param {any} value
+ */
 function defineMember(obj, key, value) {
-  Object.defineProperty(obj, key, { value, writable: true, enumerable: true, configurable: true });
+  if (key in Object.prototype) {
+    Object.defineProperty(obj, key, { value, writable: true, enumerable: true, configurable: true });
+  } else {
+    obj[key] = value;
+  }
 }
 
 // Reads one own data property of a host object without invoking a getter or
@@ -1818,34 +1833,39 @@ function digestOfDefinition(d) {
   return c.ok ? PROJECTION.prefix + sha256(c.canonical).toString("hex") : null;
 }
 
-// Definition conformance over a data-model value: true when it conforms.
-function conforms(d) {
-  if (!isDataObject(d)) return false;
+// Definition conformance over a data-model value: the definition_sha256
+// when it conforms, else null.
+/**
+ * @param {any} d
+ * @returns {string | null}
+ */
+function conformingDigest(d) {
+  if (!isDataObject(d)) return null;
   const actionType = member(d, "action_type");
-  if (typeof actionType !== "string" || !CAID_PATTERNS.action_type.test(actionType)) return false;
+  if (typeof actionType !== "string" || !CAID_PATTERNS.action_type.test(actionType)) return null;
   const required = member(d, "required_fields");
-  if (!Array.isArray(required) || required.length < DEFINITION.required_fields_min) return false;
-  if (hasOwn(d, "optional_fields") && !Array.isArray(d.optional_fields)) return false;
+  if (!Array.isArray(required) || required.length < DEFINITION.required_fields_min) return null;
+  if (hasOwn(d, "optional_fields") && !Array.isArray(d.optional_fields)) return null;
   const names = new Set();
   for (const list of DEFINITION.field_lists) {
     for (const entry of member(d, list) ?? []) {
-      if (!isDataObject(entry)) return false;
+      if (!isDataObject(entry)) return null;
       const name = member(entry, "name");
-      if (!validFieldName(name) || names.has(name)) return false;
+      if (!validFieldName(name) || names.has(name)) return null;
       names.add(name);
       const type = member(entry, "type");
-      if (typeof type !== "string") return false;
+      if (typeof type !== "string") return null;
       const t = FIELD_TYPES.get(type);
       if (t === undefined) continue; // unregistered: mistyped_field when present
-      const allowed = new Set([...FIELD_COMMON_MEMBERS, ...t.members]);
-      for (const key of Object.keys(entry)) if (!allowed.has(key)) return false;
+      const allowed = /** @type {Set<string>} */ (FIELD_ALLOWED_MEMBERS.get(type));
+      for (const key of Object.keys(entry)) if (!allowed.has(key)) return null;
       for (const key of Object.keys(t.required_members)) {
         const value = member(entry, key);
-        if (typeof value !== "string" || !CAID_PATTERNS[t.required_members[key]].test(value)) return false;
+        if (typeof value !== "string" || !CAID_PATTERNS[t.required_members[key]].test(value)) return null;
       }
     }
   }
-  return digestOfDefinition(d) !== null;
+  return digestOfDefinition(d);
 }
 
 // A host definition copied into the data model, or UNSUPPORTED when any
@@ -1878,8 +1898,9 @@ function resolve(actionType, definitions) {
   if (candidates.length === 0) return { reason: DEFINITION.resolution.none };
   const digests = new Set();
   for (const d of candidates) {
-    if (!conforms(d)) return { reason: DEFINITION.resolution.nonconforming };
-    digests.add(digestOfDefinition(d));
+    const digest = conformingDigest(d);
+    if (digest === null) return { reason: DEFINITION.resolution.nonconforming };
+    digests.add(digest);
   }
   if (digests.size !== 1) return { reason: DEFINITION.resolution.conflict };
   return { definition: candidates[0], definition_sha256: /** @type {string} */ ([...digests][0]) };
@@ -1899,8 +1920,9 @@ function resolve(actionType, definitions) {
  */
 export function definitionSha256(definition) {
   const d = definitionData(definition);
-  if (!conforms(d)) return { refusals: [CAID_SPEC.results.definition_sha256.refusal] };
-  return { definition_sha256: /** @type {string} */ (digestOfDefinition(d)) };
+  const digest = conformingDigest(d);
+  if (digest === null) return { refusals: [CAID_SPEC.results.definition_sha256.refusal] };
+  return { definition_sha256: digest };
 }
 
 /**
