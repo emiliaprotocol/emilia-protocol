@@ -120,8 +120,8 @@
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "bytes": 91214,
-      "sha256": "980437ac6832e02556d68d7788b7bcae66a0e8b73ea41aff693d46082d4ef0c4"
+      "bytes": 92406,
+      "sha256": "fab6661cd27dc0f01971fcbed1dbe1615d19f97bc3d14070643a8eea471434ae"
     },
     {
       "path": "conformance/composition/wimse-wpt02-oauth-txn-aeb-v0.1/run.mjs",
