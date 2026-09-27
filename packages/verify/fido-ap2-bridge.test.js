@@ -333,7 +333,7 @@ function assertRefused(f) {
 }
 function registryEntry(id, kind, version, definition) {
     const entry = { kind, version, status: 'active', definition };
-    entry.definition_digest = registryEntryDigest(id, entry);
+    entry.registry_entry_sha256 = registryEntryDigest(id, entry);
     return entry;
 }
 test('projection implements the current AP2 v0.2 closed CheckoutMandate and PaymentMandate', () => {

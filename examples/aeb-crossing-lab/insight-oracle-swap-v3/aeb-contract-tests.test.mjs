@@ -110,7 +110,7 @@ async function resignAuthorization(artifact) {
 
 function registryEntry(id, kind, version, definition) {
   const entry = { kind, version, status: 'active', definition };
-  entry.definition_digest = contract.registryEntryDigest(id, entry);
+  entry.registry_entry_sha256 = contract.registryEntryDigest(id, entry);
   return entry;
 }
 

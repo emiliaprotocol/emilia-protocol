@@ -304,7 +304,7 @@ function nativeInput(fixture, now, status = externalStatus(now)) {
 }
 function registryEntry(id, kind, version, definition) {
     const entry = { kind, version, status: 'active', definition };
-    entry.definition_digest = registryEntryDigest(id, entry);
+    entry.registry_entry_sha256 = registryEntryDigest(id, entry);
     return entry;
 }
 function evaluateAgent(fixture, operationId, consumptionNonce) {

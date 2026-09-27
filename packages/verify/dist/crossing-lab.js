@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync, } from 'node:fs';
 import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adapterPinDigest, digestAeb, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, } from './aeb-adapter-contract.js';
+import { adapterPinDigest, digestAeb, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, registryEntryPin, unifiedRegistryDigest, } from './aeb-adapter-contract.js';
 import { canonicalizeStrictJson, strictJsonGate } from './strict-json.js';
 // The governed CAID implementation is JavaScript and has no declaration file.
 // @ts-expect-error -- the runtime result is checked before use.
@@ -421,7 +421,8 @@ function workspacePinErrors(workspace, artifact, adapterBytes) {
             reasons.push('registry_pin_drift');
         else
             for (const [id, entry] of Object.entries(registry.entries ?? {})) {
-                if (!isObject(entry) || registryEntryDigest(id, entry) !== entry.definition_digest)
+                if (!isObject(entry) || registryEntryPin(entry) === null
+                    || registryEntryDigest(id, entry) !== registryEntryPin(entry))
                     reasons.push(`registry_entry_pin_drift:${id}`);
             }
     }
@@ -921,8 +922,8 @@ export default Object.freeze({
 });
 `;
 function registryEntry(id, kind, definition) {
-    const entry = { kind, version: '1', status: 'active', definition, definition_digest: digestAeb(null) };
-    entry.definition_digest = registryEntryDigest(id, entry);
+    const entry = { kind, version: '1', status: 'active', definition, registry_entry_sha256: digestAeb(null) };
+    entry.registry_entry_sha256 = registryEntryDigest(id, entry);
     return entry;
 }
 function sampleAebConfig() {
@@ -1186,7 +1187,7 @@ function recomputeConfigPins(config) {
         }
     }
     for (const [id, entry] of Object.entries(config.registry.entries)) {
-        entry.definition_digest = registryEntryDigest(id, entry);
+        entry.registry_entry_sha256 = registryEntryDigest(id, entry);
     }
     config.registry.registry_digest = unifiedRegistryDigest(config.registry);
 }

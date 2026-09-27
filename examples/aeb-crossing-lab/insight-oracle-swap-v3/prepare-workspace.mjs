@@ -98,7 +98,7 @@ profile.profile_digest = mappingProfileDigest(PROFILE_ID, profile);
 
 function registryEntry(id, kind, version, entryDefinition) {
   const entry = { kind, version, status: 'active', definition: entryDefinition };
-  entry.definition_digest = registryEntryDigest(id, entry);
+  entry.registry_entry_sha256 = registryEntryDigest(id, entry);
   return entry;
 }
 

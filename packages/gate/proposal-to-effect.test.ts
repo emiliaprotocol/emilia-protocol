@@ -47,7 +47,7 @@ function vector(id: string): any {
 
 function registryEntry(entryId: string, kind: string, version: string, definition: unknown) {
   const entry: any = { kind, version, status: 'active', definition };
-  entry.definition_digest = registryEntryDigest(entryId, entry);
+  entry.registry_entry_sha256 = registryEntryDigest(entryId, entry);
   return entry;
 }
 

@@ -190,8 +190,8 @@ function mappingDefinition() {
  */
 function registryEntry(id, kind, definition) {
   /** @type {import('../../../packages/verify/dist/aeb-adapter-contract.js').AebRegistryEntry} */
-  const entry = { kind, version: '1', status: 'active', definition, definition_digest: digestAeb(null) };
-  entry.definition_digest = registryEntryDigest(id, entry);
+  const entry = { kind, version: '1', status: 'active', definition, registry_entry_sha256: digestAeb(null) };
+  entry.registry_entry_sha256 = registryEntryDigest(id, entry);
   return entry;
 }
 

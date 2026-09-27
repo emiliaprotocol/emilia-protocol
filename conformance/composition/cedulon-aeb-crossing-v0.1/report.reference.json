@@ -3,9 +3,9 @@
   "source_lock_digest": "sha256:73ba749c31ecc3e7ca46ed72bea3ff33633473e1961adea231487f42143a1405",
   "action_definition_digest": "sha256:48e5b7764b8b7f3bc0217db9ea2fc4491ddcf631bf91815a5b4fd8aff904a30d",
   "mapping_profile_digest": "sha256:1beae1ad6e8067867043d53c8ee49ece8917d69a7f6f2a5afc9da5b051bec16e",
-  "workspace_digest": "sha256:3633b5cb60b5a92b81aad70f1ba2dd2eac9f2a7a7c2623060449c77c38000094",
+  "workspace_digest": "sha256:acec79fe1abf92097229250ea06a32debb58ce175f15350a9cd4d9a9cd8e9952",
   "adapter_module_digest": "sha256:779caa2b62686d3813ea56d18be652c2c515a332c6d866da3b8d9036a6618375",
-  "crossing_lab_report_digest": "sha256:d5600ab396858858bd5f44c020e954c9fff2012f2d59a613280d2b523a13dcf3",
+  "crossing_lab_report_digest": "sha256:b88fd11ad3afba4d1a0c37ac26747681d258d08358000dedd5e8fb126349d90f",
   "rows": {
     "native-artifact-through": {
       "passed": true,
@@ -81,5 +81,5 @@
     "certification": false
   },
   "profile_passed": true,
-  "report_digest": "sha256:ddd3a6ed70872049b02b15f9928bb208dacd3bdf23dd8450d144b26c83be18b6"
+  "report_digest": "sha256:52e8e041b84d7e3b9213dfb98d2a89ed9f8bbe16aef72f8232c29f587fa41bf8"
 }

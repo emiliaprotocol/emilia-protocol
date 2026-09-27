@@ -287,9 +287,9 @@ function registryEntry(id, kind, version, definition) {
     version,
     status: /** @type {'active'} */ ('active'),
     definition,
-    definition_digest: digestAeb(null),
+    registry_entry_sha256: digestAeb(null),
   };
-  entry.definition_digest = registryEntryDigest(id, entry);
+  entry.registry_entry_sha256 = registryEntryDigest(id, entry);
   return entry;
 }
 

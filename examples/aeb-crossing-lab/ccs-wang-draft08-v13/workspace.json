@@ -28,7 +28,7 @@
           "definition": {
             "profile_digest": "sha256:e0f8b53e13327fbbf7800b62941c96ee598d5edf265d143b7dc4608ee1ba0716"
           },
-          "definition_digest": "sha256:c6f6f738b5b9282fa2967aaa9614a8537774e7c51747c73f117f56f212edb234"
+          "registry_entry_sha256": "sha256:c6f6f738b5b9282fa2967aaa9614a8537774e7c51747c73f117f56f212edb234"
         },
         "role:machine-policy-decision": {
           "kind": "evidence-role",
@@ -40,10 +40,10 @@
               "system"
             ]
           },
-          "definition_digest": "sha256:c5423693760594b01821636f190ead94fc6081d40e206f3d70723860df3e394c"
+          "registry_entry_sha256": "sha256:c5423693760594b01821636f190ead94fc6081d40e206f3d70723860df3e394c"
         }
       },
-      "registry_digest": "sha256:f778ce0e7942f12237e1e7e6d6b04845085fa9d45bdb6658bb46c2555cb29db3"
+      "registry_digest": "sha256:4537a51398b4b6d84a49b492e28918a324264238bf0ea6ee8536a665e276bf4c"
     },
     "accepted_mappers": [
       "mapper:ccs-draft08-v1.3-tool-action-v1"

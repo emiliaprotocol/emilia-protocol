@@ -28,7 +28,7 @@
           "definition": {
             "profile_digest": "sha256:6ae721014f6aa1ae767f851d9850cc5b7cc4d5f5e539867c336ae8f6c0d24929"
           },
-          "definition_digest": "sha256:a2bbabe5352cd7c56ae69239c1a43f7172abc188c620027db24e2b08e1473469"
+          "registry_entry_sha256": "sha256:a2bbabe5352cd7c56ae69239c1a43f7172abc188c620027db24e2b08e1473469"
         },
         "role:action-authorization": {
           "kind": "evidence-role",
@@ -40,10 +40,10 @@
               "human"
             ]
           },
-          "definition_digest": "sha256:e9a09ce5960df021dcb245fc68ce0fa0b0199004d71dff79e6c4896c17725fc8"
+          "registry_entry_sha256": "sha256:e9a09ce5960df021dcb245fc68ce0fa0b0199004d71dff79e6c4896c17725fc8"
         }
       },
-      "registry_digest": "sha256:b7e0183236507b17ac9f49aab08b8e39eb90a412e01211d2f6b073887d971192"
+      "registry_digest": "sha256:6ebbf69fc9f0083dff2098f401491536af57741676f8524eee9d6b34bf62c4d9"
     },
     "accepted_mappers": [
       "mapper:insight-evm-swap-exact-input-single.1"

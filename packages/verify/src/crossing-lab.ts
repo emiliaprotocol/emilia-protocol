@@ -28,6 +28,7 @@ import {
   evaluateAebEvidence,
   mappingProfileDigest,
   registryEntryDigest,
+  registryEntryPin,
   unifiedRegistryDigest,
   type AebAdapter,
   type AebEvaluationRecord,
@@ -492,7 +493,8 @@ function workspacePinErrors(workspace: Obj, artifact: unknown, adapterBytes: Buf
   try {
     if (!isObject(registry) || unifiedRegistryDigest(registry as AebUnifiedRegistry) !== registry.registry_digest) reasons.push('registry_pin_drift');
     else for (const [id, entry] of Object.entries(registry.entries ?? {})) {
-      if (!isObject(entry) || registryEntryDigest(id, entry as AebRegistryEntry) !== entry.definition_digest) reasons.push(`registry_entry_pin_drift:${id}`);
+      if (!isObject(entry) || registryEntryPin(entry) === null
+          || registryEntryDigest(id, entry as AebRegistryEntry) !== registryEntryPin(entry)) reasons.push(`registry_entry_pin_drift:${id}`);
     }
   } catch { reasons.push('registry_pin_drift'); }
   if (workspace.config?.evaluator_keys?.[LAB_EVALUATOR_KEY_ID]?.public_key !== LAB_EVALUATOR_PUBLIC_SPKI) {
@@ -1043,8 +1045,8 @@ export default Object.freeze({
 `;
 
 function registryEntry(id: string, kind: AebRegistryEntry['kind'], definition: unknown): AebRegistryEntry {
-  const entry: AebRegistryEntry = { kind, version: '1', status: 'active', definition, definition_digest: digestAeb(null) };
-  entry.definition_digest = registryEntryDigest(id, entry);
+  const entry: AebRegistryEntry = { kind, version: '1', status: 'active', definition, registry_entry_sha256: digestAeb(null) };
+  entry.registry_entry_sha256 = registryEntryDigest(id, entry);
   return entry;
 }
 
@@ -1323,7 +1325,7 @@ function recomputeConfigPins(config: AebPinnedConfig): void {
     }
   }
   for (const [id, entry] of Object.entries(config.registry.entries)) {
-    entry.definition_digest = registryEntryDigest(id, entry);
+    entry.registry_entry_sha256 = registryEntryDigest(id, entry);
   }
   config.registry.registry_digest = unifiedRegistryDigest(config.registry);
 }

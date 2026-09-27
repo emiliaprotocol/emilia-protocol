@@ -226,7 +226,17 @@ export interface AebRegistryEntry {
   version: string;
   status: 'active' | 'deprecated';
   definition: unknown;
-  definition_digest: AebDigest;
+  /**
+   * "sha256:" digest of the strict canonical JSON of {entry_id, kind,
+   * version, status, definition}: this one registry entry, status
+   * included. It was called definition_digest before Verify 6.0.0. The new
+   * name keeps it distinct from a CAID definition_sha256, which identifies
+   * the validation projection of a CAID action-type definition (action_type
+   * and its field lists, notes removed) and never covers status or any
+   * other registry-entry member (draft-schrock-canonical-action-identifier-04,
+   * Section 4.2.2).
+   */
+  registry_entry_sha256: AebDigest;
 }
 
 export interface AebUnifiedRegistry {
@@ -1016,8 +1026,25 @@ export function mappingProfileDigest(id: string, pin: AebPinnedProfile): AebDige
   return profileDigest(id, pin);
 }
 
+/** The value an entry carries as registry_entry_sha256 (see AebRegistryEntry). */
 export function registryEntryDigest(id: string, entry: AebRegistryEntry): AebDigest {
   return registryEntryDigestInternal(id, entry);
+}
+
+/**
+ * The digest a registry entry pins, or null. An entry carries it as
+ * registry_entry_sha256. An EP-EVIDENCE-REGISTRY-v1 entry written before
+ * Verify 6.0.0 carries the same value as definition_digest, which stays
+ * readable so existing AEB-ADAPTER-v1 configurations keep verifying; an
+ * entry with both members, or neither, pins nothing.
+ */
+export function registryEntryPin(entry: unknown): AebDigest | null {
+  if (!isObject(entry)) return null;
+  const current = Object.prototype.hasOwnProperty.call(entry, 'registry_entry_sha256');
+  const legacy = Object.prototype.hasOwnProperty.call(entry, LEGACY_REGISTRY_ENTRY_PIN);
+  if (current === legacy) return null;
+  const value = current ? entry.registry_entry_sha256 : entry[LEGACY_REGISTRY_ENTRY_PIN];
+  return validDigest(value) ? value as AebDigest : null;
 }
 
 export function unifiedRegistryDigest(registry: AebUnifiedRegistry): AebDigest {
@@ -1110,7 +1137,10 @@ function roleRegistryEntry(config: AebPinnedConfig, role: string): AebRegistryEn
 
 const CONFIG_KEYS = new Set(['@version', 'relying_party_id', 'evaluator_keys', 'registry', 'accepted_mappers', 'adapters', 'profiles', 'requirements']);
 const REGISTRY_KEYS = new Set(['@version', 'registry_id', 'epoch', 'entries', 'registry_digest']);
-const REGISTRY_ENTRY_KEYS = new Set(['kind', 'version', 'status', 'definition', 'definition_digest']);
+// Pre-6.0.0 spelling of registry_entry_sha256 (see registryEntryPin).
+const LEGACY_REGISTRY_ENTRY_PIN = 'definition_digest';
+const REGISTRY_ENTRY_KEYS = new Set(['kind', 'version', 'status', 'definition', 'registry_entry_sha256']);
+const LEGACY_REGISTRY_ENTRY_KEYS = new Set(['kind', 'version', 'status', 'definition', LEGACY_REGISTRY_ENTRY_PIN]);
 const ADAPTER_PIN_KEYS = new Set(['version', 'trust_roots', 'config', 'config_digest', 'max_status_age_sec']);
 const PROFILE_KEYS = new Set(['version', 'definition', 'registry_entry_ref', 'mapper_id', 'resolver', 'semantic_equivalence', 'profile_digest']);
 const RESOLVER_KEYS = new Set(['id', 'version', 'implementation_digest']);
@@ -1144,10 +1174,11 @@ function validConfig(config: AebPinnedConfig): string[] {
       const entry = rawEntry as unknown as AebRegistryEntry;
       let expectedEntryDigest: AebDigest | null = null;
       try { expectedEntryDigest = isObject(rawEntry) ? registryEntryDigestInternal(id, entry) : null; } catch { expectedEntryDigest = null; }
-      if (!exactString(id) || !isObject(rawEntry) || !exactKeys(rawEntry, REGISTRY_ENTRY_KEYS)
+      if (!exactString(id) || !isObject(rawEntry)
+          || !(exactKeys(rawEntry, REGISTRY_ENTRY_KEYS) || exactKeys(rawEntry, LEGACY_REGISTRY_ENTRY_KEYS))
           || !['mapping-profile', 'evidence-role', 'receipt-extension'].includes(String(entry.kind))
           || !exactString(entry.version) || !['active', 'deprecated'].includes(String(entry.status))
-          || !validDigest(entry.definition_digest) || expectedEntryDigest !== entry.definition_digest) {
+          || registryEntryPin(rawEntry) === null || expectedEntryDigest !== registryEntryPin(rawEntry)) {
         reasons.push(`invalid_registry_entry:${id}`);
       }
     }

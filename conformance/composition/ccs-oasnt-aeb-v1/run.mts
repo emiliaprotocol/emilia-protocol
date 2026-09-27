@@ -289,7 +289,7 @@ function profile(
 
 function registryEntry(id: string, kind: AebRegistryEntry['kind'], definition: unknown): AebRegistryEntry {
   const entry = { kind, version: '1', status: 'active' as const, definition } as AebRegistryEntry;
-  entry.definition_digest = registryEntryDigest(id, entry);
+  entry.registry_entry_sha256 = registryEntryDigest(id, entry);
   return entry;
 }
 

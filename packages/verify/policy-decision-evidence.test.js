@@ -241,7 +241,7 @@ test('a machine-policy ALLOW cannot satisfy a requirement that also requires hum
     });
     function entry(id, kind, definition) {
         const value = { kind, version: '1', status: 'active', definition };
-        value.definition_digest = registryEntryDigest(id, value);
+        value.registry_entry_sha256 = registryEntryDigest(id, value);
         return value;
     }
     const entries = {

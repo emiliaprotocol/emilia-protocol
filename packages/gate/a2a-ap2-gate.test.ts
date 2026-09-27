@@ -106,7 +106,7 @@ function ap2Verifier(assertions: Map<string, NativeAssertion>): Ap2NativeVerifie
 
 function registryEntry(id: string, kind: 'mapping-profile' | 'evidence-role', definition: unknown) {
   const base = { kind, version: '1', status: 'active' as const, definition };
-  return { ...base, definition_digest: registryEntryDigest(id, base) };
+  return { ...base, registry_entry_sha256: registryEntryDigest(id, base) };
 }
 
 function aebSetup(assertions: Map<string, NativeAssertion>) {

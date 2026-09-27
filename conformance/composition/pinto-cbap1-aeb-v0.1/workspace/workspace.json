@@ -31,7 +31,7 @@
             "claim_scope": "historical-contestability-binding-only",
             "profile_digest": "sha256:fedc6d2beb4ecea22ae762b070fe063519f46e5b776fd04d482a38785a825d5d"
           },
-          "definition_digest": "sha256:20e203796fd5afd97fe88838fcad1b163a73c0d62a12117b6f86a1ebfcf2fa05"
+          "registry_entry_sha256": "sha256:20e203796fd5afd97fe88838fcad1b163a73c0d62a12117b6f86a1ebfcf2fa05"
         },
         "role:contestability-binding": {
           "kind": "evidence-role",
@@ -44,10 +44,10 @@
             ],
             "authorization_semantics": false
           },
-          "definition_digest": "sha256:2739b576fd8377bfb15fd55ccefe38211ab3388f6baa2a14347de59b1642fdbf"
+          "registry_entry_sha256": "sha256:2739b576fd8377bfb15fd55ccefe38211ab3388f6baa2a14347de59b1642fdbf"
         }
       },
-      "registry_digest": "sha256:637c8346af8b5bdf4213d6bebb44a645ee677ac01415881bce00dd3fb30dfb52"
+      "registry_digest": "sha256:d4f631a5f6f008278238a1e21bcdc42b29163ab98caf4837e86ace1b24c279db"
     },
     "accepted_mappers": [
       "pinto:cbap1-direct-action-mapper"

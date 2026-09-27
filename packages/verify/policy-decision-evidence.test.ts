@@ -284,7 +284,7 @@ test('a machine-policy ALLOW cannot satisfy a requirement that also requires hum
   });
   function entry(id: string, kind: AebRegistryEntry['kind'], definition: unknown): AebRegistryEntry {
     const value = { kind, version: '1', status: 'active' as const, definition } as AebRegistryEntry;
-    value.definition_digest = registryEntryDigest(id, value);
+    value.registry_entry_sha256 = registryEntryDigest(id, value);
     return value;
   }
   const entries = {

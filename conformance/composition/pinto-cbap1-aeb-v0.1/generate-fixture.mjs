@@ -260,7 +260,7 @@ function buildNativeBundle() {
 }
 
 function registryEntry(kind, definition) {
-  return { kind, version: '1', status: 'active', definition, definition_digest: ZERO };
+  return { kind, version: '1', status: 'active', definition, registry_entry_sha256: ZERO };
 }
 
 function buildWorkspace(native) {

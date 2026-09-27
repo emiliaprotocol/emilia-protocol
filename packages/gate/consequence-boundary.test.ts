@@ -70,7 +70,7 @@ const NATIVE_BOUNDARY_ID = 'native-boundary-1';
 
 function registryEntry(entryId: string, kind: string, definition: unknown) {
   const entry: any = { kind, version: '1', status: 'active', definition };
-  entry.definition_digest = registryEntryDigest(entryId, entry);
+  entry.registry_entry_sha256 = registryEntryDigest(entryId, entry);
   return entry;
 }
 
