@@ -109,6 +109,10 @@ if (!SELFTEST) {
     let b = spawnSync("go", ["build", "-o", goBin, "."], { cwd: goBuild, encoding: "utf8", env });
     if (b.status !== 0) {
       const first = b.stdout + b.stderr;
+      // A pre-04 tree: its lane is driven through the legacy front end and
+      // reports class L1. Show why the -04 build failed, so a compile break
+      // in a -04 tree is never mistaken for a legacy tree.
+      process.stderr.write("go: the -04 driver does not build against this tree; using -tags legacy\n" + first);
       b = spawnSync("go", ["build", "-tags", "legacy", "-o", goBin, "."], { cwd: goBuild, encoding: "utf8", env });
       if (b.status !== 0) {
         process.stderr.write("go build failed\n" + first + b.stdout + b.stderr);

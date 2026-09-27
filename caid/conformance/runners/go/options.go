@@ -6,7 +6,7 @@ package main
 // option of the wrong type counts as absent, and absent is the zero value:
 // a suite that is not a string is "", which no suite matches; definitions
 // that are not an array are nil; an expected definition digest that is not
-// a string is "".
+// a string is nil (no pin).
 
 func suiteString(o opts) string {
 	if s, ok := o.suite.(string); ok && o.hasSuite {
@@ -20,9 +20,9 @@ func definitionList(o opts) []interface{} {
 	return d
 }
 
-func expectedString(o opts) string {
+func expectedString(o opts) *string {
 	if s, ok := o.expected.(string); ok && o.hasExpected {
-		return s
+		return &s
 	}
-	return ""
+	return nil
 }

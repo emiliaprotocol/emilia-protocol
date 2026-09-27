@@ -11,7 +11,7 @@ import "caid"
 
 func legacyFrontEnd() bool { return false }
 
-func decodeCorpus(data []byte) (interface{}, error) { return caid.DecodeJSON(data) }
+func decodeCorpus(data []byte) (interface{}, error) { return caid.DecodeDocumentJSON(data) }
 
 func decodeBytes(data []byte) (interface{}, bool, []string) {
 	r := caid.DecodeCaidJSON(data)

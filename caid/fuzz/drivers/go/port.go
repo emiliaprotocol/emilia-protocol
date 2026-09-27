@@ -38,7 +38,25 @@ func computeOptions(o opts) caidlib.ComputeOptions {
 }
 
 func verifyOptions(o opts) caidlib.VerifyOptions {
-	return caidlib.VerifyOptions{Definitions: definitionList(o), EnumSnapshots: o.enumSnapshots, ExpectedDefinitionSha256: expectedString(o)}
+	return caidlib.VerifyOptions{Definitions: definitionList(o), EnumSnapshots: o.enumSnapshots, ExpectedDefinitionSha256: expectedPointer(o)}
+}
+
+// expectedPointer is the typed form of the expected digest option: nil (no
+// pin) when it is absent or not a string.
+func expectedPointer(o opts) *string {
+	if s, ok := o.expected.(string); ok && o.hasExpected {
+		return &s
+	}
+	return nil
+}
+
+// orNil passes a missing (nil) map as an untyped nil, so the port sees no
+// value rather than a typed empty map.
+func orNil(m map[string]interface{}) interface{} {
+	if m == nil {
+		return nil
+	}
+	return m
 }
 
 func normMap(r caidlib.MapActionResult) obj {
@@ -50,8 +68,8 @@ func normMap(r caidlib.MapActionResult) obj {
 
 func mapOne(source interface{}, profile, desc map[string]interface{}, pin string, nv bool, defs, snaps []interface{}, suite string) interface{} {
 	return normMap(caidlib.MapAction(source, caidlib.MapActionOptions{
-		Profile: profile, SourceDescriptor: desc, ExpectedProfileHash: pin, NativeVerified: nv,
-		Definitions: defs, EnumSnapshots: snaps, Suite: suite,
+		Profile: orNil(profile), SourceDescriptor: orNil(desc), ExpectedProfileHash: pin, NativeVerified: nv,
+		Definitions: defs, EnumSnapshots: snaps, Suite: &suite,
 	}))
 }
 
