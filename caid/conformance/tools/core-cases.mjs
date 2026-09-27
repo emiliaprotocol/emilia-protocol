@@ -725,6 +725,7 @@ export function coreCases({ limits }) {
   // cycle down to depth 64 would pass the count and report
   // unsupported_value alone; these vectors pin the rule that does not.
   const cyc = { $host: 'cyclic' };
+  /** @type {[string, string, Record<string, any>][]} */
   const cyclicCases = [
     ['branching-object', 'two members that each refer back to the enclosing object', { p: cyc, q: cyc }],
     ['single-object', 'one member that refers back to the enclosing object', { p: cyc }],

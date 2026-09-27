@@ -251,10 +251,22 @@ The quality bar is the material-fields test:
   personal data and secrets never sit in an action object. A digest of a
   low-entropy identifier is still guessable; see the draft's Privacy
   Considerations.
+- A type added after registry version 5 whose required fields can all be
+  low-entropy requires a member that carries at least 128 bits of entropy,
+  such as a random instruction or occurrence identifier from the system of
+  record, unless its `digest_notes` or its specification state why not.
+  This is the criterion of the draft's Section 12.2; the types of registry
+  version 5 predate it, and the draft's Privacy Considerations state why
+  their identifiers are not required to carry that entropy.
 - Enums carry a non-empty inline list, or an external `values_ref` plus an
   immutable edition/snapshot, a canonical values array, and its verified
   SHA-256 pin. A mutable standard, registry, catalog, or URL by itself is not
-  sufficient. No active type may carry an unresolved external enum.
+  sufficient. No active type may carry an unresolved external enum. A
+  proposal that pins an external enum supplies the snapshot file, in the
+  shape the draft's Section 4.4 gives, with the source it was derived from
+  and what is known of that source's terms, and the SHA-256 digest of the
+  file; review confirms that the file is publicly available under the
+  terms it states before the entry is registered.
 - Values from a large, changing, or licensed code system use a `code`
   field: `code_system` (an absolute URI naming the system) and `format` (a
   code format of the CAID Code Formats registry, whose initial entries are
