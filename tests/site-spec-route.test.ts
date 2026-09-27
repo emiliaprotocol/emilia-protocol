@@ -1,29 +1,44 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+
+type CanonicalDocument = { draft: string; revision: string; source: string; snapshot_sha256: string };
+type ActiveEntry = { draft: string; revision: string };
 
 const ROOT = resolve(import.meta.dirname, '..');
 const page = readFileSync(resolve(ROOT, 'app/spec/page.tsx'), 'utf8');
 const evidenceChainPage = readFileSync(resolve(ROOT, 'app/evidence-chain/page.tsx'), 'utf8');
 const evidenceChainLayout = readFileSync(resolve(ROOT, 'app/evidence-chain/layout.tsx'), 'utf8');
+const status = JSON.parse(readFileSync(resolve(ROOT, 'standards/STATUS.json'), 'utf8')) as {
+  canonical_four_document_surface: { documents: CanonicalDocument[] };
+  active_datatracker: ActiveEntry[];
+};
+const RECEIPTS = 'draft-schrock-ep-authorization-receipts';
+const surfaceReceipts = status.canonical_four_document_surface.documents.find((document) => document.draft === RECEIPTS);
+const activeReceipts = status.active_datatracker.find((entry) => entry.draft === RECEIPTS);
 
 describe('/spec source contract', () => {
-  it('renders the current posted authorization-receipts revision from an existing file', () => {
-    const source = 'standards/posted/draft-schrock-ep-authorization-receipts-12.xml';
-
+  it('renders the current posted authorization-receipts revision named by STATUS.json', () => {
+    expect(surfaceReceipts).toBeDefined();
+    expect(activeReceipts).toBeDefined();
+    const { revision, source, snapshot_sha256: snapshotSha256 } = surfaceReceipts!;
+    expect(revision).toBe(activeReceipts!.revision);
+    expect(source).toBe(`standards/posted/${RECEIPTS}-${revision}.xml`);
     expect(existsSync(resolve(ROOT, source))).toBe(true);
-    expect(page).toContain("join(process.cwd(), 'standards', 'posted', 'draft-schrock-ep-authorization-receipts-12.xml')");
-    expect(page).toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-12');
-    expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-11');
-    expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-10');
-    expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-09');
-    expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-08');
-    expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-07');
-    expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-06');
-    expect(page).not.toContain('DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-03');
+    const bytes = readFileSync(resolve(ROOT, source));
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe(snapshotSha256);
+    expect(bytes.toString('utf8')).toContain(`docName="${RECEIPTS}-${revision}"`);
+
+    expect(page).toContain("import standardsStatus from '@/standards/STATUS.json'");
+    expect(page).toContain('standardsStatus.canonical_four_document_surface.documents.find');
+    // The literal directory and prefix keep the file traceable into the server bundle.
+    expect(page).toContain("join(process.cwd(), 'standards', 'posted', `draft-schrock-ep-authorization-receipts-${RECEIPTS_REVISION}.xml`)");
+    expect(page).toContain('RECEIPTS.source !== `standards/posted/${RECEIPTS_DRAFT}.xml`');
+    expect(page).not.toMatch(/authorization-receipts-\d{2}/i);
   });
 
-  it('places Receipts -12 at the start of the canonical path without overstating its claim', () => {
+  it('places Receipts at the start of the canonical path without overstating its claim', () => {
     expect(page).toContain('Canonical path · 01 of 04');
     expect(page).toContain('href="/protocol"');
     expect(page).toContain('Next: Human Authorization Binding -00');

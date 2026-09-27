@@ -2,6 +2,11 @@
 
 Published September 6, 2026. Author confirmation completed; public IETF XML matches this packet exactly. Retained for publication provenance, not re-upload.
 
+The posted snapshot, mirrored on 2026-09-27, is
+[`../../posted/draft-schrock-ep-quorum-04.xml`](../../posted/draft-schrock-ep-quorum-04.xml);
+Quorum-03 is retained in `../../archive/`. The publication check is recorded
+at the end of `VALIDATION.md`.
+
 Submitted XML: `UPLOAD-THIS/draft-schrock-ep-quorum-04.xml`. It is
 dated 6 September 2026, an individual IETF Internet-Draft with informational
 category. TXT and HTML are in `RENDERS`; exact digests are in `SHA256SUMS.txt`.

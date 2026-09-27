@@ -7,7 +7,10 @@ working-group item, an RFC, or IETF endorsement. On 2026-09-25 the XML under
 `77e7021e116bebbd8e786dd27b51468701ea4887dfa0dd8d692e919f1fd00ffb`), and the
 text render under `RENDERS/` matched the archive text render byte for byte.
 The packet is retained for publication provenance, not as an upload
-candidate.
+candidate. The posted snapshot, mirrored on 2026-09-27, is
+[`../../posted/draft-schrock-ep-authorization-receipts-13.xml`](../../posted/draft-schrock-ep-authorization-receipts-13.xml);
+Authorization Receipts-12 is retained in `../../archive/`. The publication
+check is recorded at the end of `VALIDATION.md`.
 
 The packet was built on 2026-09-11 from the immutable published -12 source,
 when the live Datatracker still identified -12 as current. It adds the

@@ -85,7 +85,7 @@ through host-record binding and scoped authority, to relying-party evidence
 satisfaction:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-13`](staged/NEXT-AUTHORIZATION-RECEIPTS-13/UPLOAD-THIS/draft-schrock-ep-authorization-receipts-13.xml)
+   [`draft-schrock-ep-authorization-receipts-13`](posted/draft-schrock-ep-authorization-receipts-13.xml)
    defines one action-bound organizational approval-evidence profile and its
    extension seam. Snapshot SHA-256 (byte-identical to the IETF archive copy):
    `77e7021e116bebbd8e786dd27b51468701ea4887dfa0dd8d692e919f1fd00ffb`.
@@ -270,6 +270,24 @@ claims, and adds idempotency, wrong-holder, receipt-absence, and unsigned-event
 claim boundaries. It is an individual Internet-Draft, not an adopted
 working-group item.
 
+On **September 6, 2026**, Quorum-04 was posted through Datatracker submission
+168688 as one of four corrective revisions. Its XML and TXT were verified
+byte-for-byte against the immutable IETF archive, and the snapshot was
+mirrored into `posted/` on September 27. The revision replaces the
+context-only chronology claim with the versioned `EP-QUORUM-SIGNOFF-CHAIN-v1`
+profile, under which a successor signs a digest of the completed predecessor
+signoff, including its signature. It is an individual Internet-Draft, not an
+adopted working-group item.
+
+On **September 12, 2026**, Authorization Receipts-13 and Presentation
+Binding-01 were posted through Datatracker submissions 168935 and 168936. Their
+XML and TXT were verified byte-for-byte against the immutable IETF archive, and
+the snapshots were mirrored into `posted/` on September 27. Receipts-13 adds
+Section 13.13, "What Successful Verification Does Not Establish." Presentation
+Binding-01 adds Section 6.1, "Receipt and Presentation Evidence Remain
+Distinct." Both are individual Internet-Drafts, not adopted working-group
+items.
+
 On **September 24, 2026**, AEB-06 was posted through Datatracker submission
 169466. Its XML and TXT were verified byte-for-byte against the immutable IETF
 archive. The revision places AEB after the native authorization decision,
@@ -303,8 +321,8 @@ not change the Action Object, identifier syntax, digest suites, or mapping
 algorithm. It is an individual Internet-Draft, not an adopted working-group
 item.
 
-The published line also retains Authority Introduction-03, Quorum-03, Bounded
-Capability Receipts-02, and the other current individual drafts listed in
+The published line also retains Authority Introduction-03, Quorum-04, Bounded
+Capability Receipts-06, and the other current individual drafts listed in
 `STATUS.json`. Model-to-Matter remains deliberately separate: publication does
 not claim a wet-lab deployment, screening capability, scientific-safety
 judgment, physical truth, or external endorsement.

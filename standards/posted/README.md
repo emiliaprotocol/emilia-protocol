@@ -44,13 +44,13 @@ authoritative for rendered forms.
 - `draft-schrock-ep-architecture-03`
 - `draft-schrock-ep-authority-introduction-03`
 - `draft-schrock-ep-authorization-evidence-chain-06`
-- `draft-schrock-ep-authorization-receipts-12`
+- `draft-schrock-ep-authorization-receipts-13`
 - `draft-schrock-ep-bounded-capability-receipts-04`
 - `draft-schrock-ep-bounded-execution-program-00`
 - `draft-schrock-ep-evidence-record-01`
 - `draft-schrock-ep-outcome-binding-00`
-- `draft-schrock-ep-presentation-binding-00`
-- `draft-schrock-ep-quorum-03`
+- `draft-schrock-ep-presentation-binding-01`
+- `draft-schrock-ep-quorum-04`
 - `draft-schrock-ep-reliance-agreement-00`
 - `draft-schrock-ep-revocation-statement-01`
 - `draft-schrock-human-authorization-binding-00`
@@ -60,9 +60,9 @@ authoritative for rendered forms.
 
 For reader navigation, the canonical evidence path is:
 
-1. [Authorization Receipts-12](draft-schrock-ep-authorization-receipts-12.xml)
+1. [Authorization Receipts-13](draft-schrock-ep-authorization-receipts-13.xml)
    defines the action-bound approval-evidence profile. The current posted
-   revision is -12 and the exact posted source matches the Datatracker submission.
+   revision is -13 and the exact posted source matches the Datatracker submission.
 2. [Human Authorization Binding-00](draft-schrock-human-authorization-binding-00.xml)
    binds a named-human authorization artifact into an adjacent host record.
 3. [Authority Introduction-03](draft-schrock-ep-authority-introduction-03.xml)
@@ -132,7 +132,7 @@ immutable IETF archive before promotion into this directory:
 - `draft-schrock-model-to-matter-03`
 
 Their exact submitted bytes remain in `../staged/UPLOAD-THIS/` as publication
-provenance, not as upload candidates. Authorization Receipts-12 is the current
+provenance, not as upload candidates. Authorization Receipts-13 is the current
 posted receipt revision in this inventory.
 
 ## August 6, 2026 maintenance set
@@ -205,7 +205,8 @@ byte-for-byte against the exact submitted source before promotion:
 The retained `../staged/NEXT-ACTION-EVIDENCE-BOUNDARY-04` and
 `../staged/NEXT-AUTHORIZATION-RECEIPTS-12` packets are publication provenance,
 not upload candidates. Revisions AEB-03 and Authorization Receipts-11 are
-retained in `../archive/`.
+retained in `../archive/`. AEB-04 and Authorization Receipts-12 have since been
+superseded and are retained in `../archive/`.
 
 ## August 22, 2026 GRACE publication
 
@@ -265,6 +266,45 @@ not an upload candidate. Its XML is byte-for-byte identical to the posted
 source. Architecture-02 is retained in `../archive/`. Publication does not
 establish protocol-owner review, independent implementation, working-group
 adoption, RFC status, or IETF endorsement.
+
+## September 6, 2026 Quorum corrective revision
+
+`draft-schrock-ep-quorum-04` was posted as an active individual
+Internet-Draft through Datatracker submission 168688 (Datatracker time
+2026-09-06T17:27:51Z), one of the four September 6 corrective revisions. The
+snapshot was mirrored into this directory on 2026-09-27. Its XML and TXT are
+byte-for-byte identical to the immutable IETF archive artifacts. The posted
+HTML is the provenance packet's local xml2rfc 3.34.0 render with trailing
+whitespace removed, because the archive delivery path injects request-specific
+Cloudflare markup; the checksum-pinned exact render remains in the provenance
+packet.
+
+The retained `../staged/NEXT-EP-QUORUM-04` packet is publication provenance,
+not an upload candidate. Its XML is byte-for-byte identical to the posted
+source. Quorum-03 is retained in `../archive/`. Publication does not establish
+protocol-owner review, independent implementation, working-group adoption, RFC
+status, or IETF endorsement.
+
+## September 12, 2026 Receipts and Presentation Binding revisions
+
+`draft-schrock-ep-authorization-receipts-13` (Datatracker submission 168935,
+Datatracker time 2026-09-12T15:05:02Z) and
+`draft-schrock-ep-presentation-binding-01` (submission 168936, Datatracker time
+2026-09-12T15:06:51Z) were posted as active individual Internet-Drafts. The
+snapshots were mirrored into this directory on 2026-09-27. Their XML and TXT
+are byte-for-byte identical to the immutable IETF archive artifacts. Each
+posted HTML is the provenance packet's local xml2rfc 3.34.0 render with
+trailing whitespace removed. The archive HTML was rendered by xml2rfc 3.34.1
+and its delivery path injects request-specific Cloudflare markup; the
+checksum-pinned local render remains in each provenance packet.
+
+The retained `../staged/NEXT-AUTHORIZATION-RECEIPTS-13` and
+`../staged/NEXT-PRESENTATION-BINDING-01` packets are publication provenance,
+not upload candidates. Their XML is byte-for-byte identical to the posted
+sources. Authorization Receipts-12 and Presentation Binding-00 are retained in
+`../archive/`. Publication does not establish protocol-owner review,
+independent implementation, working-group adoption, RFC status, or IETF
+endorsement.
 
 ## September 24, 2026 AEB maintenance revision
 

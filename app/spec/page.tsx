@@ -7,11 +7,24 @@ import {
   renderInlineMarkdown as inlineFormat,
   sanitizeCodeLanguage,
 } from '@/lib/spec-markdown';
+import standardsStatus from '@/standards/STATUS.json';
+
+// The governed status file owns the current revision and its source path.
+// This page renders only a posted snapshot, never a staged candidate.
+const RECEIPTS = standardsStatus.canonical_four_document_surface.documents.find(
+  (document) => document.draft === 'draft-schrock-ep-authorization-receipts',
+);
+if (!RECEIPTS) throw new Error('STATUS.json canonical surface has no Authorization Receipts entry');
+const RECEIPTS_REVISION = RECEIPTS.revision;
+const RECEIPTS_DRAFT = `draft-schrock-ep-authorization-receipts-${RECEIPTS_REVISION}`;
+if (RECEIPTS.source !== `standards/posted/${RECEIPTS_DRAFT}.xml`) {
+  throw new Error(`/spec renders a posted snapshot; STATUS.json names ${RECEIPTS.source}`);
+}
 
 export const metadata = {
   // This page renders the posted Internet-Draft. "Internet-Draft", not "RFC" —
   // claiming RFC status for an individual I-D overstates IETF standing.
-  title: 'Authorization Receipts Internet-Draft -12',
+  title: `Authorization Receipts Internet-Draft -${RECEIPTS_REVISION}`,
   description: 'EMILIA Protocol specification (IETF Internet-Draft) — verifiable human-authorization receipts for high-risk agent actions.',
   alternates: { canonical: '/spec' },
 };
@@ -77,7 +90,10 @@ function mdToHtml(md: string): string {
 }
 
 export default function SpecPage() {
-  const draftPath = join(process.cwd(), 'standards', 'posted', 'draft-schrock-ep-authorization-receipts-12.xml');
+  // Keep the directory and name prefix literal: the build's file tracer turns
+  // the unknown revision into a wildcard, so the posted XML ships with the
+  // server bundle. A fully computed path would not be traced.
+  const draftPath = join(process.cwd(), 'standards', 'posted', `draft-schrock-ep-authorization-receipts-${RECEIPTS_REVISION}.xml`);
   const draft = readFileSync(draftPath, 'utf8');
   const html = mdToHtml(`\`\`\`text\n${draft}\n\`\`\``);
 
@@ -121,7 +137,7 @@ export default function SpecPage() {
           </a>
         </nav>
         <h1>EMILIA authorization receipts specification</h1>
-        <div className="spec-badge">DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-12 · STANDARDS TRACK CANDIDATE · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
+        <div className="spec-badge">{RECEIPTS_DRAFT.toUpperCase()} · STANDARDS TRACK CANDIDATE · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
         <p className="spec-summary">
           Document 01 defines one action-bound organizational approval-evidence profile. Gate can
           verify that evidence for the exact material action at a protected boundary, but this draft
@@ -131,7 +147,7 @@ export default function SpecPage() {
         <p style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 12, color: '#7a809a', marginBottom: 8 }}>Canonical copy on the <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/" target="_blank" rel="noopener noreferrer">IETF datatracker</a>. Conformance vectors: <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/CONFORMANCE.md" target="_blank" rel="noopener noreferrer">CONFORMANCE.md</a>. Multi-party companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-quorum</a>. Composition companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-authorization-evidence-chain</a>. Preprint: <a href="https://doi.org/10.5281/zenodo.20780638" target="_blank" rel="noopener noreferrer">Zenodo DOI</a>. Canonical path: <a href="/protocol">four-document hub</a>.</p>
         <div dangerouslySetInnerHTML={{ __html: html }} />
         <div className="spec-footer">
-          EMILIA Protocol — draft-schrock-ep-authorization-receipts-12 — Apache 2.0 License
+          EMILIA Protocol — {RECEIPTS_DRAFT} — Apache 2.0 License
         </div>
       </div>
       <SiteFooter />

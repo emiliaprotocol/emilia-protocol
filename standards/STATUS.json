@@ -1,10 +1,10 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-09-26",
+  "updated": "2026-09-27",
   "active_datatracker_count": 24,
   "active_schrock_datatracker_count": 21,
   "sole_authored_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted holds a published revision of each of the 20 active sole-authored draft-schrock-* Datatracker records represented in this repository, but not always the current one; the revision field in active_datatracker records the current Datatracker revision as of the updated date. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. AEB-07, AEC-06, CAID-03, Architecture-03, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status. September 6 exception: the corrective revisions Quorum-04 and Bounded Capability Receipts-05 are retained as exact archive-verified XML in their standards/staged provenance packets listed in september_6_2026_corrective_wave, and older standards/posted snapshots for these two names are historical. The other two corrective revisions were mirrored into standards/posted on 2026-09-26: AEC-06 is recorded in september_6_2026_aec_posted_snapshot and Architecture-03 in september_6_2026_architecture_posted_snapshot. Later revisions not mirrored into standards/posted, checked against the Datatracker API and the IETF archive on 2026-09-25: Authorization Receipts-13 (posted 2026-09-12) and Presentation Binding-01 (posted 2026-09-12) are retained as exact archive-identical XML in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13 and standards/staged/NEXT-PRESENTATION-BINDING-01; Bounded Capability Receipts-06 (posted 2026-09-09) is not retained in this repository, so the IETF archive is its only source. The standards/posted snapshots of those three names are historical.",
+  "posted_snapshot_policy": "standards/posted holds a published revision of each of the 20 active sole-authored draft-schrock-* Datatracker records represented in this repository, but not always the current one; the revision field in active_datatracker records the current Datatracker revision as of the updated date. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. Authorization Receipts-13, Presentation Binding-01, Quorum-04, AEB-07, AEC-06, CAID-03, Architecture-03, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status. September 6 exception: the corrective revision Bounded Capability Receipts-05 is retained as exact archive-verified XML in its standards/staged provenance packet listed in september_6_2026_corrective_wave. The other three corrective revisions were mirrored into standards/posted: AEC-06 and Architecture-03 on 2026-09-26, recorded in september_6_2026_aec_posted_snapshot and september_6_2026_architecture_posted_snapshot, and Quorum-04 on 2026-09-27, recorded in september_6_2026_quorum_posted_snapshot. Authorization Receipts-13 and Presentation Binding-01 (both posted 2026-09-12) were mirrored into standards/posted on 2026-09-27 and are recorded in september_12_2026_posted_snapshots. Checked against the Datatracker API on 2026-09-27, Bounded Capability Receipts-06 (posted 2026-09-09) is the only current sole-authored revision not mirrored into standards/posted. It is not retained in this repository, so the IETF archive is its only source, and the standards/posted Bounded Capability Receipts-04 snapshot is historical.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -35,7 +35,7 @@
         "label": "Authorization Receipts",
         "draft": "draft-schrock-ep-authorization-receipts",
         "revision": "13",
-        "source": "standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13/UPLOAD-THIS/draft-schrock-ep-authorization-receipts-13.xml",
+        "source": "standards/posted/draft-schrock-ep-authorization-receipts-13.xml",
         "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
         "snapshot_sha256": "77e7021e116bebbd8e786dd27b51468701ea4887dfa0dd8d692e919f1fd00ffb",
         "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
@@ -273,7 +273,7 @@
       "revision": "13",
       "layer": "authorization_evidence",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:05:02Z); use -13, which adds the consolidated receipt-claim boundary (Section 13.13) to the -12 baseline: acceptance-prefix integrity, the offline anti-backdating limit, historical-versus-current acceptance separation, the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request. Exact archive-identical XML is in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13"
+      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:05:02Z); use -13, which adds the consolidated receipt-claim boundary (Section 13.13) to the -12 baseline: acceptance-prefix integrity, the offline anti-backdating limit, historical-versus-current acceptance separation, the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request. The archive-identical XML is at standards/posted/draft-schrock-ep-authorization-receipts-13.xml and is recorded in september_12_2026_posted_snapshots; the submitted source is retained in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13"
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts",
@@ -308,14 +308,14 @@
       "revision": "01",
       "layer": "authorization_evidence",
       "role": "Binding the signed action to what the approver was shown",
-      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:06:51Z); hold -01, which adds the receipt and presentation evidence boundary (Section 6.1). Exact archive-identical XML is in standards/staged/NEXT-PRESENTATION-BINDING-01"
+      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:06:51Z); hold -01, which adds the receipt and presentation evidence boundary (Section 6.1). The archive-identical XML is at standards/posted/draft-schrock-ep-presentation-binding-01.xml and is recorded in september_12_2026_posted_snapshots; the submitted source is retained in standards/staged/NEXT-PRESENTATION-BINDING-01"
     },
     {
       "draft": "draft-schrock-ep-quorum",
       "revision": "04",
       "layer": "authorization_evidence",
       "role": "Distinct-human multi-handshake composition",
-      "next_action": "Published September 6; use -04 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release."
+      "next_action": "Published September 6; use -04 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave; the archive-identical XML is at standards/posted/draft-schrock-ep-quorum-04.xml and is recorded in september_6_2026_quorum_posted_snapshot. Publication is separate from implementation or package release."
     },
     {
       "draft": "draft-schrock-ep-revocation-statement",
@@ -440,7 +440,7 @@
       {
         "priority": 5,
         "draft": "draft-schrock-ep-quorum-03",
-        "source": "standards/posted/draft-schrock-ep-quorum-03.xml",
+        "source": "standards/archive/draft-schrock-ep-quorum-03.xml",
         "claim": "Ordered multi-party ceremony and distinct-human policy semantics",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
@@ -754,10 +754,10 @@
       },
       {
         "draft": "draft-schrock-ep-authorization-receipts-12",
-        "source": "standards/posted/draft-schrock-ep-authorization-receipts-12.xml",
+        "source": "standards/archive/draft-schrock-ep-authorization-receipts-12.xml",
         "snapshot_sha256": "66eaa988d974f8535063b35efadc5140331006679b5946bc372d50a16efef52d",
         "datatracker_submission_id": 167791,
-        "state": "published_ietf_archive_verified_exact_local_match"
+        "state": "published_ietf_archive_verified_exact_local_match_superseded_by_13"
       }
     ]
   },
@@ -950,6 +950,9 @@
         "draft": "draft-schrock-ep-quorum-04",
         "source": "standards/staged/NEXT-EP-QUORUM-04/UPLOAD-THIS/draft-schrock-ep-quorum-04.xml",
         "snapshot_sha256": "17e6ff9768a1a69993d6a16ac152dca75ff90c4bdd8d43d27b6603fd31964728",
+        "posted_snapshot": "standards/posted/draft-schrock-ep-quorum-04.xml",
+        "datatracker_submission_id": 168688,
+        "datatracker_posted_at": "2026-09-06T17:27:51Z",
         "state": "published_ietf_archive_verified_exact_local_match"
       },
       {
@@ -1026,6 +1029,68 @@
         "source": "standards/posted/draft-schrock-ep-architecture-03.xml",
         "snapshot_sha256": "9b37d4911dc32d19198e4a0874ee64256e93a8f851a01553a445027b631371bf",
         "datatracker_submission_id": 168691,
+        "state": "published_ietf_archive_verified_exact_local_match"
+      }
+    ]
+  },
+  "september_6_2026_quorum_posted_snapshot": {
+    "filing_date": "2026-09-06",
+    "datatracker_posted_at": "2026-09-06T17:27:51Z",
+    "publication_wave": "september_6_2026_corrective_wave",
+    "item_count": 1,
+    "publication_status": "published_2026_09_06_ietf_archive_verified_2026_09_27",
+    "filing_order": [
+      "draft-schrock-ep-quorum-04"
+    ],
+    "xml_sha256": "17e6ff9768a1a69993d6a16ac152dca75ff90c4bdd8d43d27b6603fd31964728",
+    "txt_sha256": "1765a7faab78b945084269c74db6f7ce61ffad8f8320abcabe7d7d5520fbecf8",
+    "html_sha256": "b722e83384483a3d9edfb825743f89f6f87553be4093df5c0db4081a783f21ac",
+    "verification": "Checked on 2026-09-27. The posted XML and TXT are byte-for-byte identical to the immutable IETF archive artifacts and to the submitted source and text render retained in the provenance packet. The posted HTML is the provenance packet's local xml2rfc 3.34.0 render with trailing whitespace removed. The archive HTML was also rendered by xml2rfc 3.34.0 and differs from the retained render only in its recorded Python and library versions and in request-specific Cloudflare markup injected by the archive delivery path; the checksum-pinned exact render remains in the provenance packet. Publication is not working-group adoption, RFC status, protocol-owner review, implementation evidence, deployment evidence, or IETF endorsement.",
+    "provenance_packets": [
+      "standards/staged/NEXT-EP-QUORUM-04"
+    ],
+    "items": [
+      {
+        "draft": "draft-schrock-ep-quorum-04",
+        "source": "standards/posted/draft-schrock-ep-quorum-04.xml",
+        "snapshot_sha256": "17e6ff9768a1a69993d6a16ac152dca75ff90c4bdd8d43d27b6603fd31964728",
+        "datatracker_submission_id": 168688,
+        "state": "published_ietf_archive_verified_exact_local_match"
+      }
+    ]
+  },
+  "september_12_2026_posted_snapshots": {
+    "filing_date": "2026-09-12",
+    "item_count": 2,
+    "publication_status": "published_2026_09_12_ietf_archive_verified_2026_09_27",
+    "filing_order": [
+      "draft-schrock-ep-authorization-receipts-13",
+      "draft-schrock-ep-presentation-binding-01"
+    ],
+    "verification": "Checked on 2026-09-27. For each item, the posted XML and TXT are byte-for-byte identical to the immutable IETF archive artifacts and to the submitted source and text render retained in its provenance packet. Each posted HTML is the provenance packet's local xml2rfc 3.34.0 render with trailing whitespace removed. The archive HTML was rendered by xml2rfc 3.34.1 and its delivery path injects request-specific Cloudflare markup; the checksum-pinned local render remains in each provenance packet. Publication is not working-group adoption, RFC status, protocol-owner review, implementation evidence, deployment evidence, or IETF endorsement.",
+    "provenance_packets": [
+      "standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13",
+      "standards/staged/NEXT-PRESENTATION-BINDING-01"
+    ],
+    "items": [
+      {
+        "draft": "draft-schrock-ep-authorization-receipts-13",
+        "source": "standards/posted/draft-schrock-ep-authorization-receipts-13.xml",
+        "snapshot_sha256": "77e7021e116bebbd8e786dd27b51468701ea4887dfa0dd8d692e919f1fd00ffb",
+        "txt_sha256": "74ae85d83e8c21c8a3b470b7444474f56cb93858bf848a6a14d1a2991f5116a6",
+        "html_sha256": "07cc189b35753a6e22fcaed21e15472044dbf5da42f091bf1cb5d5b9b8c7bb65",
+        "datatracker_submission_id": 168935,
+        "datatracker_posted_at": "2026-09-12T15:05:02Z",
+        "state": "published_ietf_archive_verified_exact_local_match"
+      },
+      {
+        "draft": "draft-schrock-ep-presentation-binding-01",
+        "source": "standards/posted/draft-schrock-ep-presentation-binding-01.xml",
+        "snapshot_sha256": "97d7a67ff8a70a6bea540e38810513ea01ca6f195a038f4c8235b3880cf67cb2",
+        "txt_sha256": "121fd0ba41c207fd6f683e2ae8a01acbbd7cb1e7fc889845620690eedadc2156",
+        "html_sha256": "6b3406bca8b09205fefd5e38d6e45b1792c95ee49d6256d499d07015bc9ee371",
+        "datatracker_submission_id": 168936,
+        "datatracker_posted_at": "2026-09-12T15:06:51Z",
         "state": "published_ietf_archive_verified_exact_local_match"
       }
     ]

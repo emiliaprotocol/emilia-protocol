@@ -49,7 +49,7 @@ remain separate lifecycle transitions.
 The reader-facing canonical surface is:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-13`](staged/NEXT-AUTHORIZATION-RECEIPTS-13/UPLOAD-THIS/draft-schrock-ep-authorization-receipts-13.xml):
+   [`draft-schrock-ep-authorization-receipts-13`](posted/draft-schrock-ep-authorization-receipts-13.xml):
    one action-bound organizational approval-evidence profile. The -13 XML is
    byte-identical to the IETF archive copy.
 2. **Human Authorization Binding** —
@@ -198,6 +198,34 @@ immediate global-freeze claims, and adds idempotency, wrong-holder,
 receipt-absence, and unsigned-event claim boundaries. The abstract is
 unchanged from -02. It is an individual Internet-Draft, not a working-group
 item, and posting is not protocol-owner review.
+
+## September 6 Quorum corrective revision
+
+`draft-schrock-ep-quorum-04` was posted through Datatracker submission 168688
+(Datatracker time 2026-09-06T17:27:51Z) as one of the four September 6
+corrective revisions. Its XML and TXT match the immutable IETF archive
+byte-for-byte, and the snapshot was mirrored into `posted/` on 2026-09-27. The
+posted HTML follows the same whitespace-normalized local render rule as AEC-06.
+Revision -04 replaces the context-only chronology claim with the versioned
+`EP-QUORUM-SIGNOFF-CHAIN-v1` profile: a successor signs a digest of the
+completed predecessor signoff, including its signature, and legacy
+context-only chains cannot satisfy the profile. It does not establish trusted
+wall-clock time or human comprehension. It is an individual Internet-Draft, not
+a working-group item, and posting is not protocol-owner review.
+
+## September 12 Receipts and Presentation Binding revisions
+
+`draft-schrock-ep-authorization-receipts-13` (submission 168935, Datatracker
+time 2026-09-12T15:05:02Z) and `draft-schrock-ep-presentation-binding-01`
+(submission 168936, Datatracker time 2026-09-12T15:06:51Z) were posted through
+Datatracker. Their XML and TXT match the immutable IETF archive byte-for-byte,
+and the snapshots were mirrored into `posted/` on 2026-09-27. Each posted HTML
+is the provenance packet's local xml2rfc 3.34.0 render with trailing
+whitespace removed; the archive HTML was rendered by xml2rfc 3.34.1. Receipts-13
+adds Section 13.13, "What Successful Verification Does Not Establish."
+Presentation Binding-01 adds Section 6.1, "Receipt and Presentation Evidence
+Remain Distinct." Both are individual Internet-Drafts, not working-group items,
+and posting is not protocol-owner review.
 
 ## September 24 AEB maintenance revision
 

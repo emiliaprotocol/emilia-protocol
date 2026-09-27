@@ -27,3 +27,26 @@ valid signature of the same context and key, retaining valid native
 signatures but invalidating the completed-proof link. Policy tests reject
 profile stripping, unknown profile and threshold mutation against a trusted
 exact pin. Tests do not amount to a formal proof or a hardware demonstration.
+
+## Publication check
+
+Checked on 2026-09-27, when the posted snapshot was mirrored into
+`standards/posted/`:
+
+- The Datatracker submission API lists submission 168688 for
+  `draft-schrock-ep-quorum` revision 04 in state `posted`, and the document
+  record shows revision 04 at 2026-09-06T17:27:51Z, the time of its "New
+  version available" event. No later revision exists.
+- The IETF archive XML has SHA-256
+  `17e6ff9768a1a69993d6a16ac152dca75ff90c4bdd8d43d27b6603fd31964728` and the
+  archive text has SHA-256
+  `1765a7faab78b945084269c74db6f7ce61ffad8f8320abcabe7d7d5520fbecf8`. Both
+  match `SHA256SUMS.txt` byte-for-byte.
+- The archive HTML differs from the retained render. Both record xml2rfc
+  3.34.0; the archive copy lists different Python and library versions, and
+  its delivery path injects request-specific Cloudflare markup, so the
+  retained render stays the checksum-pinned local form. The posted HTML is
+  that render with trailing whitespace removed.
+
+Publication is not working-group adoption, RFC status, protocol-owner review,
+implementation interoperability, or deployment evidence.
