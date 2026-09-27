@@ -95,7 +95,9 @@ changes over -03) and keeps both changes.
 - The document encoding limit: a definition whose validation projection
   holds a 134,217,728-character member is `invalid_definition`, and a
   mapping source holding one is `source_not_canonicalizable`, in
-  JavaScript, Python, and Go.
+  JavaScript, Python, and Go; a present enum field whose supplied snapshot
+  holds one is `mistyped_field:<name>` in JavaScript and Python (not run in
+  Go).
 - RFC 7493 Section 2.1 excludes surrogates and noncharacters from member
   names and string values; Section 2.3 refuses duplicate names after
   unescaping.
