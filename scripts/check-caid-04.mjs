@@ -270,6 +270,13 @@ function actionTypeSplit() {
   }
   const iana = reg.types.filter((t) => !IANA_EXCLUDED.has(t.action_type));
   const other = reg.types.filter((t) => IANA_EXCLUDED.has(t.action_type));
+  // No initial IANA entry names the author's company or cites one of its
+  // specifications (those are named EP-...).
+  for (const t of iana) {
+    if (/EMILIA|\bemilia\b|\bEP-[A-Z]/.test(JSON.stringify(t))) {
+      throw new Error(`CAID-04: ${t.action_type} names a vendor or a vendor specification but is an initial IANA entry; add it to IANA_EXCLUDED`);
+    }
+  }
   // Succession stays inside each list: an initial IANA entry never names a
   // type that IANA is not asked to register, and the reverse.
   for (const t of reg.types) {
