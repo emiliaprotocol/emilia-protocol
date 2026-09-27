@@ -114,6 +114,10 @@ const observatory = readJson(PATHS.observatory) as any;
 const standardsStatus = readJson(PATHS.standardsStatus) as any;
 const caidCore = readJson(PATHS.caidCore) as any;
 const caidMapping = readJson(PATHS.caidMapping) as any;
+// The core vectors that apply only to an implementation of the OPTIONAL
+// cbor-sha256 suite, which none of the three ports implements: each
+// runner skips them, so they are not counted as passing.
+const caidCbOnly = caidCore.vectors.filter((v: any) => v.applies_when?.suite_implemented === 'cbor-sha256').length;
 const modelToMatter = readJson(PATHS.modelToMatter) as any;
 
 assert(source['@version'] === 'EMILIA-LLM-CONTEXT-SOURCE-v1', 'unsupported LLM context source');
@@ -255,6 +259,7 @@ const context: any = {
     },
     caid: {
       core_vectors: caidCore.vectors.length,
+      core_vectors_skipped_by_every_port: caidCbOnly,
       mapping_vectors: caidMapping.vectors.length,
       same_team_ports: ['javascript', 'python', 'go'],
       mapping_verdicts: ['EQUIVALENT_UNDER_PROFILE', 'NOT_EQUIVALENT', 'INDETERMINATE'],
@@ -365,7 +370,7 @@ function renderFull(web: boolean = false): string {
   lines.push(`- Formal evidence taxonomy: ${proofStats.formalEvidenceCoverage.verifiedFormalObligations.count} claims with verified formal obligations; ${proofStats.formalEvidenceCoverage.boundedRuntimeTraced.count} with bounded runtime-traced evidence; ${proofStats.formalEvidenceCoverage.boundedFormalEvidence.count} with bounded formal evidence but no governed runtime bridge; ${proofStats.formalEvidenceCoverage.partialSymbolicCoverage.count} with partial symbolic coverage; ${proofStats.formalEvidenceCoverage.executableOperationalEvidence.count} with executable or operational evidence only.`);
   lines.push(`- Composed symbolic model: ${proofStats.tamarin.verifiedObligations} Tamarin obligations verified across challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, and execution; ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately unsafe variants are falsified with attack traces.`);
   lines.push(`- Red-team catalog: ${proofStats.redTeamCases} cases.`);
-  lines.push(`- CAID: ${caidCore.vectors.length} core identifier vectors plus ${caidMapping.vectors.length} mapping vectors in three same-team ports, with closed EQUIVALENT_UNDER_PROFILE / NOT_EQUIVALENT / INDETERMINATE results.`);
+  lines.push(`- CAID: ${caidCore.vectors.length - caidCbOnly} of ${caidCore.vectors.length} core identifier vectors pass in three same-team ports (the other ${caidCbOnly} apply only to an implementation of the OPTIONAL cbor-sha256 suite, which none of them implements), plus ${caidMapping.vectors.length} mapping vectors, with closed EQUIVALENT_UNDER_PROFILE / NOT_EQUIVALENT / INDETERMINATE results.`);
   lines.push(`- Model-to-Matter: ${modelToMatter.vectors.length} deterministic JavaScript executor-profile vectors covering clearance, refusal, replay, storage failure, and effect tampering. No biological screening, scientific-safety, physical-truth, deployment, or endorsement claim is made.`);
   lines.push('');
   lines.push('## Canonical Definitions');
