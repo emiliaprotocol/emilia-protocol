@@ -315,7 +315,8 @@ function parseJws(proof: string): {
     headerText = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(headerBytes);
     payloadText = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(payloadBytes);
   } catch { return null; }
-  if (!strictJsonGate(headerText).ok || !strictJsonGate(payloadText).ok) return null;
+  if (!strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+    || !strictJsonGate(payloadText, { refuseNoncharacters: true }).ok) return null;
   let header: unknown;
   let payload: unknown;
   try { header = JSON.parse(headerText); payload = JSON.parse(payloadText); }

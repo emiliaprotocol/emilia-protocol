@@ -43,7 +43,7 @@ function loadStrictJson(path: string): any {
   if (bytes.byteLength > MAX_CLI_JSON_BYTES) throw new Error(`JSON input exceeds ${MAX_CLI_JSON_BYTES} bytes`);
   let raw: string;
   try { raw = STRICT_UTF8.decode(bytes); } catch { throw new Error('strict JSON required: invalid UTF-8'); }
-  const strict = strictJsonGate(raw);
+  const strict = strictJsonGate(raw, { refuseNoncharacters: true });
   if (!strict.ok) throw new Error(`strict JSON required: ${strict.reason}`);
   return JSON.parse(raw);
 }

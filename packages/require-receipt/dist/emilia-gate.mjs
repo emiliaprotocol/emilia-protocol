@@ -34,15 +34,22 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.8.1  ·  content-sha256:26b91db35f2892c9
+//   source: @emilia-protocol/require-receipt@0.8.1  ·  content-sha256:53c9e103cb656c5f
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 // SPDX-License-Identifier: Apache-2.0
 // Duplicate-name and Unicode-scalar gate for signed nested JSON such as
 // WebAuthn clientDataJSON. JSON.parse remains the syntax gate.
+//
+// With { refuseNoncharacters: true } the gate also refuses a string or
+// member name that holds a Unicode noncharacter after unescaping, which
+// I-JSON (RFC 7493 Section 2.1) excludes. Callers that decode JSON text
+// carrying a CAID action object pass it, so that text meets rules 2 to 5 of
+// draft-schrock-canonical-action-identifier-04 Section 2.4.
 const MAX_JSON_DEPTH = 64;
 const DEFAULT_MAX_JSON_NODES = 100_000;
 const DEFAULT_MAX_JSON_STRING_BYTES = 1024 * 1024;
+const NONCHARACTER = /\p{Noncharacter_Code_Point}/u;
 function hasUnpairedUtf16Surrogate(value) {
     for (let index = 0; index < value.length; index += 1) {
         const code = value.charCodeAt(index);
@@ -61,9 +68,10 @@ function hasUnpairedUtf16Surrogate(value) {
     }
     return false;
 }
-function strictJsonGate(raw) {
+function strictJsonGate(raw, options = {}) {
     if (typeof raw !== 'string')
         return { ok: false, reason: 'JSON input must be text' };
+    const refuseNoncharacters = options.refuseNoncharacters === true;
     const input = raw;
     if (hasUnpairedUtf16Surrogate(input)) {
         return { ok: false, reason: 'unpaired Unicode surrogate' };
@@ -151,6 +159,9 @@ function strictJsonGate(raw) {
             const value = readString();
             if (reason)
                 return { ok: false, reason };
+            if (refuseNoncharacters && value !== null && NONCHARACTER.test(value)) {
+                return { ok: false, reason: 'Unicode noncharacter' };
+            }
             if (isKey) {
                 // isKey is only true when top?.object && top.expectsKey was truthy above,
                 // which guarantees top is the object-frame variant here; TS can't

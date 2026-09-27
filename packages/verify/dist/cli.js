@@ -34,7 +34,7 @@ function loadStrictJson(path) {
     catch {
         throw new Error('strict JSON required: invalid UTF-8');
     }
-    const strict = strictJsonGate(raw);
+    const strict = strictJsonGate(raw, { refuseNoncharacters: true });
     if (!strict.ok)
         throw new Error(`strict JSON required: ${strict.reason}`);
     return JSON.parse(raw);

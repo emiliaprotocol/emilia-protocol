@@ -746,8 +746,8 @@ function parseCompactJws(token) {
     const headerText = decodeUtf8(headerBytes);
     const claimsText = decodeUtf8(claimsBytes);
     if (headerText === null || claimsText === null
-        || !strictJsonGate(headerText).ok
-        || !strictJsonGate(claimsText).ok)
+        || !strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+        || !strictJsonGate(claimsText, { refuseNoncharacters: true }).ok)
         return null;
     let header;
     let claims;

@@ -227,7 +227,7 @@ function parseJsonSegment(value: string): Obj | null {
   if (!decoded) return null;
   let text: string;
   try { text = STRICT_UTF8.decode(decoded); } catch { return null; }
-  if (!strictJsonGate(text).ok) return null;
+  if (!strictJsonGate(text, { refuseNoncharacters: true }).ok) return null;
   try {
     const parsed = JSON.parse(text);
     return isRecord(parsed) ? parsed : null;

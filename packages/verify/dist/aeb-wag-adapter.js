@@ -254,7 +254,8 @@ function parseCompactGrant(value) {
     const headerText = decodeBase64urlUtf8(parts[0]);
     const claimsText = decodeBase64urlUtf8(parts[1]);
     if (headerText === null || claimsText === null
-        || !strictJsonGate(headerText).ok || !strictJsonGate(claimsText).ok
+        || !strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+        || !strictJsonGate(claimsText, { refuseNoncharacters: true }).ok
         || !canonicalBase64url(parts[2], 64))
         return null;
     let header;

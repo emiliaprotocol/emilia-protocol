@@ -252,7 +252,8 @@ function verifyJwt(token: unknown, root: ParsedRoot, typ: string): ParsedJwt | n
   if (parts.length !== 3 || !canonicalB64url(parts[2])) return null;
   const headerText = decodeUtf8(parts[0]); const claimsText = decodeUtf8(parts[1]);
   if (headerText === null || claimsText === null
-      || !strictJsonGate(headerText).ok || !strictJsonGate(claimsText).ok) return null;
+      || !strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+      || !strictJsonGate(claimsText, { refuseNoncharacters: true }).ok) return null;
   let header: unknown; let claims: unknown;
   try { header = JSON.parse(headerText); claims = JSON.parse(claimsText); } catch { return null; }
   if (!isRecord(header) || !exactKeys(header, HEADER_KEYS)

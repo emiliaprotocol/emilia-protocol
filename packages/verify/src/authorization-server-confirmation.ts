@@ -242,7 +242,7 @@ function parseJsonSegment(value: string): Obj | null {
   const bytes = decodeB64url(value, MAX_JSON_BYTES);
   if (!bytes) return null;
   const text = decodeUtf8(bytes);
-  if (text === null || !strictJsonGate(text).ok) return null;
+  if (text === null || !strictJsonGate(text, { refuseNoncharacters: true }).ok) return null;
   try {
     const parsed: unknown = JSON.parse(text);
     return isRecord(parsed) ? parsed : null;

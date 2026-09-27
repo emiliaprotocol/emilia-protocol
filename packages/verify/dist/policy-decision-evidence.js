@@ -139,7 +139,7 @@ function parseJsonSegment(value) {
     catch {
         return null;
     }
-    if (!strictJsonGate(text).ok)
+    if (!strictJsonGate(text, { refuseNoncharacters: true }).ok)
         return null;
     try {
         const parsed = JSON.parse(text);

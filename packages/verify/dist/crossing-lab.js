@@ -163,7 +163,7 @@ function parseStrictJson(input, label) {
             throw new TypeError(`${label}: strict JSON required (invalid UTF-8)`);
         }
     }
-    const strict = strictJsonGate(raw);
+    const strict = strictJsonGate(raw, { refuseNoncharacters: true });
     if (!strict.ok)
         throw new TypeError(`${label}: strict JSON required (${strict.reason})`);
     const value = JSON.parse(raw);

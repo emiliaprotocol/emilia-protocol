@@ -35,6 +35,21 @@ describe('strict JSON gate', () => {
     expect(strictJsonGate(raw)).toEqual({ ok: false, reason });
   });
 
+  it('refuses a Unicode noncharacter only when asked to (I-JSON, CAID action text)', () => {
+    for (const raw of [
+      String.raw`{"value":"\uffff"}`,
+      String.raw`{"\ufdd0":1}`,
+      String.raw`{"value":"\udbff\udfff"}`,
+      '{"value":"\uFDEF"}',
+    ]) {
+      expect(strictJsonGate(raw)).toEqual({ ok: true });
+      expect(strictJsonGate(raw, { refuseNoncharacters: true })).toEqual({ ok: false, reason: 'Unicode noncharacter' });
+    }
+    for (const raw of [String.raw`{"value":"\ufffd\ufdcf\ufdf0"}`, String.raw`{"value":"\udbff\udffd"}`]) {
+      expect(strictJsonGate(raw, { refuseNoncharacters: true })).toEqual({ ok: true });
+    }
+  });
+
   it('enforces the same depth limit for objects and arrays', () => {
     const deepObject = `${'{"next":'.repeat(MAX_JSON_DEPTH + 1)}null${'}'.repeat(MAX_JSON_DEPTH + 1)}`;
     const deepArray = `${'['.repeat(MAX_JSON_DEPTH + 1)}null${']'.repeat(MAX_JSON_DEPTH + 1)}`;

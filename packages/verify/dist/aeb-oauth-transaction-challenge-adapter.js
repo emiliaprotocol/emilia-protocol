@@ -184,7 +184,8 @@ function verifyJwt(token, root, typ) {
     const headerText = decodeUtf8(parts[0]);
     const claimsText = decodeUtf8(parts[1]);
     if (headerText === null || claimsText === null
-        || !strictJsonGate(headerText).ok || !strictJsonGate(claimsText).ok)
+        || !strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+        || !strictJsonGate(claimsText, { refuseNoncharacters: true }).ok)
         return null;
     let header;
     let claims;

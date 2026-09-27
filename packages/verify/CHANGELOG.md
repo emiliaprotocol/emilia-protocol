@@ -31,9 +31,16 @@ behavior only through an explicit dependency bump.
   - a WIMSE OAuth, Authorization Server confirmation or PSEA claims segment
     that begins with a UTF-8 byte order mark (5.0.0 dropped the BOM);
   - a CLI input file, or a Crossing Lab workspace, artifact, seed or reviewed
-    manifest, that is not valid UTF-8 (5.0.0 substituted U+FFFD).
+    manifest, that is not valid UTF-8 (5.0.0 substituted U+FFFD);
+  - any of those texts, and the policy decision, WIMSE OAuth, Authorization
+    Server confirmation, PSEA, OASNT, WAG and OAuth transaction-challenge
+    segments, when a string or member name holds a Unicode noncharacter after
+    unescaping, which I-JSON excludes.
+    `strictJsonGate(text, { refuseNoncharacters: true })` is the new opt-in
+    that these callers use; without the option the gate is unchanged.
   The OASNT, WAG and OAuth transaction-challenge adapters already refused
-  both. WebAuthn `clientDataJSON` keeps WebAuthn's decoding.
+  a byte order mark and invalid UTF-8. WebAuthn `clientDataJSON` keeps
+  WebAuthn's decoding.
 - The adapter mapping profiles no longer declare a field named `action_type`;
   the action object's `action_type` member is always required, so the entry
   bound nothing, and -04 refuses such a definition.

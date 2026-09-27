@@ -197,7 +197,8 @@ function parseJws(proof) {
     catch {
         return null;
     }
-    if (!strictJsonGate(headerText).ok || !strictJsonGate(payloadText).ok)
+    if (!strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+        || !strictJsonGate(payloadText, { refuseNoncharacters: true }).ok)
         return null;
     let header;
     let payload;
