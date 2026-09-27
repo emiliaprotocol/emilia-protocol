@@ -95,6 +95,23 @@ describe('authenticated bounded actuator HTTP surface', () => {
     });
   });
 
+  it('refuses a JSON body holding a noncharacter before execution (I-JSON)', async () => {
+    const origin = await startedServer();
+    const response = await fetch(`${origin}/v1/execute`, {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer authorized-actuator-client',
+        'content-type': 'application/json',
+      },
+      body: String.raw`{"note":"\ufdd0"}`,
+    });
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      status: 'refused',
+      error: { code: 'json_invalid' },
+    });
+  });
+
   it('rejects an oversized body before JSON parsing or execution', async () => {
     const origin = await startedServer();
     const response = await fetch(`${origin}/v1/execute`, {

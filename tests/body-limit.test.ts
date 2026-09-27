@@ -173,6 +173,19 @@ describe('readLimitedJson — real stream path', () => {
     }
   });
 
+  // CAID -04 Section 2.4 rule 2 (I-JSON): routes whose body carries an action
+  // object ask the reader to refuse noncharacters; other routes are unchanged.
+  it('refuses a noncharacter only when the route asks for I-JSON', async () => {
+    for (const text of [String.raw`{"k":"\uffff"}`, '{"k":"\uFDD0"}', String.raw`{"\udbff\udfff":1}`]) {
+      expect(await readLimitedJson(streamFrom(text), 64), JSON.stringify(text)).toMatchObject({ ok: true });
+      const refused = await readLimitedJson(streamFrom(text), 64, { refuseNoncharacters: true });
+      expect(refused, JSON.stringify(text)).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+      expect(refused.detail).toMatch(/noncharacter/);
+    }
+    expect(await readLimitedJson(streamFrom(String.raw`{"k":"\ufffd"}`), 64, { refuseNoncharacters: true }))
+      .toEqual({ ok: true, value: { k: '\ufffd' } });
+  });
+
   it('rejects duplicate JSON member names before parsing', async () => {
     const r = await readLimitedJson(streamFrom('{"action":"safe","action":"dangerous"}'), 128);
     expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });

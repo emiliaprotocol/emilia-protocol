@@ -26,6 +26,12 @@ export type LimitedJsonResult = { ok: true; value: any } | BodyLimitError;
 export interface ReadLimitedJsonOptions {
   emptyValue?: Record<string, unknown>;
   invalidValue?: any;
+  /**
+   * Refuse a string or member name holding a Unicode noncharacter (I-JSON).
+   * Routes whose body carries a CAID action object pass it, so the text meets
+   * draft-schrock-canonical-action-identifier-04 Section 2.4.
+   */
+  refuseNoncharacters?: boolean;
 }
 
 function declaredLength(request: Request): number {
@@ -124,7 +130,7 @@ export async function enforceBodyByteLimit(request: Request, maxBytes: number): 
 export async function readLimitedJson(
   request: Request,
   maxBytes: number,
-  { emptyValue = {}, invalidValue }: ReadLimitedJsonOptions = {},
+  { emptyValue = {}, invalidValue, refuseNoncharacters = false }: ReadLimitedJsonOptions = {},
 ): Promise<LimitedJsonResult> {
   // Real runtime requests carrying a payload always expose a ReadableStream
   // `.body`, so those go through the byte-enforcing path below. Unit-test
@@ -150,7 +156,7 @@ export async function readLimitedJson(
   // which JSON.parse refuses and which a byte-exact reader must not drop.
   const text = read.text;
   if (JSON_WHITESPACE_ONLY.test(text)) return { ok: true, value: emptyValue };
-  const strict = strictJsonGate(text);
+  const strict = strictJsonGate(text, { refuseNoncharacters });
   if (!strict.ok) {
     if (arguments.length >= 3 && Object.prototype.hasOwnProperty.call(arguments[2] || {}, 'invalidValue')) {
       return { ok: true, value: invalidValue };

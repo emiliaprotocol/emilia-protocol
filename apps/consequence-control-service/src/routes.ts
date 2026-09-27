@@ -102,7 +102,7 @@ async function readStrictJson(request: any, maxBytes: number): Promise<Record<st
   } catch {
     throw new HttpInputError(400, 'request_utf8_invalid');
   }
-  if (!strictJsonGate(text).ok) throw new HttpInputError(400, 'json_invalid');
+  if (!strictJsonGate(text, { refuseNoncharacters: true }).ok) throw new HttpInputError(400, 'json_invalid');
   const parsed = JSON.parse(text);
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new HttpInputError(400, 'request_object_required');

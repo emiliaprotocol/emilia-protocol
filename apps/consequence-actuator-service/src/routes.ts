@@ -64,7 +64,7 @@ async function readStrictBody(request: IncomingMessage): Promise<unknown> {
   } catch {
     throw new Error('json_invalid');
   }
-  if (source.length === 0 || !strictJsonGate(source).ok) {
+  if (source.length === 0 || !strictJsonGate(source, { refuseNoncharacters: true }).ok) {
     throw new Error('json_invalid');
   }
   try {
