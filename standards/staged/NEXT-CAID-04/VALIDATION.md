@@ -96,5 +96,10 @@ dash.
   (`uri-schemes-1.csv`, 438 entries, fetched on 2026-09-26).
 - `node scripts/check-caid-03.mjs` still passes for the posted -03 packet.
 
+- The Datatracker API reports revision 03 of
+  draft-schrock-canonical-action-identifier, posted 2026-09-26T16:30:22Z,
+  and the IETF archive URL for -04 returns 404, so -04 is the next
+  revision.
+
 Datatracker has not published this packet. Submission is held; see
 `README.md`.
