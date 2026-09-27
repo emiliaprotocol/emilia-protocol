@@ -9,7 +9,7 @@
     "production_mediation": false
   },
   "source_pins": {
-    "source_lock_digest": "sha256:bd35afce4dfa2bb1d8edfdcb50715bdc37eba367a1a2cc274618cca45493e5b0",
+    "source_lock_digest": "sha256:6e481d15cda05ab7ac117fa1e062a06ce9f5c0a0a4700f99020edc5970acadec",
     "inherited_profile": "EP-COAZ-TRANSLATION-VECTOR-v0.1",
     "authzen_repository_commit": "e287920eed842b227e38531c1735b712337ca44d",
     "authzen_authorization_api_sha256": "f0ee89cc4a688f9f409dc323c8342579d74c45dc776a6b04a622ba9738de82bc",
@@ -1661,5 +1661,5 @@
       }
     }
   ],
-  "report_digest": "sha256:fb3a9343d7e13bcd640e2b882245c2349baaad745a62d536aa07efd89c2a61f9"
+  "report_digest": "sha256:2ba454f8192b52396cb296bf9018c18769947c6574da35196f412dd5284b0d77"
 }

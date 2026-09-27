@@ -5,7 +5,7 @@
   "fetch_note": "This profile inherits the exact OpenID source facts refreshed by coaz-translation-v0.1 on 2026-08-25. No newer upstream status is claimed here.",
   "inherits": {
     "path": "conformance/composition/coaz-translation-v0.1/source-lock.json",
-    "sha256": "a52151cacfdd2be4d2bef4b71aedb4476ae8238ab3a441ddbce94a54bfed3ae5"
+    "sha256": "60898989d30a7c5efee2c5bb6645768a7d7d08139400dcf023578c0af6186eca"
   },
   "upstream_repository": {
     "url": "https://github.com/openid/authzen",
@@ -70,7 +70,7 @@
     },
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "976b314134e32252da6a81c04c4a462a8b106b54c1a299e0818efd47c8d50833"
+      "sha256": "532621440a6f19db378f6e2917b2c9564da8ef0ec4721c466c5348cb119d00eb"
     },
     {
       "path": "caid/registry/enum-snapshots.mjs",
@@ -174,19 +174,19 @@
     },
     {
       "path": "packages/verify/dist/aeb-oasnt-adapter.js",
-      "sha256": "b8758c443607ccee4eeb8553a4deabd10277a56f1be36c6b80225a35521aca4b"
+      "sha256": "5cd516ad215feef3995f59ce5287cd05cc875eb5f73343caa6712228db8189e7"
     },
     {
       "path": "packages/verify/dist/aeb-oauth-transaction-challenge-adapter.js",
-      "sha256": "07c212eaa9285746c49b2b0fc6a8bc4597205db50c1e2cf1cdbf552396223e61"
+      "sha256": "49b96f6eb6d0079ce1c4c17079b5206f2ee647bed3aa4464ef8d27fd175669f7"
     },
     {
       "path": "packages/verify/dist/aeb-psea-adapter.js",
-      "sha256": "6127e4ebec1e1e6c91492db52262eebff764a9319046358d396991d1522c8c06"
+      "sha256": "34387c1b86c3ec95ca14979853168c8d46158b4dc9320b0ea8891f72aaf9396c"
     },
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
-      "sha256": "4d4cdb90ddc91361aa07141b7b3781734bcb015b847ef13206abc164de130680"
+      "sha256": "82703acd989610bec837c653577ca1405316718c05032e2497dee638d8933d78"
     },
     {
       "path": "packages/verify/dist/agent-edge-continuity.js",
@@ -210,7 +210,7 @@
     },
     {
       "path": "packages/verify/dist/authorization-server-confirmation.js",
-      "sha256": "7f1e56517521849f8d0e60953c9c4089d4199da1a7adcd41bcf2ede43b0391a8"
+      "sha256": "cee6d6f11e776e59cffcb00279bbe6d0db29084e4fc97839fae44a6188af812e"
     },
     {
       "path": "packages/verify/dist/claim-assurance.js",
@@ -298,7 +298,7 @@
     },
     {
       "path": "packages/verify/dist/policy-decision-evidence.js",
-      "sha256": "09e36230b441a5d030e963b219dfd1458a8b62debf86c79a514c610baad3a95f"
+      "sha256": "984b169891772471fa5ffab7a2a7f5d6abc00aee34f0453c1b7f7940dfb85cd1"
     },
     {
       "path": "packages/verify/dist/portable-state-handoff.js",
@@ -346,7 +346,7 @@
     },
     {
       "path": "packages/verify/dist/strict-json.js",
-      "sha256": "405d62fdf68a10f3feab0ce4644605863b65b5d96100beff7f532789933c3e32"
+      "sha256": "b67774aeb747410cddea51df267ad7f42b94281ad0db1876bf419f131610bfb3"
     },
     {
       "path": "packages/verify/dist/surface-binding.js",
@@ -422,19 +422,19 @@
     },
     {
       "path": "packages/verify/src/aeb-oasnt-adapter.ts",
-      "sha256": "bc9a8d04d998da7a02555b23014ce3983c16fdc7d353dee5afc66defa664ac9f"
+      "sha256": "d5beecb90e919ef62127d620c88ff05c935655027ef7577f242c6582f766dd21"
     },
     {
       "path": "packages/verify/src/aeb-oauth-transaction-challenge-adapter.ts",
-      "sha256": "33ef7c1aa493d144870aa8500efed33a93a43a85a05584df146d415ae820a86b"
+      "sha256": "318fd564d00b15b1870d2e3baaf6883ca253663de0673ad692bf5585a6220401"
     },
     {
       "path": "packages/verify/src/aeb-psea-adapter.ts",
-      "sha256": "6568588979aa8b1c660d8c3032adbf6c050e267f51998c805a675b49667aa056"
+      "sha256": "9c875f8e157c055d65a5952f7a0d398851ba371eb804f6bd63ead2c896f01bdd"
     },
     {
       "path": "packages/verify/src/aeb-wimse-oauth-adapter.ts",
-      "sha256": "f31be26fb4d4f84101acc829f1014fc1f08bf5502c45da4cb8847719d5cd979d"
+      "sha256": "169ac869ab3e3a51886417464a7933c05e76f1679a22642cf68a41503f149f9d"
     },
     {
       "path": "packages/verify/src/agent-edge-continuity.ts",
@@ -458,7 +458,7 @@
     },
     {
       "path": "packages/verify/src/authorization-server-confirmation.ts",
-      "sha256": "23de6fa61ba855a794aa63c922094fb4339252c21992ee10ae58a8fdbc42fc63"
+      "sha256": "76348f1b0a4f3bad20e303af93fb905d28d0f2b3220b746e51becc1741957330"
     },
     {
       "path": "packages/verify/src/claim-assurance.ts",
@@ -546,7 +546,7 @@
     },
     {
       "path": "packages/verify/src/policy-decision-evidence.ts",
-      "sha256": "245d6e3217c4f5845c05b870e2c37c017ce7bd99baffb5addc5c3ab6a32d3be1"
+      "sha256": "8579c21c932db92c6b500caf925db4d7440d86a6c7d5cd6c5100d47c682b8e2c"
     },
     {
       "path": "packages/verify/src/portable-state-handoff.ts",
@@ -594,7 +594,7 @@
     },
     {
       "path": "packages/verify/src/strict-json.ts",
-      "sha256": "1b0566ff4e870f2b335f9046caa4de08f175fdbfaaabf58d766646692cc24339"
+      "sha256": "11112f347aef2b566c5aa761745cfe641248be7eb8290e97e889055cbf207df3"
     },
     {
       "path": "packages/verify/src/surface-binding.ts",
@@ -614,7 +614,7 @@
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "sha256": "976b314134e32252da6a81c04c4a462a8b106b54c1a299e0818efd47c8d50833"
+      "sha256": "532621440a6f19db378f6e2917b2c9564da8ef0ec4721c466c5348cb119d00eb"
     }
   ],
   "public_dependency_base": "761ff724cb3c96fe5863023f978512d406d6b84c",

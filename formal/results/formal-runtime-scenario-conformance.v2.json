@@ -23,11 +23,11 @@
     },
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "976b314134e32252da6a81c04c4a462a8b106b54c1a299e0818efd47c8d50833"
+      "sha256": "532621440a6f19db378f6e2917b2c9564da8ef0ec4721c466c5348cb119d00eb"
     },
     {
       "path": "caid/registry/enum-snapshots.mjs",
-      "sha256": "734bca3f995ac3d59a1c9b4573ce258ffac238e0b4eb578218663375b8ee0b50"
+      "sha256": "9723d33087744b2ffe319209cac1d4cb3fad4f1e78c7aa9a4cdb41406377cbad"
     },
     {
       "path": "conformance/refinement/adapters/action-escrow.mjs",
@@ -71,11 +71,11 @@
     },
     {
       "path": "conformance/refinement/adapters/consequence-lifecycle.mjs",
-      "sha256": "2bcc0ddd6f7ad9ba880e98dbb874158d900d4e60d2308ebc4bdae22ecad0cf91"
+      "sha256": "7b65c0f5e62ed9f84d242bef32e7d66301f0f5542a50495e1a6c3e2d7ba615c0"
     },
     {
       "path": "conformance/refinement/adapters/consequence-lifecycle.mts",
-      "sha256": "6c3a17b84c4fc9e43f32d9ec3c6f1fd24e15926232c266f8e01ebe0018872b4c"
+      "sha256": "02388df17c34445fc628a0d94a53dd33f02ba0588faa55aa261603f9f65d1b11"
     },
     {
       "path": "conformance/refinement/adapters/durable-consumption-owner.mjs",
@@ -423,11 +423,11 @@
     },
     {
       "path": "lib/frontier/model-to-matter.js",
-      "sha256": "de3f81e85f540bd633104c2de7f820d5020d5adfdda6bc91358c1aed483d6b7b"
+      "sha256": "12a897d3a210254456458e5c25bb575901f83c37849c87951db6cd6a865a18e8"
     },
     {
       "path": "lib/frontier/model-to-matter.ts",
-      "sha256": "7b0be7532204d7a070908223f261846e25791564dc193722b554c7aecc1436cf"
+      "sha256": "ada95ad328036e7c3e2712a2a22aeff041e40ee901cda081d10cae4a4a7b7718"
     },
     {
       "path": "lib/grace/curtailment.js",
@@ -503,7 +503,7 @@
     },
     {
       "path": "lib/strict-json.js",
-      "sha256": "405d62fdf68a10f3feab0ce4644605863b65b5d96100beff7f532789933c3e32"
+      "sha256": "b67774aeb747410cddea51df267ad7f42b94281ad0db1876bf419f131610bfb3"
     },
     {
       "path": "package-lock.json",
@@ -511,7 +511,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "a19511c4b5dfa9101fb9e43bdc6d529c04c8233f5f50879cbe4b82df85cafce2"
+      "sha256": "1d6efb48ccafb72898201e795e169dbffa7c20b08961c8924928303026f2d9ce"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -851,7 +851,7 @@
     },
     {
       "path": "packages/gate/dist/strict-json.js",
-      "sha256": "5b3d3bdd892681b6d11106be153442836498c31e57ebdde2f3d3c7b25cb4bd3f"
+      "sha256": "50fb4430c1a9c8e75b8ea194bed9196c79575a4a363c916208e4001c3bcb926f"
     },
     {
       "path": "packages/gate/dist/trust-program-revocation.js",
@@ -991,7 +991,7 @@
     },
     {
       "path": "packages/mobile/dist/strict-json.js",
-      "sha256": "164d66dce859210501d53bfe01687f321a4c6c930c02abd374385d92fa9f6473"
+      "sha256": "dd13a02fd2fc3c3003b9e538ab331fb6ce06108d4399e59ee763f6accaf78434"
     },
     {
       "path": "packages/mobile/enrollment.js",
@@ -1027,7 +1027,7 @@
     },
     {
       "path": "packages/require-receipt/dist/strict-json.js",
-      "sha256": "164d66dce859210501d53bfe01687f321a4c6c930c02abd374385d92fa9f6473"
+      "sha256": "dd13a02fd2fc3c3003b9e538ab331fb6ce06108d4399e59ee763f6accaf78434"
     },
     {
       "path": "packages/require-receipt/index.js",
@@ -1075,7 +1075,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "sha256": "47fcf14535ce14b48ef77e926bce06333af28a9a51cb2d50525ae070afb76d32"
+      "sha256": "f39af543e1524cd109d129263ba9cc25aeb77dda8aedb8c27913b7c45e4eb7a4"
     },
     {
       "path": "packages/verify/dist/aeb-aic-crossing-adapter.js",
@@ -1083,11 +1083,11 @@
     },
     {
       "path": "packages/verify/dist/aeb-aps-adapter.js",
-      "sha256": "4fa18a0bfd4bf7bbfab96be86c9173b961725f15700ec802aa1bcd4445cf60a9"
+      "sha256": "2997a32418e31c0b892ee3ebb7ba0fe1cb135f8d95d152d3a269f1508e6401cd"
     },
     {
       "path": "packages/verify/dist/aeb-chap-adapter.js",
-      "sha256": "bcbfaace3a1912d23c3c7852f222f5aec7d6348851119dfad89470e9ffcaafe5"
+      "sha256": "0362686bd196202f0bc89aa386f39b47f1a0b27e70644d07e8a4fc340532681a"
     },
     {
       "path": "packages/verify/dist/aeb-consequence-conformance.js",
@@ -1111,7 +1111,7 @@
     },
     {
       "path": "packages/verify/dist/aeb-mcgraw-delegation-adapter.js",
-      "sha256": "2bdabd215c6f2d0d1d16c3435b138125dfe33a381386249cfd19b92f7a884fd5"
+      "sha256": "fdb4e81e809225f0e63befad0485ca6d1c9c0e33078b47b112565d050985604e"
     },
     {
       "path": "packages/verify/dist/aeb-native-adapters.js",
@@ -1123,19 +1123,19 @@
     },
     {
       "path": "packages/verify/dist/aeb-oasnt-adapter.js",
-      "sha256": "aa7564f727ffe207249a1d336bcbec002cc449b2f6cff243020ea27f4d344703"
+      "sha256": "5cd516ad215feef3995f59ce5287cd05cc875eb5f73343caa6712228db8189e7"
     },
     {
       "path": "packages/verify/dist/aeb-oauth-transaction-challenge-adapter.js",
-      "sha256": "a3d3a193214a0e310eebc6fac38af3d6bff5915feaeb9db2151b665d6ddc6c85"
+      "sha256": "49b96f6eb6d0079ce1c4c17079b5206f2ee647bed3aa4464ef8d27fd175669f7"
     },
     {
       "path": "packages/verify/dist/aeb-psea-adapter.js",
-      "sha256": "6127e4ebec1e1e6c91492db52262eebff764a9319046358d396991d1522c8c06"
+      "sha256": "34387c1b86c3ec95ca14979853168c8d46158b4dc9320b0ea8891f72aaf9396c"
     },
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
-      "sha256": "1512b1fd04fd2261c7b9a224eb01544e8ebd40bdc053b3f81a8d909d37e051d0"
+      "sha256": "82703acd989610bec837c653577ca1405316718c05032e2497dee638d8933d78"
     },
     {
       "path": "packages/verify/dist/aeb.js",
@@ -1167,7 +1167,7 @@
     },
     {
       "path": "packages/verify/dist/authorization-server-confirmation.js",
-      "sha256": "eb7cfd662b3569d960543ab76805d68746f483f957822c1b1ca941ec4526f8d8"
+      "sha256": "cee6d6f11e776e59cffcb00279bbe6d0db29084e4fc97839fae44a6188af812e"
     },
     {
       "path": "packages/verify/dist/claim-assurance.js",
@@ -1259,7 +1259,7 @@
     },
     {
       "path": "packages/verify/dist/policy-decision-evidence.js",
-      "sha256": "d5a71f276c808faad49b21487511cabaaa5868675ab9404d23f8f5568cc227ce"
+      "sha256": "984b169891772471fa5ffab7a2a7f5d6abc00aee34f0453c1b7f7940dfb85cd1"
     },
     {
       "path": "packages/verify/dist/portable-state-handoff.js",
@@ -1311,7 +1311,7 @@
     },
     {
       "path": "packages/verify/dist/strict-json.js",
-      "sha256": "405d62fdf68a10f3feab0ce4644605863b65b5d96100beff7f532789933c3e32"
+      "sha256": "b67774aeb747410cddea51df267ad7f42b94281ad0db1876bf419f131610bfb3"
     },
     {
       "path": "packages/verify/dist/surface-binding.js",
@@ -1371,7 +1371,7 @@
     },
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "e6ebc6b0e44e05f850268d3b31f63a0104442db07d3fc5ff180b14e903ae17ad"
+      "sha256": "452bb2fad6ddd6cbae1b8f2da3e15dd711a6514a1e87ada4b702768a80cdce5f"
     },
     {
       "path": "packages/verify/src/authority-program.ts",
@@ -1407,7 +1407,7 @@
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "sha256": "976b314134e32252da6a81c04c4a462a8b106b54c1a299e0818efd47c8d50833"
+      "sha256": "532621440a6f19db378f6e2917b2c9564da8ef0ec4721c466c5348cb119d00eb"
     },
     {
       "path": "scripts/build-standalone-runtimes.mjs",

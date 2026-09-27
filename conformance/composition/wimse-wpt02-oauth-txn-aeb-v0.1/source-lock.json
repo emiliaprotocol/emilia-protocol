@@ -90,8 +90,8 @@
   "local_artifacts": [
     {
       "path": "packages/verify/src/aeb-wimse-oauth-adapter.ts",
-      "bytes": 69070,
-      "sha256": "a2b29e3e9b43f8d2404f4ee76689bad6403f828fafddbfe0971383a888af7b1b"
+      "bytes": 69364,
+      "sha256": "169ac869ab3e3a51886417464a7933c05e76f1679a22642cf68a41503f149f9d"
     },
     {
       "path": "packages/verify/aeb-wimse-oauth-adapter.js",
@@ -100,8 +100,8 @@
     },
     {
       "path": "packages/verify/dist/aeb-wimse-oauth-adapter.js",
-      "bytes": 66199,
-      "sha256": "1512b1fd04fd2261c7b9a224eb01544e8ebd40bdc053b3f81a8d909d37e051d0"
+      "bytes": 66481,
+      "sha256": "82703acd989610bec837c653577ca1405316718c05032e2497dee638d8933d78"
     },
     {
       "path": "packages/verify/aeb-adapter-contract.js",
@@ -110,18 +110,18 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "bytes": 109606,
-      "sha256": "47fcf14535ce14b48ef77e926bce06333af28a9a51cb2d50525ae070afb76d32"
+      "bytes": 110815,
+      "sha256": "f39af543e1524cd109d129263ba9cc25aeb77dda8aedb8c27913b7c45e4eb7a4"
     },
     {
       "path": "packages/verify/dist/strict-json.js",
-      "bytes": 11941,
-      "sha256": "405d62fdf68a10f3feab0ce4644605863b65b5d96100beff7f532789933c3e32"
+      "bytes": 12606,
+      "sha256": "b67774aeb747410cddea51df267ad7f42b94281ad0db1876bf419f131610bfb3"
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "bytes": 20929,
-      "sha256": "976b314134e32252da6a81c04c4a462a8b106b54c1a299e0818efd47c8d50833"
+      "bytes": 80336,
+      "sha256": "532621440a6f19db378f6e2917b2c9564da8ef0ec4721c466c5348cb119d00eb"
     },
     {
       "path": "conformance/composition/wimse-wpt02-oauth-txn-aeb-v0.1/run.mjs",
