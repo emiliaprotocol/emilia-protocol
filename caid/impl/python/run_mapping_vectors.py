@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
+"""Runs a CAID mapping corpus against mapping.py.
+
+Usage: python3 run_mapping_vectors.py [--corpus PATH] [--json]
+
+The corpus is read with this port's strict decoder. A vector's expectation
+is a verdict plus the exact reason list ("reasons"); a version 1 vector may
+instead name one reason the list must contain ("reason_contains").
+"""
 
 import copy
 import json
 import os
 import sys
 
-from mapping import compare_mapped_actions, mapping_profile_hash
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import caid  # noqa: E402
+from mapping import compare_mapped_actions, mapping_profile_hash  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 VECTORS = os.path.abspath(os.path.join(HERE, "..", "..", "conformance", "mapping-vectors.json"))
@@ -90,8 +100,11 @@ def run_mapping_vectors(corpus):
     return results
 
 
-with open(_corpus_path(sys.argv[1:]), "r", encoding="utf-8") as handle:
-    results = run_mapping_vectors(json.load(handle))
+with open(_corpus_path(sys.argv[1:]), "rb") as handle:
+    loaded = caid.decode_json_document(handle.read())
+if not loaded["ok"]:
+    raise SystemExit("mapping corpus does not decode with the strict decoder")
+results = run_mapping_vectors(loaded["value"])
 
 if "--json" in sys.argv:
     print(json.dumps(results, separators=(",", ":")))
