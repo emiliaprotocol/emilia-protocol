@@ -57,15 +57,25 @@ function mutate(root, operation) {
     if (Array.isArray(parent) && key >= parent.length) throw new Error('a set mutation may not append to an array; set the whole array');
     // "units" carries a string no strict JSON text can hold, as its UTF-16
     // code units; "nest" a value nested deeper than a strict JSON text may
-    // be, as leaf inside depth arrays (or objects whose only member is "a").
+    // be, as leaf inside depth arrays (or objects whose only member is "a");
+    // "dag" a value past the value count, as depth nested two-element
+    // arrays around leaf whose two elements are one shared array.
     const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units)
-      : Object.prototype.hasOwnProperty.call(operation, 'nest') ? nested(operation.nest) : clone(operation.value);
+      : Object.prototype.hasOwnProperty.call(operation, 'nest') ? nested(operation.nest)
+        : Object.prototype.hasOwnProperty.call(operation, 'dag') ? shared(operation.dag) : clone(operation.value);
     Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else throw new Error(`unsupported mutation ${operation.op}`);
 }
 function nested({ depth, container, leaf }) {
   let value = clone(leaf);
   for (let i = 0; i < depth; i += 1) value = container === 'object' ? { a: value } : [value];
+  return value;
+}
+// 2^(depth+1) - 1 values counted once per path, in depth + 1 distinct
+// containers and leaves.
+function shared({ depth, leaf }) {
+  let value = clone(leaf);
+  for (let i = 0; i < depth; i += 1) value = [value, value];
   return value;
 }
 function buildSide(corpus, descriptor) {
@@ -98,6 +108,7 @@ const AP2 = { source: 'ap2-order', profile: 'ap2-checkout-v1', pin: 'profile' };
 const set = (side, target, p, value) => ({ side, target, op: 'set', path: p, value });
 const setUnits = (side, target, p, units) => ({ side, target, op: 'set', path: p, units });
 const setNest = (side, target, p, depth, leaf = 0) => ({ side, target, op: 'set', path: p, nest: { depth, container: 'array', leaf } });
+const setDag = (side, target, p, depth, leaf = 0) => ({ side, target, op: 'set', path: p, dag: { depth, leaf } });
 const del = (side, target, p) => ({ side, target, op: 'delete', path: p });
 const HEX = 'a'.repeat(64);
 const epRules = v1.profiles['ep-action-v1'].rules;
@@ -213,6 +224,12 @@ const CASES = [
     [set('right', 'source', '/parameters/total_amount', 1.5)], [], 'INDETERMINATE', ['right:source_not_canonicalizable']],
   ['stage-b-source-deep-not-canonicalizable', 'the nesting limit on a host mapping source: a member nested 70 deep, beside no rule path, is source_not_canonicalizable (never unsupported_value)', EP, EP,
     [setNest('right', 'source', '/x', 70)], [], 'INDETERMINATE', ['right:source_not_canonicalizable']],
+  // The value count applies to a host mapping source as to every host value
+  // (Section 2.6): 25 levels of a shared two-element array hold 2^26 - 1
+  // values, past 33,554,432, so the source is source_not_canonicalizable,
+  // never unsupported_value.
+  ['stage-b-source-value-count-not-canonicalizable', 'the value count on a host mapping source: a member holding 2^26 - 1 values through shared arrays, beside no rule path, is source_not_canonicalizable (never unsupported_value)', EP, EP,
+    [setDag('right', 'source', '/x', 25)], [], 'INDETERMINATE', ['right:source_not_canonicalizable']],
   ['stage-d-compute-order', 'stage D reports the mapped action\'s compute reasons in compute order', EP, EP,
     [set('right', 'source', '/parameters/currency', 'EURO'), set('right', 'source', '/parameters/total_amount', '01.00')],
     [], 'INDETERMINATE', ['right:mapped_action:invalid_amount:total_amount', 'right:mapped_action:mistyped_field:currency']],
@@ -250,6 +267,13 @@ const CASES = [
     [set('right', 'profile', '/loss_policy', 'declared-source-semantic-loss'), set('right', 'profile', '/omitted_source_fields', [{ source_path: '/ep_version', reason: 'transport version is not material' }]),
       setNest('right', 'profile', '/x', 70)],
     [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:declared_source_semantic_loss']],
+  // The value count applies to a host profile the same way: an extra member
+  // holding 2^26 - 1 values through shared arrays leaves the profile outside
+  // the data model, with no digest, and its intact source_format is still
+  // read.
+  ['profile-value-count-abstains', 'a host profile with an extra member holding 2^26 - 1 values through shared arrays is past the value count: invalid_mapping_profile and mapping_profile_unpinned (never unsupported_value), and no source_format_mismatch', EP, EP,
+    [setDag('right', 'profile', '/x', 25)],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned']],
 ];
 
 // ---------------------------------------------------------------- build
@@ -292,7 +316,7 @@ const { vectors: _v, ...envelope } = corpus;
 const out = {
   '@version': 'CAID-ACTION-MAPPING-VECTORS-v2',
   version: 2,
-  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.5). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), or as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is "a", a host value nested deeper than a strict JSON text may be).`,
+  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.3). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is "a", a host value nested deeper than a strict JSON text may be), or as dag ({depth, leaf}: leaf inside depth nested two-element arrays whose two elements are one shared array, 2^(depth+1) - 1 values counted once per path, for the value count of Section 2.6).`,
   previous_versions: [{
     version: 1,
     vectors: v1.vectors.length,

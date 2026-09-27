@@ -10,7 +10,9 @@
 // JSON text can hold (a noncharacter or a lone surrogate), or as "nest",
 // {depth, container, leaf}: leaf inside depth nested arrays (or objects
 // whose only member is "a"), a value nested deeper than strict JSON text
-// may be. With --json each
+// may be, or as "dag", {depth, leaf}: leaf inside depth nested two-element
+// arrays whose two elements are one shared array, a value past the value
+// count. With --json each
 // result also carries both sides' definition_sha256 (null for a failed
 // side), which caid/conformance/run.mjs compares across implementations.
 //
@@ -53,7 +55,8 @@ function mutate(root, operation) {
     else delete parent[key];
   } else if (operation.op === 'set') {
     const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units)
-      : Object.prototype.hasOwnProperty.call(operation, 'nest') ? nested(operation.nest) : clone(operation.value);
+      : Object.prototype.hasOwnProperty.call(operation, 'nest') ? nested(operation.nest)
+        : Object.prototype.hasOwnProperty.call(operation, 'dag') ? shared(operation.dag) : clone(operation.value);
     Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else {
     throw new Error('unsupported vector mutation: ' + operation.op);
@@ -63,6 +66,12 @@ function mutate(root, operation) {
 function nested({ depth, container, leaf }) {
   let value = clone(leaf);
   for (let i = 0; i < depth; i += 1) value = container === 'object' ? { a: value } : [value];
+  return value;
+}
+
+function shared({ depth, leaf }) {
+  let value = clone(leaf);
+  for (let i = 0; i < depth; i += 1) value = [value, value];
   return value;
 }
 

@@ -668,6 +668,12 @@ export function coreCases({ limits }) {
     compute('native-definition-opaque-member-outside-projection', 'native lane: an opaque host value outside the projection is never read', [{ ...R1, references: { $host: 'opaque' } }], r1Object, 'ok', sameAsPlain),
     compute('native-definition-deep-member-in-projection', 'native lane: a member of an unregistered-type field entry is inside the projection, so nesting it 70 deep makes the definition nonconforming', [{ ...R1, optional_fields: [{ name: 'g', type: 'color', palette: nest(70, 0) }] }], r1Object, { refusals: ['invalid_definition'] }),
     compute('native-definition-opaque-in-projection', 'native lane: an opaque host value inside the projection makes the definition nonconforming', [{ ...R1, optional_fields: [{ name: 'g', type: 'color', palette: { $host: 'opaque' } }] }], r1Object, { refusals: ['invalid_definition'] }),
+    // The value count applies to a host definition as to every host value
+    // (Section 2.6): a validation projection that exceeds it is
+    // invalid_definition, never unsupported_value; the same shared array
+    // outside the projection is never read.
+    compute('native-definition-value-count-in-projection', 'native lane: a shared array of 2^26 - 1 values in a member of an unregistered-type field entry puts the validation projection past the value count: invalid_definition', [{ ...R1, optional_fields: [{ name: 'g', type: 'color', palette: { $dag: { depth: 25, leaf: 0 } } }] }], r1Object, { refusals: ['invalid_definition'] }),
+    compute('native-definition-value-count-outside-projection', 'native lane: the same shared array as the summary member, outside the validation projection, is never read', [{ ...R1, summary: { $dag: { depth: 25, leaf: 0 } } }], r1Object, 'ok', sameAsPlain),
   );
 
   // ------------------------------------------------------------ values, not characters (Section 2.6)
@@ -686,6 +692,19 @@ export function coreCases({ limits }) {
     compute('native-value-budget-over', 'native lane: 2^26 - 1 values reached through shared arrays pass the value budget, so the value is unsupported_value alone and the fractional leaf is not reported', [BUDGET], dag(25), { refusals: ['unsupported_value'] }),
     verify('native-verify-value-budget-over', 'native lane: verification of a value past the value budget is invalid_object, with unsupported_value alone behind it', [BUDGET],
       { ...dag(25), caid: `caid:1:probe.budget.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
+  );
+  // The value count stops at the nesting limit, as the examination of
+  // numbers does (Section 2.5): an object or array nested deeper than 64
+  // counts as one value and nothing inside it is counted. A shared array
+  // whose expansion (2^27 - 1 values) exceeds the count only below depth 64
+  // therefore leaves the value within the count: the top-level 1.5 is
+  // unsupported_number, and the nesting is unsupported_value.
+  const deepDag = (wrappers) => native({ action_type: 't.obj.1', s: 'x', a: nest(wrappers, { $dag: { depth: 26, leaf: 0 } }), v: 1.5 });
+  add(
+    compute('native-value-count-stops-at-depth-64', 'native lane: 63 nested arrays around a shared array whose expansion is 2^27 - 1 values; the shared array sits at depth 65, so it counts as one value and nothing inside it is counted: unsupported_number from the top-level 1.5, then unsupported_value', [OBJ],
+      deepDag(63), { refusals: ['unsupported_number', 'unsupported_value'] }),
+    compute('native-value-count-straddles-depth-64', 'native lane: the same shared array starting at depth 56, so nine of its levels are counted and everything below depth 64 is not: unsupported_number, then unsupported_value', [OBJ],
+      deepDag(54), { refusals: ['unsupported_number', 'unsupported_value'] }),
   );
   // The nesting limit (Section 2.2): the contents of a container nested
   // deeper than 64 are not examined, so a number inside one adds no

@@ -13,9 +13,13 @@
 // definition_sha256 holds both sides' digests, null for a failed side. A set
 // mutation carries its value as "value", as "units", the UTF-16 code units
 // of a string no strict JSON text can hold, built as the generalized UTF-8
-// (WTF-8) a Go string holds for a lone surrogate, or as "nest", {depth,
+// (WTF-8) a Go string holds for a lone surrogate, as "nest", {depth,
 // container, leaf}: leaf inside depth nested slices (or maps whose only
-// member is "a"), a value nested deeper than strict JSON text may be.
+// member is "a"), a value nested deeper than strict JSON text may be, or as
+// "dag", {depth, leaf}: leaf inside depth nested two-element slices whose
+// two elements are one shared slice, a value past the value count. Every
+// mutation value is built fresh for the vector and set as built, never
+// deep-copied, so a shared slice stays shared.
 package main
 
 import (
@@ -90,6 +94,21 @@ func nestedValue(raw interface{}) interface{} {
 	return value
 }
 
+// sharedValue builds a "dag" mutation value: leaf inside depth nested
+// two-element slices, both elements one shared slice.
+func sharedValue(raw interface{}) interface{} {
+	spec, _ := raw.(obj)
+	depth := 0
+	if n, ok := spec["depth"].(fmt.Stringer); ok {
+		depth, _ = strconv.Atoi(n.String())
+	}
+	value := clone(spec["leaf"])
+	for i := 0; i < depth; i++ {
+		value = []interface{}{value, value}
+	}
+	return value
+}
+
 func sideDigest(r caidlib.MapActionResult) interface{} {
 	if !r.OK {
 		return nil
@@ -130,11 +149,12 @@ func pointerSegments(pointer string) []string {
 	return out
 }
 
-// mutate applies one corpus mutation ({op: set|delete, path, value}).
+// mutate applies one corpus mutation ({op: set|delete, path, value}). The
+// caller builds newValue fresh for the vector; it is set as given.
 func mutate(value interface{}, segments []string, op string, newValue interface{}) interface{} {
 	if len(segments) == 0 {
 		if op == "set" {
-			return clone(newValue)
+			return newValue
 		}
 		return nil
 	}
@@ -146,7 +166,7 @@ func mutate(value interface{}, segments []string, op string, newValue interface{
 			case "delete":
 				delete(typed, head)
 			case "set":
-				typed[head] = clone(newValue)
+				typed[head] = newValue
 			default:
 				panic("unsupported vector mutation: " + op)
 			}
@@ -160,7 +180,7 @@ func mutate(value interface{}, segments []string, op string, newValue interface{
 			case "delete":
 				return append(typed[:index], typed[index+1:]...)
 			case "set":
-				typed[index] = clone(newValue)
+				typed[index] = newValue
 				return typed
 			}
 			panic("unsupported vector mutation: " + op)
@@ -292,11 +312,13 @@ func main() {
 				side = right
 			}
 			target := str(operation, "target")
-			value := operation["value"]
+			value := clone(operation["value"])
 			if units, present := operation["units"]; present {
 				value = unitsString(units)
 			} else if nest, present := operation["nest"]; present {
 				value = nestedValue(nest)
+			} else if dag, present := operation["dag"]; present {
+				value = sharedValue(dag)
 			}
 			side[target] = mutate(side[target], pointerSegments(str(operation, "path")), str(operation, "op"), value)
 		}
