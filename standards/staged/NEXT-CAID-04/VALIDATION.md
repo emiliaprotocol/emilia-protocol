@@ -1,9 +1,9 @@
 # Validation record
 
 Validated on 2026-09-27. The source applies every confirmed finding of the
-pre-filing review to the previously staged -04, which carried the
-amount-string ABNF and the suite and unused-bit parsing changes over -03
-and keeps both.
+pre-filing review, and every finding of the first audit of those fixes, to
+the previously staged -04, which carried the amount-string ABNF and the
+suite and unused-bit parsing changes over -03 and keeps both.
 
 ## Rendering
 
@@ -12,9 +12,21 @@ and keeps both.
   the HTML (`--html`). Trailing spaces and tabs in the generated HTML are
   removed with `perl -pe 's/[ \t]+$//'` before checksums are recorded.
 - `xml2rfc` reports two informational warnings and nothing else: the
-  source omits `submissionType`, as -03 does, because this is an individual
-  draft with no adopted document stream, so `xml2rfc` uses its IETF default
+  source omits `submissionType`, as -03 does, because this individual
+  draft belongs to no document stream, so `xml2rfc` uses its IETF default
   and sets `consensus="true"` for a Standards Track document.
+- `check-caid-04` renders the source again with `xml2rfc 3.34.0` whenever
+  it is on PATH, with the flags and the trailing-space strip above, and
+  fails unless both renders equal `RENDERS/` byte for byte and `xml2rfc`
+  gives no warning beyond those two. `--renders` (and `--prefiling`) fails
+  when that `xml2rfc` is absent; run it before upload. It passes on this
+  tree.
+- No table row of the TXT is split across a page, and `check-caid-04`
+  fails if one is. Table 2 lists the reasons of phases 3 and 4 without
+  their `:<name>` parameter, which the paragraph above it states, so its
+  "Refused when" column is 31 columns wide; the paragraph that follows the
+  table in the earlier draft now precedes it, and the table sits on one
+  page.
 - Every sourcecode line is at most 69 columns. Long example lines are folded
   as specified in RFC 8792 (single backslash strategy), and
   `check-caid-04` unfolds them before recomputing. Appendix D is two
@@ -37,15 +49,28 @@ and keeps both.
   lines that begin with "Appendix".
 - The TXT and the XML contain no U+2013 or U+2014. The only double hyphens
   in the TXT are the arrows of the Section 1.2 figure and table borders.
-  "independent implementation" appears only in Section 13, which says that
-  none exists; "adopted", "endorsed" (outside the two disclaimers of
-  endorsement), "quantum-safe", and "FIPS-compliant" do not appear.
+  `check-caid-04` fails on "adopted", "adoption", "quantum-safe",
+  "FIPS-compliant", "SCITT-integrated", or a tool name anywhere in the XML
+  or TXT, and on "independent implementation" or "endorse" outside the
+  three disclaimers of Section 13 and the endorsement disclaimer of the
+  Acknowledgments.
 
 ## check-caid-04
 
-`node scripts/check-caid-04.mjs` passes every check on this tree, and
-`node scripts/check-caid-04.mjs --prefiling` passes against origin/main as
-last fetched (`cea10b85e`, the merge of pull request #821):
+`node scripts/check-caid-04.mjs --renders` passes every check on this
+tree. The filing gate, `node scripts/check-caid-04.mjs --prefiling`, fails
+on this tree, as it must until `feat/caid-04-prefiling` merges. Against
+origin/main as last fetched (`cea10b85e`, the merge of pull request #821)
+its first checks hold: main carries registry version 5,
+`caid/spec/caid.abnf`, ports that name -04, and the [CAID-REGISTRY]
+commit. Its last check does not: 22 files under `caid/` differ between
+this branch and main, among them the JavaScript mapping stage B fix that
+Section 8.3 states, the conditional cbor-sha256 vectors and the runners
+that skip them, which Section 13 describes, and the `caid.abnf` comment
+that Appendix A carries. The gate passes only when origin/main holds this
+branch's `caid/` tree and `packages/verify/vendor/caid.mjs` byte for byte
+and the working tree matches HEAD there; it lists every differing file.
+The checks it runs on this tree:
 
 - Appendix A equals `caid/spec/caid.abnf` byte for byte (160 lines). The
   Appendix A.5 comment on `format-name` changed in both, so it names the
@@ -69,6 +94,24 @@ last fetched (`cea10b85e`, the merge of pull request #821):
 - The Section 4.2 example, with its line breaks read as spaces and its one
   folded line unfolded, is the registry version 5 entry for
   payment.release.1 and hashes to the C.1 `definition_sha256`.
+- The Section 4.7 registration, read the same way, is the registry version
+  5 entry for tool.call.1 member for member, summary, notes, and
+  digest_notes included, so the draft and the file IANA is asked to store
+  give one text for it. Sections 12 and 12.2 and the Appendix D
+  introduction no longer carve tool.call.1 out of "the entry with that
+  name in the registry file", and the Section 4.7 prose names the
+  `base:sha256:<hex>` strings that the entry's digest_notes name.
+- Section 12.2 applies the 128-bit entropy criterion to registrations made
+  after the document and says where the reason for the initial entries is
+  stated; it and Appendix D.2 limit later registration to the seven
+  specification-defined D.2 types; Sections 12 and 12.1 let the IESG act
+  for another change controller only when that controller cannot be
+  reached or does not respond; and `caid/registry/GOVERNANCE.md` section
+  7.1 lists the D.2 entries and no longer states either absolute that the
+  audit refuted.
+- Section 13 says the next major release vendors caid.mjs without
+  mapping; `packages/verify/vendor/caid.mjs` is a byte copy of
+  `caid/impl/js/caid.mjs` and defines no mapping function.
 - [CAID-REGISTRY] targets `action-types.json` at commit `cea10b85e`, carries
   the raw file URL at the same commit, and that commit's file hashes to
   registry version 5 (`1e30ddd3...2551a`).
@@ -121,8 +164,23 @@ Run on 2026-09-27 on darwin/arm64 (node, Python 3, go1.26.4, swift):
   `[mistyped_field:o, unsupported_value]`. Python: the same for 1.5, NaN,
   2**53, the strings, and a set; 10**400 and 2**1024-2**970 give
   `[mistyped_field:n, unsupported_number]`, and 2**1024-2**970-1 gives
-  `[unsupported_number]`. Go runs the same cases through the corpus
-  vectors `native-*`, which pass in all three ports.
+  `[unsupported_number]`; `decimal.Decimal` and `fractions.Fraction`
+  give `[mistyped_field:n, unsupported_value]`. JavaScript `new Number(5)`
+  and the BigInts 5n, 2n**60n, and 10n**400n give
+  `[mistyped_field:n, unsupported_value]`, and `[unsupported_value]` as a
+  member no field declares. Go: `int`, `int64`, `float64`, and
+  `json.Number` are numbers, so `int64(1)<<60` and `math.MaxInt64` give
+  `[unsupported_number]` and `json.Number("1e400")` gives
+  `[mistyped_field:n, unsupported_number]`; `int32`, `int8`, `uint`,
+  `uint64` (5 and 1<<60), `float32`, and `*big.Int` give
+  `[mistyped_field:n, unsupported_value]` in the integer field and
+  `[unsupported_value]` elsewhere. Section 2.5 and Section 6.1 state this
+  as a property of the binding. The corpus vectors `native-*` pass in all
+  three ports.
+- The Section 8.3 stage B source descriptor rule, with the C.6 profile and
+  source and a descriptor that adds a NaN member, a 1.5 member, a member
+  nested 70 deep, or a lone surrogate in media_type: JavaScript, Python,
+  and Go each report exactly `[source_format_mismatch]`.
 - The Section 10.6 number differential: in node, `Number()` of
   3999.99999999999999999 and of 4000.0000000000001 is 4000, of
   3999.9999999999995 and 4000.0000000000005 is not an integer, and of

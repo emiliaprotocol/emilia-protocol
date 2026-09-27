@@ -56,12 +56,18 @@ including the inputs it newly refuses.
   `caid/spec/reference.mjs`, through hashing done in the script, and
   through its deterministic CBOR encoder.
 - Every `chg-` item maps to vector ids that exist in the corpora.
+- The Section 4.7 registration is the registry version 5 entry for
+  tool.call.1, member for member, so the draft gives one text for it.
 - The normative and informative references, the [CAID-REGISTRY] commit and
   raw file URL, registry version 5 and its counts and file digest, the
   registries the Abstract and Section 12 name, the prose examples against
   the ABNF, BCP 14 markup, the removed -03 text, the wording each finding
-  of the pre-filing review removes or requires, both renders, and the
-  checksums.
+  of the pre-filing review and of the audit of its fixes removes or
+  requires, the banned wording (claims of adoption or endorsement, of
+  independent implementations, post-quantum and FIPS claims, tool names),
+  both renders, table rows split across a page, and the checksums.
+- When `xml2rfc 3.34.0` is on PATH, both renders equal a fresh render of
+  the source (`--renders` requires it).
 
 ## Hold
 
@@ -71,14 +77,17 @@ Submission is the author's decision. Before it:
    all three implementations implement -04. Pull request #821 merged as
    `cea10b85e`, but this packet's branch (`feat/caid-04-prefiling`) also
    carries the JavaScript mapping stage B fix that the draft's Section 8.3
-   now states, and the vectors its change log cites. Merge this branch
-   before filing. After `git fetch origin`, run
-   `node scripts/check-caid-04.mjs --prefiling`: it requires that
-   origin/main carries registry version 5, `caid/spec/caid.abnf` and the
-   -04 ports, and that the [CAID-REGISTRY] commit is reachable from
-   origin/main. It does not detect a missing stage B fix, so confirm that
-   `caid/impl/js/mapping.mjs` on origin/main reads out-of-model host
-   profiles (`git grep -n profileMember origin/main -- caid/impl/js`).
+   now states, the conditional cbor-sha256 vectors and the runners that
+   skip them, the vectors its change log cites, and the `caid.abnf`
+   comment that Appendix A carries. Merge this branch before filing.
+   After `git fetch origin`, run
+   `node scripts/check-caid-04.mjs --prefiling`. It fails today, as it
+   should. It requires that origin/main carries registry version 5,
+   `caid/spec/caid.abnf` and the -04 ports, that the [CAID-REGISTRY]
+   commit is reachable from origin/main, that origin/main's `caid/` tree
+   and `packages/verify/vendor/caid.mjs` equal this branch's byte for byte,
+   and that the renders equal a fresh `xml2rfc 3.34.0` render. It lists
+   every file that differs from main.
 2. [CAID-REGISTRY] is pinned to commit
    `cea10b85e96460a04bf55d683a1ebc34e8b2c9a6`, the merge of #821 on main,
    whose `caid/registry/action-types.json` is registry version 5 (SHA-256
