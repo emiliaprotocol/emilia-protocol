@@ -12,7 +12,9 @@
 // whose only member is "a"), a value nested deeper than strict JSON text
 // may be, or as "dag", {depth, leaf}: leaf inside depth nested two-element
 // arrays whose two elements are one shared array, a value past the value
-// count. With --json each
+// count, or as "host", a host value no JSON text carries, as in the core
+// corpus native lane: "cyclic", a reference to the object or array that
+// holds the member (its parent), or "opaque", a new Map(). With --json each
 // result also carries both sides' definition_sha256 (null for a failed
 // side), which caid/conformance/run.mjs compares across implementations.
 //
@@ -56,11 +58,18 @@ function mutate(root, operation) {
   } else if (operation.op === 'set') {
     const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units)
       : Object.prototype.hasOwnProperty.call(operation, 'nest') ? nested(operation.nest)
-        : Object.prototype.hasOwnProperty.call(operation, 'dag') ? shared(operation.dag) : clone(operation.value);
+        : Object.prototype.hasOwnProperty.call(operation, 'dag') ? shared(operation.dag)
+          : Object.prototype.hasOwnProperty.call(operation, 'host') ? hostValue(operation.host, parent) : clone(operation.value);
     Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else {
     throw new Error('unsupported vector mutation: ' + operation.op);
   }
+}
+
+function hostValue(kind, parent) {
+  if (kind === 'cyclic') return parent;
+  if (kind === 'opaque') return new Map();
+  throw new Error('unsupported host value: ' + kind);
 }
 
 function nested({ depth, container, leaf }) {

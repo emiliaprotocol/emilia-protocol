@@ -46,10 +46,10 @@ Updated: 2026-09-27
 - 1,966 grammar boundary cases, and the roughly half-million case list that
   `caid/spec/abnf-check.mjs` writes, passing in all three ports through
   `parseCaid` and `computeCaid`, never through the generated matchers.
-- 78 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
+- 82 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
   agreement on verdicts and exact reason lists in all three ports, including
   the SILP IR to CAID `CANCEL+EMAIL` profile.
-- A differential fuzz of about 87,000 seeded cases in which the JavaScript,
+- A differential fuzz of about 88,000 seeded cases in which the JavaScript,
   vendored Verify, Python and Go implementations match the spec oracle, with
   an empty allow list.
 - 100 candidate Consequential Action Interoperability vectors covering 25

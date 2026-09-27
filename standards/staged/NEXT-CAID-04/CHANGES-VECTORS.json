@@ -115,7 +115,7 @@
       "mapping": ["empty-suite-not-defaulted"]
     },
     "chg-mapping-stage-b": {
-      "mapping": ["profile-deep-member-abstains", "profile-deep-member-declared-loss-abstains"]
+      "mapping": ["profile-deep-member-abstains", "profile-deep-member-declared-loss-abstains", "profile-value-count-abstains", "profile-value-count-declared-loss-abstains", "profile-cyclic-member-declared-loss-abstains", "profile-cyclic-array-member-declared-loss-abstains", "profile-opaque-member-declared-loss-abstains"]
     },
     "chg-enum-snapshot-shape": {
       "core": ["refuse-external-enum-label-not-a-string", "refuse-external-enum-empty-label", "refuse-external-enum-digest-not-a-string"]

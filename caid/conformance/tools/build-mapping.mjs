@@ -59,12 +59,21 @@ function mutate(root, operation) {
     // code units; "nest" a value nested deeper than a strict JSON text may
     // be, as leaf inside depth arrays (or objects whose only member is "a");
     // "dag" a value past the value count, as depth nested two-element
-    // arrays around leaf whose two elements are one shared array.
+    // arrays around leaf whose two elements are one shared array; "host"
+    // a host value no JSON text carries, as in the core corpus native lane:
+    // "cyclic" is a reference to the enclosing object or array (the parent
+    // of the path), "opaque" a value of no JSON kind (new Map()).
     const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units)
       : Object.prototype.hasOwnProperty.call(operation, 'nest') ? nested(operation.nest)
-        : Object.prototype.hasOwnProperty.call(operation, 'dag') ? shared(operation.dag) : clone(operation.value);
+        : Object.prototype.hasOwnProperty.call(operation, 'dag') ? shared(operation.dag)
+          : Object.prototype.hasOwnProperty.call(operation, 'host') ? hostValue(operation.host, parent) : clone(operation.value);
     Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else throw new Error(`unsupported mutation ${operation.op}`);
+}
+function hostValue(kind, parent) {
+  if (kind === 'cyclic') return parent;
+  if (kind === 'opaque') return new Map();
+  throw new Error(`unsupported host value ${kind}`);
 }
 function nested({ depth, container, leaf }) {
   let value = clone(leaf);
@@ -109,6 +118,7 @@ const set = (side, target, p, value) => ({ side, target, op: 'set', path: p, val
 const setUnits = (side, target, p, units) => ({ side, target, op: 'set', path: p, units });
 const setNest = (side, target, p, depth, leaf = 0) => ({ side, target, op: 'set', path: p, nest: { depth, container: 'array', leaf } });
 const setDag = (side, target, p, depth, leaf = 0) => ({ side, target, op: 'set', path: p, dag: { depth, leaf } });
+const setHost = (side, target, p, host) => ({ side, target, op: 'set', path: p, host });
 const del = (side, target, p) => ({ side, target, op: 'delete', path: p });
 const HEX = 'a'.repeat(64);
 const epRules = v1.profiles['ep-action-v1'].rules;
@@ -274,6 +284,28 @@ const CASES = [
   ['profile-value-count-abstains', 'a host profile with an extra member holding 2^26 - 1 values through shared arrays is past the value count: invalid_mapping_profile and mapping_profile_unpinned (never unsupported_value), and no source_format_mismatch', EP, EP,
     [setDag('right', 'profile', '/x', 25)],
     [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned']],
+  // Stage B reads loss_policy, and source_format, from every host profile
+  // outside the data model: past the value count, cyclic (a member that
+  // refers back to the profile, or an array that holds itself), or holding
+  // a host value of no JSON kind. Each declares source semantic loss with
+  // one omission, so declared_source_semantic_loss shows loss_policy was
+  // read, and the absence of source_format_mismatch that source_format was.
+  ['profile-value-count-declared-loss-abstains', 'the host profile of profile-value-count-abstains declaring source semantic loss with one omission: stage B still reads its source_format and loss_policy and reports declared_source_semantic_loss', EP, EP,
+    [set('right', 'profile', '/loss_policy', 'declared-source-semantic-loss'), set('right', 'profile', '/omitted_source_fields', [{ source_path: '/ep_version', reason: 'transport version is not material' }]),
+      setDag('right', 'profile', '/x', 25)],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:declared_source_semantic_loss']],
+  ['profile-cyclic-member-declared-loss-abstains', 'a host profile declaring source semantic loss with one omission and an extra member that refers back to the profile is cyclic, so outside the data model: invalid_mapping_profile and mapping_profile_unpinned, no source_format_mismatch, and declared_source_semantic_loss', EP, EP,
+    [set('right', 'profile', '/loss_policy', 'declared-source-semantic-loss'), set('right', 'profile', '/omitted_source_fields', [{ source_path: '/ep_version', reason: 'transport version is not material' }]),
+      setHost('right', 'profile', '/x', 'cyclic')],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:declared_source_semantic_loss']],
+  ['profile-cyclic-array-member-declared-loss-abstains', 'the same with an extra member that is an array holding itself', EP, EP,
+    [set('right', 'profile', '/loss_policy', 'declared-source-semantic-loss'), set('right', 'profile', '/omitted_source_fields', [{ source_path: '/ep_version', reason: 'transport version is not material' }]),
+      set('right', 'profile', '/x', [0]), setHost('right', 'profile', '/x/0', 'cyclic')],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:declared_source_semantic_loss']],
+  ['profile-opaque-member-declared-loss-abstains', 'the same with an extra member holding a host value of no JSON kind (JavaScript Map, Python set, Go struct)', EP, EP,
+    [set('right', 'profile', '/loss_policy', 'declared-source-semantic-loss'), set('right', 'profile', '/omitted_source_fields', [{ source_path: '/ep_version', reason: 'transport version is not material' }]),
+      setHost('right', 'profile', '/x', 'opaque')],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:declared_source_semantic_loss']],
 ];
 
 // ---------------------------------------------------------------- build
@@ -316,7 +348,7 @@ const { vectors: _v, ...envelope } = corpus;
 const out = {
   '@version': 'CAID-ACTION-MAPPING-VECTORS-v2',
   version: 2,
-  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.3). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is "a", a host value nested deeper than a strict JSON text may be), or as dag ({depth, leaf}: leaf inside depth nested two-element arrays whose two elements are one shared array, 2^(depth+1) - 1 values counted once per path, for the value count of Section 2.6).`,
+  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.3). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is "a", a host value nested deeper than a strict JSON text may be), as dag ({depth, leaf}: leaf inside depth nested two-element arrays whose two elements are one shared array, 2^(depth+1) - 1 values counted once per path, for the value count of Section 2.6), or as host, a host value no JSON text carries: "cyclic", a reference to the object or array that holds the member (its parent), or "opaque", a host value of no JSON kind (JavaScript new Map(), Python set(), Go struct{}{}).`,
   previous_versions: [{
     version: 1,
     vectors: v1.vectors.length,

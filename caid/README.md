@@ -103,10 +103,10 @@ ever ingests another verifier's evidence into its own trust boundary.
   (`conformance/history/vectors.v4.json` is version 4 byte for byte)
 - `conformance/grammar-vectors.json` — 1,966 grammar boundary cases driven
   through the public parse and compute entry points
-- `conformance/mapping-vectors.json` — 78 mapping vectors
+- `conformance/mapping-vectors.json` — 82 mapping vectors
   (version 2) with exact reason lists in the -04 stage order, including the
   SILP IR to CAID `CANCEL+EMAIL` profile
-- `fuzz/` — the differential fuzz: about 87,000 seeded cases through the
+- `fuzz/` — the differential fuzz: about 88,000 seeded cases through the
   JavaScript, vendored Verify, Python and Go entry points against the spec
   oracle, with an empty allow list
 - `interop/consequential-action-v1/` — 25 candidate, revision-pinned

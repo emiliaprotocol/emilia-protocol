@@ -17,9 +17,12 @@
 // container, leaf}: leaf inside depth nested slices (or maps whose only
 // member is "a"), a value nested deeper than strict JSON text may be, or as
 // "dag", {depth, leaf}: leaf inside depth nested two-element slices whose
-// two elements are one shared slice, a value past the value count. Every
-// mutation value is built fresh for the vector and set as built, never
-// deep-copied, so a shared slice stays shared.
+// two elements are one shared slice, a value past the value count, or as
+// "host", a host value no JSON text carries, as in the core corpus native
+// lane: "cyclic", a reference to the map or slice that holds the member (its
+// parent), or "opaque", a struct{}{}. Every mutation value is built fresh
+// for the vector and set as built, never deep-copied, so a shared slice
+// stays shared.
 package main
 
 import (
@@ -109,6 +112,21 @@ func sharedValue(raw interface{}) interface{} {
 	return value
 }
 
+// cyclicRef is the value of a "host": "cyclic" mutation until mutate sets
+// it: mutate stores the map or slice that holds the member in its place.
+type cyclicRef struct{}
+
+// hostValue builds a "host" mutation value.
+func hostValue(raw interface{}) interface{} {
+	switch raw {
+	case "cyclic":
+		return cyclicRef{}
+	case "opaque":
+		return struct{}{}
+	}
+	panic(fmt.Sprintf("unsupported host value: %v", raw))
+}
+
 func sideDigest(r caidlib.MapActionResult) interface{} {
 	if !r.OK {
 		return nil
@@ -150,7 +168,8 @@ func pointerSegments(pointer string) []string {
 }
 
 // mutate applies one corpus mutation ({op: set|delete, path, value}). The
-// caller builds newValue fresh for the vector; it is set as given.
+// caller builds newValue fresh for the vector; it is set as given, except
+// that a cyclicRef is replaced by the map or slice that holds the member.
 func mutate(value interface{}, segments []string, op string, newValue interface{}) interface{} {
 	if len(segments) == 0 {
 		if op == "set" {
@@ -166,7 +185,11 @@ func mutate(value interface{}, segments []string, op string, newValue interface{
 			case "delete":
 				delete(typed, head)
 			case "set":
-				typed[head] = newValue
+				if _, cyclic := newValue.(cyclicRef); cyclic {
+					typed[head] = typed
+				} else {
+					typed[head] = newValue
+				}
 			default:
 				panic("unsupported vector mutation: " + op)
 			}
@@ -180,7 +203,11 @@ func mutate(value interface{}, segments []string, op string, newValue interface{
 			case "delete":
 				return append(typed[:index], typed[index+1:]...)
 			case "set":
-				typed[index] = newValue
+				if _, cyclic := newValue.(cyclicRef); cyclic {
+					typed[index] = typed
+				} else {
+					typed[index] = newValue
+				}
 				return typed
 			}
 			panic("unsupported vector mutation: " + op)
@@ -319,6 +346,8 @@ func main() {
 				value = nestedValue(nest)
 			} else if dag, present := operation["dag"]; present {
 				value = sharedValue(dag)
+			} else if host, present := operation["host"]; present {
+				value = hostValue(host)
 			}
 			side[target] = mutate(side[target], pointerSegments(str(operation, "path")), str(operation, "op"), value)
 		}

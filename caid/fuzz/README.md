@@ -18,7 +18,7 @@ node caid/fuzz/run.mjs --root DIR   # fuzz another tree (a git archive of main, 
 
 ## What runs
 
-- `gen.mjs` writes about 87,000 cases from this checkout's corpora and
+- `gen.mjs` writes about 88,000 cases from this checkout's corpora and
   registry (never from the tree under test), in families: `vec-core`,
   `vec-map`, `registry`, `grammar`, `code` (every named code format),
   `number`, `json`, `native`, `caidstr`, `defs`, `map-craft` and `pins`

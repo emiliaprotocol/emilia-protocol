@@ -58,7 +58,7 @@ Historical entries below retain the labels used when they were written.
   one-field definitions in JavaScript, Python and Go, so it tests the ports'
   entry points rather than their generated regular expressions. It includes
   astral, lone-surrogate, invalid-UTF-8, noncharacter and long cases.
-- The mapping corpus moves to version 2 (78 vectors): every expectation is an
+- The mapping corpus moves to version 2 (82 vectors): every expectation is an
   exact reason list in the -04 stage order, and new vectors cover the
   profile extension, UTF-8 octet limits, field-name targets, profile
   strings outside the data model and source paths. A vector may
@@ -68,7 +68,11 @@ Historical entries below retain the labels used when they were written.
   `loss_policy` from a host profile that is outside the data model, as the
   Python and Go ports do, so such a profile is `invalid_mapping_profile`
   and `mapping_profile_unpinned` with no spurious `source_format_mismatch`,
-  and a declared loss is still reported; `profile-deep-member-*` pin it.
+  and a declared loss is still reported; `profile-deep-member-*`, and the
+  `*-declared-loss-abstains` vectors for a profile past the value count,
+  cyclic, or holding a host value of no JSON kind, pin it. The three mapping
+  runners gain a `host` mutation (`cyclic` or `opaque`) to express the last
+  two.
 - The Go port counts a reference back to an enclosing map or slice as one
   value and visits nothing beyond it, as the JavaScript and Python ports and
   the spec oracle do. It used to follow a cycle down to the nesting limit,
@@ -83,7 +87,7 @@ Historical entries below retain the labels used when they were written.
   any disagreement and the corpora are checked against their builders in CI.
 - The differential fuzz moves into `caid/fuzz` and compares the JavaScript,
   vendored Verify, Python and Go implementations with the same oracle on
-  about 87,000 seeded cases, with an empty allow list. It runs in the CI
+  about 88,000 seeded cases, with an empty allow list. It runs in the CI
   conformance job with the grammar proof and `npm run caid:conformance`,
   whose steps now run concurrently.
   All three ports and the vendored Verify copy pass it with no divergence

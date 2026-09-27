@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "a7f9af62a29bbda0ffa789e607aec011a6e3367aaa2991396929ccdcc398c092",
+    "input_digest_sha256": "a6dd2dcd2bd11b6dab0993e79b272469383647f3b7f9c2bded22a95cdc64e7fc",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -57,8 +57,8 @@
       },
       {
         "path": "caid/conformance/mapping-vectors.json",
-        "sha256": "51c411b59ba0d337990edff69090050558ce837a41059d29d82c6ae206a09f4c",
-        "bytes": 82817
+        "sha256": "3b1b9c2c6b31f8c1ec25118d6ad5e439b55dfeb051ecabaa560bda4dc95863a6",
+        "bytes": 86675
       },
       {
         "path": "conformance/vectors/model-to-matter.v1.json",
@@ -425,7 +425,7 @@
     "caid": {
       "core_vectors": 591,
       "core_vectors_skipped_by_every_port": 2,
-      "mapping_vectors": 78,
+      "mapping_vectors": 82,
       "same_team_ports": [
         "javascript",
         "python",
