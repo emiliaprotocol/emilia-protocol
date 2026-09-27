@@ -12,16 +12,23 @@ be released as it stands.
 ### Changed
 
 - `createAuthorizationChainEvaluator` native verifier callbacks return two
-  separate Booleans instead of one `valid`, as
+  separate results instead of one `valid`, as
   draft-schrock-ep-authorization-evidence-chain-07 Section 6 requires:
-  `verified` (the artifact's cryptographic and structural checks passed) and
-  `accepted` (the relying party's pinned trust inputs for the component type
-  accept the verified artifact). A callback that still returns `valid` is
-  refused with the reason `native_result_legacy_valid_field`; `accepted: true`
-  without `verified: true` is refused as `native_result_inconsistent`; a
-  missing or non-Boolean result is `native_result_shape_invalid`. To migrate,
-  return `verified` from the signature and format checks and `accepted` from
-  the checks against pinned keys, issuers, audiences, policy and time.
+  `verified` (the artifact's cryptographic and structural checks passed under
+  the verification key) and `accepted` (the relying party's pinned trust inputs
+  for the component type accept the verified artifact). `verified: null` means
+  the check could not run, for example because no key could be resolved for a
+  format that names its key only by reference (`reason: 'key_unresolved'`); the
+  fact then records `NOT_EVALUATED` with the reason `native_key_unresolved` (or
+  `native_verification_not_evaluated`), not `FAILED`. A callback that still
+  returns `valid` is refused with the reason
+  `native_result_legacy_valid_field`; `accepted: true` without
+  `verified: true` is refused as `native_result_inconsistent`; a missing or
+  malformed result is `native_result_shape_invalid`, and a positive result with
+  malformed fact members is `native_fact_shape_invalid` with neither result
+  recorded. To migrate, return `verified` from the signature and format checks
+  and `accepted` from the checks against pinned keys, issuers, audiences,
+  policy and time.
 - Each `EP-AEC-REPLAY-v1` fact replaces `native_valid` with
   `native_verification` (`VERIFIED`, `FAILED`, `NOT_EVALUATED`) and
   `acceptance` (`ACCEPTED`, `REJECTED`, `NOT_EVALUATED`). A verified artifact
@@ -33,10 +40,20 @@ be released as it stands.
 - The built-in structured verifiers report the two results separately.
   `ep-quorum` checks integrity under the public keys its members carry, in
   WebAuthn offline-integrity mode. `ep-receipt`, `ep-authorization-bundle` and
-  `ep-platform-attestation` resolve keys from the pinned material; a failure
-  their native procedures detect inside the signature step (for example a
-  compromised or out-of-window directory key, or an unknown attester) is
-  reported as not `VERIFIED`, never as `VERIFIED`.
+  `ep-platform-attestation` resolve each key by reference from the relying
+  party's key material and check signatures under the resolved public key
+  only. A key id or attester absent from that material is `NOT_EVALUATED`
+  (`native_key_unresolved`). The directory entry's status (approver binding,
+  key class, validity window, compromise marker) is an acceptance input, so an
+  intact artifact signed by a compromised or out-of-window key is `VERIFIED`
+  and `REJECTED`. A signature that does not verify under the resolved key is
+  `FAILED`.
+- The built-ins check the relying-party pins against the action the artifact
+  itself commits to and return that commitment for material-action matching.
+  A trusted artifact for another action is `VERIFIED`, `ACCEPTED` and
+  `NOT_EQUIVALENT` with the reason `material_action_not_matched`, where it was
+  previously an acceptance refusal for the bundle and platform-attestation
+  built-ins.
 - The legacy `verifyAuthorizationChain` API is unchanged and keeps one
   combined `valid` flag per component.
 

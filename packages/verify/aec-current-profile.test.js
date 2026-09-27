@@ -413,7 +413,7 @@ test('AEC07 built-in ep-authorization-bundle: a different pinned audience is VER
     const other = await run('https://other-audience.example');
     assert.deepEqual([other.satisfied, other.replay.facts[0].native_verification, other.replay.facts[0].acceptance], [false, 'VERIFIED', 'REJECTED']);
 });
-test('AEC07 built-in platform attestation: a claim-pin mismatch is VERIFIED and not ACCEPTED; an unknown or wrong key is not VERIFIED', async () => {
+test('AEC07 built-in platform attestation: a claim-pin mismatch is VERIFIED and not ACCEPTED; a wrong key is FAILED; an unknown key is NOT_EVALUATED; another action is not MATCH', async () => {
     const issuer = 'https://attestation.example/verifiers/primary';
     const audience = 'https://gate.example/authorize';
     const kid = 'platform-attester-2026-09';
@@ -422,12 +422,12 @@ test('AEC07 built-in platform attestation: a claim-pin mismatch is VERIFIED and 
     const attester = crypto.generateKeyPairSync('ed25519');
     const substitute = crypto.generateKeyPairSync('ed25519');
     const nowSeconds = Date.parse(NOW) / 1000;
-    const token = (key = attester.privateKey, headerKid = kid) => {
+    const token = (key = attester.privateKey, headerKid = kid, actionDigest = ACTION) => {
         const enc = (v) => Buffer.from(JSON.stringify(v), 'utf8').toString('base64url');
         const input = `${enc({ alg: 'EdDSA', kid: headerKid, typ: 'eat+jwt' })}.${enc({
             iss: issuer, aud: audience, iat: nowSeconds - 30, exp: nowSeconds + 90, eat_nonce: nonce,
             eat_profile: EP_PLATFORM_ATTESTATION_PROFILE, measres: [['ep-build', [[measurement, 'success']]]],
-            ep_action_digest: ACTION
+            ep_action_digest: actionDigest
         })}`;
         return { '@version': EP_PLATFORM_ATTESTATION_VERSION, token: `${input}.${crypto.sign(null, Buffer.from(input, 'ascii'), key).toString('base64url')}` };
     };
@@ -444,5 +444,80 @@ test('AEC07 built-in platform attestation: a claim-pin mismatch is VERIFIED and 
     assert.deepEqual(pair(await run(token(), trust())), [true, 'VERIFIED', 'ACCEPTED']);
     assert.deepEqual(pair(await run(token(), trust('https://other.example/authorize'))), [false, 'VERIFIED', 'REJECTED']);
     assert.deepEqual(pair(await run(token(substitute.privateKey), trust())), [false, 'FAILED', 'NOT_EVALUATED']);
-    assert.deepEqual(pair(await run(token(attester.privateKey, 'unknown-kid'), trust())), [false, 'FAILED', 'NOT_EVALUATED']);
+    // An attester key id the relying party cannot resolve: VERIFIED was never
+    // evaluated, so the record differs from the forged-signature record above.
+    const unknown = await run(token(attester.privateKey, 'unknown-kid'), trust());
+    assert.deepEqual(pair(unknown), [false, 'NOT_EVALUATED', 'NOT_EVALUATED']);
+    assert.deepEqual(unknown.replay.facts[0].reasons, ['native_key_unresolved']);
+    // A trusted token for another action is VERIFIED and ACCEPTED, and fails MATCH.
+    const elsewhere = await run(token(attester.privateKey, kid, digest({ ...action, amount: 999 })), trust());
+    assert.deepEqual([...pair(elsewhere), elsewhere.replay.facts[0].mapping_verdict, elsewhere.replay.facts[0].reasons], [false, 'VERIFIED', 'ACCEPTED', 'NOT_EQUIVALENT', ['material_action_not_matched']]);
+});
+test('AEC07 built-in ep-receipt: an unresolvable key id is NOT_EVALUATED; directory status of a resolved key is an ACCEPTED input', async () => {
+    const corpus = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/aec-role.v1.json', import.meta.url), 'utf8'));
+    const v = corpus.vectors.find((c) => c.id === 'accept_pinned_human_receipt');
+    const base = v.policies_by_type['ep-receipt'];
+    const keyId = v.aec_chain.components[0].evidence.signoffs[0].approver_key_id;
+    const run = async (profile) => aec.createAuthorizationChainEvaluator({
+        requirement: requirement({ expression: 'ep-receipt', freshness_sec: {}, role_constraints: [], required_bindings: [] }),
+        nativeVerifiers: { 'ep-receipt': { profile: { id: 'native-receipt', revision: '1', native_format_revision: 'Trust-Receipt' }, trustSnapshot: { policy: profile } } },
+    }).evaluate(v.aec_chain, { expectedAction: v.aec_chain.action, verificationTime: v.verification_time });
+    const fact = (r) => [r.satisfied, r.replay.facts[0].native_verification, r.replay.facts[0].acceptance, r.replay.facts[0].reasons];
+    const withEntry = (patch) => ({ ...base, approver_keys: { ...base.approver_keys, [keyId]: { ...base.approver_keys[keyId], ...patch } } });
+    const { [keyId]: _dropped, ...rest } = base.approver_keys;
+    assert.deepEqual(fact(await run({ ...base, approver_keys: { ...rest, 'ep:key:other#1': base.approver_keys[keyId] } })), [false, 'NOT_EVALUATED', 'NOT_EVALUATED', ['native_key_unresolved']]);
+    assert.deepEqual(fact(await run(withEntry({ compromised_at: '2026-01-02T00:00:00Z' }))), [false, 'VERIFIED', 'REJECTED', ['native_acceptance_refused']]);
+    assert.deepEqual(fact(await run(withEntry({ valid_to: '2026-01-02T00:00:00Z' }))), [false, 'VERIFIED', 'REJECTED', ['native_acceptance_refused']]);
+    assert.deepEqual(fact(await run(withEntry({ key_class: 'B' }))), [false, 'VERIFIED', 'REJECTED', ['native_acceptance_refused']]);
+    assert.deepEqual(fact(await run(withEntry({ approver_id: 'ep:approver:someone-else' }))), [false, 'VERIFIED', 'REJECTED', ['native_acceptance_refused']]);
+});
+test('AEC07 built-in ep-authorization-bundle: unresolvable key is NOT_EVALUATED, key status is ACCEPTED, and another action is VERIFIED, ACCEPTED and not MATCH', async () => {
+    const corpus = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/authorization-bundle.v1.json', import.meta.url), 'utf8'));
+    const v = corpus.cases.find((c) => c.id === 'valid-two-of-three-oauth-bound-bundle');
+    const profile = (keys) => Object.fromEntries(Object.entries({ audience: v.audience, approverKeys: keys, expectedApprovers: v.expected_approvers, acceptedKeyClasses: v.accepted_key_classes, currentPolicy: v.current_policy, expectedAuthorizationInstance: v.expected_authorization_instance, expectedAuthorizationBinding: v.expected_authorization_binding, requireAuthorizationBinding: v.require_authorization_binding, currentStatus: v.current_status, requireCurrentStatus: v.require_current_status }).filter(([, value]) => value !== undefined));
+    const run = (keys, expected = v.expected_action) => aec.createAuthorizationChainEvaluator({
+        requirement: requirement({ expression: 'ep-authorization-bundle', freshness_sec: {}, role_constraints: [], required_bindings: [] }),
+        nativeVerifiers: { 'ep-authorization-bundle': { profile: { id: 'receipts-13-bundle', revision: '1', native_format_revision: 'EP-AUTHORIZATION-BUNDLE-v1' }, trustSnapshot: profile(keys) } },
+    }).evaluate({ '@version': 'EP-AEC-v1', action: expected, components: [{ type: 'ep-authorization-bundle', evidence: v.bundle }] }, { expectedAction: expected, verificationTime: v.now });
+    const fact = (r) => [r.satisfied, r.replay.facts[0].native_verification, r.replay.facts[0].acceptance, r.replay.facts[0].mapping_verdict, r.replay.facts[0].reasons];
+    const signer = v.bundle.signoffs[0].approver_key_id;
+    const { [signer]: _dropped, ...rest } = v.approver_keys;
+    assert.deepEqual(fact(await run(rest)), [false, 'NOT_EVALUATED', 'NOT_EVALUATED', 'INDETERMINATE', ['native_key_unresolved']]);
+    const compromised = { ...v.approver_keys, [signer]: { ...v.approver_keys[signer], compromised_at: '2026-01-02T00:00:00Z' } };
+    assert.deepEqual(fact(await run(compromised)), [false, 'VERIFIED', 'REJECTED', 'INDETERMINATE', ['native_acceptance_refused']]);
+    const forged = structuredClone(v.bundle);
+    const sig = forged.signoffs[0].signature;
+    forged.signoffs[0].signature = (sig[0] === 'A' ? 'B' : 'A') + sig.slice(1);
+    const forgedResult = await aec.createAuthorizationChainEvaluator({
+        requirement: requirement({ expression: 'ep-authorization-bundle', freshness_sec: {}, role_constraints: [], required_bindings: [] }),
+        nativeVerifiers: { 'ep-authorization-bundle': { profile: { id: 'receipts-13-bundle', revision: '1', native_format_revision: 'EP-AUTHORIZATION-BUNDLE-v1' }, trustSnapshot: profile(v.approver_keys) } },
+    }).evaluate({ '@version': 'EP-AEC-v1', action: v.expected_action, components: [{ type: 'ep-authorization-bundle', evidence: forged }] }, { expectedAction: v.expected_action, verificationTime: v.now });
+    assert.deepEqual(fact(forgedResult), [false, 'FAILED', 'NOT_EVALUATED', 'INDETERMINATE', ['native_verification_failed']]);
+    const other = structuredClone(v.expected_action);
+    other.action_type = `${other.action_type}.other`;
+    assert.deepEqual(fact(await run(v.approver_keys, other)), [false, 'VERIFIED', 'ACCEPTED', 'NOT_EQUIVALENT', ['material_action_not_matched']]);
+    // A Class A signoff with no Class A verifier configured: the signature
+    // check could not run, so VERIFIED is NOT_EVALUATED rather than FAILED.
+    const classA = structuredClone(v.bundle);
+    classA.signoffs[0].key_class = 'A';
+    const unavailable = await aec.createAuthorizationChainEvaluator({
+        requirement: requirement({ expression: 'ep-authorization-bundle', freshness_sec: {}, role_constraints: [], required_bindings: [] }),
+        nativeVerifiers: { 'ep-authorization-bundle': { profile: { id: 'receipts-13-bundle', revision: '1', native_format_revision: 'EP-AUTHORIZATION-BUNDLE-v1' },
+                trustSnapshot: profile({ ...v.approver_keys, [signer]: { ...v.approver_keys[signer], key_class: 'A' } }) } },
+    }).evaluate({ '@version': 'EP-AEC-v1', action: v.expected_action, components: [{ type: 'ep-authorization-bundle', evidence: classA }] }, { expectedAction: v.expected_action, verificationTime: v.now });
+    assert.deepEqual(fact(unavailable), [false, 'NOT_EVALUATED', 'NOT_EVALUATED', 'INDETERMINATE', ['native_verification_not_evaluated']]);
+});
+test('AEC07 a native result that could not evaluate VERIFIED is NOT_EVALUATED, never FAILED', async () => {
+    const cases = [
+        [() => ({ verified: null, accepted: false, reason: 'key_unresolved' }), 'native_key_unresolved'],
+        [() => ({ verified: null, accepted: false }), 'native_verification_not_evaluated'],
+        [() => ({ verified: null, accepted: true, format_revision: 'example-signed-v1', action_digest: ACTION }), 'native_result_inconsistent'],
+        [() => ({ verified: true, accepted: true, format_revision: 'example-signed-v1', action_digest: 'not-a-digest' }), 'native_fact_shape_invalid'],
+        [() => ({ verified: true, accepted: true, format_revision: 'example-signed-v1', action_digest: ACTION, subject_ids: [7] }), 'native_fact_shape_invalid'],
+    ];
+    for (const [verify, reason] of cases) {
+        const ev = evaluator(requirement({ expression: 'approval', freshness_sec: {}, role_constraints: [], required_bindings: [] }), { nativeVerifiers: { approval: registration({ verify }) } });
+        const fact = (await ev.evaluate({ '@version': 'EP-AEC-v1', action, components: [{ type: 'approval', evidence: {} }] }, inputs())).replay.facts[0];
+        assert.deepEqual([fact.native_verification, fact.acceptance, fact.reasons, fact.eligible], ['NOT_EVALUATED', 'NOT_EVALUATED', [reason], false], reason);
+    }
 });

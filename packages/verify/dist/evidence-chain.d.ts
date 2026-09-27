@@ -76,18 +76,27 @@ export interface AecNativeStatus {
 }
 /** A native verifier reports two separate results (AEC-07 Section 6):
  *
- *   verified  the artifact's cryptographic and structural checks passed;
+ *   verified  the artifact's cryptographic and structural checks passed under
+ *             the verification key (carried by the artifact, or resolved from
+ *             relying-party key material when the format names it only by
+ *             reference);
  *   accepted  the relying party's pinned trust inputs for this component type
- *             (trust anchors or key directory, issuer, audience, key class,
- *             native policy, validity at the verification time) accept that
- *             VERIFIED artifact.
+ *             (trust anchors or key directory entry status, issuer, audience,
+ *             key class, native policy, validity at the verification time)
+ *             accept that VERIFIED artifact.
  *
- * `accepted: true` with `verified: false` is refused as inconsistent. A
- * verifier that cannot tell which of the two a failure belongs to reports
- * `verified: false`; it never reports VERIFIED for bytes it did not check.
- * The 5.x single `valid` Boolean is refused by name
- * (`native_result_legacy_valid_field`), because it cannot say which result
- * it carries.
+ * `verified: null` means VERIFIED could not be evaluated: no verification key
+ * could be resolved from relying-party key material (reason `key_unresolved`),
+ * or the relying party's own configuration for the format is unusable. The
+ * fact then records native_verification NOT_EVALUATED, never FAILED, so an
+ * unknown signer is not recorded the way a forgery is.
+ *
+ * `accepted: true` with `verified` other than true is refused as
+ * inconsistent. A verifier that evaluated the checks but cannot tell which of
+ * the two results a failure belongs to reports `verified: false`; it never
+ * reports VERIFIED for bytes it did not check. The 5.x single `valid` Boolean
+ * is refused by name (`native_result_legacy_valid_field`), because it cannot
+ * say which result it carries.
  *
  * Every positive field must come from verified native bytes or the native
  * profile's authenticated status input, never from an unverified wrapper.
@@ -95,7 +104,7 @@ export interface AecNativeStatus {
  * current status from an issuer signature, or human operation from identity.
  */
 export interface AecNativeVerification {
-    verified: boolean;
+    verified: boolean | null;
     accepted: boolean;
     reason?: string;
     format_revision?: string;

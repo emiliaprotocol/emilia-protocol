@@ -635,18 +635,27 @@ export interface AecNativeStatus {
 }
 /** A native verifier reports two separate results (AEC-07 Section 6):
  *
- *   verified  the artifact's cryptographic and structural checks passed;
+ *   verified  the artifact's cryptographic and structural checks passed under
+ *             the verification key (carried by the artifact, or resolved from
+ *             relying-party key material when the format names it only by
+ *             reference);
  *   accepted  the relying party's pinned trust inputs for this component type
- *             (trust anchors or key directory, issuer, audience, key class,
- *             native policy, validity at the verification time) accept that
- *             VERIFIED artifact.
+ *             (trust anchors or key directory entry status, issuer, audience,
+ *             key class, native policy, validity at the verification time)
+ *             accept that VERIFIED artifact.
  *
- * `accepted: true` with `verified: false` is refused as inconsistent. A
- * verifier that cannot tell which of the two a failure belongs to reports
- * `verified: false`; it never reports VERIFIED for bytes it did not check.
- * The 5.x single `valid` Boolean is refused by name
- * (`native_result_legacy_valid_field`), because it cannot say which result
- * it carries.
+ * `verified: null` means VERIFIED could not be evaluated: no verification key
+ * could be resolved from relying-party key material (reason `key_unresolved`),
+ * or the relying party's own configuration for the format is unusable. The
+ * fact then records native_verification NOT_EVALUATED, never FAILED, so an
+ * unknown signer is not recorded the way a forgery is.
+ *
+ * `accepted: true` with `verified` other than true is refused as
+ * inconsistent. A verifier that evaluated the checks but cannot tell which of
+ * the two results a failure belongs to reports `verified: false`; it never
+ * reports VERIFIED for bytes it did not check. The 5.x single `valid` Boolean
+ * is refused by name (`native_result_legacy_valid_field`), because it cannot
+ * say which result it carries.
  *
  * Every positive field must come from verified native bytes or the native
  * profile's authenticated status input, never from an unverified wrapper.
@@ -654,7 +663,7 @@ export interface AecNativeStatus {
  * current status from an issuer signature, or human operation from identity.
  */
 export interface AecNativeVerification {
-  verified: boolean;
+  verified: boolean | null;
   accepted: boolean;
   reason?: string;
   format_revision?: string;
@@ -813,15 +822,43 @@ function humanNativeFacts(result: Obj, contexts: Obj[], revision: string): AecNa
   };
 }
 
+/** Outcome of a built-in VERIFIED check. KEY_UNRESOLVED means the check could
+ * not run: a key the format names only by reference is absent from the
+ * relying party's key material, or that material is unusable. UNAVAILABLE
+ * means the relying party configured no verifier for a signature form the
+ * artifact carries (a Class A signoff without the Class A hook). */
+type IntegrityOutcome = 'VERIFIED' | 'FAILED' | 'KEY_UNRESOLVED' | 'UNAVAILABLE';
+const NOT_EVALUATED_KEY: AecNativeVerification = Object.freeze({ verified: null, accepted: false, reason: 'key_unresolved' });
+const NOT_EVALUATED_VERIFIER: AecNativeVerification = Object.freeze({ verified: null, accepted: false, reason: 'verifier_unavailable' });
+const FAILED_INTEGRITY = (reason: string): AecNativeVerification => ({ verified: false, accepted: false, reason });
+// A key window wide enough that only the signature itself decides; the real
+// window, compromise marker and key class stay ACCEPTED inputs.
+const INTEGRITY_KEY_FROM = '1970-01-01T00:00:00Z';
+const INTEGRITY_KEY_TO = '9999-12-31T23:59:59Z';
+const INTEGRITY_NOW = '9999-12-30T00:00:00Z';
+
 /** Platform-attestation refusals the native verifier reaches only after the
- * JWT signature verified under the resolved attester key. Every earlier
- * refusal (shape, header, claims syntax, unknown attester, bad signature)
- * leaves the token not VERIFIED. */
+ * JWT signature verified under the resolved attester key. Earlier structural
+ * refusals and a bad signature leave the token not VERIFIED; an attester
+ * issuer or key id absent from the relying party's key material leaves
+ * VERIFIED unevaluated. */
 const PLATFORM_POST_SIGNATURE_REFUSALS = new Set([
   'profile_mismatch', 'audience_mismatch', 'nonce_mismatch', 'action_digest_mismatch',
   'measurement_result_invalid', 'measurement_untrusted',
   'token_from_future', 'token_expired', 'token_too_old',
 ]);
+const PLATFORM_KEY_UNRESOLVED = new Set(['attester_untrusted', 'attester_key_invalid', 'relying_party_policy_invalid']);
+
+/** Map each context's canonical digest to the approver it names. */
+function approverByContextDigest(contexts: any[], digestOf: (c: Obj) => string | null): Map<string, unknown> {
+  const out = new Map<string, unknown>();
+  for (const c of contexts) {
+    if (!isRecord(c)) continue;
+    const d = digestOf(c);
+    if (d) out.set(d, c.approver);
+  }
+  return out;
+}
 
 /** VERIFIED for a quorum: its structure is intact, every member's context
  * commits to the quorum action_hash, and every member's WebAuthn assertion
@@ -844,37 +881,106 @@ function quorumIntegrity(evidence: any): boolean {
   }
 }
 
-/** VERIFIED for a Trust Receipt. The receipt names its signing keys only by
- * approver_key_id, so the key comes from the relying party's directory; the
- * check omits the RP ID, origin and policy pins, which remain ACCEPTED inputs.
- * verifyTrustReceipt also checks the resolved key's approver binding,
- * compromise marker and validity window inside its signature step, so a
- * receipt failing one of those is reported as not VERIFIED (the conservative
- * attribution AEC-07 Section 6 requires), never as VERIFIED. */
-function receiptIntegrity(evidence: any, profile: any): boolean {
+/** VERIFIED for a Trust Receipt. The receipt names each signing key only by
+ * approver_key_id and its log key not at all, so both are resolved from the
+ * relying party's key material; an id with no public key there, or no log
+ * key, leaves VERIFIED unevaluated. The check uses only the resolved public
+ * key bytes, with the signature form each signoff carries. The directory
+ * entry's approver binding, key class, validity window and compromise marker,
+ * and the RP ID, origin and policy pins, are ACCEPTED inputs that the full
+ * native verifier checks afterwards. */
+function receiptIntegrity(evidence: any, profile: any): IntegrityOutcome {
   if (!isRecord(profile) || !isRecord(profile.approver_keys)
-      || typeof profile.log_public_key !== 'string' || !profile.log_public_key) return false;
+      || typeof profile.log_public_key !== 'string' || !profile.log_public_key) return 'KEY_UNRESOLVED';
   try {
+    if (!isRecord(evidence) || !Array.isArray(evidence.signoffs) || !Array.isArray(evidence.contexts)
+        || evidence.signoffs.length === 0) return 'FAILED';
+    const approvers = approverByContextDigest(evidence.contexts, c => sha256hex(canonicalize(c)));
+    const resolved: Obj = Object.create(null);
+    for (const s of evidence.signoffs) {
+      if (!isRecord(s)) return 'FAILED';
+      const id = s.approver_key_id;
+      const entry = typeof id === 'string' && own(profile.approver_keys, id) ? profile.approver_keys[id] : null;
+      if (!isRecord(entry) || typeof entry.public_key !== 'string' || !entry.public_key) return 'KEY_UNRESOLVED';
+      const approver = approvers.get(normDigest(s.context_hash) ?? '');
+      // One key id naming two principals cannot be checked as one entry;
+      // the failure is not attributable, so it is conservatively not VERIFIED.
+      if (own(resolved, id) && resolved[id].approver_id !== approver) return 'FAILED';
+      resolved[id] = { public_key: entry.public_key, approver_id: approver, key_class: isRecord(s.webauthn) ? 'A' : 'B' };
+    }
     return verifyTrustReceipt(evidence, {
-      approverKeys: profile.approver_keys, logPublicKey: profile.log_public_key,
-    })?.valid === true;
+      approverKeys: resolved, logPublicKey: profile.log_public_key,
+    })?.valid === true ? 'VERIFIED' : 'FAILED';
   } catch {
-    return false;
+    return 'FAILED';
   }
 }
 
+/** VERIFIED for an Authorization Bundle: closed shape, action_hash and context
+ * commitments, and every completed signoff signature under the public key its
+ * approver_key_id resolves to. The directory entry's approver binding, key
+ * class, validity window and compromise marker are ACCEPTED inputs; so are
+ * the audience, approver selection, policy, status and the exact action. */
+function bundleIntegrity(evidence: any, trust: Obj, hooks: Obj): IntegrityOutcome {
+  const directory = isRecord(trust.approverKeys) ? trust.approverKeys : null;
+  if (!directory) return 'KEY_UNRESOLVED';
+  try {
+    if (!isRecord(evidence) || !Array.isArray(evidence.signoffs) || !Array.isArray(evidence.contexts)
+        || evidence.signoffs.length === 0 || !isRecord(evidence.action)) return 'FAILED';
+    const approvers = approverByContextDigest(evidence.contexts, c => aecDigest(c));
+    const resolved: Obj = Object.create(null);
+    for (const s of evidence.signoffs) {
+      if (!isRecord(s)) return 'FAILED';
+      const id = s.approver_key_id;
+      const entry = typeof id === 'string' && own(directory, id) ? directory[id] : null;
+      if (!isRecord(entry) || typeof entry.public_key !== 'string' || !entry.public_key) return 'KEY_UNRESOLVED';
+      const approver = approvers.get(typeof s.context_hash === 'string' ? s.context_hash : '');
+      if (own(resolved, id) && resolved[id].approver_id !== approver) return 'FAILED';
+      resolved[id] = { approver_id: approver, public_key: entry.public_key, key_class: s.key_class,
+        valid_from: INTEGRITY_KEY_FROM, valid_to: INTEGRITY_KEY_TO };
+    }
+    const r = verifyAuthorizationBundle(evidence, {
+      now: INTEGRITY_NOW, audience: 'urn:ep:aec:integrity-check', approverKeys: resolved,
+      expectedApprovers: [], acceptedKeyClasses: ['A', 'B', 'C'], expectedAction: evidence.action,
+      ...(typeof hooks.verifyClassASignoff === 'function' ? { verifyClassASignoff: hooks.verifyClassASignoff } : {}),
+    } as unknown as Parameters<typeof verifyAuthorizationBundle>[1]);
+    if (r.checks.closed_shape === true && r.checks.contexts === true && r.checks.signatures === true
+        && !r.reasons.includes('action_hash_mismatch')) return 'VERIFIED';
+    const otherwiseIntact = r.checks.closed_shape === true && r.checks.contexts === true
+      && !r.reasons.includes('action_hash_mismatch') && !r.reasons.includes('signoff_signature_invalid');
+    return otherwiseIntact && r.reasons.includes('class_a_verifier_unavailable') ? 'UNAVAILABLE' : 'FAILED';
+  } catch {
+    return 'FAILED';
+  }
+}
+
+/** The action digest a platform-attestation token claims, read only to be
+ * handed back to the native verifier as the digest to compare; the verifier
+ * checks it under the token signature. Undecodable tokens get a placeholder
+ * and fail the verifier's own structural checks. */
+function platformClaimedActionDigest(evidence: any): string {
+  try {
+    const payload = JSON.parse(Buffer.from(String(evidence.token).split('.')[1], 'base64url').toString('utf8'));
+    if (typeof payload?.ep_action_digest === 'string' && AEC_DIGEST.test(payload.ep_action_digest)) return payload.ep_action_digest;
+  } catch { /* placeholder below */ }
+  return `sha256:${'0'.repeat(64)}`;
+}
+
+// Each built-in checks the relying party's pins against the action the
+// artifact itself commits to, and returns that integrity-protected commitment
+// as action_digest. Whether it is the expected action is decided afterwards by
+// MATCH (AEC-07 Section 7), so a trusted artifact bound to another action is
+// recorded as VERIFIED, ACCEPTED and not matched, never as unaccepted.
 function structuredBuiltin(type: string, trust: Obj, hooks: Obj): CapturedAecVerifier['verify'] {
   if (type === AEC_BUNDLE_COMPONENT) return (evidence, ctx) => {
     const ev = evidence as Obj;
+    const integrity = bundleIntegrity(evidence, trust, hooks);
+    if (integrity === 'KEY_UNRESOLVED') return NOT_EVALUATED_KEY;
+    if (integrity === 'UNAVAILABLE') return NOT_EVALUATED_VERIFIER;
+    if (integrity !== 'VERIFIED') return FAILED_INTEGRITY('native_bundle_integrity_failed');
     const result = verifyAuthorizationBundle(evidence, {
-      ...trust, ...hooks, now: ctx.verification_time, expectedAction: ctx.action,
+      ...trust, ...hooks, now: ctx.verification_time, expectedAction: ev.action,
     } as Parameters<typeof verifyAuthorizationBundle>[1]);
-    // VERIFIED: closed shape, context commitments and every signoff signature.
-    // The bundle verifier folds key class and key currency into its signature
-    // check, so a failure there is conservatively not VERIFIED.
-    const verified = result.checks.closed_shape === true && result.checks.contexts === true
-      && result.checks.signatures === true && !result.reasons.includes('action_hash_mismatch');
-    if (!verified) return { verified: false, accepted: false, reason: 'native_bundle_integrity_failed' };
     if (result.verdict !== 'SATISFIED') return { verified: true, accepted: false, reason: 'native_bundle_pins_refused' };
     // Only SIGNED contexts contribute subjects. The bundle can contain a
     // wider selected roster than the actual threshold of completed signoffs.
@@ -887,34 +993,47 @@ function structuredBuiltin(type: string, trust: Obj, hooks: Obj): CapturedAecVer
     }
     return native;
   };
+  if (type === EP_PLATFORM_ATTESTATION_COMPONENT) return (evidence, ctx) => {
+    const ev = evidence as Obj;
+    const profile = isRecord(trust.policy) ? trust.policy : {};
+    const result = verifyPlatformAttestation(evidence, {
+      trustedAttesters: trust.keys ?? {},
+      expectedProfile: profile.expected_profile,
+      expectedAudience: profile.expected_audience,
+      expectedNonce: profile.expected_nonce,
+      expectedActionDigest: platformClaimedActionDigest(evidence),
+      referenceMeasurements: profile.reference_measurements,
+      verificationTime: ctx.verification_time,
+      maxAgeSeconds: profile.max_age_sec,
+    } as Parameters<typeof verifyPlatformAttestation>[1]);
+    const reason = result.valid === true ? null : result.detail?.reason;
+    if (reason !== null && PLATFORM_KEY_UNRESOLVED.has(reason)) return NOT_EVALUATED_KEY;
+    if (reason !== null && !PLATFORM_POST_SIGNATURE_REFUSALS.has(reason)) return FAILED_INTEGRITY('native_builtin_integrity_failed');
+    if (result.valid !== true) return { verified: true, accepted: false, reason: 'native_builtin_pins_refused' };
+    // Decode only AFTER the closed native JWT verifier accepted the bytes.
+    const payload = JSON.parse(Buffer.from(ev.token.split('.')[1], 'base64url').toString('utf8'));
+    return { verified: true, accepted: true, format_revision: ctx.profile.native_format_revision,
+      action_digest: result.action_digest, issuer: payload.iss, audience: payload.aud,
+      issued_at: new Date(payload.iat * 1000).toISOString(), expires_at: new Date(payload.exp * 1000).toISOString(),
+      subject_ids: [], bindings: [] };
+  };
   const built = builtinVerifiers()[type];
   return (evidence, ctx) => {
     const profile = trust.policy;
-    // The legacy built-in applies the relying-party pins and the native
-    // cryptography together; its `valid` is therefore the ACCEPTED result.
+    const ev = evidence as Obj;
+    let integrity: IntegrityOutcome;
+    if (type === 'ep-quorum') integrity = quorumIntegrity(evidence) ? 'VERIFIED' : 'FAILED';
+    else integrity = receiptIntegrity(evidence, profile);
+    if (integrity === 'KEY_UNRESOLVED') return NOT_EVALUATED_KEY;
+    if (integrity !== 'VERIFIED') return FAILED_INTEGRITY('native_builtin_integrity_failed');
+    // The legacy receipt and quorum built-ins apply the relying-party pins and
+    // the native cryptography together and do not compare the expected action;
+    // after the integrity check above, their `valid` is the ACCEPTED result.
     const result = built(evidence, {
       keysByType: { [type]: trust.keys ?? {} }, policiesByType: { [type]: profile },
       verificationTime: ctx.verification_time, action: ctx.action,
     });
-    const ev = evidence as Obj;
-    let verified: boolean;
-    if (type === EP_PLATFORM_ATTESTATION_COMPONENT) {
-      verified = result.valid === true || PLATFORM_POST_SIGNATURE_REFUSALS.has(result.detail?.reason);
-    } else if (type === 'ep-quorum') {
-      verified = quorumIntegrity(evidence);
-    } else {
-      verified = receiptIntegrity(evidence, profile);
-    }
-    if (!verified) return { verified: false, accepted: false, reason: 'native_builtin_integrity_failed' };
     if (result.valid !== true) return { verified: true, accepted: false, reason: 'native_builtin_pins_refused' };
-    if (type === EP_PLATFORM_ATTESTATION_COMPONENT) {
-      // Decode only AFTER the closed native JWT verifier accepted the bytes.
-      const payload = JSON.parse(Buffer.from(ev.token.split('.')[1], 'base64url').toString('utf8'));
-      return { verified: true, accepted: true, format_revision: ctx.profile.native_format_revision,
-        action_digest: result.action_digest, issuer: payload.iss, audience: payload.aud,
-        issued_at: new Date(payload.iat * 1000).toISOString(), expires_at: new Date(payload.exp * 1000).toISOString(),
-        subject_ids: [], bindings: [] };
-    }
     // A terminal receipt may log selected contexts without completed signoffs.
     // Inclusion is not human authorization: only contexts authenticated by the
     // successfully verified human signoffs can supply subjects or time claims.
@@ -1099,10 +1218,28 @@ export function createAuthorizationChainEvaluator(configuration: AecEvaluatorCon
         } catch { fact.reasons.push('native_verifier_error_or_deadline'); continue; }
         if (isRecord(native) && own(native, 'valid')) { fact.reasons.push('native_result_legacy_valid_field'); continue; }
         if (!closedKeys(native, ['verified', 'accepted'], ['reason', 'format_revision', 'action_digest', 'native_payload', 'issued_at', 'expires_at', 'issuer', 'audience', 'subject_ids', 'bindings', 'status'])
-            || typeof native.verified !== 'boolean' || typeof native.accepted !== 'boolean') {
+            || (native.verified !== null && typeof native.verified !== 'boolean') || typeof native.accepted !== 'boolean') {
           fact.reasons.push('native_result_shape_invalid'); continue;
         }
-        if (native.accepted && !native.verified) { fact.reasons.push('native_result_inconsistent'); continue; }
+        if (native.accepted && native.verified !== true) { fact.reasons.push('native_result_inconsistent'); continue; }
+        // The fact members of a positive result are checked before either
+        // result is recorded: a malformed result records neither VERIFIED nor
+        // ACCEPTED for an artifact the evaluator then discards.
+        const subjects = native.subject_ids ?? [];
+        const bindings = native.bindings ?? [];
+        if (native.accepted && ((native.action_digest != null && !digestValue(native.action_digest))
+            || (native.issuer != null && !textValue(native.issuer))
+            || (native.audience != null && !(textValue(native.audience) || (Array.isArray(native.audience) && native.audience.length <= limits.maxSubjects && native.audience.every((v: unknown) => textValue(v)))))
+            || !Array.isArray(subjects) || subjects.length > limits.maxSubjects || subjects.some((v: unknown) => !textValue(v))
+            || !Array.isArray(bindings) || bindings.length > limits.maxBindings
+            || bindings.some((b: unknown) => !closedKeys(b, ['relation', 'target_evidence_digest']) || !textValue(b.relation, 128) || !digestValue(b.target_evidence_digest)))) {
+          fact.reasons.push('native_fact_shape_invalid'); continue;
+        }
+        // No resolvable verification key (or unusable relying-party key
+        // material): VERIFIED was not evaluated, which is not a failed check.
+        if (native.verified === null) {
+          fact.reasons.push(native.reason === 'key_unresolved' ? 'native_key_unresolved' : 'native_verification_not_evaluated'); continue;
+        }
         if (!native.verified) { fact.native_verification = 'FAILED'; fact.reasons.push('native_verification_failed'); continue; }
         fact.native_verification = 'VERIFIED';
         if (!native.accepted) { fact.acceptance = 'REJECTED'; fact.reasons.push('native_acceptance_refused'); continue; }
@@ -1111,18 +1248,6 @@ export function createAuthorizationChainEvaluator(configuration: AecEvaluatorCon
           fact.acceptance = 'REJECTED'; fact.reasons.push('native_format_revision_mismatch'); continue;
         }
         fact.acceptance = 'ACCEPTED';
-        if ((native.action_digest != null && !digestValue(native.action_digest))
-            || (native.issuer != null && !textValue(native.issuer))
-            || (native.audience != null && !(textValue(native.audience) || (Array.isArray(native.audience) && native.audience.length <= limits.maxSubjects && native.audience.every((v: unknown) => textValue(v)))))) {
-          fact.reasons.push('native_fact_shape_invalid'); continue;
-        }
-        const subjects = native.subject_ids ?? [];
-        const bindings = native.bindings ?? [];
-        if (!Array.isArray(subjects) || subjects.length > limits.maxSubjects || subjects.some((v: unknown) => !textValue(v))
-            || !Array.isArray(bindings) || bindings.length > limits.maxBindings
-            || bindings.some((b: unknown) => !closedKeys(b, ['relation', 'target_evidence_digest']) || !textValue(b.relation, 128) || !digestValue(b.target_evidence_digest))) {
-          fact.reasons.push('native_fact_shape_invalid'); continue;
-        }
         fact.native_action_digest = native.action_digest ?? null;
         fact.format_revision = native.format_revision; fact.issuer = native.issuer ?? null; fact.audience = native.audience ?? null;
         fact.subject_ids = [...new Set<string>(subjects)].sort();
