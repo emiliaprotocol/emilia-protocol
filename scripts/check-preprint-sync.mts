@@ -36,6 +36,44 @@ export function normalizeExtractedText(text: string): string {
     .trim();
 }
 
+/**
+ * Digest of what the paper claims about conformance: the manifest's claim
+ * scope and totals; per suite, the path, vector-file SHA-256, vector count
+ * and execution companion (the corpus contract sync:clean-room-pins
+ * guards); and per port, its identity, language, relationship, counts and
+ * status (the "same-team ports agree on every vector" claim). It leaves out
+ * the ports' source, runner and normalized-result digests, which move
+ * manifest_sha256 on every packages/verify change without changing a claim
+ * in the paper; conformance:manifest:check holds those to the vectors.
+ */
+export function claimedConformanceSha256(manifest: any): string {
+  const list = (value: any): any[] => (Array.isArray(value) ? value : []);
+  const claimed = {
+    claim_scope: manifest.claim_scope ?? null,
+    totals: {
+      suites: manifest.totals?.suites ?? null,
+      vectors: manifest.totals?.vectors ?? null,
+      implementations: manifest.totals?.implementations ?? null,
+    },
+    suites: list(manifest.suites).map((suite: any) => ({
+      path: suite?.path ?? null,
+      sha256: suite?.sha256 ?? null,
+      vectors: suite?.vectors ?? null,
+      execution_path: suite?.execution_path ?? null,
+      execution_sha256: suite?.execution_sha256 ?? null,
+    })),
+    implementations: list(manifest.implementations).map((port: any) => ({
+      implementation_id: port?.implementation_id ?? null,
+      language: port?.language ?? null,
+      relationship: port?.relationship ?? null,
+      suites: port?.suites ?? null,
+      vectors: port?.vectors ?? null,
+      status: port?.status ?? null,
+    })),
+  };
+  return sha256(JSON.stringify(claimed));
+}
+
 function readJson(path: string): any {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
@@ -121,7 +159,7 @@ export function deriveEvidence({
     conformance: {
       suites: manifest.totals.suites,
       vectors: manifest.totals.vectors,
-      manifestSha256: manifest.manifest_sha256,
+      claimedSha256: claimedConformanceSha256(manifest),
     },
     tla: {
       states: tlaResult?.[1],
@@ -349,8 +387,8 @@ export function auditPreprintClaims({ tex, pdfText, staging, evidence }: {
   if (!tex.includes(`% Canonical Markdown SHA-256: ${evidence.canonicalMarkdownSha256}`)) {
     failures.push('main.tex canonical Markdown SHA-256 marker is missing or stale');
   }
-  if (!tex.includes(`manifest_sha256=${evidence.conformance.manifestSha256}`)) {
-    failures.push('main.tex conformance manifest_sha256 marker is missing or stale');
+  if (!tex.includes(`claimed_conformance_sha256=${evidence.conformance.claimedSha256}`)) {
+    failures.push('main.tex claimed_conformance_sha256 marker is missing or stale');
   }
 
   auditConformanceClaims(failures, source, 'main.tex', evidence, true);

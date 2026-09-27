@@ -2,8 +2,10 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { readFileSync } from 'node:fs';
 import {
   auditPreprintClaims,
+  claimedConformanceSha256,
   normalizeExtractedText,
 } from '../scripts/check-preprint-sync.mjs';
 
@@ -13,7 +15,7 @@ const evidence = {
   conformance: {
     suites: 21,
     vectors: 329,
-    manifestSha256: 'b'.repeat(64),
+    claimedSha256: 'b'.repeat(64),
   },
   tla: {
     states: '413,137',
@@ -97,7 +99,7 @@ ${composedBlock}
 const tex = `
 % Canonical Markdown SHA-256: ${'a'.repeat(64)}
 % conformance 21 suites / 329 vectors
-% manifest_sha256=${'b'.repeat(64)}
+% claimed_conformance_sha256=${'b'.repeat(64)}
 ${sharedClaims}
 `;
 
@@ -153,13 +155,58 @@ describe('preprint evidence synchronization guard', () => {
     );
   });
 
-  it('rejects stale canonical Markdown and manifest fingerprints', () => {
+  it('rejects stale canonical Markdown and claimed-conformance fingerprints', () => {
     const staleMarkers = tex
       .replace(`% Canonical Markdown SHA-256: ${'a'.repeat(64)}`, `% Canonical Markdown SHA-256: ${'c'.repeat(64)}`)
-      .replace(`manifest_sha256=${'b'.repeat(64)}`, `manifest_sha256=${'d'.repeat(64)}`);
+      .replace(`claimed_conformance_sha256=${'b'.repeat(64)}`, `claimed_conformance_sha256=${'d'.repeat(64)}`);
     const failures = audit({ tex: staleMarkers });
     assert.ok(failures.includes('main.tex canonical Markdown SHA-256 marker is missing or stale'));
-    assert.ok(failures.includes('main.tex conformance manifest_sha256 marker is missing or stale'));
+    assert.ok(failures.includes('main.tex claimed_conformance_sha256 marker is missing or stale'));
+    // The manifest's own digest no longer satisfies the marker.
+    const manifestMarker = tex.replace(`claimed_conformance_sha256=${'b'.repeat(64)}`, `manifest_sha256=${'b'.repeat(64)}`);
+    assert.ok(audit({ tex: manifestMarker }).includes('main.tex claimed_conformance_sha256 marker is missing or stale'));
+  });
+
+  it('pins what the paper claims about conformance, not the ports\' source', () => {
+    const manifest = JSON.parse(readFileSync('conformance/conformance-manifest.json', 'utf8'));
+    const pinned = claimedConformanceSha256(manifest);
+    assert.ok(readFileSync('papers/preprint/main.tex', 'utf8').includes(`claimed_conformance_sha256=${pinned}`));
+
+    // A packages/verify change moves the ports' source, runner and result
+    // digests and manifest_sha256, and leaves the paper's marker current.
+    const implementationChange = structuredClone(manifest);
+    for (const port of implementationChange.implementations) {
+      port.source.tree_sha256 = 'd'.repeat(64);
+      port.source.files += 1;
+      port.source.bytes += 1;
+      port.runner.sha256 = 'd'.repeat(64);
+      port.normalized_results_sha256 = 'd'.repeat(64);
+    }
+    implementationChange.manifest_sha256 = 'e'.repeat(64);
+    assert.equal(claimedConformanceSha256(implementationChange), pinned);
+
+    // Any change to what the paper claims moves it.
+    for (const mutate of [
+      (value: any) => { value.suites[0].sha256 = 'f'.repeat(64); },
+      (value: any) => { value.suites[0].vectors += 1; },
+      (value: any) => { value.suites[0].path = 'conformance/vectors/renamed.v1.json'; },
+      (value: any) => { value.suites.find((suite: any) => suite.execution_sha256).execution_sha256 = 'f'.repeat(64); },
+      (value: any) => { value.suites.reverse(); },
+      (value: any) => { value.suites.pop(); },
+      (value: any) => { value.totals.vectors += 1; },
+      (value: any) => { value.totals.implementations -= 1; },
+      (value: any) => { value.claim_scope = 'independent implementation evidence'; },
+      (value: any) => { value.implementations.pop(); },
+      (value: any) => { value.implementations[2].relationship = 'independent'; },
+      (value: any) => { value.implementations[1].language = 'rust'; },
+      (value: any) => { value.implementations[0].implementation_id = 'external-verifier'; },
+      (value: any) => { value.implementations[0].status = 'fail'; },
+      (value: any) => { value.implementations[0].vectors -= 1; },
+    ]) {
+      const changed = structuredClone(manifest);
+      mutate(changed);
+      assert.notEqual(claimedConformanceSha256(changed), pinned, mutate.toString());
+    }
   });
 
   it('normalizes PDF ligatures and page whitespace deterministically', () => {

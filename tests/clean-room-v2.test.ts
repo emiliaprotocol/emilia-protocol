@@ -14,6 +14,7 @@ import {
   sha256V2,
   validateBundleDefinitionV2,
   validateResultRowsV2,
+  validateSourceManifestV2,
   verifyCleanRoomSubmissionV2,
   verifyIndependentAttestationV2,
   verifyRunnerArtifactV2,
@@ -223,6 +224,42 @@ describe('current-bundle clean-room v2', () => {
       ...complete.slice(0, -1),
       complete[0],
     ])).toThrow(/duplicate vector id/);
+  });
+
+  it('pins the current manifest once, in the bundle, and holds that pin to the manifest', () => {
+    const kit = loadPinnedKitV2();
+    const bytes = fs.readFileSync('conformance/conformance-manifest.json');
+    const manifest = JSON.parse(bytes.toString('utf8'));
+    const repinned = {
+      ...kit.bundle,
+      source_manifest: { ...kit.bundle.source_manifest, sha256: 'f'.repeat(64), manifest_sha256: 'e'.repeat(64) },
+    };
+    // The structural validator pins the corpus, not the implementation-derived manifest ...
+    expect(() => validateBundleDefinitionV2(repinned)).not.toThrow();
+    expect(() => validateBundleDefinitionV2({
+      ...kit.bundle,
+      source_manifest: { ...kit.bundle.source_manifest, sha256: 'not-a-digest' },
+    })).toThrow(/sha256/);
+    // ... and the verifier pins the exact suite list, which the bot cannot change.
+    const suites = structuredClone(kit.bundle.suites);
+    suites[0].sha256 = 'f'.repeat(64);
+    expect(() => validateBundleDefinitionV2({ ...kit.bundle, suites })).toThrow(/pinned corpus/);
+    expect(() => validateBundleDefinitionV2({
+      ...kit.bundle,
+      suites: [kit.bundle.suites[1], kit.bundle.suites[0], ...kit.bundle.suites.slice(2)],
+    })).toThrow(/pinned corpus/);
+    // Every loader holds the bundle's pin to the manifest itself.
+    expect(() => validateSourceManifestV2(kit.bundle, bytes, manifest)).not.toThrow();
+    expect(() => validateSourceManifestV2(repinned, bytes, manifest)).toThrow(/manifest hash mismatch/);
+    expect(() => validateSourceManifestV2({
+      ...kit.bundle,
+      source_manifest: { ...kit.bundle.source_manifest, manifest_sha256: 'e'.repeat(64) },
+    }, bytes, manifest)).toThrow(/claim hash mismatch/);
+    const tampered = Buffer.from(`${bytes.toString('utf8')}\n`);
+    expect(() => validateSourceManifestV2({
+      ...kit.bundle,
+      source_manifest: { ...kit.bundle.source_manifest, sha256: sha256V2(tampered), manifest_sha256: 'e'.repeat(64) },
+    }, tampered, { ...manifest, manifest_sha256: 'e'.repeat(64) })).toThrow(/canonical claim hash is invalid/);
   });
 
   it('refuses incomplete suite definitions and wrong manifest or companion hashes', () => {

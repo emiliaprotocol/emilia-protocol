@@ -7,7 +7,7 @@ name: Evidence autopilot publish
 #   - workflow_run always executes this file and scripts/ci/evidence-autopilot.mjs
 #     from the default branch, never from the pull request, and nothing from
 #     the pull request is checked out, installed, built or executed here.
-#   - `inspect` checks the bundle's shape and transit integrity only:
+#   - `inspect` checks the bundle's shape and transit integrity:
 #     allowlisted paths, the sizes and sha256 digests its own manifest lists,
 #     UTF-8 text, JSON that parses, and the expected source commit. That
 #     manifest was written by the unprivileged job that ran the pull
@@ -15,6 +15,11 @@ name: Evidence autopilot publish
 #     Correctness comes from the required checks that run again on the
 #     published commit (which also run the pull request's code: for a
 #     Dependabot pull request, main plus the new dependencies).
+#   - The clean-room bundles are reviewed files with one derived field. For
+#     them `inspect` also requires the exact source-commit version, fetched
+#     here from GitHub by commit (never from the bundle), with only
+#     source_manifest recomputed from the manifest being published, so the
+#     bot can change no claim, suite, count or other digest in them.
 #   - The commit is created with the GraphQL createCommitOnBranch mutation
 #     with expectedHeadOid set to the source commit, so it is compare-and-swap:
 #     GitHub refuses it unless the branch still points at that commit, and a
@@ -22,7 +27,7 @@ name: Evidence autopilot publish
 #     (the autopilot runs again for any new head). GitHub signs the commit;
 #     dco.yml exempts it from sign-off only when the commits API reports it
 #     verified, authored by vars.EVIDENCE_AUTOPILOT_BOT_LOGIN, and changing
-#     nothing but derived evidence.
+#     nothing but derived evidence (verify-commit, run from the base branch).
 #   - The message carries `[dependabot skip]`, so Dependabot keeps rebasing
 #     its pull request over the evidence commit; the autopilot regenerates.
 #   - After the App's commit, the next pull_request run on a Dependabot
@@ -138,6 +143,24 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
 
+      - name: Fetch the source commit's copies of the files with derived fields
+        if: steps.locate.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # A file the source commit lacks is left out; inspect refuses a
+          # bundle that needs it and publishes one that does not.
+          while IFS= read -r path; do
+            mkdir -p "source/$(dirname "$path")"
+            if ! gh api "repos/$REPOSITORY/contents/$path?ref=$SOURCE_SHA" \
+              --jq 'if .type == "file" and .encoding == "base64" then .content else error("not a base64-encoded file") end' \
+              | base64 --decode > "source/$path"; then
+              echo "::notice::$path is not a regular file at $SOURCE_SHA."
+              rm -f "source/$path"
+            fi
+          done < <(node trusted/scripts/ci/evidence-autopilot.mjs source-files)
+
       - name: Check the bundle's shape and transit integrity with trusted code
         id: inspect
         if: steps.locate.outputs.found == 'true'
@@ -145,6 +168,7 @@ jobs:
           node trusted/scripts/ci/evidence-autopilot.mjs inspect
           --bundle bundle
           --source-sha "$SOURCE_SHA"
+          --source-files source
           --github-output "$GITHUB_OUTPUT"
 
   # Privileged: the only job that can read the App credentials. It re-runs
@@ -187,11 +211,29 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
 
+      - name: Fetch the source commit's copies of the files with derived fields
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # A file the source commit lacks is left out; inspect refuses a
+          # bundle that needs it and publishes one that does not.
+          while IFS= read -r path; do
+            mkdir -p "source/$(dirname "$path")"
+            if ! gh api "repos/$REPOSITORY/contents/$path?ref=$SOURCE_SHA" \
+              --jq 'if .type == "file" and .encoding == "base64" then .content else error("not a base64-encoded file") end' \
+              | base64 --decode > "source/$path"; then
+              echo "::notice::$path is not a regular file at $SOURCE_SHA."
+              rm -f "source/$path"
+            fi
+          done < <(node trusted/scripts/ci/evidence-autopilot.mjs source-files)
+
       - name: Build the compare-and-swap commit request with trusted code
         run: >-
           node trusted/scripts/ci/evidence-autopilot.mjs request
           --bundle bundle
           --source-sha "$SOURCE_SHA"
+          --source-files source
           --repository "$REPOSITORY"
           --branch "$HEAD_BRANCH"
           --run-url "$RUN_URL"
@@ -218,7 +260,7 @@ jobs:
 
       # No DCO sign-off: a bot cannot certify origin. dco.yml exempts this
       # commit only on GitHub's own evidence (verified signature, author and
-      # committer logins) plus the derived-evidence path allowlist.
+      # committer logins) plus the base branch's verify-commit rule.
       - name: Publish the evidence commit if the branch is still at the source commit
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}

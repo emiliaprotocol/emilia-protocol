@@ -34,6 +34,12 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
 
+      # Runs the base branch's evidence autopilot rule (below); it needs only
+      # Node and git.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
       - name: Check DCO sign-off
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
@@ -50,6 +56,17 @@ jobs:
           autopilot_login="${EVIDENCE_AUTOPILOT_BOT_LOGIN:-}"
           if [[ -n "$autopilot_login" && ! "$autopilot_login" =~ ^[A-Za-z0-9][A-Za-z0-9-]*\[bot\]$ ]]; then
             echo "::warning::vars.EVIDENCE_AUTOPILOT_BOT_LOGIN is not an App bot login (name[bot]); the evidence autopilot exemption is off."
+            autopilot_login=""
+          fi
+          # What an evidence autopilot commit may change is decided by the
+          # base branch's scripts/ci/evidence-autopilot.mjs (verify-commit),
+          # not by the copy in the pull request whose commits it exempts.
+          # (This workflow file itself comes from the pull request's merge
+          # ref, as for every pull_request workflow, so it stays reviewed.)
+          autopilot_rule="$RUNNER_TEMP/evidence-autopilot-rule.mjs"
+          if [[ -n "$autopilot_login" ]] \
+            && ! git show "$BASE_SHA:scripts/ci/evidence-autopilot.mjs" > "$autopilot_rule"; then
+            echo "::warning::The base commit has no scripts/ci/evidence-autopilot.mjs; the evidence autopilot exemption is off."
             autopilot_login=""
           fi
           # GitHub's record of a commit: whether GitHub verified its signature
@@ -90,28 +107,23 @@ jobs:
             # are machine regeneration by the repository's own writers, so the
             # App bot cannot and does not sign them off. The exemption needs a
             # GitHub-verified signature, the pinned App bot as author and as
-            # (or with GitHub as) committer, the autopilot trailer, a single
-            # parent, and nothing changed outside the derived-evidence
-            # allowlist. A bot-authored commit that fails the last two fails.
+            # (or with GitHub as) committer, the autopilot trailer, and the
+            # base branch's verify-commit: a single parent, nothing changed
+            # outside the derived-evidence allowlist, and each clean-room
+            # bundle changed only in its derived source_manifest. A
+            # bot-authored commit that fails verify-commit fails.
             if [[ -n "$autopilot_login" && "$github_signed" == true && "$author_login" == "$autopilot_login" \
               && ( "$committer_login" == "$autopilot_login" || "$committer_login" == web-flow ) ]] \
               && grep --line-regexp --fixed-strings --quiet 'Evidence-Autopilot: v1' <<< "$message"; then
-              parents="$(git rev-list --parents -n 1 "$commit_sha" | wc -w)"
-              outside="$(git diff-tree --no-commit-id --name-only -r --no-renames "$commit_sha" \
-                | grep --line-regexp --fixed-strings --invert-match \
-                  -e 'formal/results/formal-runtime-scenario-conformance.v2.json' \
-                  -e 'conformance/conformance-manifest.json' \
-                  -e 'security/security-case.json' \
-                  -e 'lib/proof-stats.json' \
-                  -e 'AI_CONTEXT.md' \
-                  -e 'public/llms.txt' \
-                  -e 'public/llms-full.txt' \
-                  -e 'public/.well-known/emilia-context.json' || true)"
-              if [[ "$parents" -eq 2 && -z "$outside" ]]; then
+              # Exempt only on the rule's own verdict line: an exit status of
+              # 0 alone would also come from a script that never ran.
+              verdict="$(node "$autopilot_rule" verify-commit --commit "$commit_sha" || true)"
+              printf '%s\n' "$verdict"
+              if [[ "$(head -n 1 <<< "$verdict")" == "EVIDENCE AUTOPILOT: $commit_sha changes only derived evidence:" ]]; then
                 echo "::notice::Commit $commit_sha is a GitHub-verified evidence autopilot commit that changes only derived evidence; DCO sign-off is not required."
                 continue
               fi
-              echo "::error::Commit $commit_sha is an evidence autopilot commit but is not single-parent or changes other paths: ${outside:-merge commit}"
+              echo "::error::Commit $commit_sha is an evidence autopilot commit but changes more than derived evidence (reason above)"
               failure=1
               continue
             fi

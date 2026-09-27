@@ -11,7 +11,10 @@
 % Every quantitative claim is traceable to a repository artifact:
 %   - conformance 21 suites / 340 vectors -> conformance/conformance-manifest.json
 %     (totals.suites=21, totals.vectors=340)
-%     manifest_sha256=941fc7efc768f30990e5a24ef4bc48ea94b3f4b064531001f85b2814ad413c75
+%     claimed_conformance_sha256=0ceb04da07f59b6f9e15f10235a58080b326b2d0e651f07ce5a9ba2f2dc738f4
+%     (claim scope, totals, each suite's vectors and each port's identity,
+%     relationship, counts and status, but not the ports' source digests;
+%     claimedConformanceSha256 in scripts/check-preprint-sync.mts)
 %   - all Tamarin lemma output blocks -> formal/PROOF_STATUS.md (verbatim)
 %   - TLA+ 413,137 states / 45,342 distinct / 26 invariants -> formal/PROOF_STATUS.md
 %   - Alloy 15 + 7 + 6 + 4 = 32 assertions -> formal/PROOF_STATUS.md
