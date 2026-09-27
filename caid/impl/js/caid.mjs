@@ -1178,34 +1178,48 @@ function admit(v, depth, st, path, parent = null, key = null) {
   return { value: dst, pending: { src: v, dst, isArray, depth, parent, key } };
 }
 
-// Reads the members of one container. Returns the pending child containers,
-// or null when the container itself is outside the data model.
+// Reads the members of one container. A member or element that is an
+// accessor, non-enumerable, or (in an array) a hole becomes UNSUPPORTED in
+// place, so a declared field that holds one refuses as mistyped_field.
+// Returns the pending child containers, or null when the container itself
+// is outside the data model: it cannot be read, has a symbol-keyed
+// property, or is an array with properties other than its elements.
 function expand(p, st, path) {
   const pending = [];
+  const place = (key, d) => {
+    if (!hasOwn(d, "value") || d.enumerable !== true) {
+      st.unsupported = true;
+      return UNSUPPORTED;
+    }
+    const r = admit(d.value, p.depth + 1, st, path, p.dst, key);
+    if (r.pending) pending.push(r.pending);
+    return r.value;
+  };
   try {
     if (p.isArray) {
       const length = readOwnData(p.src, "length");
-      if (typeof length !== "number" || Reflect.ownKeys(p.src).length !== length + 1) return null;
+      if (typeof length !== "number") return null;
+      let present = 0;
       for (let i = 0; i < length; i++) {
         const d = Reflect.getOwnPropertyDescriptor(p.src, String(i));
-        if (!d || !hasOwn(d, "value") || d.enumerable !== true) return null;
-        const r = admit(d.value, p.depth + 1, st, path, p.dst, i);
-        p.dst.push(r.value);
-        if (r.pending) pending.push(r.pending);
+        if (!d) {
+          st.unsupported = true;
+          p.dst.push(UNSUPPORTED);
+          continue;
+        }
+        present++;
+        p.dst.push(place(i, d));
       }
-      return pending;
+      return Reflect.ownKeys(p.src).length === present + 1 ? pending : null;
     }
     const descriptors = Object.getOwnPropertyDescriptors(p.src);
     const keys = Reflect.ownKeys(descriptors);
+    for (const key of keys) if (typeof key !== "string") return null;
     for (const key of keys) {
-      if (typeof key !== "string") return null;
       const d = descriptors[key];
-      if (!hasOwn(d, "value") || d.enumerable !== true) return null;
-      if (d.value === undefined) continue;
+      if (hasOwn(d, "value") && d.enumerable === true && d.value === undefined) continue;
       st.units += key.length;
-      const r = admit(d.value, p.depth + 1, st, path, p.dst, key);
-      defineMember(p.dst, key, r.value);
-      if (r.pending) pending.push(r.pending);
+      defineMember(p.dst, key, place(key, d));
     }
     return pending;
   } catch {
