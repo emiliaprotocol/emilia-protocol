@@ -1910,31 +1910,22 @@ jobs:
     needs: [changes]
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        # AWS Public ECR mirror of the official image — identical bits, but not
-        # subject to Docker Hub's anonymous pull rate limits, which were
-        # intermittently failing this job on shared GitHub runners.
-        image: public.ecr.aws/docker/library/postgres:17-alpine
-        env:
-          POSTGRES_USER: ep_test
-          # Per-run password (never reused) for this ephemeral, network-isolated
-          # CI service — no static credential in the repo.
-          POSTGRES_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
-          POSTGRES_DB: ep_test
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd "pg_isready -U ep_test -d ep_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
+      - name: Start Postgres
+        # Pulls the official image with registry fallback; see the script.
+        run: bash scripts/ci/start-postgres.sh
+        env:
+          PG_USER: ep_test
+          # Per-run password (never reused) for this ephemeral, network-isolated
+          # CI container. No static credential in the repo.
+          PG_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
+          PG_DB: ep_test
+          PG_PORT: '5433'
       - run: npm ci --ignore-scripts
       - name: Run Postgres integration tests
         run: >-
