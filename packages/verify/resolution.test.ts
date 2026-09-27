@@ -140,6 +140,23 @@ test('an approved receipt does not authorize until the relying party pins the op
   }
 });
 
+test('unpublished BME option binding cannot be silently accepted as the published -02 grammar', () => {
+  const receipt = makeReceipt({ outcome: 'approved', selected_option: 0 });
+  const proposed: any = structuredClone(bindingMoment);
+  proposed.question.options[0].action_digest = ACTION_HASH;
+  proposed.question.options[1].action_digest = `sha256:${'b'.repeat(64)}`;
+  const result = verifyResolutionReceipt(receipt, { ...opts, bindingMoment: proposed });
+  assert.equal(result.valid, false);
+  assert.equal(result.authorizes_action, false);
+  assert.equal(result.reason, 'malformed_binding_moment');
+
+  const relabeled = structuredClone(receipt);
+  relabeled.profile = 'EP-RESOLUTION-BME04-CANDIDATE-v1';
+  const downgrade = verifyResolutionReceipt(relabeled, opts);
+  assert.equal(downgrade.valid, false);
+  assert.equal(downgrade.reason, 'malformed_resolution_receipt');
+});
+
 test('a presenter-supplied or cross-principal key cannot establish authority', () => {
   const receipt = makeReceipt({ outcome: 'approved', selected_option: 0 });
   const result = verifyResolutionReceipt(receipt, {

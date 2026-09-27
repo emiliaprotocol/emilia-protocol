@@ -197,7 +197,10 @@ this profile does not collapse them into the resolution record.
 ## 8. Upstream candidate and version gate
 
 Issue #380 records candidate upstream text that adds an `action_digest` to each
-option and a bare `declined` resolution. The candidate would let a verifier
+option and a bare `declined` resolution. On 2026-09-26, the upstream author
+confirmed those changes are intended for -04; the imminent -03 is an
+Implementation Status correction and does not carry them. That sequencing is
+not a published wire contract. The candidate would let a verifier
 compare the selected option's digest directly with the exact action under
 consideration, without trusting `expectedSelectedOption`. That is the intended
 replacement for the interim local option map.
@@ -217,3 +220,10 @@ downgrade. At minimum, the negative cases must cover a missing option digest, a
 malformed digest, a substituted digest, and a selected index whose option
 digest differs from the action the executor is about to perform. Publishing the
 upstream draft and implementing that new local profile remain separate gates.
+
+Today the JavaScript, Python, and Go v1 tests explicitly refuse a supplied
+`action_digest` on a -02 option, even when it equals the expected action, and
+refuse a receipt relabeled as the unpublished candidate profile. These tests
+protect the old boundary; they are not a claim that the future -04 shape works.
+The candidate acceptance contract and remaining gates are in
+`docs/EP-RESOLUTION-BME04-CANDIDATE.md`.
