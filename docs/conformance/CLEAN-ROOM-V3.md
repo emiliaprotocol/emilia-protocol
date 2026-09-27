@@ -55,7 +55,7 @@ the test merely by finding a digest mismatch.
 
 The current generator is `EP-CLEAN-ROOM-CANONICALIZATION-CHALLENGE-v2`.
 This changes the challenge and its PRNG domain, not the v3 runner protocol,
-schemas, or pinned 21-suite, 335-vector corpus. The exported
+schemas, or pinned 21-suite, 340-vector corpus. The exported
 `replayPostBuildChallengesV1` function preserves historical challenge replay;
 submission acceptance cannot select it. Historical reports, including the
 external Rust results and their original pins, are not upgraded by this change.
