@@ -24,12 +24,12 @@ simulates a later offline review with the operator unavailable.
 
 Generated output is ignored by Git.
 
-The synthetic action uses a local CAID type, `example.prior.auth.approve.1`,
-not the registered `prior.auth.approve.1`. The registered type cannot produce
-a CAID under registry v4 because its `service_code` and `diagnosis_code`
-reference the CPT/HCPCS and ICD-10-CM code sets without a pinned snapshot, and
-those fields refuse whenever they are present. The local type copies the
-registered fields and closes the two codes with demo-only inline values.
+The synthetic action uses the registered CAID type `prior.auth.approve.2`
+(registry v5). Its `service_code` and `diagnosis_code` are `code` fields: CAID
+checks HCPCS and ICD-10-CM syntax, never membership in a value set, so the
+synthetic codes `E0601` and `G47.33` compute with no snapshot. The deprecated
+`prior.auth.approve.1` named those code sets as unpinned enums and could not
+produce a CAID whenever either field was present.
 
 ## The complete path
 
