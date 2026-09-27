@@ -80,7 +80,7 @@ Table of Contents
    2.  Data Model and JSON Input . . . . . . . . . . . . . . . . . .   7
      2.1.  The Action Object . . . . . . . . . . . . . . . . . . . .   7
      2.2.  Data Model  . . . . . . . . . . . . . . . . . . . . . . .   8
-     2.3.  Numbers . . . . . . . . . . . . . . . . . . . . . . . . .   8
+     2.3.  Numbers . . . . . . . . . . . . . . . . . . . . . . . . .   9
      2.4.  JSON Text Input . . . . . . . . . . . . . . . . . . . . .   9
      2.5.  Host Values . . . . . . . . . . . . . . . . . . . . . . .  10
      2.6.  Limits  . . . . . . . . . . . . . . . . . . . . . . . . .  11
@@ -426,13 +426,29 @@ Internet-Draft                    CAID                    September 2026
    The nesting depth of a value MUST NOT exceed 64.  The outermost
    object or array is at depth 1, and each nested object or array adds
    one.  The RFC 8785 encoding of an action object MUST NOT exceed
-   16,777,216 octets.
+   16,777,216 octets.  That size is measured only for a value that is
+   otherwise inside the model: a value outside it has no RFC 8785
+   encoding, so an oversized object that also holds a number outside the
+   model is refused as unsupported_number alone.
 
    A value outside the data model is refused and is never rewritten into
    a value inside it.  Computation reports a number outside the model as
    unsupported_number, and anything else, including nesting beyond 64
    and an encoding beyond the limit, as unsupported_value (Section 5,
    phases 6 and 7).
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 30 March 2027                 [Page 8]
+
+Internet-Draft                    CAID                    September 2026
+
 
 2.3.  Numbers
 
@@ -442,14 +458,6 @@ Internet-Draft                    CAID                    September 2026
    value is finite, is an integer, and has magnitude at most 2^53-1
    (9,007,199,254,740,991).  It is then canonicalized as that integer,
    which RFC 8785 serializes in plain decimal form.  The literal form is
-
-
-
-Schrock                   Expires 30 March 2027                 [Page 8]
-
-Internet-Draft                    CAID                    September 2026
-
-
    irrelevant: the literals 1e3, 1000.0, and 1000 all denote the integer
    1000, exactly as an ECMAScript JSON parser sees them.
 
@@ -491,6 +499,13 @@ Internet-Draft                    CAID                    September 2026
    1.  It is at most 33,554,432 octets long.  This is checked before
        decoding.
 
+
+
+Schrock                   Expires 30 March 2027                 [Page 9]
+
+Internet-Draft                    CAID                    September 2026
+
+
    2.  It is an I-JSON message [RFC7493].  In particular it is valid
        UTF-8 [RFC3629]; no string or member name, after unescaping,
        contains a surrogate code point or a noncharacter; and no object
@@ -498,13 +513,6 @@ Internet-Draft                    CAID                    September 2026
        sequence of code points.  The names "a" and "\u0061" are the same
        name.  A duplicate is refused, never resolved by keeping the
        first or the last member.
-
-
-
-Schrock                   Expires 30 March 2027                 [Page 9]
-
-Internet-Draft                    CAID                    September 2026
-
 
    3.  It does not begin with the UTF-8 byte order mark (the octets EF
        BB BF).  Section 8.1 of [RFC8259] permits a parser to ignore one;
@@ -543,15 +551,7 @@ Internet-Draft                    CAID                    September 2026
    definition, a mapping profile, or a mapping source as a host value
    that the application constructed.  Such an implementation:
 
-   *  MUST refuse any host value that is not a value of the data model:
-      as unsupported_number when it is a number outside the model, and
-      otherwise as unsupported_value, together with
-      mistyped_field:<name> when a declared field holds it (Section 5);
 
-   *  MUST NOT serialize a host value as a different value.  A map type,
-      a date, a typed array, a cyclic structure, or an object with
-      accessor properties or a non-default prototype is refused, never
-      canonicalized as an empty or partial object;
 
 
 
@@ -561,6 +561,16 @@ Schrock                   Expires 30 March 2027                [Page 10]
 
 Internet-Draft                    CAID                    September 2026
 
+
+   *  MUST refuse any host value that is not a value of the data model:
+      as unsupported_number when it is a number outside the model, and
+      otherwise as unsupported_value, together with
+      mistyped_field:<name> when a declared field holds it (Section 5);
+
+   *  MUST NOT serialize a host value as a different value.  A map type,
+      a date, a typed array, a cyclic structure, or an object with
+      accessor properties or a non-default prototype is refused, never
+      canonicalized as an empty or partial object;
 
    *  MUST NOT fail with an exception, a crash, or unbounded recursion
       for any host value, including cyclic values and values nested
@@ -582,16 +592,6 @@ Internet-Draft                    CAID                    September 2026
    The limits of this document are collected in Table 1.  Octets are
    UTF-8 octets.  Every limit is a refusal with the reason shown, never
    an exception.
-
-
-
-
-
-
-
-
-
-
 
 
 

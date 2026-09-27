@@ -264,7 +264,11 @@
         <t>The nesting depth of a value MUST NOT exceed 64. The
         outermost object or array is at depth 1, and each nested object
         or array adds one. The RFC 8785 encoding of an action object
-        MUST NOT exceed 16,777,216 octets.</t>
+        MUST NOT exceed 16,777,216 octets. That size is measured only
+        for a value that is otherwise inside the model: a value outside
+        it has no RFC 8785 encoding, so an oversized object that also
+        holds a number outside the model is refused as
+        unsupported_number alone.</t>
         <t>A value outside the data model is refused and is never
         rewritten into a value inside it. Computation reports a number
         outside the model as unsupported_number, and anything else,
