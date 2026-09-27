@@ -137,14 +137,19 @@ their field types (`native-fraction-in-integer-field`,
 `native-deep-fraction-with-shallow-fraction`, `native-fraction-at-depth-64`);
 enum snapshot labels that are not non-empty strings
 (`refuse-external-enum-*`); and the two conditional cbor-sha256 vectors.
-The audit of those fixes added four: the value count stops at the nesting
-limit, so a shared array whose expansion exceeds the count only below depth
-64 leaves the value within it (`native-value-count-stops-at-depth-64`,
+The second audit of those fixes added four: the value count stops at the
+nesting limit, so a shared array whose expansion exceeds the count only
+below depth 64 leaves the value within it (`native-value-count-stops-at-depth-64`,
 `native-value-count-straddles-depth-64`), and a host definition whose
 validation projection exceeds the count is `invalid_definition` while the
 same array outside the projection is never read
 (`native-definition-value-count-in-projection`,
-`native-definition-value-count-outside-projection`).
+`native-definition-value-count-outside-projection`). The third added
+twelve: a value past the count with a missing required field and a
+mistyped integer field (`native-value-count-with-phase-3-and-4` and its
+verify twin), and a branching and a single back-reference in an object and
+a branching, a three-way and a single back-reference in an array, each
+beside 1.5 (`native-cyclic-*-with-fraction` and their verify twins).
 
 **Version 4 carries forward.** Every version 4 vector keeps its id, with its
 object as the version 4 tokens. All 22 version 4 CAIDs are expected
