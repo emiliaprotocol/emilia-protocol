@@ -2442,7 +2442,7 @@
     {"driver":"field-name","lane":"text","case":"action_type","grammar":true,"expect":{"refusals":["invalid_action_type"]}},
     {"driver":"field-name","lane":"text","case":"：","grammar":true,"expect":{"caid":"caid:1:grammar.field-name.1:jcs-sha256:msvMs6qaCw45dvVp1kuDcmLEmO8_otmEqSmGotpG7z0"}},
     {"driver":"field-name","lane":"text","case":{"$units":[65534]},"grammar":true,"expect":{"refusals":["malformed_json"]}},
-    {"driver":"field-name","lane":"native","case":{"$units":[64976]},"grammar":true,"expect":{"refusals":["unsupported_value"]}},
+    {"driver":"field-name","lane":"native","case":{"$units":[64976]},"grammar":true,"expect":{"refusals":["invalid_definition"]}},
     {"driver":"field-name","lane":"native","case":{"$units":[97,55296]},"grammar":false,"expect":{"refusals":["invalid_definition"]}},
     {"driver":"field-name","lane":"native","case":{"$units":[56320]},"grammar":false,"expect":{"refusals":["invalid_definition"]}},
     {"driver":"field-name","lane":"text","case":{"repeat":{"prefix":"","unit":"x","count":70000,"suffix":""}},"grammar":true,"expect":{"caid":"caid:1:grammar.field-name.1:jcs-sha256:z6wgSfA8rXc0gexJ_pwAIf6VrHv_YfjMTdRkUWEwNWw"}},

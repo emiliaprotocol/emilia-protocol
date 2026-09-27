@@ -68,7 +68,8 @@
     "encoding": "UTF-8",
     "profile": "I-JSON",
     "byte_order_mark": [239, 187, 191],
-    "whitespace": [32, 9, 10, 13]
+    "whitespace": [32, 9, 10, 13],
+    "strings": {"code_points": "unicode-scalar-values", "noncharacters": "refused", "refusal": "malformed_json", "host_value_refusal": "unsupported_value"}
   },
   "reasons": [
     {"code": "malformed_json", "param": "none"},

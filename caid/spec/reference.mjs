@@ -15,7 +15,10 @@ import { createHash } from 'node:crypto';
 const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
   && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null);
 const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
-const hasLoneSurrogate = (s) => /\p{Cs}/u.test(s);
+// A data-model string is an I-JSON string (RFC 7493 Section 2.1, which RFC
+// 8785 Section 3.1 requires of JCS input): Unicode scalar values other than
+// noncharacters. A lone surrogate or a noncharacter puts it outside the model.
+const outsideModel = (s) => /[\p{Cs}\p{Noncharacter_Code_Point}]/u.test(s);
 
 /**
  * @param {ReturnType<typeof import('./gen.mjs').buildSpec>} spec
@@ -39,7 +42,7 @@ export function createReference(spec) {
   }
 
   // RFC 8785 over the data model: integers of magnitude <= 2^53-1 only,
-  // scalar-value strings, plain objects and dense arrays, depth <= 64,
+  // I-JSON strings (no lone surrogate, no noncharacter), plain objects and dense arrays, depth <= 64,
   // output <= canonical_octets.
   /** @returns {{ok: true, canonical: string} | {ok: false, refusals: string[]}} */
   function canonicalize(value) {
@@ -54,14 +57,14 @@ export function createReference(spec) {
         return JSON.stringify(v === 0 ? 0 : v);
       }
       if (k === 'string') {
-        if (hasLoneSurrogate(v)) { other = true; return '""'; }
+        if (outsideModel(v)) { other = true; return '""'; }
         return JSON.stringify(v);
       }
       if (k === 'array' || k === 'object') {
         if (depth + 1 > limits.nesting_depth) { other = true; return 'null'; }
         if (k === 'array') return `[${v.map((x) => out(x, depth + 1)).join(',')}]`;
         return `{${Object.keys(v).sort().map((key) => {
-          if (hasLoneSurrogate(key)) other = true;
+          if (outsideModel(key)) other = true;
           return `${JSON.stringify(key)}:${out(v[key], depth + 1)}`;
         }).join(',')}}`;
       }
@@ -77,7 +80,7 @@ export function createReference(spec) {
   const sha256Hex = (s) => createHash('sha256').update(Buffer.from(s, 'utf8')).digest('hex');
 
   function validFieldName(name) {
-    if (typeof name !== 'string' || name.length < def.field_name.min_length || hasLoneSurrogate(name)) return false;
+    if (typeof name !== 'string' || name.length < def.field_name.min_length || outsideModel(name)) return false;
     if ([...name].some((c) => def.field_name.forbidden_code_points.includes(c.codePointAt(0)))) return false;
     return !def.field_name.reserved.includes(name);
   }
