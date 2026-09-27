@@ -332,8 +332,17 @@ type canonicalizer struct {
 	other   bool
 	stopped bool
 	visits  int
-	open    []hostRef
+	// open holds the maps and slices on the current path, at most the
+	// nesting limit of them; openHash counts them by a hash of their
+	// address, so that a container whose bucket is empty, the usual case,
+	// is known not to be open without scanning open.
+	open     []hostRef
+	openHash [openHashBuckets]uint8
 }
+
+// openHashBuckets is the size of the open-path filter. With at most 64
+// containers open, a lookup scans open for about one container in 64.
+const openHashBuckets = 4096
 
 // hostRef identifies a map or a non-empty slice while it is open on the
 // current path: a map by its pointer, a slice by the address of its first
@@ -343,6 +352,10 @@ type hostRef struct {
 	isMap bool
 	ptr   uintptr
 	n     int
+}
+
+func (r hostRef) bucket() int {
+	return int((r.ptr>>4 ^ r.ptr>>16 ^ uintptr(r.n)) % openHashBuckets)
 }
 
 // enter opens the container v, whose elements number n, on the current
@@ -359,11 +372,15 @@ func (c *canonicalizer) enter(v interface{}, isMap bool, n int) bool {
 	if !isMap {
 		ref.n = n
 	}
-	for _, o := range c.open {
-		if o == ref {
-			return false
+	b := ref.bucket()
+	if c.openHash[b] != 0 {
+		for _, o := range c.open {
+			if o == ref {
+				return false
+			}
 		}
 	}
+	c.openHash[b]++
 	c.open = append(c.open, ref)
 	return true
 }
@@ -372,7 +389,9 @@ func (c *canonicalizer) leave(isMap bool, n int) {
 	if !isMap && n == 0 {
 		return
 	}
-	c.open = c.open[:len(c.open)-1]
+	last := len(c.open) - 1
+	c.openHash[c.open[last].bucket()]--
+	c.open = c.open[:last]
 }
 
 func (c *canonicalizer) write(s string) {
