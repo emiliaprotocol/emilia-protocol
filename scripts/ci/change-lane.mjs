@@ -76,7 +76,7 @@ export const GENERATED_ROOT_PROSE = new Set(['AI_CONTEXT.md']);
  * no docs-lane-skipped job reaches one of them; if one does, the lane is full.
  */
 export const KEPT_CHECKER =
-  /^scripts\/(?:check-(?:ae-challenge-\d+|authorization-receipts-\d+|bounded-capability-\d+|caid-\d+|model-to-matter-\d+|grace-[a-z0-9-]+|emergency-authority-freeze-drafts|standards-staged|artifact-lifecycle|authority-claims|conformance-doc-counts|docs-secrets|language-governance|preprint-sync|public-conformance-claims|repository-boundary)|build-standards-observatory|generate-llm-context|generate-proof-stats|gov-readiness-check)\.(?:mjs|mts|js|ts)$/;
+  /^scripts\/(?:check-(?:ae-challenge-\d+|aec-\d+|authorization-receipts-\d+|bounded-capability-\d+|caid-\d+|model-to-matter-\d+|grace-[a-z0-9-]+|emergency-authority-freeze-drafts|standards-staged|artifact-lifecycle|authority-claims|conformance-doc-counts|docs-secrets|language-governance|preprint-sync|public-conformance-claims|repository-boundary)|build-standards-observatory|generate-llm-context|generate-proof-stats|gov-readiness-check)\.(?:mjs|mts|js|ts)$/;
 
 /**
  * Tracked trees whose consumers are jobs the docs lane keeps: the vitest
