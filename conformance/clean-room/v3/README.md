@@ -37,7 +37,7 @@ have matching permissive-parser digests, so digest comparison alone cannot
 pass them.
 
 `EP-CLEAN-ROOM-CANONICALIZATION-CHALLENGE-v2` versions the generator and its
-PRNG domain only. The v3 runner protocol, schemas, pinned 335-vector corpus, and
+PRNG domain only. The v3 runner protocol, schemas, pinned 340-vector corpus, and
 historical reports (including the external Rust results) keep their meaning.
 `replayPostBuildChallengesV1` is for historical replay, not current submission
 acceptance. The completed report records `paired_cases: 64` and
