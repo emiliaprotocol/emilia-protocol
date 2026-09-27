@@ -5,7 +5,7 @@
 Run: python3 caid/impl/python/test_caid.py
 """
 
-import json
+import gc
 import os
 import sys
 import time
@@ -90,13 +90,13 @@ class DecoderTest(unittest.TestCase):
         self.assertEqual(decode('"\\ud83d\\ude00"'), {"ok": True, "value": "\U0001F600"})
 
     def test_noncharacters_are_malformed(self):
-        for text in ('"\\uffff"', '"\\ufdd0"', '"\\ud83f\\udffe"', '"﷯"', '"\U0010FFFF"', '{"\\ufffe":1}'):
+        for text in ('"\\uffff"', '"\\ufdd0"', '"\\ud83f\\udffe"', '"\ufdef"', '"\U0010FFFF"', '{"\\ufffe":1}'):
             self.assertEqual(decode(text), MALFORMED, text)
-        self.assertEqual(decode('"�﻿﷏ﷰ"')["ok"], True)
+        self.assertEqual(decode('"\ufffd\ufeff\ufdcf\ufdf0"')["ok"], True)
 
     def test_text_structure(self):
         for text in ("", " ", "{} {}", "{},", "[1,]", '{"a":1,}', "[01]", "[1.]", "[.5]", "[+1]", "[-]",
-                     "[1e]", '{"a" 1}', "{'a':1}", "[ 1]", "[\f1]", '"a\u0001"', '"a\\x"', '"\\u12"', "tru", "nul"):
+                     "[1e]", '{"a" 1}', "{'a':1}", "[\u00a01]", "[\f1]", '"a\u0001"', '"a\\x"', '"\\u12"', "tru", "nul"):
             self.assertEqual(decode(text), MALFORMED, repr(text))
         for text in (" \t\r\n{} \t\r\n", '"\\/\\b\\f\\n\\r\\t\\"\\\\"', "[-0, 0.5e1, 1E2, 1e+2, 1e-2]", "true", "null"):
             self.assertEqual(decode(text)["ok"], True, repr(text))
@@ -114,6 +114,20 @@ class DecoderTest(unittest.TestCase):
         self.assertEqual(caid.decode_caid_json(b'"' + b"a" * (cap - 2) + b'"')["ok"], True)
         self.assertEqual(caid.decode_caid_json(b'"' + b"a" * (cap - 1) + b'"'), MALFORMED)
         self.assertEqual(caid.decode_json_document(b'"' + b"a" * (cap - 1) + b'"')["ok"], True)
+
+    def test_collector_state_is_restored(self):
+        large_ok = b"[" + b"0," * (1 << 20) + b"0]"
+        large_bad = large_ok + b"x"
+        self.assertTrue(gc.isenabled())
+        self.assertTrue(caid.decode_caid_json(large_ok)["ok"])
+        self.assertEqual(caid.decode_caid_json(large_bad), MALFORMED)
+        self.assertTrue(gc.isenabled())
+        gc.disable()
+        try:
+            caid.decode_caid_json(large_ok)
+            self.assertFalse(gc.isenabled())
+        finally:
+            gc.enable()
 
     def test_number_values(self):
         values = decode("[1e-400, -0, 12.0, 1.2e1, 0.99999999999999999999, 9007199254740993, 1e400, 1.5]")["value"]
@@ -143,7 +157,7 @@ class HostValueTest(unittest.TestCase):
         self.assertEqual(self.compute({("a",): "a"}), {"refusals": ["unsupported_value"]})
         self.assertEqual(self.compute({"v": float("nan")}), {"refusals": ["unsupported_number"]})
         self.assertEqual(self.compute({"v": "\ud800"}), {"refusals": ["unsupported_value"]})
-        self.assertEqual(self.compute({"v": "￿"}), {"refusals": ["unsupported_value"]})
+        self.assertEqual(self.compute({"v": "\uffff"}), {"refusals": ["unsupported_value"]})
 
     def test_tuple_in_a_declared_field_is_mistyped(self):
         definitions = [{"action_type": "t.b.1", "required_fields": [{"name": "xs", "type": "array"}]}]
@@ -333,7 +347,7 @@ class DefinitionTest(unittest.TestCase):
 class ComputeTest(unittest.TestCase):
     def test_reason_order(self):
         defs = [{"action_type": "t.o.1", "required_fields": [{"name": "b", "type": "amount-string"}, {"name": "a", "type": "string"}, {"name": "c", "type": "integer"}]}]
-        result = caid.compute_caid({"action_type": "t.o.1", "c": "x", "b": "1.", "z": {"\ud800": 1, "": 1.5}}, {"suite": "cbor-sha256", "definitions": defs})
+        result = caid.compute_caid({"action_type": "t.o.1", "c": "x", "b": "1.", "z": {"\ud800": 1, "\ue000": 1.5}}, {"suite": "cbor-sha256", "definitions": defs})
         self.assertEqual(result, {"refusals": ["missing_material_field:a", "invalid_amount:b", "mistyped_field:c", "unknown_suite", "unsupported_number", "unsupported_value"]})
 
     def test_gates_yield_one_reason(self):
@@ -358,7 +372,7 @@ class ComputeTest(unittest.TestCase):
         for f in t["required_fields"]:
             base[f["name"]] = _candidate(f)
         self.assertIn("caid", caid.compute_caid(base, REG_OPTS))
-        for bad in ("e11.9", "E11.", "E11.12345", " E11.9", "E11.9\n", "ＥＡ1"):
+        for bad in ("e11.9", "E11.", "E11.12345", " E11.9", "E11.9\n", "\uff25\uff211"):
             result = caid.compute_caid(dict(base, diagnosis_code=bad), REG_OPTS)
             self.assertEqual(result, {"refusals": ["invalid_code:diagnosis_code"]}, bad)
         self.assertEqual(caid.compute_caid(dict(base, diagnosis_code=5), REG_OPTS), {"refusals": ["mistyped_field:diagnosis_code"]})
@@ -530,8 +544,8 @@ class MappingTest(unittest.TestCase):
         self.assertEqual(self.reasons(_profile(omitted_source_fields=[])), [])
 
     def test_d3_lengths_are_utf8_octets(self):
-        self.assertEqual(self.reasons(_profile(profile_id="é" * 256)), [])
-        self.assertEqual(self.reasons(_profile(profile_id="é" * 257)), ["invalid_mapping_profile"])
+        self.assertEqual(self.reasons(_profile(profile_id="\u00e9" * 256)), [])
+        self.assertEqual(self.reasons(_profile(profile_id="\u00e9" * 257)), ["invalid_mapping_profile"])
         self.assertEqual(self.reasons(_profile(profile_id="\U0001F600" * 128)), [])
         self.assertEqual(self.reasons(_profile(profile_id="\U0001F600" * 129)), ["invalid_mapping_profile"])
         self.assertEqual(self.reasons(_profile(target_action_type="t." * 300 + "1")), ["invalid_mapping_profile"])

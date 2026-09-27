@@ -37,6 +37,7 @@ recursion limit.
 """
 
 import base64
+import gc
 import hashlib
 import re
 
@@ -88,7 +89,7 @@ _DATE = SPEC["timestamp_date_offsets"]
 # A string outside the data model: an unpaired surrogate (not a Unicode
 # scalar value, RFC 8785 section 3.2.2.2) or a noncharacter (I-JSON,
 # RFC 7493 section 2.1, which the draft profiles wholesale).
-_NONCHARACTERS = "﷐-﷯￾￿" + "".join(
+_NONCHARACTERS = "\ufdd0-\ufdef\ufffe\uffff" + "".join(
     chr(plane * 0x10000 + 0xFFFE) + chr(plane * 0x10000 + 0xFFFF) for plane in range(1, 17)
 )
 _NONCHARACTER_RE = re.compile("[" + _NONCHARACTERS + "]")
@@ -212,6 +213,7 @@ _WS = re.compile("[" + "".join(re.escape(chr(c)) for c in SPEC["json_text"]["whi
 _NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?").match
 _STRING_CHUNK = re.compile(r'([^"\\\x00-\x1f]*)(.?)', re.S).match
 _HEX4 = re.compile(r"[0-9A-Fa-f]{4}").fullmatch
+_GC_PAUSE_OCTETS = 1 << 20
 _SIMPLE_ESCAPES = {'"': '"', "\\": "\\", "/": "/", "b": "\b", "f": "\f", "n": "\n", "r": "\r", "t": "\t"}
 
 
@@ -359,10 +361,20 @@ def _decode(data, max_octets, keep=False):
         text = raw.decode("utf-8")  # strict: refuses overlongs, surrogates, truncation
     except UnicodeDecodeError:
         return {"ok": False, "refusals": [_MALFORMED_JSON]}
+    # The parser builds only acyclic containers, so the cyclic collector has
+    # nothing to find in them. On a large text, pause it: on Python 3.14 its
+    # incremental passes rescan the growing containers and make a 16-million-
+    # element array several times slower to decode.
+    paused = len(raw) >= _GC_PAUSE_OCTETS and gc.isenabled()
+    if paused:
+        gc.disable()
     try:
         value = _parse(text, keep, None if keep else MAX_NESTING_DEPTH)
     except _Refused:
         return {"ok": False, "refusals": [_MALFORMED_JSON]}
+    finally:
+        if paused:
+            gc.enable()
     return {"ok": True, "value": value}
 
 

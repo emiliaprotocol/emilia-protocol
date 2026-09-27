@@ -424,7 +424,7 @@ def compare_mapped_actions(left, right, *, definitions=None, enum_snapshots=None
     mapped = [map_one(left), map_one(right)]
     if not all(m["ok"] for m in mapped):
         reasons = []
-        for prefix, result in zip(_COMPARISON_PREFIXES, mapped):
+        for prefix, result in zip(_COMPARISON_PREFIXES, mapped, strict=True):
             if not result["ok"]:
                 reasons.extend(prefix + ":" + reason for reason in result["reasons"])
         return {"verdict": _PREFIXED_VERDICT, "reasons": reasons, "left": mapped[0], "right": mapped[1]}
