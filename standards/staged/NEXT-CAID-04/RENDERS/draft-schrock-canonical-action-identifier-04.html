@@ -1902,7 +1902,7 @@ li > p:last-of-type:only-child {
   phase 3  required fields present
   phase 4  present fields valid for their types
   phase 5  suite registered and implemented
-  phase 6  every number in the data model
+  phase 6  every number, down to depth 64, in the data model
   phase 7  every other value in the data model
                                                           |
                                                           v
@@ -1998,16 +1998,20 @@ li > p:last-of-type:only-child {
         <span class="bcp14">MUST NOT</span> exceed 16,777,216 octets. That size is measured only
         for a value that is otherwise inside the model: a value outside
         it has no RFC 8785 encoding, so an oversized object that also
-        holds a number outside the model is refused as
-        unsupported_number alone. A host value is also bounded by a value
-        count (<a href="#host-values" class="auto internal xref">Section 2.5</a>); past it, a host action object
-        is refused as unsupported_value alone, whatever else it holds, and
-        any other host value is refused by the step that reads it
-        (<a href="#limits" class="auto internal xref">Section 2.6</a>). The contents of an object or array nested
-        deeper than 64 are not examined and are not counted toward the value
-        count, so a number inside one adds no unsupported_number; a number
-        held by an object or array at depth 64 or less still does. An action
-        object can be canonicalized when it is a value of the data model
+        holds a number outside the model yields unsupported_number and no
+        unsupported_value. A host value is also bounded by a value count
+        (<a href="#host-values" class="auto internal xref">Section 2.5</a>); past it, a host action object yields
+        unsupported_value from phase 7 and no unsupported_number, whatever
+        else it holds, while phases 3 and 4 still run
+        (<a href="#computation" class="auto internal xref">Section 5</a>), and any other host value is refused
+        by the step that reads it (<a href="#limits" class="auto internal xref">Section 2.6</a>). The contents of
+        an object or array nested deeper than 64 are not examined and are not
+        counted toward the value count, so a number inside one adds no
+        unsupported_number; a number held by an object or array at depth 64
+        or less still does. In a host value, a reference back to an enclosing
+        object or array is a cycle: it counts as one value, and nothing
+        beyond it is counted or examined, since what it refers to is counted
+        and examined where it sits. An action object can be canonicalized when it is a value of the data model
         whose RFC 8785 encoding is within this limit, whether or not the
         checks of computation phases 1 through 4 pass.<a href="#section-2.2-4" class="pilcrow">¶</a></p>
 <p id="section-2.2-5">A value outside the data model is refused and is never
@@ -2211,17 +2215,20 @@ li > p:last-of-type:only-child {
           value inside it once for every path that reaches it, so that a
           value reached through two members counts twice, except that an
           object or array nested deeper than 64 counts as one value and
-          nothing inside it is counted (<a href="#data-model" class="auto internal xref">Section 2.2</a>). For a
-          host action object past this count, phase 7 yields
-          unsupported_value and phase 6 yields no reason, whatever the value
-          holds; a host definition whose validation projection is past it,
-          or a host mapping profile or mapping source past it, is refused by
-          the step that reads it (<a href="#limits" class="auto internal xref">Section 2.6</a>). No JSON text
-          within the limit of
+          nothing inside it is counted, and a reference back to an enclosing
+          object or array counts as one value and nothing beyond it is
+          counted (<a href="#data-model" class="auto internal xref">Section 2.2</a>). For a host action object
+          past this count, phase 7 yields unsupported_value and phase 6
+          yields no reason, whatever the value holds, while phases 3 and 4
+          still run (<a href="#computation" class="auto internal xref">Section 5</a>); a host definition whose
+          validation projection is past it, or a host mapping profile or
+          mapping source past it, is refused by the step that reads it
+          (<a href="#limits" class="auto internal xref">Section 2.6</a>). No JSON text within the limit of
           <a href="#json-text" class="auto internal xref">Section 2.4</a> holds that many values. An
           implementation can process a value with shared references without
-          walking its expansion, but the count is that of the expansion,
-          down to depth 64;<a href="#section-2.5-2.4" class="pilcrow">¶</a>
+          walking its expansion, but the count of a value whose shared
+          references form no cycle is that of the expansion, down to depth
+          64;<a href="#section-2.5-2.4" class="pilcrow">¶</a>
 </li>
           <li class="normal" id="section-2.5-2.5">
             <span class="bcp14">MUST</span> read a host type definition only as far as its
@@ -2270,10 +2277,7 @@ li > p:last-of-type:only-child {
         count is invalid_definition, a host mapping profile that does is
         invalid_mapping_profile and has no digest
         (<a href="#mapping-algorithm" class="auto internal xref">Section 8.3</a>), and a host mapping source that
-        does is source_not_canonicalizable. A definition, registry, enum
-        snapshot, or mapping profile read from JSON text that nests deeper
-        than 64 fails the decoding of <a href="#json-text" class="auto internal xref">Section 2.4</a>, whose
-        report this document leaves to the implementation.<a href="#section-2.6-1" class="pilcrow">¶</a></p>
+        does is source_not_canonicalizable.<a href="#section-2.6-1" class="pilcrow">¶</a></p>
 <span id="name-limits-2"></span><div id="tab-limits">
 <table class="center" id="table-1">
           <caption>
@@ -2310,14 +2314,14 @@ li > p:last-of-type:only-child {
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Integer magnitude</td>
               <td class="text-left" rowspan="1" colspan="1">2^53-1</td>
-              <td class="text-left" rowspan="1" colspan="1">every number</td>
+              <td class="text-left" rowspan="1" colspan="1">every number held at depth 64 or less</td>
               <td class="text-left" rowspan="1" colspan="1">unsupported_number</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Value count</td>
               <td class="text-left" rowspan="1" colspan="1">33,554,432 values</td>
-              <td class="text-left" rowspan="1" colspan="1">a host value, each value counted once per path, but not the contents of an object or array nested deeper than 64</td>
-              <td class="text-left" rowspan="1" colspan="1">unsupported_value alone (host action object); otherwise the reason of the step that reads the value</td>
+              <td class="text-left" rowspan="1" colspan="1">a host value, each value counted once per path; an object or array nested deeper than 64, or a reference back to an enclosing one, counts as one value</td>
+              <td class="text-left" rowspan="1" colspan="1">unsupported_value and no unsupported_number (host action object); otherwise the reason of the step that reads the value</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Document encoding</td>
@@ -2370,8 +2374,11 @@ li > p:last-of-type:only-child {
           </tbody>
         </table>
 </div>
-<p id="section-2.6-3">The JSON text limit is twice the canonical limit, which leaves
-        room for insignificant whitespace and escapes. A tool call whose
+<p id="section-2.6-3">A definition, registry, enum snapshot, or mapping profile read
+        from JSON text that nests deeper than 64 fails the decoding of
+        <a href="#json-text" class="auto internal xref">Section 2.4</a>, whose report this document leaves to the
+        implementation. The JSON text limit is twice the canonical limit,
+        which leaves room for insignificant whitespace and escapes. A tool call whose
         arguments would push an action object past the canonical limit is
         addressed in <a href="#tool-call-type" class="auto internal xref">Section 4.7</a>. A protocol that
         carries action objects can impose tighter limits on its own
@@ -3395,7 +3402,8 @@ ZLQQQ
       it; phase 7 is that refusal. A host value of kind "object" that
       holds values outside the data model passes phase 1 and is refused by
       phase 6 or 7. Phase 6 does not examine values inside an object or
-      array nested deeper than 64, and the value count does not count them
+      array nested deeper than 64, or beyond a reference back to an
+      enclosing object or array, and the value count does not count them
       (<a href="#data-model" class="auto internal xref">Section 2.2</a>). When a host action object is made of
       more values than the value count (<a href="#host-values" class="auto internal xref">Section 2.5</a>),
       phase 6 yields no reason and phase 7 yields unsupported_value,
@@ -4601,14 +4609,21 @@ ZLQQQ
       placed in URLs only where the action object itself could be. The
       digest that computation returns and the source digest of a mapping
       result carry the same exposure.<a href="#section-11-1" class="pilcrow">¶</a></p>
-<p id="section-11-2">The digest field type keeps raw values out of an action object
+<p id="section-11-2">A CAID is meant to be recomputed by a party that already holds the
+      action object, such as a verifier (<a href="#verification" class="auto internal xref">Section 6</a>) or
+      an executor (<a href="#effect-boundary" class="auto internal xref">Section 7</a>), and receipts and
+      other evidence carry it for such parties. It is not designed as a
+      correlation identifier to propagate to parties that do not hold the
+      object: to them it discloses whatever of the object can be
+      guessed.<a href="#section-11-2" class="pilcrow">¶</a></p>
+<p id="section-11-3">The digest field type keeps raw values out of an action object
       but does not by itself provide confidentiality or unlinkability. A
       plain SHA-256 digest of an account number, email address, or
       patient identifier is pseudonymous, not anonymous: an observer can
       test likely values by dictionary attack. The digest-typed values in
       <a href="#appendix-examples" class="auto internal xref">Appendix C</a> are digests of short example
-      strings and can be recovered this way.<a href="#section-11-2" class="pilcrow">¶</a></p>
-<p id="section-11-3">Type authors handling personal data <span class="bcp14">SHOULD</span> prefer high-entropy
+      strings and can be recovered this way.<a href="#section-11-3" class="pilcrow">¶</a></p>
+<p id="section-11-4">Type authors handling personal data <span class="bcp14">SHOULD</span> prefer high-entropy
       opaque references or a deployment-specific privacy-preserving
       commitment scheme, document its normalization and correlation scope,
       and avoid placing unnecessary personal data in the action object. A
@@ -4616,13 +4631,15 @@ ZLQQQ
       member that carries at least 128 bits of entropy from the system of
       record, such as a random instruction or occurrence identifier. A
       deployment-specific commitment scheme can require an explicit
-      mapping profile for cross-domain joins.<a href="#section-11-3" class="pilcrow">¶</a></p>
-<p id="section-11-4">The initial CAID Action Types entries rely on identifiers from the
+      mapping profile for cross-domain joins.<a href="#section-11-4" class="pilcrow">¶</a></p>
+<p id="section-11-5">The initial CAID Action Types entries rely on identifiers from the
       system of record, such as payment_instruction_id,
       authorization_number, and order_id, that the registry cannot require
-      to be high-entropy. Where such an identifier is sequential, a CAID of
-      that type and its action object have the confidentiality of personal
-      data. The notes of a registered type fix what each of its digest
+      to be high-entropy. Where such an identifier is sequential, anyone who
+      holds a CAID of that type can recover its action object by guessing,
+      so the CAID needs the protection its action object needs, including
+      personal-data protection when the object carries personal data. The
+      notes of a registered type fix what each of its digest
       fields commits to, and that is part of the entry's immutable meaning
       (<a href="#iana-action-types" class="auto internal xref">Section 12.2</a>), so a deployment does not carry
       a keyed commitment, such as HMAC-SHA-256 <span>[<a href="#RFC6234" class="cite xref">RFC6234</a>]</span>
@@ -4632,9 +4649,9 @@ ZLQQQ
       type (<a href="#local" class="auto internal xref">Section 4.6</a>) or a new version registered for that
       purpose. Nothing in an action object says which scheme a digest
       field used, so comparison across deployments then needs a mapping
-      profile (<a href="#mapping" class="auto internal xref">Section 8</a>).<a href="#section-11-4" class="pilcrow">¶</a></p>
-<p id="section-11-5">Action objects, CAIDs, verification details, and their
-      correlations should be assumed to travel and to appear in logs.<a href="#section-11-5" class="pilcrow">¶</a></p>
+      profile (<a href="#mapping" class="auto internal xref">Section 8</a>).<a href="#section-11-5" class="pilcrow">¶</a></p>
+<p id="section-11-6">Action objects, CAIDs, verification details, and their
+      correlations should be assumed to travel and to appear in logs.<a href="#section-11-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="iana">
@@ -4789,7 +4806,7 @@ ZLQQQ
 <p id="section-12.2-4">The initial contents are the 54 entries of
         <a href="#appendix-action-types-initial" class="auto internal xref">Appendix D.1</a>, 45 active and 9
         deprecated. The definition of each entry is the entry with that
-        name in the file action‑types.json of
+        name in the file action-types.json of
         <span>[<a href="#CAID-REGISTRY" class="cite xref">CAID-REGISTRY</a>]</span>, registry version 5 of the reference
         registry, whose SHA-256 digest over the octets of that file, in
         hexadecimal, is
@@ -4817,10 +4834,10 @@ ZLQQQ
         algorithm and elliptic curve lists, and the ISO 3166-1 alpha-2 list
         as the Language Subtag Registry carries it. The ISO 4217 snapshot,
         which every currency field of the initial entries pins, is archived
-        with those files beside action‑types.json at the commit that
-        <span>[<a href="#CAID-REGISTRY" class="cite xref">CAID-REGISTRY</a>]</span> cites. Each snapshot file records its
-        source, and its entry in the enum_snapshot_files member of
-        action‑types.json records what is known of its terms.<a href="#section-12.2-5" class="pilcrow">¶</a></p>
+        with those files beside action-types.json at the commit that
+        <span>[<a href="#CAID-REGISTRY" class="cite xref">CAID-REGISTRY</a>]</span> cites. Each snapshot file records the
+        source it was derived from, and its entry in the enum_snapshot_files
+        member of action-types.json records what is known of its terms.<a href="#section-12.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="iana-field-types">
@@ -5188,6 +5205,26 @@ ZLQQQ
         string that a parser refuses, such as one whose scheme is written
         "CAID", into a CAID (<a href="#parsing" class="auto internal xref">Section 3.4</a>). Security: <a href="#security" class="auto internal xref">Section 10</a> and
         <a href="#privacy" class="auto internal xref">Section 11</a>.<a href="#section-12.8-3" class="pilcrow">¶</a></p>
+<p id="section-12.8-4">Utility (<span><a href="https://rfc-editor.org/rfc/rfc7595#section-3.1" class="relref">Section 3.1</a> of [<a href="#RFC7595" class="cite xref">RFC7595</a>]</span>):
+        a CAID names an action by the digest of a canonicalization that its
+        suite fixes, applied to an action object whose type definition
+        decides which members are required and how each is typed, and the
+        identifier carries the action type and the suite, both of which take
+        part in comparison (<a href="#equality" class="auto internal xref">Section 3.5</a>). An ni URI
+        <span>[<a href="#RFC6920" class="cite xref">RFC6920</a>]</span> names an object by the digest of its octets,
+        unless a specification defines another input, under an algorithm
+        from the Named Information Hash Algorithm Registry. It names no
+        canonicalization, and two ni names that share the algorithm and the
+        digest value refer to the same object whatever else they carry, so
+        an action type or a suite in their authority or query parameters
+        would take no part in comparison. A URN namespace
+        <span>[<a href="#RFC8141" class="cite xref">RFC8141</a>]</span> could carry the same fields in its
+        namespace-specific string, but URN-equivalence lowercases "urn" and
+        the namespace identifier, ignores the r-, q-, and f-components, and
+        lets a namespace add equivalences but never remove one, so it would
+        equate spellings that a parser under <a href="#parsing" class="auto internal xref">Section 3.4</a> refuses
+        and that <a href="#equality" class="auto internal xref">Section 3.5</a> compares as different
+        strings.<a href="#section-12.8-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="iana-media-types">
@@ -5421,9 +5458,10 @@ ZLQQQ
 <li id="section-14.1-2.16" class="normal">
 <div class="normal" id="chg-refused-value-count">Host action objects that hold
           more than 33,554,432 values, each counted once for every path that
-          reaches it, where an object or array nested deeper than 64 counts
-          as one value: unsupported_value alone
-          (<a href="#host-values" class="auto internal xref">Section 2.5</a>). A host definition whose validation
+          reaches it, where an object or array nested deeper than 64, or a
+          reference back to an enclosing object or array, counts as one
+          value: unsupported_value and no unsupported_number, while phases 3
+          and 4 still run (<a href="#host-values" class="auto internal xref">Section 2.5</a>). A host definition whose validation
           projection, or a host mapping profile or mapping source, holds that
           many is refused by the step that reads it: invalid_definition,
           invalid_mapping_profile, or source_not_canonicalizable
@@ -5588,9 +5626,10 @@ ZLQQQ
           profile's source_format and loss_policy members whenever the
           profile is an object, whether or not it is in the data model, and
           a profile outside the data model has no digest, so it yields
-          mapping_profile_unpinned (<a href="#mapping-algorithm" class="auto internal xref">Section 8.3</a>). One
-          of the reference implementations read neither member of such a
-          profile before this revision.<a href="#chg-mapping-stage-b" class="pilcrow">¶</a>
+          mapping_profile_unpinned (<a href="#mapping-algorithm" class="auto internal xref">Section 8.3</a>).
+          Before this revision, one of the reference implementations read
+          neither member of a profile nested deeper than 64, past the value
+          count, cyclic, or holding a host value of no JSON kind.<a href="#chg-mapping-stage-b" class="pilcrow">¶</a>
 </div>
           </li>
 <li id="section-14.2-1.21" class="normal">
@@ -5685,10 +5724,10 @@ ZLQQQ
         <h3 id="name-requirements-on-other-parti">
 <a href="#section-14.5" class="section-number selfRef">14.5. </a><a href="#name-requirements-on-other-parti" class="section-name selfRef">Requirements on Other Parties</a>
         </h3>
-<p id="section-14.5-1">These requirements bind issuers, executors, carrying protocols,
-        relying parties, and applications. The operations of
-        <a href="#overview" class="auto internal xref">Section 1.2</a> cannot observe them, so no conformance
-        vector pins them.<a href="#section-14.5-1" class="pilcrow">¶</a></p>
+<p id="section-14.5-1">These requirements bind issuers, type authors, registrants,
+        executors, carrying protocols, relying parties, deployments, and
+        applications. The operations of <a href="#overview" class="auto internal xref">Section 1.2</a> cannot
+        observe them, so no conformance vector pins them.<a href="#section-14.5-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li id="section-14.5-2.1" class="normal">
 <div class="normal" id="ed-embedded-text">The party that extracts an action
@@ -5714,6 +5753,12 @@ ZLQQQ
 </div>
           </li>
 <li id="section-14.5-2.4" class="normal">
+<div class="normal" id="ed-number-literals">Issuers do not emit a number literal
+          whose exact value is not an integer but whose correctly rounded
+          value is (<a href="#numbers" class="auto internal xref">Section 2.3</a>).<a href="#ed-number-literals" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.5-2.5" class="normal">
 <div class="normal" id="ed-number-readers">A relying party that evaluates a
           number in an action object evaluates the value of
           <a href="#numbers" class="auto internal xref">Section 2.3</a>, or refuses number tokens that have a
@@ -5722,7 +5767,41 @@ ZLQQQ
           (<a href="#security-parsing" class="auto internal xref">Section 10.6</a>).<a href="#ed-number-readers" class="pilcrow">¶</a>
 </div>
           </li>
-<li id="section-14.5-2.5" class="normal">
+<li id="section-14.5-2.6" class="normal">
+<div class="normal" id="ed-multiple-caids">A relying party decides which suites
+          it accepts, and a verifier accepts no CAID under another suite. When
+          an artifact carries several CAIDs for one action, the verifier
+          verifies every CAID whose suite it accepts and implements, treats
+          the failure of any one as the failure of all, and never selects the
+          CAID that verifies (<a href="#equality" class="auto internal xref">Section 3.5</a>).<a href="#ed-multiple-caids" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.5-2.7" class="normal">
+<div class="normal" id="ed-signature-coverage">A signature, MAC, or commitment
+          that is to be read as a commitment to a CAID covers the complete
+          CAID string (<a href="#security-domain" class="auto internal xref">Section 10.2</a>).<a href="#ed-signature-coverage" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.5-2.8" class="normal">
+<div class="normal" id="ed-truncation">A CAID is never abbreviated for
+          comparison, and a relying party compares an abbreviated form with
+          nothing (<a href="#security-truncation" class="auto internal xref">Section 10.3</a>).<a href="#ed-truncation" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.5-2.9" class="normal">
+<div class="normal" id="ed-occurrence">A type that must distinguish repeated
+          identical operations requires an occurrence identifier
+          (<a href="#security-replay" class="auto internal xref">Section 10.4</a>).<a href="#ed-occurrence" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.5-2.10" class="normal">
+<div class="normal" id="ed-message-bounds">A protocol that accepts action objects
+          from parties it does not trust bounds its own messages well below
+          the limits of <a href="#limits" class="auto internal xref">Section 2.6</a>
+          (<a href="#security-dos" class="auto internal xref">Section 10.7</a>).<a href="#ed-message-bounds" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.5-2.11" class="normal">
 <div class="normal" id="ed-suite-deprecation">A suite is deprecated once
           practical collision attacks on its digest are known or
           anticipated; issuers then stop emitting CAIDs under it, and
@@ -5731,20 +5810,30 @@ ZLQQQ
           <a href="#iana-suites" class="auto internal xref">12.1</a>).<a href="#ed-suite-deprecation" class="pilcrow">¶</a>
 </div>
           </li>
-<li id="section-14.5-2.6" class="normal">
-<div class="normal" id="ed-approval-display">An approval interface displays
-          every member and flags an undeclared member whose name matches a
-          declared one under case folding, NFKC normalization, or the
-          confusable skeleton (<a href="#security-unicode" class="auto internal xref">Section 10.9</a>).<a href="#ed-approval-display" class="pilcrow">¶</a>
+<li id="section-14.5-2.12" class="normal">
+<div class="normal" id="ed-approval-display">An approval interface applies
+          confusable detection to identifier-like fields, displays every
+          member with the control and bidirectional formatting characters of
+          member names escaped, and flags an undeclared member whose name
+          matches a declared one under case folding, NFKC normalization, or
+          the confusable skeleton; an interface or log that displays reasons
+          escapes them (<a href="#security-unicode" class="auto internal xref">Section 10.9</a>).<a href="#ed-approval-display" class="pilcrow">¶</a>
 </div>
           </li>
-<li id="section-14.5-2.7" class="normal">
+<li id="section-14.5-2.13" class="normal">
+<div class="normal" id="ed-identifier-normalization">A type whose fields name
+          identifiers such as hosts, accounts, email addresses, or tool names
+          states their normalization in digest_notes, and issuers apply it
+          before computing (<a href="#security-unicode" class="auto internal xref">Section 10.9</a>).<a href="#ed-identifier-normalization" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.5-2.14" class="normal">
 <div class="normal" id="ed-network-pins">A registry file obtained over the
           network is checked against its digest before it is parsed
           (<a href="#security-definitions" class="auto internal xref">Section 10.10</a>).<a href="#ed-network-pins" class="pilcrow">¶</a>
 </div>
           </li>
-<li id="section-14.5-2.8" class="normal">
+<li id="section-14.5-2.15" class="normal">
 <div class="normal" id="ed-local-names">Parties that use CAID across domains
           pin the same definition, registry snapshot, or definition_sha256,
           as -03 required of cross-domain verifiers, and a local deployment
@@ -5752,10 +5841,36 @@ ZLQQQ
           (<a href="#local" class="auto internal xref">Section 4.6</a>).<a href="#ed-local-names" class="pilcrow">¶</a>
 </div>
           </li>
-<li id="section-14.5-2.9" class="normal">
+<li id="section-14.5-2.16" class="normal">
 <div class="normal" id="ed-uri-use">An application does not dereference a
           CAID and does not normalize a string before parsing it as one
           (<a href="#iana-uri" class="auto internal xref">Section 12.8</a>).<a href="#ed-uri-use" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.5-2.17" class="normal">
+<div class="normal" id="ed-logging">A CAID is logged, transmitted, and placed in
+          URLs only where its action object could be; -03 said that
+          identifiers may be treated as public values
+          (<a href="#privacy" class="auto internal xref">Section 11</a>).<a href="#ed-logging" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.5-2.18" class="normal">
+<div class="normal" id="ed-type-entropy">A type whose required fields can all be
+          low-entropy requires a member that carries at least 128 bits of
+          entropy from the system of record (<a href="#privacy" class="auto internal xref">Section 11</a>).<a href="#ed-type-entropy" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.5-2.19" class="normal">
+<div class="normal" id="ed-keyed-commitment">A deployment that needs a keyed
+          commitment in a digest field uses a type whose notes specify it
+          (<a href="#privacy" class="auto internal xref">Section 11</a>).<a href="#ed-keyed-commitment" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.5-2.20" class="normal">
+<div class="normal" id="ed-snapshot-files">A registrant whose type pins an
+          external enum supplies the snapshot file, with its source and what
+          is known of its terms, and the SHA-256 digest of the file
+          (<a href="#iana-action-types" class="auto internal xref">Section 12.2</a>).<a href="#ed-snapshot-files" class="pilcrow">¶</a>
 </div>
         </li>
 </ul>
@@ -5822,21 +5937,23 @@ ZLQQQ
           what CAID defines and whom it trusts; name collision resistance
           where the party that constructs an action object may be
           adversarial; list the values fixed to SHA-256 and how each
-          migrates; and cover truncation, replay, multiple identifiers and
-          suite deprecation, signature coverage, the number and member-name
-          differentials at a native reader, limits and the memory they
-          admit, code-format matching, confusables, and digest fields under
-          suite migration. The parser requirements moved from Security
-          Considerations to <a href="#json-text" class="auto internal xref">Section 2.4</a>.<a href="#ed-security" class="pilcrow">¶</a>
+          migrates; and explain the memory that the limits admit, why
+          code-format matching is linear, and why a new suite leaves digest
+          fields bounded by SHA-256. The requirements that Security
+          Considerations add are listed in
+          <a href="#changes-03-parties" class="auto internal xref">Section 14.5</a>. The parser requirements moved
+          from Security Considerations to <a href="#json-text" class="auto internal xref">Section 2.4</a>.<a href="#ed-security" class="pilcrow">¶</a>
 </div>
           </li>
 <li id="section-14.6-2.7" class="normal">
-<div class="normal" id="ed-privacy">Privacy Considerations replace the
-          statement that identifiers may be treated as public values with a
-          confidentiality statement, the preimage-guessing risk, the
-          entropy of the identifiers that the initial types rely on, and
-          the rule that a keyed commitment needs a type whose notes specify
-          it.<a href="#ed-privacy" class="pilcrow">¶</a>
+<div class="normal" id="ed-privacy">Privacy Considerations are a section of
+          their own. They state that a CAID has the confidentiality of its
+          action object, explain the preimage-guessing risk and the entropy
+          of the identifiers that the initial types rely on, and state that a
+          CAID is meant to be recomputed by parties that hold the action
+          object, not propagated as a correlation identifier to parties that
+          do not. The requirements they add are listed in
+          <a href="#changes-03-parties" class="auto internal xref">Section 14.5</a>.<a href="#ed-privacy" class="pilcrow">¶</a>
 </div>
           </li>
 <li id="section-14.6-2.8" class="normal">
@@ -5860,6 +5977,13 @@ ZLQQQ
 </div>
           </li>
 <li id="section-14.6-2.9" class="normal">
+<div class="normal" id="ed-uri-utility">The registration of the caid URI scheme
+          states why the scheme is defined instead of using an ni URI
+          <span>[<a href="#RFC6920" class="cite xref">RFC6920</a>]</span> or a URN namespace
+          <span>[<a href="#RFC8141" class="cite xref">RFC8141</a>]</span> (<a href="#iana-uri" class="auto internal xref">Section 12.8</a>).<a href="#ed-uri-utility" class="pilcrow">¶</a>
+</div>
+          </li>
+<li id="section-14.6-2.10" class="normal">
 <div class="normal" id="ed-examples">The example of <a href="#schema" class="auto internal xref">Section 4.2</a> is
           the registry entry for payment.release.1 with its real
           values_sha256, the registration of <a href="#tool-call-type" class="auto internal xref">Section 4.7</a>
@@ -5868,22 +5992,24 @@ ZLQQQ
           correctly.<a href="#ed-examples" class="pilcrow">¶</a>
 </div>
           </li>
-<li id="section-14.6-2.10" class="normal">
+<li id="section-14.6-2.11" class="normal">
 <div class="normal" id="ed-implementation-status">An Implementation Status
           section <span>[<a href="#RFC7942" class="cite xref">RFC7942</a>]</span>.<a href="#ed-implementation-status" class="pilcrow">¶</a>
 </div>
           </li>
-<li id="section-14.6-2.11" class="normal">
+<li id="section-14.6-2.12" class="normal">
 <div class="normal" id="ed-references">Normative references to RFC 8259,
           RFC 3629, RFC 7405, RFC 7493, RFC 3986, IEEE 754, and the
           reference registry at a fixed commit, with the URL of the raw file
           whose octets its digest covers, and informative references to
-          RFC 7595, RFC 7696, RFC 7942, RFC 8126, RFC 8792, RFC 6838,
-          RFC 5730, RFC 5936, the Unicode Standard and its UTS #39, and the
-          code systems whose syntax the code formats follow.<a href="#ed-references" class="pilcrow">¶</a>
+          RFC 7595, RFC 6920, RFC 8141, RFC 7696, RFC 7942, RFC 8126,
+          RFC 8792, RFC 6838, RFC 5730, RFC 5936, the Unicode Standard and its
+          UTS #39, ISO 3166-1 and ISO 4217, whose code lists two enum
+          snapshots carry, and the code systems whose syntax the code formats
+          follow.<a href="#ed-references" class="pilcrow">¶</a>
 </div>
           </li>
-<li id="section-14.6-2.12" class="normal">
+<li id="section-14.6-2.13" class="normal">
 <div class="normal" id="ed-wording">Wording that referred to earlier revisions
           as "this revision" is made revision-neutral.<a href="#ed-wording" class="pilcrow">¶</a>
 </div>
@@ -5944,13 +6070,13 @@ ZLQQQ
 <dt id="CAID-REGISTRY">[CAID-REGISTRY]</dt>
         <dd>
 <span class="refAuthor">EMILIA Protocol, Inc.</span>, <span class="refTitle">"CAID Reference Registry, Registry Version 5"</span>, <time datetime="2026-09" class="refDate">September 2026</time>, <span>&lt;<a href="https://raw.githubusercontent.com/emiliaprotocol/emilia-protocol/cea10b85e96460a04bf55d683a1ebc34e8b2c9a6/caid/registry/action-types.json">https://raw.githubusercontent.com/emiliaprotocol/emilia-protocol/cea10b85e96460a04bf55d683a1ebc34e8b2c9a6/caid/registry/action-types.json</a>&gt;</span>. <span class="annotation">Registry version 5 is the file
-          <code>action‑types.json</code> at this fixed commit, whose octets
+          <code>action-types.json</code> at this fixed commit, whose octets
           the URL above serves. The CAID Action Types section of
           this document gives the SHA-256 digest of those octets. This
           reference covers that file alone. Beside it at the same commit,
           <code>digests.json</code> lists the definition_sha256 of every type,
-          <code>history/action‑types.v4.json</code> holds registry version
-          4, and <code>value‑sets/</code> holds the enum snapshots.</span>
+          <code>history/action-types.v4.json</code> holds registry version
+          4, and <code>value-sets/</code> holds the enum snapshots.</span>
         </dd>
 <dd class="break"></dd>
 <dt id="IEEE754">[IEEE754]</dt>
@@ -6092,6 +6218,10 @@ ZLQQQ
         <dd>
 <span class="refAuthor">Freed, N.</span>, <span class="refAuthor">Klensin, J.</span>, and <span class="refAuthor">T. Hansen</span>, <span class="refTitle">"Media Type Specifications and Registration Procedures"</span>, <span class="seriesInfo">BCP 13</span>, <span class="seriesInfo">RFC 6838</span>, <span class="seriesInfo">DOI 10.17487/RFC6838</span>, <time datetime="2013-01" class="refDate">January 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6838">https://www.rfc-editor.org/info/rfc6838</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="RFC6920">[RFC6920]</dt>
+        <dd>
+<span class="refAuthor">Farrell, S.</span>, <span class="refAuthor">Kutscher, D.</span>, <span class="refAuthor">Dannewitz, C.</span>, <span class="refAuthor">Ohlman, B.</span>, <span class="refAuthor">Keranen, A.</span>, and <span class="refAuthor">P. Hallam-Baker</span>, <span class="refTitle">"Naming Things with Hashes"</span>, <span class="seriesInfo">RFC 6920</span>, <span class="seriesInfo">DOI 10.17487/RFC6920</span>, <time datetime="2013-04" class="refDate">April 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6920">https://www.rfc-editor.org/info/rfc6920</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC7595">[RFC7595]</dt>
         <dd>
 <span class="refAuthor">Thaler, D., Ed.</span>, <span class="refAuthor">Hansen, T.</span>, and <span class="refAuthor">T. Hardie</span>, <span class="refTitle">"Guidelines and Registration Procedures for URI Schemes"</span>, <span class="seriesInfo">BCP 35</span>, <span class="seriesInfo">RFC 7595</span>, <span class="seriesInfo">DOI 10.17487/RFC7595</span>, <time datetime="2015-06" class="refDate">June 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7595">https://www.rfc-editor.org/info/rfc7595</a>&gt;</span>. </dd>
@@ -6107,6 +6237,10 @@ ZLQQQ
 <dt id="RFC8126">[RFC8126]</dt>
         <dd>
 <span class="refAuthor">Cotton, M.</span>, <span class="refAuthor">Leiba, B.</span>, and <span class="refAuthor">T. Narten</span>, <span class="refTitle">"Guidelines for Writing an IANA Considerations Section in RFCs"</span>, <span class="seriesInfo">BCP 26</span>, <span class="seriesInfo">RFC 8126</span>, <span class="seriesInfo">DOI 10.17487/RFC8126</span>, <time datetime="2017-06" class="refDate">June 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8126">https://www.rfc-editor.org/info/rfc8126</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8141">[RFC8141]</dt>
+        <dd>
+<span class="refAuthor">Saint-Andre, P.</span> and <span class="refAuthor">J. Klensin</span>, <span class="refTitle">"Uniform Resource Names (URNs)"</span>, <span class="seriesInfo">RFC 8141</span>, <span class="seriesInfo">DOI 10.17487/RFC8141</span>, <time datetime="2017-04" class="refDate">April 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8141">https://www.rfc-editor.org/info/rfc8141</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8792">[RFC8792]</dt>
         <dd>
@@ -7247,9 +7381,9 @@ fa2
         Each of the seven types defined by other specifications may be
         registered under Specification Required
         (<a href="#iana-action-types" class="auto internal xref">Section 12.2</a>) with its own specification and
-        change controller; emilia.mobile.authorized‑action.1, whose
-        first segment names an organization, only with that organization
-        as its change controller. dns.zone.transfer.1 is not to be
+        change controller, and the type emilia.mobile.authorized-action.1,
+        whose first segment names an organization, only with that
+        organization as its change controller. dns.zone.transfer.1 is not to be
         registered: the
         path for the registrar-transfer type is a successor whose name
         describes it.<a href="#appendix-D.2-1" class="pilcrow">¶</a></p>

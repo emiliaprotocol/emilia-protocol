@@ -1,9 +1,10 @@
 # Validation record
 
 Validated on 2026-09-27. The source applies every confirmed finding of the
-pre-filing review, and every finding of the first and second audits of
-those fixes, to the previously staged -04, which carried the amount-string
-ABNF and the suite and unused-bit parsing changes over -03 and keeps both.
+pre-filing review, and every finding of the first, second and third audits
+of those fixes, to the previously staged -04, which carried the
+amount-string ABNF and the suite and unused-bit parsing changes over -03
+and keeps both.
 
 ## Rendering
 
@@ -26,9 +27,12 @@ ABNF and the suite and unused-bit parsing changes over -03 and keeps both.
   their `:<name>` parameter, which the paragraph above it states, so its
   "Refused when" column is 31 columns wide; the paragraph that follows the
   table in the earlier draft now precedes it, and the table sits on one
-  page. Table 1 runs from page 14 to page 16: it breaks between two rows
-  on page 14, and its last row ends page 15, so only its closing border
-  and caption fall on page 16.
+  page. Table 1 runs from page 14 to page 16: page 14 ends on the last
+  line of its second row, and its last row ends page 15, so only its
+  closing border and caption fall on page 16. The sentence on definitions
+  read from JSON text that nest deeper than 64 now opens the paragraph
+  after the table instead of closing the one before it, which keeps the
+  nesting row on one page.
 - Every sourcecode line is at most 69 columns. Long example lines are folded
   as specified in RFC 8792 (single backslash strategy), and
   `check-caid-04` unfolds them before recomputing. Appendix D is two
@@ -38,11 +42,17 @@ ABNF and the suite and unused-bit parsing changes over -03 and keeps both.
   digest), and `check-caid-04` fails if a page of the TXT separates an
   entry's name line from its digest line, or if a term is long enough to
   wrap.
-- Non-breaking hyphens (`&#8209;`) keep `action-types.json`,
-  `history/action-types.v4.json`, `value-sets/`, SHA-384, SHA-512/256 and,
-  in Appendix D.2, emilia.mobile.authorized-action.1 on one line, and
-  `check-caid-04` fails if the TXT breaks an action type at a hyphen. `xml2rfc` renders them as ASCII hyphens, and the TXT is
-  ASCII only. [CAID-REGISTRY] targets the raw registry file URL, whose
+- Non-breaking hyphens (`&#8209;`) appear only in SHA-384 and
+  SHA-512/256. `xml2rfc` renders them as ASCII hyphens in the TXT, which is
+  ASCII only, but the HTML keeps U+2011, so a type name or file path copied
+  from it would not be the real string. The file paths
+  (`action-types.json`, `history/action-types.v4.json`, `value-sets/`) and
+  emilia.mobile.authorized-action.1 are ASCII in the source and in both
+  renders, and the sentences around them are worded so that the TXT breaks
+  none of them. `check-caid-04` fails if a non-breaking hyphen appears
+  anywhere else in the source, if the HTML carries U+2011 in those names,
+  or if the TXT breaks an action type at a hyphen, "action-types", or
+  "value-sets". [CAID-REGISTRY] targets the raw registry file URL, whose
   octets the digest covers, so the TXT prints it as the reference's URL in
   angle brackets, where line breaks are the only whitespace inside it, and
   the HTML links it. `xml2rfc` 3.34.0 refuses an `<eref>` in `<refcontent>`,
@@ -50,7 +60,7 @@ ABNF and the suite and unused-bit parsing changes over -03 and keeps both.
   stray space ("action- types", "history/ action-types"); `check-caid-04`
   fails on either.
 - `idnits 3.1.0 -m submission` reports `PASS - No nit found` for the TXT
-  rendering (94 pages). `check-caid-04` fails unless that page count is the
+  rendering (96 pages). `check-caid-04` fails unless that page count is the
   last page of the TXT.
 - `idnits 3.1.0` in its default mode reports one error,
   `DOWNREF_TO_LOWER_STATUS` for RFC 8785, which is an Informational RFC on
@@ -98,18 +108,34 @@ this tree:
   object and defer to the reading step for every other value), and the
   IANA tables equal the tables generated from `caid/spec/core.json`,
   `caid/registry/suites.json`, and the compiled code formats.
-- The value count as the three ports apply it: an object or array nested
-  deeper than 64 counts as one value and nothing inside it is counted
-  (Sections 2.2, 2.5 and 5, and Table 1), and a host definition, mapping
-  profile or mapping source past the count gets the reason of the step
+- The value count as the three ports and the spec oracle apply it: an
+  object or array nested deeper than 64 counts as one value and nothing
+  inside it is counted, and a reference back to an enclosing object or
+  array counts as one value and nothing beyond it is counted or examined,
+  while acyclic shared references count by their expansion down to depth
+  64 (Sections 2.2, 2.5 and 5, Table 1 and Section 14.1). Past the count a
+  host action object yields unsupported_value and no unsupported_number,
+  and phases 3 and 4 still run (Sections 2.2, 2.5 and 5, Table 1 and
+  Section 14.1, none of which says "alone" any more); a host definition,
+  mapping profile or mapping source past it gets the reason of the step
   that reads it (Sections 2.2, 2.5, 2.6 and 14.1). The script requires that
-  text; the vectors `native-value-count-stops-at-depth-64`,
+  text and bans the "alone" wording. Until this round the Go port followed
+  a cycle down to the nesting limit, so a branching cycle beside 1.5 passed
+  the count and gave `[unsupported_value]` where the JavaScript and Python
+  ports and the oracle gave `[unsupported_number, unsupported_value]`; Go
+  now counts the reference as one value. The vectors
+  `native-value-count-stops-at-depth-64`,
   `native-value-count-straddles-depth-64`,
-  `native-definition-value-count-in-projection`,
+  `native-value-count-with-phase-3-and-4` and its verify twin,
+  `native-cyclic-{branching-object,single-object,branching-array,three-way-array,single-array}-with-fraction`
+  and their verify twins, `native-definition-value-count-in-projection`,
   `native-definition-value-count-outside-projection`,
   `profile-value-count-abstains` and
   `stage-b-source-value-count-not-canonicalizable` pin the behavior in all
-  three ports.
+  three ports and the vendored copy. Before the Go change, its runner
+  failed exactly the six branching-cycle vectors (compute and verify for
+  the branching object, the branching array and the three-way array) and
+  passed the single back-reference ones.
 - Appendix D, "Action Types of Reference Registry Version 5", lists all 62
   types of registry version 5 once, with their `definition_sha256` values:
   D.1, the 54 initial IANA entries (45 active, 9 deprecated), and D.2, the
@@ -164,7 +190,42 @@ this tree:
   exactly those vectors (2 core, 0 grammar); a missing toolchain is a note,
   and a failure with `--prefiling`. It also requires the Section 2.5
   sentence that a host number beyond 2^53-1 with a finite correctly
-  rounded value is refused by phase 6 alone.
+  rounded value is refused by phase 6 alone, the sentence that NaN or 1.5
+  in an integer field is mistyped_field and unsupported_number, and the
+  Section 13 sentences that each implementation refuses cbor-sha256 as
+  unknown_suite and that the JavaScript implementation uses only the
+  platform's cryptographic library and the Python and Go implementations
+  only their standard libraries; for the last it reads the imports of
+  every port module (`node:crypto` and the sibling module in JavaScript,
+  `sys.stdlib_module_names` in Python, no `require` in `go.mod` and no
+  import path with a dot in Go).
+- The limits the prose restates (the value count in Sections 2.5 and
+  14.1, the JSON text limit in Sections 2.4, 10.7 and 14.1, the canonical
+  limit and the nesting depth in Section 2.2, Table 2 and Section 14.1,
+  and 2^53-1 in Section 2.3) are the values of `caid/spec/core.json`, and
+  every comma-grouped number in the source is one of those values, 2^53-1,
+  or the amount counterexample "1,000".
+- Section 12.2 carries the whole 128-bit clause of the material-fields
+  test and the rule that a new version of a registered type name is
+  registered by the change controller of its earlier versions or with that
+  controller's written agreement, and `caid/registry/GOVERNANCE.md`
+  section 5 carries the 128-bit criterion with its exception and the
+  snapshot-file and terms duty.
+- Each change since -03 appears in one list: Section 14.5 lists every
+  requirement the new text places on issuers, type authors, registrants,
+  executors, carrying protocols, relying parties, deployments and
+  applications, among them the verifier rules for several CAIDs,
+  signature coverage, truncation, the occurrence identifier, message
+  bounds, number literals, logging, type entropy, keyed commitments,
+  identifier normalization and snapshot files, and the Security and
+  Privacy items of Section 14.6 describe text alone.
+- Section 12.8 gives the utility of the scheme (RFC 7595, Section 3.1)
+  against an ni URI (RFC 6920) and a URN namespace (RFC 8141), with the
+  wording read against those RFCs (below), and the `ed-uri-utility` item
+  records it. Section 11 says a CAID is meant to be recomputed by parties
+  that already hold the action object and is not designed as a
+  correlation identifier for parties that do not, and `ed-privacy`
+  records it.
 - [CAID-REGISTRY] targets the raw `action-types.json` at commit
   `cea10b85e`, names no blob URL, and that commit's file hashes to registry
   version 5 (`1e30ddd3...2551a`); the TXT prints that URL once, in angle
@@ -182,10 +243,10 @@ this tree:
 
 ## Conformance and generated sources
 
-- `npm run caid:conformance` passes: 579 core, 1966 grammar, 78 mapping,
+- `npm run caid:conformance` passes: 591 core, 1966 grammar, 78 mapping,
   and 100 consequential-interoperability vectors against the spec oracle,
   with the generated-sources and registry checks. In JavaScript, Python,
-  and Go each runner reports 577 of the 579 core vectors run and passed
+  and Go each runner reports 589 of the 591 core vectors run and passed
   (2 skipped) and all 1966 grammar cases: six vectors apply only where
   cbor-sha256 is, or is not, implemented, and each runner skips those
   whose condition does not hold.
@@ -277,6 +338,38 @@ value-count vectors of this round pass in all three ports through
 about the count below depth 64 and about host documents comes from.
 `npx tsc -p tsconfig.rest.json --incremental false`, the CI type gate for
 scripts and `caid/`, reports no error in `scripts/check-caid-04.mjs`.
+
+Re-run for the third audit of the fixes, on the same day and machine:
+
+- `npm view @emilia-protocol/verify version` is still 5.0.0, and the
+  Datatracker API reports the same latest revisions for this draft (03)
+  and every cited draft; the IETF archive URL for -04 still returns 404.
+- RFC 6920, RFC 8141 and RFC 7595 were fetched from rfc-editor.org and
+  read for the Section 12.8 utility paragraph. RFC 6920 Section 3: the
+  digest algorithm is named from the registry of its Section 9.4 (the
+  Named Information Hash Algorithm Registry), and the value is the hash of
+  its defined input, which defaults to the object's octets; Section 2:
+  other than for a public key, the input is left to other
+  specifications, and a comparison considers only the digest algorithm
+  and value, never the authority or parameters. RFC 8141 Section 3.1:
+  URN-equivalence lowercases "urn" and the NID and ignores the r-, q- and
+  f-components, and a namespace's additional rules can only remove false
+  negatives, never make URN-equivalent names different. RFC 7595 Section
+  3.1: a scheme specification SHOULD discuss the utility of the scheme.
+- The Section 14.2 stage B history, run against the JavaScript mapper at
+  `cea10b85e` with the `ep-action-v1` profile under a declared loss: a
+  profile outside the data model through profile_id 1.5 or a lone
+  surrogate still read both members (`invalid_mapping_profile`,
+  `mapping_profile_unpinned`, `declared_source_semantic_loss`); a member
+  nested 70 deep, a Map, a BigInt, a shared array past the value count, a
+  cycle, or an undefined member made it read neither
+  (`invalid_mapping_profile`, `mapping_profile_unpinned`,
+  `source_format_mismatch`). The current JavaScript mapper matches Python
+  and Go on the vectors that pin stage B.
+- The value-count and cycle vectors of this round pass in JavaScript,
+  Python, Go and the vendored copy through `npm run caid:conformance` and
+  the vendored lane, with the same reason lists and verification details
+  as the oracle.
 
 Carried from the earlier validation of this packet on the same day, and
 not re-run for this revision, because the text they support did not

@@ -148,20 +148,20 @@ Internet-Draft                    CAID                    September 2026
      12.7.  CAID Mapping Loss Policies . . . . . . . . . . . . . . .  61
      12.8.  The "caid" URI Scheme  . . . . . . . . . . . . . . . . .  61
      12.9.  Media Types  . . . . . . . . . . . . . . . . . . . . . .  62
-   13. Implementation Status . . . . . . . . . . . . . . . . . . . .  62
-   14. Changes since -03 . . . . . . . . . . . . . . . . . . . . . .  63
-     14.1.  Newly Refused Inputs . . . . . . . . . . . . . . . . . .  63
-     14.2.  New Rules and Features . . . . . . . . . . . . . . . . .  65
+   13. Implementation Status . . . . . . . . . . . . . . . . . . . .  63
+   14. Changes since -03 . . . . . . . . . . . . . . . . . . . . . .  64
+     14.1.  Newly Refused Inputs . . . . . . . . . . . . . . . . . .  64
+     14.2.  New Rules and Features . . . . . . . . . . . . . . . . .  66
      14.3.  Reason Changes . . . . . . . . . . . . . . . . . . . . .  68
-     14.4.  Reference Registry . . . . . . . . . . . . . . . . . . .  68
+     14.4.  Reference Registry . . . . . . . . . . . . . . . . . . .  69
      14.5.  Requirements on Other Parties  . . . . . . . . . . . . .  69
-     14.6.  Other Changes  . . . . . . . . . . . . . . . . . . . . .  70
-   15. Changes since -02 . . . . . . . . . . . . . . . . . . . . . .  71
-   16. References  . . . . . . . . . . . . . . . . . . . . . . . . .  72
-     16.1.  Normative References . . . . . . . . . . . . . . . . . .  72
-     16.2.  Informative References . . . . . . . . . . . . . . . . .  74
-   Appendix A.  Collected ABNF . . . . . . . . . . . . . . . . . . .  77
-   Appendix B.  Reason Codes . . . . . . . . . . . . . . . . . . . .  80
+     14.6.  Other Changes  . . . . . . . . . . . . . . . . . . . . .  71
+   15. Changes since -02 . . . . . . . . . . . . . . . . . . . . . .  73
+   16. References  . . . . . . . . . . . . . . . . . . . . . . . . .  74
+     16.1.  Normative References . . . . . . . . . . . . . . . . . .  74
+     16.2.  Informative References . . . . . . . . . . . . . . . . .  75
+   Appendix A.  Collected ABNF . . . . . . . . . . . . . . . . . . .  78
+   Appendix B.  Reason Codes . . . . . . . . . . . . . . . . . . . .  82
 
 
 
@@ -170,18 +170,18 @@ Schrock                   Expires 31 March 2027                 [Page 3]
 Internet-Draft                    CAID                    September 2026
 
 
-   Appendix C.  Worked Examples  . . . . . . . . . . . . . . . . . .  82
-     C.1.  Computation . . . . . . . . . . . . . . . . . . . . . . .  83
-     C.2.  Refusal and Reason Order  . . . . . . . . . . . . . . . .  84
-     C.3.  Verification Details  . . . . . . . . . . . . . . . . . .  85
-     C.4.  Definition Digest . . . . . . . . . . . . . . . . . . . .  87
-     C.5.  Code Fields . . . . . . . . . . . . . . . . . . . . . . .  87
-     C.6.  Mapping . . . . . . . . . . . . . . . . . . . . . . . . .  88
-   Appendix D.  Action Types of Reference Registry Version 5 . . . .  90
-     D.1.  Initial IANA Entries  . . . . . . . . . . . . . . . . . .  90
-     D.2.  Reference-Registry Entries Not Requested of IANA  . . . .  93
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  94
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  94
+   Appendix C.  Worked Examples  . . . . . . . . . . . . . . . . . .  84
+     C.1.  Computation . . . . . . . . . . . . . . . . . . . . . . .  85
+     C.2.  Refusal and Reason Order  . . . . . . . . . . . . . . . .  86
+     C.3.  Verification Details  . . . . . . . . . . . . . . . . . .  87
+     C.4.  Definition Digest . . . . . . . . . . . . . . . . . . . .  89
+     C.5.  Code Fields . . . . . . . . . . . . . . . . . . . . . . .  89
+     C.6.  Mapping . . . . . . . . . . . . . . . . . . . . . . . . .  90
+   Appendix D.  Action Types of Reference Registry Version 5 . . . .  92
+     D.1.  Initial IANA Entries  . . . . . . . . . . . . . . . . . .  92
+     D.2.  Reference-Registry Entries Not Requested of IANA  . . . .  95
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  96
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  96
 
 1.  Introduction
 
@@ -403,7 +403,7 @@ Internet-Draft                    CAID                    September 2026
      phase 3  required fields present
      phase 4  present fields valid for their types
      phase 5  suite registered and implemented
-     phase 6  every number in the data model
+     phase 6  every number, down to depth 64, in the data model
      phase 7  every other value in the data model
                                                              |
                                                              v
@@ -480,23 +480,23 @@ Internet-Draft                    CAID                    September 2026
    16,777,216 octets.  That size is measured only for a value that is
    otherwise inside the model: a value outside it has no RFC 8785
    encoding, so an oversized object that also holds a number outside the
-   model is refused as unsupported_number alone.  A host value is also
-   bounded by a value count (Section 2.5); past it, a host action object
-   is refused as unsupported_value alone, whatever else it holds, and
-   any other host value is refused by the step that reads it
-   (Section 2.6).  The contents of an object or array nested deeper than
-   64 are not examined and are not counted toward the value count, so a
-   number inside one adds no unsupported_number; a number held by an
-   object or array at depth 64 or less still does.  An action object can
-   be canonicalized when it is a value of the data model whose RFC 8785
-   encoding is within this limit, whether or not the checks of
-   computation phases 1 through 4 pass.
+   model yields unsupported_number and no unsupported_value.  A host
+   value is also bounded by a value count (Section 2.5); past it, a host
+   action object yields unsupported_value from phase 7 and no
+   unsupported_number, whatever else it holds, while phases 3 and 4
+   still run (Section 5), and any other host value is refused by the
+   step that reads it (Section 2.6).  The contents of an object or array
+   nested deeper than 64 are not examined and are not counted toward the
+   value count, so a number inside one adds no unsupported_number; a
+   number held by an object or array at depth 64 or less still does.  In
+   a host value, a reference back to an enclosing object or array is a
+   cycle: it counts as one value, and nothing beyond it is counted or
+   examined, since what it refers to is counted and examined where it
+   sits.  An action object can be canonicalized when it is a value of
+   the data model whose RFC 8785 encoding is within this limit, whether
+   or not the checks of computation phases 1 through 4 pass.
 
-   A value outside the data model is refused and is never rewritten into
-   a value inside it.  Computation reports a number outside the model as
-   unsupported_number, and anything else, including nesting beyond 64
-   and an encoding beyond the limit, as unsupported_value (Section 5,
-   phases 6 and 7).
+
 
 
 
@@ -505,6 +505,12 @@ Schrock                   Expires 31 March 2027                 [Page 9]
 
 Internet-Draft                    CAID                    September 2026
 
+
+   A value outside the data model is refused and is never rewritten into
+   a value inside it.  Computation reports a number outside the model as
+   unsupported_number, and anything else, including nesting beyond 64
+   and an encoding beyond the limit, as unsupported_value (Section 5,
+   phases 6 and 7).
 
 2.3.  Numbers
 
@@ -548,12 +554,6 @@ Internet-Draft                    CAID                    September 2026
    implement identically.  A rule over the literal form cannot be
    enforced by implementations, such as ECMAScript, whose JSON parsers
    do not preserve it.
-
-
-
-
-
-
 
 
 
@@ -702,24 +702,24 @@ Internet-Draft                    CAID                    September 2026
       once for every path that reaches it, so that a value reached
       through two members counts twice, except that an object or array
       nested deeper than 64 counts as one value and nothing inside it is
-      counted (Section 2.2).  For a host action object past this count,
-      phase 7 yields unsupported_value and phase 6 yields no reason,
-      whatever the value holds; a host definition whose validation
-      projection is past it, or a host mapping profile or mapping source
-      past it, is refused by the step that reads it (Section 2.6).  No
-      JSON text within the limit of Section 2.4 holds that many values.
-      An implementation can process a value with shared references
-      without walking its expansion, but the count is that of the
-      expansion, down to depth 64;
+      counted, and a reference back to an enclosing object or array
+      counts as one value and nothing beyond it is counted
+      (Section 2.2).  For a host action object past this count, phase 7
+      yields unsupported_value and phase 6 yields no reason, whatever
+      the value holds, while phases 3 and 4 still run (Section 5); a
+      host definition whose validation projection is past it, or a host
+      mapping profile or mapping source past it, is refused by the step
+      that reads it (Section 2.6).  No JSON text within the limit of
+      Section 2.4 holds that many values.  An implementation can process
+      a value with shared references without walking its expansion, but
+      the count of a value whose shared references form no cycle is that
+      of the expansion, down to depth 64;
 
    *  MUST read a host type definition only as far as its validation
       projection (Section 4.2.2).  The projection MUST be a value of the
       data model, and a member outside it is never read, so a value
       there that is outside the model changes nothing;
 
-   *  MUST produce, for every value that the decoder of Section 2.4 can
-      produce, exactly the result that the same operation over the
-      corresponding JSON text produces.
 
 
 
@@ -729,6 +729,10 @@ Schrock                   Expires 31 March 2027                [Page 13]
 
 Internet-Draft                    CAID                    September 2026
 
+
+   *  MUST produce, for every value that the decoder of Section 2.4 can
+      produce, exactly the result that the same operation over the
+      corresponding JSON text produces.
 
    A host language's representation of an absent member, such as an
    ECMAScript property whose value is undefined, counts as absent for
@@ -756,28 +760,24 @@ Internet-Draft                    CAID                    September 2026
    deeper than 64 or exceeds the value count is invalid_definition, a
    host mapping profile that does is invalid_mapping_profile and has no
    digest (Section 8.3), and a host mapping source that does is
-   source_not_canonicalizable.  A definition, registry, enum snapshot,
-   or mapping profile read from JSON text that nests deeper than 64
-   fails the decoding of Section 2.4, whose report this document leaves
-   to the implementation.
+   source_not_canonicalizable.
 
-   +==========+===========+==================+=========================+
-   |Limit     |Value      |Applies to        | Refusal                 |
-   +==========+===========+==================+=========================+
-   |JSON text |33,554,432 |an action object  | malformed_json          |
-   |          |octets     |or a mapping      |                         |
-   |          |           |source received as|                         |
-   |          |           |JSON text (decode)|                         |
-   +----------+-----------+------------------+-------------------------+
-   |Nesting   |64 levels  |every value       | malformed_json (action  |
-   |depth     |           |                  | object or mapping       |
-   |          |           |                  | source as JSON text);   |
-   |          |           |                  | unsupported_value (host |
-   |          |           |                  | action object);         |
-   |          |           |                  | otherwise the reason of |
-   |          |           |                  | the step that reads the |
-   |          |           |                  | value                   |
-   +----------+-----------+------------------+-------------------------+
+   +==========+===========+===================+=======================+
+   |Limit     |Value      |Applies to         |Refusal                |
+   +==========+===========+===================+=======================+
+   |JSON text |33,554,432 |an action object or|malformed_json         |
+   |          |octets     |a mapping source   |                       |
+   |          |           |received as JSON   |                       |
+   |          |           |text (decode)      |                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Nesting   |64 levels  |every value        |malformed_json (action |
+   |depth     |           |                   |object or mapping      |
+   |          |           |                   |source as JSON text);  |
+   |          |           |                   |unsupported_value (host|
+   |          |           |                   |action object);        |
+   |          |           |                   |otherwise the reason of|
+   |          |           |                   |the step that reads the|
+   |          |           |                   |value                  |
 
 
 
@@ -786,54 +786,54 @@ Schrock                   Expires 31 March 2027                [Page 14]
 Internet-Draft                    CAID                    September 2026
 
 
-   |Canonical |16,777,216 |an action object  | unsupported_value       |
-   |encoding  |octets     |                  |                         |
-   +----------+-----------+------------------+-------------------------+
-   |Integer   |2^53-1     |every number      | unsupported_number      |
-   |magnitude |           |                  |                         |
-   +----------+-----------+------------------+-------------------------+
-   |Value     |33,554,432 |a host value, each| unsupported_value alone |
-   |count     |values     |value counted once| (host action object);   |
-   |          |           |per path, but not | otherwise the reason of |
-   |          |           |the contents of an| the step that reads the |
-   |          |           |object or array   | value                   |
-   |          |           |nested deeper than|                         |
-   |          |           |64                |                         |
-   +----------+-----------+------------------+-------------------------+
-   |Document  |134,217,728|the RFC 8785      | the reason of the step  |
-   |encoding  |octets     |encoding of a     | that needs the encoding |
-   |          |           |validation        |                         |
-   |          |           |projection, an    |                         |
-   |          |           |enum value array, |                         |
-   |          |           |or a mapping      |                         |
-   |          |           |source            |                         |
-   +----------+-----------+------------------+-------------------------+
-   |Identifier|1,024      |a CAID string     | malformed_caid          |
-   |          |octets     |                  |                         |
-   +----------+-----------+------------------+-------------------------+
-   |Action    |512 octets |an action type in | malformed_caid;         |
-   |type      |           |a CAID, an action | invalid_action_type;    |
-   |          |           |object, or a      | invalid_definition      |
-   |          |           |definition        |                         |
-   +----------+-----------+------------------+-------------------------+
-   |Code      |2,048      |the code_system of| invalid_definition      |
-   |system    |octets     |a code field      |                         |
-   +----------+-----------+------------------+-------------------------+
-   |Mapping   |1 to 128   |rules of a mapping| invalid_mapping_profile |
-   |rules     |rules      |profile           |                         |
-   +----------+-----------+------------------+-------------------------+
-   |Source    |at most    |each source path  | invalid_mapping_profile |
-   |path      |2,048      |of a mapping      |                         |
-   |          |octets     |profile           |                         |
-   +----------+-----------+------------------+-------------------------+
-   |Profile   |1 to 512   |profile_id,       | invalid_mapping_profile |
-   |string    |octets     |media_type,       |                         |
-   |          |           |schema, version,  |                         |
-   |          |           |and               |                         |
-   |          |           |target_action_type|                         |
-   +----------+-----------+------------------+-------------------------+
-   |Omission  |1 to 2,048 |each omission     | invalid_mapping_profile |
-   |reason    |octets     |reason            |                         |
+   +----------+-----------+-------------------+-----------------------+
+   |Canonical |16,777,216 |an action object   |unsupported_value      |
+   |encoding  |octets     |                   |                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Integer   |2^53-1     |every number held  |unsupported_number     |
+   |magnitude |           |at depth 64 or less|                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Value     |33,554,432 |a host value, each |unsupported_value and  |
+   |count     |values     |value counted once |no unsupported_number  |
+   |          |           |per path; an object|(host action object);  |
+   |          |           |or array nested    |otherwise the reason of|
+   |          |           |deeper than 64, or |the step that reads the|
+   |          |           |a reference back to|value                  |
+   |          |           |an enclosing one,  |                       |
+   |          |           |counts as one value|                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Document  |134,217,728|the RFC 8785       |the reason of the step |
+   |encoding  |octets     |encoding of a      |that needs the encoding|
+   |          |           |validation         |                       |
+   |          |           |projection, an enum|                       |
+   |          |           |value array, or a  |                       |
+   |          |           |mapping source     |                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Identifier|1,024      |a CAID string      |malformed_caid         |
+   |          |octets     |                   |                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Action    |512 octets |an action type in a|malformed_caid;        |
+   |type      |           |CAID, an action    |invalid_action_type;   |
+   |          |           |object, or a       |invalid_definition     |
+   |          |           |definition         |                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Code      |2,048      |the code_system of |invalid_definition     |
+   |system    |octets     |a code field       |                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Mapping   |1 to 128   |rules of a mapping |invalid_mapping_profile|
+   |rules     |rules      |profile            |                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Source    |at most    |each source path of|invalid_mapping_profile|
+   |path      |2,048      |a mapping profile  |                       |
+   |          |octets     |                   |                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Profile   |1 to 512   |profile_id,        |invalid_mapping_profile|
+   |string    |octets     |media_type, schema,|                       |
+   |          |           |version, and       |                       |
+   |          |           |target_action_type |                       |
+   +----------+-----------+-------------------+-----------------------+
+   |Omission  |1 to 2,048 |each omission      |invalid_mapping_profile|
+   |reason    |octets     |reason             |                       |
 
 
 
@@ -842,10 +842,13 @@ Schrock                   Expires 31 March 2027                [Page 15]
 Internet-Draft                    CAID                    September 2026
 
 
-   +----------+-----------+------------------+-------------------------+
+   +----------+-----------+-------------------+-----------------------+
 
-                              Table 1: Limits
+                             Table 1: Limits
 
+   A definition, registry, enum snapshot, or mapping profile read from
+   JSON text that nests deeper than 64 fails the decoding of
+   Section 2.4, whose report this document leaves to the implementation.
    The JSON text limit is twice the canonical limit, which leaves room
    for insignificant whitespace and escapes.  A tool call whose
    arguments would push an action object past the canonical limit is
@@ -886,10 +889,7 @@ Internet-Draft                    CAID                    September 2026
       order; Appendix C.1 gives an example.  Support for this suite is
       OPTIONAL.
 
-   A suite's status is not a type's status (Section 4.2.4).  A suite is
-   deprecated once practical collision attacks on its digest are known
-   or anticipated (Section 12.1).  Issuers then stop emitting new CAIDs
-   under it (Section 10.1), and a relying party SHOULD remove it from
+
 
 
 
@@ -898,6 +898,10 @@ Schrock                   Expires 31 March 2027                [Page 16]
 Internet-Draft                    CAID                    September 2026
 
 
+   A suite's status is not a type's status (Section 4.2.4).  A suite is
+   deprecated once practical collision attacks on its digest are known
+   or anticipated (Section 12.1).  Issuers then stop emitting new CAIDs
+   under it (Section 10.1), and a relying party SHOULD remove it from
    the suites it accepts once the artifacts it relies on carry a CAID
    under a successor.  Deprecation does not by itself make a verifier
    refuse a CAID: the suites that the relying party accepts decide
@@ -942,10 +946,6 @@ Internet-Draft                    CAID                    September 2026
    caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB\
    9HI-arxrO1Y
 
-   The grammar uses the ABNF of [RFC5234] with the case-sensitive string
-   syntax of [RFC7405], so the prefix is the lowercase string "caid".
-   caid-version is the version of this identifier syntax and is "1" for
-   this document.  action-type is one or more lowercase dotted name
 
 
 
@@ -954,6 +954,10 @@ Schrock                   Expires 31 March 2027                [Page 17]
 Internet-Draft                    CAID                    September 2026
 
 
+   The grammar uses the ABNF of [RFC5234] with the case-sensitive string
+   syntax of [RFC7405], so the prefix is the lowercase string "caid".
+   caid-version is the version of this identifier syntax and is "1" for
+   this document.  action-type is one or more lowercase dotted name
    segments followed by a final segment that is the integer version of
    the type (for example, payment.release.1). suite is a name from the
    suite registry, lowercase; the ABNF bounds the names a registry can
@@ -998,10 +1002,6 @@ Internet-Draft                    CAID                    September 2026
    segments anywhere, including empty dotted segments within the action
    type; any content after the digest, including trailing separators,
    whitespace, or additional fields; a digest that is not exactly the
-   length of the named suite or whose final character encodes nonzero
-   unused bits; and any caid-version other than "1", which is never
-   guessed at or parsed leniently.
-
 
 
 
@@ -1009,6 +1009,10 @@ Schrock                   Expires 31 March 2027                [Page 18]
 
 Internet-Draft                    CAID                    September 2026
 
+
+   length of the named suite or whose final character encodes nonzero
+   unused bits; and any caid-version other than "1", which is never
+   guessed at or parsed leniently.
 
    An unregistered suite is refused as unknown_suite rather than
    malformed_caid so that the reason says what the relying party needs
@@ -1053,10 +1057,6 @@ Internet-Draft                    CAID                    September 2026
    Action-Mapping Profile in Section 8 provides a narrower result:
    equivalence of the material projection under exact profiles pinned by
    a relying party.  It does not claim general semantic equivalence.
-
-
-
-
 
 
 
@@ -1826,12 +1826,12 @@ Internet-Draft                    CAID                    September 2026
    refuse it; phase 7 is that refusal.  A host value of kind "object"
    that holds values outside the data model passes phase 1 and is
    refused by phase 6 or 7.  Phase 6 does not examine values inside an
-   object or array nested deeper than 64, and the value count does not
-   count them (Section 2.2).  When a host action object is made of more
-   values than the value count (Section 2.5), phase 6 yields no reason
-   and phase 7 yields unsupported_value, whatever the value holds;
-   phases 3 and 4 still run.
-
+   object or array nested deeper than 64, or beyond a reference back to
+   an enclosing object or array, and the value count does not count them
+   (Section 2.2).  When a host action object is made of more values than
+   the value count (Section 2.5), phase 6 yields no reason and phase 7
+   yields unsupported_value, whatever the value holds; phases 3 and 4
+   still run.
 
 
 
@@ -2942,6 +2942,13 @@ Internet-Draft                    CAID                    September 2026
    could be.  The digest that computation returns and the source digest
    of a mapping result carry the same exposure.
 
+   A CAID is meant to be recomputed by a party that already holds the
+   action object, such as a verifier (Section 6) or an executor
+   (Section 7), and receipts and other evidence carry it for such
+   parties.  It is not designed as a correlation identifier to propagate
+   to parties that do not hold the object: to them it discloses whatever
+   of the object can be guessed.
+
    The digest field type keeps raw values out of an action object but
    does not by itself provide confidentiality or unlinkability.  A plain
    SHA-256 digest of an account number, email address, or patient
@@ -2955,13 +2962,6 @@ Internet-Draft                    CAID                    September 2026
    scheme, document its normalization and correlation scope, and avoid
    placing unnecessary personal data in the action object.  A type whose
    required fields can all be low-entropy SHOULD require a member that
-   carries at least 128 bits of entropy from the system of record, such
-   as a random instruction or occurrence identifier.  A deployment-
-   specific commitment scheme can require an explicit mapping profile
-   for cross-domain joins.
-
-
-
 
 
 
@@ -2970,21 +2970,28 @@ Schrock                   Expires 31 March 2027                [Page 53]
 Internet-Draft                    CAID                    September 2026
 
 
+   carries at least 128 bits of entropy from the system of record, such
+   as a random instruction or occurrence identifier.  A deployment-
+   specific commitment scheme can require an explicit mapping profile
+   for cross-domain joins.
+
    The initial CAID Action Types entries rely on identifiers from the
    system of record, such as payment_instruction_id,
    authorization_number, and order_id, that the registry cannot require
-   to be high-entropy.  Where such an identifier is sequential, a CAID
-   of that type and its action object have the confidentiality of
-   personal data.  The notes of a registered type fix what each of its
-   digest fields commits to, and that is part of the entry's immutable
-   meaning (Section 12.2), so a deployment does not carry a keyed
-   commitment, such as HMAC-SHA-256 [RFC6234] under a deployment-scoped
-   key, in a digest field whose notes, like those of patient_ref,
-   describe a plain digest.  A deployment that needs a keyed commitment
-   uses a type whose notes specify it: a local type (Section 4.6) or a
-   new version registered for that purpose.  Nothing in an action object
-   says which scheme a digest field used, so comparison across
-   deployments then needs a mapping profile (Section 8).
+   to be high-entropy.  Where such an identifier is sequential, anyone
+   who holds a CAID of that type can recover its action object by
+   guessing, so the CAID needs the protection its action object needs,
+   including personal-data protection when the object carries personal
+   data.  The notes of a registered type fix what each of its digest
+   fields commits to, and that is part of the entry's immutable meaning
+   (Section 12.2), so a deployment does not carry a keyed commitment,
+   such as HMAC-SHA-256 [RFC6234] under a deployment-scoped key, in a
+   digest field whose notes, like those of patient_ref, describe a plain
+   digest.  A deployment that needs a keyed commitment uses a type whose
+   notes specify it: a local type (Section 4.6) or a new version
+   registered for that purpose.  Nothing in an action object says which
+   scheme a digest field used, so comparison across deployments then
+   needs a mapping profile (Section 8).
 
    Action objects, CAIDs, verification details, and their correlations
    should be assumed to travel and to appear in logs.
@@ -3011,13 +3018,6 @@ Internet-Draft                    CAID                    September 2026
    Only an entry's change controller may request a change to that entry,
    such as deprecation with superseded_by or a monotone enum advance,
    and the designated expert reviews the request under the policy that
-   applies to a new registration.  For entries registered by IETF-stream
-   documents, the change controller is the IETF, acting through the
-   IESG.  The IESG may also act for any other change controller that
-   cannot be reached or does not respond.
-
-
-
 
 
 
@@ -3025,6 +3025,11 @@ Schrock                   Expires 31 March 2027                [Page 54]
 
 Internet-Draft                    CAID                    September 2026
 
+
+   applies to a new registration.  For entries registered by IETF-stream
+   documents, the change controller is the IETF, acting through the
+   IESG.  The IESG may also act for any other change controller that
+   cannot be reached or does not respond.
 
 12.1.  CAID Suites
 
@@ -3069,11 +3074,6 @@ Internet-Draft                    CAID                    September 2026
    is organization-specific (Section 4.6) unless that organization is
    the change controller.
 
-   The content of an entry that affects validation or material meaning,
-   including the normalization guidance in notes and digest_notes, is
-   immutable, with two exceptions: the status may move from active to
-   deprecated, with superseded_by naming the successor; and the expert
-   may approve a monotone enum advance (Section 4.1) after checking that
 
 
 
@@ -3082,6 +3082,11 @@ Schrock                   Expires 31 March 2027                [Page 55]
 Internet-Draft                    CAID                    September 2026
 
 
+   The content of an entry that affects validation or material meaning,
+   including the normalization guidance in notes and digest_notes, is
+   immutable, with two exceptions: the status may move from active to
+   deprecated, with superseded_by naming the successor; and the expert
+   may approve a monotone enum advance (Section 4.1) after checking that
    every previously accepted value remains accepted.  An advance request
    cites the edition and values_sha256 of the new value set.  An advance
    updates definition_sha256, and the entry keeps every earlier
@@ -3125,11 +3130,6 @@ Internet-Draft                    CAID                    September 2026
    octets of that file, in hexadecimal, is
    1e30ddd312c888f6a27055dac0ed453398e20b64cfdcb7c5019fcf0e1ac2551a.
    Section 4.7 reproduces the tool.call.1 entry member for member.  The
-   reference registry also carries types defined by other
-   specifications, and one whose name misdescribes it; they are listed
-   in Appendix D.2 and are not initial entries.  Each of the seven types
-   defined by other specifications may be registered under Specification
-   Required with its own specification and change controller.  The
 
 
 
@@ -3138,6 +3138,11 @@ Schrock                   Expires 31 March 2027                [Page 56]
 Internet-Draft                    CAID                    September 2026
 
 
+   reference registry also carries types defined by other
+   specifications, and one whose name misdescribes it; they are listed
+   in Appendix D.2 and are not initial entries.  Each of the seven types
+   defined by other specifications may be registered under Specification
+   Required with its own specification and change controller.  The
    eighth, dns.zone.transfer.1, is not to be registered, because its
    name misdescribes the type; the registrar transfer it defines can be
    registered under a name that describes it.
@@ -3154,9 +3159,9 @@ Internet-Draft                    CAID                    September 2026
    alpha-2 list as the Language Subtag Registry carries it.  The ISO
    4217 snapshot, which every currency field of the initial entries
    pins, is archived with those files beside action-types.json at the
-   commit that [CAID-REGISTRY] cites.  Each snapshot file records its
-   source, and its entry in the enum_snapshot_files member of
-   action-types.json records what is known of its terms.
+   commit that [CAID-REGISTRY] cites.  Each snapshot file records the
+   source it was derived from, and its entry in the enum_snapshot_files
+   member of action-types.json records what is known of its terms.
 
 12.3.  CAID Field Types
 
@@ -3167,11 +3172,6 @@ Internet-Draft                    CAID                    September 2026
    members it defines; its refusal reasons; and a reference.  A
    registered field type is never removed, renamed, or redefined.  The
    initial contents are:
-
-
-
-
-
 
 
 
@@ -3429,6 +3429,25 @@ Internet-Draft                    CAID                    September 2026
    whose scheme is written "CAID", into a CAID (Section 3.4).  Security:
    Section 10 and Section 11.
 
+   Utility (Section 3.1 of [RFC7595]): a CAID names an action by the
+   digest of a canonicalization that its suite fixes, applied to an
+   action object whose type definition decides which members are
+   required and how each is typed, and the identifier carries the action
+   type and the suite, both of which take part in comparison
+   (Section 3.5).  An ni URI [RFC6920] names an object by the digest of
+   its octets, unless a specification defines another input, under an
+   algorithm from the Named Information Hash Algorithm Registry.  It
+   names no canonicalization, and two ni names that share the algorithm
+   and the digest value refer to the same object whatever else they
+   carry, so an action type or a suite in their authority or query
+   parameters would take no part in comparison.  A URN namespace
+   [RFC8141] could carry the same fields in its namespace-specific
+   string, but URN-equivalence lowercases "urn" and the namespace
+   identifier, ignores the r-, q-, and f-components, and lets a
+   namespace add equivalences but never remove one, so it would equate
+   spellings that a parser under Section 3.4 refuses and that
+   Section 3.5 compares as different strings.
+
 12.9.  Media Types
 
    This document registers no media type [RFC6838].  A media type earns
@@ -3448,6 +3467,13 @@ Internet-Draft                    CAID                    September 2026
    *  An enum snapshot is local by rule: computation and verification
       never fetch one (Section 4.4).
 
+
+
+Schrock                   Expires 31 March 2027                [Page 62]
+
+Internet-Draft                    CAID                    September 2026
+
+
    *  An action object travels inside the artifact that carries it,
       under that artifact's own format.
 
@@ -3466,14 +3492,6 @@ Internet-Draft                    CAID                    September 2026
    decoding, parsing, computation, verification, the definition digest,
    and mapping for the jcs-sha256 suite, and refuses cbor-sha256 as
    unknown_suite.  The JavaScript implementation uses only the
-
-
-
-Schrock                   Expires 31 March 2027                [Page 62]
-
-Internet-Draft                    CAID                    September 2026
-
-
    platform's cryptographic library, and the Python and Go
    implementations use only their standard libraries.  All three run one
    shared conformance corpus of core and mapping vectors, plus candidate
@@ -3501,6 +3519,17 @@ Internet-Draft                    CAID                    September 2026
    conformance corpus reproduces the author's results; such external re-
    runs are reproductions, not independent implementations.
 
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 63]
+
+Internet-Draft                    CAID                    September 2026
+
+
 14.  Changes since -03
 
    This section is to be removed before publishing as an RFC.
@@ -3522,13 +3551,6 @@ Internet-Draft                    CAID                    September 2026
    accepted or did not address.  The first four items, and the
    timestamp, amount, length, and value count items, refuse action
    objects whose CAIDs were valid under -03.
-
-
-
-Schrock                   Expires 31 March 2027                [Page 63]
-
-Internet-Draft                    CAID                    September 2026
-
 
    *  Action objects nested deeper than 64 levels: malformed_json as
       JSON text, unsupported_value as host values (Sections 2.2 and
@@ -3556,6 +3578,14 @@ Internet-Draft                    CAID                    September 2026
       unescaped.  [RFC8259] lets a parser ignore a byte order mark; this
       profile refuses it.
 
+
+
+
+Schrock                   Expires 31 March 2027                [Page 64]
+
+Internet-Draft                    CAID                    September 2026
+
+
    *  JSON text with duplicate member names, including names that differ
       only in escaping: malformed_json. -03 required a raw parser to
       reject duplicates in its Security Considerations; the rule is now
@@ -3578,13 +3608,6 @@ Internet-Draft                    CAID                    September 2026
       action_type, or repeats, and field entries of a registered field
       type that carry members the type does not define:
       invalid_definition (Section 4.2.1).
-
-
-
-Schrock                   Expires 31 March 2027                [Page 64]
-
-Internet-Draft                    CAID                    September 2026
-
 
    *  Timestamps with a lowercase "t" or "z", or with a second of 60,
       which [RFC3339] permits and the -03 description "an RFC 3339
@@ -3611,6 +3634,14 @@ Internet-Draft                    CAID                    September 2026
       octets, or a target_action_type longer than 512 octets:
       invalid_mapping_profile (Section 8.2).
 
+
+
+
+Schrock                   Expires 31 March 2027                [Page 65]
+
+Internet-Draft                    CAID                    September 2026
+
+
    *  Action types longer than 512 octets, identifiers longer than 1,024
       octets, and code_system values longer than 2,048 octets, which -03
       did not bound: invalid_action_type in an action object,
@@ -3619,11 +3650,12 @@ Internet-Draft                    CAID                    September 2026
 
    *  Host action objects that hold more than 33,554,432 values, each
       counted once for every path that reaches it, where an object or
-      array nested deeper than 64 counts as one value: unsupported_value
-      alone (Section 2.5).  A host definition whose validation
-      projection, or a host mapping profile or mapping source, holds
-      that many is refused by the step that reads it:
-      invalid_definition, invalid_mapping_profile, or
+      array nested deeper than 64, or a reference back to an enclosing
+      object or array, counts as one value: unsupported_value and no
+      unsupported_number, while phases 3 and 4 still run (Section 2.5).
+      A host definition whose validation projection, or a host mapping
+      profile or mapping source, holds that many is refused by the step
+      that reads it: invalid_definition, invalid_mapping_profile, or
       source_not_canonicalizable (Section 2.6).
 
 14.2.  New Rules and Features
@@ -3633,14 +3665,6 @@ Internet-Draft                    CAID                    September 2026
       decoding failure is the single reason malformed_json.
       Definitions, registries, snapshots, and profiles get the same
       rules without the size limit.
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 65]
-
-Internet-Draft                    CAID                    September 2026
-
 
    *  The data model (Section 2.2), the number rule (Section 2.3), and
       one table of limits (Section 2.6).  A literal whose correctly
@@ -3667,6 +3691,13 @@ Internet-Draft                    CAID                    September 2026
       action_type.  The order of configured definitions no longer
       affects the result.
 
+
+
+Schrock                   Expires 31 March 2027                [Page 66]
+
+Internet-Draft                    CAID                    September 2026
+
+
    *  definition_sha256 (Section 4.2.2), which computation,
       verification, and mapping report.
 
@@ -3684,19 +3715,6 @@ Internet-Draft                    CAID                    September 2026
 
    *  Field types match whole values, empty strings are present, and the
       integer type is value-based (Section 4.3).
-
-
-
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 66]
-
-Internet-Draft                    CAID                    September 2026
-
 
    *  The monotone enum advance (Section 4.1) replaces the narrow
       correction rule of -03.  The -03 sentences that treated any added
@@ -3727,6 +3745,15 @@ Internet-Draft                    CAID                    September 2026
    *  A target_field may be any field name other than action_type, so a
       required field such as @version can be mapped (Section 8.2).
 
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 67]
+
+Internet-Draft                    CAID                    September 2026
+
+
    *  Mapping stages A through D, and the left: and right: composition
       of comparison reasons, are normative (Sections 8.3 and 8.4).
 
@@ -3736,23 +3763,14 @@ Internet-Draft                    CAID                    September 2026
    *  Mapping stage B reads the profile's source_format and loss_policy
       members whenever the profile is an object, whether or not it is in
       the data model, and a profile outside the data model has no
-      digest, so it yields mapping_profile_unpinned (Section 8.3).  One
-      of the reference implementations read neither member of such a
-      profile before this revision.
+      digest, so it yields mapping_profile_unpinned (Section 8.3).
+      Before this revision, one of the reference implementations read
+      neither member of a profile nested deeper than 64, past the value
+      count, cyclic, or holding a host value of no JSON kind.
 
    *  The shape of an enum snapshot read from JSON text, and the
       requirement that the values_snapshot and values_sha256 members of
       an external enum be non-empty strings (Section 4.4).
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 67]
-
-Internet-Draft                    CAID                    September 2026
-
 
    *  The mapping of the data model to CBOR under cbor-sha256: an object
       is a map with text-string keys, a number is an integer of major
@@ -3784,6 +3802,14 @@ Internet-Draft                    CAID                    September 2026
       unknown_suite; -03 left the verification reason unstated
       (Section 6).
 
+
+
+
+Schrock                   Expires 31 March 2027                [Page 68]
+
+Internet-Draft                    CAID                    September 2026
+
+
 14.4.  Reference Registry
 
    *  The reference registry [CAID-REGISTRY] advances to registry
@@ -3800,21 +3826,12 @@ Internet-Draft                    CAID                    September 2026
       version 4 is kept byte for byte, and every type's
       definition_sha256 is published.
 
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 68]
-
-Internet-Draft                    CAID                    September 2026
-
-
 14.5.  Requirements on Other Parties
 
-   These requirements bind issuers, executors, carrying protocols,
-   relying parties, and applications.  The operations of Section 1.2
-   cannot observe them, so no conformance vector pins them.
+   These requirements bind issuers, type authors, registrants,
+   executors, carrying protocols, relying parties, deployments, and
+   applications.  The operations of Section 1.2 cannot observe them, so
+   no conformance vector pins them.
 
    *  The party that extracts an action object embedded in a larger JSON
       text applies rules 2 through 4 of Section 2.4 to the whole
@@ -3831,20 +3848,60 @@ Internet-Draft                    CAID                    September 2026
       guessing, includes occurrence_id unless args already carries an
       identifier that does so (Section 4.7).
 
+   *  Issuers do not emit a number literal whose exact value is not an
+      integer but whose correctly rounded value is (Section 2.3).
+
    *  A relying party that evaluates a number in an action object
       evaluates the value of Section 2.3, or refuses number tokens that
       have a fraction or exponent part before relying on a match, and a
       quantity compared against a threshold is typed amount-string
       (Section 10.6).
 
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 69]
+
+Internet-Draft                    CAID                    September 2026
+
+
+   *  A relying party decides which suites it accepts, and a verifier
+      accepts no CAID under another suite.  When an artifact carries
+      several CAIDs for one action, the verifier verifies every CAID
+      whose suite it accepts and implements, treats the failure of any
+      one as the failure of all, and never selects the CAID that
+      verifies (Section 3.5).
+
+   *  A signature, MAC, or commitment that is to be read as a commitment
+      to a CAID covers the complete CAID string (Section 10.2).
+
+   *  A CAID is never abbreviated for comparison, and a relying party
+      compares an abbreviated form with nothing (Section 10.3).
+
+   *  A type that must distinguish repeated identical operations
+      requires an occurrence identifier (Section 10.4).
+
+   *  A protocol that accepts action objects from parties it does not
+      trust bounds its own messages well below the limits of Section 2.6
+      (Section 10.7).
+
    *  A suite is deprecated once practical collision attacks on its
       digest are known or anticipated; issuers then stop emitting CAIDs
       under it, and relying parties remove it from the suites they
       accept (Sections 3.1 and 12.1).
 
-   *  An approval interface displays every member and flags an
-      undeclared member whose name matches a declared one under case
-      folding, NFKC normalization, or the confusable skeleton
+   *  An approval interface applies confusable detection to identifier-
+      like fields, displays every member with the control and
+      bidirectional formatting characters of member names escaped, and
+      flags an undeclared member whose name matches a declared one under
+      case folding, NFKC normalization, or the confusable skeleton; an
+      interface or log that displays reasons escapes them
+      (Section 10.9).
+
+   *  A type whose fields name identifiers such as hosts, accounts,
+      email addresses, or tool names states their normalization in
+      digest_notes, and issuers apply it before computing
       (Section 10.9).
 
    *  A registry file obtained over the network is checked against its
@@ -3860,11 +3917,25 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-
-Schrock                   Expires 31 March 2027                [Page 69]
+Schrock                   Expires 31 March 2027                [Page 70]
 
 Internet-Draft                    CAID                    September 2026
 
+
+   *  A CAID is logged, transmitted, and placed in URLs only where its
+      action object could be; -03 said that identifiers may be treated
+      as public values (Section 11).
+
+   *  A type whose required fields can all be low-entropy requires a
+      member that carries at least 128 bits of entropy from the system
+      of record (Section 11).
+
+   *  A deployment that needs a keyed commitment in a digest field uses
+      a type whose notes specify it (Section 11).
+
+   *  A registrant whose type pins an external enum supplies the
+      snapshot file, with its source and what is known of its terms, and
+      the SHA-256 digest of the file (Section 12.2).
 
 14.6.  Other Changes
 
@@ -3900,33 +3971,30 @@ Internet-Draft                    CAID                    September 2026
       definition no longer depends on the conformance condition that
       uses it; and Section 6.1.
 
-   *  Security Considerations now open with what CAID defines and whom
-      it trusts; name collision resistance where the party that
-      constructs an action object may be adversarial; list the values
-      fixed to SHA-256 and how each migrates; and cover truncation,
-      replay, multiple identifiers and suite deprecation, signature
-      coverage, the number and member-name differentials at a native
-      reader, limits and the memory they admit, code-format matching,
-      confusables, and digest fields under suite migration.  The parser
-      requirements moved from Security Considerations to Section 2.4.
 
 
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 70]
+Schrock                   Expires 31 March 2027                [Page 71]
 
 Internet-Draft                    CAID                    September 2026
 
 
-   *  Privacy Considerations replace the statement that identifiers may
-      be treated as public values with a confidentiality statement, the
-      preimage-guessing risk, the entropy of the identifiers that the
-      initial types rely on, and the rule that a keyed commitment needs
-      a type whose notes specify it.
+   *  Security Considerations now open with what CAID defines and whom
+      it trusts; name collision resistance where the party that
+      constructs an action object may be adversarial; list the values
+      fixed to SHA-256 and how each migrates; and explain the memory
+      that the limits admit, why code-format matching is linear, and why
+      a new suite leaves digest fields bounded by SHA-256.  The
+      requirements that Security Considerations add are listed in
+      Section 14.5.  The parser requirements moved from Security
+      Considerations to Section 2.4.
+
+   *  Privacy Considerations are a section of their own.  They state
+      that a CAID has the confidentiality of its action object, explain
+      the preimage-guessing risk and the entropy of the identifiers that
+      the initial types rely on, and state that a CAID is meant to be
+      recomputed by parties that hold the action object, not propagated
+      as a correlation identifier to parties that do not.  The
+      requirements they add are listed in Section 14.5.
 
    *  IANA Considerations request seven registries, each with a
       registration policy set by what a registration changes, and the
@@ -3943,6 +4011,10 @@ Internet-Draft                    CAID                    September 2026
       The -03 statement that the author's organization maintains the
       registries is removed.
 
+   *  The registration of the caid URI scheme states why the scheme is
+      defined instead of using an ni URI [RFC6920] or a URN namespace
+      [RFC8141] (Section 12.8).
+
    *  The example of Section 4.2 is the registry entry for
       payment.release.1 with its real values_sha256, the registration of
       Section 4.7 is the registry entry for tool.call.1, member for
@@ -3953,10 +4025,19 @@ Internet-Draft                    CAID                    September 2026
    *  Normative references to RFC 8259, RFC 3629, RFC 7405, RFC 7493,
       RFC 3986, IEEE 754, and the reference registry at a fixed commit,
       with the URL of the raw file whose octets its digest covers, and
-      informative references to RFC 7595, RFC 7696, RFC 7942, RFC 8126,
-      RFC 8792, RFC 6838, RFC 5730, RFC 5936, the Unicode Standard and
-      its UTS #39, and the code systems whose syntax the code formats
-      follow.
+      informative references to RFC 7595, RFC 6920, RFC 8141, RFC 7696,
+
+
+
+Schrock                   Expires 31 March 2027                [Page 72]
+
+Internet-Draft                    CAID                    September 2026
+
+
+      RFC 7942, RFC 8126, RFC 8792, RFC 6838, RFC 5730, RFC 5936, the
+      Unicode Standard and its UTS #39, ISO 3166-1 and ISO 4217, whose
+      code lists two enum snapshots carry, and the code systems whose
+      syntax the code formats follow.
 
    *  Wording that referred to earlier revisions as "this revision" is
       made revision-neutral.
@@ -3970,13 +4051,6 @@ Internet-Draft                    CAID                    September 2026
    over the complete JCS values array, exact local resolution, and a
    verified membership check.  Bare, unresolved, digest-mismatched, and
    out-of-set values fail closed.
-
-
-
-Schrock                   Expires 31 March 2027                [Page 71]
-
-Internet-Draft                    CAID                    September 2026
-
 
    The enum definition forms are now exact: a null member is present and
    malformed, compact inline members are trimmed of U+0020 SPACE only, a
@@ -4009,6 +4083,13 @@ Internet-Draft                    CAID                    September 2026
    digest suites, or mapping algorithm, and changes canonicalization
    only by making the unpaired-surrogate refusal explicit.
 
+
+
+Schrock                   Expires 31 March 2027                [Page 73]
+
+Internet-Draft                    CAID                    September 2026
+
+
 16.  References
 
 16.1.  Normative References
@@ -4026,13 +4107,6 @@ Internet-Draft                    CAID                    September 2026
               same commit, digests.json lists the definition_sha256 of
               every type, history/action-types.v4.json holds registry
               version 4, and value-sets/ holds the enum snapshots.
-
-
-
-Schrock                   Expires 31 March 2027                [Page 72]
-
-Internet-Draft                    CAID                    September 2026
-
 
    [IEEE754]  IEEE, "IEEE Standard for Floating-Point Arithmetic", IEEE
               Std 754-2019, DOI 10.1109/IEEESTD.2019.8766229, July 2019,
@@ -4065,6 +4139,13 @@ Internet-Draft                    CAID                    September 2026
               DOI 10.17487/RFC5234, January 2008,
               <https://www.rfc-editor.org/info/rfc5234>.
 
+
+
+Schrock                   Expires 31 March 2027                [Page 74]
+
+Internet-Draft                    CAID                    September 2026
+
+
    [RFC6234]  Eastlake 3rd, D. and T. Hansen, "US Secure Hash Algorithms
               (SHA and SHA-based HMAC and HKDF)", RFC 6234,
               DOI 10.17487/RFC6234, May 2011,
@@ -4082,13 +4163,6 @@ Internet-Draft                    CAID                    September 2026
    [RFC7493]  Bray, T., Ed., "The I-JSON Message Format", RFC 7493,
               DOI 10.17487/RFC7493, March 2015,
               <https://www.rfc-editor.org/info/rfc7493>.
-
-
-
-Schrock                   Expires 31 March 2027                [Page 73]
-
-Internet-Draft                    CAID                    September 2026
-
 
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
@@ -4119,6 +4193,15 @@ Internet-Draft                    CAID                    September 2026
               <https://www.cms.gov/medicare/coding-billing/healthcare-
               common-procedure-system>.
 
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 75]
+
+Internet-Draft                    CAID                    September 2026
+
+
    [I-D.lee-orprg-permit-receipts]
               Lee, Y. B., "Permit Receipts for Permit-Before-Commit
               Authorization of AI-Agent and Workload External Effects",
@@ -4138,14 +4221,6 @@ Internet-Draft                    CAID                    September 2026
    [I-D.schrock-action-evidence-boundary]
               Schrock, I., "The Action Evidence Boundary for
               Consequential Agent Effects", Work in Progress, Internet-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 74]
-
-Internet-Draft                    CAID                    September 2026
-
-
               Draft, draft-schrock-action-evidence-boundary-07, 25
               September 2026, <https://datatracker.ietf.org/doc/html/
               draft-schrock-action-evidence-boundary-07>.
@@ -4172,6 +4247,17 @@ Internet-Draft                    CAID                    September 2026
               2026, <https://datatracker.ietf.org/doc/html/draft-
               thallapelly-oasnt-caid-01>.
 
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 76]
+
+Internet-Draft                    CAID                    September 2026
+
+
    [ICD-10-CM]
               Centers for Medicare & Medicaid Services and National
               Center for Health Statistics, "ICD-10-CM Official
@@ -4195,13 +4281,6 @@ Internet-Draft                    CAID                    September 2026
    [ISO20022] ISO 20022 Registration Authority, "ISO 20022 External Code
               Sets".
 
-
-
-Schrock                   Expires 31 March 2027                [Page 75]
-
-Internet-Draft                    CAID                    September 2026
-
-
    [NACHA]    Nacha, "Nacha Operating Rules".
 
    [NDC]      U.S. Food and Drug Administration, "National Drug Code
@@ -4219,6 +4298,21 @@ Internet-Draft                    CAID                    September 2026
               Specifications and Registration Procedures", BCP 13,
               RFC 6838, DOI 10.17487/RFC6838, January 2013,
               <https://www.rfc-editor.org/info/rfc6838>.
+
+   [RFC6920]  Farrell, S., Kutscher, D., Dannewitz, C., Ohlman, B.,
+              Keranen, A., and P. Hallam-Baker, "Naming Things with
+              Hashes", RFC 6920, DOI 10.17487/RFC6920, April 2013,
+              <https://www.rfc-editor.org/info/rfc6920>.
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 77]
+
+Internet-Draft                    CAID                    September 2026
+
 
    [RFC7595]  Thaler, D., Ed., Hansen, T., and T. Hardie, "Guidelines
               and Registration Procedures for URI Schemes", BCP 35,
@@ -4240,6 +4334,10 @@ Internet-Draft                    CAID                    September 2026
               RFC 8126, DOI 10.17487/RFC8126, June 2017,
               <https://www.rfc-editor.org/info/rfc8126>.
 
+   [RFC8141]  Saint-Andre, P. and J. Klensin, "Uniform Resource Names
+              (URNs)", RFC 8141, DOI 10.17487/RFC8141, April 2017,
+              <https://www.rfc-editor.org/info/rfc8141>.
+
    [RFC8792]  Watsen, K., Auerswald, E., Farrel, A., and Q. Wu,
               "Handling Long Lines in Content of Internet-Drafts and
               RFCs", RFC 8792, DOI 10.17487/RFC8792, June 2020,
@@ -4247,16 +4345,6 @@ Internet-Draft                    CAID                    September 2026
 
    [UNICODE]  The Unicode Consortium, "The Unicode Standard",
               <https://www.unicode.org/versions/latest/>.
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 76]
-
-Internet-Draft                    CAID                    September 2026
-
 
    [UTS39]    The Unicode Consortium, "Unicode Security Mechanisms",
               Unicode Technical Standard #39,
@@ -4274,6 +4362,14 @@ Appendix A.  Collected ABNF
    definitions, part A.6 the mapping profile, and part A.7 accepts every
    reason of Appendix B, including nested forms such as
    mapped_action:missing_material_field:amount.  A timestamp's day is
+
+
+
+Schrock                   Expires 31 March 2027                [Page 78]
+
+Internet-Draft                    CAID                    September 2026
+
+
    further limited by the length of its month (Section 4.3).
 
    ; Collected ABNF [RFC5234] with case-sensitive strings [RFC7405].
@@ -4306,14 +4402,6 @@ Appendix A.  Collected ABNF
    ; A.2 Digest syntax per suite
    ;
    ; A suite whose digest is n octets encodes it in c = ceil(8n/6)
-
-
-
-Schrock                   Expires 31 March 2027                [Page 77]
-
-Internet-Draft                    CAID                    September 2026
-
-
    ; base64url characters. The final character carries u = 6c - 8n
    ; unused low bits, which are zero: of the 64 base64url characters,
    ; only those whose 6-bit value is a multiple of 2^u may end the
@@ -4330,6 +4418,14 @@ Internet-Draft                    CAID                    September 2026
 
    amount-string = [ "-" ] int-part [ "." frac-part ]
    int-part      = "0" / ( %x31-39 *DIGIT )  ; no leading zero
+
+
+
+Schrock                   Expires 31 March 2027                [Page 79]
+
+Internet-Draft                    CAID                    September 2026
+
+
    frac-part     = 1*DIGIT
 
    digest-field  = %s"sha256:" 64hex-lower
@@ -4362,14 +4458,6 @@ Internet-Draft                    CAID                    September 2026
    cpt           = 4DIGIT ( DIGIT / UALPHA )
    hcpcs-level-ii
                  = UALPHA 4DIGIT
-
-
-
-Schrock                   Expires 31 March 2027                [Page 78]
-
-Internet-Draft                    CAID                    September 2026
-
-
    hcpcs         = cpt / hcpcs-level-ii
    iso-3166-2    = 2UALPHA "-" 1*3UALNUM
    iso20022-external-code
@@ -4386,6 +4474,14 @@ Internet-Draft                    CAID                    September 2026
                                     ; any scalar value except ":"; a
                                     ; field name is also a string of
                                     ; the data model (2.2), so it
+
+
+
+Schrock                   Expires 31 March 2027                [Page 80]
+
+Internet-Draft                    CAID                    September 2026
+
+
                                     ; holds no noncharacter
 
    format-name   = lower-char *( lower-char / DIGIT / "-" )
@@ -4418,14 +4514,6 @@ Internet-Draft                    CAID                    September 2026
 
    reason        = core-reason / mapping-reason / comparison-reason
 
-
-
-
-Schrock                   Expires 31 March 2027                [Page 79]
-
-Internet-Draft                    CAID                    September 2026
-
-
    core-reason   = compute-reason / core-only
    core-only     = %s"malformed_json" / %s"malformed_caid"
                  / %s"action_type_mismatch"
@@ -4442,6 +4530,14 @@ Internet-Draft                    CAID                    September 2026
    mapping-reason
                  = mapping-bare
                  / %s"unmapped_material_field" ":" field-name
+
+
+
+Schrock                   Expires 31 March 2027                [Page 81]
+
+Internet-Draft                    CAID                    September 2026
+
+
                  / pointer-code ":" source-path
                  / %s"mapped_action" ":" compute-reason
    mapping-bare  = %s"invalid_mapping_profile"
@@ -4477,7 +4573,23 @@ Appendix B.  Reason Codes
 
 
 
-Schrock                   Expires 31 March 2027                [Page 80]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 82]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4533,7 +4645,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 81]
+Schrock                   Expires 31 March 2027                [Page 83]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4589,7 +4701,7 @@ Appendix C.  Worked Examples
 
 
 
-Schrock                   Expires 31 March 2027                [Page 82]
+Schrock                   Expires 31 March 2027                [Page 84]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4645,7 +4757,7 @@ C.1.  Computation
 
 
 
-Schrock                   Expires 31 March 2027                [Page 83]
+Schrock                   Expires 31 March 2027                [Page 85]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4701,7 +4813,7 @@ C.2.  Refusal and Reason Order
 
 
 
-Schrock                   Expires 31 March 2027                [Page 84]
+Schrock                   Expires 31 March 2027                [Page 86]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4757,7 +4869,7 @@ C.3.  Verification Details
 
 
 
-Schrock                   Expires 31 March 2027                [Page 85]
+Schrock                   Expires 31 March 2027                [Page 87]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4813,7 +4925,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 86]
+Schrock                   Expires 31 March 2027                [Page 88]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4869,7 +4981,7 @@ C.5.  Code Fields
 
 
 
-Schrock                   Expires 31 March 2027                [Page 87]
+Schrock                   Expires 31 March 2027                [Page 89]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4925,7 +5037,7 @@ C.6.  Mapping
 
 
 
-Schrock                   Expires 31 March 2027                [Page 88]
+Schrock                   Expires 31 March 2027                [Page 90]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4981,7 +5093,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 89]
+Schrock                   Expires 31 March 2027                [Page 91]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5037,7 +5149,7 @@ D.1.  Initial IANA Entries
 
 
 
-Schrock                   Expires 31 March 2027                [Page 90]
+Schrock                   Expires 31 March 2027                [Page 92]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5093,7 +5205,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 91]
+Schrock                   Expires 31 March 2027                [Page 93]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5149,7 +5261,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 92]
+Schrock                   Expires 31 March 2027                [Page 94]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5172,7 +5284,7 @@ D.2.  Reference-Registry Entries Not Requested of IANA
    transfer [RFC5936], and a registered name is never reassigned.  Each
    of the seven types defined by other specifications may be registered
    under Specification Required (Section 12.2) with its own
-   specification and change controller;
+   specification and change controller, and the type
    emilia.mobile.authorized-action.1, whose first segment names an
    organization, only with that organization as its change controller.
    dns.zone.transfer.1 is not to be registered: the path for the
@@ -5205,7 +5317,7 @@ D.2.  Reference-Registry Entries Not Requested of IANA
 
 
 
-Schrock                   Expires 31 March 2027                [Page 93]
+Schrock                   Expires 31 March 2027                [Page 95]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5261,4 +5373,4 @@ Author's Address
 
 
 
-Schrock                   Expires 31 March 2027                [Page 94]
+Schrock                   Expires 31 March 2027                [Page 96]

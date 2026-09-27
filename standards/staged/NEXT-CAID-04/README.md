@@ -27,8 +27,9 @@ including the inputs it newly refuses.
   report, or changes the reference registry (anchor `chg-...`), to the
   conformance vectors that pin it. Items anchored `ed-...` are not pinned
   by vectors: Section 14.5 lists requirements on parties those operations
-  cannot observe (issuers, executors, carrying protocols, relying parties,
-  applications), and Section 14.6 lists changes to the text alone.
+  cannot observe (issuers, type authors, registrants, executors, carrying
+  protocols, relying parties, deployments, applications), and Section 14.6
+  lists changes to the text alone.
 - `VALIDATION.md`: the checks run and their results.
 
 ## What the draft restates, and what checks it

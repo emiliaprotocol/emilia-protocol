@@ -141,13 +141,19 @@ function detailRows() {
 // host profile, source_not_canonicalizable for a host mapping source. The
 // count stops at the nesting limit: a container deeper than 64 counts as
 // one value and nothing inside it is counted (the native vectors
-// native-value-count-* pin both).
+// native-value-count-* pin both), and a reference back to an enclosing
+// object or array counts as one value (native-cyclic-*-with-fraction).
+// Past the count a host action object yields unsupported_value and no
+// unsupported_number, and phases 3 and 4 still run
+// (native-value-count-with-phase-3-and-4), so the row does not say
+// "alone" (R3-VALUECOUNT-ALONE). Phase 6 examines numbers only down to
+// depth 64 (R3-REG-2).
 const LIMIT_ROWS = [
   { ids: ['json_text_octets'], label: 'JSON text', unit: 'octets', applies: 'an action object or a mapping source received as JSON text (decode)', refusal: 'malformed_json' },
   { ids: ['nesting_depth'], label: 'Nesting depth', unit: 'levels', applies: 'every value', refusal: 'malformed_json (action object or mapping source as JSON text); unsupported_value (host action object); otherwise the reason of the step that reads the value' },
   { ids: ['canonical_octets'], label: 'Canonical encoding', unit: 'octets', applies: 'an action object', refusal: 'unsupported_value' },
-  { ids: ['max_safe_integer'], label: 'Integer magnitude', unit: '', applies: 'every number', refusal: 'unsupported_number', display: (v) => (v === 2 ** 53 - 1 ? '2^53-1' : null) },
-  { ids: ['value_count'], label: 'Value count', unit: 'values', applies: 'a host value, each value counted once per path, but not the contents of an object or array nested deeper than 64', refusal: 'unsupported_value alone (host action object); otherwise the reason of the step that reads the value' },
+  { ids: ['max_safe_integer'], label: 'Integer magnitude', unit: '', applies: 'every number held at depth 64 or less', refusal: 'unsupported_number', display: (v) => (v === 2 ** 53 - 1 ? '2^53-1' : null) },
+  { ids: ['value_count'], label: 'Value count', unit: 'values', applies: 'a host value, each value counted once per path; an object or array nested deeper than 64, or a reference back to an enclosing one, counts as one value', refusal: 'unsupported_value and no unsupported_number (host action object); otherwise the reason of the step that reads the value' },
   { ids: ['document_canonical_octets'], label: 'Document encoding', unit: 'octets', applies: 'the RFC 8785 encoding of a validation projection, an enum value array, or a mapping source', refusal: 'the reason of the step that needs the encoding' },
   { ids: ['caid_octets'], label: 'Identifier', unit: 'octets', applies: 'a CAID string', refusal: 'malformed_caid' },
   { ids: ['action_type_octets'], label: 'Action type', unit: 'octets', applies: 'an action type in a CAID, an action object, or a definition', refusal: 'malformed_caid; invalid_action_type; invalid_definition' },
@@ -660,7 +666,9 @@ for (const n of ['2119', '8174', '8785', '8949', '6234', '4648', '3339', '5234',
   check(normativeRfcs.has(n), `normative reference RFC ${n} missing`);
 }
 // RFC 7696 (BCP 201): Section 10.1 says how each SHA-256 value migrates.
-for (const n of ['7595', '7942', '8126', '8792', '7696']) check(informativeRfcs.has(n), `informative reference RFC ${n} missing`);
+// RFC 6920 and RFC 8141: Section 12.8 says why the caid scheme is defined
+// instead of an ni URI or a URN namespace.
+for (const n of ['7595', '7942', '8126', '8792', '7696', '6920', '8141']) check(informativeRfcs.has(n), `informative reference RFC ${n} missing`);
 for (const n of normativeRfcs) check(source.includes(`target="RFC${n}"`), `normative RFC ${n} is never cited`);
 for (const n of informativeRfcs) check(source.includes(`target="RFC${n}"`), `informative RFC ${n} is never cited`);
 // The cited revisions are the latest on Datatracker when the packet was
@@ -1214,6 +1222,15 @@ for (const [needle, what] of [
   ['names that local deployments use', 'R2-REG-10: Section 12.2 gives the expert a rule for organization-specific names'],
   ['A literal that overflows binary64', 'R2-REG-5: Section 4.3 uses the Section 2.3 infinity boundary'],
   ['Initial CAID Action Types', 'R2-NUM-01: Appendix D lists entries that are not initial entries'],
+  // Round 3 of the fix audit.
+  ['refused as unsupported_value alone, whatever else it holds', 'R3-VALUECOUNT-ALONE: past the value count phases 3 and 4 still run (Section 2.2)'],
+  ['unsupported_value alone (host action object)', 'R3-VALUECOUNT-ALONE: the value-count row of Table 1'],
+  ['as one value: unsupported_value alone', 'R3-VALUECOUNT-ALONE: Section 14.1'],
+  ['holds a number outside the model is refused as unsupported_number alone', 'R3-VALUECOUNT-ALONE: the canonical-size sentence of Section 2.2'],
+  ['but the count is that of the expansion, down to depth 64', 'R3-REG-1: a reference back to an enclosing object or array counts as one value (Section 2.5)'],
+  ['phase 6 every number in the data model', 'R3-REG-2: phase 6 examines numbers only down to depth 64 (Section 1.2 figure)'],
+  ['have the confidentiality of personal data', 'R3-PRIVACY-WORDING: what a sequential identifier costs (Section 11)'],
+  ['read neither member of such a profile', 'R3-STAGEB-HISTORY, R3-REG-4: the earlier JavaScript mapper read both members of most profiles outside the data model (Section 14.2)'],
 ]) check(needle instanceof RegExp ? !needle.test(sourcePlain) : !sourcePlain.includes(needle), `source still carries the wording of ${what}`);
 // ED-13: "action object" is lowercase in running text; titles keep title case.
 // Sourcecode is left out: the Section 4.7 registration quotes the registry
@@ -1224,7 +1241,7 @@ check(!/\bAction Objects?\b/.test(plain(source.replace(/<name>[\s\S]*?<\/name>/g
 for (const [anchor, needle, what] of [
   ['security-digest', 'collision', 'SEC-1: Section 10.1 names collision resistance'],
   ['iana-suites', 'collision', 'SEC-1: Section 12.1 deprecates a suite once collision attacks are practical'],
-  ['iana-action-types', '128 bits', 'SEC-10: the material-fields test carries the 128-bit entropy criterion'],
+  ['iana-action-types', 'a type whose required fields can all be low-entropy requires a member that carries at least 128 bits of entropy', 'SEC-10, R3-GATE-2: the material-fields test carries the whole 128-bit criterion'],
   ['local', 'organization-specific first segment', 'IANA-7: Section 4.6 carries the organization-prefix SHOULD'],
   ['iana-code-formats', 'change controller', 'IANA-13: the Code Formats template records a change controller'],
   ['impl-status', 'tree/main/caid', 'M3: Section 13 points at tree/main/caid'],
@@ -1243,7 +1260,7 @@ for (const [anchor, needle, what] of [
   ['host-values', 'except that an object or array nested deeper than 64 counts as one value and nothing inside it is counted', 'R2-VALUECOUNT-DEPTH: native-value-count-stops-at-depth-64, native-value-count-straddles-depth-64'],
   ['host-values', 'a host definition whose validation projection is past it, or a host mapping profile or mapping source past it, is refused by the step that reads it', 'R2-VALUECOUNT-REASON (Section 2.5)'],
   ['data-model', 'are not examined and are not counted toward the value count', 'R2-VALUECOUNT-DEPTH (Section 2.2)'],
-  ['data-model', 'a host action object is refused as unsupported_value alone', 'R2-VALUECOUNT-REASON (Section 2.2)'],
+  ['data-model', 'past it, a host action object yields unsupported_value from phase 7 and no unsupported_number, whatever else it holds, while phases 3 and 4 still run', 'R2-VALUECOUNT-REASON, R3-VALUECOUNT-ALONE: native-value-count-with-phase-3-and-4 (Section 2.2)'],
   ['limits', 'The nesting limit and the value count apply in the same way to a host value that is not an action object', 'R2-VALUECOUNT-REASON (Section 2.6)'],
   ['limits', 'a host definition whose validation projection nests deeper than 64 or exceeds the value count is invalid_definition, a host mapping profile that does is invalid_mapping_profile and has no digest', 'R2-VALUECOUNT-REASON: native-definition-value-count-in-projection, profile-value-count-abstains'],
   ['limits', 'and a host mapping source that does is source_not_canonicalizable', 'R2-VALUECOUNT-REASON: stage-b-source-value-count-not-canonicalizable'],
@@ -1261,6 +1278,33 @@ for (const [anchor, needle, what] of [
   ['appendix-action-types-reference-only', 'only with that organization as its change controller', 'R2-ORGPREFIX-TENSION: emilia.mobile.authorized-action.1 (Appendix D.2)'],
   ['chg-refused-depth', 'A host definition whose validation projection is nested that deep', 'R2-CHG-DEEP-DEF (Section 14.1)'],
   ['ed-processing-text', 'no longer depends on the conformance condition that uses it', 'R2-CHG-PROJECTION (Section 14.6)'],
+  // Round 3 of the fix audit and the author's decisions on it. A reference
+  // back to an enclosing object or array counts as one value (rule b), as
+  // the JavaScript, Python and Go ports and the spec oracle apply it.
+  ['data-model', 'a reference back to an enclosing object or array is a cycle: it counts as one value, and nothing beyond it is counted or examined', 'R3-REG-1: native-cyclic-*-with-fraction (Section 2.2)'],
+  ['data-model', 'holds a number outside the model yields unsupported_number and no unsupported_value', 'R3-VALUECOUNT-ALONE: refuse-canonical-size-over-limit-with-phase-3-and-4 (Section 2.2)'],
+  ['host-values', 'and a reference back to an enclosing object or array counts as one value and nothing beyond it is counted', 'R3-REG-1 (Section 2.5)'],
+  ['host-values', 'phase 7 yields unsupported_value and phase 6 yields no reason, whatever the value holds, while phases 3 and 4 still run', 'R3-VALUECOUNT-ALONE (Section 2.5)'],
+  ['host-values', 'the count of a value whose shared references form no cycle is that of the expansion, down to depth 64', 'R3-REG-1: acyclic shared references count by their expansion (Section 2.5)'],
+  ['host-values', 'So NaN or 1.5 in an integer field is mistyped_field:<name> and unsupported_number', 'M2, IMPL-2, R3-GATE-1: native-nan-in-integer-field, native-fraction-in-integer-field'],
+  ['computation', 'or beyond a reference back to an enclosing object or array, and the value count does not count them', 'R3-REG-1 (Section 5)'],
+  ['computation', 'phase 6 yields no reason and phase 7 yields unsupported_value, whatever the value holds; phases 3 and 4 still run', 'R3-VALUECOUNT-ALONE (Section 5)'],
+  ['chg-refused-value-count', 'or a reference back to an enclosing object or array, counts as one value: unsupported_value and no unsupported_number, while phases 3 and 4 still run', 'R3-REG-1, R3-VALUECOUNT-ALONE (Section 14.1)'],
+  ['overview', 'phase 6 every number, down to depth 64, in the data model', 'R3-REG-2: the Section 1.2 figure'],
+  ['chg-mapping-stage-b', 'read neither member of a profile nested deeper than 64, past the value count, cyclic, or holding a host value of no JSON kind', 'R3-STAGEB-HISTORY, R3-REG-4: what the JavaScript mapper at cea10b85e skipped'],
+  ['privacy', 'anyone who holds a CAID of that type can recover its action object by guessing, so the CAID needs the protection its action object needs', 'R3-PRIVACY-WORDING'],
+  ['privacy', 'A CAID is meant to be recomputed by a party that already holds the action object', 'author: a CAID is recomputed by parties that hold the object (Section 11)'],
+  ['privacy', 'receipts and other evidence carry it for such parties. It is not designed as a correlation identifier to propagate to parties that do not hold the object', 'author: not a correlation identifier for parties without the object (Section 11)'],
+  ['iana-action-types', "A new version of a registered type name is registered by the change controller of its earlier versions, or with that controller's written agreement", 'IANA-8, R3-GATE-3'],
+  ['impl-status', 'refuses cbor-sha256 as unknown_suite', 'R3-GATE-4: agrees with the Coverage line and the runner skips checked below'],
+  ['impl-status', "The JavaScript implementation uses only the platform's cryptographic library, and the Python and Go implementations use only their standard libraries", 'R3-GATE-4: the imports checked below'],
+  ['iana-uri', 'names an object by the digest of its octets, unless a specification defines another input, under an algorithm from the Named Information Hash Algorithm Registry', 'author: the RFC 6920 comparison (Section 12.8), read against RFC 6920 Sections 2, 3 and 9.4'],
+  ['iana-uri', 'two ni names that share the algorithm and the digest value refer to the same object whatever else they carry', 'author: RFC 6920 Section 2 compares only the algorithm and the digest value'],
+  ['iana-uri', 'URN-equivalence lowercases "urn" and the namespace identifier, ignores the r-, q-, and f-components, and lets a namespace add equivalences but never remove one', 'author: RFC 8141 Section 3.1'],
+  ['ed-references', 'RFC 6920, RFC 8141', 'the references Section 12.8 adds'],
+  ['ed-references', 'ISO 3166-1 and ISO 4217', 'R3-REG-7: the enum sources Section 4.5 cites'],
+  ['ed-uri-utility', 'instead of using an ni URI', 'author: the change entry for the Section 12.8 utility paragraph'],
+  ['ed-privacy', 'not propagated as a correlation identifier to parties that do not', 'author: the change entry for the Section 11 paragraph'],
 ]) check(plain(part(anchor)).includes(needle), `${/^(?:chg|ed)-/.test(anchor) ? 'item' : 'section'} ${anchor} lacks "${needle}" (${what})`);
 // R2-GATE-5: Section 13 says none of the three implementations implements
 // cbor-sha256 and that each skips the corpus vectors that apply only to an
@@ -1300,6 +1344,108 @@ for (const [anchor, needle, what] of [
   check(vendored === read('caid/impl/js/caid.mjs'), 'packages/verify/vendor/caid.mjs is not a byte copy of caid/impl/js/caid.mjs, as Section 13 says');
   check(!/\b(?:mapAction|compareMappedActions|mappingProfileHash)\b/.test(vendored), 'the vendored caid.mjs carries mapping, which Section 13 says it does not');
 }
+// R3-GATE-4: Section 13 says the JavaScript implementation uses only the
+// platform's cryptographic library and the Python and Go implementations
+// only their standard libraries. The imports of every port module say so.
+{
+  const jsAllowed = new Set(['node:crypto', './caid.mjs']);
+  for (const rel of ['caid/impl/js/caid.mjs', 'caid/impl/js/mapping.mjs']) {
+    const found = [...read(rel).matchAll(/^\s*(?:import|export)\b[^;]*?\bfrom\s+['"]([^'"]+)['"]/gm), ...read(rel).matchAll(/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g)].map((m) => m[1]);
+    const other = found.filter((f) => !jsAllowed.has(f));
+    check(other.length === 0, `Section 13 says the JavaScript implementation uses only the platform's cryptographic library, but ${rel} imports ${other.join(', ')}`);
+  }
+  const pyModules = ['caid/impl/python/caid.py', 'caid/impl/python/mapping.py'].flatMap((rel) => [...read(rel).matchAll(/^\s*(?:from\s+([A-Za-z_][\w.]*)\s+import|import\s+([A-Za-z_][\w.]*(?:\s*,\s*[A-Za-z_][\w.]*)*))/gm)]
+    .flatMap((m) => (m[1] ? [m[1]] : m[2].split(',').map((x) => x.trim()))).map((name) => [rel, name.split('.')[0]]));
+  const py = spawnSync(process.env.CAID_PYTHON || 'python3', ['-c', 'import sys, json; print(json.dumps(sorted(sys.stdlib_module_names)))'], { encoding: 'utf8' });
+  if (py.status === 0) {
+    const stdlib = new Set([...JSON.parse(py.stdout), '__future__']);
+    // The two modules of the port import each other by name.
+    const local = new Set(['caid', 'mapping', '_caid_spec', 'caid_spec']);
+    for (const [rel, name] of pyModules) check(stdlib.has(name) || local.has(name), `Section 13 says the Python implementation uses only its standard library, but ${rel} imports ${name}`);
+  } else {
+    const note = 'python3 could not list its standard library, so the Python imports of Section 13 were not checked';
+    if (prefiling) errors.push(note); else console.log(`CAID-04: note: ${note}`);
+  }
+  check(!/^\s*require\b/m.test(read('caid/impl/go/go.mod')), 'Section 13 says the Go implementation uses only its standard library, but caid/impl/go/go.mod requires a module');
+  const goFiles = execFileSync('git', ['-C', root, 'ls-files', 'caid/impl/go'], { encoding: 'utf8' }).split('\n').filter((f) => f.endsWith('.go') && !f.endsWith('_test.go'));
+  for (const rel of goFiles) {
+    const src = read(rel);
+    const imports = [...src.matchAll(/^import\s+"([^"]+)"/gm), ...[...src.matchAll(/^import\s*\(([\s\S]*?)^\)/gm)].flatMap((m) => [...m[1].matchAll(/"([^"]+)"/g)])].map((m) => m[1]);
+    // A standard library path has no dot in its first element; caid/... is
+    // this module.
+    const other = imports.filter((i) => i.split('/')[0].includes('.') && !i.startsWith('caid/'));
+    check(other.length === 0, `Section 13 says the Go implementation uses only its standard library, but ${rel} imports ${other.join(', ')}`);
+  }
+}
+
+// R3-GATE-5: the limits the prose restates are the values of
+// caid/spec/core.json, the source of the limits table, and every
+// comma-grouped number in the source is one of those values, 2^53-1, or
+// the cited amount counterexample "1,000".
+{
+  const L = Object.fromEntries(core.limits.map((l) => [l.id, l.value]));
+  const n = (v) => v.toLocaleString('en-US');
+  for (const [anchor, needle] of [
+    ['host-values', `refuse a host value made of more than ${n(L.value_count)} values`],
+    ['chg-refused-value-count', `more than ${n(L.value_count)} values`],
+    ['json-text', `It is at most ${n(L.json_text_octets)} octets long`],
+    ['chg-refused-text-size', `JSON text longer than ${n(L.json_text_octets)} octets`],
+    ['security-dos', `near the ${n(L.json_text_octets)}-octet text limit`],
+    ['data-model', `MUST NOT exceed ${n(L.canonical_octets)} octets`],
+    ['data-model', `The nesting depth of a value MUST NOT exceed ${L.nesting_depth}.`],
+    ['computation', `a canonical encoding beyond ${n(L.canonical_octets)} octets`],
+    ['chg-refused-canonical-size', `exceeds ${n(L.canonical_octets)} octets`],
+    ['numbers', `at most 2^53-1 (${n(L.max_safe_integer)})`],
+  ]) check(plain(part(anchor)).includes(needle), `${/^(?:chg|ed)-/.test(anchor) ? 'item' : 'section'} ${anchor} does not state "${needle}", the value of caid/spec/core.json (R3-GATE-5)`);
+  const allowed = new Set([...core.limits.filter((l) => l.scope === 'caid' || l.scope === 'caid-mapping').map((l) => n(l.value)), n(L.max_safe_integer), '1,000']);
+  const stray = [...new Set([...sourcePlain.matchAll(/\b\d{1,3}(?:,\d{3})+\b/g)].map((m) => m[0]))].filter((v) => !allowed.has(v));
+  check(stray.length === 0, `the source states ${stray.join(', ')}, which is no limit of caid/spec/core.json (R3-GATE-5)`);
+}
+
+// R3-REG-3: each change since -03 appears in one list. The requirements on
+// other parties are items of Section 14.5, and the Security and Privacy
+// items of Section 14.6 describe text alone.
+{
+  const parties = section('changes-03-parties');
+  for (const a of ['ed-number-literals', 'ed-multiple-caids', 'ed-signature-coverage', 'ed-truncation', 'ed-occurrence', 'ed-message-bounds', 'ed-identifier-normalization', 'ed-logging', 'ed-type-entropy', 'ed-keyed-commitment', 'ed-snapshot-files', 'ed-approval-display', 'ed-number-readers', 'ed-suite-deprecation']) {
+    check(parties.includes(`<li anchor="${a}">`), `Section 14.5 (changes-03-parties) lacks the requirement ${a} (R3-REG-3)`);
+  }
+  const edSecurity = plain(item('ed-security'));
+  for (const topic of ['truncation', 'replay', 'multiple identifiers', 'signature coverage', 'differential', 'confusable']) {
+    check(!edSecurity.includes(topic), `the ed-security item still lists "${topic}", a requirement Section 14.5 lists (R3-REG-3)`);
+  }
+  check(!plain(item('ed-privacy')).includes('keyed commitment'), 'the ed-privacy item still lists the keyed-commitment rule, which Section 14.5 lists (R3-REG-3)');
+}
+
+// Section 12.8: the utility paragraph cites RFC 7595 Section 3.1 and the
+// two alternatives it weighs.
+{
+  const uri = section('iana-uri');
+  check(/<xref target="RFC7595" section="3\.1"/.test(uri) && uri.includes('<xref target="RFC6920"/>') && uri.includes('<xref target="RFC8141"/>'), 'Section 12.8 does not cite RFC 7595 Section 3.1, RFC 6920 and RFC 8141 for the utility of the scheme');
+}
+
+// R3-REG-5: the reference registry's quality bar carries the Section 12.2
+// criteria it could otherwise admit a type without.
+{
+  const gov = flat(read('caid/registry/GOVERNANCE.md'));
+  check(gov.includes('whose required fields can all be low-entropy requires a member that carries at least 128 bits of entropy') && gov.includes('unless its `digest_notes` or its specification state why not'), 'GOVERNANCE.md section 5 lacks the 128-bit criterion of Section 12.2 and its exception (R3-REG-5)');
+  check(gov.includes('A proposal that pins an external enum supplies the snapshot file') && gov.includes("what is known of that source's terms"), 'GOVERNANCE.md section 5 lacks the snapshot-file and terms duty of Section 12.2 (R3-REG-5)');
+}
+
+// R3-NBHY-COPYPASTE: a non-breaking hyphen survives in the HTML render,
+// where a copied type name or file path would then not be the real one. It
+// stays only in SHA-384 and SHA-512/256; the type names and paths are ASCII
+// in both renders, and the prose around them keeps the TXT from breaking
+// them.
+{
+  const kept = [...source.matchAll(/(.{0,3})&#8209;(.{0,7})/g)].filter((m) => !/SHA$/.test(m[1]) || !/^(?:384|512\/256)/.test(m[2]));
+  check(kept.length === 0, `a non-breaking hyphen appears outside SHA-384 and SHA-512/256: "${kept[0]?.[0] ?? ''}" (R3-NBHY-COPYPASTE)`);
+  for (const name of ['action‑types', 'value‑sets', 'authorized‑action', 'action&#8209;types', 'value&#8209;sets', 'authorized&#8209;action']) {
+    check(!html.includes(name), `the HTML render carries a non-breaking hyphen in "${name.replace('‑', '-').replace('&#8209;', '-')}" (R3-NBHY-COPYPASTE)`);
+  }
+  check(!/value-\s+sets/.test(text), 'the TXT render breaks "value-sets/" at its hyphen');
+}
+
 // ED-07: the paragraph above the limits table names the reasons the
 // nesting limit yields for documents other than an action object.
 {
