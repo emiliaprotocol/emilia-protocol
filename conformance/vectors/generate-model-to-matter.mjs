@@ -278,7 +278,9 @@ const suite = {
     as_of: AS_OF,
     challenge_expires_at: CHALLENGE_EXPIRES_AT,
     action,
-    caid: modelToMatterCaid(action),
+    // The vector pins the identifier and digest only, so its bytes do not move
+    // when the CAID result gains members (for example -04 definition_sha256).
+    caid: (({ caid, digest }) => ({ caid, digest }))(modelToMatterCaid(action)),
     profile,
     reliance_program: reliance.compiled,
     mismatched_reliance_program: mismatchedReliance.compiled,

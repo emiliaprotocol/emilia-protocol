@@ -1,7 +1,8 @@
 {
   "@version": "EMILIA-CEDULON-AEB-CROSSING-REPORT-v0.1",
   "source_lock_digest": "sha256:73ba749c31ecc3e7ca46ed72bea3ff33633473e1961adea231487f42143a1405",
-  "action_definition_digest": "sha256:48e5b7764b8b7f3bc0217db9ea2fc4491ddcf631bf91815a5b4fd8aff904a30d",
+  "action_definition_file_digest": "sha256:48e5b7764b8b7f3bc0217db9ea2fc4491ddcf631bf91815a5b4fd8aff904a30d",
+  "definition_sha256": "sha256:fd9018656d7988c2634cf425a246a47b46f9a27854ef0fad80b63e539ac5d2c2",
   "mapping_profile_digest": "sha256:1beae1ad6e8067867043d53c8ee49ece8917d69a7f6f2a5afc9da5b051bec16e",
   "workspace_digest": "sha256:acec79fe1abf92097229250ea06a32debb58ce175f15350a9cd4d9a9cd8e9952",
   "adapter_module_digest": "sha256:779caa2b62686d3813ea56d18be652c2c515a332c6d866da3b8d9036a6618375",
@@ -81,5 +82,5 @@
     "certification": false
   },
   "profile_passed": true,
-  "report_digest": "sha256:52e8e041b84d7e3b9213dfb98d2a89ed9f8bbe16aef72f8232c29f587fa41bf8"
+  "report_digest": "sha256:ef7e61803ac53f24718f7e8a6f622fab9f260d58c2a11b3f18b92ba0c5948169"
 }

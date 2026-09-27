@@ -75,6 +75,12 @@ therefore demonstrates internal binding consistency after native verification;
 it does not independently prove cross-format composition, turn a succession
 receipt into authorization, or make an absent optional claim invalid.
 
+`caid_derivation.definition_sha256` pins the type by its CAID definition
+digest (draft-schrock-canonical-action-identifier-04, Section 4.2.2), the same
+value `caid/registry/digests.json` lists for `travel.cancel-notify.1`. It
+replaced a whole-registry-entry digest, which also changed with status and
+notes.
+
 ## `aeb-audit-provenance-join.v1.json` — staged composition profile
 
 This synthetic opaque-reference fixture checks the narrow join between an AEB
