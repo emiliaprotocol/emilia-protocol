@@ -9,7 +9,8 @@
 //     definition_sha256 from digests.json, split into D.1, the initial
 //     entries IANA is asked to register, and D.2, the entries that are not
 //     requested of IANA (IANA_EXCLUDED below); Section 12.2 and both
-//     subsections state the counts of that split;
+//     subsections state the counts of that split, and no page of the TXT
+//     render separates an entry's name line from its digest line;
 //   - Appendix B (core and mapping reasons), the verification detail table
 //     and the limits table equal the tables generated below from
 //     caid/spec/core.json;
@@ -36,8 +37,8 @@
 //
 //   node scripts/check-caid-04.mjs          run every check; exit 1 on any failure
 //   node scripts/check-caid-04.mjs --emit   print the generated tables and
-//                                           listings as XML, for pasting
-//                                           into the draft
+//                                           Appendix D lists as XML, for
+//                                           pasting into the draft
 //   node scripts/check-caid-04.mjs --emit-json   the same as one JSON object
 //   node scripts/check-caid-04.mjs --renders     every check, and fail unless
 //                                           xml2rfc 3.34.0 is on PATH and its
@@ -47,7 +48,8 @@
 //                                           that xml2rfc is on PATH)
 //   node scripts/check-caid-04.mjs --prefiling   every check with --renders,
 //                                           plus the filing gate against
-//                                           origin/main (run git fetch
+//                                           origin/main, which must equal
+//                                           the remote main (run git fetch
 //                                           origin first)
 //
 // Every failure is collected and printed, so one run lists all of them.
@@ -132,16 +134,20 @@ function detailRows() {
 
 // The limits table: one row per limit of scope caid or caid-mapping, a
 // minimum and maximum of one quantity sharing a row. Labels are draft text.
-// The nesting row names only the reasons the limit itself yields; any other
-// value too deep is refused by the step that reads it, as all three ports
-// do: invalid_definition for a host definition, invalid_mapping_profile for
-// a host profile, source_not_canonicalizable for a host mapping source.
+// The nesting and value-count rows name the reasons the limit itself yields
+// for an action object; any other value too deep, or past the count, is
+// refused by the step that reads it, as all three ports do:
+// invalid_definition for a host definition, invalid_mapping_profile for a
+// host profile, source_not_canonicalizable for a host mapping source. The
+// count stops at the nesting limit: a container deeper than 64 counts as
+// one value and nothing inside it is counted (the native vectors
+// native-value-count-* pin both).
 const LIMIT_ROWS = [
   { ids: ['json_text_octets'], label: 'JSON text', unit: 'octets', applies: 'an action object or a mapping source received as JSON text (decode)', refusal: 'malformed_json' },
   { ids: ['nesting_depth'], label: 'Nesting depth', unit: 'levels', applies: 'every value', refusal: 'malformed_json (action object or mapping source as JSON text); unsupported_value (host action object); otherwise the reason of the step that reads the value' },
   { ids: ['canonical_octets'], label: 'Canonical encoding', unit: 'octets', applies: 'an action object', refusal: 'unsupported_value' },
   { ids: ['max_safe_integer'], label: 'Integer magnitude', unit: '', applies: 'every number', refusal: 'unsupported_number', display: (v) => (v === 2 ** 53 - 1 ? '2^53-1' : null) },
-  { ids: ['value_count'], label: 'Value count', unit: 'values', applies: 'a host value, each value counted once for every path that reaches it', refusal: 'unsupported_value, and no unsupported_number' },
+  { ids: ['value_count'], label: 'Value count', unit: 'values', applies: 'a host value, each value counted once per path, but not the contents of an object or array nested deeper than 64', refusal: 'unsupported_value alone (host action object); otherwise the reason of the step that reads the value' },
   { ids: ['document_canonical_octets'], label: 'Document encoding', unit: 'octets', applies: 'the RFC 8785 encoding of a validation projection, an enum value array, or a mapping source', refusal: 'the reason of the step that needs the encoding' },
   { ids: ['caid_octets'], label: 'Identifier', unit: 'octets', applies: 'a CAID string', refusal: 'malformed_caid' },
   { ids: ['action_type_octets'], label: 'Action type', unit: 'octets', applies: 'an action type in a CAID, an action object, or a definition', refusal: 'malformed_caid; invalid_action_type; invalid_definition' },
@@ -313,31 +319,44 @@ function actionTypeSplit() {
   return { all: reg.types, iana, other, counts };
 }
 
-// A listing, not a table (a 64-digit digest does not fit a table row in 69
-// columns). Each entry is the action type, its status and, for a
-// deprecated type, its successor, then the hexadecimal part of its
-// definition_sha256 indented on the next line. Registry order is kept.
-function actionTypeListing(types) {
+// A definition list, not a table (a 64-digit digest does not fit a table
+// row). Each term is the action type, its status and, for a deprecated
+// type, its successor; its description is the hexadecimal part of its
+// definition_sha256, which the TXT render indents on the next line.
+// xml2rfc keeps a term on the page of its description, so no page separates
+// an entry's two lines (the TXT check below enforces it). Registry order is
+// kept.
+// A term longer than 66 characters would wrap in the TXT render (69
+// columns with its indent), and a wrapped successor would read as an entry.
+const entryHead = (t) => {
+  const head = `${t.action_type} ${t.status}${t.superseded_by ? `, successor ${t.superseded_by}` : ''}`;
+  if (head.length > 66) throw new Error(`CAID-04: the Appendix D term "${head}" would wrap in the TXT render`);
+  return head;
+};
+function actionTypeList(anchor, types) {
   const dig = new Map(readJson('caid/registry/digests.json').types.map((t) => [t.action_type, t.definition_sha256]));
-  return types.map((t) => {
+  const items = types.map((t) => {
     const d = dig.get(t.action_type);
     if (!d) throw new Error(`CAID-04: digests.json has no definition_sha256 for ${t.action_type}`);
-    const head = `${t.action_type} ${t.status}${t.superseded_by ? ` superseded_by ${t.superseded_by}` : ''}`;
-    return `${head}\n  ${d.slice('sha256:'.length)}\n`;
-  }).join('');
+    return `  <dt>${xmlEscape(entryHead(t))}</dt>\n  <dd><tt>${d.slice('sha256:'.length)}</tt></dd>`;
+  });
+  return [`<dl anchor="${anchor}" newline="true" spacing="compact">`, ...items, '</dl>'].join('\n');
 }
 
 // Anchors the draft uses for Appendix D and its two subsections.
 const APPENDIX_D = {
   parent: 'appendix-action-types',
+  // D.2 lists entries that are not initial entries, so the appendix is
+  // named for the registry version it lists, not for the initial contents.
+  parentName: 'Action Types of Reference Registry Version 5',
   iana: { section: 'appendix-action-types-initial', listing: 'appendix-d1-types', name: 'Initial IANA Entries' },
   other: { section: 'appendix-action-types-reference-only', listing: 'appendix-d2-types', name: 'Reference-Registry Entries Not Requested of IANA' },
 };
 let splitCache;
 const splitOnce = () => { splitCache ??= actionTypeSplit(); return splitCache; };
 const LISTINGS = {
-  [APPENDIX_D.iana.listing]: () => actionTypeListing(splitOnce().iana),
-  [APPENDIX_D.other.listing]: () => actionTypeListing(splitOnce().other),
+  [APPENDIX_D.iana.listing]: () => actionTypeList(APPENDIX_D.iana.listing, splitOnce().iana),
+  [APPENDIX_D.other.listing]: () => actionTypeList(APPENDIX_D.other.listing, splitOnce().other),
 };
 
 // ---------------------------------------------------------------------------
@@ -527,7 +546,7 @@ if (process.argv.includes('--emit')) {
   for (const anchor of Object.keys(TABLES)) console.log(`${e[anchor]}\n`);
   const { iana, other, registry_version_5: total } = e['appendix-d-counts'];
   console.log(`<!-- Appendix D: registry version 5 has ${total} type versions. D.1 (section ${APPENDIX_D.iana.section}, "${APPENDIX_D.iana.name}"): ${iana.total} initial IANA entries, ${iana.active} active and ${iana.deprecated} deprecated. D.2 (section ${APPENDIX_D.other.section}, "${APPENDIX_D.other.name}"): ${other.total} entries, ${other.active} active. Section 12.2 states the D.1 counts. -->\n`);
-  for (const anchor of Object.keys(LISTINGS)) console.log(`<sourcecode anchor="${anchor}"><![CDATA[\n${e[anchor]}]]></sourcecode>\n`);
+  for (const anchor of Object.keys(LISTINGS)) console.log(`${e[anchor]}\n`);
   console.log(`<!-- Appendix C.1, cbor-sha256: the core deterministic CBOR encoding of exc-payment-object is ${e['exc-payment-cbor-octets']} octets, shown in hexadecimal, 32 octets to a line. -->\n`);
   console.log(`<sourcecode anchor="exc-payment-cbor"><![CDATA[\n${e['exc-payment-cbor']}]]></sourcecode>\n`);
   console.log(`<sourcecode anchor="exc-payment-cbor-result" type="json"><![CDATA[\n${e['exc-payment-cbor-result']}]]></sourcecode>\n`);
@@ -559,6 +578,7 @@ const plain = (xml) => flat(xml
   .replace(/<\/?(?:bcp14|tt|em|strong|sub|sup|xref|eref|iref|relref|u)\b[^>]*>/g, '')
   .replace(/<[^>]*>/g, ' ')
   .replaceAll('\u0001', '<')
+  .replaceAll('&#8209;', '-')
   .replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&quot;', '"').replaceAll('&apos;', "'").replaceAll('&amp;', '&'));
 const sourcePlain = plain(source);
 const registry = readJson('caid/registry/action-types.json');
@@ -585,6 +605,15 @@ function section(anchor) {
   errors.push(`section ${anchor} is not closed`);
   return '';
 }
+
+/** The body of the list item with this anchor (a change-log item). */
+function item(anchor) {
+  const m = new RegExp(`<li anchor="${anchor}">([\\s\\S]*?)</li>`).exec(source);
+  if (!m) { errors.push(`no list item ${anchor}`); return ''; }
+  return m[1];
+}
+/** A section or, for a chg- or ed- anchor, a change-log item. */
+const part = (anchor) => (/^(?:chg|ed)-/.test(anchor) ? item(anchor) : section(anchor));
 
 /** The CDATA text of the sourcecode with this anchor, without its first line break. */
 function code(anchor) {
@@ -671,18 +700,24 @@ check(v4File?.sha256 === 'sha256:73a31f4a4156e3de02e1c3a9ef355f73c07ba25e6b1bb3d
 }
 
 // [CAID-REGISTRY]: a fixed commit, the file's raw octets, and the pinned
-// digest. The digest covers the octets of action-types.json, which the
-// blob URL does not serve (it serves an HTML page), so the reference also
-// carries the raw.githubusercontent.com URL of the file at the same commit.
+// digest. The digest covers the octets of action-types.json, which a blob
+// URL does not serve (it serves an HTML page), so the reference targets the
+// raw.githubusercontent.com URL of the file at that commit: both renders
+// then print it as the reference's URL, in angle brackets in the TXT and
+// as a link in the HTML.
 const registryRef = /<reference anchor="CAID-REGISTRY"[\s\S]*?<\/reference>/.exec(source)?.[0] ?? '';
 check(registryRef, 'no [CAID-REGISTRY] reference');
 const REPO = 'emiliaprotocol/emilia-protocol';
-const pinnedCommit = new RegExp(`target="https://github\\.com/${REPO}/blob/([0-9a-f]{40})/caid/registry/action-types\\.json"`).exec(registryRef)?.[1];
-check(pinnedCommit, '[CAID-REGISTRY] does not target action-types.json at a full 40-digit commit');
+const pinnedCommit = new RegExp(`target="https://raw\\.githubusercontent\\.com/${REPO}/([0-9a-f]{40})/caid/registry/action-types\\.json"`).exec(registryRef)?.[1];
+check(pinnedCommit, '[CAID-REGISTRY] does not target the raw action-types.json at a full 40-digit commit');
+check(!registryRef.includes('github.com/' + REPO + '/blob/'), '[CAID-REGISTRY] still names a blob URL, which serves an HTML page, not the octets the digest covers');
 if (pinnedCommit) {
   const raw = `https://raw.githubusercontent.com/${REPO}/${pinnedCommit}/caid/registry/action-types.json`;
-  // In the annotation text or in an <eref> target: either names the URL.
-  check(registryRef.includes(raw), `[CAID-REGISTRY] does not give the raw file URL ${raw}, whose octets the digest covers`);
+  // R2-RAWURL-RENDER: the TXT prints the URL once, inside angle brackets,
+  // and line breaks inside it are the only whitespace.
+  const shown = /<(https:\/\/raw\.githubusercontent\.com\/[^>]*)>/.exec(text)?.[1]?.replace(/\s+/g, '');
+  check(shown === raw, `the TXT render does not print the [CAID-REGISTRY] URL ${raw} in angle brackets (found ${shown ?? 'none'})`);
+  check(!/<\/?annotation>[\s\S]*raw\.githubusercontent/.test(registryRef.replace(/target="[^"]*"/, '')), '[CAID-REGISTRY] repeats the raw URL in its annotation, where xml2rfc breaks it with a stray space');
   // The commit must carry the pinned bytes. A shallow clone (CI) may lack
   // the commit; --prefiling requires it.
   let blob = null;
@@ -712,7 +747,8 @@ for (const [anchor, make] of Object.entries(TABLES)) {
 }
 check(source.match(/<table anchor="tab-core-reasons">/g)?.length === 1, 'core reason table appears more than once');
 for (const [anchor, make] of Object.entries(LISTINGS)) {
-  check(code(anchor) === make(), `listing ${anchor} differs from the one generated from the registry and digests.json (run with --emit)`);
+  check(source.includes(make()), `list ${anchor} differs from the one generated from the registry and digests.json (run with --emit)`);
+  check(source.split(`anchor="${anchor}"`).length === 2, `list ${anchor} appears other than once`);
 }
 
 // ---------------------------------------------------------------------------
@@ -739,16 +775,18 @@ const statesCount = (txt, n, nouns) => {
   check(d1.includes(`anchor="${d.iana.listing}"`), `Appendix D.1 does not hold the listing ${d.iana.listing}`);
   check(d2.includes(`anchor="${d.other.listing}"`), `Appendix D.2 does not hold the listing ${d.other.listing}`);
   check(!source.includes('anchor="appendix-d-types"'), 'the unsplit Appendix D listing appendix-d-types is still in the draft');
+  check(nameOf(parent) === d.parentName.toLowerCase(), `Appendix D is not named "${d.parentName}"; it lists entries that are not initial entries (D.2)`);
   // Every type of registry version 5 appears exactly once, with its digest.
-  const listed = [...`${code(d.iana.listing)}${code(d.other.listing)}`.matchAll(/^([a-z][a-z0-9.-]*\.[1-9][0-9]*) /gm)].map((m) => m[1]);
+  const listBody = (anchor) => new RegExp(`<dl anchor="${anchor}"[\\s\\S]*?</dl>`).exec(source)?.[0] ?? '';
+  const listed = [...`${listBody(d.iana.listing)}${listBody(d.other.listing)}`.matchAll(/<dt>([a-z][a-z0-9.-]*\.[1-9][0-9]*) /g)].map((m) => m[1]);
   check(same([...listed].sort(), split.all.map((t) => t.action_type).sort()), `Appendix D.1 and D.2 together do not list each of the ${split.all.length} types of registry version 5 once`);
   const { iana, other } = split.counts;
   const parentText = plain(parent.slice(0, parent.indexOf('<section anchor=', 1)));
   check(statesCount(parentText, split.all.length, ['type versions', 'types', 'entries']), `the Appendix D introduction does not state the ${split.all.length} type versions of registry version 5`);
-  const d1Text = plain(d1.replace(/<sourcecode[\s\S]*?<\/sourcecode>/g, ''));
+  const d1Text = plain(d1.replace(/<dl\b[\s\S]*?<\/dl>/g, ''));
   check(statesCount(d1Text, iana.total, ['entries', 'types', 'type versions']), `Appendix D.1 does not state its ${iana.total} entries`);
   check(statesCount(d1Text, iana.active, ['active']) && statesCount(d1Text, iana.deprecated, ['deprecated']), `Appendix D.1 does not state ${iana.active} active and ${iana.deprecated} deprecated`);
-  const d2Text = plain(d2.replace(/<sourcecode[\s\S]*?<\/sourcecode>/g, ''));
+  const d2Text = plain(d2.replace(/<dl\b[\s\S]*?<\/dl>/g, ''));
   check(statesCount(d2Text, other.total, ['entries', 'types', 'type versions']), `Appendix D.2 does not state its ${other.total} entries`);
   check(d2Text.includes('Specification Required'), 'Appendix D.2 does not say its entries may be registered under Specification Required');
   // Section 12.2 asks IANA for exactly the D.1 entries.
@@ -800,6 +838,49 @@ const statesCount = (txt, n, nouns) => {
   for (const name of IANA_EXCLUDED.keys()) check(gov.includes(`\`${name}\``), `caid/registry/GOVERNANCE.md section 7.1 does not list ${name}`);
   check(!gov.includes('No other type in registry version 5 names a vendor'), 'GOVERNANCE.md still says that no other type names a vendor (package.publish.1 names npm, wire.transfer.1 names SWIFT)');
   check(gov.includes('No other type is named for a vendor or product, or cites a vendor') && gov.includes('each of the seven types defined by another specification can be') && gov.includes('`dns.zone.transfer.1` is not a candidate'), 'GOVERNANCE.md section 7.1 does not limit later registration to the seven specification-defined types');
+  check(flat(gov).includes('does not register a name whose first segment is organization-specific unless that organization is the change controller'), 'GOVERNANCE.md section 7.1 does not carry the rule of Section 12.2 for organization-specific names (R2-REG-10)');
+  // R2-ISO4217-TERMS: Section 12.2 says each snapshot file records its
+  // source and its enum_snapshot_files entry records what is known of its
+  // terms (the ISO 4217 file itself carries no terms member).
+  for (const f of registry.enum_snapshot_files) {
+    const file = readJson(`caid/registry/${f.path}`);
+    check(file.source && typeof file.source === 'object' && typeof file.source.url === 'string', `the snapshot file ${f.path} does not record its source, as Section 12.2 says`);
+    check(typeof f.license === 'string' && f.license.length > 0, `the enum_snapshot_files entry for ${f.path} records no terms, as Section 12.2 says it does`);
+  }
+  // R2-GATE-6: the ed-iana change item restates the split; its counts are
+  // the split's, as those of Section 12.2 and D.1 are.
+  const edIana = plain(item('ed-iana'));
+  check(edIana.includes(`Of the ${split.all.length} types of reference registry version 5, IANA is asked to register the ${iana.total} of`) && edIana.includes(`the ${other.total} of`),
+    `the ed-iana change item does not state the split: ${split.all.length} types, ${iana.total} registered, ${other.total} not requested`);
+  // R2-REG-7: Section 12.2 counts the deprecated initial entries, and each
+  // of them has a required external enum with no pinned snapshot, so it
+  // computes nothing (the registry-* vectors of those types refuse).
+  check(plain(actionTypes).includes(`The ${iana.deprecated} deprecated initial entries`) && plain(actionTypes).includes(`none of the ${iana.deprecated} produces or verifies a CAID`),
+    `Section 12.2 does not state that the ${iana.deprecated} deprecated initial entries produce and verify no CAID`);
+  const unpinnedRequired = (t) => (t.required_fields ?? []).some((f) => f.type === 'enum' && !Array.isArray(f.values)
+    && !(typeof f.values_ref === 'string' && f.values_ref.startsWith('inline:')) && !(f.values_snapshot && f.values_sha256));
+  for (const t of split.iana.filter((x) => x.status === 'deprecated')) {
+    check(unpinnedRequired(t), `Section 12.2 says every deprecated initial entry has a required enum with no pinned snapshot, but ${t.action_type} does not`);
+  }
+  const byName = new Map(split.all.map((t) => [t.action_type, t]));
+  const enumToCode = split.iana.filter((t) => t.status === 'deprecated' && (t.required_fields ?? []).some((f) => f.type === 'enum'
+    && [...(byName.get(t.superseded_by)?.required_fields ?? []), ...(byName.get(t.superseded_by)?.optional_fields ?? [])].some((g) => g.name === f.name && g.type === 'code')));
+  check(statesCount(plain(actionTypes), enumToCode.length, ['of them hold as enums values that their successors carry as code fields']),
+    `Section 12.2 does not say that ${enumToCode.length} deprecated initial entries hold as enums values their successors carry as code fields (${enumToCode.map((t) => t.action_type).join(', ')})`);
+
+  // R2-REG-4: no page of the TXT render separates an entry's name line from
+  // its digest line. Each digest line (six spaces, 64 hexadecimal digits)
+  // directly follows its name line, and there is one pair per type.
+  const lines = text.split('\n');
+  const nameLine = /^ {3}([a-z][a-z0-9.-]*\.[1-9][0-9]*) (?:active|deprecated)\b/;
+  let pairs = 0;
+  lines.forEach((line, i) => {
+    if (!/^ {6}[0-9a-f]{64}$/.test(line)) return;
+    const prev = lines[i - 1] ?? '';
+    if (nameLine.test(prev)) pairs += 1;
+    else errors.push(`the TXT render separates an Appendix D digest from its name line (line ${i + 1}, after "${prev.trim().slice(0, 40)}")`);
+  });
+  check(pairs === split.all.length, `the TXT render shows ${pairs} Appendix D name and digest pairs, not ${split.all.length}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -1121,6 +1202,18 @@ for (const [needle, what] of [
   ['will vendor a copy of the JavaScript implementation;', 'R8: the vendored copy carries no mapping (Section 13)'],
   ['its change controller, or the IESG, requests the deprecation', 'R5: the IESG acts only for a controller that cannot be reached (Section 12.1)'],
   ['base-action:sha256', 'R1: Section 4.7 names the base:sha256 strings its digest_notes name'],
+  // Round 2 of the fix audit.
+  ['counts twice. For such a value', 'R2-VALUECOUNT-DEPTH: the value count stops at depth 64 (Section 2.5)'],
+  ['past it, the value is refused as unsupported_value alone', 'R2-VALUECOUNT-REASON: only a host action object past the count is unsupported_value (Section 2.2)'],
+  ['When a host value is made of more values than the value count', 'R2-VALUECOUNT-REASON: the same in Section 5'],
+  ['Host values that hold more than 33,554,432 values', 'R2-VALUECOUNT-REASON: the same in Section 14.1'],
+  ['each snapshot file records its source and what is known of its terms', 'R2-ISO4217-TERMS: the ISO 4217 file records no terms; its enum_snapshot_files entry does (Section 12.2)'],
+  ['definition no longer depends on conformance;', 'R2-CHG-PROJECTION: the projection no longer depends on the condition that uses it (Section 14.6)'],
+  ['A host definition, mapping profile, or mapping source nested that deep', 'R2-CHG-DEEP-DEF: only a projection nested that deep is refused (Section 14.1)'],
+  ['strings are for presentation only, and its long line', 'R2-4.2-LINEBREAKS: Section 4.2 says how a line break inside a string reads'],
+  ['names that local deployments use', 'R2-REG-10: Section 12.2 gives the expert a rule for organization-specific names'],
+  ['A literal that overflows binary64', 'R2-REG-5: Section 4.3 uses the Section 2.3 infinity boundary'],
+  ['Initial CAID Action Types', 'R2-NUM-01: Appendix D lists entries that are not initial entries'],
 ]) check(needle instanceof RegExp ? !needle.test(sourcePlain) : !sourcePlain.includes(needle), `source still carries the wording of ${what}`);
 // ED-13: "action object" is lowercase in running text; titles keep title case.
 // Sourcecode is left out: the Section 4.7 registration quotes the registry
@@ -1145,7 +1238,60 @@ for (const [anchor, needle, what] of [
   ['terms', 'property of the language binding', 'R1-IMPL2-BINDING: the Kind entry names the binding'],
   ['mapping-algorithm', 'as it does when either has no RFC 8785 encoding or that member is absent', 'R1-IMPL3-DESCRIPTOR: a descriptor with no RFC 8785 encoding is a mismatch'],
   ['privacy', 'uses a type whose notes specify it', 'R6: a keyed commitment needs a type whose notes specify it'],
-]) check(plain(section(anchor)).includes(needle), `section ${anchor} lacks "${needle}" (${what})`);
+  // Round 2 of the fix audit. Each is a behavior the three ports show and a
+  // vector pins, so a wording drift here is a drift from the code.
+  ['host-values', 'except that an object or array nested deeper than 64 counts as one value and nothing inside it is counted', 'R2-VALUECOUNT-DEPTH: native-value-count-stops-at-depth-64, native-value-count-straddles-depth-64'],
+  ['host-values', 'a host definition, mapping profile, or mapping source past it is refused by the step that reads it', 'R2-VALUECOUNT-REASON (Section 2.5)'],
+  ['data-model', 'are not examined and are not counted toward the value count', 'R2-VALUECOUNT-DEPTH (Section 2.2)'],
+  ['data-model', 'a host action object is refused as unsupported_value alone', 'R2-VALUECOUNT-REASON (Section 2.2)'],
+  ['limits', 'The nesting limit and the value count apply in the same way to a host value that is not an action object', 'R2-VALUECOUNT-REASON (Section 2.6)'],
+  ['limits', 'a host definition whose validation projection nests deeper than 64 or exceeds the value count is invalid_definition, a host mapping profile that does is invalid_mapping_profile and has no digest', 'R2-VALUECOUNT-REASON: native-definition-value-count-in-projection, profile-value-count-abstains'],
+  ['limits', 'and a host mapping source that does is source_not_canonicalizable', 'R2-VALUECOUNT-REASON: stage-b-source-value-count-not-canonicalizable'],
+  ['computation', 'the value count does not count them', 'R2-VALUECOUNT-DEPTH (Section 5)'],
+  ['computation', 'When a host action object is made of more values than the value count', 'R2-VALUECOUNT-REASON (Section 5)'],
+  ['host-values', 'a host number beyond 2^53-1 whose correctly rounded value is finite is refused by phase 6 alone', 'R2-GATE-5: native-integer-beyond-range-in-integer-field'],
+  ['impl-status', 'none implements the cbor-sha256 suite', 'R2-GATE-5: the runners skip the vectors that apply only to a cbor-sha256 implementation (checked below)'],
+  ['tool-call-type', 'an occurrence_id that carries at least 128 bits of entropy unless args already carries an identifier with at least that entropy', 'R2-GATE-6: the 128-bit occurrence_id requirement (Section 4.7)'],
+  ['schema', 'each line break inside a string, and the indentation after it, reads as one space', 'R2-4.2-LINEBREAKS, R2-REG-6: the rule this script applies to the Section 4.2 example'],
+  ['fieldtypes', 'A literal whose correctly rounded value is an infinity', 'R2-REG-5: the Section 2.3 boundary (Section 4.3)'],
+  ['iana-action-types', 'The expert does not register a name whose first segment is organization-specific', 'R2-REG-10, R2-ORGPREFIX-TENSION: a rule, not a description'],
+  ['iana-action-types', 'unless that organization is the change controller', 'R2-REG-10: the rule names the change controller'],
+  ['iana-action-types', 'its entry in the enum_snapshot_files member of action-types.json records what is known of its terms', 'R2-ISO4217-TERMS'],
+  ['iana-action-types', 'none of the 9 produces or verifies a CAID', 'R2-REG-7: the deprecated initial entries (count checked below)'],
+  ['appendix-action-types-reference-only', 'only with that organization as its change controller', 'R2-ORGPREFIX-TENSION: emilia.mobile.authorized-action.1 (Appendix D.2)'],
+  ['chg-refused-depth', 'A host definition whose validation projection is nested that deep', 'R2-CHG-DEEP-DEF (Section 14.1)'],
+  ['ed-processing-text', 'no longer depends on the conformance condition that uses it', 'R2-CHG-PROJECTION (Section 14.6)'],
+]) check(plain(part(anchor)).includes(needle), `${/^(?:chg|ed)-/.test(anchor) ? 'item' : 'section'} ${anchor} lacks "${needle}" (${what})`);
+// R2-GATE-5: Section 13 says none of the three implementations implements
+// cbor-sha256 and that each skips the corpus vectors that apply only to an
+// implementation of it. The runners decide that as the corpora say
+// (suite_probe computed under the suite); run each and require that it
+// fails nothing and skips exactly those vectors. A missing toolchain is a
+// note, and a failure with --prefiling.
+{
+  const onlyIfImplemented = (list) => list.filter((v) => v.applies_when?.suite_implemented === 'cbor-sha256').length;
+  const want = { core: onlyIfImplemented(readJson('caid/conformance/vectors.json').vectors), grammar: onlyIfImplemented(readJson('caid/conformance/grammar-vectors.json').cases) };
+  check(want.core > 0, 'the core corpus has no vector that applies only to a cbor-sha256 implementation, which Section 13 says the ports skip');
+  const RUNNERS = [
+    ['JavaScript', 'node', ['caid/conformance/runners/run.mjs', '--json'], root],
+    ['Python', process.env.CAID_PYTHON || 'python3', ['caid/conformance/runners/run.py', '--json'], root],
+    ['Go', 'go', ['run', '.', '--json'], path.join(root, 'caid/conformance/runners/go')],
+  ];
+  for (const [language, command, args, cwd] of RUNNERS) {
+    const r = spawnSync(command, args, { cwd, encoding: 'utf8', maxBuffer: 1 << 28 });
+    if (r.error) {
+      const note = `the ${language} runner could not start (${r.error.code ?? r.error.message}), so its cbor-sha256 skips were not checked`;
+      if (prefiling) errors.push(note); else console.log(`CAID-04: note: ${note}`);
+      continue;
+    }
+    let summary = null;
+    try { summary = JSON.parse(r.stdout); } catch { /* reported below */ }
+    check(summary && summary.fail === 0, `the ${language} core and grammar runner fails (exit ${r.status}), so Section 13 does not hold`);
+    const skipped = { core: summary?.per_corpus?.core?.skipped ?? 0, grammar: summary?.per_corpus?.grammar?.skipped ?? 0 };
+    check(same(skipped, want), `Section 13 says the ${language} implementation does not implement cbor-sha256 and skips the vectors that apply only to it (${JSON.stringify(want)}); its runner skipped ${JSON.stringify(skipped)}`);
+  }
+}
+
 // R8: what Section 13 says the next major release vendors is what this
 // tree vendors: a byte copy of caid/impl/js/caid.mjs, with no mapping.
 {
@@ -1243,6 +1389,11 @@ check(text.includes(code('exc-payment-canonical').split('\n')[2]), 'TXT render l
 // IANA-16, ED-20, CLM-10: xml2rfc broke "history/action-types.v4.json" at
 // its hyphen and printed "action- types"; a path in <tt> is not broken.
 check(!/action-\s+types/.test(text), 'the TXT render splits a path at "action-types" (wrap the path in <tt>)');
+// The same wrapping defect after a slash: xml2rfc refills a <tt> path broken
+// after "/" with a space inside it.
+for (const p of ['history/action-types.v4.json', 'caid/registry/action-types.json']) {
+  check(!new RegExp(p.replaceAll('/', '/\\s+').replaceAll('.', '\\.')).test(text.replace(/<https:[^>]*>/g, '')), `the TXT render splits the path ${p} after a slash`);
+}
 
 // ED-03, R1-ED03-TABLE: no table row of the TXT render is split across a
 // page: a page may end on a row's last line or on a border line (+---+),
@@ -1295,6 +1446,15 @@ let renderedFresh = false;
   }
 }
 
+// R2-REG-3, R2-GATE-4: VALIDATION.md states the page count of the TXT
+// render once, and it is the last [Page N] of the render.
+{
+  const validation = readFileSync(path.join(packet, 'VALIDATION.md'), 'utf8');
+  const stated = [...validation.matchAll(/\((\d+) pages\)/g)].map((m) => Number(m[1]));
+  const last = Math.max(...[...text.matchAll(/\[Page (\d+)\]/g)].map((m) => Number(m[1])));
+  check(stated.length === 1 && stated[0] === last, `VALIDATION.md states ${stated.length ? stated.join(', ') : 'no'} page count(s); the TXT render has ${last} pages`);
+}
+
 const sums = readFileSync(path.join(packet, 'SHA256SUMS.txt'), 'utf8').trim().split('\n');
 const expectedPaths = new Set([sourceRel, textRel, htmlRel]);
 for (const line of sums) {
@@ -1330,6 +1490,11 @@ if (prefiling) {
   };
   const mainCommit = git('rev-parse', '--verify', 'origin/main^{commit}')?.toString().trim();
   check(mainCommit, 'prefiling: origin/main is unknown (run git fetch origin)');
+  // R2-GATE-3: origin/main as last fetched can be stale; tree/main is what
+  // the remote serves. Other sessions push to main often.
+  const remoteMain = git('ls-remote', 'origin', 'refs/heads/main')?.toString().trim().split(/\s+/)[0];
+  check(remoteMain, 'prefiling: git ls-remote origin refs/heads/main failed, so origin/main cannot be confirmed current');
+  if (mainCommit && remoteMain) check(remoteMain === mainCommit, `prefiling: origin/main (${mainCommit.slice(0, 12)}) is not the remote main (${remoteMain.slice(0, 12)}); run git fetch origin`);
   if (mainCommit) {
     const mainRegistry = git('show', 'origin/main:caid/registry/action-types.json');
     check(mainRegistry && `sha256:${createHash('sha256').update(mainRegistry).digest('hex')}` === v5Sha, `prefiling: caid/registry/action-types.json on origin/main (${mainCommit.slice(0, 12)}) is not registry version 5; merge the -04 pull request first`);

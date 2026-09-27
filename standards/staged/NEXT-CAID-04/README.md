@@ -41,14 +41,15 @@ including the inputs it newly refuses.
   script generates from `caid/spec/core.json`, `caid/registry/suites.json`,
   and the compiled code formats.
 - Appendix D lists every type of registry version 5 with its
-  `definition_sha256` from `digests.json`, in two listings: D.1, the 54
-  initial IANA entries (45 active, 9 deprecated), and D.2, the 8 entries
-  not requested of IANA. The script's `IANA_EXCLUDED` constant is the D.2
-  list, with the reason for each entry. Section 12.2 and both subsections
-  state those counts, and Section 14.4 states the counts of the whole
-  registry.
+  `definition_sha256` from `digests.json`, in two definition lists: D.1,
+  the 54 initial IANA entries (45 active, 9 deprecated), and D.2, the 8
+  entries not requested of IANA. The script's `IANA_EXCLUDED` constant is
+  the D.2 list, with the reason for each entry. Section 12.2, both
+  subsections and the `ed-iana` change item state those counts, and
+  Section 14.4 states the counts of the whole registry. No page of the TXT
+  separates an entry's name line from its digest line.
 - `node scripts/check-caid-04.mjs --emit` prints the tables, the two
-  Appendix D listings with their counts, and the C.1 cbor-sha256 example
+  Appendix D lists with their counts, and the C.1 cbor-sha256 example
   for editing.
 - Every value in Appendix C (the C.1 cbor-sha256 encoding, digest and CAID
   included), the Section 3.3 identifier example, the Section 4.2 type
@@ -58,14 +59,20 @@ including the inputs it newly refuses.
 - Every `chg-` item maps to vector ids that exist in the corpora.
 - The Section 4.7 registration is the registry version 5 entry for
   tool.call.1, member for member, so the draft gives one text for it.
-- The normative and informative references, the [CAID-REGISTRY] commit and
-  raw file URL, registry version 5 and its counts and file digest, the
-  registries the Abstract and Section 12 name, the prose examples against
-  the ABNF, BCP 14 markup, the removed -03 text, the wording each finding
-  of the pre-filing review and of the audit of its fixes removes or
-  requires, the banned wording (claims of adoption or endorsement, of
-  independent implementations, post-quantum and FIPS claims, tool names),
-  both renders, table rows split across a page, and the checksums.
+- The normative and informative references, the raw file URL at a fixed
+  commit that [CAID-REGISTRY] targets, registry version 5 and its counts
+  and file digest, the registries the Abstract and Section 12 name, the
+  prose examples against the ABNF, BCP 14 markup, the removed -03 text,
+  the wording each finding of the pre-filing review and of both audits of
+  its fixes removes or requires, the banned wording (claims of adoption or
+  endorsement, of independent implementations, post-quantum and FIPS
+  claims), both renders, table rows split across a page, the page count
+  that `VALIDATION.md` states, and the checksums. Tool names are not in the
+  public script; grep the XML and TXT for them by hand, from outside the
+  repository, before upload.
+- Section 13's statement that no implementation implements cbor-sha256:
+  the JavaScript, Python and Go core and grammar runners fail nothing and
+  skip exactly the vectors that apply only to an implementation of it.
 - When `xml2rfc 3.34.0` is on PATH, both renders equal a fresh render of
   the source (`--renders` requires it).
 
@@ -79,10 +86,16 @@ Submission is the author's decision. Before it:
    carries the JavaScript mapping stage B fix that the draft's Section 8.3
    now states, the conditional cbor-sha256 vectors and the runners that
    skip them, the vectors its change log cites, and the `caid.abnf`
-   comment that Appendix A carries. Merge this branch before filing.
-   After `git fetch origin`, run
+   comment that Appendix A carries. Merge this branch before filing. The
+   branch has merged main at `dedd9a24d`; if main moves again, merge it
+   and regenerate `AI_CONTEXT.md`, `public/llms-full.txt` and
+   `public/.well-known/emilia-context.json` with
+   `node scripts/generate-llm-context.mjs --write` (both sides change their
+   input digest line, so a textual merge conflicts), then confirm with
+   `npm run check:llm-context`. After `git fetch origin`, run
    `node scripts/check-caid-04.mjs --prefiling`. It fails today, as it
-   should. It requires that origin/main carries registry version 5,
+   should. It requires that origin/main is the remote main
+   (`git ls-remote`), that it carries registry version 5,
    `caid/spec/caid.abnf` and the -04 ports, that the [CAID-REGISTRY]
    commit is reachable from origin/main, that origin/main's `caid/` tree
    and `packages/verify/vendor/caid.mjs` equal this branch's byte for byte,
@@ -91,9 +104,8 @@ Submission is the author's decision. Before it:
 2. [CAID-REGISTRY] is pinned to commit
    `cea10b85e96460a04bf55d683a1ebc34e8b2c9a6`, the merge of #821 on main,
    whose `caid/registry/action-types.json` is registry version 5 (SHA-256
-   `1e30ddd3...2551a`). The reference carries the blob URL and the raw
-   file URL at that commit; the check requires both to name one
-   commit.
+   `1e30ddd3...2551a`). The reference targets the raw file URL at that
+   commit, whose octets the digest covers, and names no blob URL.
 3. Set the date, confirm each cited draft revision and that -03 is still
    the latest revision on Datatracker, re-render with the procedure in
    `VALIDATION.md`, and refresh `SHA256SUMS.txt` and `VALIDATION.md`.

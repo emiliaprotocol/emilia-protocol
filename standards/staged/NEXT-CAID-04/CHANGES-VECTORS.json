@@ -54,7 +54,8 @@
       "core": ["limit-action-type-513", "limit-action-type-8-million", "limit-caid-1025", "limit-caid-action-type-513", "limit-definition-action-type-513", "limit-code-system-2049", "limit-action-type-512", "limit-caid-1024", "limit-code-system-2048"]
     },
     "chg-refused-value-count": {
-      "core": ["native-value-budget-over", "native-verify-value-budget-over", "native-value-budget-under"]
+      "core": ["native-value-budget-over", "native-verify-value-budget-over", "native-value-budget-under", "native-value-count-stops-at-depth-64", "native-value-count-straddles-depth-64", "native-definition-value-count-in-projection", "native-definition-value-count-outside-projection"],
+      "mapping": ["profile-value-count-abstains", "stage-b-source-value-count-not-canonicalizable"]
     },
     "chg-json-text": {
       "core": ["order-gate-malformed-json-first", "verify-gate-malformed-json"]
