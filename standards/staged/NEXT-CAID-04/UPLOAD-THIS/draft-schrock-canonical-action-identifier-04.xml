@@ -22,6 +22,7 @@
     <keyword>canonicalization</keyword>
     <keyword>digest</keyword>
     <keyword>identifier</keyword>
+    <keyword>JSON</keyword>
     <abstract>
       <t>Authorization, delegation, execution, and audit artifacts often
       identify an action using format-local content and digests. Those
@@ -29,10 +30,13 @@
       encode material action fields differently. This document defines
       the Canonical Action IDentifier (CAID): a typed action object, a
       canonicalization and digest suite, a compact identifier string,
-      and immutable action-type definitions with required material
-      fields. External enum definitions are bound to immutable,
-      integrity-checked value-set snapshots. It also defines an
-      Action-Mapping Profile for projecting
+      and versioned action-type definitions with required material
+      fields. External value sets are bound to integrity-checked
+      snapshots. The document specifies a strict JSON input profile, a
+      closed and ordered set of refusal reasons, a digest that identifies
+      the validation semantics of a type definition, and registries for
+      suites, action types, field types, reasons, and mapping terms. It
+      also defines an Action-Mapping Profile for projecting
       independently verified native artifacts into a common action type,
       with the closed results EQUIVALENT_UNDER_PROFILE, NOT_EQUIVALENT,
       and INDETERMINATE. CAID carries no trust semantics. It does not
@@ -83,13 +87,12 @@
       <t>A CAID deliberately carries no trust semantics. It does not
       assert that an action was authorized, executed, safe, or wise.
       <xref target="not"/> states the boundary normatively.</t>
-      <t>This revision also states the effect-boundary rule that was only
-      implicit in the initial revision: an executor that uses CAID as an
-      authorization or execution join computes the Action Object from the
-      operation it is prepared to perform, or validates every material field
-      against an authoritative source. A presenter-supplied identifier,
-      discovery declaration, challenge echo, or receipt cannot substitute for
-      that derivation.</t>
+      <t>An executor that uses CAID as an authorization or execution join
+      computes the Action Object from the operation it is prepared to
+      perform, or validates every material field against an authoritative
+      source. A presenter-supplied identifier, discovery declaration,
+      challenge echo, or receipt cannot substitute for that derivation
+      (<xref target="effect-boundary"/>).</t>
       <section anchor="terms">
         <name>Terminology</name>
         <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
@@ -101,7 +104,7 @@
         <dl newline="false" spacing="normal">
           <dt>Action object:</dt>
           <dd>The typed data object, defined in
-          <xref target="object"/>, over which a CAID's digest is
+          <xref target="action-object"/>, over which a CAID's digest is
           computed.</dd>
           <dt>Action type:</dt>
           <dd>A versioned type name whose definition
@@ -111,6 +114,17 @@
           <dd>A field that a type definition declares REQUIRED because
           its absence would leave the digest uncommitted to something
           that makes the action consequential.</dd>
+          <dt>Data model:</dt>
+          <dd>The values of <xref target="data-model"/>. Every action
+          object is a value of the data model.</dd>
+          <dt>JSON text:</dt>
+          <dd>Octets that encode a value in JSON
+          <xref target="RFC8259"/>, decoded as specified in
+          <xref target="json-text"/>.</dd>
+          <dt>Host value:</dt>
+          <dd>A value of an implementation's programming language that
+          an application constructed itself
+          (<xref target="host-values"/>).</dd>
           <dt>Suite:</dt>
           <dd>A registered pairing of a canonicalization scheme and a
           digest algorithm (<xref target="suites"/>).</dd>
@@ -119,10 +133,20 @@
           <xref target="schema"/> that an implementation is configured
           with: the public registry, a local definitions file, or
           both.</dd>
+          <dt>definition_sha256:</dt>
+          <dd>The digest of a type definition's validation projection,
+          which identifies its validation semantics
+          (<xref target="definition-digest"/>).</dd>
           <dt>Enum snapshot:</dt>
           <dd>A locally available, immutable string array identified by an
           external value-set reference, a snapshot or edition label, and the
           SHA-256 digest of the array's JCS encoding.</dd>
+          <dt>Code format:</dt>
+          <dd>A registered grammar that a code field's value must match
+          (<xref target="code-fields"/>).</dd>
+          <dt>Reason:</dt>
+          <dd>A string from <xref target="appendix-reasons"/> that
+          explains a refusal. Refusals are ordered lists of reasons.</dd>
           <dt>Issuer:</dt>
           <dd>The party that constructs an action object and computes
           its CAID.</dd>
@@ -140,69 +164,282 @@
           outside the CAID trust boundary.</dd>
         </dl>
       </section>
+      <section anchor="overview">
+        <name>Processing Overview</name>
+        <t>CAID processing consists of the operations below. Each one
+        returns either its result or an ordered list of reasons from
+        <xref target="appendix-reasons"/>. None of them fails in any
+        other way: malformed or hostile input of any shape yields
+        reasons, never an exception, a crash, or a partial result.</t>
+        <dl newline="false" spacing="normal">
+          <dt>decode:</dt>
+          <dd>JSON text to a data-model value, or malformed_json
+          (<xref target="json-text"/>).</dd>
+          <dt>parse:</dt>
+          <dd>A CAID string to its version, action type, suite, and
+          digest, or exactly one reason (<xref target="parsing"/>).</dd>
+          <dt>compute:</dt>
+          <dd>An action object, a suite, and definition sources to a
+          CAID, its digest, and the definition_sha256 of the definition
+          used (<xref target="computation"/>).</dd>
+          <dt>verify:</dt>
+          <dd>A CAID and an action object to a validity bit, reasons,
+          and details (<xref target="verification"/>).</dd>
+          <dt>map and compare:</dt>
+          <dd>Natively verified sources, through relying-party-pinned
+          profiles, to a projected action and a verdict
+          (<xref target="mapping"/>).</dd>
+        </dl>
+        <t>Computation proceeds as follows:</t>
+        <artwork><![CDATA[
+  JSON text --decode (2.4)--+
+                            +--> data-model value
+  host value --convert (2.5)+          |
+                                       v
+  phase 1  action_type is a valid type name        (gate)
+  phase 2  exactly one conforming definition       (gate)
+  phase 3  required fields present
+  phase 4  present fields valid for their types
+  phase 5  suite registered and implemented
+  phase 6  every number in the data model
+  phase 7  every other value in the data model
+                                       |
+                                       v
+  RFC 8785 bytes --> SHA-256 --> base64url
+  --> caid:1:<action_type>:<suite>:<digest>
+]]></artwork>
+      </section>
     </section>
     <section anchor="object">
-      <name>The Action Object</name>
-      <t>An action object is a JSON object (or, under a CBOR suite, a
-      CBOR map) that identifies material action content. The
-      same object is referenced, by CAID, from pre-execution artifacts
-      (permits, challenges, receipts) and post-execution artifacts
-      (outcome attestations, audit records, reliance events).</t>
-      <t>An action object:</t>
-      <ul spacing="normal">
-        <li>MUST contain an action_type member whose value is a
-        registered or locally defined versioned type name
-        (<xref target="types"/>). The type is inside the digested
-        content, so the type asserted by an identifier cannot be
-        swapped without changing the digest.</li>
-        <li>MUST contain every REQUIRED material field of that type,
-        encoded per the field types the type definition declares
-        (<xref target="fieldtypes"/>).</li>
-        <li>MAY contain additional members beyond those the type
-        definition declares. Extra members are covered by the
-        digest.</li>
-        <li>MUST NOT encode money or quantity values as JSON numbers
-        where the type definition declares the field amount-string.
-        Floating-point and precision malleability across languages
-        makes numeric encodings of money unsafe for
-        canonicalization.</li>
-        <li>Numbers follow a value-based rule: a JSON number is
-        accepted if and only if its IEEE 754 double-precision value is
-        an integer with magnitude at most 2^53-1, and it is serialized
-        as that integer in plain decimal form. The literal form is
-        irrelevant: the literals 1e3 and 2.0 denote the integers 1000
-        and 2, exactly as an ECMAScript JSON parser sees them.
-        Fractional, NaN, infinite, and out-of-range values are refused
-        as unsupported_number by every conforming implementation, at
-        any depth. Fractional quantities are carried as strings.
-        Rationale: ECMAScript number serialization is the leading
-        source of cross-language canonicalization divergence, and a
-        rule over the parsed value is the only one that every language
-        can implement identically; a rule over the literal form cannot
-        be enforced by implementations, such as ECMAScript, whose JSON
-        parsers do not preserve it.</li>
-      </ul>
+      <name>Data Model and JSON Input</name>
+      <section anchor="action-object">
+        <name>The Action Object</name>
+        <t>An action object is a JSON object (or, under a CBOR suite, a
+        CBOR map) that identifies material action content. The
+        same object is referenced, by CAID, from pre-execution artifacts
+        (permits, challenges, receipts) and post-execution artifacts
+        (outcome attestations, audit records, reliance events).</t>
+        <t>An action object:</t>
+        <ul spacing="normal">
+          <li>is a value of the data model of
+          <xref target="data-model"/>;</li>
+          <li>MUST contain an action_type member whose value is a
+          registered or locally defined versioned type name
+          (<xref target="types"/>). The type is inside the digested
+          content, so the type asserted by an identifier cannot be
+          swapped without changing the digest;</li>
+          <li>MUST contain every REQUIRED material field of that type,
+          encoded per the field types the type definition declares
+          (<xref target="fieldtypes"/>);</li>
+          <li>MAY contain additional members beyond those the type
+          definition declares. Extra members are covered by the
+          digest;</li>
+          <li>MUST NOT encode money or quantity values as JSON numbers
+          where the type definition declares the field amount-string.
+          Floating-point and precision malleability across languages
+          makes numeric encodings of money unsafe for
+          canonicalization.</li>
+        </ul>
+      </section>
+      <section anchor="data-model">
+        <name>Data Model</name>
+        <t>A value of the data model is one of:</t>
+        <ul spacing="normal">
+          <li>an object: members, each a name and a value, where every
+          name is a string and no two members have the same name;</li>
+          <li>an array: an ordered sequence of values;</li>
+          <li>a string: a sequence of Unicode scalar values that contains
+          no noncharacter;</li>
+          <li>a number whose value is an integer in the range
+          -(2^53-1) through 2^53-1 (<xref target="numbers"/>);</li>
+          <li>true, false, or null.</li>
+        </ul>
+        <t>Surrogate code points are not scalar values, so a string that
+        contains an unpaired surrogate is outside the model. The
+        noncharacters are U+FDD0 through U+FDEF and the last two code
+        points of every plane: U+FFFE and U+FFFF, U+1FFFE and U+1FFFF,
+        and so on through U+10FFFE and U+10FFFF. I-JSON
+        <xref target="RFC7493"/> excludes both, and so does this
+        model.</t>
+        <t>The nesting depth of a value MUST NOT exceed 64. The
+        outermost object or array is at depth 1, and each nested object
+        or array adds one. The RFC 8785 encoding of an action object
+        MUST NOT exceed 16,777,216 octets.</t>
+        <t>A value outside the data model is refused and is never
+        rewritten into a value inside it. Computation reports a number
+        outside the model as unsupported_number, and anything else,
+        including nesting beyond 64 and an encoding beyond the limit, as
+        unsupported_value (<xref target="computation"/>, phases 6 and
+        7).</t>
+      </section>
+      <section anchor="numbers">
+        <name>Numbers</name>
+        <t>The value of a number is the IEEE 754 binary64 value nearest
+        to the exact decimal value it denotes, with ties to even: the
+        correctly rounded value. A number is in the data model if and
+        only if that value is finite, is an integer, and has magnitude at
+        most 2^53-1 (9,007,199,254,740,991). It is then canonicalized as
+        that integer, which RFC 8785 serializes in plain decimal form.
+        The literal form is irrelevant: the literals 1e3, 1000.0, and
+        1000 all denote the integer 1000, exactly as an ECMAScript JSON
+        parser sees them.</t>
+        <ul spacing="normal">
+          <li>A literal whose value overflows binary64 rounds to an
+          infinity, which is not finite, so it is refused as
+          unsupported_number.</li>
+          <li>A literal whose value underflows rounds to zero and is the
+          integer 0. So is -0.</li>
+          <li>A literal whose exact value is not an integer but whose
+          correctly rounded value is, such as 0.99999999999999999999, is
+          that integer. Issuers MUST NOT emit such literals.</li>
+          <li>Fractional, NaN, infinite, and out-of-range values are
+          refused as unsupported_number by every conforming
+          implementation, at any depth. Fractional quantities are
+          carried as strings.</li>
+        </ul>
+        <t>Rationale: ECMAScript number serialization is the leading
+        source of cross-language canonicalization divergence, and a rule
+        over the correctly rounded value is the only one that every
+        language can implement identically. A rule over the literal form
+        cannot be enforced by implementations, such as ECMAScript, whose
+        JSON parsers do not preserve it.</t>
+      </section>
+      <section anchor="json-text">
+        <name>JSON Text Input</name>
+        <t>An implementation that receives an action object or a mapping
+        source as JSON text MUST decode it as specified in this section
+        before validating, canonicalizing, or mapping it, and MUST refuse
+        input that fails with the single reason malformed_json. An
+        implementation MUST NOT compute, verify, or map over received
+        JSON text through a decoder that does not meet these rules. When
+        the action object arrives as a member of a larger JSON text, such
+        as a receipt, rules 2 through 5 hold for the part of the text
+        that encodes the action object, and rule 1 applies to that
+        part.</t>
+        <t>The input is refused unless all of the following hold:</t>
+        <ol spacing="normal">
+          <li>It is at most 33,554,432 octets long. This is checked
+          before decoding.</li>
+          <li>It is an I-JSON message <xref target="RFC7493"/>. In
+          particular it is valid UTF-8 <xref target="RFC3629"/>; no
+          string or member name, after unescaping, contains a surrogate
+          code point or a noncharacter; and no object has two members
+          whose names, after unescaping, are the same sequence of code
+          points. The names "a" and "&#92;u0061" are the same name. A
+          duplicate is refused, never resolved by keeping the first or
+          the last member.</li>
+          <li>It does not begin with the UTF-8 byte order mark (the
+          octets EF BB BF). Section 8.1 of <xref target="RFC8259"/>
+          permits a parser to ignore one; this profile refuses it.</li>
+          <li>It is exactly one JSON text <xref target="RFC8259"/>: one
+          value, optionally preceded and followed by the four JSON
+          whitespace characters, and nothing else. The literals NaN and
+          Infinity, comments, and unescaped control characters are not
+          JSON and are refused.</li>
+          <li>Its nesting does not exceed 64 (<xref target="data-model"/>).
+          An implementation checks this without unbounded recursion.</li>
+        </ol>
+        <t>The decoder never refuses a number token that
+        <xref target="RFC8259"/> admits. It converts the token to its
+        correctly rounded value, and <xref target="numbers"/> decides
+        whether that value is in the data model. A very long literal is
+        therefore not a decoding failure; if its value is not a suitable
+        integer, computation reports unsupported_number.</t>
+        <t>Every failure of rules 1 through 5 yields malformed_json and
+        nothing else, whichever rules failed. An implementation MAY
+        report an informative detail beside the reason; that detail is
+        not part of the result.</t>
+        <t>A type definition, a registry, an enum snapshot, or a mapping
+        profile read from JSON text is decoded under rules 2 through 5.
+        Rule 1 does not apply to them: a registry or a value set can
+        legitimately grow beyond any fixed bound, and these documents are
+        configuration that a relying party pins by digest, not input to
+        an operation. An implementation MUST NOT use such a document when
+        it fails those rules. How the failure is reported is outside this
+        document.</t>
+      </section>
+      <section anchor="host-values">
+        <name>Host Values</name>
+        <t>An implementation MAY also accept an action object, a type
+        definition, a mapping profile, or a mapping source as a host value
+        that the application constructed. Such an implementation:</t>
+        <ul spacing="normal">
+          <li>MUST refuse any host value that is not a value of the data
+          model: as unsupported_number when it is a number outside the
+          model, and otherwise as unsupported_value, together with
+          mistyped_field:&lt;name&gt; when a declared field holds it
+          (<xref target="computation"/>);</li>
+          <li>MUST NOT serialize a host value as a different value. A map
+          type, a date, a typed array, a cyclic structure, or an object
+          with accessor properties or a non-default prototype is refused,
+          never canonicalized as an empty or partial object;</li>
+          <li>MUST NOT fail with an exception, a crash, or unbounded
+          recursion for any host value, including cyclic values and
+          values nested deeper than 64. The depth check precedes any
+          recursive traversal;</li>
+          <li>MUST produce, for every value that the decoder of
+          <xref target="json-text"/> can produce, exactly the result that
+          the same operation over the corresponding JSON text
+          produces.</li>
+        </ul>
+        <t>A host language's representation of an absent member, such as
+        an ECMAScript property whose value is undefined, is an absent
+        member. The reason for a string that contains an unpaired
+        surrogate or a noncharacter depends on the entry point:
+        malformed_json when it arrives as JSON text, and unsupported_value
+        when it arrives as a host value. It never depends on the
+        implementation language.</t>
+      </section>
+      <section anchor="limits">
+        <name>Limits</name>
+        <t>The limits of this document are collected in
+        <xref target="tab-limits"/>. Octets are UTF-8 octets. Every limit
+        is a refusal with the reason shown, never an exception.</t>
+<table anchor="tab-limits">
+  <name>Limits</name>
+  <thead><tr><th>Limit</th><th>Value</th><th>Applies to</th><th>Refusal</th></tr></thead>
+  <tbody>
+    <tr><td>JSON text</td><td>33,554,432 octets</td><td>an action object or a mapping source received as JSON text</td><td>malformed_json</td></tr>
+    <tr><td>Nesting depth</td><td>64 levels</td><td>every decoded document and every host value</td><td>malformed_json (JSON text); unsupported_value (host value)</td></tr>
+    <tr><td>Canonical encoding</td><td>16,777,216 octets</td><td>an action object</td><td>unsupported_value</td></tr>
+    <tr><td>Integer magnitude</td><td>2^53-1</td><td>every number</td><td>unsupported_number</td></tr>
+    <tr><td>Mapping rules</td><td>1 to 128 rules</td><td>rules of a mapping profile</td><td>invalid_mapping_profile</td></tr>
+    <tr><td>Source path</td><td>at most 2,048 octets</td><td>each source path of a mapping profile</td><td>invalid_mapping_profile</td></tr>
+    <tr><td>Profile string</td><td>1 to 512 octets</td><td>profile_id, media_type, schema, version, and target_action_type</td><td>invalid_mapping_profile</td></tr>
+    <tr><td>Omission reason</td><td>1 to 2,048 octets</td><td>each omission reason</td><td>invalid_mapping_profile</td></tr>
+  </tbody>
+</table>
+        <t>The JSON text limit is twice the canonical limit, which leaves
+        room for insignificant whitespace and escapes. A tool call whose
+        arguments would push an action object past the canonical limit is
+        addressed in <xref target="tool-call-type"/>. A protocol that
+        carries action objects can impose tighter limits on its own
+        messages, such as a node count or a bound on each string; such a
+        limit belongs to that protocol and is not a CAID refusal.</t>
+      </section>
     </section>
     <section anchor="identifier">
       <name>Suites and the Identifier</name>
       <section anchor="suites">
         <name>Suites</name>
         <t>A suite names a canonicalization scheme and a digest
-        algorithm. This document defines two suites; the suite
-        registry (<xref target="iana"/>) carries one entry per
-        suite.</t>
+        algorithm, and fixes the length of its digest in octets. This
+        document defines two suites; the CAID Suites registry
+        (<xref target="iana-suites"/>) carries one entry per suite. A
+        registered suite is never removed, reassigned, or
+        redefined.</t>
         <dl newline="false" spacing="normal">
           <dt>jcs-sha256:</dt>
           <dd>The JSON Canonicalization Scheme
           <xref target="RFC8785"/> followed by SHA-256
-          <xref target="RFC6234"/>. Support for this suite is
-          REQUIRED for conforming implementations.</dd>
+          <xref target="RFC6234"/>, with a 32-octet digest. Support for
+          this suite is REQUIRED for conforming implementations.</dd>
           <dt>cbor-sha256:</dt>
           <dd>CBOR core deterministic encoding
           (<xref target="RFC8949" sectionFormat="of" section="4.2"/>)
-          followed by SHA-256 <xref target="RFC6234"/>. This suite is
-          defined in this version; implementations MAY support
-          it.</dd>
+          followed by SHA-256 <xref target="RFC6234"/>, with a 32-octet
+          digest. This suite is defined in this version; implementations
+          MAY support it.</dd>
         </dl>
       </section>
       <section anchor="digest">
@@ -220,81 +457,87 @@ digest = SHA-256(canonical_bytes(action_object))
         action_type equals the action type carried in the CAID string
         (<xref target="verification"/>); that check, not a byte
         prefix, is where cross-context reinterpretation dies.
-        <xref target="security"/> states this trade explicitly.</t>
+        <xref target="security"/> states this trade explicitly, and
+        states that a signature meant to commit to a CAID covers the
+        whole identifier string.</t>
       </section>
       <section anchor="syntax">
         <name>Identifier Syntax</name>
-        <t>The identifier is a compact string:</t>
+        <t>The identifier is a string matched by the caid rule of
+        <xref target="appendix-abnf"/>:</t>
         <sourcecode type=""><![CDATA[
 caid:1:<action_type>:<suite>:<digest-b64url>
 ]]></sourcecode>
-        <t>For example:</t>
-        <sourcecode type=""><![CDATA[
-caid:1:payment.release.1:jcs-sha256:qL8R4QIcQ_ZsRqOAbeRfcZhilN_MksRt
-DaErMPJk0vM
+        <t>For example, the action object of
+        <xref target="example-compute"/> has this CAID (long lines in this
+        document are folded as specified in <xref target="RFC8792"/>):</t>
+<sourcecode anchor="ex-identifier"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB\
+9HI-arxrO1Y
 ]]></sourcecode>
-        <t>(The example digest is shown wrapped for column width; the
-        identifier itself contains no whitespace.)</t>
-        <t>The grammar, in the ABNF of <xref target="RFC5234"/>:</t>
-        <sourcecode type="abnf"><![CDATA[
-caid          = "caid:" caid-version ":" action-type ":"
-                suite ":" digest
-
-caid-version  = "1"
-
-action-type   = 1*( name-segment "." ) type-version
-name-segment  = lower-char *( lower-char / DIGIT / "-" )
-type-version  = pos-int
-pos-int       = %x31-39 *DIGIT   ; positive integer, no leading zero
-
-suite         = lower-char *( lower-char / DIGIT / "-" )
-
-digest        = 1*b64url-char
-b64url-char   = %x41-5A / %x61-7A / DIGIT / "-" / "_"
-                                 ; A-Z / a-z / 0-9 / "-" / "_"
-
-lower-char    = %x61-7A          ; a-z
-]]></sourcecode>
-        <t>DIGIT is the core rule of <xref target="RFC5234"/>.</t>
-        <t>caid-version is the version of this identifier syntax and
-        is "1" for this document. action-type is one or more lowercase
-        dotted name segments followed by a final segment that is the
-        integer version of the type (for example, payment.release.1).
-        suite is a name from the suite registry, lowercase; the ABNF
-        bounds the names a registry can assign, and a parser accepts
-        only registered names (<xref target="parsing"/>). digest is
-        the digest encoded in base64url
+        <t>The grammar uses the ABNF of <xref target="RFC5234"/> with the
+        case-sensitive string syntax of <xref target="RFC7405"/>, so the
+        prefix is the lowercase string "caid". caid-version is the
+        version of this identifier syntax and is "1" for this document.
+        action-type is one or more lowercase dotted name segments
+        followed by a final segment that is the integer version of the
+        type (for example, payment.release.1). suite is a name from the
+        suite registry, lowercase; the ABNF bounds the names a registry
+        can assign, and a parser accepts only registered names
+        (<xref target="parsing"/>). digest is the digest encoded in
+        base64url
         (<xref target="RFC4648" sectionFormat="of" section="5"/>),
-        unpadded and case-sensitive; for the two suites defined here
-        the digest is exactly 43 characters, encoding 32 octets. Those
-        43 characters carry 258 bits, so the two low bits of the final
-        character are unused and zero: the final character is one of
-        "A", "E", "I", "M", "Q", "U", "Y", "c", "g", "k", "o", "s", "w",
-        "0", "4", or "8".</t>
+        unpadded and case-sensitive.</t>
+        <t>A suite whose digest is n octets encodes it in ceil(8n/6)
+        characters, and the unused low bits of the final character are
+        zero; Appendix A derives the digest syntax from n. For the two
+        suites defined here the digest is exactly 43 characters, encoding
+        32 octets. Those 43 characters carry 258 bits, so the two low bits
+        of the final character are unused and zero: the final character
+        is one of "A", "E", "I", "M", "Q", "U", "Y", "c", "g", "k", "o",
+        "s", "w", "0", "4", or "8".</t>
       </section>
       <section anchor="parsing">
         <name>Parsing</name>
-        <t>Parsers are strict. A conforming parser:</t>
-        <ul spacing="normal">
-          <li>MUST refuse base64url padding characters ("=") in the
-          digest.</li>
-          <li>MUST refuse uppercase characters in the action-type or
-          suite fields. The digest field is case-sensitive and both
-          cases are significant there.</li>
-          <li>MUST refuse empty segments anywhere in the string,
-          including empty dotted segments within the action type.</li>
-          <li>MUST refuse any content after the digest, including
-          trailing separators, whitespace, or additional fields.</li>
-          <li>MUST refuse a digest that does not decode to exactly the
-          digest length of the named suite, or whose final character
-          encodes nonzero unused bits.</li>
-          <li>MUST treat an unknown caid-version as a refusal, never
-          as a value to be guessed at or parsed leniently.</li>
-          <li>MUST treat an unknown suite, one that is not in the suite
-          registry (<xref target="suites"/>), as a refusal, never as a
-          suite to be guessed. A parser has no digest length against
-          which to check the digest of an unknown suite.</li>
-        </ul>
+        <t>A parser takes an identifier string and the suite registry
+        and yields either the four components or exactly one reason. It
+        applies these checks in order and stops at the first that
+        fails:</t>
+        <ol spacing="normal">
+          <li>The string matches the caid rule of
+          <xref target="appendix-abnf"/>, else malformed_caid. This step
+          does not consult the registry.</li>
+          <li>The suite is in the suite registry, else unknown_suite. The
+          digest of such an identifier is not checked, because the parser
+          has no digest length for its suite.</li>
+          <li>The digest matches the digest syntax of the suite's digest
+          length (<xref target="appendix-abnf"/>), else
+          malformed_caid.</li>
+        </ol>
+        <t>A parser operates on the exact sequence of code points it is
+        given. It MUST NOT trim, case-fold, Unicode-normalize, or
+        percent-decode it; removing a transport encoding is the carrying
+        protocol's job before parsing. As a consequence, a conforming
+        parser refuses as malformed_caid: base64url padding ("=") in the
+        digest; uppercase characters in the prefix, the action type, or
+        the suite (the digest is case-sensitive, and both cases are
+        significant there); empty segments anywhere, including empty
+        dotted segments within the action type; any content after the
+        digest, including trailing separators, whitespace, or additional
+        fields; a digest that is not exactly the length of the named
+        suite or whose final character encodes nonzero unused bits; and
+        any caid-version other than "1", which is never guessed at or
+        parsed leniently.</t>
+        <t>An unregistered suite is refused as unknown_suite rather than
+        malformed_caid so that the reason says what the relying party
+        needs to know. An identifier under a suite registered after the
+        parser's registry snapshot is well formed, and the right response
+        is a newer suite registry, not a report of corruption. Because a
+        registered suite is never removed or redefined, an identifier
+        that one registry snapshot refuses as malformed_caid is refused as
+        malformed_caid by every later snapshot.</t>
         <t>A registered suite that an implementation does not implement
         is not unknown to its parser: the identifier is well formed, and
         computation and verification report the suite as
@@ -308,6 +551,12 @@ lower-char    = %x61-7A          ; a-z
         cbor-sha256 CAID for the same object. An artifact MAY carry
         multiple CAIDs for one action, one per suite its issuer
         computed.</t>
+        <t>A relying party decides which suites it accepts, and a
+        verifier MUST NOT accept a CAID under any other suite. When an
+        artifact carries several CAIDs for one action, a verifier MUST
+        verify every CAID whose suite it accepts and implements, and MUST
+        treat the failure of any one as the failure of all. It MUST NOT
+        select the CAID that verifies.</t>
         <t>Direct CAID equality is content equality, not inferred
         semantic equality. The strings "1.50" and "1.5" are different
         content and yield different digests. Per-field normalization
@@ -363,25 +612,38 @@ lower-char    = %x61-7A          ; a-z
         <t>An action type name is one or more lowercase dotted name
         segments with a final segment that is the integer version of
         the type, per the action-type rule of
-        <xref target="syntax"/>. Registered types live in the CAID
-        action type registry (<xref target="iana"/>), one entry
-        per versioned type.</t>
-        <t>Once a version is active, every declaration that affects
-        validation or material meaning is immutable. Adding or removing
-        a required or optional field, retyping a field, changing an enum
-        set or normalization rule, or changing a field's semantics MUST
-        be published as a new version of the type (payment.release.2),
-        never as an in-place edit. This immutability is required so a
-        later verifier can reproduce an earlier result.</t>
-        <t>One narrow correction is permitted. A registry that publishes a new
-        registry version <bcp14>MAY</bcp14> replace the machine-readable pin
-        of a value set that an active type already names, without a new type
-        version, only when the new pin identifies the set that the existing
-        name already denoted, and the registry documents the migration field
-        by field, including every type whose ability to compute a CAID
-        changes. Adding or removing accepted values, or changing which set a
-        name denotes, is never such a correction. Decisions made under the
-        earlier registry version remain decisions under that version.</t>
+        <xref target="appendix-abnf"/>. Registered types live in the CAID
+        Action Types registry (<xref target="iana-action-types"/>), one
+        entry per versioned type.</t>
+        <t>Once a version is published, every declaration that affects
+        validation or material meaning is immutable, with the one
+        exception below. Adding or removing a required or optional field,
+        retyping a field, changing a normalization rule or a field's
+        semantics, or changing an enum set in any other way MUST be
+        published as a new version of the type (payment.release.2),
+        never as an in-place edit.</t>
+        <t>Monotone enum advance. A registry version MAY advance the
+        value-set pin of an enum field in place, without a new type
+        version, only to a later edition that contains every member of
+        the set the field accepted under the previous registry version.
+        The first pin of a field that previously resolved no set is such
+        an advance, because that field accepted no value. Removing,
+        renaming, or redefining a member is never an advance. The
+        registry records each advance field by field.</t>
+        <t>Under this rule an action object that is valid under one
+        registry version remains valid under every later version of the
+        same registry, while an advance can make valid an object that an
+        earlier version refused. An advance changes the type's
+        definition_sha256 (<xref target="definition-digest"/>), and every
+        computation and verification result reports definition_sha256,
+        so a relying party that needs exact reproducibility pins
+        definition_sha256, and verification then refuses any other
+        definition as definition_mismatch (<xref target="verification"/>).
+        Every published registry version is kept byte for byte, so an
+        earlier result can be replayed under the registry version that
+        produced it. The migration from reference registry version 3 to
+        version 4 removed accepted values before this rule existed; its
+        decisions remain decisions under version 3.</t>
       </section>
       <section anchor="schema">
         <name>The Type Definition Schema</name>
@@ -418,65 +680,209 @@ lower-char    = %x61-7A          ; a-z
 }
 ]]></sourcecode>
         <t>action_type is the versioned type name. status is the
-        lifecycle state of the entry. risk_class is a descriptive
-        label for the consequence class of the action; it carries no
-        verification semantics. required_fields declares the material
-        fields, each with a name, a field type from
-        <xref target="fieldtypes"/>, and optional notes or a
-        values_ref naming an inline or external value set. Notes guide
-        issuers and never change how a field is validated. External enum
-        fields also carry values_snapshot and values_sha256 as specified in
-        <xref target="enum-resolution"/>. optional_fields
-        declares fields the type recognizes but does not require.
-        digest_notes carries per-type normalization guidance for
-        issuers. references carries citations for the type's
-        semantics.</t>
+        lifecycle state of the entry (<xref target="status"/>).
+        risk_class is a descriptive label for the consequence class of
+        the action; it carries no verification semantics. required_fields
+        declares the material fields, each with a name, a field type from
+        <xref target="fieldtypes"/>, the members that field type defines,
+        and optional notes. Notes guide issuers and never change how a
+        field is validated. optional_fields declares fields the type
+        recognizes but does not require. digest_notes carries per-type
+        normalization guidance for issuers. references carries citations
+        for the type's semantics. supersedes and superseded_by, when
+        present, name the type version this one replaces and the one that
+        replaces it.</t>
+        <section anchor="conformance">
+          <name>Definition Conformance</name>
+          <t>A definition conforms if and only if all of the following
+          hold:</t>
+          <ul spacing="normal">
+            <li>It is an object whose action_type member is a string that
+            matches the action-type rule of
+            <xref target="appendix-abnf"/>.</li>
+            <li>required_fields is an array of at least one entry, and
+            optional_fields is absent or an array.</li>
+            <li>Every entry of either array is an object whose type member
+            is a string and whose name member is a field name: a string
+            that matches the field-name rule of
+            <xref target="appendix-abnf"/>, which means it is non-empty and
+            does not contain ":" (U+003A), and that is not action_type. No
+            field name appears twice across the two arrays.</li>
+            <li>An entry whose type is a field type of
+            <xref target="fieldtypes"/> has no members other than name,
+            type, notes, and the members that field type defines, and it
+            carries every member that field type requires, well formed.
+            For a code field, code_system matches the code-system rule
+            and format matches the format-name rule of
+            <xref target="appendix-abnf"/>.</li>
+            <li>The validation projection of the definition
+            (<xref target="definition-digest"/>) is a value of the data
+            model.</li>
+          </ul>
+          <t>An entry whose type is not a field type of
+          <xref target="fieldtypes"/> is not member-checked; that field is
+          refused as mistyped_field:&lt;name&gt; whenever it is present,
+          and it does not make the definition nonconforming. The same
+          holds for a code field whose format is well formed but not a
+          registered code format. A definition written for a later field
+          type therefore still computes while the field is absent. The
+          form of an enum field is not checked here: an enum that does not
+          resolve fails as mistyped_field:&lt;name&gt; when present
+          (<xref target="enum-resolution"/>). Members of a definition
+          other than action_type, required_fields, and optional_fields are
+          not checked and never affect validation.</t>
+          <t>A definition that does not conform is refused as
+          invalid_definition.</t>
+        </section>
+        <section anchor="definition-digest">
+          <name>Definition Digest</name>
+          <t>The validation projection of a conforming definition is the
+          object with exactly three members:</t>
+          <ul spacing="normal">
+            <li>action_type;</li>
+            <li>required_fields;</li>
+            <li>optional_fields, which is the definition's optional_fields
+            array, or an empty array when the definition has none.</li>
+          </ul>
+          <t>The arrays keep their order, because field order fixes the
+          order of reasons (<xref target="reason-order"/>). Each entry is
+          the definition's entry with its notes member removed and every
+          other member kept.</t>
+          <t>definition_sha256 is "sha256:" followed by the 64 lowercase
+          hexadecimal digits of the SHA-256 digest of the RFC 8785
+          encoding of the validation projection. It is defined only for a
+          conforming definition; computing it for a nonconforming one
+          yields invalid_definition.</t>
+          <t>Everything outside the projection, including status,
+          risk_class, summary, notes, digest_notes, references,
+          supersedes, and superseded_by, never changes validation. Two
+          definitions with equal definition_sha256 therefore validate
+          every action object identically, given the same enum snapshots.
+          Computation and verification report the definition_sha256 of
+          the definition they used (Sections <xref target="computation"
+          format="counter"/> and <xref target="verification"
+          format="counter"/>), and verification accepts an expected value.
+          The reference registry lists the definition_sha256 of every type
+          in each registry version. <xref target="example-projection"/>
+          gives an example.</t>
+          <t>This is the only digest this document calls a definition
+          digest. A digest over a whole registry entry, including status
+          or notes, identifies that entry's bytes, not its validation
+          semantics, and a specification that uses one names it
+          differently.</t>
+        </section>
+        <section anchor="resolution">
+          <name>Resolution</name>
+          <t>To resolve the definition for an action type, an
+          implementation:</t>
+          <ol spacing="normal">
+            <li>collects every configured definition, from all of its
+            definition sources, that is an object whose action_type member
+            is exactly that string;</li>
+            <li>refuses with unknown_action_type when none is
+            collected;</li>
+            <li>refuses with invalid_definition when any collected
+            definition does not conform, or when two collected definitions
+            have different definition_sha256 values;</li>
+            <li>otherwise uses the collected definitions, which are all
+            the same definition.</li>
+          </ol>
+          <t>The order in which definitions are configured never affects
+          the result. A local definition that shares a name with a
+          registered one resolves only when the two have the same
+          validation projection.</t>
+        </section>
+        <section anchor="status">
+          <name>Status and Succession</name>
+          <t>status is "active" or "deprecated". Status never affects
+          resolution, computation, or verification: a deprecated type
+          resolves, computes, and verifies wherever its fields resolve,
+          and deprecating a type never makes an earlier result invalid.
+          Deprecation tells issuers to use the successor that
+          superseded_by names; supersedes, on the successor, names its
+          predecessor. Both are informative and outside definition_sha256.
+          An issuer MAY decline to issue new CAIDs under a deprecated type
+          as a matter of policy. A verifier MUST NOT refuse a CAID because
+          its type is deprecated.</t>
+        </section>
       </section>
       <section anchor="fieldtypes">
         <name>Field Types</name>
-        <t>The set of field types in version 1 is closed:</t>
+        <t>A field type fixes which values a field accepts. Every check
+        applies to the whole value: nothing may precede or follow the
+        matched text, not even a line feed. A string field accepts the
+        empty string, and a required field that holds "" is present. The
+        field types of this document are listed below; the CAID Field
+        Types registry (<xref target="iana-field-types"/>) records
+        them.</t>
         <dl newline="false" spacing="normal">
           <dt>string:</dt>
-          <dd>A JSON string.</dd>
+          <dd>A string.</dd>
           <dt>amount-string:</dt>
           <dd>
-            <t keepWithNext="true">A decimal amount carried as a JSON
-            string. The whole string value, as parsed from JSON, matches
-            the following ABNF <xref target="RFC5234"/>, in which DIGIT is
-            the core rule:</t>
-            <sourcecode type="abnf"><![CDATA[
-amount-string = [ "-" ] int-part [ "." frac-part ]
-int-part      = "0" / ( %x31-39 *DIGIT )  ; no leading zero
-frac-part     = 1*DIGIT
-]]></sourcecode>
-            <t>There is no exponent, leading "+", whitespace, or
-            thousands separator, and the integer part has no leading
-            zero. For example, "0", "0.50", "-0", and "-0.50" match,
-            while "01.5", "00", "+1", "1e3", ".5", "1.", and "1,000" do
-            not. The rule is lexical and never normalizes: "0.50" and
-            "0.5" produce different digests (<xref target="equality"/>).</t>
+            <t>A decimal amount carried as a string that matches the
+            amount-string rule of <xref target="appendix-abnf"/>. There
+            is no exponent, leading "+", whitespace, or thousands
+            separator, and the integer part has no leading zero. For
+            example, "0", "0.50", "-0", and "-0.50" match, while "01.5",
+            "00", "+1", "1e3", ".5", "1.", and "1,000" do not. The rule
+            is lexical and never normalizes: "0.50" and "0.5" produce
+            different digests (<xref target="equality"/>). A string that
+            does not match is refused as invalid_amount:&lt;name&gt;, and
+            a value that is not a string as
+            mistyped_field:&lt;name&gt;.</t>
           </dd>
           <dt>digest:</dt>
-          <dd>The literal prefix "sha256:" followed by 64 lowercase
-          hexadecimal characters. Used where a raw identifier must
-          not appear in the object (<xref target="security"/>).</dd>
+          <dd>A string that matches the digest-field rule: the literal
+          prefix "sha256:" followed by 64 lowercase hexadecimal
+          characters. Used where a raw identifier must not appear in the
+          object (<xref target="privacy"/>).</dd>
           <dt>enum:</dt>
-          <dd>A string constrained to a closed value set resolved as specified
-          in <xref target="enum-resolution"/>.</dd>
+          <dd>A string in the closed value set resolved as specified in
+          <xref target="enum-resolution"/>. Its members are values,
+          values_ref, values_snapshot, and values_sha256.</dd>
+          <dt>code:</dt>
+          <dd>A string that a registered code format matches as a whole
+          (<xref target="code-fields"/>). Its members are code_system and
+          format, both required. A string that does not match is refused
+          as invalid_code:&lt;name&gt;.</dd>
           <dt>timestamp:</dt>
-          <dd>An RFC 3339 <xref target="RFC3339"/> timestamp in UTC
-          with the "Z" designator.</dd>
+          <dd>A string that matches the timestamp rule of
+          <xref target="appendix-abnf"/> and whose day does not exceed
+          the length of its month in the proleptic Gregorian calendar.
+          This is the <xref target="RFC3339"/> profile with an uppercase
+          "T" and "Z" and UTC time: a lowercase "t" or "z", an offset
+          other than "Z", and a second of 60 are refused. The fraction is
+          lexical, so "2026-01-01T00:00:00.000Z" and
+          "2026-01-01T00:00:00Z" are different content, as "0.50" and
+          "0.5" are.</dd>
           <dt>integer:</dt>
-          <dd>A JSON integer. For counts only, never for money.</dd>
+          <dd>A number whose value (<xref target="numbers"/>) is a finite
+          integer, whatever its literal form: 12, 12.0, and 1.2e1 are the
+          integer 12. Magnitude is not part of the type. A finite integer
+          beyond 2^53-1 is type-valid and is refused once, as
+          unsupported_number. A literal that overflows binary64 is not an
+          integer, so it is refused both as mistyped_field:&lt;name&gt;
+          and as unsupported_number. For counts only, never for
+          money.</dd>
           <dt>boolean:</dt>
-          <dd>A JSON boolean.</dd>
+          <dd>true or false.</dd>
           <dt>object:</dt>
-          <dd>A JSON object, itself subject to the number restriction
-          of <xref target="object"/>.</dd>
+          <dd>An object, whose members at every depth are values of the
+          data model.</dd>
           <dt>array:</dt>
-          <dd>A JSON array, itself subject to the number restriction
-          of <xref target="object"/>.</dd>
+          <dd>An array, whose elements at every depth are values of the
+          data model.</dd>
         </dl>
+        <t>Except where stated above, a present field whose value fails
+        its field type is refused as mistyped_field:&lt;name&gt;. A field
+        whose type is not one of these is refused as
+        mistyped_field:&lt;name&gt; whenever it is present.</t>
+        <t>A new validation constraint on an existing field type is always
+        a new field type, never a new member on an existing type. An
+        implementation of an earlier revision ignores an unknown member
+        and would accept what a later one refuses, while an unknown field
+        type makes it refuse.</t>
       </section>
       <section anchor="enum-resolution">
         <name>Enum Value-Set Resolution</name>
@@ -489,10 +895,11 @@ frac-part     = 1*DIGIT
           <dd>A non-empty, duplicate-free array of non-empty strings in
           <tt>values</tt>, and no <tt>values_ref</tt> member.</dd>
           <dt>Compact inline:</dt>
-          <dd>A values_ref string that begins with <tt>inline:</tt>. The text
-          after that prefix is split at every "|" character, and each member
-          is trimmed of leading and trailing U+0020 SPACE characters only; no
-          other whitespace or control character is trimmed. The members
+          <dd>A values_ref string that begins with <tt>inline:</tt>. The
+          prefix is case-sensitive. The text after it is split at every
+          "|" character, and each member is trimmed of leading and
+          trailing U+0020 SPACE characters only; no other whitespace or
+          control character is trimmed. The members
           <bcp14>MUST</bcp14> be non-empty and duplicate-free. A
           <tt>values</tt> member <bcp14>MAY</bcp14> accompany this form only
           if it equals the resulting list exactly, in order.</dd>
@@ -515,13 +922,70 @@ frac-part     = 1*DIGIT
         missing or unresolved snapshot, a digest mismatch, or a value absent
         from the resolved list <bcp14>MUST</bcp14> fail as
         <tt>mistyped_field:&lt;name&gt;</tt> whenever the field is present.
-        An active type with such a field among its required fields therefore
+        A type with such a field among its required fields therefore
         cannot produce or verify any CAID until the value set is pinned. Computation and verification
         <bcp14>MUST NOT</bcp14> fetch a mutable network resource to resolve an
         enum. An external source's later additions, removals, or corrections
-        do not change a pinned array. Publishing any different accepted array
-        changes validation semantics and therefore requires a new
-        action-type version.</t>
+        do not change a pinned array. Publishing a different accepted array
+        requires a new action-type version, except for the monotone advance
+        of <xref target="names"/>.</t>
+      </section>
+      <section anchor="code-fields">
+        <name>Code Fields</name>
+        <t>Some material values come from code systems that are large,
+        change often, or are licensed: diagnosis and procedure codes,
+        drug product codes, payment return reasons. A pinned value set
+        cannot follow such a system without a new type version for every
+        edition, and a licensed system cannot be redistributed as a
+        snapshot. A code field identifies such a value by its system and
+        its syntax instead:</t>
+        <sourcecode type="json"><![CDATA[
+{"name": "diagnosis_code", "type": "code",
+ "code_system": "http://hl7.org/fhir/sid/icd-10-cm",
+ "format": "icd-10-cm"}
+]]></sourcecode>
+        <ul spacing="normal">
+          <li>code_system is an absolute URI <xref target="RFC3986"/>
+          that names the code system and matches the code-system rule of
+          <xref target="appendix-abnf"/>. It is part of the validation
+          projection, so it distinguishes fields with the same syntax
+          from different systems. No implementation dereferences it.</li>
+          <li>format names a registered code format. The code formats of
+          this document are the rules of part A.4 of
+          <xref target="appendix-abnf"/>, each named by its rule name. A
+          format fixes syntax only, never which codes exist.</li>
+          <li>The value is a string, valid if and only if the format
+          matches the whole string. There is no normalization: the
+          canonical form is the exact string. "G47.33" and "G4733" are
+          different content, and only the first matches icd-10-cm. An
+          issuer converts a native form to the format before
+          computing.</li>
+          <li>A string that the format does not match is refused as
+          invalid_code:&lt;name&gt;. A value that is not a string, and any
+          value of a field whose format is not a registered code format,
+          is refused as mistyped_field:&lt;name&gt;.</li>
+        </ul>
+        <t>CAID pins the syntax and the system of a code field, never a
+        value set. Whether a code exists in some edition of its system,
+        is billable, or suits the action is a question for the relying
+        party. A registry MUST NOT publish a value set for a code field.
+        For a licensed system it MUST NOT redistribute codes, descriptors,
+        or value sets at all; CPT, whose codes the American Medical
+        Association licenses, is the leading example. The hcpcs format
+        accepts HCPCS Level I (CPT) and Level II codes by syntax alone,
+        so a type can carry either without the registry carrying a single
+        CPT code. Each lexical form of a code is its own format, so that
+        no format admits two spellings of one code: the 11-digit and the
+        hyphenated 10-digit forms of a National Drug Code are the formats
+        ndc-11 and ndc-10-hyphenated.</t>
+        <t>Every code format matches only strings of bounded length and
+        compiles to a regular expression with no nested quantifiers and no
+        quantified alternatives that can begin with the same character.
+        Matching therefore takes time linear in the length of the value,
+        in backtracking and automaton engines alike
+        (<xref target="security-redos"/>). A new code format is registered
+        in the CAID Field Types registry with its ABNF and must have this
+        property.</t>
       </section>
       <section anchor="local">
         <name>Definition Sources and Unknown Types</name>
@@ -532,23 +996,25 @@ frac-part     = 1*DIGIT
         local definitions file in the same schema) or it is unknown.
         A deployment inside a single vendor's boundary can therefore
         use CAID with purely local definitions. Cross-domain use
-        requires the parties to pin the same exact definition or
-        registry snapshot. A local definition that collides by name
-        with a different registered definition MUST NOT be treated as
-        interoperable.</t>
-        <t>An unknown type is a refusal for a conforming issuer
-        (<xref target="computation"/>). For a verifier, accepting an
-        identifier whose type is unknown is a policy decision: a
-        verifier MAY offer an accept-unregistered option, and that
-        option MUST default to off.</t>
+        requires the parties to pin the same exact definition, registry
+        snapshot, or definition_sha256. A local definition that collides
+        by name with a different registered definition MUST NOT be
+        treated as interoperable, and resolution refuses the pair when
+        both are configured (<xref target="resolution"/>).</t>
+        <t>An unknown type is a refusal for issuers and verifiers alike.
+        A verifier that holds no definition for the type reports
+        invalid_object with the detail unknown_action_type
+        (<xref target="verification"/>). A deployment that correlates
+        identifiers of unknown types by digest alone is not performing
+        CAID verification and MUST NOT report the result as valid.</t>
       </section>
       <section anchor="tool-call-type">
         <name>The tool.call.1 Type</name>
         <t>Agent frameworks invoke a named tool with an argument
-        object. That is a common material action in agent deployments,
-        and until this revision no registered CAID type described it.
-        This section registers the type so its CAID Action Object is
-        fixed by the registry rather than by an implementation.</t>
+        object. That is a common material action in agent deployments.
+        This section registers a type for it so that its CAID Action
+        Object is fixed by the registry rather than by an
+        implementation.</t>
         <sourcecode type="json"><![CDATA[
 {
   "action_type": "tool.call.1",
@@ -611,7 +1077,7 @@ frac-part     = 1*DIGIT
         such as <tt>base-action:sha256:&lt;hex&gt;</tt> are not CAIDs and
         <bcp14>MUST NOT</bcp14> be compared with one.</t>
         <t>For example, this Action Object:</t>
-        <sourcecode type="json"><![CDATA[
+        <sourcecode anchor="ex-tool-object" type="json"><![CDATA[
 {
   "action_type": "tool.call.1",
   "target": "https://payments.example",
@@ -624,12 +1090,12 @@ frac-part     = 1*DIGIT
 }
 ]]></sourcecode>
         <t>has the following CAID under <tt>jcs-sha256</tt>:</t>
-        <sourcecode type=""><![CDATA[
-caid:1:tool.call.1:jcs-sha256:FdawgFwgN5tAtiZa-SCkVDrV3dS9w1ye
-XVQaDaZLQQQ
+<sourcecode anchor="ex-tool-caid"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+caid:1:tool.call.1:jcs-sha256:FdawgFwgN5tAtiZa-SCkVDrV3dS9w1yeXVQaDa\
+ZLQQQ
 ]]></sourcecode>
-        <t>The identifier is shown wrapped for column width; it contains
-        no whitespace.</t>
         <t>This registration is motivated by observed divergence in one
         such framework-local binding profile: two adapters shipped by
         the same project hashed the same argument object under different
@@ -638,85 +1104,218 @@ XVQaDaZLQQQ
         why a future cross-framework CAID profile cannot leave its
         material member names to implementers.</t>
         <t>All nested members of <tt>args</tt> remain subject to the
-        number restriction in <xref target="object"/>. A framework call
+        data model of <xref target="data-model"/>. A framework call
         containing a fractional JSON number can use its own exact-action
         binding profile, or map the quantity to a CAID type that carries
         the value as a string; it is not a conforming
         <tt>tool.call.1</tt> CAID.</t>
+        <t>A call whose arguments carry a large body inline, such as a
+        file or an image, can push the action object past the canonical
+        limit of 16,777,216 octets (<xref target="limits"/>). Such a call
+        is not a conforming tool.call.1 CAID. It is identified by a
+        tool-specific type in which the large member is a digest field
+        over the body's octets: the digest binds the body without placing
+        it in the action object, and the body travels beside the
+        artifact.</t>
       </section>
     </section>
     <section anchor="computation">
       <name>Computation</name>
-      <t>A conforming issuer computes a CAID from an action object, a
-      suite, and its configured definition sources, in the following
-      order. Each check that fails contributes a refusal reason from
-      the closed set below; the reason strings are normative.</t>
-      <ol spacing="normal">
-        <li>The action_type member is present and its value matches
-        the action-type grammar of <xref target="syntax"/>, else
-        invalid_action_type.</li>
-        <li>The type is resolvable in the configured definition
-        sources, else unknown_action_type.</li>
-        <li>Every REQUIRED field of the type definition is present as a
-        member of the action object itself, else
-        missing_material_field:&lt;name&gt; for each absent field. A name
-        that an implementation's object model inherits from elsewhere
-        (for example an ECMAScript prototype) is not present.</li>
-        <li>Every present field that the type definition declares is
-        valid for its declared field type, else
-        mistyped_field:&lt;name&gt; for each violation, except that an
-        amount-string field whose value is a string not matching the
-        amount-string rule is reported as invalid_amount:&lt;name&gt;; a
-        non-string value there remains mistyped_field:&lt;name&gt;. Enum
-        validation includes the local snapshot
-        resolution and integrity check in <xref target="enum-resolution"/>.</li>
-        <li>The requested suite is a registered suite that the
-        implementation implements, else unknown_suite.</li>
-        <li>Every number in the object, at any depth, satisfies the
-        value-based rule of <xref target="object"/> (an integer with
-        magnitude at most 2^53-1 after IEEE 754 double-precision
-        parsing), else unsupported_number. Every string, including every
-        member name, at any depth, is a sequence of Unicode scalar values,
-        else unsupported_value: a string that contains an unpaired surrogate
-        code point has no UTF-8 encoding, and Section 3.2.2.2 of
-        <xref target="RFC8785"/> requires a JCS implementation to refuse
-        it.</li>
-        <li>Canonicalize under the suite, digest, and emit the CAID
-        string and the digest.</li>
-      </ol>
-      <t>On success the issuer emits the identifier and the digest. On
-      any failure the issuer emits the accumulated refusal reasons and
-      NO identifier. Computation is fail-closed: malformed or junk
-      input, of any shape, yields refusal reasons, never an exception
-      or a partial identifier.</t>
+      <t>A conforming issuer computes a CAID from an action object
+      (JSON text or a host value), a suite name, its configured
+      definition sources, and the enum snapshots available to it. An
+      option of the wrong type is treated as absent; a suite given as
+      anything other than a string is therefore no suite, and computation
+      reports unknown_suite.</t>
+      <t>Computation evaluates the phases of
+      <xref target="tab-compute"/> in order. Phases 0 through 2 are
+      gates: the first gate that fails yields exactly one reason, and
+      computation stops. When the gates pass, phases 3 through 7 are all
+      evaluated, and every reason they produce is collected. The reason
+      strings are normative.</t>
+      <table anchor="tab-compute">
+        <name>Computation Phases</name>
+        <thead>
+          <tr><th>Phase</th><th>Gate</th><th>Reasons</th><th>Refused when</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>0</td><td>yes</td><td>malformed_json</td><td>the object
+          is JSON text that fails <xref target="json-text"/></td></tr>
+          <tr><td>1</td><td>yes</td><td>invalid_action_type</td><td>the
+          value is not an object, or its action_type member is absent, is
+          not a string, or does not match the action-type rule of
+          <xref target="appendix-abnf"/></td></tr>
+          <tr><td>2</td><td>yes</td><td>unknown_action_type,
+          invalid_definition</td><td>resolution fails
+          (<xref target="resolution"/>)</td></tr>
+          <tr><td>3</td><td>no</td><td>missing_material_field:&lt;name&gt;</td><td>a
+          required field is not present</td></tr>
+          <tr><td>4</td><td>no</td><td>mistyped_field:&lt;name&gt;,
+          invalid_amount:&lt;name&gt;,
+          invalid_code:&lt;name&gt;</td><td>a present declared field fails
+          its field type (<xref target="fieldtypes"/>)</td></tr>
+          <tr><td>5</td><td>no</td><td>unknown_suite</td><td>the suite is
+          not a registered suite that the implementation
+          implements</td></tr>
+          <tr><td>6</td><td>no</td><td>unsupported_number</td><td>a number
+          anywhere in the object, at any depth, is outside the data
+          model</td></tr>
+          <tr><td>7</td><td>no</td><td>unsupported_value</td><td>any other
+          value is outside the data model, including a string or member
+          name with an unpaired surrogate or a noncharacter, nesting beyond
+          64, and a canonical encoding beyond 16,777,216 octets</td></tr>
+        </tbody>
+      </table>
+      <t>A field is present when the object has a member of that name
+      of its own. A name that an implementation's object model inherits
+      from elsewhere, for example through an ECMAScript prototype, is not
+      present. Phase 4 checks only present fields that the definition
+      declares, in required_fields or in optional_fields. Enum validation
+      includes the snapshot resolution and integrity check of
+      <xref target="enum-resolution"/>. A string that contains an
+      unpaired surrogate has no UTF-8 encoding, and Section 3.2.2.2 of
+      <xref target="RFC8785"/> requires a JCS implementation to refuse
+      it; phase 7 is that refusal.</t>
+      <section anchor="reason-order">
+        <name>Reason Order</name>
+        <t>The collected reasons are sorted by phase. Within phase 3 they
+        are sorted by the field's index in required_fields, and within
+        phase 4 by the field's index in required_fields followed by
+        optional_fields. Identical reason strings are then reduced to the
+        first. A field yields at most one phase 4 reason, and phases 5, 6,
+        and 7 yield at most one reason each.</t>
+        <t>The order does not depend on the order in which an
+        implementation traverses the object, so every implementation, and
+        every suite, reports the same list for the same input. In
+        particular unsupported_number always precedes unsupported_value.
+        The result is an ordered list; implementations MUST NOT reorder,
+        merge, or add reasons. <xref target="example-refusal"/> gives an
+        example.</t>
+      </section>
+      <section anchor="compute-result">
+        <name>Result</name>
+        <t>On success, computation returns three strings: the CAID; the
+        digest, which is "sha256:" followed by the 64 lowercase
+        hexadecimal digits of the SHA-256 digest of the canonical bytes;
+        and the definition_sha256 of the resolved definition. On failure
+        it returns the ordered list of reasons and NO identifier.
+        Computation is fail-closed: malformed or junk input of any shape
+        yields reasons, never an exception or a partial identifier.</t>
+      </section>
     </section>
     <section anchor="verification">
       <name>Verification</name>
-      <t>A conforming verifier checks a presented CAID string against
-      a presented action object, using its own configured definition
-      sources, in the following order:</t>
-      <ol spacing="normal">
-        <li>Strict-parse the CAID string per
-        <xref target="parsing"/>, else malformed_caid.</li>
-        <li>The in-object action_type equals the action type carried
-        in the CAID string, else action_type_mismatch. This check is
-        mandatory; see <xref target="digest"/> and
-        <xref target="security"/>.</li>
-        <li>Recompute the digest over the presented object under the
-        suite named in the CAID, else unknown_suite if the verifier does
-        not implement that registered suite; the recomputed digest is
-        equal to the presented digest, else digest_mismatch.</li>
-        <li>Run the same material validation as computation
-        (<xref target="computation"/>, steps 1 through 6). An
-        identifier whose object fails that validation is
-        invalid_object, not merely mismatched: a digest that matches
-        an invalid object still binds nothing material.</li>
-      </ol>
-      <t>The result is a validity bit and the list of reasons.
-      Verification is deterministic and offline: the same inputs
-      produce the same reasons in the same order, and any third party
-      with the object, the identifier, the definitions, and any referenced
-      enum snapshots can replay the check without contacting anyone.</t>
+      <t>A conforming verifier checks a presented CAID string against a
+      presented action object (JSON text or a host value), using its own
+      configured definition sources and enum snapshots and, when the
+      relying party supplies one, an expected definition_sha256. It
+      evaluates the phases of <xref target="tab-verify"/> in order.
+      Phases 1 through 3 are gates that yield exactly one reason and stop
+      verification. Phases 4 through 7 are all evaluated, and each yields
+      at most one reason.</t>
+      <table anchor="tab-verify">
+        <name>Verification Phases</name>
+        <thead>
+          <tr><th>Phase</th><th>Gate</th><th>Reasons</th><th>Refused when</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>yes</td><td>malformed_caid,
+          unknown_suite</td><td>parsing fails
+          (<xref target="parsing"/>)</td></tr>
+          <tr><td>2</td><td>yes</td><td>malformed_json</td><td>the object
+          is JSON text that fails <xref target="json-text"/></td></tr>
+          <tr><td>3</td><td>yes</td><td>invalid_object</td><td>the value
+          is not an object</td></tr>
+          <tr><td>4</td><td>no</td><td>action_type_mismatch</td><td>the
+          object's action_type member is absent, is not a string, or is not
+          the action type in the CAID</td></tr>
+          <tr><td>5</td><td>no</td><td>definition_mismatch</td><td>an
+          expected definition_sha256 was supplied, a conforming definition
+          resolved, and its definition_sha256 differs</td></tr>
+          <tr><td>6</td><td>no</td><td>unknown_suite,
+          digest_mismatch</td><td>unknown_suite when the verifier does not
+          implement the CAID's suite; otherwise digest_mismatch when the
+          object can be canonicalized and its digest differs from the
+          CAID's</td></tr>
+          <tr><td>7</td><td>no</td><td>invalid_object</td><td>computation
+          phases 1 through 4, 6, and 7 over the object yield any
+          reason</td></tr>
+        </tbody>
+      </table>
+      <t>The in-object action type check of phase 4 is mandatory; see
+      <xref target="digest"/> and <xref target="security"/>. No digest
+      comparison is made for an object that cannot be canonicalized. An
+      identifier whose object fails validation is invalid_object, not
+      merely mismatched: a digest that matches an invalid object still
+      binds nothing material. The suite check of computation phase 5 is
+      not part of phase 7, because phase 6 checks the suite of the
+      presented CAID.</t>
+      <t>Phase 1 is the strict parse of <xref target="parsing"/>, which
+      yields malformed_caid or, for a grammatical suite outside the suite
+      registry, unknown_suite. Phase 6 yields unknown_suite for a
+      registered suite that the verifier does not implement.</t>
+      <t>The result has the members valid, reasons, and details, plus
+      definition_sha256 whenever a conforming definition resolved,
+      whether or not the result is valid. valid is true if and only if
+      reasons is empty. Verification is deterministic and offline: the
+      same inputs produce the same result, and any third party with the
+      object, the identifier, the definitions, and any referenced enum
+      snapshots can replay the check without contacting anyone.</t>
+      <section anchor="details">
+        <name>Verification Details</name>
+        <t>details is a list with one entry per reason, in the order of
+        reasons, except that invalid_object contributes one entry for each
+        computation reason it stands for: the reasons of computation
+        phases 1 through 4, 6, and 7 for phase 7, and the computation
+        reasons for the value (invalid_action_type) for phase 3. Each entry
+        is an object with exactly these four members:</t>
+        <dl newline="false" spacing="normal">
+          <dt>reason:</dt>
+          <dd>The reason string.</dd>
+          <dt>field:</dt>
+          <dd>The parameter of a parameterized reason, the string
+          action_type for invalid_action_type and action_type_mismatch,
+          and null otherwise.</dd>
+          <dt>rule:</dt>
+          <dd>The identifier of the rule that failed, from
+          <xref target="tab-details"/>.</dd>
+          <dt>observed:</dt>
+          <dd>The kind of value the check saw, or null. For a reason whose
+          observed source in <xref target="tab-details"/> is the member,
+          it is the kind of the object's own member named by field, or
+          "absent" when there is no such member; when the value is not an
+          object, it is the kind of the value itself. For malformed_caid it
+          is the kind of the CAID argument.</dd>
+        </dl>
+        <t>A kind is one of "absent", "null", "boolean", "number",
+        "string", "array", "object", and "unsupported". Every JSON number
+        and every host number is "number", whether or not it is in the
+        data model; "unsupported" is a host value of no JSON kind.
+        Details carry no other information. They are deterministic: two
+        conforming verifiers given the same inputs produce the same
+        details. <xref target="example-verify"/> gives an example.</t>
+<table anchor="tab-details">
+  <name>Verification Detail Rules</name>
+  <thead><tr><th>Reason</th><th>rule</th><th>field</th><th>observed</th></tr></thead>
+  <tbody>
+    <tr><td>malformed_json</td><td>json-text</td><td>null</td><td>null</td></tr>
+    <tr><td>malformed_caid</td><td>caid</td><td>null</td><td>the CAID argument</td></tr>
+    <tr><td>unknown_suite</td><td>suite</td><td>null</td><td>null</td></tr>
+    <tr><td>invalid_action_type</td><td>action-type</td><td>action_type</td><td>the member</td></tr>
+    <tr><td>unknown_action_type</td><td>definition-resolution</td><td>null</td><td>null</td></tr>
+    <tr><td>invalid_definition</td><td>definition-conformance</td><td>null</td><td>null</td></tr>
+    <tr><td>definition_mismatch</td><td>definition-sha256</td><td>null</td><td>null</td></tr>
+    <tr><td>missing_material_field</td><td>required-field</td><td>the parameter</td><td>the member</td></tr>
+    <tr><td>mistyped_field</td><td>field-type</td><td>the parameter</td><td>the member</td></tr>
+    <tr><td>invalid_amount</td><td>amount-string</td><td>the parameter</td><td>the member</td></tr>
+    <tr><td>invalid_code</td><td>code-format</td><td>the parameter</td><td>the member</td></tr>
+    <tr><td>unsupported_number</td><td>number</td><td>null</td><td>null</td></tr>
+    <tr><td>unsupported_value</td><td>data-model</td><td>null</td><td>null</td></tr>
+    <tr><td>action_type_mismatch</td><td>action-type-equal</td><td>action_type</td><td>the member</td></tr>
+    <tr><td>digest_mismatch</td><td>digest-equal</td><td>null</td><td>null</td></tr>
+  </tbody>
+</table>
+      </section>
     </section>
     <section anchor="effect-boundary">
       <name>Effect-Boundary Use</name>
@@ -785,7 +1384,7 @@ XVQaDaZLQQQ
         <name>Mapping Profile Object</name>
         <t>A version 1 profile is a JSON object with the following
         shape:</t>
-        <sourcecode type="json"><![CDATA[
+<sourcecode anchor="ex-map-profile" type="json"><![CDATA[
 {
   "@version": "CAID-MAPPING-PROFILE-v1",
   "profile_id": "urn:example:map:checkout-to-order:1",
@@ -827,83 +1426,190 @@ XVQaDaZLQQQ
         digest of the profile's JCS serialization, prefixed with
         "sha256:". The relying party MUST pin that exact digest. A
         profile identifier by itself is not a trust anchor.</t>
-        <t>Version 1 is a closed object model. A mapper MUST reject an
-        unknown member in the top-level profile, source_format object, or
-        rule object. This prevents a misspelled or future policy member from
-        being covered by the profile digest while being silently ignored by
-        the mapping algorithm.</t>
-        <t>source_format binds the exact media type, schema identifier,
-        and version accepted by the profile. target_action_type names a
-        type from a definition source pinned by the relying party.
-        loss_policy MUST be "no-material-field-loss" in version 1.
-        source_path values are JSON Pointers <xref target="RFC6901"/>.
-        Every material_source_paths entry MUST have exactly one rule,
-        and every REQUIRED field of the target action type MUST be the
-        target of exactly one rule. Duplicate target fields, malformed
-        pointers, missing fields, and unknown transforms are mapping
-        failures.</t>
-        <t>The version 1 transform set is closed:</t>
+        <t>Version 1 is a closed object model. The members of a profile
+        are exactly @version, profile_id, source_format,
+        target_action_type, loss_policy, material_source_paths, rules,
+        and, optionally, omitted_source_fields. source_format has exactly
+        media_type, schema, and version; a rule has exactly source_path,
+        target_field, and transform; an omitted_source_fields entry has
+        exactly source_path and reason. A mapper MUST reject an unknown
+        member at any of these levels, and MUST treat a member whose value
+        is null as malformed. This prevents a misspelled or future policy
+        member from being covered by the profile digest while being
+        silently ignored by the mapping algorithm.</t>
+        <t>The members are constrained as follows. Lengths are counted
+        in UTF-8 octets (<xref target="limits"/>), and strings are
+        compared as exact sequences of code points.</t>
+        <ul spacing="normal">
+          <li>@version is "CAID-MAPPING-PROFILE-v1".</li>
+          <li>profile_id, the three source_format members, and
+          target_action_type are strings of 1 to 512 octets.
+          source_format binds the exact media type, schema identifier,
+          and version accepted by the profile. target_action_type names a
+          type from a definition source pinned by the relying party.</li>
+          <li>loss_policy is a registered loss policy (below).</li>
+          <li>rules is an array of 1 to 128 rules. Each source_path is a
+          JSON Pointer <xref target="RFC6901"/> other than the empty
+          pointer, of at most 2048 octets: the source-path rule of
+          <xref target="appendix-abnf"/>. Each target_field is a field
+          name (<xref target="conformance"/>) other than action_type. Each
+          transform is a registered transform (below).</li>
+          <li>material_source_paths is a non-empty array of source
+          paths.</li>
+          <li>omitted_source_fields, when present, is an array whose
+          entries each carry a source path and a reason string of 1 to
+          2048 octets.</li>
+          <li>No two rules share a source_path or a target_field, no path
+          repeats within material_source_paths or within
+          omitted_source_fields, the set of rule source paths equals the
+          set of material_source_paths, and no omitted path is also a rule
+          source path. Each material source path therefore has exactly one
+          rule.</li>
+          <li>Every REQUIRED field of the target action type is the
+          target_field of exactly one rule.</li>
+        </ul>
+        <t>The loss policies form a closed set, recorded in the CAID
+        Mapping Loss Policies registry
+        (<xref target="iana-loss-policies"/>):</t>
+        <dl newline="false" spacing="normal">
+          <dt>no-material-field-loss:</dt>
+          <dd>omitted_source_fields is absent or empty. Every concept the
+          source treats as material is mapped.</dd>
+          <dt>declared-source-semantic-loss:</dt>
+          <dd>omitted_source_fields is non-empty. Each entry names a source
+          path that the source format treats as material to its own action
+          identity but that the target type does not carry, with a reason.
+          A mapping under this policy never succeeds: it yields
+          INDETERMINATE with declared_source_semantic_loss, which makes the
+          loss reviewable instead of silent.</dd>
+        </dl>
+        <t>The transforms form a closed set, recorded in the CAID Mapping
+        Transforms registry (<xref target="iana-transforms"/>):</t>
         <dl newline="false" spacing="normal">
           <dt>copy:</dt>
-          <dd>Copy the source value after confirming that it has a
-          conforming JCS representation.</dd>
+          <dd>Copy the source value after confirming that it is a value of
+          the data model.</dd>
           <dt>sha256-utf8:</dt>
           <dd>For a source string, emit "sha256:" followed by the
           lowercase hexadecimal SHA-256 digest of its UTF-8 bytes.</dd>
           <dt>sha256-jcs:</dt>
           <dd>Emit "sha256:" followed by the lowercase hexadecimal
           SHA-256 digest of the source value's JCS representation.</dd>
+          <dt>sha256-hex-to-digest:</dt>
+          <dd>For a source string of exactly 64 lowercase hexadecimal
+          characters (the hex-sha256 rule), emit "sha256:" followed by
+          that string.</dd>
         </dl>
-        <t>A mapper MUST refuse an unregistered transform. Version 1
-        performs no unit conversion, currency conversion, date
+        <t>A mapper MUST refuse an unregistered transform or loss policy.
+        Version 1 performs no unit conversion, currency conversion, date
         inference, case folding, or lossy normalization.</t>
       </section>
       <section anchor="mapping-algorithm">
         <name>Mapping and Comparison Algorithm</name>
-        <t>For each source, a conforming mapper:</t>
-        <ol spacing="normal">
-          <li>Requires an affirmative native-verification result from the
-          trusted adapter.</li>
-          <li>Validates the complete profile shape and closed transform
-          set.</li>
-          <li>Recomputes the profile digest and compares it to the
-          relying-party pin.</li>
-          <li>Compares the verifier-derived source descriptor to the
-          profile's source_format object.</li>
-          <li>Confirms one-to-one coverage of material source paths and
-          all REQUIRED target fields.</li>
-          <li>Computes a source digest over the complete source object
-          for reproducibility.</li>
-          <li>Extracts and transforms every rule. A missing path or
-          mistyped value is a mapping failure.</li>
-          <li>Computes a CAID for the projected action under
-          <xref target="computation"/>.</li>
-        </ol>
+        <t>A mapper takes a source, a profile, the verifier-derived source
+        descriptor, the relying party's pinned profile digest, the native
+        verification result, definition sources, enum snapshots, and a
+        suite. The suite is jcs-sha256 when it is absent, and only then.
+        The mapper runs four stages. Each ends in a gate: when a stage
+        produces a reason, mapping stops after that stage, except that
+        stage B always runs after stage A and the two stop together.</t>
+        <dl newline="true" spacing="normal">
+          <dt>Stage A, the profile.</dt>
+          <dd>If the profile is not an object in the data model, its
+          @version differs, it has a member outside the closed shape, or a
+          member fails its type, length, pointer, field-name, or closed-set
+          constraint, stage A yields exactly invalid_mapping_profile.
+          Otherwise stage A evaluates all of the following:
+          invalid_mapping_profile when a uniqueness, set-equality,
+          disjointness, or loss-policy constraint fails; unknown_action_type
+          or invalid_definition when the target type does not resolve
+          (<xref target="resolution"/>); and, when it resolves,
+          unmapped_material_field:&lt;name&gt; for each required field of
+          its definition that is no rule's target_field, in required_fields
+          order.</dd>
+          <dt>Stage B, the preconditions.</dt>
+          <dd>native_verification_required when the native verification
+          result is not affirmative; mapping_profile_unpinned when no
+          pinned digest was supplied or it differs from the profile digest;
+          source_format_mismatch when the source descriptor is not an
+          object or its RFC 8785 encoding differs from that of the
+          profile's source_format; source_not_object when the source is not
+          an object; source_not_canonicalizable when the source is not an
+          object in the data model, so that no source digest exists; and
+          declared_source_semantic_loss when the profile's loss_policy is
+          declared-source-semantic-loss. A source that is not an object
+          yields both source_not_object and source_not_canonicalizable. If
+          stage A or stage B produced any reason, mapping stops.</dd>
+          <dt>Stage C, extraction.</dt>
+          <dd>For each rule, in rule order, the mapper resolves source_path
+          against the source as specified in <xref target="RFC6901"/> and
+          applies the transform. A rule yields at most one reason:
+          invalid_source_path:&lt;p&gt; when a reference token applied to
+          an array does not match the array-index rule;
+          missing_source_field:&lt;p&gt; when a token names no member of an
+          object, an index is not less than the array's length, or a token
+          is applied to a value that is neither an object nor an array;
+          source_value_type_mismatch:&lt;p&gt; when sha256-utf8 or
+          sha256-hex-to-digest receives a value it does not accept; and
+          source_value_not_canonicalizable:&lt;p&gt; when copy or
+          sha256-jcs receives a value outside the data model. Here
+          &lt;p&gt; is the rule's source_path. unknown_transform:&lt;p&gt;
+          is registered for completeness and cannot occur after stage A.
+          If any rule produced a reason, mapping stops.</dd>
+          <dt>Stage D, the projected action.</dt>
+          <dd>The projected action object has an action_type member equal
+          to target_action_type and one member per rule, named by its
+          target_field and holding its transformed value, and no other
+          members. Computation (<xref target="computation"/>) runs over it
+          with the requested suite, definition sources, and enum snapshots.
+          If computation refuses, each of its reasons r, in computation
+          order, becomes mapped_action:r, for example
+          mapped_action:missing_material_field:amount. Otherwise the
+          mapping succeeds.</dd>
+        </dl>
+        <t>A successful mapping result carries the source digest
+        ("sha256:" and the SHA-256 of the source's JCS encoding), the
+        profile digest, the projected action object, the resulting CAID,
+        its digest, and the suite. A comparison result retains both
+        mapping results. A consumer that persists or transmits only the
+        final verdict or CAID loses the information needed to reproduce
+        which profiles and source objects produced that result.
+        <xref target="example-mapping"/> gives an example.</t>
         <t>Comparison of two mapping results returns exactly one of:</t>
         <dl newline="false" spacing="normal">
+          <dt>INDETERMINATE:</dt>
+          <dd>Either mapping failed, or both succeeded but target
+          different action types. In the first case the reasons are those
+          of the left mapping, each prefixed with "left:", followed by
+          those of the right mapping, each prefixed with "right:", for
+          example left:mapped_action:invalid_amount:amount. In the second
+          case the reason is target_action_type_mismatch.</dd>
           <dt>EQUIVALENT_UNDER_PROFILE:</dt>
           <dd>Both mappings succeeded, both target the same action
-          type, and the resulting CAID strings are byte-equal.</dd>
+          type, and the resulting CAID strings are byte-equal. There are
+          no reasons.</dd>
           <dt>NOT_EQUIVALENT:</dt>
           <dd>Both mappings succeeded and target the same action type,
-          but the resulting CAIDs differ.</dd>
-          <dt>INDETERMINATE:</dt>
-          <dd>Either native verification did not succeed, either mapping
-          failed, either profile was not pinned, a
-          source descriptor differed, a target action type differed, or
-          any required fact was absent or ambiguous.</dd>
+          but the resulting CAIDs differ. The reason is
+          material_projection_mismatch.</dd>
         </dl>
         <t>A consumer MUST NOT convert INDETERMINATE into equivalence.
         It also MUST NOT treat EQUIVALENT_UNDER_PROFILE as authorization.
         Authorization remains a separate relying-party decision over
         separately verified evidence.</t>
-        <t>For reproducibility, each successful per-source mapping result
-        MUST carry the complete source-object digest, mapping-profile digest,
-        projected action object, resulting CAID, and suite. A comparison
-        result MUST retain both per-source mapping results. A consumer that
-        persists or transmits only the final verdict or CAID loses the
-        information needed to reproduce which profiles and source objects
-        produced that result.</t>
+      </section>
+      <section anchor="mapping-reasons">
+        <name>Mapping Reasons</name>
+        <t>The mapping reasons are listed in
+        <xref target="tab-mapping-reasons"/>. Within a mapping result,
+        stage A reasons come first, in the order invalid_mapping_profile,
+        unknown_action_type, invalid_definition, and then the
+        unmapped_material_field reasons in required_fields order, followed
+        by stage B reasons in the order listed above; identical reason
+        strings are reduced to the first. Stage C reasons are in rule
+        order, and stage D reasons in computation order. These are the
+        only mapping reasons: a conforming mapper produces a result for
+        every input and never reports an internal fault as a reason.</t>
       </section>
       <section anchor="mapping-assumption">
         <name>Completeness Assumption</name>
@@ -957,125 +1663,693 @@ XVQaDaZLQQQ
     </section>
     <section anchor="security">
       <name>Security Considerations</name>
-      <t>Digest strength. The binding between an identifier and its
-      content rests on the second-preimage resistance of SHA-256. If
-      SHA-256 weakens, the migration path is suite agility: a new
-      suite is registered and issuers move to it, emitting new
-      identifiers. There is no in-place algorithm change within a
-      suite, ever.</t>
-      <t>No domain separation. The digest input carries no domain
-      separation prefix, deliberately, so that existing formats can
-      adopt a digest they may already compute over canonical bytes
-      (<xref target="digest"/>). The compensating control is
-      mandatory: verifiers MUST enforce the check that the in-object
-      action_type equals the type carried in the CAID string.
-      Skipping that check re-opens cross-context reinterpretation, in
-      which bytes canonicalized for one context are presented under a
-      type label from another. The check is step 2 of
-      <xref target="verification"/> and is not optional.</t>
-      <t>Personally identifiable information. Action objects, CAIDs, and
-      their correlations should be assumed to travel and to appear in logs.
-      A plain SHA-256 digest of a low-entropy identifier is pseudonymous, not
-      anonymous: an observer can test likely account, patient, or order
-      identifiers by dictionary attack. The digest field type keeps raw
-      values out of the action object but does not by itself provide
-      confidentiality or unlinkability. Type authors handling personal data
-      SHOULD prefer high-entropy opaque references or a deployment-specific
-      privacy-preserving commitment scheme, document its normalization and
-      correlation scope, and avoid placing unnecessary personal data in the
-      action object. A deployment-specific scheme can require an explicit
+      <section anchor="security-digest">
+        <name>Digest Strength and Suite Agility</name>
+        <t>The binding between an identifier and its content rests on the
+        second-preimage resistance of SHA-256. If SHA-256 weakens, the
+        migration path is suite agility: a new suite is registered and
+        issuers move to it, emitting new identifiers. There is no in-place
+        algorithm change within a suite, ever. A suite's digest is at
+        least 256 bits, and the suite registry does not accept
+        truncated-output algorithms (<xref target="iana-suites"/>).</t>
+        <t>The digest field type is fixed to SHA-256. A new suite does not
+        migrate digests embedded in action objects, so an object's
+        commitment to a field that it carries only as a digest remains
+        bounded by SHA-256 until the type is versioned with a new field
+        type.</t>
+      </section>
+      <section anchor="security-domain">
+        <name>Domain Separation and Signatures</name>
+        <t>The digest input carries no domain separation prefix,
+        deliberately, so that existing formats can adopt a digest they may
+        already compute over canonical bytes (<xref target="digest"/>). The
+        compensating control is mandatory: verifiers MUST enforce the check
+        that the in-object action_type equals the type carried in the CAID
+        string. Skipping that check re-opens cross-context
+        reinterpretation, in which bytes canonicalized for one context are
+        presented under a type label from another. The check is phase 4 of
+        <xref target="verification"/> and is not optional.</t>
+        <t>Because extra members are permitted, one JSON object can be both
+        a valid action object and another protocol's signed payload, and
+        its bare digest is the same in both roles. Reusing an existing
+        digest for correlation is permitted. A signature, MAC, or
+        commitment that is to be read as a commitment to a CAID MUST cover
+        the complete CAID string, whose caid:1:&lt;type&gt;:&lt;suite&gt;:
+        prefix supplies the domain separation that the digest omits.</t>
+      </section>
+      <section anchor="security-truncation">
+        <name>Truncation</name>
+        <t>A CAID MUST NOT be abbreviated for comparison. A display MAY
+        abbreviate an identifier, but an abbreviated form is not a CAID:
+        parsers refuse it (<xref target="parsing"/>), and a relying party
+        MUST NOT compare it with anything.</t>
+      </section>
+      <section anchor="security-replay">
+        <name>Identical Actions and Replay</name>
+        <t>Identical action objects have identical CAIDs. A CAID is not a
+        nonce and gives no replay protection. A consume-once permit keyed
+        on a CAID alone blocks a legitimate second identical operation,
+        and a permit without consume-once semantics authorizes both. A
+        type that must distinguish repeated identical operations SHOULD
+        require an occurrence identifier. The occurrence_id member of
+        tool.call.1 is optional, so two identical tool calls without it
+        share a CAID.</t>
+      </section>
+      <section anchor="security-multiple">
+        <name>Multiple Identifiers and Downgrade</name>
+        <t>An artifact that carries several CAIDs for one action invites a
+        verifier to check only the one that passes. <xref target="equality"/>
+        forbids that: a verifier MUST verify every CAID whose suite it
+        accepts and implements, and a relying party pins the suites it
+        accepts, so an attacker cannot steer verification to a weaker
+        suite.</t>
+      </section>
+      <section anchor="security-parsing">
+        <name>Canonicalization and Parser Differentials</name>
+        <t>Cross-language number serialization is the historical source of
+        canonicalization divergence, which is why numbers are restricted
+        to the value-based integer rule and money is carried as
+        amount-string (<xref target="numbers"/>). JCS and CBOR core
+        deterministic encoding are the only permitted canonical forms; no
+        other serialization, however stable it appears, is a conforming
+        digest input.</t>
+        <t>Host JSON parsers differ in ways that change identified content.
+        Some keep the first of two duplicate members and some the last.
+        Some replace invalid UTF-8 or an unpaired surrogate escape with
+        U+FFFD, so two different inputs yield one CAID. Some accept a byte
+        order mark, NaN, or unbounded nesting. Each difference lets a
+        native verifier and a CAID computation read different values from
+        one text. <xref target="json-text"/> fixes one reading of JSON text,
+        and <xref target="host-values"/> extends it to host values, so that
+        a native verifier and a CAID computation that read one artifact
+        read one value.</t>
+      </section>
+      <section anchor="security-dos">
+        <name>Limits and Denial of Service</name>
+        <t>An implementation bounds the work one input can cause: the text
+        limit is checked before decoding, the depth limit before any
+        recursive traversal, and the canonical limit before hashing
+        (<xref target="limits"/>). Mapping profiles are bounded in rules
+        and string lengths. Registries, definitions, and enum snapshots are
+        exempt from the text limit, so an implementation bounds the size of
+        the configuration it loads by its own policy. Every limit is a
+        refusal with a reason, never an exception or a crash.</t>
+      </section>
+      <section anchor="security-redos">
+        <name>Code Format Matching</name>
+        <t>A pattern language chosen per definition would let a definition
+        author, or anyone who can supply a definition over the network,
+        choose a pattern with catastrophic backtracking. A pattern such as
+        (a|a){1,99} takes time exponential in the length of the input in
+        common backtracking engines. CAID has no such language. A code
+        field names a registered format, and every format is a fixed
+        grammar that matches strings of bounded length and compiles to a
+        regular expression with no nested quantifiers and no quantified
+        alternatives that can begin with the same character. Matching is
+        therefore linear in the length of the input in every engine. An
+        implementation MAY match a format with a hand-written recognizer
+        instead of a regular expression.</t>
+      </section>
+      <section anchor="security-unicode">
+        <name>Unicode Normalization and Confusables</name>
+        <t>CAID performs no Unicode normalization. Visually identical
+        strings in different normalization forms, or homoglyphs such as
+        U+0430 in place of "a", are different content with different
+        CAIDs. That fails safe for equality but not for human review. An
+        interface that displays an action object for approval SHOULD apply
+        confusable detection to identifier-like fields such as hosts,
+        accounts, e-mail addresses, and tool names. A type whose fields
+        name such identifiers SHOULD state their normalization in
+        digest_notes, and issuers apply it before computing. The action
+        type and the suite are ASCII by grammar.</t>
+      </section>
+      <section anchor="security-definitions">
+        <name>Definition Stability and Distribution</name>
+        <t>A versioned action-type definition is immutable once published,
+        apart from the monotone enum advance of <xref target="names"/>.
+        definition_sha256 identifies validation semantics exactly, and a
+        relying party that needs exact reproducibility pins it. A local and
+        a registered definition that share a name but differ in validation
+        semantics are not the same type, and resolution refuses the pair
+        when both are configured, so a second definition slipped into a
+        configured source causes invalid_definition instead of silently
+        changing validation. A definition source obtained over the network
+        MUST be checked against a pinned registry digest or pinned
+        definition_sha256 values before use.</t>
+        <t>A code-set name or URL does not identify immutable validation
+        semantics. Issuers and verifiers MUST use the exact locally
+        available snapshot and verified digest required by
+        <xref target="enum-resolution"/>. Resolving a mutable network
+        resource at computation or verification time can make the same
+        object alternate between valid and invalid and is prohibited.
+        Missing, unresolved, or digest-mismatched snapshots fail
+        closed.</t>
+      </section>
+      <section anchor="security-mapping">
+        <name>Mapping</name>
+        <t>Direct CAID verification does not infer semantic equality. The
+        Action-Mapping Profile makes only a narrower statement about
+        material projections under exact pinned profiles. A malicious or
+        incomplete profile can omit a concept that the relying party should
+        have considered material. Profile selection is therefore a
+        relying-party policy decision; unpinned, lossy, or ambiguous
+        mappings MUST yield INDETERMINATE.</t>
+        <t>A valid native signature does not make unsigned members beside
+        the signed payload trustworthy. A native adapter MUST establish
+        that every mapped field is covered by the native integrity
+        mechanism. The source descriptor is verifier-derived, not
+        presenter-asserted (<xref target="mapping-boundary"/>).</t>
+      </section>
+      <section anchor="security-capability">
+        <name>A CAID Is Not a Capability</name>
+        <t>Possession of an identifier proves nothing and grants nothing.
+        Protocols MUST NOT treat knowledge of a CAID as evidence of
+        anything beyond knowledge of the object's content. A CAID also
+        hides nothing that can be guessed; <xref target="privacy"/>
+        explains why.</t>
+      </section>
+    </section>
+    <section anchor="privacy">
+      <name>Privacy Considerations</name>
+      <t>A CAID has the same confidentiality as its action object. It is
+      an unsalted, deterministic hash of the whole object. When every
+      material field of an object is guessable, as with a small amount, a
+      currency, a known payee, and a sequential instruction identifier,
+      anyone who holds the identifier can recover the object by testing
+      candidates offline, at the cost of one SHA-256 computation each. The
+      tool.call.1 example of <xref target="tool-call-type"/> shows this:
+      enumerating amount_usd upward from 1 recovers the value 4000 after
+      4000 candidates. A CAID therefore SHOULD be logged, transmitted, and
+      placed in URLs only where the action object itself could be.</t>
+      <t>The digest field type keeps raw values out of an action object
+      but does not by itself provide confidentiality or unlinkability. A
+      plain SHA-256 digest of an account number, e-mail address, or
+      patient identifier is pseudonymous, not anonymous: an observer can
+      test likely values by dictionary attack. The digest-typed values in
+      <xref target="appendix-examples"/> are digests of short example
+      strings and can be recovered this way.</t>
+      <t>Type authors handling personal data SHOULD prefer high-entropy
+      opaque references or a deployment-specific privacy-preserving
+      commitment scheme, document its normalization and correlation scope,
+      and avoid placing unnecessary personal data in the action object. A
+      type whose required fields can all be low-entropy SHOULD require a
+      member that carries at least 128 bits of entropy from the system of
+      record, such as a random instruction or occurrence identifier. A
+      deployment-specific commitment scheme can require an explicit
       mapping profile for cross-domain joins.</t>
-      <t>Canonicalization malleability. Cross-language number
-      serialization is the historical source of canonicalization
-      divergence, which is why numbers are restricted to the
-      value-based integer rule and money is carried as amount-string
-      (<xref target="object"/>). JCS and CBOR core deterministic
-      encoding are the only permitted canonical forms; no other
-      serialization, however stable it appears, is a conforming
-      digest input.</t>
-      <t>A CAID is not a capability. Possession of an identifier
-      proves nothing and grants nothing. Identifiers SHOULD be treated
-      as public values: they may appear in logs, URLs, and audit
-      records without weakening anything. Protocols MUST NOT treat
-      knowledge of a CAID as evidence of anything beyond knowledge of
-      the object's content.</t>
-      <t>Profile-bounded equivalence. Direct CAID verification does not
-      infer semantic equality. The Action-Mapping Profile makes only a
-      narrower statement about material projections under exact pinned
-      profiles. A malicious or incomplete profile can omit a concept
-      that the relying party should have considered material. Profile
-      selection is therefore a relying-party policy decision; unpinned,
-      lossy, or ambiguous mappings MUST yield INDETERMINATE.</t>
-      <t>Native integrity coverage. A valid native signature does not
-      make unsigned members beside the signed payload trustworthy. A
-      native adapter MUST establish that every mapped field is covered
-      by the native integrity mechanism. The source descriptor is
-      verifier-derived, not presenter-asserted
-      (<xref target="mapping-boundary"/>).</t>
-      <t>Definition stability. A versioned action-type definition is
-      immutable once active. Cross-domain verifiers MUST pin an exact
-      definition source or registry snapshot. A local and a registered
-      definition that share a name but differ in validation semantics
-      MUST NOT be treated as the same type.</t>
-      <t>External enum drift. A code-set name or URL does not identify
-      immutable validation semantics. Issuers and verifiers MUST use the
-      exact locally available snapshot and verified digest required by
-      <xref target="enum-resolution"/>. Resolving a mutable network resource
-      at computation or verification time can make the same object alternate
-      between valid and invalid and is prohibited. Missing, unresolved, or
-      digest-mismatched snapshots fail closed.</t>
-      <t>Duplicate object member names and unpaired surrogates. A raw JSON
-      parser feeding CAID computation or mapping MUST reject duplicate member
-      names before constructing the data model. Accepting duplicate names can
-      make the native verifier and mapper select different values. The parser
-      also MUST NOT replace an unpaired surrogate escape, such as \ud800,
-      with U+FFFD: that silently changes the identified content, so two
-      different inputs can yield one CAID, and it hides the refusal that
-      <xref target="computation"/> requires.</t>
+      <t>Action objects, CAIDs, verification details, and their
+      correlations should be assumed to travel and to appear in logs.</t>
     </section>
     <section anchor="iana">
       <name>IANA Considerations</name>
-      <t>This document requests no immediate IANA actions.</t>
-      <t>Two registries are described: the CAID action type registry
-      (<xref target="types"/>), whose entries follow the normative
-      schema of <xref target="schema"/>, and the CAID suite registry
-      (<xref target="suites"/>), which for this version contains
-      jcs-sha256 and cbor-sha256. Both are published as
-      machine-readable JSON under a public-domain dedication and are
-      maintained by the author's organization pending adoption. Active
-      entries are immutable in every field that affects validation or
-      material meaning, except for the value-set pin correction permitted
-      in <xref target="names"/>. The stated intent is to transition maintenance
-      to IANA or another neutral standards body if this specification
-      is adopted. A future revision would then specify registration
-      policies for both registries.</t>
-      <t>A URN namespace registration for CAID identifiers may be
-      useful in the future; it is out of scope for this revision.</t>
+      <t>IANA is requested to create a registry group named "Canonical
+      Action Identifier (CAID)" containing the six registries of
+      Sections <xref target="iana-suites" format="counter"/> through
+      <xref target="iana-loss-policies" format="counter"/>, and to register
+      the provisional URI scheme of <xref target="iana-uri"/>. The
+      registration policies are those of <xref target="RFC8126"/>. Until
+      IANA creates the registries, the machine-readable reference registry
+      <xref target="CAID-REGISTRY"/>, published under a public-domain
+      dedication, records their contents. The reference for every initial
+      entry of every registry below is this document.</t>
+      <section anchor="iana-suites">
+        <name>CAID Suites</name>
+        <t>Registration policy: Specification Required. Each entry
+        records: the suite name, which matches the suite rule of
+        <xref target="appendix-abnf"/>; the canonicalization scheme and its
+        reference; the digest algorithm and its reference; the digest
+        length in octets, at least 32; the status, active or deprecated;
+        and a reference. The designated expert refuses truncated digest
+        outputs and names that differ from a registered name only by
+        hyphens. A registered name is never reassigned, an entry is never
+        removed, and a suite is never redefined; a suite whose algorithm
+        weakens is deprecated, and a new suite is registered. The initial
+        contents are:</t>
+<table anchor="tab-suites">
+  <name>CAID Suites: Initial Contents</name>
+  <thead><tr><th>Suite</th><th>Canonicalization</th><th>Digest</th><th>Octets</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>jcs-sha256</td><td>RFC 8785</td><td>SHA-256, RFC 6234</td><td>32</td><td>active</td></tr>
+    <tr><td>cbor-sha256</td><td>RFC 8949, Section 4.2</td><td>SHA-256, RFC 6234</td><td>32</td><td>active</td></tr>
+  </tbody>
+</table>
+      </section>
+      <section anchor="iana-action-types">
+        <name>CAID Action Types</name>
+        <t>Registration policy: Specification Required. Each entry records:
+        the action type, which matches the action-type rule of
+        <xref target="appendix-abnf"/> and has at least two name segments;
+        the definition, in the schema of <xref target="schema"/>; its
+        definition_sha256; the status; supersedes and superseded_by where
+        they apply; the change controller; and a reference.</t>
+        <t>The content of an entry that affects validation is immutable,
+        with two exceptions: the status may move from active to deprecated,
+        with superseded_by naming the successor; and the expert may approve
+        a monotone enum advance (<xref target="names"/>) after checking that
+        every previously accepted value remains accepted. An advance
+        updates definition_sha256, and the entry keeps its earlier values.
+        The expert applies the material-fields test: every required field
+        is material; amounts are amount-string; identifiers that are
+        personal or secret-adjacent are digest fields; every enum is
+        closed or pinned to an integrity-checked snapshot; and values from
+        large, changing, or licensed code systems are code fields, with no
+        value set and no licensed content.</t>
+        <t>The initial contents are the entries of registry version 5 of
+        the reference registry <xref target="CAID-REGISTRY"/>: 62 type
+        versions, 53 active and 9 deprecated. That registry version is the
+        file action-types.json whose SHA-256 digest, in hexadecimal, is
+        1e30ddd312c888f6a27055dac0ed453398e20b64cfdcb7c5019fcf0e1ac2551a.</t>
+      </section>
+      <section anchor="iana-field-types">
+        <name>CAID Field Types</name>
+        <t>This registry records field types and code formats. A field
+        type changes what every implementation validates, so its
+        registration policy is IETF Review; an implementation that does
+        not know a field type refuses the field whenever it is present. A
+        field type entry records the name, the JSON kind of its values, the
+        members it defines, its refusal reasons, and a reference.</t>
+        <t>A code format adds syntax for code fields without changing
+        processing, so its registration policy is Specification Required.
+        A code format entry records the format name, which matches the
+        format-name rule; its grammar in ABNF <xref target="RFC5234"/>
+        <xref target="RFC7405"/> over printable ASCII; the maximum length
+        of a matching string; and a reference. The designated expert
+        checks that the format fixes syntax only, never a value set; that
+        it matches only strings of bounded length; that it compiles to a
+        regular expression with no nested quantifiers and no quantified
+        alternatives that can begin with the same character
+        (<xref target="security-redos"/>); that each distinct lexical form
+        of a code is a distinct format; and that the registration carries
+        no licensed content. The initial contents are:</t>
+<table anchor="tab-field-types">
+  <name>CAID Field Types: Field Types</name>
+  <thead><tr><th>Field type</th><th>JSON kind</th><th>Members</th><th>Refusals</th></tr></thead>
+  <tbody>
+    <tr><td>string</td><td>string</td><td>none</td><td>mistyped_field</td></tr>
+    <tr><td>amount-string</td><td>string</td><td>none</td><td>invalid_amount, mistyped_field</td></tr>
+    <tr><td>digest</td><td>string</td><td>none</td><td>mistyped_field</td></tr>
+    <tr><td>enum</td><td>string</td><td>values, values_ref, values_snapshot, values_sha256</td><td>mistyped_field</td></tr>
+    <tr><td>code</td><td>string</td><td>code_system, format</td><td>invalid_code, mistyped_field</td></tr>
+    <tr><td>timestamp</td><td>string</td><td>none</td><td>mistyped_field</td></tr>
+    <tr><td>integer</td><td>number</td><td>none</td><td>mistyped_field</td></tr>
+    <tr><td>boolean</td><td>boolean</td><td>none</td><td>mistyped_field</td></tr>
+    <tr><td>object</td><td>object</td><td>none</td><td>mistyped_field</td></tr>
+    <tr><td>array</td><td>array</td><td>none</td><td>mistyped_field</td></tr>
+  </tbody>
+</table>
+<table anchor="tab-code-formats">
+  <name>CAID Field Types: Code Formats</name>
+  <thead><tr><th>Code format</th><th>Maximum length</th></tr></thead>
+  <tbody>
+    <tr><td>icd-10-cm</td><td>8</td></tr>
+    <tr><td>ndc-11</td><td>11</td></tr>
+    <tr><td>ndc-10-hyphenated</td><td>12</td></tr>
+    <tr><td>cpt</td><td>5</td></tr>
+    <tr><td>hcpcs-level-ii</td><td>5</td></tr>
+    <tr><td>hcpcs</td><td>5</td></tr>
+    <tr><td>iso-3166-1-alpha-2</td><td>2</td></tr>
+    <tr><td>iso-3166-2</td><td>6</td></tr>
+    <tr><td>iso20022-external-code</td><td>4</td></tr>
+    <tr><td>nacha-sec</td><td>3</td></tr>
+  </tbody>
+</table>
+      </section>
+      <section anchor="iana-reasons">
+        <name>CAID Reason Codes</name>
+        <t>Registration policy: Specification Required. Each entry records:
+        the reason code, lowercase letters and underscores; its parameter
+        kind (none, field-name, source-path, or compute-reason); the
+        operations and phases, or the mapping stage, that report it; and a
+        reference. The reason rule of <xref target="appendix-abnf"/>
+        accepts exactly the reasons registered by this document, and a
+        document that registers a reason updates that rule. The initial
+        contents are the two tables of
+        <xref target="appendix-reasons"/>.</t>
+      </section>
+      <section anchor="iana-transforms">
+        <name>CAID Mapping Transforms</name>
+        <t>Registration policy: Specification Required. Each entry records:
+        the transform name; the source values it accepts; its output; the
+        reason for a value it does not accept; and a reference. The initial
+        contents are:</t>
+<table anchor="tab-transforms">
+  <name>CAID Mapping Transforms: Initial Contents</name>
+  <thead><tr><th>Transform</th><th>Accepts</th><th>Output</th><th>Refusal</th></tr></thead>
+  <tbody>
+    <tr><td>copy</td><td>any value of the data model</td><td>the value</td><td>source_value_not_canonicalizable</td></tr>
+    <tr><td>sha256-utf8</td><td>a string</td><td>"sha256:" and the SHA-256 of its UTF-8 octets</td><td>source_value_type_mismatch</td></tr>
+    <tr><td>sha256-jcs</td><td>any value of the data model</td><td>"sha256:" and the SHA-256 of its RFC 8785 encoding</td><td>source_value_not_canonicalizable</td></tr>
+    <tr><td>sha256-hex-to-digest</td><td>a string matching hex-sha256</td><td>"sha256:" and the string</td><td>source_value_type_mismatch</td></tr>
+  </tbody>
+</table>
+      </section>
+      <section anchor="iana-loss-policies">
+        <name>CAID Mapping Loss Policies</name>
+        <t>Registration policy: Specification Required. Each entry records:
+        the policy name; the constraint on omitted_source_fields; its
+        effect on the mapping result; and a reference. The initial contents
+        are:</t>
+<table anchor="tab-loss-policies">
+  <name>CAID Mapping Loss Policies: Initial Contents</name>
+  <thead><tr><th>Policy</th><th>Omissions</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td>no-material-field-loss</td><td>absent or empty</td><td>none</td></tr>
+    <tr><td>declared-source-semantic-loss</td><td>non-empty</td><td>INDETERMINATE, reason declared_source_semantic_loss</td></tr>
+  </tbody>
+</table>
+      </section>
+      <section anchor="iana-uri">
+        <name>The "caid" URI Scheme</name>
+        <t>A CAID is a syntactically valid URI <xref target="RFC3986"/>: the
+        scheme "caid" followed by ":" and a rootless path made of
+        unreserved characters and ":". IANA is requested to
+        register the scheme in the "Uniform Resource Identifier (URI)
+        Schemes" registry with the following template
+        <xref target="RFC7595"/>:</t>
+        <dl newline="false" spacing="normal">
+          <dt>Scheme name:</dt>
+          <dd>caid</dd>
+          <dt>Status:</dt>
+          <dd>Provisional</dd>
+          <dt>Applications/protocols that use this scheme name:</dt>
+          <dd>Authorization receipts, permits, execution attestations,
+          audit records, and other artifacts that identify an action by
+          its Canonical Action Identifier.</dd>
+          <dt>Contact:</dt>
+          <dd>Iman Schrock &lt;team@emiliaprotocol.ai&gt;</dd>
+          <dt>Change controller:</dt>
+          <dd>Iman Schrock &lt;team@emiliaprotocol.ai&gt;</dd>
+          <dt>References:</dt>
+          <dd>This document.</dd>
+        </dl>
+        <t>Syntax: the caid rule of <xref target="appendix-abnf"/>.
+        Semantics: a caid URI identifies typed action content by digest.
+        It is not a locator, and dereferencing it is undefined. Encoding:
+        the identifier is ASCII and contains no percent-encoded octets; a
+        percent-encoded form is not a CAID, and a carrying protocol removes
+        any transport encoding before parsing. Interoperability: CAIDs are
+        compared as exact strings (<xref target="equality"/>).
+        <xref target="RFC3986"/> treats scheme names as case-insensitive
+        and makes lowercase the normal form; every CAID is already in that
+        form, and a CAID parser refuses any other case, so an application
+        that normalizes a URI before comparison obtains the same string.
+        Security: <xref target="security"/> and
+        <xref target="privacy"/>.</t>
+      </section>
+      <section anchor="iana-media-types">
+        <name>Media Types</name>
+        <t>This document registers no media type <xref target="RFC6838"/>.
+        A media type earns registration when a recipient must recognize a
+        message by it, and no step of this document sends one of its
+        objects that way:</t>
+        <ul spacing="normal">
+          <li>A type definition is configuration. A relying party pins it
+          by definition_sha256 or by a registry digest
+          (<xref target="definition-digest"/>), and a definition obtained
+          over the network is checked against that pin before use, never
+          trusted for its label.</li>
+          <li>A mapping profile is pinned by its digest and comes from
+          relying-party configuration; a label inside a presented artifact
+          is never accepted as the profile or its source format
+          (<xref target="mapping-boundary"/>).</li>
+          <li>An enum snapshot is local by rule: computation and
+          verification never fetch one (<xref target="enum-resolution"/>).</li>
+          <li>An action object travels inside the artifact that carries it,
+          under that artifact's own format.</li>
+        </ul>
+        <t>A specification that defines a transfer of any of these objects
+        can register a media type for it.</t>
+      </section>
+    </section>
+    <section anchor="impl-status">
+      <name>Implementation Status</name>
+      <t>This section records the known implementations of this
+      specification at the time of posting, as described in
+      <xref target="RFC7942"/>. Listing an implementation here does not
+      imply endorsement by the IETF. The RFC Editor is asked to remove
+      this section before publication.</t>
+      <t>EMILIA Protocol, Inc., the author's organization, maintains three
+      implementations, in JavaScript, Python, and Go. Each implements
+      decoding, parsing, computation, verification, the definition digest,
+      and mapping for the jcs-sha256 suite, and refuses cbor-sha256 as
+      unknown_suite. The JavaScript implementation uses only the platform's
+      cryptographic library, and the Python and Go implementations use only
+      their standard libraries. All three run one shared conformance corpus
+      of core, mapping, and cross-format interoperability vectors, and a
+      copy of the JavaScript implementation ships in the author's
+      verification package. They are licensed under Apache-2.0 and
+      published at
+      &lt;https://github.com/emiliaprotocol/emilia-protocol/tree/main/caid&gt;.
+      Contact: team@emiliaprotocol.ai.</t>
+      <t>All three implementations come from the author's organization,
+      and none of them is independent. No independent implementation is
+      known to the author. A party that runs these implementations or
+      their conformance corpus reproduces the author's results; such
+      external re-runs are reproductions, not independent
+      implementations.</t>
     </section>
     <section anchor="changes-03">
       <name>Changes since -03</name>
-      <t>The amount-string field type is now defined in ABNF. Its integer
-      part has no leading zero other than a lone "0". The -03 prose admitted
-      "01.5", which the reference implementations and the shared conformance
-      corpus already refuse; an implementation that followed the prose alone
-      and accepted such a string must now refuse it. A string that fails the
-      rule is refused as invalid_amount:&lt;name&gt; and a non-string value as
-      mistyped_field:&lt;name&gt;, where -03 allowed either reason for the
-      former. The type definition schema now states that field notes never
-      change validation.</t>
-      <t>An unknown suite is now defined as one not in the suite registry.
-      A registered suite that an implementation does not implement still
-      parses, and computation and verification report it as unknown_suite;
-      the Verification section now names that reason, which -03 left
-      unstated. The Identifier Syntax section now lists the final digest
-      characters whose unused bits are zero. The identifier grammar and the
-      other parsing rules are unchanged. An implementation that accepted a
-      suite outside the registry, a suite beginning with a digit, or a
-      digest whose final character sets an unused bit did not conform to
-      -03 or any earlier revision; the reference implementations did so
-      and now refuse all three as malformed_caid.</t>
-      <t>No other normative text changes. Action Objects that the reference
-      implementations accept produce the same CAID bytes as under -03.</t>
+      <t>This revision makes the processing model complete and checkable,
+      and it is a substantive revision. Canonicalization, the suites, the
+      digest, and the identifier format do not change. The lists below
+      give every normative change. Each item in the first four lists is
+      pinned by conformance vectors.</t>
+      <section anchor="changes-03-refused">
+        <name>Newly Refused Inputs</name>
+        <t>This revision refuses each of the following inputs, which -03
+        accepted or did not address. The first four items refuse action
+        objects whose CAIDs were valid under -03.</t>
+        <ul spacing="normal">
+          <li anchor="chg-refused-depth">Action objects nested deeper than
+          64 levels: malformed_json as JSON text, unsupported_value as host
+          values (Sections <xref target="data-model" format="counter"/> and
+          <xref target="json-text" format="counter"/>).</li>
+          <li anchor="chg-refused-canonical-size">Action objects whose
+          canonical encoding exceeds 16,777,216 octets: unsupported_value
+          (<xref target="data-model"/>).</li>
+          <li anchor="chg-refused-noncharacter">Strings and member names
+          that contain a Unicode noncharacter, which I-JSON excludes:
+          malformed_json as JSON text, unsupported_value as host values
+          (Sections <xref target="data-model" format="counter"/> and
+          <xref target="json-text" format="counter"/>).</li>
+          <li anchor="chg-refused-text-size">JSON text longer than
+          33,554,432 octets, even when the object it encodes is within the
+          canonical limit: malformed_json (<xref target="json-text"/>).</li>
+          <li anchor="chg-refused-json-text">JSON text that begins with a
+          byte order mark, is not valid UTF-8, is not exactly one JSON text,
+          or contains NaN, Infinity, or an unescaped control character:
+          malformed_json. <xref target="RFC8259"/> lets a parser ignore a
+          byte order mark; this profile refuses it.</li>
+          <li anchor="chg-refused-duplicate-names">JSON text with duplicate
+          member names, including names that differ only in escaping:
+          malformed_json. -03 required a raw parser to reject duplicates in
+          its Security Considerations; the rule is now part of the decoder
+          and has a reason.</li>
+          <li anchor="chg-refused-host-values">Host values outside the data
+          model, which an implementation now refuses instead of
+          serializing as another value (<xref target="host-values"/>).</li>
+          <li anchor="chg-refused-definitions">Action objects under a
+          nonconforming definition, or under two configured definitions of
+          one type with different validation projections:
+          invalid_definition (Sections <xref target="conformance"
+          format="counter"/> and <xref target="resolution"
+          format="counter"/>). -03 did not say what a nonconforming
+          definition does, so an implementation could issue a CAID that
+          bound none of the intended fields.</li>
+          <li anchor="chg-refused-field-names">Definitions with a field name
+          that is empty, contains ":", is action_type, or repeats, and field
+          entries of a registered field type that carry members the type
+          does not define: invalid_definition
+          (<xref target="conformance"/>).</li>
+          <li anchor="chg-refused-timestamps">Timestamps with a lowercase
+          "t" or "z", or with a second of 60, which <xref target="RFC3339"/>
+          permits and the -03 description "an RFC 3339 timestamp in UTC"
+          therefore admitted: mistyped_field
+          (<xref target="fieldtypes"/>).</li>
+          <li anchor="chg-refused-caid-case">Identifiers that begin with
+          "CAID:" or "Caid:", which the -03 ABNF admitted because an
+          <xref target="RFC5234"/> string literal is case-insensitive:
+          malformed_caid (<xref target="parsing"/>).</li>
+          <li anchor="chg-refused-amount">Amount strings whose integer part
+          has a leading zero, such as "01.5", which the -03 prose admitted:
+          invalid_amount (<xref target="fieldtypes"/>).</li>
+          <li anchor="chg-refused-suite">Identifiers whose suite begins with
+          a digit, which the -03 suite ABNF already excluded, and
+          identifiers whose digest's final character sets an unused bit,
+          which -03 did not address: malformed_caid
+          (<xref target="parsing"/>). The reference implementations
+          accepted both before this revision.</li>
+          <li anchor="chg-refused-mapping">Mapping profiles with two rules
+          for one source path, which -03 already forbade, a member whose
+          value is null, a target_field that is not a string, a string
+          outside its limit when measured in UTF-8 octets, or a
+          target_action_type longer than 512 octets: invalid_mapping_profile
+          (<xref target="mapping-object"/>).</li>
+        </ul>
+      </section>
+      <section anchor="changes-03-features">
+        <name>New Rules and Features</name>
+        <ul spacing="normal">
+          <li anchor="chg-json-text">JSON text input
+          (<xref target="json-text"/>). Action objects and mapping sources
+          received as text are decoded under an I-JSON profile, and every
+          decoding failure is the single reason malformed_json. Definitions,
+          registries, snapshots, and profiles get the same rules without the
+          size limit.</li>
+          <li anchor="chg-data-model">The data model
+          (<xref target="data-model"/>), the number rule
+          (<xref target="numbers"/>), and one table of limits
+          (<xref target="limits"/>). A literal that overflows binary64 is
+          unsupported_number; one that underflows is the integer 0.</li>
+          <li anchor="chg-host-values">Host values
+          (<xref target="host-values"/>): refused, never rewritten, never an
+          exception, and with the same result as the corresponding JSON
+          text.</li>
+          <li anchor="chg-reason-order">Reason order
+          (<xref target="reason-order"/>). Computation phases 0 through 2 are
+          gates that yield exactly one reason. The other phases all run,
+          and their reasons are sorted by phase and field position and
+          deduplicated, so unsupported_number always precedes
+          unsupported_value.</li>
+          <li anchor="chg-definition-conformance">Definition conformance and
+          resolution (Sections <xref target="conformance" format="counter"/>
+          and <xref target="resolution" format="counter"/>). A field name is
+          a non-empty string without ":", unique, and not action_type. The
+          order of configured definitions no longer affects the
+          result.</li>
+          <li anchor="chg-definition-digest">definition_sha256
+          (<xref target="definition-digest"/>), which computation and
+          verification report.</li>
+          <li anchor="chg-definition-mismatch">An expected definition_sha256
+          for verification, and the reason definition_mismatch
+          (<xref target="verification"/>).</li>
+          <li anchor="chg-verify-details">Verification details, one
+          closed-shape entry per underlying reason
+          (<xref target="details"/>).</li>
+          <li anchor="chg-deprecated">Status never affects computation or
+          verification, so deprecated types resolve, compute, and verify
+          (<xref target="status"/>).</li>
+          <li anchor="chg-code-type">The code field type, named code
+          formats, and the reason invalid_code
+          (<xref target="code-fields"/>).</li>
+          <li anchor="chg-field-type-rules">Field types match whole values,
+          empty strings are present, and the integer type is value-based
+          (<xref target="fieldtypes"/>).</li>
+          <li anchor="chg-pin-rule">The monotone enum advance
+          (<xref target="names"/>) replaces the narrow correction rule of
+          -03. The -03 sentences that treated any added value as a new type
+          version are replaced; a relying party that needs exact
+          reproducibility pins definition_sha256.</li>
+          <li anchor="chg-option-guards">An option of the wrong type counts
+          as absent (<xref target="computation"/>).</li>
+          <li anchor="chg-accept-unregistered">The accept-unregistered
+          verifier option of -03 is removed. An object whose type has no
+          definition fails verification as invalid_object with the detail
+          unknown_action_type (<xref target="local"/>).</li>
+          <li anchor="chg-mapping-extensions">The mapping profile member
+          omitted_source_fields, the loss policy
+          declared-source-semantic-loss, and the transform
+          sha256-hex-to-digest (<xref target="mapping-object"/>). The
+          reference implementations and the shared interoperability corpus
+          already used them; a mapper written from -03 refused such
+          profiles.</li>
+          <li anchor="chg-mapping-limits">Mapping limits, counted in UTF-8
+          octets: 1 to 128 rules, source paths of at most 2048 octets,
+          profile strings of 1 to 512 octets, and omission reasons of 1 to
+          2048 octets (<xref target="limits"/>).</li>
+          <li anchor="chg-mapping-target-field">A target_field may be any
+          field name other than action_type, so a required field such as
+          @version can be mapped (<xref target="mapping-object"/>).</li>
+          <li anchor="chg-mapping-order">Mapping stages A through D, and the
+          left: and right: composition of comparison reasons, are normative
+          (Sections <xref target="mapping-algorithm" format="counter"/> and
+          <xref target="mapping-reasons" format="counter"/>).</li>
+          <li anchor="chg-mapping-suite">The mapper uses jcs-sha256 only
+          when no suite is given (<xref target="mapping-algorithm"/>).</li>
+        </ul>
+      </section>
+      <section anchor="changes-03-reasons">
+        <name>Reason Changes</name>
+        <ul spacing="normal">
+          <li anchor="chg-reason-unknown-suite-parse">A grammatical suite
+          outside the suite registry parses to unknown_suite instead of
+          malformed_caid (<xref target="parsing"/>). This changes
+          verification step 1 of -03, "Strict-parse the CAID string ...,
+          else malformed_caid": verification phase 1 now yields
+          malformed_caid or unknown_suite (<xref target="verification"/>).
+          The input is refused either way.</li>
+          <li anchor="chg-reason-surrogate">An unpaired surrogate escape in
+          JSON text is malformed_json; in a host value it remains
+          unsupported_value (Sections <xref target="json-text"
+          format="counter"/> and <xref target="host-values"
+          format="counter"/>).</li>
+          <li anchor="chg-reason-amount">A string that fails amount-string is
+          invalid_amount and a value that is not a string is mistyped_field;
+          -03 allowed either reason for the former
+          (<xref target="fieldtypes"/>).</li>
+          <li anchor="chg-reason-registered-suite">A registered suite that an
+          implementation does not implement parses, and computation and
+          verification report it as unknown_suite; -03 left the
+          verification reason unstated
+          (<xref target="verification"/>).</li>
+        </ul>
+      </section>
+      <section anchor="changes-03-registry">
+        <name>Reference Registry</name>
+        <ul spacing="normal">
+          <li anchor="chg-registry-v5">The reference registry
+          <xref target="CAID-REGISTRY"/> advances to registry version 5,
+          with 62 type versions: 53 active, every one of which can compute,
+          and 9 deprecated. dns.record.delete.1 and vendor.onboard.1
+          receive their first enum pins. key.create.2, key.rotate.2,
+          firewall.rule.open.2, pii.export.2, and phi.disclose.2 resolve
+          their open enums with existing field types. payment.refund.2,
+          ach.debit.originate.2, rx.dispense.2, and prior.auth.approve.2 use
+          code fields. contract.execute.2 requires both contract_value and
+          currency; contract.execute.1 stays active for contracts that state
+          no monetary value. The nine superseded version 1 types are
+          deprecated and still resolve. Registry version 4 is kept byte for
+          byte, and every type's definition_sha256 is published.</li>
+        </ul>
+      </section>
+      <section anchor="changes-03-editorial">
+        <name>Other Changes</name>
+        <t>The following changes add or correct text without changing
+        what an implementation accepts, refuses, or reports.</t>
+        <ul spacing="normal">
+          <li anchor="ed-structure">A processing overview
+          (<xref target="overview"/>) and three appendices: the collected
+          ABNF, now the only statement of every grammar, with case-sensitive
+          strings <xref target="RFC7405"/>; the reason tables; and worked
+          examples that recompute.</li>
+          <li anchor="ed-example">The identifier example of
+          <xref target="syntax"/>, which had no action object, is replaced
+          by the example of <xref target="example-compute"/>. Long lines in
+          examples are folded as specified in
+          <xref target="RFC8792"/>.</li>
+          <li anchor="ed-security">Security Considerations now cover
+          truncation, replay, multiple identifiers, signature coverage,
+          limits, code-format matching, confusables, and digest fields under
+          suite migration. The parser requirements moved from Security
+          Considerations to <xref target="json-text"/>.</li>
+          <li anchor="ed-privacy">Privacy Considerations replace the
+          statement that identifiers may be treated as public values with a
+          confidentiality statement and the preimage-guessing risk.</li>
+          <li anchor="ed-iana">IANA Considerations request six registries
+          and a provisional URI scheme and explain why no media type is
+          registered. The statement that the author's organization maintains
+          the registries until adoption is removed.</li>
+          <li anchor="ed-implementation-status">An Implementation Status
+          section <xref target="RFC7942"/>.</li>
+          <li anchor="ed-references">Normative references to RFC 8259,
+          RFC 3629, RFC 7405, RFC 7493, and RFC 3986, and informative
+          references to RFC 7595, RFC 7942, RFC 8126, RFC 8792, and
+          RFC 6838.</li>
+          <li anchor="ed-wording">Wording that referred to earlier revisions
+          as "this revision" is made revision-neutral.</li>
+        </ul>
+      </section>
     </section>
     <section anchor="changes">
       <name>Changes since -02</name>
@@ -1092,9 +2366,9 @@ XVQaDaZLQQQ
       <t>Required-field presence means a member of the action object itself.
       Strings and member names containing an unpaired surrogate are refused
       as unsupported_value, making explicit the refusal that RFC 8785 already
-      requires. Registries may correct an existing value-set pin in a new
-      registry version under the narrow conditions in
-      <xref target="names"/>.</t>
+      requires. Registries could correct an existing value-set pin in a new
+      registry version under narrow conditions; -04 replaces that rule with
+      the monotone advance of <xref target="names"/>.</t>
       <t>The reference registry advances from version 3 to version 4. It pins
       the SIX ISO 4217 List One snapshot published 2026-09-17 for every
       currency field, by values digest and by a digest over the whole snapshot
@@ -1125,10 +2399,32 @@ XVQaDaZLQQQ
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4648.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3339.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5234.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7405.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6901.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8259.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3629.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7493.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3986.xml"/>
       </references>
       <references>
         <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7595.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.7942.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8126.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8792.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.6838.xml"/>
+        <reference anchor="CAID-REGISTRY" target="https://github.com/emiliaprotocol/emilia-protocol/tree/main/caid/registry">
+          <front>
+            <title>CAID Reference Registry, Registry Version 5</title>
+            <author><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="September"/>
+          </front>
+          <annotation>Registry version 5 is the file action-types.json,
+          whose SHA-256 digest is given in the CAID Action Types section of
+          this document. Registry version 4 is kept at
+          history/action-types.v4.json, and digests.json lists the
+          definition_sha256 of every type.</annotation>
+        </reference>
         <reference anchor="I-D.schrock-ep-authorization-receipts">
           <front>
             <title>Authorization Receipts for High-Risk Agent Actions</title>
@@ -1165,7 +2461,509 @@ XVQaDaZLQQQ
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.morrow-sogomonian-exec-outcome-attest.xml"/>
       </references>
     </references>
-    <section anchor="acknowledgments">
+    <section anchor="appendix-abnf">
+      <name>Collected ABNF</name>
+      <t>This appendix collects every grammar of this document in the ABNF
+      of <xref target="RFC5234"/>, with the case-sensitive string syntax of
+      <xref target="RFC7405"/>. ALPHA, DIGIT, and HEXDIG are the core rules
+      of <xref target="RFC5234"/>. Each rule matches a string as a whole.
+      Part A.1 is the identifier and part A.2 the digest syntax of each
+      suite. Part A.3 holds the lexical field types, and part A.4 the
+      registered code formats (<xref target="code-fields"/>), each named by
+      its rule name. Part A.5 constrains definitions, part A.6 the mapping
+      profile, and part A.7 accepts every reason of
+      <xref target="appendix-reasons"/>, including nested forms such as
+      mapped_action:missing_material_field:amount. A timestamp's day is
+      further limited by the length of its month
+      (<xref target="fieldtypes"/>).</t>
+<sourcecode anchor="abnf-collected" type="abnf"><![CDATA[
+; Collected ABNF [RFC5234] with case-sensitive strings [RFC7405].
+; A string matches a rule only as a whole: nothing precedes or
+; follows it, not even a final line feed.
+
+; A.1 Identifier
+
+caid          = %s"caid" ":" caid-version ":" action-type ":"
+                suite ":" digest
+
+caid-version  = "1"
+
+action-type   = 1*( name-segment "." ) type-version
+name-segment  = lower-char *( lower-char / DIGIT / "-" )
+type-version  = pos-int
+pos-int       = %x31-39 *DIGIT   ; positive integer, no leading zero
+
+suite         = lower-char *( lower-char / DIGIT / "-" )
+
+digest        = 1*b64url-char
+b64url-char   = %x41-5A / %x61-7A / DIGIT / "-" / "_"
+                                 ; A-Z / a-z / 0-9 / "-" / "_"
+
+lower-char    = %x61-7A          ; a-z
+
+; A.2 Digest syntax per suite
+;
+; A suite whose digest is n octets encodes it in c = ceil(8n/6)
+; base64url characters. The final character carries u = 6c - 8n
+; unused low bits, which are zero: of the 64 base64url characters,
+; only those whose 6-bit value is a multiple of 2^u may end the
+; digest. For n = 32 (jcs-sha256 and cbor-sha256), c = 43 and
+; u = 2.
+
+digest-256    = 42b64url-char b64url-z2
+b64url-z2     = %x41 / %x45 / %x49 / %x4D / %x51 / %x55 / %x59
+              / %x63 / %x67 / %x6B / %x6F / %x73 / %x77
+              / %x30 / %x34 / %x38
+                                 ; A E I M Q U Y c g k o s w 0 4 8
+
+; A.3 Field types
+
+amount-string = [ "-" ] int-part [ "." frac-part ]
+int-part      = "0" / ( %x31-39 *DIGIT )  ; no leading zero
+frac-part     = 1*DIGIT
+
+digest-field  = %s"sha256:" 64hex-lower
+hex-lower     = DIGIT / %x61-66  ; 0-9 / a-f
+
+timestamp     = full-date %x54 utc-time %x5A   ; "T" and "Z"
+full-date     = date-year "-" date-month "-" date-mday
+date-year     = 4DIGIT
+date-month    = "0" %x31-39 / "1" %x30-32      ; 01-12
+date-mday     = "0" %x31-39 / %x31-32 DIGIT / "3" %x30-31
+                                 ; 01-31, within the month
+utc-time      = time-hour ":" time-minute ":" time-second
+                [ time-fraction ]
+time-hour     = %x30-31 DIGIT / "2" %x30-33    ; 00-23
+time-minute   = %x30-35 DIGIT                  ; 00-59
+time-second   = %x30-35 DIGIT                  ; 00-59, never 60
+time-fraction = "." 1*DIGIT
+
+; A.4 Code formats
+;
+; The rule name of each code format is its registered format name.
+; A format fixes syntax only, never which codes exist.
+
+icd-10-cm     = UALPHA 2UALNUM [ "." 1*4UALNUM ]
+ndc-11        = 11DIGIT
+ndc-10-hyphenated
+              = 4DIGIT "-" 4DIGIT "-" 2DIGIT
+              / 5DIGIT "-" 4DIGIT "-" 1DIGIT
+              / 5DIGIT "-" 3DIGIT "-" 2DIGIT
+cpt           = 4DIGIT ( DIGIT / UALPHA )
+hcpcs-level-ii
+              = UALPHA 4DIGIT
+hcpcs         = cpt / hcpcs-level-ii
+iso-3166-1-alpha-2
+              = 2UALPHA
+iso-3166-2    = 2UALPHA "-" 1*3UALNUM
+iso20022-external-code
+              = 1*4UALNUM
+nacha-sec     = 3UALNUM
+
+UALPHA        = %x41-5A          ; A-Z
+UALNUM        = UALPHA / DIGIT
+
+; A.5 Definitions
+
+field-name    = 1*field-char
+field-char    = %x00-39 / %x3B-D7FF / %xE000-10FFFF
+                                 ; any scalar value except ":"
+
+format-name   = lower-char *( lower-char / DIGIT / "-" )
+                                 ; the registered formats are A.4
+
+code-system   = uri-scheme ":" 1*uri-char
+                                 ; an absolute URI [RFC3986] with no
+                                 ; fragment, in these characters only
+uri-scheme    = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+uri-char      = ALPHA / DIGIT / "-" / "." / "_" / "~"
+              / "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+"
+              / "," / ";" / "=" / ":" / "@" / "/" / "?"
+              / pct-encoded
+pct-encoded   = "%" HEXDIG HEXDIG
+
+; A.6 Action-Mapping Profile
+
+json-pointer  = *( "/" reference-token )       ; [RFC6901]
+source-path   = "/" reference-token json-pointer
+                                 ; a json-pointer other than ""
+reference-token
+              = *( unescaped / escaped )
+unescaped     = %x00-2E / %x30-7D / %x7F-D7FF / %xE000-10FFFF
+escaped       = "~" ( "0" / "1" )
+array-index   = "0" / ( %x31-39 *DIGIT )
+hex-sha256    = 64hex-lower
+
+; A.7 Reasons
+
+reason        = core-reason / mapping-reason / comparison-reason
+
+core-reason   = compute-reason / core-only
+core-only     = %s"malformed_json" / %s"malformed_caid"
+              / %s"action_type_mismatch"
+              / %s"definition_mismatch" / %s"digest_mismatch"
+              / %s"invalid_object"
+compute-reason
+              = compute-bare / field-code ":" field-name
+compute-bare  = %s"invalid_action_type" / %s"unknown_action_type"
+              / %s"invalid_definition" / %s"unknown_suite"
+              / %s"unsupported_number" / %s"unsupported_value"
+field-code    = %s"missing_material_field" / %s"mistyped_field"
+              / %s"invalid_amount" / %s"invalid_code"
+
+mapping-reason
+              = mapping-bare
+              / %s"unmapped_material_field" ":" field-name
+              / pointer-code ":" source-path
+              / %s"mapped_action" ":" compute-reason
+mapping-bare  = %s"invalid_mapping_profile"
+              / %s"unknown_action_type" / %s"invalid_definition"
+              / %s"native_verification_required"
+              / %s"mapping_profile_unpinned"
+              / %s"source_format_mismatch" / %s"source_not_object"
+              / %s"source_not_canonicalizable"
+              / %s"declared_source_semantic_loss"
+pointer-code  = %s"invalid_source_path" / %s"missing_source_field"
+              / %s"source_value_type_mismatch"
+              / %s"source_value_not_canonicalizable"
+              / %s"unknown_transform"
+
+comparison-reason
+              = ( %s"left" / %s"right" ) ":" mapping-reason
+              / %s"target_action_type_mismatch"
+              / %s"material_projection_mismatch"
+]]></sourcecode>
+    </section>
+    <section anchor="appendix-reasons">
+      <name>Reason Codes</name>
+      <t>These tables list every reason. A reason with a parameter is the
+      code, ":", and the parameter, which matches the ABNF rule named in the
+      Parameter column. Computation and verification phases are those of
+      Sections <xref target="computation" format="counter"/> and
+      <xref target="verification" format="counter"/>; "(gate)" marks a phase
+      that yields exactly one reason. Mapping stages are those of
+      <xref target="mapping-algorithm"/>, and comparison prefixes a failed
+      mapping's reasons with "left:" or "right:". These tables are the
+      initial contents of the CAID Reason Codes registry
+      (<xref target="iana-reasons"/>).</t>
+<table anchor="tab-core-reasons">
+  <name>Core Reasons</name>
+  <thead><tr><th>Reason</th><th>Parameter</th><th>Operations and phases</th></tr></thead>
+  <tbody>
+    <tr><td>malformed_json</td><td>none</td><td>decode 0 (gate); compute 0 (gate); verify 2 (gate)</td></tr>
+    <tr><td>malformed_caid</td><td>none</td><td>parse 1 (gate); verify 1 (gate)</td></tr>
+    <tr><td>unknown_suite</td><td>none</td><td>parse 1 (gate); compute 5; verify 1 (gate); verify 6</td></tr>
+    <tr><td>invalid_action_type</td><td>none</td><td>compute 1 (gate)</td></tr>
+    <tr><td>unknown_action_type</td><td>none</td><td>compute 2 (gate)</td></tr>
+    <tr><td>invalid_definition</td><td>none</td><td>compute 2 (gate)</td></tr>
+    <tr><td>definition_mismatch</td><td>none</td><td>verify 5</td></tr>
+    <tr><td>missing_material_field</td><td>field-name</td><td>compute 3</td></tr>
+    <tr><td>mistyped_field</td><td>field-name</td><td>compute 4</td></tr>
+    <tr><td>invalid_amount</td><td>field-name</td><td>compute 4</td></tr>
+    <tr><td>invalid_code</td><td>field-name</td><td>compute 4</td></tr>
+    <tr><td>unsupported_number</td><td>none</td><td>compute 6</td></tr>
+    <tr><td>unsupported_value</td><td>none</td><td>compute 7</td></tr>
+    <tr><td>action_type_mismatch</td><td>none</td><td>verify 4</td></tr>
+    <tr><td>digest_mismatch</td><td>none</td><td>verify 6</td></tr>
+    <tr><td>invalid_object</td><td>none</td><td>verify 3 (gate); verify 7</td></tr>
+  </tbody>
+</table>
+<table anchor="tab-mapping-reasons">
+  <name>Mapping Reasons</name>
+  <thead><tr><th>Reason</th><th>Parameter</th><th>Stage</th></tr></thead>
+  <tbody>
+    <tr><td>invalid_mapping_profile</td><td>none</td><td>A</td></tr>
+    <tr><td>unknown_action_type</td><td>none</td><td>A</td></tr>
+    <tr><td>invalid_definition</td><td>none</td><td>A</td></tr>
+    <tr><td>unmapped_material_field</td><td>field-name</td><td>A</td></tr>
+    <tr><td>native_verification_required</td><td>none</td><td>B</td></tr>
+    <tr><td>mapping_profile_unpinned</td><td>none</td><td>B</td></tr>
+    <tr><td>source_format_mismatch</td><td>none</td><td>B</td></tr>
+    <tr><td>source_not_object</td><td>none</td><td>B</td></tr>
+    <tr><td>source_not_canonicalizable</td><td>none</td><td>B</td></tr>
+    <tr><td>declared_source_semantic_loss</td><td>none</td><td>B</td></tr>
+    <tr><td>invalid_source_path</td><td>source-path</td><td>C</td></tr>
+    <tr><td>missing_source_field</td><td>source-path</td><td>C</td></tr>
+    <tr><td>source_value_type_mismatch</td><td>source-path</td><td>C</td></tr>
+    <tr><td>source_value_not_canonicalizable</td><td>source-path</td><td>C</td></tr>
+    <tr><td>unknown_transform</td><td>source-path</td><td>C</td></tr>
+    <tr><td>mapped_action</td><td>compute-reason</td><td>D</td></tr>
+    <tr><td>target_action_type_mismatch</td><td>none</td><td>comparison</td></tr>
+    <tr><td>material_projection_mismatch</td><td>none</td><td>comparison</td></tr>
+  </tbody>
+</table>
+    </section>
+    <section anchor="appendix-examples">
+      <name>Worked Examples</name>
+      <t>Every value in this appendix recomputes from the objects shown and
+      the definitions of reference registry version 5
+      <xref target="CAID-REGISTRY"/>, with its enum snapshots. Long lines
+      are folded as specified in <xref target="RFC8792"/>.</t>
+      <section anchor="example-compute">
+        <name>Computation</name>
+        <t>This payment.release.1 action object:</t>
+<sourcecode anchor="exc-payment-object" type="json"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+{
+  "action_type": "payment.release.1",
+  "amount": "250.00",
+  "currency": "EUR",
+  "beneficiary_account": "sha256:9f86d081884c7d659a2feaa0c55ad015a3b\
+  f4f1b2b0b822cd15d6c15b0f00a08",
+  "payment_instruction_id": "pi-2026-000117",
+  "memo": "invoice 4471"
+}
+]]></sourcecode>
+        <t>has members in a different order from its canonical encoding,
+        which sorts them. Its RFC 8785 encoding is 230 octets:</t>
+<sourcecode anchor="exc-payment-canonical"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+{"action_type":"payment.release.1","amount":"250.00","beneficiary_ac\
+count":"sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6\
+c15b0f00a08","currency":"EUR","memo":"invoice 4471","payment_instruc\
+tion_id":"pi-2026-000117"}
+]]></sourcecode>
+        <t>Computation under jcs-sha256 returns the CAID, the SHA-256 digest
+        of those octets, and the definition_sha256 of payment.release.1 in
+        registry version 5:</t>
+<sourcecode anchor="exc-payment-result" type="json"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+{
+  "caid": "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa\
+  0xIHz5YFrBB9HI-arxrO1Y",
+  "digest": "sha256:9622c6f692a090bb77b2296b8dfd706b4c481f3e5816b041\
+  f4723e6abc6b3b56",
+  "definition_sha256": "sha256:3a5ad4c0a3a8dbf7eb9ea5f4c3b2ceb07ba19\
+  72fac49acc6006dcac64726ff12"
+}
+]]></sourcecode>
+      </section>
+      <section anchor="example-refusal">
+        <name>Refusal and Reason Order</name>
+        <t>This object lacks two required fields, carries an amount with a
+        leading zero, and carries a fractional number in the optional memo
+        field:</t>
+<sourcecode anchor="exc-refusal-object" type="json"><![CDATA[
+{
+  "action_type": "payment.release.1",
+  "amount": "01.50",
+  "currency": "EUR",
+  "memo": 7.5
+}
+]]></sourcecode>
+        <t>Computation refuses it. The missing fields come first, in
+        required_fields order; then the phase 4 reasons in field order,
+        where amount is field 0 and memo, the first optional field, is field
+        4; then unsupported_number for the fractional value:</t>
+<sourcecode anchor="exc-refusal-result" type="json"><![CDATA[
+{
+  "refusals": [
+    "missing_material_field:beneficiary_account",
+    "missing_material_field:payment_instruction_id",
+    "invalid_amount:amount",
+    "mistyped_field:memo",
+    "unsupported_number"
+  ]
+}
+]]></sourcecode>
+      </section>
+      <section anchor="example-verify">
+        <name>Verification Details</name>
+        <t>Verifying the CAID of <xref target="example-compute"/> against the
+        object of <xref target="example-refusal"/> yields invalid_object.
+        The action types match, and no digest comparison is made because
+        the object cannot be canonicalized. The details expand
+        invalid_object into its computation reasons, and definition_sha256
+        is reported because a conforming definition resolved:</t>
+<sourcecode anchor="exc-verify-result" type="json"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+{
+  "valid": false,
+  "reasons": [
+    "invalid_object"
+  ],
+  "details": [
+    {
+      "reason": "missing_material_field:beneficiary_account",
+      "field": "beneficiary_account",
+      "rule": "required-field",
+      "observed": "absent"
+    },
+    {
+      "reason": "missing_material_field:payment_instruction_id",
+      "field": "payment_instruction_id",
+      "rule": "required-field",
+      "observed": "absent"
+    },
+    {
+      "reason": "invalid_amount:amount",
+      "field": "amount",
+      "rule": "amount-string",
+      "observed": "string"
+    },
+    {
+      "reason": "mistyped_field:memo",
+      "field": "memo",
+      "rule": "field-type",
+      "observed": "number"
+    },
+    {
+      "reason": "unsupported_number",
+      "field": null,
+      "rule": "number",
+      "observed": null
+    }
+  ],
+  "definition_sha256": "sha256:3a5ad4c0a3a8dbf7eb9ea5f4c3b2ceb07ba19\
+  72fac49acc6006dcac64726ff12"
+}
+]]></sourcecode>
+      </section>
+      <section anchor="example-projection">
+        <name>Definition Digest</name>
+        <t>The validation projection of the tool.call.1 definition of
+        <xref target="tool-call-type"/> drops every notes member and every
+        entry member outside the projection. Its RFC 8785 encoding is:</t>
+<sourcecode anchor="exc-projection"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+{"action_type":"tool.call.1","optional_fields":[{"name":"occurrence_\
+id","type":"string"}],"required_fields":[{"name":"target","type":"st\
+ring"},{"name":"tool","type":"string"},{"name":"args","type":"object\
+"}]}
+]]></sourcecode>
+        <t>and its definition_sha256 is:</t>
+<sourcecode anchor="exc-projection-digest"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+sha256:c95e21136fd8b6df646be2957fe42fbf18935add20da6bc9569aa2d1a771a\
+fa2
+]]></sourcecode>
+      </section>
+      <section anchor="example-code">
+        <name>Code Fields</name>
+        <t>prior.auth.approve.2 carries a HCPCS code in service_code (format
+        hcpcs) and an ICD-10-CM code in diagnosis_code (format icd-10-cm).
+        This object computes:</t>
+<sourcecode anchor="exc-code-object" type="json"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+{
+  "action_type": "prior.auth.approve.2",
+  "patient_ref": "sha256:e02fb124589d2bf6e04af485b2cc7d5be0e6652c2d8\
+  91a41d77f8e150ff5e474",
+  "service_code": "E0601",
+  "diagnosis_code": "G47.33",
+  "authorization_number": "PA-2026-000418",
+  "valid_from": "2026-10-01T00:00:00Z",
+  "valid_until": "2026-12-31T23:59:59Z"
+}
+]]></sourcecode>
+<sourcecode anchor="exc-code-result" type="json"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+{
+  "caid": "caid:1:prior.auth.approve.2:jcs-sha256:68dl5LXm3M98ESEJbW\
+  2CuCuBefz6p4-CyK6P7AulNHI",
+  "digest": "sha256:ebc765e4b5e6dccf7c1121096d6d82b82b8179fcfaa78f82\
+  c8ae8fec0ba53472",
+  "definition_sha256": "sha256:c25345a298c9b0ec96d019e4e2bcfd6ddd259\
+  ad064a7cb75b581999eaaf10086"
+}
+]]></sourcecode>
+        <t>The same object with the codes written "e0601" and "G4733" is
+        refused, because no format folds case or inserts a dot:</t>
+<sourcecode anchor="exc-code-refusal-object" type="json"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+{
+  "action_type": "prior.auth.approve.2",
+  "patient_ref": "sha256:e02fb124589d2bf6e04af485b2cc7d5be0e6652c2d8\
+  91a41d77f8e150ff5e474",
+  "service_code": "e0601",
+  "diagnosis_code": "G4733",
+  "authorization_number": "PA-2026-000418",
+  "valid_from": "2026-10-01T00:00:00Z",
+  "valid_until": "2026-12-31T23:59:59Z"
+}
+]]></sourcecode>
+<sourcecode anchor="exc-code-refusal-result" type="json"><![CDATA[
+{
+  "refusals": [
+    "invalid_code:service_code",
+    "invalid_code:diagnosis_code"
+  ]
+}
+]]></sourcecode>
+      </section>
+      <section anchor="example-mapping">
+        <name>Mapping</name>
+        <t>Under the profile of <xref target="mapping-object"/>, with an
+        affirmative native verification result, a source descriptor equal to
+        the profile's source_format, and the profile digest pinned, this
+        source:</t>
+<sourcecode anchor="exc-map-source" type="json"><![CDATA[
+{
+  "checkout": {
+    "order_id": "ord-7781",
+    "merchant_id": "merchant-17",
+    "total_amount": "129.95",
+    "currency": "USD",
+    "line_items": [
+      {
+        "sku": "A-1",
+        "qty": 2
+      }
+    ],
+    "customer_id": "cust-42",
+    "fulfillment": {
+      "method": "ship",
+      "postal_code": "94107"
+    }
+  },
+  "channel": "web"
+}
+]]></sourcecode>
+        <t>projects to this order.place.1 action object. The channel member
+        is not a material source path and is not mapped:</t>
+<sourcecode anchor="exc-map-projected" type="json"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+{
+  "action_type": "order.place.1",
+  "order_id": "ord-7781",
+  "merchant_ref": "sha256:9a52791e954783da73f738762755102e10296f3cfd\
+  07cebae3ed4fd540d82074",
+  "total_amount": "129.95",
+  "currency": "USD",
+  "items_digest": "sha256:82cff441e6205b34ff18c69acdd583fe265b410b61\
+  48f22c40bfcfbbcb117c75",
+  "customer_ref": "sha256:8a3c5a67cad508582b5edf6b8352cea3ffbad7f448\
+  12c1a736b4444c0f5746aa",
+  "fulfillment_ref": "sha256:35a83b30c4e6d088acc77990cf683e55d8f101c\
+  3d5570a8913528039cdb29f3c"
+}
+]]></sourcecode>
+        <t>The mapping result carries these digests and this CAID:</t>
+<sourcecode anchor="exc-map-result" type="json"><![CDATA[
+=============== NOTE: '\' line wrapping per RFC 8792 ================
+
+{
+  "profile_digest": "sha256:ec833ebc5793db1cc25e917fb838856c048bedee\
+  eb35ff7cb2d172943b0732fa",
+  "source_digest": "sha256:371f6feb2f3d9767efe4190f25e0ba7b82208d9bc\
+  916cf1114c84b0c396feaf9",
+  "caid": "caid:1:order.place.1:jcs-sha256:UI-wYRrJp-P5iI5a2E2qKfT7_\
+  -ijOogjNoN-wjwIEcg"
+}
+]]></sourcecode>
+      </section>
+    </section>
+    <section anchor="acknowledgments" numbered="false">
       <name>Acknowledgments</name>
       <t>The separation between cryptographic validity and authority in
       this document was sharpened by review from Eric Rescorla. Linda
