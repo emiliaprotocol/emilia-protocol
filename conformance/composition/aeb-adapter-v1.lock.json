@@ -5,11 +5,11 @@
   "files": [
     {
       "path": "packages/verify/src/aeb-adapter-contract.ts",
-      "sha256": "452bb2fad6ddd6cbae1b8f2da3e15dd711a6514a1e87ada4b702768a80cdce5f"
+      "sha256": "1f6616bfb5401037573a65942a751dfbf972dae0d40d2553a1c2b3393ef45bdc"
     },
     {
       "path": "docs/protocol/aeb-adapter-contract-v1.md",
-      "sha256": "482558c25dc7bc2f71e33c11001ef86651348202630b2f64107b78cd14606af1"
+      "sha256": "c9cb1832470400149018e80261f3e7c65820ece2202f484f904ae323423b01db"
     },
     {
       "path": "conformance/vectors/aeb-adapter.v1.json",

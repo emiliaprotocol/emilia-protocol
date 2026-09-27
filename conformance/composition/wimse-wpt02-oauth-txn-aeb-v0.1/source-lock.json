@@ -110,8 +110,8 @@
     },
     {
       "path": "packages/verify/dist/aeb-adapter-contract.js",
-      "bytes": 110815,
-      "sha256": "f39af543e1524cd109d129263ba9cc25aeb77dda8aedb8c27913b7c45e4eb7a4"
+      "bytes": 111428,
+      "sha256": "e10cc446c8f87dde5467cfa264e0b56c670d32c1879fdd9a90d5e1eac38b510a"
     },
     {
       "path": "packages/verify/dist/strict-json.js",
@@ -120,8 +120,8 @@
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "bytes": 80336,
-      "sha256": "532621440a6f19db378f6e2917b2c9564da8ef0ec4721c466c5348cb119d00eb"
+      "bytes": 91214,
+      "sha256": "980437ac6832e02556d68d7788b7bcae66a0e8b73ea41aff693d46082d4ef0c4"
     },
     {
       "path": "conformance/composition/wimse-wpt02-oauth-txn-aeb-v0.1/run.mjs",

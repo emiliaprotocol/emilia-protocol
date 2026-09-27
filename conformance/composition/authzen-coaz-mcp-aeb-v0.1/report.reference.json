@@ -9,15 +9,15 @@
     "production_mediation": false
   },
   "source_pins": {
-    "source_lock_digest": "sha256:6e481d15cda05ab7ac117fa1e062a06ce9f5c0a0a4700f99020edc5970acadec",
+    "source_lock_digest": "sha256:01ecc04d137750ab05dbcf82ce55c18470d2878994dd5db19eb7716d1fc1915d",
     "inherited_profile": "EP-COAZ-TRANSLATION-VECTOR-v0.1",
     "authzen_repository_commit": "e287920eed842b227e38531c1735b712337ca44d",
     "authzen_authorization_api_sha256": "f0ee89cc4a688f9f409dc323c8342579d74c45dc776a6b04a622ba9738de82bc",
     "mapping_profile_digest": "sha256:6fad7e8cae40b978b880acc2762134ba939f8ffcf56b50f11f6e8a9491b90368",
     "evidence_evaluator_version": "AEB-EVALUATION-v1",
-    "evidence_evaluator_sha256": "f39af543e1524cd109d129263ba9cc25aeb77dda8aedb8c27913b7c45e4eb7a4",
+    "evidence_evaluator_sha256": "e10cc446c8f87dde5467cfa264e0b56c670d32c1879fdd9a90d5e1eac38b510a",
     "native_attestation_bridge_version": "EP-AEB-NATIVE-VERIFICATION-ATTESTATION-v1",
-    "native_attestation_bridge_sha256": "f39af543e1524cd109d129263ba9cc25aeb77dda8aedb8c27913b7c45e4eb7a4",
+    "native_attestation_bridge_sha256": "e10cc446c8f87dde5467cfa264e0b56c670d32c1879fdd9a90d5e1eac38b510a",
     "aeb_kernel_sha256": "8baacf30ca25232f644eb7bff642ace40634587edec036ea552f119b818ad83d"
   },
   "claim_scope": {
@@ -1661,5 +1661,5 @@
       }
     }
   ],
-  "report_digest": "sha256:2ba454f8192b52396cb296bf9018c18769947c6574da35196f412dd5284b0d77"
+  "report_digest": "sha256:27ad06c6eff3d2c520eac1e543970ca3a4d830dbadae62a067b0cedbeef21805"
 }

@@ -54,7 +54,7 @@
     },
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "532621440a6f19db378f6e2917b2c9564da8ef0ec4721c466c5348cb119d00eb"
+      "sha256": "980437ac6832e02556d68d7788b7bcae66a0e8b73ea41aff693d46082d4ef0c4"
     },
     {
       "path": "caid/registry/history/action-types.v4.json",
@@ -62,7 +62,7 @@
     },
     {
       "path": "caid/registry/enum-snapshots.mjs",
-      "sha256": "9723d33087744b2ffe319209cac1d4cb3fad4f1e78c7aa9a4cdb41406377cbad"
+      "sha256": "da096a0c2a7aa223a9848598a78a31e6e1959248d9706addd869c7ce99155aaf"
     },
     {
       "path": "caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json",
