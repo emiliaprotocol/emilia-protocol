@@ -57,7 +57,9 @@ async function readStrictBody(request: IncomingMessage): Promise<unknown> {
   }
   let source: string;
   try {
-    source = new TextDecoder('utf-8', { fatal: true })
+    // ignoreBOM keeps a leading byte order mark, which JSON.parse then
+    // refuses (CAID -04 Section 2.4, rule 3); the default drops it silently.
+    source = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true })
       .decode(Buffer.concat(chunks, total));
   } catch {
     throw new Error('json_invalid');

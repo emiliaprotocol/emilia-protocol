@@ -555,7 +555,6 @@ export function createWagActionDefinition(actionType: string): Obj {
     definitions: [{
       action_type: actionType,
       required_fields: [
-        { name: 'action_type', type: 'string' },
         { name: 'authorization_server', type: 'object' },
         { name: 'grant', type: 'object' },
         { name: 'resource', type: 'string' },

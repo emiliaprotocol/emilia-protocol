@@ -188,9 +188,11 @@ function parseJws(proof) {
         return null;
     let headerText;
     let payloadText;
+    // ignoreBOM keeps a leading byte order mark, which JSON.parse then refuses
+    // (CAID -04 Section 2.4); the payload carries the action this adapter hashes.
     try {
-        headerText = new TextDecoder('utf-8', { fatal: true }).decode(headerBytes);
-        payloadText = new TextDecoder('utf-8', { fatal: true }).decode(payloadBytes);
+        headerText = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(headerBytes);
+        payloadText = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(payloadBytes);
     }
     catch {
         return null;

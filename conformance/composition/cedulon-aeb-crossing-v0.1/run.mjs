@@ -8,9 +8,14 @@ import {
   digestCrossingLab,
   runCrossingLab,
 } from '../../../packages/verify/dist/crossing-lab.js';
+import { buildSpec } from '../../../caid/spec/gen.mjs';
+import { createReference } from '../../../caid/spec/reference.mjs';
 import { ACTION_DEFINITION, MAPPING_DEFINITION } from './workspace/adapter.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+// Dev-time CAID reference built from caid/spec; it supplies the -04
+// definition_sha256 of the pinned action definition.
+const CAID_REFERENCE = createReference(buildSpec(resolve(HERE, '../../..')));
 
 function readJson(name) {
   return JSON.parse(readFileSync(resolve(HERE, name), 'utf8'));
@@ -44,7 +49,10 @@ export function runCedulonCrossingProfile() {
   const body = {
     '@version': 'EMILIA-CEDULON-AEB-CROSSING-REPORT-v0.1',
     source_lock_digest: digestCrossingLab(sourceLock),
-    action_definition_digest: digestCrossingLab(actionDefinition),
+    // The whole file, notes and registry metadata included.
+    action_definition_file_digest: digestCrossingLab(actionDefinition),
+    // CAID -04 Section 4.2.2: the validation projection only.
+    definition_sha256: CAID_REFERENCE.definitionSha256(actionDefinition),
     mapping_profile_digest: digestCrossingLab(mappingProfile),
     workspace_digest: lab.workspace_digest,
     adapter_module_digest: lab.adapter.module_digest,

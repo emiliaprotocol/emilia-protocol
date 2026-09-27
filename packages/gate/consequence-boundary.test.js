@@ -30,7 +30,7 @@ const COMPOSED_BOUNDARY_ID = 'composed-boundary-1';
 const NATIVE_BOUNDARY_ID = 'native-boundary-1';
 function registryEntry(entryId, kind, definition) {
     const entry = { kind, version: '1', status: 'active', definition };
-    entry.definition_digest = registryEntryDigest(entryId, entry);
+    entry.registry_entry_sha256 = registryEntryDigest(entryId, entry);
     return entry;
 }
 function fixture({ operationId = 'operation:release-1', executorId = EXECUTOR, replayId = 'native-mandate:one', evaluatorKeys = undefined, } = {}) {

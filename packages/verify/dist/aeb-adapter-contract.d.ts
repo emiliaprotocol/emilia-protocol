@@ -199,7 +199,17 @@ export interface AebRegistryEntry {
     version: string;
     status: 'active' | 'deprecated';
     definition: unknown;
-    definition_digest: AebDigest;
+    /**
+     * "sha256:" digest of the strict canonical JSON of {entry_id, kind,
+     * version, status, definition}: this one registry entry, status
+     * included. It was called definition_digest before Verify 6.0.0. The new
+     * name keeps it distinct from a CAID definition_sha256, which identifies
+     * the validation projection of a CAID action-type definition (action_type
+     * and its field lists, notes removed) and never covers status or any
+     * other registry-entry member (draft-schrock-canonical-action-identifier-04,
+     * Section 4.2.2).
+     */
+    registry_entry_sha256: AebDigest;
 }
 export interface AebUnifiedRegistry {
     '@version': typeof AEB_REGISTRY_VERSION;
@@ -565,7 +575,16 @@ export declare function createAebNativeVerificationAttestationAdapter(options: {
 export declare function pinnedConfigDigest(config: AebPinnedConfig): AebDigest;
 export declare function adapterPinDigest(id: string, pin: AebPinnedAdapter): AebDigest;
 export declare function mappingProfileDigest(id: string, pin: AebPinnedProfile): AebDigest;
+/** The value an entry carries as registry_entry_sha256 (see AebRegistryEntry). */
 export declare function registryEntryDigest(id: string, entry: AebRegistryEntry): AebDigest;
+/**
+ * The digest a registry entry pins, or null. An entry carries it as
+ * registry_entry_sha256. An EP-EVIDENCE-REGISTRY-v1 entry written before
+ * Verify 6.0.0 carries the same value as definition_digest, which stays
+ * readable so existing AEB-ADAPTER-v1 configurations keep verifying; an
+ * entry with both members, or neither, pins nothing.
+ */
+export declare function registryEntryPin(entry: unknown): AebDigest | null;
 export declare function unifiedRegistryDigest(registry: AebUnifiedRegistry): AebDigest;
 export declare function evaluateAebEvidence(options: AebEvaluationOptions): AebEvaluationResult;
 /** Domain-separated digest of the complete evidence-only v2 body. */

@@ -66,7 +66,7 @@ function ap2Verifier(assertions) {
 }
 function registryEntry(id, kind, definition) {
     const base = { kind, version: '1', status: 'active', definition };
-    return { ...base, definition_digest: registryEntryDigest(id, base) };
+    return { ...base, registry_entry_sha256: registryEntryDigest(id, base) };
 }
 function aebSetup(assertions) {
     const verifier = ap2Verifier(assertions);

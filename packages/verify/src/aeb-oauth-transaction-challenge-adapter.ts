@@ -436,7 +436,7 @@ export function createOAuthTransactionChallengeActionDefinition(actionType: stri
     projection: 'oauth-transaction-exact-action-v1', action_type: actionType, suite: 'jcs-sha256',
     definitions: [{
       action_type: actionType,
-      required_fields: [{ name: 'action_type', type: 'string' }, { name: 'oauth_transaction', type: 'object' }],
+      required_fields: [{ name: 'oauth_transaction', type: 'object' }],
       optional_fields: [],
     }],
   };

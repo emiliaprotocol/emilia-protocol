@@ -34,8 +34,11 @@ import { REGISTRY_ENUM_SNAPSHOTS } from '../../../caid/registry/enum-snapshots.m
 
 export const PROFILE = 'EP-COAZ-TRANSLATION-VECTOR-v0.1';
 
+// The vectors were produced under registry version 4. Read its byte-frozen
+// copy so the source lock keeps pinning exactly those bytes after the live
+// registry advances (payment.release.1 is unchanged in version 5).
 const REGISTRY = JSON.parse(
-  readFileSync(new URL('../../../caid/registry/action-types.json', import.meta.url), 'utf8'),
+  readFileSync(new URL('../../../caid/registry/history/action-types.v4.json', import.meta.url), 'utf8'),
 );
 export const DEFINITIONS = REGISTRY.types;
 // The registry loader checks each value-set file against the registry's

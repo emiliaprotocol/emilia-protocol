@@ -38,7 +38,7 @@
   ],
   "implementation_sources": [
     {
-      "path": "caid/registry/action-types.json",
+      "path": "caid/registry/history/action-types.v4.json",
       "sha256": "sha256:73a31f4a4156e3de02e1c3a9ef355f73c07ba25e6b1bb3da8fde8677c2e23d26"
     },
     {
@@ -47,7 +47,7 @@
     },
     {
       "path": "caid/registry/enum-snapshots.mjs",
-      "sha256": "sha256:734bca3f995ac3d59a1c9b4573ce258ffac238e0b4eb578218663375b8ee0b50"
+      "sha256": "sha256:9723d33087744b2ffe319209cac1d4cb3fad4f1e78c7aa9a4cdb41406377cbad"
     },
     {
       "path": "packages/verify/evidence-chain.js",
@@ -63,7 +63,7 @@
     },
     {
       "path": "examples/composition/caid-aec-aeb-capsule-v1/run.mts",
-      "sha256": "sha256:f306a68756efe864f3bd50d3fc84e0dc2f629fd9ebe15b518cdd2ab6fb07a231"
+      "sha256": "sha256:e7946aa1fe743a932c83a42aa7ab7418ce77bdaedb443fad1bcc36021bd7e273"
     }
   ],
   "capsule_verifier_scope": {

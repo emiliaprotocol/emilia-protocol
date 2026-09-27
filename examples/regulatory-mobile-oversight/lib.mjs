@@ -15,29 +15,13 @@ import { createMemoryBackend } from '../../packages/gate/store.js';
 import { canonicalize, verifyTrustReceipt } from '../../packages/verify/index.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REGISTRY_DEFINITIONS = JSON.parse(fs.readFileSync(path.resolve(HERE, '../../caid/registry/action-types.json'), 'utf8')).types;
-// The registered prior.auth.approve.1 cannot produce a CAID under registry v4:
-// its service_code and diagnosis_code point at external code sets (CPT/HCPCS,
-// ICD-10-CM) with no pinned snapshot, so they refuse whenever present. This
-// synthetic demo therefore uses its own local type under an example-scoped
-// name, with the registered fields and two demo-only inline codes. It is not
-// the registered type and is not interoperable with it (GOVERNANCE.md
-// section 4).
-export const DEMO_ACTION_TYPE = 'example.prior.auth.approve.1';
-const REGISTERED_PRIOR_AUTH = REGISTRY_DEFINITIONS.find((definition) => definition.action_type === 'prior.auth.approve.1');
-const DEMO_DEFINITION = {
-    ...REGISTERED_PRIOR_AUTH,
-    action_type: DEMO_ACTION_TYPE,
-    status: 'local-experimental',
-    summary: 'Synthetic demo approval of a prior authorization; local to this example, not the registered prior.auth.approve.1.',
-    required_fields: REGISTERED_PRIOR_AUTH.required_fields.map((field) => {
-        if (field.name === 'service_code')
-            return { name: field.name, type: 'enum', values: ['HCPCS:DEMO-0001'] };
-        if (field.name === 'diagnosis_code')
-            return { name: field.name, type: 'enum', values: ['ICD-10-CM:DEMO-0001'] };
-        return field;
-    }),
-};
-const DEFINITIONS = [...REGISTRY_DEFINITIONS, DEMO_DEFINITION];
+// The registered prior.auth.approve.2 (registry v5). Its service_code and
+// diagnosis_code are code fields: CAID checks HCPCS and ICD-10-CM syntax and
+// never a value set, so the synthetic codes below compute without any
+// snapshot. prior.auth.approve.1 is deprecated because its two enum fields
+// named those code sets without pinning them and refused whenever present.
+export const DEMO_ACTION_TYPE = 'prior.auth.approve.2';
+const DEFINITIONS = REGISTRY_DEFINITIONS;
 export const EVIDENCE_VERSION = 'EP-REGULATORY-MOBILE-EVIDENCE-v1';
 export const TRUST_BUNDLE_VERSION = 'EP-REGULATORY-MOBILE-TRUST-BUNDLE-v1';
 export const RP_ID = 'approve.sandbox.example';
@@ -113,8 +97,10 @@ function makeSyntheticAction() {
         ep_version: '1.0',
         action_type: DEMO_ACTION_TYPE,
         patient_ref: `sha256:${sha256('synthetic-member-reference-0001')}`,
-        service_code: 'HCPCS:DEMO-0001',
-        diagnosis_code: 'ICD-10-CM:DEMO-0001',
+        // Public code syntax only, for a synthetic case: HCPCS E0601 (CPAP
+        // device) and ICD-10-CM G47.33 (obstructive sleep apnea).
+        service_code: 'E0601',
+        diagnosis_code: 'G47.33',
         authorization_number: 'PA-SYNTHETIC-0001',
         valid_from: '2026-07-16T00:00:00.000Z',
         valid_until: '2026-08-16T00:00:00.000Z',

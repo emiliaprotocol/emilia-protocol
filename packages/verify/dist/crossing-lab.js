@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, unlinkSync, writeFileSync, } from 'node:fs';
 import { basename, dirname, isAbsolute, join, parse, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { adapterPinDigest, digestAeb, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, } from './aeb-adapter-contract.js';
+import { adapterPinDigest, digestAeb, evaluateAebEvidence, mappingProfileDigest, registryEntryDigest, registryEntryPin, unifiedRegistryDigest, } from './aeb-adapter-contract.js';
 import { canonicalizeStrictJson, strictJsonGate } from './strict-json.js';
 // The governed CAID implementation is JavaScript and has no declaration file.
 // @ts-expect-error -- the runtime result is checked before use.
@@ -142,9 +142,27 @@ export function digestCrossingLab(value) {
 function sha256Bytes(value) {
     return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
-function parseStrictJson(raw, label) {
-    if (Buffer.byteLength(raw, 'utf8') > CROSSING_LAB_LIMITS.max_file_bytes)
+// Fatal and BOM-preserving, so a file that is not strict UTF-8 is refused
+// instead of being read with U+FFFD substitutions or a silently dropped byte
+// order mark. The artifact carries the action object an adapter computes a
+// CAID over, and CAID -04 Section 2.4 requires both refusals for it.
+const STRICT_UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+function parseStrictJson(input, label) {
+    const byteLength = typeof input === 'string' ? Buffer.byteLength(input, 'utf8') : input.byteLength;
+    if (byteLength > CROSSING_LAB_LIMITS.max_file_bytes)
         throw new TypeError(`${label} exceeds file-size limit`);
+    let raw;
+    if (typeof input === 'string') {
+        raw = input;
+    }
+    else {
+        try {
+            raw = STRICT_UTF8.decode(input);
+        }
+        catch {
+            throw new TypeError(`${label}: strict JSON required (invalid UTF-8)`);
+        }
+    }
     const strict = strictJsonGate(raw);
     if (!strict.ok)
         throw new TypeError(`${label}: strict JSON required (${strict.reason})`);
@@ -279,7 +297,7 @@ function verifySeedManifest(seedRoot, seed) {
     if (sha256Bytes(manifestBytes) !== seed.reviewed_manifest.sha256) {
         throw new TypeError('reviewed manifest digest mismatch');
     }
-    const manifest = parseStrictJson(manifestBytes.toString('utf8'), seed.reviewed_manifest.file);
+    const manifest = parseStrictJson(manifestBytes, seed.reviewed_manifest.file);
     if (!isObject(manifest) || !Array.isArray(manifest.actions)) {
         throw new TypeError('reviewed manifest has no action list');
     }
@@ -421,7 +439,8 @@ function workspacePinErrors(workspace, artifact, adapterBytes) {
             reasons.push('registry_pin_drift');
         else
             for (const [id, entry] of Object.entries(registry.entries ?? {})) {
-                if (!isObject(entry) || registryEntryDigest(id, entry) !== entry.definition_digest)
+                if (!isObject(entry) || registryEntryPin(entry) === null
+                    || registryEntryDigest(id, entry) !== registryEntryPin(entry))
                     reasons.push(`registry_entry_pin_drift:${id}`);
             }
     }
@@ -685,11 +704,11 @@ export function runCrossingLab(workspaceDirectory) {
         throw new TypeError('workspace must be a non-symlink directory');
     const root = realpathSync(workspaceDirectory);
     const workspacePath = assertDirectFile(root, 'workspace.json', CROSSING_LAB_LIMITS.max_file_bytes);
-    const workspace = parseStrictJson(readFileSync(workspacePath, 'utf8'), 'workspace.json');
+    const workspace = parseStrictJson(readFileSync(workspacePath), 'workspace.json');
     validateWorkspace(workspace);
     const artifactPath = assertDirectFile(root, workspace.artifact, CROSSING_LAB_LIMITS.max_file_bytes);
     const adapterPath = assertDirectFile(root, workspace.adapter.module, CROSSING_LAB_LIMITS.max_adapter_bytes);
-    const artifact = parseStrictJson(readFileSync(artifactPath, 'utf8'), workspace.artifact);
+    const artifact = parseStrictJson(readFileSync(artifactPath), workspace.artifact);
     const adapterBytes = readFileSync(adapterPath);
     const pinErrors = workspacePinErrors(workspace, artifact, adapterBytes);
     if (pinErrors.length > 0)
@@ -802,7 +821,6 @@ const SAMPLE_MAPPING_DEFINITION = Object.freeze({
     definitions: [{
             action_type: 'payment.release.1',
             required_fields: [
-                { name: 'action_type', type: 'string' },
                 { name: 'amount', type: 'amount-string' },
                 { name: 'currency', type: 'string' },
                 { name: 'payee_ref', type: 'string' },
@@ -922,8 +940,8 @@ export default Object.freeze({
 });
 `;
 function registryEntry(id, kind, definition) {
-    const entry = { kind, version: '1', status: 'active', definition, definition_digest: digestAeb(null) };
-    entry.definition_digest = registryEntryDigest(id, entry);
+    const entry = { kind, version: '1', status: 'active', definition, registry_entry_sha256: digestAeb(null) };
+    entry.registry_entry_sha256 = registryEntryDigest(id, entry);
     return entry;
 }
 function sampleAebConfig() {
@@ -1106,7 +1124,7 @@ export function initCrossingLabFromScanSeed(seedFile, targetDirectory) {
     assertNoUserSymlinkComponents(seedPath, 'Scan crossing seed path');
     const seedRoot = realpathSync(dirname(seedPath));
     const seedBytes = readFileSync(seedPath);
-    const seed = parseStrictJson(seedBytes.toString('utf8'), basename(seedPath));
+    const seed = parseStrictJson(seedBytes, basename(seedPath));
     validateScanCrossingSeed(seed);
     verifySeedManifest(seedRoot, seed);
     const target = resolve(targetDirectory);
@@ -1187,7 +1205,7 @@ function recomputeConfigPins(config) {
         }
     }
     for (const [id, entry] of Object.entries(config.registry.entries)) {
-        entry.definition_digest = registryEntryDigest(id, entry);
+        entry.registry_entry_sha256 = registryEntryDigest(id, entry);
     }
     config.registry.registry_digest = unifiedRegistryDigest(config.registry);
 }
@@ -1202,12 +1220,12 @@ export function sealCrossingLab(workspaceDirectory) {
         throw new TypeError('workspace must be a non-symlink directory');
     const root = realpathSync(workspaceDirectory);
     const workspacePath = assertDirectFile(root, 'workspace.json', CROSSING_LAB_LIMITS.max_file_bytes);
-    const parsed = parseStrictJson(readFileSync(workspacePath, 'utf8'), 'workspace.json');
+    const parsed = parseStrictJson(readFileSync(workspacePath), 'workspace.json');
     validateWorkspace(parsed);
     const workspace = structuredClone(parsed);
     const artifactPath = assertDirectFile(root, workspace.artifact, CROSSING_LAB_LIMITS.max_file_bytes);
     const adapterPath = assertDirectFile(root, workspace.adapter.module, CROSSING_LAB_LIMITS.max_adapter_bytes);
-    const artifact = parseStrictJson(readFileSync(artifactPath, 'utf8'), workspace.artifact);
+    const artifact = parseStrictJson(readFileSync(artifactPath), workspace.artifact);
     const adapterBytes = readFileSync(adapterPath);
     recomputeConfigPins(workspace.config);
     workspace.adapter.module_digest = sha256Bytes(adapterBytes);

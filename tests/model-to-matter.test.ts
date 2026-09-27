@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   M2M_ACTION_VERSION,
@@ -39,7 +40,13 @@ import { predictedEffectsDigest } from '../packages/verify/effect-predicates.js'
 import { createDurableChallengeStore } from '../packages/gate/challenge-store.js';
 import { createDurableConsumptionStore, createMemoryBackend } from '../packages/gate/store.js';
 import { artifactDigest } from '../lib/evidence/evidence-graph.js';
+import { buildSpec } from '../caid/spec/gen.mjs';
+import { createReference } from '../caid/spec/reference.mjs';
 
+// CAID -04 definition_sha256 of the registered M2M type, from the dev-time
+// reference validator (caid/spec), independent of the port under test.
+const M2M_DEFINITION_SHA256 = createReference(buildSpec(fileURLToPath(new URL('..', import.meta.url))))
+  .definitionSha256(M2M_CAID_DEFINITION);
 const NOW = '2026-07-11T16:00:00Z';
 const ISSUED_AT = '2026-07-11T15:59:00Z';
 const EVIDENCE_EXPIRES = '2026-07-11T16:10:00Z';
@@ -276,12 +283,23 @@ describe('EP Model-to-Matter action and profile', () => {
     expect(a.action_type).toBe(M2M_CAID_ACTION_TYPE);
     expect(computed.caid).toMatch(/^caid:1:science\.bio\.experiment\.execute\.1:jcs-sha256:[A-Za-z0-9_-]{43}$/);
     expect(computed.digest).toBe(modelToMatterActionDigest(a));
-    expect(verifyModelToMatterCaid(a, computed.caid)).toEqual({ valid: true, reasons: [] });
+    // -04 verify results always carry details and, once a conforming
+    // definition resolves, its definition_sha256 (Section 4.2.2).
+    expect(verifyModelToMatterCaid(a, computed.caid)).toEqual({
+      valid: true,
+      reasons: [],
+      details: [],
+      definition_sha256: M2M_DEFINITION_SHA256,
+    });
+    expect(computed.definition_sha256).toBe(M2M_DEFINITION_SHA256);
     expect(verifyModelToMatterCaid({ ...a, destination_digest: digest('other') }, computed.caid).valid).toBe(false);
 
     const registry = JSON.parse(readFileSync(new URL('../caid/registry/action-types.json', import.meta.url), 'utf8'));
     expect(registry.types.find((entry) => entry.action_type === M2M_CAID_ACTION_TYPE))
       .toEqual(M2M_CAID_DEFINITION);
+    const digests = JSON.parse(readFileSync(new URL('../caid/registry/digests.json', import.meta.url), 'utf8'));
+    expect(digests.types.find((entry) => entry.action_type === M2M_CAID_ACTION_TYPE).definition_sha256)
+      .toBe(M2M_DEFINITION_SHA256);
   });
 
   it('rejects raw sequence, raw protocol, prompt, and chain-of-thought fields at any depth', () => {

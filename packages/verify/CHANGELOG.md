@@ -13,6 +13,30 @@ behavior only through an explicit dependency bump.
 
 ### Changed
 
+- AEB unified-registry entries pin `registry_entry_sha256` instead of
+  `definition_digest`. The value is unchanged: SHA-256 over the entry's
+  identifier, kind, version, status and definition. Configurations written
+  for 5.0.0 still verify, since `definition_digest` is read when
+  `registry_entry_sha256` is absent; an entry that carries both, or neither,
+  is invalid. `registryEntryDigest()` and the `AebRegistryEntry` type use the
+  new name. The rename keeps it distinct from the CAID `definition_sha256`,
+  which covers only the validation projection of one CAID action-type
+  definition and never its status.
+- Text that carries an action object is decoded as CAID
+  draft-schrock-canonical-action-identifier-04 Section 2.4 requires, which
+  refuses some inputs 5.0.0 accepted:
+  - policy decision evidence whose signed claims segment is not valid UTF-8
+    (5.0.0 decoded it with U+FFFD substitutions and computed the CAID over
+    claims nobody signed);
+  - a WIMSE OAuth, Authorization Server confirmation or PSEA claims segment
+    that begins with a UTF-8 byte order mark (5.0.0 dropped the BOM);
+  - a CLI input file, or a Crossing Lab workspace, artifact, seed or reviewed
+    manifest, that is not valid UTF-8 (5.0.0 substituted U+FFFD).
+  The OASNT, WAG and OAuth transaction-challenge adapters already refused
+  both. WebAuthn `clientDataJSON` keeps WebAuthn's decoding.
+- The adapter mapping profiles no longer declare a field named `action_type`;
+  the action object's `action_type` member is always required, so the entry
+  bound nothing, and -04 refuses such a definition.
 - The vendored CAID implementation (`vendor/caid.mjs`), which the AEB
   adapters, the AP2 native adapter, the FIDO and AP2 bridge, authorization
   server confirmation, the crossing lab, portable state handoff, and policy

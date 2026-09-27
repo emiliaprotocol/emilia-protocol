@@ -43,7 +43,6 @@ const definition = {
     {
       action_type: ACTION_TYPE,
       required_fields: [
-        { name: 'action_type', type: 'string' },
         { name: 'subject_chain_id', type: 'amount-string' },
         { name: 'execution_domain', type: 'string' },
         { name: 'spending_wallet', type: 'string' },
@@ -99,7 +98,7 @@ profile.profile_digest = mappingProfileDigest(PROFILE_ID, profile);
 
 function registryEntry(id, kind, version, entryDefinition) {
   const entry = { kind, version, status: 'active', definition: entryDefinition };
-  entry.definition_digest = registryEntryDigest(id, entry);
+  entry.registry_entry_sha256 = registryEntryDigest(id, entry);
   return entry;
 }
 

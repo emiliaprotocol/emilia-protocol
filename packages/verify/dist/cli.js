@@ -17,10 +17,23 @@ import { verifyReceipt, verifyReceiptBundle, verifyCommitmentProof, verifyWebAut
 const MAX_CLI_JSON_BYTES = 8 * 1024 * 1024;
 const CROSSING_LAB_DIAGNOSTIC_REASON_LIMIT = 3;
 const CROSSING_LAB_DIAGNOSTIC_TEXT_LIMIT = 160;
+// Fatal and BOM-preserving: invalid UTF-8 is refused instead of replaced
+// with U+FFFD, and a leading byte order mark stays in the text, where
+// JSON.parse refuses it. CAID -04 Section 2.4 requires both for any action
+// object or mapping source received as JSON text, and the AEB and Crossing
+// Lab inputs this CLI reads carry them.
+const STRICT_UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 function loadStrictJson(path) {
-    const raw = readFileSync(path, 'utf8');
-    if (Buffer.byteLength(raw, 'utf8') > MAX_CLI_JSON_BYTES)
+    const bytes = readFileSync(path);
+    if (bytes.byteLength > MAX_CLI_JSON_BYTES)
         throw new Error(`JSON input exceeds ${MAX_CLI_JSON_BYTES} bytes`);
+    let raw;
+    try {
+        raw = STRICT_UTF8.decode(bytes);
+    }
+    catch {
+        throw new Error('strict JSON required: invalid UTF-8');
+    }
     const strict = strictJsonGate(raw);
     if (!strict.ok)
         throw new Error(`strict JSON required: ${strict.reason}`);

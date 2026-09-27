@@ -85,9 +85,9 @@ function registryEntry(entryId, kind, definition) {
         version: '1',
         status: 'active',
         definition,
-        definition_digest: digestAeb(null),
+        registry_entry_sha256: digestAeb(null),
     };
-    entry.definition_digest = registryEntryDigest(entryId, entry);
+    entry.registry_entry_sha256 = registryEntryDigest(entryId, entry);
     return entry;
 }
 function oauthFixture() {

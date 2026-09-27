@@ -37,10 +37,18 @@ semantics.
 ## One registry and one requirement
 
 `EP-EVIDENCE-REGISTRY-v1` is the single typed registry for mapping profiles,
-evidence roles, and receipt extensions. Entry kind, definition digest, registry
-epoch, and complete registry digest are pinned. A mapping entry cannot be
-substituted for an evidence role even if the outer registry digest is
+evidence roles, and receipt extensions. Entry kind, the registry-entry digest,
+registry epoch, and complete registry digest are pinned. A mapping entry cannot
+be substituted for an evidence role even if the outer registry digest is
 recomputed.
+
+Each entry pins `registry_entry_sha256`, the digest of its identifier, kind,
+version, status, and definition. Configurations written before Verify 6.0.0
+carry the same value as `definition_digest`, which verifiers still read; an
+entry that carries both, or neither, is invalid. It is not a CAID
+`definition_sha256`: that digest identifies the validation projection of one
+CAID action-type definition and never covers status or other registry-entry
+members.
 
 `AEB-REQUIREMENT-v1` makes the authority predicates explicit. `all_of` and
 `any_of` are role expressions. Its typed `terms` array carries

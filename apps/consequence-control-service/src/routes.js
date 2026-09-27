@@ -3,7 +3,10 @@
 /* eslint-disable */
 import { strictJsonGate } from '../../../packages/require-receipt/strict-json.js';
 const JSON_CONTENT_TYPE = /^application\/json(?:\s*;|$)/i;
-const UTF8 = new TextDecoder('utf-8', { fatal: true });
+// ignoreBOM keeps a leading byte order mark in the text, where JSON.parse
+// refuses it; the default drops it silently. Proposal bodies carry the action
+// object the CAID is computed over (CAID -04 Section 2.4, rule 3).
+const UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 const PROPOSAL_ID_SEGMENT = '[A-Za-z0-9:_.@-]{3,256}';
 const LIFECYCLE_PATH = new RegExp(`^/v1/proposals/(${PROPOSAL_ID_SEGMENT})/(approval-requests(?:/poll)?|attempts/lookup|execute|reconcile|repair)$`);
 class HttpInputError extends Error {

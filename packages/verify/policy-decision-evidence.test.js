@@ -191,6 +191,30 @@ test('tampering, an unpinned signer, and an unpinned policy fail closed', () => 
     });
     assert.equal(f.adapter.verifyNative({ ...f.input, artifact: unpinnedArtifact }).acceptance, 'REJECTED');
 });
+test('a correctly signed decision whose claims are not strict UTF-8 JSON is rejected', () => {
+    // CAID -04 Section 2.4: the claims carry the action object the CAID is
+    // computed over, so invalid UTF-8 or a leading byte order mark refuses
+    // instead of decoding to claims with U+FFFD substitutions.
+    const f = fixture();
+    const [header, payload] = f.artifact.split('.');
+    const claims = Buffer.from(payload, 'base64url');
+    const resign = (claimsBytes) => {
+        const signingInput = `${header}.${claimsBytes.toString('base64url')}`;
+        const signature = crypto.sign(null, Buffer.from(signingInput, 'ascii'), f.signer.privateKey);
+        return `${signingInput}.${signature.toString('base64url')}`;
+    };
+    assert.equal(f.adapter.verifyNative({ ...f.input, artifact: resign(claims) }).acceptance, 'ACCEPTED');
+    const payee = claims.indexOf(Buffer.from('merchant:7'));
+    assert.ok(payee > 0);
+    const invalidUtf8 = Buffer.from(claims);
+    invalidUtf8[payee + 'merchant:'.length] = 0xff;
+    const withBom = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), claims]);
+    for (const claimsBytes of [invalidUtf8, withBom]) {
+        const native = f.adapter.verifyNative({ ...f.input, artifact: resign(claimsBytes) });
+        assert.equal(native.native_verification, 'FAILED');
+        assert.equal(native.acceptance, 'REJECTED');
+    }
+});
 test('an accepted machine decision cannot be remapped onto another action', () => {
     const f = fixture();
     const native = f.adapter.verifyNative(f.input);
@@ -241,7 +265,7 @@ test('a machine-policy ALLOW cannot satisfy a requirement that also requires hum
     });
     function entry(id, kind, definition) {
         const value = { kind, version: '1', status: 'active', definition };
-        value.definition_digest = registryEntryDigest(id, value);
+        value.registry_entry_sha256 = registryEntryDigest(id, value);
         return value;
     }
     const entries = {

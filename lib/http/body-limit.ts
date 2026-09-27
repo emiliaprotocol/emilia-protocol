@@ -3,6 +3,12 @@
 import { strictJsonGate } from '../strict-json.js';
 
 const TEXT_DECODER = new TextDecoder('utf-8', { fatal: true });
+// JSON bodies keep a leading byte order mark (ignoreBOM), so JSON.parse
+// refuses it instead of the decoder dropping it silently. Action objects
+// arrive through this reader, and CAID -04 Section 2.4 refuses JSON text that
+// begins with a BOM or carries anything but JSON whitespace around the value.
+const JSON_TEXT_DECODER = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+const JSON_WHITESPACE_ONLY = /^[\t\n\r ]*$/;
 
 export type BodyLimitError = {
   ok: false;
@@ -35,6 +41,14 @@ function declaredLength(request: Request): number {
  * call request.json()/formData() before knowing the body is small enough.
  */
 export async function readLimitedText(request: Request, maxBytes: number): Promise<LimitedTextResult> {
+  return readLimitedTextWith(request, maxBytes, TEXT_DECODER);
+}
+
+async function readLimitedTextWith(
+  request: Request,
+  maxBytes: number,
+  decoder: TextDecoder,
+): Promise<LimitedTextResult> {
   const declared = declaredLength(request);
   if (declared && declared > maxBytes) {
     return { ok: false, status: 413, code: 'payload_too_large', detail: 'request payload is too large' };
@@ -68,7 +82,7 @@ export async function readLimitedText(request: Request, maxBytes: number): Promi
     offset += chunk.byteLength;
   }
   try {
-    return { ok: true, text: TEXT_DECODER.decode(bytes) };
+    return { ok: true, text: decoder.decode(bytes) };
   } catch {
     return { ok: false, status: 400, code: 'invalid_utf8', detail: 'Request body must be valid UTF-8' };
   }
@@ -129,10 +143,13 @@ export async function readLimitedJson(
     }
   }
 
-  const read = await readLimitedText(request, maxBytes);
+  const read = await readLimitedTextWith(request, maxBytes, JSON_TEXT_DECODER);
   if (!read.ok) return read;
-  const text = read.text.trim();
-  if (!text) return { ok: true, value: emptyValue };
+  // Only the four JSON whitespace characters may surround the value.
+  // String#trim() also removed U+FEFF, U+00A0 and the other Unicode spaces,
+  // which JSON.parse refuses and which a byte-exact reader must not drop.
+  const text = read.text;
+  if (JSON_WHITESPACE_ONLY.test(text)) return { ok: true, value: emptyValue };
   const strict = strictJsonGate(text);
   if (!strict.ok) {
     if (arguments.length >= 3 && Object.prototype.hasOwnProperty.call(arguments[2] || {}, 'invalidValue')) {

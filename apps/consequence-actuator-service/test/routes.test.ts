@@ -78,6 +78,23 @@ describe('authenticated bounded actuator HTTP surface', () => {
     assert.deepEqual(await authorized.json(), { status: 'ready' });
   });
 
+  it('refuses a JSON body that begins with a byte order mark before execution', async () => {
+    const origin = await startedServer();
+    const response = await fetch(`${origin}/v1/execute`, {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer authorized-actuator-client',
+        'content-type': 'application/json',
+      },
+      body: '\uFEFF{}',
+    });
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      status: 'refused',
+      error: { code: 'json_invalid' },
+    });
+  });
+
   it('rejects an oversized body before JSON parsing or execution', async () => {
     const origin = await startedServer();
     const response = await fetch(`${origin}/v1/execute`, {

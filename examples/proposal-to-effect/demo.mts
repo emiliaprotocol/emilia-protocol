@@ -25,7 +25,7 @@ const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 
 function entry(id: string, kind: string, definition: unknown): any {
   const value: any = { kind, version: '1', status: 'active', definition };
-  value.definition_digest = registryEntryDigest(id, value);
+  value.registry_entry_sha256 = registryEntryDigest(id, value);
   return value;
 }
 
