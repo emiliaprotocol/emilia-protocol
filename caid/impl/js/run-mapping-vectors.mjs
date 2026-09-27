@@ -1,14 +1,29 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 
+// Runs a CAID mapping corpus (conformance/mapping-vectors.json, or the
+// consequential-interoperability corpus with --corpus) against mapping.mjs.
+// The corpus is read with this port's strict decoder. A vector's expected
+// reasons are an exact list ("reasons"); "reason_contains" is accepted for
+// corpora that pin a single reason.
+//
+// Usage: node run-mapping-vectors.mjs [--corpus FILE] [--json]
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { decodeCaidDocument } from './caid.mjs';
 import { compareMappedActions, mappingProfileHash } from './mapping.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const VECTORS = path.resolve(HERE, '../../conformance/mapping-vectors.json');
 const clone = (value) => structuredClone(value);
+
+function readCorpus(file) {
+  const decoded = decodeCaidDocument(fs.readFileSync(file));
+  if (!decoded.ok) throw new Error(`${file} is not a strict JSON text`);
+  return decoded.value;
+}
 
 function corpusPath(argv = process.argv.slice(2)) {
   const index = argv.indexOf('--corpus');
@@ -30,7 +45,7 @@ function mutate(root, operation) {
     if (Array.isArray(parent)) parent.splice(key, 1);
     else delete parent[key];
   } else if (operation.op === 'set') {
-    parent[key] = clone(operation.value);
+    Object.defineProperty(parent, key, { value: clone(operation.value), writable: true, enumerable: true, configurable: true });
   } else {
     throw new Error('unsupported vector mutation: ' + operation.op);
   }
@@ -48,7 +63,7 @@ function buildSide(corpus, descriptor) {
   return side;
 }
 
-export function runMappingVectors(corpus = JSON.parse(fs.readFileSync(VECTORS, 'utf8'))) {
+export function runMappingVectors(corpus = readCorpus(VECTORS)) {
   const results = [];
   for (const vector of corpus.vectors) {
     const left = buildSide(corpus, vector.left);
@@ -73,7 +88,7 @@ export function runMappingVectors(corpus = JSON.parse(fs.readFileSync(VECTORS, '
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const results = runMappingVectors(JSON.parse(fs.readFileSync(corpusPath(), 'utf8')));
+  const results = runMappingVectors(readCorpus(corpusPath()));
   if (process.argv.includes('--json')) {
     process.stdout.write(JSON.stringify(results) + '\n');
   } else {
