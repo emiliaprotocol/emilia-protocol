@@ -6,8 +6,11 @@
 // The corpus is read with this port's strict decoder. A vector's expected
 // reasons are an exact list ("reasons"); "reason_contains" is accepted for
 // corpora that pin a single reason. A set mutation carries its value as
-// "value", or as "units", the UTF-16 code units of a string that no strict
-// JSON text can hold (a noncharacter or a lone surrogate). With --json each
+// "value", as "units", the UTF-16 code units of a string that no strict
+// JSON text can hold (a noncharacter or a lone surrogate), or as "nest",
+// {depth, container, leaf}: leaf inside depth nested arrays (or objects
+// whose only member is "a"), a value nested deeper than strict JSON text
+// may be. With --json each
 // result also carries both sides' definition_sha256 (null for a failed
 // side), which caid/conformance/run.mjs compares across implementations.
 //
@@ -49,11 +52,18 @@ function mutate(root, operation) {
     if (Array.isArray(parent)) parent.splice(key, 1);
     else delete parent[key];
   } else if (operation.op === 'set') {
-    const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units) : clone(operation.value);
+    const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units)
+      : Object.prototype.hasOwnProperty.call(operation, 'nest') ? nested(operation.nest) : clone(operation.value);
     Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else {
     throw new Error('unsupported vector mutation: ' + operation.op);
   }
+}
+
+function nested({ depth, container, leaf }) {
+  let value = clone(leaf);
+  for (let i = 0; i < depth; i += 1) value = container === 'object' ? { a: value } : [value];
+  return value;
 }
 
 function buildSide(corpus, descriptor) {

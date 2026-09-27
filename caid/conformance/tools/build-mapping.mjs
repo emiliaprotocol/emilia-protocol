@@ -56,10 +56,17 @@ function mutate(root, operation) {
   } else if (operation.op === 'set') {
     if (Array.isArray(parent) && key >= parent.length) throw new Error('a set mutation may not append to an array; set the whole array');
     // "units" carries a string no strict JSON text can hold, as its UTF-16
-    // code units.
-    const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units) : clone(operation.value);
+    // code units; "nest" a value nested deeper than a strict JSON text may
+    // be, as leaf inside depth arrays (or objects whose only member is "a").
+    const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units)
+      : Object.prototype.hasOwnProperty.call(operation, 'nest') ? nested(operation.nest) : clone(operation.value);
     Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else throw new Error(`unsupported mutation ${operation.op}`);
+}
+function nested({ depth, container, leaf }) {
+  let value = clone(leaf);
+  for (let i = 0; i < depth; i += 1) value = container === 'object' ? { a: value } : [value];
+  return value;
 }
 function buildSide(corpus, descriptor) {
   const profile = clone(corpus.profiles[descriptor.profile]);
@@ -90,6 +97,7 @@ const EP = { source: 'ep-order', profile: 'ep-action-v1', pin: 'profile' };
 const AP2 = { source: 'ap2-order', profile: 'ap2-checkout-v1', pin: 'profile' };
 const set = (side, target, p, value) => ({ side, target, op: 'set', path: p, value });
 const setUnits = (side, target, p, units) => ({ side, target, op: 'set', path: p, units });
+const setNest = (side, target, p, depth, leaf = 0) => ({ side, target, op: 'set', path: p, nest: { depth, container: 'array', leaf } });
 const del = (side, target, p) => ({ side, target, op: 'delete', path: p });
 const HEX = 'a'.repeat(64);
 const epRules = v1.profiles['ep-action-v1'].rules;
@@ -227,6 +235,19 @@ const CASES = [
   ['profile-schema-noncharacter-abstains', 'a noncharacter in source_format.schema also leaves the profile outside the data model', EP, EP,
     [setUnits('right', 'profile', '/source_format/schema', [0xfdd0])],
     [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:source_format_mismatch']],
+  // Stage B reads the profile's source_format and loss_policy members
+  // whenever the profile is an object, in the data model or not, and
+  // whether or not stage A failed (review IMPL-3). A host profile with a
+  // member nested 70 deep has no digest, so it is unpinned; its intact
+  // source_format still equals the descriptor, so there is no
+  // source_format_mismatch, and its loss_policy is still read.
+  ['profile-deep-member-abstains', 'a host profile with an extra member nested 70 deep is outside the data model: invalid_mapping_profile and mapping_profile_unpinned, and no source_format_mismatch, since stage B still reads its intact source_format', EP, EP,
+    [setNest('right', 'profile', '/x', 70)],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned']],
+  ['profile-deep-member-declared-loss-abstains', 'the same host profile declaring source semantic loss with one omission: stage B still reads its loss_policy and reports declared_source_semantic_loss', EP, EP,
+    [set('right', 'profile', '/loss_policy', 'declared-source-semantic-loss'), set('right', 'profile', '/omitted_source_fields', [{ source_path: '/ep_version', reason: 'transport version is not material' }]),
+      setNest('right', 'profile', '/x', 70)],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:declared_source_semantic_loss']],
 ];
 
 // ---------------------------------------------------------------- build
@@ -269,7 +290,7 @@ const { vectors: _v, ...envelope } = corpus;
 const out = {
   '@version': 'CAID-ACTION-MAPPING-VECTORS-v2',
   version: 2,
-  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.5). A vector that carries its own suite member uses it in place of the corpus suite for that comparison.`,
+  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.5). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), or as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is "a", a host value nested deeper than a strict JSON text may be).`,
   previous_versions: [{
     version: 1,
     vectors: v1.vectors.length,

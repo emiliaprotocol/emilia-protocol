@@ -11,9 +11,11 @@
 // corpus order (the output only is written with encoding/json), which
 // caid/conformance/run.mjs compares across the three implementations;
 // definition_sha256 holds both sides' digests, null for a failed side. A set
-// mutation carries its value as "value", or as "units", the UTF-16 code
-// units of a string no strict JSON text can hold, built as the generalized
-// UTF-8 (WTF-8) a Go string holds for a lone surrogate.
+// mutation carries its value as "value", as "units", the UTF-16 code units
+// of a string no strict JSON text can hold, built as the generalized UTF-8
+// (WTF-8) a Go string holds for a lone surrogate, or as "nest", {depth,
+// container, leaf}: leaf inside depth nested slices (or maps whose only
+// member is "a"), a value nested deeper than strict JSON text may be.
 package main
 
 import (
@@ -67,6 +69,25 @@ func unitsString(raw interface{}) string {
 		b.WriteRune(rune(u))
 	}
 	return b.String()
+}
+
+// nestedValue builds a "nest" mutation value: leaf inside depth nested
+// slices, or maps whose only member is "a".
+func nestedValue(raw interface{}) interface{} {
+	spec, _ := raw.(obj)
+	depth := 0
+	if n, ok := spec["depth"].(fmt.Stringer); ok {
+		depth, _ = strconv.Atoi(n.String())
+	}
+	value := clone(spec["leaf"])
+	for i := 0; i < depth; i++ {
+		if str(spec, "container") == "object" {
+			value = obj{"a": value}
+		} else {
+			value = []interface{}{value}
+		}
+	}
+	return value
 }
 
 func sideDigest(r caidlib.MapActionResult) interface{} {
@@ -274,6 +295,8 @@ func main() {
 			value := operation["value"]
 			if units, present := operation["units"]; present {
 				value = unitsString(units)
+			} else if nest, present := operation["nest"]; present {
+				value = nestedValue(nest)
 			}
 			side[target] = mutate(side[target], pointerSegments(str(operation, "path")), str(operation, "op"), value)
 		}
