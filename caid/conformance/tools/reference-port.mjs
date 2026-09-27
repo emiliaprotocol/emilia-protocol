@@ -33,3 +33,6 @@ export const computeCaid = (value, o) => oracle.compute(value, computeOptions(o)
 export const verifyCaid = (value, caid, o) => oracle.verify(value, caid, verifyOptions(o));
 export const parseCaid = (s) => oracle.parse(s);
 export const definitionSha256 = (d) => oracle.definitionSha256(d);
+// Canonicalization of a document: the document ceiling applies, as in the
+// ports' canonicalize.
+export const canonicalize = (value) => oracle.reference.canonicalizeDocument(value);

@@ -5,19 +5,16 @@
 # drives an implementation only through its public entry points.
 #
 #   python3 caid/conformance/runners/run.py [--impl DIR] [--corpus core|grammar|all]
-#                                           [--json] [--legacy-front-end]
+#                                           [--json]
 #
 # --impl is the directory holding the caid module (default
-# caid/impl/python). The entry points used are named in API below; the -04
-# byte entry points are required. --legacy-front-end substitutes json.loads
-# plus the native entry points for missing byte entry points, to measure a
-# pre-04 implementation; it never passes in CI. Standard library only.
+# caid/impl/python). The entry points used are named in API below; all of
+# them are required. Standard library only.
 
 import argparse
 import base64
 import importlib
 import json
-import math
 import os
 import sys
 import time
@@ -30,7 +27,6 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--impl", default=os.path.join(ROOT, "caid", "impl", "python"))
 ap.add_argument("--corpus", default="all", choices=["core", "grammar", "all"])
 ap.add_argument("--json", action="store_true")
-ap.add_argument("--legacy-front-end", action="store_true")
 ns = ap.parse_args()
 
 sys.path.insert(0, os.path.abspath(ns.impl))
@@ -58,104 +54,9 @@ API = {
     "parse": need("parse_caid", "parse_caid"),
     "definition_sha256": need("definition_sha256", "definition_sha256", "definition_digest"),
 }
-legacy_used = False
-if ns.legacy_front_end:
-    def host_decode(data):
-        try:
-            return {"ok": True, "value": json.loads(bytes(data).decode("utf-8"))}
-        except (ValueError, UnicodeDecodeError):
-            return {"ok": False, "refusals": ["malformed_json"]}
-
-    if API["decode"] is None:
-        API["decode"] = host_decode
-        legacy_used = True
-    if API["compute_json"] is None:
-        def compute_json(data, o):
-            d = API["decode"](data)
-            return API["compute"](d["value"], o) if d["ok"] else {"refusals": ["malformed_json"]}
-        API["compute_json"] = compute_json
-        legacy_used = True
-    if API["verify_json"] is None:
-        def verify_json(data, caid_string, o):
-            d = API["decode"](data)
-            if d["ok"]:
-                return API["verify"](d["value"], caid_string, o)
-            return {"valid": False, "reasons": ["malformed_json"], "details": []}
-        API["verify_json"] = verify_json
-        legacy_used = True
-    if API["definition_sha256"] is None:
-        API["definition_sha256"] = lambda d: {"refusals": ["definition_sha256 not implemented"]}
-        legacy_used = True
-    missing = [k for k, v in API.items() if v is None]
-
 # ---------------------------------------------------------------- native lane
-OPAQUE = object()
-
-
-def units_to_str(units):
-    out = []
-    i = 0
-    while i < len(units):
-        u = units[i]
-        if 0xD800 <= u <= 0xDBFF and i + 1 < len(units) and 0xDC00 <= units[i + 1] <= 0xDFFF:
-            out.append(chr(0x10000 + ((u - 0xD800) << 10) + (units[i + 1] - 0xDC00)))
-            i += 2
-            continue
-        out.append(chr(u))
-        i += 1
-    return "".join(out)
-
-
-def tag_of(v):
-    if isinstance(v, dict) and len(v) == 1:
-        (k,) = v.keys()
-        if isinstance(k, str) and k.startswith("$"):
-            return k
-    return None
-
-
-def build_native(encoded, enclosing=None):
-    tag = tag_of(encoded)
-    if tag == "$units":
-        return units_to_str(encoded["$units"])
-    if tag == "$object":
-        out = {}
-        for k, x in encoded["$object"]:
-            key = k if isinstance(k, str) else build_native(k, enclosing)
-            out[key] = build_native(x, out)
-        return out
-    if tag == "$nest":
-        spec = encoded["$nest"]
-        value = build_native(spec["leaf"], enclosing)
-        for _ in range(int(spec["depth"])):
-            value = {"a": value} if spec["container"] == "object" else [value]
-        return value
-    if tag == "$host":
-        h = encoded["$host"]
-        if h == "nan":
-            return math.nan
-        if h == "infinity":
-            return math.inf
-        if h == "-infinity":
-            return -math.inf
-        if h == "negative_zero":
-            return -0.0
-        if h == "cyclic":
-            return enclosing
-        if h == "opaque":
-            return set()
-        raise ValueError("unknown $host " + h)
-    if isinstance(encoded, list):
-        out = []
-        for x in encoded:
-            out.append(build_native(x, out))
-        return out
-    if isinstance(encoded, dict):
-        out = {}
-        for k, x in encoded.items():
-            out[k] = build_native(x, out)
-        return out
-    return encoded
+sys.path.insert(0, HERE)
+from native_lane import build_native, units_to_str  # noqa: E402
 
 
 def input_bytes(inp):
@@ -184,7 +85,7 @@ def guard(fn):
 def read_corpus(name):
     with open(os.path.join(CONFORMANCE, name), "rb") as fh:
         data = fh.read()
-    if API["decode"] is not None and not legacy_used:
+    if API["decode"] is not None:
         d = API["decode"](data)
         if isinstance(d, dict) and d.get("ok") is True:
             return d["value"]
@@ -239,6 +140,7 @@ def run_core():
             actual = guard(lambda: API["definition_sha256"](inp["definition"]))
         elif "native" in inp:
             host = build_native(inp["native"])
+            opts["definitions"] = build_native(v.get("definitions"))
             if kind == "compute":
                 actual = guard(lambda: API["compute"](host, opts))
             else:
@@ -350,7 +252,6 @@ summary = {
     "runner": "python",
     "impl": os.path.relpath(os.path.abspath(ns.impl), ROOT),
     "corpus": ns.corpus,
-    "legacy_front_end": legacy_used,
     "pass": counts["pass"],
     "fail": counts["fail"],
     "per_corpus": per_corpus,
@@ -363,7 +264,6 @@ else:
         print("FAIL %s %s\n     %s" % (r["corpus"], r["id"], r["detail"]))
     if len(results) > 60:
         print("... %d more failures" % (len(results) - 60))
-    print("%s %s (%s%s): %d passed, %d failed %s" % (
-        summary["runner"], summary["impl"], ns.corpus, ", legacy front end" if legacy_used else "",
-        counts["pass"], counts["fail"], json.dumps(per_corpus)))
-sys.exit(1 if counts["fail"] or legacy_used else 0)
+    print("%s %s (%s): %d passed, %d failed %s" % (
+        summary["runner"], summary["impl"], ns.corpus, counts["pass"], counts["fail"], json.dumps(per_corpus)))
+sys.exit(1 if counts["fail"] else 0)

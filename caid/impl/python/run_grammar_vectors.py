@@ -58,6 +58,8 @@ UNREGISTERED_SUITE = "zz-unregistered"
 assert UNREGISTERED_SUITE not in REGISTERED_SUITES
 VALID_DIGEST = "A" * 43
 MAX_POINTER_OCTETS = caid.LIMITS["mapping_pointer_octets_max"]
+# The length limits of Section 2.6, checked before any pattern runs.
+MAX = caid.SPEC["pattern_max_octets"]
 
 
 def _arg(argv, name, default=None):
@@ -136,7 +138,7 @@ def probe(rule, s, match):
     kind, _, name = rule.partition(":")
     if kind == "pattern" and name == "caid":
         result = caid.parse_caid(s)
-        if not match:
+        if not match or len(s) > MAX["caid"] or len(s.split(":")[2]) > MAX["action_type"]:
             expected = {"ok": False, "refusals": ["malformed_caid"]}
         else:
             _, _, _, suite, digest = s.split(":")
@@ -151,7 +153,7 @@ def probe(rule, s, match):
         return result == expected, False, result
     if kind == "pattern" and name == "action_type":
         result = caid.compute_caid({"action_type": s}, {"suite": "jcs-sha256", "definitions": []})
-        return (result.get("refusals") != ["invalid_action_type"]) == match, False, result
+        return (result.get("refusals") != ["invalid_action_type"]) == (match and len(s) <= MAX["action_type"]), False, result
     if kind == "pattern" and name == "suite":
         result = caid.parse_caid("caid:1:a.b.1:" + s + ":" + VALID_DIGEST)
         return (result.get("refusals") != ["malformed_caid"]) == match, False, result
@@ -169,7 +171,7 @@ def probe(rule, s, match):
     if kind == "pattern" and name == "format_name":
         return _code_definition_conforms(CODE_SYSTEM, s) == match, False, None
     if kind == "pattern" and name == "code_system":
-        return _code_definition_conforms(s, "nacha-sec") == match, False, None
+        return _code_definition_conforms(s, "nacha-sec") == (match and len(s) <= MAX["code_system"]), False, None
     if kind == "code_format":
         result = _one_field("code", s, code_system=CODE_SYSTEM, format=name)
         return ("caid" in result) == match, False, result

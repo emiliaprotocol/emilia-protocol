@@ -7,7 +7,6 @@
 // against a pre-04 tree reports them by name.
 
 export const ROOT_CAUSES = [
-  { id: "L1", match: /\| legacy front end$/, title: "The lane has no -04 JSON text entry points and was driven through a host JSON parser" },
   { id: "J1", match: /JSON text: duplicate member name/, title: "Duplicate member names accepted (last value wins) instead of malformed_json" },
   { id: "J2", match: /JSON text: not UTF-8/, title: "Octets that are not UTF-8 accepted (U+FFFD substitution or surrogate decoding) instead of malformed_json" },
   { id: "J3", match: /JSON text: byte order mark/, title: "A leading byte order mark ignored instead of malformed_json" },
@@ -28,7 +27,13 @@ export const ROOT_CAUSES = [
   { id: "M4", match: /long [0-9a-f]+: \d+ UTF-16 units/, title: "Profile string limits counted in a unit other than UTF-8 octets" },
   { id: "M5", match: /target_action_type \d+ chars/, title: "target_action_type bounded differently from 512 UTF-8 octets" },
   { id: "M6", match: /suite=""/, title: "An empty mapping suite taken as the default instead of refused" },
+  { id: "M9", match: /outside the data model at/, title: "A mapping profile outside the data model not refused as exactly invalid_mapping_profile at the stage A gate" },
   { id: "M8", match: /^(map|compare) \|/, title: "Mapping result or reason order differs from the -04 stage order" },
+  { id: "V1", match: /random pin/, title: "A supplied expected definition_sha256 of another type ignored instead of refusing as definition_mismatch" },
+  { id: "G1", match: /action-type-variant|over its length limit/, title: "An action type, CAID or code_system over its length limit not refused before its pattern runs" },
+  { id: "D2", match: /host definition with/, title: "A host definition read or checked outside its validation projection" },
+  { id: "E1", match: /^definition \|/, title: "definition_sha256 differs from the oracle" },
+  { id: "K1", match: /^canon \|/, title: "Canonicalization of a host value differs from the oracle" },
   { id: "R1", match: /\| detail$/, title: "Same outcome class, different detail: missing definition_sha256 or verification details, or a different reason order" },
 ];
 

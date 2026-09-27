@@ -10,9 +10,10 @@
 // Every closed set, limit, member rule and reason rank below comes from the
 // generated CAID_SPEC.mapping data in caid.mjs. Reasons are produced in the
 // normative stage order:
-//   A  profile checks. A profile that is not an object, has the wrong
-//      @version, an unknown or missing member, or a member that breaks its
-//      member rule yields exactly invalid_mapping_profile. Otherwise every
+//   A  profile checks. A profile that is not an object in the data model
+//      (so it has no profile digest), has the wrong @version, an unknown or
+//      missing member, or a member that breaks its member rule yields
+//      exactly invalid_mapping_profile. Otherwise every
 //      remaining check runs: uniqueness, set equality, disjointness and the
 //      loss policy (invalid_mapping_profile), definition resolution
 //      (unknown_action_type or invalid_definition), and one
@@ -169,9 +170,10 @@ function limit(id) {
   return id === undefined ? undefined : LIMITS[id];
 }
 
-// The shape gate of stage A: object, @version, closed members, member rules.
-function profileShapeValid(profile) {
-  if (!isObject(profile) || member(profile, '@version') !== M.profile_version) return false;
+// The shape gate of stage A: an object in the data model (canonicalizable,
+// so it has a profile digest), @version, closed members, member rules.
+function profileShapeValid(profile, canonicalizable) {
+  if (!isObject(profile) || !canonicalizable || member(profile, '@version') !== M.profile_version) return false;
   if (!hasExactMembers(profile, MEMBERS.profile, OPTIONAL_PROFILE_MEMBERS)) return false;
   if (!hasExactMembers(profile.source_format, MEMBERS.source_format)) return false;
   for (const rule of Array.isArray(profile.rules) ? profile.rules : []) {
@@ -206,9 +208,9 @@ function profileShapeValid(profile) {
 }
 
 // Stage A. Returns [rank, position, reason] entries.
-function profileReasons(profile, definitions) {
+function profileReasons(profile, canonicalizable, definitions) {
   const rank = M.reason_rank;
-  if (!profileShapeValid(profile)) return [[rank.invalid_mapping_profile, 0, 'invalid_mapping_profile']];
+  if (!profileShapeValid(profile, canonicalizable)) return [[rank.invalid_mapping_profile, 0, 'invalid_mapping_profile']];
   const found = [];
   const invalid = () => found.push([rank.invalid_mapping_profile, 0, 'invalid_mapping_profile']);
   const strings = (path) => valuesAt(profile, path);
@@ -322,6 +324,7 @@ export function mappingProfileHash(profile) {
  * @property {any} action
  * @property {string} caid
  * @property {string} digest
+ * @property {string} definition_sha256
  * @property {string} suite
  * @property {string|null} profile_hash
  * @property {string|null} source_digest
@@ -349,10 +352,10 @@ export function mapAction(source, params = {}) {
     const sourceValue = sourceData.ok ? sourceData.value : undefined;
 
     const rank = M.reason_rank;
-    const found = profileReasons(profile, definitions);
+    const profileHash = profile === undefined ? null : hashCanonical(profile);
+    const found = profileReasons(profile, profileHash !== null, definitions);
     const stageB = (reason) => found.push([rank[reason], 0, reason]);
     if (read('nativeVerified') !== true) stageB('native_verification_required');
-    const profileHash = profile === undefined ? null : hashCanonical(profile);
     const expectedProfileHash = read('expectedProfileHash');
     if (typeof expectedProfileHash !== 'string' || expectedProfileHash !== profileHash) stageB('mapping_profile_unpinned');
     const sourceDescriptor = read('sourceDescriptor');
@@ -404,6 +407,7 @@ export function mapAction(source, params = {}) {
       action,
       caid: computed.caid,
       digest: computed.digest,
+      definition_sha256: computed.definition_sha256,
       suite,
       profile_hash: profileHash,
       source_digest: sourceDigest,

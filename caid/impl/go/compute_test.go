@@ -187,7 +187,7 @@ func TestCodeFieldType(t *testing.T) {
 	// Code values are never normalized: case and spacing change the CAID or refuse.
 	for format, good := range map[string]string{
 		"icd-10-cm": "Z99.89", "ndc-11": "00002143380", "ndc-10-hyphenated": "0002-1433-80", "cpt": "99213",
-		"hcpcs-level-ii": "J1234", "hcpcs": "0001U", "iso-3166-1-alpha-2": "US", "iso-3166-2": "US-CA",
+		"hcpcs-level-ii": "J1234", "hcpcs": "0001U", "iso-3166-2": "US-CA",
 		"iso20022-external-code": "AC01", "nacha-sec": "PPD",
 	} {
 		defs := []interface{}{obj{
@@ -245,7 +245,7 @@ func TestParseCaid(t *testing.T) {
 	for input, want := range map[string]string{
 		"caid:1:a.b.1:jcs-sha256:" + d:                             "",
 		"caid:1:a.b.1:cbor-sha256:" + d:                            "",
-		"caid:1:a.b.1:jcs-sha512:" + d:                             "unknown_suite",
+		"caid:1:a.b.1:zz-unregistered:" + d:                             "unknown_suite",
 		"caid:1:a.b.1:foo:x":                                       "unknown_suite",
 		"caid:1:a.b.1:jcs-sha256:" + strings.Repeat("A", 42) + "B": "malformed_caid",
 		"caid:1:a.b.1:jcs-sha256:" + d + "=":                       "malformed_caid",
@@ -285,7 +285,7 @@ func TestVerifyReasonsAndDetails(t *testing.T) {
 		t.Fatalf("malformed: %#v", v)
 	}
 	// Unregistered suite: unknown_suite from parsing.
-	v = VerifyCaid(object, "caid:1:test.text.1:jcs-sha512:"+strings.Repeat("A", 43), opts)
+	v = VerifyCaid(object, "caid:1:test.text.1:zz-unregistered:"+strings.Repeat("A", 43), opts)
 	if !reflect.DeepEqual(v, VerifyResult{Reasons: []string{"unknown_suite"}, Details: []VerifyDetail{{Reason: "unknown_suite", Rule: "suite"}}}) {
 		t.Fatalf("unregistered suite: %#v", v)
 	}

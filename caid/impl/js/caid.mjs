@@ -76,6 +76,11 @@ export const CAID_SPEC = caidSpecData({
     array_index: "(?:0|[1-9][0-9]*)",
     hex_sha256: "[0-9a-f]{64}",
   },
+  pattern_max_octets: {
+    caid: 1024,
+    action_type: 512,
+    code_system: 2048,
+  },
   code_formats: {
     "icd-10-cm": "[A-Z][0-9A-Z]{2}(?:\\x2e[0-9A-Z]{1,4})?",
     "ndc-11": "[0-9]{11}",
@@ -83,7 +88,6 @@ export const CAID_SPEC = caidSpecData({
     cpt: "[0-9]{4}[0-9A-Z]",
     "hcpcs-level-ii": "[A-Z][0-9]{4}",
     hcpcs: "(?:[0-9]{4}[0-9A-Z]|[A-Z][0-9]{4})",
-    "iso-3166-1-alpha-2": "[A-Z]{2}",
     "iso-3166-2": "[A-Z]{2}\\x2d[0-9A-Z]{1,3}",
     "iso20022-external-code": "[0-9A-Z]{1,4}",
     "nacha-sec": "[0-9A-Z]{3}",
@@ -112,6 +116,11 @@ export const CAID_SPEC = caidSpecData({
     nesting_depth: 64,
     canonical_octets: 16777216,
     max_safe_integer: 9007199254740991,
+    value_count: 33554432,
+    document_canonical_octets: 134217728,
+    caid_octets: 1024,
+    action_type_octets: 512,
+    code_system_octets: 2048,
     mapping_rules_min: 1,
     mapping_rules_max: 128,
     mapping_pointer_octets_max: 2048,
@@ -123,6 +132,26 @@ export const CAID_SPEC = caidSpecData({
   json_text: {
     byte_order_mark: [239, 187, 191],
     whitespace: [32, 9, 10, 13],
+    noncharacter_ranges: [
+      [64976, 65007],
+      [65534, 65535],
+      [131070, 131071],
+      [196606, 196607],
+      [262142, 262143],
+      [327678, 327679],
+      [393214, 393215],
+      [458750, 458751],
+      [524286, 524287],
+      [589822, 589823],
+      [655358, 655359],
+      [720894, 720895],
+      [786430, 786431],
+      [851966, 851967],
+      [917502, 917503],
+      [983038, 983039],
+      [1048574, 1048575],
+      [1114110, 1114111],
+    ],
   },
   reasons: ["malformed_json", "malformed_caid", "unknown_suite", "invalid_action_type", "unknown_action_type", "invalid_definition", "definition_mismatch", "missing_material_field", "mistyped_field", "invalid_amount", "invalid_code", "unsupported_number", "unsupported_value", "action_type_mismatch", "digest_mismatch", "invalid_object"],
   reason_params: {
@@ -235,7 +264,6 @@ export const CAID_SPEC = caidSpecData({
         rank: 3,
         gate: true,
         reasons: ["invalid_object"],
-        when: "not_an_object",
       },
       {
         rank: 4,
@@ -246,7 +274,6 @@ export const CAID_SPEC = caidSpecData({
         rank: 5,
         gate: false,
         reasons: ["definition_mismatch"],
-        when: "expected_definition_sha256",
       },
       {
         rank: 6,
@@ -258,7 +285,6 @@ export const CAID_SPEC = caidSpecData({
         rank: 7,
         gate: false,
         reasons: ["invalid_object"],
-        when: "compute_refuses",
       },
     ],
   },
@@ -532,7 +558,6 @@ export const CAID_SPEC = caidSpecData({
       none: "unknown_action_type",
       conflict: "invalid_definition",
       nonconforming: "invalid_definition",
-      equal_when: "same_definition_sha256",
     },
     projection: {
       members: ["action_type", "required_fields", "optional_fields"],
@@ -540,20 +565,16 @@ export const CAID_SPEC = caidSpecData({
         optional_fields: [],
       },
       field_members_excluded: ["notes"],
-      canonicalization: "RFC 8785",
-      digest: "sha256",
       prefix: "sha256:",
     },
     status_values: ["active", "deprecated"],
     status_affects_computation: false,
-    lifecycle_members: ["supersedes", "superseded_by"],
     registry_entry_members: ["action_type", "status", "risk_class", "summary", "required_fields", "optional_fields", "digest_notes", "references", "supersedes", "superseded_by"],
   },
   enum: {
     inline_prefix: "inline:",
     inline_separator: "|",
     inline_trim: [" "],
-    values_sha256_input: "rfc8785-values-array",
   },
   mapping: {
     profile_version: "CAID-MAPPING-PROFILE-v1",
@@ -672,7 +693,6 @@ export const CAID_SPEC = caidSpecData({
         ["rules", "*", "source_path"],
       ],
     ],
-    string_comparison: "code_points",
     transforms: [
       {
         transform: "copy",
@@ -785,21 +805,16 @@ export const CAID_SPEC = caidSpecData({
         position: {
           unmapped_material_field: "required_fields",
         },
-        shape_gate: "invalid_mapping_profile",
-        shape_checks: ["object", "version", "closed_members", "member_rules"],
       },
       {
         stage: "B",
         reasons: ["native_verification_required", "mapping_profile_unpinned", "source_format_mismatch", "source_not_object", "source_not_canonicalizable", "declared_source_semantic_loss"],
-        joins: "A",
-        stop_if_any: true,
       },
       {
         stage: "C",
         reasons: ["invalid_source_path", "missing_source_field", "source_value_type_mismatch", "source_value_not_canonicalizable", "unknown_transform"],
         position: "rules",
         per_position_max: 1,
-        stop_if_any: true,
       },
       {
         stage: "D",
@@ -902,7 +917,6 @@ export const CAID_CODE_FORMATS = caidSpecData({
   "cpt": /^(?:[0-9]{4}[0-9A-Z])$/,
   "hcpcs-level-ii": /^(?:[A-Z][0-9]{4})$/,
   "hcpcs": /^(?:(?:[0-9]{4}[0-9A-Z]|[A-Z][0-9]{4}))$/,
-  "iso-3166-1-alpha-2": /^(?:[A-Z]{2})$/,
   "iso-3166-2": /^(?:[A-Z]{2}\x2d[0-9A-Z]{1,3})$/,
   "iso20022-external-code": /^(?:[0-9A-Z]{1,4})$/,
   "nacha-sec": /^(?:[0-9A-Z]{3})$/,
@@ -936,6 +950,8 @@ const DEFINITION = CAID_SPEC.definition;
 const PROJECTION = DEFINITION.projection;
 const ENUM = CAID_SPEC.enum;
 const COMPUTE_RANK = CAID_SPEC.sort_rank.compute;
+const VERIFY_RANK = CAID_SPEC.sort_rank.verify;
+const PATTERN_MAX_OCTETS = CAID_SPEC.pattern_max_octets;
 const DETAIL_RULES = CAID_SPEC.verify_details.reasons;
 const EXPAND_INVALID_OBJECT = CAID_SPEC.verify_details.expand.invalid_object;
 const FIELD_TYPES = new Map(CAID_SPEC.field_types.map((t) => [t.type, t]));
@@ -953,14 +969,15 @@ const BOM = CAID_SPEC.json_text.byte_order_mark;
 // is what parses; this set is an implementation choice, not spec data.
 const IMPLEMENTED_SUITES = new Set(["jcs-sha256"]);
 
-// A host value is refused once its copy passes this many units (one per
-// value plus one per UTF-16 code unit of each string and member name). Every
-// value the JSON text decoder can produce stays under it, because each unit
-// needs at least one octet of text, so the bound refuses only host values
-// that no conforming JSON text can express. It keeps a host value whose
-// references fan out (one object reached through many paths) from expanding
-// without limit.
-const SNAPSHOT_UNIT_BUDGET = LIMITS.json_text_octets;
+// Canonicalization reads at most this many values, counting a value once
+// for every path that reaches it; past it the value is refused as
+// unsupported_value alone (-04 Section 2.6). No JSON text within the text
+// limit holds that many values, so the bound refuses only host values in
+// which one object is reached through many paths.
+const VALUE_BUDGET = LIMITS.value_count;
+// The canonical-size ceiling of a document that has no canonical limit of
+// its own: a definition, an enum value set, a mapping profile or source.
+const DOCUMENT_CANONICAL_OCTETS = LIMITS.document_canonical_octets;
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -1027,21 +1044,50 @@ function hasLoneSurrogate(s) {
   return false;
 }
 
+// The noncharacters, from the generated ranges: U+FDD0 to U+FDEF and the
+// last two code points of every plane.
+const NONCHARACTER_RANGES = CAID_SPEC.json_text.noncharacter_ranges;
+const NONCHARACTER_MIN = Math.min(...NONCHARACTER_RANGES.map((r) => r[0]));
+/** @param {number} cp */
+function isNoncharacter(cp) {
+  if (cp < NONCHARACTER_MIN) return false;
+  for (const [lo, hi] of NONCHARACTER_RANGES) if (cp >= lo && cp <= hi) return true;
+  return false;
+}
+const hexCodePoint = (n) => n.toString(16).padStart(4, "0");
 // True when s is not an I-JSON string [RFC 7493, Section 2.1]: it holds a
-// lone surrogate (no UTF-8 encoding) or a noncharacter code point (U+FDD0 to
-// U+FDEF, or any code point whose low 16 bits are FFFE or FFFF). Such a
-// string is outside the data model: RFC 8785 requires I-JSON input, and the
-// JSON text decoder refuses the same strings as malformed_json.
-const OUTSIDE_MODEL_STRING = /[\p{Cs}\p{Noncharacter_Code_Point}]/u;
+// surrogate code unit (a lone surrogate has no UTF-8 encoding; a paired one
+// is matched here only when it forms a noncharacter) or a noncharacter.
+// Such a string is outside the data model: RFC 8785 requires I-JSON input,
+// and the JSON text decoder refuses the same strings as malformed_json.
+const OUTSIDE_MODEL_STRING = new RegExp(`[\\p{Cs}${NONCHARACTER_RANGES.map(([lo, hi]) => `\\u{${hexCodePoint(lo)}}-\\u{${hexCodePoint(hi)}}`).join("")}]`, "u");
+// Printable ASCII: a string of it is inside the data model.
+const PLAIN_ASCII = /^[\x20-\x7e]*$/;
 /** @param {string} s */
 function outsideModelString(s) {
-  return OUTSIDE_MODEL_STRING.test(s);
+  return !PLAIN_ASCII.test(s) && OUTSIDE_MODEL_STRING.test(s);
 }
 
-function sha256(text) {
+// Whole-string match of a generated pattern, with its length limit, if it
+// has one, checked first (-04 Section 2.6). Every string such a pattern
+// matches is ASCII, so its length in UTF-16 code units is its length in
+// octets. The limit also keeps a long string from exhausting the regular
+// expression engine's backtracking stack.
+/**
+ * @param {string} id
+ * @param {unknown} s
+ */
+function matchesPattern(id, s) {
+  if (typeof s !== "string") return false;
+  const max = PATTERN_MAX_OCTETS[id];
+  return (max === undefined || s.length <= max) && CAID_PATTERNS[id].test(s);
+}
+
+/** @param {Uint8Array} bytes */
+function sha256(bytes) {
   // CAID content-addressing commitment, not password or credential storage.
   // codeql[js/insufficient-password-hash]
-  return createHash("sha256").update(Buffer.from(text, "utf8")).digest();
+  return createHash("sha256").update(bytes).digest();
 }
 
 // An own member of a data-model object, or undefined. Never reads an
@@ -1105,6 +1151,29 @@ function readOption(options, key, type) {
   return typeof v === type ? v : undefined;
 }
 
+// An option that is never treated as absent once supplied: the expected
+// definition_sha256 of verification. It is supplied when options has an own
+// property of that name whose value is not undefined; an accessor, or a
+// property that cannot be read, is supplied with no usable value. A supplied
+// value of any type but string can never equal a definition_sha256, so the
+// pin fails closed instead of being ignored.
+/**
+ * @param {unknown} options
+ * @param {string} key
+ * @returns {{supplied: false} | {supplied: true, value: unknown}}
+ */
+function readPin(options, key) {
+  if (typeof options !== "object" || options === null) return { supplied: false };
+  try {
+    const d = Reflect.getOwnPropertyDescriptor(options, key);
+    if (d === undefined) return { supplied: false };
+    if (!hasOwn(d, "value")) return { supplied: true, value: UNSUPPORTED };
+    return d.value === undefined ? { supplied: false } : { supplied: true, value: d.value };
+  } catch {
+    return { supplied: true, value: UNSUPPORTED };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Host values (-04 Section 2.5)
 //
@@ -1112,7 +1181,7 @@ function readOption(options, key, type) {
 // never throws and never invokes a getter: members are read through
 // Object.getOwnPropertyDescriptors, and a Proxy trap that throws refuses the
 // value. Accepted: null, booleans, numbers, strings, arrays whose prototype
-// is Array.prototype that are dense with no extra own properties, and
+// is Array.prototype with no properties other than their elements, and
 // objects whose prototype is Object.prototype or null with only own,
 // enumerable, string-keyed data properties. An own member whose value is
 // undefined is absent for field presence and refuses the value as
@@ -1120,11 +1189,27 @@ function readOption(options, key, type) {
 // keeps its kind (an empty object or array in the copy) and refuses the
 // value as unsupported_value. Everything else becomes UNSUPPORTED:
 // accessors, non-enumerable or symbol-keyed properties, Map, Set, Date,
-// typed arrays, class instances, functions, symbols, bigints and undefined
-// array elements. Numbers and strings
-// are copied as they are; canonicalization decides whether they are in the
-// model (unsupported_number; unsupported_value for a lone surrogate or a
-// noncharacter).
+// typed arrays, class instances, functions, symbols, bigints and the holes
+// of a sparse array. Only the elements an array actually has are read, so
+// the work a sparse array costs is bounded by its elements, never by its
+// length. Numbers and strings are copied as they are; canonicalization
+// decides whether they are in the model (unsupported_number;
+// unsupported_value for a lone surrogate or a noncharacter).
+//
+// Values are counted once for every path that reaches them. Past the value
+// budget no further container is entered (containers keep their kind), the
+// result is marked exceeded, and canonicalization refuses it as
+// unsupported_value alone (-04 Section 2.6). The members of the outermost
+// object are always read, so the checks of computation phases 1 through 4,
+// which never look inside a member, see the whole value.
+//
+// A container reached through several paths is copied once: when its copy
+// is complete (nothing inside it was cut short by the depth limit, a cycle
+// or the budget), a later path that reaches it where it still fits within
+// the depth limit reuses the copy and adds its value count. The copy of a
+// value with shared references is then shared the same way, so its cost is
+// its distinct containers, not its expansion, while the count, and so the
+// budget, is still that of the expansion.
 //
 // With proxyCheck, a copy that is otherwise clean is also passed through
 // structuredClone, which refuses any Proxy before calling a single trap, so
@@ -1132,33 +1217,54 @@ function readOption(options, key, type) {
 // ---------------------------------------------------------------------------
 
 /**
+ * @typedef {{src: any, dst: any, isArray: boolean, depth: number, parent: any, key: string | number | null}} Pending
+ * @typedef {{dst: any, count: number, height: number, outside: boolean, unsupported: boolean}} Copied
+ * @typedef {{p: Pending, children: Pending[], next: number, start: number, outside: number, unsupported: number, height: number, complete: boolean}} Frame
+ * @typedef {{values: number, outside: number, unsupported: number, memo: Map<any, Copied>, open: Frame[]}} SnapshotState
+ */
+
+/**
  * @param {any} root
  * @param {boolean} [proxyCheck]
- * @returns {{value: any, outside: boolean, clean: boolean}}
+ * @returns {{value: any, outside: boolean, exceeded: boolean, clean: boolean}}
  */
 function snapshot(root, proxyCheck = false) {
+  // outside and unsupported count events, so that a frame can tell whether
+  // any happened inside it.
   /** @type {SnapshotState} */
-  const st = { units: 0, outside: false, unsupported: false };
+  const st = { values: 0, outside: 0, unsupported: 0, memo: new Map(), open: [] };
   /** @type {Set<any>} */
   const path = new Set();
   const top = admit(root, 1, st, path);
   let value = top.value;
   if (top.pending) {
-    /** @type {Array<{p: Pending, children: Pending[], next: number}>} */
-    const stack = [];
+    const stack = st.open;
     /** @param {Pending} p */
     const enter = (p) => {
       path.add(p.src);
-      const children = expand(p, st, path);
+      /** @type {Frame} */
+      const frame = {
+        p,
+        children: [],
+        next: 0,
+        start: st.values - 1, // admit already counted the container itself
+        outside: st.outside,
+        unsupported: st.unsupported,
+        height: 1,
+        complete: true,
+      };
+      stack.push(frame);
+      const children = expand(p, st, path, frame);
       if (children === null) {
+        stack.pop();
         path.delete(p.src);
-        st.unsupported = true;
+        st.unsupported += 1;
         if (p.parent === null) value = UNSUPPORTED;
         else if (Array.isArray(p.parent)) p.parent[/** @type {number} */ (p.key)] = UNSUPPORTED;
         else defineMember(p.parent, /** @type {string} */ (p.key), UNSUPPORTED);
         return;
       }
-      stack.push({ p, children, next: 0 });
+      frame.children = children;
     };
     enter(top.pending);
     while (stack.length > 0) {
@@ -1166,20 +1272,31 @@ function snapshot(root, proxyCheck = false) {
       if (frame.next >= frame.children.length) {
         path.delete(frame.p.src);
         stack.pop();
+        if (frame.complete) {
+          st.memo.set(frame.p.src, {
+            dst: frame.p.dst,
+            count: st.values - frame.start,
+            height: frame.height,
+            outside: st.outside > frame.outside,
+            unsupported: st.unsupported > frame.unsupported,
+          });
+        }
+        const parent = stack[stack.length - 1];
+        if (parent !== undefined && frame.height + 1 > parent.height) parent.height = frame.height + 1;
         continue;
       }
       const child = frame.children[frame.next++];
-      if (st.units > SNAPSHOT_UNIT_BUDGET) {
-        // Past the budget: the container keeps its kind but stays empty, and
-        // the whole value refuses as unsupported_value.
-        st.outside = true;
+      if (st.values > VALUE_BUDGET) {
+        // Past the budget a container keeps its kind but stays empty.
+        incomplete(st);
         continue;
       }
       enter(child);
     }
   }
-  let outside = st.outside;
-  if (proxyCheck && !outside && !st.unsupported && typeof root === "object" && root !== null
+  const exceeded = st.values > VALUE_BUDGET;
+  let outside = st.outside > 0 || exceeded;
+  if (proxyCheck && !outside && st.unsupported === 0 && typeof root === "object" && root !== null
       && typeof structuredClone === "function") {
     try {
       structuredClone(root);
@@ -1187,16 +1304,19 @@ function snapshot(root, proxyCheck = false) {
       outside = true;
     }
   }
-  return { value, outside, clean: !outside && !st.unsupported };
+  return { value, outside, exceeded, clean: !outside && st.unsupported === 0 };
 }
 
-/**
- * @typedef {{src: any, dst: any, isArray: boolean, depth: number, parent: any, key: string | number | null}} Pending
- * @typedef {{units: number, outside: boolean, unsupported: boolean}} SnapshotState
- */
+// Something inside every open container was cut short, so none of their
+// copies may be reused on another path.
+/** @param {SnapshotState} st */
+function incomplete(st) {
+  for (const frame of st.open) frame.complete = false;
+}
 
-// Classifies one host value: a scalar copy, UNSUPPORTED, or an empty
-// container plus the work item that fills it.
+// Classifies one host value: a scalar copy, UNSUPPORTED, a complete copy
+// made earlier on another path, or an empty container plus the work item
+// that fills it. Every value counts once per path.
 /**
  * @param {any} v
  * @param {number} depth
@@ -1204,26 +1324,21 @@ function snapshot(root, proxyCheck = false) {
  * @param {Set<any>} path
  * @param {any} [parent]
  * @param {string | number | null} [key]
- * @returns {{value: any, pending: Pending | null}}
+ * @returns {{value: any, pending: Pending | null, height: number}}
  */
 function admit(v, depth, st, path, parent = null, key = null) {
+  st.values += 1;
   switch (typeof v) {
     case "string":
-      st.units += 1 + v.length;
-      return { value: v, pending: null };
     case "number":
     case "boolean":
-      st.units += 1;
-      return { value: v, pending: null };
+      return { value: v, pending: null, height: 0 };
     case "object":
-      if (v === null) {
-        st.units += 1;
-        return { value: null, pending: null };
-      }
+      if (v === null) return { value: null, pending: null, height: 0 };
       break;
     default:
-      st.unsupported = true;
-      return { value: UNSUPPORTED, pending: null };
+      st.unsupported += 1;
+      return { value: UNSUPPORTED, pending: null, height: 0 };
   }
   let isArray;
   let proto;
@@ -1231,39 +1346,59 @@ function admit(v, depth, st, path, parent = null, key = null) {
     isArray = Array.isArray(v);
     proto = Object.getPrototypeOf(v);
   } catch {
-    st.unsupported = true;
-    return { value: UNSUPPORTED, pending: null };
+    st.unsupported += 1;
+    return { value: UNSUPPORTED, pending: null, height: 0 };
   }
   const plain = isArray ? proto === Array.prototype : proto === Object.prototype || proto === null;
   if (!plain) {
-    st.unsupported = true;
-    return { value: UNSUPPORTED, pending: null };
+    st.unsupported += 1;
+    return { value: UNSUPPORTED, pending: null, height: 0 };
   }
-  st.units += 1;
   if (depth > MAX_DEPTH || path.has(v)) {
     // A cycle, or a container nested beyond the limit, is still an object
     // or an array, so a declared field holding one keeps its JSON kind; the
     // whole value refuses as unsupported_value.
-    st.outside = true;
-    return { value: isArray ? [] : {}, pending: null };
+    st.outside += 1;
+    incomplete(st);
+    return { value: isArray ? [] : {}, pending: null, height: 1 };
+  }
+  const copied = st.memo.get(v);
+  if (copied !== undefined && depth + copied.height - 1 <= MAX_DEPTH) {
+    st.values += copied.count - 1;
+    if (copied.outside) st.outside += 1;
+    if (copied.unsupported) st.unsupported += 1;
+    return { value: copied.dst, pending: null, height: copied.height };
   }
   const dst = isArray ? [] : {};
-  return { value: dst, pending: { src: v, dst, isArray, depth, parent, key } };
+  return { value: dst, pending: { src: v, dst, isArray, depth, parent, key }, height: 1 };
+}
+
+// The array index a property key names, or -1. An index is a canonical
+// decimal integer below 2^32 - 1.
+/** @param {string | symbol} key */
+function arrayIndexOf(key) {
+  if (typeof key !== "string" || key.length === 0 || key.length > 10) return -1;
+  if (key !== "0" && !/^[1-9][0-9]*$/.test(key)) return -1;
+  const n = Number(key);
+  return n < 4294967295 ? n : -1;
 }
 
 // Reads the members of one container. A member or element that is an
-// accessor, non-enumerable, or (in an array) a hole becomes UNSUPPORTED in
-// place, so a declared field that holds one refuses as mistyped_field.
-// Returns the pending child containers, or null when the container itself
-// is outside the data model: it cannot be read, has a symbol-keyed
-// property, or is an array with properties other than its elements.
+// accessor or non-enumerable, and each run of holes in an array, becomes
+// UNSUPPORTED in place, so a declared field that holds one refuses as
+// mistyped_field. Returns the pending child containers, or null when the
+// container itself is outside the data model: it cannot be read, has a
+// symbol-keyed property, or is an array with properties other than its
+// elements. The frame's height grows with every child whose copy was made
+// earlier.
 /**
  * @param {Pending} p
  * @param {SnapshotState} st
  * @param {Set<any>} path
+ * @param {Frame} frame
  * @returns {Pending[] | null}
  */
-function expand(p, st, path) {
+function expand(p, st, path, frame) {
   /** @type {Pending[]} */
   const pending = [];
   /**
@@ -1272,29 +1407,47 @@ function expand(p, st, path) {
    */
   const place = (key, d) => {
     if (!hasOwn(d, "value") || d.enumerable !== true) {
-      st.unsupported = true;
+      st.values += 1;
+      st.unsupported += 1;
       return UNSUPPORTED;
     }
     const r = admit(d.value, p.depth + 1, st, path, p.dst, key);
     if (r.pending) pending.push(r.pending);
+    else if (r.height + 1 > frame.height) frame.height = r.height + 1;
     return r.value;
   };
   try {
     if (p.isArray) {
       const length = readOwnData(p.src, "length");
       if (typeof length !== "number") return null;
-      let present = 0;
-      for (let i = 0; i < length; i++) {
-        const d = Reflect.getOwnPropertyDescriptor(p.src, String(i));
-        if (!d) {
-          st.unsupported = true;
-          p.dst.push(UNSUPPORTED);
-          continue;
-        }
-        present++;
-        p.dst.push(place(i, d));
+      // Only the keys the array has are read: a sparse array with a huge
+      // length and few elements costs its elements, not its length.
+      const keys = Reflect.ownKeys(p.src);
+      /** @type {number[]} */
+      const indices = [];
+      for (const key of keys) {
+        if (key === "length") continue;
+        const index = arrayIndexOf(key);
+        if (index < 0 || index >= length) return null;
+        indices.push(index);
       }
-      return Reflect.ownKeys(p.src).length === present + 1 ? pending : null;
+      indices.sort((a, b) => a - b);
+      let expected = 0;
+      for (const index of indices) {
+        if (index !== expected) {
+          st.unsupported += 1;
+          p.dst.push(UNSUPPORTED);
+        }
+        expected = index + 1;
+        const d = Reflect.getOwnPropertyDescriptor(p.src, String(index));
+        if (!d) return null;
+        p.dst.push(place(p.dst.length, d));
+      }
+      if (expected !== length) {
+        st.unsupported += 1;
+        p.dst.push(UNSUPPORTED);
+      }
+      return pending;
     }
     const descriptors = /** @type {Record<string, PropertyDescriptor>} */ (Object.getOwnPropertyDescriptors(p.src));
     const allKeys = Reflect.ownKeys(descriptors);
@@ -1304,10 +1457,9 @@ function expand(p, st, path) {
       if (hasOwn(d, "value") && d.enumerable === true && d.value === undefined) {
         // undefined is not a JSON value: the member is absent for field
         // presence, and the value refuses as unsupported_value.
-        st.outside = true;
+        st.outside += 1;
         continue;
       }
-      st.units += key.length;
       defineMember(p.dst, key, place(key, d));
     }
     return pending;
@@ -1324,107 +1476,123 @@ function expand(p, st, path) {
 // Number-to-String form RFC 8785 requires, and -0 prints as 0. Strings and
 // member names must be I-JSON strings (scalar values, no noncharacters),
 // else unsupported_value; for those, JSON.stringify's escaping is the RFC
-// 8785 form. Member names sort by
-// UTF-16 code units, the default string order. A container nested deeper
-// than the limit, or any UNSUPPORTED value, is unsupported_value and nothing
-// below it is visited. When capOctets is a number and nothing else refused,
-// an encoding longer than capOctets octets is unsupported_value.
+// 8785 form. Member names sort by UTF-16 code units, the default string
+// order. A container nested deeper than the limit, or any UNSUPPORTED value,
+// is unsupported_value and nothing below it is visited. When nothing else
+// refused, an encoding longer than the octet cap is unsupported_value. Past
+// the value budget the value is unsupported_value alone.
+//
+// The traversal keeps one frame per open container, and the output is
+// written as UTF-8 into one buffer that never grows past the cap: once the
+// encoding passes it, or a value is refused, nothing more is written, though
+// the traversal goes on, since the reasons and the value budget depend on
+// every value. Memory is bounded by the nesting depth and the cap, whatever
+// the size of the input.
 // ---------------------------------------------------------------------------
 
+const OUTPUT_CHUNK = 1 << 15;
+const REFUSED_BY_BUDGET = Object.freeze({ ok: false, refusals: Object.freeze(["unsupported_value"]) });
+
 /**
- * @param {any} root
- * @param {number | null} capOctets
- * @param {boolean} outside
- * @returns {{ok: true, canonical: string} | {ok: false, refusals: string[]}}
+ * @param {any} root a data-model copy (from snapshot or the decoder)
+ * @param {number | null} capOctets the canonical-size limit, or null for a
+ *   document, which takes the document ceiling
+ * @param {boolean} [outside] the copy already holds a value outside the model
+ * @param {boolean} [exceeded] the copy passed the value budget
+ * @returns {{ok: true, bytes: Buffer} | {ok: false, refusals: readonly string[]}}
  */
-function serialize(root, capOctets, outside) {
+function serialize(root, capOctets, outside = false, exceeded = false) {
+  if (exceeded) return { ok: false, refusals: [...REFUSED_BY_BUDGET.refusals] };
+  const cap = capOctets === null ? DOCUMENT_CANONICAL_OCTETS : capOctets;
   let number = false;
   let other = outside === true;
   let oversize = false;
-  let units = 0;
-  /** @type {string[]} */
-  const parts = [];
+  let buf = Buffer.allocUnsafe(Math.min(cap, 1 << 16) + 1);
+  let len = 0;
+  let chunk = "";
+  const flush = () => {
+    if (chunk.length === 0) return;
+    if (!oversize) {
+      const octets = Buffer.byteLength(chunk, "utf8");
+      if (len + octets > cap) {
+        oversize = true;
+      } else {
+        if (len + octets > buf.length) {
+          const bigger = Buffer.allocUnsafe(Math.min(cap, Math.max(len + octets, buf.length * 2)) + 1);
+          buf.copy(bigger, 0, 0, len);
+          buf = bigger;
+        }
+        len += buf.write(chunk, len, "utf8");
+      }
+    }
+    chunk = "";
+  };
   /** @param {string} text */
   const emit = (text) => {
     if (number || other || oversize) return;
-    units += text.length;
-    if (capOctets !== null && units > capOctets) {
-      // Each UTF-16 code unit encodes to at least one octet.
-      oversize = true;
-      parts.length = 0;
-      return;
-    }
-    parts.push(text);
+    chunk += text;
+    if (chunk.length >= OUTPUT_CHUNK) flush();
   };
-  // Work items: [value, level] where level counts the enclosing containers
-  // plus one, or [null, -1, text] for literal text.
-  /** @type {Array<[any, number, string?]>} */
-  const work = [[root, 1]];
-  while (work.length > 0 && !(number && other)) {
-    const item = /** @type {[any, number, string?]} */ (work.pop());
-    if (item[1] === -1) {
-      emit(/** @type {string} */ (item[2]));
-      continue;
-    }
-    const v = item[0];
-    const level = item[1];
-    if (v === null) {
-      emit("null");
-      continue;
-    }
-    const t = typeof v;
-    if (t === "boolean") {
-      emit(v ? "true" : "false");
-      continue;
-    }
-    if (t === "number") {
-      if (!Number.isFinite(v) || !Number.isInteger(v) || Math.abs(v) > MAX_SAFE) number = true;
-      else emit(JSON.stringify(v));
-      continue;
-    }
-    if (t === "string") {
-      if (outsideModelString(v)) other = true;
-      else emit(JSON.stringify(v));
-      continue;
-    }
-    if (v === UNSUPPORTED || t !== "object" || level > MAX_DEPTH) {
-      other = true;
-      continue;
-    }
-    if (Array.isArray(v)) {
-      work.push([null, -1, "]"]);
-      for (let i = v.length - 1; i >= 0; i--) {
-        work.push([v[i], level + 1]);
-        if (i > 0) work.push([null, -1, ","]);
-      }
-      work.push([null, -1, "["]);
-      continue;
-    }
-    const keys = Object.keys(v).sort();
-    work.push([null, -1, "}"]);
-    for (let i = keys.length - 1; i >= 0; i--) {
-      const key = keys[i];
-      work.push([v[key], level + 1]);
-      if (outsideModelString(key)) {
+  /** @type {Array<{v: any, keys: string[] | null, i: number}>} */
+  const stack = [];
+  let visits = 0;
+  let pending = root;
+  let havePending = true;
+  for (;;) {
+    if (havePending) {
+      havePending = false;
+      if (++visits > VALUE_BUDGET) return { ok: false, refusals: [...REFUSED_BY_BUDGET.refusals] };
+      const v = pending;
+      const t = typeof v;
+      if (v === null) {
+        emit("null");
+      } else if (t === "boolean") {
+        emit(v ? "true" : "false");
+      } else if (t === "number") {
+        if (!Number.isFinite(v) || !Number.isInteger(v) || Math.abs(v) > MAX_SAFE) number = true;
+        else emit(JSON.stringify(v));
+      } else if (t === "string") {
+        if (outsideModelString(v)) other = true;
+        else emit(JSON.stringify(v));
+      } else if (v === UNSUPPORTED || t !== "object" || stack.length + 1 > MAX_DEPTH) {
         other = true;
-        work.push([null, -1, ":"]);
+      } else if (Array.isArray(v)) {
+        emit("[");
+        stack.push({ v, keys: null, i: 0 });
       } else {
-        work.push([null, -1, JSON.stringify(key) + ":"]);
+        emit("{");
+        stack.push({ v, keys: Object.keys(v).sort(), i: 0 });
       }
-      if (i > 0) work.push([null, -1, ","]);
     }
-    work.push([null, -1, "{"]);
+    if (stack.length === 0) break;
+    const f = stack[stack.length - 1];
+    const count = f.keys === null ? f.v.length : f.keys.length;
+    if (f.i < count) {
+      const i = f.i++;
+      if (f.keys === null) {
+        if (i > 0) emit(",");
+        pending = f.v[i];
+      } else {
+        const key = f.keys[i];
+        if (outsideModelString(key)) other = true;
+        else emit((i > 0 ? "," : "") + JSON.stringify(key) + ":");
+        pending = f.v[key];
+      }
+      havePending = true;
+    } else {
+      stack.pop();
+      emit(f.keys === null ? "]" : "}");
+    }
   }
+  flush();
   if (!number && !other && oversize) other = true;
-  const canonical = number || other ? "" : parts.join("");
-  if (!number && !other && capOctets !== null && Buffer.byteLength(canonical, "utf8") > capOctets) other = true;
   if (number || other) {
     const refusals = [];
     if (number) refusals.push("unsupported_number");
     if (other) refusals.push("unsupported_value");
     return { ok: false, refusals };
   }
-  return { ok: true, canonical };
+  return { ok: true, bytes: buf.subarray(0, len) };
 }
 
 /**
@@ -1435,15 +1603,17 @@ function serialize(root, capOctets, outside) {
  * definitions, value sets, mapping profiles). Refusals, in this order:
  * unsupported_number (a number that is not a finite integer of magnitude at
  * most 2^53-1) and unsupported_value (a lone surrogate or noncharacter,
- * nesting deeper than 64, or a host value outside the data model). The canonical-size limit
- * applies to action objects only and is enforced by compute and verify.
+ * nesting deeper than 64, a host value outside the data model, more values
+ * than the value budget, or an encoding longer than 134217728 octets). The
+ * action-object limit of 16777216 octets is enforced by compute and verify.
  *
  * @param {*} value
  * @returns {{ok: true, canonical: string} | {ok: false, refusals: string[]}}
  */
 export function canonicalize(value) {
   const snap = snapshot(value, true);
-  return serialize(snap.value, null, snap.outside);
+  const c = serialize(snap.value, null, snap.outside, snap.exceeded);
+  return c.ok ? { ok: true, canonical: c.bytes.toString("utf8") } : { ok: false, refusals: [...c.refusals] };
 }
 
 /**
@@ -1567,10 +1737,6 @@ function maxNesting(s) {
     }
   }
   return max;
-}
-
-function isNoncharacter(cp) {
-  return (cp >= 0xfdd0 && cp <= 0xfdef) || (cp & 0xfffe) === 0xfffe;
 }
 
 const HEX = (c) => (c >= 0x30 && c <= 0x39 ? c - 0x30 : c >= 0x41 && c <= 0x46 ? c - 0x37 : c >= 0x61 && c <= 0x66 ? c - 0x57 : -1);
@@ -1857,8 +2023,8 @@ function projectionOf(d) {
 function digestOfDefinition(d) {
   const p = projectionOf(d);
   if (p === null) return null;
-  const c = serialize(p, null, false);
-  return c.ok ? PROJECTION.prefix + sha256(c.canonical).toString("hex") : null;
+  const c = serialize(p, null);
+  return c.ok ? PROJECTION.prefix + sha256(c.bytes).toString("hex") : null;
 }
 
 // Definition conformance over a data-model value: the definition_sha256
@@ -1869,8 +2035,7 @@ function digestOfDefinition(d) {
  */
 function conformingDigest(d) {
   if (!isDataObject(d)) return null;
-  const actionType = member(d, "action_type");
-  if (typeof actionType !== "string" || !CAID_PATTERNS.action_type.test(actionType)) return null;
+  if (!matchesPattern("action_type", member(d, "action_type"))) return null;
   const required = member(d, "required_fields");
   if (!Array.isArray(required) || required.length < DEFINITION.required_fields_min) return null;
   if (hasOwn(d, "optional_fields") && !Array.isArray(d.optional_fields)) return null;
@@ -1888,22 +2053,78 @@ function conformingDigest(d) {
       const allowed = /** @type {Set<string>} */ (FIELD_ALLOWED_MEMBERS.get(type));
       for (const key of Object.keys(entry)) if (!allowed.has(key)) return null;
       for (const key of Object.keys(t.required_members)) {
-        const value = member(entry, key);
-        if (typeof value !== "string" || !CAID_PATTERNS[t.required_members[key]].test(value)) return null;
+        if (!matchesPattern(t.required_members[key], member(entry, key))) return null;
       }
     }
   }
   return digestOfDefinition(d);
 }
 
-// A host definition copied into the data model, or UNSUPPORTED when any
-// part of it is outside the model.
+// True when a host value is an object in the data model's sense (not an
+// array; prototype Object.prototype or null), checked without user code.
+function isPlainHostObject(value) {
+  if (typeof value !== "object" || value === null) return false;
+  try {
+    if (Array.isArray(value)) return false;
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+  } catch {
+    return false;
+  }
+}
+
+// A host definition copied into the data model, or UNSUPPORTED. Only what
+// the validation projection reads is read (-04 Section 2.5): action_type,
+// given here as the value already read once for matching, and the two field
+// lists, each entry without the members the projection excludes (notes).
+// Members outside the projection are never read, so they are never checked
+// and never make a definition nonconforming, as in every other port. Each
+// member is read exactly once, so a Proxy cannot report one action type for
+// matching and another for the digest.
 /**
  * @param {unknown} entry
+ * @param {unknown} actionType
  * @returns {any}
  */
-function definitionData(entry) {
-  const snap = snapshot(entry, false);
+function definitionData(entry, actionType) {
+  if (!isPlainHostObject(entry)) return UNSUPPORTED;
+  const view = {};
+  defineMember(view, "action_type", actionType);
+  for (const list of DEFINITION.field_lists) {
+    let d;
+    try {
+      d = Reflect.getOwnPropertyDescriptor(/** @type {object} */ (entry), list);
+    } catch {
+      return UNSUPPORTED;
+    }
+    if (d === undefined) continue;
+    if (!hasOwn(d, "value") || d.enumerable !== true) return UNSUPPORTED;
+    const items = readHostArray(d.value);
+    if (items === null) {
+      // Not an array: conformance refuses it; copy it only to keep its kind.
+      defineMember(view, list, isPlainHostObject(d.value) ? {} : d.value);
+      continue;
+    }
+    defineMember(view, list, items.map((item) => {
+      if (!isPlainHostObject(item)) return item;
+      const kept = {};
+      let descriptors;
+      try {
+        descriptors = Object.getOwnPropertyDescriptors(item);
+      } catch {
+        return UNSUPPORTED;
+      }
+      for (const key of Reflect.ownKeys(descriptors)) {
+        if (typeof key !== "string") return UNSUPPORTED;
+        if (PROJECTION_EXCLUDED.has(key)) continue;
+        const md = /** @type {Record<string, PropertyDescriptor>} */ (descriptors)[key];
+        if (!hasOwn(md, "value") || md.enumerable !== true) return UNSUPPORTED;
+        defineMember(kept, key, md.value);
+      }
+      return kept;
+    }));
+  }
+  const snap = snapshot(view, false);
   return snap.clean ? snap.value : UNSUPPORTED;
 }
 
@@ -1920,8 +2141,9 @@ function resolve(actionType, definitions) {
   const items = readHostArray(definitions) ?? [];
   const candidates = [];
   for (const entry of items) {
-    if (readOwnData(entry, DEFINITION.resolution.match_member) !== actionType) continue;
-    candidates.push(definitionData(entry));
+    const at = readOwnData(entry, DEFINITION.resolution.match_member);
+    if (at !== actionType) continue;
+    candidates.push(definitionData(entry, at));
   }
   if (candidates.length === 0) return { reason: DEFINITION.resolution.none };
   const digests = new Set();
@@ -1947,7 +2169,7 @@ function resolve(actionType, definitions) {
  * @returns {{definition_sha256: string, refusals?: undefined} | {refusals: string[], definition_sha256?: undefined}}
  */
 export function definitionSha256(definition) {
-  const d = definitionData(definition);
+  const d = definitionData(definition, readOwnData(definition, DEFINITION.resolution.match_member));
   const digest = conformingDigest(d);
   if (digest === null) return { refusals: [CAID_SPEC.results.definition_sha256.refusal] };
   return { definition_sha256: digest };
@@ -1959,7 +2181,8 @@ export function definitionSha256(definition) {
  *   -> {ok: false, refusals: ["unknown_action_type" | "invalid_definition"]}
  *
  * The resolution step compute, verify and the mapping profile share. The
- * returned definition is a data-model copy. Status never gates resolution.
+ * returned definition is a data-model copy of its validation projection.
+ * Status never gates resolution.
  *
  * @param {string} actionType
  * @param {any[]} definitions
@@ -2012,22 +2235,22 @@ function resolveEnum(field, enumSnapshots) {
   const snapshotLabel = hasOwn(field, "values_snapshot") ? field.values_snapshot : undefined;
   const digest = hasOwn(field, "values_sha256") ? field.values_sha256 : undefined;
   if (typeof ref !== "string" || ref.length === 0 || typeof snapshotLabel !== "string"
-      || snapshotLabel.length === 0 || typeof digest !== "string"
-      || !CAID_PATTERNS.digest_field.test(digest)) return null;
+      || snapshotLabel.length === 0 || !matchesPattern("digest_field", digest)) return null;
   if (!hasValues) {
     declared = undefined;
     for (const s of readHostArray(enumSnapshots) ?? []) {
       if (readOwnData(s, "values_ref") === ref && readOwnData(s, "values_snapshot") === snapshotLabel
           && readOwnData(s, "values_sha256") === digest) {
-        const data = definitionData(s);
-        declared = isDataObject(data) && hasOwn(data, "values") ? data.values : undefined;
+        const values = readOwnData(s, "values");
+        const copied = snapshot(values, false);
+        declared = copied.clean ? copied.value : undefined;
         break;
       }
     }
   }
   if (!validEnumValues(declared)) return null;
-  const c = serialize(declared, null, false);
-  return c.ok && "sha256:" + sha256(c.canonical).toString("hex") === digest ? declared : null;
+  const c = serialize(declared, null);
+  return c.ok && "sha256:" + sha256(c.bytes).toString("hex") === digest ? declared : null;
 }
 
 function daysInMonth(year, month) {
@@ -2050,7 +2273,7 @@ function checkField(value, field, enumSnapshots) {
     return matcher.test(value) ? null : t.format_refusal;
   }
   if (t.pattern !== undefined) {
-    if (!CAID_PATTERNS[t.pattern].test(value)) return t.pattern_refusal;
+    if (!matchesPattern(t.pattern, value)) return t.pattern_refusal;
     if (t.calendar_check === "day_within_month") {
       const o = CAID_SPEC.timestamp_date_offsets;
       const n = (r) => Number(value.slice(r[0], r[1]));
@@ -2065,21 +2288,22 @@ function checkField(value, field, enumSnapshots) {
 // ---------------------------------------------------------------------------
 
 // Runs compute after the entry gate over a data-model value. Returns the
-// ordered, deduplicated reasons, the resolution and the canonical text.
-// With checkSuite false the suite phase is skipped (verification checks the
-// suite of the CAID it is given instead).
+// ordered, deduplicated reasons, the resolution and the canonicalization
+// result (null when a gate stopped computation before it). With checkSuite
+// false the suite phase is skipped (verification checks the suite of the
+// CAID it is given instead).
 /**
  * @param {any} obj
  * @param {boolean} outside
+ * @param {boolean} exceeded
  * @param {unknown} definitions
  * @param {unknown} enumSnapshots
  * @param {unknown} suite
  * @param {boolean} checkSuite
- * @returns {{refusals: string[], resolved: {definition: any, definition_sha256: string} | null, canonical: string | null}}
+ * @returns {{refusals: string[], resolved: {definition: any, definition_sha256: string} | null, canonical: ReturnType<typeof serialize> | null}}
  */
-function evaluate(obj, outside, definitions, enumSnapshots, suite, checkSuite) {
-  if (!isDataObject(obj) || !hasOwn(obj, "action_type") || typeof obj.action_type !== "string"
-      || !CAID_PATTERNS.action_type.test(obj.action_type)) {
+function evaluate(obj, outside, exceeded, definitions, enumSnapshots, suite, checkSuite) {
+  if (!isDataObject(obj) || !hasOwn(obj, "action_type") || !matchesPattern("action_type", obj.action_type)) {
     return { refusals: ["invalid_action_type"], resolved: null, canonical: null };
   }
   const resolution = resolve(obj.action_type, definitions);
@@ -2101,25 +2325,26 @@ function evaluate(obj, outside, definitions, enumSnapshots, suite, checkSuite) {
   if (checkSuite && !(typeof suite === "string" && IMPLEMENTED_SUITES.has(suite))) {
     found.push([COMPUTE_RANK.unknown_suite, 0, "unknown_suite"]);
   }
-  const c = serialize(obj, LIMITS.canonical_octets, outside);
+  const c = serialize(obj, LIMITS.canonical_octets, outside, exceeded);
   if (!c.ok) for (const r of c.refusals) found.push([COMPUTE_RANK[r], 0, r]);
   found.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  return { refusals: [...new Set(found.map((f) => f[2]))], resolved, canonical: c.ok ? c.canonical : null };
+  return { refusals: [...new Set(found.map((f) => f[2]))], resolved, canonical: c };
 }
 
 /**
  * @param {any} obj
  * @param {boolean} outside
+ * @param {boolean} exceeded
  * @param {unknown} options
  * @returns {CaidComputed | CaidRefused}
  */
-function computeData(obj, outside, options) {
+function computeData(obj, outside, exceeded, options) {
   const suite = readOption(options, "suite", "string");
   const definitions = readOption(options, "definitions", "array");
   const enumSnapshots = readOption(options, "enumSnapshots", "array");
-  const r = evaluate(obj, outside, definitions, enumSnapshots, suite, true);
-  if (r.refusals.length > 0) return { refusals: r.refusals };
-  const bytes = sha256(/** @type {string} */ (r.canonical));
+  const r = evaluate(obj, outside, exceeded, definitions, enumSnapshots, suite, true);
+  if (r.refusals.length > 0 || r.canonical === null || !r.canonical.ok) return { refusals: r.refusals };
+  const bytes = sha256(r.canonical.bytes);
   return {
     caid: `${ID.scheme}${ID.separator}${ID.version}${ID.separator}${obj.action_type}${ID.separator}${suite}${ID.separator}${bytes.toString("base64url")}`,
     digest: "sha256:" + bytes.toString("hex"),
@@ -2141,7 +2366,7 @@ function computeData(obj, outside, options) {
  */
 export function computeCaid(actionObject, options) {
   const snap = snapshot(actionObject, true);
-  return computeData(snap.value, snap.outside, options);
+  return computeData(snap.value, snap.outside, snap.exceeded, options);
 }
 
 /**
@@ -2155,7 +2380,7 @@ export function computeCaid(actionObject, options) {
 export function computeCaidJson(bytes, options) {
   const decoded = decodeCaidJson(bytes);
   if (!decoded.ok) return { refusals: decoded.refusals };
-  return computeData(decoded.value, false, options);
+  return computeData(decoded.value, false, false, options);
 }
 
 // ---------------------------------------------------------------------------
@@ -2167,8 +2392,9 @@ export function computeCaidJson(bytes, options) {
  *   -> {ok: true, caid: {version, action_type, suite, digest}}
  *   -> {ok: false, refusals: ["malformed_caid" | "unknown_suite"]}
  *
- * Checks, in order: the caid rule of Appendix A (malformed_caid); the suite
- * is registered (unknown_suite); the digest has the suite's digest syntax,
+ * Checks, in order: the caid rule of Appendix A, with the identifier and
+ * its action type within their length limits (malformed_caid); the suite is
+ * registered (unknown_suite); the digest has the suite's digest syntax,
  * including zero unused bits in its final character (malformed_caid). No
  * trimming, case folding, normalization or percent-decoding.
  *
@@ -2176,10 +2402,9 @@ export function computeCaidJson(bytes, options) {
  * @returns {CaidParseResult}
  */
 export function parseCaid(input) {
-  if (typeof input !== "string" || !CAID_PATTERNS.caid.test(input)) {
-    return { ok: false, refusals: ["malformed_caid"] };
-  }
+  if (!matchesPattern("caid", input)) return { ok: false, refusals: ["malformed_caid"] };
   const [, version, actionType, suite, digest] = input.split(ID.separator);
+  if (!matchesPattern("action_type", actionType)) return { ok: false, refusals: ["malformed_caid"] };
   const digestPattern = CAID_SUITE_DIGEST_PATTERNS[suite];
   if (digestPattern === undefined) return { ok: false, refusals: ["unknown_suite"] };
   if (!digestPattern.test(digest)) return { ok: false, refusals: ["malformed_caid"] };
@@ -2224,46 +2449,45 @@ function refusedVerify(reasons, value, caidArgument) {
 /**
  * @param {any} obj
  * @param {boolean} outside
+ * @param {boolean} exceeded
  * @param {unknown} caidString
  * @param {{version: string, action_type: string, suite: string, digest: string}} parsed
  * @param {unknown} options
  * @returns {CaidVerifyResult}
  */
-function verifyData(obj, outside, caidString, parsed, options) {
+function verifyData(obj, outside, exceeded, caidString, parsed, options) {
   const definitions = readOption(options, "definitions", "array");
   const enumSnapshots = readOption(options, "enumSnapshots", "array");
-  const expected = readOption(options, "expectedDefinitionSha256", "string");
+  const pin = readPin(options, "expectedDefinitionSha256");
   const checkSuite = !EXPAND_INVALID_OBJECT.omit.includes("unknown_suite");
   if (!isDataObject(obj)) {
-    const r = evaluate(obj, outside, definitions, enumSnapshots, undefined, checkSuite);
+    const r = evaluate(obj, outside, exceeded, definitions, enumSnapshots, undefined, checkSuite);
     return { valid: false, reasons: ["invalid_object"], details: r.refusals.map((x) => detailOf(x, obj, caidString)) };
   }
+  // Every reason after the gates carries its rank, and the result lists
+  // them in rank order (sort_rank.verify); invalid_object stands for the
+  // computation reasons in details.
   /** @type {string[]} */
   const reasons = [];
-  /** @type {CaidDetail[]} */
-  const details = [];
-  /** @param {string} r */
-  const add = (r) => {
-    reasons.push(r);
-    details.push(detailOf(r, obj, caidString));
-  };
   // The in-object action_type must equal the CAID's type: this is where
   // cross-context reinterpretation dies, since there is no domain prefix.
-  if (!hasOwn(obj, "action_type") || obj.action_type !== parsed.action_type) add("action_type_mismatch");
-  const r = evaluate(obj, outside, definitions, enumSnapshots, undefined, checkSuite);
+  if (!hasOwn(obj, "action_type") || obj.action_type !== parsed.action_type) reasons.push("action_type_mismatch");
+  const r = evaluate(obj, outside, exceeded, definitions, enumSnapshots, undefined, checkSuite);
   const definitionDigest = r.resolved ? r.resolved.definition_sha256 : undefined;
-  if (expected !== undefined && definitionDigest !== undefined && expected !== definitionDigest) {
-    add("definition_mismatch");
-  }
+  if (pin.supplied && definitionDigest !== undefined && pin.value !== definitionDigest) reasons.push("definition_mismatch");
   if (!IMPLEMENTED_SUITES.has(parsed.suite)) {
-    add("unknown_suite");
+    reasons.push("unknown_suite");
   } else {
-    const c = serialize(obj, LIMITS.canonical_octets, outside);
-    if (c.ok && sha256(c.canonical).toString("base64url") !== parsed.digest) add("digest_mismatch");
+    const c = r.canonical ?? serialize(obj, LIMITS.canonical_octets, outside, exceeded);
+    if (c.ok && sha256(c.bytes).toString("base64url") !== parsed.digest) reasons.push("digest_mismatch");
   }
-  if (r.refusals.length > 0) {
-    reasons.push("invalid_object");
-    for (const x of r.refusals) details.push(detailOf(x, obj, caidString));
+  if (r.refusals.length > 0) reasons.push("invalid_object");
+  reasons.sort((a, b) => VERIFY_RANK[a] - VERIFY_RANK[b]);
+  /** @type {CaidDetail[]} */
+  const details = [];
+  for (const reason of reasons) {
+    if (reason === "invalid_object") for (const x of r.refusals) details.push(detailOf(x, obj, caidString));
+    else details.push(detailOf(reason, obj, caidString));
   }
   /** @type {CaidVerifyResult} */
   const out = { valid: reasons.length === 0, reasons, details };
@@ -2283,6 +2507,9 @@ function verifyData(obj, outside, caidString, parsed, options) {
  * has one {reason, field, rule, observed} per reason, except that
  * invalid_object is replaced by one detail per underlying compute reason.
  * definition_sha256 is present whenever a conforming definition resolved.
+ * An expectedDefinitionSha256 that is supplied is never ignored: any value
+ * but the resolved definition's definition_sha256, whatever its type, is
+ * definition_mismatch.
  *
  * A valid result establishes only that the object recomputes to the CAID
  * under its suite. It establishes nothing about authorization, execution,
@@ -2297,7 +2524,7 @@ export function verifyCaid(actionObject, caidString, options) {
   const parsed = parseCaid(caidString);
   if (!parsed.ok) return refusedVerify(parsed.refusals, undefined, caidString);
   const snap = snapshot(actionObject, true);
-  return verifyData(snap.value, snap.outside, caidString, parsed.caid, options);
+  return verifyData(snap.value, snap.outside, snap.exceeded, caidString, parsed.caid, options);
 }
 
 /**
@@ -2315,5 +2542,5 @@ export function verifyCaidJson(bytes, caidString, options) {
   if (!parsed.ok) return refusedVerify(parsed.refusals, undefined, caidString);
   const decoded = decodeCaidJson(bytes);
   if (!decoded.ok) return refusedVerify(decoded.refusals, undefined, caidString);
-  return verifyData(decoded.value, false, caidString, parsed.caid, options);
+  return verifyData(decoded.value, false, false, caidString, parsed.caid, options);
 }

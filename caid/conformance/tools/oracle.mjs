@@ -14,7 +14,9 @@
 //   definitionSha256(definition)          {definition_sha256} | {refusals}
 //
 // Options use the corpus spelling: suite, definitions, enum_snapshots,
-// expected_definition_sha256. An option of the wrong type counts as absent.
+// expected_definition_sha256. A suite, definitions or enum_snapshots option
+// of the wrong type counts as absent; an expected_definition_sha256 that is
+// supplied is a pin whatever its type.
 //
 // A string holding a Unicode noncharacter is outside the data model on
 // every entry point (RFC 8785 Section 3.1 requires I-JSON input; RFC 7493
@@ -48,11 +50,13 @@ function computeOptions(options) {
 
 function verifyOptions(options) {
   const o = isPlainObject(options) ? options : {};
-  return {
+  const out = {
     definitions: Array.isArray(o.definitions) ? o.definitions : undefined,
     enumSnapshots: Array.isArray(o.enum_snapshots) ? o.enum_snapshots : undefined,
-    expectedDefinitionSha256: typeof o.expected_definition_sha256 === 'string' ? o.expected_definition_sha256 : undefined,
   };
+  // A supplied pin is passed as given, whatever its type (Section 6).
+  if (Object.prototype.hasOwnProperty.call(o, 'expected_definition_sha256')) out.expectedDefinitionSha256 = o.expected_definition_sha256;
+  return out;
 }
 
 export function compute(value, options) {

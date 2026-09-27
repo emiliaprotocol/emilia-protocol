@@ -42,7 +42,6 @@ const CODE_SYSTEMS = {
   cpt: 'http://www.ama-assn.org/go/cpt',
   'hcpcs-level-ii': 'https://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets',
   hcpcs: 'https://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets',
-  'iso-3166-1-alpha-2': 'urn:iso:std:iso:3166',
   'iso-3166-2': 'urn:iso:std:iso:3166:-2',
   'iso20022-external-code': 'https://www.iso20022.org/catalogue-messages/additional-content-messages/external-code-sets',
   'nacha-sec': 'https://www.nacha.org/rules/standard-entry-class-codes',
@@ -108,11 +107,15 @@ const isAstral = (s) => /[\u{10000}-\u{10FFFF}]/u.test(s);
 // Curated extras per driver: [case string, lane] or [{repeat}|{b64}, lane].
 const rep = (prefix, unit, count, suffix = '') => ({ repeat: { prefix, unit, count, suffix } });
 const EXTRAS = {
-  // Long accepted identifiers stay near 4 KiB because the expected result
-  // echoes them; long refused ones run past 64 Ki characters.
-  caid: [[rep('caid:1:', 'a', 4100, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'], [rep('caid:1:A', 'a', 70000, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'], [`caid:1:a.1:jcs-sha256:${VALID_DIGEST.slice(0, 42)}\u{1F600}`, 'text']],
-  'action-type.compute': [[rep('a', 'b', 4100, '.1'), 'text'], [rep('a.', '9', 4100), 'text'], [rep('A', 'b', 70000, '.1'), 'text'], [rep('a', 'b', 70000, '.01'), 'text'], ['a\u{1F600}.1', 'text'], ['a.1\u{1F600}', 'text'], ['a\ud800.1', 'native'], ['a.\udfff1', 'native'], ['a￾.1', 'text']],
-  'action-type.parse': [['a\ud800.1', 'native'], [rep('a', 'b', 4100, '.1'), 'text'], [rep('a', 'b', 70000, '.1.'), 'text']],
+  // The length limits of Section 2.6: an action type of at most 512 octets
+  // and a CAID of at most 1024, each checked before any pattern runs. Cases
+  // at the limit and one octet over it, and strings of millions of
+  // characters, which a backtracking engine could not match.
+  caid: [[rep('caid:1:', 'a', 510, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'], [rep('caid:1:', 'a', 511, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'],
+    [rep('caid:1:', 'a', 8000000, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'], [rep('caid:1:A', 'a', 70000, `.1:jcs-sha256:${VALID_DIGEST}`), 'text'], [`caid:1:a.1:jcs-sha256:${VALID_DIGEST.slice(0, 42)}\u{1F600}`, 'text']],
+  'action-type.compute': [[rep('a', 'b', 509, '.1'), 'text'], [rep('a', 'b', 510, '.1'), 'text'], [rep('a.', '9', 510), 'text'], [rep('a.', '9', 511), 'text'], [rep('a', 'b', 8000000, '.1'), 'text'],
+    [rep('A', 'b', 70000, '.1'), 'text'], [rep('a', 'b', 70000, '.01'), 'text'], ['a\u{1F600}.1', 'text'], ['a.1\u{1F600}', 'text'], ['a\ud800.1', 'native'], ['a.\udfff1', 'native'], ['a￾.1', 'text']],
+  'action-type.parse': [['a\ud800.1', 'native'], [rep('a', 'b', 509, '.1'), 'text'], [rep('a', 'b', 510, '.1'), 'text'], [rep('a', 'b', 8000000, '.1'), 'text'], [rep('a', 'b', 70000, '.1.'), 'text']],
   'suite.parse': [['jcs-sha256\u{1F600}', 'text'], ['jcs\ud800', 'native'], [rep('x', 'y', 70000), 'text']],
   'suite.compute': [['jcs-sha256\n', 'text'], ['JCS-SHA256', 'text'], ['jcs-sha256\u0000', 'text'], ['jcs-sha256\ud800', 'native'], ['cbor-sha256', 'text']],
   'digest-256.parse': [[VALID_DIGEST, 'text'], [`${VALID_DIGEST.slice(0, 42)}\ud800`, 'native'], [rep('', 'A', 70000), 'text']],
@@ -120,7 +123,8 @@ const EXTRAS = {
   'digest-field': [[`sha256:${'a'.repeat(63)}\u{1F600}`, 'text'], [`sha256:${'a'.repeat(63)}\ud800`, 'native'], [rep('sha256:', 'a', 70000), 'text']],
   timestamp: [[rep('2026-07-08T09:30:00.', '1', 70000, 'Z'), 'text'], ['2026-07-08T09:30:00\u{1F600}Z', 'text'], ['2026-07-08T09:30:00Z\ud800', 'native'], ['2026-02-29T00:00:00Z', 'text'], ['2024-02-29T00:00:00Z', 'text'], ['2026-04-31T00:00:00Z', 'text']],
   'format-name': [['icd-10-cm', 'text'], ['cpt', 'text'], ['loinc', 'text'], ['ICD-10-CM', 'text'], ['icd_10_cm', 'text'], ['icd\ud800', 'native'], [rep('a', 'b', 70000), 'text']],
-  'code-system': [['http://hl7.org/fhir/sid/icd-10-cm', 'text'], ['urn:oid:2.16.840.1.113883.6.90', 'text'], ['icd-10-cm', 'text'], ['http://example.org/#frag', 'text'], ['http://example.org/%zz', 'text'], ['http://exämple.org', 'text'], ['http://example.org/\ud800', 'native'], [rep('urn:', 'x', 70000), 'text']],
+  'code-system': [['http://hl7.org/fhir/sid/icd-10-cm', 'text'], ['urn:oid:2.16.840.1.113883.6.90', 'text'], ['icd-10-cm', 'text'], ['http://example.org/#frag', 'text'], ['http://example.org/%zz', 'text'], ['http://exämple.org', 'text'], ['http://example.org/\ud800', 'native'],
+    [rep('urn:', 'x', 2044), 'text'], [rep('urn:', 'x', 2045), 'text'], [rep('urn:', 'x', 70000), 'text'], [rep('urn:', 'x', 9000000), 'text']],
   'field-name': [
     ['f', 'text'], ['@version', 'text'], ['_', 'text'], ['-', 'text'], ['0', 'text'], ['a b', 'text'], ['Café', 'text'], ['\u{1F600}', 'text'],
     ['toString', 'text'], ['__proto__', 'text'], ['constructor', 'text'], ['hasOwnProperty', 'text'], ['Action_type', 'text'], [' action_type', 'text'],
@@ -133,6 +137,12 @@ for (const format of Object.keys(CODE_SYSTEMS)) {
   EXTRAS[`code.${format}`] = [['A00\u{1F600}', 'text'], ['A0\ud800', 'native'], [rep('', 'A', 70000), 'text'], ['Ａ００', 'text']];
 }
 const BAD_UTF8 = [[0xff], [0xc3], [0xed, 0xa0, 0x80], [0xc0, 0xaf], [0xf4, 0x90, 0x80, 0x80]];
+const MAX = oracle.spec.pattern_max_octets;
+const LENGTH_LIMITS = {
+  'action-type.compute': { max: MAX.action_type, refusal: 'invalid_action_type' },
+  'action-type.parse': { max: MAX.action_type, refusal: 'malformed_caid' },
+  'code-system': { max: MAX.code_system, refusal: 'invalid_definition' },
+};
 
 // ---------------------------------------------------------------- evaluation
 const PLACEHOLDER = '@@CASE@@';
@@ -202,6 +212,11 @@ function addCase(driver, encoded, lane, grammarVerdict) {
     const accepted = d.operation === 'parse' ? expect.ok : Boolean(expect.caid);
     const refusal = expect.refusals ? expect.refusals[0] : null;
     let explained = refusal === 'malformed_json' || hasNoncharacter(s);
+    // A string the grammar accepts but that is over its length limit
+    // (Section 2.6) is refused by the limit.
+    const limit = LENGTH_LIMITS[driver];
+    if (grammarVerdict && !accepted && limit && s.length > limit.max) explained ||= refusal === limit.refusal;
+    if (grammarVerdict && !accepted && d.operation === 'parse' && (d.caid.prefix + s + d.caid.suffix).length > MAX.caid) explained ||= refusal === 'malformed_caid';
     if (grammarVerdict && !accepted) {
       if (driver === 'caid') explained ||= refusal === 'unknown_suite' || refusal === 'malformed_caid';
       if (driver === 'suite.parse' || driver === 'suite.compute') explained ||= refusal === 'unknown_suite';

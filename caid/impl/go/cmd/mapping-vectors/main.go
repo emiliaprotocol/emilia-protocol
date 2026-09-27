@@ -7,9 +7,13 @@
 //
 // The corpus is decoded by the package's strict document decoder and walked
 // as generic values; nothing here decodes through encoding/json. With --json
-// the runner prints [{id, pass, verdict, reasons}] in corpus order (the
-// output only is written with encoding/json), which caid/conformance/run.mjs
-// compares across the three implementations.
+// the runner prints [{id, pass, verdict, reasons, definition_sha256}] in
+// corpus order (the output only is written with encoding/json), which
+// caid/conformance/run.mjs compares across the three implementations;
+// definition_sha256 holds both sides' digests, null for a failed side. A set
+// mutation carries its value as "value", or as "units", the UTF-16 code
+// units of a string no strict JSON text can hold, built as the generalized
+// UTF-8 (WTF-8) a Go string holds for a lone surrogate.
 package main
 
 import (
@@ -26,10 +30,50 @@ import (
 type obj = map[string]interface{}
 
 type output struct {
-	ID      string   `json:"id"`
-	Pass    bool     `json:"pass"`
-	Verdict string   `json:"verdict"`
-	Reasons []string `json:"reasons"`
+	ID               string        `json:"id"`
+	Pass             bool          `json:"pass"`
+	Verdict          string        `json:"verdict"`
+	Reasons          []string      `json:"reasons"`
+	DefinitionSha256 []interface{} `json:"definition_sha256"`
+}
+
+// unitsString builds a string from UTF-16 code units: a well-formed pair is
+// one code point, and a lone surrogate is its generalized UTF-8 bytes.
+func unitsString(raw interface{}) string {
+	list, _ := raw.([]interface{})
+	units := make([]int, 0, len(list))
+	for _, x := range list {
+		n, _ := x.(fmt.Stringer)
+		if n == nil {
+			continue
+		}
+		v, _ := strconv.Atoi(n.String())
+		units = append(units, v)
+	}
+	var b strings.Builder
+	for i := 0; i < len(units); i++ {
+		u := units[i]
+		if u >= 0xD800 && u <= 0xDBFF && i+1 < len(units) && units[i+1] >= 0xDC00 && units[i+1] <= 0xDFFF {
+			b.WriteRune(rune(0x10000 + ((u - 0xD800) << 10) + (units[i+1] - 0xDC00)))
+			i++
+			continue
+		}
+		if u >= 0xD800 && u <= 0xDFFF {
+			b.WriteByte(byte(0xE0 | u>>12))
+			b.WriteByte(byte(0x80 | (u>>6)&0x3F))
+			b.WriteByte(byte(0x80 | u&0x3F))
+			continue
+		}
+		b.WriteRune(rune(u))
+	}
+	return b.String()
+}
+
+func sideDigest(r caidlib.MapActionResult) interface{} {
+	if !r.OK {
+		return nil
+	}
+	return r.DefinitionSha256
 }
 
 // clone deep-copies a decoded value so mutations never leak between vectors.
@@ -227,7 +271,11 @@ func main() {
 				side = right
 			}
 			target := str(operation, "target")
-			side[target] = mutate(side[target], pointerSegments(str(operation, "path")), str(operation, "op"), operation["value"])
+			value := operation["value"]
+			if units, present := operation["units"]; present {
+				value = unitsString(units)
+			}
+			side[target] = mutate(side[target], pointerSegments(str(operation, "path")), str(operation, "op"), value)
 		}
 		for _, sideName := range stringList(vector["repin_after_mutation"]) {
 			side := left
@@ -255,6 +303,7 @@ func main() {
 		results = append(results, output{
 			ID: str(vector, "id"), Pass: verdictOK && reasonsOK,
 			Verdict: result.Verdict, Reasons: result.Reasons,
+			DefinitionSha256: []interface{}{sideDigest(result.Left), sideDigest(result.Right)},
 		})
 	}
 

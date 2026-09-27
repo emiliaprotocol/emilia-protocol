@@ -82,6 +82,8 @@ function evaluate(kind, input, definitions) {
   if (kind === 'parse') return oracle.parse(input.caid);
   if (kind === 'definition') return oracle.definitionSha256(input.definition);
   const v = inputValue(input);
+  // A native-lane vector's definitions are native-lane encodings too.
+  if (Object.prototype.hasOwnProperty.call(input, 'native')) opts.definitions = buildNative(definitions);
   if (kind === 'compute') {
     const o = { ...opts };
     if (Object.prototype.hasOwnProperty.call(input, 'suite')) o.suite = input.suite;
@@ -201,8 +203,18 @@ for (const c of coreCases({ limits: { json_text_octets: limits.json_text_octets,
     delete input.caid_of;
     input.caid = r.caid;
   }
-  if (input.expected_definition_sha256 && typeof input.expected_definition_sha256 === 'object') {
-    input.expected_definition_sha256 = oracle.definitionSha256(input.expected_definition_sha256.of).definition_sha256;
+  // expected_definition_sha256 helpers: {of: D} is D's definition_sha256,
+  // {list_of: D} that digest inside an array, {upper_of: D} that digest with
+  // uppercase hexadecimal digits, and {value: V} the value V as given. Any
+  // other value (a string, number, array, boolean or null) is passed as is.
+  const pin = input.expected_definition_sha256;
+  if (pin && typeof pin === 'object' && !Array.isArray(pin)) {
+    const digest = (d) => oracle.definitionSha256(d).definition_sha256;
+    if (Object.prototype.hasOwnProperty.call(pin, 'of')) input.expected_definition_sha256 = digest(pin.of);
+    else if (Object.prototype.hasOwnProperty.call(pin, 'list_of')) input.expected_definition_sha256 = [digest(pin.list_of)];
+    else if (Object.prototype.hasOwnProperty.call(pin, 'upper_of')) input.expected_definition_sha256 = `sha256:${digest(pin.upper_of).slice('sha256:'.length).toUpperCase()}`;
+    else if (Object.prototype.hasOwnProperty.call(pin, 'value')) input.expected_definition_sha256 = pin.value;
+    else throw new Error(`${c.id}: unknown expected_definition_sha256 helper`);
   }
   // Member order: forms first, then caid / expected / suite.
   const ordered = {};

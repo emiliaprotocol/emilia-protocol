@@ -22,9 +22,6 @@
 //   caid/impl/go/spec_gen.go              whole file
 //   packages/verify/vendor/caid.mjs       byte copy of caid/impl/js/caid.mjs
 //
-// With --out, caid/impl/js/caid.spec-region.mjs holds the region text alone,
-// for a caid.mjs that does not carry the markers yet.
-//
 // Generation refuses inputs that disagree with each other: a pattern that
 // is not linear-time safe, a code format that is not finite with no nested
 // or overlapping quantifiers, a reason code the reason grammar does not
@@ -50,7 +47,6 @@ export const TARGETS = {
   python: 'caid/impl/python/caid_spec.py',
   go: 'caid/impl/go/spec_gen.go',
   vendor: 'packages/verify/vendor/caid.mjs',
-  jsRegion: 'caid/impl/js/caid.spec-region.mjs',
 };
 
 const SOURCES = 'caid/spec/caid.abnf, caid/spec/core.json, caid/registry/suites.json';
@@ -80,6 +76,13 @@ export function loadCaidGrammar(root) {
   return { text, rules: loadGrammar([{ text, source: 'caid.abnf' }]) };
 }
 
+// The largest code point a parsed expression can match.
+function maxCodePoint(node) {
+  if (node.t === 'cls') return Math.max(...node.ranges.map((r) => r[1]));
+  if (node.t === 'rep') return maxCodePoint(node.item);
+  return Math.max(0, ...(node.items ?? []).map(maxCodePoint));
+}
+
 /**
  * Reads the inputs, checks them against each other, and returns the port
  * view: the language-neutral data every generated file encodes.
@@ -97,15 +100,31 @@ export function buildSpec(root) {
   if (core.grammar.file !== 'caid.abnf') fail('core.json grammar.file must be caid.abnf');
   const { rules } = loadCaidGrammar(root);
 
-  // Compiled patterns: every one linear-time safe.
+  // Compiled patterns: every one linear-time safe. A pattern with a length
+  // limit (max_octets, a core.json limit id) is checked against that limit
+  // before it is matched: a backtracking engine keeps one stack entry per
+  // repetition of a group, so an unbounded string can exhaust that stack
+  // (V8 throws near 6.7 million characters) even though matching is linear
+  // in time.
   const patterns = {};
+  const patternMaxOctets = {};
   const analysis = {};
-  for (const { id, rule } of core.grammar.patterns) {
+  const limitById = Object.fromEntries(core.limits.map((l) => [l.id, l]));
+  for (const { id, rule, max_octets: maxOctets, ...rest } of core.grammar.patterns) {
+    if (Object.keys(rest).length) fail(`pattern ${id} has unknown members ${Object.keys(rest).join(', ')}`);
     if (!/^[a-z][a-z0-9_]*$/.test(id) || id in patterns) fail(`bad or duplicate pattern id ${id}`);
     patterns[id] = compile(rules, rule);
     analysis[id] = analyzeRegex(patterns[id]);
     if (!analysis[id].linear) fail(`pattern ${id} (${rule}) is not linear-time safe: ${JSON.stringify(analysis[id].conflicts)}`);
+    if (maxOctets !== undefined) {
+      const limit = limitById[maxOctets];
+      if (!limit || limit.scope !== 'caid' || limit.unit !== 'octets') fail(`pattern ${id} names ${maxOctets}, which is not a caid octet limit`);
+      if (maxCodePoint(parseRegex(patterns[id])) > 0x7f) fail(`pattern ${id} has a length limit but matches non-ASCII text, whose length in octets differs from its length in characters`);
+      patternMaxOctets[id] = limit.value;
+    }
   }
+  if (!('caid' in patternMaxOctets) || !('action_type' in patternMaxOctets)) fail('the caid and action_type patterns need length limits');
+  if (patternMaxOctets.caid < patternMaxOctets.action_type) fail('the caid limit must admit the longest action type');
   for (const rule of core.grammar.interpreted_rules) {
     if (!rules.has(rule)) fail(`interpreted rule ${rule} is not in caid.abnf`);
   }
@@ -181,6 +200,28 @@ export function buildSpec(root) {
   }
   for (const code of codes) {
     if (!Object.values(core.operations).some((phases) => phases.some((p) => p.reasons.includes(code)))) fail(`reason ${code} belongs to no operation`);
+  }
+  // The gates follow from data dependencies, so they are asserted here, not
+  // editable: nothing can be read before the JSON text decodes; a type name
+  // is needed before a definition can be resolved; fields are checked only
+  // against a resolved definition; verification parses the identifier
+  // before it reads the object. The ports take the rank of every reason
+  // after the gates from sort_rank.
+  const gateShape = (operation) => core.operations[operation].filter((p) => p.gate).map((p) => [p.entry ?? null, p.reasons]);
+  const expectGates = {
+    decode: [[null, ['malformed_json']]],
+    parse: [[null, ['malformed_caid', 'unknown_suite']]],
+    compute: [['json_text', ['malformed_json']], [null, ['invalid_action_type']], [null, ['unknown_action_type', 'invalid_definition']]],
+    verify: [['parse', ['malformed_caid', 'unknown_suite']], ['json_text', ['malformed_json']], [null, ['invalid_object']]],
+  };
+  for (const [operation, want] of Object.entries(expectGates)) {
+    if (JSON.stringify(gateShape(operation)) !== JSON.stringify(want)) fail(`${operation} gates must be ${JSON.stringify(want)}: they follow from data dependencies`);
+  }
+  for (const operation of ['compute', 'verify']) {
+    const ranks = core.operations[operation].map((p) => p.rank);
+    const lastGate = Math.max(...core.operations[operation].filter((p) => p.gate).map((p) => p.rank));
+    if (core.operations[operation].some((p) => !p.gate && p.rank < lastGate)) fail(`${operation}: every gate precedes every ranked phase`);
+    if (new Set(ranks).size !== ranks.length) fail(`${operation} ranks repeat`);
   }
 
   // Verification details: a closed-shape detail for every reason a
@@ -324,6 +365,18 @@ export function buildSpec(root) {
     if (limit.scope === 'caid' || limit.scope === 'caid-mapping') limits[limit.id] = limit.value;
   }
   if (limits.max_safe_integer !== Number.MAX_SAFE_INTEGER) fail('max_safe_integer must be 2^53-1');
+  if (limits.value_count < limits.json_text_octets / 2) fail('value_count must exceed the values of any JSON text within json_text_octets');
+  if (limits.document_canonical_octets < 4 * limits.json_text_octets) fail('document_canonical_octets must admit the canonical form of any JSON text within json_text_octets');
+
+  // Noncharacters (Unicode Section 23.7): one BMP range, and the last two
+  // code points of each of the 17 planes. The ports test code points
+  // against these ranges.
+  const nc = core.json_text.noncharacters;
+  if (JSON.stringify(nc) !== JSON.stringify({ range: [0xfdd0, 0xfdef], plane_final: [0xfffe, 0xffff] })) {
+    fail('json_text.noncharacters must be U+FDD0..U+FDEF and the last two code points of every plane');
+  }
+  const noncharacterRanges = [nc.range];
+  for (let plane = 0; plane <= 16; plane += 1) noncharacterRanges.push([plane * 0x10000 + nc.plane_final[0], plane * 0x10000 + nc.plane_final[1]]);
 
   checkReasonGrammar(rules, core, { codes, params, mappingCodes, mappingParams, sortRank }, fail);
 
@@ -331,11 +384,12 @@ export function buildSpec(root) {
     draft: core.draft,
     identifier: core.identifier,
     patterns,
+    pattern_max_octets: patternMaxOctets,
     code_formats: codeFormats,
     suites: suiteView,
     timestamp_date_offsets: core.grammar.timestamp_date_offsets,
     limits,
-    json_text: { byte_order_mark: core.json_text.byte_order_mark, whitespace: core.json_text.whitespace },
+    json_text: { byte_order_mark: core.json_text.byte_order_mark, whitespace: core.json_text.whitespace, noncharacter_ranges: noncharacterRanges },
     reasons: core.reasons.map((r) => r.code),
     reason_params: params,
     operations: core.operations,
@@ -587,6 +641,9 @@ const goIntMap = (obj) => `map[string]int{${Object.entries(obj).map(([k, v]) => 
 const goStringsMap = (obj) => `map[string][]string{${Object.entries(obj).map(([k, v]) => `${goString(k)}: {${v.map(goString).join(', ')}}`).join(', ')}}`;
 const goBytes = (list) => `[]byte{${list.map((b) => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(', ')}}`;
 
+// The Go file carries the data the Go port reads, and nothing else: an
+// unread declaration would claim a single source for a rule no Go code
+// applies. The JavaScript and Python ports receive the whole port view.
 export function emitGo(spec) {
   const view = portView(spec);
   const out = [
@@ -602,7 +659,6 @@ export function emitGo(spec) {
     '',
   ];
   const add = (comment, decl) => { out.push(`// ${comment}`, decl, ''); };
-  add('specDraft is the draft revision these constants are derived from.', `const specDraft = ${goString(view.draft)}`);
   add('specIdentifierScheme is the caid rule\'s fixed scheme.', `const specIdentifierScheme = ${goString(view.identifier.scheme)}`);
   add('specIdentifierVersion is the caid rule\'s caid-version.', `const specIdentifierVersion = ${goString(view.identifier.version)}`);
   add('specIdentifierSeparator separates the caid rule\'s parts.', `const specIdentifierSeparator = ${goString(view.identifier.separator)}`);
@@ -615,10 +671,9 @@ export function emitGo(spec) {
   }
   add('specPatterns is every whole-string matcher above, keyed by core.json pattern id.',
     `var specPatterns = map[string]*regexp.Regexp{${Object.keys(view.patterns).map((id) => `${goString(id)}: specPattern${pascal(id)}`).join(', ')}}`);
+  add('specPatternMaxOctets is the length limit, in octets, checked before a pattern is matched.', `var specPatternMaxOctets = ${goIntMap(view.pattern_max_octets)}`);
   add('specCodeFormats is the whole-string matcher of each registered code format.',
     `var specCodeFormats = map[string]*regexp.Regexp{${Object.entries(view.code_formats).map(([id, src]) => `${goString(id)}: regexp.MustCompile(${goRaw(`^(?:${src})$`)})`).join(', ')}}`);
-  add('specSuites lists the registered suites in registry order.', `var specSuites = ${goStrings(view.suites.map((s) => s.suite))}`);
-  add('specSuiteDigestOctets is each registered suite\'s digest length in octets.', `var specSuiteDigestOctets = ${goIntMap(Object.fromEntries(view.suites.map((s) => [s.suite, s.digest_octets])))}`);
   add('specSuiteDigestPatterns is each registered suite\'s digest syntax.',
     `var specSuiteDigestPatterns = map[string]*regexp.Regexp{${view.suites.map((s) => `${goString(s.suite)}: regexp.MustCompile(${goRaw(`^(?:${s.digest_pattern})$`)})`).join(', ')}}`);
   const off = view.timestamp_date_offsets;
@@ -628,42 +683,21 @@ export function emitGo(spec) {
   for (const [id, value] of Object.entries(view.limits)) add(`specLimit${pascal(id)} is core.json limit ${id}.`, `const specLimit${pascal(id)} = ${value}`);
   add('specJSONByteOrderMark is the UTF-8 byte order mark a JSON text must not begin with.', `var specJSONByteOrderMark = ${goBytes(view.json_text.byte_order_mark)}`);
   add('specJSONWhitespace is the JSON whitespace set of RFC 8259.', `var specJSONWhitespace = ${goBytes(view.json_text.whitespace)}`);
-  add('specReasons lists every core reason code.', `var specReasons = ${goStrings(view.reasons)}`);
-  add('specReasonParams is each core reason\'s parameter kind.', `var specReasonParams = ${goStringMap(view.reason_params)}`);
-  for (const operation of Object.keys(view.operations)) {
+  add('specNoncharacterRanges lists the noncharacter code points as inclusive ranges.',
+    `var specNoncharacterRanges = [][2]rune{${view.json_text.noncharacter_ranges.map(([a, b]) => `{0x${a.toString(16).toUpperCase()}, 0x${b.toString(16).toUpperCase()}}`).join(', ')}}`);
+  for (const operation of ['compute', 'verify']) {
     const P = pascal(operation);
-    add(`specGates${P} lists the ${operation} gates in order; each yields exactly one reason and stops.`,
-      `var specGates${P} = [][]string{${view.gates[operation].map((g) => `{${g.map(goString).join(', ')}}`).join(', ')}}`);
     add(`specSortRank${P} is the rank of each reason after the ${operation} gates.`, `var specSortRank${P} = ${goIntMap(view.sort_rank[operation])}`);
-    add(`specPosition${P} names the field list whose index orders a reason within its rank.`, `var specPosition${P} = ${goStringMap(view.position[operation])}`);
-    add(`specPerPositionMax${P} is the most reasons one position may carry for each reason.`, `var specPerPositionMax${P} = ${goIntMap(view.per_position_max[operation])}`);
   }
   const vd = view.verify_details;
   out.push('// specVerifyDetail is the closed shape of one verification detail. Field');
-  out.push('// and Observed name where the detail takes its field and observed kind');
-  out.push('// from (see specVerifyDetailFieldSources and specVerifyDetailObservedSources);');
-  out.push('// "" means the detail carries null there.');
+  out.push('// is "param" (the reason parameter), a fixed field name, or "" (null);');
+  out.push('// Observed is "member", "argument", or "" (null).');
   out.push('type specVerifyDetail struct {', '\tRule     string', '\tField    string', '\tObserved string', '}', '');
-  add('specVerifyDetailMembers lists the members of every verification detail, in order.', `var specVerifyDetailMembers = ${goStrings(vd.members)}`);
-  add('specVerifyDetailFieldSources lists the values of specVerifyDetail.Field.', `var specVerifyDetailFieldSources = ${goStrings(vd.field_sources)}`);
-  add('specVerifyDetailObservedSources lists the values of specVerifyDetail.Observed.', `var specVerifyDetailObservedSources = ${goStrings(vd.observed_sources)}`);
-  add('specVerifyDetailObservedKinds lists the values of a detail\'s observed member.', `var specVerifyDetailObservedKinds = ${goStrings(vd.observed_kinds)}`);
   add('specVerifyDetails is the detail shape of each reason a verification reports.',
     `var specVerifyDetails = map[string]specVerifyDetail{${Object.entries(vd.reasons).map(([code, d]) => `${goString(code)}: {${goString(d.rule)}, ${goString(d.field ?? '')}, ${goString(d.observed ?? '')}}`).join(', ')}}`);
-  add('specVerifyDetailExpand maps a verification reason to the operation whose reasons replace it in the details.',
-    `var specVerifyDetailExpand = ${goStringMap(Object.fromEntries(Object.entries(vd.expand).map(([k, v]) => [k, v.operation])))}`);
   add('specVerifyDetailExpandOmit lists, per expanded reason, the operation reasons the expansion leaves out.',
     `var specVerifyDetailExpandOmit = ${goStringsMap(Object.fromEntries(Object.entries(vd.expand).map(([k, v]) => [k, v.omit])))}`);
-  for (const [operation, shape] of Object.entries(view.results)) {
-    for (const [kind, list] of Object.entries(shape)) {
-      if (typeof list === 'string') continue;
-      add(`specResult${pascal(operation)}${pascal(kind)} lists the ${kind.replaceAll('_', ' ')} members of a ${operation.replaceAll('_', ' ')} result.`, `var specResult${pascal(operation)}${pascal(kind)} = ${goStrings(list)}`);
-    }
-  }
-  for (const [operation, list] of Object.entries(view.options)) {
-    add(`specOptions${pascal(operation)} lists the ${operation} options, in snake_case.`, `var specOptions${pascal(operation)} = ${goStrings(list)}`);
-  }
-  add('specFieldTypes lists the field types in order.', `var specFieldTypes = ${goStrings(view.field_types.map((t) => t.type))}`);
   add('specFieldTypeJSON is the JSON kind each field type holds.', `var specFieldTypeJSON = ${goStringMap(Object.fromEntries(view.field_types.map((t) => [t.type, t.json])))}`);
   add('specFieldTypeMembers lists the definition members specific to each field type.', `var specFieldTypeMembers = ${goStringsMap(Object.fromEntries(view.field_types.map((t) => [t.type, t.members])))}`);
   const reqMembers = {};
@@ -671,6 +705,8 @@ export function emitGo(spec) {
   add('specFieldTypeRequiredMembers maps "type.member" to the pattern id its value must match.', `var specFieldTypeRequiredMembers = ${goStringMap(reqMembers)}`);
   add('specFieldTypePattern is the whole-string matcher of each grammar-checked field type.',
     `var specFieldTypePattern = map[string]*regexp.Regexp{${view.field_types.filter((t) => t.pattern).map((t) => `${goString(t.type)}: specPattern${pascal(t.pattern)}`).join(', ')}}`);
+  add('specFieldTypeCalendarCheck names the calendar check a field type applies after its grammar.',
+    `var specFieldTypeCalendarCheck = ${goStringMap(Object.fromEntries(view.field_types.filter((t) => t.calendar_check).map((t) => [t.type, t.calendar_check])))}`);
   add('specFieldTypePatternRefusal is the reason for a string that fails a field type\'s grammar.',
     `var specFieldTypePatternRefusal = ${goStringMap(Object.fromEntries(view.field_types.filter((t) => t.pattern).map((t) => [t.type, t.pattern_refusal])))}`);
   const code = view.field_types.find((t) => t.type === 'code');
@@ -684,14 +720,11 @@ export function emitGo(spec) {
   add('specFieldNameMinLength is the minimum length of a field name.', `const specFieldNameMinLength = ${d.field_name.min_length}`);
   add('specFieldNameForbiddenCodePoints lists code points a field name must not contain.', `var specFieldNameForbiddenCodePoints = []rune{${d.field_name.forbidden_code_points.join(', ')}}`);
   add('specReservedFieldNames lists names no field entry may take.', `var specReservedFieldNames = ${goStrings(d.field_name.reserved)}`);
-  add('specProjectionMembers lists the definition members of the validation projection.', `var specProjectionMembers = ${goStrings(d.projection.members)}`);
   add('specProjectionFieldMembersExcluded lists field-entry members the projection drops.', `var specProjectionFieldMembersExcluded = ${goStrings(d.projection.field_members_excluded)}`);
   add('specDefinitionDigestPrefix prefixes the hexadecimal definition_sha256.', `const specDefinitionDigestPrefix = ${goString(d.projection.prefix)}`);
   add('specResolutionNone is the reason when no definition matches the action type.', `const specResolutionNone = ${goString(d.resolution.none)}`);
   add('specResolutionConflict is the reason when matching definitions differ in definition_sha256.', `const specResolutionConflict = ${goString(d.resolution.conflict)}`);
   add('specResolutionNonconforming is the reason when a matching definition does not conform.', `const specResolutionNonconforming = ${goString(d.resolution.nonconforming)}`);
-  add('specFieldNamesUniqueAcross lists the field lists whose names must be unique together.', `var specFieldNamesUniqueAcross = ${goStrings(d.field_name.unique_across)}`);
-  add('specStatusValues lists the registry status values; status never affects computation.', `var specStatusValues = ${goStrings(d.status_values)}`);
   add('specEnumInlinePrefix begins the compact inline enum form.', `const specEnumInlinePrefix = ${goString(view.enum.inline_prefix)}`);
   add('specEnumInlineSeparator separates compact inline enum members.', `const specEnumInlineSeparator = ${goString(view.enum.inline_separator)}`);
   add('specEnumInlineTrim lists the characters trimmed from compact inline enum members.', `var specEnumInlineTrim = ${goStrings(view.enum.inline_trim)}`);
@@ -712,20 +745,13 @@ export function emitGo(spec) {
   add('specMappingUnique lists the member paths whose values must be distinct.', `var specMappingUnique = ${paths(m.unique)}`);
   add('specMappingEqualSets lists member path pairs whose value sets must be equal.', `var specMappingEqualSets = [][2][]string{${m.equal_sets.map(([a, b]) => `{${goStrings(a)}, ${goStrings(b)}}`).join(', ')}}`);
   add('specMappingDisjoint lists member path pairs whose value sets must not intersect.', `var specMappingDisjoint = [][2][]string{${m.disjoint.map(([a, b]) => `{${goStrings(a)}, ${goStrings(b)}}`).join(', ')}}`);
-  add('specMappingNullMemberRefusal is the reason for a profile member written as null.', `const specMappingNullMemberRefusal = ${goString(m.null_member_refusal)}`);
   add('specMappingTransforms lists the registered transforms.', `var specMappingTransforms = ${goStrings(m.transforms.map((t) => t.transform))}`);
-  add('specMappingTransformInput is the source value kind each transform accepts.', `var specMappingTransformInput = ${goStringMap(Object.fromEntries(m.transforms.map((t) => [t.transform, t.input])))}`);
   add('specMappingTransformPattern is the whole-string matcher a transform requires of its string input.',
     `var specMappingTransformPattern = map[string]*regexp.Regexp{${m.transforms.filter((t) => t.pattern).map((t) => `${goString(t.transform)}: specPattern${pascal(t.pattern)}`).join(', ')}}`);
   add('specMappingLossPolicies lists the registered loss policies.', `var specMappingLossPolicies = ${goStrings(m.loss_policies.map((p) => p.policy))}`);
   add('specMappingLossPolicyOmissions is what each loss policy requires of omitted_source_fields.', `var specMappingLossPolicyOmissions = ${goStringMap(Object.fromEntries(m.loss_policies.map((p) => [p.policy, p.omitted_source_fields])))}`);
-  add('specMappingVerdicts lists the comparison verdicts.', `var specMappingVerdicts = ${goStrings(m.verdicts)}`);
-  add('specMappingReasons lists the mapping reason codes.', `var specMappingReasons = ${goStrings(m.reasons.map((r) => r.code))}`);
-  add('specMappingReasonParams is each mapping reason\'s parameter kind.', `var specMappingReasonParams = ${goStringMap(m.reason_params)}`);
   add('specMappingReasonRank orders mapping reasons: stages A and B sort together by it.', `var specMappingReasonRank = ${goIntMap(m.reason_rank)}`);
-  add('specMappingStageOf names the stage of each staged mapping reason.', `var specMappingStageOf = ${goStringMap(m.stage_of)}`);
   add('specMappingComparisonPrefixes lists the side prefixes of comparison reasons, in order.', `var specMappingComparisonPrefixes = ${goStrings(m.comparison.prefixes)}`);
-  add('specMappingComparisonReasons lists the reasons a comparison adds itself.', `var specMappingComparisonReasons = ${goStrings(m.comparison.reasons)}`);
   add('specMappingPrefixedVerdict is the verdict of a comparison that carries side-prefixed reasons.', `const specMappingPrefixedVerdict = ${goString(m.comparison.prefixed_verdict)}`);
   add('specMappingReasonVerdicts is the verdict each comparison reason carries.', `var specMappingReasonVerdicts = ${goStringMap(m.comparison.reason_verdicts)}`);
   out.push('// specMappingFaultReasons lists codes a conforming mapper never emits.');
@@ -753,8 +779,8 @@ export function spliceJsRegion(text, region) {
 }
 
 /**
- * All generated outputs, keyed by repository path. The caid.mjs and vendor
- * entries are present only when the checkout's caid.mjs carries the region.
+ * All generated outputs, keyed by repository path. caid.mjs must carry
+ * exactly one well-formed generated region.
  *
  * @param {string} root
  */
@@ -762,17 +788,15 @@ export function generate(root) {
   const spec = buildSpec(root);
   const region = emitJsRegion(spec);
   const outputs = new Map();
-  outputs.set(TARGETS.jsRegion, region);
   const jsPath = path.join(root, TARGETS.js);
   const spliced = existsSync(jsPath) ? spliceJsRegion(readFileSync(jsPath, 'utf8'), region) : null;
-  if (spliced !== null) {
-    outputs.set(TARGETS.js, spliced);
-    outputs.set(TARGETS.vendor, spliced);
-  }
+  if (spliced === null) throw new Error(`${TARGETS.js}: no generated region (add the ${JSON.stringify(JS_BEGIN)} and ${JSON.stringify(JS_END)} lines)`);
+  outputs.set(TARGETS.js, spliced);
+  outputs.set(TARGETS.vendor, spliced);
   outputs.set(TARGETS.python, emitPython(spec));
   outputs.set(TARGETS.go, emitGo(spec));
   for (const src of [...Object.values(spec.patterns), ...Object.values(spec.code_formats)]) parseRegex(src);
-  return { spec, outputs, hasJsRegion: spliced !== null };
+  return { spec, outputs };
 }
 
 function main(argv) {
@@ -788,13 +812,11 @@ function main(argv) {
   if (args.write && args.check) throw new Error('--write and --check are exclusive');
   if (args.write && args.out) throw new Error('--write writes the checkout; use --out DIR alone to write elsewhere');
   if (!args.write && !args.check && !args.out) throw new Error('give --write, --check, or --out DIR');
-  const { outputs, hasJsRegion } = generate(args.root);
+  const { outputs } = generate(args.root);
   if (args.check) {
     const base = args.out ?? args.root;
     const problems = [];
     const expected = new Map(outputs);
-    if (!args.out) expected.delete(TARGETS.jsRegion);
-    if (!args.out && !hasJsRegion) problems.push(`${TARGETS.js}: no generated region (add the ${JSON.stringify(JS_BEGIN)} and ${JSON.stringify(JS_END)} lines)`);
     for (const [rel, text] of expected) {
       const file = path.join(base, rel);
       if (!existsSync(file)) problems.push(`${rel}: missing`);
@@ -809,14 +831,10 @@ function main(argv) {
   }
   const base = /** @type {string} */ (args.write ? args.root : args.out);
   for (const [rel, text] of outputs) {
-    if (args.write && rel === TARGETS.jsRegion) continue;
     const file = path.join(base, rel);
     mkdirSync(path.dirname(file), { recursive: true });
     writeFileSync(file, text);
     console.log(`wrote ${path.relative(process.cwd(), file) || file}`);
-  }
-  if (args.write && !hasJsRegion) {
-    process.stderr.write(`note: ${TARGETS.js} has no generated region, so it and ${TARGETS.vendor} were not written\n`);
   }
 }
 

@@ -16,9 +16,7 @@
 //
 // Every lane outcome that differs from the oracle is grouped into a class
 // ("op | lane | cause | oracle=shape | lane=shape") with a smallest
-// reproducer and a named root cause (rootcauses.mjs). A lane driven through
-// a host parser because the tree lacks the -04 entry points is its own
-// class (L1).
+// reproducer and a named root cause (rootcauses.mjs).
 //
 // Usage:
 //   node run.mjs [--root <tree root>] [--out DIR] [--seed N] [--quick]
@@ -32,7 +30,7 @@
 // names the Python interpreter (default python3).
 
 import { spawn, spawnSync } from "node:child_process";
-import { closeSync, copyFileSync, createReadStream, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, copyFileSync, createReadStream, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -103,21 +101,15 @@ if (!SELFTEST) {
   mkdirSync(goBuild, { recursive: true });
   writeFileSync(path.join(goBuild, "go.mod"), `module fuzzdriver\n\ngo 1.22\n\nrequire caid v0.0.0\n\nreplace caid => ${path.join(ROOT, "caid/impl/go")}\n`);
   for (const f of readdirSync(path.join(HERE, "drivers/go"))) if (f.endsWith(".go")) copyFileSync(path.join(HERE, "drivers/go", f), path.join(goBuild, f));
+  // The native-lane builder is the conformance runner's, shared.
+  copyFileSync(path.resolve(HERE, "../conformance/runners/go/native.go"), path.join(goBuild, "native.go"));
   {
     const t = Date.now();
     const env = { ...process.env, GOFLAGS: "-mod=mod" };
-    let b = spawnSync("go", ["build", "-o", goBin, "."], { cwd: goBuild, encoding: "utf8", env });
+    const b = spawnSync("go", ["build", "-o", goBin, "."], { cwd: goBuild, encoding: "utf8", env });
     if (b.status !== 0) {
-      const first = b.stdout + b.stderr;
-      // A pre-04 tree: its lane is driven through the legacy front end and
-      // reports class L1. Show why the -04 build failed, so a compile break
-      // in a -04 tree is never mistaken for a legacy tree.
-      process.stderr.write("go: the -04 driver does not build against this tree; using -tags legacy\n" + first);
-      b = spawnSync("go", ["build", "-tags", "legacy", "-o", goBin, "."], { cwd: goBuild, encoding: "utf8", env });
-      if (b.status !== 0) {
-        process.stderr.write("go build failed\n" + first + b.stdout + b.stderr);
-        process.exit(2);
-      }
+      process.stderr.write("go build failed\n" + b.stdout + b.stderr);
+      process.exit(2);
     }
     timings.go_build_ms = Date.now() - t;
   }
@@ -132,14 +124,13 @@ function drive(name, cmd, argv) {
     const outFd = openSync(outPath, "w");
     const errPath = path.join(OUT, `err-${name}.txt`);
     const errFd = openSync(errPath, "w");
-    const metaPath = path.join(OUT, `meta-${name}.json`);
-    const p = spawn(cmd, [...argv, "--meta", metaPath], { stdio: [inFd, outFd, errFd] });
+    const p = spawn(cmd, argv, { stdio: [inFd, outFd, errFd] });
     p.on("close", (code, signal) => {
       closeSync(inFd);
       closeSync(outFd);
       closeSync(errFd);
       timings[name + "_ms"] = Date.now() - t;
-      resolve({ name, code, signal, outPath, errPath, metaPath });
+      resolve({ name, code, signal, outPath, errPath });
     });
   });
 }
@@ -150,13 +141,11 @@ const runs = await Promise.all([
     drive("go", goBin, ["--tables", tablesPath]),
   ]),
 ]);
-const legacyLanes = {};
 for (const r of runs) {
   if (r.code !== 0) {
     process.stderr.write(`driver ${r.name} exited ${r.code} ${r.signal || ""}\n` + readFileSync(r.errPath, "utf8").slice(-4000));
     process.exit(2);
   }
-  if (existsSync(r.metaPath)) Object.assign(legacyLanes, Object.fromEntries(Object.entries(JSON.parse(readFileSync(r.metaPath, "utf8")).lanes).map(([k, v]) => [k, v.legacy])));
 }
 
 // ---------------------------------------------------------------- oracle
@@ -165,7 +154,9 @@ const resolveRef = (c, inlineKey, refKey, table) => (own(c, refKey) ? tables[tab
 const normMap = (r) => (r.ok === true ? { ok: true, caid: r.caid, digest: r.digest } : { ok: false, reasons: r.reasons });
 
 function expected(c) {
-  const defs = resolveRef(c, "defs", "defs_ref", "defs");
+  const rawDefs = resolveRef(c, "defs", "defs_ref", "defs");
+  // A case whose definitions are native-lane encodings (defs_native).
+  const defs = c.defs_native ? buildNative(rawDefs) : rawDefs;
   const snaps = resolveRef(c, "snaps", "snaps_ref", "snaps");
   switch (c.op) {
     case "compute": {
@@ -180,6 +171,12 @@ function expected(c) {
     }
     case "parse":
       return oracle.parse(c.caid);
+    case "definition":
+      return oracle.definitionSha256(c.definition_native ? buildNative(c.definition) : c.definition);
+    case "canon":
+      // The ports' canonicalize takes a document: the document ceiling
+      // applies, not the action-object limit.
+      return oracle.reference.canonicalizeDocument(buildNative(c.native));
     case "map": {
       let source = c.source;
       if (own(c, "src")) {
@@ -226,6 +223,10 @@ function shape(op, o) {
     case "verify":
       return (o.valid ? "VALID" : "INVALID") + "{" + (o.reasons || []).join(",") + "}";
     case "parse":
+      return o.ok ? "OK" : "REFUSE{" + (o.refusals || []).join(",") + "}";
+    case "definition":
+      return typeof o.definition_sha256 === "string" ? "DIGEST" : "REFUSE{" + (o.refusals || []).join(",") + "}";
+    case "canon":
       return o.ok ? "OK" : "REFUSE{" + (o.refusals || []).join(",") + "}";
     case "map":
       return o.ok ? "OK" : "FAIL{" + (o.reasons || []).map(code).join(",") + "}";
@@ -296,9 +297,6 @@ for await (const line of caseStream) {
   }
   if (divergent) perFamily[c.fam].divergent++;
 }
-for (const [lane, legacy] of Object.entries(legacyLanes)) {
-  if (legacy) classes.set(`driver | ${lane} | legacy front end`, { key: `driver | ${lane} | legacy front end`, count: 1, families: {}, example_ids: [], reproducer: { case: null } });
-}
 
 // ---------------------------------------------------------------- report
 function readable(c) {
@@ -348,7 +346,6 @@ const summary = {
   cases: total,
   by_op: byOp,
   per_family: perFamily,
-  legacy_lanes: Object.entries(legacyLanes).filter(([, v]) => v).map(([k]) => k),
   root_causes: rcList.map((g) => `${g.id} (${g.case_lanes})`),
   classes: classList.length,
   divergent_case_lanes: classList.reduce((n, e) => n + e.count, 0),

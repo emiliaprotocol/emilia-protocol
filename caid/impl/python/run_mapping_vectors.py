@@ -6,7 +6,10 @@ Usage: python3 run_mapping_vectors.py [--corpus PATH] [--json]
 
 The corpus is read with this port's strict decoder. A vector's expectation
 is a verdict plus the exact reason list ("reasons"); a version 1 vector may
-instead name one reason the list must contain ("reason_contains").
+instead name one reason the list must contain ("reason_contains"). A set
+mutation carries its value as "value", or as "units", the UTF-16 code units
+of a string no strict JSON text can hold. With --json each result also
+carries both sides' definition_sha256 (None for a failed side).
 """
 
 import copy
@@ -35,6 +38,20 @@ def _segments(pointer):
     return [part.replace("~1", "/").replace("~0", "~") for part in pointer[1:].split("/")]
 
 
+def _units_to_str(units):
+    out = []
+    i = 0
+    while i < len(units):
+        u = units[i]
+        if 0xD800 <= u <= 0xDBFF and i + 1 < len(units) and 0xDC00 <= units[i + 1] <= 0xDFFF:
+            out.append(chr(0x10000 + ((u - 0xD800) << 10) + (units[i + 1] - 0xDC00)))
+            i += 2
+            continue
+        out.append(chr(u))
+        i += 1
+    return "".join(out)
+
+
 def _mutate(root, operation):
     parts = _segments(operation["path"])
     parent = root
@@ -47,7 +64,7 @@ def _mutate(root, operation):
         else:
             del parent[key]
     elif operation["op"] == "set":
-        parent[key] = copy.deepcopy(operation["value"])
+        parent[key] = _units_to_str(operation["units"]) if "units" in operation else copy.deepcopy(operation["value"])
     else:
         raise ValueError("unsupported vector mutation: " + operation["op"])
 
@@ -95,6 +112,9 @@ def run_mapping_vectors(corpus):
                 "pass": verdict_ok and reasons_ok,
                 "verdict": result["verdict"],
                 "reasons": result["reasons"],
+                "definition_sha256": [
+                    result[side]["definition_sha256"] if result[side]["ok"] else None for side in ("left", "right")
+                ],
             }
         )
     return results

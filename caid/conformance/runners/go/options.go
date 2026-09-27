@@ -2,11 +2,14 @@
 
 package main
 
-// The typed Go options cannot carry every JSON type the corpus passes. An
-// option of the wrong type counts as absent, and absent is the zero value:
-// a suite that is not a string is "", which no suite matches; definitions
-// that are not an array are nil; an expected definition digest that is not
-// a string is nil (no pin).
+// The typed Go options cannot carry every JSON type the corpus passes. A
+// suite or definitions option of the wrong type counts as absent, and absent
+// is the zero value: a suite that is not a string is "", which no suite
+// matches; definitions that are not an array are nil. An expected definition
+// digest is never absent once supplied (draft -04 Section 6): a supplied
+// value that is not a string, null included, is passed as a pin to "", which
+// no definition_sha256 equals, so the pin fails closed exactly as in the
+// ports that can carry the value itself.
 
 func suiteString(o opts) string {
 	if s, ok := o.suite.(string); ok && o.hasSuite {
@@ -21,8 +24,9 @@ func definitionList(o opts) []interface{} {
 }
 
 func expectedString(o opts) *string {
-	if s, ok := o.expected.(string); ok && o.hasExpected {
-		return &s
+	if !o.hasExpected {
+		return nil
 	}
-	return nil
+	s, _ := o.expected.(string)
+	return &s
 }

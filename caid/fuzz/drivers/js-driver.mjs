@@ -16,13 +16,9 @@
 // computeCaid and verifyCaid. Mapping sources in "src" are decoded with
 // decodeCaidJson; a refusal is {"json_error": true}.
 //
-// A tree without the -04 entry points is driven through Buffer#toString +
-// JSON.parse and the native entry points instead; --meta FILE records which
-// lanes ran that way, and run.mjs never passes such a run.
-//
-// Usage: node js-driver.mjs --root <tree root> --shim <dir> --tables <tables.json> [--meta FILE]
+// Usage: node js-driver.mjs --root <tree root> --shim <dir> --tables <tables.json>
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { lines } from "../lines.mjs";
@@ -55,28 +51,16 @@ const stable = (v) => JSON.stringify(v, (k, x) => (x && typeof x === "object" &&
 const clean = (r) => (r && typeof r === "object" ? JSON.parse(stable(r)) : r);
 
 function api(core) {
-  const legacy = typeof core.computeCaidJson !== "function";
-  const hostDecode = (bytes) => {
-    try {
-      return { ok: true, value: JSON.parse(Buffer.from(bytes).toString("utf8")) };
-    } catch {
-      return { ok: false, refusals: ["malformed_json"] };
-    }
-  };
-  const decode = legacy ? hostDecode : (b) => core.decodeCaidJson(b);
   return {
-    legacy,
-    decode,
-    computeJson: legacy ? (b, o) => { const d = decode(b); return d.ok ? core.computeCaid(d.value, o) : { refusals: ["malformed_json"] }; } : (b, o) => core.computeCaidJson(b, o),
-    verifyJson: legacy ? (b, caid, o) => { const d = decode(b); return d.ok ? core.verifyCaid(d.value, caid, o) : { valid: false, reasons: ["malformed_json"], details: [] }; } : (b, caid, o) => core.verifyCaidJson(b, caid, o),
+    decode: (b) => core.decodeCaidJson(b),
+    computeJson: (b, o) => core.computeCaidJson(b, o),
+    verifyJson: (b, caid, o) => core.verifyCaidJson(b, caid, o),
     compute: (v, o) => core.computeCaid(v, o),
     verify: (v, caid, o) => core.verifyCaid(v, caid, o),
     parse: (s) => core.parseCaid(s),
   };
 }
 const APIS = Object.fromEntries(Object.entries(LANES).map(([k, l]) => [k, api(l.core)]));
-const metaPath = arg("--meta");
-if (metaPath) writeFileSync(metaPath, JSON.stringify({ lanes: Object.fromEntries(Object.entries(APIS).map(([k, a]) => [k, { legacy: a.legacy }])) }));
 
 function normMap(r) {
   if (!r || typeof r !== "object") return { bad_result: true };
@@ -86,7 +70,8 @@ function normMap(r) {
 function runLane(lane, c) {
   const { map } = LANES[lane];
   const a = APIS[lane];
-  const defs = resolve(c, "defs", "defs_ref", "defs");
+  const rawDefs = resolve(c, "defs", "defs_ref", "defs");
+  const defs = c.defs_native ? buildNative(rawDefs) : rawDefs;
   const snaps = resolve(c, "snaps", "snaps_ref", "snaps");
   try {
     const computeOpts = { definitions: defs, enumSnapshots: snaps };
@@ -111,6 +96,10 @@ function runLane(lane, c) {
       }
       case "parse":
         return clean(a.parse(c.caid));
+      case "definition":
+        return clean(LANES[lane].core.definitionSha256(c.definition_native ? buildNative(c.definition) : c.definition));
+      case "canon":
+        return clean(LANES[lane].core.canonicalize(buildNative(c.native)));
       case "map": {
         let source = c.source;
         if (own(c, "src")) {

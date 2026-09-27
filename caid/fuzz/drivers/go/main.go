@@ -15,14 +15,15 @@
 // Typed-API adaptations (the Go API cannot receive these JSON shapes): a
 // compute suite that is absent or not a string is ""; a mapping suite that
 // is absent is "jcs-sha256" and one that is not a string is "\x00"; a
-// non-object profile, descriptor or side is a nil map; a non-string pin or
-// expected digest is ""; native_verified is true only for JSON true.
+// non-object profile, descriptor or side is a nil map; a non-string pin is
+// ""; a supplied expected digest that is not a string is a pin to "";
+// native_verified is true only for JSON true.
 //
 // The output encoder is hand-written: encoding/json would rewrite invalid
 // UTF-8 (the Go form of an unpaired surrogate) to U+FFFD and hide it.
 //
 // Built by caid/fuzz/run.mjs in a scratch module whose go.mod replaces
-// caid with the tree under test; -tags legacy drives a pre-04 tree.
+// caid with the tree under test.
 package main
 
 import (
@@ -55,12 +56,6 @@ func main() {
 				panic(err)
 			}
 			tables = v.(obj)
-		}
-		if a == "--meta" && i+1 < len(os.Args) {
-			meta := fmt.Sprintf(`{"lanes":{"go":{"legacy":%t}}}`, legacyFrontEnd())
-			if err := os.WriteFile(os.Args[i+1], []byte(meta), 0o644); err != nil {
-				panic(err)
-			}
 		}
 	}
 	for {
@@ -167,6 +162,9 @@ func runCase(c obj, tables obj) (result interface{}) {
 		}
 	}()
 	defs := resolve(c, "defs", "defs_ref", "defs", tables)
+	if native, _ := c["defs_native"].(bool); native {
+		defs = buildNative(defs, nil)
+	}
 	snaps := asSlice(resolve(c, "snaps", "snaps_ref", "snaps", tables))
 	o := opts{definitions: defs, enumSnapshots: snaps}
 	if s, present := c["suite"]; present {
@@ -212,6 +210,14 @@ func runCase(c obj, tables obj) (result interface{}) {
 		return out
 	case "parse":
 		return generic(parseString(strOrEmpty(c["caid"])))
+	case "definition":
+		d := c["definition"]
+		if native, _ := c["definition_native"].(bool); native {
+			d = buildNative(d, nil)
+		}
+		return generic(definitionDigest(d))
+	case "canon":
+		return generic(canonicalizeValue(buildNative(c["native"], nil)))
 	case "map":
 		source := c["source"]
 		if b64, ok := c["src"].(string); ok {

@@ -27,8 +27,18 @@
 //   json       JSON-level edge cases over raw bytes
 //   native     host values the JSON decoder never produces
 //   caidstr    CAID strings: suite forms, digest lengths, unused bits, case
-//   defs       definition / enum-form / code-field / option shape mutations
-//   map-craft  hand-built mapping-profile edge cases
+//   defs       definition / enum-form / code-field / option shape mutations,
+//              plus seeded random definitions and objects
+//   map-craft  hand-built mapping-profile edge cases, plus seeded random
+//              profiles, including strings outside the data model
+//   pins       seeded random definitions through the definition digest,
+//              compute, and verify with right, wrong and wrongly typed
+//              expected definition_sha256 pins; host definitions whose
+//              members lie inside or outside the validation projection;
+//              and canonicalization of host values
+//
+// Every family draws from the seeded PRNG, so a new seed gives new cases in
+// every family.
 //
 // Usage: node gen.mjs --out <dir> [--seed N] [--quick]
 
@@ -363,7 +373,7 @@ function familyRegistry() {
 const CODE_SYSTEM = "http://example.org/code-system";
 const CODE_SAMPLES = {
   "icd-10-cm": "S72.001A", "ndc-11": "00002322730", "ndc-10-hyphenated": "12345-678-90", cpt: "0001F", "hcpcs-level-ii": "J1234",
-  hcpcs: "99213", "iso-3166-1-alpha-2": "US", "iso-3166-2": "GB-ENG", "iso20022-external-code": "AC01", "nacha-sec": "PPD",
+  hcpcs: "99213", "iso-3166-2": "GB-ENG", "iso20022-external-code": "AC01", "nacha-sec": "PPD",
 };
 function familyCode() {
   for (const [format, sample] of Object.entries(CODE_SAMPLES)) {
@@ -395,14 +405,16 @@ function familyCode() {
     }
   }
   // Definition-level code-field shapes.
-  const obj = { action_type: "code.shape.1", c: "US" };
+  const obj = { action_type: "code.shape.1", c: "US-CA" };
   const shapes = [
-    { code_system: CODE_SYSTEM, format: "iso-3166-1-alpha-2" }, { format: "iso-3166-1-alpha-2" }, { code_system: CODE_SYSTEM }, {},
-    { code_system: "not a uri", format: "iso-3166-1-alpha-2" }, { code_system: CODE_SYSTEM + "#f", format: "iso-3166-1-alpha-2" },
-    { code_system: CODE_SYSTEM, format: "ISO-3166-1-ALPHA-2" }, { code_system: CODE_SYSTEM, format: "unregistered-format" },
-    { code_system: CODE_SYSTEM, format: "iso-3166-1-alpha-2", values: ["US"] }, { code_system: 1, format: "iso-3166-1-alpha-2" },
-    { code_system: CODE_SYSTEM, format: null }, { code_system: CODE_SYSTEM, format: "iso-3166-1-alpha-2", notes: "n" },
+    { code_system: CODE_SYSTEM, format: "iso-3166-2" }, { format: "iso-3166-2" }, { code_system: CODE_SYSTEM }, {},
+    { code_system: "not a uri", format: "iso-3166-2" }, { code_system: CODE_SYSTEM + "#f", format: "iso-3166-2" },
+    { code_system: CODE_SYSTEM, format: "ISO-3166-2" }, { code_system: CODE_SYSTEM, format: "unregistered-format" },
+    { code_system: CODE_SYSTEM, format: "iso-3166-2", values: ["US-CA"] }, { code_system: 1, format: "iso-3166-2" },
+    { code_system: CODE_SYSTEM, format: null }, { code_system: CODE_SYSTEM, format: "iso-3166-2", notes: "n" },
     { code_system: "urn:iso:std:iso:3166", format: "iso-3166-1-alpha-2" }, { code_system: CODE_SYSTEM, format: "a".repeat(300) },
+    { code_system: "urn:" + "x".repeat(2044), format: "iso-3166-2" }, { code_system: "urn:" + "x".repeat(2045), format: "iso-3166-2" },
+    { code_system: "http://[::1]/x", format: "iso-3166-2" }, { code_system: "http://host:port:80", format: "iso-3166-2" },
   ];
   for (const shape of shapes) {
     M("code field shape " + JSON.stringify(shape).slice(0, 100));
@@ -453,7 +465,7 @@ function familyNative() {
     const members = [...base];
     for (const [label, host] of picks) members.push([pick(["m1", "m2", "", "", "zz"]) + label.length, host]);
     if (rnd() < 0.5) members.push(["n", pick(["x", 1.5, null, 1])]);
-    emit("native", { op: "compute", native: { $object: members }, defs_ref: "native", snaps_ref: "iso", suite: pick(["jcs-sha256", "jcs-sha512"]) });
+    emit("native", { op: "compute", native: { $object: members }, defs_ref: "native", snaps_ref: "iso", suite: pick(["jcs-sha256", "zz-unregistered"]) });
   }
   M("native top level");
   for (const top of [{ $host: "opaque" }, { $units: [0xd800] }, { $host: "nan" }, [1], "n.native.1", null]) {
@@ -1025,6 +1037,164 @@ function familyMapCraft() {
   M("compare suite=\"\"") && emit("map-craft", { op: "compare", left: sideP, right: sideP, defs: [def], suite: "" });
 }
 
+// ================================================================ seeded random
+const RANDOM_NAMES = ["a", "b", "amount", "__proto__", "toString", "@version", "é", "😀", "a b", "a\nb", "", "a:b", "action_type", "\ufdd0", "x".repeat(40)];
+const RANDOM_TYPES = ["string", "amount-string", "digest", "timestamp", "integer", "boolean", "object", "array", "enum", "code", "color", "", null, 1];
+function randomField(name) {
+  const type = rnd() < 0.9 ? pick(RANDOM_TYPES.slice(0, 11)) : pick(RANDOM_TYPES);
+  const f = { name, type };
+  if (type === "enum") Object.assign(f, pick([{ values: ["x", "y"] }, { values_ref: "inline: x | y" }, { values: [] }, {}, { values_ref: ISO4217.values_ref, values_snapshot: ISO4217.values_snapshot, values_sha256: ISO4217.values_sha256 }]));
+  if (type === "code") Object.assign(f, { code_system: pick([CODE_SYSTEM, "urn:x", "x", CODE_SYSTEM + "#f"]), format: pick([...Object.keys(CODE_SAMPLES), "iso-3166-1-alpha-2", "Bad"]) });
+  if (rnd() < 0.2) f.notes = pick(["n", 1, { deep: [1, 2] }, null]);
+  if (rnd() < 0.08) f[pick(["pattern", "values", "format", "extra"])] = "x";
+  return f;
+}
+function randomDefinition(actionType) {
+  const names = pickN(RANDOM_NAMES, 1 + Math.floor(rnd() * 4));
+  const required = names.slice(0, 1 + Math.floor(rnd() * names.length)).map(randomField);
+  const optional = names.slice(required.length).map(randomField);
+  const d = { action_type: actionType, required_fields: required };
+  if (optional.length || rnd() < 0.3) d.optional_fields = optional;
+  if (rnd() < 0.3) d.status = pick(["active", "deprecated", "x"]);
+  if (rnd() < 0.2) d.summary = pick(["s", 1, [1], { a: 1 }]);
+  if (rnd() < 0.05) d.required_fields = pick([[], null, "x", [null]]);
+  return d;
+}
+function randomValueFor(field) {
+  if (rnd() < 0.3) return pick(VALUE_POOL);
+  switch (field?.type) {
+    case "string": return pick(["x", "", "é", "\ud800"]);
+    case "amount-string": return pick(["1.00", "01", "-0", "1e3"]);
+    case "digest": return pick([DIGEST_OK, DIGEST_OK.toUpperCase()]);
+    case "timestamp": return pick(["2026-01-01T00:00:00Z", "2026-02-30T00:00:00Z", "2026-01-01t00:00:00Z"]);
+    case "integer": return pick([1, { $raw: "1.0" }, { $raw: "1.5" }, "1"]);
+    case "boolean": return pick([true, "true", 0]);
+    case "object": return pick([{}, { k: 1 }, [], { k: { $raw: "1.5" } }]);
+    case "array": return pick([[], [1], {}, [{ $raw: "2.5" }]]);
+    case "enum": return pick(["x", "y", "USD", "z"]);
+    case "code": return pick(Object.values(CODE_SAMPLES));
+    default: return "x";
+  }
+}
+function randomObjectFor(def) {
+  const o = { action_type: def.action_type };
+  for (const f of [...(Array.isArray(def.required_fields) ? def.required_fields : []), ...(Array.isArray(def.optional_fields) ? def.optional_fields : [])]) {
+    if (f && typeof f.name === "string" && rnd() < 0.85) o[f.name] = randomValueFor(f);
+  }
+  if (rnd() < 0.2) o.extra = pick(VALUE_POOL);
+  return o;
+}
+// A pin as a verifier might receive it: the right digest, a wrong one, the
+// right one in another spelling, or a value of another type.
+function randomPin(digest) {
+  const right = digest ?? "sha256:" + "0".repeat(64);
+  return pick([right, right, "sha256:" + "f".repeat(64), right.toUpperCase(), "SHA256:" + right.slice(7), [right], { v: right }, null, 7, true, "", right + "\n"]);
+}
+
+function familyDefsRandom() {
+  for (let k = 0; k < (QUICK ? 150 : 900); k++) {
+    const d = randomDefinition(pick(["r.1", "r.2", "a.b.1"]));
+    const defs = rnd() < 0.15 ? [d, randomDefinition(d.action_type)] : [d];
+    const obj = randomObjectFor(d);
+    M("random definition and object");
+    emitCompute("defs", obj, defs, pick(["jcs-sha256", "jcs-sha256", "cbor-sha256", undefined]));
+  }
+}
+
+function familyJsonRandom() {
+  const T = (x) => Buffer.from(x, "utf8");
+  const bases = [T('{"action_type":"a.1","k":"v"}'), T('{"action_type":"a.1","k":"v","x":[1,{"y":"z"}]}'), T('{"action_type":"a.1","k":"\\u00e9\\ud83d\\ude00"}')];
+  const INSERTS = [[0xef, 0xbb, 0xbf], [0x00], [0x22], [0x5c], [0x5c, 0x75, 0x64, 0x38, 0x30, 0x30], [0xed, 0xa0, 0x80], [0xef, 0xbf, 0xbf], [0x7b], [0x7d], [0x5b], [0x2c], [0x20], [0x0c], [0xc2, 0xa0], [0x31, 0x2e, 0x35]];
+  const good = computeRef(A1_OBJ, DEF_A1);
+  for (let k = 0; k < (QUICK ? 150 : 900); k++) {
+    let buf = Buffer.from(pick(bases));
+    for (let m = 0; m < 1 + Math.floor(rnd() * 3); m++) {
+      const pos = Math.floor(rnd() * (buf.length + 1));
+      const r = rnd();
+      if (r < 0.4) buf = Buffer.concat([buf.subarray(0, pos), Buffer.from(pick(INSERTS)), buf.subarray(pos)]);
+      else if (r < 0.7 && buf.length) buf = Buffer.concat([buf.subarray(0, pos), buf.subarray(pos + 1)]);
+      else if (buf.length) buf = Buffer.concat([buf.subarray(0, pos), Buffer.from([Math.floor(rnd() * 256)]), buf.subarray(pos + 1)]);
+    }
+    M("random JSON text mutation");
+    if (rnd() < 0.5) emitRawObj("json", "compute", buf, "a1", { suite: "jcs-sha256", note: "random mutation" });
+    else emitRawObj("json", "verify", buf, "a1", { caid: good.caid, note: "random mutation" });
+  }
+}
+
+// A string outside the data model, as UTF-16 code units in the line (JSON
+// text escapes a lone surrogate; a noncharacter travels as itself).
+const OUTSIDE_STRINGS = ["\uffff", "\ufdd0", "\ud800", "\udfff", "a\ufffe", "\u{10FFFF}", "\u{1FFFE}"];
+function familyMapCraftRandom() {
+  const def = { action_type: "m.1", required_fields: [{ name: "a", type: "string" }, { name: "b", type: "string" }] };
+  const base = () => ({
+    "@version": "CAID-MAPPING-PROFILE-v1", profile_id: "urn:x:m:1",
+    source_format: { media_type: "application/json", schema: "urn:x:s:1", version: "1" },
+    target_action_type: "m.1", loss_policy: "no-material-field-loss", material_source_paths: ["/a", "/b"],
+    rules: [{ source_path: "/a", target_field: "a", transform: "copy" }, { source_path: "/b", target_field: "b", transform: "copy" }],
+  });
+  const source = { a: "x", b: "y", c: "z" };
+  for (let k = 0; k < (QUICK ? 60 : 400); k++) {
+    const p = base();
+    const where = pick(["profile_id", "media_type", "schema", "version", "target_action_type", "source_path", "target_field", "reason"]);
+    const bad = pick(OUTSIDE_STRINGS);
+    if (where === "profile_id" || where === "target_action_type") p[where] = rnd() < 0.5 ? bad : "x" + bad;
+    else if (where === "source_path") { p.rules[0].source_path = "/" + bad; p.material_source_paths[0] = "/" + bad; }
+    else if (where === "target_field") p.rules[0].target_field = bad;
+    else if (where === "reason") { p.loss_policy = "declared-source-semantic-loss"; p.omitted_source_fields = [{ source_path: "/c", reason: bad }]; }
+    else p.source_format[where] = bad;
+    if (rnd() < 0.5) { p.rules.pop(); p.material_source_paths.pop(); } // a later stage A check would add unmapped_material_field
+    M("random profile string outside the data model at " + where);
+    emit("map-craft", { op: "map", source, profile: p, desc: rnd() < 0.8 ? base().source_format : p.source_format, pin: mappingProfileHash(p), nv: true, defs: [def] });
+  }
+}
+
+function familyPins() {
+  // Random definitions through the definition digest, compute, and verify
+  // with every kind of pin.
+  for (let k = 0; k < (QUICK ? 200 : 1500); k++) {
+    const d = randomDefinition(pick(["p.1", "p.q.2"]));
+    M("definition digest of a random definition");
+    emit("pins", { op: "definition", definition: d });
+    const obj = randomObjectFor(d);
+    const digest = oracle.definitionSha256(d).definition_sha256;
+    const caid = computeRef(obj, [d]).caid ?? computeRef({ action_type: d.action_type }, [d]).caid ?? "caid:1:" + d.action_type + ":jcs-sha256:" + "A".repeat(43);
+    const c = { op: "verify", obj: b64(render(obj)), caid, defs: [d], snaps_ref: "iso" };
+    if (rnd() < 0.85) c.expected = randomPin(digest);
+    M("verify with a random pin");
+    emit("pins", c);
+  }
+  // Host definitions: deep and opaque members inside and outside the
+  // validation projection.
+  const DEEP = [{ $nest: { depth: 70, container: "array", leaf: 0 } }, { $nest: { depth: 64, container: "object", leaf: 1.5 } }, { $host: "opaque" }, { $units: [0xd800] }, { $host: "nan" }, { $host: "cyclic" }];
+  const host = { action_type: "h.1", required_fields: [{ name: "a", type: "string" }], optional_fields: [{ name: "g", type: "color" }] };
+  for (let k = 0; k < (QUICK ? 60 : 300); k++) {
+    const d = clone(host);
+    const value = pick(DEEP);
+    const where = pick(["summary", "references", "notes", "unregistered member", "optional_fields", "status"]);
+    if (where === "notes") d.required_fields[0].notes = value;
+    else if (where === "unregistered member") d.optional_fields[0].palette = value;
+    else if (where === "optional_fields") d.optional_fields = [value];
+    else d[where] = value;
+    M("host definition with " + JSON.stringify(value).slice(0, 40) + " at " + where);
+    emit("pins", { op: "compute", native: { action_type: "h.1", a: "x" }, defs: [d], defs_native: true, snaps_ref: "iso", suite: "jcs-sha256" });
+    emit("pins", { op: "definition", definition: d, definition_native: true });
+  }
+  // Canonicalization of host values (the documents a definition, profile
+  // or source can be).
+  const CANON = [
+    { a: 1, b: [true, null, "x"] }, { $nest: { depth: 64, container: "array", leaf: 0 } }, { $nest: { depth: 65, container: "array", leaf: 0 } },
+    { $object: [["b", 1], ["a", 2]] }, { a: { $host: "cyclic" } }, [{ $host: "cyclic" }, { $host: "cyclic" }], { a: 1.5, b: { $units: [0xdc00] } },
+    { $units: [0xffff] }, { a: { $repeat: { unit: "x", count: 1000 } } }, { $host: "negative_zero" }, { $host: "opaque" },
+  ];
+  for (const v of CANON) { M("canonicalize " + JSON.stringify(v).slice(0, 60)); emit("pins", { op: "canon", native: v }); }
+  for (let k = 0; k < (QUICK ? 50 : 300); k++) {
+    const members = [];
+    for (let m = 0; m < 1 + Math.floor(rnd() * 4); m++) members.push([pick(["a", "b", "é", "😀", "", "\u0000"]), pick([...VALUE_POOL.filter((x) => !(x && typeof x === "object" && "$raw" in x)), { $units: [0xd800] }, { $host: "nan" }, 1.5, { $host: "cyclic" }])]);
+    M("canonicalize a random host object");
+    emit("pins", { op: "canon", native: { $object: members } });
+  }
+}
+
 // ================================================================ run
 familyVecCore();
 familyRegistry();
@@ -1035,8 +1205,12 @@ familyNumber();
 const jsonTexts = familyJson();
 familyCaidStr();
 familyDefs();
+familyDefsRandom();
+familyJsonRandom();
 familyVecMap();
 familyMapCraft();
+familyMapCraftRandom();
+familyPins();
 
 writeFileSync(path.join(OUT, "tables.json"), JSON.stringify(tables));
 const lines = cases.map((c) => JSON.stringify(c)).join("\n") + "\n";

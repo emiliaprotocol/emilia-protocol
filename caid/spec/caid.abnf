@@ -6,10 +6,13 @@
 
 caid          = %s"caid" ":" caid-version ":" action-type ":"
                 suite ":" digest
+                                 ; at most 1024 octets, and its
+                                 ; action-type at most 512 (2.6)
 
 caid-version  = "1"
 
 action-type   = 1*( name-segment "." ) type-version
+                                 ; at most 512 octets (2.6)
 name-segment  = lower-char *( lower-char / DIGIT / "-" )
 type-version  = pos-int
 pos-int       = %x31-39 *DIGIT   ; positive integer, no leading zero
@@ -74,8 +77,6 @@ cpt           = 4DIGIT ( DIGIT / UALPHA )
 hcpcs-level-ii
               = UALPHA 4DIGIT
 hcpcs         = cpt / hcpcs-level-ii
-iso-3166-1-alpha-2
-              = 2UALPHA
 iso-3166-2    = 2UALPHA "-" 1*3UALNUM
 iso20022-external-code
               = 1*4UALNUM
@@ -88,14 +89,18 @@ UALNUM        = UALPHA / DIGIT
 
 field-name    = 1*field-char
 field-char    = %x00-39 / %x3B-D7FF / %xE000-10FFFF
-                                 ; any scalar value except ":"
+                                 ; any scalar value except ":"; a
+                                 ; field name is also a string of
+                                 ; the data model (2.2), so it
+                                 ; holds no noncharacter
 
 format-name   = lower-char *( lower-char / DIGIT / "-" )
                                  ; the registered formats are A.4
 
 code-system   = uri-scheme ":" 1*uri-char
-                                 ; an absolute URI [RFC3986] with no
-                                 ; fragment, in these characters only
+                                 ; a scheme, ":", and URI characters:
+                                 ; no fragment and no IP-literal
+                                 ; host; at most 2048 octets (2.6)
 uri-scheme    = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
 uri-char      = ALPHA / DIGIT / "-" / "." / "_" / "~"
               / "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+"

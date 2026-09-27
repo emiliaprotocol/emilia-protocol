@@ -20,6 +20,9 @@
 //   {"$nest": {"depth": n, "container": "array" | "object", "leaf": v}}
 //                             n nested arrays (or objects whose only member
 //                             is "a") around leaf.
+//   {"$repeat": {"unit": s, "count": n}}
+//                             the string s repeated n times, for a value too
+//                             large to write into the corpus.
 //   {"$host": "nan"}          the binary64 NaN
 //   {"$host": "infinity"}     the binary64 +infinity
 //   {"$host": "-infinity"}    the binary64 -infinity
@@ -29,6 +32,11 @@
 //   {"$host": "opaque"}       a host value with no counterpart in the data
 //                             model: JavaScript new Map(), Python set(), Go
 //                             struct{}{}
+//
+// The definitions of a native-lane vector are native-lane encodings too, so
+// a definition can hold a value no JSON text carries (a member nested
+// deeper than 64, an opaque host value). A plain definition, which has no
+// tagged object, builds to itself.
 //
 // The expected results are the same in every language.
 
@@ -59,6 +67,7 @@ export function buildNative(encoded) {
       }
       return out;
     }
+    if (tag === '$repeat') return v.$repeat.unit.repeat(v.$repeat.count);
     if (tag === '$nest') {
       const { depth, container, leaf } = v.$nest;
       let value = build(leaf, enclosing);

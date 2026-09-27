@@ -112,6 +112,12 @@ func TestSharedSubvaluesAreBounded(t *testing.T) {
 		if got := refusals(obj{"action_type": "test.any.1", "o": v}, anyDefinition); !reflect.DeepEqual(got, []string{"unsupported_value"}) {
 			t.Errorf("exponential DAG: %v", got)
 		}
+		// Past the value budget the value is unsupported_value alone
+		// (draft -04 Section 2.6), even when a number outside the model
+		// was read before the budget ran out ("a" sorts first).
+		if got := refusals(obj{"action_type": "test.any.1", "a": json.Number("1.5"), "o": v}, anyDefinition); !reflect.DeepEqual(got, []string{"unsupported_value"}) {
+			t.Errorf("exponential DAG with a fractional number: %v", got)
+		}
 	})
 	// A small DAG is an ordinary tree value: it computes like its expansion.
 	shared := obj{"k": "v"}
@@ -198,10 +204,14 @@ func TestHostNumbersFollowTheValueRule(t *testing.T) {
 		{json.Number("9007199254740992"), []string{"unsupported_number"}},
 		{json.Number("-9007199254740992"), []string{"unsupported_number"}},
 		{json.Number("12.5"), []string{"mistyped_field:n", "unsupported_number"}},
-		{json.Number("1_0"), []string{"mistyped_field:n", "unsupported_number"}},
-		{json.Number("Inf"), []string{"mistyped_field:n", "unsupported_number"}},
-		{json.Number("0x10"), []string{"mistyped_field:n", "unsupported_number"}},
-		{json.Number(" 1"), []string{"mistyped_field:n", "unsupported_number"}},
+		// A json.Number that is not one RFC 8259 number token is no number
+		// at all: a host value outside the data model (package doc).
+		{json.Number("1_0"), []string{"mistyped_field:n", "unsupported_value"}},
+		{json.Number("Inf"), []string{"mistyped_field:n", "unsupported_value"}},
+		{json.Number("0x10"), []string{"mistyped_field:n", "unsupported_value"}},
+		{json.Number(" 1"), []string{"mistyped_field:n", "unsupported_value"}},
+		{json.Number("abc"), []string{"mistyped_field:n", "unsupported_value"}},
+		{json.Number(""), []string{"mistyped_field:n", "unsupported_value"}},
 		{math.NaN(), []string{"mistyped_field:n", "unsupported_number"}},
 		{math.Inf(-1), []string{"mistyped_field:n", "unsupported_number"}},
 		{int64(1) << 53, []string{"unsupported_number"}},

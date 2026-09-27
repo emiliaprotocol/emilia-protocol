@@ -31,7 +31,7 @@ const V1_SHA256 = 'sha256:6941463cdb42ad5242d1e44efa6937a9db3edbfa77ea2c5df5573c
 
 const V1_CHANGES = {
   'target-field-trailing-newline-abstains': {
-    rule: 'Section 4.2.1 and 8.2: target_field follows the field-name rule (any non-empty name without ":" other than action_type), so "order_id\\n" is a valid target field; the profile now fails because no rule targets the required field order_id.',
+    rule: 'Section 4.2.1 and 8.2: target_field follows the field-name rule (any non-empty name without ":" other than action_type), so "created_at\\n" is a valid target field and the right profile no longer abstains. It maps one more field than the left profile, so both mappings succeed and their projections differ: NOT_EQUIVALENT with material_projection_mismatch. The id keeps its version 1 spelling.',
   },
 };
 
@@ -55,7 +55,10 @@ function mutate(root, operation) {
     else delete parent[key];
   } else if (operation.op === 'set') {
     if (Array.isArray(parent) && key >= parent.length) throw new Error('a set mutation may not append to an array; set the whole array');
-    parent[key] = clone(operation.value);
+    // "units" carries a string no strict JSON text can hold, as its UTF-16
+    // code units.
+    const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units) : clone(operation.value);
+    Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else throw new Error(`unsupported mutation ${operation.op}`);
 }
 function buildSide(corpus, descriptor) {
@@ -86,6 +89,7 @@ function run(corpus, vector) {
 const EP = { source: 'ep-order', profile: 'ep-action-v1', pin: 'profile' };
 const AP2 = { source: 'ap2-order', profile: 'ap2-checkout-v1', pin: 'profile' };
 const set = (side, target, p, value) => ({ side, target, op: 'set', path: p, value });
+const setUnits = (side, target, p, units) => ({ side, target, op: 'set', path: p, units });
 const del = (side, target, p) => ({ side, target, op: 'delete', path: p });
 const HEX = 'a'.repeat(64);
 const epRules = v1.profiles['ep-action-v1'].rules;
@@ -200,6 +204,18 @@ const CASES = [
     [], [], 'INDETERMINATE', ['target_action_type_mismatch']],
   ['empty-suite-not-defaulted', 'review D10: an empty suite is used as given and refused, never replaced by the default jcs-sha256', EP, EP,
     [], [], 'INDETERMINATE', ['left:mapped_action:unknown_suite', 'right:mapped_action:unknown_suite'], { suite: '' }],
+  // A profile outside the data model has no digest, so it fails the stage A
+  // shape gate: exactly invalid_mapping_profile, and no stage A check after
+  // it runs (here, no unmapped_material_field for the dropped rule).
+  ['profile-id-noncharacter-abstains', 'a profile_id holding U+FFFF is outside the data model: exactly invalid_mapping_profile, then mapping_profile_unpinned since the profile has no digest', EP, EP,
+    [setUnits('right', 'profile', '/profile_id', [0xffff]), del('right', 'profile', '/rules/0'), del('right', 'profile', '/material_source_paths/0')],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned']],
+  ['profile-id-lone-surrogate-abstains', 'a host profile_id holding a lone surrogate is refused the same way', EP, EP,
+    [setUnits('right', 'profile', '/profile_id', [0xd800]), del('right', 'profile', '/rules/0'), del('right', 'profile', '/material_source_paths/0')],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned']],
+  ['profile-schema-noncharacter-abstains', 'a noncharacter in source_format.schema also leaves the profile outside the data model', EP, EP,
+    [setUnits('right', 'profile', '/source_format/schema', [0xfdd0])],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:source_format_mismatch']],
 ];
 
 // ---------------------------------------------------------------- build

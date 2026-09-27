@@ -37,7 +37,6 @@ recursion limit.
 """
 
 import base64
-import gc
 import hashlib
 import re
 
@@ -61,14 +60,16 @@ MAX_NESTING_DEPTH = LIMITS["nesting_depth"]
 MAX_JSON_TEXT_OCTETS = LIMITS["json_text_octets"]
 MAX_CANONICAL_OCTETS = LIMITS["canonical_octets"]
 
-# Resource bounds for native values only. Any value the decoder can produce
-# from at most MAX_JSON_TEXT_OCTETS of text has fewer nodes than that many
-# octets, and its RFC 8785 encoding is at most four times the text (the
-# largest expansion is a number such as 1e15 written out in 16 digits). So
-# neither bound changes the result for any decodable value; they stop a
-# native value with shared substructure from growing without limit.
-_NODE_BUDGET = MAX_JSON_TEXT_OCTETS
-_GENERIC_CANONICAL_CEILING = 4 * MAX_JSON_TEXT_OCTETS
+# Section 2.6: canonicalization reads at most value_count values, counting a
+# value once for every path that reaches it, and refuses a value past that
+# as unsupported_value alone; a document with no canonical limit of its own
+# (a definition, value set, mapping profile or source) takes the ceiling
+# document_canonical_octets. No value the decoder produces from a text
+# within MAX_JSON_TEXT_OCTETS reaches either bound; they stop a native value
+# with shared substructure from growing without limit.
+_VALUE_BUDGET = LIMITS["value_count"]
+_DOCUMENT_CANONICAL_OCTETS = LIMITS["document_canonical_octets"]
+_PATTERN_MAX_OCTETS = SPEC["pattern_max_octets"]
 
 _MALFORMED_JSON = "malformed_json"
 _FIELD_TYPES = {t["type"]: t for t in SPEC["field_types"]}
@@ -82,19 +83,54 @@ _PROJECTION = _DEFINITION["projection"]
 _EXCLUDED_FIELD_MEMBERS = frozenset(_PROJECTION["field_members_excluded"])
 _ENUM = SPEC["enum"]
 _COMPUTE_RANK = SPEC["sort_rank"]["compute"]
+_VERIFY_RANK = SPEC["sort_rank"]["verify"]
 _VERIFY_DETAILS = SPEC["verify_details"]["reasons"]
 _DETAIL_EXPAND_OMIT = frozenset(SPEC["verify_details"]["expand"]["invalid_object"]["omit"])
 _DATE = SPEC["timestamp_date_offsets"]
 
 # A string outside the data model: an unpaired surrogate (not a Unicode
 # scalar value, RFC 8785 section 3.2.2.2) or a noncharacter (I-JSON,
-# RFC 7493 section 2.1, which the draft profiles wholesale).
-_NONCHARACTERS = "\ufdd0-\ufdef\ufffe\uffff" + "".join(
-    chr(plane * 0x10000 + 0xFFFE) + chr(plane * 0x10000 + 0xFFFF) for plane in range(1, 17)
+# RFC 7493 section 2.1, which the draft profiles wholesale). The
+# noncharacter ranges are generated from core.json.
+_NONCHARACTERS = "".join(
+    re.escape(chr(lo)) + "-" + re.escape(chr(hi)) for lo, hi in SPEC["json_text"]["noncharacter_ranges"]
 )
 _NONCHARACTER_RE = re.compile("[" + _NONCHARACTERS + "]")
 _OUTSIDE_MODEL_RE = re.compile("[\ud800-\udfff" + _NONCHARACTERS + "]")
 _LONE_SURROGATE_RE = re.compile("[\ud800-\udfff]")
+
+
+def _outside_model(text):
+    """True for a str that is not a data-model string. An ASCII string never
+    holds a surrogate or a noncharacter, so it skips the search."""
+    return not text.isascii() and _OUTSIDE_MODEL_RE.search(text) is not None
+
+
+def _has_noncharacter(text):
+    return not text.isascii() and _NONCHARACTER_RE.search(text) is not None
+
+
+def _has_lone_surrogate(text):
+    return not text.isascii() and _LONE_SURROGATE_RE.search(text) is not None
+
+
+def _is(value, cls):
+    """isinstance by the value's real type. A value can report any class as
+    its __class__ (unittest.mock does), which isinstance believes; the base
+    methods this module reads through would then raise. type() cannot be
+    spoofed."""
+    return issubclass(type(value), cls)
+
+
+def _match(pattern_id, text):
+    """Whole-string match of a generated pattern, with its length limit, if
+    it has one, checked first (Section 2.6). Every string such a pattern
+    matches is ASCII, so its length in code points is its length in
+    octets."""
+    limit = _PATTERN_MAX_OCTETS.get(pattern_id)
+    if limit is not None and len(text) > limit:
+        return False
+    return PATTERNS[pattern_id].match(text) is not None
 
 
 class _Absent:
@@ -118,7 +154,7 @@ _ABSENT = _Absent()
 
 def _plain_str(value):
     """The exact str behind a str (or str subclass); None for anything else."""
-    return str.__str__(value) if isinstance(value, str) else None
+    return str.__str__(value) if _is(value, str) else None
 
 
 def _members(obj):
@@ -129,7 +165,7 @@ def _members(obj):
     """
     out = {}
     for key, value in dict.items(obj):
-        if isinstance(key, str):
+        if _is(key, str):
             key = str.__str__(key)
             if key not in out:
                 out[key] = value
@@ -138,7 +174,7 @@ def _members(obj):
 
 def _seq(value):
     """The elements of a list (or subclass) as a tuple; None otherwise."""
-    return tuple(list.__iter__(value)) if isinstance(value, list) else None
+    return tuple(list.__iter__(value)) if _is(value, list) else None
 
 
 def _kind(value):
@@ -147,13 +183,13 @@ def _kind(value):
         return "null"
     if value is True or value is False:
         return "boolean"
-    if isinstance(value, (int, float)):
+    if _is(value, (int, float)):
         return "number"
-    if isinstance(value, str):
+    if _is(value, str):
         return "string"
-    if isinstance(value, list):
+    if _is(value, list):
         return "array"
-    if isinstance(value, dict):
+    if _is(value, dict):
         return "object"
     return None
 
@@ -166,30 +202,32 @@ def _is_integer_value(value):
     """
     if value is True or value is False:
         return False
-    if isinstance(value, int):
+    if _is(value, int):
         try:
             float(int.__int__(value))
         except OverflowError:
             return False
         return True
-    if isinstance(value, float):
+    if _is(value, float):
         return float.__float__(value).is_integer()
     return False
 
 
 def _utf8_octets(text):
     """UTF-8 length in octets, or None for a string with a lone surrogate."""
+    if text.isascii():
+        return len(text)
     if _LONE_SURROGATE_RE.search(text):
         return None
-    return len(text) if text.isascii() else len(text.encode("utf-8"))
+    return len(text.encode("utf-8"))
 
 
 def _is_field_name(name):
     """ABNF field-name: one or more scalar values, none of them ":"."""
     return (
-        isinstance(name, str)
+        _is(name, str)
         and len(name) >= _FIELD_NAME["min_length"]
-        and not _LONE_SURROGATE_RE.search(name)
+        and not _has_lone_surrogate(name)
         and not any(ch in _FORBIDDEN_NAME_CHARS for ch in name)
     )
 
@@ -213,7 +251,6 @@ _WS = re.compile("[" + "".join(re.escape(chr(c)) for c in SPEC["json_text"]["whi
 _NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?").match
 _STRING_CHUNK = re.compile(r'([^"\\\x00-\x1f]*)(.?)', re.S).match
 _HEX4 = re.compile(r"[0-9A-Fa-f]{4}").fullmatch
-_GC_PAUSE_OCTETS = 1 << 20
 _SIMPLE_ESCAPES = {'"': '"', "\\": "\\", "/": "/", "b": "\b", "f": "\f", "n": "\n", "r": "\r", "t": "\t"}
 
 
@@ -256,7 +293,7 @@ def _scan_string(text, i, keep):
             parts.append(ch)
             i += 1
     text_value = "".join(parts)
-    if not keep and _NONCHARACTER_RE.search(text_value):
+    if not keep and _has_noncharacter(text_value):
         raise _Refused
     return text_value, i
 
@@ -350,31 +387,24 @@ def _parse(text, keep, max_depth):
 
 
 def _decode(data, max_octets, keep=False):
-    if not isinstance(data, (bytes, bytearray)):
+    if not _is(data, (bytes, bytearray)):
+        return {"ok": False, "refusals": [_MALFORMED_JSON]}
+    # The size is checked before anything is copied (rule 1).
+    if max_octets is not None and len(memoryview(data)) > max_octets:
         return {"ok": False, "refusals": [_MALFORMED_JSON]}
     raw = data if type(data) is bytes else bytes(memoryview(data))
-    if max_octets is not None and len(raw) > max_octets:
-        return {"ok": False, "refusals": [_MALFORMED_JSON]}
     if raw.startswith(_BOM):
         return {"ok": False, "refusals": [_MALFORMED_JSON]}
     try:
         text = raw.decode("utf-8")  # strict: refuses overlongs, surrogates, truncation
     except UnicodeDecodeError:
         return {"ok": False, "refusals": [_MALFORMED_JSON]}
-    # The parser builds only acyclic containers, so the cyclic collector has
-    # nothing to find in them. On a large text, pause it: on Python 3.14 its
-    # incremental passes rescan the growing containers and make a 16-million-
-    # element array several times slower to decode.
-    paused = len(raw) >= _GC_PAUSE_OCTETS and gc.isenabled()
-    if paused:
-        gc.disable()
+    # The process-wide garbage collector is left alone: pausing it here
+    # would change it for every other thread of the application.
     try:
         value = _parse(text, keep, None if keep else MAX_NESTING_DEPTH)
     except _Refused:
         return {"ok": False, "refusals": [_MALFORMED_JSON]}
-    finally:
-        if paused:
-            gc.enable()
     return {"ok": True, "value": value}
 
 
@@ -437,7 +467,7 @@ def _object_items(obj):
     seen = set()
     outside = False
     for key, value in dict.items(obj):
-        if not isinstance(key, str):
+        if not _is(key, str):
             outside = True
             continue
         key = str.__str__(key)
@@ -445,7 +475,7 @@ def _object_items(obj):
             outside = True
             continue
         seen.add(key)
-        if _OUTSIDE_MODEL_RE.search(key):
+        if _outside_model(key):
             outside = True
         items.append((key, value))
     items.sort(key=_utf16_order)
@@ -456,9 +486,10 @@ def _canonicalize(value, cap):
     """Returns (canonical text or None, refusals).
 
     cap is the canonical-size limit in octets (the action-object limit for
-    compute and verify), or None for a generic value.
+    compute and verify), or None for a document, which takes the document
+    ceiling. Past the value budget the value is unsupported_value alone.
     """
-    limit = _GENERIC_CANONICAL_CEILING if cap is None else cap
+    limit = _DOCUMENT_CANONICAL_OCTETS if cap is None else cap
     parts = []
     size = 0
     emit = True
@@ -474,9 +505,8 @@ def _canonicalize(value, cap):
             have_pending = False
             v = pending
             visited += 1
-            if visited > _NODE_BUDGET:
-                outside = True
-                break
+            if visited > _VALUE_BUDGET:
+                return None, ["unsupported_value"]
             chunk = None
             if v is None:
                 chunk = "null"
@@ -484,30 +514,30 @@ def _canonicalize(value, cap):
                 chunk = "true"
             elif v is False:
                 chunk = "false"
-            elif isinstance(v, int):
+            elif _is(v, int):
                 n = v if type(v) is int else int.__int__(v)
                 if -MAX_SAFE_INTEGER <= n <= MAX_SAFE_INTEGER:
                     chunk = str(n)
                 else:
                     bad_number = True
-            elif isinstance(v, float):
+            elif _is(v, float):
                 f = v if type(v) is float else float.__float__(v)
                 if f.is_integer() and -MAX_SAFE_INTEGER <= f <= MAX_SAFE_INTEGER:
                     chunk = str(int(f))
                 else:
                     bad_number = True
-            elif isinstance(v, str):
+            elif _is(v, str):
                 s = v if type(v) is str else str.__str__(v)
-                if _OUTSIDE_MODEL_RE.search(s):
+                if _outside_model(s):
                     outside = True
                 elif emit:
                     chunk = _quote(s)
-            elif isinstance(v, (list, dict)):
+            elif _is(v, (list, dict)):
                 vid = id(v)
                 if len(stack) >= MAX_NESTING_DEPTH or vid in ancestors:
                     outside = True
                 else:
-                    if isinstance(v, list):
+                    if _is(v, list):
                         stack.append([tuple(list.__iter__(v)), 0, vid, False])
                         chunk = "["
                     else:
@@ -520,9 +550,9 @@ def _canonicalize(value, cap):
             else:
                 outside = True
             if bad_number or outside:
+                # Output stops, but the traversal goes on: whether the value
+                # passes the value budget depends on every value it holds.
                 emit = False
-                if bad_number and outside:
-                    break
             if emit and chunk is not None:
                 parts.append(chunk)
                 size += len(chunk) if chunk.isascii() else len(chunk.encode("utf-8"))
@@ -578,8 +608,10 @@ def canonicalize(value):
       unsupported_value   anything else outside the data model: a string
                           with an unpaired surrogate or a noncharacter, a
                           non-str member name, nesting beyond 64, a cycle,
-                          or a host value that is not dict, list, str, int,
-                          float, bool or None
+                          a host value that is not dict, list, str, int,
+                          float, bool or None, more values than the value
+                          budget (then alone), or an encoding longer than
+                          134,217,728 octets
     The action-object size limit applies in compute and verify, not here.
     """
     canonical, refusals = _canonicalize(value, None)
@@ -619,7 +651,7 @@ def _conform(members):
     """The resolved field views and definition_sha256 of a conforming
     definition, or None when it does not conform."""
     action_type = _plain_str(members.get("action_type"))
-    if action_type is None or PATTERNS["action_type"].match(action_type) is None:
+    if action_type is None or not _match("action_type", action_type):
         return None
     lists = {}
     for list_name in _DEFINITION["field_lists"]:
@@ -639,7 +671,7 @@ def _conform(members):
     names = set()
     views = []
     for entry in required + optional:
-        if not isinstance(entry, dict):
+        if not _is(entry, dict):
             return None
         view = _members(entry)
         name = _plain_str(view.get("name"))
@@ -656,7 +688,7 @@ def _conform(members):
                 return None
             for member, pattern in spec["required_members"].items():
                 text = _plain_str(view.get(member))
-                if text is None or PATTERNS[pattern].match(text) is None:
+                if text is None or not _match(pattern, text):
                     return None
         view["name"] = name
         view["type"] = field_type
@@ -678,7 +710,7 @@ def _resolve(action_type, definitions):
     or the one definition whose action_type matches."""
     candidates = []
     for entry in definitions:
-        if isinstance(entry, dict):
+        if _is(entry, dict):
             members = _members(entry)
             if _plain_str(members.get("action_type")) == action_type:
                 candidates.append(members)
@@ -707,7 +739,7 @@ def definition_sha256(definition):
     each field entry's notes member removed.
     """
     refusal = SPEC["results"]["definition_sha256"]["refusal"]
-    if not isinstance(definition, dict):
+    if not _is(definition, dict):
         return {"refusals": [refusal]}
     conforming = _conform(_members(definition))
     if conforming is None:
@@ -753,16 +785,11 @@ def _resolve_enum(field, snapshots):
         return tuple(_plain_str(v) for v in declared) if _valid_enum_values(declared) else None
     snapshot_name = _plain_str(field.get("values_snapshot"))
     pinned = _plain_str(field.get("values_sha256"))
-    if (
-        not ref
-        or not snapshot_name
-        or pinned is None
-        or PATTERNS["digest_field"].match(pinned) is None
-    ):
+    if not ref or not snapshot_name or pinned is None or not _match("digest_field", pinned):
         return None
     if not has_values:
         for snapshot in snapshots:
-            if not isinstance(snapshot, dict):
+            if not _is(snapshot, dict):
                 continue
             s = _members(snapshot)
             if (
@@ -818,7 +845,7 @@ def _check_field(value, field, snapshots):
         return None if matcher.match(text) else spec["format_refusal"]
     pattern = spec.get("pattern")
     if pattern is not None:
-        if PATTERNS[pattern].match(text) is None:
+        if not _match(pattern, text):
             return spec["pattern_refusal"]
         if spec.get("calendar_check") == "day_within_month" and not _within_month(text):
             return spec["pattern_refusal"]
@@ -831,14 +858,21 @@ def _check_field(value, field, snapshots):
 
 
 def _options(options):
-    members = _members(options) if isinstance(options, dict) else {}
+    """The options, each read with a type guard: a suite, definitions or
+    enum_snapshots of the wrong type counts as absent. An expected
+    definition_sha256 is supplied whenever its member is present, whatever
+    its value, including None; a value that is not a str can never equal a
+    definition_sha256, so a pin of the wrong type fails closed."""
+    members = _members(options) if _is(options, dict) else {}
     definitions = _seq(members.get("definitions"))
     snapshots = _seq(members.get("enum_snapshots"))
+    pinned = "expected_definition_sha256" in members
     return {
         "suite": _plain_str(members.get("suite")),
         "definitions": definitions if definitions is not None else (),
         "enum_snapshots": snapshots if snapshots is not None else (),
-        "expected_definition_sha256": _plain_str(members.get("expected_definition_sha256")),
+        "pinned": pinned,
+        "expected_definition_sha256": _plain_str(members.get("expected_definition_sha256")) if pinned else None,
     }
 
 
@@ -872,14 +906,14 @@ def _evaluate(obj, opts, check_suite, canonical_result=None):
     """The compute phases after the entry gate. Gates (phases 1 and 2) yield
     exactly one reason; after them every check runs and the reasons are
     sorted by (phase rank, field position) and deduplicated."""
-    if not isinstance(obj, dict):
+    if not _is(obj, dict):
         return _Evaluation(["invalid_action_type"])
     members = _members(obj)
     action_type = _plain_str(members.get("action_type"))
-    if action_type is None or PATTERNS["action_type"].match(action_type) is None:
+    if action_type is None or not _match("action_type", action_type):
         return _Evaluation(["invalid_action_type"])
     resolved = _resolve(action_type, opts["definitions"])
-    if isinstance(resolved, str):
+    if _is(resolved, str):
         return _Evaluation([resolved], action_type=action_type)
     found = []
     for position, field in enumerate(resolved.required):
@@ -938,14 +972,17 @@ def parse_caid(caid_input):
       -> {"ok": True, "caid": {"version", "action_type", "suite", "digest"}}
       -> {"ok": False, "refusals": ["malformed_caid" | "unknown_suite"]}
 
-    Checks, in order: the caid ABNF (malformed_caid); the suite is
+    Checks, in order: the caid ABNF, with the identifier and its action
+    type within their length limits (malformed_caid); the suite is
     registered (unknown_suite); the digest matches the suite's digest
     syntax (malformed_caid). No trimming, case folding or normalization.
     """
     text = _plain_str(caid_input)
-    if text is None or PATTERNS["caid"].match(text) is None:
+    if text is None or not _match("caid", text):
         return {"ok": False, "refusals": ["malformed_caid"]}
     _, version, action_type, suite, digest = text.split(SPEC["identifier"]["separator"])
+    if not _match("action_type", action_type):
+        return {"ok": False, "refusals": ["malformed_caid"]}
     digest_pattern = SUITE_DIGEST_PATTERNS.get(suite)
     if digest_pattern is None:
         return {"ok": False, "refusals": ["unknown_suite"]}
@@ -977,7 +1014,7 @@ def _detail(reason, value, caid_argument):
     if rule["observed"] == "argument":
         observed = _observed_kind(caid_argument)
     elif rule["observed"] == "member":
-        if isinstance(value, dict):
+        if _is(value, dict):
             members = _members(value)
             observed = _observed_kind(members[field]) if field in members else "absent"
         else:
@@ -987,7 +1024,7 @@ def _detail(reason, value, caid_argument):
 
 def _verify_parsed(obj, parsed, caid_argument, opts):
     check_suite = "unknown_suite" not in _DETAIL_EXPAND_OMIT
-    if not isinstance(obj, dict):
+    if not _is(obj, dict):
         evaluation = _evaluate(obj, opts, check_suite)
         return {
             "valid": False,
@@ -996,28 +1033,29 @@ def _verify_parsed(obj, parsed, caid_argument, opts):
         }
     canonical_result = _canonicalize(obj, MAX_CANONICAL_OCTETS)
     evaluation = _evaluate(obj, opts, check_suite, canonical_result)
+    # Every reason after the gates takes its rank from sort_rank.verify, and
+    # the result lists them in rank order.
     reasons = []
-    details = []
-
-    def add(reason):
-        reasons.append(reason)
-        details.append(_detail(reason, obj, caid_argument))
-
     if _plain_str(_members(obj).get("action_type")) != parsed["action_type"]:
-        add("action_type_mismatch")
+        reasons.append("action_type_mismatch")
     resolved = evaluation.resolved
     definition_digest = resolved.sha256 if resolved is not None else None
-    expected = opts["expected_definition_sha256"]
-    if expected is not None and definition_digest is not None and expected != definition_digest:
-        add("definition_mismatch")
+    if opts["pinned"] and definition_digest is not None and opts["expected_definition_sha256"] != definition_digest:
+        reasons.append("definition_mismatch")
     canonical = canonical_result[0]
     if parsed["suite"] not in SUPPORTED_SUITES:
-        add("unknown_suite")
+        reasons.append("unknown_suite")
     elif canonical is not None and _b64url(_sha256(canonical)) != parsed["digest"]:
-        add("digest_mismatch")
+        reasons.append("digest_mismatch")
     if evaluation.refusals:
         reasons.append("invalid_object")
-        details.extend(_detail(r, obj, caid_argument) for r in evaluation.refusals)
+    reasons.sort(key=lambda reason: _VERIFY_RANK[reason])
+    details = []
+    for reason in reasons:
+        if reason == "invalid_object":
+            details.extend(_detail(r, obj, caid_argument) for r in evaluation.refusals)
+        else:
+            details.append(_detail(reason, obj, caid_argument))
     result = {"valid": not reasons, "reasons": reasons, "details": details}
     if definition_digest is not None:
         result["definition_sha256"] = definition_digest

@@ -3,37 +3,34 @@
 // directly, so a port that keeps hand-written logic beside or instead of the
 // generated constants fails here.
 //
-// Usage: node run-grammar-vectors.mjs [--corpus FILE] [--quiet]
+// Usage: node run-grammar-vectors.mjs --corpus FILE [--quiet]
 //
-// FILE is one of two formats.
-//
-// CAID-GRAMMAR-VECTORS (the committed boundary corpus, default
-// conformance/grammar-vectors.json): each case names a driver, which says
-// how to build a parse input or a one-field definition and object around
-// the case string, a lane (text, native or bytes) and the exact expected
-// result. The drive rules are the corpus's own "format" member.
-//
-// CAID-GRAMMAR-CASES-v1 (the full list that
-// `node caid/spec/abnf-check.mjs --out FILE` writes): each case names a rule
+// FILE is a CAID-GRAMMAR-CASES-v1 list, the full list that
+// `node caid/spec/abnf-check.mjs --out FILE` writes: each case names a rule
 // and says whether the ABNF interpreter accepts the input. The runner maps
 // every rule onto the API that enforces it:
 //
-//   pattern:caid            parseCaid(input): refused unless it matches;
-//                           malformed_caid whenever it does not
+//   pattern:caid            parseCaid(input): malformed_caid unless it
+//                           matches within the length limits; then the
+//                           registry and the digest syntax, derived here
+//                           from the formula of Appendix A.2, decide
 //   pattern:action_type     parseCaid of an identifier carrying it, and
 //                           computeCaid of an object of that type under a
-//                           one-field definition
+//                           one-field definition; accepted exactly when it
+//                           matches within the length limit
 //   pattern:suite           parseCaid: not malformed_caid exactly when it
 //                           matches
-//   pattern:digest          parseCaid: malformed_caid whenever it does not
-//                           match
+//   pattern:digest          parseCaid under an unregistered suite:
+//                           unknown_suite exactly when it matches, else
+//                           malformed_caid
 //   suite_digest:<suite>    parseCaid succeeds exactly when it matches
 //   pattern:amount_string   computeCaid, amount-string field
 //   pattern:digest_field    computeCaid, digest field
 //   pattern:timestamp       computeCaid, timestamp field (a matching value
 //                           outside the month's days still refuses)
 //   pattern:format_name     definition conformance of a code field's format
-//   pattern:code_system     definition conformance of its code_system
+//   pattern:code_system     definition conformance of its code_system,
+//                           within the length limit
 //   code_format:<format>    computeCaid, code field of that format
 //   pattern:array_index     mapAction with a source path through an array
 //   pattern:hex_sha256      mapAction with the sha256-hex-to-digest transform
@@ -41,18 +38,19 @@
 // It exits nonzero when any case disagrees.
 
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join, resolve } from "node:path";
-import { computeCaid, computeCaidJson, decodeCaidJson, parseCaid } from "./caid.mjs";
+import { resolve } from "node:path";
+import { CAID_SPEC, computeCaid, parseCaid } from "./caid.mjs";
 import { mapAction, mappingProfileHash } from "./mapping.mjs";
 
-const here = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const corpusIndex = argv.indexOf("--corpus");
 const quiet = argv.includes("--quiet");
-const corpusPath = corpusIndex >= 0
-  ? resolve(argv[corpusIndex + 1] ?? "")
-  : join(here, "..", "..", "conformance", "grammar-vectors.json");
+if (corpusIndex < 0 || !argv[corpusIndex + 1]) {
+  console.log("usage: node run-grammar-vectors.mjs --corpus FILE [--quiet]   (FILE from node caid/spec/abnf-check.mjs --out FILE;"
+    + " the committed grammar-vectors.json runs through caid/conformance/runners/run.mjs)");
+  process.exit(2);
+}
+const corpusPath = resolve(argv[corpusIndex + 1]);
 
 // The case list deliberately carries lone-surrogate escapes (the grammar
 // must refuse them), which the strict decoder refuses by design, so it is
@@ -63,98 +61,40 @@ try {
 } catch {
   decoded = { value: null };
 }
-const corpusVersion = decoded.value ? decoded.value["@version"] : undefined;
-if (!decoded.value || !Array.isArray(decoded.value.cases)
-    || (corpusVersion !== "CAID-GRAMMAR-CASES-v1" && corpusVersion !== "CAID-GRAMMAR-VECTORS")) {
-  console.log("FAIL corpus: " + corpusPath + " is neither a CAID-GRAMMAR-VECTORS nor a CAID-GRAMMAR-CASES-v1 document");
+if (!decoded.value || !Array.isArray(decoded.value.cases) || decoded.value["@version"] !== "CAID-GRAMMAR-CASES-v1") {
+  console.log("FAIL corpus: " + corpusPath + " is not a CAID-GRAMMAR-CASES-v1 document");
   process.exit(1);
-}
-if (corpusVersion === "CAID-GRAMMAR-VECTORS") process.exit(runDriverCorpus(decoded.value));
-
-// ---------------------------------------------------------------------------
-// CAID-GRAMMAR-VECTORS: drivers, lanes and exact expectations
-// ---------------------------------------------------------------------------
-
-function runDriverCorpus(corpus) {
-  const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
-  const stable = (value) => JSON.stringify(value, (key, v) => (v && typeof v === "object" && !Array.isArray(v)
-    ? Object.fromEntries(Object.keys(v).sort().filter((k) => v[k] !== undefined).map((k) => [k, v[k]]))
-    : v));
-  const substitute = (template, value) => {
-    if (template === "$CASE") return value;
-    if (Array.isArray(template)) return template.map((x) => substitute(x, value));
-    if (template && typeof template === "object") {
-      const out = {};
-      for (const [k, v] of Object.entries(template)) {
-        Object.defineProperty(out, k === "$CASE" ? value : k, {
-          value: substitute(v, value), enumerable: true, writable: true, configurable: true,
-        });
-      }
-      return out;
-    }
-    return template;
-  };
-  const caseString = (c) => (typeof c === "string" ? c
-    : hasOwn(c, "$units") ? String.fromCharCode(...c.$units)
-      : hasOwn(c, "repeat") ? c.repeat.prefix + c.repeat.unit.repeat(c.repeat.count) + c.repeat.suffix
-        : null);
-  let passed = 0;
-  let failed = 0;
-  corpus.cases.forEach((c, index) => {
-    const d = corpus.drivers[c.driver];
-    const id = `grammar[${index}] ${c.driver} ${c.lane}`;
-    let actual;
-    let problem = null;
-    try {
-      if (d.operation === "parse") {
-        actual = parseCaid(d.caid.prefix + caseString(c.case) + d.caid.suffix);
-      } else {
-        const s = c.lane === "bytes" ? corpus.placeholder : caseString(c.case);
-        const definition = substitute(d.definition, s);
-        const object = substitute(d.object, s);
-        const options = { definitions: [definition], enumSnapshots: [], suite: d.suite === "$CASE" ? s : "jcs-sha256" };
-        if (c.lane === "native") {
-          actual = computeCaid(object, options);
-        } else {
-          let bytes;
-          if (c.lane === "bytes") {
-            const raw = Buffer.from(c.case.b64, "base64");
-            const parts = JSON.stringify(object).split(corpus.placeholder).map((x) => Buffer.from(x, "utf8"));
-            bytes = new Uint8Array(Buffer.concat(parts.flatMap((x, i) => (i ? [raw, x] : [x]))));
-          } else {
-            bytes = new Uint8Array(Buffer.from(JSON.stringify(object), "utf8"));
-          }
-          actual = computeCaidJson(bytes, options);
-          if (c.lane === "text") {
-            const decodedText = decodeCaidJson(bytes);
-            if (decodedText.ok) {
-              const native = computeCaid(decodedText.value, options);
-              if (stable(native) !== stable(actual)) problem = `native parity: ${stable(native)} vs ${stable(actual)}`;
-            }
-          }
-        }
-        if (actual && typeof actual.caid === "string" && hasOwn(c.expect, "caid")) actual = { caid: actual.caid };
-      }
-    } catch (error) {
-      problem = "runner error: " + (error && error.message);
-    }
-    if (problem === null && stable(actual) !== stable(c.expect)) {
-      problem = `expected ${stable(c.expect).slice(0, 200)} got ${stable(actual).slice(0, 200)}`;
-    }
-    if (problem === null) {
-      passed++;
-    } else {
-      failed++;
-      if (failed <= 50) console.log(`FAIL ${id} ${JSON.stringify(c.case).slice(0, 80)}: ${problem}`);
-    }
-  });
-  console.log(`${passed} passed, ${failed} failed, ${corpus.cases.length} grammar vectors`);
-  return failed > 0 ? 1 : 0;
 }
 
 const DIGEST = "A".repeat(43); // 32 zero octets in jcs-sha256 digest syntax
 const TYPE = "grammar.check.1";
 const CODE_SYSTEM = "urn:example:grammar";
+const UNREGISTERED_SUITE = "zz-unregistered";
+const B64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+// The registered suites and the length limits (Section 2.6) come from the
+// spec data; the digest syntax is derived independently here, from the
+// formula of Appendix A.2, never from the generated matcher.
+const SUITE_OCTETS = new Map(CAID_SPEC.suites.map((s) => [s.suite, s.digest_octets]));
+const MAX = CAID_SPEC.pattern_max_octets;
+if (SUITE_OCTETS.has(UNREGISTERED_SUITE)) throw new Error(`${UNREGISTERED_SUITE} is registered`);
+
+// Appendix A.2: c = ceil(8n/6) base64url characters, the last with
+// u = 6c - 8n zero low bits.
+function digestSyntax(digest, octets) {
+  const chars = Math.ceil((8 * octets) / 6);
+  const unused = 6 * chars - 8 * octets;
+  return digest.length === chars && [...digest].every((ch) => B64URL.includes(ch))
+    && B64URL.indexOf(digest[digest.length - 1]) % (1 << unused) === 0;
+}
+
+// The parse result the grammar verdict and the registry predict for a CAID.
+function expectedParse(input, match) {
+  if (!match || input.length > MAX.caid) return "malformed_caid";
+  const [, , actionType, suite, digest] = input.split(":");
+  if (actionType.length > MAX.action_type) return "malformed_caid";
+  if (!SUITE_OCTETS.has(suite)) return "unknown_suite";
+  return digestSyntax(digest, SUITE_OCTETS.get(suite)) ? null : "malformed_caid";
+}
 
 const oneField = (field, actionType = TYPE) => [{ action_type: actionType, required_fields: [field] }];
 const computeField = (field, value) => computeCaid(
@@ -213,19 +153,19 @@ function check(rule, input, match) {
   switch (name) {
     case "caid": {
       const r = parseCaid(input);
-      if (!match) return !r.ok && first(r) === "malformed_caid" ? null : `parseCaid gave ${JSON.stringify(r)}`;
-      return r.ok || first(r) !== "malformed_caid" || !/^[\x2d0-9A-Z_a-z]{42}[048AEIMQUYcgkosw]$/.test(input.split(":")[4] ?? "")
-        ? null : "parseCaid refused a matching identifier with a well-formed digest";
+      const want = expectedParse(input, match);
+      return (want === null ? r.ok : !r.ok && first(r) === want) ? null : `parseCaid gave ${JSON.stringify(r)}, want ${want ?? "ok"}`;
     }
     case "action_type": {
+      const accepted = match && input.length <= MAX.action_type;
       const parsed = parseCaid(`caid:1:${input}:jcs-sha256:${DIGEST}`);
-      if (parsed.ok !== match) return `parseCaid ok=${parsed.ok}`;
+      if (parsed.ok !== accepted) return `parseCaid ok=${parsed.ok}`;
       const r = computeCaid({ action_type: input }, {
         suite: "jcs-sha256",
         definitions: [{ action_type: input, required_fields: [{ name: "v", type: "string" }] }],
       });
       const refusal = isCaid(r) ? null : first(r);
-      if (match) return refusal === "missing_material_field:v" ? null : `computeCaid gave ${JSON.stringify(r)}`;
+      if (accepted) return refusal === "missing_material_field:v" ? null : `computeCaid gave ${JSON.stringify(r)}`;
       return refusal === "invalid_action_type" ? null : `computeCaid gave ${JSON.stringify(r)}`;
     }
     case "suite": {
@@ -234,9 +174,12 @@ function check(rule, input, match) {
       return malformed === !match ? null : `parseCaid gave ${JSON.stringify(r)}`;
     }
     case "digest": {
-      const r = parseCaid(`caid:1:${TYPE}:jcs-sha256:${input}`);
-      if (!match) return !r.ok && first(r) === "malformed_caid" ? null : `parseCaid gave ${JSON.stringify(r)}`;
-      return null;
+      // Under an unregistered suite the digest rule alone decides: a match
+      // reaches the registry check (unknown_suite), anything else is
+      // malformed_caid.
+      const r = parseCaid(`caid:1:${TYPE}:${UNREGISTERED_SUITE}:${input}`);
+      const want = match ? "unknown_suite" : "malformed_caid";
+      return !r.ok && first(r) === want ? null : `parseCaid gave ${JSON.stringify(r)}, want ${want}`;
     }
     case "amount_string": {
       const r = computeField({ type: "amount-string" }, input);
@@ -261,7 +204,8 @@ function check(rule, input, match) {
       field[name === "format_name" ? "format" : "code_system"] = input;
       const r = computeCaid({ action_type: TYPE }, { suite: "jcs-sha256", definitions: oneField({ name: "v", ...field }) });
       const invalid = !isCaid(r) && first(r) === "invalid_definition";
-      return invalid === !match ? null : `computeCaid gave ${JSON.stringify(r)}`;
+      const accepted = match && (name !== "code_system" || input.length <= MAX.code_system);
+      return invalid === !accepted ? null : `computeCaid gave ${JSON.stringify(r)}`;
     }
     case "array_index": {
       const reasons = mapThrough(`/list/${pointerEscape(input)}`, { list: [1, 2, 3] }, "copy");

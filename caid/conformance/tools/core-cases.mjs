@@ -69,7 +69,6 @@ const CODE_SYSTEMS = {
   cpt: 'http://www.ama-assn.org/go/cpt',
   'hcpcs-level-ii': 'https://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets',
   hcpcs: 'https://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets',
-  'iso-3166-1-alpha-2': 'urn:iso:std:iso:3166',
   'iso-3166-2': 'urn:iso:std:iso:3166:-2',
   'iso20022-external-code': 'https://www.iso20022.org/catalogue-messages/additional-content-messages/external-code-sets',
   'nacha-sec': 'https://www.nacha.org/rules/standard-entry-class-codes',
@@ -309,7 +308,7 @@ export function coreCases({ limits }) {
     compute('order-gate-malformed-json-first', 'malformed_json is a gate: nothing else is reported', [PX],
       text('{"action_type":"P.1","action_type":"P.1"}'), { refusals: ['malformed_json'] }),
     compute('order-gate-invalid-action-type', 'invalid_action_type is a gate: a missing field, a bad amount and an unknown suite are not reported', [PX],
-      { ...text(j({ action_type: 'P.1', a: '01', v: 1.5 })), suite: 'jcs-sha512' }, { refusals: ['invalid_action_type'] }),
+      { ...text(j({ action_type: 'P.1', a: '01', v: 1.5 })), suite: 'zz-unregistered' }, { refusals: ['invalid_action_type'] }),
     compute('order-gate-unknown-action-type', 'unknown_action_type is a gate', [PX], { ...text(j({ action_type: 'q.1', a: '01', v: 1.5 })), suite: 'nope' }, { refusals: ['unknown_action_type'] }),
     compute('order-gate-invalid-definition', 'invalid_definition is a gate', [{ ...PX, required_fields: 'a' }], { ...text(j({ action_type: 'p.1', v: 1.5 })), suite: 'nope' }, { refusals: ['invalid_definition'] }),
     compute('order-phase-3-by-required-index', 'missing fields are reported in required_fields order', [PX], text(j({ action_type: 'p.1', b: 'x' })), { refusals: ['missing_material_field:a', 'missing_material_field:c'] }),
@@ -318,14 +317,14 @@ export function coreCases({ limits }) {
     compute('order-phase-4-by-field-index', 'phase 4 reasons follow required then optional field order, not object member order', [PX],
       text('{"action_type":"p.1","e":"a00","d":"1","c":"sha256:X","b":"x","a":"1e3"}'),
       { refusals: ['invalid_amount:a', 'mistyped_field:c', 'mistyped_field:d', 'invalid_code:e'] }),
-    compute('order-phase-3-and-5', 'phase 3 then the suite', [PX], { ...text(j({ action_type: 'p.1', a: '1', b: 'x' })), suite: 'jcs-sha512' }, { refusals: ['missing_material_field:c', 'unknown_suite'] }),
+    compute('order-phase-3-and-5', 'phase 3 then the suite', [PX], { ...text(j({ action_type: 'p.1', a: '1', b: 'x' })), suite: 'zz-unregistered' }, { refusals: ['missing_material_field:c', 'unknown_suite'] }),
     compute('order-phase-3-and-6', 'phase 3 then unsupported_number', [PX], text(j({ action_type: 'p.1', a: '1', b: 'x', v: 0.5 })), { refusals: ['missing_material_field:c', 'unsupported_number'] }),
     compute('order-phase-3-and-7', 'native lane: phase 3 then unsupported_value', [PX], native({ action_type: 'p.1', a: '1', b: 'x', v: { $units: [0xd800] } }), { refusals: ['missing_material_field:c', 'unsupported_value'] }),
     compute('order-phase-4-and-5', 'phase 4 then the suite', [PX], { ...px({ a: '+1' }), suite: 'cbor-sha256' }, { refusals: ['invalid_amount:a', 'unknown_suite'] }),
     compute('order-phase-4-and-6', 'phase 4 then unsupported_number', [PX], px({ b: 2, v: 0.5 }), { refusals: ['mistyped_field:b', 'unsupported_number'] }),
     compute('order-phase-4-and-7', 'native lane: phase 4 then unsupported_value', [PX], native({ ...PX_OK, b: false, v: { $host: 'opaque' } }), { refusals: ['mistyped_field:b', 'unsupported_value'] }),
-    compute('order-phase-5-and-6', 'the suite then unsupported_number', [PX], { ...px({ v: 0.5 }), suite: 'jcs-sha512' }, { refusals: ['unknown_suite', 'unsupported_number'] }),
-    compute('order-phase-5-and-7', 'native lane: the suite then unsupported_value', [PX], { ...native({ ...PX_OK, v: { $units: [0xd800] } }), suite: 'jcs-sha512' }, { refusals: ['unknown_suite', 'unsupported_value'] }),
+    compute('order-phase-5-and-6', 'the suite then unsupported_number', [PX], { ...px({ v: 0.5 }), suite: 'zz-unregistered' }, { refusals: ['unknown_suite', 'unsupported_number'] }),
+    compute('order-phase-5-and-7', 'native lane: the suite then unsupported_value', [PX], { ...native({ ...PX_OK, v: { $units: [0xd800] } }), suite: 'zz-unregistered' }, { refusals: ['unknown_suite', 'unsupported_value'] }),
     compute('order-phase-6-and-7', 'native lane: unsupported_number then unsupported_value', [PX], native({ ...PX_OK, v: { $units: [0xd800] }, w: 0.5 }), { refusals: ['unsupported_number', 'unsupported_value'] }),
     compute('order-all-phases', 'native lane: phases 3 to 7 in one result', [PX],
       { ...native({ action_type: 'p.1', a: 'x', c: 7, d: 1.5, v: { $units: [0xd800] } }), suite: 'none' },
@@ -345,7 +344,7 @@ export function coreCases({ limits }) {
     verify('verify-px-valid', 'a valid verification carries definition_sha256 and empty details', [PX], { json: j(PX_OK), caid_of: pxCaid }, 'valid'),
     verify('verify-gate-parse-first', 'a malformed CAID is a gate even when the object is also malformed JSON', [PX], { json: '{"a":1,"a":2}', caid: 'CAID:1:p.1:jcs-sha256:' + VALID_DIGEST }, { reasons: ['malformed_caid'] }),
     verify('verify-gate-unknown-suite-at-parse', 'a grammatical but unregistered suite stops verification at parse with unknown_suite', [PX],
-      { json: j({ action_type: 'q.1' }), caid: 'caid:1:p.1:jcs-sha512:' + VALID_DIGEST }, { reasons: ['unknown_suite'] }),
+      { json: j({ action_type: 'q.1' }), caid: 'caid:1:p.1:zz-unregistered:' + VALID_DIGEST }, { reasons: ['unknown_suite'] }),
     verify('verify-gate-malformed-json', 'malformed JSON text is the gate after parse', [PX], { json: '{"action_type":"p.1","action_type":"p.1"}', caid_of: pxCaid }, { reasons: ['malformed_json'] }),
     verify('verify-not-an-object-array', 'a JSON array is invalid_object; its detail observes an array', [PX], { json: '[1]', caid_of: pxCaid }, { reasons: ['invalid_object'] }),
     verify('verify-not-an-object-null', 'null is invalid_object; its detail observes null', [PX], { json: 'null', caid_of: pxCaid }, { reasons: ['invalid_object'] }),
@@ -369,8 +368,22 @@ export function coreCases({ limits }) {
       { json: t1('x'), caid_of: pxCaid, expected_definition_sha256: { of: PX } }, { reasons: ['action_type_mismatch', 'definition_mismatch', 'digest_mismatch'] }),
     verify('verify-expected-definition-unresolved', 'with no resolvable definition there is nothing to compare: no definition_mismatch', [T1],
       { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: { of: PX } }, { reasons: ['invalid_object'] }),
-    verify('verify-expected-definition-not-a-string', 'an expected_definition_sha256 option that is not a string counts as absent', [PX],
-      { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: 7 }, 'valid'),
+    // A supplied pin is never treated as absent (Section 6): a value that is
+    // not a string cannot equal a definition_sha256, so the pin fails closed.
+    verify('verify-expected-definition-not-a-string', 'an expected_definition_sha256 that is a number is supplied and differs: definition_mismatch', [PX],
+      { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: 7 }, { reasons: ['definition_mismatch'] }),
+    verify('verify-expected-definition-null', 'an expected_definition_sha256 supplied as null is a pin that differs, never an absent pin', [PX],
+      { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: null }, { reasons: ['definition_mismatch'] }),
+    verify('verify-expected-definition-list', 'the right digest wrapped in a list is not a string and differs', [PX],
+      { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: { list_of: PX } }, { reasons: ['definition_mismatch'] }),
+    verify('verify-expected-definition-object', 'an object is not a string and differs', [PX],
+      { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: { value: { sha256: 'x' } } }, { reasons: ['definition_mismatch'] }),
+    verify('verify-expected-definition-boolean', 'true is not a string and differs', [PX],
+      { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: true }, { reasons: ['definition_mismatch'] }),
+    verify('verify-expected-definition-uppercase-hex', 'the right digest in uppercase hexadecimal is a different string', [PX],
+      { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: { upper_of: PX } }, { reasons: ['definition_mismatch'] }),
+    verify('verify-expected-definition-not-a-string-unresolved', 'a pin of the wrong type with no resolvable definition: nothing to compare, no definition_mismatch', [T1],
+      { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: [] }, { reasons: ['invalid_object'] }),
     verify('verify-expected-definition-malformed-string', 'any other string is compared as given and differs', [PX],
       { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: 'SHA256:' + '0'.repeat(64) }, { reasons: ['definition_mismatch'] }),
     verify('verify-unknown-action-type', 'no configured definition names the type: invalid_object with unknown_action_type as its detail and no definition_sha256, even though the digest matches (there is no accept-unregistered mode)', [PX],
@@ -481,20 +494,24 @@ export function coreCases({ limits }) {
     cpt: [['99213', true], ['0001F', true, 'Category II'], ['0042T', true, 'Category III'], ['9921', false], ['992134', false], ['A9921', false], ['99213 ', false]],
     'hcpcs-level-ii': [['J1234', true], ['E0114', true], ['99213', false, 'CPT is not Level II'], ['j1234', false], ['J123', false]],
     hcpcs: [['99213', true], ['J1234', true], ['0001F', true], ['J12345', false], ['12345A', false]],
-    'iso-3166-1-alpha-2': [['US', true], ['DE', true], ['ZZ', true, 'syntax only; membership is a value-set question'], ['us', false], ['USA', false], ['U1', false], ['', false]],
     'iso-3166-2': [['US-CA', true], ['GB-ENG', true], ['FR-75C', true], ['US-', false], ['US-ABCD', false], ['us-ca', false], ['US_CA', false]],
     'iso20022-external-code': [['AC01', true], ['MS03', true], ['A', true], ['ac01', false], ['ABCDE', false], ['', false]],
     'nacha-sec': [['PPD', true], ['CCD', true], ['WEB', true], ['ppd', false], ['PP', false], ['PPDX', false]],
   };
   for (const [format, rows] of Object.entries(codeTable)) for (const [value, ok, note] of rows) add(codeCase(format, value, ok, note));
   add(
+    // ISO 3166-1 alpha-2 is a small, stable, freely published list, so it is
+    // an enum pinned to a snapshot (vendor.onboard.1 jurisdiction), never a
+    // code format; -04 registers no such format.
+    compute('code-format-iso-3166-1-alpha-2-not-registered', 'iso-3166-1-alpha-2 is not a registered code format: the definition conforms, and a present value is mistyped_field', [{ action_type: 'test.code.country.1', required_fields: [{ name: 'f', type: 'code', code_system: 'urn:iso:std:iso:3166', format: 'iso-3166-1-alpha-2' }] }],
+      text(j({ action_type: 'test.code.country.1', f: 'US' })), { refusals: ['mistyped_field:f'] }),
     compute('code-refuses-number', 'a code value must be a JSON string', [codeDef('cpt')], text(j({ action_type: 'test.code.cpt.1', f: 99213 })), { refusals: ['mistyped_field:f'] }),
     compute('code-refuses-null', 'null is not a code', [codeDef('cpt')], text(j({ action_type: 'test.code.cpt.1', f: null })), { refusals: ['mistyped_field:f'] }),
   );
   // Adversarial inputs for backtracking matchers: a mebibyte of a
   // character the format accepts, then one it does not. A linear-time
   // matcher refuses in microseconds.
-  const redos = { 'icd-10-cm': 'A', 'ndc-11': '0', 'ndc-10-hyphenated': '0', cpt: '0', 'hcpcs-level-ii': 'J', hcpcs: '9', 'iso-3166-1-alpha-2': 'U', 'iso-3166-2': 'A', 'iso20022-external-code': 'A', 'nacha-sec': 'P' };
+  const redos = { 'icd-10-cm': 'A', 'ndc-11': '0', 'ndc-10-hyphenated': '0', cpt: '0', 'hcpcs-level-ii': 'J', hcpcs: '9', 'iso-3166-2': 'A', 'iso20022-external-code': 'A', 'nacha-sec': 'P' };
   for (const [format, unit] of Object.entries(redos)) {
     add(compute(`code-${format}-adversarial-1mib`, `${format}: 1 MiB of "${unit}" then "!" is refused inside the time budget (a backtracking matcher would not finish)`, [codeDef(format)],
       { json_repeat: { prefix: `{"action_type":"test.code.${format}.1","f":"`, unit, count: 1 << 20, suffix: '!"}' } }, { refusals: ['invalid_code:f'] }, { time_budget_ms: 2000 }));
@@ -557,9 +574,59 @@ export function coreCases({ limits }) {
     parse('parse-refuses-sixth-part', 'a sixth colon-separated part', `${PAYMENT_CAID}:x`, { refusals: ['malformed_caid'] }),
     parse('parse-refuses-digest-outside-alphabet', 'a digest character outside base64url is malformed_caid before any suite lookup', 'caid:1:payment.release.1:foo:!', { refusals: ['malformed_caid'] }),
     parse('parse-unknown-suite-registry-before-digest', 'the registry check precedes the digest check: an unregistered suite with a malformed-for-any-suite digest', 'caid:1:payment.release.1:sha3-jcs:AAAA', { refusals: ['unknown_suite'] }),
-    parse('parse-unknown-suite-long-digest', 'an unregistered suite with a 64-character digest', `caid:1:payment.release.1:jcs-sha512:${'A'.repeat(64)}`, { refusals: ['unknown_suite'] }),
+    parse('parse-unknown-suite-long-digest', 'an unregistered suite with a 64-character digest', `caid:1:payment.release.1:zz-unregistered:${'A'.repeat(64)}`, { refusals: ['unknown_suite'] }),
     parse('parse-refuses-suite-leading-digit', 'a suite that does not match the suite rule is malformed_caid, not unknown_suite', `caid:1:payment.release.1:1x:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
     parse('parse-refuses-suite-uppercase', 'an uppercase suite does not match the suite rule', `caid:1:payment.release.1:JCS-SHA256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+  );
+
+  // ------------------------------------------------------------ length limits (Section 2.6)
+  // An action type is at most 512 octets, a CAID at most 1024, and a
+  // code_system at most 2048. Each limit is checked before any pattern runs,
+  // so a string of millions of characters is refused at once, never matched.
+  const typeOf = (n) => `${'a'.repeat(n - 2)}.1`;
+  const lenDef = (at) => ({ action_type: at, required_fields: [{ name: 's', type: 'string' }] });
+  const at512 = typeOf(512);
+  const at513 = typeOf(513);
+  const csDef = (cs) => ({ action_type: 'test.code.system.1', required_fields: [{ name: 'f', type: 'code', code_system: cs, format: 'icd-10-cm' }] });
+  const suiteFor = (total) => 'x'.repeat(total - `caid:1:a.1::${VALID_DIGEST}`.length);
+  add(
+    compute('limit-action-type-512', 'an action type of exactly 512 octets computes', [lenDef(at512)], text(j({ action_type: at512, s: 'x' })), 'ok'),
+    compute('limit-action-type-513', 'an action type of 513 octets is invalid_action_type, whatever the definitions say', [lenDef(at513)], text(j({ action_type: at513, s: 'x' })), { refusals: ['invalid_action_type'] }),
+    compute('limit-action-type-8-million', 'an action type of 8,000,002 octets is refused as invalid_action_type before any pattern runs, never with an exception', [T1],
+      { json_repeat: { prefix: '{"action_type":"', unit: 'a', count: 8000000, suffix: '.1","s":"x"}' } }, { refusals: ['invalid_action_type'] }, { time_budget_ms: 2000 }),
+    defn('limit-definition-action-type-513', 'a definition whose action type is 513 octets does not conform', lenDef(at513), 'invalid'),
+    verify('limit-verify-action-type-512', 'a 512-octet action type verifies against its own CAID', [lenDef(at512)],
+      { json: j({ action_type: at512, s: 'x' }), caid_of: { json: j({ action_type: at512, s: 'x' }), definitions: [lenDef(at512)] } }, 'valid'),
+    parse('limit-caid-action-type-512', 'a CAID carrying a 512-octet action type parses', `caid:1:${at512}:jcs-sha256:${VALID_DIGEST}`, 'ok'),
+    parse('limit-caid-action-type-513', 'a CAID whose action type is 513 octets is malformed_caid', `caid:1:${at513}:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('limit-caid-1024', 'a CAID of exactly 1024 octets reaches the registry check: its long suite is unknown_suite', `caid:1:a.1:${suiteFor(1024)}:${VALID_DIGEST}`, { refusals: ['unknown_suite'] }),
+    parse('limit-caid-1025', 'a CAID of 1025 octets is malformed_caid before the registry is consulted', `caid:1:a.1:${suiteFor(1025)}:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    compute('limit-code-system-2048', 'a code_system of exactly 2048 octets conforms', [csDef(`urn:${'x'.repeat(2044)}`)], text(j({ action_type: 'test.code.system.1', f: 'A00' })), 'ok'),
+    compute('limit-code-system-2049', 'a code_system of 2049 octets makes the definition nonconforming', [csDef(`urn:${'x'.repeat(2045)}`)], text(j({ action_type: 'test.code.system.1', f: 'A00' })), { refusals: ['invalid_definition'] }),
+  );
+
+  // ------------------------------------------------------------ host definitions (Section 2.5)
+  // A definition is read only as far as its validation projection: members
+  // outside it are never read, so a host value there that no JSON text can
+  // carry changes nothing, while the same value inside the projection makes
+  // the definition nonconforming. The definitions of these native-lane
+  // vectors are native-lane encodings.
+  const R1 = { action_type: 'r.1', required_fields: [{ name: 'a', type: 'string' }] };
+  const r1Object = native({ action_type: 'r.1', a: 'x' });
+  const sameAsPlain = { relation: { same_caid_as: 'native-definition-plain' } };
+  add(
+    compute('native-definition-plain', 'native lane: the plain r.1 definition', [R1], r1Object, 'ok'),
+    compute('native-definition-deep-member-outside-projection', 'native lane: a definition member outside the validation projection nested 70 deep is never read', [{ ...R1, summary: nest(70, 0) }], r1Object, 'ok', sameAsPlain),
+    compute('native-definition-deep-notes', 'native lane: a notes member nested 70 deep is outside the projection too', [{ action_type: 'r.1', required_fields: [{ name: 'a', type: 'string', notes: nest(70, 0, 'object') }] }], r1Object, 'ok', sameAsPlain),
+    compute('native-definition-opaque-member-outside-projection', 'native lane: an opaque host value outside the projection is never read', [{ ...R1, references: { $host: 'opaque' } }], r1Object, 'ok', sameAsPlain),
+    compute('native-definition-deep-member-in-projection', 'native lane: a member of an unregistered-type field entry is inside the projection, so nesting it 70 deep makes the definition nonconforming', [{ ...R1, optional_fields: [{ name: 'g', type: 'color', palette: nest(70, 0) }] }], r1Object, { refusals: ['invalid_definition'] }),
+    compute('native-definition-opaque-in-projection', 'native lane: an opaque host value inside the projection makes the definition nonconforming', [{ ...R1, optional_fields: [{ name: 'g', type: 'color', palette: { $host: 'opaque' } }] }], r1Object, { refusals: ['invalid_definition'] }),
+  );
+
+  // ------------------------------------------------------------ values, not characters (Section 2.6)
+  add(
+    compute('native-oversized-string-and-number', 'native lane: a 34,000,000-character string makes the object oversized and a fractional number makes it unsupported_number alone; the work budget counts values, not characters', [{ action_type: 'probe.big.1', required_fields: [{ name: 'a', type: 'string' }] }],
+      native({ action_type: 'probe.big.1', a: { $repeat: { unit: 'x', count: 34000000 } }, c: [7.5] }), { refusals: ['unsupported_number'] }),
   );
   return cases;
 }

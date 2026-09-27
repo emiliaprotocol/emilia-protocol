@@ -8,7 +8,9 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   CAID_SPEC,
   canonicalize,
@@ -152,6 +154,25 @@ test("non-enumerable, symbol-keyed, sparse and decorated values are refused", ()
   }
 });
 
+test("a sparse array costs its elements, never its length, and refuses without throwing", () => {
+  // A length of 2^32 - 1 with three elements: before the fix the copy walked
+  // every index and the process aborted with an uncatchable allocation error.
+  for (const length of [1e7, 2 ** 32 - 1]) {
+    const sparse = /** @type {any[]} */ ([]);
+    sparse[0] = 1;
+    sparse[5] = 7.5;
+    sparse.length = length;
+    const t0 = Date.now();
+    assert.deepEqual(refusalsOf(computeCaid(bare({ l: sparse }), OPTS)), ["unsupported_number", "unsupported_value"]);
+    assert.deepEqual(canonicalize(sparse), { ok: false, refusals: ["unsupported_number", "unsupported_value"] });
+    assert.ok(Date.now() - t0 < 1000, `a sparse array of length ${length} took ${Date.now() - t0} ms`);
+  }
+  const empty = /** @type {any[]} */ ([]);
+  empty.length = 2 ** 32 - 1;
+  assert.deepEqual(refusalsOf(computeCaid(bare({ l: empty }), OPTS)), ["unsupported_value"]);
+  assert.deepEqual(toCaidData(empty), { ok: false, refusals: ["unsupported_value"] });
+});
+
 test("undefined is outside the data model: an absent member that refuses, or an unsupported element", () => {
   assert.deepEqual(refusalsOf(computeCaid(bare({ n: undefined }), OPTS)), ["unsupported_value"]);
   assert.deepEqual(refusalsOf(computeCaid(bare({ a: undefined }), OPTS)), ["missing_material_field:a", "unsupported_value"]);
@@ -192,6 +213,86 @@ test("nesting: depth 64 computes, 65 is unsupported_value, 5000 never throws", (
   assert.deepEqual(refusalsOf(computeCaid(bare({ l: nest(5000) }), OPTS)), ["unsupported_value"]);
   assert.deepEqual(canonicalize(nest(64)), { ok: true, canonical: "[".repeat(64) + "0" + "]".repeat(64) });
   assert.deepEqual(canonicalize(nest(65)), { ok: false, refusals: ["unsupported_value"] });
+});
+
+test("the work budget counts values, not characters", () => {
+  // A 34-million-character string is one value: the object is oversized and
+  // the fractional number makes it unsupported_number alone, as in Python
+  // and Go (Section 2.6).
+  assert.deepEqual(refusalsOf(computeCaid(bare({ big: "x".repeat(34000000), o: { c: [7.5] } }), OPTS)), ["unsupported_number"]);
+});
+
+test("canonicalization stays within bounded memory for the largest accepted objects", () => {
+  // A 15 MiB array of zeros is accepted (its encoding is under 16 MiB). The
+  // serializer keeps one frame per open container and writes into one
+  // buffer, so this runs inside a 512 MiB heap; the previous work-item
+  // serializer needed about 2 GiB and aborted the process.
+  const script = `
+    import { computeCaidJson, verifyCaidJson, canonicalize } from ${JSON.stringify(new URL("./caid.mjs", import.meta.url).href)};
+    const n = 7 * 1024 * 1024;
+    const text = Buffer.alloc(2 * n + 64);
+    let k = text.write('{"action_type":"t.1","l":[', 0);
+    for (let i = 0; i < n; i++) { text[k++] = 0x30; if (i + 1 < n) text[k++] = 0x2c; }
+    k += text.write(']}', k);
+    const bytes = new Uint8Array(text.buffer, text.byteOffset, k);
+    const defs = [{ action_type: "t.1", required_fields: [{ name: "l", type: "array" }] }];
+    const r = computeCaidJson(bytes, { suite: "jcs-sha256", definitions: defs });
+    if (!r.caid) throw new Error("refused: " + JSON.stringify(r));
+    const v = verifyCaidJson(bytes, r.caid, { definitions: defs });
+    if (!v.valid) throw new Error("did not verify: " + JSON.stringify(v.reasons));
+    process.stdout.write("ok");
+  `;
+  const out = spawnSync(process.execPath, ["--max-old-space-size=512", "--input-type=module", "-e", script], { encoding: "utf8" });
+  assert.equal(out.status, 0, out.stderr.slice(-2000));
+  assert.equal(out.stdout, "ok");
+});
+
+test("an action type, CAID or code_system over its length limit refuses before any pattern runs", () => {
+  // Past about 6.7 million characters V8 throws RangeError from the
+  // backtracking stack of a repeated group; the limit is checked first.
+  const long = "a".repeat(8000000) + ".1";
+  assert.deepEqual(refusalsOf(computeCaid({ action_type: long, a: "x" }, OPTS)), ["invalid_action_type"]);
+  assert.deepEqual(parseCaid(`caid:1:${long}:jcs-sha256:${"A".repeat(43)}`), { ok: false, refusals: ["malformed_caid"] });
+  assert.deepEqual(verifyCaid(bare(), `caid:1:${long}:jcs-sha256:${"A".repeat(43)}`, OPTS).reasons, ["malformed_caid"]);
+  const codeDef = (cs) => [{ action_type: "t.code.1", required_fields: [{ name: "f", type: "code", code_system: cs, format: "icd-10-cm" }] }];
+  assert.deepEqual(refusalsOf(computeCaid({ action_type: "t.code.1", f: "A00" }, { suite: S, definitions: codeDef(`urn:${"x".repeat(9000000)}`) })), ["invalid_definition"]);
+  assert.deepEqual(definitionSha256(codeDef(`urn:${"x".repeat(9000000)}`)[0]), { refusals: ["invalid_definition"] });
+  const at512 = "a".repeat(510) + ".1";
+  assert.ok(computeCaid({ action_type: at512, a: "x" }, { suite: S, definitions: [{ ...DEF, action_type: at512 }] }).caid);
+  assert.deepEqual(refusalsOf(computeCaid({ action_type: "a" + at512, a: "x" }, OPTS)), ["invalid_action_type"]);
+});
+
+test("a host definition is read only as far as its validation projection, each member once", () => {
+  // Members outside the projection are never read: a getter there is not
+  // invoked and a value outside the data model there changes nothing.
+  let reads = 0;
+  const withGetter = { ...DEF, summary: 1 };
+  Object.defineProperty(withGetter, "references", { enumerable: true, get() { reads++; throw new Error("read"); } });
+  let deep = /** @type {any} */ (0);
+  for (let i = 0; i < 100; i++) deep = [deep];
+  const plain = computeCaid(bare(), OPTS);
+  for (const d of [withGetter, { ...DEF, summary: deep }, { ...DEF, references: new Map() }, { ...DEF, required_fields: [{ name: "a", type: "string", notes: deep }] }]) {
+    assert.deepEqual(computeCaid(bare(), { suite: S, definitions: [d] }), plain);
+    assert.deepEqual(definitionSha256(d), definitionSha256(DEF));
+  }
+  assert.equal(reads, 0);
+  // Inside the projection the same value makes the definition nonconforming.
+  assert.deepEqual(refusalsOf(computeCaid(bare(), { suite: S, definitions: [{ ...DEF, optional_fields: [{ name: "g", type: "color", palette: deep }] }] })), ["invalid_definition"]);
+  // A Proxy cannot report one action type for matching and another for the
+  // digest: action_type is read once.
+  let atReads = 0;
+  const lying = new Proxy({ ...DEF }, {
+    getOwnPropertyDescriptor(target, key) {
+      if (key === "action_type") {
+        atReads++;
+        return { value: atReads === 1 ? "test.unit.1" : "other.unit.9", writable: true, enumerable: true, configurable: true };
+      }
+      return Reflect.getOwnPropertyDescriptor(target, key);
+    },
+  });
+  const r = computeCaid(bare(), { suite: S, definitions: [lying] });
+  assert.equal(r.definition_sha256, definitionSha256(DEF).definition_sha256);
+  assert.equal(atReads, 1);
 });
 
 test("a host value whose shared references fan out is refused in bounded time", () => {
@@ -497,6 +598,31 @@ test("unsupported_number precedes unsupported_value whatever the traversal order
   assert.deepEqual(computeCaid(p, OPTS).refusals, ["unsupported_number", "unsupported_value"]);
 });
 
+test("an expected definition_sha256 that is supplied is never treated as absent", () => {
+  const caid = computeCaid(bare(), OPTS).caid;
+  const right = definitionSha256(DEF).definition_sha256;
+  assert.equal(verifyCaid(bare(), caid, { definitions: DEFS, expectedDefinitionSha256: right }).valid, true);
+  assert.equal(verifyCaid(bare(), caid, { definitions: DEFS }).valid, true);
+  assert.equal(verifyCaid(bare(), caid, { definitions: DEFS, expectedDefinitionSha256: undefined }).valid, true);
+  // Any other value, of any type, is definition_mismatch: a pin of the
+  // wrong type used to be dropped silently, so verification passed unpinned.
+  const accessor = { definitions: DEFS };
+  Object.defineProperty(accessor, "expectedDefinitionSha256", { enumerable: true, get: () => right });
+  for (const options of [
+    { definitions: DEFS, expectedDefinitionSha256: [right] },
+    { definitions: DEFS, expectedDefinitionSha256: null },
+    { definitions: DEFS, expectedDefinitionSha256: new String(right) },
+    { definitions: DEFS, expectedDefinitionSha256: 7 },
+    { definitions: DEFS, expectedDefinitionSha256: right.toUpperCase() },
+    { definitions: DEFS, expectedDefinitionSha256: { value: right } },
+    accessor,
+  ]) {
+    const v = verifyCaid(bare(), caid, options);
+    assert.deepEqual(v.reasons, ["definition_mismatch"], JSON.stringify(Object.getOwnPropertyDescriptor(options, "expectedDefinitionSha256")));
+    assert.equal(v.valid, false);
+  }
+});
+
 test("options of the wrong type count as absent and never throw", () => {
   assert.deepEqual(computeCaid(bare(), { suite: ["jcs-sha256"], definitions: DEFS }).refusals, ["unknown_suite"]);
   assert.deepEqual(computeCaid(bare(), { suite: S, definitions: "x" }).refusals, ["unknown_action_type"]);
@@ -512,9 +638,9 @@ test("options of the wrong type count as absent and never throw", () => {
 
 test("parse: grammar, then suite registration, then digest syntax", () => {
   const d = "A".repeat(43);
-  assert.deepEqual(parseCaid(`caid:1:a.1:jcs-sha512:${d}`), { ok: false, refusals: ["unknown_suite"] });
+  assert.deepEqual(parseCaid(`caid:1:a.1:zz-unregistered:${d}`), { ok: false, refusals: ["unknown_suite"] });
   assert.deepEqual(parseCaid(`caid:1:a.1:foo:${d}`), { ok: false, refusals: ["unknown_suite"] });
-  assert.deepEqual(parseCaid(`caid:1:a.1:jcs-sha512:x`), { ok: false, refusals: ["unknown_suite"] });
+  assert.deepEqual(parseCaid(`caid:1:a.1:zz-unregistered:x`), { ok: false, refusals: ["unknown_suite"] });
   assert.deepEqual(parseCaid(`caid:1:a.1:jcs-sha256:x`), { ok: false, refusals: ["malformed_caid"] });
   assert.deepEqual(parseCaid(`caid:1:a.1:jcs-sha256:${"A".repeat(42)}B`), { ok: false, refusals: ["malformed_caid"] });
   assert.deepEqual(parseCaid(`CAID:1:a.1:jcs-sha256:${d}`), { ok: false, refusals: ["malformed_caid"] });
@@ -528,7 +654,7 @@ test("verify: gates, closed-shape details, and the byte path", () => {
   assert.deepEqual(verifyCaid(bare(), 7, { definitions: DEFS }), {
     valid: false, reasons: ["malformed_caid"], details: [{ reason: "malformed_caid", field: null, rule: "caid", observed: "number" }],
   });
-  assert.deepEqual(verifyCaid(bare(), `caid:1:test.unit.1:jcs-sha512:${"A".repeat(43)}`, { definitions: DEFS }), {
+  assert.deepEqual(verifyCaid(bare(), `caid:1:test.unit.1:zz-unregistered:${"A".repeat(43)}`, { definitions: DEFS }), {
     valid: false, reasons: ["unknown_suite"], details: [{ reason: "unknown_suite", field: null, rule: "suite", observed: null }],
   });
   assert.deepEqual(verifyCaid("str", c.caid, { definitions: DEFS }), {
@@ -613,6 +739,18 @@ test("mapping: a valid profile maps and computes", () => {
   const r = map(PROFILE());
   assert.equal(r.ok, true);
   assert.deepEqual(r.action, { action_type: "map.unit.1", amount: "1.00", ref: "sha256:" + "a".repeat(64) });
+  assert.equal(/** @type {any} */ (r).definition_sha256, definitionSha256(MAP_DEF).definition_sha256);
+});
+
+test("mapping: a profile outside the data model is exactly invalid_mapping_profile at stage A", () => {
+  // It has no digest, so it fails the shape gate: no later stage A check
+  // runs (no unmapped_material_field), and it cannot be pinned.
+  for (const id of ["\uffff", "\ud800", "\u{10FFFF}"]) {
+    const profile = { ...PROFILE(), profile_id: id };
+    profile.rules = profile.rules.slice(0, 1);
+    profile.material_source_paths = profile.material_source_paths.slice(0, 1);
+    assert.deepEqual(reasons(map(profile)), ["invalid_mapping_profile", "mapping_profile_unpinned"], JSON.stringify(id));
+  }
 });
 
 test("mapping: D2 null member, D5 non-string target_field, D6 path set, duplicate paths", () => {

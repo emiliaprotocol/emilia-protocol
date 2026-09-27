@@ -40,12 +40,13 @@
 //     for a number.
 //
 // Any other host value is refused, never rewritten: a nil map or slice, a
-// struct, another numeric type, a string that is not valid UTF-8 (the form an
-// unpaired surrogate takes in a Go string), a value nested deeper than 64, or
-// a cyclic value. The refusal is unsupported_value, plus mistyped_field when a
+// struct, another numeric type, a json.Number that is not one RFC 8259 number
+// token, a string that is not valid UTF-8 (the form an unpaired surrogate
+// takes in a Go string), a value nested deeper than the nesting limit, or a
+// cyclic value. The refusal is unsupported_value, plus mistyped_field when a
 // declared field holds the value. A number is accepted when the IEEE 754
-// binary64 value nearest to it (ties to even) is an integer of magnitude at
-// most 2^53-1, whatever its literal form: "1e3" and "2.0" are the integers
+// binary64 value nearest to it (ties to even) is an integer within the
+// integer magnitude limit, whatever its literal form: "1e3" and "2.0" are the integers
 // 1000 and 2, "1e-400" is the integer 0, and "1e400" overflows and is refused
 // as unsupported_number. For every value DecodeJSON can produce, the host
 // entry point returns exactly what the JSON text entry point returns for the
@@ -73,19 +74,29 @@ import (
 // implementedSuites are the registered suites this implementation computes.
 var implementedSuites = map[string]bool{"jcs-sha256": true}
 
-// hostVisitLimit bounds the number of host values one canonicalization
-// visits. Every value DecodeJSON produces takes at least one octet of a text
-// of at most specLimitJsonTextOctets octets, so no decoded value comes near
-// it; it exists so that a host value which shares subvalues many times over
-// (a DAG whose expansion is exponential) is refused in bounded time.
-const hostVisitLimit = specLimitJsonTextOctets
+// hostVisitLimit bounds the number of values one canonicalization visits,
+// counting a value once for every path that reaches it (draft -04 Section
+// 2.6); past it the value is refused as unsupported_value alone. No value
+// DecodeJSON produces from a text within the text limit comes near it; it
+// exists so that a host value which shares subvalues many times over (a DAG
+// whose expansion is exponential) is refused in bounded time.
+const hostVisitLimit = specLimitValueCount
 
 // uncappedOutputLimit bounds the canonical output of a document that has no
-// canonical-size limit (definitions, enum snapshots, mapping profiles and
-// sources). The canonical form of a JSON text is at most four times its
-// length (the token "1e15" becomes sixteen digits), so no value decoded from
-// a text of at most specLimitJsonTextOctets octets reaches it.
-const uncappedOutputLimit = 4 * specLimitJsonTextOctets
+// canonical-size limit of its own (definitions, enum snapshots, mapping
+// profiles and sources).
+const uncappedOutputLimit = specLimitDocumentCanonicalOctets
+
+// matchPattern is the whole-string match of a generated pattern, with its
+// length limit, if it has one, checked first (draft -04 Section 2.6). Every
+// string such a pattern matches is ASCII, so its length in bytes is its
+// length in octets.
+func matchPattern(id, s string) bool {
+	if limit, ok := specPatternMaxOctets[id]; ok && len(s) > limit {
+		return false
+	}
+	return specPatterns[id].MatchString(s)
+}
 
 // ---------------------------------------------------------------------------
 // Result and option types
@@ -190,14 +201,19 @@ func asArray(v interface{}) ([]interface{}, bool) {
 
 // kindOf is the JSON kind of a host value, or "" for a value outside the data
 // model's kinds. A string that is not a data-model string (invalid UTF-8, a
-// noncharacter) and a number whose value is refused still have their kind.
+// noncharacter) and a number whose value is refused still have their kind; a
+// json.Number that is not a number token is not a number at all.
 func kindOf(v interface{}) string {
 	switch t := v.(type) {
 	case nil:
 		return "null"
 	case bool:
 		return "boolean"
-	case json.Number, float64, int, int64:
+	case json.Number:
+		if jsontext.IsNumberToken(string(t)) {
+			return "number"
+		}
+	case float64, int, int64:
 		return "number"
 	case string:
 		return "string"
@@ -360,6 +376,10 @@ func (c *canonicalizer) walk(v interface{}, depth int) {
 			c.write("false")
 		}
 	case json.Number, float64, int, int64:
+		if n, isNumber := t.(json.Number); isNumber && !jsontext.IsNumberToken(string(n)) {
+			c.other = true // not a number token: outside the data model
+			return
+		}
 		lit, ok := integerLiteral(t)
 		if !ok {
 			c.number = true
@@ -528,10 +548,14 @@ func sortedKeys(m map[string]interface{}) []string {
 
 // canonicalize serializes value under the data model with an output bound.
 // Refusals are unsupported_number, then unsupported_value; exceeding the
-// bound is unsupported_value only when nothing else was refused.
+// bound is unsupported_value only when nothing else was refused; passing the
+// value budget is unsupported_value alone, since the traversal stopped there.
 func canonicalize(value interface{}, maxOut int) CanonicalizeResult {
 	c := &canonicalizer{maxOut: maxOut}
 	c.walk(value, 0)
+	if c.stopped {
+		return CanonicalizeResult{OK: false, Refusals: []string{"unsupported_value"}}
+	}
 	if !c.number && !c.other && c.over {
 		c.other = true
 	}
@@ -551,9 +575,11 @@ func canonicalize(value interface{}, maxOut int) CanonicalizeResult {
 // Canonicalize serializes a host value to its RFC 8785 form under the data
 // model. It refuses unsupported_number for a number outside the number rule
 // and unsupported_value for any other value outside the data model (see the
-// package documentation), including nesting deeper than 64. It applies no
-// canonical-size limit; ComputeCaid and VerifyCaid apply the action-object
-// limit of 16777216 octets themselves.
+// package documentation), including nesting beyond the nesting limit and
+// more values than the value budget. It applies the document ceiling, not
+// the action-object canonical limit, which ComputeCaid and VerifyCaid apply
+// themselves. The limits are those of draft -04 Section 2.6, generated into
+// spec_gen.go.
 func Canonicalize(value interface{}) CanonicalizeResult {
 	return canonicalize(value, uncappedOutputLimit)
 }
@@ -680,7 +706,7 @@ func fieldEntries(d map[string]interface{}, list string) []interface{} {
 // definitionConforms is draft -04 definition conformance.
 func definitionConforms(d map[string]interface{}) bool {
 	at, ok := d["action_type"].(string)
-	if !ok || !specPatternActionType.MatchString(at) {
+	if !ok || !matchPattern("action_type", at) {
 		return false
 	}
 	required, ok := asArray(d["required_fields"])
@@ -719,7 +745,7 @@ func definitionConforms(d map[string]interface{}) bool {
 			}
 			for _, rm := range fieldTypeRequiredMembers[ftype] {
 				s, ok := entry[rm[0]].(string)
-				if !ok || !specPatterns[rm[1]].MatchString(s) {
+				if !ok || !matchPattern(rm[1], s) {
 					return false
 				}
 			}
@@ -855,7 +881,7 @@ func resolveEnumValues(field map[string]interface{}, enumSnapshots []interface{}
 	refString, refOK := ref.(string)
 	snapshot, snapshotOK := field["values_snapshot"].(string)
 	pin, pinOK := field["values_sha256"].(string)
-	if !refOK || refString == "" || !snapshotOK || snapshot == "" || !pinOK || !specPatternDigestField.MatchString(pin) {
+	if !refOK || refString == "" || !snapshotOK || snapshot == "" || !pinOK || !matchPattern("digest_field", pin) {
 		return nil, false
 	}
 	var declared []string
@@ -966,8 +992,14 @@ func checkField(value interface{}, field map[string]interface{}, enumSnapshots [
 		if !matcher.MatchString(s) {
 			return specFieldTypePatternRefusal[ftype]
 		}
-		if ftype == "timestamp" && !timestampDayWithinMonth(s) {
-			return specFieldTypePatternRefusal[ftype]
+		switch specFieldTypeCalendarCheck[ftype] {
+		case "":
+		case "day_within_month":
+			if !timestampDayWithinMonth(s) {
+				return specFieldTypePatternRefusal[ftype]
+			}
+		default:
+			return specFieldTypePatternRefusal[ftype] // a check this implementation does not know: fail closed
 		}
 	}
 	return ""
@@ -1020,7 +1052,7 @@ func evaluate(object interface{}, definitions, enumSnapshots []interface{}, suit
 		return evaluation{refusals: []string{"invalid_action_type"}}
 	}
 	actionType, ok := obj["action_type"].(string)
-	if !ok || !specPatternActionType.MatchString(actionType) {
+	if !ok || !matchPattern("action_type", actionType) {
 		return evaluation{refusals: []string{"invalid_action_type"}}
 	}
 	res := resolveDefinition(actionType, definitions)
@@ -1103,17 +1135,18 @@ func ComputeCaidJSON(data []byte, opts ComputeOptions) ComputeResult {
 // ---------------------------------------------------------------------------
 
 // ParseCaid strict-parses a CAID string and yields exactly one reason on
-// refusal. The whole string must match the caid rule of Appendix A
+// refusal. The whole string must match the caid rule of Appendix A, with the
+// identifier and its action type within their length limits
 // (malformed_caid); the suite must be registered (unknown_suite); the digest
 // must match that suite's digest syntax: the exact length, and a final
 // character whose unused low bits are zero (malformed_caid). It works on the
 // exact code points: no trimming, case folding or normalization.
 func ParseCaid(input string) ParseResult {
-	if !specPatternCaid.MatchString(input) {
+	if !matchPattern("caid", input) {
 		return ParseResult{Refusals: []string{"malformed_caid"}}
 	}
 	parts := strings.Split(input, specIdentifierSeparator)
-	if len(parts) != specIdentifierParts {
+	if len(parts) != specIdentifierParts || !matchPattern("action_type", parts[2]) {
 		return ParseResult{Refusals: []string{"malformed_caid"}}
 	}
 	suite, digest := parts[3], parts[4]
@@ -1207,14 +1240,11 @@ func verifyParsed(actionObject interface{}, parsed *ParsedCaid, opts VerifyOptio
 		}
 		return VerifyResult{Valid: false, Reasons: []string{"invalid_object"}, Details: details}
 	}
+	// Every reason after the gates takes its rank from specSortRankVerify,
+	// and the result lists them in rank order.
 	reasons := []string{}
-	details := []VerifyDetail{}
-	add := func(r string) {
-		reasons = append(reasons, r)
-		details = append(details, verifyDetail(r, actionObject))
-	}
 	if at, ok := obj["action_type"].(string); !ok || at != parsed.ActionType {
-		add("action_type_mismatch")
+		reasons = append(reasons, "action_type_mismatch")
 	}
 	e := evaluate(actionObject, opts.Definitions, opts.EnumSnapshots, "", verifySuiteChecked)
 	definitionSha256 := ""
@@ -1222,7 +1252,7 @@ func verifyParsed(actionObject interface{}, parsed *ParsedCaid, opts VerifyOptio
 		definitionSha256 = e.digest
 	}
 	if opts.ExpectedDefinitionSha256 != nil && definitionSha256 != "" && *opts.ExpectedDefinitionSha256 != definitionSha256 {
-		add("definition_mismatch")
+		reasons = append(reasons, "definition_mismatch")
 	}
 	c := e.canonical
 	if c == nil {
@@ -1230,14 +1260,22 @@ func verifyParsed(actionObject interface{}, parsed *ParsedCaid, opts VerifyOptio
 		c = &computed
 	}
 	if !implementedSuites[parsed.Suite] {
-		add("unknown_suite")
+		reasons = append(reasons, "unknown_suite")
 	} else if c.OK && base64.RawURLEncoding.EncodeToString(digestBytes(c.Canonical)) != parsed.Digest {
-		add("digest_mismatch")
+		reasons = append(reasons, "digest_mismatch")
 	}
 	if len(e.refusals) > 0 {
 		reasons = append(reasons, "invalid_object")
-		for _, r := range e.refusals {
+	}
+	sort.SliceStable(reasons, func(i, j int) bool { return specSortRankVerify[reasons[i]] < specSortRankVerify[reasons[j]] })
+	details := []VerifyDetail{}
+	for _, r := range reasons {
+		if r != "invalid_object" {
 			details = append(details, verifyDetail(r, actionObject))
+			continue
+		}
+		for _, x := range e.refusals {
+			details = append(details, verifyDetail(x, actionObject))
 		}
 	}
 	return VerifyResult{Valid: len(reasons) == 0, Reasons: reasons, Details: details, DefinitionSha256: definitionSha256}

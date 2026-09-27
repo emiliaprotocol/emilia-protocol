@@ -10,11 +10,11 @@
 // Reason order is normative (draft -04 Section 8.5, caid/spec/core.json
 // mapping.stages):
 //
-//	A  profile checks. A profile that is not an object, has the wrong
-//	   @version, carries a member outside the closed member sets, or breaks a
-//	   member rule (JSON kind, octet limits, closed sets, item counts, the
-//	   source-path and field-name rules, reserved names) yields exactly
-//	   invalid_mapping_profile. Otherwise every check runs: distinct rule
+//	A  profile checks. A profile that is not an object in the data model (so
+//	   it has no profile digest), has the wrong @version, carries a member
+//	   outside the closed member sets, or breaks a member rule (JSON kind,
+//	   octet limits, closed sets, item counts, the source-path and field-name
+//	   rules, reserved names) yields exactly invalid_mapping_profile. Otherwise every check runs: distinct rule
 //	   paths and targets, distinct material and omitted paths, rule paths
 //	   equal to material paths as sets (exactly one rule per material path),
 //	   omitted paths disjoint from rule paths, the loss policy's omission
@@ -61,14 +61,15 @@ const DefaultMappingSuite = "jcs-sha256"
 
 // MapActionResult is the outcome of MapAction.
 type MapActionResult struct {
-	OK           bool                   `json:"ok"`
-	Reasons      []string               `json:"reasons,omitempty"`
-	Action       map[string]interface{} `json:"action,omitempty"`
-	Caid         string                 `json:"caid,omitempty"`
-	Digest       string                 `json:"digest,omitempty"`
-	Suite        string                 `json:"suite,omitempty"`
-	ProfileHash  string                 `json:"profile_hash,omitempty"`
-	SourceDigest string                 `json:"source_digest,omitempty"`
+	OK               bool                   `json:"ok"`
+	Reasons          []string               `json:"reasons,omitempty"`
+	Action           map[string]interface{} `json:"action,omitempty"`
+	Caid             string                 `json:"caid,omitempty"`
+	Digest           string                 `json:"digest,omitempty"`
+	DefinitionSha256 string                 `json:"definition_sha256,omitempty"`
+	Suite            string                 `json:"suite,omitempty"`
+	ProfileHash      string                 `json:"profile_hash,omitempty"`
+	SourceDigest     string                 `json:"source_digest,omitempty"`
 }
 
 // MappingComparison is the outcome of a comparison of two mapped actions.
@@ -215,11 +216,12 @@ func mappingMemberRuleHolds(rule specMappingMemberRule, value interface{}) bool 
 	return true
 }
 
-// mappingShapeHolds is the stage A shape gate: object, version, closed
-// members, member rules.
-func mappingShapeHolds(profile interface{}) bool {
+// mappingShapeHolds is the stage A shape gate: an object in the data model
+// (canonicalizable, so it has a profile digest), version, closed members,
+// member rules.
+func mappingShapeHolds(profile interface{}, canonicalizable bool) bool {
 	p, ok := asObject(profile)
-	if !ok {
+	if !ok || !canonicalizable {
 		return false
 	}
 	if v, ok := p["@version"].(string); !ok || v != specMappingProfileVersion {
@@ -287,9 +289,9 @@ func stringSet(values []string) map[string]bool {
 }
 
 // mappingStageA returns the ranked stage A reasons.
-func mappingStageA(profile interface{}, definitions []interface{}) []rankedReason {
+func mappingStageA(profile interface{}, canonicalizable bool, definitions []interface{}) []rankedReason {
 	gate := []rankedReason{{specMappingReasonRank["invalid_mapping_profile"], 0, "invalid_mapping_profile"}}
-	if !mappingShapeHolds(profile) {
+	if !mappingShapeHolds(profile, canonicalizable) {
 		return gate
 	}
 	p, _ := asObject(profile)
@@ -436,14 +438,11 @@ func MapAction(source interface{}, opts MapActionOptions) (result MapActionResul
 		}
 	}()
 
-	found := mappingStageA(opts.Profile, opts.Definitions)
+	profileHash := MappingProfileHash(opts.Profile)
+	found := mappingStageA(opts.Profile, profileHash != "", opts.Definitions)
 	rank := func(r string) rankedReason { return rankedReason{specMappingReasonRank[r], 0, r} }
 	if !opts.NativeVerified {
 		found = append(found, rank("native_verification_required"))
-	}
-	profileHash := MappingProfileHash(opts.Profile)
-	if profileHash == "" {
-		found = append(found, rank("invalid_mapping_profile"))
 	}
 	if opts.ExpectedProfileHash == "" || opts.ExpectedProfileHash != profileHash {
 		found = append(found, rank("mapping_profile_unpinned"))
@@ -519,13 +518,14 @@ func MapAction(source interface{}, opts MapActionOptions) (result MapActionResul
 		return mappingFailure(mapped, profileHash, sourceDigest)
 	}
 	return MapActionResult{
-		OK:           true,
-		Action:       action,
-		Caid:         computed.Caid,
-		Digest:       computed.Digest,
-		Suite:        suite,
-		ProfileHash:  profileHash,
-		SourceDigest: sourceDigest,
+		OK:               true,
+		Action:           action,
+		Caid:             computed.Caid,
+		Digest:           computed.Digest,
+		DefinitionSha256: computed.DefinitionSha256,
+		Suite:            suite,
+		ProfileHash:      profileHash,
+		SourceDigest:     sourceDigest,
 	}
 }
 

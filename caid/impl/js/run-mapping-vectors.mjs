@@ -5,7 +5,11 @@
 // consequential-interoperability corpus with --corpus) against mapping.mjs.
 // The corpus is read with this port's strict decoder. A vector's expected
 // reasons are an exact list ("reasons"); "reason_contains" is accepted for
-// corpora that pin a single reason.
+// corpora that pin a single reason. A set mutation carries its value as
+// "value", or as "units", the UTF-16 code units of a string that no strict
+// JSON text can hold (a noncharacter or a lone surrogate). With --json each
+// result also carries both sides' definition_sha256 (null for a failed
+// side), which caid/conformance/run.mjs compares across implementations.
 //
 // Usage: node run-mapping-vectors.mjs [--corpus FILE] [--json]
 
@@ -45,7 +49,8 @@ function mutate(root, operation) {
     if (Array.isArray(parent)) parent.splice(key, 1);
     else delete parent[key];
   } else if (operation.op === 'set') {
-    Object.defineProperty(parent, key, { value: clone(operation.value), writable: true, enumerable: true, configurable: true });
+    const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units) : clone(operation.value);
+    Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else {
     throw new Error('unsupported vector mutation: ' + operation.op);
   }
@@ -82,7 +87,13 @@ export function runMappingVectors(corpus = readCorpus(VECTORS)) {
     const reasonsOK = vector.expect.reason_contains
       ? result.reasons.includes(vector.expect.reason_contains)
       : JSON.stringify(result.reasons) === JSON.stringify(vector.expect.reasons || []);
-    results.push({ id: vector.id, pass: verdictOK && reasonsOK, verdict: result.verdict, reasons: result.reasons });
+    results.push({
+      id: vector.id,
+      pass: verdictOK && reasonsOK,
+      verdict: result.verdict,
+      reasons: result.reasons,
+      definition_sha256: [result.left.ok ? result.left.definition_sha256 : null, result.right.ok ? result.right.definition_sha256 : null],
+    });
   }
   return results;
 }

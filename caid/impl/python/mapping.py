@@ -9,9 +9,10 @@ Mapping proves content correlation under a caller-pinned profile. It does
 not authorize an action or establish trust in the profile author.
 
 Reason order (normative):
-  Stage A  the profile. A profile that is not an object, has the wrong
-           @version, an unknown, missing or null member, or a member that
-           breaks its rule yields exactly invalid_mapping_profile. Otherwise
+  Stage A  the profile. A profile that is not an object in the data model
+           (so it has no profile digest), has the wrong @version, an
+           unknown, missing or null member, or a member that breaks its rule
+           yields exactly invalid_mapping_profile. Otherwise
            the cross-member checks (distinct paths and targets, rule paths
            equal to material_source_paths, omissions disjoint from rules,
            the loss policy) add invalid_mapping_profile, and definition
@@ -87,7 +88,7 @@ def mapping_profile_hash(profile):
 def _valid_source_path(text):
     """ABNF source-path: "/" then reference tokens with ~ only as ~0 or ~1,
     no unpaired surrogate."""
-    if not text.startswith("/") or _core._LONE_SURROGATE_RE.search(text):
+    if not text.startswith("/") or _core._has_lone_surrogate(text):
         return False
     index = text.find("~")
     while index >= 0:
@@ -100,11 +101,11 @@ def _valid_source_path(text):
 def _closed_object(value, allowed, optional=frozenset()):
     """The plain members of a dict with exactly the allowed members (the
     optional ones may be absent) and no null member; None otherwise."""
-    if not isinstance(value, dict):
+    if not _core._is(value, dict):
         return None
     members = {}
     for key, member in dict.items(value):
-        if not isinstance(key, str):
+        if not _core._is(key, str):
             return None
         key = str.__str__(key)
         if key not in allowed or key in members or member is None:
@@ -159,7 +160,7 @@ def _values_at(profile, path):
                 items = _core._seq(value)
                 if items is not None:
                     following.extend(items)
-            elif isinstance(value, dict) and step in value:
+            elif _core._is(value, dict) and step in value:
                 following.append(value[step])
         current = following
     return current
@@ -209,10 +210,11 @@ def _profile_shape(profile):
     return shaped
 
 
-def _stage_a(profile, definitions):
+def _stage_a(profile, profile_hash, definitions):
     """Stage A reasons as (rank, position, reason) triples, plus the shaped
-    profile when it passed the shape gate."""
-    shaped = _profile_shape(profile)
+    profile when it passed the shape gate. A profile outside the data model
+    has no digest and fails the gate."""
+    shaped = _profile_shape(profile) if profile_hash is not None else None
     if shaped is None:
         return [(_REASON_RANK[_INVALID_PROFILE], 0, _INVALID_PROFILE)], None
     found = []
@@ -234,7 +236,7 @@ def _stage_a(profile, definitions):
     if invalid:
         found.append((_REASON_RANK[_INVALID_PROFILE], 0, _INVALID_PROFILE))
     resolved = _core._resolve(shaped["target_action_type"], _core._options({"definitions": definitions})["definitions"])
-    if isinstance(resolved, str):
+    if _core._is(resolved, str):
         found.append((_REASON_RANK[resolved], 0, resolved))
     else:
         targets = set(rule["target_field"] for rule in shaped["rules"])
@@ -256,7 +258,7 @@ def _pointer_segments(pointer):
 def _at_pointer(value, pointer):
     current = value
     for segment in _pointer_segments(pointer):
-        if isinstance(current, list):
+        if _core._is(current, list):
             if _ARRAY_INDEX.match(segment) is None:
                 return None, "invalid_source_path"
             items = _core._seq(current)
@@ -264,7 +266,7 @@ def _at_pointer(value, pointer):
             if len(segment) > 16 or int(segment) >= len(items):
                 return None, "missing_source_field"
             current = items[int(segment)]
-        elif isinstance(current, dict):
+        elif _core._is(current, dict):
             members = _core._members(current)
             if segment not in members:
                 return None, "missing_source_field"
@@ -284,7 +286,7 @@ def _apply_transform(value, transform):
             return None, "source_value_type_mismatch"
         if "pattern" in spec and _PATTERNS[spec["pattern"]].match(text) is None:
             return None, "source_value_type_mismatch"
-        if _core._OUTSIDE_MODEL_RE.search(text):
+        if _core._outside_model(text):
             return None, "source_value_not_canonicalizable"
     if transform == "sha256-hex-to-digest":
         return "sha256:" + text, None
@@ -321,26 +323,24 @@ def _failure(reasons, profile_hash, source_digest):
 
 
 def _map(source, profile, source_descriptor, expected_profile_hash, native_verified, definitions, enum_snapshots, suite):
-    found, shaped = _stage_a(profile, definitions)
+    profile_hash = mapping_profile_hash(profile)
+    found, shaped = _stage_a(profile, profile_hash, definitions)
     rank = _REASON_RANK
     if native_verified is not True:
         found.append((rank["native_verification_required"], 0, "native_verification_required"))
-    profile_hash = mapping_profile_hash(profile)
-    if profile_hash is None:
-        found.append((rank[_INVALID_PROFILE], 0, _INVALID_PROFILE))
     if _core._plain_str(expected_profile_hash) is None or _core._plain_str(expected_profile_hash) != profile_hash:
         found.append((rank["mapping_profile_unpinned"], 0, "mapping_profile_unpinned"))
-    declared_format = _core._members(profile).get("source_format") if isinstance(profile, dict) else None
-    if not isinstance(source_descriptor, dict) or not _same_canonical(source_descriptor, declared_format):
+    declared_format = _core._members(profile).get("source_format") if _core._is(profile, dict) else None
+    if not _core._is(source_descriptor, dict) or not _same_canonical(source_descriptor, declared_format):
         found.append((rank["source_format_mismatch"], 0, "source_format_mismatch"))
     source_digest = None
-    if not isinstance(source, dict):
+    if not _core._is(source, dict):
         found.append((rank["source_not_object"], 0, "source_not_object"))
     else:
         source_digest = _hash_json(source)
     if source_digest is None:
         found.append((rank["source_not_canonicalizable"], 0, "source_not_canonicalizable"))
-    loss_policy = _core._plain_str(_core._members(profile).get("loss_policy")) if isinstance(profile, dict) else None
+    loss_policy = _core._plain_str(_core._members(profile).get("loss_policy")) if _core._is(profile, dict) else None
     stage_reason = _LOSS_POLICIES[loss_policy].get("stage_reason") if loss_policy in _LOSS_POLICIES else None
     if stage_reason is not None:
         found.append((rank[stage_reason], 0, stage_reason))
@@ -409,7 +409,7 @@ def compare_mapped_actions(left, right, *, definitions=None, enum_snapshots=None
     """Maps both sides and compares the projected actions by CAID."""
 
     def map_one(side):
-        members = _core._members(side) if isinstance(side, dict) else {}
+        members = _core._members(side) if _core._is(side, dict) else {}
         return map_action(
             members.get("source"),
             profile=members.get("profile"),

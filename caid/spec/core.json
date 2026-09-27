@@ -5,15 +5,15 @@
   "grammar": {
     "file": "caid.abnf",
     "patterns": [
-      {"id": "caid", "rule": "caid"},
-      {"id": "action_type", "rule": "action-type"},
+      {"id": "caid", "rule": "caid", "max_octets": "caid_octets"},
+      {"id": "action_type", "rule": "action-type", "max_octets": "action_type_octets"},
       {"id": "suite", "rule": "suite"},
       {"id": "digest", "rule": "digest"},
       {"id": "amount_string", "rule": "amount-string"},
       {"id": "digest_field", "rule": "digest-field"},
       {"id": "timestamp", "rule": "timestamp"},
       {"id": "format_name", "rule": "format-name"},
-      {"id": "code_system", "rule": "code-system"},
+      {"id": "code_system", "rule": "code-system", "max_octets": "code_system_octets"},
       {"id": "array_index", "rule": "array-index"},
       {"id": "hex_sha256", "rule": "hex-sha256"}
     ],
@@ -28,7 +28,6 @@
       {"format": "cpt"},
       {"format": "hcpcs-level-ii"},
       {"format": "hcpcs"},
-      {"format": "iso-3166-1-alpha-2"},
       {"format": "iso-3166-2"},
       {"format": "iso20022-external-code"},
       {"format": "nacha-sec"}
@@ -49,27 +48,30 @@
     "parts": 5
   },
   "limits": [
-    {"id": "json_text_octets", "value": 33554432, "unit": "octets", "scope": "caid", "applies_to": ["action_object", "mapping_source"], "refusal": "malformed_json"},
-    {"id": "nesting_depth", "value": 64, "unit": "levels", "scope": "caid", "applies_to": ["action_object", "mapping_source", "definition", "registry", "enum_snapshot", "mapping_profile"], "refusal": "malformed_json", "host_value_refusal": "unsupported_value"},
-    {"id": "canonical_octets", "value": 16777216, "unit": "octets", "scope": "caid", "applies_to": ["action_object"], "refusal": "unsupported_value", "host_value_refusal": "unsupported_value"},
-    {"id": "max_safe_integer", "value": 9007199254740991, "unit": "magnitude", "scope": "caid", "applies_to": ["number"], "refusal": "unsupported_number", "host_value_refusal": "unsupported_number"},
-    {"id": "mapping_rules_min", "value": 1, "unit": "rules", "scope": "caid-mapping", "applies_to": ["mapping_profile"], "refusal": "invalid_mapping_profile"},
-    {"id": "mapping_rules_max", "value": 128, "unit": "rules", "scope": "caid-mapping", "applies_to": ["mapping_profile"], "refusal": "invalid_mapping_profile"},
-    {"id": "mapping_pointer_octets_max", "value": 2048, "unit": "utf8-octets", "scope": "caid-mapping", "applies_to": ["mapping_profile"], "refusal": "invalid_mapping_profile"},
-    {"id": "mapping_string_octets_min", "value": 1, "unit": "utf8-octets", "scope": "caid-mapping", "applies_to": ["mapping_profile"], "refusal": "invalid_mapping_profile"},
-    {"id": "mapping_string_octets_max", "value": 512, "unit": "utf8-octets", "scope": "caid-mapping", "applies_to": ["mapping_profile"], "refusal": "invalid_mapping_profile"},
-    {"id": "mapping_omission_reason_octets_min", "value": 1, "unit": "utf8-octets", "scope": "caid-mapping", "applies_to": ["mapping_profile"], "refusal": "invalid_mapping_profile"},
-    {"id": "mapping_omission_reason_octets_max", "value": 2048, "unit": "utf8-octets", "scope": "caid-mapping", "applies_to": ["mapping_profile"], "refusal": "invalid_mapping_profile"},
-    {"id": "verify_strict_json_depth", "value": 64, "unit": "levels", "scope": "verify-strict-json", "applies_to": ["verify_signed_json"], "implementation": {"file": "packages/verify/src/strict-json.ts", "constant": "MAX_JSON_DEPTH"}},
-    {"id": "verify_strict_json_nodes", "value": 100000, "unit": "nodes", "scope": "verify-strict-json", "applies_to": ["verify_signed_json"], "implementation": {"file": "packages/verify/src/strict-json.ts", "constant": "DEFAULT_MAX_JSON_NODES"}},
-    {"id": "verify_strict_json_string_octets", "value": 1048576, "unit": "utf8-octets", "scope": "verify-strict-json", "applies_to": ["verify_signed_json"], "implementation": {"file": "packages/verify/src/strict-json.ts", "constant": "DEFAULT_MAX_JSON_STRING_BYTES"}}
+    {"id": "json_text_octets", "value": 33554432, "unit": "octets", "scope": "caid", "refusal": "malformed_json"},
+    {"id": "nesting_depth", "value": 64, "unit": "levels", "scope": "caid", "refusal": "malformed_json", "host_value_refusal": "unsupported_value"},
+    {"id": "canonical_octets", "value": 16777216, "unit": "octets", "scope": "caid", "refusal": "unsupported_value", "host_value_refusal": "unsupported_value"},
+    {"id": "max_safe_integer", "value": 9007199254740991, "unit": "magnitude", "scope": "caid", "refusal": "unsupported_number", "host_value_refusal": "unsupported_number"},
+    {"id": "value_count", "value": 33554432, "unit": "values", "scope": "caid", "refusal": "unsupported_value", "host_value_refusal": "unsupported_value"},
+    {"id": "document_canonical_octets", "value": 134217728, "unit": "octets", "scope": "caid", "refusal": "unsupported_value", "host_value_refusal": "unsupported_value"},
+    {"id": "caid_octets", "value": 1024, "unit": "octets", "scope": "caid", "refusal": "malformed_caid"},
+    {"id": "action_type_octets", "value": 512, "unit": "octets", "scope": "caid", "refusal": "invalid_action_type"},
+    {"id": "code_system_octets", "value": 2048, "unit": "octets", "scope": "caid", "refusal": "invalid_definition"},
+    {"id": "mapping_rules_min", "value": 1, "unit": "rules", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_rules_max", "value": 128, "unit": "rules", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_pointer_octets_max", "value": 2048, "unit": "utf8-octets", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_string_octets_min", "value": 1, "unit": "utf8-octets", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_string_octets_max", "value": 512, "unit": "utf8-octets", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_omission_reason_octets_min", "value": 1, "unit": "utf8-octets", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_omission_reason_octets_max", "value": 2048, "unit": "utf8-octets", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "verify_strict_json_depth", "value": 64, "unit": "levels", "scope": "verify-strict-json", "implementation": {"file": "packages/verify/src/strict-json.ts", "constant": "MAX_JSON_DEPTH"}},
+    {"id": "verify_strict_json_nodes", "value": 100000, "unit": "nodes", "scope": "verify-strict-json", "implementation": {"file": "packages/verify/src/strict-json.ts", "constant": "DEFAULT_MAX_JSON_NODES"}},
+    {"id": "verify_strict_json_string_octets", "value": 1048576, "unit": "utf8-octets", "scope": "verify-strict-json", "implementation": {"file": "packages/verify/src/strict-json.ts", "constant": "DEFAULT_MAX_JSON_STRING_BYTES"}}
   ],
   "json_text": {
-    "encoding": "UTF-8",
-    "profile": "I-JSON",
     "byte_order_mark": [239, 187, 191],
     "whitespace": [32, 9, 10, 13],
-    "strings": {"code_points": "unicode-scalar-values", "noncharacters": "refused", "refusal": "malformed_json", "host_value_refusal": "unsupported_value"}
+    "noncharacters": {"range": [64976, 65007], "plane_final": [65534, 65535]}
   },
   "reasons": [
     {"code": "malformed_json", "param": "none"},
@@ -113,11 +115,11 @@
     "verify": [
       {"rank": 1, "gate": true, "entry": "parse", "reasons": ["malformed_caid", "unknown_suite"]},
       {"rank": 2, "gate": true, "entry": "json_text", "reasons": ["malformed_json"]},
-      {"rank": 3, "gate": true, "reasons": ["invalid_object"], "when": "not_an_object"},
+      {"rank": 3, "gate": true, "reasons": ["invalid_object"]},
       {"rank": 4, "gate": false, "reasons": ["action_type_mismatch"]},
-      {"rank": 5, "gate": false, "reasons": ["definition_mismatch"], "when": "expected_definition_sha256"},
+      {"rank": 5, "gate": false, "reasons": ["definition_mismatch"]},
       {"rank": 6, "gate": false, "reasons": ["unknown_suite", "digest_mismatch"], "per_position_max": 1},
-      {"rank": 7, "gate": false, "reasons": ["invalid_object"], "when": "compute_refuses"}
+      {"rank": 7, "gate": false, "reasons": ["invalid_object"]}
     ]
   },
   "results": {
@@ -173,25 +175,21 @@
     "required_fields_min": 1,
     "field_common_members": ["name", "type", "notes"],
     "field_name": {"rule": "field-name", "min_length": 1, "forbidden_code_points": [58], "reserved": ["action_type"], "unique_across": ["required_fields", "optional_fields"]},
-    "resolution": {"match_member": "action_type", "none": "unknown_action_type", "conflict": "invalid_definition", "nonconforming": "invalid_definition", "equal_when": "same_definition_sha256"},
+    "resolution": {"match_member": "action_type", "none": "unknown_action_type", "conflict": "invalid_definition", "nonconforming": "invalid_definition"},
     "projection": {
       "members": ["action_type", "required_fields", "optional_fields"],
       "defaults": {"optional_fields": []},
       "field_members_excluded": ["notes"],
-      "canonicalization": "RFC 8785",
-      "digest": "sha256",
       "prefix": "sha256:"
     },
     "status_values": ["active", "deprecated"],
     "status_affects_computation": false,
-    "lifecycle_members": ["supersedes", "superseded_by"],
     "registry_entry_members": ["action_type", "status", "risk_class", "summary", "required_fields", "optional_fields", "digest_notes", "references", "supersedes", "superseded_by"]
   },
   "enum": {
     "inline_prefix": "inline:",
     "inline_separator": "|",
-    "inline_trim": [" "],
-    "values_sha256_input": "rfc8785-values-array"
+    "inline_trim": [" "]
   },
   "mapping": {
     "profile_version": "CAID-MAPPING-PROFILE-v1",
@@ -234,7 +232,6 @@
     "disjoint": [
       [["omitted_source_fields", "*", "source_path"], ["rules", "*", "source_path"]]
     ],
-    "string_comparison": "code_points",
     "transforms": [
       {"transform": "copy", "input": "any"},
       {"transform": "sha256-utf8", "input": "string"},
@@ -267,9 +264,9 @@
       {"code": "material_projection_mismatch", "param": "none"}
     ],
     "stages": [
-      {"stage": "A", "reasons": ["invalid_mapping_profile", "unknown_action_type", "invalid_definition", "unmapped_material_field"], "position": {"unmapped_material_field": "required_fields"}, "shape_gate": "invalid_mapping_profile", "shape_checks": ["object", "version", "closed_members", "member_rules"]},
-      {"stage": "B", "reasons": ["native_verification_required", "mapping_profile_unpinned", "source_format_mismatch", "source_not_object", "source_not_canonicalizable", "declared_source_semantic_loss"], "joins": "A", "stop_if_any": true},
-      {"stage": "C", "reasons": ["invalid_source_path", "missing_source_field", "source_value_type_mismatch", "source_value_not_canonicalizable", "unknown_transform"], "position": "rules", "per_position_max": 1, "stop_if_any": true},
+      {"stage": "A", "reasons": ["invalid_mapping_profile", "unknown_action_type", "invalid_definition", "unmapped_material_field"], "position": {"unmapped_material_field": "required_fields"}},
+      {"stage": "B", "reasons": ["native_verification_required", "mapping_profile_unpinned", "source_format_mismatch", "source_not_object", "source_not_canonicalizable", "declared_source_semantic_loss"]},
+      {"stage": "C", "reasons": ["invalid_source_path", "missing_source_field", "source_value_type_mismatch", "source_value_not_canonicalizable", "unknown_transform"], "position": "rules", "per_position_max": 1},
       {"stage": "D", "reasons": ["mapped_action"], "order": "compute"}
     ],
     "comparison": {

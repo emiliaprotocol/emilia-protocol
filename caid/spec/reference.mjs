@@ -24,7 +24,13 @@ const outsideModel = (s) => /[\p{Cs}\p{Noncharacter_Code_Point}]/u.test(s);
  * @param {ReturnType<typeof import('./gen.mjs').buildSpec>} spec
  */
 export function createReference(spec) {
-  const patterns = Object.fromEntries(Object.entries(spec.patterns).map(([k, v]) => [k, new RegExp(`^(?:${v})$`)]));
+  const compiled = Object.fromEntries(Object.entries(spec.patterns).map(([k, v]) => [k, new RegExp(`^(?:${v})$`)]));
+  // Each pattern with a length limit refuses a longer string before it is
+  // matched (Section 2.6).
+  const patterns = Object.fromEntries(Object.entries(compiled).map(([k, re]) => {
+    const max = spec.pattern_max_octets[k];
+    return [k, { test: (s) => typeof s === 'string' && (max === undefined || s.length <= max) && re.test(s) }];
+  }));
   const codeFormats = Object.fromEntries(Object.entries(spec.code_formats).map(([k, v]) => [k, new RegExp(`^(?:${v})$`)]));
   const types = Object.fromEntries(spec.field_types.map((t) => [t.type, t]));
   const def = spec.definition;
@@ -42,40 +48,55 @@ export function createReference(spec) {
   }
 
   // RFC 8785 over the data model: integers of magnitude <= 2^53-1 only,
-  // I-JSON strings (no lone surrogate, no noncharacter), plain objects and dense arrays, depth <= 64,
-  // output <= canonical_octets.
+  // I-JSON strings (no lone surrogate, no noncharacter), plain objects and
+  // dense arrays, depth <= 64, no cycle, output <= cap octets (the
+  // action-object limit by default; documents pass the document ceiling),
+  // and at most value_count values counted once per path, past which the
+  // value is unsupported_value alone (Section 2.6).
   /** @returns {{ok: true, canonical: string} | {ok: false, refusals: string[]}} */
-  function canonicalize(value) {
+  function canonicalize(value, cap = limits.canonical_octets) {
     let number = false;
     let other = false;
+    let visits = 0;
+    let exceeded = false;
+    const ancestors = new Set();
     const out = (v, depth) => {
+      if (exceeded || ++visits > limits.value_count) { exceeded = true; return ''; }
       const k = kind(v);
       if (k === 'null') return 'null';
       if (k === 'boolean') return v ? 'true' : 'false';
       if (k === 'number') {
-        if (!Number.isFinite(v) || !Number.isInteger(v) || Math.abs(v) > limits.max_safe_integer) { number = true; return '0'; }
+        if (!Number.isFinite(v) || !Number.isInteger(v) || Math.abs(v) > limits.max_safe_integer) { number = true; return ''; }
         return JSON.stringify(v === 0 ? 0 : v);
       }
       if (k === 'string') {
-        if (outsideModel(v)) { other = true; return '""'; }
+        if (outsideModel(v)) { other = true; return ''; }
         return JSON.stringify(v);
       }
       if (k === 'array' || k === 'object') {
-        if (depth + 1 > limits.nesting_depth) { other = true; return 'null'; }
-        if (k === 'array') return `[${v.map((x) => out(x, depth + 1)).join(',')}]`;
-        return `{${Object.keys(v).sort().map((key) => {
-          if (outsideModel(key)) other = true;
-          return `${JSON.stringify(key)}:${out(v[key], depth + 1)}`;
-        }).join(',')}}`;
+        if (depth + 1 > limits.nesting_depth || ancestors.has(v)) { other = true; return ''; }
+        ancestors.add(v);
+        const parts = k === 'array'
+          ? v.map((x) => out(x, depth + 1))
+          : Object.keys(v).sort().map((key) => {
+            if (outsideModel(key)) other = true;
+            return `${JSON.stringify(key)}:${out(v[key], depth + 1)}`;
+          });
+        ancestors.delete(v);
+        // Once anything is refused the text is never used: keep it short.
+        if (number || other || exceeded) return '';
+        return k === 'array' ? `[${parts.join(',')}]` : `{${parts.join(',')}}`;
       }
       other = true;
-      return 'null';
+      return '';
     };
     const canonical = out(value, 0);
-    if (!number && !other && Buffer.byteLength(canonical, 'utf8') > limits.canonical_octets) other = true;
+    if (exceeded) return { ok: false, refusals: ['unsupported_value'] };
+    if (!number && !other && Buffer.byteLength(canonical, 'utf8') > cap) other = true;
     if (number || other) return { ok: false, refusals: [...(number ? ['unsupported_number'] : []), ...(other ? ['unsupported_value'] : [])] };
     return { ok: true, canonical };
   }
+  const canonicalizeDocument = (value) => canonicalize(value, limits.document_canonical_octets);
 
   const sha256Hex = (s) => createHash('sha256').update(Buffer.from(s, 'utf8')).digest('hex');
 
@@ -103,7 +124,7 @@ export function createReference(spec) {
     if (!isPlainObject(d)) return null;
     const p = projection(d);
     if (!p) return null;
-    const c = canonicalize(p);
+    const c = canonicalizeDocument(p);
     return c.ok ? def.projection.prefix + sha256Hex(c.canonical) : null;
   }
 
@@ -178,7 +199,7 @@ export function createReference(spec) {
         && s.values_snapshot === field.values_snapshot && s.values_sha256 === field.values_sha256)?.values;
     }
     if (!validEnumValues(declared)) return null;
-    const c = canonicalize(declared);
+    const c = canonicalizeDocument(declared);
     return c.ok && `sha256:${sha256Hex(c.canonical)}` === field.values_sha256 ? declared : null;
   }
 
@@ -264,6 +285,7 @@ export function createReference(spec) {
   function parse(input) {
     if (typeof input !== 'string' || !patterns.caid.test(input)) return { ok: false, refusals: ['malformed_caid'] };
     const [, version, actionType, suite, digest] = input.split(':');
+    if (!patterns.action_type.test(actionType)) return { ok: false, refusals: ['malformed_caid'] };
     const s = spec.suites.find((x) => x.suite === suite);
     if (!s) return { ok: false, refusals: ['unknown_suite'] };
     if (!new RegExp(`^(?:${s.digest_pattern})$`).test(digest)) return { ok: false, refusals: ['malformed_caid'] };
@@ -294,7 +316,9 @@ export function createReference(spec) {
    */
   function verify(object, caidString, options) {
     const opts = isPlainObject(options) ? options : {};
-    const expected = typeof opts.expectedDefinitionSha256 === 'string' ? opts.expectedDefinitionSha256 : undefined;
+    // A supplied expected definition_sha256 is never treated as absent: a
+    // value of any type but the resolved digest is definition_mismatch.
+    const pinned = own(opts, 'expectedDefinitionSha256') && opts.expectedDefinitionSha256 !== undefined;
     const parsed = parse(caidString);
     if (!parsed.ok) return { valid: false, reasons: parsed.refusals, details: parsed.refusals.map((r) => detail(r, object, caidString)) };
     const expand = spec.verify_details.expand.invalid_object;
@@ -303,24 +327,23 @@ export function createReference(spec) {
       const r = run();
       return { valid: false, reasons: ['invalid_object'], details: r.refusals.map((x) => detail(x, object, caidString)) };
     }
+    // The reasons after the gates are listed in the rank order of
+    // spec.sort_rank.verify, the only statement of that order.
     const reasons = [];
-    const details = [];
-    const add = (r) => { reasons.push(r); details.push(detail(r, object, caidString)); };
-    if (object.action_type !== parsed.caid.action_type) add('action_type_mismatch');
+    if (object.action_type !== parsed.caid.action_type) reasons.push('action_type_mismatch');
     const r = run();
     const definitionSha256 = r.resolved && !r.resolved.reason ? r.resolved.definition_sha256 : undefined;
-    if (expected !== undefined && definitionSha256 !== undefined && expected !== definitionSha256) add('definition_mismatch');
+    if (pinned && definitionSha256 !== undefined && opts.expectedDefinitionSha256 !== definitionSha256) reasons.push('definition_mismatch');
     const c = canonicalize(object);
-    if (!supported.has(parsed.caid.suite)) add('unknown_suite');
-    else if (c.ok && createHash('sha256').update(Buffer.from(c.canonical, 'utf8')).digest('base64url') !== parsed.caid.digest) add('digest_mismatch');
-    if (r.refusals.length) {
-      reasons.push('invalid_object');
-      for (const x of r.refusals) details.push(detail(x, object, caidString));
-    }
+    if (!supported.has(parsed.caid.suite)) reasons.push('unknown_suite');
+    else if (c.ok && createHash('sha256').update(Buffer.from(c.canonical, 'utf8')).digest('base64url') !== parsed.caid.digest) reasons.push('digest_mismatch');
+    if (r.refusals.length) reasons.push('invalid_object');
+    reasons.sort((a, b) => spec.sort_rank.verify[a] - spec.sort_rank.verify[b]);
+    const details = reasons.flatMap((x) => (x === 'invalid_object' ? r.refusals.map((y) => detail(y, object, caidString)) : [detail(x, object, caidString)]));
     const out = { valid: reasons.length === 0, reasons, details };
     if (definitionSha256 !== undefined) out.definition_sha256 = definitionSha256;
     return out;
   }
 
-  return { canonicalize, projection, definitionSha256, conformance, resolve, checkField, compute, parse, verify, kind };
+  return { canonicalize, canonicalizeDocument, projection, definitionSha256, conformance, resolve, checkField, compute, parse, verify, kind };
 }

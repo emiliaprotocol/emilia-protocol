@@ -115,19 +115,30 @@ class DecoderTest(unittest.TestCase):
         self.assertEqual(caid.decode_caid_json(b'"' + b"a" * (cap - 1) + b'"'), MALFORMED)
         self.assertEqual(caid.decode_json_document(b'"' + b"a" * (cap - 1) + b'"')["ok"], True)
 
-    def test_collector_state_is_restored(self):
+    def test_collector_state_is_never_touched(self):
+        # The decoder leaves the process-wide collector alone, whatever its
+        # state, so no other thread of the application sees it change.
         large_ok = b"[" + b"0," * (1 << 20) + b"0]"
         large_bad = large_ok + b"x"
-        self.assertTrue(gc.isenabled())
-        self.assertTrue(caid.decode_caid_json(large_ok)["ok"])
-        self.assertEqual(caid.decode_caid_json(large_bad), MALFORMED)
-        self.assertTrue(gc.isenabled())
-        gc.disable()
+        calls = []
+        saved = (gc.disable, gc.enable)
+        gc.disable, gc.enable = (lambda: calls.append("disable")), (lambda: calls.append("enable"))
         try:
-            caid.decode_caid_json(large_ok)
-            self.assertFalse(gc.isenabled())
+            self.assertTrue(caid.decode_caid_json(large_ok)["ok"])
+            self.assertEqual(caid.decode_caid_json(large_bad), MALFORMED)
         finally:
-            gc.enable()
+            gc.disable, gc.enable = saved
+        self.assertEqual(calls, [])
+
+    def test_bytearray_size_is_checked_before_any_copy(self):
+        cap = caid.MAX_JSON_TEXT_OCTETS
+
+        class NoCopy(bytearray):
+            def __bytes__(self):
+                raise AssertionError("copied")
+
+        self.assertEqual(caid.decode_caid_json(bytearray(cap + 1)), MALFORMED)
+        self.assertEqual(caid.decode_caid_json(memoryview(b"{}")), MALFORMED)  # not bytes or bytearray
 
     def test_number_values(self):
         values = decode("[1e-400, -0, 12.0, 1.2e1, 0.99999999999999999999, 9007199254740993, 1e400, 1.5]")["value"]
@@ -187,9 +198,9 @@ class HostValueTest(unittest.TestCase):
         self.assertIn("caid", a)
         self.assertEqual(a, b)
 
-    def test_node_budget_stops_exponential_sharing(self):
-        saved = caid._NODE_BUDGET
-        caid._NODE_BUDGET = 10000
+    def test_value_budget_stops_exponential_sharing(self):
+        saved = caid._VALUE_BUDGET
+        caid._VALUE_BUDGET = 10000
         try:
             value = [0]
             for _ in range(60):
@@ -197,8 +208,42 @@ class HostValueTest(unittest.TestCase):
             start = time.time()
             self.assertEqual(self.compute({"v": value}), {"refusals": ["unsupported_value"]})
             self.assertLess(time.time() - start, 5)
+            # Past the budget the value is unsupported_value alone (Section
+            # 2.6): a fractional number read before the budget ran out is
+            # not reported, since which values are read first is not fixed.
+            self.assertEqual(self.compute({"a": 1.5, "v": value}), {"refusals": ["unsupported_value"]})
+            self.assertEqual(caid.canonicalize({"a": 1.5, "v": value}), {"ok": False, "refusals": ["unsupported_value"]})
+            # Phases 1 through 5 still see the whole object.
+            self.assertEqual(caid.compute_caid({"action_type": "t.a.1", "n": "x", "free": {"v": value}}, OPTS)["refusals"],
+                             ["missing_material_field:a", "mistyped_field:n", "unsupported_value"])
         finally:
-            caid._NODE_BUDGET = saved
+            caid._VALUE_BUDGET = saved
+
+    def test_budget_counts_values_not_characters(self):
+        # A 34-million-character string is one value: the object is oversized,
+        # and the fractional number makes it unsupported_number alone.
+        big = {"action_type": "t.a.1", "a": "x" * 34000000, "free": {"c": [7.5]}}
+        self.assertEqual(caid.compute_caid(big, OPTS), {"refusals": ["unsupported_number"]})
+
+    def test_spoofed_class_is_refused_without_raising(self):
+        from unittest import mock
+
+        spoofs = [mock.Mock(spec=dict), mock.Mock(spec=str), mock.Mock(spec=list), mock.Mock(spec=int), mock.MagicMock(spec=dict)]
+        caid_string = "caid:1:t.a.1:jcs-sha256:" + "A" * 43
+        for spoof in spoofs:
+            self.assertEqual(caid.compute_caid(spoof, OPTS), {"refusals": ["invalid_action_type"]}, repr(spoof))
+            self.assertEqual(caid.verify_caid(spoof, caid_string, OPTS)["reasons"], ["invalid_object"], repr(spoof))
+            self.assertEqual(caid.canonicalize(spoof), {"ok": False, "refusals": ["unsupported_value"]}, repr(spoof))
+            self.assertEqual(caid.compute_caid({"action_type": "t.a.1", "a": "x", "free": {"k": spoof}}, OPTS), {"refusals": ["unsupported_value"]})
+            self.assertEqual(caid.compute_caid({"action_type": "t.a.1", "a": spoof}, OPTS), {"refusals": ["mistyped_field:a", "unsupported_value"]})
+            self.assertEqual(caid.compute_caid({"action_type": "t.a.1", "a": "x"}, spoof), {"refusals": ["unknown_action_type"]})
+            self.assertEqual(caid.compute_caid({"action_type": "t.a.1", "a": "x"}, {"suite": spoof, "definitions": STRING_DEF}), {"refusals": ["unknown_suite"]})
+            self.assertEqual(caid.compute_caid({"action_type": "t.a.1", "a": "x"}, {"suite": SUITE, "definitions": [spoof]}), {"refusals": ["unknown_action_type"]})
+            self.assertEqual(caid.definition_sha256(spoof), {"refusals": ["invalid_definition"]})
+            self.assertEqual(caid.parse_caid(spoof), {"ok": False, "refusals": ["malformed_caid"]})
+            self.assertEqual(caid.decode_caid_json(spoof), MALFORMED)
+            pinned = caid.verify_caid({"action_type": "t.a.1", "a": "x"}, caid_string, {"definitions": STRING_DEF, "expected_definition_sha256": spoof})
+            self.assertEqual(pinned["reasons"][0], "definition_mismatch")
 
     def test_native_depth_limit(self):
         value = 1
@@ -277,7 +322,15 @@ class OptionGuardTest(unittest.TestCase):
             self.assertIn(result["refusals"][0], ("unknown_action_type",), repr(options))
         result = caid.compute_caid(obj, {"suite": SUITE, "definitions": STRING_DEF, "enum_snapshots": [[], {}, 5]})
         self.assertIn("caid", result)
-        result = caid.verify_caid(obj, "caid:1:t.a.1:jcs-sha256:" + "A" * 43, {"definitions": STRING_DEF, "expected_definition_sha256": ["x"]})
+        # A supplied pin is never absent: any value but the digest itself,
+        # of any type, is definition_mismatch (Section 6).
+        right = caid.definition_sha256(STRING_DEF[0])["definition_sha256"]
+        for pin in (["x"], [right], None, 5, b"sha256:" + right[7:].encode(), right.upper(), {"x": 1}, True):
+            result = caid.verify_caid(obj, "caid:1:t.a.1:jcs-sha256:" + "A" * 43, {"definitions": STRING_DEF, "expected_definition_sha256": pin})
+            self.assertEqual(result["reasons"], ["definition_mismatch", "digest_mismatch"], repr(pin))
+        result = caid.verify_caid(obj, "caid:1:t.a.1:jcs-sha256:" + "A" * 43, {"definitions": STRING_DEF, "expected_definition_sha256": right})
+        self.assertEqual(result["reasons"], ["digest_mismatch"])
+        result = caid.verify_caid(obj, "caid:1:t.a.1:jcs-sha256:" + "A" * 43, {"definitions": STRING_DEF})
         self.assertEqual(result["reasons"], ["digest_mismatch"])
 
 
@@ -286,7 +339,7 @@ class ParseTest(unittest.TestCase):
         good = "caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y"
         self.assertTrue(caid.parse_caid(good)["ok"])
         self.assertTrue(caid.parse_caid(good.replace("jcs-sha256", "cbor-sha256"))["ok"])
-        self.assertEqual(caid.parse_caid(good.replace("jcs-sha256", "jcs-sha512")), {"ok": False, "refusals": ["unknown_suite"]})
+        self.assertEqual(caid.parse_caid(good.replace("jcs-sha256", "zz-unregistered")), {"ok": False, "refusals": ["unknown_suite"]})
         self.assertEqual(caid.parse_caid("caid:1:a.1:foo:x"), {"ok": False, "refusals": ["unknown_suite"]})
         for bad in (good.upper(), "CAID" + good[4:], good + "\n", good[:-1] + "Z", good[:-1], good + "A", good.replace("jcs-sha256", "Jcs"),
                     good.replace(":1:", ":2:"), None, 5, "", good.replace("payment.release.1", "payment.release.01")):
@@ -538,6 +591,18 @@ class MappingTest(unittest.TestCase):
         result = _map(_profile())
         self.assertTrue(result["ok"])
         self.assertEqual(result["action"], {"action_type": "t.m.1", "x": "1", "y": "2"})
+
+    def test_success_carries_definition_sha256(self):
+        result = _map(_profile())
+        self.assertEqual(result["definition_sha256"], caid.definition_sha256(MAP_DEFS[0])["definition_sha256"])
+
+    def test_profile_outside_the_data_model_is_a_shape_failure(self):
+        # A profile with no digest fails the stage A gate: exactly
+        # invalid_mapping_profile, and no later stage A check runs.
+        for profile_id in ("\uffff", "\ud800", "\U0010FFFF"):
+            profile = _profile(profile_id=profile_id, rules=[{"source_path": "/a", "target_field": "x", "transform": "copy"}],
+                               material_source_paths=["/a"])
+            self.assertEqual(self.reasons(profile), ["invalid_mapping_profile", "mapping_profile_unpinned"], repr(profile_id))
 
     def test_d2_null_omissions(self):
         self.assertEqual(self.reasons(_profile(omitted_source_fields=None)), ["invalid_mapping_profile"])

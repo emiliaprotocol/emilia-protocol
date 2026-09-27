@@ -6,14 +6,11 @@
 // drives an implementation only through its public entry points.
 //
 //   node caid/conformance/runners/run.mjs [--impl FILE] [--corpus core|grammar|all]
-//                                         [--json] [--legacy-front-end]
+//                                         [--json]
 //
 // --impl defaults to caid/impl/js/caid.mjs (the vendored Verify copy,
 // packages/verify/vendor/caid.mjs, takes the same runner). The entry points
-// used are named in API below; the -04 byte entry points are required.
-// --legacy-front-end substitutes a host JSON parser plus the native entry
-// points for missing byte entry points, to measure a pre-04 implementation;
-// it never passes in CI and the summary says it was used.
+// used are named in API below; all of them are required.
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -28,7 +25,6 @@ const args = process.argv.slice(2);
 const arg = (name, fallback) => { const i = args.indexOf(name); return i === -1 ? fallback : args[i + 1]; };
 const implPath = path.resolve(arg('--impl', path.join(ROOT, 'caid/impl/js/caid.mjs')));
 const corpusChoice = arg('--corpus', 'all');
-const legacy = args.includes('--legacy-front-end');
 const port = await import(pathToFileURL(implPath).href);
 
 // ---------------------------------------------------------------- API
@@ -47,31 +43,6 @@ const API = {
   parse: need('parseCaid', 'parseCaid'),
   definitionSha256: need('definitionSha256', 'definitionSha256', 'definitionDigest'),
 };
-let legacyUsed = false;
-if (legacy) {
-  const hostDecode = (bytes) => {
-    try {
-      return { ok: true, value: JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) };
-    } catch {
-      return { ok: false, refusals: ['malformed_json'] };
-    }
-  };
-  if (!API.decode) { API.decode = hostDecode; legacyUsed = true; }
-  if (!API.computeJson) {
-    API.computeJson = (bytes, o) => { const d = API.decode(bytes); return d.ok ? API.compute(d.value, o) : { refusals: ['malformed_json'] }; };
-    legacyUsed = true;
-  }
-  if (!API.verifyJson) {
-    API.verifyJson = (bytes, caid, o) => {
-      const d = API.decode(bytes);
-      return d.ok ? API.verify(d.value, caid, o) : { valid: false, reasons: ['malformed_json'], details: [] };
-    };
-    legacyUsed = true;
-  }
-  if (!API.definitionSha256) { API.definitionSha256 = () => ({ refusals: ['definition_sha256 not implemented'] }); legacyUsed = true; }
-  missing.length = 0;
-  for (const [k, v] of Object.entries(API)) if (!v) missing.push(k);
-}
 
 // ---------------------------------------------------------------- helpers
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -84,7 +55,7 @@ const readCorpus = (file) => {
   // The corpus is strict JSON; read it with the implementation's own
   // decoder when it has one (no size cap applies to corpus files, so fall
   // back to the host parser only if the decoder refuses on size alone).
-  if (API.decode && !legacyUsed) {
+  if (API.decode) {
     const d = API.decode(bytes);
     if (d && d.ok) return d.value;
   }
@@ -126,6 +97,7 @@ function runCore() {
       actual = guard(() => API.definitionSha256(input.definition));
     } else if (own(input, 'native')) {
       const host = buildNative(input.native);
+      opts.definitions = buildNative(v.definitions);
       actual = guard(() => (v.kind === 'compute' ? API.compute(host, opts) : API.verify(host, input.caid, opts)));
     } else {
       const bytes = inputBytes(input);
@@ -218,11 +190,11 @@ if (missing.length) {
 }
 if (corpusChoice === 'core' || corpusChoice === 'all') runCore();
 if (corpusChoice === 'grammar' || corpusChoice === 'all') runGrammar();
-const summary = { runner: 'javascript', impl: path.relative(ROOT, implPath), corpus: corpusChoice, legacy_front_end: legacyUsed, pass, fail, per_corpus: perCorpus, failures: results.slice(0, 500) };
+const summary = { runner: 'javascript', impl: path.relative(ROOT, implPath), corpus: corpusChoice, pass, fail, per_corpus: perCorpus, failures: results.slice(0, 500) };
 if (args.includes('--json')) process.stdout.write(JSON.stringify(summary) + '\n');
 else {
   for (const r of results.slice(0, 60)) console.log(`FAIL ${r.corpus} ${r.id}\n     ${r.detail}`);
   if (results.length > 60) console.log(`... ${results.length - 60} more failures`);
-  console.log(`${summary.runner} ${summary.impl} (${corpusChoice}${legacyUsed ? ', legacy front end' : ''}): ${pass} passed, ${fail} failed ${JSON.stringify(perCorpus)}`);
+  console.log(`${summary.runner} ${summary.impl} (${corpusChoice}): ${pass} passed, ${fail} failed ${JSON.stringify(perCorpus)}`);
 }
-process.exit(fail || legacyUsed ? 1 : 0);
+process.exit(fail ? 1 : 0);

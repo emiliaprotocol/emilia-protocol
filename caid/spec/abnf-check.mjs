@@ -68,12 +68,13 @@ const { rules } = loadCaidGrammar(ROOT);
 
 // Compiled rules: [label, abnf rule name, portable expression].
 const compiled = [];
-const ruleOfPattern = new Map(
-  JSON.parse(readFileSync(path.join(ROOT, 'caid/spec/core.json'), 'utf8')).grammar.patterns.map((p) => [p.id, p.rule]),
-);
+const coreGrammar = JSON.parse(readFileSync(path.join(ROOT, 'caid/spec/core.json'), 'utf8')).grammar;
+const ruleOfPattern = new Map(coreGrammar.patterns.map((p) => [p.id, p.rule]));
 for (const [id, src] of Object.entries(spec.patterns)) compiled.push([`pattern:${id}`, ruleOfPattern.get(id), src]);
 for (const [format, src] of Object.entries(spec.code_formats)) compiled.push([`code_format:${format}`, format, src]);
-const digestRules = new Map([[32, 'digest-256']]);
+// The ABNF digest rule of each digest length, from core.json (gen.mjs checks
+// that each rule equals the syntax derived for its length).
+const digestRules = new Map(coreGrammar.suite_digest_rules.map((r) => [r.digest_octets, r.rule]));
 for (const s of spec.suites) {
   const rule = digestRules.get(s.digest_octets);
   if (!rule) fail(`no ABNF digest rule for ${s.digest_octets} octets`);

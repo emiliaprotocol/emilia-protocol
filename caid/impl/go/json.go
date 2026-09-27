@@ -54,7 +54,7 @@ func decode(data []byte, maxOctets int) (interface{}, error) {
 // text, under every rule of draft -04 Section 2.4. The text MUST be an I-JSON
 // message [RFC7493] and in particular:
 //
-//   - at most 33554432 octets (checked before parsing);
+//   - within the JSON text limit (checked before parsing);
 //   - valid UTF-8 [RFC3629] that does not begin with a byte order mark;
 //   - exactly one JSON text [RFC8259], with only the four JSON whitespace
 //     octets around it and no unescaped control character in a string;
@@ -62,7 +62,10 @@ func decode(data []byte, maxOctets int) (interface{}, error) {
 //     unescaping;
 //   - no escape that denotes an unpaired surrogate, and no noncharacter,
 //     escaped or literal, in a string or member name;
-//   - nesting at most 64, the outermost object or array being depth 1.
+//   - nesting within the nesting limit, the outermost object or array being
+//     depth 1.
+//
+// The limits are those of draft -04 Section 2.6, generated into spec_gen.go.
 //
 // Any other text is refused with a *DecodeError (reason malformed_json). A
 // number token is never refused here: it decodes to a json.Number holding

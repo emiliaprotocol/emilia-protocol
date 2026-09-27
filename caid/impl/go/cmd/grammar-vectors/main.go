@@ -57,6 +57,10 @@ type obj = map[string]interface{}
 
 var registeredSuites = map[string]int{}
 
+// maxOctets holds the length limits of draft -04 Section 2.6, read from
+// caid/spec/core.json: each is checked before any pattern runs.
+var maxOctets = map[string]int{}
+
 const codeSystem = "http://example.test/code-system"
 
 func main() {
@@ -75,6 +79,7 @@ func main() {
 		}
 	}
 	loadSuites(filepath.Join(registryDir, "suites.json"))
+	loadLimits(filepath.Join(registryDir, "..", "spec", "core.json"))
 	data, err := os.ReadFile(casesPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -163,6 +168,37 @@ func loadSuites(path string) {
 	}
 }
 
+func loadLimits(path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	v, err := caid.DecodeDocumentJSON(data)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	doc, _ := v.(obj)
+	limits, _ := doc["limits"].([]interface{})
+	for _, raw := range limits {
+		l, _ := raw.(obj)
+		id, _ := l["id"].(string)
+		value, _ := l["value"].(fmt.Stringer)
+		if value == nil {
+			continue
+		}
+		n, _ := strconv.Atoi(value.String())
+		maxOctets[id] = n
+	}
+	for _, id := range []string{"caid_octets", "action_type_octets", "code_system_octets"} {
+		if maxOctets[id] == 0 {
+			fmt.Fprintln(os.Stderr, "no limit", id, "in", path)
+			os.Exit(1)
+		}
+	}
+}
+
 // digestFits is the independent oracle for a suite's digest syntax: strict
 // unpadded base64url that decodes to exactly the suite's octets.
 func digestFits(digest string, octets int) bool {
@@ -185,8 +221,9 @@ func parseReasons(input string) []string {
 func expectParse(caidString string, match bool, suite, digest string) string {
 	got := parseReasons(caidString)
 	var want []string
+	parts := strings.Split(caidString, ":")
 	switch {
-	case !match:
+	case !match || len(caidString) > maxOctets["caid_octets"] || len(parts) != 5 || len(parts[2]) > maxOctets["action_type_octets"]:
 		want = []string{"malformed_caid"}
 	case registeredSuites[suite] == 0:
 		want = []string{"unknown_suite"}
@@ -266,7 +303,8 @@ func check(rule, input string, match bool) string {
 	case rule == "pattern:action_type":
 		def := obj{"action_type": input, "required_fields": []interface{}{obj{"name": "f", "type": "string"}}}
 		got := caid.ComputeCaid(obj{"action_type": input, "f": "x"}, caid.ComputeOptions{Suite: "jcs-sha256", Definitions: []interface{}{def}})
-		if match != (got.Caid != "") || (!match && !sameReasons(got.Refusals, "invalid_action_type")) {
+		accepted := match && len(input) <= maxOctets["action_type_octets"]
+		if accepted != (got.Caid != "") || (!accepted && !sameReasons(got.Refusals, "invalid_action_type")) {
 			return fmt.Sprintf("ComputeCaid = %v %q", got.Refusals, got.Caid)
 		}
 		return expectParse("caid:1:"+input+":jcs-sha256:"+validDigest, match && !strings.Contains(input, ":"), "jcs-sha256", validDigest)
@@ -296,7 +334,8 @@ func check(rule, input string, match bool) string {
 		return ""
 	case rule == "pattern:code_system":
 		got := computeField(obj{"name": "v", "type": "code", "code_system": input, "format": "nacha-sec"}, "PPD")
-		if match != (got.Caid != "") || (!match && !sameReasons(got.Refusals, "invalid_definition")) {
+		accepted := match && len(input) <= maxOctets["code_system_octets"]
+		if accepted != (got.Caid != "") || (!accepted && !sameReasons(got.Refusals, "invalid_definition")) {
 			return fmt.Sprintf("ComputeCaid = %v %q", got.Refusals, got.Caid)
 		}
 		return ""

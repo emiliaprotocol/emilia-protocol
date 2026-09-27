@@ -41,7 +41,7 @@ func loadRegistry(t *testing.T) registryFixture {
 
 var codeSamples = map[string]string{
 	"icd-10-cm": "E11.9", "ndc-11": "00002143380", "ndc-10-hyphenated": "0002-1433-80", "cpt": "99213",
-	"hcpcs-level-ii": "J1234", "hcpcs": "J1234", "iso-3166-1-alpha-2": "US", "iso-3166-2": "US-CA",
+	"hcpcs-level-ii": "J1234", "hcpcs": "J1234", "iso-3166-2": "US-CA",
 	"iso20022-external-code": "AC01", "nacha-sec": "PPD",
 }
 

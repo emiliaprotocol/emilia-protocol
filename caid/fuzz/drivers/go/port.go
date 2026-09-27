@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//go:build !legacy
-
 package main
 
 // The -04 entry points of the Go implementation under test.
 
 import caidlib "caid"
-
-func legacyFrontEnd() bool { return false }
 
 func decodeBytes(data []byte) (interface{}, bool) {
 	r := caidlib.DecodeCaidJSON(data)
@@ -41,14 +37,21 @@ func verifyOptions(o opts) caidlib.VerifyOptions {
 	return caidlib.VerifyOptions{Definitions: definitionList(o), EnumSnapshots: o.enumSnapshots, ExpectedDefinitionSha256: expectedPointer(o)}
 }
 
-// expectedPointer is the typed form of the expected digest option: nil (no
-// pin) when it is absent or not a string.
+// expectedPointer is the typed form of the expected digest option: nil
+// when it is absent. A supplied pin is never absent (draft -04 Section 6):
+// one that is not a string, null included, becomes a pin to "", which no
+// definition_sha256 equals, so it fails closed as in the other ports.
 func expectedPointer(o opts) *string {
-	if s, ok := o.expected.(string); ok && o.hasExpected {
-		return &s
+	if !o.hasExpected {
+		return nil
 	}
-	return nil
+	s, _ := o.expected.(string)
+	return &s
 }
+
+func definitionDigest(d interface{}) interface{} { return caidlib.DefinitionSha256(d) }
+
+func canonicalizeValue(v interface{}) interface{} { return caidlib.Canonicalize(v) }
 
 // orNil passes a missing (nil) map as an untyped nil, so the port sees no
 // value rather than a typed empty map.

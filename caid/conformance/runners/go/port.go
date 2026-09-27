@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
-//go:build !legacy
-
 package main
 
 // The -04 entry points of the Go implementation (package caid). This file
 // is the only place the runner touches the implementation's API.
 
 import "caid"
-
-func legacyFrontEnd() bool { return false }
 
 func decodeCorpus(data []byte) (interface{}, error) { return caid.DecodeDocumentJSON(data) }
 
@@ -43,5 +39,3 @@ func computeOptions(o opts) caid.ComputeOptions {
 func verifyOptions(o opts) caid.VerifyOptions {
 	return caid.VerifyOptions{Definitions: definitionList(o), EnumSnapshots: o.enumSnapshots, ExpectedDefinitionSha256: expectedString(o)}
 }
-
-func legacySkip(interface{}) bool { return false }

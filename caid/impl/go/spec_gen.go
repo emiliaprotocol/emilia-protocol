@@ -8,9 +8,6 @@ package caid
 
 import "regexp"
 
-// specDraft is the draft revision these constants are derived from.
-const specDraft = "draft-schrock-canonical-action-identifier-04"
-
 // specIdentifierScheme is the caid rule's fixed scheme.
 const specIdentifierScheme = "caid"
 
@@ -50,14 +47,11 @@ var specPatternHexSha256 = regexp.MustCompile(`^(?:[0-9a-f]{64})$`)
 // specPatterns is every whole-string matcher above, keyed by core.json pattern id.
 var specPatterns = map[string]*regexp.Regexp{"caid": specPatternCaid, "action_type": specPatternActionType, "suite": specPatternSuite, "digest": specPatternDigest, "amount_string": specPatternAmountString, "digest_field": specPatternDigestField, "timestamp": specPatternTimestamp, "format_name": specPatternFormatName, "code_system": specPatternCodeSystem, "array_index": specPatternArrayIndex, "hex_sha256": specPatternHexSha256}
 
+// specPatternMaxOctets is the length limit, in octets, checked before a pattern is matched.
+var specPatternMaxOctets = map[string]int{"caid": 1024, "action_type": 512, "code_system": 2048}
+
 // specCodeFormats is the whole-string matcher of each registered code format.
-var specCodeFormats = map[string]*regexp.Regexp{"icd-10-cm": regexp.MustCompile(`^(?:[A-Z][0-9A-Z]{2}(?:\x2e[0-9A-Z]{1,4})?)$`), "ndc-11": regexp.MustCompile(`^(?:[0-9]{11})$`), "ndc-10-hyphenated": regexp.MustCompile(`^(?:(?:[0-9]{4}\x2d[0-9]{4}\x2d[0-9]{2}|[0-9]{5}\x2d[0-9]{4}\x2d[0-9]|[0-9]{5}\x2d[0-9]{3}\x2d[0-9]{2}))$`), "cpt": regexp.MustCompile(`^(?:[0-9]{4}[0-9A-Z])$`), "hcpcs-level-ii": regexp.MustCompile(`^(?:[A-Z][0-9]{4})$`), "hcpcs": regexp.MustCompile(`^(?:(?:[0-9]{4}[0-9A-Z]|[A-Z][0-9]{4}))$`), "iso-3166-1-alpha-2": regexp.MustCompile(`^(?:[A-Z]{2})$`), "iso-3166-2": regexp.MustCompile(`^(?:[A-Z]{2}\x2d[0-9A-Z]{1,3})$`), "iso20022-external-code": regexp.MustCompile(`^(?:[0-9A-Z]{1,4})$`), "nacha-sec": regexp.MustCompile(`^(?:[0-9A-Z]{3})$`)}
-
-// specSuites lists the registered suites in registry order.
-var specSuites = []string{"jcs-sha256", "cbor-sha256"}
-
-// specSuiteDigestOctets is each registered suite's digest length in octets.
-var specSuiteDigestOctets = map[string]int{"jcs-sha256": 32, "cbor-sha256": 32}
+var specCodeFormats = map[string]*regexp.Regexp{"icd-10-cm": regexp.MustCompile(`^(?:[A-Z][0-9A-Z]{2}(?:\x2e[0-9A-Z]{1,4})?)$`), "ndc-11": regexp.MustCompile(`^(?:[0-9]{11})$`), "ndc-10-hyphenated": regexp.MustCompile(`^(?:(?:[0-9]{4}\x2d[0-9]{4}\x2d[0-9]{2}|[0-9]{5}\x2d[0-9]{4}\x2d[0-9]|[0-9]{5}\x2d[0-9]{3}\x2d[0-9]{2}))$`), "cpt": regexp.MustCompile(`^(?:[0-9]{4}[0-9A-Z])$`), "hcpcs-level-ii": regexp.MustCompile(`^(?:[A-Z][0-9]{4})$`), "hcpcs": regexp.MustCompile(`^(?:(?:[0-9]{4}[0-9A-Z]|[A-Z][0-9]{4}))$`), "iso-3166-2": regexp.MustCompile(`^(?:[A-Z]{2}\x2d[0-9A-Z]{1,3})$`), "iso20022-external-code": regexp.MustCompile(`^(?:[0-9A-Z]{1,4})$`), "nacha-sec": regexp.MustCompile(`^(?:[0-9A-Z]{3})$`)}
 
 // specSuiteDigestPatterns is each registered suite's digest syntax.
 var specSuiteDigestPatterns = map[string]*regexp.Regexp{"jcs-sha256": regexp.MustCompile(`^(?:[\x2d0-9A-Z\x5fa-z]{42}[048AEIMQUYcgkosw])$`), "cbor-sha256": regexp.MustCompile(`^(?:[\x2d0-9A-Z\x5fa-z]{42}[048AEIMQUYcgkosw])$`)}
@@ -82,6 +76,21 @@ const specLimitCanonicalOctets = 16777216
 
 // specLimitMaxSafeInteger is core.json limit max_safe_integer.
 const specLimitMaxSafeInteger = 9007199254740991
+
+// specLimitValueCount is core.json limit value_count.
+const specLimitValueCount = 33554432
+
+// specLimitDocumentCanonicalOctets is core.json limit document_canonical_octets.
+const specLimitDocumentCanonicalOctets = 134217728
+
+// specLimitCaidOctets is core.json limit caid_octets.
+const specLimitCaidOctets = 1024
+
+// specLimitActionTypeOctets is core.json limit action_type_octets.
+const specLimitActionTypeOctets = 512
+
+// specLimitCodeSystemOctets is core.json limit code_system_octets.
+const specLimitCodeSystemOctets = 2048
 
 // specLimitMappingRulesMin is core.json limit mapping_rules_min.
 const specLimitMappingRulesMin = 1
@@ -110,132 +119,29 @@ var specJSONByteOrderMark = []byte{0xEF, 0xBB, 0xBF}
 // specJSONWhitespace is the JSON whitespace set of RFC 8259.
 var specJSONWhitespace = []byte{0x20, 0x09, 0x0A, 0x0D}
 
-// specReasons lists every core reason code.
-var specReasons = []string{"malformed_json", "malformed_caid", "unknown_suite", "invalid_action_type", "unknown_action_type", "invalid_definition", "definition_mismatch", "missing_material_field", "mistyped_field", "invalid_amount", "invalid_code", "unsupported_number", "unsupported_value", "action_type_mismatch", "digest_mismatch", "invalid_object"}
-
-// specReasonParams is each core reason's parameter kind.
-var specReasonParams = map[string]string{"malformed_json": "none", "malformed_caid": "none", "unknown_suite": "none", "invalid_action_type": "none", "unknown_action_type": "none", "invalid_definition": "none", "definition_mismatch": "none", "missing_material_field": "field-name", "mistyped_field": "field-name", "invalid_amount": "field-name", "invalid_code": "field-name", "unsupported_number": "none", "unsupported_value": "none", "action_type_mismatch": "none", "digest_mismatch": "none", "invalid_object": "none"}
-
-// specGatesDecode lists the decode gates in order; each yields exactly one reason and stops.
-var specGatesDecode = [][]string{{"malformed_json"}}
-
-// specSortRankDecode is the rank of each reason after the decode gates.
-var specSortRankDecode = map[string]int{}
-
-// specPositionDecode names the field list whose index orders a reason within its rank.
-var specPositionDecode = map[string]string{}
-
-// specPerPositionMaxDecode is the most reasons one position may carry for each reason.
-var specPerPositionMaxDecode = map[string]int{}
-
-// specGatesParse lists the parse gates in order; each yields exactly one reason and stops.
-var specGatesParse = [][]string{{"malformed_caid", "unknown_suite"}}
-
-// specSortRankParse is the rank of each reason after the parse gates.
-var specSortRankParse = map[string]int{}
-
-// specPositionParse names the field list whose index orders a reason within its rank.
-var specPositionParse = map[string]string{}
-
-// specPerPositionMaxParse is the most reasons one position may carry for each reason.
-var specPerPositionMaxParse = map[string]int{}
-
-// specGatesCompute lists the compute gates in order; each yields exactly one reason and stops.
-var specGatesCompute = [][]string{{"malformed_json"}, {"invalid_action_type"}, {"unknown_action_type", "invalid_definition"}}
+// specNoncharacterRanges lists the noncharacter code points as inclusive ranges.
+var specNoncharacterRanges = [][2]rune{{0xFDD0, 0xFDEF}, {0xFFFE, 0xFFFF}, {0x1FFFE, 0x1FFFF}, {0x2FFFE, 0x2FFFF}, {0x3FFFE, 0x3FFFF}, {0x4FFFE, 0x4FFFF}, {0x5FFFE, 0x5FFFF}, {0x6FFFE, 0x6FFFF}, {0x7FFFE, 0x7FFFF}, {0x8FFFE, 0x8FFFF}, {0x9FFFE, 0x9FFFF}, {0xAFFFE, 0xAFFFF}, {0xBFFFE, 0xBFFFF}, {0xCFFFE, 0xCFFFF}, {0xDFFFE, 0xDFFFF}, {0xEFFFE, 0xEFFFF}, {0xFFFFE, 0xFFFFF}, {0x10FFFE, 0x10FFFF}}
 
 // specSortRankCompute is the rank of each reason after the compute gates.
 var specSortRankCompute = map[string]int{"missing_material_field": 3, "mistyped_field": 4, "invalid_amount": 4, "invalid_code": 4, "unknown_suite": 5, "unsupported_number": 6, "unsupported_value": 7}
 
-// specPositionCompute names the field list whose index orders a reason within its rank.
-var specPositionCompute = map[string]string{"missing_material_field": "required_fields", "mistyped_field": "required_then_optional_fields", "invalid_amount": "required_then_optional_fields", "invalid_code": "required_then_optional_fields"}
-
-// specPerPositionMaxCompute is the most reasons one position may carry for each reason.
-var specPerPositionMaxCompute = map[string]int{"mistyped_field": 1, "invalid_amount": 1, "invalid_code": 1}
-
-// specGatesVerify lists the verify gates in order; each yields exactly one reason and stops.
-var specGatesVerify = [][]string{{"malformed_caid", "unknown_suite"}, {"malformed_json"}, {"invalid_object"}}
-
 // specSortRankVerify is the rank of each reason after the verify gates.
 var specSortRankVerify = map[string]int{"action_type_mismatch": 4, "definition_mismatch": 5, "unknown_suite": 6, "digest_mismatch": 6, "invalid_object": 7}
 
-// specPositionVerify names the field list whose index orders a reason within its rank.
-var specPositionVerify = map[string]string{}
-
-// specPerPositionMaxVerify is the most reasons one position may carry for each reason.
-var specPerPositionMaxVerify = map[string]int{"unknown_suite": 1, "digest_mismatch": 1}
-
 // specVerifyDetail is the closed shape of one verification detail. Field
-// and Observed name where the detail takes its field and observed kind
-// from (see specVerifyDetailFieldSources and specVerifyDetailObservedSources);
-// "" means the detail carries null there.
+// is "param" (the reason parameter), a fixed field name, or "" (null);
+// Observed is "member", "argument", or "" (null).
 type specVerifyDetail struct {
 	Rule     string
 	Field    string
 	Observed string
 }
 
-// specVerifyDetailMembers lists the members of every verification detail, in order.
-var specVerifyDetailMembers = []string{"reason", "field", "rule", "observed"}
-
-// specVerifyDetailFieldSources lists the values of specVerifyDetail.Field.
-var specVerifyDetailFieldSources = []string{"param", "action_type"}
-
-// specVerifyDetailObservedSources lists the values of specVerifyDetail.Observed.
-var specVerifyDetailObservedSources = []string{"member", "argument"}
-
-// specVerifyDetailObservedKinds lists the values of a detail's observed member.
-var specVerifyDetailObservedKinds = []string{"absent", "null", "boolean", "number", "string", "array", "object", "unsupported"}
-
 // specVerifyDetails is the detail shape of each reason a verification reports.
 var specVerifyDetails = map[string]specVerifyDetail{"malformed_caid": {"caid", "", "argument"}, "unknown_suite": {"suite", "", ""}, "malformed_json": {"json-text", "", ""}, "action_type_mismatch": {"action-type-equal", "action_type", "member"}, "definition_mismatch": {"definition-sha256", "", ""}, "digest_mismatch": {"digest-equal", "", ""}, "invalid_action_type": {"action-type", "action_type", "member"}, "unknown_action_type": {"definition-resolution", "", ""}, "invalid_definition": {"definition-conformance", "", ""}, "missing_material_field": {"required-field", "param", "member"}, "mistyped_field": {"field-type", "param", "member"}, "invalid_amount": {"amount-string", "param", "member"}, "invalid_code": {"code-format", "param", "member"}, "unsupported_number": {"number", "", ""}, "unsupported_value": {"data-model", "", ""}}
 
-// specVerifyDetailExpand maps a verification reason to the operation whose reasons replace it in the details.
-var specVerifyDetailExpand = map[string]string{"invalid_object": "compute"}
-
 // specVerifyDetailExpandOmit lists, per expanded reason, the operation reasons the expansion leaves out.
 var specVerifyDetailExpandOmit = map[string][]string{"invalid_object": {"unknown_suite"}}
-
-// specResultDecodeAccepted lists the accepted members of a decode result.
-var specResultDecodeAccepted = []string{"ok", "value"}
-
-// specResultDecodeRefused lists the refused members of a decode result.
-var specResultDecodeRefused = []string{"ok", "refusals"}
-
-// specResultParseAccepted lists the accepted members of a parse result.
-var specResultParseAccepted = []string{"ok", "caid"}
-
-// specResultParseRefused lists the refused members of a parse result.
-var specResultParseRefused = []string{"ok", "refusals"}
-
-// specResultParseCaidMembers lists the caid members members of a parse result.
-var specResultParseCaidMembers = []string{"version", "action_type", "suite", "digest"}
-
-// specResultComputeAccepted lists the accepted members of a compute result.
-var specResultComputeAccepted = []string{"caid", "digest", "definition_sha256"}
-
-// specResultComputeRefused lists the refused members of a compute result.
-var specResultComputeRefused = []string{"refusals"}
-
-// specResultVerifyMembers lists the members members of a verify result.
-var specResultVerifyMembers = []string{"valid", "reasons", "details"}
-
-// specResultVerifyOptionalMembers lists the optional members members of a verify result.
-var specResultVerifyOptionalMembers = []string{"definition_sha256"}
-
-// specResultDefinitionSha256Accepted lists the accepted members of a definition sha256 result.
-var specResultDefinitionSha256Accepted = []string{"definition_sha256"}
-
-// specResultDefinitionSha256Refused lists the refused members of a definition sha256 result.
-var specResultDefinitionSha256Refused = []string{"refusals"}
-
-// specOptionsCompute lists the compute options, in snake_case.
-var specOptionsCompute = []string{"suite", "definitions", "enum_snapshots"}
-
-// specOptionsVerify lists the verify options, in snake_case.
-var specOptionsVerify = []string{"definitions", "enum_snapshots", "expected_definition_sha256"}
-
-// specFieldTypes lists the field types in order.
-var specFieldTypes = []string{"string", "amount-string", "digest", "enum", "code", "timestamp", "integer", "boolean", "object", "array"}
 
 // specFieldTypeJSON is the JSON kind each field type holds.
 var specFieldTypeJSON = map[string]string{"string": "string", "amount-string": "string", "digest": "string", "enum": "string", "code": "string", "timestamp": "string", "integer": "number", "boolean": "boolean", "object": "object", "array": "array"}
@@ -248,6 +154,9 @@ var specFieldTypeRequiredMembers = map[string]string{"code.code_system": "code_s
 
 // specFieldTypePattern is the whole-string matcher of each grammar-checked field type.
 var specFieldTypePattern = map[string]*regexp.Regexp{"amount-string": specPatternAmountString, "digest": specPatternDigestField, "timestamp": specPatternTimestamp}
+
+// specFieldTypeCalendarCheck names the calendar check a field type applies after its grammar.
+var specFieldTypeCalendarCheck = map[string]string{"timestamp": "day_within_month"}
 
 // specFieldTypePatternRefusal is the reason for a string that fails a field type's grammar.
 var specFieldTypePatternRefusal = map[string]string{"amount-string": "invalid_amount", "digest": "mistyped_field", "timestamp": "mistyped_field"}
@@ -279,9 +188,6 @@ var specFieldNameForbiddenCodePoints = []rune{58}
 // specReservedFieldNames lists names no field entry may take.
 var specReservedFieldNames = []string{"action_type"}
 
-// specProjectionMembers lists the definition members of the validation projection.
-var specProjectionMembers = []string{"action_type", "required_fields", "optional_fields"}
-
 // specProjectionFieldMembersExcluded lists field-entry members the projection drops.
 var specProjectionFieldMembersExcluded = []string{"notes"}
 
@@ -296,12 +202,6 @@ const specResolutionConflict = "invalid_definition"
 
 // specResolutionNonconforming is the reason when a matching definition does not conform.
 const specResolutionNonconforming = "invalid_definition"
-
-// specFieldNamesUniqueAcross lists the field lists whose names must be unique together.
-var specFieldNamesUniqueAcross = []string{"required_fields", "optional_fields"}
-
-// specStatusValues lists the registry status values; status never affects computation.
-var specStatusValues = []string{"active", "deprecated"}
 
 // specEnumInlinePrefix begins the compact inline enum form.
 const specEnumInlinePrefix = "inline:"
@@ -373,14 +273,8 @@ var specMappingEqualSets = [][2][]string{{[]string{"rules", "*", "source_path"},
 // specMappingDisjoint lists member path pairs whose value sets must not intersect.
 var specMappingDisjoint = [][2][]string{{[]string{"omitted_source_fields", "*", "source_path"}, []string{"rules", "*", "source_path"}}}
 
-// specMappingNullMemberRefusal is the reason for a profile member written as null.
-const specMappingNullMemberRefusal = "invalid_mapping_profile"
-
 // specMappingTransforms lists the registered transforms.
 var specMappingTransforms = []string{"copy", "sha256-utf8", "sha256-jcs", "sha256-hex-to-digest"}
-
-// specMappingTransformInput is the source value kind each transform accepts.
-var specMappingTransformInput = map[string]string{"copy": "any", "sha256-utf8": "string", "sha256-jcs": "any", "sha256-hex-to-digest": "string"}
 
 // specMappingTransformPattern is the whole-string matcher a transform requires of its string input.
 var specMappingTransformPattern = map[string]*regexp.Regexp{"sha256-hex-to-digest": specPatternHexSha256}
@@ -391,26 +285,11 @@ var specMappingLossPolicies = []string{"no-material-field-loss", "declared-sourc
 // specMappingLossPolicyOmissions is what each loss policy requires of omitted_source_fields.
 var specMappingLossPolicyOmissions = map[string]string{"no-material-field-loss": "absent_or_empty", "declared-source-semantic-loss": "non_empty"}
 
-// specMappingVerdicts lists the comparison verdicts.
-var specMappingVerdicts = []string{"EQUIVALENT_UNDER_PROFILE", "NOT_EQUIVALENT", "INDETERMINATE"}
-
-// specMappingReasons lists the mapping reason codes.
-var specMappingReasons = []string{"invalid_mapping_profile", "unknown_action_type", "invalid_definition", "unmapped_material_field", "native_verification_required", "mapping_profile_unpinned", "source_format_mismatch", "source_not_object", "source_not_canonicalizable", "declared_source_semantic_loss", "invalid_source_path", "missing_source_field", "source_value_type_mismatch", "source_value_not_canonicalizable", "unknown_transform", "mapped_action", "target_action_type_mismatch", "material_projection_mismatch"}
-
-// specMappingReasonParams is each mapping reason's parameter kind.
-var specMappingReasonParams = map[string]string{"invalid_mapping_profile": "none", "unknown_action_type": "none", "invalid_definition": "none", "unmapped_material_field": "field-name", "native_verification_required": "none", "mapping_profile_unpinned": "none", "source_format_mismatch": "none", "source_not_object": "none", "source_not_canonicalizable": "none", "declared_source_semantic_loss": "none", "invalid_source_path": "source-path", "missing_source_field": "source-path", "source_value_type_mismatch": "source-path", "source_value_not_canonicalizable": "source-path", "unknown_transform": "source-path", "mapped_action": "compute-reason", "target_action_type_mismatch": "none", "material_projection_mismatch": "none"}
-
 // specMappingReasonRank orders mapping reasons: stages A and B sort together by it.
 var specMappingReasonRank = map[string]int{"invalid_mapping_profile": 0, "unknown_action_type": 1, "invalid_definition": 2, "unmapped_material_field": 3, "native_verification_required": 4, "mapping_profile_unpinned": 5, "source_format_mismatch": 6, "source_not_object": 7, "source_not_canonicalizable": 8, "declared_source_semantic_loss": 9, "invalid_source_path": 10, "missing_source_field": 11, "source_value_type_mismatch": 12, "source_value_not_canonicalizable": 13, "unknown_transform": 14, "mapped_action": 15}
 
-// specMappingStageOf names the stage of each staged mapping reason.
-var specMappingStageOf = map[string]string{"invalid_mapping_profile": "A", "unknown_action_type": "A", "invalid_definition": "A", "unmapped_material_field": "A", "native_verification_required": "B", "mapping_profile_unpinned": "B", "source_format_mismatch": "B", "source_not_object": "B", "source_not_canonicalizable": "B", "declared_source_semantic_loss": "B", "invalid_source_path": "C", "missing_source_field": "C", "source_value_type_mismatch": "C", "source_value_not_canonicalizable": "C", "unknown_transform": "C", "mapped_action": "D"}
-
 // specMappingComparisonPrefixes lists the side prefixes of comparison reasons, in order.
 var specMappingComparisonPrefixes = []string{"left", "right"}
-
-// specMappingComparisonReasons lists the reasons a comparison adds itself.
-var specMappingComparisonReasons = []string{"target_action_type_mismatch", "material_projection_mismatch"}
 
 // specMappingPrefixedVerdict is the verdict of a comparison that carries side-prefixed reasons.
 const specMappingPrefixedVerdict = "INDETERMINATE"

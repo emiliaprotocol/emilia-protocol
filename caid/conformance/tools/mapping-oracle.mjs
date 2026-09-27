@@ -6,10 +6,11 @@
 // for map and compare cases. It is not a port.
 //
 // Stages (core.json mapping.stages), each list deduplicated:
-//   A  profile checks. A shape failure (not an object, wrong @version, an
-//      unknown or missing member, or a member rule failing: JSON type, UTF-8
-//      octet bounds, closed sets, the source-path and field-name rules,
-//      item counts) yields exactly invalid_mapping_profile. Otherwise every
+//   A  profile checks. A shape failure (not an object in the data model,
+//      wrong @version, an unknown or missing member, or a member rule
+//      failing: JSON type, UTF-8 octet bounds, closed sets, the source-path
+//      and field-name rules, item counts) yields exactly
+//      invalid_mapping_profile. Otherwise every
 //      check runs: uniqueness, equal sets, disjointness and the loss policy
 //      (each invalid_mapping_profile), then definition resolution of
 //      target_action_type (unknown_action_type | invalid_definition), then
@@ -53,7 +54,7 @@ function validFieldName(s, reserved = []) {
 }
 
 function canonical(value) {
-  const c = reference.canonicalize(value);
+  const c = reference.canonicalizeDocument(value);
   return c.ok ? c.canonical : null;
 }
 function hashJson(value) {
@@ -76,7 +77,7 @@ function valuesAt(profile, path) {
 }
 
 function shapeValid(profile) {
-  if (!isObject(profile) || profile['@version'] !== M.profile_version) return false;
+  if (!isObject(profile) || canonical(profile) === null || profile['@version'] !== M.profile_version) return false;
   const members = new Set(M.members.profile);
   const optional = new Set(M.optional_members.profile ?? []);
   for (const k of Object.keys(profile)) if (!members.has(k)) return false;
@@ -215,7 +216,7 @@ export function mapAction(source, p) {
   const suite = p.suitePresent === false || p.suite === undefined ? 'jcs-sha256' : p.suite;
   const computed = oracle.compute(action, { suite, definitions: p.definitions, enum_snapshots: p.enumSnapshots });
   if (!computed.caid) return { ok: false, reasons: (computed.refusals || []).map((r) => `mapped_action:${r}`), profile_hash: profileHash, source_digest: sourceDigest };
-  return { ok: true, action, caid: computed.caid, digest: computed.digest, suite, profile_hash: profileHash, source_digest: sourceDigest };
+  return { ok: true, action, caid: computed.caid, digest: computed.digest, definition_sha256: computed.definition_sha256, suite, profile_hash: profileHash, source_digest: sourceDigest };
 }
 
 /**
