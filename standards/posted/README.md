@@ -177,7 +177,9 @@ The retained `../staged/NEXT-AUTHORIZATION-RECEIPTS-11`,
 packets preserve the exact submitted XML, review renders, validation records,
 and checksums as publication provenance through -06. The -07 current XML, TXT,
 and HTML snapshots were fetched from the immutable IETF archive and verified
-locally. The superseded
+locally. On 2026-09-27 the per-request Cloudflare challenge script that the
+archive delivery path had appended to the -07 HTML was removed; the result is
+byte-identical to a fresh archive fetch with that script removed. The superseded
 `draft-schrock-ep-authorization-receipts-10`,
 `draft-schrock-ae-challenge-03`, and `draft-schrock-ae-challenge-05`
 snapshots, together with `draft-schrock-ae-challenge-06`, are retained in

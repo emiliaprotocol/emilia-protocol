@@ -65,6 +65,18 @@ were mirrored into `../posted/`:
 - `draft-schrock-ep-quorum-03`
 - `draft-schrock-ep-presentation-binding-00`
 
+On 2026-09-27 the per-request Cloudflare challenge script that the IETF archive
+delivery path appends to HTML was removed from seven archived renders:
+`draft-schrock-action-evidence-boundary-04`, `draft-schrock-ae-challenge-03`,
+`draft-schrock-ae-challenge-05`, `draft-schrock-ae-challenge-06`,
+`draft-schrock-ep-authorization-receipts-11`,
+`draft-schrock-ep-authorization-receipts-12`, and
+`draft-schrock-ep-bounded-capability-receipts-03`. Each is byte-identical to a
+fresh archive fetch with that script removed. The previous
+`draft-schrock-ae-challenge-06.html` was a copy of the -07 render; it was
+replaced with the archive's -06 HTML. The -06 TXT was already byte-identical
+to the archive.
+
 `draft-schrock-authorization-evidence-challenge-01.html` is an unfiled
 rendering from the longer-named July 3 series that Datatracker marks replaced
 by Action Evidence Boundary. The active standalone challenge is the distinct
