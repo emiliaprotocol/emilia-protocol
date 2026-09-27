@@ -70,6 +70,12 @@ presentation surface, not a consolidation or Datatracker relationship. It does
 not retire, merge, replace, update, obsolete, or subordinate any active draft;
 the distinct profile and lifecycle portfolio remains intact.
 
+Change the Authorization Receipts `source` and `revision` in that record only
+after the new revision is mirrored into `posted/`. The `/spec` page
+(`app/spec/page.tsx`) throws on any source other than
+`standards/posted/draft-schrock-ep-authorization-receipts-<revision>.xml`, and
+`tests/site-spec-route.test.ts` fails on a staged path.
+
 ## Separate portfolio and runtime views
 
 The presentation surface does not replace the active profile portfolio. The
