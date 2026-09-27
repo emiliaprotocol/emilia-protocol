@@ -1,5 +1,7 @@
 # RECEIPTS-13 CANDIDATE, NOT FILED
 
+CURRENT STATUS (checked 2026-09-27): not in draft-schrock-ep-authorization-receipts-13, which was posted on 2026-09-12 without this text. It remains staged and unfiled; the next available revision is -14. Re-check the live Datatracker revision before numbering.
+
 Candidate Security Considerations text for a possible future
 `draft-schrock-ep-authorization-receipts-13`. Revision -12 was published on
 2026-08-16 and does not contain this post-quantum material. This working text
