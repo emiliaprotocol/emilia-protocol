@@ -3,12 +3,12 @@
   "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "8d08c4850b4c0db43f38737d8b921b0db23cf056a1d73ffa6ee3520e1f8cc8c4",
+    "input_digest_sha256": "d1100949d904b1d9294f2dbd2c2aa75d0d6858107bb7993d772b0474f9b88a0d",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "a28b767a80042bb1ad62d2795a3a4e3098eae826d3219565e312cdcc268ecee2",
-        "bytes": 51148
+        "sha256": "3ee29b2ce0f074bd102636aba743d9eaf6805e0da83890dda2f2af9703fccf87",
+        "bytes": 51312
       },
       {
         "path": "scripts/generate-llm-context.mts",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "c0811cf691c60ede67515eca48814996878ef43a4a4b215220e5b297983f6810",
-        "bytes": 65252
+        "sha256": "0782887e8b93fd25fbb64d3b0ed693f3cb2244a2a042b46f420fba53152367fc",
+        "bytes": 72707
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4479,7 +4479,7 @@
     "The AgentROA and ORPRG adapters implement the exact documented native formats and relying-party profiles. They do not claim universal support for every future revision or ORPRG wire profile.",
     "The checked-in TPM interoperability fixture was generated with a software TPM. The verifier is real, but no physical TPM, manufacturer EK chain, measured-boot deployment, or running-production-binary attestation is claimed.",
     "The three local witness instances prove emit, quorum, and gossip behavior. They are not independent operators. Independent witness evidence exists only after separately administered external operators generate and control their own keys and publish live views.",
-    "Twenty-four Datatracker records are active in the repository portfolio as of September 25, 2026: 20 sole-authored series and four coauthored series. The current coauthored records are Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
+    "Twenty-six Datatracker records are active in the repository portfolio as of September 27, 2026: 21 sole-authored series and five coauthored series. The current coauthored records are Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, GRACE Grid Curtailment -00, and Early Attestation Considered Very Harmful (draft-intra-handshake-fail) -47. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
@@ -4628,7 +4628,7 @@
       "identifier": "draft-schrock-ep-bounded-capability-receipts",
       "revision_at_snapshot": "06",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published September 9 (Datatracker posting 2026-09-09T14:30:11Z); use -06 as the current individual draft. Its XML is not retained in this repository; the IETF archive is authoritative. The -05 XML remains recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
+      "next_action": "Published September 9 (Datatracker posting 2026-09-09T14:30:11Z, submission 168817); use -06 as the current individual draft. The archive-identical XML and TXT are at standards/posted/draft-schrock-ep-bounded-capability-receipts-06.xml and .txt and are recorded in september_27_2026_posted_mirror. The -05 XML remains recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4735,10 +4735,26 @@
       "next_action": "Published August 22; use -00 as the current coauthored GRACE application-profile baseline while preserving its physical-truth, baseline-correctness, tariff-eligibility, payment, complete-mediation, deployment, adoption, and endorsement nonclaims",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-kintzele-grid-curtailment/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "identifier": "draft-schrock-agent-operation-continuity",
+      "revision_at_snapshot": "00",
+      "role": "Composition profile that preserves one provider operation and its unresolved evidence across executor replacement within one authoritative coordination domain",
+      "next_action": "Published September 15 (Datatracker posting 2026-09-15T17:31:32Z, submission 169086) as an individual Internet-Draft, not adopted. The archive-identical XML and TXT are at standards/posted/draft-schrock-agent-operation-continuity-00.xml and .txt and are recorded in september_27_2026_posted_mirror.",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-agent-operation-continuity/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "identifier": "draft-intra-handshake-fail",
+      "revision_at_snapshot": "47",
+      "role": "Coauthored analysis of published vulnerabilities in early attestation; Iman Schrock is one of 15 listed authors",
+      "next_action": "Revision -47 posted September 27 (Datatracker posting 2026-09-27T17:15:53Z). Revisions are prepared outside this repository; do not imply sole or lead authorship.",
+      "url": "https://datatracker.ietf.org/doc/draft-intra-handshake-fail/",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-09-26",
+    "updated": "2026-09-27",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",
@@ -5324,7 +5340,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 26, 2026, the repository tracks 24 active records: 20 sole-authored series and four coauthored series. Current Datatracker revisions include CAID -03, Authorization Receipts -13, AEB -07, Bounded Capability Receipts -06, Presentation Binding -01, AE Challenge -07, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 27, 2026, the repository tracks 26 active records: 21 sole-authored series and five coauthored series, each with a maintenance status in standards/STATUS.json. Current Datatracker revisions include CAID -03, Authorization Receipts -13, AEB -07, Bounded Capability Receipts -06, Presentation Binding -01, AE Challenge -07, Agent Operation Continuity -00, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",

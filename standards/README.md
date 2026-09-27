@@ -73,9 +73,12 @@ the distinct profile and lifecycle portfolio remains intact.
 ## Separate portfolio and runtime views
 
 The presentation surface does not replace the active profile portfolio. The
-complete active portfolio remains the 24 records in
-`STATUS.json.active_datatracker`, including 20 sole-authored records and four
-coauthored records, each with its own scope and revision history.
+complete active portfolio is the 26 records in
+`STATUS.json.active_datatracker`, including 21 sole-authored records and five
+coauthored records, each with its own scope and revision history. Each record
+also carries a maintenance status (`maintenance_status`, defined in
+`STATUS.json.status_language`) and its Datatracker expiry date; the
+human-readable table is in [`PORTFOLIO.md`](PORTFOLIO.md#maintenance-status).
 
 The separate runtime execution spine is **Architecture-03 -> CAID-03 ->
 AEC-06 -> AEB-07**: architecture and decision boundaries, exact material-action
@@ -253,6 +256,15 @@ Object, identifier syntax, digest suites, and mapping algorithm are unchanged.
 It is an individual Internet-Draft, not a working-group item, and posting is
 not protocol-owner review.
 
+## September 27 posted mirror
+
+Bounded Capability Receipts-06 (Datatracker submission 168817) and Agent
+Operation Continuity-00 (Datatracker submission 169086) were published before
+this date but had no source in `posted/`. Their XML and TXT were fetched from
+the immutable IETF archive on 2026-09-27 and committed unchanged, with digests
+recorded in `STATUS.json.september_27_2026_posted_mirror`. Bounded Capability
+Receipts-04 moved to `archive/`.
+
 ## New-filing freeze
 
 A 90-day freeze on new Internet-Draft names and `-00` filings is in effect from
@@ -261,8 +273,10 @@ existing active draft name remain allowed. The standing exception requires a
 wire-level gap demonstrated by a named external implementer or deployment,
 recorded evidence, and a recorded overlap review. GRACE-00 is the sole recorded
 one-time governance override, and it does not claim that the standing exception
-was satisfied. No active draft is retired or merged by this freeze, and the
-distinct active profile portfolio remains intact.
+was satisfied. Agent Operation Continuity-00 was posted on 2026-09-15, inside
+the window, and no override is recorded for it. No active draft is retired or
+merged by this freeze, and the distinct active profile portfolio remains
+intact.
 
 ## Directory layout
 

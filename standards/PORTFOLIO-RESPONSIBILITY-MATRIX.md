@@ -4,10 +4,12 @@ Updated: 2026-08-22
 
 ## Decision and method
 
-This matrix covers all 20 active sole-authored series in
-`STATUS.json.active_datatracker`. It is extension-agnostic: every current XML
+This matrix covers the 20 sole-authored series that were active in
+`STATUS.json.active_datatracker` on 2026-08-22. Agent Operation Continuity-00,
+posted on 2026-09-15, is not reviewed here. Current per-series maintenance
+status is recorded in `STATUS.json` (`maintenance_status`). It is extension-agnostic: every current XML
 source in `standards/posted/` was read for its abstract, top-level sections,
-explicit claim boundary, inputs, and outputs. The four active coauthored
+explicit claim boundary, inputs, and outputs. The five active coauthored
 records in `STATUS.json` remain tracked separately and are not candidates for
 unilateral consolidation here.
 

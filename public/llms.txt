@@ -47,6 +47,8 @@ Interoperability evidence: 21 conformance suites and 340 current vectors across 
 - [draft-mih-sato-agent-accountability-composition](https://datatracker.ietf.org/doc/draft-mih-sato-agent-accountability-composition/): Coauthored composition perspective; snapshot revision -01, check Datatracker for current status.
 - [draft-dunbar-dmsc-gw-scenarios-gap-analysis](https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/): Coauthored Agent Gateway deployment and exact-action authorization gap analysis; snapshot revision -04, check Datatracker for current status.
 - [draft-schrock-kintzele-grid-curtailment](https://datatracker.ietf.org/doc/draft-schrock-kintzele-grid-curtailment/): Coauthored GRACE application profile for exact grid-curtailment admission, authenticated actuator and meter evidence, Action State, and single-use settlement; snapshot revision -00, check Datatracker for current status.
+- [draft-schrock-agent-operation-continuity](https://datatracker.ietf.org/doc/draft-schrock-agent-operation-continuity/): Composition profile that preserves one provider operation and its unresolved evidence across executor replacement within one authoritative coordination domain; snapshot revision -00, check Datatracker for current status.
+- [draft-intra-handshake-fail](https://datatracker.ietf.org/doc/draft-intra-handshake-fail/): Coauthored analysis of published vulnerabilities in early attestation; Iman Schrock is one of 15 listed authors; snapshot revision -47, check Datatracker for current status.
 
 ## Evidence
 

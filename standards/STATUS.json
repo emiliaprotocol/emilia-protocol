@@ -1,10 +1,10 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-09-26",
-  "active_datatracker_count": 24,
-  "active_schrock_datatracker_count": 21,
-  "sole_authored_datatracker_count": 20,
-  "posted_snapshot_policy": "standards/posted holds a published revision of each of the 20 active sole-authored draft-schrock-* Datatracker records represented in this repository, but not always the current one; the revision field in active_datatracker records the current Datatracker revision as of the updated date. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. AEB-07, AEC-06, CAID-03, Architecture-03, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status. September 6 exception: the corrective revisions Quorum-04 and Bounded Capability Receipts-05 are retained as exact archive-verified XML in their standards/staged provenance packets listed in september_6_2026_corrective_wave, and older standards/posted snapshots for these two names are historical. The other two corrective revisions were mirrored into standards/posted on 2026-09-26: AEC-06 is recorded in september_6_2026_aec_posted_snapshot and Architecture-03 in september_6_2026_architecture_posted_snapshot. Later revisions not mirrored into standards/posted, checked against the Datatracker API and the IETF archive on 2026-09-25: Authorization Receipts-13 (posted 2026-09-12) and Presentation Binding-01 (posted 2026-09-12) are retained as exact archive-identical XML in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13 and standards/staged/NEXT-PRESENTATION-BINDING-01; Bounded Capability Receipts-06 (posted 2026-09-09) is not retained in this repository, so the IETF archive is its only source. The standards/posted snapshots of those three names are historical.",
+  "updated": "2026-09-27",
+  "active_datatracker_count": 26,
+  "active_schrock_datatracker_count": 22,
+  "sole_authored_datatracker_count": 21,
+  "posted_snapshot_policy": "standards/posted holds a published revision of each of the 21 active sole-authored draft-schrock-* Datatracker records represented in this repository, but not always the current one; the revision field in active_datatracker records the current Datatracker revision as of the updated date. Coauthored records are tracked separately in active_datatracker; the GRACE -00 source and renders remain in its checksum-pinned profile packet. AEB-07, AEC-06, CAID-03, Architecture-03, Authorization Receipts-12, Bounded Capability Receipts-04, AE-CHALLENGE-07, the four August 6 maintenance revisions, GRACE-00, and the earlier publication waves were verified against the immutable IETF archive at the recorded local paths. Retained submission packets are publication provenance, not upload candidates; the IETF archive remains authoritative for rendered forms and live status. September 6 exception: the corrective revisions Quorum-04 and Bounded Capability Receipts-05 are retained as exact archive-verified XML in their standards/staged provenance packets listed in september_6_2026_corrective_wave, and older standards/posted snapshots for these two names are historical. The other two corrective revisions were mirrored into standards/posted on 2026-09-26: AEC-06 is recorded in september_6_2026_aec_posted_snapshot and Architecture-03 in september_6_2026_architecture_posted_snapshot. Later revisions not mirrored into standards/posted, checked against the Datatracker API and the IETF archive on 2026-09-25: Authorization Receipts-13 (posted 2026-09-12) and Presentation Binding-01 (posted 2026-09-12) are retained as exact archive-identical XML in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13 and standards/staged/NEXT-PRESENTATION-BINDING-01, and the standards/posted snapshots of those two names are historical. Bounded Capability Receipts-06 (posted 2026-09-09) and Agent Operation Continuity-00 (posted 2026-09-15) were mirrored into standards/posted on 2026-09-27 from the IETF archive and are recorded in september_27_2026_posted_mirror; Bounded Capability Receipts-04 moved to standards/archive.",
   "status_language": {
     "active_individual_submission": "Published on the IETF Datatracker as an individual Internet-Draft. Not an RFC, not an adopted working-group item, and not IETF endorsement.",
     "candidate": "Repository source under review. Not filed.",
@@ -14,7 +14,12 @@
     "held": "Temporary state only. No document may remain held without a dated decision or explicit external trigger.",
     "canonical_presentation_surface": "Reader-facing navigation across current active individual drafts. It creates no consolidation, replacement, update, obsolescence, retirement, or merger relationship.",
     "publication_provenance_packet": "Exact submitted bytes retained for audit after publication. Not an upload candidate or filing queue.",
-    "new_filing_freeze": "No new Internet-Draft name or -00 filing may enter the filing lane from 2026-08-04 through 2026-11-01 inclusive without the standing named-external-gap exception or a separately recorded governance override. Maintenance revisions under active names remain allowed. GRACE -00 is the sole recorded one-time governance override and does not claim that the named-external-gap exception was satisfied."
+    "new_filing_freeze": "No new Internet-Draft name or -00 filing may enter the filing lane from 2026-08-04 through 2026-11-01 inclusive without the standing named-external-gap exception or a separately recorded governance override. Maintenance revisions under active names remain allowed. GRACE -00 is the sole recorded one-time governance override and does not claim that the named-external-gap exception was satisfied.",
+    "maintained": "Active series under maintenance. A further revision is uploaded only when it carries new substance.",
+    "maintained_with_coauthors": "Coauthored active series. Any further revision is coordinated with the coauthors.",
+    "maintained_outside_repository": "Coauthored active series whose revisions are prepared outside this repository.",
+    "no_further_revisions_planned": "No further revision is planned. The posted revision remains the current individual draft until its Datatracker expiry date. A refresh at expiry is considered only if a citing document depends on it normatively.",
+    "will_not_be_revised": "The series will not be revised and expires on its Datatracker expiry date. Expiry does not remove the posted text from the IETF archive."
   },
   "decision_vocabulary": {
     "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
@@ -79,10 +84,10 @@
   "active_profile_portfolio": {
     "status": "preserved_distinct_from_navigation_views",
     "source_of_truth": "active_datatracker",
-    "active_datatracker_count": 24,
-    "active_schrock_datatracker_count": 21,
-    "sole_authored_datatracker_count": 20,
-    "coauthored_datatracker_count": 4,
+    "active_datatracker_count": 26,
+    "active_schrock_datatracker_count": 22,
+    "sole_authored_datatracker_count": 21,
+    "coauthored_datatracker_count": 5,
     "relationship": "The canonical PRESENTATION surface and runtime execution spine are navigation views over active work. Neither view retires, merges, replaces, updates, obsoletes, subordinates, or demotes an active profile or lifecycle draft."
   },
   "runtime_execution_spine": {
@@ -158,7 +163,14 @@
       }
     ],
     "active_draft_policy": "No active draft is retired or merged by this freeze.",
-    "profile_policy": "The distinct active profile portfolio remains intact."
+    "profile_policy": "The distinct active profile portfolio remains intact.",
+    "filings_in_window_without_recorded_override": [
+      {
+        "draft": "draft-schrock-agent-operation-continuity-00",
+        "published_on": "2026-09-15",
+        "note": "Posted inside the freeze window. No override is recorded for it."
+      }
+    ]
   },
   "portfolio_layers": [
     {
@@ -210,161 +222,208 @@
       "revision": "07",
       "layer": "execution_lifecycle",
       "role": "Machine-readable, action-bound request for missing authorization evidence; the challenge authorizes nothing",
-      "next_action": "Published August 10; use -07 as the cap-first, owner-serialized refusal baseline with bounded claim and reissue state, no policy hints on capacity refusal, authoritative replay ownership, and retry pacing while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues"
+      "next_action": "Published August 10; use -07 as the cap-first, owner-serialized refusal baseline with bounded claim and reissue state, no policy hints on capacity refusal, authoritative replay ownership, and retry pacing while Agent2Agent, AgentProto, HTTP, and Independent Stream review continues",
+      "maintenance_status": "maintained",
+      "datatracker_expires": "2027-02-12"
     },
     {
       "draft": "draft-schrock-action-evidence-boundary",
       "revision": "07",
       "layer": "execution_lifecycle",
       "role": "Boundary contract joining independently verified evidence to one material action, reserving authority before invocation, and preserving indeterminate outcomes for authenticated reconciliation",
-      "next_action": "Published September 25 (Datatracker posting 2026-09-26T00:11:40Z) as an individual Internet-Draft, not adopted; use -07 as the current consequence-admission baseline. It keeps the -06 structure (CAID only for a cross-format join, AEC only for a multi-leg evidence requirement, no second PDP when the effect-owning PEP accepts and enforces the native decision, durable consume or reserve before provider entry, and authenticated reconciliation with no blind replay) and adds a durable same-action in-flight fence, pre-entry recovery that releases only on proof of non-entry, purpose-bound verification of terminal provider evidence, one native replay identity derived from the relying-party-pinned authority namespace and the native authorization identifier, and the contents and verification of a native authorization handoff. The handoff encoding stays deployment-pinned; the repository reference encoding is cited informatively. Native-owner review and the complete multi-profile conformance gate remain open"
+      "next_action": "Published September 25 (Datatracker posting 2026-09-26T00:11:40Z) as an individual Internet-Draft, not adopted; use -07 as the current consequence-admission baseline. It keeps the -06 structure (CAID only for a cross-format join, AEC only for a multi-leg evidence requirement, no second PDP when the effect-owning PEP accepts and enforces the native decision, durable consume or reserve before provider entry, and authenticated reconciliation with no blind replay) and adds a durable same-action in-flight fence, pre-entry recovery that releases only on proof of non-entry, purpose-bound verification of terminal provider evidence, one native replay identity derived from the relying-party-pinned authority namespace and the native authorization identifier, and the contents and verification of a native authorization handoff. The handoff encoding stays deployment-pinned; the repository reference encoding is cited informatively. Native-owner review and the complete multi-profile conformance gate remain open",
+      "maintenance_status": "no_further_revisions_planned",
+      "datatracker_expires": "2027-03-30"
     },
     {
       "draft": "draft-schrock-action-remedy-receipts",
       "revision": "00",
       "layer": "execution_lifecycle",
       "role": "Dispute, decision, and fresh CAID-bound compensating-action evidence without rewriting the original effect",
-      "next_action": "Published July 29; use -00 as the current remedy lifecycle baseline"
+      "next_action": "Published July 29; use -00 as the current remedy lifecycle baseline",
+      "maintenance_status": "will_not_be_revised",
+      "datatracker_expires": "2027-01-29"
     },
     {
       "draft": "draft-schrock-agent-qualification-statements",
       "revision": "00",
       "layer": "evidence_satisfaction",
       "role": "Task- and policy-bounded qualification evidence that never authorizes by itself",
-      "next_action": "Published July 29; compose as a native AEC evidence role"
+      "next_action": "Published July 29; compose as a native AEC evidence role",
+      "maintenance_status": "will_not_be_revised",
+      "datatracker_expires": "2027-01-29"
     },
     {
       "draft": "draft-schrock-canonical-action-identifier",
       "revision": "03",
       "layer": "material_action_identity_mapping",
       "role": "Typed material-action identity and profile-bounded cross-format matching",
-      "next_action": "Published September 26 (Datatracker posting 2026-09-26T16:30:22Z) as an individual Internet-Draft, not adopted; use -03 for target-bound tool-call identity and profile-bounded cross-format matching. It makes enum validation replayable: an external enum reference requires a snapshot or edition label and a SHA-256 pin over the complete JCS values array, resolution is local and exact, and bare, unresolved, digest-mismatched, and out-of-set values fail closed. It also makes the enum definition forms exact, defines required-field presence as a member of the action object itself, makes the RFC 8785 refusal of unpaired surrogates explicit, and records the reference registry's version 3 to version 4 migration, under which eleven active types cannot produce a CAID until their external value sets are pinned. It does not change the Action Object, identifier syntax, digest suites, or mapping algorithm. The archive-identical XML is at standards/posted/draft-schrock-canonical-action-identifier-03.xml and is recorded in september_26_2026_caid_maintenance_wave."
+      "next_action": "Published September 26 (Datatracker posting 2026-09-26T16:30:22Z) as an individual Internet-Draft, not adopted; use -03 for target-bound tool-call identity and profile-bounded cross-format matching. It makes enum validation replayable: an external enum reference requires a snapshot or edition label and a SHA-256 pin over the complete JCS values array, resolution is local and exact, and bare, unresolved, digest-mismatched, and out-of-set values fail closed. It also makes the enum definition forms exact, defines required-field presence as a member of the action object itself, makes the RFC 8785 refusal of unpaired surrogates explicit, and records the reference registry's version 3 to version 4 migration, under which eleven active types cannot produce a CAID until their external value sets are pinned. It does not change the Action Object, identifier syntax, digest suites, or mapping algorithm. The archive-identical XML is at standards/posted/draft-schrock-canonical-action-identifier-03.xml and is recorded in september_26_2026_caid_maintenance_wave.",
+      "maintenance_status": "maintained",
+      "datatracker_expires": "2027-03-30"
     },
     {
       "draft": "draft-schrock-emilia-eye",
       "revision": "00",
       "layer": "execution_lifecycle",
       "role": "Scope-bound advisory that can tighten but never authorize",
-      "next_action": "Hold current revision"
+      "next_action": "Hold current revision",
+      "maintenance_status": "will_not_be_revised",
+      "datatracker_expires": "2026-12-28"
     },
     {
       "draft": "draft-schrock-ep-architecture",
       "revision": "03",
       "layer": "architecture",
       "role": "Portfolio architecture",
-      "next_action": "Published September 6 (Datatracker posting 2026-09-06T17:31:40Z) as an individual Internet-Draft, not adopted; use -03 as the current individual draft. It makes provider entry the transition that converts reserved authority to consumed authority before provider invocation; defines admission-control domains and monotonic epochs without overloading witness-independence control domains; defines serialized emergency freeze, restoration, and reconciliation behavior for the three freeze-versus-entry races; states the disconnected-edge stale-admission window and rejects immediate global-freeze claims; and adds idempotency, wrong-holder, receipt-absence, and unsigned-event claim boundaries. The abstract is unchanged from -02. The archive-identical XML is at standards/posted/draft-schrock-ep-architecture-03.xml and is recorded in september_6_2026_architecture_posted_snapshot. Publication is separate from implementation or package release."
+      "next_action": "Published September 6 (Datatracker posting 2026-09-06T17:31:40Z) as an individual Internet-Draft, not adopted; use -03 as the current individual draft. It makes provider entry the transition that converts reserved authority to consumed authority before provider invocation; defines admission-control domains and monotonic epochs without overloading witness-independence control domains; defines serialized emergency freeze, restoration, and reconciliation behavior for the three freeze-versus-entry races; states the disconnected-edge stale-admission window and rejects immediate global-freeze claims; and adds idempotency, wrong-holder, receipt-absence, and unsigned-event claim boundaries. The abstract is unchanged from -02. The archive-identical XML is at standards/posted/draft-schrock-ep-architecture-03.xml and is recorded in september_6_2026_architecture_posted_snapshot. Publication is separate from implementation or package release.",
+      "maintenance_status": "no_further_revisions_planned",
+      "datatracker_expires": "2027-03-10"
     },
     {
       "draft": "draft-schrock-ep-authority-introduction",
       "revision": "03",
       "layer": "delegation_capability_policy",
       "role": "Authority introduction and trust-root boundary",
-      "next_action": "Published August 4; use -03 as the current trust-root, scoped-authority, and exact-action callee-binding baseline"
+      "next_action": "Published August 4; use -03 as the current trust-root, scoped-authority, and exact-action callee-binding baseline",
+      "maintenance_status": "no_further_revisions_planned",
+      "datatracker_expires": "2027-02-05"
     },
     {
       "draft": "draft-schrock-ep-authorization-evidence-chain",
       "revision": "06",
       "layer": "evidence_satisfaction",
       "role": "Heterogeneous evidence composition",
-      "next_action": "Published September 6 (Datatracker posting 2026-09-06T17:33:02Z) as an individual Internet-Draft, not adopted; use -06 as the current individual draft. It adds an explicit pre-execution Authorization Bundle component kept separate from the terminal Trust Receipt component, updates implementation status for the structured requirement, native facts, role constraints, required bindings, and replay contract, and updates references without changing the EP-AEC-v1 envelope or converting evidence satisfaction into execution authority. The archive-identical XML is at standards/posted/draft-schrock-ep-authorization-evidence-chain-06.xml and is recorded in september_6_2026_aec_posted_snapshot. Publication is separate from implementation or package release."
+      "next_action": "Published September 6 (Datatracker posting 2026-09-06T17:33:02Z) as an individual Internet-Draft, not adopted; use -06 as the current individual draft. It adds an explicit pre-execution Authorization Bundle component kept separate from the terminal Trust Receipt component, updates implementation status for the structured requirement, native facts, role constraints, required bindings, and replay contract, and updates references without changing the EP-AEC-v1 envelope or converting evidence satisfaction into execution authority. The archive-identical XML is at standards/posted/draft-schrock-ep-authorization-evidence-chain-06.xml and is recorded in september_6_2026_aec_posted_snapshot. Publication is separate from implementation or package release.",
+      "maintenance_status": "maintained",
+      "maintenance_note": "One corrective revision is planned. No further revision is planned after it.",
+      "datatracker_expires": "2027-03-10"
     },
     {
       "draft": "draft-schrock-ep-authorization-receipts",
       "revision": "13",
       "layer": "authorization_evidence",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:05:02Z); use -13, which adds the consolidated receipt-claim boundary (Section 13.13) to the -12 baseline: acceptance-prefix integrity, the offline anti-backdating limit, historical-versus-current acceptance separation, the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request. Exact archive-identical XML is in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13"
+      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:05:02Z); use -13, which adds the consolidated receipt-claim boundary (Section 13.13) to the -12 baseline: acceptance-prefix integrity, the offline anti-backdating limit, historical-versus-current acceptance separation, the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request. Exact archive-identical XML is in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13",
+      "maintenance_status": "maintained",
+      "datatracker_expires": "2027-03-16"
     },
     {
       "draft": "draft-schrock-ep-bounded-capability-receipts",
       "revision": "06",
       "layer": "delegation_capability_policy",
       "role": "Action-bound capability budget and spend evidence",
-      "next_action": "Published September 9 (Datatracker posting 2026-09-09T14:30:11Z); use -06 as the current individual draft. Its XML is not retained in this repository; the IETF archive is authoritative. The -05 XML remains recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release."
+      "next_action": "Published September 9 (Datatracker posting 2026-09-09T14:30:11Z, submission 168817); use -06 as the current individual draft. The archive-identical XML and TXT are at standards/posted/draft-schrock-ep-bounded-capability-receipts-06.xml and .txt and are recorded in september_27_2026_posted_mirror. The -05 XML remains recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
+      "maintenance_status": "no_further_revisions_planned",
+      "datatracker_expires": "2027-03-13"
     },
     {
       "draft": "draft-schrock-ep-bounded-execution-program",
       "revision": "00",
       "layer": "execution_lifecycle",
       "role": "Reachability-, occurrence-, concurrency-, and budget-bounded runtime program for consequential action admission",
-      "next_action": "Published August 3; use -00 as the experimental bounded-execution-program baseline without implying plan understanding, safety, legality, effect truth, or complete mediation"
+      "next_action": "Published August 3; use -00 as the experimental bounded-execution-program baseline without implying plan understanding, safety, legality, effect truth, or complete mediation",
+      "maintenance_status": "will_not_be_revised",
+      "datatracker_expires": "2027-02-04"
     },
     {
       "draft": "draft-schrock-ep-evidence-record",
       "revision": "01",
       "layer": "execution_lifecycle",
       "role": "Long-term crypto-agile evidence preservation",
-      "next_action": "Hold the current published revision"
+      "next_action": "Hold the current published revision",
+      "maintenance_status": "will_not_be_revised",
+      "datatracker_expires": "2027-01-07"
     },
     {
       "draft": "draft-schrock-ep-outcome-binding",
       "revision": "00",
       "layer": "execution_lifecycle",
       "role": "Source-routed predicted effects and independently pinned post-execution observations",
-      "next_action": "Published July 29; use -00 as the current outcome comparison and indeterminate-evidence baseline"
+      "next_action": "Published July 29; use -00 as the current outcome comparison and indeterminate-evidence baseline",
+      "maintenance_status": "no_further_revisions_planned",
+      "datatracker_expires": "2027-01-30"
     },
     {
       "draft": "draft-schrock-ep-presentation-binding",
       "revision": "01",
       "layer": "authorization_evidence",
       "role": "Binding the signed action to what the approver was shown",
-      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:06:51Z); hold -01, which adds the receipt and presentation evidence boundary (Section 6.1). Exact archive-identical XML is in standards/staged/NEXT-PRESENTATION-BINDING-01"
+      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:06:51Z); hold -01, which adds the receipt and presentation evidence boundary (Section 6.1). Exact archive-identical XML is in standards/staged/NEXT-PRESENTATION-BINDING-01",
+      "maintenance_status": "no_further_revisions_planned",
+      "datatracker_expires": "2027-03-16"
     },
     {
       "draft": "draft-schrock-ep-quorum",
       "revision": "04",
       "layer": "authorization_evidence",
       "role": "Distinct-human multi-handshake composition",
-      "next_action": "Published September 6; use -04 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release."
+      "next_action": "Published September 6; use -04 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
+      "maintenance_status": "no_further_revisions_planned",
+      "datatracker_expires": "2027-03-10"
     },
     {
       "draft": "draft-schrock-ep-revocation-statement",
       "revision": "01",
       "layer": "execution_lifecycle",
       "role": "Signed retraction of authority without rewriting an already executed effect",
-      "next_action": "Published July 29; use -01 as the current fail-closed status-target vocabulary"
+      "next_action": "Published July 29; use -01 as the current fail-closed status-target vocabulary",
+      "maintenance_status": "no_further_revisions_planned",
+      "datatracker_expires": "2027-01-29"
     },
     {
       "draft": "draft-schrock-ep-reliance-agreement",
       "revision": "00",
       "layer": "execution_lifecycle",
       "role": "Signed technical terms that bind reliance-program identifiers, versions, digests, parties, and acceptance conditions without creating legal enforceability or insurance",
-      "next_action": "Published August 3; use -00 as the technical reliance-terms baseline and preserve its explicit legal, insurance, fault, escrow, and payment nonclaims"
+      "next_action": "Published August 3; use -00 as the technical reliance-terms baseline and preserve its explicit legal, insurance, fault, escrow, and payment nonclaims",
+      "maintenance_status": "will_not_be_revised",
+      "datatracker_expires": "2027-02-04"
     },
     {
       "draft": "draft-schrock-human-authorization-binding",
       "revision": "00",
       "layer": "authorization_evidence",
       "role": "Binding a human-authorization artifact into adjacent host formats",
-      "next_action": "Hold the current published revision"
+      "next_action": "Hold the current published revision",
+      "maintenance_status": "no_further_revisions_planned",
+      "datatracker_expires": "2027-01-04"
     },
     {
       "draft": "draft-schrock-model-to-matter",
       "revision": "04",
       "layer": "execution_lifecycle",
       "role": "Experimental executor-side authorization-evidence clearance for model-directed physical execution",
-      "next_action": "Published August 6; use -04 for the seven-role clearance profile, physical-state source claim, and program and requirement digest binding while preserving the no-physical-truth limitation"
+      "next_action": "Published August 6; use -04 for the seven-role clearance profile, physical-state source claim, and program and requirement digest binding while preserving the no-physical-truth limitation",
+      "maintenance_status": "will_not_be_revised",
+      "datatracker_expires": "2027-02-08"
     },
     {
       "draft": "draft-ferro-schrock-memory-projection-record",
       "revision": "01",
       "layer": "authorization_evidence",
       "role": "Signed record of exact context bytes projected by a memory adapter, with explicit nonclaims",
-      "next_action": "Published August 4; coordinate future revisions with Andrea Ferro"
+      "next_action": "Published August 4; coordinate future revisions with Andrea Ferro",
+      "maintenance_status": "maintained_with_coauthors",
+      "datatracker_expires": "2027-02-05"
     },
     {
       "draft": "draft-mih-sato-agent-accountability-composition",
       "revision": "01",
       "layer": "architecture",
       "role": "Coauthored composition perspective",
-      "next_action": "Coordinate terminology; do not imply sole authorship"
+      "next_action": "Coordinate terminology; do not imply sole authorship",
+      "maintenance_status": "maintained_with_coauthors",
+      "datatracker_expires": "2027-02-17"
     },
     {
       "draft": "draft-dunbar-dmsc-gw-scenarios-gap-analysis",
       "revision": "04",
       "layer": "architecture",
       "role": "Coauthored Agent Gateway deployment and exact-action authorization gap analysis",
-      "next_action": "Revision -04 posted August 14 (Datatracker posting 2026-08-14T18:12:39Z); coordinate any further revision with Linda Dunbar"
+      "next_action": "Revision -04 posted August 14 (Datatracker posting 2026-08-14T18:12:39Z); coordinate any further revision with Linda Dunbar",
+      "maintenance_status": "maintained_with_coauthors",
+      "datatracker_expires": "2027-02-15"
     },
     {
       "draft": "draft-schrock-kintzele-grid-curtailment",
@@ -374,7 +433,27 @@
       "source": "standards/profiles/NEXT-GRID-CURTAILMENT-00/REVIEW-SOURCE/draft-schrock-kintzele-grid-curtailment-00.xml",
       "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-kintzele-grid-curtailment/",
       "snapshot_sha256": "0c656d9cbdb0701a23668420460a6d1143efcf74db8919f4a9c24f4fd5697ba6",
-      "next_action": "Published August 22; use -00 as the current coauthored GRACE application-profile baseline while preserving its physical-truth, baseline-correctness, tariff-eligibility, payment, complete-mediation, deployment, adoption, and endorsement nonclaims"
+      "next_action": "Published August 22; use -00 as the current coauthored GRACE application-profile baseline while preserving its physical-truth, baseline-correctness, tariff-eligibility, payment, complete-mediation, deployment, adoption, and endorsement nonclaims",
+      "maintenance_status": "maintained_with_coauthors",
+      "datatracker_expires": "2027-02-23"
+    },
+    {
+      "draft": "draft-schrock-agent-operation-continuity",
+      "revision": "00",
+      "layer": "execution_lifecycle",
+      "role": "Composition profile that preserves one provider operation and its unresolved evidence across executor replacement within one authoritative coordination domain",
+      "next_action": "Published September 15 (Datatracker posting 2026-09-15T17:31:32Z, submission 169086) as an individual Internet-Draft, not adopted. The archive-identical XML and TXT are at standards/posted/draft-schrock-agent-operation-continuity-00.xml and .txt and are recorded in september_27_2026_posted_mirror.",
+      "maintenance_status": "will_not_be_revised",
+      "datatracker_expires": "2027-03-19"
+    },
+    {
+      "draft": "draft-intra-handshake-fail",
+      "revision": "47",
+      "layer": "identity_transport",
+      "role": "Coauthored analysis of published vulnerabilities in early attestation; Iman Schrock is one of 15 listed authors",
+      "next_action": "Revision -47 posted September 27 (Datatracker posting 2026-09-27T17:15:53Z). Revisions are prepared outside this repository; do not imply sole or lead authorship.",
+      "maintenance_status": "maintained_outside_repository",
+      "datatracker_expires": "2027-03-31"
     }
   ],
   "replaced_datatracker": [
@@ -403,6 +482,21 @@
       "successor": "draft-schrock-action-evidence-boundary-00 and draft-schrock-ep-architecture-02"
     }
   ],
+  "portfolio_maintenance": {
+    "recorded_on": "2026-09-27",
+    "source": "Datatracker API documentauthor query for person 163567 on 2026-09-27: 30 series, 26 active and 4 replaced; 21 active series are sole-authored and 5 are coauthored.",
+    "labels": [
+      "maintained",
+      "maintained_with_coauthors",
+      "maintained_outside_repository",
+      "no_further_revisions_planned",
+      "will_not_be_revised"
+    ],
+    "label_definitions": "status_language",
+    "per_series_field": "active_datatracker[].maintenance_status, with active_datatracker[].datatracker_expires copied from the Datatracker expires field",
+    "merges": "No series is merged into another.",
+    "replaced_series": "The four replaced_datatracker series need no action."
+  },
   "july_19_2026_core_wave": {
     "submission_window_opens_after": "2026-07-18T23:59:00+02:00",
     "filing_date": "2026-07-19",
@@ -725,7 +819,7 @@
     "items": [
       {
         "draft": "draft-schrock-ep-bounded-capability-receipts-04",
-        "source": "standards/posted/draft-schrock-ep-bounded-capability-receipts-04.xml",
+        "source": "standards/archive/draft-schrock-ep-bounded-capability-receipts-04.xml",
         "snapshot_sha256": "c89f36202208ea82b877d7e9f69738b9d1b6bc052d368a6a51cdb60533289fd8",
         "state": "published_ietf_archive_verified_exact_local_match"
       }
@@ -1027,6 +1121,33 @@
         "snapshot_sha256": "9b37d4911dc32d19198e4a0874ee64256e93a8f851a01553a445027b631371bf",
         "datatracker_submission_id": 168691,
         "state": "published_ietf_archive_verified_exact_local_match"
+      }
+    ]
+  },
+  "september_27_2026_posted_mirror": {
+    "mirrored_on": "2026-09-27",
+    "item_count": 2,
+    "publication_status": "published_and_ietf_archive_verified_2026_09_27",
+    "verification": "Each XML and TXT was fetched from https://www.ietf.org/archive/id/ on 2026-09-27. The committed bytes are the archive bytes: each SHA-256 below was computed over the fetched file, and each XML docName matches its revision. No HTML is mirrored; the IETF archive is authoritative for rendered forms.",
+    "items": [
+      {
+        "draft": "draft-schrock-ep-bounded-capability-receipts-06",
+        "datatracker_submission_id": 168817,
+        "datatracker_posted_at": "2026-09-09T14:30:11Z",
+        "xml": "standards/posted/draft-schrock-ep-bounded-capability-receipts-06.xml",
+        "xml_sha256": "0ffcbdb8c7a04e4b716df22fc62a52683fd3ec2e0ec40b5554480d1e4395ae5b",
+        "txt": "standards/posted/draft-schrock-ep-bounded-capability-receipts-06.txt",
+        "txt_sha256": "642a28742d703ef69f845660acad333c2a3be4a175bc9fe5edec2274afa5be78",
+        "superseded_snapshot": "standards/archive/draft-schrock-ep-bounded-capability-receipts-04.xml"
+      },
+      {
+        "draft": "draft-schrock-agent-operation-continuity-00",
+        "datatracker_submission_id": 169086,
+        "datatracker_posted_at": "2026-09-15T17:31:32Z",
+        "xml": "standards/posted/draft-schrock-agent-operation-continuity-00.xml",
+        "xml_sha256": "516ce2484aaae2be131c46f262c0c5ad209dbb39958a063b5773cfa9663c3278",
+        "txt": "standards/posted/draft-schrock-agent-operation-continuity-00.txt",
+        "txt_sha256": "2c0668b2381fd1425a4935dd8cd0404d7429fb190813c22c1d6110b5343bd507"
       }
     ]
   }

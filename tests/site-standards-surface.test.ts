@@ -23,12 +23,30 @@ describe('canonical standards presentation surface', () => {
     expect(status.active_schrock_datatracker_count).toBe(
       status.active_datatracker.filter((entry: { draft: string }) => entry.draft.startsWith('draft-schrock-')).length,
     );
-    expect(status.active_profile_portfolio.sole_authored_datatracker_count).toBe(20);
-    expect(status.active_profile_portfolio.coauthored_datatracker_count).toBe(4);
+    expect(status.active_profile_portfolio.sole_authored_datatracker_count).toBe(21);
+    expect(status.active_profile_portfolio.coauthored_datatracker_count).toBe(5);
+    expect(status.sole_authored_datatracker_count).toBe(status.active_profile_portfolio.sole_authored_datatracker_count);
+    expect(
+      status.active_profile_portfolio.sole_authored_datatracker_count
+        + status.active_profile_portfolio.coauthored_datatracker_count,
+    ).toBe(status.active_datatracker_count);
     expect(status.active_datatracker).toContainEqual(expect.objectContaining({
       draft: 'draft-schrock-kintzele-grid-curtailment',
       revision: '00',
     }));
+  });
+
+  it('records a defined maintenance status and Datatracker expiry for every active series', () => {
+    const labels: string[] = status.portfolio_maintenance.labels;
+    for (const label of labels) {
+      expect(typeof status.status_language[label]).toBe('string');
+    }
+    for (const entry of status.active_datatracker as Array<{ draft: string; maintenance_status: string; datatracker_expires: string }>) {
+      expect(labels, entry.draft).toContain(entry.maintenance_status);
+      expect(entry.datatracker_expires, entry.draft).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+    const drafts = status.active_datatracker.map((entry: { draft: string }) => entry.draft);
+    expect(new Set(drafts).size).toBe(drafts.length);
   });
 
   it('makes the website consume the governed revision source instead of hardcoding revisions', () => {

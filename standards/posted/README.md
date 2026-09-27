@@ -1,12 +1,12 @@
 # Posted Draft Snapshots
 
 This directory keeps local source snapshots for revisions already published on
-the IETF Datatracker. It contains a published revision of each of the 20
+the IETF Datatracker. It contains a published revision of each of the 21
 sole-authored records represented in this repository, not always the current
 one, plus the locally retained coauthored Memory Projection Record snapshot.
 Datatracker is authoritative for current revisions and status; see
-[`../STATUS.json`](../STATUS.json) for the complete 24-record active inventory,
-including four coauthored records. The GRACE-00 source and renders remain in
+[`../STATUS.json`](../STATUS.json) for the complete 26-record active inventory,
+including five coauthored records. The GRACE-00 source and renders remain in
 the checksum-pinned `../profiles/NEXT-GRID-CURTAILMENT-00/` packet.
 
 Do not upload a file from this directory as a new draft. Maintenance revisions
@@ -38,6 +38,7 @@ authoritative for rendered forms.
 - `draft-schrock-ae-challenge-07`
 - `draft-schrock-action-evidence-boundary-07`
 - `draft-schrock-action-remedy-receipts-00`
+- `draft-schrock-agent-operation-continuity-00`
 - `draft-schrock-agent-qualification-statements-00`
 - `draft-schrock-canonical-action-identifier-03`
 - `draft-schrock-emilia-eye-00`
@@ -45,7 +46,7 @@ authoritative for rendered forms.
 - `draft-schrock-ep-authority-introduction-03`
 - `draft-schrock-ep-authorization-evidence-chain-06`
 - `draft-schrock-ep-authorization-receipts-12`
-- `draft-schrock-ep-bounded-capability-receipts-04`
+- `draft-schrock-ep-bounded-capability-receipts-06`
 - `draft-schrock-ep-bounded-execution-program-00`
 - `draft-schrock-ep-evidence-record-01`
 - `draft-schrock-ep-outcome-binding-00`
@@ -87,7 +88,7 @@ admission and one-time consequence custody.
 This spine is a separate navigation view. It is not the four-document
 presentation surface or a replacement portfolio. AEC appears in both views
 because evidence satisfaction feeds runtime admission, not because the views
-are equivalent. The complete active portfolio remains the 24-record inventory
+are equivalent. The complete active portfolio remains the 26-record inventory
 in [`../STATUS.json`](../STATUS.json), with each draft's scope and revision
 history preserved.
 
@@ -315,3 +316,20 @@ upload candidate. Its XML is byte-for-byte identical to the posted source.
 CAID-02 is retained in `../archive/`. Publication does not establish
 protocol-owner review, independent implementation, working-group adoption, RFC
 status, or IETF endorsement.
+
+## September 27, 2026 mirror of two earlier revisions
+
+Two revisions that were already published had no source in this directory.
+Their XML and TXT were fetched from the immutable IETF archive on 2026-09-27
+and committed unchanged; `STATUS.json` records their SHA-256 digests in
+`september_27_2026_posted_mirror`:
+
+- `draft-schrock-ep-bounded-capability-receipts-06`, Datatracker submission
+  168817 (Datatracker time 2026-09-09T14:30:11Z). Revision -04 moved to
+  `../archive/`.
+- `draft-schrock-agent-operation-continuity-00`, Datatracker submission 169086
+  (Datatracker time 2026-09-15T17:31:32Z).
+
+No HTML render is retained for either revision; the archive is authoritative
+for rendered forms. Publication does not establish implementation,
+working-group adoption, RFC status, or IETF endorsement.
