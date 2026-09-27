@@ -31,7 +31,14 @@ invariant(
 const xml = readFileSync(new URL(`UPLOAD-THIS/${basename}.xml`, root), 'utf8');
 const txt = readFileSync(new URL(`RENDERS/${basename}.txt`, root), 'utf8');
 const flatXml = xml.replace(/\s+/g, ' ');
-const flatTxt = txt.replace(/\s+/g, ' ');
+// Page footers and running headers can fall inside a sentence; drop them
+// before flattening so required text is matched as a reader sees it.
+const flatTxt = txt
+  .split('\n')
+  .filter((line) => !/\[Page \d+\]$/.test(line) && !/^Internet-Draft {2,}.* \d{4}$/.test(line))
+  .join('\n')
+  .replace(/\f/g, '')
+  .replace(/\s+/g, ' ');
 
 for (const required of [
   `docName="${basename}"`,
@@ -101,7 +108,16 @@ for (const required of [
   'MUST NOT contain a credential, bearer token, secret, or sensitive query parameter',
   'This section is to be removed before publishing as an RFC.',
   'this document is intended for the Independent Submission Stream',
-  'The reference does not implement the optional evaluation-lineage profile',
+  'The reference is narrower than this document.',
+  'Its store keys a registration by challenge identifier and nonce within one relying party',
+  'Its durable path accepts nonces of 16 through 128 base64url characters',
+  'It does not implement the capacity, outstanding-state, and exhaustion requirements',
+  'That adapter is exercised against an in-process emulation of its SQL statements, not a live database.',
+  'None of this is an independent implementation',
+  'SATISFIED concerns evidence sufficiency only.',
+  'is outside SATISFIED and is not reported with these reasons',
+  'it requires that the confirmation be bound to a verifiable authorization grant issued by the authorization server, which makes the final decision',
+  'The type is not specific to one application or deployment.',
   'Section 10.7 of [AIMS]',
   'draft-ietf-wimse-aims-00',
   'Christine Classy',
@@ -122,6 +138,19 @@ for (const forbidden of [
   'evidence_insufficient',
   'evaluation_indeterminate',
   'unverifiable_evidence',
+  // Implementation claims that no code in the repository supports.
+  'PostgreSQL transaction backend',
+  'owner state machine',
+  '65536',
+  '114 small scenarios',
+  'stale-worker fencing',
+  'Model-to-Matter',
+  // Moved out of the core (it describes the implementation) and the
+  // vocabulary that missed the VERIFIED-but-not-ACCEPTED case.
+  'The reference HTTP helpers consume already decoded objects',
+  'missing, stale, or unverifiable',
+  'promise capacity or acceptance',
+  'treats a user confirmation obtained during task execution as authorization only when',
   // The replaced KLRC draft is no longer cited.
   'draft-klrc-aiagent-auth-03',
   'target="KLRC"',

@@ -21,7 +21,8 @@
     <keyword>step-up</keyword>
     <abstract>
       <t>When a relying party refuses a consequential agent action because
-      authorization evidence is missing, stale, or unverifiable, the agent
+      authorization evidence is missing, stale, not verified, not accepted
+      under its trust inputs, or not bound to the exact action, the agent
       needs a machine-readable description of what remains necessary. This
       document defines a transport-neutral Authorization Evidence Challenge
       data model bound to the relying party's exact action. The challenge
@@ -160,9 +161,12 @@
           directory, issuer, audience, key class, native policy, and validity
           at the evaluation time.</dd>
           <dt>SATISFIED:</dt>
-          <dd>Every evidence requirement of a challenge was met, under the
-          relying party's live policy at the evaluation time, by evidence that
-          is VERIFIED, ACCEPTED, and bound to the exact action.</dd>
+          <dd>Every evidence requirement of a challenge was met at the
+          evaluation time, under the policy snapshot the challenge binds, by
+          evidence that is VERIFIED, ACCEPTED, and bound to the exact action.
+          SATISFIED concerns evidence sufficiency only. Whether the relying
+          party then authorizes the action is a separate local decision outside
+          SATISFIED.</dd>
           <dt>UNSATISFIED:</dt>
           <dd>Every evaluation result other than SATISFIED, including an
           evaluation that could not complete. Reason identifiers say why.</dd>
@@ -309,11 +313,6 @@ NOTE: '\' line wrapping per RFC 8792
 	        use those pinned procedures. A transport reserialization, member-order
 	        change, non-JSON mapping, or mutable local configuration MUST NOT
 	        silently switch digest or canonicalization procedures.</t>
-	        <t>The reference HTTP helpers consume already decoded objects. They
-	        begin only after the carrier has applied a bounded raw-message parser
-	        and duplicate-member detection. Those helpers are not evidence that an
-	        ordinary JSON parser supplied by a generic HTTP framework satisfies
-	        these requirements.</t>
         <t>Self-describing issuance can avoid retaining one record for every
         unanswered challenge. It does not remove single-use state. On the
 	        first returned presentation, the relying party still MUST claim the
@@ -568,7 +567,12 @@ NOTE: '\' line wrapping per RFC 8792
         is VERIFIED and not ACCEPTED), <tt>action_not_matched</tt> (a VERIFIED
         and ACCEPTED artifact is not bound to the exact action under the
         pinned action profile), <tt>stale_evidence</tt>,
-        <tt>status_unsatisfied</tt>, and <tt>policy_unsatisfied</tt>. The
+        <tt>status_unsatisfied</tt>, and <tt>policy_unsatisfied</tt> (a
+        policy-bound evidence requirement named by the challenge, such as a
+        <tt>proof_predicates</tt> value, was not met by evidence that is
+        otherwise VERIFIED, ACCEPTED, and bound to the exact action). A
+        refusal by the relying party's local authorization decision is
+        outside SATISFIED and is not reported with these reasons. The
         incomplete-evaluation reasons are <tt>evaluation_unavailable</tt> and
         <tt>evaluation_state_uncertain</tt>. For <tt>SATISFIED</tt>, the array
         MUST be empty. For <tt>UNSATISFIED</tt>, it MUST contain either one or
@@ -932,7 +936,7 @@ NOTE: '\' line wrapping per RFC 8792
 	        fails closed.</t>
 	        <t>When a hard cap is binding for an unclaimed exact body, capacity
 	        handling controls the response
-        even if the supplied evidence is also missing, stale, or unverifiable.
+        even if the supplied evidence is also insufficient.
         The relying party MUST NOT perform native evidence verification or
         local policy evaluation, and MUST NOT return a follow-up challenge, a
         stateless list of remaining requirements, obtain hints, or any other
@@ -1164,7 +1168,7 @@ Retry-After: 30
 	      expired challenge and can request a new interaction under its carrier.
 	      Retry-After does
       not carry the jitter value and does not change the challenge expiry,
-      authorize the action, promise capacity or acceptance, or make a retry
+      authorize the action, promise capacity or admission, or make a retry
       safe after an uncertain effect. If an intermediary changes the HTTP
       status from 403, a client MUST NOT process the response as this carrier
       merely because the body still contains the type URI.</t>
@@ -1187,7 +1191,8 @@ Retry-After: 30
       <t>Agent gateways can carry the transport-neutral challenge during
       federation or handoff. The receiving gateway is the relying party: it
       derives the exact action, applies its own trust anchors and policy, and
-      issues a challenge when evidence is missing, stale, or unverifiable.
+      issues a challenge when evidence is missing, stale, not VERIFIED, not
+      ACCEPTED, or not bound to the exact action.
       The sending gateway or agent can obtain evidence and return a new
       presentation using a DMSC-defined extension point or error carrier.</t>
       <t>If the receiving gateway's required next step is a native OAuth
@@ -1202,7 +1207,7 @@ Retry-After: 30
       the two actions are equivalent requires a separately defined mapping or
       transformation proof.</t>
       <t>When a receiving gateway refuses an action because required
-      authorization evidence is missing, stale, or unverifiable, it may
+      authorization evidence is insufficient, it may
       return a structured evidence challenge identifying the exact action,
       outstanding evidence requirements, applicable freshness or status
       constraints, and supported presentation profiles. The challenge does
@@ -1221,7 +1226,7 @@ Retry-After: 30
       solve that property
       separately. If the receiving gateway cannot establish the
       required exclusivity, its safe result is refusal or indeterminate, not
-      acceptance based on the challenge.</t>
+      admission based on the challenge.</t>
       <section anchor="dmsc-case">
         <name>Illustrative Gateway Case</name>
         <t>Gateway A forwards a proposed action to Gateway B. Gateway B derives
@@ -1250,50 +1255,65 @@ Retry-After: 30
       Implementation Status section described in <xref target="RFC7942"/>.
       That process covers IETF-stream drafts; this document is intended for
       the Independent Submission Stream.</t>
-          <t>The same-team TypeScript reference includes an owner state machine
-          and a PostgreSQL transaction backend for the stateful path in
-          <xref target="state-bounds"/>. The
-          owner store registers issuance with capacity before exposure, stores
-          the issuance debit, bucket limits, and authenticated presenter instead
-          of recomputing them from the audience, uses PostgreSQL transaction time
-          for expiry, evidence-freshness evaluation, and recovery, locks replay and
-          capacity rows, returns an opaque generation-bound reservation, and
-          atomically finalizes a terminal result or a fresh follow-up. Recovery
-          is deadline-gated, requires a constructor-pinned local authorizer, and
-          replaces the reservation generation so an old token cannot finalize.
-          The production evaluator accepts only the owner-store object created
-          by that factory; copied objects and caller-declared capability flags
-          are refused. Capacity-row validation does not assume that JavaScript
-          and PostgreSQL use the same collation. Caller-selected production
-          follow-up nonces are rejected before claim, and a local follow-up
-          construction failure triggers terminal finalization without exposing
-          replacement state. If that finalization is uncertain, the evaluator
-          returns unavailability rather than claiming terminal state.</t>
-          <t>The reference owner rejects a challenge larger than 65536 UTF-8
-          octets, more than 64 evidence requirements or obtain hints, more than
-          16 presentation or per-requirement profile identifiers, or more than
-          32 proof-predicate or critical identifiers. It also rejects relative
-          security identifiers, duplicate requirement identifiers, unknown
-          nested core members, non-canonical durable nonces, and invalid retry
-          windows before allocating state. Local evidence-type tokens are mapped
-          to exact absolute URIs under <tt>https://emiliaprotocol.ai/ns/</tt> for
-          its experimental profile; consumers use the complete URI and do not
-          infer semantics from that prefix. If authenticated live policy changes,
-          the reference starts a fresh interaction rather than treating old
-          verification work as a continuation.</t>
-          <t>Executable tests cover duplicate claim, capacity refusal without
-          nonce burn, authoritative expiry and freshness time, terminal release of unused capacity,
-          atomic follow-up creation, stale-worker fencing, and the PostgreSQL
-          transaction adapter. They also exercise profile-native verification
-          through the Model-to-Matter path using owner-supplied time. A separate
-          finite same-team harness checks 114
-          small scenarios and exposes unsafe mutations. Neither artifact is an
-          independent implementation, a deployment audit, a proof of PostgreSQL
-          isolation, or a mechanized refinement proof. Deployments remain
-          responsible for installing the schema, pinning the capacity policy,
-          isolating the owner role, and verifying the database configuration.</t>
-          <t>The reference does not implement the optional evaluation-lineage
-          profile of <xref target="evaluation-lineage-profile"/>.</t>
+      <t>The Apache-2.0 TypeScript reference mints a challenge from the
+      relying party's own action object and evidence policy. It computes
+      <tt>action_digest</tt> and <tt>policy_digest</tt> itself, derives
+      <tt>required_evidence</tt> from the policy's requirement expression
+      (for an OR, it requests the unsatisfied branch with fewer missing
+      evidence types), carries freshness bounds as <tt>max_age_sec</tt>,
+      current-status requirements as <tt>status</tt>, and profile and
+      proof-predicate constraints, and by default generates the nonce from 18
+      random octets. A follow-up challenge copies the action digest from the
+      original challenge and is refused if the policy digest has changed.</t>
+      <t>On the stateful path, the reference requires a challenge store that
+      registers a challenge before it is returned and consumes the exact
+      registered body on the first evaluation attempt, before evidence
+      evaluation. In production mode it refuses a store that does not declare
+      durable storage, atomic registration, body binding, and permanent
+      consumption. The accompanying store registers by atomic
+      insert-if-absent and consumes by compare-and-set on the digest of the
+      registered body, so a presentation that alters any challenge member
+      cannot consume the original registration. An unknown challenge version,
+      an invalid nonce or digest, policy drift, a challenge that does not
+      advertise the supported presentation profile, an audience mismatch, and
+      expiry are refused before consumption; a presentation in an unsupported
+      format or bound to a different action is refused after consumption. A
+      follow-up challenge is registered before it is returned, and storage
+      errors propagate instead of becoming a verdict. A PostgreSQL backend
+      adapter implements the same store transitions.</t>
+      <t>The HTTP helpers produce and parse the carrier of
+      <xref target="http-carrier"/>: status 403,
+      <tt>application/problem+json</tt>, Cache-Control no-store, and the
+      <tt>ae-required</tt> problem type. They operate on already decoded
+      objects and perform no raw-message parsing or duplicate-member
+      detection, so a carrier using them remains responsible for the parsing
+      requirements of <xref target="core-validation"/>.</t>
+      <t>The reference is narrower than this document. Its store keys a
+      registration by challenge identifier and nonce within one relying
+      party, not by authenticated issuer identity and nonce as
+      <xref target="core-binding"/> requires. Its durable path accepts nonces
+      of 16 through 128 base64url characters, and its syntax check accepts
+      digests in either letter case, where <xref target="core-members"/> and
+      <xref target="core-binding"/> require 22 through 128 characters and
+      lowercase hexadecimal. It treats
+      <tt>audience</tt> as optional. It does not implement the capacity,
+      outstanding-state, and exhaustion requirements of
+      <xref target="state-bounds"/>, the retry timing of
+      <xref target="core-lifecycle"/>, self-describing issuance, or the
+      optional evaluation-lineage profile of
+      <xref target="evaluation-lineage-profile"/>.</t>
+      <t>Executable tests cover single-use consumption, expiry, action-swap
+      and policy-drift refusal, follow-up derivation, the HTTP carrier, OAuth
+      non-substitution routing, the production store-capability check, one
+      successful registration among 100 concurrent attempts, and one admitted
+      presentation among concurrent presentations after a store restart,
+      including 64 concurrent presentations through the PostgreSQL adapter.
+      That adapter is exercised against an in-process emulation of its SQL
+      statements, not a live database. A bounded same-team model explores
+      1,024 storage-capability configurations and checks 17 lifecycle
+      obligations, each with a mutation that produces a counterexample. None
+      of this is an independent implementation, a deployment audit, a proof
+      of database isolation, or a refinement proof.</t>
     </section>
 
     <section anchor="security">
@@ -1450,6 +1470,11 @@ Retry-After: 30
         <dt>Reference:</dt>
         <dd>This document.</dd>
       </dl>
+      <t>The type is not specific to one application or deployment. Any HTTP
+      API that refuses a request because authorization evidence for the exact
+      requested action is missing or insufficient can use it, together with
+      the transport-neutral challenge defined in <xref target="core"/>, which
+      does not depend on any particular evidence format.</t>
       <t>The HTTP carrier reuses the registered
       <tt>application/problem+json</tt> media type. Non-HTTP bindings define
       their own carriage without changing the core data model.</t>
@@ -1516,8 +1541,22 @@ Retry-After: 30
         relying-party acceptance, includes acceptance in the evaluation order,
         and allows a follow-up challenge when evidence is not VERIFIED, not
         ACCEPTED, or not bound to the exact action.</li>
-        <li>Moves the description of the reference implementation into an
-        Implementation Status section that is removed on publication.</li>
+        <li>Moves the description of the reference implementation, including
+        the note on the reference HTTP helpers, into an Implementation Status
+        section that is removed on publication, and restates it to match the
+        reference as it stands, including where the reference is narrower
+        than this document.</li>
+        <li>States that SATISFIED concerns evidence sufficiency only and that
+        the relying party's local authorization decision is outside it, and
+        limits <tt>policy_unsatisfied</tt> to a policy-bound evidence
+        requirement named by the challenge.</li>
+        <li>Rewords the informal description of insufficient evidence in the
+        Abstract, the state-bounds text, and the DMSC illustration so that it
+        covers evidence that is VERIFIED but not ACCEPTED or not bound to the
+        exact action, and uses "admission" rather than "acceptance" where the
+        text means admission.</li>
+        <li>Adds to the IANA Considerations why the <tt>ae-required</tt>
+        problem type is not specific to one application.</li>
         <li>Replaces the reference to draft-klrc-aiagent-auth, which
         draft-ietf-wimse-aims replaced, with draft-ietf-wimse-aims-00, and
         updates the other references.</li>
@@ -1674,9 +1713,10 @@ Retry-After: 30
       does not define. The WIMSE working group document AI Identity Management System
       <xref target="AIMS"/> describes how existing workload identity and OAuth
       specifications apply to agent authentication and authorization. Its
-      human-in-the-loop guidance treats a user confirmation obtained during
-      task execution as authorization only when the confirmation is bound to
-      a verifiable grant issued by the authorization server (Section 10.7 of
+      human-in-the-loop guidance does not treat a user confirmation obtained
+      during task execution as authorization by itself; it requires that the
+      confirmation be bound to a verifiable authorization grant issued by the
+      authorization server, which makes the final decision (Section 10.7 of
       <xref target="AIMS"/>). That is the native OAuth path that
       <xref target="oauth-boundary"/> keeps separate from AE-CHALLENGE. Authorization
       Receipts <xref target="AUTH-RECEIPTS"/> are one possible portable human-evidence type that an AE-CHALLENGE can request; neither the receipt nor

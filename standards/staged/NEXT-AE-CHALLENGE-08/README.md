@@ -59,6 +59,14 @@ are not imported into the protocol.
   Section 2.6.2 of -07, is now an Implementation Status section marked
   `removeInRFC`. It notes that the RFC 7942 process covers IETF-stream drafts
   and that this document is intended for the Independent Submission Stream.
+  It was rewritten for this candidate to describe only what the reference
+  code does, and it names where the reference is narrower than the draft
+  (replay key, nonce and digest syntax, optional audience, no capacity or
+  retry-timing implementation, no lineage profile). The implementation note
+  that sat in core Section 2.2 moved into it.
+- The IANA section says why `ae-required` is not specific to one
+  application, since RFC 9457 Section 4.2 excludes application-specific
+  values.
 - The replaced `draft-klrc-aiagent-auth-03` reference is now
   `draft-ietf-wimse-aims-00`, cited in Appendix A for its human-in-the-loop
   guidance (AIMS Section 10.7), which is the native OAuth path Section 1.1
@@ -82,9 +90,11 @@ decisions. Before them:
    re-render with the procedure in `VALIDATION.md`, and refresh
    `SHA256SUMS.txt`, `VALIDATION.md` and the date pin in
    `scripts/check-ae-challenge-08.mjs`.
-3. The Implementation Status paragraphs moved unchanged from -07 were not
-   re-verified for this candidate (see `VALIDATION.md`). Re-check them
-   against the reference implementation before posting.
+3. The Implementation Status section is traced to the reference as of
+   repository main `dedd9a24d` (see `VALIDATION.md`). If
+   `lib/negotiate/evidence-challenge.ts` or `packages/gate/src/challenge-store.ts`
+   changes before posting, re-check it.
 4. Whether the HTTP Problem Types designated expert accepts `ae-required` is
    unchecked. RFC 9457 Section 4.2 excludes vendor-specific,
-   application-specific and deployment-specific values.
+   application-specific and deployment-specific values; the IANA section now
+   states why the type is generic.

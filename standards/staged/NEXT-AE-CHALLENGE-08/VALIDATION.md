@@ -79,12 +79,55 @@ source at SHA-256
   outside `standards/`, `AE-EVALUATION-LINEAGE` appears only in
   `scripts/check-ae-challenge-08.mjs`.
 
-## Unchecked
+## Implementation Status trace
 
-The Implementation Status paragraphs about the owner state machine, the
-PostgreSQL backend, the limits (65536 octets, 64, 16, 32) and the 114-scenario
-harness moved unchanged from -07 Section 2.6.2. They were not re-verified
-for this candidate.
+The -07 paragraphs about an owner state machine, a PostgreSQL transaction
+backend, limits of 65536 octets and 64, 16 and 32 items, collation-safe
+capacity rows, stale-worker fencing, a Model-to-Matter path and a
+114-scenario harness were removed: no code outside `standards/` supports
+them. Searched: `git grep` for the AE-CHALLENGE identifiers outside
+documentation lists `lib/negotiate/evidence-challenge.ts` as the only
+challenge module, and it has no owner, capacity or reservation logic and no
+65536 constant. `scripts/check-ae-challenge-08.mjs` now forbids those
+sentences.
+
+Each sentence of the rewritten section traces to code read on `dedd9a24d`
+or a command run on this tree:
+
+- Minting, required-evidence derivation, the smaller OR branch, freshness,
+  status, profiles, proof predicates, the 18-octet default nonce, and the
+  follow-up policy check: `lib/negotiate/evidence-challenge.ts`
+  (`mintChallengeForDigest`, `missingTypes`, `deriveRequiredEvidence`,
+  `createFollowupEvidenceChallenge`).
+- Store requirements, production capability check, register-before-return,
+  consume-before-evaluation, the refusals before and after consumption,
+  follow-up registration, and error propagation:
+  `requireChallengeStore`, `createRegisteredEvidenceChallenge`,
+  `evaluateRegisteredPresentation`, `createRegisteredFollowupEvidenceChallenge`
+  in the same file.
+- Insert-if-absent registration, compare-and-set consumption on the body
+  digest, and the (challenge_id, nonce) storage key:
+  `packages/gate/src/challenge-store.ts`. The PostgreSQL adapter:
+  `packages/gate/src/store-postgres.ts` (`addIfAbsent`, `compareAndSet`,
+  `has`).
+- HTTP helpers: `createEvidenceChallengeProblem` and
+  `parseEvidenceChallengeProblem` read and write already decoded objects and
+  perform no raw parsing.
+- Where the reference is narrower: `DURABLE_NONCE_RE` is
+  `/^[A-Za-z0-9_-]{16,128}$/`, `SHA256_DIGEST_RE` has the `i` flag, `audience`
+  is added only when configured, and the module has no `retry_timing`,
+  capacity or lineage code.
+- Tests: `npx vitest run tests/evidence-challenge.test.ts
+  tests/evidence-challenge-durable.test.ts` passes 44 of 44. The durable file
+  contains the 100-worker registration case, the restart case, the
+  64-presentation PostgreSQL case (against `createLocalPostgresHarness`, an
+  in-process emulation of the adapter's SQL statements), and the production
+  capability case.
+- Bounded model: `node formal/check-evidence-challenge-lifecycle.mjs` prints
+  PASS with 17 obligations verified over 1,024 configurations, each with
+  "unsafe counterexample: found".
+
+## Unchecked
 
 Runtime and conformance implementation of the lineage profile is not
 claimed. The existing formal evidence-challenge lifecycle does not by itself
