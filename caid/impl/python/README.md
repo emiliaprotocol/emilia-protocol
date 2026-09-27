@@ -72,14 +72,15 @@ assert check["valid"] and check["definition_sha256"] == result["definition_sha25
 
 ```sh
 python3 caid/impl/python/test_caid.py
-python3 caid/impl/python/run_vectors.py            # caid/conformance/vectors.json
+python3 caid/conformance/runners/run.py            # core corpus v5 and grammar corpus
 python3 caid/impl/python/run_mapping_vectors.py    # caid/conformance/mapping-vectors.json
 python3 caid/impl/python/run_mapping_vectors.py --corpus caid/interop/consequential-action-v1/mapping-vectors.json
 node caid/spec/abnf-check.mjs --out /tmp/grammar.json
 python3 caid/impl/python/run_grammar_vectors.py --corpus /tmp/grammar.json
 ```
 
-`run_vectors.py` checks, for every compute and verify vector given as JSON
-text that decodes, that the native entry point returns the identical result.
+The shared runner `caid/conformance/runners/run.py` checks, for every compute
+and verify vector given as JSON text that decodes, that the native entry point
+returns the identical result.
 `run_grammar_vectors.py` drives each grammar case through `parse_caid`,
 `compute_caid` or `map_action`, never through the generated patterns.
