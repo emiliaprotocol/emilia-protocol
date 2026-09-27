@@ -1,3 +1,3 @@
-15295b38a7833cae4b26cf6ddebe338373125a93ef0a57c4a9e98872b650f085  UPLOAD-THIS/draft-schrock-ae-challenge-08.xml
-e92be7ef7751ec4b0accda9b2570b7783d1bc7abfa9a2a6990ed409d7598b5b1  RENDERS/draft-schrock-ae-challenge-08.html
-d5df35df9df3e904715e7393cac12424f20ae6a6a422b5313fbf23ccbe9db274  RENDERS/draft-schrock-ae-challenge-08.txt
+cce33e9211ccc7e403e5062a6a060b4e33c024bd0fe9a08018d91686b7669f60  UPLOAD-THIS/draft-schrock-ae-challenge-08.xml
+be9083ba888413a8b055460969f38222a2eb584dab6fa654eaee5db7a9135668  RENDERS/draft-schrock-ae-challenge-08.html
+85f753500fe53840b451efe788e551b4af97c124ecf9950ff3ebd18e6c9b09af  RENDERS/draft-schrock-ae-challenge-08.txt

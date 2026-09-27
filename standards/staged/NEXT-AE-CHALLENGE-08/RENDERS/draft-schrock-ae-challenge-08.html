@@ -1250,7 +1250,6 @@ li > p:last-of-type:only-child {
 }
 </style>
 <link href="rfc-local.css" rel="stylesheet" type="text/css">
-<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
 </head>
 <body class="xml2rfc">
 <table class="ears">
@@ -1613,11 +1612,11 @@ li > p:last-of-type:only-child {
           <dd class="break"></dd>
 <dt id="section-1.3-3.5">SATISFIED:</dt>
           <dd style="margin-left: 1.5em" id="section-1.3-3.6">Every evidence requirement of a challenge was met at the
-          evaluation time, under the policy snapshot the challenge binds, by
-          evidence that is VERIFIED, ACCEPTED, and bound to the exact action.
-          SATISFIED concerns evidence sufficiency only. Whether the relying
-          party then authorizes the action is a separate local decision outside
-          SATISFIED.<a href="#section-1.3-3.6" class="pilcrow">¶</a>
+          evaluation time, under the relying party's authenticated live policy
+          (<a href="#core-binding" class="auto internal xref">Section 2.2</a>), by evidence that is VERIFIED,
+          ACCEPTED, and bound to the exact action. SATISFIED concerns evidence
+          sufficiency only. Whether the relying party then authorizes the
+          action is a separate local decision outside SATISFIED.<a href="#section-1.3-3.6" class="pilcrow">¶</a>
 </dd>
           <dd class="break"></dd>
 <dt id="section-1.3-3.7">UNSATISFIED:</dt>
@@ -1626,6 +1625,8 @@ li > p:last-of-type:only-child {
 </dd>
         <dd class="break"></dd>
 </dl>
+<p id="section-1.3-4">The relying party's evaluation time in this document is the
+        verification time of <span>[<a href="#AEC" class="cite xref">AEC</a>]</span>.<a href="#section-1.3-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2034,8 +2035,12 @@ NOTE: '\' line wrapping per RFC 8792
 <p id="section-2.4-8"><code>reason_ids</code> MUST contain unique values from the following
         closed set. The completed-evaluation reasons are
         <code>missing_evidence</code> (no artifact was presented for a required
-        evidence type), <code>evidence_not_verified</code> (a presented artifact
-        is not VERIFIED), <code>evidence_not_accepted</code> (a presented artifact
+        evidence type), <code>evidence_not_verified</code> (the checks for a
+        presented artifact ran and it is not VERIFIED),
+        <code>evidence_not_evaluated</code> (VERIFIED could not be evaluated for a
+        presented artifact, for example because its verification key could not
+        be resolved; this is not a verification failure),
+        <code>evidence_not_accepted</code> (a presented artifact
         is VERIFIED and not ACCEPTED), <code>action_not_matched</code> (a VERIFIED
         and ACCEPTED artifact is not bound to the exact action under the
         pinned action profile), <code>stale_evidence</code>,
@@ -2064,8 +2069,8 @@ NOTE: '\' line wrapping per RFC 8792
         it is not made safe to retry by this artifact.<a href="#section-2.4-9" class="pilcrow">¶</a></p>
 <p id="section-2.4-10">An artifact's action profile and digest and policy identifier and
         digest MUST equal the predecessor challenge bindings. If authenticated
-        live policy changes before evaluation, this optional profile requires
-        the relying party to start a fresh challenge under the changed policy.
+        live policy changes before evaluation, the relying party MUST start a
+        fresh challenge under the changed policy.
         Any resulting evaluation receives a distinct lineage artifact. If an
         action is transformed or any material action field changes, the relying
         party MUST likewise start a fresh challenge before evaluation. The
@@ -2836,7 +2841,14 @@ Retry-After: 30
       digests in either letter case, where <a href="#core-members" class="auto internal xref">Section 2.1</a> and
       <a href="#core-binding" class="auto internal xref">Section 2.2</a> require 22 through 128 characters and
       lowercase hexadecimal. It treats
-      <code>audience</code> as optional. It does not implement the capacity,
+      <code>audience</code> as optional and compares it with a configured string;
+      it does not authenticate the challenge issuer or the returning
+      presenter. It does not rederive the current proposed action before the
+      claim: it compares the action digest in the presentation with the stored
+      challenge digest, after consumption. A follow-up challenge copies the
+      stored action digest, where <a href="#core-lifecycle" class="auto internal xref">Section 2.6</a> requires
+      rederiving it from the current proposed action. It does not
+      implement the capacity,
       outstanding-state, and exhaustion requirements of
       <a href="#state-bounds" class="auto internal xref">Section 2.7</a>, the retry timing of
       <a href="#core-lifecycle" class="auto internal xref">Section 2.6</a>, self-describing issuance, or the
@@ -2849,9 +2861,11 @@ Retry-After: 30
       presentation among concurrent presentations after a store restart,
       including 64 concurrent presentations through the PostgreSQL adapter.
       That adapter is exercised against an in-process emulation of its SQL
-      statements, not a live database. A bounded same-team model explores
-      1,024 storage-capability configurations and checks 17 lifecycle
-      obligations, each with a mutation that produces a counterexample. None
+      statements, not a live database. A bounded same-team model checks 17
+      lifecycle obligations, each with a mutation that produces a
+      counterexample: 11 over all 1,024 combinations of four storage
+      capabilities and six challenge bindings, and 6 over a single
+      configuration each. None
       of this is an independent implementation, a deployment audit, a proof
       of database isolation, or a refinement proof.<a href="#section-5-7" class="pilcrow">¶</a></p>
 </section>
@@ -3097,8 +3111,9 @@ Retry-After: 30
         <a href="#terms" class="auto internal xref">Section 1.3</a> so that this document has no normative
         dependency on it. The lineage outcomes are <code>SATISFIED</code> and
         <code>UNSATISFIED</code>; closed reason identifiers keep a verification
-        failure, an acceptance refusal, an action mismatch, and an evaluation
-        that did not complete distinct; a successor link is allowed only after
+        failure, a verification that could not be evaluated, an acceptance
+        refusal, an action mismatch, and an evaluation that did not complete
+        distinct; a successor link is allowed only after
         a completed <code>UNSATISFIED</code> evaluation.<a href="#section-10-2.2" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-10-2.3">Lets a recipient that retains authenticated artifacts distinguish

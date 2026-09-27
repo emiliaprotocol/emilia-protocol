@@ -162,15 +162,17 @@
           at the evaluation time.</dd>
           <dt>SATISFIED:</dt>
           <dd>Every evidence requirement of a challenge was met at the
-          evaluation time, under the policy snapshot the challenge binds, by
-          evidence that is VERIFIED, ACCEPTED, and bound to the exact action.
-          SATISFIED concerns evidence sufficiency only. Whether the relying
-          party then authorizes the action is a separate local decision outside
-          SATISFIED.</dd>
+          evaluation time, under the relying party's authenticated live policy
+          (<xref target="core-binding"/>), by evidence that is VERIFIED,
+          ACCEPTED, and bound to the exact action. SATISFIED concerns evidence
+          sufficiency only. Whether the relying party then authorizes the
+          action is a separate local decision outside SATISFIED.</dd>
           <dt>UNSATISFIED:</dt>
           <dd>Every evaluation result other than SATISFIED, including an
           evaluation that could not complete. Reason identifiers say why.</dd>
         </dl>
+        <t>The relying party's evaluation time in this document is the
+        verification time of <xref target="AEC"/>.</t>
       </section>
     </section>
 
@@ -562,8 +564,12 @@ NOTE: '\' line wrapping per RFC 8792
         <t><tt>reason_ids</tt> MUST contain unique values from the following
         closed set. The completed-evaluation reasons are
         <tt>missing_evidence</tt> (no artifact was presented for a required
-        evidence type), <tt>evidence_not_verified</tt> (a presented artifact
-        is not VERIFIED), <tt>evidence_not_accepted</tt> (a presented artifact
+        evidence type), <tt>evidence_not_verified</tt> (the checks for a
+        presented artifact ran and it is not VERIFIED),
+        <tt>evidence_not_evaluated</tt> (VERIFIED could not be evaluated for a
+        presented artifact, for example because its verification key could not
+        be resolved; this is not a verification failure),
+        <tt>evidence_not_accepted</tt> (a presented artifact
         is VERIFIED and not ACCEPTED), <tt>action_not_matched</tt> (a VERIFIED
         and ACCEPTED artifact is not bound to the exact action under the
         pinned action profile), <tt>stale_evidence</tt>,
@@ -592,8 +598,8 @@ NOTE: '\' line wrapping per RFC 8792
         it is not made safe to retry by this artifact.</t>
         <t>An artifact's action profile and digest and policy identifier and
         digest MUST equal the predecessor challenge bindings. If authenticated
-        live policy changes before evaluation, this optional profile requires
-        the relying party to start a fresh challenge under the changed policy.
+        live policy changes before evaluation, the relying party MUST start a
+        fresh challenge under the changed policy.
         Any resulting evaluation receives a distinct lineage artifact. If an
         action is transformed or any material action field changes, the relying
         party MUST likewise start a fresh challenge before evaluation. The
@@ -1296,7 +1302,14 @@ Retry-After: 30
       digests in either letter case, where <xref target="core-members"/> and
       <xref target="core-binding"/> require 22 through 128 characters and
       lowercase hexadecimal. It treats
-      <tt>audience</tt> as optional. It does not implement the capacity,
+      <tt>audience</tt> as optional and compares it with a configured string;
+      it does not authenticate the challenge issuer or the returning
+      presenter. It does not rederive the current proposed action before the
+      claim: it compares the action digest in the presentation with the stored
+      challenge digest, after consumption. A follow-up challenge copies the
+      stored action digest, where <xref target="core-lifecycle"/> requires
+      rederiving it from the current proposed action. It does not
+      implement the capacity,
       outstanding-state, and exhaustion requirements of
       <xref target="state-bounds"/>, the retry timing of
       <xref target="core-lifecycle"/>, self-describing issuance, or the
@@ -1309,9 +1322,11 @@ Retry-After: 30
       presentation among concurrent presentations after a store restart,
       including 64 concurrent presentations through the PostgreSQL adapter.
       That adapter is exercised against an in-process emulation of its SQL
-      statements, not a live database. A bounded same-team model explores
-      1,024 storage-capability configurations and checks 17 lifecycle
-      obligations, each with a mutation that produces a counterexample. None
+      statements, not a live database. A bounded same-team model checks 17
+      lifecycle obligations, each with a mutation that produces a
+      counterexample: 11 over all 1,024 combinations of four storage
+      capabilities and six challenge bindings, and 6 over a single
+      configuration each. None
       of this is an independent implementation, a deployment audit, a proof
       of database isolation, or a refinement proof.</t>
     </section>
@@ -1529,8 +1544,9 @@ Retry-After: 30
         <xref target="terms"/> so that this document has no normative
         dependency on it. The lineage outcomes are <tt>SATISFIED</tt> and
         <tt>UNSATISFIED</tt>; closed reason identifiers keep a verification
-        failure, an acceptance refusal, an action mismatch, and an evaluation
-        that did not complete distinct; a successor link is allowed only after
+        failure, a verification that could not be evaluated, an acceptance
+        refusal, an action mismatch, and an evaluation that did not complete
+        distinct; a successor link is allowed only after
         a completed <tt>UNSATISFIED</tt> evaluation.</li>
         <li>Lets a recipient that retains authenticated artifacts distinguish
         earlier and later statements across policy changes, corrected

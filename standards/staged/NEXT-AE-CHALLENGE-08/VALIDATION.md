@@ -21,8 +21,9 @@ source at SHA-256
 - The source and the TXT rendering are printable ASCII (the AIMS author name
   uses a character reference and an `asciiFullname`) and contain no en or em
   dash.
-- `idnits 3.1.0 -m submission`: `PASS - No nit found`. The 2026-08-27
-  candidate passed with one warning for the over-long lines.
+- `idnits 3.1.0 -m submission`: `PASS - No nit found`, on both the XML
+  source and the TXT rendering. The 2026-08-27 candidate passed with one
+  warning for the over-long lines.
 - `idnits 3.1.0` in its default mode: no errors and two warnings,
   `PREFER_BCP14_REF` and `SECTION_TITLE_HAS_UNEXPECTED_INDENTATION` for the
   Appendix line of the table of contents. The `MULTIPLE_REFERENCES_SECTION_TITLES`
@@ -40,7 +41,11 @@ source at SHA-256
   references, the single References section and the RFC 8792 fold header,
   and forbids the previous outcome values, `unverifiable_evidence` and the
   KLRC reference. Each newly forbidden string occurs in the 2026-08-27
-  source, so the check fails on it.
+  source, so the check fails on it. It also requires the
+  `evidence_not_evaluated` reason, the live-policy SATISFIED definition, the
+  keyed policy-change rule, the complete list of where the reference is
+  narrower, and the split model description, and forbids the wording each
+  replaced.
 - `npm run check:standards-staged`, `npm run check:repository-boundary`,
   `npm run check:public-conformance-claims`, `npm run check:authority-claims`
   and `npm run check:llm-context`: PASS.
@@ -118,8 +123,14 @@ or a command run on this tree:
   perform no raw parsing.
 - Where the reference is narrower: `DURABLE_NONCE_RE` is
   `/^[A-Za-z0-9_-]{16,128}$/`, `SHA256_DIGEST_RE` has the `i` flag, `audience`
-  is added only when configured, and the module has no `retry_timing`,
-  capacity or lineage code.
+  is added only when configured and `validateAudience` compares it with
+  `opts.expected_audience` as a string, and the module has no `retry_timing`,
+  capacity or lineage code. It has no issuer or presenter authentication.
+  `evaluateRegisteredPresentation` takes no current proposed action: it
+  compares the presentation's action digest with the stored
+  `challenge.action_digest`, after `store.consume`.
+  `createFollowupEvidenceChallenge` passes `challenge.action_digest` to
+  `mintChallengeForDigest` instead of rederiving it.
 - Tests: `npx vitest run tests/evidence-challenge.test.ts
   tests/evidence-challenge-durable.test.ts` passes 44 of 44. The durable file
   contains the 100-worker registration case, the restart case, the
@@ -127,8 +138,24 @@ or a command run on this tree:
   in-process emulation of the adapter's SQL statements), and the production
   capability case.
 - Bounded model: `node formal/check-evidence-challenge-lifecycle.mjs` prints
-  PASS with 17 obligations verified over 1,024 configurations, each with
-  "unsafe counterexample: found".
+  PASS with 17 obligations verified, each with "unsafe counterexample:
+  found": 11 over 1,024 states and 6 over 1 state each. The 1,024 states are
+  every combination of the model's ten `REGISTRATION_FIELDS` flags
+  (`enumerateChallengeConfigurations` in
+  `formal/evidence-challenge-lifecycle.model.mjs`): four storage capabilities
+  (`durable_storage`, `atomic_registration`, `body_bound_storage`,
+  `permanent_consumption`) and six challenge bindings. The draft says so.
+
+## Outcome and reason terms
+
+- SATISFIED is defined under the relying party's authenticated live policy,
+  matching Section 2.2 ("MUST use its authenticated live policy") and the
+  "Stale facts" consideration. Only the lineage profile requires a fresh
+  challenge when policy changes, and that rule is now a MUST.
+- `evidence_not_evaluated` separates a verification that could not be
+  evaluated (for example an unresolvable key) from `evidence_not_verified`,
+  as AEC -07 separates NOT_EVALUATED (`key_unresolved`) from FAILED.
+- "Evaluation time" is stated to be AEC's "verification time".
 
 ## Unchecked
 

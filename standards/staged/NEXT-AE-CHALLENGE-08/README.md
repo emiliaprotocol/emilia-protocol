@@ -24,8 +24,10 @@ VERIFIED, ACCEPTED, SATISFIED and UNSATISFIED, so the AEC draft stays an
 informative reference and this document has no normative dependency on
 another Internet-Draft. The lineage outcomes are `SATISFIED` and
 `UNSATISFIED`. The closed reason identifiers keep apart a presented artifact
-that is not VERIFIED (`evidence_not_verified`), one that is VERIFIED and not
-ACCEPTED (`evidence_not_accepted`), one not bound to the exact action
+that is not VERIFIED (`evidence_not_verified`), one whose verification could
+not be evaluated, for example because its key could not be resolved
+(`evidence_not_evaluated`), one that is VERIFIED and not ACCEPTED
+(`evidence_not_accepted`), one not bound to the exact action
 (`action_not_matched`), and an evaluation that did not complete
 (`evaluation_unavailable`, `evaluation_state_uncertain`). A successor
 challenge can be linked only after a completed `UNSATISFIED` evaluation, and

@@ -103,7 +103,7 @@ Table of Contents
      1.2.  Requirements Language . . . . . . . . . . . . . . . . . .   4
      1.3.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   4
    2.  Transport-Neutral Core Data Model . . . . . . . . . . . . . .   5
-     2.1.  Required Members and JSON Types . . . . . . . . . . . . .   6
+     2.1.  Required Members and JSON Types . . . . . . . . . . . . .   7
      2.2.  Action and Policy Binding . . . . . . . . . . . . . . . .   7
      2.3.  Evidence Requirements and Presentation  . . . . . . . . .  10
 
@@ -116,26 +116,26 @@ Internet-Draft             Evidence Challenge             September 2026
 
      2.4.  Optional Evaluation Lineage Profile . . . . . . . . . . .  12
      2.5.  Validation and Resource Limits  . . . . . . . . . . . . .  15
-     2.6.  Lifecycle, Replay, and Retry  . . . . . . . . . . . . . .  15
+     2.6.  Lifecycle, Replay, and Retry  . . . . . . . . . . . . . .  16
      2.7.  State Bounds and Exhaustion . . . . . . . . . . . . . . .  19
-       2.7.1.  State Exhaustion Conformance Cases  . . . . . . . . .  22
-     2.8.  Extensibility . . . . . . . . . . . . . . . . . . . . . .  24
+       2.7.1.  State Exhaustion Conformance Cases  . . . . . . . . .  23
+     2.8.  Extensibility . . . . . . . . . . . . . . . . . . . . . .  25
      2.9.  Carrier Semantics . . . . . . . . . . . . . . . . . . . .  25
    3.  HTTP Challenge Response Carrier . . . . . . . . . . . . . . .  25
-     3.1.  OAuth Non-Substitution Conformance Case . . . . . . . . .  28
-   4.  Informative DMSC Gateway Illustration . . . . . . . . . . . .  28
-     4.1.  Illustrative Gateway Case . . . . . . . . . . . . . . . .  29
-   5.  Implementation Status . . . . . . . . . . . . . . . . . . . .  30
-   6.  Security Considerations . . . . . . . . . . . . . . . . . . .  31
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  34
-   8.  Future Work . . . . . . . . . . . . . . . . . . . . . . . . .  35
-   9.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  35
-   10. Changes since -07 . . . . . . . . . . . . . . . . . . . . . .  36
-   11. References  . . . . . . . . . . . . . . . . . . . . . . . . .  37
-     11.1.  Normative References . . . . . . . . . . . . . . . . . .  37
-     11.2.  Informative References . . . . . . . . . . . . . . . . .  38
-   Appendix A.  Relationship to Existing Mechanisms  . . . . . . . .  40
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  40
+     3.1.  OAuth Non-Substitution Conformance Case . . . . . . . . .  29
+   4.  Informative DMSC Gateway Illustration . . . . . . . . . . . .  29
+     4.1.  Illustrative Gateway Case . . . . . . . . . . . . . . . .  30
+   5.  Implementation Status . . . . . . . . . . . . . . . . . . . .  31
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .  32
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  35
+   8.  Future Work . . . . . . . . . . . . . . . . . . . . . . . . .  36
+   9.  Acknowledgments . . . . . . . . . . . . . . . . . . . . . . .  36
+   10. Changes since -07 . . . . . . . . . . . . . . . . . . . . . .  37
+   11. References  . . . . . . . . . . . . . . . . . . . . . . . . .  38
+     11.1.  Normative References . . . . . . . . . . . . . . . . . .  38
+     11.2.  Informative References . . . . . . . . . . . . . . . . .  39
+   Appendix A.  Relationship to Existing Mechanisms  . . . . . . . .  41
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  41
 
 1.  Introduction
 
@@ -251,15 +251,18 @@ Internet-Draft             Evidence Challenge             September 2026
       validity at the evaluation time.
 
    SATISFIED:  Every evidence requirement of a challenge was met at the
-      evaluation time, under the policy snapshot the challenge binds, by
-      evidence that is VERIFIED, ACCEPTED, and bound to the exact
-      action.  SATISFIED concerns evidence sufficiency only.  Whether
-      the relying party then authorizes the action is a separate local
-      decision outside SATISFIED.
+      evaluation time, under the relying party's authenticated live
+      policy (Section 2.2), by evidence that is VERIFIED, ACCEPTED, and
+      bound to the exact action.  SATISFIED concerns evidence
+      sufficiency only.  Whether the relying party then authorizes the
+      action is a separate local decision outside SATISFIED.
 
    UNSATISFIED:  Every evaluation result other than SATISFIED, including
       an evaluation that could not complete.  Reason identifiers say
       why.
+
+   The relying party's evaluation time in this document is the
+   verification time of [AEC].
 
 2.  Transport-Neutral Core Data Model
 
@@ -270,10 +273,7 @@ Internet-Draft             Evidence Challenge             September 2026
    peer identification, or carry the challenge in an authenticated
    envelope that provides those properties.
 
-   The JSON format defined by [RFC8259] is the reference serialization
-   of the core model.  A non-JSON binding MUST define an unambiguous
-   mapping to the same members and value types.  Example lines longer
-   than 69 characters are folded as specified in [RFC8792].
+
 
 
 
@@ -281,6 +281,11 @@ Schrock                   Expires 31 March 2027                 [Page 5]
 
 Internet-Draft             Evidence Challenge             September 2026
 
+
+   The JSON format defined by [RFC8259] is the reference serialization
+   of the core model.  A non-JSON binding MUST define an unambiguous
+   mapping to the same members and value types.  Example lines longer
+   than 69 characters are folded as specified in [RFC8792].
 
    NOTE: '\' line wrapping per RFC 8792
 
@@ -319,14 +324,9 @@ Internet-Draft             Evidence Challenge             September 2026
      "expires_at": "2026-08-10T00:05:00Z"
    }
 
-2.1.  Required Members and JSON Types
 
-   A core challenge MUST contain @version, challenge_id, nonce,
-   action_digest, action_profile, audience, policy_id, policy_digest,
-   required_evidence, present_as, and expires_at.  The obtain_hints,
-   retry_timing, and critical members are OPTIONAL.  A member defined as
-   an array MUST be a JSON array, not a scalar promoted by the
-   recipient.
+
+
 
 
 
@@ -337,6 +337,15 @@ Schrock                   Expires 31 March 2027                 [Page 6]
 
 Internet-Draft             Evidence Challenge             September 2026
 
+
+2.1.  Required Members and JSON Types
+
+   A core challenge MUST contain @version, challenge_id, nonce,
+   action_digest, action_profile, audience, policy_id, policy_digest,
+   required_evidence, present_as, and expires_at.  The obtain_hints,
+   retry_timing, and critical members are OPTIONAL.  A member defined as
+   an array MUST be a JSON array, not a scalar promoted by the
+   recipient.
 
    challenge_id and audience are non-empty JSON strings. nonce has the
    syntax defined in Section 2.2.  The binding or profile defines the
@@ -377,6 +386,14 @@ Internet-Draft             Evidence Challenge             September 2026
    [RFC4648], MUST contain 22 through 128 ASCII characters, and is
    compared as an exact, case-sensitive string.  It MUST be single-use
    within the authenticated issuer's replay domain.  The security replay
+
+
+
+Schrock                   Expires 31 March 2027                 [Page 7]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    key is the authenticated issuer identity and nonce; challenge_id is
    not part of that key.  A live replay key MUST NOT be overwritten.
    Reuse of one replay key with a different authenticated body is an
@@ -386,14 +403,6 @@ Internet-Draft             Evidence Challenge             September 2026
    Each binding or profile MUST define the stable authenticated issuer
    identity used in that replay key.  Every alias, front end, and
    replica that can validate the same issuer-protected challenge MUST
-
-
-
-Schrock                   Expires 31 March 2027                 [Page 7]
-
-Internet-Draft             Evidence Challenge             September 2026
-
-
    map it to the same issuer identity and authoritative replay domain.
    A presenter-controlled host name, forwarding field, routing hint, or
    unauthenticated alias MUST NOT select or split that identity.
@@ -433,15 +442,6 @@ Internet-Draft             Evidence Challenge             September 2026
    action it would admit.  It MUST NOT be copied from the presenter or
    from presented evidence. action_profile MUST be present, MUST be an
    absolute URI as defined by [RFC3986], and identifies the
-   canonicalization or mapping profile used to derive the digest.  It is
-   descriptive to the presenter; it does not let the presenter select or
-   weaken that profile.  If two parties cannot establish the same
-   material action under an understood profile, the challenge cannot
-   repair the disagreement and the relying party MUST refuse automated
-   admission.
-
-
-
 
 
 
@@ -449,6 +449,13 @@ Schrock                   Expires 31 March 2027                 [Page 8]
 
 Internet-Draft             Evidence Challenge             September 2026
 
+
+   canonicalization or mapping profile used to derive the digest.  It is
+   descriptive to the presenter; it does not let the presenter select or
+   weaken that profile.  If two parties cannot establish the same
+   material action under an understood profile, the challenge cannot
+   repair the disagreement and the relying party MUST refuse automated
+   admission.
 
    The security action binding is the ordered pair (action_profile,
    action_digest), not the digest alone.  Every evidence correlation,
@@ -492,19 +499,18 @@ Internet-Draft             Evidence Challenge             September 2026
    presentation and MAY issue a fresh challenge under the new mapping
    when policy permits.
 
-   policy_id and policy_digest identify the local policy state from
-   which the requirements were derived.  They do not transfer policy
-   authority to the presenter.  At evaluation time the relying party
-   MUST use its authenticated live policy and MUST NOT use a policy
-   supplied in the response.
-
-
 
 
 Schrock                   Expires 31 March 2027                 [Page 9]
 
 Internet-Draft             Evidence Challenge             September 2026
 
+
+   policy_id and policy_digest identify the local policy state from
+   which the requirements were derived.  They do not transfer policy
+   authority to the presenter.  At evaluation time the relying party
+   MUST use its authenticated live policy and MUST NOT use a policy
+   supplied in the response.
 
    Delegation, translation, or task rewriting does not preserve one
    action binding across hops.  Each receiving relying party MUST re-
@@ -548,12 +554,6 @@ Internet-Draft             Evidence Challenge             September 2026
    profiles are alternatives, so one locally accepted listed profile is
    sufficient for that dimension.  Every listed proof_predicates value
    is conjunctive and MUST be satisfied.  The max_age_sec and status
-   constraints, when present, are also conjunctive with the evidence
-   type, selected profile, and proof predicates.  An application profile
-   that needs disjunction across evidence types MUST define a new
-   evidence type or other explicit expression; it MUST NOT reinterpret
-   the core array as disjunctive. max_age_sec is measured at the relying
-   party's evaluation time using the issuance or observation time
 
 
 
@@ -562,6 +562,12 @@ Schrock                   Expires 31 March 2027                [Page 10]
 Internet-Draft             Evidence Challenge             September 2026
 
 
+   constraints, when present, are also conjunctive with the evidence
+   type, selected profile, and proof predicates.  An application profile
+   that needs disjunction across evidence types MUST define a new
+   evidence type or other explicit expression; it MUST NOT reinterpret
+   the core array as disjunctive. max_age_sec is measured at the relying
+   party's evaluation time using the issuance or observation time
    defined by the selected evidence profile. status equal to current
    requires a separately authenticated status result satisfying the
    relying party's freshness policy; it does not mean that absence from
@@ -594,6 +600,24 @@ Internet-Draft             Evidence Challenge             September 2026
    this document.  This core does not define a generic successful-
    response envelope.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 11]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    A fresh challenge is evaluated from a complete authenticated evidence
    presentation under live policy.  The core defines no implicit carry-
    over of evidence, verification results, or ambient verifier state
@@ -610,14 +634,6 @@ Internet-Draft             Evidence Challenge             September 2026
    obtain_hints are untrusted routing hints.  Following a hint,
    authenticating to its URI, or receiving an "approved" response
    confers no authority at the relying party.  Evidence obtained through
-
-
-
-Schrock                   Expires 31 March 2027                [Page 11]
-
-Internet-Draft             Evidence Challenge             September 2026
-
-
    a hint remains subject to native verification, relying-party
    acceptance, exact-action matching, freshness and status checks,
    policy evaluation, and one-time consumption.  A presenter MUST NOT
@@ -650,6 +666,14 @@ Internet-Draft             Evidence Challenge             September 2026
    This profile applies only when the predecessor presentation profile
    establishes an authenticated effective presenter represented by an
    absolute URI.  An anonymous or transferable presentation profile
+
+
+
+Schrock                   Expires 31 March 2027                [Page 12]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    needs a separate evaluation-lineage profile that binds its explicit
    transfer and correlation rules.  An issuer using this profile MUST
    NOT invent a presenter identity or copy an unauthenticated presenter
@@ -665,14 +689,6 @@ Internet-Draft             Evidence Challenge             September 2026
    members, missing required members, incorrect JSON types, and strings
    or arrays that exceed its published finite limits before expensive
    authentication, retrieval, or evaluation work.
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 12]
-
-Internet-Draft             Evidence Challenge             September 2026
-
 
    The value of @version MUST be exactly AE-EVALUATION-LINEAGE-v1.  A
    recipient MUST reject an unsupported version and MUST NOT guess its
@@ -707,6 +723,13 @@ Internet-Draft             Evidence Challenge             September 2026
    party's authoritative evaluation snapshot time, obtained from the
    relying party's authoritative time source and not from the presenter.
 
+
+
+Schrock                   Expires 31 March 2027                [Page 13]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    The closed outcome values are SATISFIED and UNSATISFIED, with the
    meanings in Section 1.3.  SATISFIED means only that the evidence
    requirements in the predecessor challenge were satisfied under the
@@ -720,29 +743,24 @@ Internet-Draft             Evidence Challenge             September 2026
 
    reason_ids MUST contain unique values from the following closed set.
    The completed-evaluation reasons are missing_evidence (no artifact
-   was presented for a required evidence type), evidence_not_verified (a
-   presented artifact is not VERIFIED), evidence_not_accepted (a
-
-
-
-Schrock                   Expires 31 March 2027                [Page 13]
-
-Internet-Draft             Evidence Challenge             September 2026
-
-
-   presented artifact is VERIFIED and not ACCEPTED), action_not_matched
-   (a VERIFIED and ACCEPTED artifact is not bound to the exact action
-   under the pinned action profile), stale_evidence, status_unsatisfied,
-   and policy_unsatisfied (a policy-bound evidence requirement named by
-   the challenge, such as a proof_predicates value, was not met by
-   evidence that is otherwise VERIFIED, ACCEPTED, and bound to the exact
-   action).  A refusal by the relying party's local authorization
-   decision is outside SATISFIED and is not reported with these reasons.
-   The incomplete-evaluation reasons are evaluation_unavailable and
-   evaluation_state_uncertain.  For SATISFIED, the array MUST be empty.
-   For UNSATISFIED, it MUST contain either one or more completed-
-   evaluation reasons or one or both incomplete-evaluation reasons, and
-   MUST NOT mix the two kinds.
+   was presented for a required evidence type), evidence_not_verified
+   (the checks for a presented artifact ran and it is not VERIFIED),
+   evidence_not_evaluated (VERIFIED could not be evaluated for a
+   presented artifact, for example because its verification key could
+   not be resolved; this is not a verification failure),
+   evidence_not_accepted (a presented artifact is VERIFIED and not
+   ACCEPTED), action_not_matched (a VERIFIED and ACCEPTED artifact is
+   not bound to the exact action under the pinned action profile),
+   stale_evidence, status_unsatisfied, and policy_unsatisfied (a policy-
+   bound evidence requirement named by the challenge, such as a
+   proof_predicates value, was not met by evidence that is otherwise
+   VERIFIED, ACCEPTED, and bound to the exact action).  A refusal by the
+   relying party's local authorization decision is outside SATISFIED and
+   is not reported with these reasons.  The incomplete-evaluation
+   reasons are evaluation_unavailable and evaluation_state_uncertain.
+   For SATISFIED, the array MUST be empty.  For UNSATISFIED, it MUST
+   contain either one or more completed-evaluation reasons or one or
+   both incomplete-evaluation reasons, and MUST NOT mix the two kinds.
 
    successor_challenge_digest MAY appear only with an UNSATISFIED
    outcome whose reason_ids are completed-evaluation reasons, and only
@@ -758,26 +776,8 @@ Internet-Draft             Evidence Challenge             September 2026
 
    An artifact's action profile and digest and policy identifier and
    digest MUST equal the predecessor challenge bindings.  If
-   authenticated live policy changes before evaluation, this optional
-   profile requires the relying party to start a fresh challenge under
-   the changed policy.  Any resulting evaluation receives a distinct
-   lineage artifact.  If an action is transformed or any material action
-   field changes, the relying party MUST likewise start a fresh
-   challenge before evaluation.  The issuer MUST NOT rewrite an earlier
-   artifact, replace an earlier refusal with a later success, or imply
-   that different action or policy bindings are one evaluation.  A
-   profile that uses this artifact to carry evidence into a continuation
-   MUST additionally satisfy all continuation requirements in
-   Section 2.3.
-
-
-
-
-
-
-
-
-
+   authenticated live policy changes before evaluation, the relying
+   party MUST start a fresh challenge under the changed policy.  Any
 
 
 
@@ -785,6 +785,15 @@ Schrock                   Expires 31 March 2027                [Page 14]
 
 Internet-Draft             Evidence Challenge             September 2026
 
+
+   resulting evaluation receives a distinct lineage artifact.  If an
+   action is transformed or any material action field changes, the
+   relying party MUST likewise start a fresh challenge before
+   evaluation.  The issuer MUST NOT rewrite an earlier artifact, replace
+   an earlier refusal with a later success, or imply that different
+   action or policy bindings are one evaluation.  A profile that uses
+   this artifact to carry evidence into a continuation MUST additionally
+   satisfy all continuation requirements in Section 2.3.
 
    The profile is data-minimized.  It carries digests and identifiers,
    not raw evidence, policy documents, credentials, authority objects,
@@ -818,6 +827,21 @@ Internet-Draft             Evidence Challenge             September 2026
    proof_predicates semantics it does not understand; it MUST NOT treat
    an unknown value as satisfied.
 
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 15]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    Every binding and implementation MUST enforce finite limits on the
    encoded message size, nesting depth, number of requirements and
    hints, array lengths, and string lengths before expensive
@@ -833,14 +857,6 @@ Internet-Draft             Evidence Challenge             September 2026
    The relying party MUST refuse an expired challenge before evidence or
    policy evaluation.  Challenge expiry does not extend the validity of
    any evidence and evidence expiry does not extend the challenge.
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 15]
-
-Internet-Draft             Evidence Challenge             September 2026
-
 
    Evaluation is ordered: bounded parsing and structure; authenticated
    issuer and presenter-to-audience binding; validation of the
@@ -874,6 +890,14 @@ Internet-Draft             Evidence Challenge             September 2026
    or has completed, MUST be refused as a replay.  It MUST NOT receive a
    second evidence evaluation, an indeterminate result merely because
    the first evaluation is in flight, or a second admission.  An
+
+
+
+Schrock                   Expires 31 March 2027                [Page 16]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    implementation MAY distinguish in-flight from completed consumption
    internally for operations and audit, but that distinction does not
    reopen the challenge.  The claim binds the nonce to the registered
@@ -882,21 +906,6 @@ Internet-Draft             Evidence Challenge             September 2026
    one presentation attempt even when later evidence evaluation refuses
    it or the response is lost.  The presenter starts a new interaction
    to obtain a fresh challenge; it does not replay the consumed nonce.
-
-
-
-
-
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 16]
-
-Internet-Draft             Evidence Challenge             September 2026
-
 
    Every verifier instance that accepts presentations for one challenge
    issuer MUST use the same authoritative replay domain, or a
@@ -937,6 +946,14 @@ Internet-Draft             Evidence Challenge             September 2026
    finite reissue budget bound at least to the authenticated issuer,
    effective presenter or audience, action profile and digest, and
    policy.  The budget applies to automatic follow-up issuance caused by
+
+
+
+Schrock                   Expires 31 March 2027                [Page 17]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    a claimed presentation.  An initial challenge, including a later
    initial challenge authorized through a separate out-of-band recovery
    decision, is not a reissue merely because it has the same action
@@ -945,14 +962,6 @@ Internet-Draft             Evidence Challenge             September 2026
    NOT relabel an automatic follow-up as initial issuance to bypass an
    exhausted budget; a later initial challenge requires a separate
    authenticated policy or recovery decision.
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 17]
-
-Internet-Draft             Evidence Challenge             September 2026
-
 
    A fresh challenge identifier or nonce does not reset the automatic
    reissue budget.  A follow-up charged to that budget remains charged
@@ -982,6 +991,25 @@ Internet-Draft             Evidence Challenge             September 2026
    admission, or execution.  After waiting, the presenter can receive
    the same refusal, a different refusal, or an overload response.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 18]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    A relying party that expects many correlated refusals SHOULD issue
    recipient-specific or challenge-specific retry schedules rather than
    one common retry instant.  It SHOULD provide a jitter interval wide
@@ -1002,14 +1030,6 @@ Internet-Draft             Evidence Challenge             September 2026
    NOT appear in critical.  An issuer that relies on enforced pacing
    MUST enforce it through carrier-level overload handling, admission
    control, rate limiting, or refusal; it MUST NOT rely on retry_timing
-
-
-
-Schrock                   Expires 31 March 2027                [Page 18]
-
-Internet-Draft             Evidence Challenge             September 2026
-
-
    as an enforcement control.  A presenter that cannot establish whether
    not_before has passed MUST NOT infer permission to send early; it
    uses its local backoff policy or declines automated retry.
@@ -1039,6 +1059,13 @@ Internet-Draft             Evidence Challenge             September 2026
    apply an administrative bound per tenant so one tenant cannot consume
    the aggregate allowance.
 
+
+
+Schrock                   Expires 31 March 2027                [Page 19]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    Admission control for a stateful challenge MUST occur before the
    challenge is exposed.  The cap check, insertion of the issuer-and-
    nonce replay key and complete authenticated body binding, and debit
@@ -1058,13 +1085,6 @@ Internet-Draft             Evidence Challenge             September 2026
    evaluation, or admission.  It MUST NOT issue a replacement stateful
    challenge on that path.  Self-describing issuance reduces unanswered
    outstanding state; it does not make replay processing stateless.
-
-
-
-Schrock                   Expires 31 March 2027                [Page 19]
-
-Internet-Draft             Evidence Challenge             September 2026
-
 
    A relying party that knows its authoritative replay-state bound is
    currently exhausted MUST NOT issue a self-describing challenge whose
@@ -1093,6 +1113,15 @@ Internet-Draft             Evidence Challenge             September 2026
    available, self-describing issuance, and short lifetimes can reduce
    state pressure, but none permits fail-open nonce handling.
 
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 20]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    Before allocating challenge state or routing work to an authoritative
    owner, an implementation MUST apply a separate finite anti-abuse
    budget appropriate to the authenticated requester, source, tenant, or
@@ -1114,14 +1143,6 @@ Internet-Draft             Evidence Challenge             September 2026
    The authoritative owner's current time and the challenge expiry are
    also inputs, so an expiry check cannot race a later claim.  A read-
    only front end, presenter, or verifier-worker timestamp MUST NOT
-
-
-
-Schrock                   Expires 31 March 2027                [Page 20]
-
-Internet-Draft             Evidence Challenge             September 2026
-
-
    determine this expiry result; current time MUST come from the same
    authoritative transaction that claims the nonce and changes capacity.
    A read-only capacity check, a reservation followed by a separate
@@ -1147,6 +1168,16 @@ Internet-Draft             Evidence Challenge             September 2026
       reservation or debit across every applicable cap bucket commit
       together.
 
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 21]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    *  exact-body-replay: the authenticated issuer-and-nonce key was
       already in claimed state for the same body digest.  No new
       capacity is reserved or debited.
@@ -1170,14 +1201,6 @@ Internet-Draft             Evidence Challenge             September 2026
    For a statefully issued challenge, an existing outstanding-state
    debit MUST be transferred into the in-flight reservation in the same
    transaction.  Only the positive incremental delta between that debit
-
-
-
-Schrock                   Expires 31 March 2027                [Page 21]
-
-Internet-Draft             Evidence Challenge             September 2026
-
-
    and the conservative in-flight reservation is added to each
    applicable cap bucket.  The existing debit MUST NOT be lost, counted
    twice, or released before replacement state is secured.  The issuance
@@ -1195,6 +1218,21 @@ Internet-Draft             Evidence Challenge             September 2026
    unused capacity.  A worker crash or uncertain finalization retains
    the conservative reservation unless a fenced recovery transition
    proves that the old worker can no longer publish state.
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 22]
+
+Internet-Draft             Evidence Challenge             September 2026
+
 
    Every cap bucket changed by the transition MUST be in the same atomic
    coordination domain as the replay claim.  A sharded deployment MAY
@@ -1225,15 +1263,6 @@ Internet-Draft             Evidence Challenge             September 2026
    *  At the outstanding-state cap, a stateful issuer returns no new
       challenge and allocates no additional outstanding record.
 
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 22]
-
-Internet-Draft             Evidence Challenge             September 2026
-
-
    *  With one outstanding-state slot remaining, two concurrent stateful
       issuers produce exactly one committed and exposed challenge and
       one capacity refusal.  Replay registration, complete- body
@@ -1252,6 +1281,14 @@ Internet-Draft             Evidence Challenge             September 2026
    *  Two verifier replicas concurrently receiving the same nonce and
       exact body produce one claimed-with-capacity result, one exact-
       body-replay result, and exactly one capacity debit.
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 23]
+
+Internet-Draft             Evidence Challenge             September 2026
+
 
    *  At a binding cap, an unclaimed body receives capacity-refused, the
       nonce remains unclaimed, and no partial aggregate, presenter,
@@ -1281,15 +1318,6 @@ Internet-Draft             Evidence Challenge             September 2026
       not drop the old scope, update an unlocked bucket, or recompute a
       stored limit.
 
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 23]
-
-Internet-Draft             Evidence Challenge             September 2026
-
-
    *  Two owner shards cannot each reserve against one shared global
       slot.  The case passes only with one coordinating transaction or
       preallocated quotas whose live sum is bounded by the global cap.
@@ -1306,6 +1334,17 @@ Internet-Draft             Evidence Challenge             September 2026
    *  A caller-supplied old timestamp cannot make stale evidence fresh.
       The replay record and freshness verdict use the trustworthy
       evaluation-time source defined by the binding or profile.
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 24]
+
+Internet-Draft             Evidence Challenge             September 2026
+
 
    *  A challenge containing a relative evidence type, presentation
       profile, or proof-predicate identifier, a duplicate requirement
@@ -1332,20 +1371,6 @@ Internet-Draft             Evidence Challenge             September 2026
    Details members are not core challenge members and follow the
    processing rules of [RFC9457].
 
-
-
-
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 24]
-
-Internet-Draft             Evidence Challenge             September 2026
-
-
 2.9.  Carrier Semantics
 
    A transport binding SHOULD carry a challenge as a structured refusal
@@ -1368,6 +1393,14 @@ Internet-Draft             Evidence Challenge             September 2026
    procedures, plus either authenticated presenter binding or an
    explicitly declared anonymous or transferable exception satisfying
    the core rules.
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 25]
+
+Internet-Draft             Evidence Challenge             September 2026
+
 
    This carrier is not a native OAuth transaction-authorization
    response.  When a protected resource requires a transaction-specific
@@ -1394,14 +1427,6 @@ Internet-Draft             Evidence Challenge             September 2026
    If temporary overload or temporary owner unavailability is the reason
    for refusal, an origin server uses 503 Service Unavailable and MAY
    use Retry-After only when the service itself is temporarily
-
-
-
-Schrock                   Expires 31 March 2027                [Page 25]
-
-Internet-Draft             Evidence Challenge             September 2026
-
-
    unavailable or overloaded.  A gateway or proxy uses 504 Gateway
    Timeout for an upstream owner timeout and can use 502 Bad Gateway
    when the upstream response satisfies that status code's semantics
@@ -1415,6 +1440,23 @@ Internet-Draft             Evidence Challenge             September 2026
    The following example omits HTTP message-framing fields such as
    Content-Length.  A sender still supplies framing required by the HTTP
    version and connection in use.
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 26]
+
+Internet-Draft             Evidence Challenge             September 2026
+
 
    The ae-required problem type MUST be used only when the server is
    returning a fresh evidence challenge after a successful claimed-with-
@@ -1453,7 +1495,21 @@ Internet-Draft             Evidence Challenge             September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 26]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 27]
 
 Internet-Draft             Evidence Challenge             September 2026
 
@@ -1509,7 +1565,7 @@ Internet-Draft             Evidence Challenge             September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 27]
+Schrock                   Expires 31 March 2027                [Page 28]
 
 Internet-Draft             Evidence Challenge             September 2026
 
@@ -1565,7 +1621,7 @@ Internet-Draft             Evidence Challenge             September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 28]
+Schrock                   Expires 31 March 2027                [Page 29]
 
 Internet-Draft             Evidence Challenge             September 2026
 
@@ -1621,7 +1677,7 @@ Internet-Draft             Evidence Challenge             September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 29]
+Schrock                   Expires 31 March 2027                [Page 30]
 
 Internet-Draft             Evidence Challenge             September 2026
 
@@ -1677,7 +1733,7 @@ Internet-Draft             Evidence Challenge             September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 30]
+Schrock                   Expires 31 March 2027                [Page 31]
 
 Internet-Draft             Evidence Challenge             September 2026
 
@@ -1685,11 +1741,17 @@ Internet-Draft             Evidence Challenge             September 2026
    requires.  Its durable path accepts nonces of 16 through 128
    base64url characters, and its syntax check accepts digests in either
    letter case, where Section 2.1 and Section 2.2 require 22 through 128
-   characters and lowercase hexadecimal.  It treats audience as
-   optional.  It does not implement the capacity, outstanding-state, and
-   exhaustion requirements of Section 2.7, the retry timing of
-   Section 2.6, self-describing issuance, or the optional evaluation-
-   lineage profile of Section 2.4.
+   characters and lowercase hexadecimal.  It treats audience as optional
+   and compares it with a configured string; it does not authenticate
+   the challenge issuer or the returning presenter.  It does not
+   rederive the current proposed action before the claim: it compares
+   the action digest in the presentation with the stored challenge
+   digest, after consumption.  A follow-up challenge copies the stored
+   action digest, where Section 2.6 requires rederiving it from the
+   current proposed action.  It does not implement the capacity,
+   outstanding-state, and exhaustion requirements of Section 2.7, the
+   retry timing of Section 2.6, self-describing issuance, or the
+   optional evaluation-lineage profile of Section 2.4.
 
    Executable tests cover single-use consumption, expiry, action-swap
    and policy-drift refusal, follow-up derivation, the HTTP carrier,
@@ -1699,11 +1761,12 @@ Internet-Draft             Evidence Challenge             September 2026
    store restart, including 64 concurrent presentations through the
    PostgreSQL adapter.  That adapter is exercised against an in-process
    emulation of its SQL statements, not a live database.  A bounded
-   same-team model explores 1,024 storage-capability configurations and
-   checks 17 lifecycle obligations, each with a mutation that produces a
-   counterexample.  None of this is an independent implementation, a
-   deployment audit, a proof of database isolation, or a refinement
-   proof.
+   same-team model checks 17 lifecycle obligations, each with a mutation
+   that produces a counterexample: 11 over all 1,024 combinations of
+   four storage capabilities and six challenge bindings, and 6 over a
+   single configuration each.  None of this is an independent
+   implementation, a deployment audit, a proof of database isolation, or
+   a refinement proof.
 
 6.  Security Considerations
 
@@ -1726,14 +1789,7 @@ Internet-Draft             Evidence Challenge             September 2026
 
 
 
-
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 31]
+Schrock                   Expires 31 March 2027                [Page 32]
 
 Internet-Draft             Evidence Challenge             September 2026
 
@@ -1789,7 +1845,7 @@ Internet-Draft             Evidence Challenge             September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 32]
+Schrock                   Expires 31 March 2027                [Page 33]
 
 Internet-Draft             Evidence Challenge             September 2026
 
@@ -1845,7 +1901,7 @@ Internet-Draft             Evidence Challenge             September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 33]
+Schrock                   Expires 31 March 2027                [Page 34]
 
 Internet-Draft             Evidence Challenge             September 2026
 
@@ -1901,7 +1957,7 @@ Internet-Draft             Evidence Challenge             September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 34]
+Schrock                   Expires 31 March 2027                [Page 35]
 
 Internet-Draft             Evidence Challenge             September 2026
 
@@ -1957,7 +2013,7 @@ Internet-Draft             Evidence Challenge             September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 35]
+Schrock                   Expires 31 March 2027                [Page 36]
 
 Internet-Draft             Evidence Challenge             September 2026
 
@@ -1979,9 +2035,10 @@ Internet-Draft             Evidence Challenge             September 2026
       UNSATISFIED), restated in Section 1.3 so that this document has no
       normative dependency on it.  The lineage outcomes are SATISFIED
       and UNSATISFIED; closed reason identifiers keep a verification
-      failure, an acceptance refusal, an action mismatch, and an
-      evaluation that did not complete distinct; a successor link is
-      allowed only after a completed UNSATISFIED evaluation.
+      failure, a verification that could not be evaluated, an acceptance
+      refusal, an action mismatch, and an evaluation that did not
+      complete distinct; a successor link is allowed only after a
+      completed UNSATISFIED evaluation.
 
    *  Lets a recipient that retains authenticated artifacts distinguish
       earlier and later statements across policy changes, corrected
@@ -2005,18 +2062,23 @@ Internet-Draft             Evidence Challenge             September 2026
       and limits policy_unsatisfied to a policy-bound evidence
       requirement named by the challenge.
 
+
+
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 37]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    *  Rewords the informal description of insufficient evidence in the
       Abstract, the state-bounds text, and the DMSC illustration so that
       it covers evidence that is VERIFIED but not ACCEPTED or not bound
       to the exact action, and uses "admission" rather than "acceptance"
       where the text means admission.
-
-
-
-Schrock                   Expires 31 March 2027                [Page 36]
-
-Internet-Draft             Evidence Challenge             September 2026
-
 
    *  Adds to the IANA Considerations why the ae-required problem type
       is not specific to one application.
@@ -2060,19 +2122,17 @@ Internet-Draft             Evidence Challenge             September 2026
               DOI 10.17487/RFC6234, May 2011,
               <https://www.rfc-editor.org/info/rfc6234>.
 
-   [RFC6585]  Nottingham, M. and R. Fielding, "Additional HTTP Status
-              Codes", RFC 6585, DOI 10.17487/RFC6585, April 2012,
-              <https://www.rfc-editor.org/info/rfc6585>.
 
 
 
-
-
-
-Schrock                   Expires 31 March 2027                [Page 37]
+Schrock                   Expires 31 March 2027                [Page 38]
 
 Internet-Draft             Evidence Challenge             September 2026
 
+
+   [RFC6585]  Nottingham, M. and R. Fielding, "Additional HTTP Status
+              Codes", RFC 6585, DOI 10.17487/RFC6585, April 2012,
+              <https://www.rfc-editor.org/info/rfc6585>.
 
    [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
               Writing an IANA Considerations Section in RFCs", BCP 26,
@@ -2116,19 +2176,21 @@ Internet-Draft             Evidence Challenge             September 2026
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-evidence-chain/>.
 
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 39]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    [AIMS]     Kasselman, P., Lombardo, J., Rosomakho, Y., Campbell, B.,
               Steele, N., and A. Parecki, "AI Identity Management
               System", Work in Progress, Internet-Draft, draft-ietf-
               wimse-aims-00, 15 September 2026,
               <https://datatracker.ietf.org/doc/draft-ietf-wimse-aims/>.
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 38]
-
-Internet-Draft             Evidence Challenge             September 2026
-
 
    [AUTH-RECEIPTS]
               Schrock, I., "Authorization Receipts for High-Risk Agent
@@ -2170,21 +2232,20 @@ Internet-Draft             Evidence Challenge             September 2026
               <https://datatracker.ietf.org/doc/draft-rosomakho-oauth-
               txn-challenge/>.
 
+
+
+
+
+
+Schrock                   Expires 31 March 2027                [Page 40]
+
+Internet-Draft             Evidence Challenge             September 2026
+
+
    [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
               Code: The Implementation Status Section", BCP 205,
               RFC 7942, DOI 10.17487/RFC7942, July 2016,
               <https://www.rfc-editor.org/info/rfc7942>.
-
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 39]
-
-Internet-Draft             Evidence Challenge             September 2026
-
 
    [RFC8792]  Watsen, K., Auerswald, E., Farrel, A., and Q. Wu,
               "Handling Long Lines in Content of Internet-Drafts and
@@ -2232,9 +2293,4 @@ Author's Address
 
 
 
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 40]
+Schrock                   Expires 31 March 2027                [Page 41]
