@@ -371,7 +371,10 @@ function cborEncode(value) {
     return value >= 0 ? cborHead(0, value) : cborHead(1, -1 - value);
   }
   if (typeof value === 'string') {
-    if (!value.isWellFormed()) throw new Error('CAID-04: a lone surrogate is not a string of the data model');
+    // A lone surrogate: a high surrogate not followed by a low one, or a low
+    // surrogate not preceded by a high one (String.prototype.isWellFormed is
+    // ES2024, past the es2022 library the type check uses).
+    if (/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value)) throw new Error('CAID-04: a lone surrogate is not a string of the data model');
     const utf8 = Buffer.from(value, 'utf8');
     return Buffer.concat([cborHead(3, utf8.length), utf8]);
   }
@@ -503,7 +506,9 @@ function c1DataModel(src) {
 }
 const digestOfType = (type) => readJson('caid/registry/digests.json').types.find((t) => t.action_type === type)?.definition_sha256;
 
+/** @returns {Record<string, any>} */
 function emitted() {
+  /** @type {Record<string, any>} */
   const out = { ...Object.fromEntries(Object.entries(TABLES).map(([k, make]) => [k, make()])) };
   for (const [k, make] of Object.entries(LISTINGS)) out[k] = make();
   const { counts, all } = splitOnce();
