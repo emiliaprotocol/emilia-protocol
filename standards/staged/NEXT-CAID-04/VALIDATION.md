@@ -26,7 +26,9 @@ ABNF and the suite and unused-bit parsing changes over -03 and keeps both.
   their `:<name>` parameter, which the paragraph above it states, so its
   "Refused when" column is 31 columns wide; the paragraph that follows the
   table in the earlier draft now precedes it, and the table sits on one
-  page. Table 1 spans two pages and breaks between two rows.
+  page. Table 1 runs from page 14 to page 16: it breaks between two rows
+  on page 14, and its last row ends page 15, so only its closing border
+  and caption fall on page 16.
 - Every sourcecode line is at most 69 columns. Long example lines are folded
   as specified in RFC 8792 (single backslash strategy), and
   `check-caid-04` unfolds them before recomputing. Appendix D is two
