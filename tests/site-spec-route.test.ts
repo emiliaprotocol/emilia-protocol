@@ -38,6 +38,15 @@ describe('/spec source contract', () => {
     expect(page).not.toMatch(/authorization-receipts-\d{2}/i);
   });
 
+  it('degrades only /spec on a bad STATUS.json value, never the production build', () => {
+    // Module-scope code runs when the build collects page data, so a top-level
+    // throw or guard fails every deploy, not just this route.
+    expect(page).not.toMatch(/^(?:if|throw)\b/m);
+    expect(page).toContain("import { notFound } from 'next/navigation'");
+    expect(page).toContain('if (!RECEIPTS || !/^\\d+$/.test(RECEIPTS_REVISION)) notFound();');
+    expect(page).toContain('if (!existsSync(draftPath)) notFound();');
+  });
+
   it('places Receipts at the start of the canonical path without overstating its claim', () => {
     expect(page).toContain('Canonical path · 01 of 04');
     expect(page).toContain('href="/protocol"');

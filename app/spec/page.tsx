@@ -1,5 +1,6 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { notFound } from 'next/navigation';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import {
@@ -11,20 +12,20 @@ import standardsStatus from '@/standards/STATUS.json';
 
 // The governed status file owns the current revision and its source path.
 // This page renders only a posted snapshot, never a staged candidate.
+// tests/site-spec-route.test.ts enforces the STATUS.json invariant (source is
+// the posted file for the named revision). Nothing here throws at module
+// scope: a bad STATUS.json value must degrade /spec alone, never fail the
+// production build for every route.
 const RECEIPTS = standardsStatus.canonical_four_document_surface.documents.find(
   (document) => document.draft === 'draft-schrock-ep-authorization-receipts',
 );
-if (!RECEIPTS) throw new Error('STATUS.json canonical surface has no Authorization Receipts entry');
-const RECEIPTS_REVISION = RECEIPTS.revision;
+const RECEIPTS_REVISION = RECEIPTS?.revision ?? '';
 const RECEIPTS_DRAFT = `draft-schrock-ep-authorization-receipts-${RECEIPTS_REVISION}`;
-if (RECEIPTS.source !== `standards/posted/${RECEIPTS_DRAFT}.xml`) {
-  throw new Error(`/spec renders a posted snapshot; STATUS.json names ${RECEIPTS.source}`);
-}
 
 export const metadata = {
   // This page renders the posted Internet-Draft. "Internet-Draft", not "RFC" —
   // claiming RFC status for an individual I-D overstates IETF standing.
-  title: `Authorization Receipts Internet-Draft -${RECEIPTS_REVISION}`,
+  title: RECEIPTS ? `Authorization Receipts Internet-Draft -${RECEIPTS_REVISION}` : 'Authorization Receipts Internet-Draft',
   description: 'EMILIA Protocol specification (IETF Internet-Draft) — verifiable human-authorization receipts for high-risk agent actions.',
   alternates: { canonical: '/spec' },
 };
@@ -90,10 +91,19 @@ function mdToHtml(md: string): string {
 }
 
 export default function SpecPage() {
+  if (!RECEIPTS || !/^\d+$/.test(RECEIPTS_REVISION)) notFound();
+  if (RECEIPTS.source !== `standards/posted/${RECEIPTS_DRAFT}.xml`) {
+    // The page never reads `source`; it reads only standards/posted/. Keep
+    // rendering the posted snapshot of the named revision and report the drift.
+    console.error(`/spec: STATUS.json names ${RECEIPTS.source}; rendering the posted snapshot of -${RECEIPTS_REVISION}`);
+  }
   // Keep the directory and name prefix literal: the build's file tracer turns
   // the unknown revision into a wildcard, so the posted XML ships with the
   // server bundle. A fully computed path would not be traced.
   const draftPath = join(process.cwd(), 'standards', 'posted', `draft-schrock-ep-authorization-receipts-${RECEIPTS_REVISION}.xml`);
+  // A revision that has no posted snapshot yet (still staged) is a 404, never
+  // a render of the staged candidate.
+  if (!existsSync(draftPath)) notFound();
   const draft = readFileSync(draftPath, 'utf8');
   const html = mdToHtml(`\`\`\`text\n${draft}\n\`\`\``);
 
