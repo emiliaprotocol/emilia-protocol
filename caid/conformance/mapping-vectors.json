@@ -1,517 +1,752 @@
 {
-  "@version": "CAID-ACTION-MAPPING-VECTORS-v1",
-  "description": "Shared vectors for profile-bounded material-action equivalence. A result is content correlation only; it never authorizes an action.",
-  "suite": "jcs-sha256",
-  "enum_snapshots": [
+ "@version": "CAID-ACTION-MAPPING-VECTORS-v2",
+ "version": 2,
+ "description": "Shared vectors for profile-bounded material-action equivalence. A result is content correlation only; it never authorizes an action. Every expectation is an exact reason list in the -04 stage order (Section 8.5).",
+ "previous_versions": [
+  {
+   "version": 1,
+   "vectors": 25,
+   "sha256": "sha256:6941463cdb42ad5242d1e44efa6937a9db3edbfa77ea2c5df5573ce301be6f24",
+   "history": "caid/conformance/history/mapping-vectors.v1.json",
+   "note": "Version 2 keeps the layout and every version 1 vector under the same id. The 10 vectors that pinned only reason_contains now pin the whole list; one vector changes because -04 widens target_field to the field-name rule (change_since_v1)."
+  }
+ ],
+ "suite": "jcs-sha256",
+ "enum_snapshots": [
+  {
+   "values_ref": "ISO 4217 alpha-3",
+   "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+   "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
+   "values": [
+    "AED",
+    "AFN",
+    "ALL",
+    "AMD",
+    "AOA",
+    "ARS",
+    "AUD",
+    "AWG",
+    "AZN",
+    "BAM",
+    "BBD",
+    "BDT",
+    "BHD",
+    "BIF",
+    "BMD",
+    "BND",
+    "BOB",
+    "BOV",
+    "BRL",
+    "BSD",
+    "BTN",
+    "BWP",
+    "BYN",
+    "BZD",
+    "CAD",
+    "CDF",
+    "CHE",
+    "CHF",
+    "CHW",
+    "CLF",
+    "CLP",
+    "CNY",
+    "COP",
+    "COU",
+    "CRC",
+    "CUP",
+    "CVE",
+    "CZK",
+    "DJF",
+    "DKK",
+    "DOP",
+    "DZD",
+    "EGP",
+    "ERN",
+    "ETB",
+    "EUR",
+    "FJD",
+    "FKP",
+    "GBP",
+    "GEL",
+    "GHS",
+    "GIP",
+    "GMD",
+    "GNF",
+    "GTQ",
+    "GYD",
+    "HKD",
+    "HNL",
+    "HTG",
+    "HUF",
+    "IDR",
+    "ILS",
+    "INR",
+    "IQD",
+    "IRR",
+    "ISK",
+    "JMD",
+    "JOD",
+    "JPY",
+    "KES",
+    "KGS",
+    "KHR",
+    "KMF",
+    "KPW",
+    "KRW",
+    "KWD",
+    "KYD",
+    "KZT",
+    "LAK",
+    "LBP",
+    "LKR",
+    "LRD",
+    "LSL",
+    "LYD",
+    "MAD",
+    "MDL",
+    "MGA",
+    "MKD",
+    "MMK",
+    "MNT",
+    "MOP",
+    "MRU",
+    "MUR",
+    "MVR",
+    "MWK",
+    "MXN",
+    "MXV",
+    "MYR",
+    "MZN",
+    "NAD",
+    "NGN",
+    "NIO",
+    "NOK",
+    "NPR",
+    "NZD",
+    "OMR",
+    "PAB",
+    "PEN",
+    "PGK",
+    "PHP",
+    "PKR",
+    "PLN",
+    "PYG",
+    "QAR",
+    "RON",
+    "RSD",
+    "RUB",
+    "RWF",
+    "SAR",
+    "SBD",
+    "SCR",
+    "SDG",
+    "SEK",
+    "SGD",
+    "SHP",
+    "SLE",
+    "SOS",
+    "SRD",
+    "SSP",
+    "STN",
+    "SVC",
+    "SYP",
+    "SZL",
+    "THB",
+    "TJS",
+    "TMT",
+    "TND",
+    "TOP",
+    "TRY",
+    "TTD",
+    "TWD",
+    "TZS",
+    "UAH",
+    "UGX",
+    "USD",
+    "USN",
+    "UYI",
+    "UYU",
+    "UYW",
+    "UZS",
+    "VED",
+    "VES",
+    "VND",
+    "VUV",
+    "WST",
+    "XAD",
+    "XAF",
+    "XAG",
+    "XAU",
+    "XBA",
+    "XBB",
+    "XBC",
+    "XBD",
+    "XCD",
+    "XCG",
+    "XDR",
+    "XOF",
+    "XPD",
+    "XPF",
+    "XPT",
+    "XSU",
+    "XTS",
+    "XUA",
+    "XXX",
+    "YER",
+    "ZAR",
+    "ZMW",
+    "ZWG"
+   ]
+  }
+ ],
+ "definitions": [
+  {
+   "action_type": "order.place.1",
+   "status": "active",
+   "risk_class": "irreversible-financial",
+   "summary": "Placement of a purchase order committing the buyer to payment.",
+   "required_fields": [
     {
-      "values_ref": "ISO 4217 alpha-3",
-      "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
-      "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270",
-      "values": [
-        "AED", "AFN", "ALL", "AMD", "AOA", "ARS", "AUD", "AWG", "AZN",
-        "BAM", "BBD", "BDT", "BHD", "BIF", "BMD", "BND", "BOB", "BOV",
-        "BRL", "BSD", "BTN", "BWP", "BYN", "BZD", "CAD", "CDF", "CHE",
-        "CHF", "CHW", "CLF", "CLP", "CNY", "COP", "COU", "CRC", "CUP",
-        "CVE", "CZK", "DJF", "DKK", "DOP", "DZD", "EGP", "ERN", "ETB",
-        "EUR", "FJD", "FKP", "GBP", "GEL", "GHS", "GIP", "GMD", "GNF",
-        "GTQ", "GYD", "HKD", "HNL", "HTG", "HUF", "IDR", "ILS", "INR",
-        "IQD", "IRR", "ISK", "JMD", "JOD", "JPY", "KES", "KGS", "KHR",
-        "KMF", "KPW", "KRW", "KWD", "KYD", "KZT", "LAK", "LBP", "LKR",
-        "LRD", "LSL", "LYD", "MAD", "MDL", "MGA", "MKD", "MMK", "MNT",
-        "MOP", "MRU", "MUR", "MVR", "MWK", "MXN", "MXV", "MYR", "MZN",
-        "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "OMR", "PAB", "PEN",
-        "PGK", "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD", "RUB",
-        "RWF", "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE",
-        "SOS", "SRD", "SSP", "STN", "SVC", "SYP", "SZL", "THB", "TJS",
-        "TMT", "TND", "TOP", "TRY", "TTD", "TWD", "TZS", "UAH", "UGX",
-        "USD", "USN", "UYI", "UYU", "UYW", "UZS", "VED", "VES", "VND",
-        "VUV", "WST", "XAD", "XAF", "XAG", "XAU", "XBA", "XBB", "XBC",
-        "XBD", "XCD", "XCG", "XDR", "XOF", "XPD", "XPF", "XPT", "XSU",
-        "XTS", "XUA", "XXX", "YER", "ZAR", "ZMW", "ZWG"
-      ]
-    }
-  ],
-  "definitions": [
-    {
-      "action_type": "order.place.1",
-      "status": "active",
-      "risk_class": "irreversible-financial",
-      "summary": "Placement of a purchase order committing the buyer to payment.",
-      "required_fields": [
-        { "name": "order_id", "type": "string" },
-        { "name": "merchant_ref", "type": "digest", "notes": "sha256:<lowercase hex> of the normalized merchant identifier" },
-        { "name": "total_amount", "type": "amount-string", "notes": "grand total including tax and shipping, in order currency" },
-        { "name": "currency", "type": "enum", "values_ref": "ISO 4217 alpha-3", "values_snapshot": "SIX ISO 4217 List One published 2026-09-17", "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270" },
-        { "name": "items_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the canonical line-item list (sku, quantity, unit price per line)" },
-        { "name": "customer_ref", "type": "digest", "notes": "sha256:<lowercase hex> of the normalized customer identifier" },
-        { "name": "fulfillment_ref", "type": "digest", "notes": "sha256:<lowercase hex> of the canonical delivery, pickup, or digital-fulfillment target" }
-      ],
-      "optional_fields": [
-        { "name": "shipping_method", "type": "string" }
-      ],
-      "digest_notes": "merchant, customer, fulfillment target, and canonical line items are material; an order identifier alone is not globally sufficient",
-      "references": []
+     "name": "order_id",
+     "type": "string"
     },
     {
-      "action_type": "travel.cancel-notify.1",
-      "status": "active",
-      "risk_class": "external-communication",
-      "summary": "Cancellation of a travel reservation with a time constraint and a secondary notification action.",
-      "required_fields": [
-        { "name": "primary_action", "type": "string", "notes": "SILP root intent, for example !CANCEL" },
-        { "name": "resource", "type": "string", "notes": "The primary action's material target" },
-        { "name": "cancel_time", "type": "string", "notes": "The primary action's material time slot" },
-        { "name": "secondary_action", "type": "string", "notes": "A material secondary action, for example !EMAIL" },
-        { "name": "notification_recipient", "type": "string", "notes": "The secondary action's material recipient" },
-        { "name": "constraint_type", "type": "string" },
-        { "name": "constraint_value", "type": "string" },
-        { "name": "constraint_time", "type": "string" },
-        { "name": "constraint_subject", "type": "string" },
-        { "name": "entities_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete ordered SILP entity list, including entity/action associations" },
-        { "name": "constraints_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete ordered SILP constraint list" },
-        { "name": "alternatives_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the complete SILP alternatives list" },
-        { "name": "sequence_digest", "type": "digest", "notes": "sha256:<lowercase hex> of the declared SILP action sequence" }
-      ],
-      "optional_fields": [],
-      "digest_notes": "The root intent, complete ordered entity and constraint collections, declared action sequence, all alternatives, primary target and timing, and secondary action and recipient are material. SILP correlation metadata such as req_id, session_id, priority, confidence, and output hints are not material unless a separate action profile says otherwise.",
-      "references": ["draft-hwang-silp-protocol-01"]
-    }
-  ],
-  "profiles": {
-    "ep-action-v1": {
-      "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:emilia:mapping:ep-action-to-order-place:1",
-      "source_format": {
-        "media_type": "application/ep-action+json",
-        "schema": "urn:emilia:ep-action:1",
-        "version": "1"
-      },
-      "target_action_type": "order.place.1",
-      "loss_policy": "no-material-field-loss",
-      "material_source_paths": [
-        "/target/checkout_id",
-        "/target/merchant_id",
-        "/parameters/total_amount",
-        "/parameters/currency",
-        "/parameters/line_items",
-        "/target/customer_id",
-        "/target/fulfillment"
-      ],
-      "rules": [
-        { "source_path": "/target/checkout_id", "target_field": "order_id", "transform": "copy" },
-        { "source_path": "/target/merchant_id", "target_field": "merchant_ref", "transform": "sha256-utf8" },
-        { "source_path": "/parameters/total_amount", "target_field": "total_amount", "transform": "copy" },
-        { "source_path": "/parameters/currency", "target_field": "currency", "transform": "copy" },
-        { "source_path": "/parameters/line_items", "target_field": "items_digest", "transform": "sha256-jcs" },
-        { "source_path": "/target/customer_id", "target_field": "customer_ref", "transform": "sha256-utf8" },
-        { "source_path": "/target/fulfillment", "target_field": "fulfillment_ref", "transform": "sha256-jcs" }
-      ]
+     "name": "merchant_ref",
+     "type": "digest",
+     "notes": "sha256:<lowercase hex> of the normalized merchant identifier"
     },
-    "ap2-checkout-v1": {
-      "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:emilia:mapping:ap2-checkout-to-order-place:1",
-      "source_format": {
-        "media_type": "application/ap2-checkout+json",
-        "schema": "https://ap2-protocol.org/schemas/checkout-mandate",
-        "version": "1"
-      },
-      "target_action_type": "order.place.1",
-      "loss_policy": "no-material-field-loss",
-      "material_source_paths": [
-        "/checkout/order_id",
-        "/checkout/merchant_id",
-        "/checkout/total_amount",
-        "/checkout/currency",
-        "/checkout/line_items",
-        "/checkout/customer_id",
-        "/checkout/fulfillment"
-      ],
-      "rules": [
-        { "source_path": "/checkout/order_id", "target_field": "order_id", "transform": "copy" },
-        { "source_path": "/checkout/merchant_id", "target_field": "merchant_ref", "transform": "sha256-utf8" },
-        { "source_path": "/checkout/total_amount", "target_field": "total_amount", "transform": "copy" },
-        { "source_path": "/checkout/currency", "target_field": "currency", "transform": "copy" },
-        { "source_path": "/checkout/line_items", "target_field": "items_digest", "transform": "sha256-jcs" },
-        { "source_path": "/checkout/customer_id", "target_field": "customer_ref", "transform": "sha256-utf8" },
-        { "source_path": "/checkout/fulfillment", "target_field": "fulfillment_ref", "transform": "sha256-jcs" }
-      ]
+    {
+     "name": "total_amount",
+     "type": "amount-string",
+     "notes": "grand total including tax and shipping, in order currency"
     },
-    "silp-cancel-email-v1": {
-      "@version": "CAID-MAPPING-PROFILE-v1",
-      "profile_id": "urn:emilia:mapping:silp-cancel-email-to-travel-cancel-notify:1",
-      "source_format": {
-        "media_type": "application/silp-ir+json",
-        "schema": "https://github.com/Juwan-Hwang/polyglotir#silp-ir",
-        "version": "ir-v0.1"
-      },
-      "target_action_type": "travel.cancel-notify.1",
-      "loss_policy": "no-material-field-loss",
-      "material_source_paths": [
-        "/intent",
-        "/entities/0/value",
-        "/entities/1/value",
-        "/entities/2/action",
-        "/entities/2/value",
-        "/constraints/0/type",
-        "/constraints/0/value",
-        "/constraints/0/time",
-        "/constraints/0/subject",
-        "/entities",
-        "/constraints",
-        "/alternatives",
-        "/meta/seq"
-      ],
-      "rules": [
-        { "source_path": "/intent", "target_field": "primary_action", "transform": "copy" },
-        { "source_path": "/entities/0/value", "target_field": "resource", "transform": "copy" },
-        { "source_path": "/entities/1/value", "target_field": "cancel_time", "transform": "copy" },
-        { "source_path": "/entities/2/action", "target_field": "secondary_action", "transform": "copy" },
-        { "source_path": "/entities/2/value", "target_field": "notification_recipient", "transform": "copy" },
-        { "source_path": "/constraints/0/type", "target_field": "constraint_type", "transform": "copy" },
-        { "source_path": "/constraints/0/value", "target_field": "constraint_value", "transform": "copy" },
-        { "source_path": "/constraints/0/time", "target_field": "constraint_time", "transform": "copy" },
-        { "source_path": "/constraints/0/subject", "target_field": "constraint_subject", "transform": "copy" },
-        { "source_path": "/entities", "target_field": "entities_digest", "transform": "sha256-jcs" },
-        { "source_path": "/constraints", "target_field": "constraints_digest", "transform": "sha256-jcs" },
-        { "source_path": "/alternatives", "target_field": "alternatives_digest", "transform": "sha256-jcs" },
-        { "source_path": "/meta/seq", "target_field": "sequence_digest", "transform": "sha256-jcs" }
-      ]
+    {
+     "name": "currency",
+     "type": "enum",
+     "values_ref": "ISO 4217 alpha-3",
+     "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
+     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"
+    },
+    {
+     "name": "items_digest",
+     "type": "digest",
+     "notes": "sha256:<lowercase hex> of the canonical line-item list (sku, quantity, unit price per line)"
+    },
+    {
+     "name": "customer_ref",
+     "type": "digest",
+     "notes": "sha256:<lowercase hex> of the normalized customer identifier"
+    },
+    {
+     "name": "fulfillment_ref",
+     "type": "digest",
+     "notes": "sha256:<lowercase hex> of the canonical delivery, pickup, or digital-fulfillment target"
     }
+   ],
+   "optional_fields": [
+    {
+     "name": "shipping_method",
+     "type": "string"
+    }
+   ],
+   "digest_notes": "merchant, customer, fulfillment target, and canonical line items are material; an order identifier alone is not globally sufficient",
+   "references": []
   },
-  "sources": {
-    "ep-order": {
-      "ep_version": "1.0",
-      "action_type": "commerce.checkout",
-      "target": {
-        "merchant_id": "merch_acme_supplies",
-        "checkout_id": "ord_2026_9911",
-        "customer_id": "cust_treasury_777",
-        "fulfillment": { "kind": "shipping", "destination_id": "addr_denver_42" }
-      },
-      "parameters": {
-        "currency": "USD",
-        "total_amount": "129.99",
-        "line_items": [
-          { "sku": "sku_widget_a", "title": "Widget A", "quantity": 2, "unit_price": "50.00" },
-          { "sku": "sku_ship_std", "title": "Standard shipping", "quantity": 1, "unit_price": "29.99" }
-        ]
-      }
+  {
+   "action_type": "travel.cancel-notify.1",
+   "status": "active",
+   "risk_class": "external-communication",
+   "summary": "Cancellation of a travel reservation with a time constraint and a secondary notification action.",
+   "required_fields": [
+    {
+     "name": "primary_action",
+     "type": "string",
+     "notes": "SILP root intent, for example !CANCEL"
     },
-    "ap2-order": {
-      "vct": "mandate.checkout.1",
-      "checkout": {
-        "order_id": "ord_2026_9911",
-        "merchant_id": "merch_acme_supplies",
-        "customer_id": "cust_treasury_777",
-        "fulfillment": { "kind": "shipping", "destination_id": "addr_denver_42" },
-        "currency": "USD",
-        "total_amount": "129.99",
-        "line_items": [
-          { "sku": "sku_widget_a", "title": "Widget A", "quantity": 2, "unit_price": "50.00" },
-          { "sku": "sku_ship_std", "title": "Standard shipping", "quantity": 1, "unit_price": "29.99" }
-        ],
-        "created_at": "2026-07-08T11:59:00Z"
-      },
-      "checkout_hash": "native-ap2-digest-verified-by-the-ap2-verifier"
+    {
+     "name": "resource",
+     "type": "string",
+     "notes": "The primary action's material target"
     },
-    "silp-cancel-email": {
-      "silp": "v1",
-      "version": "ir-v0.1",
-      "intent": "!CANCEL",
-      "entities": [
-        { "id": "act", "value": "flight", "action": "!CANCEL" },
-        { "id": "time", "value": "t+1pm", "action": "!CANCEL" },
-        { "id": "act", "value": "zhangsan", "action": "!EMAIL" }
-      ],
-      "constraints": [
-        { "type": "loc", "value": "Beijing", "time": "t+1am", "subject": "me" }
-      ],
-      "alternatives": [],
-      "meta": {
-        "req_id": "a1b2c3d4",
-        "session_id": "s1",
-        "priority": 7,
-        "confidence": 1,
-        "seq": ["!CANCEL", "!EMAIL"],
-        "out": "code"
-      }
+    {
+     "name": "cancel_time",
+     "type": "string",
+     "notes": "The primary action's material time slot"
     },
-    "silp-cancel-email-metadata-variant": {
-      "silp": "v1",
-      "version": "ir-v0.1",
-      "intent": "!CANCEL",
-      "entities": [
-        { "id": "act", "value": "flight", "action": "!CANCEL" },
-        { "id": "time", "value": "t+1pm", "action": "!CANCEL" },
-        { "id": "act", "value": "zhangsan", "action": "!EMAIL" }
-      ],
-      "constraints": [
-        { "type": "loc", "value": "Beijing", "time": "t+1am", "subject": "me" }
-      ],
-      "alternatives": [],
-      "meta": {
-        "req_id": "d4c3b2a1",
-        "session_id": "s2",
-        "priority": 1,
-        "confidence": 0,
-        "seq": ["!CANCEL", "!EMAIL"],
-        "out": "json"
-      }
+    {
+     "name": "secondary_action",
+     "type": "string",
+     "notes": "A material secondary action, for example !EMAIL"
+    },
+    {
+     "name": "notification_recipient",
+     "type": "string",
+     "notes": "The secondary action's material recipient"
+    },
+    {
+     "name": "constraint_type",
+     "type": "string"
+    },
+    {
+     "name": "constraint_value",
+     "type": "string"
+    },
+    {
+     "name": "constraint_time",
+     "type": "string"
+    },
+    {
+     "name": "constraint_subject",
+     "type": "string"
+    },
+    {
+     "name": "entities_digest",
+     "type": "digest",
+     "notes": "sha256:<lowercase hex> of the complete ordered SILP entity list, including entity/action associations"
+    },
+    {
+     "name": "constraints_digest",
+     "type": "digest",
+     "notes": "sha256:<lowercase hex> of the complete ordered SILP constraint list"
+    },
+    {
+     "name": "alternatives_digest",
+     "type": "digest",
+     "notes": "sha256:<lowercase hex> of the complete SILP alternatives list"
+    },
+    {
+     "name": "sequence_digest",
+     "type": "digest",
+     "notes": "sha256:<lowercase hex> of the declared SILP action sequence"
     }
+   ],
+   "optional_fields": [],
+   "digest_notes": "The root intent, complete ordered entity and constraint collections, declared action sequence, all alternatives, primary target and timing, and secondary action and recipient are material. SILP correlation metadata such as req_id, session_id, priority, confidence, and output hints are not material unless a separate action profile says otherwise.",
+   "references": [
+    "draft-hwang-silp-protocol-01"
+   ]
+  }
+ ],
+ "profiles": {
+  "ep-action-v1": {
+   "@version": "CAID-MAPPING-PROFILE-v1",
+   "profile_id": "urn:emilia:mapping:ep-action-to-order-place:1",
+   "source_format": {
+    "media_type": "application/ep-action+json",
+    "schema": "urn:emilia:ep-action:1",
+    "version": "1"
+   },
+   "target_action_type": "order.place.1",
+   "loss_policy": "no-material-field-loss",
+   "material_source_paths": [
+    "/target/checkout_id",
+    "/target/merchant_id",
+    "/parameters/total_amount",
+    "/parameters/currency",
+    "/parameters/line_items",
+    "/target/customer_id",
+    "/target/fulfillment"
+   ],
+   "rules": [
+    {
+     "source_path": "/target/checkout_id",
+     "target_field": "order_id",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/target/merchant_id",
+     "target_field": "merchant_ref",
+     "transform": "sha256-utf8"
+    },
+    {
+     "source_path": "/parameters/total_amount",
+     "target_field": "total_amount",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/parameters/currency",
+     "target_field": "currency",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/parameters/line_items",
+     "target_field": "items_digest",
+     "transform": "sha256-jcs"
+    },
+    {
+     "source_path": "/target/customer_id",
+     "target_field": "customer_ref",
+     "transform": "sha256-utf8"
+    },
+    {
+     "source_path": "/target/fulfillment",
+     "target_field": "fulfillment_ref",
+     "transform": "sha256-jcs"
+    }
+   ]
   },
-  "vectors": [
+  "ap2-checkout-v1": {
+   "@version": "CAID-MAPPING-PROFILE-v1",
+   "profile_id": "urn:emilia:mapping:ap2-checkout-to-order-place:1",
+   "source_format": {
+    "media_type": "application/ap2-checkout+json",
+    "schema": "https://ap2-protocol.org/schemas/checkout-mandate",
+    "version": "1"
+   },
+   "target_action_type": "order.place.1",
+   "loss_policy": "no-material-field-loss",
+   "material_source_paths": [
+    "/checkout/order_id",
+    "/checkout/merchant_id",
+    "/checkout/total_amount",
+    "/checkout/currency",
+    "/checkout/line_items",
+    "/checkout/customer_id",
+    "/checkout/fulfillment"
+   ],
+   "rules": [
     {
-      "id": "equivalent-native-formats",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "expect": { "verdict": "EQUIVALENT_UNDER_PROFILE", "reasons": [] }
+     "source_path": "/checkout/order_id",
+     "target_field": "order_id",
+     "transform": "copy"
     },
     {
-      "id": "irrelevant-source-metadata-does-not-change-projection",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "set", "path": "/transport_trace", "value": "trace-991" }
-      ],
-      "expect": { "verdict": "EQUIVALENT_UNDER_PROFILE", "reasons": [] }
+     "source_path": "/checkout/merchant_id",
+     "target_field": "merchant_ref",
+     "transform": "sha256-utf8"
     },
     {
-      "id": "amount-mismatch",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "set", "path": "/checkout/total_amount", "value": "130.00" }
-      ],
-      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+     "source_path": "/checkout/total_amount",
+     "target_field": "total_amount",
+     "transform": "copy"
     },
     {
-      "id": "merchant-mismatch",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "set", "path": "/checkout/merchant_id", "value": "merch_evil_twin" }
-      ],
-      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+     "source_path": "/checkout/currency",
+     "target_field": "currency",
+     "transform": "copy"
     },
     {
-      "id": "fulfillment-target-mismatch",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "set", "path": "/checkout/fulfillment/destination_id", "value": "addr_attacker_99" }
-      ],
-      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
+     "source_path": "/checkout/line_items",
+     "target_field": "items_digest",
+     "transform": "sha256-jcs"
     },
     {
-      "id": "missing-currency-abstains",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "delete", "path": "/checkout/currency" }
-      ],
-      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:missing_source_field:/checkout/currency" }
+     "source_path": "/checkout/customer_id",
+     "target_field": "customer_ref",
+     "transform": "sha256-utf8"
     },
     {
-      "id": "unpinned-profile-abstains",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": {
-        "source": "ap2-order",
-        "profile": "ap2-checkout-v1",
-        "pin": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-      },
-      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:mapping_profile_unpinned" }
-    },
-    {
-      "id": "unverified-native-artifact-abstains",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": {
-        "source": "ap2-order",
-        "profile": "ap2-checkout-v1",
-        "pin": "profile",
-        "native_verified": false
-      },
-      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:native_verification_required" }
-    },
-    {
-      "id": "source-version-substitution-abstains",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source_descriptor", "op": "set", "path": "/version", "value": "2" }
-      ],
-      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:source_format_mismatch" }
-    },
-    {
-      "id": "lossy-profile-abstains",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "profile", "op": "delete", "path": "/rules/3" },
-        { "side": "right", "target": "profile", "op": "delete", "path": "/material_source_paths/3" }
-      ],
-      "repin_after_mutation": ["right"],
-      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:unmapped_material_field:currency" }
-    },
-    {
-      "id": "unregistered-transform-abstains",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "profile", "op": "set", "path": "/rules/2/transform", "value": "minor-units-to-decimal" }
-      ],
-      "repin_after_mutation": ["right"],
-      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:invalid_mapping_profile" }
-    },
-    {
-      "id": "malformed-json-pointer-abstains",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "profile", "op": "set", "path": "/rules/0/source_path", "value": "checkout/merchant_id" }
-      ],
-      "repin_after_mutation": ["right"],
-      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:invalid_mapping_profile" }
-    },
-    {
-      "id": "unknown-profile-member-abstains",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "profile", "op": "set", "path": "/authorization", "value": "allow" }
-      ],
-      "repin_after_mutation": ["right"],
-      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:invalid_mapping_profile" }
-    },
-    {
-      "id": "silp-cancel-email-equivalent-under-profile",
-      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "right": { "source": "silp-cancel-email-metadata-variant", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "expect": { "verdict": "EQUIVALENT_UNDER_PROFILE", "reasons": [] }
-    },
-    {
-      "id": "silp-correlation-metadata-is-not-material",
-      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "set", "path": "/meta/req_id", "value": "deadbeef" },
-        { "side": "right", "target": "source", "op": "set", "path": "/meta/session_id", "value": "zz" },
-        { "side": "right", "target": "source", "op": "set", "path": "/meta/confidence", "value": 0 }
-      ],
-      "expect": { "verdict": "EQUIVALENT_UNDER_PROFILE", "reasons": [] }
-    },
-    {
-      "id": "silp-secondary-action-is-material",
-      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "set", "path": "/entities/2/action", "value": "!NOTIFY" }
-      ],
-      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
-    },
-    {
-      "id": "silp-sequence-order-is-material",
-      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "set", "path": "/meta/seq/0", "value": "!EMAIL" },
-        { "side": "right", "target": "source", "op": "set", "path": "/meta/seq/1", "value": "!CANCEL" }
-      ],
-      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
-    },
-    {
-      "id": "silp-entity-action-association-is-material",
-      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "set", "path": "/entities/0/action", "value": "!EMAIL" }
-      ],
-      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
-    },
-    {
-      "id": "silp-additional-action-is-material",
-      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "set", "path": "/entities", "value": [
-          { "id": "act", "value": "flight", "action": "!CANCEL" },
-          { "id": "time", "value": "t+1pm", "action": "!CANCEL" },
-          { "id": "act", "value": "zhangsan", "action": "!EMAIL" },
-          { "id": "act", "value": "merchant", "action": "!PAY" }
-        ] }
-      ],
-      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
-    },
-    {
-      "id": "silp-additional-constraint-is-material",
-      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "set", "path": "/constraints", "value": [
-          { "type": "loc", "value": "Beijing", "time": "t+1am", "subject": "me" },
-          { "type": "budget", "value": "200", "subject": "me" }
-        ] }
-      ],
-      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
-    },
-    {
-      "id": "silp-alternative-is-material",
-      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "set", "path": "/alternatives", "value": [
-          { "intent": "!RESCHEDULE" }
-        ] }
-      ],
-      "expect": { "verdict": "NOT_EQUIVALENT", "reasons": ["material_projection_mismatch"] }
-    },
-    {
-      "id": "silp-missing-material-field-abstains",
-      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "delete", "path": "/entities/1/value" }
-      ],
-      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:missing_source_field:/entities/1/value" }
-    },
-    {
-      "id": "silp-constraint-time-loss-abstains",
-      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "source", "op": "delete", "path": "/constraints/0/time" }
-      ],
-      "expect": { "verdict": "INDETERMINATE", "reason_contains": "right:missing_source_field:/constraints/0/time" }
-    },
-    {
-      "id": "array-index-trailing-newline-abstains",
-      "left": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "right": { "source": "silp-cancel-email", "profile": "silp-cancel-email-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "profile", "op": "set", "path": "/rules/7/source_path", "value": "/constraints/0\n/time" },
-        { "side": "right", "target": "profile", "op": "set", "path": "/material_source_paths/7", "value": "/constraints/0\n/time" }
-      ],
-      "repin_after_mutation": ["right"],
-      "expect": { "verdict": "INDETERMINATE", "reasons": ["right:invalid_source_path:/constraints/0\n/time"] }
-    },
-    {
-      "id": "target-field-trailing-newline-abstains",
-      "left": { "source": "ep-order", "profile": "ep-action-v1", "pin": "profile" },
-      "right": { "source": "ap2-order", "profile": "ap2-checkout-v1", "pin": "profile" },
-      "mutations": [
-        { "side": "right", "target": "profile", "op": "set", "path": "/rules", "value": [
-          { "source_path": "/checkout/order_id", "target_field": "order_id", "transform": "copy" },
-          { "source_path": "/checkout/merchant_id", "target_field": "merchant_ref", "transform": "sha256-utf8" },
-          { "source_path": "/checkout/total_amount", "target_field": "total_amount", "transform": "copy" },
-          { "source_path": "/checkout/currency", "target_field": "currency", "transform": "copy" },
-          { "source_path": "/checkout/line_items", "target_field": "items_digest", "transform": "sha256-jcs" },
-          { "source_path": "/checkout/customer_id", "target_field": "customer_ref", "transform": "sha256-utf8" },
-          { "source_path": "/checkout/fulfillment", "target_field": "fulfillment_ref", "transform": "sha256-jcs" },
-          { "source_path": "/checkout/created_at", "target_field": "created_at\n", "transform": "copy" }
-        ] },
-        { "side": "right", "target": "profile", "op": "set", "path": "/material_source_paths", "value": ["/checkout/order_id", "/checkout/merchant_id", "/checkout/total_amount", "/checkout/currency", "/checkout/line_items", "/checkout/customer_id", "/checkout/fulfillment", "/checkout/created_at"] }
-      ],
-      "repin_after_mutation": ["right"],
-      "expect": { "verdict": "INDETERMINATE", "reasons": ["right:invalid_mapping_profile"] }
+     "source_path": "/checkout/fulfillment",
+     "target_field": "fulfillment_ref",
+     "transform": "sha256-jcs"
     }
-  ]
+   ]
+  },
+  "silp-cancel-email-v1": {
+   "@version": "CAID-MAPPING-PROFILE-v1",
+   "profile_id": "urn:emilia:mapping:silp-cancel-email-to-travel-cancel-notify:1",
+   "source_format": {
+    "media_type": "application/silp-ir+json",
+    "schema": "https://github.com/Juwan-Hwang/polyglotir#silp-ir",
+    "version": "ir-v0.1"
+   },
+   "target_action_type": "travel.cancel-notify.1",
+   "loss_policy": "no-material-field-loss",
+   "material_source_paths": [
+    "/intent",
+    "/entities/0/value",
+    "/entities/1/value",
+    "/entities/2/action",
+    "/entities/2/value",
+    "/constraints/0/type",
+    "/constraints/0/value",
+    "/constraints/0/time",
+    "/constraints/0/subject",
+    "/entities",
+    "/constraints",
+    "/alternatives",
+    "/meta/seq"
+   ],
+   "rules": [
+    {
+     "source_path": "/intent",
+     "target_field": "primary_action",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/entities/0/value",
+     "target_field": "resource",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/entities/1/value",
+     "target_field": "cancel_time",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/entities/2/action",
+     "target_field": "secondary_action",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/entities/2/value",
+     "target_field": "notification_recipient",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/constraints/0/type",
+     "target_field": "constraint_type",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/constraints/0/value",
+     "target_field": "constraint_value",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/constraints/0/time",
+     "target_field": "constraint_time",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/constraints/0/subject",
+     "target_field": "constraint_subject",
+     "transform": "copy"
+    },
+    {
+     "source_path": "/entities",
+     "target_field": "entities_digest",
+     "transform": "sha256-jcs"
+    },
+    {
+     "source_path": "/constraints",
+     "target_field": "constraints_digest",
+     "transform": "sha256-jcs"
+    },
+    {
+     "source_path": "/alternatives",
+     "target_field": "alternatives_digest",
+     "transform": "sha256-jcs"
+    },
+    {
+     "source_path": "/meta/seq",
+     "target_field": "sequence_digest",
+     "transform": "sha256-jcs"
+    }
+   ]
+  }
+ },
+ "sources": {
+  "ep-order": {
+   "ep_version": "1.0",
+   "action_type": "commerce.checkout",
+   "target": {
+    "merchant_id": "merch_acme_supplies",
+    "checkout_id": "ord_2026_9911",
+    "customer_id": "cust_treasury_777",
+    "fulfillment": {
+     "kind": "shipping",
+     "destination_id": "addr_denver_42"
+    }
+   },
+   "parameters": {
+    "currency": "USD",
+    "total_amount": "129.99",
+    "line_items": [
+     {
+      "sku": "sku_widget_a",
+      "title": "Widget A",
+      "quantity": 2,
+      "unit_price": "50.00"
+     },
+     {
+      "sku": "sku_ship_std",
+      "title": "Standard shipping",
+      "quantity": 1,
+      "unit_price": "29.99"
+     }
+    ]
+   }
+  },
+  "ap2-order": {
+   "vct": "mandate.checkout.1",
+   "checkout": {
+    "order_id": "ord_2026_9911",
+    "merchant_id": "merch_acme_supplies",
+    "customer_id": "cust_treasury_777",
+    "fulfillment": {
+     "kind": "shipping",
+     "destination_id": "addr_denver_42"
+    },
+    "currency": "USD",
+    "total_amount": "129.99",
+    "line_items": [
+     {
+      "sku": "sku_widget_a",
+      "title": "Widget A",
+      "quantity": 2,
+      "unit_price": "50.00"
+     },
+     {
+      "sku": "sku_ship_std",
+      "title": "Standard shipping",
+      "quantity": 1,
+      "unit_price": "29.99"
+     }
+    ],
+    "created_at": "2026-07-08T11:59:00Z"
+   },
+   "checkout_hash": "native-ap2-digest-verified-by-the-ap2-verifier"
+  },
+  "silp-cancel-email": {
+   "silp": "v1",
+   "version": "ir-v0.1",
+   "intent": "!CANCEL",
+   "entities": [
+    {
+     "id": "act",
+     "value": "flight",
+     "action": "!CANCEL"
+    },
+    {
+     "id": "time",
+     "value": "t+1pm",
+     "action": "!CANCEL"
+    },
+    {
+     "id": "act",
+     "value": "zhangsan",
+     "action": "!EMAIL"
+    }
+   ],
+   "constraints": [
+    {
+     "type": "loc",
+     "value": "Beijing",
+     "time": "t+1am",
+     "subject": "me"
+    }
+   ],
+   "alternatives": [],
+   "meta": {
+    "req_id": "a1b2c3d4",
+    "session_id": "s1",
+    "priority": 7,
+    "confidence": 1,
+    "seq": [
+     "!CANCEL",
+     "!EMAIL"
+    ],
+    "out": "code"
+   }
+  },
+  "silp-cancel-email-metadata-variant": {
+   "silp": "v1",
+   "version": "ir-v0.1",
+   "intent": "!CANCEL",
+   "entities": [
+    {
+     "id": "act",
+     "value": "flight",
+     "action": "!CANCEL"
+    },
+    {
+     "id": "time",
+     "value": "t+1pm",
+     "action": "!CANCEL"
+    },
+    {
+     "id": "act",
+     "value": "zhangsan",
+     "action": "!EMAIL"
+    }
+   ],
+   "constraints": [
+    {
+     "type": "loc",
+     "value": "Beijing",
+     "time": "t+1am",
+     "subject": "me"
+    }
+   ],
+   "alternatives": [],
+   "meta": {
+    "req_id": "d4c3b2a1",
+    "session_id": "s2",
+    "priority": 1,
+    "confidence": 0,
+    "seq": [
+     "!CANCEL",
+     "!EMAIL"
+    ],
+    "out": "json"
+   }
+  }
+ },
+ "vectors": [
+  {"id":"equivalent-native-formats","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"expect":{"verdict":"EQUIVALENT_UNDER_PROFILE","reasons":[]}},
+  {"id":"irrelevant-source-metadata-does-not-change-projection","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/transport_trace","value":"trace-991"}],"expect":{"verdict":"EQUIVALENT_UNDER_PROFILE","reasons":[]}},
+  {"id":"amount-mismatch","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/checkout/total_amount","value":"130.00"}],"expect":{"verdict":"NOT_EQUIVALENT","reasons":["material_projection_mismatch"]}},
+  {"id":"merchant-mismatch","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/checkout/merchant_id","value":"merch_evil_twin"}],"expect":{"verdict":"NOT_EQUIVALENT","reasons":["material_projection_mismatch"]}},
+  {"id":"fulfillment-target-mismatch","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/checkout/fulfillment/destination_id","value":"addr_attacker_99"}],"expect":{"verdict":"NOT_EQUIVALENT","reasons":["material_projection_mismatch"]}},
+  {"id":"missing-currency-abstains","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"delete","path":"/checkout/currency"}],"expect":{"verdict":"INDETERMINATE","reasons":["right:missing_source_field:/checkout/currency"]}},
+  {"id":"unpinned-profile-abstains","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"sha256:0000000000000000000000000000000000000000000000000000000000000000"},"expect":{"verdict":"INDETERMINATE","reasons":["right:mapping_profile_unpinned"]}},
+  {"id":"unverified-native-artifact-abstains","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile","native_verified":false},"expect":{"verdict":"INDETERMINATE","reasons":["right:native_verification_required"]}},
+  {"id":"source-version-substitution-abstains","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"mutations":[{"side":"right","target":"source_descriptor","op":"set","path":"/version","value":"2"}],"expect":{"verdict":"INDETERMINATE","reasons":["right:source_format_mismatch"]}},
+  {"id":"lossy-profile-abstains","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"delete","path":"/rules/3"},{"side":"right","target":"profile","op":"delete","path":"/material_source_paths/3"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:unmapped_material_field:currency"]}},
+  {"id":"unregistered-transform-abstains","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/2/transform","value":"minor-units-to-decimal"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"malformed-json-pointer-abstains","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/0/source_path","value":"checkout/merchant_id"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"unknown-profile-member-abstains","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/authorization","value":"allow"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"silp-cancel-email-equivalent-under-profile","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email-metadata-variant","profile":"silp-cancel-email-v1","pin":"profile"},"expect":{"verdict":"EQUIVALENT_UNDER_PROFILE","reasons":[]}},
+  {"id":"silp-correlation-metadata-is-not-material","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/meta/req_id","value":"deadbeef"},{"side":"right","target":"source","op":"set","path":"/meta/session_id","value":"zz"},{"side":"right","target":"source","op":"set","path":"/meta/confidence","value":0}],"expect":{"verdict":"EQUIVALENT_UNDER_PROFILE","reasons":[]}},
+  {"id":"silp-secondary-action-is-material","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/entities/2/action","value":"!NOTIFY"}],"expect":{"verdict":"NOT_EQUIVALENT","reasons":["material_projection_mismatch"]}},
+  {"id":"silp-sequence-order-is-material","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/meta/seq/0","value":"!EMAIL"},{"side":"right","target":"source","op":"set","path":"/meta/seq/1","value":"!CANCEL"}],"expect":{"verdict":"NOT_EQUIVALENT","reasons":["material_projection_mismatch"]}},
+  {"id":"silp-entity-action-association-is-material","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/entities/0/action","value":"!EMAIL"}],"expect":{"verdict":"NOT_EQUIVALENT","reasons":["material_projection_mismatch"]}},
+  {"id":"silp-additional-action-is-material","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/entities","value":[{"id":"act","value":"flight","action":"!CANCEL"},{"id":"time","value":"t+1pm","action":"!CANCEL"},{"id":"act","value":"zhangsan","action":"!EMAIL"},{"id":"act","value":"merchant","action":"!PAY"}]}],"expect":{"verdict":"NOT_EQUIVALENT","reasons":["material_projection_mismatch"]}},
+  {"id":"silp-additional-constraint-is-material","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/constraints","value":[{"type":"loc","value":"Beijing","time":"t+1am","subject":"me"},{"type":"budget","value":"200","subject":"me"}]}],"expect":{"verdict":"NOT_EQUIVALENT","reasons":["material_projection_mismatch"]}},
+  {"id":"silp-alternative-is-material","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/alternatives","value":[{"intent":"!RESCHEDULE"}]}],"expect":{"verdict":"NOT_EQUIVALENT","reasons":["material_projection_mismatch"]}},
+  {"id":"silp-missing-material-field-abstains","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"delete","path":"/entities/1/value"}],"expect":{"verdict":"INDETERMINATE","reasons":["right:missing_source_field:/entities/1/value"]}},
+  {"id":"silp-constraint-time-loss-abstains","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"delete","path":"/constraints/0/time"}],"expect":{"verdict":"INDETERMINATE","reasons":["right:missing_source_field:/constraints/0/time"]}},
+  {"id":"array-index-trailing-newline-abstains","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/7/source_path","value":"/constraints/0\n/time"},{"side":"right","target":"profile","op":"set","path":"/material_source_paths/7","value":"/constraints/0\n/time"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_source_path:/constraints/0\n/time"]}},
+  {"id":"target-field-trailing-newline-abstains","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ap2-order","profile":"ap2-checkout-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules","value":[{"source_path":"/checkout/order_id","target_field":"order_id","transform":"copy"},{"source_path":"/checkout/merchant_id","target_field":"merchant_ref","transform":"sha256-utf8"},{"source_path":"/checkout/total_amount","target_field":"total_amount","transform":"copy"},{"source_path":"/checkout/currency","target_field":"currency","transform":"copy"},{"source_path":"/checkout/line_items","target_field":"items_digest","transform":"sha256-jcs"},{"source_path":"/checkout/customer_id","target_field":"customer_ref","transform":"sha256-utf8"},{"source_path":"/checkout/fulfillment","target_field":"fulfillment_ref","transform":"sha256-jcs"},{"source_path":"/checkout/created_at","target_field":"created_at\n","transform":"copy"}]},{"side":"right","target":"profile","op":"set","path":"/material_source_paths","value":["/checkout/order_id","/checkout/merchant_id","/checkout/total_amount","/checkout/currency","/checkout/line_items","/checkout/customer_id","/checkout/fulfillment","/checkout/created_at"]}],"repin_after_mutation":["right"],"expect":{"verdict":"NOT_EQUIVALENT","reasons":["material_projection_mismatch"]},"change_since_v1":"Section 4.2.1 and 8.2: target_field follows the field-name rule (any non-empty name without \":\" other than action_type), so \"order_id\\n\" is a valid target field; the profile now fails because no rule targets the required field order_id."},
+  {"id":"hex-to-digest-equivalent","description":"sha256-hex-to-digest turns 64 lowercase hex characters into a digest field","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"left","target":"source","op":"set","path":"/target/merchant_id","value":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},{"side":"right","target":"source","op":"set","path":"/target/merchant_id","value":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},{"side":"left","target":"profile","op":"set","path":"/rules/1/transform","value":"sha256-hex-to-digest"},{"side":"right","target":"profile","op":"set","path":"/rules/1/transform","value":"sha256-hex-to-digest"}],"repin_after_mutation":["left","right"],"expect":{"verdict":"EQUIVALENT_UNDER_PROFILE","reasons":[]}},
+  {"id":"hex-to-digest-uppercase-abstains","description":"uppercase hex is not lowercase hex: source_value_type_mismatch","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/target/merchant_id","value":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},{"side":"right","target":"profile","op":"set","path":"/rules/1/transform","value":"sha256-hex-to-digest"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:source_value_type_mismatch:/target/merchant_id"]}},
+  {"id":"hex-to-digest-short-abstains","description":"63 hex characters are refused","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/target/merchant_id","value":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},{"side":"right","target":"profile","op":"set","path":"/rules/1/transform","value":"sha256-hex-to-digest"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:source_value_type_mismatch:/target/merchant_id"]}},
+  {"id":"omitted-source-fields-empty-equivalent","description":"an empty omitted_source_fields under no-material-field-loss","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/omitted_source_fields","value":[]}],"repin_after_mutation":["right"],"expect":{"verdict":"EQUIVALENT_UNDER_PROFILE","reasons":[]}},
+  {"id":"declared-loss-abstains","description":"declared-source-semantic-loss with a declared omission always abstains","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/loss_policy","value":"declared-source-semantic-loss"},{"side":"right","target":"profile","op":"set","path":"/omitted_source_fields","value":[{"source_path":"/ep_version","reason":"transport version is not material"}]}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:declared_source_semantic_loss"]}},
+  {"id":"declared-loss-without-omissions-abstains","description":"declared-source-semantic-loss needs at least one omission","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/loss_policy","value":"declared-source-semantic-loss"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile","right:declared_source_semantic_loss"]}},
+  {"id":"omission-under-no-loss-abstains","description":"no-material-field-loss with an omission","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/omitted_source_fields","value":[{"source_path":"/ep_version","reason":"x"}]}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"omission-is-rule-path-abstains","description":"an omitted path may not also be a rule path","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/loss_policy","value":"declared-source-semantic-loss"},{"side":"right","target":"profile","op":"set","path":"/omitted_source_fields","value":[{"source_path":"/target/checkout_id","reason":"x"}]}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile","right:declared_source_semantic_loss"]}},
+  {"id":"omitted-source-fields-null-abstains","description":"review D2: a member present as null is malformed, never read as []","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/omitted_source_fields","value":null}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"profile-id-512-octets-equivalent","description":"profile_id of 170 euro signs (510 octets) is within 512","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/profile_id","value":"€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€"}],"repin_after_mutation":["right"],"expect":{"verdict":"EQUIVALENT_UNDER_PROFILE","reasons":[]}},
+  {"id":"profile-id-513-octets-abstains","description":"profile_id of 171 euro signs is 513 UTF-8 octets, over 512 (171 UTF-16 units)","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/profile_id","value":"€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"profile-id-astral-512-octets-equivalent","description":"128 astral characters are 512 octets","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/profile_id","value":"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"}],"repin_after_mutation":["right"],"expect":{"verdict":"EQUIVALENT_UNDER_PROFILE","reasons":[]}},
+  {"id":"profile-id-astral-516-octets-abstains","description":"129 astral characters are 516 octets (only 129 code points)","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/profile_id","value":"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"target-action-type-513-octets-abstains","description":"review D4: target_action_type is bounded at 512 octets as a member rule, so it is exactly invalid_mapping_profile","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/target_action_type","value":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.1.1"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"pointer-2049-octets-abstains","description":"a source path over 2048 octets","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/0/source_path","value":"/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},{"side":"right","target":"profile","op":"set","path":"/material_source_paths/0","value":"/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"pointer-2048-octets-missing","description":"a source path of exactly 2048 octets passes the profile checks and is missing from the source","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/0/source_path","value":"/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},{"side":"right","target":"profile","op":"set","path":"/material_source_paths/0","value":"/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:missing_source_field:/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]}},
+  {"id":"rules-129-abstains","description":"129 rules is over the limit of 128","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules","value":[{"source_path":"/x0","target_field":"f0","transform":"copy"},{"source_path":"/x1","target_field":"f1","transform":"copy"},{"source_path":"/x2","target_field":"f2","transform":"copy"},{"source_path":"/x3","target_field":"f3","transform":"copy"},{"source_path":"/x4","target_field":"f4","transform":"copy"},{"source_path":"/x5","target_field":"f5","transform":"copy"},{"source_path":"/x6","target_field":"f6","transform":"copy"},{"source_path":"/x7","target_field":"f7","transform":"copy"},{"source_path":"/x8","target_field":"f8","transform":"copy"},{"source_path":"/x9","target_field":"f9","transform":"copy"},{"source_path":"/x10","target_field":"f10","transform":"copy"},{"source_path":"/x11","target_field":"f11","transform":"copy"},{"source_path":"/x12","target_field":"f12","transform":"copy"},{"source_path":"/x13","target_field":"f13","transform":"copy"},{"source_path":"/x14","target_field":"f14","transform":"copy"},{"source_path":"/x15","target_field":"f15","transform":"copy"},{"source_path":"/x16","target_field":"f16","transform":"copy"},{"source_path":"/x17","target_field":"f17","transform":"copy"},{"source_path":"/x18","target_field":"f18","transform":"copy"},{"source_path":"/x19","target_field":"f19","transform":"copy"},{"source_path":"/x20","target_field":"f20","transform":"copy"},{"source_path":"/x21","target_field":"f21","transform":"copy"},{"source_path":"/x22","target_field":"f22","transform":"copy"},{"source_path":"/x23","target_field":"f23","transform":"copy"},{"source_path":"/x24","target_field":"f24","transform":"copy"},{"source_path":"/x25","target_field":"f25","transform":"copy"},{"source_path":"/x26","target_field":"f26","transform":"copy"},{"source_path":"/x27","target_field":"f27","transform":"copy"},{"source_path":"/x28","target_field":"f28","transform":"copy"},{"source_path":"/x29","target_field":"f29","transform":"copy"},{"source_path":"/x30","target_field":"f30","transform":"copy"},{"source_path":"/x31","target_field":"f31","transform":"copy"},{"source_path":"/x32","target_field":"f32","transform":"copy"},{"source_path":"/x33","target_field":"f33","transform":"copy"},{"source_path":"/x34","target_field":"f34","transform":"copy"},{"source_path":"/x35","target_field":"f35","transform":"copy"},{"source_path":"/x36","target_field":"f36","transform":"copy"},{"source_path":"/x37","target_field":"f37","transform":"copy"},{"source_path":"/x38","target_field":"f38","transform":"copy"},{"source_path":"/x39","target_field":"f39","transform":"copy"},{"source_path":"/x40","target_field":"f40","transform":"copy"},{"source_path":"/x41","target_field":"f41","transform":"copy"},{"source_path":"/x42","target_field":"f42","transform":"copy"},{"source_path":"/x43","target_field":"f43","transform":"copy"},{"source_path":"/x44","target_field":"f44","transform":"copy"},{"source_path":"/x45","target_field":"f45","transform":"copy"},{"source_path":"/x46","target_field":"f46","transform":"copy"},{"source_path":"/x47","target_field":"f47","transform":"copy"},{"source_path":"/x48","target_field":"f48","transform":"copy"},{"source_path":"/x49","target_field":"f49","transform":"copy"},{"source_path":"/x50","target_field":"f50","transform":"copy"},{"source_path":"/x51","target_field":"f51","transform":"copy"},{"source_path":"/x52","target_field":"f52","transform":"copy"},{"source_path":"/x53","target_field":"f53","transform":"copy"},{"source_path":"/x54","target_field":"f54","transform":"copy"},{"source_path":"/x55","target_field":"f55","transform":"copy"},{"source_path":"/x56","target_field":"f56","transform":"copy"},{"source_path":"/x57","target_field":"f57","transform":"copy"},{"source_path":"/x58","target_field":"f58","transform":"copy"},{"source_path":"/x59","target_field":"f59","transform":"copy"},{"source_path":"/x60","target_field":"f60","transform":"copy"},{"source_path":"/x61","target_field":"f61","transform":"copy"},{"source_path":"/x62","target_field":"f62","transform":"copy"},{"source_path":"/x63","target_field":"f63","transform":"copy"},{"source_path":"/x64","target_field":"f64","transform":"copy"},{"source_path":"/x65","target_field":"f65","transform":"copy"},{"source_path":"/x66","target_field":"f66","transform":"copy"},{"source_path":"/x67","target_field":"f67","transform":"copy"},{"source_path":"/x68","target_field":"f68","transform":"copy"},{"source_path":"/x69","target_field":"f69","transform":"copy"},{"source_path":"/x70","target_field":"f70","transform":"copy"},{"source_path":"/x71","target_field":"f71","transform":"copy"},{"source_path":"/x72","target_field":"f72","transform":"copy"},{"source_path":"/x73","target_field":"f73","transform":"copy"},{"source_path":"/x74","target_field":"f74","transform":"copy"},{"source_path":"/x75","target_field":"f75","transform":"copy"},{"source_path":"/x76","target_field":"f76","transform":"copy"},{"source_path":"/x77","target_field":"f77","transform":"copy"},{"source_path":"/x78","target_field":"f78","transform":"copy"},{"source_path":"/x79","target_field":"f79","transform":"copy"},{"source_path":"/x80","target_field":"f80","transform":"copy"},{"source_path":"/x81","target_field":"f81","transform":"copy"},{"source_path":"/x82","target_field":"f82","transform":"copy"},{"source_path":"/x83","target_field":"f83","transform":"copy"},{"source_path":"/x84","target_field":"f84","transform":"copy"},{"source_path":"/x85","target_field":"f85","transform":"copy"},{"source_path":"/x86","target_field":"f86","transform":"copy"},{"source_path":"/x87","target_field":"f87","transform":"copy"},{"source_path":"/x88","target_field":"f88","transform":"copy"},{"source_path":"/x89","target_field":"f89","transform":"copy"},{"source_path":"/x90","target_field":"f90","transform":"copy"},{"source_path":"/x91","target_field":"f91","transform":"copy"},{"source_path":"/x92","target_field":"f92","transform":"copy"},{"source_path":"/x93","target_field":"f93","transform":"copy"},{"source_path":"/x94","target_field":"f94","transform":"copy"},{"source_path":"/x95","target_field":"f95","transform":"copy"},{"source_path":"/x96","target_field":"f96","transform":"copy"},{"source_path":"/x97","target_field":"f97","transform":"copy"},{"source_path":"/x98","target_field":"f98","transform":"copy"},{"source_path":"/x99","target_field":"f99","transform":"copy"},{"source_path":"/x100","target_field":"f100","transform":"copy"},{"source_path":"/x101","target_field":"f101","transform":"copy"},{"source_path":"/x102","target_field":"f102","transform":"copy"},{"source_path":"/x103","target_field":"f103","transform":"copy"},{"source_path":"/x104","target_field":"f104","transform":"copy"},{"source_path":"/x105","target_field":"f105","transform":"copy"},{"source_path":"/x106","target_field":"f106","transform":"copy"},{"source_path":"/x107","target_field":"f107","transform":"copy"},{"source_path":"/x108","target_field":"f108","transform":"copy"},{"source_path":"/x109","target_field":"f109","transform":"copy"},{"source_path":"/x110","target_field":"f110","transform":"copy"},{"source_path":"/x111","target_field":"f111","transform":"copy"},{"source_path":"/x112","target_field":"f112","transform":"copy"},{"source_path":"/x113","target_field":"f113","transform":"copy"},{"source_path":"/x114","target_field":"f114","transform":"copy"},{"source_path":"/x115","target_field":"f115","transform":"copy"},{"source_path":"/x116","target_field":"f116","transform":"copy"},{"source_path":"/x117","target_field":"f117","transform":"copy"},{"source_path":"/x118","target_field":"f118","transform":"copy"},{"source_path":"/x119","target_field":"f119","transform":"copy"},{"source_path":"/x120","target_field":"f120","transform":"copy"},{"source_path":"/x121","target_field":"f121","transform":"copy"},{"source_path":"/x122","target_field":"f122","transform":"copy"},{"source_path":"/x123","target_field":"f123","transform":"copy"},{"source_path":"/x124","target_field":"f124","transform":"copy"},{"source_path":"/x125","target_field":"f125","transform":"copy"},{"source_path":"/x126","target_field":"f126","transform":"copy"},{"source_path":"/x127","target_field":"f127","transform":"copy"},{"source_path":"/x128","target_field":"f128","transform":"copy"}]},{"side":"right","target":"profile","op":"set","path":"/material_source_paths","value":["/x0","/x1","/x2","/x3","/x4","/x5","/x6","/x7","/x8","/x9","/x10","/x11","/x12","/x13","/x14","/x15","/x16","/x17","/x18","/x19","/x20","/x21","/x22","/x23","/x24","/x25","/x26","/x27","/x28","/x29","/x30","/x31","/x32","/x33","/x34","/x35","/x36","/x37","/x38","/x39","/x40","/x41","/x42","/x43","/x44","/x45","/x46","/x47","/x48","/x49","/x50","/x51","/x52","/x53","/x54","/x55","/x56","/x57","/x58","/x59","/x60","/x61","/x62","/x63","/x64","/x65","/x66","/x67","/x68","/x69","/x70","/x71","/x72","/x73","/x74","/x75","/x76","/x77","/x78","/x79","/x80","/x81","/x82","/x83","/x84","/x85","/x86","/x87","/x88","/x89","/x90","/x91","/x92","/x93","/x94","/x95","/x96","/x97","/x98","/x99","/x100","/x101","/x102","/x103","/x104","/x105","/x106","/x107","/x108","/x109","/x110","/x111","/x112","/x113","/x114","/x115","/x116","/x117","/x118","/x119","/x120","/x121","/x122","/x123","/x124","/x125","/x126","/x127","/x128"]}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"target-field-at-version-equivalent","description":"a target_field of \"@version\" is a field name","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"left","target":"source","op":"set","path":"/meta_version","value":"1"},{"side":"right","target":"source","op":"set","path":"/meta_version","value":"1"},{"side":"left","target":"profile","op":"set","path":"/rules","value":[{"source_path":"/target/checkout_id","target_field":"order_id","transform":"copy"},{"source_path":"/target/merchant_id","target_field":"merchant_ref","transform":"sha256-utf8"},{"source_path":"/parameters/total_amount","target_field":"total_amount","transform":"copy"},{"source_path":"/parameters/currency","target_field":"currency","transform":"copy"},{"source_path":"/parameters/line_items","target_field":"items_digest","transform":"sha256-jcs"},{"source_path":"/target/customer_id","target_field":"customer_ref","transform":"sha256-utf8"},{"source_path":"/target/fulfillment","target_field":"fulfillment_ref","transform":"sha256-jcs"},{"source_path":"/meta_version","target_field":"@version","transform":"copy"}]},{"side":"left","target":"profile","op":"set","path":"/material_source_paths","value":["/target/checkout_id","/target/merchant_id","/parameters/total_amount","/parameters/currency","/parameters/line_items","/target/customer_id","/target/fulfillment","/meta_version"]},{"side":"right","target":"profile","op":"set","path":"/rules","value":[{"source_path":"/target/checkout_id","target_field":"order_id","transform":"copy"},{"source_path":"/target/merchant_id","target_field":"merchant_ref","transform":"sha256-utf8"},{"source_path":"/parameters/total_amount","target_field":"total_amount","transform":"copy"},{"source_path":"/parameters/currency","target_field":"currency","transform":"copy"},{"source_path":"/parameters/line_items","target_field":"items_digest","transform":"sha256-jcs"},{"source_path":"/target/customer_id","target_field":"customer_ref","transform":"sha256-utf8"},{"source_path":"/target/fulfillment","target_field":"fulfillment_ref","transform":"sha256-jcs"},{"source_path":"/meta_version","target_field":"@version","transform":"copy"}]},{"side":"right","target":"profile","op":"set","path":"/material_source_paths","value":["/target/checkout_id","/target/merchant_id","/parameters/total_amount","/parameters/currency","/parameters/line_items","/target/customer_id","/target/fulfillment","/meta_version"]}],"repin_after_mutation":["left","right"],"expect":{"verdict":"EQUIVALENT_UNDER_PROFILE","reasons":[]}},
+  {"id":"target-field-array-abstains","description":"review D5: a target_field that is an array is refused, never coerced to a string","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/0/target_field","value":["order_id"]}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"target-field-action-type-abstains","description":"a rule may not target action_type","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/0/target_field","value":"action_type"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"target-field-colon-abstains","description":"a target field may not contain \":\"","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/0/target_field","value":"order:id"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"transform-array-abstains","description":"review D8: a transform that is an array is invalid_mapping_profile, never an exception","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/0/transform","value":["copy"]}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"loss-policy-array-abstains","description":"review D8: a loss_policy that is an array","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/loss_policy","value":["no-material-field-loss"]}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"material-path-number-abstains","description":"review D9: a material path that is a number beside an unknown target type is exactly invalid_mapping_profile: the member rules are a gate","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/material_source_paths/0","value":123},{"side":"right","target":"profile","op":"set","path":"/target_action_type","value":"unknown.type.1"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"newline-joined-coverage-abstains","description":"review D6: one rule path holding two material paths joined by a line feed never stands in for both; coverage compares sets","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/3/source_path","value":"/parameters/currency\n/parameters/line_items"},{"side":"right","target":"profile","op":"delete","path":"/rules/4"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile","right:unmapped_material_field:items_digest"]}},
+  {"id":"two-rules-one-path-abstains","description":"exactly one rule per material path: two rules on one source path","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules","value":[{"source_path":"/target/checkout_id","target_field":"order_id","transform":"copy"},{"source_path":"/target/merchant_id","target_field":"merchant_ref","transform":"sha256-utf8"},{"source_path":"/parameters/total_amount","target_field":"total_amount","transform":"copy"},{"source_path":"/parameters/currency","target_field":"currency","transform":"copy"},{"source_path":"/parameters/line_items","target_field":"items_digest","transform":"sha256-jcs"},{"source_path":"/target/customer_id","target_field":"customer_ref","transform":"sha256-utf8"},{"source_path":"/target/fulfillment","target_field":"fulfillment_ref","transform":"sha256-jcs"},{"source_path":"/target/checkout_id","target_field":"shipping_method","transform":"copy"}]}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile"]}},
+  {"id":"duplicate-target-field-abstains","description":"two rules may not target one field","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/1/target_field","value":"order_id"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile","right:unmapped_material_field:merchant_ref"]}},
+  {"id":"stage-a-order","description":"stage A: invalid_mapping_profile, then the definition reason","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/1/target_field","value":"order_id"},{"side":"right","target":"profile","op":"set","path":"/target_action_type","value":"unknown.type.1"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile","right:unknown_action_type"]}},
+  {"id":"stage-a-unmapped-in-required-order","description":"unmapped material fields follow required_fields order, not rule order","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"delete","path":"/rules/6"},{"side":"right","target":"profile","op":"delete","path":"/rules/0"},{"side":"right","target":"profile","op":"delete","path":"/material_source_paths/6"},{"side":"right","target":"profile","op":"delete","path":"/material_source_paths/0"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:unmapped_material_field:order_id","right:unmapped_material_field:fulfillment_ref"]}},
+  {"id":"stage-a-then-b","description":"stage B reasons follow stage A, in rank order","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile","native_verified":false},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile","native_verified":false},"mutations":[{"side":"right","target":"profile","op":"delete","path":"/rules/0"},{"side":"right","target":"profile","op":"delete","path":"/material_source_paths/0"},{"side":"right","target":"source_descriptor","op":"set","path":"/version","value":"2"}],"expect":{"verdict":"INDETERMINATE","reasons":["left:native_verification_required","right:unmapped_material_field:order_id","right:native_verification_required","right:mapping_profile_unpinned","right:source_format_mismatch"]}},
+  {"id":"stage-a-gate-then-b","description":"a shape failure is exactly invalid_mapping_profile, and stage B still follows it","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile","native_verified":false},"mutations":[{"side":"right","target":"profile","op":"set","path":"/authorization","value":"allow"},{"side":"right","target":"source_descriptor","op":"set","path":"/schema","value":"x"}],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_mapping_profile","right:native_verification_required","right:mapping_profile_unpinned","right:source_format_mismatch"]}},
+  {"id":"stage-c-every-rule-reports","description":"when the source lacks every material member, each rule reports once, in rule order","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/target","value":"x"},{"side":"right","target":"source","op":"set","path":"/parameters","value":null}],"expect":{"verdict":"INDETERMINATE","reasons":["right:missing_source_field:/target/checkout_id","right:missing_source_field:/target/merchant_id","right:missing_source_field:/parameters/total_amount","right:missing_source_field:/parameters/currency","right:missing_source_field:/parameters/line_items","right:missing_source_field:/target/customer_id","right:missing_source_field:/target/fulfillment"]}},
+  {"id":"stage-c-rule-order","description":"stage C reports one reason per rule in rule order","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"delete","path":"/target/customer_id"},{"side":"right","target":"source","op":"set","path":"/target/merchant_id","value":7}],"expect":{"verdict":"INDETERMINATE","reasons":["right:source_value_type_mismatch:/target/merchant_id","right:missing_source_field:/target/customer_id"]}},
+  {"id":"stage-c-array-index","description":"an array index with a leading zero is invalid_source_path","left":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"mutations":[{"side":"right","target":"profile","op":"set","path":"/rules/7/source_path","value":"/constraints/00/time"},{"side":"right","target":"profile","op":"set","path":"/material_source_paths/7","value":"/constraints/00/time"}],"repin_after_mutation":["right"],"expect":{"verdict":"INDETERMINATE","reasons":["right:invalid_source_path:/constraints/00/time"]}},
+  {"id":"stage-b-source-not-canonicalizable","description":"a source outside the data model stops at stage B, before any rule reads it","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/parameters/total_amount","value":1.5}],"expect":{"verdict":"INDETERMINATE","reasons":["right:source_not_canonicalizable"]}},
+  {"id":"stage-d-compute-order","description":"stage D reports the mapped action's compute reasons in compute order","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/parameters/currency","value":"EURO"},{"side":"right","target":"source","op":"set","path":"/parameters/total_amount","value":"01.00"}],"expect":{"verdict":"INDETERMINATE","reasons":["right:mapped_action:invalid_amount:total_amount","right:mapped_action:mistyped_field:currency"]}},
+  {"id":"stage-d-number-in-amount","description":"a copied number in an amount-string field is mistyped_field","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"right","target":"source","op":"set","path":"/parameters/total_amount","value":130}],"expect":{"verdict":"INDETERMINATE","reasons":["right:mapped_action:mistyped_field:total_amount"]}},
+  {"id":"comparison-left-then-right","description":"left reasons precede right reasons","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"mutations":[{"side":"left","target":"source","op":"set","path":"/target/merchant_id","value":1},{"side":"right","target":"source","op":"delete","path":"/parameters/currency"}],"expect":{"verdict":"INDETERMINATE","reasons":["left:source_value_type_mismatch:/target/merchant_id","right:missing_source_field:/parameters/currency"]}},
+  {"id":"comparison-target-type-mismatch","description":"two profiles that map to different action types","left":{"source":"ep-order","profile":"ep-action-v1","pin":"profile"},"right":{"source":"silp-cancel-email","profile":"silp-cancel-email-v1","pin":"profile"},"expect":{"verdict":"INDETERMINATE","reasons":["target_action_type_mismatch"]}}
+ ]
 }
