@@ -93,6 +93,7 @@ const epMaterial = v1.profiles['ep-action-v1'].material_source_paths;
 const manyRules = Array.from({ length: 129 }, (_, i) => ({ source_path: `/x${i}`, target_field: `f${i}`, transform: 'copy' }));
 const long = (n, unit = 'a') => unit.repeat(n);
 
+/** @type {any[][]} */
 const CASES = [
   // The -04 profile extension, registered.
   ['hex-to-digest-equivalent', 'sha256-hex-to-digest turns 64 lowercase hex characters into a digest field', EP, EP,
@@ -219,6 +220,7 @@ for (const old of v1.vectors) {
   vectors.push(out);
 }
 for (const [id, description, left, right, mutations, repin, verdict, reasons, options] of CASES) {
+  /** @type {Record<string, any>} */
   const v = { id, description, left, right };
   if (options && Object.prototype.hasOwnProperty.call(options, 'suite')) v.suite = options.suite;
   if (mutations.length) v.mutations = mutations;

@@ -65,6 +65,10 @@ export function verify(value, caid, options) {
 
 export const parse = (s) => reference.parse(s);
 
+/**
+ * @param {Uint8Array} bytes
+ * @param {{maxOctets?: number | null}} [options]
+ */
 export function decode(bytes, { maxOctets } = {}) {
   const r = decodeStrict(bytes, maxOctets === undefined ? {} : { maxOctets });
   return r.ok ? { ok: true, value: r.value } : { ok: false, refusals: r.refusals };

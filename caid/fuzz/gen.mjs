@@ -146,11 +146,13 @@ function emitVerify(fam, objNode, caid, defs, extra = {}) {
 }
 // -04 specifies compute, verify and parse, not a separate canonicalize
 // entry point; canonical bytes are checked through the CAID digest.
-function emitCanon() {}
+/** @param {string} _fam @param {string} _text */
+function emitCanon(_fam, _text) {}
 function emitParse(fam, caid) {
   emit(fam, { op: "parse", caid });
 }
 function emitRawObj(fam, op, buf, defs, more = {}) {
+  /** @type {Record<string, any>} */
   const c = { op, obj: b64buf(buf), ...more };
   if (typeof defs === "string") c.defs_ref = defs;
   else if (defs !== undefined) c.defs = defs;
@@ -383,7 +385,7 @@ function familyCode() {
     for (const m of stringMutants(sample)) e(m, "string mutant");
     for (const ch of SPECIAL_CHARS) e(sample.slice(0, 1) + ch + sample.slice(1), "special char");
     for (const v of [sample.toLowerCase(), sample.repeat(2), "", " ", null, 1, [sample], { c: sample }, true]) e(v, "shape " + JSON.stringify(v));
-    for (const [unit, n] of [["A", 1 << 16], ["0", 1 << 16], ["0-", 1 << 15], [sample, 4096]]) e(unit.repeat(n) + "!", "adversarial " + n);
+    for (const [unit, n] of /** @type {Array<[string, number]>} */ ([["A", 1 << 16], ["0", 1 << 16], ["0-", 1 << 15], [sample, 4096]])) e(unit.repeat(n) + "!", "adversarial " + n);
     M("code " + format + ": optional field") && emitCompute("code", { action_type: at, c: sample, o: sample.toLowerCase() }, ref, "jcs-sha256");
     const good = computeRef({ action_type: at, c: sample }, defs);
     if (good.caid) {
@@ -418,6 +420,7 @@ function familyNative() {
   const defs = [{ action_type: "n.native.1", required_fields: [{ name: "s", type: "string" }], optional_fields: [{ name: "o", type: "object" }, { name: "a", type: "array" }, { name: "n", type: "integer" }] }];
   tables.defs.native = defs;
   const base = [["action_type", "n.native.1"], ["s", "x"]];
+  /** @type {Array<[string, any]>} */
   const HOSTS = [
     ["lone high", { $units: [0xd800] }], ["lone low", { $units: [0xdc00] }], ["reversed pair", { $units: [0xdc00, 0xd800] }],
     ["pair", { $units: [0xd83d, 0xde00] }], ["noncharacter", { $units: [0xffff] }], ["noncharacter fdd0", { $units: [0xfdd0] }],
@@ -428,7 +431,7 @@ function familyNative() {
   ];
   const caid = computeRef({ action_type: "n.native.1", s: "x" }, defs).caid;
   for (const [label, host] of HOSTS) {
-    for (const [where, build] of [
+    for (const [where, build] of /** @type {Array<[string, () => any]>} */ ([
       ["undeclared member", () => ({ $object: [...base, ["m", host]] })],
       ["member name", () => (host.$units ? { $object: [...base, [host, "v"]] } : null)],
       ["string field", () => ({ $object: [["action_type", "n.native.1"], ["s", host]] })],
@@ -436,7 +439,7 @@ function familyNative() {
       ["integer field", () => ({ $object: [...base, ["n", host]] })],
       ["inside array field", () => ({ $object: [...base, ["a", [1, host]]] })],
       ["action_type", () => ({ $object: [["action_type", host], ["s", "x"]] })],
-    ]) {
+    ])) {
       const native = build();
       if (!native) continue;
       M("native " + label + " in " + where);
@@ -610,7 +613,9 @@ function familyCaidStr() {
   const ptype = registry.types.find((t) => t.action_type === "payment.release.1");
   tables.defs.pay = [ptype];
   const good = computeRef(obj, [ptype]);
-  const dig = good.caid.split(":")[4];
+  if (!good.caid) throw new Error("gen: the payment reference object must compute");
+  const goodCaid = good.caid;
+  const dig = goodCaid.split(":")[4];
   const suites = ["jcs-sha256", "cbor-sha256", "sha256", "x", "a", "1x", "9", "0", "x--y", "x-", "-x", "x-1", "a1-b2", "jcs-sha256-", "jcs--sha256", "JCS-SHA256", "Jcs-sha256", "jcs-sha256 ", " jcs-sha256",
     "jcs_sha256", "", "jcs‐sha256", "jcs-sha512", "ｊcs-sha256", "jcs-sha256\n", "jcs-sha256\u0000", "jcs.sha256", "cbor", "unknown-suite", "a".repeat(300)];
   const types = ["a.1", "payment.release.1", "a.b.c.1", "a-.1", "a--b.1", "-a.1", "a.01", "a.0", "a..1", ".a.1", "a.1.", "a", "1", "a.b", "A.1", "a_b.1", "a.1a", "a.9007199254740993", "a1.1", "1a.1", "é.1", "a.1\n", "a.１"];
@@ -633,8 +638,8 @@ function familyCaidStr() {
     emitParse("caidstr", good.caid + extra);
     emitParse("caidstr", extra + good.caid);
   }
-  emitParse("caidstr", good.caid.replace("payment.release.1", "payment:release.1"));
-  emitParse("caidstr", good.caid.replace(":", "::"));
+  emitParse("caidstr", goodCaid.replace("payment.release.1", "payment:release.1"));
+  emitParse("caidstr", goodCaid.replace(":", "::"));
   // verify against the correct object for a sample of the strings
   const pool = [];
   for (const s of suites) for (const d of [dig, dig.slice(0, 42) + "B", dig.slice(0, 42) + "E", dig + "=", "AAAA"]) pool.push(assemble("caid", "1", "payment.release.1", s, d));
@@ -813,6 +818,7 @@ function familyVecMap() {
     for (const v of corpus.vectors) {
       const { left, right } = vectorSides(corpus, v);
       const emitCmp = (l, r, extra = {}) => {
+        /** @type {Record<string, any>} */
         const c = { op: "compare", left: l, right: r, defs_ref: defsRef, suite: corpus.suite, ...extra };
         if (snaps) c.snaps_ref = "iso";
         emit("vec-map", c);
@@ -885,6 +891,7 @@ function familyVecMap() {
 function familyMapCraft() {
   const def = { action_type: "m.1", required_fields: [{ name: "a", type: "string" }, { name: "b", type: "string" }], optional_fields: [{ name: "memo", type: "string" }] };
   tables.defs.m1 = [def];
+  /** @returns {any} */
   const baseProfile = () => ({
     "@version": "CAID-MAPPING-PROFILE-v1",
     profile_id: "urn:x:m:1",
@@ -995,7 +1002,7 @@ function familyMapCraft() {
   M("descriptor extra member") && mc(P, { desc: { ...P.source_format, extra: 1 } });
   M("descriptor null") && mc(P, { desc: null });
   M("descriptor array") && mc(P, { desc: [] });
-  M("pin uppercase") && mc(P, { pin: mappingProfileHash(P).toUpperCase() });
+  M("pin uppercase") && mc(P, { pin: String(mappingProfileHash(P)).toUpperCase() });
   M("pin null") && mc(P, { pin: null });
   M("pin empty") && mc(P, { pin: "" });
   M("nv string") && mc(P, { nv: "true" });

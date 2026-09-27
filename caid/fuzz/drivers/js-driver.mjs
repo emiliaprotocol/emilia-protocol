@@ -33,9 +33,15 @@ const arg = (name) => {
   const i = args.indexOf(name);
   return i === -1 ? undefined : args[i + 1];
 };
-const root = path.resolve(arg("--root"));
-const shim = path.resolve(arg("--shim"));
-const tables = JSON.parse(readFileSync(arg("--tables"), "utf8"));
+/** @param {string} name */
+const required = (name) => {
+  const value = arg(name);
+  if (value === undefined) throw new Error(`js-driver: ${name} is required`);
+  return value;
+};
+const root = path.resolve(required("--root"));
+const shim = path.resolve(required("--shim"));
+const tables = JSON.parse(readFileSync(required("--tables"), "utf8"));
 const load = (p) => import(pathToFileURL(p).href);
 const LANES = {
   js: { core: await load(path.join(root, "caid/impl/js/caid.mjs")), map: await load(path.join(root, "caid/impl/js/mapping.mjs")) },
@@ -69,7 +75,8 @@ function api(core) {
   };
 }
 const APIS = Object.fromEntries(Object.entries(LANES).map(([k, l]) => [k, api(l.core)]));
-if (arg("--meta")) writeFileSync(arg("--meta"), JSON.stringify({ lanes: Object.fromEntries(Object.entries(APIS).map(([k, a]) => [k, { legacy: a.legacy }])) }));
+const metaPath = arg("--meta");
+if (metaPath) writeFileSync(metaPath, JSON.stringify({ lanes: Object.fromEntries(Object.entries(APIS).map(([k, a]) => [k, { legacy: a.legacy }])) }));
 
 function normMap(r) {
   if (!r || typeof r !== "object") return { bad_result: true };

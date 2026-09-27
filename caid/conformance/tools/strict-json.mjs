@@ -57,6 +57,7 @@ class Refusal extends Error {}
  * @returns {{ok: true, value: any} | {ok: false, refusals: ['malformed_json'], detail: string}}
  */
 export function decodeStrict(bytes, { maxOctets = JSON_TEXT_OCTETS } = {}) {
+  /** @returns {{ok: false, refusals: ['malformed_json'], detail: string}} */
   const refuse = (detail) => ({ ok: false, refusals: ['malformed_json'], detail });
   if (!(bytes instanceof Uint8Array)) return refuse('input is not octets');
   if (maxOctets !== null && bytes.length > maxOctets) return refuse(`input is ${bytes.length} octets; the limit is ${maxOctets}`);
@@ -78,6 +79,7 @@ export function decodeStrict(bytes, { maxOctets = JSON_TEXT_OCTETS } = {}) {
 function parse(text) {
   let i = 0;
   const n = text.length;
+  /** @type {(msg: string) => never} */
   const fail = (msg) => { throw new Refusal(`${msg} at offset ${i}`); };
   const ws = () => { while (i < n && WHITESPACE.has(text.charCodeAt(i))) i += 1; };
   const hex4 = () => {
@@ -161,6 +163,7 @@ function parse(text) {
     if (c === '{' || c === '[') {
       if (stack.length + 1 > NESTING_DEPTH) fail(`nesting deeper than ${NESTING_DEPTH}`);
       i += 1;
+      /** @type {{kind: 'a' | 'o', value: any, key?: string}} */
       const container = c === '{' ? { kind: 'o', value: Object.create(null) } : { kind: 'a', value: [] };
       ws();
       if (text[i] === (c === '{' ? '}' : ']')) {

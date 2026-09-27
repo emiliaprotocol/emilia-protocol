@@ -71,9 +71,12 @@ function inputValue(input) {
 }
 
 function evaluate(kind, input, definitions) {
+  /** @type {Record<string, any>} */
   const opts = { definitions, enum_snapshots: enumSnapshots };
   if (kind === 'decode') {
-    const r = oracle.decode(inputBytes(input));
+    const bytes = inputBytes(input);
+    if (!bytes) throw new Error('decode vector without JSON text input');
+    const r = oracle.decode(bytes);
     return r.ok ? { ok: true } : { ok: false, refusals: r.refusals };
   }
   if (kind === 'parse') return oracle.parse(input.caid);

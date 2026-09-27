@@ -214,16 +214,23 @@ export function mapAction(source, p) {
   if (c.length) return { ok: false, reasons: c, profile_hash: profileHash, source_digest: sourceDigest };
   const suite = p.suitePresent === false || p.suite === undefined ? 'jcs-sha256' : p.suite;
   const computed = oracle.compute(action, { suite, definitions: p.definitions, enum_snapshots: p.enumSnapshots });
-  if (!computed.caid) return { ok: false, reasons: computed.refusals.map((r) => `mapped_action:${r}`), profile_hash: profileHash, source_digest: sourceDigest };
+  if (!computed.caid) return { ok: false, reasons: (computed.refusals || []).map((r) => `mapped_action:${r}`), profile_hash: profileHash, source_digest: sourceDigest };
   return { ok: true, action, caid: computed.caid, digest: computed.digest, suite, profile_hash: profileHash, source_digest: sourceDigest };
 }
 
+/**
+ * @param {any} left
+ * @param {any} right
+ * @param {{definitions?: any, enumSnapshots?: any, suite?: any}} [options]
+ */
 export function compareMappedActions(left, right, { definitions, enumSnapshots, suite } = {}) {
   const side = (s) => mapAction(s?.source, {
     profile: s?.profile, sourceDescriptor: s?.source_descriptor, expectedProfileHash: s?.expected_profile_hash,
     nativeVerified: s?.native_verified, definitions, enumSnapshots, suite,
   });
+  /** @type {any} */
   const l = side(left);
+  /** @type {any} */
   const r = side(right);
   if (!l.ok || !r.ok) {
     return { verdict: 'INDETERMINATE', reasons: [...(l.ok ? [] : l.reasons.map((x) => `left:${x}`)), ...(r.ok ? [] : r.reasons.map((x) => `right:${x}`))], left: l, right: r };
