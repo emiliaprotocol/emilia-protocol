@@ -8,6 +8,42 @@ Historical entries below retain the labels used when they were written.
 
 ## [Unreleased] — source baseline 2026-08-26 (`5d474fd240bc764fa41951c05c39130e38afa7ff`)
 
+### CAID conformance corpora and fuzz for draft -04
+
+- The core conformance corpus moves to version 5 (524 vectors). Every compute
+  and verify input is now exact JSON text (a string, base64 octets, or a
+  repeat form for the 32 MiB and 16 MiB limits), and runners also check that
+  the native entry point gives the same result on the decoded value. A
+  native lane carries host values no conforming decoder produces: lone
+  surrogates, NaN and the infinities, `-0.0`, cyclic and opaque values, and
+  nesting past 64. New vectors cover the JSON text rules, the size limits,
+  number rounding, every pair of compute phases, verification details and
+  `definition_mismatch`, malformed and conflicting definitions,
+  `definition_sha256`, all ten named code formats with a 1 MiB adversarial
+  string per format under a time budget, timestamps, parse cases including
+  `unknown_suite` at parse, and one vector per registry v5 type.
+- Version 4 carries forward: the version 4 corpus is kept byte for byte under
+  `caid/conformance/history/`, every version 4 vector keeps its id, and all
+  22 version 4 CAIDs are expected unchanged (`caid/conformance/check-v4.mjs`).
+  Six results change by named -04 rules: three unpaired-surrogate vectors are
+  `malformed_json` from JSON text, and the three unregistered-suite vectors
+  are `unknown_suite` at parse.
+- A grammar boundary corpus (2,054 cases) drives parse and compute with
+  one-field definitions in JavaScript, Python and Go, so it tests the ports'
+  entry points rather than their generated regular expressions. It includes
+  astral, lone-surrogate, invalid-UTF-8, noncharacter and long cases.
+- The mapping corpus moves to version 2 (64 vectors): every expectation is an
+  exact reason list in the -04 stage order, and new vectors cover the
+  profile extension, UTF-8 octet limits and field-name targets.
+- Expectations come from a spec oracle built on the generated `caid/spec`
+  constants, and every refusal is also stated by hand; the builders fail on
+  any disagreement and the corpora are checked against their builders in CI.
+- The differential fuzz moves into `caid/fuzz` and compares the JavaScript,
+  vendored Verify, Python and Go implementations with the same oracle on
+  about 80,000 seeded cases, with an empty allow list. It runs in the CI
+  conformance job with the grammar proof and `npm run caid:conformance`.
+  Until the ports adopt the -04 entry points, those steps fail by design.
+
 ### CAID identifier parsing
 
 - The CAID parsers in JavaScript (and the vendored Verify copy), Python, and

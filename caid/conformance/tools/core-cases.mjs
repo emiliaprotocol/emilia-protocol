@@ -412,6 +412,8 @@ export function coreCases({ limits }) {
       { action_type: 'd.1', status: 'deprecated', summary: 'x', required_fields: [f({ notes: 'n' })], optional_fields: [] },
     ], text(j({ action_type: 'd.1', f: 'x' })), 'ok', { relation: { same_caid_as: 'definition-plain' } }),
     compute('definition-plain', 'the plain definition', [{ action_type: 'd.1', required_fields: [f()] }], text(j({ action_type: 'd.1', f: 'x' })), 'ok'),
+    compute('definition-deprecated-status-computes', 'status never gates computation: a deprecated definition with a successor computes the same CAID', [{ action_type: 'd.1', status: 'deprecated', superseded_by: 'd.2', required_fields: [f()] }],
+      text(j({ action_type: 'd.1', f: 'x' })), 'ok', { relation: { same_caid_as: 'definition-plain' } }),
     compute('definition-other-types-ignored', 'a nonconforming definition of another type does not matter', [{ action_type: 'd.1', required_fields: [f()] }, { action_type: 'e.1', required_fields: [] }],
       text(j({ action_type: 'd.1', f: 'x' })), 'ok', { relation: { same_caid_as: 'definition-plain' } }),
     compute('definition-entry-members-open', 'entry-level members other than the field lists are allowed and outside validation', [{ action_type: 'd.1', required_fields: [f()], status: 'active', risk_class: 'x', 'x-local': { any: 1 } }],

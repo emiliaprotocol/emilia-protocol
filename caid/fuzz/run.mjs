@@ -25,11 +25,14 @@
 //                [--cases DIR]      reuse cases.jsonl/tables.json from DIR
 //                [--allow FILE]     JSON array of root-cause ids that do not fail
 //                [--ci]             exit 1 on any class not allowed
+//                [--selftest]       drive only the JavaScript lanes, with the
+//                                   spec oracle itself as the implementation:
+//                                   any class is a harness defect
 // The tree is only read. Everything is written under --out. CAID_PYTHON
 // names the Python interpreter (default python3).
 
 import { spawn, spawnSync } from "node:child_process";
-import { closeSync, copyFileSync, createReadStream, existsSync, mkdirSync, openSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, copyFileSync, createReadStream, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { lines } from "./lines.mjs";
@@ -45,8 +48,21 @@ const arg = (n, d) => {
   const i = args.indexOf(n);
   return i === -1 ? d : args[i + 1];
 };
-const ROOT = path.resolve(arg("--root", path.resolve(HERE, "../..")));
 const OUT = path.resolve(arg("--out", path.join(HERE, "out", "run")));
+const SELFTEST = args.includes("--selftest");
+let ROOT = path.resolve(arg("--root", path.resolve(HERE, "../..")));
+if (SELFTEST) {
+  // A tree whose JavaScript implementation is the spec oracle.
+  ROOT = path.join(OUT, "selftest-tree");
+  rmSync(ROOT, { recursive: true, force: true });
+  mkdirSync(path.join(ROOT, "caid/impl/js"), { recursive: true });
+  mkdirSync(path.join(ROOT, "packages/verify/vendor"), { recursive: true });
+  const tools = path.resolve(HERE, "../conformance/tools");
+  const core = `export * from ${JSON.stringify(path.join(tools, "reference-port.mjs"))};\n`;
+  writeFileSync(path.join(ROOT, "caid/impl/js/caid.mjs"), core);
+  writeFileSync(path.join(ROOT, "packages/verify/vendor/caid.mjs"), core);
+  writeFileSync(path.join(ROOT, "caid/impl/js/mapping.mjs"), `export { mapAction, compareMappedActions, mappingProfileHash } from ${JSON.stringify(path.join(tools, "mapping-oracle.mjs"))};\n`);
+}
 const SEED = arg("--seed", "20260926");
 const QUICK = args.includes("--quick");
 const CASES_DIR = arg("--cases") ? path.resolve(arg("--cases")) : null;
@@ -79,23 +95,25 @@ mkdirSync(shim, { recursive: true });
 copyFileSync(path.join(ROOT, "packages/verify/vendor/caid.mjs"), path.join(shim, "caid.mjs"));
 copyFileSync(path.join(ROOT, "caid/impl/js/mapping.mjs"), path.join(shim, "mapping.mjs"));
 const goBuild = path.join(OUT, "go-build");
-mkdirSync(goBuild, { recursive: true });
-writeFileSync(path.join(goBuild, "go.mod"), `module fuzzdriver\n\ngo 1.22\n\nrequire caid v0.0.0\n\nreplace caid => ${path.join(ROOT, "caid/impl/go")}\n`);
-for (const f of readdirSync(path.join(HERE, "drivers/go"))) if (f.endsWith(".go")) copyFileSync(path.join(HERE, "drivers/go", f), path.join(goBuild, f));
 const goBin = path.join(OUT, "go-driver");
-{
-  const t = Date.now();
-  const env = { ...process.env, GOFLAGS: "-mod=mod" };
-  let b = spawnSync("go", ["build", "-o", goBin, "."], { cwd: goBuild, encoding: "utf8", env });
-  if (b.status !== 0) {
-    const first = b.stdout + b.stderr;
-    b = spawnSync("go", ["build", "-tags", "legacy", "-o", goBin, "."], { cwd: goBuild, encoding: "utf8", env });
+if (!SELFTEST) {
+  mkdirSync(goBuild, { recursive: true });
+  writeFileSync(path.join(goBuild, "go.mod"), `module fuzzdriver\n\ngo 1.22\n\nrequire caid v0.0.0\n\nreplace caid => ${path.join(ROOT, "caid/impl/go")}\n`);
+  for (const f of readdirSync(path.join(HERE, "drivers/go"))) if (f.endsWith(".go")) copyFileSync(path.join(HERE, "drivers/go", f), path.join(goBuild, f));
+  {
+    const t = Date.now();
+    const env = { ...process.env, GOFLAGS: "-mod=mod" };
+    let b = spawnSync("go", ["build", "-o", goBin, "."], { cwd: goBuild, encoding: "utf8", env });
     if (b.status !== 0) {
-      process.stderr.write("go build failed\n" + first + b.stdout + b.stderr);
-      process.exit(2);
+      const first = b.stdout + b.stderr;
+      b = spawnSync("go", ["build", "-tags", "legacy", "-o", goBin, "."], { cwd: goBuild, encoding: "utf8", env });
+      if (b.status !== 0) {
+        process.stderr.write("go build failed\n" + first + b.stdout + b.stderr);
+        process.exit(2);
+      }
     }
+    timings.go_build_ms = Date.now() - t;
   }
-  timings.go_build_ms = Date.now() - t;
 }
 
 // ---------------------------------------------------------------- drive
@@ -120,8 +138,10 @@ function drive(name, cmd, argv) {
 }
 const runs = await Promise.all([
   drive("js", process.execPath, ["--stack-size=984", path.join(HERE, "drivers/js-driver.mjs"), "--root", ROOT, "--shim", shim, "--tables", tablesPath]),
-  drive("py", PYTHON, [path.join(HERE, "drivers/py_driver.py"), "--root", ROOT, "--tables", tablesPath]),
-  drive("go", goBin, ["--tables", tablesPath]),
+  ...(SELFTEST ? [] : [
+    drive("py", PYTHON, [path.join(HERE, "drivers/py_driver.py"), "--root", ROOT, "--tables", tablesPath]),
+    drive("go", goBin, ["--tables", tablesPath]),
+  ]),
 ]);
 const legacyLanes = {};
 for (const r of runs) {
@@ -341,5 +361,5 @@ if (CI) {
     for (const g of failing) console.error(`FAIL ${g.id}: ${g.title} (${g.case_lanes} case-lanes; first class: ${g.class_keys[0]})`);
     process.exit(1);
   }
-  console.log("PASS every lane matches the spec oracle on every case");
+  console.log(SELFTEST ? "PASS harness self-test: the oracle-backed lanes match the oracle on every case" : "PASS every lane matches the spec oracle on every case");
 }
