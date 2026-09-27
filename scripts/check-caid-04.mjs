@@ -1390,6 +1390,12 @@ check(text.includes(code('exc-payment-canonical').split('\n')[2]), 'TXT render l
 // IANA-16, ED-20, CLM-10: xml2rfc broke "history/action-types.v4.json" at
 // its hyphen and printed "action- types"; a path in <tt> is not broken.
 check(!/action-\s+types/.test(text), 'the TXT render splits a path at "action-types" (wrap the path in <tt>)');
+// An action type broken at a hyphen at a line end reads as two words; a
+// non-breaking hyphen (&#8209;) keeps it whole.
+{
+  const broken = text.split('\n').filter((l) => /[a-z0-9_]\.[a-z0-9_.]*-$/.test(l));
+  check(broken.length === 0, `the TXT render breaks an action type at a hyphen: "${broken[0]?.trim()}"`);
+}
 // The same wrapping defect after a slash: xml2rfc refills a <tt> path broken
 // after "/" with a space inside it.
 for (const p of ['history/action-types.v4.json', 'caid/registry/action-types.json']) {

@@ -2451,14 +2451,15 @@ ZLQQQ
         this document: <xref target="privacy"/> states why their identifiers
         are not required to carry 128 bits of entropy, and
         <xref target="tool-call-type"/> why occurrence_id is optional in
-        tool.call.1. The 9 deprecated initial entries are registered as the
-        history of the successors that superseded_by names, not as types to
-        issue under, and they do not meet the test: each has a required enum
-        field whose external values_ref has no pinned snapshot, and four of
-        them hold as enums values that their successors carry as code
-        fields. Such an enum field refuses whenever it is present, so none
-        of the 9 produces or verifies a CAID
-        (<xref target="enum-resolution"/>). A registrant whose type pins an
+        tool.call.1. The 9 deprecated initial entries are registered to
+        record the history of the successors that superseded_by names, not
+        for new identifiers, and they do not meet the test: each has a
+        required enum field whose external values_ref has no pinned
+        snapshot, and four of them hold as enums values that their
+        successors carry as code fields. Such an enum field refuses whenever
+        it is present, so, as registered, none of the 9 produces or verifies
+        a CAID (<xref target="enum-resolution"/>). A registrant whose type
+        pins an
         external enum supplies the snapshot file, in the shape of
         <xref target="enum-resolution"/> together with the source it was
         derived from and what is known of that source's terms, and the
@@ -3117,9 +3118,11 @@ ZLQQQ
           by other specifications, or carry a name that misdescribes the
           type, and stay in the reference registry. The section says who may
           request a change to an entry, carries the 128-bit entropy
-          criterion for later registrations in the material-fields test, and
-          asks IANA to store the snapshot files derived from IANA
-          registries. The -03 statement
+          criterion for later registrations in the material-fields test,
+          registers a name with an organization-specific first segment only
+          with that organization as change controller, and asks IANA to
+          store the snapshot files derived from IANA registries. The -03
+          statement
           that the author's organization maintains the registries is
           removed.</li>
           <li anchor="ed-examples">The example of <xref target="schema"/> is
@@ -4040,8 +4043,8 @@ fa2
         Each of the seven types defined by other specifications may be
         registered under Specification Required
         (<xref target="iana-action-types"/>) with its own specification and
-        change controller; emilia.mobile.authorized-action.1, whose first
-        segment names an organization, only with that organization as its
+        change controller; emilia.mobile.authorized&#8209;action.1, whose
+        first segment names an organization, only with that organization as its
         change controller. dns.zone.transfer.1 is not to be registered: the
         path for the registrar-transfer type is a successor whose name
         describes it.</t>

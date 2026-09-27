@@ -37,8 +37,9 @@ ABNF and the suite and unused-bit parsing changes over -03 and keeps both.
   entry's name line from its digest line, or if a term is long enough to
   wrap.
 - Non-breaking hyphens (`&#8209;`) keep `action-types.json`,
-  `history/action-types.v4.json`, `value-sets/`, SHA-384 and SHA-512/256
-  on one line. `xml2rfc` renders them as ASCII hyphens, and the TXT is
+  `history/action-types.v4.json`, `value-sets/`, SHA-384, SHA-512/256 and,
+  in Appendix D.2, emilia.mobile.authorized-action.1 on one line, and
+  `check-caid-04` fails if the TXT breaks an action type at a hyphen. `xml2rfc` renders them as ASCII hyphens, and the TXT is
   ASCII only. [CAID-REGISTRY] targets the raw registry file URL, whose
   octets the digest covers, so the TXT prints it as the reference's URL in
   angle brackets, where line breaks are the only whitespace inside it, and

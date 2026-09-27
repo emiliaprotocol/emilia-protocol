@@ -3104,39 +3104,19 @@ Internet-Draft                    CAID                    September 2026
    The initial entries of Appendix D.1 are registered by this document:
    Section 11 states why their identifiers are not required to carry 128
    bits of entropy, and Section 4.7 why occurrence_id is optional in
-   tool.call.1.  The 9 deprecated initial entries are registered as the
-   history of the successors that superseded_by names, not as types to
-   issue under, and they do not meet the test: each has a required enum
-   field whose external values_ref has no pinned snapshot, and four of
-   them hold as enums values that their successors carry as code fields.
-   Such an enum field refuses whenever it is present, so none of the 9
-   produces or verifies a CAID (Section 4.4).  A registrant whose type
-   pins an external enum supplies the snapshot file, in the shape of
-   Section 4.4 together with the source it was derived from and what is
-   known of that source's terms, and the SHA-256 digest of the file; the
-   expert confirms that the file is publicly available under the terms
-   it states before approving the entry.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                   Expires 31 March 2027                [Page 56]
-
-Internet-Draft                    CAID                    September 2026
-
+   tool.call.1.  The 9 deprecated initial entries are registered to
+   record the history of the successors that superseded_by names, not
+   for new identifiers, and they do not meet the test: each has a
+   required enum field whose external values_ref has no pinned snapshot,
+   and four of them hold as enums values that their successors carry as
+   code fields.  Such an enum field refuses whenever it is present, so,
+   as registered, none of the 9 produces or verifies a CAID
+   (Section 4.4).  A registrant whose type pins an external enum
+   supplies the snapshot file, in the shape of Section 4.4 together with
+   the source it was derived from and what is known of that source's
+   terms, and the SHA-256 digest of the file; the expert confirms that
+   the file is publicly available under the terms it states before
+   approving the entry.
 
    The initial contents are the 54 entries of Appendix D.1, 45 active
    and 9 deprecated.  The definition of each entry is the entry with
@@ -3150,6 +3130,14 @@ Internet-Draft                    CAID                    September 2026
    in Appendix D.2 and are not initial entries.  Each of the seven types
    defined by other specifications may be registered under Specification
    Required with its own specification and change controller.  The
+
+
+
+Schrock                   Expires 31 March 2027                [Page 56]
+
+Internet-Draft                    CAID                    September 2026
+
+
    eighth, dns.zone.transfer.1, is not to be registered, because its
    name misdescribes the type; the registrar transfer it defines can be
    registered under a name that describes it.
@@ -3179,6 +3167,18 @@ Internet-Draft                    CAID                    September 2026
    members it defines; its refusal reasons; and a reference.  A
    registered field type is never removed, renamed, or redefined.  The
    initial contents are:
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3937,9 +3937,11 @@ Internet-Draft                    CAID                    September 2026
       that misdescribes the type, and stay in the reference registry.
       The section says who may request a change to an entry, carries the
       128-bit entropy criterion for later registrations in the material-
-      fields test, and asks IANA to store the snapshot files derived
-      from IANA registries.  The -03 statement that the author's
-      organization maintains the registries is removed.
+      fields test, registers a name with an organization-specific first
+      segment only with that organization as change controller, and asks
+      IANA to store the snapshot files derived from IANA registries.
+      The -03 statement that the author's organization maintains the
+      registries is removed.
 
    *  The example of Section 4.2 is the registry entry for
       payment.release.1 with its real values_sha256, the registration of
@@ -3968,8 +3970,6 @@ Internet-Draft                    CAID                    September 2026
    over the complete JCS values array, exact local resolution, and a
    verified membership check.  Bare, unresolved, digest-mismatched, and
    out-of-set values fail closed.
-
-
 
 
 
@@ -5172,11 +5172,11 @@ D.2.  Reference-Registry Entries Not Requested of IANA
    transfer [RFC5936], and a registered name is never reassigned.  Each
    of the seven types defined by other specifications may be registered
    under Specification Required (Section 12.2) with its own
-   specification and change controller; emilia.mobile.authorized-
-   action.1, whose first segment names an organization, only with that
-   organization as its change controller. dns.zone.transfer.1 is not to
-   be registered: the path for the registrar-transfer type is a
-   successor whose name describes it.
+   specification and change controller;
+   emilia.mobile.authorized-action.1, whose first segment names an
+   organization, only with that organization as its change controller.
+   dns.zone.transfer.1 is not to be registered: the path for the
+   registrar-transfer type is a successor whose name describes it.
 
    dns.zone.transfer.1 active
       b83fb16d90f9c61eedb802454b150cd5f2ee841b493935e5adcf2361b9575279
