@@ -14,9 +14,9 @@ Internet-Drafts, not IETF-adopted or endorsed**.
 ## 1. agent-action-control.json
 
 **Status: NOT FILED; no active backing draft.** The backing draft below is
-in state Replaced on Datatracker, and its successors
-(draft-schrock-ep-architecture, draft-schrock-action-evidence-boundary) have
-no IANA actions. This template is process history; do not file it unless an
+in state Replaced on Datatracker. Its Datatracker successor,
+draft-schrock-action-evidence-boundary, and draft-schrock-ep-architecture,
+which `STATUS.json` also lists as a successor, have no IANA actions. This template is process history; do not file it unless an
 active draft requests the registration. The replaced draft's IANA
 Considerations *requested* it:
 `draft-schrock-agent-action-manifest-00`, Section 9, "requests registration of

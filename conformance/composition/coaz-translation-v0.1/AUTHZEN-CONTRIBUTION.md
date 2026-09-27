@@ -84,4 +84,4 @@ not a normative dependency of either candidate change.
 - The only upstream event this file records is the merge of pull request
   #626 into the `openid/authzen` repository. It is not evidence of
   working-group consensus, approval of a final specification, adoption of any
-  other text, or implementation of the profile.
+  text, or implementation of the profile.

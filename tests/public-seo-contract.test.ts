@@ -105,7 +105,7 @@ describe('public SEO source contract', () => {
       expect(source).toContain("images: ['/twitter-image']");
       expect(source).toContain(`width: ${width}`);
       expect(source).toContain(`height: ${height}`);
-      expect(source).not.toContain("url: '/emilia-authority-tollbooth-v1.png'");
+      expect(source).not.toContain("url: '/emilia-authority-checkpoint-v1.png'");
     }
   });
 
