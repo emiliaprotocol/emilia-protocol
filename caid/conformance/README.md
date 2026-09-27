@@ -16,9 +16,9 @@ npm run caid:fuzz          # the differential fuzz (caid/fuzz)
 
 | Path | What it is |
 |---|---|
-| `vectors.json` | Core corpus, version 5: 575 vectors (decode, parse, compute, verify, definition) |
+| `vectors.json` | Core corpus, version 5: 579 vectors (decode, parse, compute, verify, definition) |
 | `grammar-vectors.json` | Grammar boundary corpus: 1,966 cases over 21 drivers |
-| `mapping-vectors.json` | Mapping corpus, version 2: 76 vectors with exact reason lists; a vector may carry its own suite |
+| `mapping-vectors.json` | Mapping corpus, version 2: 78 vectors with exact reason lists; a vector may carry its own suite |
 | `history/vectors.v4.json` | The version 4 core corpus, byte for byte (`sha256:7a201c87…`) |
 | `history/mapping-vectors.v1.json` | The version 1 mapping corpus, byte for byte (`sha256:6941463c…`) |
 | `check-v4.mjs` | Proves from the files alone that version 5 carries version 4 forward |
@@ -137,6 +137,14 @@ their field types (`native-fraction-in-integer-field`,
 `native-deep-fraction-with-shallow-fraction`, `native-fraction-at-depth-64`);
 enum snapshot labels that are not non-empty strings
 (`refuse-external-enum-*`); and the two conditional cbor-sha256 vectors.
+The audit of those fixes added four: the value count stops at the nesting
+limit, so a shared array whose expansion exceeds the count only below depth
+64 leaves the value within it (`native-value-count-stops-at-depth-64`,
+`native-value-count-straddles-depth-64`), and a host definition whose
+validation projection exceeds the count is `invalid_definition` while the
+same array outside the projection is never read
+(`native-definition-value-count-in-projection`,
+`native-definition-value-count-outside-projection`).
 
 **Version 4 carries forward.** Every version 4 vector keeps its id, with its
 object as the version 4 tokens. All 22 version 4 CAIDs are expected
@@ -170,13 +178,20 @@ New vectors cover the registered profile extension
 `@version`, the review's D2-D9 cases, and each stage boundary. One version 1
 vector changes because -04 widens `target_field` to the field-name rule.
 A set mutation carries its value as `value`, as `units` (the UTF-16 code
-units of a string no strict JSON text can hold) or as `nest` (`{depth,
-container, leaf}`, a host value nested deeper than strict JSON text may be).
+units of a string no strict JSON text can hold), as `nest` (`{depth,
+container, leaf}`, a host value nested deeper than strict JSON text may be),
+or as `dag` (`{depth, leaf}`, `depth` nested two-element arrays whose two
+elements are one shared array, a host value past the value count). Each
+runner sets the value it builds without copying it, so shared arrays stay
+shared.
 `profile-deep-member-abstains` and
 `profile-deep-member-declared-loss-abstains` pin that stage B reads the
 `source_format` and `loss_policy` members of a profile outside the data
 model, and `stage-b-source-deep-not-canonicalizable` that a host source past
-the nesting limit is `source_not_canonicalizable`.
+the nesting limit is `source_not_canonicalizable`. The value count gives the
+same reasons: `profile-value-count-abstains` (`invalid_mapping_profile` and
+`mapping_profile_unpinned`) and
+`stage-b-source-value-count-not-canonicalizable`.
 
 ## Entry points the runners call
 

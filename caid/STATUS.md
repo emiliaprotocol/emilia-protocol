@@ -25,23 +25,27 @@ Updated: 2026-09-27
   65,536 characters and more, and that every matcher is linear-time: a static
   analysis plus adversarial inputs of 2^20 characters timed in all three.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
-- 575 shared core vectors (corpus version 5) passing in all three ports
-  through their JSON text entry points, with native/byte parity on every
+- 577 of the 579 shared core vectors (corpus version 5) pass in all three
+  ports through their JSON text entry points; the other two apply only to a
+  cbor-sha256 implementation, and every port here skips them. The vectors
+  run with native/byte parity on every
   input that decodes and a native lane for host values: the strict JSON
   text rules and limits, number rounding, deterministic reason order,
   verification details and `definition_mismatch` (with pins of every type),
   definition conformance and `definition_sha256`, host definitions, the
-  length limits and the value count, the named code formats, `unknown_suite`
-  at parse, and one vector per registry v5 type. Six vectors and cases are
-  conditional on cbor-sha256 support, which is OPTIONAL: four pin
-  `unknown_suite` where it is not implemented, and two (the Appendix C.1
-  object) apply only where it is, so every port here skips those two. The 96 version 4 vectors keep their
-  ids, and all 22 version 4 CAIDs reproduce unchanged
+  length limits and the value count (which stops at the nesting limit and
+  applies to host definitions, profiles and sources too), the named code
+  formats, `unknown_suite` at parse, and one vector per registry v5 type.
+  Six vectors and cases are conditional on cbor-sha256 support, which is
+  OPTIONAL: four pin `unknown_suite` where it is not implemented, and two
+  (the Appendix C.1 object, the vectors every port here skips) apply only
+  where it is. The 96 version 4
+  vectors keep their ids, and all 22 version 4 CAIDs reproduce unchanged
   (`caid/conformance/check-v4.mjs`).
 - 1,966 grammar boundary cases, and the roughly half-million case list that
   `caid/spec/abnf-check.mjs` writes, passing in all three ports through
   `parseCaid` and `computeCaid`, never through the generated matchers.
-- 76 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
+- 78 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
   agreement on verdicts and exact reason lists in all three ports, including
   the SILP IR to CAID `CANCEL+EMAIL` profile.
 - A differential fuzz of about 87,000 seeded cases in which the JavaScript,

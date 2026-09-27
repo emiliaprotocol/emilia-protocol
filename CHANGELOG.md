@@ -24,7 +24,7 @@ Historical entries below retain the labels used when they were written.
 
 ### CAID conformance corpora and fuzz for draft -04
 
-- The core conformance corpus moves to version 5 (551 vectors). Every compute
+- The core conformance corpus moves to version 5 (579 vectors). Every compute
   and verify input is now exact JSON text (a string, base64 octets, or a
   repeat form for the 32 MiB and 16 MiB limits), and runners also check that
   the native entry point gives the same result on the decoded value. A
@@ -35,9 +35,18 @@ Historical entries below retain the labels used when they were written.
   `definition_mismatch`, malformed and conflicting definitions,
   `definition_sha256` and expected pins of every type, host definitions,
   the length limits of identifiers, action types and code systems, the
-  value count, all nine named code formats with a 1 MiB adversarial string
+  value count (which stops at the nesting limit, and which a host
+  definition, profile or source fails with the reason of the step that
+  reads it), all nine named code formats with a 1 MiB adversarial string
   per format under a time budget, timestamps, parse cases including
   `unknown_suite` at parse, and one vector per registry v5 type.
+- Six vectors and cases apply only where the OPTIONAL cbor-sha256 suite is,
+  or is not, implemented (`applies_when`, decided with the corpus's
+  `suite_probe`): four pin `unknown_suite` where it is not implemented, and
+  two, the Appendix C.1 object, apply only where it is. Each runner skips a
+  vector whose condition does not hold and reports it as skipped, never as
+  passed; no port here implements the suite, so each runs 577 of the 579
+  core vectors, and `caid:conformance` prints what each runner ran.
 - Version 4 carries forward: the version 4 corpus is kept byte for byte under
   `caid/conformance/history/`, every version 4 vector keeps its id, and all
   22 version 4 CAIDs are expected unchanged (`caid/conformance/check-v4.mjs`).
@@ -48,12 +57,17 @@ Historical entries below retain the labels used when they were written.
   one-field definitions in JavaScript, Python and Go, so it tests the ports'
   entry points rather than their generated regular expressions. It includes
   astral, lone-surrogate, invalid-UTF-8, noncharacter and long cases.
-- The mapping corpus moves to version 2 (73 vectors): every expectation is an
+- The mapping corpus moves to version 2 (78 vectors): every expectation is an
   exact reason list in the -04 stage order, and new vectors cover the
   profile extension, UTF-8 octet limits, field-name targets, profile
   strings outside the data model and source paths. A vector may
   carry its own suite, which pins that an empty suite is refused and never
   defaulted (review D10).
+- Mapping stage B in the JavaScript port now reads `source_format` and
+  `loss_policy` from a host profile that is outside the data model, as the
+  Python and Go ports do, so such a profile is `invalid_mapping_profile`
+  and `mapping_profile_unpinned` with no spurious `source_format_mismatch`,
+  and a declared loss is still reported; `profile-deep-member-*` pin it.
 - One core-corpus runner per language lives beside the corpus
   (`caid/conformance/runners`); the per-port version 4 runners are removed.
 - Expectations come from a spec oracle built on the generated `caid/spec`
