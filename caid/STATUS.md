@@ -25,7 +25,7 @@ Updated: 2026-09-27
   65,536 characters and more, and that every matcher is linear-time: a static
   analysis plus adversarial inputs of 2^20 characters timed in all three.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
-- 577 of the 579 shared core vectors (corpus version 5) pass in all three
+- 589 of the 591 shared core vectors (corpus version 5) pass in all three
   ports through their JSON text entry points; the other two apply only to a
   cbor-sha256 implementation, and every port here skips them. The vectors
   run with native/byte parity on every
@@ -33,7 +33,8 @@ Updated: 2026-09-27
   text rules and limits, number rounding, deterministic reason order,
   verification details and `definition_mismatch` (with pins of every type),
   definition conformance and `definition_sha256`, host definitions, the
-  length limits and the value count (which stops at the nesting limit and
+  length limits and the value count (which stops at the nesting limit,
+  counts a reference back to an enclosing object or array as one value, and
   applies to host definitions, profiles and sources too), the named code
   formats, `unknown_suite` at parse, and one vector per registry v5 type.
   Six vectors and cases are conditional on cbor-sha256 support, which is

@@ -7,8 +7,8 @@
 // fields, unregistered transforms and unpinned profiles abstain; no mapping
 // failure ever becomes equivalence.
 //
-// Reason order is normative (draft -04 Section 8.5, caid/spec/core.json
-// mapping.stages):
+// Reason order is normative (draft -04 Sections 8.3 and 8.4,
+// caid/spec/core.json mapping.stages):
 //
 //	A  profile checks. A profile that is not an object in the data model (so
 //	   it has no profile digest), has the wrong @version, carries a member

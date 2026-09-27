@@ -16,7 +16,7 @@ npm run caid:fuzz          # the differential fuzz (caid/fuzz)
 
 | Path | What it is |
 |---|---|
-| `vectors.json` | Core corpus, version 5: 579 vectors (decode, parse, compute, verify, definition) |
+| `vectors.json` | Core corpus, version 5: 591 vectors (decode, parse, compute, verify, definition) |
 | `grammar-vectors.json` | Grammar boundary corpus: 1,966 cases over 21 drivers |
 | `mapping-vectors.json` | Mapping corpus, version 2: 78 vectors with exact reason lists; a vector may carry its own suite |
 | `history/vectors.v4.json` | The version 4 core corpus, byte for byte (`sha256:7a201c87…`) |

@@ -62,6 +62,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"math"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -75,11 +76,13 @@ import (
 var implementedSuites = map[string]bool{"jcs-sha256": true}
 
 // hostVisitLimit bounds the number of values one canonicalization visits,
-// counting a value once for every path that reaches it (draft -04 Section
-// 2.6); past it the value is refused as unsupported_value alone. No value
-// DecodeJSON produces from a text within the text limit comes near it; it
-// exists so that a host value which shares subvalues many times over (a DAG
-// whose expansion is exponential) is refused in bounded time.
+// counting a value once for every path that reaches it (draft -04 Sections
+// 2.5 and 2.6); past it the value is refused as unsupported_value alone. A
+// reference back to an enclosing map or slice counts as one value, and
+// nothing beyond it is visited. No value DecodeJSON produces from a text
+// within the text limit comes near the limit; it exists so that a host
+// value which shares subvalues many times over (a DAG whose expansion is
+// exponential) is refused in bounded time.
 const hostVisitLimit = specLimitValueCount
 
 // uncappedOutputLimit bounds the canonical output of a document that has no
@@ -329,6 +332,47 @@ type canonicalizer struct {
 	other   bool
 	stopped bool
 	visits  int
+	open    []hostRef
+}
+
+// hostRef identifies a map or a non-empty slice while it is open on the
+// current path: a map by its pointer, a slice by the address of its first
+// element and its length, so two slices of one backing array that hold
+// the same elements are one array and a shorter view is another.
+type hostRef struct {
+	isMap bool
+	ptr   uintptr
+	n     int
+}
+
+// enter opens the container v, whose elements number n, on the current
+// path. It reports false when v is already open there: a reference back to
+// an enclosing map or slice (a cycle), which counts as one value and is
+// outside the data model, as in the JavaScript and Python ports and the
+// spec oracle (draft -04 Section 2.5). An empty slice holds nothing that
+// could refer back to it, so it is not tracked.
+func (c *canonicalizer) enter(v interface{}, isMap bool, n int) bool {
+	if !isMap && n == 0 {
+		return true
+	}
+	ref := hostRef{isMap: isMap, ptr: reflect.ValueOf(v).Pointer()}
+	if !isMap {
+		ref.n = n
+	}
+	for _, o := range c.open {
+		if o == ref {
+			return false
+		}
+	}
+	c.open = append(c.open, ref)
+	return true
+}
+
+func (c *canonicalizer) leave(isMap bool, n int) {
+	if !isMap && n == 0 {
+		return
+	}
+	c.open = c.open[:len(c.open)-1]
 }
 
 func (c *canonicalizer) write(s string) {
@@ -353,7 +397,8 @@ func (c *canonicalizer) writeByte(b byte) {
 	c.sb.WriteByte(b)
 }
 
-// walk serializes v. It descends at most specLimitNestingDepth levels, so a
+// walk serializes v. It descends at most specLimitNestingDepth levels and
+// never re-enters a map or slice that is open on the current path, so a
 // cyclic host value ends as unsupported_value instead of exhausting the
 // stack, and it visits at most hostVisitLimit values.
 func (c *canonicalizer) walk(v interface{}, depth int) {
@@ -397,6 +442,10 @@ func (c *canonicalizer) walk(v interface{}, depth int) {
 			c.other = true
 			return
 		}
+		if !c.enter(v, false, len(t)) {
+			c.other = true
+			return
+		}
 		c.writeByte('[')
 		for i, x := range t {
 			if i > 0 {
@@ -405,8 +454,13 @@ func (c *canonicalizer) walk(v interface{}, depth int) {
 			c.walk(x, depth+1)
 		}
 		c.writeByte(']')
+		c.leave(false, len(t))
 	case map[string]interface{}:
 		if t == nil || depth+1 > specLimitNestingDepth {
+			c.other = true
+			return
+		}
+		if !c.enter(v, true, len(t)) {
 			c.other = true
 			return
 		}
@@ -425,6 +479,7 @@ func (c *canonicalizer) walk(v interface{}, depth int) {
 			c.walk(t[k], depth+1)
 		}
 		c.writeByte('}')
+		c.leave(true, len(t))
 	default:
 		c.other = true
 	}

@@ -706,6 +706,41 @@ export function coreCases({ limits }) {
     compute('native-value-count-straddles-depth-64', 'native lane: the same shared array starting at depth 56, so nine of its levels are counted and everything below depth 64 is not: unsupported_number, then unsupported_value', [OBJ],
       deepDag(54), { refusals: ['unsupported_number', 'unsupported_value'] }),
   );
+  // Past the value count phase 6 yields no reason and phase 7 yields
+  // unsupported_value, but phases 3 and 4 still run (Section 5): a missing
+  // required field and a mistyped declared field are still reported.
+  const overCount = native({ action_type: 't.obj.1', n: 1.5, a: { $dag: { depth: 25, leaf: 7.5 } } });
+  add(
+    compute('native-value-count-with-phase-3-and-4', 'native lane: 2^26 - 1 values in the declared array field a pass the value count, the required field s is absent and the integer field n holds the host number 1.5: phases 3 and 4 still run, so missing_material_field:s and mistyped_field:n, then unsupported_value, and phase 6 reports nothing', [OBJ],
+      overCount, { refusals: ['missing_material_field:s', 'mistyped_field:n', 'unsupported_value'] }),
+    verify('native-verify-value-count-with-phase-3-and-4', 'native lane: verification of the same object is invalid_object, with the phase 3, phase 4 and unsupported_value details behind it and no unsupported_number', [OBJ],
+      { ...overCount, caid: `caid:1:t.obj.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
+  );
+  // A reference back to an enclosing object or array counts as one value,
+  // and nothing beyond it is counted or examined (Sections 2.2 and 2.5).
+  // Two such references (a branching cycle) therefore leave the value far
+  // inside the value count, as one does, and phase 6 still reports the
+  // out-of-model number beside them: unsupported_number, then
+  // unsupported_value for the cycle. Counting the expansion of a branching
+  // cycle down to depth 64 would pass the count and report
+  // unsupported_value alone; these vectors pin the rule that does not.
+  const cyc = { $host: 'cyclic' };
+  const cyclicCases = [
+    ['branching-object', 'two members that each refer back to the enclosing object', { p: cyc, q: cyc }],
+    ['single-object', 'one member that refers back to the enclosing object', { p: cyc }],
+    ['branching-array', 'an array whose two elements each refer back to that array', { a: [cyc, cyc] }],
+    ['three-way-array', 'an array whose three elements each refer back to that array', { a: [cyc, cyc, cyc] }],
+    ['single-array', 'an array whose one element refers back to that array', { a: [cyc] }],
+  ];
+  for (const [name, what, members] of cyclicCases) {
+    const object = native({ action_type: 't.1', s: 'x', v: 1.5, ...members });
+    add(
+      compute(`native-cyclic-${name}-with-fraction`, `native lane: ${what}, beside the host number 1.5; a reference back to an enclosing object or array counts as one value and nothing beyond it is counted or examined, so the value is within the value count: unsupported_number, then unsupported_value`, [T1],
+        object, { refusals: ['unsupported_number', 'unsupported_value'] }),
+      verify(`native-verify-cyclic-${name}-with-fraction`, `native lane: verification of ${what}, beside 1.5, is invalid_object with both the unsupported_number and the unsupported_value details`, [T1],
+        { ...object, caid_of: { json: t1('x'), definitions: [T1] } }, { reasons: ['invalid_object'] }),
+    );
+  }
   // The nesting limit (Section 2.2): the contents of a container nested
   // deeper than 64 are not examined, so a number inside one adds no
   // unsupported_number. A number at depth 64 or less still does.
