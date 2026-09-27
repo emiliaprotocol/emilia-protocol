@@ -23,10 +23,19 @@
 //
 // Native lane: for compute and verify, when the text decodes, the runner
 // also calls computeCaid or verifyCaid on the decoded value and requires
-// the identical result (-04 Section 2.5). A vector may instead carry
-// input.native_json: JSON text for a host value the strict decoder refuses
-// (a lone-surrogate escape), parsed with the host parser (JSON.parse keeps
-// lone surrogates) and passed to the native entry point only.
+// the identical result (-04 Section 2.5). A vector may instead carry a host
+// value that no conforming JSON text decoder produces, passed to the native
+// entry point only, in one of two forms:
+//   input.native       the corpus native-lane encoding: any JSON value,
+//                      read as itself, except objects whose only member
+//                      starts with "$": {"$units": [u, ...]} (a string of
+//                      these UTF-16 code units), {"$object": [[k, v], ...]}
+//                      (members in order; k may be a $units string),
+//                      {"$nest": {depth, container, leaf}}, and
+//                      {"$host": "nan" | "infinity" | "-infinity" |
+//                      "negative_zero" | "cyclic" | "opaque"}
+//   input.native_json  JSON text parsed with the host parser (JSON.parse
+//                      keeps lone-surrogate escapes)
 //
 // Optional per-vector "relation" cross-checks over the computed values:
 //   same_caid_as        this vector's CAID must equal that vector's
@@ -90,6 +99,64 @@ function inputBytes(input) {
   ]);
 }
 
+// The host value a native-lane encoding denotes (see the header).
+function nativeTag(v) {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) return null;
+  const keys = Object.keys(v);
+  return keys.length === 1 && keys[0].startsWith("$") ? keys[0] : null;
+}
+function buildNative(encoded) {
+  const own = (obj, key, value) => {
+    Object.defineProperty(obj, key, { value, enumerable: true, writable: true, configurable: true });
+  };
+  const build = (v, enclosing) => {
+    const tag = nativeTag(v);
+    if (tag === "$units") return String.fromCharCode(...v.$units);
+    if (tag === "$object") {
+      const out = {};
+      for (const [k, x] of v.$object) {
+        const key = typeof k === "string" ? k : build(k, enclosing);
+        own(out, key, undefined);
+        out[key] = build(x, out);
+      }
+      return out;
+    }
+    if (tag === "$nest") {
+      const { depth, container, leaf } = v.$nest;
+      let value = build(leaf, enclosing);
+      for (let i = 0; i < depth; i++) value = container === "object" ? { a: value } : [value];
+      return value;
+    }
+    if (tag === "$host") {
+      switch (v.$host) {
+        case "nan": return NaN;
+        case "infinity": return Infinity;
+        case "-infinity": return -Infinity;
+        case "negative_zero": return -0;
+        case "cyclic": return enclosing;
+        case "opaque": return new Map();
+        default: throw new Error("unknown $host " + v.$host);
+      }
+    }
+    if (tag !== null) throw new Error("unknown native tag " + tag);
+    if (Array.isArray(v)) {
+      const out = [];
+      for (const x of v) out.push(build(x, out));
+      return out;
+    }
+    if (v !== null && typeof v === "object") {
+      const out = {};
+      for (const k of Object.keys(v)) {
+        own(out, k, undefined);
+        out[k] = build(v[k], out);
+      }
+      return out;
+    }
+    return v;
+  };
+  return build(encoded, undefined);
+}
+
 let pass = 0;
 let fail = 0;
 const actualCaids = new Map();
@@ -110,7 +177,8 @@ function run(v) {
   const definitions = v.definitions;
   const enumSnapshots = corpus.enum_snapshots;
   const bytes = inputBytes(input);
-  const nativeValue = hasOwn(input, "native_json") ? { value: JSON.parse(input.native_json) } : null;
+  const nativeValue = hasOwn(input, "native") ? { value: buildNative(input.native) }
+    : hasOwn(input, "native_json") ? { value: JSON.parse(input.native_json) } : null;
   if (v.kind === "decode") {
     const r = decodeCaidJson(bytes);
     if (!hasOwn(v.expect, "value") && r.ok) return { actual: { ok: true } };

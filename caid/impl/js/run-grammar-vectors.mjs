@@ -5,9 +5,16 @@
 //
 // Usage: node run-grammar-vectors.mjs [--corpus FILE] [--quiet]
 //
-// FILE is a CAID-GRAMMAR-CASES-v1 document: the committed boundary subset
-// (default conformance/grammar-vectors.json) or the full list that
-// `node caid/spec/abnf-check.mjs --out FILE` writes. Each case names a rule
+// FILE is one of two formats.
+//
+// CAID-GRAMMAR-VECTORS (the committed boundary corpus, default
+// conformance/grammar-vectors.json): each case names a driver, which says
+// how to build a parse input or a one-field definition and object around
+// the case string, a lane (text, native or bytes) and the exact expected
+// result. The drive rules are the corpus's own "format" member.
+//
+// CAID-GRAMMAR-CASES-v1 (the full list that
+// `node caid/spec/abnf-check.mjs --out FILE` writes): each case names a rule
 // and says whether the ABNF interpreter accepts the input. The runner maps
 // every rule onto the API that enforces it:
 //
@@ -36,7 +43,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
-import { computeCaid, parseCaid } from "./caid.mjs";
+import { computeCaid, computeCaidJson, decodeCaidJson, parseCaid } from "./caid.mjs";
 import { mapAction, mappingProfileHash } from "./mapping.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -56,9 +63,93 @@ try {
 } catch {
   decoded = { value: null };
 }
-if (!decoded.value || decoded.value["@version"] !== "CAID-GRAMMAR-CASES-v1" || !Array.isArray(decoded.value.cases)) {
-  console.log("FAIL corpus: " + corpusPath + " is not a CAID-GRAMMAR-CASES-v1 document");
+const corpusVersion = decoded.value ? decoded.value["@version"] : undefined;
+if (!decoded.value || !Array.isArray(decoded.value.cases)
+    || (corpusVersion !== "CAID-GRAMMAR-CASES-v1" && corpusVersion !== "CAID-GRAMMAR-VECTORS")) {
+  console.log("FAIL corpus: " + corpusPath + " is neither a CAID-GRAMMAR-VECTORS nor a CAID-GRAMMAR-CASES-v1 document");
   process.exit(1);
+}
+if (corpusVersion === "CAID-GRAMMAR-VECTORS") process.exit(runDriverCorpus(decoded.value));
+
+// ---------------------------------------------------------------------------
+// CAID-GRAMMAR-VECTORS: drivers, lanes and exact expectations
+// ---------------------------------------------------------------------------
+
+function runDriverCorpus(corpus) {
+  const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+  const stable = (value) => JSON.stringify(value, (key, v) => (v && typeof v === "object" && !Array.isArray(v)
+    ? Object.fromEntries(Object.keys(v).sort().filter((k) => v[k] !== undefined).map((k) => [k, v[k]]))
+    : v));
+  const substitute = (template, value) => {
+    if (template === "$CASE") return value;
+    if (Array.isArray(template)) return template.map((x) => substitute(x, value));
+    if (template && typeof template === "object") {
+      const out = {};
+      for (const [k, v] of Object.entries(template)) {
+        Object.defineProperty(out, k === "$CASE" ? value : k, {
+          value: substitute(v, value), enumerable: true, writable: true, configurable: true,
+        });
+      }
+      return out;
+    }
+    return template;
+  };
+  const caseString = (c) => (typeof c === "string" ? c
+    : hasOwn(c, "$units") ? String.fromCharCode(...c.$units)
+      : hasOwn(c, "repeat") ? c.repeat.prefix + c.repeat.unit.repeat(c.repeat.count) + c.repeat.suffix
+        : null);
+  let passed = 0;
+  let failed = 0;
+  corpus.cases.forEach((c, index) => {
+    const d = corpus.drivers[c.driver];
+    const id = `grammar[${index}] ${c.driver} ${c.lane}`;
+    let actual;
+    let problem = null;
+    try {
+      if (d.operation === "parse") {
+        actual = parseCaid(d.caid.prefix + caseString(c.case) + d.caid.suffix);
+      } else {
+        const s = c.lane === "bytes" ? corpus.placeholder : caseString(c.case);
+        const definition = substitute(d.definition, s);
+        const object = substitute(d.object, s);
+        const options = { definitions: [definition], enumSnapshots: [], suite: d.suite === "$CASE" ? s : "jcs-sha256" };
+        if (c.lane === "native") {
+          actual = computeCaid(object, options);
+        } else {
+          let bytes;
+          if (c.lane === "bytes") {
+            const raw = Buffer.from(c.case.b64, "base64");
+            const parts = JSON.stringify(object).split(corpus.placeholder).map((x) => Buffer.from(x, "utf8"));
+            bytes = new Uint8Array(Buffer.concat(parts.flatMap((x, i) => (i ? [raw, x] : [x]))));
+          } else {
+            bytes = new Uint8Array(Buffer.from(JSON.stringify(object), "utf8"));
+          }
+          actual = computeCaidJson(bytes, options);
+          if (c.lane === "text") {
+            const decodedText = decodeCaidJson(bytes);
+            if (decodedText.ok) {
+              const native = computeCaid(decodedText.value, options);
+              if (stable(native) !== stable(actual)) problem = `native parity: ${stable(native)} vs ${stable(actual)}`;
+            }
+          }
+        }
+        if (actual && typeof actual.caid === "string" && hasOwn(c.expect, "caid")) actual = { caid: actual.caid };
+      }
+    } catch (error) {
+      problem = "runner error: " + (error && error.message);
+    }
+    if (problem === null && stable(actual) !== stable(c.expect)) {
+      problem = `expected ${stable(c.expect).slice(0, 200)} got ${stable(actual).slice(0, 200)}`;
+    }
+    if (problem === null) {
+      passed++;
+    } else {
+      failed++;
+      if (failed <= 50) console.log(`FAIL ${id} ${JSON.stringify(c.case).slice(0, 80)}: ${problem}`);
+    }
+  });
+  console.log(`${passed} passed, ${failed} failed, ${corpus.cases.length} grammar vectors`);
+  return failed > 0 ? 1 : 0;
 }
 
 const DIGEST = "A".repeat(43); // 32 zero octets in jcs-sha256 digest syntax
