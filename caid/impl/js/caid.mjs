@@ -970,8 +970,8 @@ const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
 // Any value outside the data model, in a copy made from a host value: an
 // accessor, a Map, a Date, a class instance, a function, a symbol, a bigint,
-// undefined in an array, a cycle, or a container nested deeper than the
-// limit. It is never serialized; its presence refuses as unsupported_value.
+// or undefined in an array. It is never serialized; its presence refuses as
+// unsupported_value, and a declared field holding it is mistyped.
 class OutsideDataModel {}
 const UNSUPPORTED = Object.freeze(new OutsideDataModel());
 
@@ -1025,6 +1025,17 @@ function hasLoneSurrogate(s) {
     }
   }
   return false;
+}
+
+// True when s is not an I-JSON string [RFC 7493, Section 2.1]: it holds a
+// lone surrogate (no UTF-8 encoding) or a noncharacter code point (U+FDD0 to
+// U+FDEF, or any code point whose low 16 bits are FFFE or FFFF). Such a
+// string is outside the data model: RFC 8785 requires I-JSON input, and the
+// JSON text decoder refuses the same strings as malformed_json.
+const OUTSIDE_MODEL_STRING = /[\p{Cs}\p{Noncharacter_Code_Point}]/u;
+/** @param {string} s */
+function outsideModelString(s) {
+  return OUTSIDE_MODEL_STRING.test(s);
 }
 
 function sha256(text) {
@@ -1105,12 +1116,15 @@ function readOption(options, key, type) {
 // objects whose prototype is Object.prototype or null with only own,
 // enumerable, string-keyed data properties. An own member whose value is
 // undefined is absent for field presence and refuses the value as
-// unsupported_value. Everything else becomes UNSUPPORTED: accessors,
-// non-enumerable or symbol-keyed properties, Map, Set, Date, typed arrays,
-// class instances, functions, symbols, bigints, undefined array elements,
-// cycles, and containers nested deeper than the limit. Numbers and strings
+// unsupported_value. A cycle, or a container nested deeper than the limit,
+// keeps its kind (an empty object or array in the copy) and refuses the
+// value as unsupported_value. Everything else becomes UNSUPPORTED:
+// accessors, non-enumerable or symbol-keyed properties, Map, Set, Date,
+// typed arrays, class instances, functions, symbols, bigints and undefined
+// array elements. Numbers and strings
 // are copied as they are; canonicalization decides whether they are in the
-// model (unsupported_number, lone surrogates).
+// model (unsupported_number; unsupported_value for a lone surrogate or a
+// noncharacter).
 //
 // With proxyCheck, a copy that is otherwise clean is also passed through
 // structuredClone, which refuses any Proxy before calling a single trap, so
@@ -1221,11 +1235,18 @@ function admit(v, depth, st, path, parent = null, key = null) {
     return { value: UNSUPPORTED, pending: null };
   }
   const plain = isArray ? proto === Array.prototype : proto === Object.prototype || proto === null;
-  if (!plain || depth > MAX_DEPTH || path.has(v)) {
+  if (!plain) {
     st.unsupported = true;
     return { value: UNSUPPORTED, pending: null };
   }
   st.units += 1;
+  if (depth > MAX_DEPTH || path.has(v)) {
+    // A cycle, or a container nested beyond the limit, is still an object
+    // or an array, so a declared field holding one keeps its JSON kind; the
+    // whole value refuses as unsupported_value.
+    st.outside = true;
+    return { value: isArray ? [] : {}, pending: null };
+  }
   const dst = isArray ? [] : {};
   return { value: dst, pending: { src: v, dst, isArray, depth, parent, key } };
 }
@@ -1301,8 +1322,9 @@ function expand(p, st, path) {
 // Numbers: a finite integer of magnitude at most 2^53-1, else
 // unsupported_number. For such integers JSON.stringify is the ECMAScript
 // Number-to-String form RFC 8785 requires, and -0 prints as 0. Strings and
-// member names must be scalar-value sequences, else unsupported_value; for
-// those, JSON.stringify's escaping is the RFC 8785 form. Member names sort by
+// member names must be I-JSON strings (scalar values, no noncharacters),
+// else unsupported_value; for those, JSON.stringify's escaping is the RFC
+// 8785 form. Member names sort by
 // UTF-16 code units, the default string order. A container nested deeper
 // than the limit, or any UNSUPPORTED value, is unsupported_value and nothing
 // below it is visited. When capOctets is a number and nothing else refused,
@@ -1361,7 +1383,7 @@ function serialize(root, capOctets, outside) {
       continue;
     }
     if (t === "string") {
-      if (hasLoneSurrogate(v)) other = true;
+      if (outsideModelString(v)) other = true;
       else emit(JSON.stringify(v));
       continue;
     }
@@ -1383,7 +1405,7 @@ function serialize(root, capOctets, outside) {
     for (let i = keys.length - 1; i >= 0; i--) {
       const key = keys[i];
       work.push([v[key], level + 1]);
-      if (hasLoneSurrogate(key)) {
+      if (outsideModelString(key)) {
         other = true;
         work.push([null, -1, ":"]);
       } else {
@@ -1412,8 +1434,8 @@ function serialize(root, capOctets, outside) {
  * RFC 8785 over the data model, for any document (action objects,
  * definitions, value sets, mapping profiles). Refusals, in this order:
  * unsupported_number (a number that is not a finite integer of magnitude at
- * most 2^53-1) and unsupported_value (a lone surrogate, nesting deeper than
- * 64, or a host value outside the data model). The canonical-size limit
+ * most 2^53-1) and unsupported_value (a lone surrogate or noncharacter,
+ * nesting deeper than 64, or a host value outside the data model). The canonical-size limit
  * applies to action objects only and is enforced by compute and verify.
  *
  * @param {*} value

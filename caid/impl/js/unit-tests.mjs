@@ -57,11 +57,30 @@ test("a cyclic object or array refuses as unsupported_value and never throws", (
   assert.deepEqual(refusalsOf(computeCaid(bare({ l: arr }), OPTS)), ["unsupported_value"]);
   const top = bare();
   top.o = top;
-  // The declared object field holds the cycle itself, so it is also mistyped.
-  assert.deepEqual(refusalsOf(computeCaid(top, OPTS)), ["mistyped_field:o", "unsupported_value"]);
+  // A cycle is still an object: the declared object field is well typed,
+  // and only the data model refuses. A string field holding it is mistyped.
+  assert.deepEqual(refusalsOf(computeCaid(top, OPTS)), ["unsupported_value"]);
   assert.deepEqual(canonicalize(top), { ok: false, refusals: ["unsupported_value"] });
   const v = verifyCaid(top, "caid:1:test.unit.1:jcs-sha256:" + "A".repeat(43), { definitions: DEFS });
   assert.deepEqual(v.reasons, ["invalid_object"]);
+  assert.deepEqual(v.details, [{ reason: "unsupported_value", field: null, rule: "data-model", observed: null }]);
+  const inString = bare();
+  inString.a = inString;
+  const w = verifyCaid(inString, "caid:1:test.unit.1:jcs-sha256:" + "A".repeat(43), { definitions: DEFS });
+  assert.deepEqual(w.details, [
+    { reason: "mistyped_field:a", field: "a", rule: "field-type", observed: "object" },
+    { reason: "unsupported_value", field: null, rule: "data-model", observed: null },
+  ]);
+  const inType = { a: "x" };
+  inType.action_type = inType;
+  const x = verifyCaid(inType, "caid:1:test.unit.1:jcs-sha256:" + "A".repeat(43), { definitions: DEFS });
+  assert.deepEqual(x.details, [
+    { reason: "action_type_mismatch", field: "action_type", rule: "action-type-equal", observed: "object" },
+    { reason: "invalid_action_type", field: "action_type", rule: "action-type", observed: "object" },
+  ]);
+  const inArray = [];
+  inArray.push(inArray);
+  assert.deepEqual(refusalsOf(computeCaid(bare({ l: inArray }), OPTS)), ["unsupported_value"]);
 });
 
 test("Map, Set, Date, typed arrays, boxed primitives and class instances are refused, never rewritten", () => {
@@ -182,6 +201,27 @@ test("a host value whose shared references fan out is refused in bounded time", 
   const t0 = Date.now();
   assert.deepEqual(refusalsOf(computeCaid(bare({ o: v }), OPTS)), ["unsupported_value"]);
   assert.ok(Date.now() - t0 < 20000);
+});
+
+test("a lone surrogate or noncharacter string refuses on the native path, as its text does on the byte path", () => {
+  const outside = ["\uD800", "x\uDC00", "\uFDD0", "\uFDEF", "\uFFFE", "\uFFFF", "\u{1FFFE}", "\u{10FFFF}"];
+  for (const s of outside) {
+    assert.deepEqual(computeCaid(bare({ o: { s } }), OPTS), { refusals: ["unsupported_value"] }, JSON.stringify(s));
+    const keyed = {};
+    Object.defineProperty(keyed, s, { value: 1, enumerable: true, writable: true, configurable: true });
+    assert.deepEqual(computeCaid(bare({ o: keyed }), OPTS), { refusals: ["unsupported_value"] }, JSON.stringify(s));
+    assert.deepEqual(canonicalize([s]), { ok: false, refusals: ["unsupported_value"] });
+    const v = verifyCaid(bare({ o: { s } }), computeCaid(bare(), OPTS).caid, { definitions: DEFS });
+    assert.deepEqual(v.reasons, ["invalid_object"]);
+    assert.deepEqual(v.details.map((d) => d.reason), ["unsupported_value"]);
+  }
+  for (const s of ["\uFDCF", "\uFDF0", "\uFFFD", "\u{1F600}", "\u{10FFFD}"]) {
+    assert.ok(computeCaid(bare({ o: { s } }), OPTS).caid, JSON.stringify(s));
+  }
+  // A definition whose projection holds a noncharacter cannot be digested.
+  const d = { action_type: "test.unit.1", required_fields: [{ name: "\uFDD0", type: "string" }] };
+  assert.deepEqual(definitionSha256(d), { refusals: ["invalid_definition"] });
+  assert.deepEqual(computeCaid({ action_type: "test.unit.1" }, { suite: S, definitions: [d] }), { refusals: ["invalid_definition"] });
 });
 
 test("toCaidData copies the data model and refuses anything outside it", () => {

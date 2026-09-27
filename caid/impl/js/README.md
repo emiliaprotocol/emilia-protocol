@@ -73,8 +73,10 @@ it:
 
 For every value the strict decoder can produce, the native result equals the
 byte result. A member named `__proto__` is an ordinary own member on both
-paths. Strings with lone surrogates can only arrive through the native path;
-they refuse as `unsupported_value`.
+paths. A string or member name holding a lone surrogate or a noncharacter
+is not an I-JSON string: the decoder refuses it as `malformed_json`, and on
+the native path it refuses as `unsupported_value`, so a native issuer never
+mints a CAID that a byte-path verifier must refuse.
 
 ## Reasons
 
