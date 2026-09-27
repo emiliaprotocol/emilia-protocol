@@ -1,6 +1,6 @@
 {
   "@version": "CAID-04-CHANGES-VECTORS-v1",
-  "description": "Maps every item of Changes since -03 in draft-schrock-canonical-action-identifier-04 that changes processing or the reference registry (an li anchor starting chg-) to the conformance vectors that pin it. scripts/check-caid-04.mjs requires every chg- item to be listed here and every id to exist in the named corpus. Items anchored ed- change text only.",
+  "description": "Maps every item of Changes since -03 in draft-schrock-canonical-action-identifier-04 that changes what an implementation of the operations of Section 1.2 accepts, refuses, or reports, or changes the reference registry (an li anchor starting chg-), to the conformance vectors that pin it. scripts/check-caid-04.mjs requires every chg- item to be listed here and every id to exist in the named corpus. Items anchored ed- are not pinned by vectors: requirements on parties those operations cannot observe (issuers, executors, carrying protocols, relying parties, applications), and changes to the text alone. The cbor-sha256 vectors of chg-cbor-suite are conditional: two apply only to an implementation of cbor-sha256 and two only to one that does not implement it.",
   "corpora": {
     "core": "caid/conformance/vectors.json",
     "mapping": "caid/conformance/mapping-vectors.json",
@@ -8,7 +8,8 @@
   },
   "claims": {
     "chg-refused-depth": {
-      "core": ["decode-depth-64", "refuse-decode-depth-65", "refuse-depth-65-native"]
+      "core": ["decode-depth-64", "refuse-decode-depth-65", "refuse-depth-65-native", "native-definition-deep-member-in-projection"],
+      "mapping": ["profile-deep-member-abstains", "stage-b-source-deep-not-canonicalizable"]
     },
     "chg-refused-canonical-size": {
       "core": ["compute-canonical-size-at-limit", "refuse-canonical-size-over-limit"]
@@ -20,7 +21,7 @@
       "core": ["compute-text-size-at-limit", "refuse-text-size-over-limit"]
     },
     "chg-refused-json-text": {
-      "core": ["refuse-decode-bom", "refuse-decode-invalid-utf8-byte", "refuse-decode-utf16le", "refuse-decode-trailing-content", "refuse-decode-nan", "refuse-decode-unescaped-nul", "refuse-bom-at-compute", "refuse-invalid-utf8-at-compute"]
+      "core": ["refuse-decode-bom", "refuse-decode-invalid-utf8-byte", "refuse-decode-utf16le", "refuse-decode-trailing-content", "refuse-decode-nan", "refuse-decode-unescaped-nul", "refuse-bom-at-compute", "refuse-invalid-utf8-at-compute", "decode-raw-del", "decode-raw-c1-control", "compute-raw-del-and-c1"]
     },
     "chg-refused-duplicate-names": {
       "core": ["refuse-decode-duplicate-names", "refuse-decode-duplicate-escaped-spelling", "refuse-duplicate-action-type"]
@@ -59,10 +60,10 @@
       "core": ["order-gate-malformed-json-first", "verify-gate-malformed-json"]
     },
     "chg-data-model": {
-      "core": ["refuse-integer-field-overflowing-literal", "compute-number-underflow-is-zero", "compute-number-negative-zero"]
+      "core": ["refuse-integer-field-overflowing-literal", "compute-number-underflow-is-zero", "compute-number-negative-zero", "compute-number-negative-underflow-is-zero", "refuse-number-subnormal", "refuse-number-subnormal-in-integer-field", "compute-number-subnormal-midpoint-ties-to-zero", "refuse-number-above-subnormal-midpoint", "refuse-number-max-finite-in-integer-field", "refuse-number-overflow-past-max-in-integer-field", "refuse-number-overflow-midpoint-in-integer-field", "refuse-number-below-overflow-midpoint-in-integer-field", "refuse-number-400-digits-in-integer-field"]
     },
     "chg-host-values": {
-      "core": ["native-lone-surrogate-string-value", "refuse-depth-65-native"]
+      "core": ["native-lone-surrogate-string-value", "refuse-depth-65-native", "native-nan-in-integer-field", "native-fraction-in-integer-field", "native-integer-beyond-range-in-integer-field", "native-lone-surrogate-in-amount-field", "native-lone-surrogate-in-digest-field", "native-deep-fraction-not-examined", "native-deep-fraction-with-shallow-fraction", "native-fraction-at-depth-64"]
     },
     "chg-reason-order": {
       "core": ["order-gate-invalid-action-type", "order-phase-6-and-7", "refuse-multiple-ordered"]
@@ -111,6 +112,15 @@
     },
     "chg-mapping-suite": {
       "mapping": ["empty-suite-not-defaulted"]
+    },
+    "chg-mapping-stage-b": {
+      "mapping": ["profile-deep-member-abstains", "profile-deep-member-declared-loss-abstains"]
+    },
+    "chg-enum-snapshot-shape": {
+      "core": ["refuse-external-enum-label-not-a-string", "refuse-external-enum-empty-label", "refuse-external-enum-digest-not-a-string"]
+    },
+    "chg-cbor-suite": {
+      "core": ["compute-cbor-sha256-appendix-c1", "verify-cbor-sha256-appendix-c1", "verify-registered-suite-not-implemented", "order-phase-4-and-5"]
     },
     "chg-reason-unknown-suite-parse": {
       "core": ["refuse-suite-unregistered", "refuse-suite-unregistered-unchecked-digest", "verify-malformed-unregistered-suite"]
