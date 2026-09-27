@@ -324,7 +324,6 @@ function mappingProfile(
 
 function agentProfile(): AebPinnedProfile {
   return mappingProfile(AGENTROA_DRAFT, 'payment.transfer.1', [
-    { name: 'action_type', type: 'string' },
     { name: 'capability', type: 'string' },
     { name: 'target_service_id', type: 'string' },
     { name: 'operation', type: 'string' },
@@ -334,7 +333,6 @@ function agentProfile(): AebPinnedProfile {
 
 function orprgProfile(): AebPinnedProfile {
   return mappingProfile(ORPRG_JSON_JCS_PROFILE, 'payment.release.1', [
-    { name: 'action_type', type: 'string' },
     { name: 'effect_type', type: 'string' },
     { name: 'interface_id', type: 'string' },
     { name: 'target_id', type: 'string' },
