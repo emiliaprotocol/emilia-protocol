@@ -16,9 +16,9 @@ npm run caid:fuzz          # the differential fuzz (caid/fuzz)
 
 | Path | What it is |
 |---|---|
-| `vectors.json` | Core corpus, version 5: 551 vectors (decode, parse, compute, verify, definition) |
+| `vectors.json` | Core corpus, version 5: 575 vectors (decode, parse, compute, verify, definition) |
 | `grammar-vectors.json` | Grammar boundary corpus: 1,966 cases over 21 drivers |
-| `mapping-vectors.json` | Mapping corpus, version 2: 73 vectors with exact reason lists; a vector may carry its own suite |
+| `mapping-vectors.json` | Mapping corpus, version 2: 76 vectors with exact reason lists; a vector may carry its own suite |
 | `history/vectors.v4.json` | The version 4 core corpus, byte for byte (`sha256:7a201c87…`) |
 | `history/mapping-vectors.v1.json` | The version 1 mapping corpus, byte for byte (`sha256:6941463c…`) |
 | `check-v4.mjs` | Proves from the files alone that version 5 carries version 4 forward |
@@ -62,7 +62,7 @@ tagged objects:
 |---|---|
 | `{"$units": [u, ...]}` | a string of these UTF-16 code units (JS as is; Python `chr(u)` per unit; Go generalized UTF-8, which is not valid UTF-8) |
 | `{"$object": [[k, v], ...]}` | an object with these members in this order; `k` may be a `$units` string |
-| `{"$nest": {"depth", "container", "leaf"}}` | `depth` nested arrays, or objects whose only member is `a` |
+| `{"$nest": {"depth", "container", "leaf"}}` | `depth` nested arrays, or objects whose only member is `a`, around `leaf` (any native value, a fraction included) |
 | `{"$dag": {"depth", "leaf"}}` | `depth` nested two-element arrays around `leaf`, both elements one shared array (the value count of Section 2.6) |
 | `{"$repeat": {"unit", "count"}}` | the string `unit` repeated `count` times |
 | `{"$host": "nan" / "infinity" / "-infinity" / "negative_zero"}` | the binary64 value |
@@ -75,10 +75,28 @@ a lone-surrogate member name and a member holding 1.5 give
 
 Options: compute passes `input.suite` as given (absent means no suite, so
 `unknown_suite`), the vector's `definitions` as given, and the envelope's
-`enum_snapshots` (the five registry value sets). Verify also passes
+`enum_snapshots`: the five registry value-set files exactly as published,
+whose members other than `values_ref`, `values_snapshot`, `values_sha256`
+and `values` never affect resolution, so every vector that resolves an
+external enum also checks that a port ignores them. Verify also passes
 `input.expected_definition_sha256` when present, whatever its type: a pin
 that is not the resolved digest string, a list or null included, is
 `definition_mismatch`. A suite of the wrong type counts as absent.
+
+**Conditional vectors.** Support for cbor-sha256 is OPTIONAL (-04 Section
+3.1). A vector or grammar case with `applies_when: {suite_not_implemented:
+S}` applies only to an implementation that does not implement the registered
+suite S, and one with `applies_when: {suite_implemented: S}` only to one that
+does. A runner decides by computing the envelope's `suite_probe` object
+under S: a CAID means S is implemented. A vector whose condition does not
+hold is counted as skipped, never as passed. The three vectors and one
+grammar case that pin `unknown_suite` for cbor-sha256 apply where it is not
+implemented; `compute-cbor-sha256-appendix-c1` and
+`verify-cbor-sha256-appendix-c1` (the Appendix C.1 object, with its core
+deterministic CBOR octets in `canonical_hex`) apply where it is. No port
+implements cbor-sha256, so each runner reports those two as skipped. Their
+expectations come from `tools/cbor.mjs`, whose output for that object equals
+the canonical encoding of the Python cbor2 library.
 
 Expectations: compute is `{caid, digest, definition_sha256}` or `{refusals}`;
 verify is `{valid, reasons, details}` plus `definition_sha256` when a
@@ -104,6 +122,21 @@ names); 11 `definition_sha256` vectors; 82 code-format vectors including a
 parse vectors (audit Appendix D, `unknown_suite` at parse); and one vector
 per registry type (62: each of the 53 active types computes; each of the 9
 deprecated types resolves and refuses only its unpinned enum field).
+
+The pre-filing review added 24 vectors: a raw C1 control character
+(`decode-raw-c1-control`, `compute-raw-del-and-c1`); RFC 8785 member order
+by UTF-16 code units (`compute-member-order-utf16-code-units`); subnormal
+and overflow rounding at the binary64 midpoints (`refuse-number-subnormal*`,
+`*-subnormal-midpoint*`, `*-max-finite-*`, `*-overflow-*-in-integer-field`,
+`refuse-number-400-digits-in-integer-field`); host values checked under
+their field types (`native-fraction-in-integer-field`,
+`native-integer-beyond-range-in-integer-field`,
+`native-lone-surrogate-in-amount-field`,
+`native-lone-surrogate-in-digest-field`); the nesting limit on host values
+(`native-deep-fraction-not-examined`,
+`native-deep-fraction-with-shallow-fraction`, `native-fraction-at-depth-64`);
+enum snapshot labels that are not non-empty strings
+(`refuse-external-enum-*`); and the two conditional cbor-sha256 vectors.
 
 **Version 4 carries forward.** Every version 4 vector keeps its id, with its
 object as the version 4 tokens. All 22 version 4 CAIDs are expected
@@ -136,6 +169,14 @@ New vectors cover the registered profile extension
 `sha256-hex-to-digest`), UTF-8 octet limits, field-name targets such as
 `@version`, the review's D2-D9 cases, and each stage boundary. One version 1
 vector changes because -04 widens `target_field` to the field-name rule.
+A set mutation carries its value as `value`, as `units` (the UTF-16 code
+units of a string no strict JSON text can hold) or as `nest` (`{depth,
+container, leaf}`, a host value nested deeper than strict JSON text may be).
+`profile-deep-member-abstains` and
+`profile-deep-member-declared-loss-abstains` pin that stage B reads the
+`source_format` and `loss_policy` members of a profile outside the data
+model, and `stage-b-source-deep-not-canonicalizable` that a host source past
+the nesting limit is `source_not_canonicalizable`.
 
 ## Entry points the runners call
 

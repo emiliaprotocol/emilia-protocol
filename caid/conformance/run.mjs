@@ -167,4 +167,7 @@ if (failed.length) {
   process.stderr.write(`\nCAID conformance: ${failed.length} step(s) failed:\n  ${failed.join('\n  ')}\n`);
   process.exit(1);
 }
-console.log(`CAID conformance: ${core.vectors.length} core + ${grammar.cases.length} grammar + ${mappingCorpus.vectors.length} mapping + ${interopCorpus.vectors.length} consequential-interoperability vectors green in JavaScript, Python and Go, against the spec oracle.`);
+// A vector with applies_when runs only where its suite condition holds
+// (cbor-sha256 support is OPTIONAL); the runners count the others as skipped.
+const conditional = core.vectors.filter((v) => v.applies_when).length + grammar.cases.filter((c) => c.applies_when).length;
+console.log(`CAID conformance: ${core.vectors.length} core + ${grammar.cases.length} grammar + ${mappingCorpus.vectors.length} mapping + ${interopCorpus.vectors.length} consequential-interoperability vectors green in JavaScript, Python and Go, against the spec oracle (${conditional} of them apply only where an OPTIONAL suite is, or is not, implemented; each runner skips those whose condition does not hold).`);

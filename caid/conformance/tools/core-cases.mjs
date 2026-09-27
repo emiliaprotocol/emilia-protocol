@@ -10,7 +10,13 @@
 //
 // Case shape:
 //   {id, kind, description, definitions?, input, expect, relation?,
-//    time_budget_ms?, same_definition_sha256_as?, different_definition_sha256_from?}
+//    time_budget_ms?, same_definition_sha256_as?, different_definition_sha256_from?,
+//    applies_when?}
+// applies_when is {suite_implemented: S} or {suite_not_implemented: S}: the
+// vector applies only to an implementation that does (or does not)
+// implement the registered suite S. Support for cbor-sha256 is OPTIONAL, so
+// the vectors that pin unknown_suite for it apply only where it is not
+// implemented, and the cbor-sha256 vectors only where it is.
 // input for compute and verify is one of {json}, {json_b64}, {json_repeat}
 // or {native}, plus suite (compute), caid and expected_definition_sha256
 // (verify). A verify case may give caid_of: {json | native, definitions}
@@ -103,6 +109,14 @@ const nest = (depth, leaf, container = 'array') => ({ $nest: { depth, container,
 const deepArrays = (depth, leaf = '0') => '['.repeat(depth) + leaf + ']'.repeat(depth);
 
 const VALID_DIGEST = 'liLG9pKgkLt3silrjf1wa0xIHz5YFrBB9HI-arxrO1Y';
+
+// Exact decimal expansions of two binary64 rounding midpoints: 2^-1075,
+// halfway between 0 and the smallest subnormal (ties to even: 0), and
+// 2^1024 - 2^970, halfway between the largest finite value and 2^1024
+// (ties to even: an overflow, so an infinity under IEEE 754 Section 7.4).
+const FIVE_1075 = (5n ** 1075n).toString();
+const SUBNORMAL_MIDPOINT = `${FIVE_1075[0]}.${FIVE_1075.slice(1)}e${FIVE_1075.length - 1 - 1075}`;
+const OVERFLOW_MIDPOINT = 2n ** 1024n - 2n ** 970n;
 const PAYMENT_CAID = `caid:1:payment.release.1:jcs-sha256:${VALID_DIGEST}`;
 
 export function coreCases({ limits }) {
@@ -118,6 +132,7 @@ export function coreCases({ limits }) {
     decode('decode-raw-astral', 'an astral character written as raw UTF-8', text('{"a":"\u{1F600}\u{10000}\u{10FFFD}"}'), true),
     decode('decode-noncharacter-neighbours', 'U+FFFD, U+FDCF, U+FDF0, U+FFFC and U+10FFFD are not noncharacters', text('{"a":"\\ufffd\\ufdcf\\ufdf0\\ufffc\\udbff\\udffd"}'), true),
     decode('decode-raw-del', 'U+007F is not a control character under RFC 8259 and may appear unescaped', text('{"a":"\u007f"}'), true),
+    decode('decode-raw-c1-control', 'U+0085, a C1 control written as the raw octets C2 85, may appear unescaped: RFC 8259 Section 7 requires escaping only U+0000 through U+001F', text('{"a":"\u0085"}'), true),
     decode('decode-not-duplicate-case', 'member names that differ only in case are different names', text('{"a":1,"A":2}'), true),
     decode('decode-not-duplicate-normalization', 'NFC and NFD spellings are different code point sequences, so they are not duplicates', text('{"\\u00e9":1,"e\\u0301":2}'), true),
     decode('decode-number-5000-digits', 'the decoder never refuses a number token; the data-model number rule decides it later', text(`[${'1'.repeat(5000)}]`), true),
@@ -234,6 +249,9 @@ export function coreCases({ limits }) {
     compute('compute-member-named-proto', 'a member named __proto__ is an ordinary own member of the action object', [T1], text('{"action_type":"t.1","s":"x","__proto__":{"polluted":true}}'), 'ok'),
     compute('compute-empty-string-present', 'the empty string is a present string value', [T1], text('{"action_type":"t.1","s":""}'), 'ok'),
     compute('refuse-null-is-present', 'a member holding null is present, so a string field holding null is mistyped', [T1], text('{"action_type":"t.1","s":null}'), { refusals: ['mistyped_field:s'] }),
+    compute('compute-raw-del-and-c1', 'a string holding the raw characters U+007F and U+0085 computes; only U+0000 through U+001F must be escaped', [T1], text('{"action_type":"t.1","s":"\u007f\u0085"}'), 'ok'),
+    compute('compute-member-order-utf16-code-units', 'RFC 8785 sorts member names by their UTF-16 code units, not by code point: U+1F600 (D83D DE00) sorts before U+FF61, so the canonical text is {"action_type":"t.1","s":"x","\u{1F600}":2,"\uFF61":1}; code point order would give the digest sha256:065998d88d6ee1b52665908ddce127ed7ac55f306ecafb8131b9db8ddb5b0d2f instead', [T1],
+      text('{"action_type":"t.1","s":"x","\uFF61":1,"\u{1F600}":2}'), 'ok'),
   );
 
   // ------------------------------------------------------------ numbers
@@ -267,6 +285,20 @@ export function coreCases({ limits }) {
     compute('compute-number-integer-field-underflow', '1e-400 in an integer field is the integer 0', [OBJ], numInt('1e-400'), 'ok'),
     compute('refuse-number-fraction-in-integer-field', '0.5 in an integer field is mistyped and unsupported_number', [OBJ], numInt('0.5'), { refusals: ['mistyped_field:n', 'unsupported_number'] }),
     compute('refuse-number-duplicate-reason-once', 'two non-integers give one unsupported_number', [OBJ], text('{"action_type":"t.obj.1","s":"x","v":1.5,"w":[2.5]}'), { refusals: ['unsupported_number'] }),
+    // Underflow and overflow under IEEE 754 roundTiesToEven: a literal whose
+    // correctly rounded value is zero is the integer 0; one whose value is a
+    // nonzero subnormal is not an integer. A literal below the overflow
+    // midpoint rounds to the largest finite value, a finite integer beyond
+    // 2^53-1; one at or above it rounds to an infinity.
+    compute('refuse-number-subnormal', '1e-310 rounds to a nonzero subnormal, which is not an integer: unsupported_number (it underflows in the IEEE 754 sense but does not round to 0)', [OBJ], num('1e-310'), { refusals: ['unsupported_number'] }),
+    compute('refuse-number-subnormal-in-integer-field', '1e-310 in an integer field is mistyped_field and unsupported_number', [OBJ], numInt('1e-310'), { refusals: ['mistyped_field:n', 'unsupported_number'] }),
+    compute('compute-number-subnormal-midpoint-ties-to-zero', 'the exact decimal value of 2^-1075, halfway between 0 and the smallest subnormal, rounds to even, which is 0', [OBJ], num(SUBNORMAL_MIDPOINT), 'ok', { relation: { same_caid_as: 'compute-number-zero' } }),
+    compute('refuse-number-above-subnormal-midpoint', '2.4703282292062328e-324 is just above that midpoint and rounds to the smallest subnormal: unsupported_number', [OBJ], num('2.4703282292062328e-324'), { refusals: ['unsupported_number'] }),
+    compute('refuse-number-max-finite-in-integer-field', '1.7976931348623158e308 is below the overflow midpoint and rounds to the largest finite binary64 value, a finite integer beyond 2^53-1: unsupported_number alone', [OBJ], numInt('1.7976931348623158e308'), { refusals: ['unsupported_number'] }),
+    compute('refuse-number-overflow-past-max-in-integer-field', '1.7976931348623159e308 is above the overflow midpoint and rounds to an infinity: mistyped_field and unsupported_number', [OBJ], numInt('1.7976931348623159e308'), { refusals: ['mistyped_field:n', 'unsupported_number'] }),
+    compute('refuse-number-overflow-midpoint-in-integer-field', 'the exact integer 2^1024 - 2^970, the overflow midpoint, rounds to even, which is an overflow to infinity: mistyped_field and unsupported_number', [OBJ], numInt(String(OVERFLOW_MIDPOINT)), { refusals: ['mistyped_field:n', 'unsupported_number'] }),
+    compute('refuse-number-below-overflow-midpoint-in-integer-field', 'the exact integer 2^1024 - 2^970 - 1 rounds to the largest finite value: unsupported_number alone', [OBJ], numInt(String(OVERFLOW_MIDPOINT - 1n)), { refusals: ['unsupported_number'] }),
+    compute('refuse-number-400-digits-in-integer-field', 'a 400-digit integer literal overflows binary64, so in an integer field it is mistyped_field and unsupported_number', [OBJ], numInt('1' + '0'.repeat(399)), { refusals: ['mistyped_field:n', 'unsupported_number'] }),
   );
 
   // ------------------------------------------------------------ native lane
@@ -290,6 +322,13 @@ export function coreCases({ limits }) {
     compute('native-infinity', 'native lane: +infinity is unsupported_number', [T1], native({ action_type: 't.1', s: 'x', v: { $host: 'infinity' } }), { refusals: ['unsupported_number'] }),
     compute('native-negative-infinity', 'native lane: -infinity is unsupported_number', [T1], native({ action_type: 't.1', s: 'x', v: [{ $host: '-infinity' }] }), { refusals: ['unsupported_number'] }),
     compute('native-nan-in-integer-field', 'native lane: NaN in an integer field is mistyped_field and unsupported_number', [OBJ], native({ action_type: 't.obj.1', s: 'x', n: { $host: 'nan' } }), { refusals: ['mistyped_field:n', 'unsupported_number'] }),
+    // A host value outside the data model is checked under its field type
+    // as Section 4.3 states, not by its kind alone: NaN, 1.5 and "1\uD800"
+    // have the kinds number and string, and still fail their field types.
+    compute('native-fraction-in-integer-field', 'native lane: the host number 1.5 in an integer field is mistyped_field (not a finite integer) and unsupported_number', [OBJ], native({ action_type: 't.obj.1', s: 'x', n: 1.5 }), { refusals: ['mistyped_field:n', 'unsupported_number'] }),
+    compute('native-integer-beyond-range-in-integer-field', 'native lane: the host number 2^53 in an integer field is a finite integer, so the field type accepts it, and it is unsupported_number alone', [OBJ], native({ action_type: 't.obj.1', s: 'x', n: 9007199254740992 }), { refusals: ['unsupported_number'] }),
+    compute('native-lone-surrogate-in-amount-field', 'native lane: the host string "1" followed by a lone surrogate in an amount-string field fails the amount rule (invalid_amount) and is outside the data model (unsupported_value)', [PX], native({ ...PX_OK, a: { $units: [0x31, 0xd800] } }), { refusals: ['invalid_amount:a', 'unsupported_value'] }),
+    compute('native-lone-surrogate-in-digest-field', 'native lane: a host string of "sha256:" and a lone surrogate in a digest field is mistyped_field and unsupported_value', [PX], native({ ...PX_OK, c: { $units: [...units('sha256:').$units, 0xd800] } }), { refusals: ['mistyped_field:c', 'unsupported_value'] }),
     compute('native-negative-zero', 'native lane: the binary64 -0.0 is the integer 0', [OBJ], native({ action_type: 't.obj.1', s: 'x', v: { $host: 'negative_zero' } }), 'ok', { relation: { same_caid_as: 'compute-number-zero' } }),
     compute('native-cyclic-object', 'native lane: a cyclic object is refused, never followed forever and never thrown', [T1],
       native({ action_type: 't.1', s: 'x', self: { $host: 'cyclic' } }), { refusals: ['unsupported_value'] }),
@@ -327,7 +366,7 @@ export function coreCases({ limits }) {
     compute('order-phase-3-and-5', 'phase 3 then the suite', [PX], { ...text(j({ action_type: 'p.1', a: '1', b: 'x' })), suite: 'zz-unregistered' }, { refusals: ['missing_material_field:c', 'unknown_suite'] }),
     compute('order-phase-3-and-6', 'phase 3 then unsupported_number', [PX], text(j({ action_type: 'p.1', a: '1', b: 'x', v: 0.5 })), { refusals: ['missing_material_field:c', 'unsupported_number'] }),
     compute('order-phase-3-and-7', 'native lane: phase 3 then unsupported_value', [PX], native({ action_type: 'p.1', a: '1', b: 'x', v: { $units: [0xd800] } }), { refusals: ['missing_material_field:c', 'unsupported_value'] }),
-    compute('order-phase-4-and-5', 'phase 4 then the suite', [PX], { ...px({ a: '+1' }), suite: 'cbor-sha256' }, { refusals: ['invalid_amount:a', 'unknown_suite'] }),
+    compute('order-phase-4-and-5', 'phase 4 then the suite: cbor-sha256 is registered, and an implementation that does not implement it refuses it as unknown_suite', [PX], { ...px({ a: '+1' }), suite: 'cbor-sha256' }, { refusals: ['invalid_amount:a', 'unknown_suite'] }, { applies_when: { suite_not_implemented: 'cbor-sha256' } }),
     compute('order-phase-4-and-6', 'phase 4 then unsupported_number', [PX], px({ b: 2, v: 0.5 }), { refusals: ['mistyped_field:b', 'unsupported_number'] }),
     compute('order-phase-4-and-7', 'native lane: phase 4 then unsupported_value', [PX], native({ ...PX_OK, b: false, v: { $host: 'opaque' } }), { refusals: ['mistyped_field:b', 'unsupported_value'] }),
     compute('order-phase-5-and-6', 'the suite then unsupported_number', [PX], { ...px({ v: 0.5 }), suite: 'zz-unregistered' }, { refusals: ['unknown_suite', 'unsupported_number'] }),
@@ -363,9 +402,9 @@ export function coreCases({ limits }) {
       { json: j({ action_type: 'p.1', a: 1, b: [], c: {}, d: 'x', e: null }), caid_of: pxCaid }, { reasons: ['digest_mismatch', 'invalid_object'] }),
     verify('verify-details-missing-field-absent', 'a missing field is observed as absent', [PX], { json: j({ action_type: 'p.1', a: '1.00', c: D(), e: true }), caid_of: pxCaid }, { reasons: ['digest_mismatch', 'invalid_object'] }),
     verify('verify-registered-suite-not-implemented', 'a registered suite this implementation does not implement is unknown_suite after parse', [PX],
-      { json: j(PX_OK), caid: 'caid:1:p.1:cbor-sha256:' + VALID_DIGEST }, { reasons: ['unknown_suite'] }),
+      { json: j(PX_OK), caid: 'caid:1:p.1:cbor-sha256:' + VALID_DIGEST }, { reasons: ['unknown_suite'] }, { applies_when: { suite_not_implemented: 'cbor-sha256' } }),
     verify('verify-registered-suite-not-implemented-invalid-object', 'unknown_suite (rank 6) precedes invalid_object (rank 7)', [PX],
-      { json: j({ ...PX_OK, a: '1.0.0' }), caid: 'caid:1:p.1:cbor-sha256:' + VALID_DIGEST }, { reasons: ['unknown_suite', 'invalid_object'] }),
+      { json: j({ ...PX_OK, a: '1.0.0' }), caid: 'caid:1:p.1:cbor-sha256:' + VALID_DIGEST }, { reasons: ['unknown_suite', 'invalid_object'] }, { applies_when: { suite_not_implemented: 'cbor-sha256' } }),
     verify('verify-expected-definition-match', 'a matching expected_definition_sha256 verifies', [PX], { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: { of: PX } }, 'valid'),
     verify('verify-definition-mismatch', 'a different expected_definition_sha256 is definition_mismatch even when the digest matches', [PX],
       { json: j(PX_OK), caid_of: pxCaid, expected_definition_sha256: { of: { ...PX, optional_fields: [] } } }, { reasons: ['definition_mismatch'] }),
@@ -648,6 +687,47 @@ export function coreCases({ limits }) {
     verify('native-verify-value-budget-over', 'native lane: verification of a value past the value budget is invalid_object, with unsupported_value alone behind it', [BUDGET],
       { ...dag(25), caid: `caid:1:probe.budget.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
   );
+  // The nesting limit (Section 2.2): the contents of a container nested
+  // deeper than 64 are not examined, so a number inside one adds no
+  // unsupported_number. A number at depth 64 or less still does.
+  add(
+    compute('native-deep-fraction-not-examined', 'native lane: 1.5 inside 70 nested arrays is past the nesting limit and never examined: unsupported_value alone', [OBJ],
+      native({ action_type: 't.obj.1', s: 'x', a: nest(70, 1.5) }), { refusals: ['unsupported_value'] }),
+    compute('native-deep-fraction-with-shallow-fraction', 'native lane: the same deep chain beside a top-level 1.5: unsupported_number from the shallow number, then unsupported_value', [OBJ],
+      native({ action_type: 't.obj.1', s: 'x', a: nest(70, 1.5), v: 1.5 }), { refusals: ['unsupported_number', 'unsupported_value'] }),
+    compute('native-fraction-at-depth-64', 'native lane: 1.5 inside the innermost of 63 nested arrays, whose container is at depth 64, is examined: unsupported_number alone', [OBJ],
+      native({ action_type: 't.obj.1', s: 'x', a: nest(63, 1.5) }), { refusals: ['unsupported_number'] }),
+  );
+
+  // Enum snapshot labels (Section 4.4): values_ref, values_snapshot and
+  // values_sha256 are non-empty strings on both sides, so a label of any
+  // other type, or an empty one, never matches and the field stays
+  // unresolved, even when the embedded array hashes to values_sha256.
+  const pairValues = ['EUR', 'USD'];
+  const pairField = { name: 'c', type: 'enum', values_ref: 'Example currency pair', values_snapshot: 'example edition 1', values_sha256: 'sha256:240025105d266f8b899d3bc2f47f4152c9a17136a89442152a3305d13ede4039', values: pairValues };
+  const pairDef = (o) => [{ action_type: 'test.enum.1', required_fields: [{ ...pairField, ...o }], optional_fields: [] }];
+  const pairObject = text(j({ action_type: 'test.enum.1', c: 'USD' }));
+  add(
+    compute('refuse-external-enum-label-not-a-string', 'an external enum whose values_snapshot is the number 5 is unresolved, whatever its embedded array: mistyped_field', pairDef({ values_snapshot: 5 }), pairObject, { refusals: ['mistyped_field:c'] }),
+    compute('refuse-external-enum-empty-label', 'an empty values_snapshot label is unresolved: mistyped_field', pairDef({ values_snapshot: '' }), pairObject, { refusals: ['mistyped_field:c'] }),
+    compute('refuse-external-enum-digest-not-a-string', 'a values_sha256 that is not a string never equals the digest of the array: mistyped_field', pairDef({ values_sha256: 5 }), pairObject, { refusals: ['mistyped_field:c'] }),
+  );
+
+  // cbor-sha256 (Section 3.1; support is OPTIONAL): the Appendix C.1 object
+  // under that suite. Its core deterministic encoding sorts map keys by
+  // their encoded bytes, so shorter keys come first (memo, amount,
+  // currency, action_type, beneficiary_account, payment_instruction_id),
+  // unlike the RFC 8785 member order. These apply only to an implementation
+  // that implements the suite; none of the three ports does.
+  const c1Text = '{"action_type":"payment.release.1","amount":"250.00","currency":"EUR","beneficiary_account":"sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08","payment_instruction_id":"pi-2026-000117","memo":"invoice 4471"}';
+  const payment = registryType('action-types.json', 'payment.release.1');
+  const cbor = { applies_when: { suite_implemented: 'cbor-sha256' } };
+  add(
+    compute('compute-cbor-sha256-appendix-c1', 'the Appendix C.1 object under cbor-sha256: the SHA-256 digest of its 207-octet core deterministic CBOR encoding (canonical_hex), whose map key order differs from the RFC 8785 member order', [payment],
+      { ...text(c1Text), suite: 'cbor-sha256' }, 'ok', cbor),
+    verify('verify-cbor-sha256-appendix-c1', 'the Appendix C.1 object verifies against its cbor-sha256 CAID', [payment],
+      { json: c1Text, caid_of_suite: 'cbor-sha256' }, 'valid', cbor),
+  );
 
   // The registry changes of -04 (Changes since -03).
   const dnsV4 = registryType('history/action-types.v4.json', 'dns.record.delete.1');
@@ -664,3 +744,8 @@ export function coreCases({ limits }) {
 }
 
 export const REFERENCE_DEFINITIONS = { T1, OBJ, PX, DOC, CUR, ISO4217, CODE_SYSTEMS, codeDef };
+
+// The object a runner computes under a suite to decide whether the
+// implementation implements it (applies_when); the core and grammar
+// corpora both carry it.
+export const SUITE_PROBE = { object: { action_type: 't.1', s: 'x' }, definitions: [T1] };

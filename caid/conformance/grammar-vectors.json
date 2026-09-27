@@ -4,6 +4,7 @@
   "description": "Curated grammar boundary cases for draft-schrock-canonical-action-identifier-04 Appendix A, run through each implementation's public entry points (parse and compute with one-field type definitions), never its generated regular expressions. grammar is the ABNF interpreter's verdict for the case string alone; expect is the exact result, which the driver's other rules (suite registry, digest syntax, calendar, format registration, JSON text and data-model refusals) can decide first.",
   "format": {
     "drivers": "A parse driver parses caid.prefix + CASE + caid.suffix. A compute driver computes over object with definitions [definition] and the suite (jcs-sha256 unless the driver names \"$CASE\"), where every string \"$CASE\", as a value or a member name, is replaced by the case string.",
+    "conditions": "applies_when {suite_not_implemented: S} limits a case to implementations that do not implement the registered suite S (support for cbor-sha256 is OPTIONAL). A runner decides with suite_probe: computing suite_probe.object with definitions suite_probe.definitions, no enum snapshots and suite S yields a CAID exactly when the implementation implements S. A case whose condition does not hold is skipped and reported as skipped, never as passed.",
     "cases": "case is a string, {\"$units\": [UTF-16 code units]} (a string that may hold lone surrogates or noncharacters), {\"repeat\": {prefix, unit, count, suffix}}, or {\"b64\": octets}. Lane text: serialize the substituted object as JSON text (any correct encoder), call the byte entry point, and when the text decodes also the native entry point on the decoded value; the results must be identical. Lane native: build the host values and call the native entry point only. Lane bytes: serialize the object with the case replaced by the placeholder @@CASE@@, replace each occurrence of @@CASE@@ in the text with the raw case octets, and call the byte entry point. A compute expectation is {caid} (compare the computed CAID only; the core corpus pins the rest of the result) or {refusals} (compare exactly); a parse expectation is the exact parse result."
   },
   "source": "node caid/spec/abnf-check.mjs --out (membership cases), spread deterministically; curated extras in caid/conformance/tools/build-grammar.mjs",
@@ -31,6 +32,23 @@
     "field-name": 36
   },
   "placeholder": "@@CASE@@",
+  "suite_probe": {
+    "object": {
+      "action_type": "t.1",
+      "s": "x"
+    },
+    "definitions": [
+      {
+        "action_type": "t.1",
+        "required_fields": [
+          {
+            "name": "s",
+            "type": "string"
+          }
+        ]
+      }
+    ]
+  },
   "drivers": {
     "caid": {
       "rule": "caid",
@@ -850,7 +868,7 @@
     {"driver":"suite.compute","lane":"text","case":"JCS-SHA256","grammar":false,"expect":{"refusals":["unknown_suite"]}},
     {"driver":"suite.compute","lane":"text","case":"jcs-sha256\u0000","grammar":false,"expect":{"refusals":["unknown_suite"]}},
     {"driver":"suite.compute","lane":"native","case":{"$units":[106,99,115,45,115,104,97,50,53,54,55296]},"grammar":false,"expect":{"refusals":["unknown_suite"]}},
-    {"driver":"suite.compute","lane":"text","case":"cbor-sha256","grammar":true,"expect":{"refusals":["unknown_suite"]}},
+    {"driver":"suite.compute","lane":"text","case":"cbor-sha256","grammar":true,"expect":{"refusals":["unknown_suite"]},"applies_when":{"suite_not_implemented":"cbor-sha256"}},
     {"driver":"digest-256.parse","lane":"text","case":"Eis__96_Y-9S_-Sf8q-3Y-5_gq_3-2__TfLyXWFWK-0","grammar":true,"expect":{"ok":true,"caid":{"version":"1","action_type":"a.1","suite":"jcs-sha256","digest":"Eis__96_Y-9S_-Sf8q-3Y-5_gq_3-2__TfLyXWFWK-0"}}},
     {"driver":"digest-256.parse","lane":"text","case":"Eis__96_Y-9S_-Sf8q-3Y-5_8q_3-2__TfLyXWFWK-0","grammar":true,"expect":{"ok":true,"caid":{"version":"1","action_type":"a.1","suite":"jcs-sha256","digest":"Eis__96_Y-9S_-Sf8q-3Y-5_8q_3-2__TfLyXWFWK-0"}}},
     {"driver":"digest-256.parse","lane":"text","case":"fA-K_-F-0QzL05_-6cXh-G-_a_p_C2_3c-c8B_NC_3M","grammar":true,"expect":{"ok":true,"caid":{"version":"1","action_type":"a.1","suite":"jcs-sha256","digest":"fA-K_-F-0QzL05_-6cXh-G-_a_p_C2_3c-c8B_NC_3M"}}},

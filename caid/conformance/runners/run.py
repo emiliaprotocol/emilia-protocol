@@ -10,6 +10,10 @@
 # --impl is the directory holding the caid module (default
 # caid/impl/python). The entry points used are named in API below; all of
 # them are required. Standard library only.
+#
+# A vector or case with applies_when runs only when its suite condition
+# holds for this implementation, decided by computing the corpus's
+# suite_probe under that suite; otherwise it is counted as skipped.
 
 import argparse
 import base64
@@ -93,8 +97,28 @@ def read_corpus(name):
 
 
 results = []
-counts = {"pass": 0, "fail": 0}
+counts = {"pass": 0, "fail": 0, "skipped": 0}
 per_corpus = {}
+_implemented = {}
+
+
+def skip(corpus):
+    pc = per_corpus.setdefault(corpus, {"pass": 0, "fail": 0})
+    pc["skipped"] = pc.get("skipped", 0) + 1
+    counts["skipped"] += 1
+
+
+def applies(condition, probe):
+    """applies_when: {suite_implemented: S} or {suite_not_implemented: S}.
+    The implementation implements S exactly when the corpus's suite_probe
+    computes a CAID under S."""
+    if condition is None:
+        return True
+    suite = condition.get("suite_implemented", condition.get("suite_not_implemented"))
+    if suite not in _implemented:
+        r = guard(lambda: API["compute"](probe["object"], {"suite": suite, "definitions": probe["definitions"], "enum_snapshots": []}))
+        _implemented[suite] = isinstance(r, dict) and isinstance(r.get("caid"), str)
+    return _implemented[suite] if "suite_implemented" in condition else not _implemented[suite]
 
 
 def report(corpus, vid, ok, detail=None):
@@ -117,6 +141,9 @@ def run_core():
     snapshots = corpus["enum_snapshots"]
     caids = {}
     for v in corpus["vectors"]:
+        if not applies(v.get("applies_when"), corpus["suite_probe"]):
+            skip("core")
+            continue
         inp = v["input"]
         kind = v["kind"]
         opts = {"definitions": v.get("definitions"), "enum_snapshots": snapshots}
@@ -209,6 +236,9 @@ def run_grammar():
     corpus = read_corpus("grammar-vectors.json")
     placeholder = corpus["placeholder"]
     for index, c in enumerate(corpus["cases"]):
+        if not applies(c.get("applies_when"), corpus["suite_probe"]):
+            skip("grammar")
+            continue
         d = corpus["drivers"][c["driver"]]
         vid = "grammar[%d] %s %s" % (index, c["driver"], c["lane"])
         if d["operation"] == "parse":
@@ -254,6 +284,7 @@ summary = {
     "corpus": ns.corpus,
     "pass": counts["pass"],
     "fail": counts["fail"],
+    "skipped": counts["skipped"],
     "per_corpus": per_corpus,
     "failures": results[:500],
 }
@@ -264,6 +295,6 @@ else:
         print("FAIL %s %s\n     %s" % (r["corpus"], r["id"], r["detail"]))
     if len(results) > 60:
         print("... %d more failures" % (len(results) - 60))
-    print("%s %s (%s): %d passed, %d failed %s" % (
-        summary["runner"], summary["impl"], ns.corpus, counts["pass"], counts["fail"], json.dumps(per_corpus)))
+    print("%s %s (%s): %d passed, %d failed, %d skipped %s" % (
+        summary["runner"], summary["impl"], ns.corpus, counts["pass"], counts["fail"], counts["skipped"], json.dumps(per_corpus)))
 sys.exit(1 if counts["fail"] else 0)

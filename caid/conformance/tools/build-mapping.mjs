@@ -211,6 +211,8 @@ const CASES = [
     [set('right', 'profile', '/rules/7/source_path', '/constraints/00/time'), set('right', 'profile', '/material_source_paths/7', '/constraints/00/time')], ['right'], 'INDETERMINATE', ['right:invalid_source_path:/constraints/00/time']],
   ['stage-b-source-not-canonicalizable', 'a source outside the data model stops at stage B, before any rule reads it', EP, EP,
     [set('right', 'source', '/parameters/total_amount', 1.5)], [], 'INDETERMINATE', ['right:source_not_canonicalizable']],
+  ['stage-b-source-deep-not-canonicalizable', 'the nesting limit on a host mapping source: a member nested 70 deep, beside no rule path, is source_not_canonicalizable (never unsupported_value)', EP, EP,
+    [setNest('right', 'source', '/x', 70)], [], 'INDETERMINATE', ['right:source_not_canonicalizable']],
   ['stage-d-compute-order', 'stage D reports the mapped action\'s compute reasons in compute order', EP, EP,
     [set('right', 'source', '/parameters/currency', 'EURO'), set('right', 'source', '/parameters/total_amount', '01.00')],
     [], 'INDETERMINATE', ['right:mapped_action:invalid_amount:total_amount', 'right:mapped_action:mistyped_field:currency']],
