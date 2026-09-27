@@ -90,10 +90,11 @@ main, and `--prefiling` now fails unless `git rev-parse origin/main` equals
 `git ls-remote origin refs/heads/main`, so a stale fetch cannot pass it.
 Against that main its first checks hold: main carries registry version 5,
 `caid/spec/caid.abnf`, ports that name -04, and the [CAID-REGISTRY]
-commit. Its last check does not: 22 files under `caid/` differ between
+commit. Its last check does not: 25 files under `caid/` differ between
 this branch and main, among them the JavaScript mapping stage B fix that
-Section 8.3 states, the conditional cbor-sha256 vectors and the runners
-that skip them, which Section 13 describes, the value-count vectors, and
+Section 8.3 states, the Go back-reference fix that Sections 2.2 and 2.5
+state, the conditional cbor-sha256 vectors and the runners that skip
+them, which Section 13 describes, the value-count and cycle vectors, and
 the `caid.abnf` comment that Appendix A carries. The gate passes only when
 origin/main holds this branch's `caid/` tree and
 `packages/verify/vendor/caid.mjs` byte for byte and the working tree
