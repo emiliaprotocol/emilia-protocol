@@ -20,15 +20,28 @@
 
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { canonicalize } from '../impl/js/caid.mjs';
+import { canonicalize, decodeCaidDocument } from '../impl/js/caid.mjs';
 
 const REGISTRY_URL = new URL('./action-types.json', import.meta.url);
 const SNAPSHOT_PATH = /^value-sets\/[A-Za-z0-9][A-Za-z0-9._-]*\.json$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 
+/**
+ * Reads a registry document under the strict JSON text rules of -04
+ * Section 2.4 (without the size limit): a registry or snapshot that fails
+ * them is never used.
+ *
+ * @param {URL} url
+ */
+export function readStrictRegistryDocument(url) {
+  const decoded = decodeCaidDocument(readFileSync(url));
+  if (!decoded.ok) throw new Error(`CAID registry document ${url.pathname} is not strict JSON text (-04 Section 2.4)`);
+  return decoded.value;
+}
+
 /** @param {string} relativePath */
 function readRegistrySnapshot(relativePath) {
-  return JSON.parse(readFileSync(new URL(relativePath, REGISTRY_URL), 'utf8'));
+  return readStrictRegistryDocument(new URL(relativePath, REGISTRY_URL));
 }
 
 /**
@@ -55,7 +68,7 @@ export function jcsSha256(value) {
  * @returns {Array<Record<string, any>>}
  */
 export function loadRegistryEnumSnapshots(
-  registry = JSON.parse(readFileSync(REGISTRY_URL, 'utf8')),
+  registry = readStrictRegistryDocument(REGISTRY_URL),
   { readSnapshot = readRegistrySnapshot } = {},
 ) {
   const entries = registry?.enum_snapshot_files;
@@ -89,7 +102,7 @@ export function loadRegistryEnumSnapshots(
   return /** @type {Array<Record<string, any>>} */ (Object.freeze(snapshots));
 }
 
-const CHECKED_IN_REGISTRY = JSON.parse(readFileSync(REGISTRY_URL, 'utf8'));
+const CHECKED_IN_REGISTRY = readStrictRegistryDocument(REGISTRY_URL);
 
 /** Snapshots pinned by the checked-in registry, loaded once. */
 export const REGISTRY_ENUM_SNAPSHOTS = loadRegistryEnumSnapshots(CHECKED_IN_REGISTRY);

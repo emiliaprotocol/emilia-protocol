@@ -1430,6 +1430,9 @@ jobs:
           python3 caid/impl/python/run_grammar_vectors.py --corpus "$RUNNER_TEMP/caid-grammar-cases.json"
           (cd caid/impl/go && go run ./cmd/grammar-vectors "$RUNNER_TEMP/caid-grammar-cases.json")
       - name: CAID conformance (spec, registry, core v5, grammar, mapping v2, interop; JS + Python + Go)
+        env:
+          # The grammar corpus check reuses the case list the grammar proof wrote.
+          CAID_GRAMMAR_CASES: ${{ runner.temp }}/caid-grammar-cases.json
         run: npm run caid:conformance
       - name: CAID differential fuzz against the spec oracle
         timeout-minutes: 10

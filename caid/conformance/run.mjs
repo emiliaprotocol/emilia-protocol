@@ -8,7 +8,8 @@
 //   1. Spec: the generated constants in every port and the vendored Verify
 //      copy match a regeneration (caid/spec/gen.mjs --check).
 //   2. Registry: identity against the corpora, and caid/registry/check.mjs
-//      (v5 invariants, history v4 bytes, digests.json, definition checks).
+//      (v5 invariants, strict decoding, history v4 bytes, digests.json,
+//      definition checks).
 //   3. Corpora: vectors.json (v5), grammar-vectors.json and
 //      mapping-vectors.json (v2) equal their builders' output; version 4 and
 //      mapping version 1 carry forward (check-v4.mjs); the JavaScript runner
@@ -19,10 +20,16 @@
 //      consequential-interoperability corpus in all three with
 //      cross-language parity.
 //
-// CAID_PYTHON names the Python interpreter (default python3).
+// The steps are independent and run concurrently (CAID_JOBS of them at a
+// time, default the number of available CPUs); results print in the order
+// above. CAID_PYTHON names the Python interpreter (default python3).
+// CAID_GRAMMAR_CASES names a case list caid/spec/abnf-check.mjs --out
+// already wrote, which the grammar corpus check reuses instead of running
+// abnf-check again.
 
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,17 +38,49 @@ const ROOT = path.resolve(HERE, '..');
 const REPO = path.resolve(ROOT, '..');
 const GO_ROOT = path.join(ROOT, 'impl/go');
 const PYTHON = process.env.CAID_PYTHON || 'python3';
+const JOBS = Math.max(1, Number(process.env.CAID_JOBS) || (os.availableParallelism?.() ?? os.cpus().length));
 const failed = [];
 
+// Each step starts when a slot is free; its result is reported in order.
+let active = 0;
+const waiting = [];
+const slot = () => (active < JOBS ? (active += 1, Promise.resolve()) : new Promise((resolve) => waiting.push(resolve)));
+const release = () => { const next = waiting.shift(); if (next) next(); else active -= 1; };
+const steps = [];
+
+function spawnStep(command, args, cwd) {
+  return slot().then(() => new Promise((resolve) => {
+    const child = spawn(command, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    const out = [];
+    const err = [];
+    child.stdout.on('data', (b) => out.push(b));
+    child.stderr.on('data', (b) => err.push(b));
+    child.on('error', (error) => { release(); resolve({ status: null, stdout: '', stderr: '', error }); });
+    child.on('close', (status) => {
+      release();
+      resolve({ status, stdout: Buffer.concat(out).toString('utf8'), stderr: Buffer.concat(err).toString('utf8') });
+    });
+  }));
+}
+
+/** Queues a step; the returned promise resolves to its stdout, or null on failure. */
 function run(label, command, args, cwd = ROOT) {
-  const result = spawnSync(command, args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  if (result.status !== 0) {
-    failed.push(label);
-    process.stderr.write(`FAIL ${label}\n${(result.stdout || '').slice(-6000)}${(result.stderr || '').slice(-6000)}${result.error ? String(result.error) : ''}\n`);
-    return null;
-  }
-  console.log(`PASS ${label}`);
-  return result.stdout.trim();
+  const result = spawnStep(command, args, cwd);
+  const report = result.then((r) => {
+    if (r.status !== 0) {
+      return { ok: false, label, text: `FAIL ${label}\n${(r.stdout || '').slice(-6000)}${(r.stderr || '').slice(-6000)}${r.error ? String(r.error) : ''}\n`, output: null };
+    }
+    return { ok: true, text: `PASS ${label}\n`, output: r.stdout.trim() };
+  });
+  steps.push(report);
+  return report.then((r) => r.output);
+}
+
+/** Queues a result computed in this process. */
+function note(label, problems) {
+  steps.push(Promise.resolve(problems.length
+    ? { ok: false, label, text: `FAIL ${label}\n  ${problems.join('\n  ')}\n` }
+    : { ok: true, text: `PASS ${label}\n` }));
 }
 
 // ---------------------------------------------------------------- 1. spec
@@ -68,18 +107,15 @@ const stable = (value) => {
   for (const definition of interopCorpus.definitions) {
     if (registry.types.some((entry) => entry.action_type === definition.action_type)) problems.push(`interoperability-local action type ${definition.action_type} aliases the public registry`);
   }
-  if (problems.length) {
-    failed.push('registry identity');
-    process.stderr.write(`FAIL registry identity\n  ${problems.join('\n  ')}\n`);
-  } else {
-    console.log(`PASS registry identity: ${registry.types.length} unique types; mapping definitions match exact public entries; ${interopCorpus.definitions.length} interoperability-local definition(s) do not alias it`);
-  }
+  note(problems.length ? 'registry identity'
+    : `registry identity: ${registry.types.length} unique types; mapping definitions match exact public entries; ${interopCorpus.definitions.length} interoperability-local definition(s) do not alias it`, problems);
 }
 run('registry check (caid/registry/check.mjs)', 'node', ['caid/registry/check.mjs'], REPO);
 
 // ---------------------------------------------------------------- 3. corpora
 run('core corpus v5 is its builder\'s output', 'node', ['caid/conformance/tools/build-core.mjs', '--check'], REPO);
-run('grammar corpus is its builder\'s output', 'node', ['caid/conformance/tools/build-grammar.mjs', '--check'], REPO);
+run('grammar corpus is its builder\'s output', 'node', ['caid/conformance/tools/build-grammar.mjs', '--check',
+  ...(process.env.CAID_GRAMMAR_CASES ? ['--cases', path.resolve(process.env.CAID_GRAMMAR_CASES)] : [])], REPO);
 run('mapping corpus v2 is its builder\'s output', 'node', ['caid/conformance/tools/build-mapping.mjs', '--check'], REPO);
 run('version 4 and mapping version 1 carried forward (check-v4.mjs)', 'node', ['caid/conformance/check-v4.mjs'], REPO);
 run('core and grammar corpora against the spec oracle', 'node', ['caid/conformance/runners/run.mjs', '--impl', 'caid/conformance/tools/reference-port.mjs'], REPO);
@@ -96,16 +132,16 @@ run('Python unit tests', PYTHON, ['caid/impl/python/test_caid.py'], REPO);
 run('Go unit tests', 'go', ['test', '-count=1', './...'], GO_ROOT);
 
 function parity(label, outputs) {
-  const present = outputs.filter(([, output]) => output !== null);
-  if (present.length !== outputs.length) return;
-  const baseline = JSON.stringify(JSON.parse(present[0][1]));
-  const diverging = present.slice(1).filter(([, output]) => JSON.stringify(JSON.parse(output)) !== baseline).map(([language]) => language);
-  if (diverging.length) {
-    failed.push(label);
-    process.stderr.write(`FAIL ${label}: JavaScript != ${diverging.join(', ')}\n`);
-  } else {
-    console.log(`PASS ${label}`);
-  }
+  const report = Promise.all(outputs.map(([language, output]) => output.then((text) => [language, text]))).then((present) => {
+    if (present.some(([, output]) => output === null)) return null;
+    const baseline = JSON.stringify(JSON.parse(present[0][1]));
+    const diverging = present.slice(1).filter(([, output]) => JSON.stringify(JSON.parse(output)) !== baseline).map(([language]) => language);
+    if (diverging.length) {
+      return { ok: false, label, text: `FAIL ${label}: JavaScript != ${diverging.join(', ')}\n` };
+    }
+    return { ok: true, text: `PASS ${label}\n` };
+  });
+  steps.push(report);
 }
 parity('cross-language mapping verdict and reason parity', [
   ['JavaScript', run(`JavaScript mapping v2: ${mappingCorpus.vectors.length} vectors`, 'node', ['impl/js/run-mapping-vectors.mjs', '--json'])],
@@ -118,6 +154,15 @@ parity('cross-language consequential-interoperability parity', [
   ['Go', run(`Go consequential interop: ${interopCorpus.vectors.length} vectors`, 'go', ['run', './cmd/mapping-vectors', '--corpus', interopCorpusPath, '--json'], GO_ROOT)],
 ]);
 
+for (const step of steps) {
+  const r = await step;
+  if (r === null) continue; // a parity check whose inputs already failed
+  if (r.ok) process.stdout.write(r.text);
+  else {
+    failed.push(r.label);
+    process.stderr.write(r.text);
+  }
+}
 if (failed.length) {
   process.stderr.write(`\nCAID conformance: ${failed.length} step(s) failed:\n  ${failed.join('\n  ')}\n`);
   process.exit(1);

@@ -26,7 +26,7 @@
       "core": ["refuse-decode-duplicate-names", "refuse-decode-duplicate-escaped-spelling", "refuse-duplicate-action-type"]
     },
     "chg-refused-host-values": {
-      "core": ["native-lone-surrogate-string-value", "native-lone-surrogate-member-name"]
+      "core": ["native-opaque-member", "native-opaque-in-object-field", "native-cyclic-object", "native-cyclic-array", "native-verify-cyclic", "native-definition-deep-member-outside-projection", "native-definition-opaque-in-projection"]
     },
     "chg-refused-definitions": {
       "core": ["definition-required-fields-absent", "definition-required-fields-empty", "definition-entry-null", "definition-conflicting-duplicates"]
@@ -38,7 +38,7 @@
       "core": ["timestamp-refuses-lowercase-t", "timestamp-refuses-lowercase-z", "timestamp-refuses-second-60"]
     },
     "chg-refused-caid-case": {
-      "core": ["parse-refuses-uppercase-prefix"]
+      "core": ["parse-refuses-uppercase-prefix", "parse-refuses-mixed-case-prefix"]
     },
     "chg-refused-amount": {
       "core": ["refuse-invalid-amount-leading-zero"]
@@ -48,6 +48,12 @@
     },
     "chg-refused-mapping": {
       "mapping": ["two-rules-one-path-abstains", "omitted-source-fields-null-abstains", "target-field-array-abstains", "profile-id-513-octets-abstains", "target-action-type-513-octets-abstains"]
+    },
+    "chg-refused-lengths": {
+      "core": ["limit-action-type-513", "limit-action-type-8-million", "limit-caid-1025", "limit-caid-action-type-513", "limit-definition-action-type-513", "limit-code-system-2049", "limit-action-type-512", "limit-caid-1024", "limit-code-system-2048"]
+    },
+    "chg-refused-value-count": {
+      "core": ["native-value-budget-over", "native-verify-value-budget-over", "native-value-budget-under"]
     },
     "chg-json-text": {
       "core": ["order-gate-malformed-json-first", "verify-gate-malformed-json"]
@@ -77,16 +83,16 @@
       "core": ["definition-deprecated-status-computes"]
     },
     "chg-code-type": {
-      "core": ["registry-prior.auth.approve.2", "code-icd-10-cm-refuses-G4733", "code-refuses-number", "definition-unregistered-format-present", "definition-code-system-not-uri"]
+      "core": ["registry-prior.auth.approve.2", "code-icd-10-cm-refuses-G4733", "code-refuses-number", "definition-unregistered-format-present", "definition-code-system-not-uri", "code-format-iso-3166-1-alpha-2-not-registered"]
     },
     "chg-field-type-rules": {
       "core": ["refuse-amount-trailing-newline", "compute-empty-string-present", "compute-integer-field-integral-float", "refuse-integer-field-above-max-safe"]
     },
     "chg-pin-rule": {
-      "core": ["registry-dns.record.delete.1", "registry-vendor.onboard.1"]
+      "core": ["pin-rule-first-pin-v4-refuses", "pin-rule-first-pin-v5-accepts", "registry-dns.record.delete.1", "registry-vendor.onboard.1"]
     },
     "chg-option-guards": {
-      "core": ["option-suite-not-a-string"]
+      "core": ["option-suite-not-a-string", "verify-expected-definition-not-a-string", "verify-expected-definition-null", "verify-expected-definition-list", "verify-expected-definition-uppercase-hex"]
     },
     "chg-accept-unregistered": {
       "core": ["verify-unknown-action-type"]
@@ -119,7 +125,7 @@
       "core": ["parse-registered-suite-not-implemented", "verify-registered-suite-not-implemented"]
     },
     "chg-registry-v5": {
-      "core": ["registry-payment.refund.2", "registry-contract.execute.2", "registry-prior.auth.approve.2", "registry-key.create.2"]
+      "core": ["registry-payment.refund.2", "registry-contract.execute.2", "registry-prior.auth.approve.2", "registry-key.create.2", "registry-v5-contract-execute-2-requires-currency"]
     }
   }
 }

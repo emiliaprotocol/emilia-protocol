@@ -1,3 +1,3 @@
-e2d0b1dbfd611fee726284ecd1102ee1ad9476d7f648002e23ed78850e6dd2c8  UPLOAD-THIS/draft-schrock-canonical-action-identifier-04.xml
-238499af6ab848c223025f1dd156ac33a7fc3001acfe66db006df07dc84a569e  RENDERS/draft-schrock-canonical-action-identifier-04.txt
-5d0dc7484f5d3f1386ee4b13ec79b10f9445a6548c68c8f64930a195654ed019  RENDERS/draft-schrock-canonical-action-identifier-04.html
+bc4cc88cf57dd71076d0c26a88a9c1d0a83045e63c94baf0738c5ed3f2a370a2  UPLOAD-THIS/draft-schrock-canonical-action-identifier-04.xml
+ab0c35d6a681aa8ba7761e7150b1b9a4890a2c27f2a2dbda8eebcdbf1dabe8a7  RENDERS/draft-schrock-canonical-action-identifier-04.txt
+648ca6a0ae9b9d9b8830abe3e43d35f1b59ecf421424e0b9d3745649d1b1a381  RENDERS/draft-schrock-canonical-action-identifier-04.html

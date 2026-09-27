@@ -1,6 +1,6 @@
 # CAID Status
 
-Updated: 2026-09-26
+Updated: 2026-09-27
 
 ## Verified implementation
 
@@ -12,11 +12,10 @@ Updated: 2026-09-26
   carried by the IANA Language Subtag Registry), each with its source,
   retrieval date and licence. Every active type resolves every enum;
   `node caid/registry/check.mjs` computes all 53 under the -04 reference
-  validator (`caid/spec/reference.mjs`). Four active types
-  (`payment.refund.2`, `ach.debit.originate.2`, `rx.dispense.2`,
-  `prior.auth.approve.2`) use the new `code` field type; until the ports
-  implement it they refuse those fields as `mistyped_field`, which fails
-  closed. Registry v4 is kept byte-identical at
+  validator (`caid/spec/reference.mjs`), and each computes in all three
+  ports. Four active types (`payment.refund.2`, `ach.debit.originate.2`,
+  `rx.dispense.2`, `prior.auth.approve.2`) use the `code` field type, which
+  all three ports implement. Registry v4 is kept byte-identical at
   `registry/history/action-types.v4.json`.
 - `caid/spec/`: the ABNF grammar (the draft's Appendix A), the rule data
   (`core.json`), and a deterministic generator for the constants every port
@@ -26,22 +25,23 @@ Updated: 2026-09-26
   65,536 characters and more, and that every matcher is linear-time: a static
   analysis plus adversarial inputs of 2^20 characters timed in all three.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
-- 527 shared core vectors (corpus version 5) passing in all three ports
+- 551 shared core vectors (corpus version 5) passing in all three ports
   through their JSON text entry points, with native/byte parity on every
   input that decodes and a native lane for host values: the strict JSON
   text rules and limits, number rounding, deterministic reason order,
-  verification details and `definition_mismatch`, definition conformance
-  and `definition_sha256`, the named code formats, `unknown_suite` at parse,
-  and one vector per registry v5 type. The 96 version 4 vectors keep their
+  verification details and `definition_mismatch` (with pins of every type),
+  definition conformance and `definition_sha256`, host definitions, the
+  length limits and the value count, the named code formats, `unknown_suite`
+  at parse, and one vector per registry v5 type. The 96 version 4 vectors keep their
   ids, and all 22 version 4 CAIDs reproduce unchanged
   (`caid/conformance/check-v4.mjs`).
-- 2,054 grammar boundary cases, and the roughly half-million case list that
+- 1,966 grammar boundary cases, and the roughly half-million case list that
   `caid/spec/abnf-check.mjs` writes, passing in all three ports through
   `parseCaid` and `computeCaid`, never through the generated matchers.
-- 65 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
+- 73 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
   agreement on verdicts and exact reason lists in all three ports, including
   the SILP IR to CAID `CANCEL+EMAIL` profile.
-- A differential fuzz of about 80,000 seeded cases in which the JavaScript,
+- A differential fuzz of about 87,000 seeded cases in which the JavaScript,
   vendored Verify, Python and Go implementations match the spec oracle, with
   an empty allow list.
 - 100 candidate Consequential Action Interoperability vectors covering 25

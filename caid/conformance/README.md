@@ -16,9 +16,9 @@ npm run caid:fuzz          # the differential fuzz (caid/fuzz)
 
 | Path | What it is |
 |---|---|
-| `vectors.json` | Core corpus, version 5: 527 vectors (decode, parse, compute, verify, definition) |
-| `grammar-vectors.json` | Grammar boundary corpus: 2,054 cases over 22 drivers |
-| `mapping-vectors.json` | Mapping corpus, version 2: 65 vectors with exact reason lists; a vector may carry its own suite |
+| `vectors.json` | Core corpus, version 5: 551 vectors (decode, parse, compute, verify, definition) |
+| `grammar-vectors.json` | Grammar boundary corpus: 1,966 cases over 21 drivers |
+| `mapping-vectors.json` | Mapping corpus, version 2: 73 vectors with exact reason lists; a vector may carry its own suite |
 | `history/vectors.v4.json` | The version 4 core corpus, byte for byte (`sha256:7a201c87…`) |
 | `history/mapping-vectors.v1.json` | The version 1 mapping corpus, byte for byte (`sha256:6941463c…`) |
 | `check-v4.mjs` | Proves from the files alone that version 5 carries version 4 forward |
@@ -36,13 +36,8 @@ reference validator (`caid/spec/reference.mjs`, built from the generated
 `tools/mapping-oracle.mjs` does the same for the Action-Mapping Profile from
 `core.json` mapping data. The builders compute each expectation with the
 oracle and fail if it contradicts what the case states by hand, so every
-refusal list in the corpora is written down twice.
-
-The oracle applies one rule the reference validator does not yet: a string
-holding a Unicode noncharacter is outside the data model on every entry
-point (RFC 8785 Section 3.1 requires I-JSON input, and RFC 7493 Section 2.1
-excludes noncharacters). From JSON text it is `malformed_json`; as a host
-value it is `unsupported_value`.
+refusal list in the corpora is written down twice. The verify reason order
+comes from `core.json` (`sort_rank.verify`), the only statement of it.
 
 ## Core corpus, version 5
 
@@ -68,6 +63,8 @@ tagged objects:
 | `{"$units": [u, ...]}` | a string of these UTF-16 code units (JS as is; Python `chr(u)` per unit; Go generalized UTF-8, which is not valid UTF-8) |
 | `{"$object": [[k, v], ...]}` | an object with these members in this order; `k` may be a `$units` string |
 | `{"$nest": {"depth", "container", "leaf"}}` | `depth` nested arrays, or objects whose only member is `a` |
+| `{"$dag": {"depth", "leaf"}}` | `depth` nested two-element arrays around `leaf`, both elements one shared array (the value count of Section 2.6) |
+| `{"$repeat": {"unit", "count"}}` | the string `unit` repeated `count` times |
 | `{"$host": "nan" / "infinity" / "-infinity" / "negative_zero"}` | the binary64 value |
 | `{"$host": "cyclic"}` | a reference to the nearest enclosing object or array |
 | `{"$host": "opaque"}` | JS `new Map()`, Python `set()`, Go `struct{}{}` |
@@ -79,8 +76,9 @@ a lone-surrogate member name and a member holding 1.5 give
 Options: compute passes `input.suite` as given (absent means no suite, so
 `unknown_suite`), the vector's `definitions` as given, and the envelope's
 `enum_snapshots` (the five registry value sets). Verify also passes
-`input.expected_definition_sha256` when present. An option of the wrong
-type counts as absent.
+`input.expected_definition_sha256` when present, whatever its type: a pin
+that is not the resolved digest string, a list or null included, is
+`definition_mismatch`. A suite of the wrong type counts as absent.
 
 Expectations: compute is `{caid, digest, definition_sha256}` or `{refusals}`;
 verify is `{valid, reasons, details}` plus `definition_sha256` when a
@@ -95,7 +93,9 @@ surrogate-pair spellings, BOM, UTF-16/32, overlong and surrogate UTF-8,
 unpaired-surrogate and noncharacter escapes, control characters, trailing
 content, non-JSON literals and numbers, depth 64 and 65); the size limits at
 the octet boundary; number edges (midpoints, 400 and 5000 digits, `-0`,
-`1e-400`, 2^53); 29 native-lane vectors; every pair of compute phases and
+`1e-400`, 2^53); 39 native-lane vectors, among them host definitions and the
+value count; the length limits of identifiers, action types and code systems;
+expected definition_sha256 pins of every type; every pair of compute phases and
 the verify ranks; 27 malformed or conflicting definitions refused as
 `invalid_definition`, and 11 more definition cases (equal duplicates, open
 entry members, deprecated status, unregistered types and formats, field
@@ -146,12 +146,10 @@ vector changes because -04 widens `target_field` to the field-name rule.
 | verify from text | `verifyCaidJson(bytes, caid, opts)` | `verify_caid_json(data, caid, opts)` | `VerifyCaidJSON([]byte, string, VerifyOptions)` |
 | native | `computeCaid`, `verifyCaid` | `compute_caid`, `verify_caid` | `ComputeCaid`, `VerifyCaid` |
 | parse | `parseCaid` | `parse_caid` | `ParseCaid` |
-| definition digest | `definitionSha256` (or `definitionDigest`) | `definition_sha256` (or `definition_digest`) | `DefinitionSha256` |
+| definition digest | `definitionSha256` | `definition_sha256` | `DefinitionSha256` |
 | options | `{suite, definitions, enumSnapshots, expectedDefinitionSha256}` | `{"suite", "definitions", "enum_snapshots", "expected_definition_sha256"}` | `ComputeOptions{Suite, Definitions, EnumSnapshots}`, `VerifyOptions{..., ExpectedDefinitionSha256}` |
 
 The Go runner touches the implementation only in `runners/go/port.go`.
-Each runner's `--legacy-front-end` (Go: `-tags legacy`) measures a pre-04
-implementation through a host JSON parser and never passes.
 
 ## Rebuilding
 

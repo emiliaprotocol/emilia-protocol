@@ -5,6 +5,8 @@
 // (standards/staged/NEXT-CAID-04) against the sources it restates:
 //
 //   - Appendix A equals caid/spec/caid.abnf byte for byte;
+//   - Appendix D (the initial CAID Action Types) equals the registry and
+//     digests.json;
 //   - Appendix B (core and mapping reasons), the verification detail table
 //     and the limits table equal the tables generated below from
 //     caid/spec/core.json;
@@ -66,22 +68,29 @@ function tableXml(anchor, name, head, rows) {
   ].join('\n');
 }
 
+// Decoding and parsing are single steps, not phases: they are named without
+// a number. A code that computation and mapping stage A share appears once,
+// in the core table, with its stage.
 function coreReasonRows() {
   return core.reasons.map(({ code, param }) => {
     const where = [];
     for (const op of OPERATIONS) {
       for (const phase of core.operations[op]) {
-        if (phase.reasons.includes(code)) where.push(`${op} ${phase.rank}${phase.gate ? ' (gate)' : ''}`);
+        if (!phase.reasons.includes(code)) continue;
+        where.push(op === 'decode' || op === 'parse' ? op : `${op} ${phase.rank}${phase.gate ? ' (gate)' : ''}`);
       }
     }
+    const stage = core.mapping.stages.find((st) => st.reasons.includes(code));
+    if (stage) where.push(`mapping stage ${stage.stage}`);
     return [code, param, where.join('; ')];
   });
 }
 
 function mappingReasonRows() {
   const m = core.mapping;
-  return m.reasons.map(({ code, param }) => {
-    const stage = m.stages.find((s) => s.reasons.includes(code));
+  const coreCodes = new Set(core.reasons.map((r) => r.code));
+  return m.reasons.filter(({ code }) => !coreCodes.has(code)).map(({ code, param }) => {
+    const stage = m.stages.find((st) => st.reasons.includes(code));
     return [code, param, stage ? stage.stage : 'comparison'];
   });
 }
@@ -97,10 +106,15 @@ function detailRows() {
 // The limits table: one row per limit of scope caid or caid-mapping, a
 // minimum and maximum of one quantity sharing a row. Labels are draft text.
 const LIMIT_ROWS = [
-  { ids: ['json_text_octets'], label: 'JSON text', unit: 'octets', applies: 'an action object or a mapping source received as JSON text', refusal: 'malformed_json' },
+  { ids: ['json_text_octets'], label: 'JSON text', unit: 'octets', applies: 'an action object or a mapping source received as JSON text (decode)', refusal: 'malformed_json' },
   { ids: ['nesting_depth'], label: 'Nesting depth', unit: 'levels', applies: 'every decoded document and every host value', refusal: 'malformed_json (JSON text); unsupported_value (host value)' },
   { ids: ['canonical_octets'], label: 'Canonical encoding', unit: 'octets', applies: 'an action object', refusal: 'unsupported_value' },
   { ids: ['max_safe_integer'], label: 'Integer magnitude', unit: '', applies: 'every number', refusal: 'unsupported_number', display: (v) => (v === 2 ** 53 - 1 ? '2^53-1' : null) },
+  { ids: ['value_count'], label: 'Value count', unit: 'values', applies: 'a host value, each value counted once for every path that reaches it', refusal: 'unsupported_value, and no unsupported_number' },
+  { ids: ['document_canonical_octets'], label: 'Document encoding', unit: 'octets', applies: 'the RFC 8785 encoding of a validation projection, an enum value array, or a mapping source', refusal: 'the reason of the step that needs the encoding' },
+  { ids: ['caid_octets'], label: 'Identifier', unit: 'octets', applies: 'a CAID string', refusal: 'malformed_caid' },
+  { ids: ['action_type_octets'], label: 'Action type', unit: 'octets', applies: 'an action type in a CAID, an action object, or a definition', refusal: 'malformed_caid; invalid_action_type; invalid_definition' },
+  { ids: ['code_system_octets'], label: 'Code system', unit: 'octets', applies: 'the code_system of a code field', refusal: 'invalid_definition' },
   { ids: ['mapping_rules_min', 'mapping_rules_max'], label: 'Mapping rules', unit: 'rules', applies: 'rules of a mapping profile', refusal: 'invalid_mapping_profile' },
   { ids: ['mapping_pointer_octets_max'], label: 'Source path', unit: 'octets', applies: 'each source path of a mapping profile', refusal: 'invalid_mapping_profile' },
   { ids: ['mapping_string_octets_min', 'mapping_string_octets_max'], label: 'Profile string', unit: 'octets', applies: 'profile_id, media_type, schema, version, and target_action_type', refusal: 'invalid_mapping_profile' },
@@ -150,11 +164,31 @@ function fieldTypeRows() {
 }
 
 function codeFormatRows(spec) {
-  return core.grammar.code_formats.map(({ format }) => {
+  return core.grammar.code_formats.map(({ format, reference }) => {
     const a = spec._analysis[`code_format:${format}`];
-    return [format, String(a.max_length)];
+    if (typeof reference !== 'string' || !reference) throw new Error(`CAID-04: code format ${format} has no reference in core.json`);
+    return [format, String(a.max_length), reference];
   });
 }
+
+// Appendix D: the initial contents of the CAID Action Types registry, as a
+// listing (a 64-digit digest does not fit a table row in 69 columns). Each
+// entry is the action type, its status and, for a deprecated type, its
+// successor, then the hexadecimal part of its definition_sha256 indented
+// on the next line.
+function actionTypeListing() {
+  const reg = readJson('caid/registry/action-types.json');
+  const dig = new Map(readJson('caid/registry/digests.json').types.map((t) => [t.action_type, t.definition_sha256]));
+  return reg.types.map((t) => {
+    const d = dig.get(t.action_type);
+    if (!d) throw new Error(`CAID-04: digests.json has no definition_sha256 for ${t.action_type}`);
+    const head = `${t.action_type} ${t.status}${t.superseded_by ? ` superseded_by ${t.superseded_by}` : ''}`;
+    return `${head}\n  ${d.slice('sha256:'.length)}\n`;
+  }).join('');
+}
+const LISTINGS = {
+  'appendix-d-types': actionTypeListing,
+};
 
 const TRANSFORM_OUTPUT = {
   copy: 'the value',
@@ -188,8 +222,8 @@ const specOnce = () => { specCache ??= buildSpec(root); return specCache; };
 const TABLES = {
   'tab-limits': () => tableXml('tab-limits', 'Limits', ['Limit', 'Value', 'Applies to', 'Refusal'], limitRows()),
   'tab-suites': () => tableXml('tab-suites', 'CAID Suites: Initial Contents', ['Suite', 'Canonicalization', 'Digest', 'Octets', 'Status'], suiteRows()),
-  'tab-field-types': () => tableXml('tab-field-types', 'CAID Field Types: Field Types', ['Field type', 'JSON kind', 'Members', 'Refusals'], fieldTypeRows()),
-  'tab-code-formats': () => tableXml('tab-code-formats', 'CAID Field Types: Code Formats', ['Code format', 'Maximum length'], codeFormatRows(specOnce())),
+  'tab-field-types': () => tableXml('tab-field-types', 'CAID Field Types: Initial Contents', ['Field type', 'JSON kind', 'Members', 'Refusals'], fieldTypeRows()),
+  'tab-code-formats': () => tableXml('tab-code-formats', 'CAID Code Formats: Initial Contents', ['Code format', 'Maximum length', 'Syntax reference'], codeFormatRows(specOnce())),
   'tab-transforms': () => tableXml('tab-transforms', 'CAID Mapping Transforms: Initial Contents', ['Transform', 'Accepts', 'Output', 'Refusal'], transformRows()),
   'tab-loss-policies': () => tableXml('tab-loss-policies', 'CAID Mapping Loss Policies: Initial Contents', ['Policy', 'Omissions', 'Effect'], lossPolicyRows()),
   'tab-details': () => tableXml('tab-details', 'Verification Detail Rules', ['Reason', 'rule', 'field', 'observed'], detailRows()),
@@ -199,10 +233,14 @@ const TABLES = {
 
 if (process.argv.includes('--emit')) {
   for (const make of Object.values(TABLES)) console.log(`${make()}\n`);
+  for (const [anchor, make] of Object.entries(LISTINGS)) console.log(`<sourcecode anchor="${anchor}"><![CDATA[\n${make()}]]></sourcecode>\n`);
   process.exit(0);
 }
 if (process.argv.includes('--emit-json')) {
-  console.log(JSON.stringify(Object.fromEntries(Object.entries(TABLES).map(([k, make]) => [k, make()]))));
+  console.log(JSON.stringify({
+    ...Object.fromEntries(Object.entries(TABLES).map(([k, make]) => [k, make()])),
+    ...Object.fromEntries(Object.entries(LISTINGS).map(([k, make]) => [k, make()])),
+  }));
   process.exit(0);
 }
 
@@ -294,12 +332,15 @@ for (const n of ['2119', '8174', '8785', '8949', '6234', '4648', '3339', '5234',
 for (const n of ['7595', '7942', '8126', '8792']) check(informativeRfcs.has(n), `informative reference RFC ${n} missing`);
 for (const n of normativeRfcs) check(source.includes(`target="RFC${n}"`), `normative RFC ${n} is never cited`);
 for (const n of informativeRfcs) check(source.includes(`target="RFC${n}"`), `informative RFC ${n} is never cited`);
+// The cited revisions are the latest on Datatracker when the packet was
+// last validated (VALIDATION.md records the check).
 for (const retained of [
-  'draft-schrock-ep-authorization-receipts-09',
-  'draft-schrock-action-evidence-boundary-03',
-  'draft-schrock-ep-authorization-evidence-chain-05',
+  'draft-schrock-ep-authorization-receipts-13',
+  'draft-schrock-action-evidence-boundary-07',
+  'draft-schrock-ep-authorization-evidence-chain-06',
   'draft-thallapelly-oasnt-caid-01',
 ]) check(source.includes(retained), `missing retained reference ${retained}`);
+for (const anchor of ['IEEE754', 'UNICODE']) check(source.includes(`<reference anchor="${anchor}"`) && source.includes(`target="${anchor}"`), `reference ${anchor} is missing or never cited`);
 
 check(registry.meta.registry_version === 5, 'reference registry is not version 5');
 check(digests.registry_version === 5, 'digests.json is not for registry version 5');
@@ -338,6 +379,9 @@ for (const [anchor, make] of Object.entries(TABLES)) {
   check(source.includes(make()), `table ${anchor} differs from the one generated from caid/spec/core.json (run with --emit)`);
 }
 check(source.match(/<table anchor="tab-core-reasons">/g)?.length === 1, 'core reason table appears more than once');
+for (const [anchor, make] of Object.entries(LISTINGS)) {
+  check(code(anchor) === make(), `listing ${anchor} differs from the one generated from the registry and digests.json (run with --emit)`);
+}
 for (const { code: c } of [...core.reasons, ...core.mapping.reasons]) {
   check(flat(text).includes(c), `TXT render lacks reason ${c}`);
 }
@@ -517,7 +561,7 @@ for (const [needle, what] of [
   ['none of them is independent', 'implementation independence statement'],
   ['reproductions', 'reproduction statement'],
 ]) check(flat(source).includes(needle), `source lacks the ${what}`);
-for (const name of ['CAID Suites', 'CAID Action Types', 'CAID Field Types', 'CAID Reason Codes', 'CAID Mapping Transforms', 'CAID Mapping Loss Policies']) {
+for (const name of ['CAID Suites', 'CAID Action Types', 'CAID Field Types', 'CAID Code Formats', 'CAID Reason Codes', 'CAID Mapping Transforms', 'CAID Mapping Loss Policies']) {
   check(source.includes(`<name>${name}</name>`), `IANA registry ${name} missing`);
 }
 const prose = text + source;
@@ -554,4 +598,4 @@ if (errors.length) {
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log(`CAID-04: Appendix A (${abnfText.split('\n').length - 1} lines) equals caid.abnf; Appendix B, detail and limits tables equal core.json; Appendix C and the examples recompute; ${claimAnchors.length} change claims map to vectors; registry v5 (${registry.types.length} types); references, renders and checksums PASS.`);
+console.log(`CAID-04: Appendix A (${abnfText.split('\n').length - 1} lines) equals caid.abnf; Appendix B, detail, limits and IANA tables (Appendix D included) equal their sources; Appendix C and the examples recompute; ${claimAnchors.length} change claims map to vectors; registry v5 (${registry.types.length} types); references, renders and checksums PASS.`);

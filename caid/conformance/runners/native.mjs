@@ -20,6 +20,11 @@
 //   {"$nest": {"depth": n, "container": "array" | "object", "leaf": v}}
 //                             n nested arrays (or objects whose only member
 //                             is "a") around leaf.
+//   {"$dag": {"depth": n, "leaf": v}}
+//                             n nested two-element arrays around leaf, both
+//                             elements one shared array: 2^(n+1) - 1 values
+//                             in n + 1 distinct containers and leaves, for
+//                             the value budget of -04 Section 2.6.
 //   {"$repeat": {"unit": s, "count": n}}
 //                             the string s repeated n times, for a value too
 //                             large to write into the corpus.
@@ -72,6 +77,11 @@ export function buildNative(encoded) {
       const { depth, container, leaf } = v.$nest;
       let value = build(leaf, enclosing);
       for (let i = 0; i < depth; i += 1) value = container === 'object' ? { a: value } : [value];
+      return value;
+    }
+    if (tag === '$dag') {
+      let value = build(v.$dag.leaf, enclosing);
+      for (let i = 0; i < v.$dag.depth; i += 1) value = [value, value];
       return value;
     }
     if (tag === '$host') {

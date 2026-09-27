@@ -112,6 +112,13 @@ func buildNative(encoded interface{}, enclosing interface{}) interface{} {
 			}
 		}
 		return value
+	case "$dag":
+		spec, _ := body.(map[string]interface{})
+		value := buildNative(spec["leaf"], enclosing)
+		for i := 0; i < toInt(spec["depth"]); i++ {
+			value = []interface{}{value, value}
+		}
+		return value
 	case "$host":
 		switch body {
 		case "nan":

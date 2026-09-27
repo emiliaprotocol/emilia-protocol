@@ -9,8 +9,9 @@ machine-checkable: strict JSON text input, host values, one data model with
 one limits table, definition conformance, `definition_sha256` and
 resolution, code fields with named formats, the monotone enum advance, a
 fixed reason order with verification details, normative mapping stages, a
-rewritten Security section, a new Privacy section, six IANA registries and
-a provisional `caid` URI scheme, and an Implementation Status section. The
+rewritten Security section, a new Privacy section, seven IANA registries
+(with the initial action types listed in Appendix D) and a provisional
+`caid` URI scheme, and an Implementation Status section. The
 draft's "Changes since -03" section lists every normative change,
 including the inputs it newly refuses.
 
@@ -34,8 +35,9 @@ including the inputs it newly refuses.
 - Appendix B (core and mapping reasons), the verification detail table, the
   limits table, and the IANA initial-contents tables equal the tables the
   script generates from `caid/spec/core.json`, `caid/registry/suites.json`,
-  and the compiled code formats. `node scripts/check-caid-04.mjs --emit`
-  prints them for editing.
+  and the compiled code formats, and Appendix D equals the listing it
+  generates from the registry and `digests.json`.
+  `node scripts/check-caid-04.mjs --emit` prints them for editing.
 - Every value in Appendix C, the Section 3.3 identifier example, and the
   tool.call.1 example recompute, through `caid/spec/reference.mjs` and
   through hashing done in the script.
@@ -48,13 +50,14 @@ including the inputs it newly refuses.
 
 Submission is the author's decision. Before it:
 
-1. Corpus version 5 must carry every vector id in `CHANGES-VECTORS.json`.
-   Until it does, `check-caid-04` fails with the list of missing ids and
-   nothing else.
-2. The JavaScript, Python, and Go implementations must implement the -04
-   features, so that the Implementation Status section is true when the
-   draft posts. That includes refusing Unicode noncharacters, which -04
-   excludes from the data model by profiling I-JSON.
+1. The Implementation Status section points at `tree/main/caid`, which
+   carries the -04 implementations only once this packet's pull request
+   merges. Merge first.
+2. [CAID-REGISTRY] is pinned to commit
+   `708fd8fa9ca32ac7889834f234d3a1631e6bde93`, the last commit that
+   changed `caid/registry/action-types.json`. If the merge rewrites that
+   commit (a squash or rebase), re-pin the URL to the merged commit that
+   carries the same file (SHA-256 `1e30ddd3...2551a`) and re-render.
 3. Set the date, confirm each cited draft revision and that -03 is still
    the latest revision on Datatracker, re-render with the procedure in
    `VALIDATION.md`, and refresh `SHA256SUMS.txt` and `VALIDATION.md`.

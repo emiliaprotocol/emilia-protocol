@@ -22,15 +22,15 @@
       {"digest_octets": 32, "rule": "digest-256"}
     ],
     "code_formats": [
-      {"format": "icd-10-cm"},
-      {"format": "ndc-11"},
-      {"format": "ndc-10-hyphenated"},
-      {"format": "cpt"},
-      {"format": "hcpcs-level-ii"},
-      {"format": "hcpcs"},
-      {"format": "iso-3166-2"},
-      {"format": "iso20022-external-code"},
-      {"format": "nacha-sec"}
+      {"format": "icd-10-cm", "reference": "ICD-10-CM Official Guidelines for Coding and Reporting, Section I.A.2"},
+      {"format": "ndc-11", "reference": "FDA National Drug Code format, 11-digit form"},
+      {"format": "ndc-10-hyphenated", "reference": "FDA National Drug Code format, 10-digit forms"},
+      {"format": "cpt", "reference": "AMA CPT code set"},
+      {"format": "hcpcs-level-ii", "reference": "CMS HCPCS Level II"},
+      {"format": "hcpcs", "reference": "CMS HCPCS Level II; AMA CPT (HCPCS Level I)"},
+      {"format": "iso-3166-2", "reference": "ISO 3166-2"},
+      {"format": "iso20022-external-code", "reference": "ISO 20022 External Code Sets"},
+      {"format": "nacha-sec", "reference": "Nacha Operating Rules, Standard Entry Class codes"}
     ],
     "reason_rules": {
       "compute_bare": "compute-bare",

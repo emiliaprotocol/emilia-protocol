@@ -105,7 +105,6 @@ const ISO4217 = regSnapshots.find((s) => s.values_ref === "ISO 4217 alpha-3");
 for (const t of registry.types) tables.defs["reg:" + t.action_type] = [t];
 
 // ---------------------------------------------------------------- pools
-const HEX64 = "a".repeat(64);
 const DIGEST_OK = "sha256:" + "0123456789abcdef".repeat(4);
 const CONTROL = Array.from({ length: 32 }, (_, i) => String.fromCharCode(i)).concat(["\x7f", "\x80", "\x85", "\x9f"]);
 const SEPARATORS = [" ", " ", " ", " ", " ", " ", " ", " ", " ", "　", "﻿", "​", "‌", "‍", "⁠", "᠎"];

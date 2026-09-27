@@ -120,6 +120,50 @@ Stewardship: maintained by the EMILIA Protocol maintainers as initial
 editors. The -04 draft asks IANA to create the CAID registries; until it
 does, `registry/` is the reference copy (`registry/GOVERNANCE.md`).
 
+## Changing a rule, a field type or a suite
+
+The grammar and the rule data have one source each: `spec/caid.abnf` and
+`spec/core.json` (with `registry/suites.json` for suites). Never edit a
+generated region or file by hand; the checks fail on it.
+
+1. Edit `spec/caid.abnf` and `spec/core.json`, then run
+   `node caid/spec/gen.mjs --write`. It rewrites the generated region of
+   `impl/js/caid.mjs`, its byte copy `packages/verify/vendor/caid.mjs`,
+   `impl/python/caid_spec.py` and `impl/go/spec_gen.go`. `gen.mjs` asserts
+   the compute and verify gates, which follow from data dependencies, and
+   reads the verify reason order from `core.json`.
+2. A new field type is a `core.json` `field_types` entry (JSON kind,
+   members, refusals, pattern and calendar check) plus `checkField` in
+   `impl/js/caid.mjs`, `impl/python/caid.py` and `impl/go/caid.go`, and in
+   the spec oracle `spec/reference.mjs`. A new code format is an ABNF rule
+   in part A.4 plus a `code_formats` entry with its syntax reference; the
+   generator refuses a format that is not linear-time. A new suite is a
+   `registry/suites.json` entry with its `digest_octets`, a
+   `suite_digest_rules` entry and its ABNF digest rule, and each port's set
+   of implemented suites.
+3. Add cases where a port is driven: the rule-to-driver maps of the three
+   grammar runners (`impl/js/run-grammar-vectors.mjs`,
+   `impl/python/run_grammar_vectors.py`, `impl/go/cmd/grammar-vectors`),
+   `conformance/tools/core-cases.mjs`, the drivers of
+   `conformance/tools/build-grammar.mjs`, and a family in `fuzz/gen.mjs`.
+   Then `npm run caid:corpus`.
+4. Run `node caid/spec/abnf-check.mjs`, `npm run caid:conformance` and
+   `npm run caid:fuzz`.
+5. Update the staged draft (`standards/staged/NEXT-CAID-04`):
+   `node scripts/check-caid-04.mjs --emit` prints every generated table and
+   the Appendix D listing, a processing change needs a `chg-` item mapped to
+   vectors in `CHANGES-VECTORS.json`, and the renders follow the procedure
+   in its `VALIDATION.md`.
+6. A change to the vendored copy moves pins outside `caid/`: the source
+   locks of the composition profiles that pin `vendor/caid.mjs`
+   (`conformance/composition/*/source-lock.json`),
+   `formal/results/formal-runtime-scenario-conformance.v2.json`, the
+   clean-room pins (`npm run sync:clean-room-pins`), the conformance
+   manifest (`npm run conformance:manifest`) and the LLM context
+   (`npm run sync:llm-context`). A change to `packages/verify/src` also
+   rebuilds `packages/verify/dist` (`npm --prefix packages/verify run
+   build`) and the standalone runtimes (`npm run build:standalone-runtimes`).
+
 ## Registry v5
 
 Registry v5 resolves every external enum of every active type: 62 types, 53

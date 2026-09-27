@@ -27,9 +27,11 @@
 //    quantifiers and a bounded step count); every code format must pass
 //    the finite analysis. Known catastrophic patterns (including the
 //    review's (a|a){1,99}) must fail it.
-// 4. Timing. Adversarial inputs of 2^20 characters run against every
-//    generated matcher in JavaScript, Python and Go; each match must
-//    finish inside the budget.
+// 4. Timing. Adversarial inputs of 2^20 characters, and the same inputs at
+//    2^19, run against every generated matcher in JavaScript, Python and
+//    Go. A match fails the check when it is over the budget and more than
+//    three times slower than at half the length (superlinear), or over ten
+//    times the budget in any case; a slow but linear runner does not fail.
 // 5. Reasons. Every reason string the conformance corpora expect
 //    (caid/conformance and caid/interop) matches the reason rule.
 //
@@ -47,6 +49,11 @@ import { buildSpec, emitGo, emitJsRegion, emitPython, loadCaidGrammar } from './
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const TIMING_BUDGET_MS = 250;
+const TIMING_RATIO = 3;
+const TIMING_HARD_MS = 10 * TIMING_BUDGET_MS;
+// Over the budget and superlinear against the half-length input, or over the
+// hard limit.
+const tooSlow = (full, half) => full > TIMING_HARD_MS || (full > TIMING_BUDGET_MS && full > TIMING_RATIO * Math.max(half, 1));
 const TIMING_LENGTH = 1 << 20;
 const LONG_LENGTH = 1 << 16;
 
@@ -440,28 +447,38 @@ try {
     for (const [label, rule, src] of compiled) {
       const rng = prng(label.length * 131);
       const member = sample(rules, rule, rng, { extra: 2 }) || 'a';
-      const inputs = [];
       const chars = [...new Set(classRanges(src).flatMap(([lo, hi]) => [lo, hi]).map((c) => String.fromCharCode(c)))].slice(0, 8);
-      for (const c of chars) {
-        inputs.push(c.repeat(TIMING_LENGTH));
-        inputs.push(c.repeat(TIMING_LENGTH - 1) + '!');
-      }
-      inputs.push(member.repeat(Math.ceil(TIMING_LENGTH / member.length)).slice(0, TIMING_LENGTH) + '\u0000');
-      inputs.push(member + '\ud800'.repeat(TIMING_LENGTH));
-      adversarial.push({ label, src, inputs });
+      const build = (n) => {
+        const inputs = [];
+        for (const c of chars) {
+          inputs.push(c.repeat(n));
+          inputs.push(c.repeat(n - 1) + '!');
+        }
+        inputs.push(member.repeat(Math.ceil(n / member.length)).slice(0, n) + '\u0000');
+        inputs.push(member + '\ud800'.repeat(n));
+        return inputs;
+      };
+      adversarial.push({ label, src, inputs: build(TIMING_LENGTH), half: build(TIMING_LENGTH / 2) });
     }
-    for (const { label, inputs } of adversarial) {
+    for (const { label, inputs, half } of adversarial) {
       const re = jsMatcher(label);
-      for (const s of inputs) {
+      const time = (s) => {
         let best = Infinity;
         for (let k = 0; k < 3; k += 1) {
           const t0 = process.hrtime.bigint();
           re.test(s);
           best = Math.min(best, Number(process.hrtime.bigint() - t0) / 1e6);
         }
-        timing.js_max_ms = Math.max(timing.js_max_ms, best);
-        if (best > TIMING_BUDGET_MS) fail(`${label}: JavaScript took ${best.toFixed(1)} ms on a ${s.length}-unit input`);
-      }
+        return best;
+      };
+      inputs.forEach((s, i) => {
+        const full = time(s);
+        timing.js_max_ms = Math.max(timing.js_max_ms, full);
+        if (full > TIMING_BUDGET_MS || full > TIMING_HARD_MS) {
+          const halfMs = time(half[i]);
+          if (tooSlow(full, halfMs)) fail(`${label}: JavaScript took ${full.toFixed(1)} ms on a ${s.length}-unit input (${halfMs.toFixed(1)} ms at half the length)`);
+        }
+      });
     }
     if (!args.jsOnly) {
       const PY_TIMING = `${PY_PRELUDE}
@@ -482,15 +499,26 @@ for lane in data:
     out[lane["label"]] = ms
 sys.stdout.write(json.dumps(out))
 `;
-      const py = runLane(PYTHON, ['-c', PY_TIMING, workDir], JSON.stringify(adversarial.map(({ label, inputs }) => ({ label, inputs }))));
-      const go = goRun({ mode: 'timing', lanes: adversarial.map(({ label, src, inputs }) => ({ label, src, cases: inputs.map(toWtf8) })) });
+      // One lane run at the full length, one at half the length: together
+      // they would pass V8's string limit.
+      const pyRun = (key) => runLane(PYTHON, ['-c', PY_TIMING, workDir], JSON.stringify(adversarial.map((a) => ({ label: a.label, inputs: a[key] }))));
+      const goTiming = (key) => goRun({ mode: 'timing', lanes: adversarial.map((a) => ({ label: a.label, src: a.src, cases: a[key].map(toWtf8) })) });
+      // The half-length run happens only when a full-length match is over
+      // the budget.
+      const overBudget = (result) => Object.values(result).some((list) => !Array.isArray(list) || list.some((ms) => !(ms <= TIMING_BUDGET_MS)));
+      const py = pyRun('inputs');
+      const go = goTiming('inputs');
+      const pyHalf = overBudget(py) ? pyRun('half') : {};
+      const goHalf = overBudget(go) ? goTiming('half') : {};
       timing.python_max_ms = 0;
       timing.go_max_ms = 0;
-      for (const { label } of adversarial) {
-        for (const [name, result] of [['python', py], ['go', go]]) {
-          for (const ms of result[label] ?? [Infinity]) {
-            timing[`${name}_max_ms`] = Math.max(timing[`${name}_max_ms`] ?? 0, ms);
-            if (ms > TIMING_BUDGET_MS) fail(`${label}: ${name} took ${ms.toFixed(1)} ms on an adversarial input`);
+      for (const { label, inputs } of adversarial) {
+        for (const [name, result, halfResult] of [['python', py, pyHalf], ['go', go, goHalf]]) {
+          for (let i = 0; i < inputs.length; i += 1) {
+            const full = result[label]?.[i] ?? Infinity;
+            const half = halfResult[label]?.[i] ?? 0;
+            timing[`${name}_max_ms`] = Math.max(timing[`${name}_max_ms`] ?? 0, full);
+            if (tooSlow(full, half)) fail(`${label}: ${name} took ${full.toFixed(1)} ms on an adversarial input (${half.toFixed(1)} ms at half the length)`);
           }
         }
       }

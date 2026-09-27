@@ -198,6 +198,34 @@ class HostValueTest(unittest.TestCase):
         self.assertIn("caid", a)
         self.assertEqual(a, b)
 
+    def test_shared_containers_cost_their_distinct_containers(self):
+        # 2^40 values in the expansion, 41 distinct containers: the value
+        # budget refuses it (unsupported_value alone) without walking the
+        # expansion, as in JavaScript and Go.
+        dag = "x"
+        for _ in range(40):
+            dag = [dag, dag]
+        start = time.time()
+        self.assertEqual(self.compute({"v": dag}), {"refusals": ["unsupported_value"]})
+        self.assertLess(time.time() - start, 2)
+        # Under the budget, a shared value canonicalizes exactly as its copy,
+        # including where one path reaches it near the depth limit.
+        shared = {"k": ["\u00e9\U0001f600", 1, {"z": [True, None]}]}
+        deep = {"leaf": shared}
+        for _ in range(58):
+            deep = [deep]
+        self.assertEqual(
+            caid.canonicalize({"a": shared, "b": [shared, shared], "d": deep}),
+            caid.canonicalize({"a": {"k": ["\u00e9\U0001f600", 1, {"z": [True, None]}]},
+                               "b": [{"k": ["\u00e9\U0001f600", 1, {"z": [True, None]}]}] * 2, "d": deep}),
+        )
+        too_deep = {"leaf": shared}
+        for _ in range(61):
+            too_deep = [too_deep]
+        self.assertEqual(caid.canonicalize({"a": shared, "d": too_deep}), {"ok": False, "refusals": ["unsupported_value"]})
+        flagged = {"n": 7.5, "s": "\ufdd0"}
+        self.assertEqual(caid.canonicalize([flagged, flagged]), {"ok": False, "refusals": ["unsupported_number", "unsupported_value"]})
+
     def test_value_budget_stops_exponential_sharing(self):
         saved = caid._VALUE_BUDGET
         caid._VALUE_BUDGET = 10000

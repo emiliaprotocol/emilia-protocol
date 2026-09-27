@@ -488,16 +488,27 @@ def _canonicalize(value, cap):
     cap is the canonical-size limit in octets (the action-object limit for
     compute and verify), or None for a document, which takes the document
     ceiling. Past the value budget the value is unsupported_value alone.
+
+    Values count once for every path that reaches them, so the budget is
+    that of the expansion. A container reached through several paths is
+    traversed once: when nothing inside it was cut short (by the depth limit
+    or a cycle), a later path that reaches it where it still fits within the
+    depth limit reuses its count, its flags and its text, so a value with
+    shared references costs its distinct containers, not its expansion.
     """
     limit = _DOCUMENT_CANONICAL_OCTETS if cap is None else cap
     parts = []
     size = 0
     emit = True
-    bad_number = False
-    outside = False
+    bad_number = 0  # event counters, so a frame can tell what happened inside it
+    outside = 0
+    cut = 0
     visited = 0
     ancestors = set()
-    stack = []  # [items, next index, id, is_object]
+    memo = {}  # id -> (count, height, bad, out, parts start, parts end, octets)
+    # frame: [items, next index, id, is_object, visited at entry, bad_number,
+    #         outside, cut, parts start, size, emitting, height]
+    stack = []
     pending = value
     have_pending = True
     while True:
@@ -519,36 +530,59 @@ def _canonicalize(value, cap):
                 if -MAX_SAFE_INTEGER <= n <= MAX_SAFE_INTEGER:
                     chunk = str(n)
                 else:
-                    bad_number = True
+                    bad_number += 1
             elif _is(v, float):
                 f = v if type(v) is float else float.__float__(v)
                 if f.is_integer() and -MAX_SAFE_INTEGER <= f <= MAX_SAFE_INTEGER:
                     chunk = str(int(f))
                 else:
-                    bad_number = True
+                    bad_number += 1
             elif _is(v, str):
                 s = v if type(v) is str else str.__str__(v)
                 if _outside_model(s):
-                    outside = True
+                    outside += 1
                 elif emit:
                     chunk = _quote(s)
             elif _is(v, (list, dict)):
                 vid = id(v)
-                if len(stack) >= MAX_NESTING_DEPTH or vid in ancestors:
-                    outside = True
+                depth = len(stack)
+                if depth >= MAX_NESTING_DEPTH or vid in ancestors:
+                    outside += 1
+                    cut += 1
                 else:
-                    if _is(v, list):
-                        stack.append([tuple(list.__iter__(v)), 0, vid, False])
-                        chunk = "["
+                    known = memo.get(vid)
+                    if known is not None and depth + known[1] <= MAX_NESTING_DEPTH:
+                        count, height, bad, out, first, last, octets = known
+                        visited += count - 1
+                        if visited > _VALUE_BUDGET:
+                            return None, ["unsupported_value"]
+                        bad_number += bad
+                        outside += out
+                        if bad or out:
+                            emit = False
+                        elif emit:
+                            parts.extend(parts[first:last])
+                            size += octets
+                            if size > limit:
+                                emit = False
+                        if stack and height + 1 > stack[-1][11]:
+                            stack[-1][11] = height + 1
                     else:
-                        items, bad_keys = _object_items(v)
-                        if bad_keys:
-                            outside = True
-                        stack.append([items, 0, vid, True])
-                        chunk = "{"
-                    ancestors.add(vid)
+                        frame = [None, 0, vid, False, visited, bad_number, outside, cut,
+                                 len(parts), size, False, 1]
+                        if _is(v, list):
+                            frame[0] = tuple(list.__iter__(v))
+                            chunk = "["
+                        else:
+                            frame[0], bad_keys = _object_items(v)
+                            if bad_keys:
+                                outside += 1
+                            frame[3] = True
+                            chunk = "{"
+                        stack.append(frame)
+                        ancestors.add(vid)
             else:
-                outside = True
+                outside += 1
             if bad_number or outside:
                 # Output stops, but the traversal goes on: whether the value
                 # passes the value budget depends on every value it holds.
@@ -558,6 +592,8 @@ def _canonicalize(value, cap):
                 size += len(chunk) if chunk.isascii() else len(chunk.encode("utf-8"))
                 if size > limit:
                     emit = False
+            if stack and stack[-1][4] == visited and chunk in ("[", "{"):
+                stack[-1][10] = emit  # the container's text is being written
         if not stack:
             break
         frame = stack[-1]
@@ -586,8 +622,23 @@ def _canonicalize(value, cap):
                 size += 1
                 if size > limit:
                     emit = False
+            if cut == frame[7]:
+                # Nothing inside was cut short, so another path may reuse it.
+                # Its text is reusable only if all of it was written.
+                written = frame[10] and emit
+                memo[frame[2]] = (
+                    visited - frame[4] + 1,
+                    frame[11],
+                    1 if bad_number > frame[5] else 0,
+                    1 if outside > frame[6] else 0,
+                    frame[8],
+                    len(parts) if written else frame[8],
+                    size - frame[9] if written else 0,
+                )
+            if stack and frame[11] + 1 > stack[-1][11]:
+                stack[-1][11] = frame[11] + 1
     if not bad_number and not outside and size > limit:
-        outside = True
+        outside = 1
     refusals = []
     if bad_number:
         refusals.append("unsupported_number")

@@ -24,7 +24,6 @@
 // (strict-json.mjs) and the reference refuses it natively as
 // unsupported_value.
 
-import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSpec } from '../../spec/gen.mjs';
@@ -101,5 +100,3 @@ export function definitionSha256(definition) {
   return digest === null ? { refusals: ['invalid_definition'] } : { definition_sha256: digest };
 }
 
-/** sha256:<hex> of a JavaScript string's UTF-8 bytes. */
-export const sha256Utf8 = (s) => 'sha256:' + createHash('sha256').update(Buffer.from(s, 'utf8')).digest('hex');

@@ -6,6 +6,10 @@
 //
 //   node caid/conformance/tools/build-grammar.mjs           write it
 //   node caid/conformance/tools/build-grammar.mjs --check   exit 1 unless current
+//   ... --cases FILE   reuse the case list caid/spec/abnf-check.mjs --out
+//                      already wrote (CI's grammar proof step writes one)
+//                      instead of running it again; the list is the same
+//                      with or without --js-only and --no-timing
 //
 // The corpus tests each port through its public entry points, never its
 // generated regular expressions (review D-3): every ABNF rule the ports
@@ -83,12 +87,18 @@ const DRIVERS = {
 };
 
 // ---------------------------------------------------------------- case sources
-const tmp = mkdtempSync(path.join(os.tmpdir(), 'caid-grammar-'));
-const listPath = path.join(tmp, 'cases.json');
-const r = spawnSync(process.execPath, [path.join(ROOT, 'caid/spec/abnf-check.mjs'), '--js-only', '--no-timing', '--out', listPath], { encoding: 'utf8', maxBuffer: 64 << 20 });
-if (r.status !== 0) { process.stderr.write(r.stdout + r.stderr); process.exit(1); }
-const generated = JSON.parse(readFileSync(listPath, 'utf8')).cases;
-rmSync(tmp, { recursive: true, force: true });
+const casesArg = process.argv.indexOf('--cases');
+let generated;
+if (casesArg !== -1) {
+  generated = JSON.parse(readFileSync(path.resolve(process.argv[casesArg + 1] ?? ''), 'utf8')).cases;
+} else {
+  const tmp = mkdtempSync(path.join(os.tmpdir(), 'caid-grammar-'));
+  const listPath = path.join(tmp, 'cases.json');
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'caid/spec/abnf-check.mjs'), '--js-only', '--no-timing', '--out', listPath], { encoding: 'utf8', maxBuffer: 64 << 20 });
+  if (r.status !== 0) { process.stderr.write(r.stdout + r.stderr); process.exit(1); }
+  generated = JSON.parse(readFileSync(listPath, 'utf8')).cases;
+  rmSync(tmp, { recursive: true, force: true });
+}
 const byRule = new Map();
 for (const c of generated) {
   if (!byRule.has(c.rule)) byRule.set(c.rule, []);

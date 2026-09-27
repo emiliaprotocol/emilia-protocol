@@ -18,13 +18,13 @@
 // fields; --require-port turns pending into a failure.
 
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { matches, prng, sample } from '../spec/abnf.mjs';
 import { buildSpec, loadCaidGrammar } from '../spec/gen.mjs';
 import { createReference } from '../spec/reference.mjs';
-import { computeCaid } from '../impl/js/caid.mjs';
+import { computeCaid, decodeCaidDocument } from '../impl/js/caid.mjs';
 import { loadRegistryEnumSnapshots } from './enum-snapshots.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -47,10 +47,26 @@ const jcs = (value) => {
   return sha(Buffer.from(c.canonical, 'utf8'));
 };
 
+// Every registry document is read under the strict JSON text rules of -04
+// Section 2.4 (without the size limit); one that fails them is never used.
+const strict = (rel, bytes = readFileSync(path.join(HERE, rel))) => {
+  const decoded = decodeCaidDocument(bytes);
+  if (!decoded.ok) {
+    fail(`${rel} is not strict JSON text (-04 Section 2.4)`);
+    return JSON.parse(bytes.toString('utf8'));
+  }
+  return decoded.value;
+};
+const registryDocuments = ['action-types.json', 'suites.json', 'digests.json',
+  ...readdirSync(path.join(HERE, 'history')).filter((f) => f.endsWith('.json')).map((f) => `history/${f}`),
+  ...readdirSync(path.join(HERE, 'value-sets')).filter((f) => f.endsWith('.json')).map((f) => `value-sets/${f}`)];
+for (const rel of registryDocuments) strict(rel);
+if (!failures.length) pass(`registry documents: ${registryDocuments.length} files decode under the strict JSON text rules`);
+
 const registryBytes = readFileSync(path.join(HERE, 'action-types.json'));
-const registry = JSON.parse(registryBytes.toString('utf8'));
+const registry = strict('action-types.json', registryBytes);
 const v4Bytes = readFileSync(path.join(HERE, HISTORY_V4.path));
-const v4 = JSON.parse(v4Bytes.toString('utf8'));
+const v4 = strict(HISTORY_V4.path, v4Bytes);
 const types = registry.types;
 const byName = new Map(types.map((t) => [t.action_type, t]));
 const fieldsOf = (t) => [...(t.required_fields ?? []), ...(t.optional_fields ?? [])];
@@ -78,6 +94,10 @@ for (const t of types) {
     if (!data) { fail(`${t.action_type}.${f.name} has unregistered field type ${f.type}`); continue; }
     for (const key of Object.keys(f)) if (![...def.field_common_members, ...data.members].includes(key)) fail(`${t.action_type}.${f.name} has member ${key}`);
     if ('notes' in f && typeof f.notes !== 'string') fail(`${t.action_type}.${f.name} notes is not a string`);
+    // Reasons carry field names verbatim; a registered name is printable
+    // ASCII, so no registered reason holds a control or bidirectional
+    // formatting character.
+    if (typeof f.name !== 'string' || !/^[\x21-\x7e]+$/.test(f.name)) fail(`${t.action_type} field name ${JSON.stringify(f.name)} is not printable ASCII`);
   }
 }
 pass(`registry shape: ${types.length} unique types, ${conforming} conform to the definition rules and the closed registry shape`);
@@ -160,7 +180,7 @@ try {
 }
 for (const e of registry.enum_snapshot_files ?? []) {
   for (const key of ['source_url', 'retrieved', 'license']) if (typeof e[key] !== 'string' || !e[key]) fail(`enum_snapshot_files ${e.path} has no ${key}`);
-  const file = JSON.parse(readFileSync(path.join(HERE, e.path), 'utf8'));
+  const file = strict(e.path);
   for (const key of ['url', 'published', 'retrieved', 'source_sha256']) if (typeof file.source?.[key] !== 'string') fail(`${e.path} source has no ${key}`);
   if (file.source?.url !== e.source_url) fail(`${e.path} source url differs from its registry entry`);
 }

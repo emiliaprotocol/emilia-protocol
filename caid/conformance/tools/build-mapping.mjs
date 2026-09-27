@@ -141,6 +141,17 @@ const CASES = [
   ['pointer-2048-octets-missing', 'a source path of exactly 2048 octets passes the profile checks and is missing from the source', EP, EP,
     [set('right', 'profile', '/rules/0/source_path', `/${long(2047)}`), set('right', 'profile', '/material_source_paths/0', `/${long(2047)}`)],
     ['right'], 'INDETERMINATE', [`right:missing_source_field:/${long(2047)}`]],
+  // Source paths through each port's own source-path parser: the rule is
+  // interpreted, not compiled, so the grammar proof does not reach it.
+  ...[
+    ['source-path-without-slash-abstains', 'a source path must begin with "/"', 'target/checkout_id', ['right:invalid_mapping_profile']],
+    ['source-path-bad-escape-abstains', '"~" must be followed by "0" or "1"', '/target~2checkout_id', ['right:invalid_mapping_profile']],
+    ['source-path-trailing-tilde-abstains', 'a trailing "~" is not an escape', '/target/checkout_id~', ['right:invalid_mapping_profile']],
+    ['source-path-escaped-slash-missing', '"~1" is "/" inside one reference token, so the path names the member "target/checkout_id", which is absent', '/target~1checkout_id', ['right:missing_source_field:/target~1checkout_id']],
+    ['source-path-empty-token-missing', '"/" is a valid source path whose only token is the empty member name', '/', ['right:missing_source_field:/']],
+  ].map(([id, description, sourcePath, reasons]) => [id, description, EP, EP,
+    [set('right', 'profile', '/rules/0/source_path', sourcePath), set('right', 'profile', '/material_source_paths/0', sourcePath)],
+    ['right'], 'INDETERMINATE', reasons]),
   ['rules-129-abstains', '129 rules is over the limit of 128', EP, EP,
     [set('right', 'profile', '/rules', manyRules), set('right', 'profile', '/material_source_paths', manyRules.map((r) => r.source_path))],
     ['right'], 'INDETERMINATE', ['right:invalid_mapping_profile']],

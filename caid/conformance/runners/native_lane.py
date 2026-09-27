@@ -64,6 +64,12 @@ def build_native(encoded, enclosing=None):
         for _ in range(int(spec["depth"])):
             value = {"a": value} if spec["container"] == "object" else [value]
         return value
+    if tag == "$dag":
+        spec = encoded["$dag"]
+        value = build_native(spec["leaf"], enclosing)
+        for _ in range(int(spec["depth"])):
+            value = [value, value]
+        return value
     if tag == "$host":
         host = _HOSTS.get(encoded["$host"])
         if host is None:

@@ -245,7 +245,7 @@ func TestParseCaid(t *testing.T) {
 	for input, want := range map[string]string{
 		"caid:1:a.b.1:jcs-sha256:" + d:                             "",
 		"caid:1:a.b.1:cbor-sha256:" + d:                            "",
-		"caid:1:a.b.1:zz-unregistered:" + d:                             "unknown_suite",
+		"caid:1:a.b.1:zz-unregistered:" + d:                        "unknown_suite",
 		"caid:1:a.b.1:foo:x":                                       "unknown_suite",
 		"caid:1:a.b.1:jcs-sha256:" + strings.Repeat("A", 42) + "B": "malformed_caid",
 		"caid:1:a.b.1:jcs-sha256:" + d + "=":                       "malformed_caid",

@@ -146,7 +146,7 @@ v4.vectors.forEach((old, index) => {
 // ---------------------------------------------------------------- registry types
 const CODE_SAMPLES = {
   'icd-10-cm': 'A00', 'ndc-11': '00002322730', 'ndc-10-hyphenated': '0002-3227-30', cpt: '99213', 'hcpcs-level-ii': 'J1234',
-  hcpcs: 'J1234', 'iso-3166-1-alpha-2': 'US', 'iso-3166-2': 'US-CA', 'iso20022-external-code': 'AC01', 'nacha-sec': 'PPD',
+  hcpcs: 'J1234', 'iso-3166-2': 'US-CA', 'iso20022-external-code': 'AC01', 'nacha-sec': 'PPD',
 };
 function sampleValue(field) {
   switch (field.type) {

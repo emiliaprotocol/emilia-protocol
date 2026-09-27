@@ -35,7 +35,7 @@
       "input": "CBOR action map",
       "canonicalization": {
         "name": "CBOR Core Deterministic Encoding Requirements",
-        "reference": "RFC 8949 section 4.2"
+        "reference": "RFC 8949 section 4.2.1"
       },
       "digest": {
         "name": "SHA-256",
@@ -46,7 +46,7 @@
         "name": "base64url, unpadded",
         "reference": "RFC 4648 section 5"
       },
-      "notes": "Defined in v1; implementations MAY support it. The reference implementations in this package ship jcs-sha256 only. Cross-suite equivalence is out of scope: a jcs-sha256 CAID and a cbor-sha256 CAID over the same logical content are different identifiers, and an artifact MAY carry one CAID per suite it computed."
+      "notes": "Defined in v1; implementations MAY support it. Draft -04 Section 3.1 fixes the mapping from the data model: an object is a map with text-string keys, an array an array, a string a text string, a number (always an integer) major type 0 or 1, and true, false and null the simple values 21, 20 and 22; no tag, byte string or floating-point value appears, and the size limit is measured on the RFC 8785 encoding. The reference implementations in this package ship jcs-sha256 only. Cross-suite equivalence is out of scope: a jcs-sha256 CAID and a cbor-sha256 CAID over the same logical content are different identifiers, and an artifact MAY carry one CAID per suite it computed."
     }
   ]
 }

@@ -41,7 +41,7 @@ const API = {
   compute: need('computeCaid', 'computeCaid'),
   verify: need('verifyCaid', 'verifyCaid'),
   parse: need('parseCaid', 'parseCaid'),
-  definitionSha256: need('definitionSha256', 'definitionSha256', 'definitionDigest'),
+  definitionSha256: need('definitionSha256', 'definitionSha256'),
 };
 
 // ---------------------------------------------------------------- helpers

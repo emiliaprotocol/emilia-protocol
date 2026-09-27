@@ -3,9 +3,11 @@
 // A dev-time reference validator for CAID computation over data-model
 // values, built only from the generated spec data (caid/spec/gen.mjs
 // buildSpec): the compiled grammar, the code formats, the limits, the field
-// types, the definition rules and the reason ranks. The registry check
-// (caid/registry/check.mjs) and the registry tests use it to prove that
-// every registered type computes before the ports adopt the -04 features.
+// types, the definition rules and the reason ranks. It is the spec oracle
+// the conformance corpus builders and the differential fuzz compare every
+// port with (caid/conformance/tools/oracle.mjs), and the registry check
+// (caid/registry/check.mjs) uses it to prove that every registered type
+// computes.
 //
 // It is not a port and ships in no package. It takes already-decoded
 // values (no JSON text decoder) and refuses, never throws.
@@ -334,7 +336,9 @@ export function createReference(spec) {
     const r = run();
     const definitionSha256 = r.resolved && !r.resolved.reason ? r.resolved.definition_sha256 : undefined;
     if (pinned && definitionSha256 !== undefined && opts.expectedDefinitionSha256 !== definitionSha256) reasons.push('definition_mismatch');
-    const c = canonicalize(object);
+    // The canonical text evaluate made, when its gates passed; otherwise
+    // the object is canonicalized here.
+    const c = r.canonical !== undefined ? { ok: r.canonical !== null, canonical: r.canonical } : canonicalize(object);
     if (!supported.has(parsed.caid.suite)) reasons.push('unknown_suite');
     else if (c.ok && createHash('sha256').update(Buffer.from(c.canonical, 'utf8')).digest('base64url') !== parsed.caid.digest) reasons.push('digest_mismatch');
     if (r.refusals.length) reasons.push('invalid_object');

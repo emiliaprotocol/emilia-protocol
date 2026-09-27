@@ -134,12 +134,25 @@ behavior only through an explicit dependency bump.
     octets, as `unsupported_value`. 5.0.0 computed nesting up to about 2,000
     levels and threw beyond it, and had no size bound. CAIDs that 5.0.0
     issued for such objects no longer verify.
+  - An action type longer than 512 octets (`invalid_action_type`; in a CAID
+    string, `malformed_caid`), a CAID string longer than 1024 octets
+    (`malformed_caid`), and a `code_system` longer than 2048 octets
+    (`invalid_definition`), each checked before any pattern runs. 5.0.0 had
+    no bound, and V8 threw `RangeError` near 6.7 million characters.
+  - A host value made of more than 33554432 values, each counted once for
+    every path that reaches it, as `unsupported_value` alone. A sparse array
+    refuses without walking its length, and a value with shared references
+    is processed without walking its expansion. Any other document (a
+    definition's validation projection, an enum value array, a mapping
+    source) is refused past 134217728 canonical octets.
 - The vendored CAID reports more, and orders reasons by rank: `computeCaid`
   results carry `definition_sha256` (SHA-256 over the RFC 8785 encoding of
   the definition's validation projection); `verifyCaid` results carry
   `details`, one `{reason, field, rule, observed}` object per reason, and
   `definition_sha256` whenever a definition resolved, and accept an
-  `expectedDefinitionSha256` option that adds `definition_mismatch`. After
+  `expectedDefinitionSha256` option that adds `definition_mismatch`; a
+  supplied value of any type other than the resolved digest string, a list
+  or `null` included, is a mismatch, never an absent pin. After
   the two gates (`invalid_action_type`, then `unknown_action_type` or
   `invalid_definition`) every check runs, and `unsupported_number` always
   precedes `unsupported_value`; 5.0.0 ordered those two by traversal.

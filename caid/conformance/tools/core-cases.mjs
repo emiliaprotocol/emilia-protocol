@@ -16,6 +16,8 @@
 // (verify). A verify case may give caid_of: {json | native, definitions}
 // instead of caid, and the builder computes that object's CAID.
 
+import { readFileSync } from 'node:fs';
+
 const H64 = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
 const D = (h = H64) => `sha256:${h}`;
 const j = (v) => JSON.stringify(v);
@@ -73,6 +75,11 @@ const CODE_SYSTEMS = {
   'iso20022-external-code': 'https://www.iso20022.org/catalogue-messages/additional-content-messages/external-code-sets',
   'nacha-sec': 'https://www.nacha.org/rules/standard-entry-class-codes',
 };
+// Registry entries (version 5 and the frozen version 4), for the cases that
+// pin the registry changes of -04.
+const registryType = (rel, type) => JSON.parse(readFileSync(new URL(`../../registry/${rel}`, import.meta.url), 'utf8'))
+  .types.find((t) => t.action_type === type);
+
 const codeDef = (format) => ({
   action_type: `test.code.${format}.1`,
   required_fields: [{ name: 'f', type: 'code', code_system: CODE_SYSTEMS[format], format }],
@@ -549,6 +556,7 @@ export function coreCases({ limits }) {
   const d42 = VALID_DIGEST.slice(0, 42);
   add(
     parse('parse-refuses-uppercase-prefix', 'the prefix is case-sensitive (%s"caid")', `CAID:1:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
+    parse('parse-refuses-mixed-case-prefix', 'the -03 ABNF string literal "caid" was case-insensitive, so it admitted "Caid:"; -04 refuses it', `Caid:1:payment.release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
     parse('parse-refuses-leading-space', 'no trimming', ` ${PAYMENT_CAID}`, { refusals: ['malformed_caid'] }),
     parse('parse-refuses-trailing-cr', 'a trailing carriage return', `${PAYMENT_CAID}\r`, { refusals: ['malformed_caid'] }),
     parse('parse-refuses-empty-segment', 'an empty name segment', `caid:1:payment..release.1:jcs-sha256:${VALID_DIGEST}`, { refusals: ['malformed_caid'] }),
@@ -627,6 +635,30 @@ export function coreCases({ limits }) {
   add(
     compute('native-oversized-string-and-number', 'native lane: a 34,000,000-character string makes the object oversized and a fractional number makes it unsupported_number alone; the work budget counts values, not characters', [{ action_type: 'probe.big.1', required_fields: [{ name: 'a', type: 'string' }] }],
       native({ action_type: 'probe.big.1', a: { $repeat: { unit: 'x', count: 34000000 } }, c: [7.5] }), { refusals: ['unsupported_number'] }),
+  );
+  // A value with shared references counts once for every path that reaches
+  // it: 23 levels of a shared two-element array hold 2^24 - 1 values, under
+  // the budget of 33,554,432, and 25 levels hold 2^26 - 1, over it. Over
+  // the budget the value is unsupported_value alone, whatever it holds.
+  const BUDGET = { action_type: 'probe.budget.1', required_fields: [{ name: 'a', type: 'string' }] };
+  const dag = (depth) => native({ action_type: 'probe.budget.1', a: 'x', d: { $dag: { depth, leaf: 7.5 } } });
+  add(
+    compute('native-value-budget-under', 'native lane: 2^24 - 1 values reached through shared arrays are within the value budget, so the fractional leaf is unsupported_number', [BUDGET], dag(23), { refusals: ['unsupported_number'] }),
+    compute('native-value-budget-over', 'native lane: 2^26 - 1 values reached through shared arrays pass the value budget, so the value is unsupported_value alone and the fractional leaf is not reported', [BUDGET], dag(25), { refusals: ['unsupported_value'] }),
+    verify('native-verify-value-budget-over', 'native lane: verification of a value past the value budget is invalid_object, with unsupported_value alone behind it', [BUDGET],
+      { ...dag(25), caid: `caid:1:probe.budget.1:jcs-sha256:${VALID_DIGEST}` }, { reasons: ['invalid_object'] }),
+  );
+
+  // The registry changes of -04 (Changes since -03).
+  const dnsV4 = registryType('history/action-types.v4.json', 'dns.record.delete.1');
+  const dnsObject = text(j({ action_type: 'dns.record.delete.1', zone: 'example.com', record_name: 'www.example.com', record_type: 'A', rdata: '192.0.2.1' }));
+  const contract2 = registryType('action-types.json', 'contract.execute.2');
+  add(
+    compute('pin-rule-first-pin-v4-refuses', 'registry version 4 left the record_type enum of dns.record.delete.1 unpinned, so it accepted no value; the version 5 pin (registry-dns.record.delete.1, pin-rule-first-pin-v5-accepts) is a monotone advance', [dnsV4], dnsObject, { refusals: ['mistyped_field:record_type'] }),
+    compute('pin-rule-first-pin-v5-accepts', 'the same object under the version 5 entry, whose record_type is pinned to an IANA snapshot', [registryType('action-types.json', 'dns.record.delete.1')], dnsObject, 'ok'),
+    compute('registry-v5-contract-execute-2-requires-currency', 'contract.execute.2 requires both contract_value and currency', [contract2],
+      text(j({ action_type: 'contract.execute.2', ...Object.fromEntries(contract2.required_fields.filter((f) => f.name !== 'currency').map((f) => [f.name, f.type === 'digest' ? D() : f.type === 'amount-string' ? '1000.00' : f.type === 'timestamp' ? '2026-09-26T00:00:00Z' : 'x'])) })),
+      { refusals: ['missing_material_field:currency'] }),
   );
   return cases;
 }

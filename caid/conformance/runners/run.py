@@ -52,7 +52,7 @@ API = {
     "compute": need("compute_caid", "compute_caid"),
     "verify": need("verify_caid", "verify_caid"),
     "parse": need("parse_caid", "parse_caid"),
-    "definition_sha256": need("definition_sha256", "definition_sha256", "definition_digest"),
+    "definition_sha256": need("definition_sha256", "definition_sha256"),
 }
 # ---------------------------------------------------------------- native lane
 sys.path.insert(0, HERE)

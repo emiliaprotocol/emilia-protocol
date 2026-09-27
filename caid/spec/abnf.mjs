@@ -276,16 +276,6 @@ function lookup(rules, name, from = '?') {
   return node;
 }
 
-/**
- * The rule node for `name`, including the RFC 5234 core rules.
- *
- * @param {Map<string, any>} rules
- * @param {string} name
- */
-export function ruleNode(rules, name) {
-  return lookup(rules, name.toLowerCase());
-}
-
 const foldAscii = (cp) => (cp >= 0x41 && cp <= 0x5a ? cp + 32 : cp);
 
 /**
@@ -672,11 +662,6 @@ export function parseRegex(src) {
   const ast = alternation();
   if (i !== src.length) fail('unbalanced )');
   return ast;
-}
-
-/** @deprecated name kept for callers; parseRegex throws on the same inputs. */
-export function assertPortableRegex(src) {
-  parseRegex(src);
 }
 
 // ---------------------------------------------------------------------------
