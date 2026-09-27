@@ -17,6 +17,7 @@ on:
       - 'packages/require-receipt/**'
       - 'packages/verify/**'
       - 'caid/impl/js/caid.mjs'
+      - 'caid/spec/**'
       - 'formal/AlloyCheck.java'
   pull_request:
     paths:
@@ -28,6 +29,7 @@ on:
       - 'packages/require-receipt/**'
       - 'packages/verify/**'
       - 'caid/impl/js/caid.mjs'
+      - 'caid/spec/**'
       - 'formal/AlloyCheck.java'
   workflow_dispatch:
 

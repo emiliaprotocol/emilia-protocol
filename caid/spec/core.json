@@ -1,0 +1,280 @@
+{
+  "@version": "CAID-SPEC-DATA-v1",
+  "draft": "draft-schrock-canonical-action-identifier-04",
+  "license": "CC0-1.0",
+  "grammar": {
+    "file": "caid.abnf",
+    "patterns": [
+      {"id": "caid", "rule": "caid", "max_octets": "caid_octets"},
+      {"id": "action_type", "rule": "action-type", "max_octets": "action_type_octets"},
+      {"id": "suite", "rule": "suite"},
+      {"id": "digest", "rule": "digest"},
+      {"id": "amount_string", "rule": "amount-string"},
+      {"id": "digest_field", "rule": "digest-field"},
+      {"id": "timestamp", "rule": "timestamp"},
+      {"id": "format_name", "rule": "format-name"},
+      {"id": "code_system", "rule": "code-system", "max_octets": "code_system_octets"},
+      {"id": "array_index", "rule": "array-index"},
+      {"id": "hex_sha256", "rule": "hex-sha256"}
+    ],
+    "interpreted_rules": ["field-name", "json-pointer", "source-path", "reason"],
+    "suite_digest_rules": [
+      {"digest_octets": 32, "rule": "digest-256"}
+    ],
+    "code_formats": [
+      {"format": "icd-10-cm", "reference": "ICD-10-CM Official Guidelines for Coding and Reporting, Section I.A.2"},
+      {"format": "ndc-11", "reference": "FDA National Drug Code format, 11-digit form"},
+      {"format": "ndc-10-hyphenated", "reference": "FDA National Drug Code format, 10-digit forms"},
+      {"format": "cpt", "reference": "AMA CPT code set"},
+      {"format": "hcpcs-level-ii", "reference": "CMS HCPCS Level II"},
+      {"format": "hcpcs", "reference": "CMS HCPCS Level II; AMA CPT (HCPCS Level I)"},
+      {"format": "iso-3166-2", "reference": "ISO 3166-2"},
+      {"format": "iso20022-external-code", "reference": "ISO 20022 External Code Sets"},
+      {"format": "nacha-sec", "reference": "Nacha Operating Rules, Standard Entry Class codes"}
+    ],
+    "reason_rules": {
+      "compute_bare": "compute-bare",
+      "field_codes": "field-code",
+      "core_only": "core-only",
+      "mapping_bare": "mapping-bare",
+      "pointer_codes": "pointer-code"
+    },
+    "timestamp_date_offsets": {"year": [0, 4], "month": [5, 7], "day": [8, 10]}
+  },
+  "identifier": {
+    "scheme": "caid",
+    "version": "1",
+    "separator": ":",
+    "parts": 5
+  },
+  "limits": [
+    {"id": "json_text_octets", "value": 33554432, "unit": "octets", "scope": "caid", "refusal": "malformed_json"},
+    {"id": "nesting_depth", "value": 64, "unit": "levels", "scope": "caid", "refusal": "malformed_json", "host_value_refusal": "unsupported_value"},
+    {"id": "canonical_octets", "value": 16777216, "unit": "octets", "scope": "caid", "refusal": "unsupported_value", "host_value_refusal": "unsupported_value"},
+    {"id": "max_safe_integer", "value": 9007199254740991, "unit": "magnitude", "scope": "caid", "refusal": "unsupported_number", "host_value_refusal": "unsupported_number"},
+    {"id": "value_count", "value": 33554432, "unit": "values", "scope": "caid", "refusal": "unsupported_value", "host_value_refusal": "unsupported_value"},
+    {"id": "document_canonical_octets", "value": 134217728, "unit": "octets", "scope": "caid", "refusal": "unsupported_value", "host_value_refusal": "unsupported_value"},
+    {"id": "caid_octets", "value": 1024, "unit": "octets", "scope": "caid", "refusal": "malformed_caid"},
+    {"id": "action_type_octets", "value": 512, "unit": "octets", "scope": "caid", "refusal": "invalid_action_type"},
+    {"id": "code_system_octets", "value": 2048, "unit": "octets", "scope": "caid", "refusal": "invalid_definition"},
+    {"id": "mapping_rules_min", "value": 1, "unit": "rules", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_rules_max", "value": 128, "unit": "rules", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_pointer_octets_max", "value": 2048, "unit": "utf8-octets", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_string_octets_min", "value": 1, "unit": "utf8-octets", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_string_octets_max", "value": 512, "unit": "utf8-octets", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_omission_reason_octets_min", "value": 1, "unit": "utf8-octets", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "mapping_omission_reason_octets_max", "value": 2048, "unit": "utf8-octets", "scope": "caid-mapping", "refusal": "invalid_mapping_profile"},
+    {"id": "verify_strict_json_depth", "value": 64, "unit": "levels", "scope": "verify-strict-json", "implementation": {"file": "packages/verify/src/strict-json.ts", "constant": "MAX_JSON_DEPTH"}},
+    {"id": "verify_strict_json_nodes", "value": 100000, "unit": "nodes", "scope": "verify-strict-json", "implementation": {"file": "packages/verify/src/strict-json.ts", "constant": "DEFAULT_MAX_JSON_NODES"}},
+    {"id": "verify_strict_json_string_octets", "value": 1048576, "unit": "utf8-octets", "scope": "verify-strict-json", "implementation": {"file": "packages/verify/src/strict-json.ts", "constant": "DEFAULT_MAX_JSON_STRING_BYTES"}}
+  ],
+  "json_text": {
+    "byte_order_mark": [239, 187, 191],
+    "whitespace": [32, 9, 10, 13],
+    "noncharacters": {"range": [64976, 65007], "plane_final": [65534, 65535]}
+  },
+  "reasons": [
+    {"code": "malformed_json", "param": "none"},
+    {"code": "malformed_caid", "param": "none"},
+    {"code": "unknown_suite", "param": "none"},
+    {"code": "invalid_action_type", "param": "none"},
+    {"code": "unknown_action_type", "param": "none"},
+    {"code": "invalid_definition", "param": "none"},
+    {"code": "definition_mismatch", "param": "none"},
+    {"code": "missing_material_field", "param": "field-name"},
+    {"code": "mistyped_field", "param": "field-name"},
+    {"code": "invalid_amount", "param": "field-name"},
+    {"code": "invalid_code", "param": "field-name"},
+    {"code": "unsupported_number", "param": "none"},
+    {"code": "unsupported_value", "param": "none"},
+    {"code": "action_type_mismatch", "param": "none"},
+    {"code": "digest_mismatch", "param": "none"},
+    {"code": "invalid_object", "param": "none"}
+  ],
+  "operations": {
+    "decode": [
+      {"rank": 0, "gate": true, "reasons": ["malformed_json"]}
+    ],
+    "parse": [
+      {"rank": 1, "gate": true, "reasons": ["malformed_caid", "unknown_suite"], "steps": [
+        {"check": "caid-rule", "reason": "malformed_caid"},
+        {"check": "suite-registered", "reason": "unknown_suite"},
+        {"check": "suite-digest-syntax", "reason": "malformed_caid"}
+      ]}
+    ],
+    "compute": [
+      {"rank": 0, "gate": true, "entry": "json_text", "reasons": ["malformed_json"]},
+      {"rank": 1, "gate": true, "reasons": ["invalid_action_type"]},
+      {"rank": 2, "gate": true, "reasons": ["unknown_action_type", "invalid_definition"]},
+      {"rank": 3, "gate": false, "reasons": ["missing_material_field"], "position": "required_fields"},
+      {"rank": 4, "gate": false, "reasons": ["mistyped_field", "invalid_amount", "invalid_code"], "position": "required_then_optional_fields", "per_position_max": 1},
+      {"rank": 5, "gate": false, "reasons": ["unknown_suite"]},
+      {"rank": 6, "gate": false, "reasons": ["unsupported_number"]},
+      {"rank": 7, "gate": false, "reasons": ["unsupported_value"]}
+    ],
+    "verify": [
+      {"rank": 1, "gate": true, "entry": "parse", "reasons": ["malformed_caid", "unknown_suite"]},
+      {"rank": 2, "gate": true, "entry": "json_text", "reasons": ["malformed_json"]},
+      {"rank": 3, "gate": true, "reasons": ["invalid_object"]},
+      {"rank": 4, "gate": false, "reasons": ["action_type_mismatch"]},
+      {"rank": 5, "gate": false, "reasons": ["definition_mismatch"]},
+      {"rank": 6, "gate": false, "reasons": ["unknown_suite", "digest_mismatch"], "per_position_max": 1},
+      {"rank": 7, "gate": false, "reasons": ["invalid_object"]}
+    ]
+  },
+  "results": {
+    "decode": {"accepted": ["ok", "value"], "refused": ["ok", "refusals"]},
+    "parse": {"accepted": ["ok", "caid"], "refused": ["ok", "refusals"], "caid_members": ["version", "action_type", "suite", "digest"]},
+    "compute": {"accepted": ["caid", "digest", "definition_sha256"], "refused": ["refusals"]},
+    "verify": {"members": ["valid", "reasons", "details"], "optional_members": ["definition_sha256"]},
+    "definition_sha256": {"accepted": ["definition_sha256"], "refused": ["refusals"], "refusal": "invalid_definition"}
+  },
+  "options": {
+    "compute": ["suite", "definitions", "enum_snapshots"],
+    "verify": ["definitions", "enum_snapshots", "expected_definition_sha256"]
+  },
+  "verify_details": {
+    "members": ["reason", "field", "rule", "observed"],
+    "expand": {"invalid_object": {"operation": "compute", "omit": ["unknown_suite"]}},
+    "field_sources": ["param", "action_type"],
+    "observed_sources": ["member", "argument"],
+    "observed_kinds": ["absent", "null", "boolean", "number", "string", "array", "object", "unsupported"],
+    "reasons": {
+      "malformed_caid": {"rule": "caid", "field": null, "observed": "argument"},
+      "unknown_suite": {"rule": "suite", "field": null, "observed": null},
+      "malformed_json": {"rule": "json-text", "field": null, "observed": null},
+      "action_type_mismatch": {"rule": "action-type-equal", "field": "action_type", "observed": "member"},
+      "definition_mismatch": {"rule": "definition-sha256", "field": null, "observed": null},
+      "digest_mismatch": {"rule": "digest-equal", "field": null, "observed": null},
+      "invalid_action_type": {"rule": "action-type", "field": "action_type", "observed": "member"},
+      "unknown_action_type": {"rule": "definition-resolution", "field": null, "observed": null},
+      "invalid_definition": {"rule": "definition-conformance", "field": null, "observed": null},
+      "missing_material_field": {"rule": "required-field", "field": "param", "observed": "member"},
+      "mistyped_field": {"rule": "field-type", "field": "param", "observed": "member"},
+      "invalid_amount": {"rule": "amount-string", "field": "param", "observed": "member"},
+      "invalid_code": {"rule": "code-format", "field": "param", "observed": "member"},
+      "unsupported_number": {"rule": "number", "field": null, "observed": null},
+      "unsupported_value": {"rule": "data-model", "field": null, "observed": null}
+    }
+  },
+  "field_types": [
+    {"type": "string", "json": "string", "members": [], "required_members": {}},
+    {"type": "amount-string", "json": "string", "members": [], "required_members": {}, "pattern": "amount_string", "pattern_refusal": "invalid_amount"},
+    {"type": "digest", "json": "string", "members": [], "required_members": {}, "pattern": "digest_field", "pattern_refusal": "mistyped_field"},
+    {"type": "enum", "json": "string", "members": ["values", "values_ref", "values_snapshot", "values_sha256"], "required_members": {}},
+    {"type": "code", "json": "string", "members": ["code_system", "format"], "required_members": {"code_system": "code_system", "format": "format_name"}, "format_refusal": "invalid_code", "unregistered_format_refusal": "mistyped_field"},
+    {"type": "timestamp", "json": "string", "members": [], "required_members": {}, "pattern": "timestamp", "pattern_refusal": "mistyped_field", "calendar_check": "day_within_month"},
+    {"type": "integer", "json": "number", "members": [], "required_members": {}},
+    {"type": "boolean", "json": "boolean", "members": [], "required_members": {}},
+    {"type": "object", "json": "object", "members": [], "required_members": {}},
+    {"type": "array", "json": "array", "members": [], "required_members": {}}
+  ],
+  "unknown_field_type_refusal": "mistyped_field",
+  "definition": {
+    "field_lists": ["required_fields", "optional_fields"],
+    "required_fields_min": 1,
+    "field_common_members": ["name", "type", "notes"],
+    "field_name": {"rule": "field-name", "min_length": 1, "forbidden_code_points": [58], "reserved": ["action_type"], "unique_across": ["required_fields", "optional_fields"]},
+    "resolution": {"match_member": "action_type", "none": "unknown_action_type", "conflict": "invalid_definition", "nonconforming": "invalid_definition"},
+    "projection": {
+      "members": ["action_type", "required_fields", "optional_fields"],
+      "defaults": {"optional_fields": []},
+      "field_members_excluded": ["notes"],
+      "prefix": "sha256:"
+    },
+    "status_values": ["active", "deprecated"],
+    "status_affects_computation": false,
+    "registry_entry_members": ["action_type", "status", "risk_class", "summary", "required_fields", "optional_fields", "digest_notes", "references", "supersedes", "superseded_by"]
+  },
+  "enum": {
+    "inline_prefix": "inline:",
+    "inline_separator": "|",
+    "inline_trim": [" "]
+  },
+  "mapping": {
+    "profile_version": "CAID-MAPPING-PROFILE-v1",
+    "members": {
+      "profile": ["@version", "profile_id", "source_format", "target_action_type", "loss_policy", "omitted_source_fields", "material_source_paths", "rules"],
+      "source_format": ["media_type", "schema", "version"],
+      "rule": ["source_path", "target_field", "transform"],
+      "omitted_source_field": ["source_path", "reason"]
+    },
+    "optional_members": {
+      "profile": ["omitted_source_fields"]
+    },
+    "null_member_refusal": "invalid_mapping_profile",
+    "member_rules": [
+      {"path": ["profile_id"], "json": "string", "min_octets": "mapping_string_octets_min", "max_octets": "mapping_string_octets_max"},
+      {"path": ["source_format", "media_type"], "json": "string", "min_octets": "mapping_string_octets_min", "max_octets": "mapping_string_octets_max"},
+      {"path": ["source_format", "schema"], "json": "string", "min_octets": "mapping_string_octets_min", "max_octets": "mapping_string_octets_max"},
+      {"path": ["source_format", "version"], "json": "string", "min_octets": "mapping_string_octets_min", "max_octets": "mapping_string_octets_max"},
+      {"path": ["target_action_type"], "json": "string", "min_octets": "mapping_string_octets_min", "max_octets": "mapping_string_octets_max"},
+      {"path": ["loss_policy"], "json": "string", "closed": "loss_policies"},
+      {"path": ["rules"], "json": "array", "min_items": "mapping_rules_min", "max_items": "mapping_rules_max"},
+      {"path": ["rules", "*", "source_path"], "json": "string", "rule": "source-path", "max_octets": "mapping_pointer_octets_max"},
+      {"path": ["rules", "*", "target_field"], "json": "string", "rule": "field-name", "reserved": ["action_type"]},
+      {"path": ["rules", "*", "transform"], "json": "string", "closed": "transforms"},
+      {"path": ["material_source_paths"], "json": "array", "min_items": "mapping_rules_min"},
+      {"path": ["material_source_paths", "*"], "json": "string", "rule": "source-path", "max_octets": "mapping_pointer_octets_max"},
+      {"path": ["omitted_source_fields"], "json": "array"},
+      {"path": ["omitted_source_fields", "*", "source_path"], "json": "string", "rule": "source-path", "max_octets": "mapping_pointer_octets_max"},
+      {"path": ["omitted_source_fields", "*", "reason"], "json": "string", "min_octets": "mapping_omission_reason_octets_min", "max_octets": "mapping_omission_reason_octets_max"}
+    ],
+    "unique": [
+      ["rules", "*", "source_path"],
+      ["rules", "*", "target_field"],
+      ["material_source_paths", "*"],
+      ["omitted_source_fields", "*", "source_path"]
+    ],
+    "equal_sets": [
+      [["rules", "*", "source_path"], ["material_source_paths", "*"]]
+    ],
+    "disjoint": [
+      [["omitted_source_fields", "*", "source_path"], ["rules", "*", "source_path"]]
+    ],
+    "transforms": [
+      {"transform": "copy", "input": "any"},
+      {"transform": "sha256-utf8", "input": "string"},
+      {"transform": "sha256-jcs", "input": "any"},
+      {"transform": "sha256-hex-to-digest", "input": "string", "pattern": "hex_sha256"}
+    ],
+    "loss_policies": [
+      {"policy": "no-material-field-loss", "omitted_source_fields": "absent_or_empty"},
+      {"policy": "declared-source-semantic-loss", "omitted_source_fields": "non_empty", "stage_reason": "declared_source_semantic_loss"}
+    ],
+    "verdicts": ["EQUIVALENT_UNDER_PROFILE", "NOT_EQUIVALENT", "INDETERMINATE"],
+    "reasons": [
+      {"code": "invalid_mapping_profile", "param": "none"},
+      {"code": "unknown_action_type", "param": "none"},
+      {"code": "invalid_definition", "param": "none"},
+      {"code": "unmapped_material_field", "param": "field-name"},
+      {"code": "native_verification_required", "param": "none"},
+      {"code": "mapping_profile_unpinned", "param": "none"},
+      {"code": "source_format_mismatch", "param": "none"},
+      {"code": "source_not_object", "param": "none"},
+      {"code": "source_not_canonicalizable", "param": "none"},
+      {"code": "declared_source_semantic_loss", "param": "none"},
+      {"code": "invalid_source_path", "param": "source-path"},
+      {"code": "missing_source_field", "param": "source-path"},
+      {"code": "source_value_type_mismatch", "param": "source-path"},
+      {"code": "source_value_not_canonicalizable", "param": "source-path"},
+      {"code": "unknown_transform", "param": "source-path"},
+      {"code": "mapped_action", "param": "compute-reason"},
+      {"code": "target_action_type_mismatch", "param": "none"},
+      {"code": "material_projection_mismatch", "param": "none"}
+    ],
+    "stages": [
+      {"stage": "A", "reasons": ["invalid_mapping_profile", "unknown_action_type", "invalid_definition", "unmapped_material_field"], "position": {"unmapped_material_field": "required_fields"}},
+      {"stage": "B", "reasons": ["native_verification_required", "mapping_profile_unpinned", "source_format_mismatch", "source_not_object", "source_not_canonicalizable", "declared_source_semantic_loss"]},
+      {"stage": "C", "reasons": ["invalid_source_path", "missing_source_field", "source_value_type_mismatch", "source_value_not_canonicalizable", "unknown_transform"], "position": "rules", "per_position_max": 1},
+      {"stage": "D", "reasons": ["mapped_action"], "order": "compute"}
+    ],
+    "comparison": {
+      "prefixes": ["left", "right"],
+      "reasons": ["target_action_type_mismatch", "material_projection_mismatch"],
+      "prefixed_verdict": "INDETERMINATE",
+      "reason_verdicts": {"target_action_type_mismatch": "INDETERMINATE", "material_projection_mismatch": "NOT_EQUIVALENT"}
+    },
+    "fault_reasons": ["unexpected_mapping_error", "invalid_mapped_action"]
+  }
+}

@@ -111,6 +111,19 @@ function writeScanSeed(parent: string): { seedPath: string; manifestPath: string
   return { seedPath, manifestPath, seed };
 }
 
+// Verify 5.x, and the Gate releases pinned to it, read a registry entry's
+// digest only as definition_digest, so a workspace the lab writes uses that
+// name; Verify 6.0.0 reads either name (registryEntryPin).
+test('a new workspace pins each registry entry under the name every Verify release reads', () => {
+  const workspace = readWorkspace(freshWorkspace());
+  const entries = Object.values(workspace.config.registry.entries) as any[];
+  assert.ok(entries.length > 0);
+  for (const entry of entries) {
+    assert.match(entry.definition_digest, /^sha256:[0-9a-f]{64}$/);
+    assert.equal(Object.prototype.hasOwnProperty.call(entry, 'registry_entry_sha256'), false);
+  }
+});
+
 test('reviewed Scan seed creates an explicit unsealed three-file workspace', () => {
   const parent = mkdtempSync(join(tmpdir(), 'emilia-crossing-lab-scan-'));
   const { seedPath, seed } = writeScanSeed(parent);
@@ -588,6 +601,8 @@ runtimeTest('the sample mapper refuses mistyped CAID material after native verif
   assert.equal(positive?.actual.native_verification, 'VERIFIED');
   assert.notEqual(positive?.actual.mapping, 'MATCH');
   assert.ok(positive?.reasons.includes('caid_mapping_failed'));
+  // The adapter also names the CAID refusal behind the failure.
+  assert.ok(positive?.reasons.some((reason) => reason.startsWith('caid_mapping_failed:')), JSON.stringify(positive?.reasons));
 });
 
 runtimeTest('seal never removes a pre-existing predictable sentinel', () => {

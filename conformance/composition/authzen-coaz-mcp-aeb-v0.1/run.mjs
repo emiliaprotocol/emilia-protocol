@@ -189,9 +189,9 @@ function registryEntry(id, kind, definition) {
     version: '1',
     status: 'active',
     definition,
-    definition_digest: UNSET_DIGEST,
+    registry_entry_sha256: UNSET_DIGEST,
   };
-  entry.definition_digest = registryEntryDigest(id, entry);
+  entry.registry_entry_sha256 = registryEntryDigest(id, entry);
   return entry;
 }
 

@@ -11,7 +11,7 @@
 import crypto from 'node:crypto';
 // @ts-expect-error -- governed JavaScript implementation, runtime checked.
 import { computeCaid } from '../vendor/caid.mjs';
-import { digestAeb, } from './aeb-adapter-contract.js';
+import { digestAeb, caidMappingFailureReasons, } from './aeb-adapter-contract.js';
 export const MCGRAW_BUDGET_DRAFT_REVISION = 'draft-mcgraw-httpapi-agent-budget-03';
 export const MCGRAW_BUDGET_AEB_ADAPTER_ID = 'native:mcgraw-budget-cose-ml-dsa';
 export const MCGRAW_BUDGET_AEB_ADAPTER_VERSION = '1';
@@ -602,7 +602,7 @@ export function createMcGrawBudgetActionDefinition(actionType) {
         projection: 'mcgraw-budget-exact-request-v1', action_type: actionType, suite: 'jcs-sha256',
         definitions: [{
                 action_type: actionType,
-                required_fields: [{ name: 'action_type', type: 'string' }, { name: 'delegation_action', type: 'object' }],
+                required_fields: [{ name: 'delegation_action', type: 'object' }],
                 optional_fields: [],
             }],
     };
@@ -643,7 +643,7 @@ function mapAction(input, pins) {
     }
     if (!isRecord(computed) || typeof computed.caid !== 'string'
         || computed.digest !== actionDigest || typeof computed.digest !== 'string') {
-        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
     }
     return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
 }

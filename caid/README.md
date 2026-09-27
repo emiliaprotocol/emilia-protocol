@@ -75,28 +75,40 @@ substitution, profile substitution, and missing native verification.
 
 A CAID commits an identifier to canonical typed content. It does not
 prove the action was authorized, executed, safe, or wise. It is not a
-capability: treat it as public. Composition joins on the identifier; no
-verifier ever ingests another verifier's evidence into its own trust
-boundary.
+capability: possession proves nothing. It is not anonymous either: it has
+the same confidentiality as its action object, because anyone who can guess
+the object's low-entropy fields can recompute the identifier (the draft's
+Privacy Considerations). Composition joins on the identifier; no verifier
+ever ingests another verifier's evidence into its own trust boundary.
 
 ## Layout
 
-- `DESIGN.md` — normative core
-- `../standards/posted/draft-schrock-canonical-action-identifier-03.xml` —
-  published individual Internet-Draft source (xml2rfc v3)
-- `registry/` — action-type registry seed, suites, governance
+- `../standards/staged/NEXT-CAID-04/` and
+  `../standards/posted/draft-schrock-canonical-action-identifier-03.xml` —
+  the Internet-Draft, which is the normative text
+- `DESIGN.md` — where each rule lives now; no longer normative
+- `spec/` — derived from the draft: `caid.abnf` (Appendix A), `core.json`
+  (limits, reasons and ranks, field types, mapping closed sets), `gen.mjs`
+  (writes the constants each port compiles in), `abnf-check.mjs` (proves the
+  generated matchers equal the grammar and run in linear time)
+- `registry/` — action-type registry (version 5), suites, value sets, frozen
+  history, definition digests, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations
-- `conformance/vectors.json` — 96 core identifier vectors (corpus version 4),
-  including pinned, unresolved, mismatched, and out-of-set enum cases,
-  compact-inline trimming, own-member presence, unpaired-surrogate
-  refusals, whole-string grammar refusals (a trailing line feed in an amount,
-  digest field, timestamp, action type, suite, or CAID digest),
-  value-based integer-field cases, and identifier-parse refusals (a suite
-  outside the suite registry and a digest whose final character sets an
-  unused bit)
-- `conformance/mapping-vectors.json` — 25 cross-format mapping vectors,
-  including the SILP IR to CAID `CANCEL+EMAIL` profile and trailing line
-  feeds in a JSON Pointer array index and a target field name
+- `conformance/vectors.json` — 551 core vectors (corpus version 5): every
+  compute and verify input as exact JSON text with native/byte parity, a
+  native lane for host values no decoder produces, the JSON text rules and
+  size limits, number rounding, reason order, verification details,
+  definitions and `definition_sha256`, the named code formats, and one
+  vector per registry v5 type; the 96 version 4 vectors keep their ids
+  (`conformance/history/vectors.v4.json` is version 4 byte for byte)
+- `conformance/grammar-vectors.json` — 1,966 grammar boundary cases driven
+  through the public parse and compute entry points
+- `conformance/mapping-vectors.json` — 73 cross-format mapping vectors
+  (version 2) with exact reason lists in the -04 stage order, including the
+  SILP IR to CAID `CANCEL+EMAIL` profile
+- `fuzz/` — the differential fuzz: about 87,000 seeded cases through the
+  JavaScript, vendored Verify, Python and Go entry points against the spec
+  oracle, with an empty allow list
 - `interop/consequential-action-v1/` — 25 candidate, revision-pinned
   mechanism mappings with 100 positive, refusal, and abstention vectors;
   all await author review
@@ -104,13 +116,81 @@ boundary.
   AP2, AuthZEN, ACTA, WIMSE, permit receipts, outcome attestation, OAuth
   agent-authorization drafts, AGTP, EMILIA receipts, Continuum)
 
-Stewardship: currently maintained by EMILIA Protocol with a standing
-commitment, stated in `registry/GOVERNANCE.md`, to transition the registry
-to IANA or another neutral body upon adoption.
+Stewardship: maintained by the EMILIA Protocol maintainers as initial
+editors. The -04 draft asks IANA to create the CAID registries; until it
+does, `registry/` is the reference copy (`registry/GOVERNANCE.md`).
+
+## Changing a rule, a field type or a suite
+
+The grammar and the rule data have one source each: `spec/caid.abnf` and
+`spec/core.json` (with `registry/suites.json` for suites). Never edit a
+generated region or file by hand; the checks fail on it.
+
+1. Edit `spec/caid.abnf` and `spec/core.json`, then run
+   `node caid/spec/gen.mjs --write`. It rewrites the generated region of
+   `impl/js/caid.mjs`, its byte copy `packages/verify/vendor/caid.mjs`,
+   `impl/python/caid_spec.py` and `impl/go/spec_gen.go`. `gen.mjs` asserts
+   the compute and verify gates, which follow from data dependencies, and
+   reads the verify reason order from `core.json`.
+2. A new field type is a `core.json` `field_types` entry (JSON kind,
+   members, refusals, pattern and calendar check) plus `checkField` in
+   `impl/js/caid.mjs`, `impl/python/caid.py` and `impl/go/caid.go`, and in
+   the spec oracle `spec/reference.mjs`. A new code format is an ABNF rule
+   in part A.4 plus a `code_formats` entry with its syntax reference; the
+   generator refuses a format that is not linear-time. A new suite is a
+   `registry/suites.json` entry with its `digest_octets`, a
+   `suite_digest_rules` entry and its ABNF digest rule, and each port's set
+   of implemented suites.
+3. Add cases where a port is driven: the rule-to-driver maps of the three
+   grammar runners (`impl/js/run-grammar-vectors.mjs`,
+   `impl/python/run_grammar_vectors.py`, `impl/go/cmd/grammar-vectors`),
+   `conformance/tools/core-cases.mjs`, the drivers of
+   `conformance/tools/build-grammar.mjs`, and a family in `fuzz/gen.mjs`.
+   Then `npm run caid:corpus`.
+4. Run `node caid/spec/abnf-check.mjs`, `npm run caid:conformance` and
+   `npm run caid:fuzz`.
+5. Update the staged draft (`standards/staged/NEXT-CAID-04`):
+   `node scripts/check-caid-04.mjs --emit` prints every generated table and
+   the Appendix D listing, a processing change needs a `chg-` item mapped to
+   vectors in `CHANGES-VECTORS.json`, and the renders follow the procedure
+   in its `VALIDATION.md`.
+6. A change to the vendored copy moves pins outside `caid/`: the source
+   locks of the composition profiles that pin `vendor/caid.mjs`
+   (`conformance/composition/*/source-lock.json`),
+   `formal/results/formal-runtime-scenario-conformance.v2.json`, the
+   clean-room pins (`npm run sync:clean-room-pins`), the conformance
+   manifest (`npm run conformance:manifest`) and the LLM context
+   (`npm run sync:llm-context`). A change to `packages/verify/src` also
+   rebuilds `packages/verify/dist` (`npm --prefix packages/verify run
+   build`) and the standalone runtimes (`npm run build:standalone-runtimes`).
+
+## Registry v5
+
+Registry v5 resolves every external enum of every active type: 62 types, 53
+active, all of which compute, and 9 deprecated.
+
+- `dns.record.delete.1` and `vendor.onboard.1` receive their first pins
+  (the IANA DNS RR TYPE registry; ISO 3166-1 alpha-2 as carried by the IANA
+  Language Subtag Registry) and now compute.
+- `key.create.2`, `key.rotate.2`, `firewall.rule.open.2`, `pii.export.2`,
+  and `phi.disclose.2` pin or inline their sets.
+- `payment.refund.2`, `ach.debit.originate.2`, `rx.dispense.2`, and
+  `prior.auth.approve.2` use the new `code` field type: a code system URI
+  and a registered format that fixes syntax only. CAID never snapshots a
+  large, changing, or licensed code system, and never publishes CPT.
+- `contract.execute.2` requires both `contract_value` and `currency`;
+  `contract.execute.1` stays active for contracts with no monetary value.
+- The nine superseded `.1` types are deprecated. Deprecated types still
+  resolve, compute, and verify wherever their fields resolve.
+
+Registry v4 is kept byte-identical at `registry/history/action-types.v4.json`,
+so every pin of its bytes still holds. `registry/digests.json` lists every
+type's `definition_sha256`; a relying party that needs exact reproducibility
+pins it. `node caid/registry/check.mjs` checks the registry.
 
 ## Registry v4 migration
 
-Registry v4 adds an immutable `2026-09-17` SIX ISO 4217 snapshot. A currency
+Registry v4 added an immutable `2026-09-17` SIX ISO 4217 snapshot. A currency
 action object whose code is in that snapshot produces the same CAID bytes as
 before. A code that registry v3 accepted but the snapshot does not list (for
 example `BGN`, `HRK`, or `ZZZ`) is refused under v4. Issuers and verifiers must
@@ -123,16 +203,15 @@ What else now refuses, in every implementation:
 - a value outside a compact `inline:` list. The v3-era implementations
   accepted any string there; there are 15 such fields across 15 registered
   types, and local definitions using the form are affected the same way;
-- an enum definition in none of the three forms DESIGN.md section 3 allows,
+- an enum definition in none of the three forms the draft's enum resolution allows,
   including a `values` or `values_ref` member written as `null`; and
 - a string or member name containing an unpaired surrogate
   (`unsupported_value`).
 
-Eleven active types cannot produce or verify any CAID under registry v4,
-because a required field references an external code set that has no pinned
-snapshot yet: `payment.refund.1`, `ach.debit.originate.1`, `key.create.1`, `key.rotate.1`, `dns.record.delete.1`, `firewall.rule.open.1`, `pii.export.1`, `rx.dispense.1`, `prior.auth.approve.1`, `phi.disclose.1`, and `vendor.onboard.1`. The registry lists their twelve fields in
-`unresolved_external_enums`, and `npm run caid:conformance` fails if that list
-drifts. They need a reviewed value-set snapshot before use. The ISO 4217
+Eleven active types could not produce or verify any CAID under registry v4,
+because a required field referenced an external code set that had no pinned
+snapshot: `payment.refund.1`, `ach.debit.originate.1`, `key.create.1`, `key.rotate.1`, `dns.record.delete.1`, `firewall.rule.open.1`, `pii.export.1`, `rx.dispense.1`, `prior.auth.approve.1`, `phi.disclose.1`, and `vendor.onboard.1`. The registry lists their twelve fields in
+`unresolved_external_enums`. Registry v5 resolves all twelve. The ISO 4217
 snapshot is List One verbatim, so it also contains codes such as `XXX` (no
 currency involved) and `XTS` (reserved for testing); a type that must exclude
 them needs its own narrower pinned set in a new type version.

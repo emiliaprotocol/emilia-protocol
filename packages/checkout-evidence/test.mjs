@@ -270,7 +270,9 @@ test('the currency pin is the registry entry, and an edited value-set file fails
     'caid/impl/js/caid.mjs',
     'caid/registry/action-types.json',
     'caid/registry/enum-snapshots.mjs',
-    `caid/registry/${entry.path}`,
+    // enum-snapshots.mjs loads every value set the registry pins, not only
+    // the ISO 4217 one this package uses.
+    ...registry.enum_snapshot_files.map((item) => `caid/registry/${item.path}`),
   ];
   const copyTree = () => {
     const scratch = mkdtempSync(path.join(tmpdir(), 'checkout-evidence-pin-'));

@@ -27,7 +27,7 @@ function vector(id) {
 }
 function registryEntry(entryId, kind, version, definition) {
     const entry = { kind, version, status: 'active', definition };
-    entry.definition_digest = registryEntryDigest(entryId, entry);
+    entry.registry_entry_sha256 = registryEntryDigest(entryId, entry);
     return entry;
 }
 // One evaluator identity shared by every action instance in a fixture, so two

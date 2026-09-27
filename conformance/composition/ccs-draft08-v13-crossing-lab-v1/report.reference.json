@@ -10,18 +10,18 @@
   },
   "workspace": {
     "path": "examples/aeb-crossing-lab/ccs-wang-draft08-v13",
-    "workspace_digest": "sha256:8c781385454c60f5342effc90f7bb4e541ee8e10922f16d4697fc4a77a75a3da",
+    "workspace_digest": "sha256:9abd1507ab476759d3266c353801449aa84647fc7565af9e69560f5df1801dd7",
     "artifact_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
-    "adapter_module_digest": "sha256:d71c4c480d67de55b8d709fdbfe0f878aa0f5d88fb4acf75aaab15a21982a123",
-    "mapping_profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381"
+    "adapter_module_digest": "sha256:4b8e08d496a665c7b1de3caf0b9ea15409d20b5122dbea2d4659cdbd835d549b",
+    "mapping_profile_digest": "sha256:e0f8b53e13327fbbf7800b62941c96ee598d5edf265d143b7dc4608ee1ba0716"
   },
   "crossing_lab": {
     "@version": "EMILIA-CROSSING-LAB-LOCAL-REPORT-v1",
-    "workspace_digest": "sha256:8c781385454c60f5342effc90f7bb4e541ee8e10922f16d4697fc4a77a75a3da",
+    "workspace_digest": "sha256:9abd1507ab476759d3266c353801449aa84647fc7565af9e69560f5df1801dd7",
     "adapter": {
       "id": "native:ccs-draft08-v1.3-ed25519",
       "version": "1.0.0",
-      "module_digest": "sha256:d71c4c480d67de55b8d709fdbfe0f878aa0f5d88fb4acf75aaab15a21982a123"
+      "module_digest": "sha256:4b8e08d496a665c7b1de3caf0b9ea15409d20b5122dbea2d4659cdbd835d549b"
     },
     "evaluated_at": "2030-09-01T00:00:20Z",
     "adapter_rows": [
@@ -62,9 +62,9 @@
           "evaluator": {
             "id": "rp:emilia:ccs-wang-draft08",
             "key_id": "crossing-lab:self-test",
-            "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
+            "pinned_config_digest": "sha256:3d60f6e8454ae64c3266f512ed6c39edcc54a69c6a41e91fad7daa32851639e6"
           },
-          "evidence_digest": "sha256:82bd1b5327a719f8e3084ca045db7e4cdb51026a2242ddba949d4842aa9c47e6",
+          "evidence_digest": "sha256:ea12ac71ddeec9c710a840d477fcf39945fb858714eda7cb53a3a016b62e3b94",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -90,7 +90,7 @@
               "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
               "mapping": "MATCH",
               "native_verification": "VERIFIED",
-              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_digest": "sha256:e0f8b53e13327fbbf7800b62941c96ee598d5edf265d143b7dc4608ee1ba0716",
               "profile_id": "ccs-draft08-v13-tool-action",
               "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
               "reasons": [],
@@ -106,14 +106,14 @@
           ],
           "operation_id": "operation:ccs-wang-draft08:allow-live-sum",
           "reasons": [],
-          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "registry_digest": "sha256:4537a51398b4b6d84a49b492e28918a324264238bf0ea6ee8536a665e276bf4c",
           "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
           "requirement_ref": "requirement:machine-policy-decision",
           "verdict": "SATISFIED",
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "_SZ_7XS0z_L8CHF032EInxQ7apXlxjADIiO6VmHy2sTG_leDhFGKoyLtyxHhxCRzz9PoR8Htv74HL8XgEq4nDw"
+            "value": "JjehCcNoAWLBXRt038SCIbO3mI2TQciX0yCB8M4BAXi0zawmFbVccbAChmC2jJFfmbjVNuGTkX2V_wG60bO3CA"
           }
         }
       },
@@ -157,9 +157,9 @@
           "evaluator": {
             "id": "rp:emilia:ccs-wang-draft08",
             "key_id": "crossing-lab:self-test",
-            "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
+            "pinned_config_digest": "sha256:3d60f6e8454ae64c3266f512ed6c39edcc54a69c6a41e91fad7daa32851639e6"
           },
-          "evidence_digest": "sha256:80852eb256bc49232b7415b9291d437d2a4f6f37112e6544571569f493525145",
+          "evidence_digest": "sha256:07c6dc6681e6b479ef733147bbb30fb3220440dd9f9e118de7b172947d868741",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -185,7 +185,7 @@
               "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
               "mapping": "MISMATCH",
               "native_verification": "VERIFIED",
-              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_digest": "sha256:e0f8b53e13327fbbf7800b62941c96ee598d5edf265d143b7dc4608ee1ba0716",
               "profile_id": "ccs-draft08-v13-tool-action",
               "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
               "reasons": [
@@ -206,14 +206,14 @@
             "ccs:draft08_exact_action_projection_mismatch",
             "requirement not satisfied: \"machine-policy-decision\" over {∅}"
           ],
-          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "registry_digest": "sha256:4537a51398b4b6d84a49b492e28918a324264238bf0ea6ee8536a665e276bf4c",
           "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
           "requirement_ref": "requirement:machine-policy-decision",
           "verdict": "UNSATISFIED",
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "ugDfz6Ekvzcm6gd4TXyBV54x2pvWknl0wDmOV1dYprWxJ6HSw0huA4Hx_GoTr-kbJZqtxGvYjNGIgzapszUaDg"
+            "value": "gl8D9DBGSv1oA7XTElh0PtZAhaH9P1sD_C1pSqSUhKODPEtg__ytK2WsnFmb6YEXH_ict-u4l6FIr7Rk3awEBw"
           }
         }
       },
@@ -260,9 +260,9 @@
           "evaluator": {
             "id": "rp:emilia:ccs-wang-draft08",
             "key_id": "crossing-lab:self-test",
-            "pinned_config_digest": "sha256:8a12ded26d200ad928638b48049333a22a3f9cc63d7b54127edc98f0d89f70b4"
+            "pinned_config_digest": "sha256:fc7d446cb79e94de66794f0fb5c97346fcc2191992a20dcba717d1d0f86dfaec"
           },
-          "evidence_digest": "sha256:74eaf646294627204412cc67e690060112c868946f1ca7673a03ec6a7e1ac58d",
+          "evidence_digest": "sha256:4984911ee49c3aad6462c69cc2bb2c7875f6c5f28ec2a5dd03a5f29e116197b7",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -288,7 +288,7 @@
               "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
               "mapping": "MISMATCH",
               "native_verification": "FAILED",
-              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_digest": "sha256:e0f8b53e13327fbbf7800b62941c96ee598d5edf265d143b7dc4608ee1ba0716",
               "profile_id": "ccs-draft08-v13-tool-action",
               "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
               "reasons": [
@@ -315,14 +315,14 @@
             "normalized_action_digest_mismatch",
             "requirement not satisfied: \"machine-policy-decision\" over {∅}"
           ],
-          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "registry_digest": "sha256:4537a51398b4b6d84a49b492e28918a324264238bf0ea6ee8536a665e276bf4c",
           "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
           "requirement_ref": "requirement:machine-policy-decision",
           "verdict": "UNSATISFIED",
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "lv3BUuIWMWwAIQgGHJ3ZfkG9kx20PODDBsGaLuaFNQjkui50IggYzQw5qFdHXp7KQ2oZwrkhq0ixG3GtyPxWAA"
+            "value": "lwGZYjqrWUuQycxxeVIDfr301JEaj0XvYD20h4heb4zB8Vg-_7D5E-YAPBd00dzaPxA_7DGZiGlO_CKbmWfKBg"
           }
         }
       },
@@ -365,9 +365,9 @@
           "evaluator": {
             "id": "rp:emilia:ccs-wang-draft08",
             "key_id": "crossing-lab:self-test",
-            "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
+            "pinned_config_digest": "sha256:3d60f6e8454ae64c3266f512ed6c39edcc54a69c6a41e91fad7daa32851639e6"
           },
-          "evidence_digest": "sha256:ef30ce5cbb347e91216a40bda7ffc21498b19d194c4b68a76a9aca18b039ab9d",
+          "evidence_digest": "sha256:9f0cc2866407d5eca535c9cfdb75d113765eac0ea9c1396aa80e3a812e3b67cf",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -393,7 +393,7 @@
               "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
               "mapping": "MATCH",
               "native_verification": "VERIFIED",
-              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_digest": "sha256:e0f8b53e13327fbbf7800b62941c96ee598d5edf265d143b7dc4608ee1ba0716",
               "profile_id": "ccs-draft08-v13-tool-action",
               "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
               "reasons": [
@@ -413,14 +413,14 @@
           "reasons": [
             "status_stale"
           ],
-          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "registry_digest": "sha256:4537a51398b4b6d84a49b492e28918a324264238bf0ea6ee8536a665e276bf4c",
           "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
           "requirement_ref": "requirement:machine-policy-decision",
           "verdict": "INDETERMINATE",
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "fgUx9Y18E2bSkme3A-G196fuIv9QATz_Gh7acR4vq9Hlg__gMbRZ4rC1o3xiceh86A43VH20euo34l5sQwluBg"
+            "value": "UR_v7UFf5A679oJGD4tC7pHY_XhJuKXpvgZKdzATf0bZ7oYShy1A5KFjWYbqtTPNytAPnFwWwfwXvYmZn_UwCg"
           }
         }
       },
@@ -463,9 +463,9 @@
           "evaluator": {
             "id": "rp:emilia:ccs-wang-draft08",
             "key_id": "crossing-lab:self-test",
-            "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
+            "pinned_config_digest": "sha256:3d60f6e8454ae64c3266f512ed6c39edcc54a69c6a41e91fad7daa32851639e6"
           },
-          "evidence_digest": "sha256:e4b144d44ac8350db6a0e3e50cb36eb54069e38ff4ab079606f90d53b964eab3",
+          "evidence_digest": "sha256:ff870b75fa679282f7baf61dffc6096e76c6ff71e62e1d4e7396eddc7e3d960a",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -491,7 +491,7 @@
               "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
               "mapping": "MATCH",
               "native_verification": "VERIFIED",
-              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_digest": "sha256:e0f8b53e13327fbbf7800b62941c96ee598d5edf265d143b7dc4608ee1ba0716",
               "profile_id": "ccs-draft08-v13-tool-action",
               "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
               "reasons": [
@@ -511,14 +511,14 @@
           "reasons": [
             "status_unavailable"
           ],
-          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "registry_digest": "sha256:4537a51398b4b6d84a49b492e28918a324264238bf0ea6ee8536a665e276bf4c",
           "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
           "requirement_ref": "requirement:machine-policy-decision",
           "verdict": "INDETERMINATE",
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "xsD0uITqjrAUjZgS3lD4V7xmxex0S3bSkB-3tBKCP7vQWEeTpKONOWC_evowtxCJ1AkSmgLozL4odN8lHkatDw"
+            "value": "BK5JHBC0BLVupBBeSiJiOW4COZt09v2qUadj16cJuwwlvemAtXm8ycDNLhNSsOVOQwNSyrcTbfZOeNg18pKeCw"
           }
         }
       },
@@ -559,9 +559,9 @@
           "evaluator": {
             "id": "rp:emilia:ccs-wang-draft08",
             "key_id": "crossing-lab:self-test",
-            "pinned_config_digest": "sha256:f1a0385c424fcd7b17398f01afcf58cad1ef0c4a2e9405556e0694cf5176eba7"
+            "pinned_config_digest": "sha256:3d60f6e8454ae64c3266f512ed6c39edcc54a69c6a41e91fad7daa32851639e6"
           },
-          "evidence_digest": "sha256:52cd0574f1c1e748eae48445595df821393a0bf539cc91e599d8b440b3711a0b",
+          "evidence_digest": "sha256:29ed9954ac5e4e87f73fce9b6aea53adb1220fc5b69abd200c67f43364ab01f5",
           "executor_id": "executor:crossing-lab",
           "initiator_id": "agent:ccs-wang-public-vector",
           "legs": [
@@ -587,7 +587,7 @@
               "mapper_id": "mapper:ccs-draft08-v1.3-tool-action-v1",
               "mapping": "MATCH",
               "native_verification": "VERIFIED",
-              "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381",
+              "profile_digest": "sha256:e0f8b53e13327fbbf7800b62941c96ee598d5edf265d143b7dc4608ee1ba0716",
               "profile_id": "ccs-draft08-v13-tool-action",
               "profile_version": "AEB-CCS-DRAFT08-V1.3-TOOL-ACTION-MAPPING-v1",
               "reasons": [],
@@ -603,14 +603,14 @@
           ],
           "operation_id": "operation:ccs-wang-draft08:allow-live-sum",
           "reasons": [],
-          "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c",
+          "registry_digest": "sha256:4537a51398b4b6d84a49b492e28918a324264238bf0ea6ee8536a665e276bf4c",
           "requirement_digest": "sha256:f8bc1c79e33ae22a899c6fabf000bcd26f30db23a388f9b478952f357a78f0be",
           "requirement_ref": "requirement:machine-policy-decision",
           "verdict": "SATISFIED",
           "signature": {
             "alg": "Ed25519",
             "key_id": "crossing-lab:self-test",
-            "value": "MSfYXMoytCkfwT4NOUDhSYfzWEFn_u_nWK3X8ucUUTkVUY5hD9Rm4Xr4W81NQ0u3Uce3GT5Eg8S1iV0KIpDDAg"
+            "value": "X0eeNAbIf0do4wcLrM3XKUBX9sfxMwl_5jHF5B4Pnj1C-HBUDg67ceD4gKRJm_bQTBNKAy-rpZCIelCsoLosBw"
           }
         }
       }
@@ -661,7 +661,7 @@
       "native_specification_correctness",
       "native_protocol_equivalence"
     ],
-    "report_digest": "sha256:e6c6e4d9d7acea567791100ad59cc386ed7a877d8e635950189a379c980d39d5"
+    "report_digest": "sha256:10a6d3cebbfb597ca6050a42ab0038550062e9a28e3faa789f0a2e670a5b9110"
   },
   "checks": [
     {
@@ -1050,5 +1050,5 @@
     "A second runner reproduces the pinned report.",
     "One real system installs the profile beside its CCS verifier and Gate deployment."
   ],
-  "report_digest": "sha256:efe36d54d5379ee71c8270cb941e6f50d940a611862bf9d13030524001a225c8"
+  "report_digest": "sha256:73e381103d94bfe861aad8f8240fb49ee9e724785a2dac418e84bfd64225ada7"
 }

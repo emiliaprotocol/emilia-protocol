@@ -10,7 +10,7 @@ const NOW = '2026-07-22T12:00:00Z';
 const CAID = `caid:1:payment.release.1:jcs-sha256:${'A'.repeat(43)}`;
 function entry(id, kind, definition) {
     const value = { kind, version: '1', status: 'active', definition };
-    value.definition_digest = registryEntryDigest(id, value);
+    value.registry_entry_sha256 = registryEntryDigest(id, value);
     return value;
 }
 const harness = createEg1Harness({ now: () => Date.parse(NOW) });

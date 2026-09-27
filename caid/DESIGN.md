@@ -1,343 +1,55 @@
-# CAID — Canonical Action IDentifier (v1 normative design)
+# CAID design: where the rules live
 
-Date: 2026-09-26. Author: EMILIA Protocol maintainers.
-This file is the normative core. Every implementation, vector, draft, and
-binding in this directory conforms to THIS file. Change it here first.
+This file is no longer normative. The normative text of CAID is the
+Internet-Draft `draft-schrock-canonical-action-identifier` (revision -04,
+staged at `../standards/staged/NEXT-CAID-04/`; the posted -03 is at
+`../standards/posted/`). Where this directory and the draft disagree, the
+draft wins and this directory has a bug.
 
-## What this is, in one paragraph
+Everything else here is derived from the draft or governed by it:
 
-Artifacts for permits, receipts, outcome attestations, delegation chains,
-mandates, consent evidence, and insurance frequently reference "the action"
-using format-local content or digests. CAID defines one interoperable form: a typed action object, a
-canonicalization+digest suite, and a compact identifier string, plus a
-registry of action types with REQUIRED material fields. It carries zero trust
-semantics. It is not authorization, identity, or proof of execution. It is a
-join key: matching CAIDs commit to matching canonical typed content under the
-selected suite and pinned type definition, while each artifact still verifies
-in its own trust boundary.
+| What | Where | Status |
+| --- | --- | --- |
+| Grammar (identifier, digest syntax, field types, code formats, field names, JSON Pointer, reasons) | `spec/caid.abnf` | Derived: the draft's Appendix A carries it verbatim (`scripts/check-caid-04.mjs` compares them) |
+| Limits, reason codes and phase ranks, field-type member lists, definition projection, verification details, mapping closed sets | `spec/core.json` | Derived: machine-read data, no prose rules |
+| Constants compiled into the JavaScript, Python and Go ports and the vendored Verify copy | `spec/gen.mjs` (`--write`, `--check`) | Generated from the two files above and `registry/suites.json` |
+| Proof that every generated matcher equals the grammar and is linear-time safe | `spec/abnf-check.mjs` | Dev-time check |
+| Reference validator used by the registry check | `spec/reference.mjs` | Dev-time tooling, not a port |
+| Action types, suites, value sets, frozen registry versions, definition digests | `registry/` | Governed by `registry/GOVERNANCE.md` |
+| Reference implementations | `impl/js`, `impl/python`, `impl/go` | Conform to the draft |
+| Conformance corpora | `conformance/`, `interop/` | Shared by every port |
 
-## Design goals (the adoption physics)
+## Former sections of this file
 
-1. UNILATERAL VALUE FIRST: adopting CAID hardens the adopter's OWN artifact
-   against the "digest over {action:'wire'} binds nothing" failure. The
-   material-fields validation is the selfish reason to adopt before any
-   network exists.
-2. ZERO THREAT SURFACE: no assurance classes, no receipts, no verification
-   semantics beyond digest recomputation. Nothing in the core that a vendor
-   would perceive as a competitor's trust model.
-3. COSTLESS ADOPTION: one field in the object, one string in the artifact,
-   one lookup table. A conforming issuer is ~200 lines in any language.
-4. NEUTRAL HOME: registry data CC0, code Apache-2.0, governance doc commits
-   to transition to IANA or a neutral SDO on adoption.
-5. WORKS INSIDE A WALLED GARDEN DAY ONE: the type-definition SCHEMA is
-   normative; the public registry is one source of definitions; a private
-   deployment can carry pinned local definitions in the same format. (This defuses
-   the "single-winner world doesn't need joins" attack: CAID is useful with
-   N=1, invaluable with N>=2.)
+Earlier revisions of this file carried the normative core under numbered
+sections that other documents still cite. Each now lives in the draft:
 
-## 1. The action object
+| Former section | Draft section |
+| --- | --- |
+| Design goals, "What this is" | Introduction |
+| 1. The action object | Data Model and JSON Input (the action object, data model, numbers, JSON text input, host values) |
+| 2. Suites and the identifier | Suites and the Identifier; Appendix A |
+| 3. Action types and the registry | Action Types and the Registry (type definitions, definition conformance and digest, field types, code formats, enum resolution); `registry/GOVERNANCE.md` |
+| 4. Computation and verification | Computation; Verification; Appendix B (reason codes) |
+| 5. Action-Mapping Profile | Action-Mapping Profile |
+| 6. What CAID is NOT | What a CAID Is Not |
+| 7. Security considerations | Security Considerations; Privacy Considerations |
+| 8. Naming note | This file, below |
+| 9. Package layout | The table above |
+| 10. Publication boundary | This file, below |
 
-A JSON object (or CBOR map under a cbor suite) that:
+The text of the former sections is in the repository history of this file.
 
-- MUST contain `action_type`: a registered or locally-defined versioned type
-  name (see section 3). The type is INSIDE the digested content, so the
-  identifier's type cannot be swapped without changing the digest.
-- MUST contain every REQUIRED material field of that type, encoded per the
-  type definition's field types (section 4).
-- MAY contain additional fields. Extra fields are covered by the digest.
-- MUST NOT encode money or quantity values as JSON numbers where the type
-  definition declares them `amount-string` (float/precision malleability).
-- Numbers follow the VALUE-BASED rule: a JSON number is accepted iff its
-  IEEE 754 double value is an integer with magnitude at most 2^53-1, and
-  it serializes as that integer in plain decimal. Literal form is
-  irrelevant ("1e3" and "2.0" are the integers 1000 and 2, exactly as
-  ECMAScript's JSON.parse sees them); fractional, NaN, infinite, and
-  out-of-range values refuse as `unsupported_number` in every conforming
-  implementation. Rationale: ECMAScript number serialization is the
-  leading cross-language canonicalization divergence; a value-based rule
-  is the only one all languages can implement identically, and fractional
-  quantities are strings by design.
+## Naming note
 
-The object identifies material action content. Pre-execution
-artifacts (permits, challenges, receipts) and post-execution artifacts
-(outcome attestations, audit records, reliance events) all reference the
-same object by CAID.
+"CAID" was chosen over "CAI" deliberately: CAI collides with the Content
+Authenticity Initiative (C2PA's sister organization) in the adjacent
+provenance space. CAID's known collision (a Chinese advertising identifier)
+is remote from this domain. Pronounce "kay-eye-dee" or "kade".
 
-## 2. Suites and the identifier
-
-Suite registry (registry/suites.json):
-
-- `jcs-sha256`  — RFC 8785 JSON Canonicalization Scheme -> SHA-256 (RFC 6234).
-  REQUIRED for conforming implementations.
-- `cbor-sha256` — RFC 8949 section 4.2 core deterministic encoding -> SHA-256.
-  DEFINED in v1; implementations MAY support it. (Reference impls here ship
-  jcs-sha256 only; say so honestly everywhere.)
-
-Digest: `digest = SHA-256(canonical_bytes(action_object))`. NO domain
-separation prefix, deliberately: the object is self-typed via `action_type`,
-and the whole point is that rival artifacts can adopt the identical digest
-they may already compute over canonical bytes. Conforming verifiers MUST
-check the in-object `action_type` equals the CAID's type; that check is
-where cross-context reinterpretation dies, not in a byte prefix. (Security
-considerations must state this trade explicitly.)
-
-String form (strict ABNF in the I-D):
-
-    caid:1:<action_type>:<suite>:<digest-b64url>
-
-- `1` is the CAID version.
-- `<action_type>` lowercase dotted segments, final segment is the integer
-  type version, e.g. `payment.release.1`.
-- `<suite>` from the suite registry, lowercase. The grammar is the I-D's
-  `suite = lower-char *( lower-char / DIGIT / "-" )`: a lowercase letter
-  first, then lowercase letters, digits, or hyphens.
-- `<digest-b64url>` RFC 4648 section 5, unpadded, case-sensitive. For both
-  registered suites it is exactly 43 characters encoding 32 octets; the two
-  low bits of the final character are unused and MUST be zero, so it ends in
-  one of `A E I M Q U Y c g k o s w 0 4 8`.
-- Parsers are STRICT: refuse padding, refuse uppercase in type/suite, refuse
-  empty segments, refuse anything after the digest, and refuse a digest that
-  does not decode to exactly the suite's digest length or whose final
-  character sets an unused bit. Unknown version or suite is a refusal
-  (`malformed_caid`), never a guess. A suite is unknown when it is not in the
-  suite registry; a parser cannot check the digest of a suite it does not
-  know. A registered suite that an implementation does not implement (the
-  reference implementations' `cbor-sha256`) still parses; compute and verify
-  report it as `unknown_suite`.
-
-Equality: two CAIDs are equal iff the strings are byte-equal. Cross-suite
-equivalence is OUT OF SCOPE (an artifact MAY carry multiple CAIDs, one per
-suite it computed). CAID equality is content equality, not semantic
-equality: "1.50" and "1.5" are different digests; per-field normalization
-guidance lives in the type definition's `digest_notes`, and normalization is
-the ISSUER's job. Cross-domain use also requires both sides to pin the same
-immutable type definition or registry snapshot; a local name collision is
-not interoperability.
-
-## 3. Action types and the registry
-
-- Registered types live in registry/action-types.json, one entry per
-  versioned type. Grammar: lowercase dotted segments, final integer version.
-- There is NO reserved private-use syntax. The distinction is presence: a
-  type is either in a definition source the verifier is configured with
-  (the public registry, or a locally pinned definitions file in the SAME schema) or
-  it is unknown. Unknown types are a refusal for conforming issuers and a
-  policy decision for verifiers (accept-unregistered is a verifier knob,
-  default off).
-- Versioning: validation semantics are immutable within an active version;
-  every field, normalization, or semantic change is a NEW version (`.2`).
-- Type entry schema (normative for local definitions too):
-
-```json
-{
-  "action_type": "payment.release.1",
-  "status": "active",
-  "risk_class": "irreversible-financial",
-  "summary": "Release of a payment instruction to settlement.",
-  "required_fields": [
-    {"name": "amount", "type": "amount-string",
-     "notes": "decimal string, no exponent, no leading '+', no thousands separators"},
-    {"name": "currency", "type": "enum",
-     "values_ref": "ISO 4217 alpha-3",
-     "values_snapshot": "SIX ISO 4217 List One published 2026-09-17",
-     "values_sha256": "sha256:27f824317e9f271b956123fb77608daece5106e1ee8253a17769390855ade270"},
-    {"name": "beneficiary_account", "type": "digest",
-     "notes": "sha256:<lowercase hex> of the normalized account identifier; normalization stated by the issuing system of record"},
-    {"name": "payment_instruction_id", "type": "string"}
-  ],
-  "optional_fields": [{"name": "memo", "type": "string"}],
-  "digest_notes": "amounts never renormalized after signing; the system of record's form is canonical",
-  "references": []
-}
-```
-
-Field types (closed set v1): `string`, `amount-string`, `digest`
-(`sha256:` + lowercase hex), `enum`, `timestamp` (RFC 3339 UTC `Z`),
-`integer` (JSON integer, for counts only, never money), `boolean`,
-`object`, `array`.
-
-Every grammar in this document, for the identifier's segments and for these
-field types, matches the whole string: a value followed by any further
-character, including a final line feed, does not match. An `integer` field
-holds a JSON number whose IEEE 754 double value is a finite integer, whatever
-its literal form (`12`, `12.0`, and `1.2e1` are all the integer 12). A finite
-integer beyond 2^53-1 is still an integer, so it is not `mistyped_field`;
-step 6 refuses it once, as `unsupported_number`, exactly as it would in an
-undeclared field. A literal that overflows the double range is infinite, not
-an integer, and refuses as both.
-
-An `enum` is a closed value set, not an unconstrained string with a
-documentation label. A member is present when its key is present: `values`
-or `values_ref` written as `null` is present and malformed, never the same
-as an absent member. An enum MUST take exactly one of these forms:
-
-- inline array: a non-empty, duplicate-free array of non-empty strings in
-  `values`, and no `values_ref` member;
-- compact inline: a `values_ref` string beginning `inline:`. The text after
-  that prefix is split on every `|`, and each member is trimmed of leading
-  and trailing U+0020 SPACE characters only (no other whitespace or control
-  character is trimmed). The resulting members MUST be non-empty and
-  duplicate-free. A `values` member MAY accompany it only when it equals the
-  parsed list exactly, in order; or
-- external: any other non-empty `values_ref` string together with non-empty
-  `values_snapshot` and `values_sha256` (`sha256:` plus lowercase hex). The
-  pinned array is the definition's own `values` member when present, and
-  otherwise a locally supplied snapshot whose `values_ref`,
-  `values_snapshot`, and `values_sha256` all match exactly. An embedded
-  `values` member is never replaced by a supplied snapshot. The issuer or
-  verifier MUST verify that the array is a non-empty, duplicate-free array
-  of non-empty strings and that `values_sha256` is SHA-256 over its RFC 8785
-  canonical JSON encoding.
-
-A definition in none of these forms, and a bare, unresolved, or
-digest-mismatched external `values_ref`, is not a value constraint and MUST
-fail closed as `mistyped_field:<name>` whenever the field is present. Resolution is
-local and offline; implementations MUST NOT fetch a mutable URL while
-computing or verifying a CAID. Changing the pinned array changes validation
-semantics and therefore requires a new action-type version. A registry
-snapshot may correct the machine-readable pin for an already named immutable
-set only by incrementing the registry version and documenting the migration.
-
-An `amount-string` is a JSON string whose whole value, as parsed from JSON,
-matches this RFC 5234 ABNF (`DIGIT` is the core rule; the staged -04 draft
-carries the same rule):
-
-    amount-string = [ "-" ] int-part [ "." frac-part ]
-    int-part      = "0" / ( %x31-39 *DIGIT )  ; no leading zero
-    frac-part     = 1*DIGIT
-
-No exponent, leading `+`, whitespace, or thousands separator, and no leading
-zero in the integer part: `0`, `0.50`, `-0`, and `-0.50` match; `01.5`,
-`00`, `+1`, `1e3`, `.5`, `1.`, and `1,000` do not. The rule is lexical and
-never normalizes (`0.50` and `0.5` are different digests). A field's `notes`
-guide issuers and never change validation, so a note that restates part of
-this grammar, such as the `amount` note above, neither narrows nor widens it.
-
-## 4. Computation and verification (closed refusal set)
-
-`computeCaid(actionObject, {suite, definitions, enumSnapshots})` — conforming issuer:
-1. `action_type` present and grammar-valid, else `invalid_action_type`.
-2. Type resolvable in definitions, else `unknown_action_type`.
-3. Every required field present as an own member of the object, else
-   `missing_material_field:<name>`.
-4. Every present declared field type-valid, else `mistyped_field:<name>`,
-   except that an `amount-string` field holding a string that fails the
-   amount-string grammar is `invalid_amount:<name>` (a non-string value there
-   stays `mistyped_field:<name>`).
-5. Suite registered and implemented here, else `unknown_suite`.
-6. No non-integer number anywhere in the object, else `unsupported_number`.
-   No string or member name anywhere in the object containing an unpaired
-   surrogate code point, else `unsupported_value`: such a string is not a
-   sequence of Unicode scalar values, has no UTF-8 encoding, and RFC 8785
-   section 3.2.2.2 requires a JCS implementation to refuse it. A raw JSON
-   parser feeding CAID computation MUST NOT replace an unpaired surrogate
-   escape with U+FFFD (that silently changes the identified content), and
-   MUST reject duplicate member names.
-7. Canonicalize, digest, emit `{caid, digest}`.
-Any failure returns `{refusals:[...]}` and NO caid. Fail-closed, never throw
-on junk input.
-
-`verifyCaid(actionObject, caidString, {definitions, enumSnapshots})` — conforming verifier:
-1. Strict-parse the string, else `malformed_caid`.
-2. In-object `action_type` equals CAID type, else `action_type_mismatch`.
-3. Recompute under the CAID's suite, else `unknown_suite` when this
-   implementation does not implement that registered suite; digest equal,
-   else `digest_mismatch`.
-4. Run the SAME material validation as compute; a CAID whose object fails
-   validation is `invalid_object`, not merely mismatched.
-Result: `{valid: bool, reasons: [...]}`. Same inputs, same reasons, same
-order, replayable offline by any third party.
-
-## 5. Action-Mapping Profile
-
-Native protocols usually cannot emit the same bytes. A mapping profile is a
-relying-party-pinned, hash-identified projection from one exact source media
-type, schema, and version into a registered CAID action type. It maps every
-target material field using a closed transform set (`copy`, `sha256-utf8`,
-or `sha256-jcs`) and declares `no-material-field-loss`. A source artifact
-MUST first verify under its native specification and trust anchors; mapping
-does not verify signatures, authority, or provenance. The mapping API requires
-an affirmative `native_verified` precondition supplied by a trusted adapter;
-that signal is never read from presenter-controlled wire content. Missing or
-negative native verification produces `INDETERMINATE`.
-
-The v1 profile object, its `source_format`, and each rule are closed shapes.
-Unknown members are refused. This prevents a misspelled or future policy
-member from being hashed into a profile while the mapper silently ignores it.
-
-Comparison returns exactly one of:
-
-- `EQUIVALENT_UNDER_PROFILE`: both independently verified sources map to the
-  same CAID under the exact profiles pinned by the relying party.
-- `NOT_EQUIVALENT`: both mappings completed, but the material projections
-  differ.
-- `INDETERMINATE`: native verification did not succeed, either mapping cannot be completed, the profile is not
-  pinned, a source descriptor differs, or any material field is missing.
-
-The result is content correlation only. It never authorizes an action. The
-profile author is responsible for identifying every material source field;
-that policy assumption is explicit and reviewable rather than inferred by
-the mapping engine.
-
-Every successful per-source result carries the source-object digest, pinned
-profile digest, projected action, resulting CAID, and suite. A persisted
-comparison keeps both per-source results; a bare verdict cannot reproduce
-which source objects and profiles produced it.
-
-## 6. What CAID is NOT (goes in every doc, verbatim spirit)
-
-CAID commits an identifier to canonical typed content. It does not
-prove the action was authorized, executed, safe, or wise. It confers no
-trust, names no humans, and replaces no verifier: every artifact that
-carries a CAID still verifies inside its own trust boundary under its own
-spec. Composition joins on the identifier; it never ingests another
-verifier's evidence into its own trust boundary.
-
-## 7. Security considerations (minimum set for the I-D)
-
-- Digest strength: second-preimage resistance of SHA-256; suite agility is
-  the migration path (new suite, not in-place change).
-- No domain separation: rationale above; verifiers MUST enforce the
-  action_type check; skipping it re-opens cross-context reinterpretation.
-- PII: a plain digest keeps a raw identifier out of the object but does not
-  make a low-entropy account or patient identifier anonymous. Dictionary
-  attack and cross-record correlation remain possible; prefer high-entropy
-  opaque references or a documented privacy-preserving commitment scheme.
-- Canonicalization malleability: amounts as strings; registry notes; JCS
-  and deterministic CBOR are the only permitted forms.
-- A CAID is not a capability: possession proves nothing; treat as public.
-- The core never infers semantic equality. Mapping profiles provide only
-  profile-bounded material equivalence and MUST abstain on loss or ambiguity.
-- Type definitions are immutable within a version; cross-domain verifiers
-  pin the definition source or registry snapshot.
-- Mutable enum sources create time-of-check drift. External enum values are
-  used only through an exact snapshot label and verified digest; missing,
-  unresolved, or mismatched snapshots fail closed without network access.
-
-## 8. Naming note
-
-"CAID" chosen over "CAI" deliberately: CAI collides with the Content
-Authenticity Initiative (C2PA's sister org) in the adjacent provenance
-space. CAID's known collision (a Chinese advertising identifier) is remote
-from this domain. Pronounce "kay-eye-dee" or "kade".
-
-## 9. Package layout (this directory)
-
-- DESIGN.md (this file, normative core)
-- README.md (adoption-facing: "the missing join key; works with whatever you already issue")
-- ../standards/posted/draft-schrock-canonical-action-identifier-03.xml
-- registry/action-types.json, registry/suites.json, registry/GOVERNANCE.md,
-  registry/value-sets/ (immutable external enum snapshots)
-- impl/js/caid.mjs, impl/python/caid.py, impl/go/caid.go (+ per-impl vector runners)
-- conformance/vectors.json and mapping-vectors.json (shared; all impls must agree; vectors carry
-  their own INLINE type definitions so conformance never depends on the
-  public registry's contents)
-- bindings/*.md (one-page grounded composition notes per target spec; PR-ready text, NOT submitted)
-- STATUS.md (verified implementation and filing status)
-
-## 10. Publication boundary
+## Publication boundary
 
 The core, registry, implementations, vectors, and draft are intended as open
-infrastructure. A binding note is not a claim that the named protocol has
-adopted CAID; external submissions and announcements require their own
-review and approval.
+infrastructure. A binding note in `bindings/` is not a claim that the named
+protocol has adopted CAID; external submissions and announcements require
+their own review and approval.

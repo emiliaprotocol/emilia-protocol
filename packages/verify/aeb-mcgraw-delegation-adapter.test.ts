@@ -375,7 +375,7 @@ test('a McGraw leg reaches ACCEPTED and AUTHORIZED through evaluateAebEvidence',
   pin.config_digest = adapterPinDigest(MCGRAW_BUDGET_AEB_ADAPTER_ID, pin);
   const entry = (id: string, kind: AebRegistryEntry['kind'], definition: unknown): AebRegistryEntry => {
     const value = { kind, version: '1', status: 'active' as const, definition } as AebRegistryEntry;
-    value.definition_digest = registryEntryDigest(id, value);
+    value.registry_entry_sha256 = registryEntryDigest(id, value);
     return value;
   };
   const registry = {

@@ -20,15 +20,28 @@
 
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { canonicalize } from '../impl/js/caid.mjs';
+import { canonicalize, decodeCaidDocument } from '../impl/js/caid.mjs';
 
 const REGISTRY_URL = new URL('./action-types.json', import.meta.url);
 const SNAPSHOT_PATH = /^value-sets\/[A-Za-z0-9][A-Za-z0-9._-]*\.json$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 
+/**
+ * Reads a registry document under the strict JSON text rules of -04
+ * Section 2.4 (without the size limit): a registry or snapshot that fails
+ * them is never used.
+ *
+ * @param {URL} url
+ */
+export function readStrictRegistryDocument(url) {
+  const decoded = decodeCaidDocument(readFileSync(url));
+  if (!decoded.ok) throw new Error(`CAID registry document ${url.pathname} is not strict JSON text (-04 Section 2.4)`);
+  return decoded.value;
+}
+
 /** @param {string} relativePath */
 function readRegistrySnapshot(relativePath) {
-  return JSON.parse(readFileSync(new URL(relativePath, REGISTRY_URL), 'utf8'));
+  return readStrictRegistryDocument(new URL(relativePath, REGISTRY_URL));
 }
 
 /**
@@ -55,7 +68,7 @@ export function jcsSha256(value) {
  * @returns {Array<Record<string, any>>}
  */
 export function loadRegistryEnumSnapshots(
-  registry = JSON.parse(readFileSync(REGISTRY_URL, 'utf8')),
+  registry = readStrictRegistryDocument(REGISTRY_URL),
   { readSnapshot = readRegistrySnapshot } = {},
 ) {
   const entries = registry?.enum_snapshot_files;
@@ -89,23 +102,43 @@ export function loadRegistryEnumSnapshots(
   return /** @type {Array<Record<string, any>>} */ (Object.freeze(snapshots));
 }
 
-const CHECKED_IN_REGISTRY = JSON.parse(readFileSync(REGISTRY_URL, 'utf8'));
+const CHECKED_IN_REGISTRY = readStrictRegistryDocument(REGISTRY_URL);
 
 /** Snapshots pinned by the checked-in registry, loaded once. */
 export const REGISTRY_ENUM_SNAPSHOTS = loadRegistryEnumSnapshots(CHECKED_IN_REGISTRY);
 
 /**
- * The single active checked-in registry definition for an action type. Code
- * that means a registered type uses this definition with
- * REGISTRY_ENUM_SNAPSHOTS instead of a same-name local copy.
+ * The checked-in registry definition for an action type, whatever its
+ * status. Status never affects computation or verification: a deprecated
+ * type still resolves, computes and verifies (draft-schrock-canonical-action-
+ * identifier-04, Section 4), so verifiers and replay tooling use this
+ * resolver. Throws only when the registry has no such type.
+ *
+ * @param {string} actionType
+ * @returns {Record<string, any>}
+ */
+export function registryDefinition(actionType) {
+  const definition = CHECKED_IN_REGISTRY.types.find(
+    (/** @type {any} */ entry) => entry.action_type === actionType,
+  );
+  if (!definition) throw new Error(`CAID registry has no ${actionType}`);
+  return definition;
+}
+
+/**
+ * The checked-in registry definition for an action type while it is active.
+ * Issuers that mean a registered type use this definition with
+ * REGISTRY_ENUM_SNAPSHOTS instead of a same-name local copy; it throws for a
+ * deprecated type so an issuer moves to the successor. It is never a gate on
+ * verifying an existing CAID (use registryDefinition).
  *
  * @param {string} actionType
  * @returns {Record<string, any>}
  */
 export function activeRegistryDefinition(actionType) {
-  const definition = CHECKED_IN_REGISTRY.types.find(
-    (/** @type {any} */ entry) => entry.action_type === actionType && entry.status === 'active',
-  );
-  if (!definition) throw new Error(`CAID registry has no active ${actionType}`);
+  const definition = registryDefinition(actionType);
+  if (definition.status !== 'active') {
+    throw new Error(`CAID registry type ${actionType} is ${definition.status}${definition.superseded_by ? `; use ${definition.superseded_by}` : ''}`);
+  }
   return definition;
 }

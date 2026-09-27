@@ -116,10 +116,11 @@ function validateProfilePins() {
     const definition = definitions.find(
       (entry) => entry.action_type === mapping.caid_action_type,
     );
+    // Status never gates resolution: a deprecated type still resolves,
+    // computes and verifies (draft-schrock-canonical-action-identifier-04).
+    // The pinned registry bytes fix which definition each mapping names.
     if (!definition) {
       problems.push(`missing CAID type ${mapping.caid_action_type}`);
-    } else if (definition.status !== "active") {
-      problems.push(`CAID type is not active: ${mapping.caid_action_type}`);
     }
   }
   for (const [scopeFamily, actionType] of EXPECTED_MAPPINGS) {

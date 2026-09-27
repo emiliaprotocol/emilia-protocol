@@ -13,7 +13,7 @@
 import crypto from 'node:crypto';
 // @ts-expect-error -- governed JavaScript implementation, runtime checked.
 import { computeCaid } from '../vendor/caid.mjs';
-import { digestAeb, } from './aeb-adapter-contract.js';
+import { digestAeb, caidMappingFailureReasons, } from './aeb-adapter-contract.js';
 import { strictJsonGate } from './strict-json.js';
 export const OAUTH_TXN_CHALLENGE_DRAFT_REVISION = 'draft-rosomakho-oauth-txn-challenge-00';
 export const OAUTH_TXN_CHALLENGE_AEB_ADAPTER_ID = 'native:oauth-transaction-challenge';
@@ -184,7 +184,8 @@ function verifyJwt(token, root, typ) {
     const headerText = decodeUtf8(parts[0]);
     const claimsText = decodeUtf8(parts[1]);
     if (headerText === null || claimsText === null
-        || !strictJsonGate(headerText).ok || !strictJsonGate(claimsText).ok)
+        || !strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+        || !strictJsonGate(claimsText, { refuseNoncharacters: true }).ok)
         return null;
     let header;
     let claims;
@@ -408,7 +409,7 @@ export function createOAuthTransactionChallengeActionDefinition(actionType, requ
         projection: 'oauth-transaction-exact-action-v1', action_type: actionType, suite: 'jcs-sha256',
         definitions: [{
                 action_type: actionType,
-                required_fields: [{ name: 'action_type', type: 'string' }, { name: 'oauth_transaction', type: 'object' }],
+                required_fields: [{ name: 'oauth_transaction', type: 'object' }],
                 optional_fields: [],
             }],
     };
@@ -450,7 +451,7 @@ function mapAction(input, pins) {
     }
     if (!isRecord(computed) || typeof computed.caid !== 'string'
         || computed.digest !== actionDigest || typeof computed.digest !== 'string') {
-        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
     }
     return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
 }

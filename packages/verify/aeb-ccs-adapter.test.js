@@ -684,7 +684,7 @@ test('unknown post-effect fields are rejected instead of becoming execution evid
 });
 function registryEntry(id, kind, definition) {
     const entry = { kind, version: '1', status: 'active', definition };
-    entry.definition_digest = registryEntryDigest(id, entry);
+    entry.registry_entry_sha256 = registryEntryDigest(id, entry);
     return entry;
 }
 test('a fresh CCS receipt cannot replay the same execution authority after an indeterminate attempt', () => {

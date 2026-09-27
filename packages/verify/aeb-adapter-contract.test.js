@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import test from 'node:test';
-import { AEB_EVALUATION_DOMAIN, AEB_EVALUATION_V2_VERSION, AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION, InMemoryAebConsumptionStore, aebReservationKey, adapterPinDigest, canonicalizeAeb, digestAeb, digestAebTyped, evaluateAebEvidence, issueAebEvaluationV2FromV1, mappingProfileDigest, registryEntryDigest, unifiedRegistryDigest, authorizeAebExecution, authorizeAebExecutionDurable, createAebNativeVerificationAttestationAdapter, reconcileAebExecution, reconcileAebExecutionDurable, signAebNativeVerificationAttestation, upgradeAebEvaluationV1ToV2, verifyAebEvaluation, verifyAebEvaluationV2, } from './aeb-adapter-contract.js';
+import { AEB_EVALUATION_DOMAIN, AEB_EVALUATION_V2_VERSION, AEB_NATIVE_VERIFICATION_ATTESTATION_VERSION, InMemoryAebConsumptionStore, aebReservationKey, adapterPinDigest, canonicalizeAeb, digestAeb, digestAebTyped, evaluateAebEvidence, issueAebEvaluationV2FromV1, mappingProfileDigest, caidMappingFailureReasons, registryEntryDigest, registryEntryPin, unifiedRegistryDigest, authorizeAebExecution, authorizeAebExecutionDurable, createAebNativeVerificationAttestationAdapter, reconcileAebExecution, reconcileAebExecutionDurable, signAebNativeVerificationAttestation, upgradeAebEvaluationV1ToV2, verifyAebEvaluation, verifyAebEvaluationV2, } from './aeb-adapter-contract.js';
+import { computeCaid } from './vendor/caid.mjs';
 const vectors = JSON.parse(fs.readFileSync(new URL('../../conformance/vectors/aeb-adapter.v1.json', import.meta.url), 'utf8'));
 const CAID = `caid:1:order.purchase.1:jcs-sha256:${'A'.repeat(43)}`;
 const OTHER_CAID = `caid:1:order.purchase.1:jcs-sha256:${'B'.repeat(43)}`;
@@ -169,7 +170,7 @@ function makeAdapter() {
 }
 function registryEntry(entryId, kind, version, definition) {
     const entry = { kind, version, status: 'active', definition };
-    entry.definition_digest = registryEntryDigest(entryId, entry);
+    entry.registry_entry_sha256 = registryEntryDigest(entryId, entry);
     return entry;
 }
 function setup(requirement = {
@@ -491,6 +492,46 @@ test('AEB evaluates and re-derives a multi-leg CAID join', () => {
     assert.equal(result.record.authority_constraints.executor_exclusion, true);
     assert.equal(result.record.authority_constraints.one_time_consumption, true);
     assert.equal(result.record.executor_id, 'workload:executor');
+});
+test('a CAID refusal behind caid_mapping_failed is reported beside it', () => {
+    // A 5.0.0 adapter mapping profile declared a field named action_type,
+    // which CAID -04 refuses as a nonconforming definition.
+    const refused = computeCaid({ action_type: 'legacy.map.1', amount: '1' }, {
+        suite: 'jcs-sha256',
+        definitions: [{ action_type: 'legacy.map.1', required_fields: [{ name: 'action_type', type: 'string' }, { name: 'amount', type: 'string' }] }],
+    });
+    assert.deepEqual(caidMappingFailureReasons(refused), ['caid_mapping_failed', 'caid_mapping_failed:invalid_definition']);
+    assert.deepEqual(caidMappingFailureReasons(null), ['caid_mapping_failed']);
+    assert.deepEqual(caidMappingFailureReasons({ refusals: [7, 'unsupported_value'] }), ['caid_mapping_failed', 'caid_mapping_failed:unsupported_value']);
+});
+test('registry entries pin registry_entry_sha256 and still read the pre-6.0.0 definition_digest spelling', () => {
+    const current = setup();
+    const id = 'role:operator-of-record';
+    const entry = current.config.registry.entries[id];
+    assert.equal(registryEntryPin(entry), entry.registry_entry_sha256);
+    assert.equal(entry.registry_entry_sha256, registryEntryDigest(id, entry));
+    assert.equal(evaluate(current).record.verdict, 'SATISFIED');
+    // A configuration written before the rename carries the same value under
+    // the old member name; the registry digest covers whichever spelling the
+    // relying party pinned.
+    const legacy = setup();
+    for (const value of Object.values(legacy.config.registry.entries)) {
+        value.definition_digest = value.registry_entry_sha256;
+        delete value.registry_entry_sha256;
+    }
+    legacy.config.registry.registry_digest = unifiedRegistryDigest(legacy.config.registry);
+    assert.equal(registryEntryPin(legacy.config.registry.entries[id]), entry.registry_entry_sha256);
+    assert.equal(evaluate(legacy).record.verdict, 'SATISFIED');
+    // Both spellings at once, or a wrong value under either, pins nothing.
+    const both = setup();
+    both.config.registry.entries[id].definition_digest = both.config.registry.entries[id].registry_entry_sha256;
+    both.config.registry.registry_digest = unifiedRegistryDigest(both.config.registry);
+    assert.equal(registryEntryPin(both.config.registry.entries[id]), null);
+    assert.notEqual(evaluate(both).record.verdict, 'SATISFIED');
+    const drifted = setup();
+    drifted.config.registry.entries[id].registry_entry_sha256 = digestAeb('other');
+    drifted.config.registry.registry_digest = unifiedRegistryDigest(drifted.config.registry);
+    assert.notEqual(evaluate(drifted).record.verdict, 'SATISFIED');
 });
 test('execution verification requires current status, now, and exact action; default is historical', () => {
     const s = setup();
@@ -934,7 +975,7 @@ test('AEB refuses unaccepted mappers and material information loss', () => {
     profile.profile_digest = mappingProfileDigest('test:order', profile);
     const entry = lossy.config.registry.entries['mapping:test:order'];
     entry.definition = { profile_digest: profile.profile_digest };
-    entry.definition_digest = registryEntryDigest('mapping:test:order', entry);
+    entry.registry_entry_sha256 = registryEntryDigest('mapping:test:order', entry);
     lossy.config.registry.registry_digest = unifiedRegistryDigest(lossy.config.registry);
     const lossResult = evaluate(lossy);
     assert.equal(lossResult.record.verdict, 'INDETERMINATE');
@@ -1064,7 +1105,7 @@ test('AEB uses one unified registry and refuses cross-kind substitution', () => 
     assert.equal(s.config.registry.entries['extension:receipt-lifecycle'].kind, 'receipt-extension');
     const roleEntry = s.config.registry.entries['role:human-authorization'];
     roleEntry.kind = 'mapping-profile';
-    roleEntry.definition_digest = registryEntryDigest('role:human-authorization', roleEntry);
+    roleEntry.registry_entry_sha256 = registryEntryDigest('role:human-authorization', roleEntry);
     s.config.registry.registry_digest = unifiedRegistryDigest(s.config.registry);
     const result = evaluate(s);
     assert.equal(result.record.verdict, 'INDETERMINATE');

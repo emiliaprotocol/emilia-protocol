@@ -343,7 +343,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const auth = await authenticateRequest(request);
     if (auth?.error) return problem(auth.status || 401, auth.code || 'unauthorized', 'Authentication is required');
 
-    const parsed = await readLimitedJson(request, MAX_BODY_BYTES);
+    const parsed = await readLimitedJson(request, MAX_BODY_BYTES, { strictJsonText: true });
     if (!parsed.ok) return problem(parsed.status, parsed.code, parsed.detail);
     if (!isObject(parsed.value)) return problem(400, 'invalid_body', 'request body must be a JSON object');
 

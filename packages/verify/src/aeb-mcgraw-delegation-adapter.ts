@@ -22,6 +22,7 @@ import {
   type AebNativeResult,
   type AebPinnedProfile,
   type AebStatusInput,
+  caidMappingFailureReasons,
 } from './aeb-adapter-contract.js';
 
 type Obj = Record<string, unknown>;
@@ -612,7 +613,7 @@ export function createMcGrawBudgetActionDefinition(actionType: string): Obj {
     projection: 'mcgraw-budget-exact-request-v1', action_type: actionType, suite: 'jcs-sha256',
     definitions: [{
       action_type: actionType,
-      required_fields: [{ name: 'action_type', type: 'string' }, { name: 'delegation_action', type: 'object' }],
+      required_fields: [{ name: 'delegation_action', type: 'object' }],
       optional_fields: [],
     }],
   };
@@ -652,7 +653,7 @@ function mapAction(input: AebAdapterInput & { native: AebNativeResult }, pins: P
   } catch { computed = null; }
   if (!isRecord(computed) || typeof computed.caid !== 'string'
       || computed.digest !== actionDigest || typeof computed.digest !== 'string') {
-    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
   }
   return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
 }

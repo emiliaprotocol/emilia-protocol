@@ -272,7 +272,6 @@ function mappingProfile(protocol, actionType, requiredFields, registryRef = `map
 }
 function agentProfile() {
     return mappingProfile(AGENTROA_DRAFT, 'payment.transfer.1', [
-        { name: 'action_type', type: 'string' },
         { name: 'capability', type: 'string' },
         { name: 'target_service_id', type: 'string' },
         { name: 'operation', type: 'string' },
@@ -281,7 +280,6 @@ function agentProfile() {
 }
 function orprgProfile() {
     return mappingProfile(ORPRG_JSON_JCS_PROFILE, 'payment.release.1', [
-        { name: 'action_type', type: 'string' },
         { name: 'effect_type', type: 'string' },
         { name: 'interface_id', type: 'string' },
         { name: 'target_id', type: 'string' },
@@ -306,7 +304,7 @@ function nativeInput(fixture, now, status = externalStatus(now)) {
 }
 function registryEntry(id, kind, version, definition) {
     const entry = { kind, version, status: 'active', definition };
-    entry.definition_digest = registryEntryDigest(id, entry);
+    entry.registry_entry_sha256 = registryEntryDigest(id, entry);
     return entry;
 }
 function evaluateAgent(fixture, operationId, consumptionNonce) {

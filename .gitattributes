@@ -3,12 +3,20 @@
 # conformance vector file. A Windows clone with the default core.autocrlf=true
 # rewrites those files to CRLF on checkout, silently breaking the digest for any
 # external verifier (this bit a real implementer twice). Pin them to verbatim
-# bytes so every clone, on every OS, reproduces our published digests.
-conformance/vectors/** -text
-examples/external-verification/statements/** -text
+# bytes so every clone, on every OS, reproduces our published digests. The
+# verbatim lines come after the catch-all below: when several patterns match,
+# the later line wins.
 
 # Everything else: normalize to LF in the repo and on checkout.
 * text=auto eol=lf
+
+# Verbatim bytes (see the note above). The CAID history files are frozen
+# copies whose SHA-256 other files pin: registry version 4 and the version 4
+# and mapping version 1 corpora.
+conformance/vectors/** -text
+examples/external-verification/statements/** -text
+caid/registry/history/** -text
+caid/conformance/history/** -text
 
 # Source files are always reviewable as text, including cleanup commits that
 # remove accidental control bytes from an older blob.
@@ -35,6 +43,17 @@ lib/dist/** linguist-generated=true
 # (pinned by tests/verify-web-consistency.test.js).
 lib/verify-web.js linguist-vendored=true
 lib/strict-json.js linguist-vendored=true
+# CAID files written by caid/spec/gen.mjs (the port constants and the byte
+# copy of caid/impl/js/caid.mjs that Verify vendors), by the corpus builders
+# in caid/conformance/tools, and by caid/registry/check.mjs --write-digests.
+# Edit their sources; the checks fail on a hand edit.
+caid/impl/python/caid_spec.py linguist-generated=true
+caid/impl/go/spec_gen.go linguist-generated=true
+packages/verify/vendor/caid.mjs linguist-generated=true
+caid/conformance/vectors.json linguist-generated=true
+caid/conformance/grammar-vectors.json linguist-generated=true
+caid/conformance/mapping-vectors.json linguist-generated=true
+caid/registry/digests.json linguist-generated=true
 
 # BEGIN standalone-runtime companions (generated; do not edit by hand)
 lib/integrations/action-escrow/procore-change-order.js linguist-generated=true

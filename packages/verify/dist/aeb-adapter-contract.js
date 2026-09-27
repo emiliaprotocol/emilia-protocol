@@ -418,8 +418,39 @@ export function adapterPinDigest(id, pin) {
 export function mappingProfileDigest(id, pin) {
     return profileDigest(id, pin);
 }
+/**
+ * The reasons an adapter reports when the vendored CAID refuses its
+ * projected action: caid_mapping_failed, then caid_mapping_failed:<reason>
+ * for each CAID refusal, so a mapping profile written for an earlier Verify
+ * shows why it no longer maps (for example
+ * caid_mapping_failed:invalid_definition for a definition that declares a
+ * field named action_type, which CAID -04 refuses).
+ */
+export function caidMappingFailureReasons(computed) {
+    const refusals = isObject(computed) && Array.isArray(computed.refusals)
+        ? computed.refusals.filter((reason) => typeof reason === 'string')
+        : [];
+    return ['caid_mapping_failed', ...refusals.map((reason) => `caid_mapping_failed:${reason}`)];
+}
+/** The value an entry carries as registry_entry_sha256 (see AebRegistryEntry). */
 export function registryEntryDigest(id, entry) {
     return registryEntryDigestInternal(id, entry);
+}
+/**
+ * The digest a registry entry pins, or null. An entry carries it as
+ * registry_entry_sha256 or as definition_digest, the EP-EVIDENCE-REGISTRY-v1
+ * name that Verify 5.x reads; an entry with both members, or neither, pins
+ * nothing.
+ */
+export function registryEntryPin(entry) {
+    if (!isObject(entry))
+        return null;
+    const current = Object.prototype.hasOwnProperty.call(entry, 'registry_entry_sha256');
+    const legacy = Object.prototype.hasOwnProperty.call(entry, LEGACY_REGISTRY_ENTRY_PIN);
+    if (current === legacy)
+        return null;
+    const value = current ? entry.registry_entry_sha256 : entry[LEGACY_REGISTRY_ENTRY_PIN];
+    return validDigest(value) ? value : null;
 }
 export function unifiedRegistryDigest(registry) {
     return registryDigestInternal(registry);
@@ -511,7 +542,10 @@ function roleRegistryEntry(config, role) {
 }
 const CONFIG_KEYS = new Set(['@version', 'relying_party_id', 'evaluator_keys', 'registry', 'accepted_mappers', 'adapters', 'profiles', 'requirements']);
 const REGISTRY_KEYS = new Set(['@version', 'registry_id', 'epoch', 'entries', 'registry_digest']);
-const REGISTRY_ENTRY_KEYS = new Set(['kind', 'version', 'status', 'definition', 'definition_digest']);
+// Pre-6.0.0 spelling of registry_entry_sha256 (see registryEntryPin).
+const LEGACY_REGISTRY_ENTRY_PIN = 'definition_digest';
+const REGISTRY_ENTRY_KEYS = new Set(['kind', 'version', 'status', 'definition', 'registry_entry_sha256']);
+const LEGACY_REGISTRY_ENTRY_KEYS = new Set(['kind', 'version', 'status', 'definition', LEGACY_REGISTRY_ENTRY_PIN]);
 const ADAPTER_PIN_KEYS = new Set(['version', 'trust_roots', 'config', 'config_digest', 'max_status_age_sec']);
 const PROFILE_KEYS = new Set(['version', 'definition', 'registry_entry_ref', 'mapper_id', 'resolver', 'semantic_equivalence', 'profile_digest']);
 const RESOLVER_KEYS = new Set(['id', 'version', 'implementation_digest']);
@@ -558,10 +592,11 @@ function validConfig(config) {
             catch {
                 expectedEntryDigest = null;
             }
-            if (!exactString(id) || !isObject(rawEntry) || !exactKeys(rawEntry, REGISTRY_ENTRY_KEYS)
+            if (!exactString(id) || !isObject(rawEntry)
+                || !(exactKeys(rawEntry, REGISTRY_ENTRY_KEYS) || exactKeys(rawEntry, LEGACY_REGISTRY_ENTRY_KEYS))
                 || !['mapping-profile', 'evidence-role', 'receipt-extension'].includes(String(entry.kind))
                 || !exactString(entry.version) || !['active', 'deprecated'].includes(String(entry.status))
-                || !validDigest(entry.definition_digest) || expectedEntryDigest !== entry.definition_digest) {
+                || registryEntryPin(rawEntry) === null || expectedEntryDigest !== registryEntryPin(rawEntry)) {
                 reasons.push(`invalid_registry_entry:${id}`);
             }
         }

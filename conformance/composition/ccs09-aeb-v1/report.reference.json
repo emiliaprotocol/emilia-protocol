@@ -23,7 +23,7 @@
     "adapter_id": "native:ccs-05-v1.3-ed25519",
     "adapter_version": "1",
     "adapter_source_lock": "draft-correctover-ccs-05-v1.3-c91f0fa31b1b9e5",
-    "mapping_profile_digest": "sha256:0cc7a31b09bbb13d8d4c0a53f53c17c7911668795d2820b9837c029594eeffe8",
+    "mapping_profile_digest": "sha256:cdd806fb62a78bee2e59673ab1f51119e397256bd04d957520c059487fe77080",
     "sample_set_digest": "sha256:61cec39c0e4a28359c82d84ee64887728ca807bbef18065f673e8fbc8b3a31a0"
   },
   "checks": [
@@ -762,5 +762,5 @@
     "No receipt lifecycle deployment, independent key distribution, provider execution, or effect verification is exercised.",
     "The private fixture key is public deterministic test material."
   ],
-  "report_digest": "sha256:2ce22e17d2339daef92ff671894b85e8167a7b9e2c05ac12045b9bd2f69ef9f3"
+  "report_digest": "sha256:0755ac5a15f51b8e2c3a321d82dfa5ceff9ff8ef2b229a1161444d76f261e018"
 }

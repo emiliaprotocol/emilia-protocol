@@ -64,7 +64,6 @@ const ACTION_DEFINITION = Object.freeze({
     {
       action_type: ACTION_TYPE,
       required_fields: [
-        { name: 'action_type', type: 'string' },
         { name: 'subject_chain_id', type: 'amount-string' },
         { name: 'execution_domain', type: 'string' },
         { name: 'spending_wallet', type: 'string' },
@@ -111,7 +110,7 @@ async function resignAuthorization(artifact) {
 
 function registryEntry(id, kind, version, definition) {
   const entry = { kind, version, status: 'active', definition };
-  entry.definition_digest = contract.registryEntryDigest(id, entry);
+  entry.registry_entry_sha256 = contract.registryEntryDigest(id, entry);
   return entry;
 }
 

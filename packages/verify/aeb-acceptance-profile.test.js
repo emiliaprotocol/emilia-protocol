@@ -75,7 +75,7 @@ function status() {
 }
 function registryEntry(id, kind, definition) {
     const entry = { kind, version: '1', status: 'active', definition };
-    entry.definition_digest = registryEntryDigest(id, entry);
+    entry.registry_entry_sha256 = registryEntryDigest(id, entry);
     return entry;
 }
 function buildFixture() {

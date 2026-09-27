@@ -38,6 +38,7 @@ import {
   type AebNativeResult,
   type AebPinnedProfile,
   type AebStatusInput,
+  caidMappingFailureReasons,
 } from './aeb-adapter-contract.js';
 import { strictJsonGate } from './strict-json.js';
 
@@ -399,7 +400,8 @@ function parseCompactToken(value: unknown): ParsedToken | null {
   const headerText = decodeBase64urlUtf8(parts[0]);
   const claimsText = decodeBase64urlUtf8(parts[1]);
   if (headerText === null || claimsText === null
-      || !strictJsonGate(headerText).ok || !strictJsonGate(claimsText).ok
+      || !strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+      || !strictJsonGate(claimsText, { refuseNoncharacters: true }).ok
       || !canonicalBase64url(parts[2], 64)) return null;
   let header: unknown;
   let claims: unknown;
@@ -596,7 +598,6 @@ export function createOasntActionDefinition(actionType: string, requireRequestBi
     throw new TypeError('invalid OASNT action definition');
   }
   const required = [
-    { name: 'action_type', type: 'string' },
     { name: 'native_action', type: 'object' },
   ];
   if (requireRequestBinding) required.push({ name: 'request', type: 'object' });
@@ -664,7 +665,7 @@ function mapAction(
   } catch { computed = null; }
   if (!isRecord(computed) || typeof computed.caid !== 'string'
       || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)) {
-    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
   }
   if (computed.digest !== actionDigest) {
     return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_digest_disagreement'] };

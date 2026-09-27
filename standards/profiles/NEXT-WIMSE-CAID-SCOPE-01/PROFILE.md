@@ -24,8 +24,10 @@ text.
 CAID supplies versioned material-action types. The current individual draft,
 [`draft-schrock-canonical-action-identifier-02`](https://datatracker.ietf.org/doc/html/draft-schrock-canonical-action-identifier-02),
 defines `payment.release.1` and `tool.call.1`. The definitions used here are
-pinned to registry version 4 and the exact `action-types.json` digest in
-`profile.json`.
+pinned to registry version 4 and the exact digest of its bytes in
+`profile.json`. Those bytes are kept unchanged at
+`caid/registry/history/action-types.v4.json`, so later registry versions do
+not change what this profile evaluates against.
 
 Registry version 4 pins `payment.release.1.currency` to the SIX ISO 4217 List
 One snapshot published 2026-09-17, a local value-set file whose values digest
@@ -173,9 +175,9 @@ This packet does not:
 - define the future `-02` authorization-detail type identifier;
 - define multi-detail conjunction, disjunction, or precedence;
 - translate native constraints into CAID material fields;
-- claim that the current EMILIA-maintained CC0 seed registry is an IANA or
+- claim that the EMILIA-maintained CC0 seed registry it pins is an IANA or
   otherwise neutral global registry;
-- review or endorse all 52 types in that registry;
+- review or endorse all 52 types of the registry version 4 it pins;
 - verify a delegation token, create authority, or make an admission decision;
   or
 - establish implementation interoperability, deployment, working-group
@@ -189,8 +191,8 @@ This packet does not:
   `<CAESAJSUsabSeDKC2yVxtuTPZxoeWwxSN8VWy1tGf6GeMD7kPhg@mail.gmail.com>`.
 - Iman Schrock, `draft-schrock-canonical-action-identifier-02`, published
   2026-08-06, especially Sections 4, 5, and 8.
-- `caid/registry/action-types.json`, registry version 4, exact SHA-256 pinned
-  in `profile.json`, and the ISO 4217 value-set file it lists in
+- `caid/registry/history/action-types.v4.json`, the byte-identical copy of
+  registry version 4, exact SHA-256 pinned in `profile.json`, and the ISO 4217 value-set file it lists in
   `enum_snapshot_files` (values digest `values_sha256` and whole-file digest
   `snapshot_sha256`).
 

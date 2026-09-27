@@ -27,7 +27,7 @@ import crypto from 'node:crypto';
 // The governed CAID implementation is JavaScript and has no declaration file.
 // @ts-expect-error -- runtime shape is checked before use.
 import { computeCaid } from '../vendor/caid.mjs';
-import { digestAeb, } from './aeb-adapter-contract.js';
+import { digestAeb, caidMappingFailureReasons, } from './aeb-adapter-contract.js';
 import { strictJsonGate } from './strict-json.js';
 export const OASNT_DRAFT_REVISION = 'draft-thallapelly-oasnt-02';
 export const OASNT_DRAFT_TXT_SHA256 = 'sha256:3a134b635d5101cd91ac885fb4867bf1a7fd37bc52fc4f8405467ed66c397603';
@@ -328,7 +328,8 @@ function parseCompactToken(value) {
     const headerText = decodeBase64urlUtf8(parts[0]);
     const claimsText = decodeBase64urlUtf8(parts[1]);
     if (headerText === null || claimsText === null
-        || !strictJsonGate(headerText).ok || !strictJsonGate(claimsText).ok
+        || !strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+        || !strictJsonGate(claimsText, { refuseNoncharacters: true }).ok
         || !canonicalBase64url(parts[2], 64))
         return null;
     let header;
@@ -526,7 +527,6 @@ export function createOasntActionDefinition(actionType, requireRequestBinding) {
         throw new TypeError('invalid OASNT action definition');
     }
     const required = [
-        { name: 'action_type', type: 'string' },
         { name: 'native_action', type: 'object' },
     ];
     if (requireRequestBinding)
@@ -597,7 +597,7 @@ function mapAction(input, pins) {
     }
     if (!isRecord(computed) || typeof computed.caid !== 'string'
         || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)) {
-        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
     }
     if (computed.digest !== actionDigest) {
         return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_digest_disagreement'] };

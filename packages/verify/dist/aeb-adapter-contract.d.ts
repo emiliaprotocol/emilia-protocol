@@ -199,7 +199,24 @@ export interface AebRegistryEntry {
     version: string;
     status: 'active' | 'deprecated';
     definition: unknown;
-    definition_digest: AebDigest;
+    /**
+     * "sha256:" digest of the strict canonical JSON of {entry_id, kind,
+     * version, status, definition}: this one registry entry, status
+     * included. An entry carries it under exactly one of two names. This name
+     * keeps it distinct from a CAID definition_sha256, which identifies the
+     * validation projection of a CAID action-type definition (action_type and
+     * its field lists, notes removed) and never covers status or any other
+     * registry-entry member (draft-schrock-canonical-action-identifier-04,
+     * Section 4.2.2). Verify 6.0.0 and later read it; Verify 5.x does not.
+     */
+    registry_entry_sha256?: AebDigest;
+    /**
+     * The same digest under its EP-EVIDENCE-REGISTRY-v1 name, which every
+     * Verify release reads. The Crossing Lab writes this name, so a workspace
+     * it creates stays readable by Verify 5.x (and the Gate releases pinned to
+     * it).
+     */
+    definition_digest?: AebDigest;
 }
 export interface AebUnifiedRegistry {
     '@version': typeof AEB_REGISTRY_VERSION;
@@ -565,7 +582,24 @@ export declare function createAebNativeVerificationAttestationAdapter(options: {
 export declare function pinnedConfigDigest(config: AebPinnedConfig): AebDigest;
 export declare function adapterPinDigest(id: string, pin: AebPinnedAdapter): AebDigest;
 export declare function mappingProfileDigest(id: string, pin: AebPinnedProfile): AebDigest;
+/**
+ * The reasons an adapter reports when the vendored CAID refuses its
+ * projected action: caid_mapping_failed, then caid_mapping_failed:<reason>
+ * for each CAID refusal, so a mapping profile written for an earlier Verify
+ * shows why it no longer maps (for example
+ * caid_mapping_failed:invalid_definition for a definition that declares a
+ * field named action_type, which CAID -04 refuses).
+ */
+export declare function caidMappingFailureReasons(computed: unknown): string[];
+/** The value an entry carries as registry_entry_sha256 (see AebRegistryEntry). */
 export declare function registryEntryDigest(id: string, entry: AebRegistryEntry): AebDigest;
+/**
+ * The digest a registry entry pins, or null. An entry carries it as
+ * registry_entry_sha256 or as definition_digest, the EP-EVIDENCE-REGISTRY-v1
+ * name that Verify 5.x reads; an entry with both members, or neither, pins
+ * nothing.
+ */
+export declare function registryEntryPin(entry: unknown): AebDigest | null;
 export declare function unifiedRegistryDigest(registry: AebUnifiedRegistry): AebDigest;
 export declare function evaluateAebEvidence(options: AebEvaluationOptions): AebEvaluationResult;
 /** Domain-separated digest of the complete evidence-only v2 body. */

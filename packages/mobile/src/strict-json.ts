@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Duplicate-name and Unicode-scalar gate for signed nested JSON such as
 // WebAuthn clientDataJSON. JSON.parse remains the syntax gate.
+//
+// With { refuseNoncharacters: true } the gate also refuses a string or
+// member name that holds a Unicode noncharacter after unescaping, which
+// I-JSON (RFC 7493 Section 2.1) excludes. Callers that decode JSON text
+// carrying a CAID action object pass it, so that text meets rules 2 to 5 of
+// draft-schrock-canonical-action-identifier-04 Section 2.4.
 
 export const MAX_JSON_DEPTH = 64;
 export const DEFAULT_MAX_JSON_NODES = 100_000;
@@ -20,6 +26,13 @@ interface CanonicalState {
   maxStringBytes: number;
   safeIntegersOnly: boolean;
 }
+
+export interface StrictJsonGateOptions {
+  /** Refuse strings and member names holding a Unicode noncharacter (I-JSON). */
+  refuseNoncharacters?: boolean;
+}
+
+const NONCHARACTER = /\p{Noncharacter_Code_Point}/u;
 
 export interface StrictJsonSuccess { ok: true }
 export interface StrictJsonFailure { ok: false; reason: string }
@@ -45,8 +58,9 @@ function hasUnpairedUtf16Surrogate(value: string): boolean {
   return false;
 }
 
-export function strictJsonGate(raw: unknown): StrictJsonResult {
+export function strictJsonGate(raw: unknown, options: StrictJsonGateOptions = {}): StrictJsonResult {
   if (typeof raw !== 'string') return { ok: false, reason: 'JSON input must be text' };
+  const refuseNoncharacters = options.refuseNoncharacters === true;
   const input = raw;
   if (hasUnpairedUtf16Surrogate(input)) {
     return { ok: false, reason: 'unpaired Unicode surrogate' };
@@ -116,6 +130,9 @@ export function strictJsonGate(raw: unknown): StrictJsonResult {
       const isKey = Boolean(top?.object && top.expectsKey);
       const value = readString();
       if (reason) return { ok: false, reason };
+      if (refuseNoncharacters && value !== null && NONCHARACTER.test(value)) {
+        return { ok: false, reason: 'Unicode noncharacter' };
+      }
       if (isKey) {
         // isKey is only true when top?.object && top.expectsKey was truthy above,
         // which guarantees top is the object-frame variant here; TS can't

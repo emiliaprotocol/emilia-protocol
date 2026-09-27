@@ -13,6 +13,51 @@ behavior only through an explicit dependency bump.
 
 ### Changed
 
+- AEB unified-registry entries may pin their digest as
+  `registry_entry_sha256` as well as `definition_digest`. The value is the
+  same under either name: SHA-256 over the entry's identifier, kind, version,
+  status and definition. An entry carries exactly one of the two; one that
+  carries both, or neither, is invalid. The new export `registryEntryPin()`
+  returns the pinned value, and `registryEntryDigest()` computes it. The
+  second name keeps the value distinct from the CAID `definition_sha256`,
+  which covers only the validation projection of one CAID action-type
+  definition and never its status. Verify 5.x reads only
+  `definition_digest`, so the Crossing Lab keeps writing that name under
+  AEB-ADAPTER-v1, and its workspaces verify under 5.x and under the Gate
+  releases pinned to it; a Gate release that reads `registry_entry_sha256`
+  entries needs this Verify release.
+- Text that carries an action object is decoded as CAID
+  draft-schrock-canonical-action-identifier-04 Section 2.4 requires, which
+  refuses some inputs 5.0.0 accepted:
+  - policy decision evidence whose signed claims segment is not valid UTF-8
+    (5.0.0 decoded it with U+FFFD substitutions and computed the CAID over
+    claims nobody signed);
+  - a WIMSE OAuth, Authorization Server confirmation or PSEA claims segment
+    that begins with a UTF-8 byte order mark (5.0.0 dropped the BOM);
+  - a CLI input file, or a Crossing Lab workspace, artifact, seed or reviewed
+    manifest, that is not valid UTF-8 (5.0.0 substituted U+FFFD);
+  - the policy decision, WIMSE OAuth, Authorization Server confirmation,
+    PSEA, OASNT, WAG and OAuth transaction-challenge segments, the claims
+    segments above, and the AEB-1 suite and submission files the
+    `aeb-conformance` CLI command reads, when a string or member name holds
+    a Unicode noncharacter after unescaping, which I-JSON excludes. Other
+    CLI inputs (receipts, bundles, proofs) are verified as they were signed,
+    and a noncharacter in one is not refused.
+    `strictJsonGate(text, { refuseNoncharacters: true })` is the new opt-in
+    that these callers use; without the option the gate is unchanged.
+  The OASNT, WAG and OAuth transaction-challenge adapters already refused
+  a byte order mark and invalid UTF-8. WebAuthn `clientDataJSON` keeps
+  WebAuthn's decoding.
+- The adapter mapping profiles no longer declare a field named `action_type`;
+  the action object's `action_type` member is always required, so the entry
+  bound nothing, and -04 refuses such a definition. An AEB configuration
+  whose pinned mapping profile was built by the 5.0.0 adapter helpers carries
+  such a definition, maps to `INDETERMINATE`, and must be regenerated and
+  re-pinned. When the vendored CAID refuses a projected action, the adapters
+  now report `caid_mapping_failed` followed by `caid_mapping_failed:<reason>`
+  for each CAID refusal (here `caid_mapping_failed:invalid_definition`),
+  where 5.0.0 reported `caid_mapping_failed` alone. The helper is exported as
+  `caidMappingFailureReasons()`.
 - The vendored CAID implementation (`vendor/caid.mjs`), which the AEB
   adapters, the AP2 native adapter, the FIDO and AP2 bridge, authorization
   server confirmation, the crossing lab, portable state handoff, and policy
@@ -42,9 +87,86 @@ behavior only through an explicit dependency bump.
   surrogate now refuses as `unsupported_value`, as RFC 8785 section 3.2.2.2
   requires, instead of being escaped into the digest input.
 - The vendored CAID parser (`parseCaid`, and the strict-parse step of
-  `verifyCaid`) now refuses a suite outside the CAID suite registry and a
-  digest whose final character sets an unused bit, as `malformed_caid`. No
-  Verify export calls either function, so no Verify result changes.
+  `verifyCaid`) now refuses a digest whose final character sets an unused
+  bit, as `malformed_caid`, and refuses a grammatical suite outside the CAID
+  suite registry as `unknown_suite`. No Verify export calls either function,
+  so no Verify result changes.
+- The vendored CAID implements draft-schrock-canonical-action-identifier-04.
+  Its grammars, limits, reason codes and reason ranks are generated from the
+  draft's ABNF and the CAID spec data (`node caid/spec/gen.mjs --write`
+  writes `vendor/caid.mjs` as a byte copy of `caid/impl/js/caid.mjs`), and
+  it now refuses these inputs, which 5.0.0 accepted:
+  - A type definition that does not conform, as `invalid_definition`:
+    `required_fields` absent, not an array, or empty; `optional_fields`
+    present and not an array; a field entry that is not an object; a field
+    `name` that is not a non-empty string, contains `:` or an unpaired
+    surrogate, repeats, or is `action_type`; a field `type` that is not a
+    string; a field of a registered type carrying a member that type does not
+    define (for example `pattern` or `description` on a `string` field); a
+    `code` field without a valid `code_system` URI and registered-syntax
+    `format` name; and an enum `values` array that is not canonicalizable.
+    5.0.0 computed a CAID under such a definition, one that bound nothing
+    for a definition with no usable fields. An adapter mapping profile whose
+    definition declares a field named `action_type` (the action object's
+    `action_type` member is always required, so the entry added nothing) now
+    maps to a refusal.
+  - Two definitions of one action type whose validation projections differ,
+    as `invalid_definition`. 5.0.0 used whichever came first. Definitions
+    that differ only in notes, status or other annotations still resolve.
+  - A host value outside the JSON data model, as `unsupported_value`, or as
+    `mistyped_field:<field>` when a declared field holds it: a `Map`, `Set`,
+    `Date`, typed array, boxed primitive or class instance (5.0.0 serialized
+    each as its own enumerable properties, so `new Map([["k", "v"]])` and
+    `new Date(0)` had the CAID of `{}`); an accessor property (5.0.0 invoked
+    it, and threw when it threw); a non-enumerable or symbol-keyed property;
+    a sparse array or an array with extra properties; and a `Proxy`. A
+    cyclic value, which 5.0.0 threw `RangeError` on, refuses as
+    `unsupported_value` alone: the cycle is still an object or an array, so
+    a declared field of that kind holding it is not mistyped. The value is
+    read once, without invoking any getter, and nothing throws. Passed as
+    the whole action object, a value that is not a plain object (a `Map`,
+    a `Date`, a class instance) fails the first gate as
+    `invalid_action_type` alone, as any other non-object does.
+  - A string or member name holding a noncharacter (U+FDD0 to U+FDEF, or a
+    code point whose low 16 bits are FFFE or FFFF), as `unsupported_value`.
+    I-JSON (RFC 7493), which RFC 8785 requires as input, excludes them, and
+    the strict JSON text decoder refuses the same strings as
+    `malformed_json`. 5.0.0 escaped them into the digest input. A definition
+    whose field name holds one is `invalid_definition`.
+  - Nesting deeper than 64, and an RFC 8785 encoding longer than 16777216
+    octets, as `unsupported_value`. 5.0.0 computed nesting up to about 2,000
+    levels and threw beyond it, and had no size bound. CAIDs that 5.0.0
+    issued for such objects no longer verify.
+  - An action type longer than 512 octets (`invalid_action_type`; in a CAID
+    string, `malformed_caid`), a CAID string longer than 1024 octets
+    (`malformed_caid`), and a `code_system` longer than 2048 octets
+    (`invalid_definition`), each checked before any pattern runs. 5.0.0 had
+    no bound, and V8 threw `RangeError` near 6.7 million characters.
+  - A host value made of more than 33554432 values, each counted once for
+    every path that reaches it, as `unsupported_value` alone. A sparse array
+    refuses without walking its length, and a value with shared references
+    is processed without walking its expansion. Any other document (a
+    definition's validation projection, an enum value array, a mapping
+    source) is refused past 134217728 canonical octets.
+- The vendored CAID reports more, and orders reasons by rank: `computeCaid`
+  results carry `definition_sha256` (SHA-256 over the RFC 8785 encoding of
+  the definition's validation projection); `verifyCaid` results carry
+  `details`, one `{reason, field, rule, observed}` object per reason, and
+  `definition_sha256` whenever a definition resolved, and accept an
+  `expectedDefinitionSha256` option that adds `definition_mismatch`; a
+  supplied value of any type other than the resolved digest string, a list
+  or `null` included, is a mismatch, never an absent pin. After
+  the two gates (`invalid_action_type`, then `unknown_action_type` or
+  `invalid_definition`) every check runs, and `unsupported_number` always
+  precedes `unsupported_value`; 5.0.0 ordered those two by traversal.
+  Registry v5 and the `code` field type (named code formats, exact string,
+  refused as `invalid_code:<field>`) are supported. The vendored module also
+  exports strict JSON text entry points (`decodeCaidJson`,
+  `decodeCaidDocument`, `computeCaidJson`, `verifyCaidJson`) that refuse
+  invalid UTF-8, a byte order mark, duplicate member names, surrogate or
+  noncharacter code points, trailing content, nesting beyond 64 and action
+  texts over 33554432 octets, all as `malformed_json`. No Verify export
+  passes JSON text to the vendored core.
 - CAID bytes are unchanged for every action that both 5.0.0 and this version
   accept; only the set of accepted actions narrowed. This is a behavior change,
   not a wire format change.

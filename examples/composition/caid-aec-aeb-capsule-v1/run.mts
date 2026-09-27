@@ -97,7 +97,9 @@ const CAPSULE_PUBLIC_SPKI_B64U = CAPSULE_PUBLIC_KEY
   .toString('base64url');
 
 function actionDefinitions(): any[] {
-  const registry = JSON.parse(readFileSync(resolve(ROOT, 'caid/registry/action-types.json'), 'utf8'));
+  // Registry version 4, byte-frozen: the manifest keeps pinning the exact
+  // registry this capsule was issued under after the live registry advances.
+  const registry = JSON.parse(readFileSync(resolve(ROOT, 'caid/registry/history/action-types.v4.json'), 'utf8'));
   if (!Array.isArray(registry.types)) throw new Error('CAID action registry has no types array');
   return registry.types;
 }
@@ -859,7 +861,7 @@ function verifyExpected(item: CaseDefinition, result: RecordValue): RecordValue 
 
 function sourceManifest(): RecordValue {
   const implementationSources = [
-    'caid/registry/action-types.json',
+    'caid/registry/history/action-types.v4.json',
     'caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json',
     'caid/registry/enum-snapshots.mjs',
     'packages/verify/evidence-chain.js',

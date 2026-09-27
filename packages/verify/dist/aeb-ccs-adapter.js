@@ -17,7 +17,7 @@ import crypto from 'node:crypto';
 // The CAID reference implementation intentionally has no TypeScript surface.
 // @ts-expect-error -- narrowed and cross-checked below.
 import { computeCaid } from '../vendor/caid.mjs';
-import { canonicalizeAeb, digestAeb, mappingProfileDigest, } from './aeb-adapter-contract.js';
+import { canonicalizeAeb, digestAeb, mappingProfileDigest, caidMappingFailureReasons, } from './aeb-adapter-contract.js';
 import { canonicalizeFiniteJson } from './strict-json.js';
 export const CCS_PYPI_DISTRIBUTION_VERSION = '1.1.0';
 export const CCS_PYPI_RUNTIME_VERSION = '0.4.1';
@@ -434,7 +434,6 @@ export function createCcsAebActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'parameters', type: 'object' },
                 ],
                 optional_fields: [],
@@ -457,7 +456,6 @@ export function createCcsNativeActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'native_action', type: 'object' },
                 ],
                 optional_fields: [],
@@ -577,7 +575,7 @@ export function createCcsPyPiHmacAebAdapter(constructorPins) {
                 }
                 if (!isRecord(computed) || typeof computed.caid !== 'string'
                     || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)) {
-                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
                 }
                 if (computed.digest !== actionDigest) {
                     return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_digest_disagreement'] };
@@ -867,7 +865,6 @@ export function createCcsL1AebActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'parameters', type: 'object' },
                 ],
                 optional_fields: [],
@@ -994,7 +991,7 @@ export function createCcsPyPiL1AebAdapter(constructorPins) {
                 if (!isRecord(computed) || typeof computed.caid !== 'string'
                     || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)
                     || computed.digest !== actionDigest) {
-                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
                 }
                 return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
             }
@@ -1243,7 +1240,6 @@ export function createCcsV13AebActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'parameters', type: 'object' },
                 ],
                 optional_fields: [],
@@ -1374,7 +1370,7 @@ export function createCcsV13AebAdapter(constructorPins) {
                 if (!isRecord(computed) || typeof computed.caid !== 'string'
                     || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)
                     || computed.digest !== actionDigest) {
-                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+                    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
                 }
                 return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
             }

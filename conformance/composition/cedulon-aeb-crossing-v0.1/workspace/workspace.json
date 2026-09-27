@@ -28,7 +28,7 @@
           "definition": {
             "profile_digest": "sha256:51f1d37394fbfc293323ad44ad93b6d2ca6059cd91be375544be27a58f232cf7"
           },
-          "definition_digest": "sha256:70f9036830d5f021349e51f43c0e9b097c93cb7a3699613f9979415d076de7db"
+          "registry_entry_sha256": "sha256:70f9036830d5f021349e51f43c0e9b097c93cb7a3699613f9979415d076de7db"
         },
         "role:machine-policy-decision": {
           "kind": "evidence-role",
@@ -40,10 +40,10 @@
               "system"
             ]
           },
-          "definition_digest": "sha256:c5423693760594b01821636f190ead94fc6081d40e206f3d70723860df3e394c"
+          "registry_entry_sha256": "sha256:c5423693760594b01821636f190ead94fc6081d40e206f3d70723860df3e394c"
         }
       },
-      "registry_digest": "sha256:11cb46a9f6a9b080ae8d5375c1c21119de47032a8ad6a2bcfbc6c69411ca90e5"
+      "registry_digest": "sha256:0bcda0aa73225ebe93b25afdfcd0a3bf13c13cc2fe286b805b59ba57e3bf328e"
     },
     "accepted_mappers": [
       "cedulon:decision-token-to-payment-attempt"

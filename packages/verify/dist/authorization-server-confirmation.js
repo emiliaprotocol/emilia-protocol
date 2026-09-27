@@ -113,9 +113,13 @@ function decodeB64url(value, maxBytes) {
         return null;
     }
 }
+// ignoreBOM keeps a leading byte order mark in the text, where JSON.parse
+// refuses it; the default silently drops it. The claims carry the action
+// object this adapter computes a CAID over, and CAID -04 Section 2.4 refuses
+// JSON text that begins with a BOM.
 function decodeUtf8(value) {
     try {
-        return new TextDecoder('utf-8', { fatal: true }).decode(value);
+        return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(value);
     }
     catch {
         return null;
@@ -126,7 +130,7 @@ function parseJsonSegment(value) {
     if (!bytes)
         return null;
     const text = decodeUtf8(bytes);
-    if (text === null || !strictJsonGate(text).ok)
+    if (text === null || !strictJsonGate(text, { refuseNoncharacters: true }).ok)
         return null;
     try {
         const parsed = JSON.parse(text);
@@ -414,7 +418,6 @@ export function createAuthorizationServerConfirmationActionDefinition(actionType
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'parameters', type: 'object' },
                 ],
                 optional_fields: [],

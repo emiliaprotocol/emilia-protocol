@@ -50,7 +50,6 @@ export const CARRIER_CONTRACT = Object.freeze({
 const ACTION_DEFINITION = Object.freeze({
   action_type: 'call.recording.start.1',
   required_fields: [
-    { name: 'action_type', type: 'string' },
     { name: 'call_id', type: 'string' },
     { name: 'participants', type: 'array' },
     { name: 'purpose', type: 'string' },
@@ -288,9 +287,9 @@ function registryEntry(id, kind, version, definition) {
     version,
     status: /** @type {'active'} */ ('active'),
     definition,
-    definition_digest: digestAeb(null),
+    registry_entry_sha256: digestAeb(null),
   };
-  entry.definition_digest = registryEntryDigest(id, entry);
+  entry.registry_entry_sha256 = registryEntryDigest(id, entry);
   return entry;
 }
 

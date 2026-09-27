@@ -720,9 +720,13 @@ function decodeB64url(segment) {
         return null;
     }
 }
+// ignoreBOM keeps a leading byte order mark in the text, where JSON.parse
+// refuses it; the default silently drops it. The claims carry the action
+// object this adapter computes a CAID over, and CAID -04 Section 2.4 refuses
+// JSON text that begins with a BOM.
 function decodeUtf8(value) {
     try {
-        return new TextDecoder('utf-8', { fatal: true }).decode(value);
+        return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(value);
     }
     catch {
         return null;
@@ -742,8 +746,8 @@ function parseCompactJws(token) {
     const headerText = decodeUtf8(headerBytes);
     const claimsText = decodeUtf8(claimsBytes);
     if (headerText === null || claimsText === null
-        || !strictJsonGate(headerText).ok
-        || !strictJsonGate(claimsText).ok)
+        || !strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+        || !strictJsonGate(claimsText, { refuseNoncharacters: true }).ok)
         return null;
     let header;
     let claims;
@@ -1468,7 +1472,6 @@ export function createWimseOAuthSptActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'http', type: 'object' },
                     { name: 'transaction', type: 'object' },
                 ],

@@ -416,7 +416,9 @@ export function modelToMatterCaid(action: any): any {
 }
 
 export function verifyModelToMatterCaid(action: any, caid: any): any {
-  try { assertAction(action); } catch { return { valid: false, reasons: ['invalid_object'] }; }
+  // Same result shape as the CAID core's verify (-04 Section 6). The M2M
+  // closure refusal has no underlying CAID compute reason to detail.
+  try { assertAction(action); } catch { return { valid: false, reasons: ['invalid_object'], details: [] }; }
   return verifyCaid(action, caid, { definitions: [M2M_CAID_DEFINITION] });
 }
 

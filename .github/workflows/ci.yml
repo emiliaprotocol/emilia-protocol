@@ -1412,14 +1412,35 @@ jobs:
         run: node conformance/run.mjs
       - name: Conformance docs count guard
         run: npm run check:conformance-docs
-      # The CAID core, mapping and consequential-interoperability corpora,
-      # the registry enum-coverage check, and the Go decoder tests had no CI
-      # runner, so a Python or Go refusal regression could merge green. The
-      # published -03 and staged -04 packet checks and the WIMSE companion
-      # profile consume the same registry and snapshot pins.
-      - name: CAID conformance (JS + Python + Go), CAID -03 and -04 packets, WIMSE CAID scope profile
+      # CAID (draft-schrock-canonical-action-identifier-04), on this job's
+      # node 20, Python 3.11 and Go 1.27. The grammar proof checks that the
+      # generated matchers equal caid/spec/caid.abnf in all three engines
+      # and are linear-time. caid:conformance checks the generated constants
+      # and vendored Verify copy, the registry, the corpora against their
+      # builders and the spec oracle, and the core v5, grammar, mapping v2
+      # and interoperability corpora in all three ports through public
+      # entry points. The fuzz compares every port with the spec oracle on
+      # about 80k seeded cases with an empty allow list, after a self-test
+      # of the harness. The published -03 and staged -04 packet checks and
+      # the WIMSE companion profile consume the same registry and pins.
+      - name: CAID grammar proof (generated matchers, then every case through each port's public API)
         run: |
-          npm run caid:conformance
+          node caid/spec/abnf-check.mjs --out "$RUNNER_TEMP/caid-grammar-cases.json"
+          node caid/impl/js/run-grammar-vectors.mjs --quiet --corpus "$RUNNER_TEMP/caid-grammar-cases.json"
+          python3 caid/impl/python/run_grammar_vectors.py --corpus "$RUNNER_TEMP/caid-grammar-cases.json"
+          (cd caid/impl/go && go run ./cmd/grammar-vectors "$RUNNER_TEMP/caid-grammar-cases.json")
+      - name: CAID conformance (spec, registry, core v5, grammar, mapping v2, interop; JS + Python + Go)
+        env:
+          # The grammar corpus check reuses the case list the grammar proof wrote.
+          CAID_GRAMMAR_CASES: ${{ runner.temp }}/caid-grammar-cases.json
+        run: npm run caid:conformance
+      - name: CAID differential fuzz against the spec oracle
+        timeout-minutes: 10
+        run: |
+          node caid/fuzz/run.mjs --selftest --quick --ci --allow caid/fuzz/allow.json --out "$RUNNER_TEMP/caid-fuzz-selftest"
+          sh caid/fuzz/ci.sh
+      - name: CAID -03 and -04 packets, WIMSE CAID scope profile
+        run: |
           node scripts/check-caid-03.mjs
           node scripts/check-caid-04.mjs
           node standards/profiles/NEXT-WIMSE-CAID-SCOPE-01/validate.mjs

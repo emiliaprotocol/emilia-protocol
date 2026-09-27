@@ -305,7 +305,8 @@ function parseCompactGrant(value: unknown): ParsedGrant | null {
   const headerText = decodeBase64urlUtf8(parts[0]);
   const claimsText = decodeBase64urlUtf8(parts[1]);
   if (headerText === null || claimsText === null
-      || !strictJsonGate(headerText).ok || !strictJsonGate(claimsText).ok
+      || !strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+      || !strictJsonGate(claimsText, { refuseNoncharacters: true }).ok
       || !canonicalBase64url(parts[2], 64)) return null;
   let header: unknown;
   let claims: unknown;
@@ -555,7 +556,6 @@ export function createWagActionDefinition(actionType: string): Obj {
     definitions: [{
       action_type: actionType,
       required_fields: [
-        { name: 'action_type', type: 'string' },
         { name: 'authorization_server', type: 'object' },
         { name: 'grant', type: 'object' },
         { name: 'resource', type: 'string' },

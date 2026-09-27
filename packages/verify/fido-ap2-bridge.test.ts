@@ -430,7 +430,7 @@ function assertRefused(f: ReturnType<typeof fixture>): void {
 
 function registryEntry(id: string, kind: string, version: string, definition: Obj): Obj {
   const entry: Obj = { kind, version, status: 'active', definition };
-  entry.definition_digest = registryEntryDigest(id, entry as any);
+  entry.registry_entry_sha256 = registryEntryDigest(id, entry as any);
   return entry;
 }
 

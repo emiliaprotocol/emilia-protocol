@@ -14,7 +14,7 @@
     "version": 4,
     "updated": "2026-09-24",
     "sha256": "73a31f4a4156e3de02e1c3a9ef355f73c07ba25e6b1bb3da8fde8677c2e23d26",
-    "path_from_repository_root": "caid/registry/action-types.json",
+    "path_from_repository_root": "caid/registry/history/action-types.v4.json",
     "stewardship": "EMILIA Protocol maintainers",
     "license": "CC0-1.0"
   },

@@ -3,7 +3,7 @@
 // The CAID action-type registry and the external enum value-set snapshots it
 // pins, for server code that derives CAIDs from registry definitions.
 //
-// Registry v4 closes an external enum reference (for example currency against
+// The registry closes an external enum reference (for example currency against
 // ISO 4217 alpha-3) only when the caller supplies the exact pinned value-set
 // snapshot. computeCaid refuses a present field whose snapshot is missing,
 // digest-mismatched, or does not contain the value. Server code obtains the
@@ -22,7 +22,14 @@ import crypto from 'node:crypto';
 
 import { canonicalize } from '@/caid/impl/js/caid.mjs';
 import caidActionTypeRegistry from '@/caid/registry/action-types.json';
+// One import per enum_snapshot_files entry, in registry order. A registry
+// version that adds a value set adds its import here in the same change;
+// the load-time assertion below refuses a mismatch.
 import iso4217Alpha3Snapshot from '@/caid/registry/value-sets/iso-4217-alpha-3.2026-09-17.json';
+import ianaDnsRrTypesSnapshot from '@/caid/registry/value-sets/iana-dns-rr-types.2026-08-28.json';
+import ianaJoseAlgorithmsSnapshot from '@/caid/registry/value-sets/iana-jose-algorithms.2026-05-22.json';
+import ianaJoseEllipticCurvesSnapshot from '@/caid/registry/value-sets/iana-jose-elliptic-curves.2026-05-22.json';
+import iso3166Alpha2Snapshot from '@/caid/registry/value-sets/iso-3166-1-alpha-2.2026-09-17.json';
 
 function jcsSha256(value: unknown): string | null {
   const canonical = canonicalize(value);
@@ -57,13 +64,32 @@ export function assertRegistryPinnedSnapshots(registry: any, snapshots: readonly
 
 export const CAID_ACTION_TYPE_REGISTRY = caidActionTypeRegistry;
 
-export const CAID_REGISTRY_ENUM_SNAPSHOTS = Object.freeze([iso4217Alpha3Snapshot]);
+export const CAID_REGISTRY_ENUM_SNAPSHOTS = Object.freeze([
+  iso4217Alpha3Snapshot,
+  ianaDnsRrTypesSnapshot,
+  ianaJoseAlgorithmsSnapshot,
+  ianaJoseEllipticCurvesSnapshot,
+  iso3166Alpha2Snapshot,
+]);
 
 assertRegistryPinnedSnapshots(CAID_ACTION_TYPE_REGISTRY, CAID_REGISTRY_ENUM_SNAPSHOTS);
 
-/** The single active registry definition for an action type, or undefined. */
+/**
+ * The registry definition for an action type, whatever its status, or
+ * undefined. Status never affects computation or verification: a deprecated
+ * type still resolves, computes and verifies (draft-schrock-canonical-action-
+ * identifier-04, Section 4). Verifiers and replay tooling use this resolver.
+ */
+export function registryDefinition(actionType: string) {
+  return caidActionTypeRegistry.types.find((definition) => definition.action_type === actionType);
+}
+
+/**
+ * The registry definition for an action type only while it is active, or
+ * undefined. For issuers choosing which type to mint; never a gate on
+ * verifying an existing CAID (use registryDefinition).
+ */
 export function activeCaidDefinition(actionType: string) {
-  return caidActionTypeRegistry.types.find(
-    (definition) => definition.action_type === actionType && definition.status === 'active',
-  );
+  const definition = registryDefinition(actionType);
+  return definition?.status === 'active' ? definition : undefined;
 }

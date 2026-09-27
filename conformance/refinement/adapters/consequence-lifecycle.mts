@@ -111,7 +111,7 @@ function registryEntry(
     status: "active",
     definition,
   };
-  entry.definition_digest = registryEntryDigest(entryId, entry as any);
+  entry.registry_entry_sha256 = registryEntryDigest(entryId, entry as any);
   return entry;
 }
 

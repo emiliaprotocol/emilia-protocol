@@ -14,7 +14,7 @@
 import crypto from 'node:crypto';
 // @ts-expect-error -- governed JavaScript implementation, runtime checked.
 import { computeCaid } from '../vendor/caid.mjs';
-import { canonicalizeAeb, digestAeb, } from './aeb-adapter-contract.js';
+import { canonicalizeAeb, digestAeb, caidMappingFailureReasons, } from './aeb-adapter-contract.js';
 export const APS_DRAFT_REVISION = 'draft-pidlisnyi-aps-03';
 export const APS_AEB_ADAPTER_ID = 'native:aps-policy-decision';
 export const APS_AEB_ADAPTER_VERSION = '1';
@@ -523,7 +523,6 @@ export function createApsActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'aps_action', type: 'object' },
                 ],
                 optional_fields: [],
@@ -576,7 +575,7 @@ function mapAction(input, pins) {
     }
     if (!isRecord(computed) || typeof computed.caid !== 'string'
         || typeof computed.digest !== 'string' || !DIGEST_RE.test(computed.digest)) {
-        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+        return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
     }
     if (computed.digest !== actionDigest) {
         return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_digest_disagreement'] };

@@ -15,7 +15,7 @@
     "ccs_upstream_commit_sha": "8c95600f661028acc74056d5829e0a0f7db0ab0b",
     "adapter_id": "native:ccs-pypi-ed25519-l1-1.1.20",
     "adapter_version": "1",
-    "mapping_profile_digest": "sha256:150bfa6a745a504c13ac473e0afc148a084a9939bc37512bcf81ad20dcdacf61"
+    "mapping_profile_digest": "sha256:de67a398a33d0ef3258df04382c5d0001eb65f2a1e54a12576b4da2f29713157"
   },
   "checks": [
     {
@@ -165,5 +165,5 @@
     "A passing report reproduces the EMILIA reference adapter and is not independent implementation, deployment, certification, IETF adoption, or endorsement."
   ],
   "implementation_status_markdown": "The runner reproduced 8/8 source-locked CCS 1.1.20 to AEB checks. It verified the pinned Ed25519 L1 receipt and mapped its signed action, tool, and full argument digest to one executor-constructed CAID. This is a reproduction of the EMILIA reference adapter, not an independent implementation or IETF endorsement.",
-  "report_digest": "sha256:a4a511c360dfe80a91a6b70d4f523180b3dd380aaf99d30987d98db66ca3c0c6"
+  "report_digest": "sha256:ffb1fd8f31eae883b8c87d344be0e1081bd407cc971f6f36a1bdbcbf8f43b40e"
 }

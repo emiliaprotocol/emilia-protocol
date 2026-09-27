@@ -157,6 +157,40 @@ test('strict JSON rejects duplicate members before runtime dispatch', async () =
   });
 });
 
+test('a JSON body that begins with a byte order mark is refused before runtime dispatch', async () => {
+  const { runtime, calls } = runtimeFixture();
+  await withServer(runtime, async (origin) => {
+    const response = await fetch(`${origin}/v1/proposals`, {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer gate-token',
+        'content-type': 'application/json',
+      },
+      body: `\uFEFF${JSON.stringify({ profile_id: 'github.repo.delete.v1', operation_id: 'operation:1', action: {} })}`,
+    });
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error.code, 'json_invalid');
+    assert.equal(calls.length, 0);
+  });
+});
+
+test('a JSON body holding a noncharacter is refused before runtime dispatch (I-JSON)', async () => {
+  const { runtime, calls } = runtimeFixture();
+  await withServer(runtime, async (origin) => {
+    const response = await fetch(`${origin}/v1/proposals`, {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer gate-token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ profile_id: 'github.repo.delete.v1', operation_id: 'operation:1', action: { note: '\uFFFF' } }),
+    });
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error.code, 'json_invalid');
+    assert.equal(calls.length, 0);
+  });
+});
+
 test('proposal lifecycle paths dispatch only their exact method', async () => {
   const { runtime, calls } = runtimeFixture();
   const cases = [

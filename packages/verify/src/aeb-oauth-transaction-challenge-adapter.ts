@@ -24,6 +24,7 @@ import {
   type AebNativeResult,
   type AebPinnedProfile,
   type AebStatusInput,
+  caidMappingFailureReasons,
 } from './aeb-adapter-contract.js';
 import { strictJsonGate } from './strict-json.js';
 
@@ -252,7 +253,8 @@ function verifyJwt(token: unknown, root: ParsedRoot, typ: string): ParsedJwt | n
   if (parts.length !== 3 || !canonicalB64url(parts[2])) return null;
   const headerText = decodeUtf8(parts[0]); const claimsText = decodeUtf8(parts[1]);
   if (headerText === null || claimsText === null
-      || !strictJsonGate(headerText).ok || !strictJsonGate(claimsText).ok) return null;
+      || !strictJsonGate(headerText, { refuseNoncharacters: true }).ok
+      || !strictJsonGate(claimsText, { refuseNoncharacters: true }).ok) return null;
   let header: unknown; let claims: unknown;
   try { header = JSON.parse(headerText); claims = JSON.parse(claimsText); } catch { return null; }
   if (!isRecord(header) || !exactKeys(header, HEADER_KEYS)
@@ -436,7 +438,7 @@ export function createOAuthTransactionChallengeActionDefinition(actionType: stri
     projection: 'oauth-transaction-exact-action-v1', action_type: actionType, suite: 'jcs-sha256',
     definitions: [{
       action_type: actionType,
-      required_fields: [{ name: 'action_type', type: 'string' }, { name: 'oauth_transaction', type: 'object' }],
+      required_fields: [{ name: 'oauth_transaction', type: 'object' }],
       optional_fields: [],
     }],
   };
@@ -477,7 +479,7 @@ function mapAction(input: AebAdapterInput & { native: AebNativeResult }, pins: P
   } catch { computed = null; }
   if (!isRecord(computed) || typeof computed.caid !== 'string'
       || computed.digest !== actionDigest || typeof computed.digest !== 'string') {
-    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: ['caid_mapping_failed'] };
+    return { mapping: 'INDETERMINATE', caid: null, action_digest: null, reasons: caidMappingFailureReasons(computed) };
   }
   return { mapping: 'MATCH', caid: computed.caid, action_digest: actionDigest, reasons: [] };
 }

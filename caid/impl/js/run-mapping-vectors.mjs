@@ -1,14 +1,33 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 
+// Runs a CAID mapping corpus (conformance/mapping-vectors.json, or the
+// consequential-interoperability corpus with --corpus) against mapping.mjs.
+// The corpus is read with this port's strict decoder. A vector's expected
+// reasons are an exact list ("reasons"); "reason_contains" is accepted for
+// corpora that pin a single reason. A set mutation carries its value as
+// "value", or as "units", the UTF-16 code units of a string that no strict
+// JSON text can hold (a noncharacter or a lone surrogate). With --json each
+// result also carries both sides' definition_sha256 (null for a failed
+// side), which caid/conformance/run.mjs compares across implementations.
+//
+// Usage: node run-mapping-vectors.mjs [--corpus FILE] [--json]
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { decodeCaidDocument } from './caid.mjs';
 import { compareMappedActions, mappingProfileHash } from './mapping.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const VECTORS = path.resolve(HERE, '../../conformance/mapping-vectors.json');
 const clone = (value) => structuredClone(value);
+
+function readCorpus(file) {
+  const decoded = decodeCaidDocument(fs.readFileSync(file));
+  if (!decoded.ok) throw new Error(`${file} is not a strict JSON text`);
+  return decoded.value;
+}
 
 function corpusPath(argv = process.argv.slice(2)) {
   const index = argv.indexOf('--corpus');
@@ -30,7 +49,8 @@ function mutate(root, operation) {
     if (Array.isArray(parent)) parent.splice(key, 1);
     else delete parent[key];
   } else if (operation.op === 'set') {
-    parent[key] = clone(operation.value);
+    const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units) : clone(operation.value);
+    Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else {
     throw new Error('unsupported vector mutation: ' + operation.op);
   }
@@ -48,7 +68,7 @@ function buildSide(corpus, descriptor) {
   return side;
 }
 
-export function runMappingVectors(corpus = JSON.parse(fs.readFileSync(VECTORS, 'utf8'))) {
+export function runMappingVectors(corpus = readCorpus(VECTORS)) {
   const results = [];
   for (const vector of corpus.vectors) {
     const left = buildSide(corpus, vector.left);
@@ -61,19 +81,25 @@ export function runMappingVectors(corpus = JSON.parse(fs.readFileSync(VECTORS, '
     const result = compareMappedActions(left, right, {
       definitions: corpus.definitions,
       enumSnapshots: corpus.enum_snapshots,
-      suite: corpus.suite,
+      suite: Object.prototype.hasOwnProperty.call(vector, 'suite') ? vector.suite : corpus.suite,
     });
     const verdictOK = result.verdict === vector.expect.verdict;
     const reasonsOK = vector.expect.reason_contains
       ? result.reasons.includes(vector.expect.reason_contains)
       : JSON.stringify(result.reasons) === JSON.stringify(vector.expect.reasons || []);
-    results.push({ id: vector.id, pass: verdictOK && reasonsOK, verdict: result.verdict, reasons: result.reasons });
+    results.push({
+      id: vector.id,
+      pass: verdictOK && reasonsOK,
+      verdict: result.verdict,
+      reasons: result.reasons,
+      definition_sha256: [result.left.ok ? result.left.definition_sha256 : null, result.right.ok ? result.right.definition_sha256 : null],
+    });
   }
   return results;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const results = runMappingVectors(JSON.parse(fs.readFileSync(corpusPath(), 'utf8')));
+  const results = runMappingVectors(readCorpus(corpusPath()));
   if (process.argv.includes('--json')) {
     process.stdout.write(JSON.stringify(results) + '\n');
   } else {

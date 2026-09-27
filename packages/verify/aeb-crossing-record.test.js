@@ -295,7 +295,7 @@ function evaluationRegistryEntry(entryId, kind, definition) {
         status: "active",
         definition,
     };
-    entry.definition_digest = registryEntryDigest(entryId, entry);
+    entry.registry_entry_sha256 = registryEntryDigest(entryId, entry);
     return entry;
 }
 function evaluationConfig() {

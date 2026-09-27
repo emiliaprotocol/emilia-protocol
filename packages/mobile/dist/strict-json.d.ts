@@ -6,6 +6,10 @@ export interface StrictCanonicalJsonLimits {
     maxNodes?: number;
     maxStringBytes?: number;
 }
+export interface StrictJsonGateOptions {
+    /** Refuse strings and member names holding a Unicode noncharacter (I-JSON). */
+    refuseNoncharacters?: boolean;
+}
 export interface StrictJsonSuccess {
     ok: true;
 }
@@ -14,7 +18,7 @@ export interface StrictJsonFailure {
     reason: string;
 }
 export type StrictJsonResult = StrictJsonSuccess | StrictJsonFailure;
-export declare function strictJsonGate(raw: unknown): StrictJsonResult;
+export declare function strictJsonGate(raw: unknown, options?: StrictJsonGateOptions): StrictJsonResult;
 /**
  * Canonical bytes for the closed EP JSON domain. Unlike JSON.stringify, this
  * refuses values that can disappear, execute code, or collapse to the same

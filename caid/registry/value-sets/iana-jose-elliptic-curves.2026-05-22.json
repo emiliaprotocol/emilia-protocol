@@ -1,0 +1,28 @@
+{
+  "@version": "CAID-ENUM-SNAPSHOT-v1",
+  "id": "iana-jose-elliptic-curves",
+  "values_ref": "IANA JSON Web Key Elliptic Curve",
+  "values_snapshot": "IANA JSON Object Signing and Encryption (JOSE) registries, file updated 2026-05-22",
+  "values_sha256": "sha256:f3f10bf7aa117b27b63681769ba17468b4f924d46cbfcfb6e6602acdea95e947",
+  "hash_input": "RFC 8785 canonical JSON encoding of the values array",
+  "source": {
+    "authority": "Internet Assigned Numbers Authority (IANA)",
+    "url": "https://www.iana.org/assignments/jose/jose.xml",
+    "registry_id": "web-key-elliptic-curve",
+    "published": "2026-05-22",
+    "retrieved": "2026-09-26",
+    "source_sha256": "sha256:989bf4152905fd28051886f36a3b4a54c99bba6f6a97e2ae13213e817488b859",
+    "license": "CC0-1.0: Joint Statement of IANA and IETF Concerning Copyright Rights in the Protocol Registries, 2021-11-10, https://www.iana.org/help/licensing-terms"
+  },
+  "derivation": "Every Curve Name (<value>) of registry web-key-elliptic-curve in document order, verbatim.",
+  "values": [
+    "P-256",
+    "P-384",
+    "P-521",
+    "Ed25519",
+    "Ed448",
+    "X25519",
+    "X448",
+    "secp256k1"
+  ]
+}
