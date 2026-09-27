@@ -173,6 +173,42 @@ test("a sparse array costs its elements, never its length, and refuses without t
   assert.deepEqual(toCaidData(empty), { ok: false, refusals: ["unsupported_value"] });
 });
 
+test("a container with more own keys than V8 lists at once is read, not refused", () => {
+  // Reflect.ownKeys and Object.getOwnPropertyDescriptors throw a RangeError
+  // in V8 for 2^24 or more own keys. The core corpus pins arrays of that
+  // length (native-array-16777216-*); this pins what it cannot: an object
+  // with 2^24 + 1 members named by array indices, beside the host number
+  // 1.5, is within the value count (unsupported_number alone, where the
+  // refused container added unsupported_value); two distinct arrays of 2^24
+  // elements pass the count and the second stops being read there; and a
+  // symbol key or a named member on such an array still refuses it.
+  const here = new URL("./", import.meta.url).href;
+  const child = spawnSync(process.execPath, ["--max-old-space-size=6144", "--input-type=module", "-e", `
+    const { computeCaid } = await import(${JSON.stringify(`${here}caid.mjs`)});
+    const OPTS = ${JSON.stringify(OPTS)};
+    const N = 2 ** 24;
+    const out = [];
+    const members = {};
+    for (let i = 0; i <= N; i += 1) members[i] = 0;
+    out.push(computeCaid({ action_type: "test.unit.1", a: "x", v: 1.5, o: members }, OPTS).refusals);
+    out.push(computeCaid({ action_type: "test.unit.1", a: "x", v: 1.5, p: new Array(N).fill(0), q: new Array(N).fill(0) }, OPTS).refusals);
+    const withSymbol = new Array(N).fill(0);
+    withSymbol[Symbol("s")] = 0;
+    out.push(computeCaid({ action_type: "test.unit.1", a: "x", l: withSymbol }, OPTS).refusals);
+    const withMember = new Array(N).fill(0);
+    withMember.extra = 0;
+    out.push(computeCaid({ action_type: "test.unit.1", a: "x", l: withMember }, OPTS).refusals);
+    process.stdout.write(JSON.stringify(out));
+  `], { encoding: "utf8", maxBuffer: 1 << 20 });
+  assert.equal(child.status, 0, child.stderr.slice(-400));
+  assert.deepEqual(JSON.parse(child.stdout), [
+    ["unsupported_number"],
+    ["unsupported_value"],
+    ["mistyped_field:l", "unsupported_value"],
+    ["mistyped_field:l", "unsupported_value"],
+  ]);
+});
+
 test("undefined is outside the data model: an absent member that refuses, or an unsupported element", () => {
   assert.deepEqual(refusalsOf(computeCaid(bare({ n: undefined }), OPTS)), ["unsupported_value"]);
   assert.deepEqual(refusalsOf(computeCaid(bare({ a: undefined }), OPTS)), ["missing_material_field:a", "unsupported_value"]);
