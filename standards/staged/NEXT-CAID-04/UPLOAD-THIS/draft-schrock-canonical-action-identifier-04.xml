@@ -360,8 +360,10 @@
           reader that reads numbers as exact decimals.</li>
           <li>Fractional, NaN, infinite, and out-of-range values are
           refused as unsupported_number by every conforming implementation,
-          at any depth up to 64 (<xref target="data-model"/>). Fractional
-          quantities are carried as strings.</li>
+          at any depth up to 64 (<xref target="data-model"/>), except in a
+          host action object past the value count, which yields
+          unsupported_value instead (<xref target="host-values"/>).
+          Fractional quantities are carried as strings.</li>
         </ul>
         <t>Rationale: ECMAScript number serialization is the leading
         source of cross-language canonicalization divergence, and a rule
@@ -465,10 +467,12 @@
           an ECMAScript BigInt or a Go uint64, as values of kind
           "unsupported" (<xref target="details"/>), and a host value of kind
           "unsupported" fails every field type. So NaN or 1.5 in an integer
-          field is mistyped_field:&lt;name&gt; and unsupported_number, and so
-          is a host number whose correctly rounded value is an infinity,
-          such as the Python int 10^400; a host number beyond 2^53-1 whose
-          correctly rounded value is finite is refused by phase 6 alone; and
+          field is mistyped_field:&lt;name&gt; and unsupported_number
+          (unsupported_value past the value count), and so is a host number
+          whose correctly rounded value is an infinity, such as the Python
+          int 10^400; a host number beyond 2^53-1 whose correctly rounded
+          value is finite is refused by phase 6 alone (phase 7 alone past the
+          value count); and
           a BigInt in an integer field, in a binding that gives it kind
           "unsupported", is mistyped_field:&lt;name&gt; and
           unsupported_value, whatever its value. A string with an unpaired
@@ -1470,8 +1474,9 @@ ZLQQQ
           (<xref target="fieldtypes"/>)</td></tr>
           <tr><td>5</td><td>unknown_suite</td><td>the suite is not a
           registered suite that the implementation implements</td></tr>
-          <tr><td>6</td><td>unsupported_number</td><td>a number in the
-          object, at any depth up to 64, is outside the data model</td></tr>
+          <tr><td>6</td><td>unsupported_number</td><td>a number at depth 64
+          or less in an object within the value count is outside the data
+          model</td></tr>
           <tr><td>7</td><td>unsupported_value</td><td>any other value is
           outside the data model, including a string or member name with an
           unpaired surrogate or a noncharacter, nesting beyond 64, a
@@ -2597,14 +2602,14 @@ ZLQQQ
         sorts (<xref target="reason-order"/>), so it is registered only by
         a Standards Track RFC that also updates the reason rule of
         <xref target="appendix-abnf"/> and names the phase or stage that
-        reports it. Each entry records: the reason code, lowercase letters
-        and underscores; its parameter kind (none, field-name, source-path,
-        or compute-reason); the operations and phases, or the mapping
-        stage, that report it; and a reference. The reason rule of
-        <xref target="appendix-abnf"/> accepts exactly the reasons
-        registered by this document. The prefixes left: and right: of a
-        comparison (<xref target="mapping-algorithm"/>) are not registered
-        reasons: each marks which mapping a registered mapping reason came
+        reports it. Each entry records: the reason code, in lowercase
+        letters and underscores; the kind of its parameter (none,
+        field-name, source-path, or compute-reason); the operations and
+        phases, or the mapping stage, that report it; and a reference. The
+        reason rule of <xref target="appendix-abnf"/> accepts exactly the
+        reasons registered by this document. The prefixes left: and right:
+        of a comparison (<xref target="mapping-algorithm"/>) are not
+        registered reasons: each marks which mapping a registered mapping reason came
         from, and a mapping reason gains both prefixed forms when it is
         registered. The initial contents are the two tables of
         <xref target="appendix-reasons"/>.</t>
@@ -2934,8 +2939,8 @@ ZLQQQ
           closed-shape entry per underlying reason
           (<xref target="details"/>).</li>
           <li anchor="chg-deprecated">Status never affects computation or
-          verification, so deprecated types resolve, compute, and verify
-          (<xref target="status"/>).</li>
+          verification, so a deprecated type resolves, computes, and verifies
+          wherever its fields resolve (<xref target="status"/>).</li>
           <li anchor="chg-code-type">The code field type, named code
           formats, and the reason invalid_code
           (<xref target="code-fields"/>).</li>
@@ -2959,10 +2964,10 @@ ZLQQQ
           verifier option of -03 is removed. An object whose type has no
           definition fails verification as invalid_object with the detail
           unknown_action_type (<xref target="local"/>).</li>
-          <li anchor="chg-mapping-extensions">The mapping profile member
-          omitted_source_fields, the loss policy
-          declared-source-semantic-loss, and the transform
-          sha256-hex-to-digest (<xref target="mapping-object"/>). The
+          <li anchor="chg-mapping-extensions">The loss policy
+          declared-source-semantic-loss, the transform
+          sha256-hex-to-digest, and the mapping profile member
+          omitted_source_fields (<xref target="mapping-object"/>). The
           reference implementations and their conformance corpus already
           used them; a mapper written from -03 refused such profiles.</li>
           <li anchor="chg-mapping-limits">Mapping limits, counted in UTF-8
@@ -3042,7 +3047,10 @@ ZLQQQ
           currency; contract.execute.1 stays active for contracts that state
           no monetary value. The nine superseded version 1 types are
           deprecated and still resolve. Registry version 4 is kept byte for
-          byte, and every type's definition_sha256 is published.</li>
+          byte as <tt>history/action-types.v4.json</tt>, the last file
+          that declared registry version 4, which <tt>digests.json</tt>
+          pins by its SHA-256, and every type's definition_sha256 is
+          published.</li>
         </ul>
       </section>
       <section anchor="changes-03-parties">
@@ -3123,12 +3131,14 @@ ZLQQQ
           CAID and does not normalize a string before parsing it as one
           (<xref target="iana-uri"/>).</li>
           <li anchor="ed-logging">A CAID is logged, transmitted, and placed in
-          URLs only where its action object could be; -03 said that
-          identifiers may be treated as public values
+          URLs only where its action object could be, which reverses the -03
+          recommendation that identifiers be treated as public values
           (<xref target="privacy"/>).</li>
           <li anchor="ed-type-entropy">A type whose required fields can all be
-          low-entropy requires a member that carries at least 128 bits of
-          entropy from the system of record (<xref target="privacy"/>).</li>
+          low-entropy should require a member that carries at least 128 bits
+          of entropy from the system of record; a later registration without
+          one states why (Sections <xref target="privacy" format="counter"/>
+          and <xref target="iana-action-types" format="counter"/>).</li>
           <li anchor="ed-keyed-commitment">A deployment that needs a keyed
           commitment in a digest field uses a type whose notes specify it
           (<xref target="privacy"/>).</li>
@@ -3202,11 +3212,15 @@ ZLQQQ
           <xref target="appendix-action-types-reference-only"/> are defined
           by other specifications, or carry a name that misdescribes the
           type, and stay in the reference registry. The section says who may
-          request a change to an entry, carries the 128-bit entropy
-          criterion for later registrations in the material-fields test,
-          registers a name with an organization-specific first segment only
-          with that organization as change controller, and asks IANA to
-          store the snapshot files derived from IANA registries. The -03
+          request a change to an entry and that the IESG may act for a
+          change controller that cannot be reached or does not respond;
+          registers a new version of a type name only by, or with the
+          written agreement of, the change controller of its earlier
+          versions; carries the 128-bit entropy criterion for later
+          registrations in the material-fields test; registers a name with
+          an organization-specific first segment only with that
+          organization as change controller; and asks IANA to store the
+          snapshot files derived from IANA registries. The -03
           statement
           that the author's organization maintains the registries is
           removed.</li>
@@ -3875,8 +3889,8 @@ fa2
 
 {
   "action_type": "prior.auth.approve.2",
-  "patient_ref": "sha256:e02fb124589d2bf6e04af485b2cc7d5be0e6652c2d8\
-  91a41d77f8e150ff5e474",
+  "patient_ref": "sha256:8d3148217a50cc7dc5c03c79a8932e5bf60dde17db0\
+  b3af90c9fed46d0c47e76",
   "service_code": "E0601",
   "diagnosis_code": "G47.33",
   "authorization_number": "PA-2026-000418",
@@ -3888,10 +3902,10 @@ fa2
 =============== NOTE: '\' line wrapping per RFC 8792 ================
 
 {
-  "caid": "caid:1:prior.auth.approve.2:jcs-sha256:68dl5LXm3M98ESEJbW\
-  2CuCuBefz6p4-CyK6P7AulNHI",
-  "digest": "sha256:ebc765e4b5e6dccf7c1121096d6d82b82b8179fcfaa78f82\
-  c8ae8fec0ba53472",
+  "caid": "caid:1:prior.auth.approve.2:jcs-sha256:j7WskhX5l_V70KUTEf\
+  d1ysXivWV5oFT1q-J1Tvra57U",
+  "digest": "sha256:8fb5ac9215f997f57bd0a51311f775cac5e2bd6579a054f5\
+  abe2754efadae7b5",
   "definition_sha256": "sha256:c25345a298c9b0ec96d019e4e2bcfd6ddd259\
   ad064a7cb75b581999eaaf10086"
 }
@@ -3903,8 +3917,8 @@ fa2
 
 {
   "action_type": "prior.auth.approve.2",
-  "patient_ref": "sha256:e02fb124589d2bf6e04af485b2cc7d5be0e6652c2d8\
-  91a41d77f8e150ff5e474",
+  "patient_ref": "sha256:8d3148217a50cc7dc5c03c79a8932e5bf60dde17db0\
+  b3af90c9fed46d0c47e76",
   "service_code": "e0601",
   "diagnosis_code": "G4733",
   "authorization_number": "PA-2026-000418",
@@ -4118,10 +4132,11 @@ fa2
       </section>
       <section anchor="appendix-action-types-reference-only">
         <name>Reference-Registry Entries Not Requested of IANA</name>
-        <t>These 8 entries, all active, stay in registry version 5 byte for
-        byte, so that an object valid under registry version 4, which
-        carries them, stays valid (<xref target="names"/>), but IANA is not
-        asked to register them. emilia.mobile.authorized-action.1 is named
+        <t>These 8 entries, all active, stay in registry version 5 unchanged
+        member for member (their RFC 8785 encodings are identical), so that
+        an object valid under registry version 4, which carries them, stays
+        valid (<xref target="names"/>), but IANA is not asked to register
+        them. emilia.mobile.authorized-action.1 is named
         for a product of the author's organization and is defined by that
         organization's specification. agent.state.export.1,
         agent.state.import.1, agent.state.key-release.1, and

@@ -56,7 +56,12 @@ including the inputs it newly refuses.
   included), the Section 3.3 identifier example, the Section 4.2 type
   definition example, and the tool.call.1 example recompute, through
   `caid/spec/reference.mjs`, through hashing done in the script, and
-  through its deterministic CBOR encoder.
+  through its deterministic CBOR encoder. Every digest field of the
+  Appendix C objects is the SHA-256 of a short example string the script
+  names, or recomputes from the C.6 source, as Section 11 says.
+- Appendix D.2's entries are unchanged member for member from
+  `history/action-types.v4.json`, which is the registry version 4 file
+  that `digests.json` pins and that Section 14.4 names.
 - Every `chg-` item maps to vector ids that exist in the corpora.
 - The Section 4.7 registration is the registry version 5 entry for
   tool.call.1, member for member, so the draft gives one text for it.
@@ -68,7 +73,9 @@ including the inputs it newly refuses.
   its fixes removes or requires, the banned wording (claims of adoption or
   endorsement, of independent implementations, post-quantum and FIPS
   claims), both renders, table rows split across a page, the page count
-  that `VALIDATION.md` states, and the checksums. Tool names are not in the
+  that `VALIDATION.md` states, and the checksums. No line of the TXT ends
+  inside a closed-set value that contains a hyphen (a field type,
+  transform, loss policy, code format, parameter kind, or suite). Tool names are not in the
   public script; grep the XML and TXT for them by hand, from outside the
   repository, before upload.
 - Section 13's statement that no implementation implements cbor-sha256:
@@ -87,8 +94,9 @@ Submission is the author's decision. Before it:
    carries the JavaScript mapping stage B fix that the draft's Section 8.3
    now states, the Go back-reference fix that Sections 2.2 and 2.5 state,
    the conditional cbor-sha256 vectors and the runners that skip them, the
-   vectors its change log cites, and the `caid.abnf` comment that Appendix
-   A carries. Merge this branch before filing. The
+   vectors its change log cites (and the mapping runners' `host` mutation
+   that four of them need), and the `caid.abnf` comment that Appendix A
+   carries. Merge this branch before filing. The
    branch has merged main at `dedd9a24d`; if main moves again, merge it
    and regenerate `AI_CONTEXT.md`, `public/llms-full.txt` and
    `public/.well-known/emilia-context.json` with

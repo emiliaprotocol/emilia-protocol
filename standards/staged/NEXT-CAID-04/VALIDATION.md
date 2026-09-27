@@ -1,8 +1,8 @@
 # Validation record
 
 Validated on 2026-09-27. The source applies every confirmed finding of the
-pre-filing review, and every finding of the first, second and third audits
-of those fixes, to the previously staged -04, which carried the
+pre-filing review, and every finding of the first, second, third and
+fourth audits of those fixes, to the previously staged -04, which carried the
 amount-string ABNF and the suite and unused-bit parsing changes over -03
 and keeps both.
 
@@ -27,9 +27,9 @@ and keeps both.
   their `:<name>` parameter, which the paragraph above it states, so its
   "Refused when" column is 31 columns wide; the paragraph that follows the
   table in the earlier draft now precedes it, and the table sits on one
-  page. Table 1 runs from page 14 to page 16: page 14 ends on the last
-  line of its second row, and its last row ends page 15, so only its
-  closing border and caption fall on page 16. The sentence on definitions
+  page (page 35). Table 1 runs from page 15 to page 16: page 15 ends on the
+  last line of its Identifier row, and page 16 begins with the border above
+  its Action type row. The sentence on definitions
   read from JSON text that nest deeper than 64 now opens the paragraph
   after the table instead of closing the one before it, which keeps the
   nesting row on one page.
@@ -52,7 +52,15 @@ and keeps both.
   none of them. `check-caid-04` fails if a non-breaking hyphen appears
   anywhere else in the source, if the HTML carries U+2011 in those names,
   or if the TXT breaks an action type at a hyphen, "action-types", or
-  "value-sets". [CAID-REGISTRY] targets the raw registry file URL, whose
+  "value-sets". It also fails if a line of the TXT, across a page break
+  included, ends inside any closed-set value that contains a hyphen: the
+  field types, transforms, loss policies, code formats and parameter kinds
+  of `caid/spec/core.json` and the suites of `caid/registry/suites.json`.
+  The Section 14.2 item on the mapping profile extension and the Section
+  12.5 registration template are worded so that "sha256-hex-to-digest",
+  "declared-source-semantic-loss" and "field-name" stay whole; before this
+  revision the TXT printed "sha256-hex-to- digest" and, across the page 59
+  break, "field- name". [CAID-REGISTRY] targets the raw registry file URL, whose
   octets the digest covers, so the TXT prints it as the reference's URL in
   angle brackets, where line breaks are the only whitespace inside it, and
   the HTML links it. `xml2rfc` 3.34.0 refuses an `<eref>` in `<refcontent>`,
@@ -60,7 +68,7 @@ and keeps both.
   stray space ("action- types", "history/ action-types"); `check-caid-04`
   fails on either.
 - `idnits 3.1.0 -m submission` reports `PASS - No nit found` for the TXT
-  rendering (96 pages). `check-caid-04` fails unless that page count is the
+  rendering (97 pages). `check-caid-04` fails unless that page count is the
   last page of the TXT.
 - `idnits 3.1.0` in its default mode reports one error,
   `DOWNREF_TO_LOWER_STATUS` for RFC 8785, which is an Informational RFC on
@@ -90,12 +98,16 @@ main, and `--prefiling` now fails unless `git rev-parse origin/main` equals
 `git ls-remote origin refs/heads/main`, so a stale fetch cannot pass it.
 Against that main its first checks hold: main carries registry version 5,
 `caid/spec/caid.abnf`, ports that name -04, and the [CAID-REGISTRY]
-commit. Its last check does not: 25 files under `caid/` differ between
+commit. Its last check does not: 27 files under `caid/` differ between
 this branch and main, among them the JavaScript mapping stage B fix that
 Section 8.3 states, the Go back-reference fix that Sections 2.2 and 2.5
 state, the conditional cbor-sha256 vectors and the runners that skip
-them, which Section 13 describes, the value-count and cycle vectors, and
-the `caid.abnf` comment that Appendix A carries. The gate passes only when
+them, which Section 13 describes, the value-count and cycle vectors, the
+mapping runners' `host` mutation and the stage B vectors it expresses,
+and the `caid.abnf` comment that Appendix A carries. The failure message
+names Sections 2.2, 2.5, 8.3 and 13 and Appendix A, and the paths it
+compares, under `caid/` or `packages/verify/vendor/caid.mjs`; the vendored
+copy itself equals main's. The gate passes only when
 origin/main holds this branch's `caid/` tree and
 `packages/verify/vendor/caid.mjs` byte for byte and the working tree
 matches HEAD there; it lists every differing file. The checks it runs on
@@ -117,7 +129,11 @@ this tree:
   64 (Sections 2.2, 2.5 and 5, Table 1 and Section 14.1). Past the count a
   host action object yields unsupported_value and no unsupported_number,
   and phases 3 and 4 still run (Sections 2.2, 2.5 and 5, Table 1 and
-  Section 14.1, none of which says "alone" any more); a host definition,
+  Section 14.1, none of which says "alone" any more), and the rules that
+  name unsupported_number are scoped the same way: the Section 2.3 bullet
+  on fractional, NaN, infinite and out-of-range values, the Table 2 phase 6
+  row, and the Section 2.5 sentence on NaN or 1.5 and on a host number
+  beyond 2^53-1 each say what happens past the count; a host definition,
   mapping profile or mapping source past it gets the reason of the step
   that reads it (Sections 2.2, 2.5, 2.6 and 14.1). The script requires that
   text and bans the "alone" wording. Until this round the Go port followed
@@ -181,6 +197,30 @@ this tree:
   `enum_snapshot_files` entry in `action-types.json` records what is known
   of its terms; the script checks both for all five snapshots (the ISO 4217
   file itself carries no terms member).
+- Every digest field of the C.1, C.2 and C.5 objects is the SHA-256 of a
+  short example string the script names ("test" for beneficiary_account,
+  "patient-0042" for patient_ref), and the C.6 digests recompute from the
+  C.6 source through the profile's transforms, so the Section 11 sentence
+  that the digest-typed values of Appendix C can be recovered by guessing
+  holds for each. The C.5 patient_ref was a digest of an unrecorded
+  preimage; it is now sha256("patient-0042"), and the C.5 CAID
+  (`...j7WskhX5...ra57U`) and digest (`sha256:8fb5ac92...e7b5`) recompute
+  through the reference validator, the JavaScript and Python ports, and a
+  plain sorted-key JSON encoding, which equals RFC 8785 for that object.
+- Appendix D.2 says its 8 entries stay in registry version 5 unchanged
+  member for member from registry version 4, with identical RFC 8785
+  encodings; the script compares each against
+  `history/action-types.v4.json`. The two files differ in layout, so the
+  entries are not the same octets, and the draft no longer says "byte for
+  byte" there. Two files on main declared registry version 4: the one at
+  `2c0cd467f` (SHA-256 `2becee28...`) and the one at `61e8d58b3`
+  (`73a31f4a...`), which adds the unresolved_external_enums member and a
+  snapshot_sha256 to each enum_snapshot_files entry; all 52 types have the
+  same definition_sha256 in both.
+  `history/action-types.v4.json` is the later one, byte for byte; Section
+  14.4 names it as the last file that declared registry version 4, which
+  `digests.json` pins by its SHA-256, and the script checks that the file
+  hashes to that pin. The -03 packet pins neither file.
 - Section 13 says the next major release vendors caid.mjs without
   mapping; `packages/verify/vendor/caid.mjs` is a byte copy of
   `caid/impl/js/caid.mjs` and defines no mapping function.
@@ -212,6 +252,17 @@ this tree:
   controller's written agreement, and `caid/registry/GOVERNANCE.md`
   section 5 carries the 128-bit criterion with its exception and the
   snapshot-file and terms duty.
+- The change log states what the text states: `chg-deprecated` says a
+  deprecated type computes and verifies wherever its fields resolve, which
+  none of the 9 deprecated initial entries does (Section 12.2);
+  `ed-logging` says the Section 11 logging rule reverses the -03
+  recommendation (a SHOULD) that identifiers be treated as public values;
+  `ed-type-entropy` keeps the SHOULD and the Section 12.2 exception; and
+  `ed-iana` records that the IESG may act for a change controller that
+  cannot be reached and that a new version of a type name is registered
+  by, or with the written agreement of, the change controller of its
+  earlier versions, neither of which -03 had. The script requires each
+  wording and bans the one it replaces.
 - Each change since -03 appears in one list: Section 14.5 lists every
   requirement the new text places on issuers, type authors, registrants,
   executors, carrying protocols, relying parties, deployments and
@@ -244,7 +295,7 @@ this tree:
 
 ## Conformance and generated sources
 
-- `npm run caid:conformance` passes: 591 core, 1966 grammar, 78 mapping,
+- `npm run caid:conformance` passes: 591 core, 1966 grammar, 82 mapping,
   and 100 consequential-interoperability vectors against the spec oracle,
   with the generated-sources and registry checks. In JavaScript, Python,
   and Go each runner reports 589 of the 591 core vectors run and passed
@@ -372,11 +423,34 @@ Re-run for the third audit of the fixes, on the same day and machine:
   the vendored lane, with the same reason lists and verification details
   as the oracle.
 
+Re-run for the fourth audit of the fixes, on the same day and machine:
+
+- `npm view @emilia-protocol/verify version` (the registry's latest) is
+  still 5.0.0, the Datatracker API reports the same latest revisions for
+  this draft (03) and every cited draft, and the IETF archive URL for -04
+  still returns 404.
+- The scoping of Sections 2.3 and 2.5 and the Table 2 phase 6 row, with a
+  local definition that has a required string field s, an array field a
+  and an integer field n, and a shared array of 2^26 - 1 values in a:
+  JavaScript, Python and Go each give `[mistyped_field:n,
+  unsupported_value]` for 1.5 and NaN in n, as do an infinity in
+  JavaScript and Go and the Python int 10**400, and `[unsupported_value]`
+  for 2^53 and for a larger finite host number (`Number.MAX_VALUE`, the
+  Python int 2**1024-2**970-1, Go `math.MaxInt64`); the same objects with
+  a shared array of 15 values give `[mistyped_field:n,
+  unsupported_number]` and `[unsupported_number]`.
+- The four new stage B mapping vectors pass in the three ports and fail
+  against the JavaScript mapper at `cea10b85e`, as the Section 14.2
+  history sentence says of it; the Python and Go runners were checked to
+  build a real cycle (a member that is its own profile, an array that
+  holds itself) and a value of no JSON kind.
+
 Carried from the earlier validation of this packet on the same day, and
 not re-run for this revision, because the text they support did not
-change: the preimage statement of Section 11 (4000 candidates for the
-tool.call.1 example), the `(a|a){1,99}` timings behind Section 10.8, the
-cost figures behind Section 10.7, the document encoding limit results, the
+change: the preimage statement of Section 11 for the tool.call.1 example
+(4000 candidates; the Appendix C digests are checked by the script), the
+`(a|a){1,99}` timings behind Section 10.8, the cost figures behind
+Section 10.7, the document encoding limit results, the
 RFC 7493 Section 2.1 and 2.3 reading, and the
 `draft-thallapelly-oasnt-caid-01` Section 6.4 reading.
 

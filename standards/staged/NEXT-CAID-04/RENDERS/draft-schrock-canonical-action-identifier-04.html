@@ -2061,8 +2061,10 @@ li > p:last-of-type:only-child {
 </li>
           <li class="normal" id="section-2.3-2.4">Fractional, NaN, infinite, and out-of-range values are
           refused as unsupported_number by every conforming implementation,
-          at any depth up to 64 (<a href="#data-model" class="auto internal xref">Section 2.2</a>). Fractional
-          quantities are carried as strings.<a href="#section-2.3-2.4" class="pilcrow">¶</a>
+          at any depth up to 64 (<a href="#data-model" class="auto internal xref">Section 2.2</a>), except in a
+          host action object past the value count, which yields
+          unsupported_value instead (<a href="#host-values" class="auto internal xref">Section 2.5</a>).
+          Fractional quantities are carried as strings.<a href="#section-2.3-2.4" class="pilcrow">¶</a>
 </li>
         </ul>
 <p id="section-2.3-3">Rationale: ECMAScript number serialization is the leading
@@ -2181,10 +2183,12 @@ li > p:last-of-type:only-child {
           an ECMAScript BigInt or a Go uint64, as values of kind
           "unsupported" (<a href="#details" class="auto internal xref">Section 6.1</a>), and a host value of kind
           "unsupported" fails every field type. So NaN or 1.5 in an integer
-          field is mistyped_field:&lt;name&gt; and unsupported_number, and so
-          is a host number whose correctly rounded value is an infinity,
-          such as the Python int 10^400; a host number beyond 2^53-1 whose
-          correctly rounded value is finite is refused by phase 6 alone; and
+          field is mistyped_field:&lt;name&gt; and unsupported_number
+          (unsupported_value past the value count), and so is a host number
+          whose correctly rounded value is an infinity, such as the Python
+          int 10^400; a host number beyond 2^53-1 whose correctly rounded
+          value is finite is refused by phase 6 alone (phase 7 alone past the
+          value count); and
           a BigInt in an integer field, in a binding that gives it kind
           "unsupported", is mistyped_field:&lt;name&gt; and
           unsupported_value, whatever its value. A string with an unpaired
@@ -3468,8 +3472,9 @@ ZLQQQ
           <tr>
             <td class="text-left" rowspan="1" colspan="1">6</td>
             <td class="text-left" rowspan="1" colspan="1">unsupported_number</td>
-            <td class="text-left" rowspan="1" colspan="1">a number in the
-          object, at any depth up to 64, is outside the data model</td>
+            <td class="text-left" rowspan="1" colspan="1">a number at depth 64
+          or less in an object within the value count is outside the data
+          model</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">7</td>
@@ -5037,14 +5042,14 @@ ZLQQQ
         sorts (<a href="#reason-order" class="auto internal xref">Section 5.1</a>), so it is registered only by
         a Standards Track RFC that also updates the reason rule of
         <a href="#appendix-abnf" class="auto internal xref">Appendix A</a> and names the phase or stage that
-        reports it. Each entry records: the reason code, lowercase letters
-        and underscores; its parameter kind (none, field-name, source-path,
-        or compute-reason); the operations and phases, or the mapping
-        stage, that report it; and a reference. The reason rule of
-        <a href="#appendix-abnf" class="auto internal xref">Appendix A</a> accepts exactly the reasons
-        registered by this document. The prefixes left: and right: of a
-        comparison (<a href="#mapping-algorithm" class="auto internal xref">Section 8.3</a>) are not registered
-        reasons: each marks which mapping a registered mapping reason came
+        reports it. Each entry records: the reason code, in lowercase
+        letters and underscores; the kind of its parameter (none,
+        field-name, source-path, or compute-reason); the operations and
+        phases, or the mapping stage, that report it; and a reference. The
+        reason rule of <a href="#appendix-abnf" class="auto internal xref">Appendix A</a> accepts exactly the
+        reasons registered by this document. The prefixes left: and right:
+        of a comparison (<a href="#mapping-algorithm" class="auto internal xref">Section 8.3</a>) are not
+        registered reasons: each marks which mapping a registered mapping reason came
         from, and a mapping reason gains both prefixed forms when it is
         registered. The initial contents are the two tables of
         <a href="#appendix-reasons" class="auto internal xref">Appendix B</a>.<a href="#section-12.5-1" class="pilcrow">¶</a></p>
@@ -5545,8 +5550,8 @@ ZLQQQ
           </li>
 <li id="section-14.2-1.9" class="normal">
 <div class="normal" id="chg-deprecated">Status never affects computation or
-          verification, so deprecated types resolve, compute, and verify
-          (<a href="#status" class="auto internal xref">Section 4.2.4</a>).<a href="#chg-deprecated" class="pilcrow">¶</a>
+          verification, so a deprecated type resolves, computes, and verifies
+          wherever its fields resolve (<a href="#status" class="auto internal xref">Section 4.2.4</a>).<a href="#chg-deprecated" class="pilcrow">¶</a>
 </div>
           </li>
 <li id="section-14.2-1.10" class="normal">
@@ -5588,10 +5593,10 @@ ZLQQQ
 </div>
           </li>
 <li id="section-14.2-1.15" class="normal">
-<div class="normal" id="chg-mapping-extensions">The mapping profile member
-          omitted_source_fields, the loss policy
-          declared-source-semantic-loss, and the transform
-          sha256-hex-to-digest (<a href="#mapping-object" class="auto internal xref">Section 8.2</a>). The
+<div class="normal" id="chg-mapping-extensions">The loss policy
+          declared-source-semantic-loss, the transform
+          sha256-hex-to-digest, and the mapping profile member
+          omitted_source_fields (<a href="#mapping-object" class="auto internal xref">Section 8.2</a>). The
           reference implementations and their conformance corpus already
           used them; a mapper written from -03 refused such profiles.<a href="#chg-mapping-extensions" class="pilcrow">¶</a>
 </div>
@@ -5713,7 +5718,10 @@ ZLQQQ
           currency; contract.execute.1 stays active for contracts that state
           no monetary value. The nine superseded version 1 types are
           deprecated and still resolve. Registry version 4 is kept byte for
-          byte, and every type's definition_sha256 is published.<a href="#chg-registry-v5" class="pilcrow">¶</a>
+          byte as <code>history/action-types.v4.json</code>, the last file
+          that declared registry version 4, which <code>digests.json</code>
+          pins by its SHA-256, and every type's definition_sha256 is
+          published.<a href="#chg-registry-v5" class="pilcrow">¶</a>
 </div>
         </li>
 </ul>
@@ -5849,15 +5857,17 @@ ZLQQQ
           </li>
 <li id="section-14.5-2.17" class="normal">
 <div class="normal" id="ed-logging">A CAID is logged, transmitted, and placed in
-          URLs only where its action object could be; -03 said that
-          identifiers may be treated as public values
+          URLs only where its action object could be, which reverses the -03
+          recommendation that identifiers be treated as public values
           (<a href="#privacy" class="auto internal xref">Section 11</a>).<a href="#ed-logging" class="pilcrow">¶</a>
 </div>
           </li>
 <li id="section-14.5-2.18" class="normal">
 <div class="normal" id="ed-type-entropy">A type whose required fields can all be
-          low-entropy requires a member that carries at least 128 bits of
-          entropy from the system of record (<a href="#privacy" class="auto internal xref">Section 11</a>).<a href="#ed-type-entropy" class="pilcrow">¶</a>
+          low-entropy should require a member that carries at least 128 bits
+          of entropy from the system of record; a later registration without
+          one states why (Sections <a href="#privacy" class="auto internal xref">11</a>
+          and <a href="#iana-action-types" class="auto internal xref">12.2</a>).<a href="#ed-type-entropy" class="pilcrow">¶</a>
 </div>
           </li>
 <li id="section-14.5-2.19" class="normal">
@@ -5966,11 +5976,15 @@ ZLQQQ
           <a href="#appendix-action-types-reference-only" class="auto internal xref">Appendix D.2</a> are defined
           by other specifications, or carry a name that misdescribes the
           type, and stay in the reference registry. The section says who may
-          request a change to an entry, carries the 128-bit entropy
-          criterion for later registrations in the material-fields test,
-          registers a name with an organization-specific first segment only
-          with that organization as change controller, and asks IANA to
-          store the snapshot files derived from IANA registries. The -03
+          request a change to an entry and that the IESG may act for a
+          change controller that cannot be reached or does not respond;
+          registers a new version of a type name only by, or with the
+          written agreement of, the change controller of its earlier
+          versions; carries the 128-bit entropy criterion for later
+          registrations in the material-fields test; registers a name with
+          an organization-specific first segment only with that
+          organization as change controller; and asks IANA to store the
+          snapshot files derived from IANA registries. The -03
           statement
           that the author's organization maintains the registries is
           removed.<a href="#ed-iana" class="pilcrow">¶</a>
@@ -6914,8 +6928,8 @@ fa2
 
 {
   "action_type": "prior.auth.approve.2",
-  "patient_ref": "sha256:e02fb124589d2bf6e04af485b2cc7d5be0e6652c2d8\
-  91a41d77f8e150ff5e474",
+  "patient_ref": "sha256:8d3148217a50cc7dc5c03c79a8932e5bf60dde17db0\
+  b3af90c9fed46d0c47e76",
   "service_code": "E0601",
   "diagnosis_code": "G47.33",
   "authorization_number": "PA-2026-000418",
@@ -6931,10 +6945,10 @@ fa2
 =============== NOTE: '\' line wrapping per RFC 8792 ================
 
 {
-  "caid": "caid:1:prior.auth.approve.2:jcs-sha256:68dl5LXm3M98ESEJbW\
-  2CuCuBefz6p4-CyK6P7AulNHI",
-  "digest": "sha256:ebc765e4b5e6dccf7c1121096d6d82b82b8179fcfaa78f82\
-  c8ae8fec0ba53472",
+  "caid": "caid:1:prior.auth.approve.2:jcs-sha256:j7WskhX5l_V70KUTEf\
+  d1ysXivWV5oFT1q-J1Tvra57U",
+  "digest": "sha256:8fb5ac9215f997f57bd0a51311f775cac5e2bd6579a054f5\
+  abe2754efadae7b5",
   "definition_sha256": "sha256:c25345a298c9b0ec96d019e4e2bcfd6ddd259\
   ad064a7cb75b581999eaaf10086"
 }
@@ -6950,8 +6964,8 @@ fa2
 
 {
   "action_type": "prior.auth.approve.2",
-  "patient_ref": "sha256:e02fb124589d2bf6e04af485b2cc7d5be0e6652c2d8\
-  91a41d77f8e150ff5e474",
+  "patient_ref": "sha256:8d3148217a50cc7dc5c03c79a8932e5bf60dde17db0\
+  b3af90c9fed46d0c47e76",
   "service_code": "e0601",
   "diagnosis_code": "G4733",
   "authorization_number": "PA-2026-000418",
@@ -7363,10 +7377,11 @@ fa2
         <h3 id="name-reference-registry-entries-">
 <a href="#appendix-D.2" class="section-number selfRef">D.2. </a><a href="#name-reference-registry-entries-" class="section-name selfRef">Reference-Registry Entries Not Requested of IANA</a>
         </h3>
-<p id="appendix-D.2-1">These 8 entries, all active, stay in registry version 5 byte for
-        byte, so that an object valid under registry version 4, which
-        carries them, stays valid (<a href="#names" class="auto internal xref">Section 4.1</a>), but IANA is not
-        asked to register them. emilia.mobile.authorized-action.1 is named
+<p id="appendix-D.2-1">These 8 entries, all active, stay in registry version 5 unchanged
+        member for member (their RFC 8785 encodings are identical), so that
+        an object valid under registry version 4, which carries them, stays
+        valid (<a href="#names" class="auto internal xref">Section 4.1</a>), but IANA is not asked to register
+        them. emilia.mobile.authorized-action.1 is named
         for a product of the author's organization and is defined by that
         organization's specification. agent.state.export.1,
         agent.state.import.1, agent.state.key-release.1, and

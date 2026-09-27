@@ -32,7 +32,7 @@
 //     PATH, that they equal a fresh render), table rows split across a
 //     page, and SHA256SUMS.txt;
 //   - with --prefiling, that origin/main carries this tree's caid/ and the
-//     vendored caid.mjs byte for byte, so Sections 8.3 and 13 and
+//     vendored caid.mjs byte for byte, so Sections 2.2, 2.5, 8.3 and 13 and
 //     Appendix A hold at tree/main/caid.
 //
 //   node scripts/check-caid-04.mjs          run every check; exit 1 on any failure
@@ -698,6 +698,24 @@ check(v5File.sha256 === v5Sha, 'digests.json does not pin the bytes of action-ty
 check(flat(source).includes(v5Sha.slice('sha256:'.length)), 'the registry reference does not carry the SHA-256 of registry version 5');
 const v4File = digests.registry_files.find((f) => f.registry_version === 4);
 check(v4File?.sha256 === 'sha256:73a31f4a4156e3de02e1c3a9ef355f73c07ba25e6b1bb3da8fde8677c2e23d26', 'history v4 pin moved');
+// F1-DIG-TWO-V4-FILES: two files on main declared registry version 4
+// (2c0cd467f, 61e8d58b3). history/action-types.v4.json is the later one, the
+// file digests.json pins, and Section 14.4 names it.
+const v4Path = v4File?.path ?? '';
+check(v4Path === 'history/action-types.v4.json' && `sha256:${createHash('sha256').update(readFileSync(path.join(root, 'caid/registry', v4Path))).digest('hex')}` === v4File?.sha256,
+  'caid/registry/history/action-types.v4.json is not the registry version 4 file that digests.json pins');
+// F1-DIG-D2-BYTE-FOR-BYTE: Appendix D.2 says its entries are unchanged
+// member for member from registry version 4, so their RFC 8785 encodings
+// are identical. The two files differ in layout, so it says nothing of
+// octets.
+{
+  const v4 = readJson(`caid/registry/${v4Path || 'history/action-types.v4.json'}`);
+  for (const name of IANA_EXCLUDED.keys()) {
+    const a = ref.canonicalize(v4.types.find((t) => t.action_type === name));
+    const b = ref.canonicalize(registry.types.find((t) => t.action_type === name));
+    check(a.ok && b.ok && a.canonical === b.canonical, `Appendix D.2 says ${name} is unchanged from registry version 4, but its RFC 8785 encodings differ`);
+  }
+}
 // The counts of the whole registry belong to Section 14.4, which describes
 // registry version 5; Section 12.2 and Appendix D.1 state the IANA split.
 {
@@ -1035,6 +1053,25 @@ for (const v of [coded?.service_code, coded?.diagnosis_code, codedBad?.service_c
   check(typeof v === 'string' && !matches(rules, 'cpt', v), `C.5 value ${v} has CPT syntax; examples carry no CPT-shaped code`);
 }
 
+// F1-DIG-PATIENTREF-PREIMAGE: Section 11 says the digest-typed values of
+// Appendix C are digests of short example strings and can be recovered by
+// guessing. Every digest field of the C.1, C.2 and C.5 objects is the
+// SHA-256 of one of these strings; the C.6 values recompute below from the
+// C.6 source through the profile's transforms.
+{
+  const PREIMAGES = ['test', 'patient-0042'];
+  const known = new Set(PREIMAGES.map((s) => `sha256:${sha256Hex(s)}`));
+  for (const [anchor, object] of [['exc-payment-object', payment], ['exc-refusal-object', refused], ['exc-code-object', coded], ['exc-code-refusal-object', codedBad]]) {
+    const definition = registry.types.find((t) => t.action_type === object?.action_type);
+    check(definition, `${anchor} names no registry type`);
+    for (const field of [...(definition?.required_fields ?? []), ...(definition?.optional_fields ?? [])]) {
+      if (field.type !== 'digest' || !Object.prototype.hasOwnProperty.call(object, field.name)) continue;
+      check(known.has(object[field.name]), `${anchor}: ${field.name} is not the SHA-256 of a known short example string, so the Section 11 recovery sentence is unverified for it`);
+    }
+  }
+  check(plain(section('privacy')).includes('are digests of short example strings and can be recovered this way'), 'Section 11 no longer says the Appendix C digests can be recovered; update this check');
+}
+
 // C.6 mapping, recomputed here from the rules of Section 8, then computed
 // through the reference validator.
 const profile = codeJson('ex-map-profile');
@@ -1231,6 +1268,11 @@ for (const [needle, what] of [
   ['phase 6 every number in the data model', 'R3-REG-2: phase 6 examines numbers only down to depth 64 (Section 1.2 figure)'],
   ['have the confidentiality of personal data', 'R3-PRIVACY-WORDING: what a sequential identifier costs (Section 11)'],
   ['read neither member of such a profile', 'R3-STAGEB-HISTORY, R3-REG-4: the earlier JavaScript mapper read both members of most profiles outside the data model (Section 14.2)'],
+  // Round 4 of the fix audit.
+  ['so deprecated types resolve, compute, and verify', 'F1-REG-DEPRECATED: a deprecated type computes only where its fields resolve (Section 14.2)'],
+  ['-03 said that identifiers may be treated as public values', 'F1-ED-LOGGING-03-QUOTE: -03 recommended it (Section 14.5)'],
+  ['stay in registry version 5 byte for byte', 'F1-DIG-D2-BYTE-FOR-BYTE: the D.2 entries keep their values, not their octets (Appendix D.2)'],
+  ['object, at any depth up to 64, is outside the data model', 'F1-REG-UNIVERSAL-NUMBER: the Table 2 phase 6 row holds only within the value count'],
 ]) check(needle instanceof RegExp ? !needle.test(sourcePlain) : !sourcePlain.includes(needle), `source still carries the wording of ${what}`);
 // ED-13: "action object" is lowercase in running text; titles keep title case.
 // Sourcecode is left out: the Section 4.7 registration quotes the registry
@@ -1266,7 +1308,7 @@ for (const [anchor, needle, what] of [
   ['limits', 'and a host mapping source that does is source_not_canonicalizable', 'R2-VALUECOUNT-REASON: stage-b-source-value-count-not-canonicalizable'],
   ['computation', 'the value count does not count them', 'R2-VALUECOUNT-DEPTH (Section 5)'],
   ['computation', 'When a host action object is made of more values than the value count', 'R2-VALUECOUNT-REASON (Section 5)'],
-  ['host-values', 'a host number beyond 2^53-1 whose correctly rounded value is finite is refused by phase 6 alone', 'R2-GATE-5: native-integer-beyond-range-in-integer-field'],
+  ['host-values', 'a host number beyond 2^53-1 whose correctly rounded value is finite is refused by phase 6 alone (phase 7 alone past the value count)', 'R2-GATE-5, F1-REG-UNIVERSAL-NUMBER: native-integer-beyond-range-in-integer-field'],
   ['impl-status', 'none implements the cbor-sha256 suite', 'R2-GATE-5: the runners skip the vectors that apply only to a cbor-sha256 implementation (checked below)'],
   ['tool-call-type', 'an occurrence_id that carries at least 128 bits of entropy unless args already carries an identifier with at least that entropy', 'R2-GATE-6: the 128-bit occurrence_id requirement (Section 4.7)'],
   ['schema', 'each line break inside a string, and the indentation after it, reads as one space', 'R2-4.2-LINEBREAKS, R2-REG-6: the rule this script applies to the Section 4.2 example'],
@@ -1286,7 +1328,7 @@ for (const [anchor, needle, what] of [
   ['host-values', 'and a reference back to an enclosing object or array counts as one value and nothing beyond it is counted', 'R3-REG-1 (Section 2.5)'],
   ['host-values', 'phase 7 yields unsupported_value and phase 6 yields no reason, whatever the value holds, while phases 3 and 4 still run', 'R3-VALUECOUNT-ALONE (Section 2.5)'],
   ['host-values', 'the count of a value whose shared references form no cycle is that of the expansion, down to depth 64', 'R3-REG-1: acyclic shared references count by their expansion (Section 2.5)'],
-  ['host-values', 'So NaN or 1.5 in an integer field is mistyped_field:<name> and unsupported_number', 'M2, IMPL-2, R3-GATE-1: native-nan-in-integer-field, native-fraction-in-integer-field'],
+  ['host-values', 'So NaN or 1.5 in an integer field is mistyped_field:<name> and unsupported_number (unsupported_value past the value count)', 'M2, IMPL-2, R3-GATE-1, F1-REG-UNIVERSAL-NUMBER: native-nan-in-integer-field, native-fraction-in-integer-field, native-value-count-with-phase-3-and-4'],
   ['computation', 'or beyond a reference back to an enclosing object or array, and the value count does not count them', 'R3-REG-1 (Section 5)'],
   ['computation', 'phase 6 yields no reason and phase 7 yields unsupported_value, whatever the value holds; phases 3 and 4 still run', 'R3-VALUECOUNT-ALONE (Section 5)'],
   ['chg-refused-value-count', 'or a reference back to an enclosing object or array, counts as one value: unsupported_value and no unsupported_number, while phases 3 and 4 still run', 'R3-REG-1, R3-VALUECOUNT-ALONE (Section 14.1)'],
@@ -1305,6 +1347,18 @@ for (const [anchor, needle, what] of [
   ['ed-references', 'ISO 3166-1 and ISO 4217', 'R3-REG-7: the enum sources Section 4.5 cites'],
   ['ed-uri-utility', 'instead of using an ni URI', 'author: the change entry for the Section 12.8 utility paragraph'],
   ['ed-privacy', 'not propagated as a correlation identifier to parties that do not', 'author: the change entry for the Section 11 paragraph'],
+  // Round 4 of the fix audit. Past the value count phase 6 yields no
+  // reason, as native-value-count-with-phase-3-and-4 pins, so each rule
+  // that names unsupported_number is scoped to an object within the count.
+  ['numbers', 'except in a host action object past the value count, which yields unsupported_value instead', 'F1-REG-UNIVERSAL-NUMBER (Section 2.3)'],
+  ['computation', 'a number at depth 64 or less in an object within the value count is outside the data model', 'F1-REG-UNIVERSAL-NUMBER: Table 2, phase 6'],
+  ['chg-deprecated', 'so a deprecated type resolves, computes, and verifies wherever its fields resolve', 'F1-REG-DEPRECATED: the 9 deprecated initial entries resolve but compute nothing (Section 12.2)'],
+  ['ed-logging', 'which reverses the -03 recommendation that identifiers be treated as public values', 'F1-ED-LOGGING-03-QUOTE: -03 said SHOULD'],
+  ['ed-type-entropy', 'should require a member that carries at least 128 bits of entropy from the system of record; a later registration without one states why', 'F1-ED-LOGGING-03-QUOTE: the SHOULD of Section 11 and the exception of Section 12.2'],
+  ['ed-iana', 'that the IESG may act for a change controller that cannot be reached or does not respond', 'F1-REG-IANA-CHANGES: Sections 12 and 12.1'],
+  ['ed-iana', 'registers a new version of a type name only by, or with the written agreement of, the change controller of its earlier versions', 'F1-REG-IANA-CHANGES: Section 12.2'],
+  ['appendix-action-types-reference-only', 'stay in registry version 5 unchanged member for member (their RFC 8785 encodings are identical)', 'F1-DIG-D2-BYTE-FOR-BYTE (checked against the version 4 file above)'],
+  ['changes-03-registry', 'kept byte for byte as history/action-types.v4.json, the last file that declared registry version 4, which digests.json pins by its SHA-256', 'F1-DIG-TWO-V4-FILES'],
 ]) check(plain(part(anchor)).includes(needle), `${/^(?:chg|ed)-/.test(anchor) ? 'item' : 'section'} ${anchor} lacks "${needle}" (${what})`);
 // R2-GATE-5: Section 13 says none of the three implementations implements
 // cbor-sha256 and that each skips the corpus vectors that apply only to an
@@ -1542,6 +1596,38 @@ check(!/action-\s+types/.test(text), 'the TXT render splits a path at "action-ty
   const broken = text.split('\n').filter((l) => /[a-z0-9_]\.[a-z0-9_.]*-$/.test(l));
   check(broken.length === 0, `the TXT render breaks an action type at a hyphen: "${broken[0]?.trim()}"`);
 }
+// F1-TXT-TOKEN-BREAKS: the same defect for every closed-set value with a
+// hyphen (field types, transforms, loss policies, code formats, parameter
+// kinds, suites): xml2rfc breaks after a hyphen at a line end, and a reader
+// who copies "sha256-hex-to- digest" or "field- name" gets no registry
+// value. A line that ends inside one fails, across a page break too.
+{
+  const TOKENS = [...new Set([
+    ...core.field_types.map((t) => t.type),
+    ...core.mapping.transforms.map((t) => t.transform),
+    ...core.mapping.loss_policies.map((l) => l.policy),
+    ...core.grammar.code_formats.map((f) => f.format),
+    ...core.reasons.map((r) => r.param),
+    ...core.mapping.reasons.map((r) => r.param),
+    ...readJson('caid/registry/suites.json').suites.map((s) => s.suite),
+  ].filter((t) => typeof t === 'string' && t.includes('-')))];
+  check(['sha256-hex-to-digest', 'declared-source-semantic-loss', 'field-name', 'amount-string', 'icd-10-cm', 'cbor-sha256'].every((t) => TOKENS.includes(t)), 'the TXT token-break check lost a closed set');
+  const lines = text.split('\n').map((l) => l.replaceAll('\f', '')).filter((l) => !/\[Page \d+\]\s*$/.test(l) && !/^Internet-Draft\s/.test(l));
+  const broken = [];
+  lines.forEach((line, i) => {
+    const tail = /(\S*-)\s*$/.exec(line)?.[1];
+    if (!tail) return;
+    let j = i + 1;
+    while (j < lines.length && !lines[j].trim()) j += 1;
+    const joined = tail + (/^\s*(\S*)/.exec(lines[j] ?? '')?.[1] ?? '');
+    for (const token of TOKENS) {
+      for (let k = joined.indexOf(token); k !== -1; k = joined.indexOf(token, k + 1)) {
+        if (k < tail.length && tail.length < k + token.length) broken.push(`${token} in "${line.trim()}" / "${(lines[j] ?? '').trim()}"`);
+      }
+    }
+  });
+  check(broken.length === 0, `the TXT render breaks a registry value at a hyphen (${broken.length}): ${broken.join('; ')}`);
+}
 // The same wrapping defect after a slash: xml2rfc refills a <tt> path broken
 // after "/" with a space inside it.
 for (const p of ['history/action-types.v4.json', 'caid/registry/action-types.json']) {
@@ -1658,8 +1744,9 @@ if (prefiling) {
     if (pinnedCommit) check(git('merge-base', '--is-ancestor', pinnedCommit, 'origin/main') !== null, `prefiling: the [CAID-REGISTRY] commit ${pinnedCommit} is not reachable from origin/main`);
     // R1-M3-GATE, R3, GATE-1: the checks above hold on a main that lacks
     // this tree's CAID changes (the stage B fix of the JavaScript port, the
-    // conditional cbor-sha256 vectors and the runners that skip them, the
-    // new vectors, the caid.abnf comment). This one does not: every file
+    // back-reference fix of the Go port, the conditional cbor-sha256 vectors
+    // and the runners that skip them, the new vectors, the caid.abnf
+    // comment). This one does not: every file
     // under FILING_PATHS on origin/main equals HEAD's, and the working tree
     // that the checks above read equals HEAD there.
     const status = git('status', '--porcelain', '--untracked-files=all', '--', ...FILING_PATHS);
@@ -1667,10 +1754,11 @@ if (prefiling) {
     const branch = git('rev-parse', '--abbrev-ref', 'HEAD')?.toString().trim() ?? 'HEAD';
     const advice = branch === 'main' || branch === 'HEAD' ? 'Bring this checkout and origin/main to one CAID tree and re-run' : `Merge ${branch} into main and re-run`;
     const differing = git('diff', '--name-only', 'HEAD', 'origin/main', '--', ...FILING_PATHS);
+    const compared = FILING_PATHS.map((p) => (p.includes('.') ? p : `${p}/`)).join(' or ');
     const names = differing?.toString().trim().split('\n').filter(Boolean) ?? null;
     check(names !== null && names.length === 0, names === null
       ? 'prefiling: git diff HEAD origin/main failed'
-      : `prefiling: origin/main (${mainCommit.slice(0, 12)}) does not carry the CAID tree of ${branch}; ${names.length} file(s) under ${FILING_PATHS.join(', ')} differ, so Sections 8.3 and 13 and Appendix A would be false at tree/main/caid. ${advice}:\n    ${names.slice(0, 30).join('\n    ')}${names.length > 30 ? `\n    ... and ${names.length - 30} more` : ''}`);
+      : `prefiling: origin/main (${mainCommit.slice(0, 12)}) does not carry the CAID tree of ${branch}; ${names.length} file(s) under ${compared} differ, so Sections 2.2, 2.5, 8.3 and 13 and Appendix A would be false at tree/main/caid. ${advice}:\n    ${names.slice(0, 30).join('\n    ')}${names.length > 30 ? `\n    ... and ${names.length - 30} more` : ''}`);
   }
 }
 
