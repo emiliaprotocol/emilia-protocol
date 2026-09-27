@@ -1,8 +1,9 @@
 # Validation record
 
-Validated on 2026-09-27. The source starts from the previously staged -04
-(which carried the amount-string ABNF and the suite and unused-bit parsing
-changes over -03) and keeps both changes.
+Validated on 2026-09-27. The source applies every confirmed finding of the
+pre-filing review to the previously staged -04, which carried the
+amount-string ABNF and the suite and unused-bit parsing changes over -03
+and keeps both.
 
 ## Rendering
 
@@ -10,114 +11,155 @@ changes over -03) and keeps both changes.
 - `xml2rfc 3.34.0` renders the TXT (`--text`) and, with `--no-external-js`,
   the HTML (`--html`). Trailing spaces and tabs in the generated HTML are
   removed with `perl -pe 's/[ \t]+$//'` before checksums are recorded.
-  Applied to the previously staged source, the same procedure reproduces
-  its checked-in TXT and HTML byte for byte; applied to this source, it
-  produces the renders in `RENDERS/`.
 - `xml2rfc` reports two informational warnings and nothing else: the
   source omits `submissionType`, as -03 does, because this is an individual
   draft with no adopted document stream, so `xml2rfc` uses its IETF default
   and sets `consensus="true"` for a Standards Track document.
 - Every sourcecode line is at most 69 columns. Long example lines are folded
   as specified in RFC 8792 (single backslash strategy), and
-  `check-caid-04` unfolds them before recomputing. Appendix D is a listing,
-  not a table, because a 64-digit digest does not fit a table row.
+  `check-caid-04` unfolds them before recomputing. Appendix D is two
+  listings, not tables, because a 64-digit digest does not fit a table row.
+- Non-breaking hyphens (`&#8209;`) keep `action-types.json`,
+  `history/action-types.v4.json`, `value-sets/`, SHA-384 and SHA-512/256
+  on one line. `xml2rfc` renders them as ASCII hyphens, and the TXT is
+  ASCII only. The raw registry file URL sits in the reference's
+  `<refcontent>`: in an `<annotation>`, `xml2rfc` printed it with a stray
+  space inside "action-types".
 - `idnits 3.1.0 -m submission` reports `PASS - No nit found` for the TXT
-  rendering (81 pages).
+  rendering (93 pages).
 - `idnits 3.1.0` in its default mode reports one error,
   `DOWNREF_TO_LOWER_STATUS` for RFC 8785, which is an Informational RFC on
   the Independent Stream and not in the Downref Registry. Any IETF Last
   Call for this document must call out that downward reference, as BCP 97
   requires. Its warnings are the RFC 6234 downref, which the Downref
-  Registry lists, a suggestion to cite BCP 14 by name, and table-of-contents
-  indentation it misreads as appendix titles.
+  Registry lists, a suggestion to cite BCP 14 by name, and eight lines it
+  misreads as appendix titles: four table-of-contents lines and four body
+  lines that begin with "Appendix".
+- The TXT and the XML contain no U+2013 or U+2014. The only double hyphens
+  in the TXT are the arrows of the Section 1.2 figure and table borders.
+  "independent implementation" appears only in Section 13, which says that
+  none exists; "adopted", "endorsed" (outside the two disclaimers of
+  endorsement), "quantum-safe", and "FIPS-compliant" do not appear.
 
 ## check-caid-04
 
-`node scripts/check-caid-04.mjs` passes every check on this tree:
+`node scripts/check-caid-04.mjs` passes every check on this tree, and
+`node scripts/check-caid-04.mjs --prefiling` passes against origin/main as
+last fetched (`cea10b85e`, the merge of pull request #821):
 
-- Appendix A equals `caid/spec/caid.abnf` byte for byte (160 lines), and
-  every non-empty ABNF line appears in the TXT render. No other ABNF block
-  remains in the body.
-- Appendix B (16 core reasons, and 16 mapping reasons besides the two that
-  computation and mapping stage A share), the verification detail table,
-  the limits table (13 rows), and the IANA tables for suites, field types,
-  code formats (with a syntax reference per format), transforms, and loss
-  policies equal the tables generated from `caid/spec/core.json`,
-  `caid/registry/suites.json`, and the compiled code formats. Appendix D
-  equals the listing generated from `caid/registry/action-types.json` and
-  `caid/registry/digests.json`.
+- Appendix A equals `caid/spec/caid.abnf` byte for byte (160 lines). The
+  Appendix A.5 comment on `format-name` changed in both, so it names the
+  formats of this document instead of "the registered formats".
+- Appendix B, the verification detail table, the limits table (13 rows,
+  with the nesting row that names the reason for every value), and the
+  IANA tables equal the tables generated from `caid/spec/core.json`,
+  `caid/registry/suites.json`, and the compiled code formats.
+- Appendix D lists all 62 types of registry version 5 once, with their
+  `definition_sha256` values: D.1, the 54 initial IANA entries (45 active,
+  9 deprecated), and D.2, the 8 entries of the script's `IANA_EXCLUDED`,
+  each with its reason confirmed against the registry entry. Section 12.2
+  and both subsections state those counts, and Section 14.4 keeps the
+  counts of the whole registry (62, 53 active, 9 deprecated).
 - Appendix C recomputes under registry version 5 with its enum snapshots:
-  the payment.release.1 object gives 230 canonical octets, digest
-  `sha256:9622c6f6...3b56`, the CAID ending `...arxrO1Y`, and
-  `definition_sha256` `sha256:3a5ad4c0...ff12`; the refusal list and its
-  order; the verification result with its five details; the tool.call.1
-  validation projection and its digest; the prior.auth.approve.2 code-field
-  result and its `invalid_code` refusal; and the mapping example's profile
-  digest, source digest, projected object, and CAID. Each is checked
-  against `caid/spec/reference.mjs` and, where it is a hash, by hashing in
-  the script.
-- The Section 3.3 identifier is the Appendix C.1 CAID; the tool.call.1
-  example reproduces
-  `caid:1:tool.call.1:jcs-sha256:FdawgFwgN5tAtiZa-SCkVDrV3dS9w1yeXVQaDaZLQQQ`.
-- All 40 `chg-` items of "Changes since -03" map to vector ids that exist
+  the C.1 object gives 230 canonical octets, digest `sha256:9622c6f6...3b56`
+  and the CAID ending `...arxrO1Y` under jcs-sha256, and 207 CBOR octets,
+  digest `sha256:edb04ef2...d4b2f6` and the CAID ending `...-200vY` under
+  cbor-sha256, with `definition_sha256` `sha256:3a5ad4c0...ff12`; C.2
+  through C.6 recompute as before.
+- The Section 4.2 example, with its line breaks read as spaces and its one
+  folded line unfolded, is the registry version 5 entry for
+  payment.release.1 and hashes to the C.1 `definition_sha256`.
+- [CAID-REGISTRY] targets `action-types.json` at commit `cea10b85e`, carries
+  the raw file URL at the same commit, and that commit's file hashes to
+  registry version 5 (`1e30ddd3...2551a`).
+- All 43 `chg-` items of "Changes since -03" map to vector ids that exist
   in the core corpus v5, the mapping corpus v2, or the interoperability
-  corpus (`CHANGES-VECTORS.json`).
-- The prose examples match or fail the ABNF as the text says, the 16 final
-  digest characters equal `b64url-z2`, and every registered suite matches
-  the suite rule.
-- Registry version 5 has 62 types, 53 active and 9 deprecated, and the
-  draft cites the SHA-256 of `action-types.json` that `digests.json`
-  records. The history v4 pin is `73a31f4a...2d26`.
-- The normative references include RFC 8259, 3629, 7405, 7493, and 3986,
-  IEEE 754, and the reference registry at a fixed commit; the informative
-  ones include RFC 7595, 7942, 8126, and 8792 and the Unicode Standard;
-  every listed reference is cited. The cited Internet-Draft revisions are
-  the latest ones below.
-- The removed -03 text is gone outside the change logs, no en or em dash
-  appears in the source or the TXT render, the source is printable ASCII,
-  and `SHA256SUMS.txt` matches.
+  corpus (`CHANGES-VECTORS.json`). New or extended: `chg-refused-depth`,
+  `chg-refused-json-text`, `chg-data-model`, `chg-host-values`,
+  `chg-mapping-stage-b`, `chg-enum-snapshot-shape`, and `chg-cbor-suite`.
+- Every BCP 14 keyword outside code is marked with `<bcp14>`, the wording
+  that each confirmed finding removes is gone, and the text each requires
+  is present. The references, the registries the Abstract and Section 12
+  name, the prose examples against the ABNF, both renders, and
+  `SHA256SUMS.txt` check.
+
+## Conformance and generated sources
+
+- `npm run caid:conformance` passes: 575 core, 1966 grammar, 76 mapping,
+  and 100 consequential-interoperability vectors in JavaScript, Python, and
+  Go, against the spec oracle, with the generated-sources and registry
+  checks. Six vectors apply only where cbor-sha256 is, or is not,
+  implemented; each runner skips those whose condition does not hold.
+- `node caid/spec/gen.mjs --check` passes (4 generated files match), and
+  `node caid/spec/abnf-check.mjs` reports 0 failures.
+- `npm run check:llm-context` passes.
+- `node scripts/check-caid-03.mjs` still passes for the posted -03 packet.
 
 ## Claims checked outside the script
 
-- The preimage statement in Privacy Considerations: enumerating
-  `amount_usd` from 1 through the JavaScript implementation finds 4000
-  after 4000 candidates for the tool.call.1 example CAID (26 ms).
-- The code-format statement in Security Considerations: the pattern
-  `(a|a){1,99}` took 31.5, 9.2, 34.4, and 137.7 ms in V8 on "a" repeated
-  18, 20, 22, and 24 times and followed by "!", roughly quadrupling every
-  two characters.
-- The cost statement in Section 10.7, measured on a laptop (darwin/arm64,
-  node 20.20.2, Python 3.11.15, Go 1.27.0) with `computeCaidJson` and its
-  counterparts: a 33,554,367-octet array of 16 million zeros is refused in
-  0.9 s and 561 MiB (JavaScript), 11.5 s and 982 MiB (Python), and 0.7 s
-  and 1,221 MiB (Go); a 15 MiB array computes in 0.5 s and 314 MiB, 5.3 s
-  and 772 MiB, and 0.3 s and 572 MiB.
-- The document encoding limit: a definition whose validation projection
-  holds a 134,217,728-character member is `invalid_definition`, and a
-  mapping source holding one is `source_not_canonicalizable`, in
-  JavaScript, Python, and Go; a present enum field whose supplied snapshot
-  holds one is `mistyped_field:<name>` in JavaScript and Python (not run in
-  Go).
-- RFC 7493 Section 2.1 excludes surrogates and noncharacters from member
-  names and string values; Section 2.3 refuses duplicate names after
-  unescaping.
+Run on 2026-09-27 on darwin/arm64 (node, Python 3, go1.26.4, swift):
+
+- The C.1 cbor-sha256 values: Python `cbor2` 6.1.4 with `canonical=True`
+  and an encoder written for this check from RFC 8949 Sections 3 and 4.2.1
+  produce the same 207 octets, digest
+  `sha256:edb04ef20891696de205147e0ba719167aa446300f4f04cf32bbf077edb4d2f6`,
+  and CAID
+  `caid:1:payment.release.1:cbor-sha256:7bBO8giRaW3iBRR-C6cZFnqkRjAPTwTPMrvwd-200vY`;
+  decoding gives the key order memo, amount, currency, action_type,
+  beneficiary_account, payment_instruction_id. The script's own encoder
+  and the corpus vector `compute-cbor-sha256-appendix-c1` agree.
+- The Section 2.5 host-value rule, with a local definition that has an
+  integer field and optional amount-string, digest, string, and object
+  fields. JavaScript: 1.5, NaN, and Infinity in the integer field give
+  `[mistyped_field:n, unsupported_number]`; 2^53 and `Number.MAX_VALUE`
+  give `[unsupported_number]`; a BigInt gives
+  `[mistyped_field:n, unsupported_value]`; "1" followed by U+D800 gives
+  `[invalid_amount:a, unsupported_value]` in the amount-string field,
+  "sha256:" followed by U+D800 gives `[mistyped_field:d, unsupported_value]`
+  in the digest field, and a lone surrogate gives `[unsupported_value]` in
+  the string field; a Map or a Date in the object field gives
+  `[mistyped_field:o, unsupported_value]`. Python: the same for 1.5, NaN,
+  2**53, the strings, and a set; 10**400 and 2**1024-2**970 give
+  `[mistyped_field:n, unsupported_number]`, and 2**1024-2**970-1 gives
+  `[unsupported_number]`. Go runs the same cases through the corpus
+  vectors `native-*`, which pass in all three ports.
+- The Section 10.6 number differential: in node, `Number()` of
+  3999.99999999999999999 and of 4000.0000000000001 is 4000, of
+  3999.9999999999995 and 4000.0000000000005 is not an integer, and of
+  1e-400 is 0.
+- The Section 10.6 member-name differential: Go's `encoding/json`
+  unmarshals `{"amount":"1.00","Amount":"99999.00"}` into a struct field
+  tagged `json:"amount"` as 99999.00, and Swift's `==` is true for
+  "caf" + U+00E9 and "cafe" + U+0301.
+- Section 12.2: every currency field of the 54 initial entries is an enum
+  pinned to the ISO 4217 snapshot, and the DNS, the two JOSE, and the
+  ISO 3166-1 alpha-2 snapshot files record an IANA registry as their
+  source (`enum_snapshot_files` in `action-types.json`).
+- Section 13: `npm view @emilia-protocol/verify version` is 5.0.0,
+  published 2026-09-25; `packages/verify/CHANGELOG.md` lists 6.0.0 as
+  "Unreleased", and the vendored `caid.mjs` implements -04 (the script
+  checks both).
 - `caid` is absent from the IANA URI Schemes registry
-  (`uri-schemes-1.csv`, 435 rows, fetched on 2026-09-27).
-- `draft-thallapelly-oasnt-caid-01` Section 6.4 states that identifiers
-  from different profiles are never compared; its Acknowledgments credit
-  the author's review with that observation, so Section 3.6 no longer
-  calls it independent.
-- `node scripts/check-caid-03.mjs` still passes for the posted -03 packet.
-- The Datatracker API, queried on 2026-09-27, reports revision 03 of
-  draft-schrock-canonical-action-identifier (posted
-  2026-09-26T16:30:22Z) as the latest, and the IETF archive URL for -04
-  returns 404, so -04 is the next revision. It reports
-  draft-schrock-ep-authorization-receipts-13 (header date 11 September
-  2026), draft-schrock-action-evidence-boundary-07 (25 September 2026),
-  draft-schrock-ep-authorization-evidence-chain-06 (6 September 2026),
-  and draft-thallapelly-oasnt-caid-01 as the latest revisions of the
-  cited drafts; draft-morrow-sogomonian-exec-outcome-attest-00 expires on
-  2026-10-06.
+  (`uri-schemes-1.csv`, 439 lines, fetched on 2026-09-27).
+- The HCPCS and UTS #39 reference URLs return HTTP 200. The other code
+  system references carry no URL.
+- The Datatracker API, queried on 2026-09-27, reports revision 03 as the
+  latest of draft-schrock-canonical-action-identifier, and the IETF
+  archive URL for -04 returns 404, so -04 is the next revision. It reports
+  draft-schrock-ep-authorization-receipts-13,
+  draft-schrock-action-evidence-boundary-07,
+  draft-schrock-ep-authorization-evidence-chain-06,
+  draft-thallapelly-oasnt-caid-01, draft-lee-orprg-permit-receipts-00, and
+  draft-morrow-sogomonian-exec-outcome-attest-00 as the latest revisions of
+  the cited drafts; the last expires on 2026-10-06.
+
+Carried from the earlier validation of this packet on the same day, and
+not re-run for this revision, because the text they support did not
+change: the preimage statement of Section 11 (4000 candidates for the
+tool.call.1 example), the `(a|a){1,99}` timings behind Section 10.8, the
+cost figures behind Section 10.7, the document encoding limit results, the
+RFC 7493 Section 2.1 and 2.3 reading, and the
+`draft-thallapelly-oasnt-caid-01` Section 6.4 reading.
 
 Datatracker has not published this packet. Submission is held; see
 `README.md`.

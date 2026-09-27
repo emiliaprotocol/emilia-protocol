@@ -33,11 +33,11 @@
       and versioned action-type definitions with required material
       fields. External value sets are bound to integrity-checked
       snapshots. The document specifies a strict JSON input profile, a
-      fixed, ordered set of refusal reasons, and a digest that identifies
-      the validation semantics of a type definition, and it requests
-      seven registries: suites, action types, field types, code formats,
-      reason codes, mapping transforms, and mapping loss policies. It
-      also defines an Action-Mapping Profile for
+      fixed and ordered set of refusal reasons, and a digest that
+      identifies the validation semantics of a type definition. It
+      requests seven registries: suites, action types, field types, code
+      formats, reason codes, mapping transforms, and mapping loss
+      policies. It also defines an Action-Mapping Profile for
       projecting natively verified artifacts into a common action type,
       with the closed results EQUIVALENT_UNDER_PROFILE, NOT_EQUIVALENT,
       and INDETERMINATE. CAID carries no trust semantics. It does not
@@ -339,7 +339,7 @@
           binary64 value, 2^1024 - 2^971, whose correctly rounded value is
           still that value, such as 1.7976931348623158e308, is a finite
           integer beyond 2^53-1: it is refused as unsupported_number too,
-          but it is an integer for the integer field type
+          but the integer field type accepts it
           (<xref target="fieldtypes"/>).</li>
           <li>A literal whose correctly rounded value is zero, such as
           1e-400 or -1e-400, is the integer 0, and so is -0. A literal whose
@@ -935,18 +935,17 @@ caid:1:payment.release.1:jcs-sha256:liLG9pKgkLt3silrjf1wa0xIHz5YFrBB\
           yields invalid_definition.</t>
           <t>Everything outside the projection, including status,
           risk_class, summary, notes, digest_notes, references,
-          supersedes, and superseded_by, never changes validation. In
-          particular, definition_sha256 does not cover the normalization
-          guidance that notes and digest_notes give issuers
-          (<xref target="security-definitions"/>). Two
+          supersedes, and superseded_by, never changes validation. Two
           definitions with equal definition_sha256 therefore validate
           every action object identically, given the same enum snapshots
           and the same registered field types and code formats. A field
           whose type or code format an implementation does not know is
           refused whenever present (<xref target="fieldtypes"/>), so
           implementations that know different field types or code formats
-          can disagree about such a field.
-          Computation and verification report the definition_sha256 of
+          can disagree about such a field. definition_sha256 does not cover
+          the normalization guidance that notes and digest_notes give
+          issuers (<xref target="security-definitions"/>). Computation and
+          verification report the definition_sha256 of
           the definition they used (Sections <xref target="computation"
           format="counter"/> and <xref target="verification"
           format="counter"/>), and verification accepts an expected value.
@@ -2006,8 +2005,9 @@ ZLQQQ
         at least 256 bits, and the suite registry does not accept a digest
         formed by truncating the output of a hash function to fewer octets
         than that function specifies; a function whose specification
-        defines a shorter output, such as SHA-384 or SHA-512/256, is not
-        such a truncation (<xref target="iana-suites"/>).</t>
+        defines a shorter output, such as SHA&#8209;384 or
+        SHA&#8209;512/256, is not such a truncation
+        (<xref target="iana-suites"/>).</t>
         <t>Suite agility moves only the CAID digest. Whatever the suite, the
         following are fixed to SHA-256: definition_sha256
         (<xref target="definition-digest"/>), values_sha256
@@ -2117,7 +2117,7 @@ ZLQQQ
         it <bcp14>SHOULD</bcp14> refuse any number token that has a fraction
         or exponent part. A quantity that policy compares against a
         threshold <bcp14>SHOULD</bcp14> be typed amount-string.</t>
-        <t>Member names raise the same problem. Some host decoders match
+        <t>Member names raise a related problem. Some host decoders match
         member names case-insensitively, as Go's encoding/json does when it
         decodes into a struct, and some compare names by canonical
         equivalence, as Swift's String type does. The object
@@ -2339,8 +2339,9 @@ ZLQQQ
         refuses a digest formed by truncating the output of a hash function
         to fewer octets than that function specifies, and a name that
         differs from a registered name only by hyphens; a function whose
-        specification defines a shorter output, such as SHA-384 or
-        SHA-512/256, is not such a truncation. A registered name is never
+        specification defines a shorter output, such as SHA&#8209;384 or
+        SHA&#8209;512/256, is not such a truncation. A registered name is
+        never
         reassigned, an entry is never removed, and a suite is never
         redefined. A suite is deprecated once practical collision attacks on
         its digest are known or anticipated: its change controller, or the
@@ -2398,11 +2399,15 @@ ZLQQQ
         entry.</t>
         <t>The initial contents are the 54 entries of
         <xref target="appendix-action-types-initial"/>, 45 active and 9
-        deprecated. The definition of each is the entry with that name in
-        the file action&#8209;types.json of <xref target="CAID-REGISTRY"/>,
-        registry version 5 of the reference registry, whose SHA-256 digest
-        over the octets of that file, in hexadecimal, is
+        deprecated. The definition of each entry other than tool.call.1 is
+        the entry with that name in the file action&#8209;types.json of
+        <xref target="CAID-REGISTRY"/>, registry version 5 of the reference
+        registry, whose SHA-256 digest over the octets of that file, in
+        hexadecimal, is
         1e30ddd312c888f6a27055dac0ed453398e20b64cfdcb7c5019fcf0e1ac2551a.
+        tool.call.1 is defined in <xref target="tool-call-type"/>, and the
+        registry entry of that name has the same validation projection and
+        definition_sha256 (<xref target="example-projection"/>).
         The reference registry also carries types defined by other
         specifications, listed in
         <xref target="appendix-action-types-reference-only"/>; those are not
@@ -2995,9 +3000,9 @@ ZLQQQ
           not apply, and states that an escaped surrogate pair is valid.
           <xref target="suites"/> notes that RFC 8785 sorts member names by
           UTF-16 code units.</li>
-          <li anchor="ed-processing-text">Processing text that read
-          otherwise now says what the processing does: what absent options
-          do in <xref target="computation"/>; the phase 1 test of
+          <li anchor="ed-processing-text">Processing text is corrected
+          where it did not match the processing: what absent options do
+          in <xref target="computation"/>; the phase 1 test of
           <xref target="tab-compute"/> and the test of
           <xref target="host-values"/>, which use the value's kind; the
           nesting row of <xref target="tab-limits"/>; stage C, which names

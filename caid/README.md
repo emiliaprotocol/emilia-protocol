@@ -150,8 +150,9 @@ generated region or file by hand; the checks fail on it.
 4. Run `node caid/spec/abnf-check.mjs`, `npm run caid:conformance` and
    `npm run caid:fuzz`.
 5. Update the staged draft (`standards/staged/NEXT-CAID-04`):
-   `node scripts/check-caid-04.mjs --emit` prints every generated table and
-   the Appendix D listing, a processing change needs a `chg-` item mapped to
+   `node scripts/check-caid-04.mjs --emit` prints every generated table,
+   the two Appendix D listings, and the Appendix C.1 cbor-sha256 example,
+   a processing change needs a `chg-` item mapped to
    vectors in `CHANGES-VECTORS.json`, and the renders follow the procedure
    in its `VALIDATION.md`.
 6. A change to the vendored copy moves pins outside `caid/`: the source

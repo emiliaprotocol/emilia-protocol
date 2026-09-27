@@ -21,9 +21,9 @@ Abstract
    canonicalization and digest suite, a compact identifier string, and
    versioned action-type definitions with required material fields.
    External value sets are bound to integrity-checked snapshots.  The
-   document specifies a strict JSON input profile, a fixed, ordered set
-   of refusal reasons, and a digest that identifies the validation
-   semantics of a type definition, and it requests seven registries:
+   document specifies a strict JSON input profile, a fixed and ordered
+   set of refusal reasons, and a digest that identifies the validation
+   semantics of a type definition.  It requests seven registries:
    suites, action types, field types, code formats, reason codes,
    mapping transforms, and mapping loss policies.  It also defines an
    Action-Mapping Profile for projecting natively verified artifacts
@@ -512,7 +512,7 @@ Internet-Draft                    CAID                    September 2026
       binary64 value, 2^1024 - 2^971, whose correctly rounded value is
       still that value, such as 1.7976931348623158e308, is a finite
       integer beyond 2^53-1: it is refused as unsupported_number too,
-      but it is an integer for the integer field type (Section 4.3).
+      but the integer field type accepts it (Section 4.3).
 
    *  A literal whose correctly rounded value is zero, such as 1e-400 or
       -1e-400, is the integer 0, and so is -0.  A literal whose
@@ -1253,19 +1253,19 @@ Internet-Draft                    CAID                    September 2026
 
    Everything outside the projection, including status, risk_class,
    summary, notes, digest_notes, references, supersedes, and
-   superseded_by, never changes validation.  In particular,
-   definition_sha256 does not cover the normalization guidance that
-   notes and digest_notes give issuers (Section 10.10).  Two definitions
-   with equal definition_sha256 therefore validate every action object
-   identically, given the same enum snapshots and the same registered
-   field types and code formats.  A field whose type or code format an
-   implementation does not know is refused whenever present
-   (Section 4.3), so implementations that know different field types or
-   code formats can disagree about such a field.  Computation and
-   verification report the definition_sha256 of the definition they used
-   (Sections 5 and 6), and verification accepts an expected value.  The
-   reference registry lists the definition_sha256 of every type in each
-   registry version.  Appendix C.4 gives an example.
+   superseded_by, never changes validation.  Two definitions with equal
+   definition_sha256 therefore validate every action object identically,
+   given the same enum snapshots and the same registered field types and
+   code formats.  A field whose type or code format an implementation
+   does not know is refused whenever present (Section 4.3), so
+   implementations that know different field types or code formats can
+   disagree about such a field. definition_sha256 does not cover the
+   normalization guidance that notes and digest_notes give issuers
+   (Section 10.10).  Computation and verification report the
+   definition_sha256 of the definition they used (Sections 5 and 6), and
+   verification accepts an expected value.  The reference registry lists
+   the definition_sha256 of every type in each registry version.
+   Appendix C.4 gives an example.
 
    This is the only digest this document calls a definition digest.  A
    digest over a whole registry entry, including status or notes,
@@ -2637,8 +2637,8 @@ Internet-Draft                    CAID                    September 2026
    ever.  A suite's digest is at least 256 bits, and the suite registry
    does not accept a digest formed by truncating the output of a hash
    function to fewer octets than that function specifies; a function
-   whose specification defines a shorter output, such as SHA-384 or SHA-
-   512/256, is not such a truncation (Section 12.1).
+   whose specification defines a shorter output, such as SHA-384 or
+   SHA-512/256, is not such a truncation (Section 12.1).
 
    Suite agility moves only the CAID digest.  Whatever the suite, the
    following are fixed to SHA-256: definition_sha256 (Section 4.2.2),
@@ -2761,10 +2761,10 @@ Internet-Draft                    CAID                    September 2026
    number token that has a fraction or exponent part.  A quantity that
    policy compares against a threshold SHOULD be typed amount-string.
 
-   Member names raise the same problem.  Some host decoders match member
-   names case-insensitively, as Go's encoding/json does when it decodes
-   into a struct, and some compare names by canonical equivalence, as
-   Swift's String type does.  The object
+   Member names raise a related problem.  Some host decoders match
+   member names case-insensitively, as Go's encoding/json does when it
+   decodes into a struct, and some compare names by canonical
+   equivalence, as Swift's String type does.  The object
    {"amount":"1.00","Amount":"99999.00"} has a valid CAID that commits
    to both members, yet such a decoder reads 99999.00 for amount.
    Section 7 therefore requires an executor to act only on the values it
@@ -3011,8 +3011,8 @@ Internet-Draft                    CAID                    September 2026
    designated expert refuses a digest formed by truncating the output of
    a hash function to fewer octets than that function specifies, and a
    name that differs from a registered name only by hyphens; a function
-   whose specification defines a shorter output, such as SHA-384 or SHA-
-   512/256, is not such a truncation.  A registered name is never
+   whose specification defines a shorter output, such as SHA-384 or
+   SHA-512/256, is not such a truncation.  A registered name is never
    reassigned, an entry is never removed, and a suite is never
    redefined.  A suite is deprecated once practical collision attacks on
    its digest are known or anticipated: its change controller, or the
@@ -3089,15 +3089,17 @@ Internet-Draft                    CAID                    September 2026
    entry.
 
    The initial contents are the 54 entries of Appendix D.1, 45 active
-   and 9 deprecated.  The definition of each is the entry with that name
-   in the file action-types.json of [CAID-REGISTRY], registry version 5
-   of the reference registry, whose SHA-256 digest over the octets of
-   that file, in hexadecimal, is
+   and 9 deprecated.  The definition of each entry other than
+   tool.call.1 is the entry with that name in the file action-types.json
+   of [CAID-REGISTRY], registry version 5 of the reference registry,
+   whose SHA-256 digest over the octets of that file, in hexadecimal, is
    1e30ddd312c888f6a27055dac0ed453398e20b64cfdcb7c5019fcf0e1ac2551a.
-   The reference registry also carries types defined by other
-   specifications, listed in Appendix D.2; those are not initial entries
-   and may be registered under Specification Required with their own
-   specification and change controller.
+   tool.call.1 is defined in Section 4.7, and the registry entry of that
+   name has the same validation projection and definition_sha256
+   (Appendix C.4).  The reference registry also carries types defined by
+   other specifications, listed in Appendix D.2; those are not initial
+   entries and may be registered under Specification Required with their
+   own specification and change controller.
 
    IANA is asked to store each entry's definition, in the schema of
    Section 4.2, as a file linked from the entry, and to record with each
@@ -3123,8 +3125,6 @@ Internet-Draft                    CAID                    September 2026
    members it defines; its refusal reasons; and a reference.  A
    registered field type is never removed, renamed, or redefined.  The
    initial contents are:
-
-
 
 
 
@@ -3835,12 +3835,12 @@ Internet-Draft                    CAID                    September 2026
       surrogate pair is valid.  Section 3.1 notes that RFC 8785 sorts
       member names by UTF-16 code units.
 
-   *  Processing text that read otherwise now says what the processing
-      does: what absent options do in Section 5; the phase 1 test of
-      Table 2 and the test of Section 2.5, which use the value's kind;
-      the nesting row of Table 1; stage C, which names the two reasons
-      it cannot report; the validation projection, whose definition no
-      longer depends on conformance; and Section 6.1.
+   *  Processing text is corrected where it did not match the
+      processing: what absent options do in Section 5; the phase 1 test
+      of Table 2 and the test of Section 2.5, which use the value's
+      kind; the nesting row of Table 1; stage C, which names the two
+      reasons it cannot report; the validation projection, whose
+      definition no longer depends on conformance; and Section 6.1.
 
    *  Security Considerations now open with what CAID defines and whom
       it trusts; name collision resistance where the party that

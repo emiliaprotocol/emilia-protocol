@@ -23,9 +23,12 @@ including the inputs it newly refuses.
 - `RENDERS/`: the TXT and HTML renderings of that source.
 - `SHA256SUMS.txt`: pins the source and both renderings.
 - `CHANGES-VECTORS.json`: maps every "Changes since -03" item that changes
-  processing or the reference registry (anchor `chg-...`) to the
-  conformance vectors that pin it. Items anchored `ed-...` change text
-  only.
+  what the operations of the draft's Section 1.2 accept, refuse, or
+  report, or changes the reference registry (anchor `chg-...`), to the
+  conformance vectors that pin it. Items anchored `ed-...` are not pinned
+  by vectors: Section 14.5 lists requirements on parties those operations
+  cannot observe (issuers, executors, carrying protocols, relying parties,
+  applications), and Section 14.6 lists changes to the text alone.
 - `VALIDATION.md`: the checks run and their results.
 
 ## What the draft restates, and what checks it
@@ -64,20 +67,24 @@ including the inputs it newly refuses.
 
 Submission is the author's decision. Before it:
 
-1. The Implementation Status section points at `tree/main/caid`, which
-   carries the -04 implementations only once this packet's pull request
-   has merged. After `git fetch origin`, run
-   `node scripts/check-caid-04.mjs --prefiling`: it also requires that
+1. The Implementation Status section points at `tree/main/caid` and says
+   all three implementations implement -04. Pull request #821 merged as
+   `cea10b85e`, but this packet's branch (`feat/caid-04-prefiling`) also
+   carries the JavaScript mapping stage B fix that the draft's Section 8.3
+   now states, and the vectors its change log cites. Merge this branch
+   before filing. After `git fetch origin`, run
+   `node scripts/check-caid-04.mjs --prefiling`: it requires that
    origin/main carries registry version 5, `caid/spec/caid.abnf` and the
    -04 ports, and that the [CAID-REGISTRY] commit is reachable from
-   origin/main.
+   origin/main. It does not detect a missing stage B fix, so confirm that
+   `caid/impl/js/mapping.mjs` on origin/main reads out-of-model host
+   profiles (`git grep -n profileMember origin/main -- caid/impl/js`).
 2. [CAID-REGISTRY] is pinned to commit
-   `708fd8fa9ca32ac7889834f234d3a1631e6bde93`, the last commit that
-   changed `caid/registry/action-types.json`. If the merge rewrites that
-   commit (a squash or rebase), re-pin both the blob and the raw file URL
-   to the merged commit that carries the same file (SHA-256
-   `1e30ddd3...2551a`) and re-render; the check requires the two URLs to
-   name one commit.
+   `cea10b85e96460a04bf55d683a1ebc34e8b2c9a6`, the merge of #821 on main,
+   whose `caid/registry/action-types.json` is registry version 5 (SHA-256
+   `1e30ddd3...2551a`). The reference carries the blob URL and the raw
+   file URL at that commit; the check requires both to name one
+   commit.
 3. Set the date, confirm each cited draft revision and that -03 is still
    the latest revision on Datatracker, re-render with the procedure in
    `VALIDATION.md`, and refresh `SHA256SUMS.txt` and `VALIDATION.md`.
