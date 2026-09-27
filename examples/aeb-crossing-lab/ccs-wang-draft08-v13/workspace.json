@@ -4,7 +4,7 @@
     "id": "native:ccs-draft08-v1.3-ed25519",
     "version": "1.0.0",
     "module": "adapter.mjs",
-    "module_digest": "sha256:d71c4c480d67de55b8d709fdbfe0f878aa0f5d88fb4acf75aaab15a21982a123"
+    "module_digest": "sha256:4b8e08d496a665c7b1de3caf0b9ea15409d20b5122dbea2d4659cdbd835d549b"
   },
   "artifact": "artifact.json",
   "artifact_digest": "sha256:e0965e82b6da34a48ff603ff398e70c12c44e88ea84a2bf25178c17dff8992c2",
@@ -26,9 +26,9 @@
           "version": "1",
           "status": "active",
           "definition": {
-            "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381"
+            "profile_digest": "sha256:e0f8b53e13327fbbf7800b62941c96ee598d5edf265d143b7dc4608ee1ba0716"
           },
-          "definition_digest": "sha256:26a1a6392ac1383cfa45719ae1ba221d4b42b75ae901f84c6047804473f7de20"
+          "definition_digest": "sha256:c6f6f738b5b9282fa2967aaa9614a8537774e7c51747c73f117f56f212edb234"
         },
         "role:machine-policy-decision": {
           "kind": "evidence-role",
@@ -43,7 +43,7 @@
           "definition_digest": "sha256:c5423693760594b01821636f190ead94fc6081d40e206f3d70723860df3e394c"
         }
       },
-      "registry_digest": "sha256:f220312406e0a15eaa7586244cf01b794d022a0ac4c37dccc9b978cb8cb1066c"
+      "registry_digest": "sha256:f778ce0e7942f12237e1e7e6d6b04845085fa9d45bdb6658bb46c2555cb29db3"
     },
     "accepted_mappers": [
       "mapper:ccs-draft08-v1.3-tool-action-v1"
@@ -97,10 +97,6 @@
               "action_type": "agent.tool-invocation.1",
               "required_fields": [
                 {
-                  "name": "action_type",
-                  "type": "string"
-                },
-                {
                   "name": "parameters",
                   "type": "object"
                 }
@@ -143,7 +139,7 @@
             "signature"
           ]
         },
-        "profile_digest": "sha256:83edce07edee2ac1e23a170b809231631a3601d267d719dcb9ac2b9b49bdc381"
+        "profile_digest": "sha256:e0f8b53e13327fbbf7800b62941c96ee598d5edf265d143b7dc4608ee1ba0716"
       }
     },
     "requirements": {

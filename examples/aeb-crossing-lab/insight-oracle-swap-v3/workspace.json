@@ -26,9 +26,9 @@
           "version": "1",
           "status": "active",
           "definition": {
-            "profile_digest": "sha256:386f9aec50d49c3b64d4a9fdf9d16284b6c4632c1baeb07a5b09f98d86be6512"
+            "profile_digest": "sha256:6ae721014f6aa1ae767f851d9850cc5b7cc4d5f5e539867c336ae8f6c0d24929"
           },
-          "definition_digest": "sha256:987b173335db0b9defa1930ba7e867f595f3568843d5370b6b5408f21b6f0036"
+          "definition_digest": "sha256:a2bbabe5352cd7c56ae69239c1a43f7172abc188c620027db24e2b08e1473469"
         },
         "role:action-authorization": {
           "kind": "evidence-role",
@@ -43,7 +43,7 @@
           "definition_digest": "sha256:e9a09ce5960df021dcb245fc68ce0fa0b0199004d71dff79e6c4896c17725fc8"
         }
       },
-      "registry_digest": "sha256:6a8e07f1862ced7725e1b344134c9cd793d45a1f8986ae9a0815e0642995dea5"
+      "registry_digest": "sha256:b7e0183236507b17ac9f49aab08b8e39eb90a412e01211d2f6b073887d971192"
     },
     "accepted_mappers": [
       "mapper:insight-evm-swap-exact-input-single.1"
@@ -110,10 +110,6 @@
             {
               "action_type": "evm-swap-exact-input-single.1",
               "required_fields": [
-                {
-                  "name": "action_type",
-                  "type": "string"
-                },
                 {
                   "name": "subject_chain_id",
                   "type": "amount-string"
@@ -188,7 +184,7 @@
           "omitted_material_fields": [],
           "omitted_nonmaterial_fields": []
         },
-        "profile_digest": "sha256:386f9aec50d49c3b64d4a9fdf9d16284b6c4632c1baeb07a5b09f98d86be6512"
+        "profile_digest": "sha256:6ae721014f6aa1ae767f851d9850cc5b7cc4d5f5e539867c336ae8f6c0d24929"
       }
     },
     "requirements": {

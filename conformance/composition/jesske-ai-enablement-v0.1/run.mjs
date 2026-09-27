@@ -50,7 +50,6 @@ export const CARRIER_CONTRACT = Object.freeze({
 const ACTION_DEFINITION = Object.freeze({
   action_type: 'call.recording.start.1',
   required_fields: [
-    { name: 'action_type', type: 'string' },
     { name: 'call_id', type: 'string' },
     { name: 'participants', type: 'array' },
     { name: 'purpose', type: 'string' },

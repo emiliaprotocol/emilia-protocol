@@ -802,7 +802,6 @@ const SAMPLE_MAPPING_DEFINITION = Object.freeze({
     definitions: [{
             action_type: 'payment.release.1',
             required_fields: [
-                { name: 'action_type', type: 'string' },
                 { name: 'amount', type: 'amount-string' },
                 { name: 'currency', type: 'string' },
                 { name: 'payee_ref', type: 'string' },

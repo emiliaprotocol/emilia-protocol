@@ -9,7 +9,7 @@
     "reference_pypi_version": "1.1.20",
     "adapter_id": "native:ccs-05-v1.3-ed25519",
     "adapter_version": "1",
-    "mapping_profile_digest": "sha256:0cc7a31b09bbb13d8d4c0a53f53c17c7911668795d2820b9837c029594eeffe8",
+    "mapping_profile_digest": "sha256:cdd806fb62a78bee2e59673ab1f51119e397256bd04d957520c059487fe77080",
     "sample_set_digest": "sha256:14221b25c3e9b8a2174e1b5fbffdf1bc7e2794a96c9cfa69a10f3e1029b554a8"
   },
   "checks": [
@@ -270,5 +270,5 @@
     "The adapter verifies the Ed25519 signature. The legacy HMAC receipt field is retained as signed issuer data, not a cross-domain trust root.",
     "A passing report is a self-attested reproduction package until an external operator independently runs it."
   ],
-  "report_digest": "sha256:ac60101908c6e31464d234821668c23e80c82b4e349623a67c69f3c4e1320207"
+  "report_digest": "sha256:755819ae70a0333b979398ffd814627eae740f2c8a2900b1ac1bb94753180838"
 }

@@ -64,7 +64,6 @@ const ACTION_DEFINITION = Object.freeze({
     {
       action_type: ACTION_TYPE,
       required_fields: [
-        { name: 'action_type', type: 'string' },
         { name: 'subject_chain_id', type: 'amount-string' },
         { name: 'execution_domain', type: 'string' },
         { name: 'spending_wallet', type: 'string' },

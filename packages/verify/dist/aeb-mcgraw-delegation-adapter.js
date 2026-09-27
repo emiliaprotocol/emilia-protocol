@@ -602,7 +602,7 @@ export function createMcGrawBudgetActionDefinition(actionType) {
         projection: 'mcgraw-budget-exact-request-v1', action_type: actionType, suite: 'jcs-sha256',
         definitions: [{
                 action_type: actionType,
-                required_fields: [{ name: 'action_type', type: 'string' }, { name: 'delegation_action', type: 'object' }],
+                required_fields: [{ name: 'delegation_action', type: 'object' }],
                 optional_fields: [],
             }],
     };

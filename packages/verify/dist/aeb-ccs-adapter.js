@@ -434,7 +434,6 @@ export function createCcsAebActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'parameters', type: 'object' },
                 ],
                 optional_fields: [],
@@ -457,7 +456,6 @@ export function createCcsNativeActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'native_action', type: 'object' },
                 ],
                 optional_fields: [],
@@ -867,7 +865,6 @@ export function createCcsL1AebActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'parameters', type: 'object' },
                 ],
                 optional_fields: [],
@@ -1243,7 +1240,6 @@ export function createCcsV13AebActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'parameters', type: 'object' },
                 ],
                 optional_fields: [],

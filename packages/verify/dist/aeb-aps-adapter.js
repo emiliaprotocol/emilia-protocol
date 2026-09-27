@@ -523,7 +523,6 @@ export function createApsActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'aps_action', type: 'object' },
                 ],
                 optional_fields: [],

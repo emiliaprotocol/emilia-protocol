@@ -359,7 +359,6 @@ export function createPolicyDecisionEvidenceActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'parameters', type: 'object' },
                 ],
                 optional_fields: [],

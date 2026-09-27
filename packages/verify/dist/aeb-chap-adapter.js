@@ -571,7 +571,6 @@ export function createChapActionDefinition(actionType) {
         definitions: [{
                 action_type: actionType,
                 required_fields: [
-                    { name: 'action_type', type: 'string' },
                     { name: 'native_action', type: 'object' },
                 ],
                 optional_fields: [],

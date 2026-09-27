@@ -596,7 +596,6 @@ export function createOasntActionDefinition(actionType: string, requireRequestBi
     throw new TypeError('invalid OASNT action definition');
   }
   const required = [
-    { name: 'action_type', type: 'string' },
     { name: 'native_action', type: 'object' },
   ];
   if (requireRequestBinding) required.push({ name: 'request', type: 'object' });
