@@ -14,9 +14,10 @@
 //      mapping version 1 carry forward (check-v4.mjs); the JavaScript runner
 //      passes every vector against the spec oracle itself.
 //   4. Ports: the core and grammar corpora in JavaScript, Python and Go
-//      through public entry points (caid/conformance/runners), the Go unit
-//      tests, and the mapping corpus v2 and consequential-interoperability
-//      corpus in all three with cross-language parity.
+//      through public entry points (caid/conformance/runners), the unit
+//      tests of all three ports, and the mapping corpus v2 and
+//      consequential-interoperability corpus in all three with
+//      cross-language parity.
 //
 // CAID_PYTHON names the Python interpreter (default python3).
 
@@ -90,6 +91,8 @@ const corpora = `${core.vectors.length} core + ${grammar.cases.length} grammar`;
 run(`JavaScript: ${corpora}`, 'node', ['caid/conformance/runners/run.mjs'], REPO);
 run(`Python: ${corpora}`, PYTHON, ['caid/conformance/runners/run.py'], REPO);
 run(`Go: ${corpora}`, 'go', ['run', '.'], path.join(HERE, 'runners/go'));
+run('JavaScript unit tests', 'node', ['--test', 'caid/impl/js/unit-tests.mjs'], REPO);
+run('Python unit tests', PYTHON, ['caid/impl/python/test_caid.py'], REPO);
 run('Go unit tests', 'go', ['test', '-count=1', './...'], GO_ROOT);
 
 function parity(label, outputs) {

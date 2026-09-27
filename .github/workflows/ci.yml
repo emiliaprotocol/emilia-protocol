@@ -1423,8 +1423,12 @@ jobs:
       # about 80k seeded cases with an empty allow list, after a self-test
       # of the harness. The published -03 and staged -04 packet checks and
       # the WIMSE companion profile consume the same registry and pins.
-      - name: CAID grammar proof (generated matchers in JS, Python, Go)
-        run: node caid/spec/abnf-check.mjs
+      - name: CAID grammar proof (generated matchers, then every case through each port's public API)
+        run: |
+          node caid/spec/abnf-check.mjs --out "$RUNNER_TEMP/caid-grammar-cases.json"
+          node caid/impl/js/run-grammar-vectors.mjs --quiet --corpus "$RUNNER_TEMP/caid-grammar-cases.json"
+          python3 caid/impl/python/run_grammar_vectors.py --corpus "$RUNNER_TEMP/caid-grammar-cases.json"
+          (cd caid/impl/go && go run ./cmd/grammar-vectors "$RUNNER_TEMP/caid-grammar-cases.json")
       - name: CAID conformance (spec, registry, core v5, grammar, mapping v2, interop; JS + Python + Go)
         run: npm run caid:conformance
       - name: CAID differential fuzz against the spec oracle
