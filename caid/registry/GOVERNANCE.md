@@ -255,9 +255,10 @@ The quality bar is the material-fields test:
   low-entropy requires a member that carries at least 128 bits of entropy,
   such as a random instruction or occurrence identifier from the system of
   record, unless its `digest_notes` or its specification state why not.
-  This is the criterion of the draft's Section 12.2; the types of registry
-  version 5 predate it, and the draft's Privacy Considerations state why
-  their identifiers are not required to carry that entropy.
+  This is the criterion of the draft's Section 12.2. The types of registry
+  version 5 predate it; for the 54 of them that IANA is asked to register,
+  the draft's Privacy Considerations state why their identifiers are not
+  required to carry that entropy.
 - Enums carry a non-empty inline list, or an external `values_ref` plus an
   immutable edition/snapshot, a canonical values array, and its verified
   SHA-256 pin. A mutable standard, registry, catalog, or URL by itself is not
