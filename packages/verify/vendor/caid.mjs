@@ -1104,7 +1104,8 @@ function readOption(options, key, type) {
 // is Array.prototype that are dense with no extra own properties, and
 // objects whose prototype is Object.prototype or null with only own,
 // enumerable, string-keyed data properties. An own member whose value is
-// undefined is absent. Everything else becomes UNSUPPORTED: accessors,
+// undefined is absent for field presence and refuses the value as
+// unsupported_value. Everything else becomes UNSUPPORTED: accessors,
 // non-enumerable or symbol-keyed properties, Map, Set, Date, typed arrays,
 // class instances, functions, symbols, bigints, undefined array elements,
 // cycles, and containers nested deeper than the limit. Numbers and strings
@@ -1123,7 +1124,7 @@ function readOption(options, key, type) {
  */
 function snapshot(root, proxyCheck = false) {
   /** @type {SnapshotState} */
-  const st = { units: 0, truncated: false, unsupported: false };
+  const st = { units: 0, outside: false, unsupported: false };
   /** @type {Set<any>} */
   const path = new Set();
   const top = admit(root, 1, st, path);
@@ -1157,13 +1158,13 @@ function snapshot(root, proxyCheck = false) {
       if (st.units > SNAPSHOT_UNIT_BUDGET) {
         // Past the budget: the container keeps its kind but stays empty, and
         // the whole value refuses as unsupported_value.
-        st.truncated = true;
+        st.outside = true;
         continue;
       }
       enter(child);
     }
   }
-  let outside = st.truncated;
+  let outside = st.outside;
   if (proxyCheck && !outside && !st.unsupported && typeof root === "object" && root !== null
       && typeof structuredClone === "function") {
     try {
@@ -1177,7 +1178,7 @@ function snapshot(root, proxyCheck = false) {
 
 /**
  * @typedef {{src: any, dst: any, isArray: boolean, depth: number, parent: any, key: string | number | null}} Pending
- * @typedef {{units: number, truncated: boolean, unsupported: boolean}} SnapshotState
+ * @typedef {{units: number, outside: boolean, unsupported: boolean}} SnapshotState
  */
 
 // Classifies one host value: a scalar copy, UNSUPPORTED, or an empty
@@ -1279,7 +1280,12 @@ function expand(p, st, path) {
     for (const key of allKeys) if (typeof key !== "string") return null;
     for (const key of /** @type {string[]} */ (allKeys)) {
       const d = descriptors[key];
-      if (hasOwn(d, "value") && d.enumerable === true && d.value === undefined) continue;
+      if (hasOwn(d, "value") && d.enumerable === true && d.value === undefined) {
+        // undefined is not a JSON value: the member is absent for field
+        // presence, and the value refuses as unsupported_value.
+        st.outside = true;
+        continue;
+      }
       st.units += key.length;
       defineMember(p.dst, key, place(key, d));
     }

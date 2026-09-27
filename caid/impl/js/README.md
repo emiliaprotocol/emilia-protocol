@@ -63,7 +63,7 @@ it:
   `Array.prototype` that are dense with no extra properties, and objects with
   prototype `Object.prototype` or `null` whose members are own, enumerable,
   string-keyed data properties; an own member whose value is `undefined` is
-  absent;
+  absent for field presence and refuses the value as `unsupported_value`;
 - refused as `unsupported_value` (or `mistyped_field:<field>` when a declared
   field holds it): `Map`, `Set`, `Date`, typed arrays, boxed primitives, class
   instances, functions, symbols, bigints, accessors, non-enumerable members,

@@ -133,8 +133,10 @@ test("non-enumerable, symbol-keyed, sparse and decorated values are refused", ()
   }
 });
 
-test("an undefined member is absent; an undefined array element is unsupported_value", () => {
-  assert.equal(computeCaid(bare({ n: undefined }), OPTS).caid, computeCaid(bare(), OPTS).caid);
+test("undefined is outside the data model: an absent member that refuses, or an unsupported element", () => {
+  assert.deepEqual(refusalsOf(computeCaid(bare({ n: undefined }), OPTS)), ["unsupported_value"]);
+  assert.deepEqual(refusalsOf(computeCaid(bare({ a: undefined }), OPTS)), ["missing_material_field:a", "unsupported_value"]);
+  assert.deepEqual(canonicalize({ u: undefined }), { ok: false, refusals: ["unsupported_value"] });
   assert.deepEqual(refusalsOf(computeCaid(bare({ l: [undefined] }), OPTS)), ["unsupported_value"]);
 });
 
