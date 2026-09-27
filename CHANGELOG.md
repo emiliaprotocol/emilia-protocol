@@ -10,7 +10,7 @@ Historical entries below retain the labels used when they were written.
 
 ### CAID conformance corpora and fuzz for draft -04
 
-- The core conformance corpus moves to version 5 (524 vectors). Every compute
+- The core conformance corpus moves to version 5 (527 vectors). Every compute
   and verify input is now exact JSON text (a string, base64 octets, or a
   repeat form for the 32 MiB and 16 MiB limits), and runners also check that
   the native entry point gives the same result on the decoded value. A
@@ -32,9 +32,13 @@ Historical entries below retain the labels used when they were written.
   one-field definitions in JavaScript, Python and Go, so it tests the ports'
   entry points rather than their generated regular expressions. It includes
   astral, lone-surrogate, invalid-UTF-8, noncharacter and long cases.
-- The mapping corpus moves to version 2 (64 vectors): every expectation is an
+- The mapping corpus moves to version 2 (65 vectors): every expectation is an
   exact reason list in the -04 stage order, and new vectors cover the
-  profile extension, UTF-8 octet limits and field-name targets.
+  profile extension, UTF-8 octet limits and field-name targets. A vector may
+  carry its own suite, which pins that an empty suite is refused and never
+  defaulted (review D10).
+- One core-corpus runner per language lives beside the corpus
+  (`caid/conformance/runners`); the per-port version 4 runners are removed.
 - Expectations come from a spec oracle built on the generated `caid/spec`
   constants, and every refusal is also stated by hand; the builders fail on
   any disagreement and the corpora are checked against their builders in CI.
@@ -42,7 +46,8 @@ Historical entries below retain the labels used when they were written.
   vendored Verify, Python and Go implementations with the same oracle on
   about 80,000 seeded cases, with an empty allow list. It runs in the CI
   conformance job with the grammar proof and `npm run caid:conformance`.
-  Until the ports adopt the -04 entry points, those steps fail by design.
+  All three ports and the vendored Verify copy pass it with no divergence
+  class; run against the pre-04 ports it reports the known defect classes.
 
 ### CAID identifier parsing
 

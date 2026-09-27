@@ -94,17 +94,21 @@ ever ingests another verifier's evidence into its own trust boundary.
 - `registry/` — action-type registry (version 5), suites, value sets, frozen
   history, definition digests, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations
-- `conformance/vectors.json` — 96 core identifier vectors (corpus version 4),
-  including pinned, unresolved, mismatched, and out-of-set enum cases,
-  compact-inline trimming, own-member presence, unpaired-surrogate
-  refusals, whole-string grammar refusals (a trailing line feed in an amount,
-  digest field, timestamp, action type, suite, or CAID digest),
-  value-based integer-field cases, and identifier-parse refusals (a suite
-  outside the suite registry and a digest whose final character sets an
-  unused bit)
-- `conformance/mapping-vectors.json` — 25 cross-format mapping vectors,
-  including the SILP IR to CAID `CANCEL+EMAIL` profile and trailing line
-  feeds in a JSON Pointer array index and a target field name
+- `conformance/vectors.json` — 527 core vectors (corpus version 5): every
+  compute and verify input as exact JSON text with native/byte parity, a
+  native lane for host values no decoder produces, the JSON text rules and
+  size limits, number rounding, reason order, verification details,
+  definitions and `definition_sha256`, the named code formats, and one
+  vector per registry v5 type; the 96 version 4 vectors keep their ids
+  (`conformance/history/vectors.v4.json` is version 4 byte for byte)
+- `conformance/grammar-vectors.json` — 2,054 grammar boundary cases driven
+  through the public parse and compute entry points
+- `conformance/mapping-vectors.json` — 65 cross-format mapping vectors
+  (version 2) with exact reason lists in the -04 stage order, including the
+  SILP IR to CAID `CANCEL+EMAIL` profile
+- `fuzz/` — the differential fuzz: about 80,000 seeded cases through the
+  JavaScript, vendored Verify, Python and Go entry points against the spec
+  oracle, with an empty allow list
 - `interop/consequential-action-v1/` — 25 candidate, revision-pinned
   mechanism mappings with 100 positive, refusal, and abstention vectors;
   all await author review

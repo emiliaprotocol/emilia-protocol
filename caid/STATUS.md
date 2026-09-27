@@ -26,20 +26,24 @@ Updated: 2026-09-26
   65,536 characters and more, and that every matcher is linear-time: a static
   analysis plus adversarial inputs of 2^20 characters timed in all three.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
-- 96 shared core vectors (corpus version 4) passing in all three ports,
-  including valid USD/XAD, `NOT-A-CURRENCY`, bare/unresolved external
-  references, hash mismatch, compact inline-enum enforcement and trimming,
-  null enum members, own-member field presence, unpaired-surrogate
-  refusals, whole-string grammar refusals (a value followed by a line feed
-  never matches a grammar), and value-based integer fields (`12.0` and
-  `1.2e1` are the integer 12; an integer beyond 2^53-1 refuses once as
-  `unsupported_number`), and identifier-parse refusals (a suite outside the
-  suite registry, and a digest whose final character sets an unused bit, are
-  `malformed_caid`). The Go port adds unit tests for its strict JSON
-  decoder.
-- 25 Action-Mapping Profile vectors passing with byte-for-byte agreement on
-  verdicts and refusal reasons in all three ports, including the SILP IR to
-  CAID `CANCEL+EMAIL` profile.
+- 527 shared core vectors (corpus version 5) passing in all three ports
+  through their JSON text entry points, with native/byte parity on every
+  input that decodes and a native lane for host values: the strict JSON
+  text rules and limits, number rounding, deterministic reason order,
+  verification details and `definition_mismatch`, definition conformance
+  and `definition_sha256`, the named code formats, `unknown_suite` at parse,
+  and one vector per registry v5 type. The 96 version 4 vectors keep their
+  ids, and all 22 version 4 CAIDs reproduce unchanged
+  (`caid/conformance/check-v4.mjs`).
+- 2,054 grammar boundary cases, and the roughly half-million case list that
+  `caid/spec/abnf-check.mjs` writes, passing in all three ports through
+  `parseCaid` and `computeCaid`, never through the generated matchers.
+- 65 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
+  agreement on verdicts and exact reason lists in all three ports, including
+  the SILP IR to CAID `CANCEL+EMAIL` profile.
+- A differential fuzz of about 80,000 seeded cases in which the JavaScript,
+  vendored Verify, Python and Go implementations match the spec oracle, with
+  an empty allow list.
 - 100 candidate Consequential Action Interoperability vectors covering 25
   revision-pinned mechanisms: native extraction, optional carry, material
   mutation, and missing-field abstention. All pass with identical verdicts
