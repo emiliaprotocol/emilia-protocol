@@ -334,6 +334,10 @@ SHA-256 of `action-types.json`. Once IANA creates the CAID Action Types
 registry, each of the seven types defined by another specification can be
 registered under its Specification Required policy, with its own
 specification and its own change controller, which need not be the IETF.
+The draft's designated expert does not register a name whose first segment
+is organization-specific unless that organization is the change controller,
+so `emilia.mobile.authorized-action.1` can be registered only with its
+organization as change controller.
 `dns.zone.transfer.1` is not a candidate: a registered name is never
 reassigned, so the path for the registrar-transfer type is a successor
 whose name describes it, citing RFC 5730 and RFC 5731, in a later registry
