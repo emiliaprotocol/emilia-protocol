@@ -5,7 +5,10 @@
 // `node caid/spec/abnf-check.mjs --out FILE` writes
 // ({"@version": "CAID-GRAMMAR-CASES-v1", "cases": [{rule, input, match}]}).
 //
-// Usage: go run ./cmd/grammar-vectors CASES.json [--registry DIR]
+// Usage: go run ./cmd/grammar-vectors [CASES.json] [--registry DIR]
+//
+// CASES.json defaults to ../../conformance/grammar-vectors.json (a curated
+// subset committed with the corpus, if there is one).
 //
 // It never consults the generated matchers. Each rule is driven through the
 // entry point that enforces it, with a one-field definition where a field
@@ -57,26 +60,29 @@ var registeredSuites = map[string]int{}
 const codeSystem = "http://example.test/code-system"
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: grammar-vectors CASES.json [--registry DIR]")
-		os.Exit(2)
-	}
+	casesPath := filepath.Join("..", "..", "conformance", "grammar-vectors.json")
 	registryDir := filepath.Join("..", "..", "registry")
-	for i := 2; i < len(os.Args); i++ {
-		if os.Args[i] == "--registry" && i+1 < len(os.Args) {
+	for i := 1; i < len(os.Args); i++ {
+		switch {
+		case os.Args[i] == "--registry" && i+1 < len(os.Args):
 			i++
 			registryDir = os.Args[i]
+		case strings.HasPrefix(os.Args[i], "--"):
+			fmt.Fprintln(os.Stderr, "usage: grammar-vectors [CASES.json] [--registry DIR]")
+			os.Exit(2)
+		default:
+			casesPath = os.Args[i]
 		}
 	}
 	loadSuites(filepath.Join(registryDir, "suites.json"))
-	data, err := os.ReadFile(os.Args[1])
+	data, err := os.ReadFile(casesPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	decoded, derr := jsontext.Decode(data, jsontext.Options{MaxDepth: 64, Host: true})
 	if derr != nil {
-		fmt.Fprintf(os.Stderr, "FAIL: cannot decode %s: %v\n", os.Args[1], derr)
+		fmt.Fprintf(os.Stderr, "FAIL: cannot decode %s: %v\n", casesPath, derr)
 		os.Exit(1)
 	}
 	doc, _ := decoded.(obj)
