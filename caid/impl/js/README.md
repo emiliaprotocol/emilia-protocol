@@ -183,6 +183,15 @@ node run-grammar-vectors.mjs [--corpus FILE]    # grammar cases through the publ
 node run-mapping-vectors.mjs [--corpus FILE]    # mapping and interoperability corpora
 ```
 
-The corpora are read with this port's strict decoder, except the grammar
-case list, which carries lone-surrogate escapes on purpose.
-`node caid/spec/abnf-check.mjs --out FILE` writes the full grammar case list.
+`run-vectors.mjs` runs every JSON text vector through the byte entry points
+and, when the text decodes, through the native ones on the decoded value,
+requiring identical results; native-lane vectors (`input.native`, host values
+no JSON text can express) go to the native entry points only.
+`run-grammar-vectors.mjs` reads the committed boundary corpus
+(`conformance/grammar-vectors.json`) or the full case list that
+`node caid/spec/abnf-check.mjs --out FILE` writes, and drives both through
+`parseCaid` and `computeCaid` with one-field definitions, never through the
+generated matchers. The corpora are read with this port's strict decoder,
+except the grammar case lists, which carry lone-surrogate escapes on purpose.
+The shared runner `caid/conformance/runners/run.mjs` drives the same corpora
+through the same public entry points.

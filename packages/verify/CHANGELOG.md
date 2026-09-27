@@ -74,9 +74,17 @@ behavior only through an explicit dependency bump.
     each as its own enumerable properties, so `new Map([["k", "v"]])` and
     `new Date(0)` had the CAID of `{}`); an accessor property (5.0.0 invoked
     it, and threw when it threw); a non-enumerable or symbol-keyed property;
-    a sparse array or an array with extra properties; a `Proxy`; and a
-    cyclic value (5.0.0 threw `RangeError`). The value is read once, without
-    invoking any getter, and nothing throws.
+    a sparse array or an array with extra properties; and a `Proxy`. A
+    cyclic value, which 5.0.0 threw `RangeError` on, refuses as
+    `unsupported_value` alone: the cycle is still an object or an array, so
+    a declared field of that kind holding it is not mistyped. The value is
+    read once, without invoking any getter, and nothing throws.
+  - A string or member name holding a noncharacter (U+FDD0 to U+FDEF, or a
+    code point whose low 16 bits are FFFE or FFFF), as `unsupported_value`.
+    I-JSON (RFC 7493), which RFC 8785 requires as input, excludes them, and
+    the strict JSON text decoder refuses the same strings as
+    `malformed_json`. 5.0.0 escaped them into the digest input. A definition
+    whose field name holds one is `invalid_definition`.
   - Nesting deeper than 64, and an RFC 8785 encoding longer than 16777216
     octets, as `unsupported_value`. 5.0.0 computed nesting up to about 2,000
     levels and threw beyond it, and had no size bound. CAIDs that 5.0.0
