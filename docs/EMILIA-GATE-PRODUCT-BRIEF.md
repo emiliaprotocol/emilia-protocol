@@ -1,10 +1,10 @@
-# EMILIA — the authority toll booth for autonomous work
+# EMILIA: the authority checkpoint for autonomous work
 
 *Product brief · 2026-07 · EMILIA Protocol, Inc.*
 
 > **Every consequential agent action enters with authority and exits with a receipt.**
 
-**The frame:** EMILIA is building the universal authority toll booth for autonomous action. A human or institution
+**The frame:** EMILIA is building the authority checkpoint for autonomous action. A human or institution
 defines a finite operating mandate—mission, limits, evidence, expiry, delegation, and exception
 rules—and agents work unattended inside it. **EMILIA Gate** is the commercial Consequence Firewall
 that enforces each exact unit of work at the **actuator boundary**—before API calls, deploys,

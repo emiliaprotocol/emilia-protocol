@@ -11,7 +11,7 @@ This document defines the authoritative vocabulary for EMILIA Protocol across do
 > **Every consequential agent action enters with authority and exits with a receipt.**
 
 The plain-language operating picture behind that category is the **authority
-toll booth for autonomous work**. It is a customer-owned Gate at a configured
+checkpoint for autonomous work**. It is a customer-owned Gate at a configured
 protected boundary, not a claim that EMILIA currently operates a global central
 network or mediates every action.
 
