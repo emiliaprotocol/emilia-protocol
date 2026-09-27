@@ -1024,8 +1024,11 @@ test('the writers fail drift outside the test counts even with --drift-report', 
 });
 
 test('dco.yml exempts every volatile file for the autopilot commit, and the PR autopilot never measures the suite', () => {
+  // dco.yml exempts what the base branch's verify-commit accepts:
+  // DERIVED_EVIDENCE, which includes every volatile file.
   const dco = readFileSync(join(ROOT, '.github/workflows/dco.yml'), 'utf8');
-  for (const path of VOLATILE_EVIDENCE) assert.ok(dco.includes(`-e '${path}'`), path);
+  assert.match(dco, /node "\$autopilot_rule" verify-commit --commit "\$commit_sha"/);
+  for (const path of VOLATILE_EVIDENCE) assert.ok(DERIVED_EVIDENCE.includes(path), path);
   const autopilot = readFileSync(join(ROOT, '.github/workflows/evidence-autopilot.yml'), 'utf8');
   // It refreshes the derived proof fields and the LLM context, keeping the
   // base's test counts, and never runs the measured writer.

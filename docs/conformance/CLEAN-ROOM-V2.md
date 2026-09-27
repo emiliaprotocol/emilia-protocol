@@ -1,27 +1,36 @@
 # Current-bundle clean-room v2
 
 The v2 clean-room infrastructure freezes the exact current conformance input
-listed below. These pins move only when the current manifest changes; an
-immutable source commit is supplied separately when the kit is built:
+listed below; an immutable source commit is supplied separately when the kit
+is built:
 
 - 21 counted suites;
 - 340 counted vectors;
-- current manifest byte SHA-256
-  `4860310a2a4e07ca28806a3233538ab90a50b2f8ba35aa3b14e9313e4081ef7e`;
-- current manifest canonical claim SHA-256
-  `941fc7efc768f30990e5a24ef4bc48ea94b3f4b064531001f85b2814ad413c75`;
-  and
 - Authority Document execution companion SHA-256
-  `121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959`.
+  `121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959`;
+  and
+- the current conformance manifest, pinned by the `source_manifest` field of
+  `conformance/clean-room/v2/bundle.v2.json` (byte SHA-256 `sha256` and
+  canonical claim SHA-256 `manifest_sha256`). The kit ships that bundle.
+
+The verifier also pins the canonical digest of the bundle's exact suite list
+(paths, vector digests, counts, result contracts). The corpus pins move only
+with a reviewed corpus revision. The manifest pin moves whenever the manifest
+does, which includes every change to a reference implementation's source, so
+it lives in one derived field instead of in this document or the verifier's
+code.
 
 This is conformance and intake infrastructure. It does not assert that any
 implementation is external or independently constructed.
 
 When implementation changes alter the manifest, run `npm run conformance:manifest`
 followed by `npm run sync:clean-room-pins`. The second command re-executes and
-checks the manifest before refreshing the current v2/v3 pins and their documentation.
+checks the manifest before refreshing `source_manifest` in the v2 and v3 bundles.
 It refuses changed vector content, counts, paths, or execution companions. Those
 need a separately reviewed corpus revision. The historical v1 evidence is untouched.
+When the evidence autopilot regenerates evidence on a pull request, it runs the
+same two writers, and its commit may change nothing in the bundles but
+`source_manifest`.
 
 ## Build the source-free kit
 

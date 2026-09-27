@@ -3,12 +3,14 @@ name: Evidence autopilot
 # Regenerates the content-addressed derived evidence on a pull request branch
 # with the repository's official writers, so a lockfile bump or an evidence
 # conflict does not need a human regeneration round trip. It regenerates the
-# formal traces, the conformance manifest, the security case, every derived
-# field of lib/proof-stats.json and the LLM context, but never measures the
-# suite: the proof-stats test counts (and their generatedAt) stay the base's,
-# because main owns them (volatile-evidence-refresh.yml). Every other drift
-# fails CI (scripts/ci/volatile-evidence.mjs), so this pull request must carry
-# the rest exactly.
+# formal traces, the conformance manifest, the clean-room bundles' pin on it
+# (source_manifest, the only field the bot may change in those reviewed
+# files), the security case, every derived field of lib/proof-stats.json and
+# the LLM context, but never measures the suite: the proof-stats test counts
+# (and their generatedAt) stay the base's, because main owns them
+# (volatile-evidence-refresh.yml). Every other drift fails CI
+# (scripts/ci/volatile-evidence.mjs), so this pull request must carry the
+# rest exactly.
 #
 # Runs for same-repository pull requests only:
 #   - every Dependabot pull request (a root lockfile bump always changes the
@@ -22,7 +24,9 @@ name: Evidence autopilot
 # happens in evidence-autopilot-publish.yml, a workflow_run workflow that
 # executes only default-branch code. It checks the bundle's shape and
 # transit integrity (allowlisted paths, digests against the manifest this job
-# wrote, UTF-8, JSON), not its correctness, and creates one
+# wrote, UTF-8, JSON) and that each clean-room bundle is its source-commit
+# version, fetched from GitHub, with only source_manifest recomputed. It does
+# not check that the evidence is correct. It creates one
 # derived-evidence-only commit with a GitHub App token through a
 # compare-and-swap createCommitOnBranch call, so the commit starts CI again.
 # Whether the evidence is correct is decided by the required checks on that
@@ -132,6 +136,8 @@ jobs:
             git add -- \
               formal/results/formal-runtime-scenario-conformance.v2.json \
               conformance/conformance-manifest.json \
+              conformance/clean-room/v2/bundle.v2.json \
+              conformance/clean-room/v3/bundle.v3.json \
               security/security-case.json \
               lib/proof-stats.json \
               AI_CONTEXT.md \
@@ -142,7 +148,11 @@ jobs:
           }
           npm run sync:formal-traces
           npm run conformance:manifest
-          checkpoint 'formal traces and conformance manifest'
+          # Re-pins the clean-room bundles' source_manifest to the new
+          # manifest; the writer refuses a changed vector corpus, which needs
+          # a reviewed corpus revision instead.
+          npm run sync:clean-room-pins
+          checkpoint 'formal traces, conformance manifest and clean-room pins'
           # Re-executes and re-emits the security case and refreshes every
           # derived proof field; the measured test counts and their
           # generatedAt stay the base's (no suite run), which the pull
@@ -158,6 +168,7 @@ jobs:
         run: |
           npm run check:formal-traces
           npm run conformance:manifest:check
+          npm run check:clean-room-pins
           npm run check:llm-context
           npm run check:public-conformance-claims
 

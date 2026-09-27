@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateSourceManifestV2 } from './verify-clean-room-submission-v2.mjs';
 import { sha256V3, validateBundleDefinitionV3, } from './verify-clean-room-submission-v3.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const KIT_PREFIX = 'emilia-clean-room-kit-v3/';
@@ -90,6 +91,13 @@ export function collectCleanRoomKitV3Files(ref = 'HEAD') {
         throw new Error(`v3 bundle at ${commit} is not valid JSON: ${errorMessage(error)}`);
     }
     validateBundleDefinitionV3(bundle);
+    const manifestBytes = readAt(commit, bundle.source_manifest.path);
+    try {
+        validateSourceManifestV2(bundle, manifestBytes, JSON.parse(manifestBytes.toString('utf8')));
+    }
+    catch (error) {
+        throw new Error(`v3 bundle at ${commit} does not pin its conformance manifest: ${errorMessage(error)}`);
+    }
     const expectedHashes = new Map([
         [bundle.source_manifest.path, bundle.source_manifest.sha256],
     ]);

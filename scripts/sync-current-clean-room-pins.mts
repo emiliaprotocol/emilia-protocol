@@ -13,8 +13,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MANIFEST = 'conformance/conformance-manifest.json';
 const BUNDLES = ['conformance/clean-room/v2/bundle.v2.json', 'conformance/clean-room/v3/bundle.v3.json'];
 
-// This refreshes implementation-derived manifest pins only. A changed vector
-// contract needs a separate reviewed corpus revision, not an automatic refresh.
+// This refreshes implementation-derived manifest pins only: the bundles'
+// source_manifest, the one place the current manifest is pinned (the v2
+// verifier and CLEAN-ROOM-V2.md read or cite it). A changed vector contract
+// needs a separate reviewed corpus revision, not an automatic refresh. The
+// evidence autopilot runs this writer and publishes its output only when
+// nothing but source_manifest changed (scripts/ci/evidence-autopilot.mjs).
 export function planCurrentCleanRoomPinRefresh(root = ROOT): Map<string, string> {
   const read = (name: string) => fs.readFileSync(path.join(root, name), 'utf8');
   const bytes = read(MANIFEST);
@@ -49,27 +53,6 @@ export function planCurrentCleanRoomPinRefresh(root = ROOT): Map<string, string>
   bundles.forEach((bundle, index) => {
     edits.set(BUNDLES[index], `${JSON.stringify({ ...bundle, source_manifest: next }, null, 2)}\n`);
   });
-  const sourcePath = 'scripts/verify-clean-room-submission-v2.mts';
-  let source = read(sourcePath);
-  for (const [name, value, old] of [
-    ['EXPECTED_MANIFEST_SHA256', next.sha256, previous.sha256],
-    ['EXPECTED_MANIFEST_CLAIM_SHA256', next.manifest_sha256, previous.manifest_sha256],
-  ]) {
-    const pattern = new RegExp(`(const ${name} =\\s*)'([a-f0-9]{64})';`, 'g');
-    const matches = [...source.matchAll(pattern)];
-    if (matches.length !== 1 || matches[0][2] !== old) {
-      throw new Error(`source pin mismatch: ${name}`);
-    }
-    source = source.replace(pattern, `$1'${value}';`);
-  }
-  edits.set(sourcePath, source);
-  const docPath = 'docs/conformance/CLEAN-ROOM-V2.md';
-  let docs = read(docPath);
-  for (const field of ['sha256', 'manifest_sha256']) {
-    if (docs.split(previous[field]).length !== 2) throw new Error(`documentation pin mismatch: ${field}`);
-    docs = docs.replace(previous[field], next[field as keyof typeof next]);
-  }
-  edits.set(docPath, docs);
   return new Map([...edits].filter(([name, content]) => read(name) !== content));
 }
 

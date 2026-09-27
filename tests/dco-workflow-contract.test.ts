@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import YAML from 'yaml';
+import { planCurrentCleanRoomPinRefresh } from '../scripts/sync-current-clean-room-pins.mts';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const source = readFileSync(resolve(ROOT, '.github/workflows/dco.yml'), 'utf8');
@@ -59,11 +60,16 @@ function sandbox() {
   const commit = (
     author: Identity,
     message: string,
-    options: { committer?: Identity; files?: string[] } = {},
+    options: { committer?: Identity; files?: string[]; writes?: Record<string, string | Buffer> } = {},
   ): string => {
     for (const file of options.files ?? []) {
       mkdirSync(dirname(join(repository, file)), { recursive: true });
       appendFileSync(join(repository, file), `${file}\n`);
+      git(['add', '--', file]);
+    }
+    for (const [file, content] of Object.entries(options.writes ?? {})) {
+      mkdirSync(dirname(join(repository, file)), { recursive: true });
+      writeFileSync(join(repository, file), content);
       git(['add', '--', file]);
     }
     const committer = options.committer ?? { name: 'DCO contract fixture', email: 'dco-contract@example.com' };
@@ -90,6 +96,7 @@ function sandbox() {
         PATH: `${bin}:${process.env.PATH}`,
         DCO_STUB_REPOSITORY: REPOSITORY,
         DCO_STUB_RECORDS: records,
+        RUNNER_TEMP: root,
         REPOSITORY,
         BASE_SHA: base,
         HEAD_SHA: head,
@@ -108,6 +115,12 @@ function sandbox() {
 const pat = { name: 'Pat Example', email: 'pat@example.com' };
 const githubCommitter = { name: 'GitHub', email: 'noreply@github.com' };
 const signed = (subject: string) => `${subject}\n\nSigned-off-by: Pat Example <pat@example.com>`;
+// dco.yml runs the base commit's copy of the evidence autopilot rule.
+const AUTOPILOT_RULE = {
+  'scripts/ci/evidence-autopilot.mjs': readFileSync(resolve(ROOT, 'scripts/ci/evidence-autopilot.mjs')),
+};
+const MANIFEST = 'conformance/conformance-manifest.json';
+const BUNDLES = ['conformance/clean-room/v2/bundle.v2.json', 'conformance/clean-room/v3/bundle.v3.json'];
 const autopilotMessage = 'chore(evidence): regenerate\n\n[dependabot skip]\n\nEvidence-Autopilot: v1';
 
 describe('DCO workflow contract', () => {
@@ -188,18 +201,18 @@ describe('DCO workflow contract', () => {
   it('exempts an evidence autopilot commit only on verified App identity, the trailer and derived-evidence paths', () => {
     const s = sandbox();
     try {
-      const base = s.commit(pat, signed('base'), { files: ['lib/code.ts'] });
-      const evidence = ['lib/proof-stats.json', 'public/.well-known/emilia-context.json'];
+      const base = s.commit(pat, signed('base'), { files: ['lib/code.ts'], writes: AUTOPILOT_RULE });
+      const evidence = { 'lib/proof-stats.json': '{"v":2}\n', 'public/.well-known/emilia-context.json': '{"v":2}\n' };
       const bot = { name: AUTOPILOT, email: AUTOPILOT_EMAIL };
 
-      const genuine = s.commit(bot, autopilotMessage, { files: evidence });
+      const genuine = s.commit(bot, autopilotMessage, { writes: evidence });
       s.github(genuine, true, 'valid', AUTOPILOT, 'web-flow');
       const genuineResult = s.dco(base, genuine);
       expect(genuineResult.status).toBe(0);
       expect(genuineResult.output).toContain('GitHub-verified evidence autopilot commit');
 
       // GitHub may also report the bot itself as committer; still verified.
-      const botCommitter = s.commit(bot, autopilotMessage, { files: evidence });
+      const botCommitter = s.commit(bot, autopilotMessage, { writes: { 'lib/proof-stats.json': '{"v":3}\n' } });
       s.github(botCommitter, true, 'valid', AUTOPILOT, AUTOPILOT);
       expect(s.dco(genuine, botCommitter).status).toBe(0);
 
@@ -216,15 +229,93 @@ describe('DCO workflow contract', () => {
       s.github(smuggled, true, 'valid', AUTOPILOT, 'web-flow');
       const smuggledResult = s.dco(botCommitter, smuggled);
       expect(smuggledResult.status).toBe(1);
+      expect(smuggledResult.output).toContain(`changes lib/code.ts, which is not derived evidence`);
       expect(smuggledResult.output).toContain(
-        `Commit ${smuggled} is an evidence autopilot commit but is not single-parent or changes other paths: lib/code.ts`,
+        `Commit ${smuggled} is an evidence autopilot commit but changes more than derived evidence`,
       );
 
       // Without the trailer a verified bot commit is an ordinary commit.
       s.git(['checkout', '--quiet', '--detach', botCommitter]);
-      const noTrailer = s.commit(bot, 'chore(evidence): regenerate', { files: evidence });
+      const noTrailer = s.commit(bot, 'chore(evidence): regenerate', { writes: { 'lib/proof-stats.json': '{"v":4}\n' } });
       s.github(noTrailer, true, 'valid', AUTOPILOT, 'web-flow');
       expect(s.dco(botCommitter, noTrailer).status).toBe(1);
+    } finally {
+      s.cleanup();
+    }
+  });
+
+  it('exempts a clean-room bundle re-pin and nothing else in the bundles, by the base branch\'s rule', () => {
+    const s = sandbox();
+    try {
+      const real = (path: string) => readFileSync(resolve(ROOT, path));
+      const base = s.commit(pat, signed('base'), {
+        writes: {
+          ...AUTOPILOT_RULE,
+          [MANIFEST]: real(MANIFEST),
+          [BUNDLES[0]]: real(BUNDLES[0]),
+          [BUNDLES[1]]: real(BUNDLES[1]),
+        },
+      });
+      const bot = { name: AUTOPILOT, email: AUTOPILOT_EMAIL };
+      const botCommit = (from: string, writes: Record<string, string | Buffer>) => {
+        s.git(['checkout', '--quiet', '--detach', from]);
+        const sha = s.commit(bot, autopilotMessage, { writes });
+        s.github(sha, true, 'valid', AUTOPILOT, 'web-flow');
+        return sha;
+      };
+      // A packages/verify change moves the manifest; the official writer re-pins the bundles.
+      const manifest = JSON.parse(real(MANIFEST).toString('utf8'));
+      manifest.implementations[0].source.tree_sha256 = 'd'.repeat(64);
+      manifest.manifest_sha256 = 'e'.repeat(64);
+      writeFileSync(join(s.repository, MANIFEST), `${JSON.stringify(manifest, null, 2)}\n`);
+      const repins = Object.fromEntries(planCurrentCleanRoomPinRefresh(s.repository));
+      s.git(['checkout', '--quiet', '--', MANIFEST]);
+      expect(Object.keys(repins).sort()).toEqual([...BUNDLES].sort());
+      const moved = { [MANIFEST]: `${JSON.stringify(manifest, null, 2)}\n`, ...repins };
+
+      const repin = botCommit(base, moved);
+      const repinResult = s.dco(base, repin);
+      expect(repinResult.status, repinResult.output).toBe(0);
+      expect(repinResult.output).toContain(`EVIDENCE AUTOPILOT: ${repin} changes only derived evidence:`);
+
+      // The same commit with anything else changed in a bundle: prose, a
+      // suite digest, or a pin that is not the manifest's.
+      const bundle = JSON.parse(repins[BUNDLES[0]]);
+      for (const [what, value] of [
+        ['claim scope', { ...bundle, claim_scope: 'independent implementation evidence' }],
+        ['suite digest', { ...bundle, suites: [{ ...bundle.suites[0], sha256: 'f'.repeat(64) }, ...bundle.suites.slice(1)] }],
+        ['foreign pin', { ...bundle, source_manifest: { ...bundle.source_manifest, sha256: 'f'.repeat(64) } }],
+      ] as const) {
+        const forged = botCommit(base, { ...moved, [BUNDLES[0]]: `${JSON.stringify(value, null, 2)}\n` });
+        const result = s.dco(base, forged);
+        expect(result.status, what).toBe(1);
+        expect(result.output, what).toContain('is not its source-commit version with only its derived fields recomputed');
+        expect(result.output, what).not.toContain('DCO sign-off is not required');
+      }
+
+      // A pull request that swaps in a permissive rule does not decide its
+      // own exemption: dco.yml runs the base branch's copy.
+      s.git(['checkout', '--quiet', '--detach', base]);
+      const permissive = s.commit(pat, signed('relax the rule'), {
+        writes: {
+          'scripts/ci/evidence-autopilot.mjs':
+            "const sha = process.argv.at(-1);\nconsole.log(`EVIDENCE AUTOPILOT: ${sha} changes only derived evidence:`);\n",
+        },
+      });
+      const smuggled = botCommit(permissive, { 'lib/code.ts': 'export const x = 1;\n' });
+      const smuggledResult = s.dco(base, smuggled);
+      expect(smuggledResult.status).toBe(1);
+      expect(smuggledResult.output).toContain('changes lib/code.ts, which is not derived evidence');
+
+      // A base rule that exits 0 without a verdict exempts nothing.
+      s.git(['checkout', '--quiet', '--detach', base]);
+      const silentBase = s.commit(pat, signed('a rule that never runs'), {
+        writes: { 'scripts/ci/evidence-autopilot.mjs': 'process.exit(0);\n' },
+      });
+      const afterSilent = botCommit(silentBase, moved);
+      const silentResult = s.dco(silentBase, afterSilent);
+      expect(silentResult.status).toBe(1);
+      expect(silentResult.output).not.toContain('DCO sign-off is not required');
     } finally {
       s.cleanup();
     }

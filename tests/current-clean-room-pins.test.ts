@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,8 +11,6 @@ const files = [
   'conformance/conformance-manifest.json',
   'conformance/clean-room/v2/bundle.v2.json',
   'conformance/clean-room/v3/bundle.v3.json',
-  'scripts/verify-clean-room-submission-v2.mts',
-  'docs/conformance/CLEAN-ROOM-V2.md',
 ];
 function fixture(run: (root: string) => void) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-current-pins-'));
@@ -32,6 +31,27 @@ describe('current clean-room manifest pin refresh', () => {
     expect([...edits.keys()].sort()).toEqual(files.slice(1).sort());
     expect(fs.readFileSync(path.join(root, files[1]), 'utf8')).toBe(fs.readFileSync(files[1], 'utf8'));
   }));
+  it('changes nothing in a bundle but source_manifest, which it sets to the manifest digests', () => fixture(root => {
+    const file = path.join(root, files[0]);
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    manifest.implementations[0].source.tree_sha256 = 'd'.repeat(64);
+    manifest.manifest_sha256 = 'e'.repeat(64);
+    fs.writeFileSync(file, JSON.stringify(manifest));
+    const bytes = fs.readFileSync(file);
+    const edits = planCurrentCleanRoomPinRefresh(root);
+    expect([...edits.keys()].sort()).toEqual(files.slice(1).sort());
+    for (const [name, content] of edits) {
+      const before = JSON.parse(fs.readFileSync(path.join(root, name), 'utf8'));
+      expect(content).toBe(`${JSON.stringify({
+        ...before,
+        source_manifest: {
+          path: files[0],
+          sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+          manifest_sha256: 'e'.repeat(64),
+        },
+      }, null, 2)}\n`);
+    }
+  }));
   it.each(['sha256', 'vectors', 'path', 'execution_path', 'execution_sha256'])('refuses changed vector contract field %s', field => fixture(root => {
     const file = path.join(root, files[0]);
     const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -47,6 +67,7 @@ describe('current clean-room manifest pin refresh', () => {
     expect(() => planCurrentCleanRoomPinRefresh(root)).toThrow('corpus revision required');
   }));
   it('refuses a failed executable manifest check before touching any pins', () => fixture(root => {
+    fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
     for (const name of ['sync-current-clean-room-pins.mjs', 'verify-clean-room-submission-v2.mjs', 'verify-clean-room-submission-v3.mjs']) {
       fs.copyFileSync(`scripts/${name}`, path.join(root, 'scripts', name));
     }

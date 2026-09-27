@@ -10,10 +10,15 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLE_RELATIVE_PATH = 'conformance/clean-room/v2/bundle.v2.json';
-const EXPECTED_MANIFEST_SHA256 =
-  '4860310a2a4e07ca28806a3233538ab90a50b2f8ba35aa3b14e9313e4081ef7e';
-const EXPECTED_MANIFEST_CLAIM_SHA256 =
-  '941fc7efc768f30990e5a24ef4bc48ea94b3f4b064531001f85b2814ad413c75';
+// The corpus is pinned here: 21 suites, 340 vectors, the Authority
+// companion, and the canonical digest of the bundle's exact suite list and
+// totals (paths, vector digests, counts, result contracts, companion). These
+// move only with a reviewed corpus revision. The current manifest is pinned
+// once, by the bundle's derived source_manifest, which every loader holds to
+// the manifest's bytes and claim (validateSourceManifestV2), so a
+// packages/verify change re-pins the bundle, not this file.
+const EXPECTED_CORPUS_SHA256 =
+  '128eafcb0555ee25b660a54f886351e30ceabe57ed01ad429b5428b7031055df';
 const EXPECTED_AUTHORITY_COMPANION_SHA256 =
   '121a358459ffed223a41a79570cc5307693eaa89a59b3ad330710c5e2f286959';
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
@@ -162,16 +167,8 @@ export function validateBundleDefinitionV2(bundle: any): void {
   if (bundle.source_manifest.path !== 'conformance/conformance-manifest.json') {
     throw new Error('bundle source manifest path is not the current conformance manifest');
   }
-  if (sha256String(bundle.source_manifest.sha256, 'bundle.source_manifest.sha256')
-      !== EXPECTED_MANIFEST_SHA256) {
-    throw new Error('bundle source conformance manifest hash is not the pinned current manifest');
-  }
-  if (sha256String(
-    bundle.source_manifest.manifest_sha256,
-    'bundle.source_manifest.manifest_sha256',
-  ) !== EXPECTED_MANIFEST_CLAIM_SHA256) {
-    throw new Error('bundle source conformance manifest claim hash is not pinned');
-  }
+  sha256String(bundle.source_manifest.sha256, 'bundle.source_manifest.sha256');
+  sha256String(bundle.source_manifest.manifest_sha256, 'bundle.source_manifest.manifest_sha256');
 
   exactKeys(
     bundle.runner_protocol,
@@ -237,6 +234,9 @@ export function validateBundleDefinitionV2(bundle: any): void {
   if (authorityCompanion !== EXPECTED_AUTHORITY_COMPANION_SHA256) {
     throw new Error('bundle Authority Document execution companion hash is not pinned');
   }
+  if (canonicalDigest({ suites: bundle.suites, totals: bundle.totals }) !== EXPECTED_CORPUS_SHA256) {
+    throw new Error('bundle suite list is not the pinned corpus; changing it needs a reviewed corpus revision');
+  }
 }
 
 function vectorExpectations(
@@ -260,7 +260,11 @@ function vectorExpectations(
   return expectations;
 }
 
-function validateSourceManifest(bundle: JsonObject, bytes: Buffer, manifest: any): void {
+/**
+ * Holds a bundle's source_manifest pin to the manifest it names: byte and
+ * claim digests, a claim that recomputes, and the pinned corpus.
+ */
+export function validateSourceManifestV2(bundle: JsonObject, bytes: Buffer, manifest: any): void {
   if (sha256V2(bytes) !== bundle.source_manifest.sha256) {
     throw new Error('current conformance manifest hash mismatch');
   }
@@ -308,7 +312,7 @@ export function loadPinnedKitV2(
     manifestPath,
     'current conformance manifest',
   );
-  validateSourceManifest(bundle, manifestBytes, manifest);
+  validateSourceManifestV2(bundle, manifestBytes, manifest);
 
   const contracts: V2SuiteContract[] = [];
   for (const suiteRef of bundle.suites) {
