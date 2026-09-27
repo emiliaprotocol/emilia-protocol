@@ -1241,7 +1241,7 @@ for (const [anchor, needle, what] of [
   // Round 2 of the fix audit. Each is a behavior the three ports show and a
   // vector pins, so a wording drift here is a drift from the code.
   ['host-values', 'except that an object or array nested deeper than 64 counts as one value and nothing inside it is counted', 'R2-VALUECOUNT-DEPTH: native-value-count-stops-at-depth-64, native-value-count-straddles-depth-64'],
-  ['host-values', 'a host definition, mapping profile, or mapping source past it is refused by the step that reads it', 'R2-VALUECOUNT-REASON (Section 2.5)'],
+  ['host-values', 'a host definition whose validation projection is past it, or a host mapping profile or mapping source past it, is refused by the step that reads it', 'R2-VALUECOUNT-REASON (Section 2.5)'],
   ['data-model', 'are not examined and are not counted toward the value count', 'R2-VALUECOUNT-DEPTH (Section 2.2)'],
   ['data-model', 'a host action object is refused as unsupported_value alone', 'R2-VALUECOUNT-REASON (Section 2.2)'],
   ['limits', 'The nesting limit and the value count apply in the same way to a host value that is not an action object', 'R2-VALUECOUNT-REASON (Section 2.6)'],

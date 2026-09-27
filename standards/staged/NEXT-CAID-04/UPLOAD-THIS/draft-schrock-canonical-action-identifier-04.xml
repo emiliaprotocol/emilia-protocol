@@ -492,9 +492,10 @@
           nothing inside it is counted (<xref target="data-model"/>). For a
           host action object past this count, phase 7 yields
           unsupported_value and phase 6 yields no reason, whatever the value
-          holds; a host definition, mapping profile, or mapping source past
-          it is refused by the step that reads it
-          (<xref target="limits"/>). No JSON text within the limit of
+          holds; a host definition whose validation projection is past it,
+          or a host mapping profile or mapping source past it, is refused by
+          the step that reads it (<xref target="limits"/>). No JSON text
+          within the limit of
           <xref target="json-text"/> holds that many values. An
           implementation can process a value with shared references without
           walking its expansion, but the count is that of the expansion,
@@ -4044,8 +4045,9 @@ fa2
         registered under Specification Required
         (<xref target="iana-action-types"/>) with its own specification and
         change controller; emilia.mobile.authorized&#8209;action.1, whose
-        first segment names an organization, only with that organization as its
-        change controller. dns.zone.transfer.1 is not to be registered: the
+        first segment names an organization, only with that organization
+        as its change controller. dns.zone.transfer.1 is not to be
+        registered: the
         path for the registrar-transfer type is a successor whose name
         describes it.</t>
 <dl anchor="appendix-d2-types" newline="true" spacing="compact">

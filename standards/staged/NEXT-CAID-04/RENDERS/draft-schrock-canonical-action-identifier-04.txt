@@ -704,12 +704,13 @@ Internet-Draft                    CAID                    September 2026
       nested deeper than 64 counts as one value and nothing inside it is
       counted (Section 2.2).  For a host action object past this count,
       phase 7 yields unsupported_value and phase 6 yields no reason,
-      whatever the value holds; a host definition, mapping profile, or
-      mapping source past it is refused by the step that reads it
-      (Section 2.6).  No JSON text within the limit of Section 2.4 holds
-      that many values.  An implementation can process a value with
-      shared references without walking its expansion, but the count is
-      that of the expansion, down to depth 64;
+      whatever the value holds; a host definition whose validation
+      projection is past it, or a host mapping profile or mapping source
+      past it, is refused by the step that reads it (Section 2.6).  No
+      JSON text within the limit of Section 2.4 holds that many values.
+      An implementation can process a value with shared references
+      without walking its expansion, but the count is that of the
+      expansion, down to depth 64;
 
    *  MUST read a host type definition only as far as its validation
       projection (Section 4.2.2).  The projection MUST be a value of the
@@ -719,7 +720,6 @@ Internet-Draft                    CAID                    September 2026
    *  MUST produce, for every value that the decoder of Section 2.4 can
       produce, exactly the result that the same operation over the
       corresponding JSON text produces.
-
 
 
 
