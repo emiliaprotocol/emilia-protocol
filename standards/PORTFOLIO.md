@@ -341,10 +341,9 @@ existing active draft name remain allowed. The standing exception requires a
 wire-level gap demonstrated by a named external implementer or deployment,
 recorded evidence, and an overlap review. GRACE-00 was filed under a separately
 recorded one-time founder override after its local gates and coauthor approval;
-that override does not claim that the standing exception was satisfied. Agent
-Operation Continuity-00 was posted on 2026-09-15, inside the window, and no
-override is recorded for it. No active draft is retired or merged by this
-freeze, and the distinct active profile portfolio remains intact.
+that override does not claim that the standing exception was satisfied. No
+active draft is retired or merged by this freeze, and the distinct active
+profile portfolio remains intact.
 
 ## Maintenance status
 
