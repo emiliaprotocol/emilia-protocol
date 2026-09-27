@@ -21,26 +21,41 @@
 //   - every item of "Changes since -03" that states a processing or registry
 //     change maps to conformance vector ids, and every id exists in the
 //     corpora (CHANGES-VECTORS.json in the packet);
+//   - the Section 4.7 registration is the registry entry for tool.call.1,
+//     member for member;
 //   - the normative references, the [CAID-REGISTRY] pin, registry version 5
 //     and its counts, the registries the Abstract and Section 12 name, the
 //     examples the prose cites against the ABNF, BCP 14 markup, text the
-//     pre-filing review requires, text that must be gone, both renders, and
-//     SHA256SUMS.txt.
+//     pre-filing review and the audit of its fixes require, text that must
+//     be gone, banned wording, both renders (and, with xml2rfc 3.34.0 on
+//     PATH, that they equal a fresh render), table rows split across a
+//     page, and SHA256SUMS.txt;
+//   - with --prefiling, that origin/main carries this tree's caid/ and the
+//     vendored caid.mjs byte for byte, so Sections 8.3 and 13 and
+//     Appendix A hold at tree/main/caid.
 //
 //   node scripts/check-caid-04.mjs          run every check; exit 1 on any failure
 //   node scripts/check-caid-04.mjs --emit   print the generated tables and
 //                                           listings as XML, for pasting
 //                                           into the draft
 //   node scripts/check-caid-04.mjs --emit-json   the same as one JSON object
-//   node scripts/check-caid-04.mjs --prefiling   every check, plus the filing
-//                                           gate against origin/main (run
-//                                           git fetch origin first)
+//   node scripts/check-caid-04.mjs --renders     every check, and fail unless
+//                                           xml2rfc 3.34.0 is on PATH and its
+//                                           renders of the source equal
+//                                           RENDERS/ (without the flag the
+//                                           renders are compared whenever
+//                                           that xml2rfc is on PATH)
+//   node scripts/check-caid-04.mjs --prefiling   every check with --renders,
+//                                           plus the filing gate against
+//                                           origin/main (run git fetch
+//                                           origin first)
 //
 // Every failure is collected and printed, so one run lists all of them.
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadGrammar, matches } from '../caid/spec/abnf.mjs';
@@ -518,6 +533,7 @@ if (process.argv.includes('--emit-json')) {
   process.exit(0);
 }
 const prefiling = process.argv.includes('--prefiling');
+const rendersRequired = prefiling || process.argv.includes('--renders');
 
 // ---------------------------------------------------------------------------
 // Inputs
@@ -740,12 +756,45 @@ const statesCount = (txt, n, nouns) => {
   check(!statesCount(atText, active, ['active']), `Section 12.2 still states the ${active} active types of the whole registry as IANA contents`);
   check(!atText.includes('The definitions of the initial entries are the file'), 'Section 12.2 still makes the whole registry file the initial contents');
   check(atText.includes('Specification Required'), 'Section 12.2 lacks its registration policy');
-  // Section 12: the reference for the Action Types entries other than
-  // tool.call.1, which the document defines, is also [CAID-REGISTRY].
+  // Section 12: every initial Action Types entry also references
+  // [CAID-REGISTRY], which holds its definition; Section 4.7 reproduces the
+  // tool.call.1 entry, so the document and the registry give one text for
+  // it. The reference registry holds a superset of the initial contents.
   const ianaSection = section('iana');
   const ianaIntro = ianaSection.slice(0, ianaSection.indexOf('<section anchor=', 1));
   check(!plain(ianaIntro).includes('The reference for every initial entry of every registry below is this document, and its change controller is the IETF.'), 'Section 12 still names this document as the only reference of every initial entry');
-  check(plain(ianaIntro).includes('tool.call.1') && ianaIntro.includes('<xref target="CAID-REGISTRY"'), 'Section 12 does not say that the initial Action Types entries other than tool.call.1 also reference [CAID-REGISTRY]');
+  check(plain(ianaIntro).includes('tool.call.1') && ianaIntro.includes('<xref target="CAID-REGISTRY"'), 'Section 12 does not say that the initial Action Types entries also reference [CAID-REGISTRY] and where tool.call.1 is reproduced');
+  check(plain(ianaIntro).includes('superset') && ianaIntro.includes(`<xref target="${d.other.section}"`), 'Section 12 does not say that the reference registry records a superset of the initial Action Types contents (Appendix D.2)');
+  // R1, NUM-R1-1: one definition text for tool.call.1. Section 12.2 and the
+  // Appendix D introduction no longer carve tool.call.1 out of "the entry
+  // with that name in the registry file"; Section 4.7 prints that entry
+  // (checked member for member below).
+  for (const [where, body] of [['Section 12', ianaIntro], ['Section 12.2', actionTypes], ['Appendix D', parent.slice(0, parent.indexOf('<section anchor=', 1))]]) {
+    check(!plain(body).includes('other than tool.call.1'), `${where} still carves tool.call.1 out of the registry definitions`);
+    check(!plain(body).includes('tool.call.1 is defined in'), `${where} still gives tool.call.1 a definition apart from its registry entry`);
+  }
+  check(plain(parent.slice(0, parent.indexOf('<section anchor=', 1))).includes('reproduces the tool.call.1 entry'), 'the Appendix D introduction does not say that Section 4.7 reproduces the tool.call.1 entry');
+  check(plain(actionTypes).includes('reproduces the tool.call.1 entry'), 'Section 12.2 does not say that Section 4.7 reproduces the tool.call.1 entry');
+  // R4: D.2 holds seven types defined by other specifications and one whose
+  // name misdescribes it; only the seven may be registered later.
+  check(plain(actionTypes).includes('one whose name misdescribes it'), 'Section 12.2 calls every D.2 entry a type defined by another specification (dns.zone.transfer.1 is a misnomer)');
+  check(plain(actionTypes).includes('Each of the seven types defined by other specifications may be registered'), 'Section 12.2 does not limit later registration to the seven specification-defined D.2 types');
+  check(d2Text.includes('Each of the seven types defined by other specifications may be registered') && d2Text.includes('dns.zone.transfer.1 is not to be registered'), 'Appendix D.2 does not limit later registration to the seven specification-defined types and keep dns.zone.transfer.1 out');
+  check(!/Each may be registered/.test(d2Text) && !/may be registered under Specification Required with their own/.test(plain(actionTypes)), 'Appendix D.2 or Section 12.2 still lets every D.2 entry, dns.zone.transfer.1 included, be registered');
+  // R2, R1-SEC10-RESIDUE: the entropy criterion binds registrations made
+  // after this document; the D.1 entries point to Sections 11 and 4.7.
+  check(plain(actionTypes).includes('in a registration made after this document, a type whose required fields can all be low-entropy'), 'Section 12.2 applies the 128-bit criterion to the initial entries, which do not meet it');
+  check(/registered by\s+this document: <xref target="privacy"\/> states why their identifiers\s+are not required to carry 128 bits of entropy/.test(actionTypes), 'Section 12.2 does not say that Section 11 states why the D.1 identifiers need not carry 128 bits of entropy');
+  // R5: the IESG acts for a change controller only when it cannot be
+  // reached or does not respond, for suites as for every other entry.
+  check(plain(ianaIntro).includes('cannot be reached or does not respond'), 'Section 12 does not bound when the IESG acts for a change controller');
+  check(plain(section('iana-suites')).includes('its change controller requests the deprecation, or the IESG does for a controller that cannot be reached or does not respond'), 'Section 12.1 lets the IESG deprecate a suite whose controller can be reached');
+  // R1-GOV-ABSOLUTE, R4: GOVERNANCE.md section 7.1 lists the D.2 entries
+  // and states neither false absolute.
+  const gov = read('caid/registry/GOVERNANCE.md');
+  for (const name of IANA_EXCLUDED.keys()) check(gov.includes(`\`${name}\``), `caid/registry/GOVERNANCE.md section 7.1 does not list ${name}`);
+  check(!gov.includes('No other type in registry version 5 names a vendor'), 'GOVERNANCE.md still says that no other type names a vendor (package.publish.1 names npm, wire.transfer.1 names SWIFT)');
+  check(gov.includes('No other type is named for a vendor or product, or cites a vendor') && gov.includes('each of the seven types defined by another specification can be') && gov.includes('`dns.zone.transfer.1` is not a candidate'), 'GOVERNANCE.md section 7.1 does not limit later registration to the seven specification-defined types');
 }
 
 // ---------------------------------------------------------------------------
@@ -924,6 +973,31 @@ check(ref.compute(toolObject, regOptions).caid === toolCaid, 'tool.call.1 exampl
 check(ref.compute({ ...toolObject, target: 'https://shadow.example' }, regOptions).caid !== toolCaid, 'tool.call.1 target does not discriminate');
 check(same(toolDef.required_fields.map((f) => f.name), ['target', 'tool', 'args']), 'tool.call.1 required fields changed');
 
+// Section 4.7: the registration is the registry version 5 entry for
+// tool.call.1, member for member (summary, notes and digest_notes
+// included), so the document and the file IANA stores give one text for
+// the entry. Line breaks inside its strings read as one space, as in the
+// Section 4.2 example.
+{
+  const shown = unfold(code('ex-tool-definition')).replace(/\n\s*/g, ' ');
+  let parsed;
+  try { parsed = JSON.parse(shown); } catch (e) { errors.push(`the Section 4.7 registration (ex-tool-definition) is not JSON once its line breaks are read as spaces: ${e.message}`); }
+  if (parsed !== undefined) {
+    const a = ref.canonicalize(parsed);
+    const b = ref.canonicalize(toolDef);
+    check(a.ok && b.ok && a.canonical === b.canonical, 'the Section 4.7 registration (ex-tool-definition) is not the registry version 5 entry for tool.call.1, member for member');
+    check(ref.definitionSha256(parsed) === digestOf('tool.call.1'), 'the Section 4.7 registration does not hash to the tool.call.1 definition_sha256');
+  }
+  check(section('tool-call-type').includes('anchor="ex-tool-definition"'), 'the ex-tool-definition registration is not in Section 4.7');
+  // The prose names the executor-binding strings the entry's digest_notes
+  // name, not a second spelling of them.
+  const prefix = /Existing (base[a-z-]*:sha256:<hex>)/.exec(toolDef.digest_notes)?.[1];
+  check(prefix && plain(section('tool-call-type').replace(/<sourcecode[\s\S]*?<\/sourcecode>/g, '')).includes(prefix), `Section 4.7 prose does not name the ${prefix} strings that the tool.call.1 digest_notes name`);
+  // R7: occurrence_id is required only when args carries no identifier with
+  // the needed property.
+  check((plain(section('tool-call-type')).match(/unless args already carries an identifier/g) ?? []).length === 2, 'Section 4.7 requires occurrence_id even when args already carries an identifier with the needed property (R7)');
+}
+
 // Every folded example unfolds; no sourcecode line exceeds 69 columns.
 for (const m of source.matchAll(/<sourcecode\b[^>]*>\s*<!\[CDATA\[([\s\S]*?)\]\]>/g)) {
   for (const line of m[1].split('\n')) check(line.length <= 69, `sourcecode line over 69 columns: ${line.slice(0, 40)}...`);
@@ -1034,9 +1108,19 @@ for (const [needle, what] of [
   ['shared interoperability corpus', 'CLM-4: the same in Section 14.2'],
   ['two adapters shipped by the same project', 'CLM-5: the divergent adapters were the author\'s own (Section 4.7)'],
   ['states the same rule', 'CLM-9: thallapelly reaches the same conclusion (Section 3.6)'],
+  // Round 1 of the fix audit.
+  ['such a decoder reads 99999.00', 'R1-SEC6-SWIFT: only a case-insensitive decoder reads 99999.00 (Section 10.6)'],
+  ['every host number is "number"', 'R1-IMPL2-BINDING: a binding decides which host types are numbers (Section 6.1)'],
+  ['The value of a host number is', 'R1-IMPL2-BINDING: the same in Section 2.5'],
+  ['in place of the plain digest that the type\'s notes describe', 'R6: a keyed commitment needs a type whose notes specify it (Section 11)'],
+  ['will vendor a copy of the JavaScript implementation;', 'R8: the vendored copy carries no mapping (Section 13)'],
+  ['its change controller, or the IESG, requests the deprecation', 'R5: the IESG acts only for a controller that cannot be reached (Section 12.1)'],
+  ['base-action:sha256', 'R1: Section 4.7 names the base:sha256 strings its digest_notes name'],
 ]) check(needle instanceof RegExp ? !needle.test(sourcePlain) : !sourcePlain.includes(needle), `source still carries the wording of ${what}`);
 // ED-13: "action object" is lowercase in running text; titles keep title case.
-check(!/\bAction Objects?\b/.test(plain(source.replace(/<name>[\s\S]*?<\/name>/g, ''))), 'source still capitalizes "Action Object" in running text (ED-13)');
+// Sourcecode is left out: the Section 4.7 registration quotes the registry
+// entry's digest_notes byte for byte.
+check(!/\bAction Objects?\b/.test(plain(source.replace(/<name>[\s\S]*?<\/name>/g, '').replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, ''))), 'source still capitalizes "Action Object" in running text (ED-13)');
 
 // Text the fixes add, where the finding fixes a word or a structure.
 for (const [anchor, needle, what] of [
@@ -1048,7 +1132,22 @@ for (const [anchor, needle, what] of [
   ['impl-status', 'tree/main/caid', 'M3: Section 13 points at tree/main/caid'],
   ['impl-status', '6.0.0', 'M3, CLM-3: the next major release (6.0.0) of the verification package'],
   ['impl-status', '5.0.0', 'M3, CLM-3: the published 5.0.0 vendors an earlier revision'],
+  ['impl-status', 'every operation except mapping', 'R8: the vendored caid.mjs carries no mapping'],
+  ['security-parsing', 'a case-insensitive decoder reads 99999.00', 'R1-SEC6-SWIFT: the member-name differential names the decoder that reads 99999.00'],
+  ['host-values', 'ECMAScript BigInt or a Go uint64, as values of kind "unsupported"', 'R1-IMPL2-BINDING: a binding may give other numeric host types kind "unsupported"'],
+  ['host-values', 'is mistyped_field:<name> and unsupported_value, whatever its value', 'R1-IMPL2-BINDING: the result for such a value in an integer field'],
+  ['details', 'every host value that the language binding represents as a number', 'R1-IMPL2-BINDING: the kind "number" of a host value (Section 6.1)'],
+  ['terms', 'property of the language binding', 'R1-IMPL2-BINDING: the Kind entry names the binding'],
+  ['mapping-algorithm', 'as it does when either has no RFC 8785 encoding or that member is absent', 'R1-IMPL3-DESCRIPTOR: a descriptor with no RFC 8785 encoding is a mismatch'],
+  ['privacy', 'uses a type whose notes specify it', 'R6: a keyed commitment needs a type whose notes specify it'],
 ]) check(plain(section(anchor)).includes(needle), `section ${anchor} lacks "${needle}" (${what})`);
+// R8: what Section 13 says the next major release vendors is what this
+// tree vendors: a byte copy of caid/impl/js/caid.mjs, with no mapping.
+{
+  const vendored = read('packages/verify/vendor/caid.mjs');
+  check(vendored === read('caid/impl/js/caid.mjs'), 'packages/verify/vendor/caid.mjs is not a byte copy of caid/impl/js/caid.mjs, as Section 13 says');
+  check(!/\b(?:mapAction|compareMappedActions|mappingProfileHash)\b/.test(vendored), 'the vendored caid.mjs carries mapping, which Section 13 says it does not');
+}
 // ED-07: the paragraph above the limits table names the reasons the
 // nesting limit yields for documents other than an action object.
 {
@@ -1097,6 +1196,33 @@ check(!plain(section('iana-code-formats')).includes('nested quantifiers'), 'Sect
 
 const prose = text + source;
 check(!/[\u2013\u2014]/.test(prose), 'an en or em dash appears in the draft');
+
+// Wording the author's standards text never uses: no claim of IETF
+// adoption, no post-quantum or FIPS claim, no tool attribution. And
+// "independent implementation" and "endorse" appear only in the sentences
+// that deny them: Section 13's disclaimers and the endorsement disclaimer
+// of the acknowledgments.
+{
+  const BANNED = [/\badopt(?:ed|ion)\b/i, /quantum[- ]safe/i, /FIPS[- ]compliant/i, /SCITT[- ]integrated/i];
+  for (const re of BANNED) {
+    check(!re.test(sourcePlain) && !re.test(flat(text)), `the draft uses banned wording matching ${re}`);
+  }
+  const DISCLAIMERS = [
+    ['impl-status', 'does not imply endorsement by the IETF.'],
+    ['impl-status', 'No independent implementation is known to the author.'],
+    ['impl-status', 'such external re-runs are reproductions, not independent implementations.'],
+    ['acknowledgments', 'do not imply endorsement of this document.'],
+  ];
+  let rest = sourcePlain;
+  for (const [anchor, sentence] of DISCLAIMERS) {
+    check(plain(section(anchor)).includes(sentence), `section ${anchor} lacks the disclaimer "${sentence}"`);
+    rest = rest.replace(sentence, '');
+  }
+  for (const re of [/independent implementation/i, /\bendors/i]) {
+    const m = re.exec(rest);
+    check(!m, `"${m?.[0]}" appears outside the disclaimers of Section 13 and the acknowledgments: "...${m ? rest.slice(Math.max(0, m.index - 50), m.index + 40) : ''}..."`);
+  }
+}
 check(!/[^\n!-]--[^>-]/.test(source.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '')), 'a double hyphen appears in prose');
 check(!/[^\x09\x0a\x20-\x7e]/.test(source), 'the XML source is not printable ASCII');
 
@@ -1112,6 +1238,57 @@ check(text.includes(code('exc-payment-canonical').split('\n')[2]), 'TXT render l
 // IANA-16, ED-20, CLM-10: xml2rfc broke "history/action-types.v4.json" at
 // its hyphen and printed "action- types"; a path in <tt> is not broken.
 check(!/action-\s+types/.test(text), 'the TXT render splits a path at "action-types" (wrap the path in <tt>)');
+
+// ED-03, R1-ED03-TABLE: no table row of the TXT render is split across a
+// page: a page may end on a row's last line or on a border line (+---+),
+// but when it ends on a row line the next page starts with a border line,
+// never with more lines of that row.
+{
+  const pages = text.split('\f');
+  const bodyLines = (page) => page.split('\n').filter((l) => l.trim() && !/\[Page \d+\]\s*$/.test(l) && !/^Internet-Draft\s/.test(l));
+  pages.slice(0, -1).forEach((page, i) => {
+    const last = bodyLines(page).at(-1) ?? '';
+    const first = bodyLines(pages[i + 1])[0] ?? '';
+    check(!(/^\s*\|/.test(last) && /^\s*\|/.test(first)), `the TXT render splits a table row across pages ${i + 1} and ${i + 2} ("${last.trim().slice(0, 48)}...")`);
+  });
+}
+
+// GATE-2: RENDERS/ is the xml2rfc 3.34.0 render of the source, as
+// VALIDATION.md records: --text as is, and --html --no-external-js with
+// trailing spaces and tabs removed from each line. Compared whenever that
+// xml2rfc is on PATH; --renders and --prefiling require it.
+let renderedFresh = false;
+{
+  const XML2RFC = '3.34.0';
+  // The two warnings xml2rfc gives for an individual Standards Track draft
+  // that names no stream (VALIDATION.md); any other warning is a failure.
+  const EXPECTED_WARNINGS = [/Expected a valid submissionType/, /Setting consensus="true"/];
+  const probe = spawnSync('xml2rfc', ['--version'], { encoding: 'utf8' });
+  const version = probe.status === 0 ? probe.stdout.trim() : null;
+  if (version === `xml2rfc ${XML2RFC}`) {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'caid-04-render-'));
+    try {
+      const render = (flags, out) => {
+        const r = spawnSync('xml2rfc', [...flags, '--out', out, sourceFile], { encoding: 'utf8' });
+        if (r.status !== 0) { errors.push(`xml2rfc ${XML2RFC} ${flags.join(' ')} failed: ${(r.stderr || '').trim().split('\n').at(-1)}`); return null; }
+        const unexpected = (r.stderr || '').split('\n').filter((l) => /\b(?:Warning|Error):/.test(l) && !EXPECTED_WARNINGS.some((w) => w.test(l)));
+        check(unexpected.length === 0, `xml2rfc ${XML2RFC} ${flags.join(' ')} reports: ${unexpected.join(' | ')}`);
+        return readFileSync(out, 'utf8');
+      };
+      const txt = render(['--text'], path.join(dir, `${DOC}.txt`));
+      const htm = render(['--html', '--no-external-js'], path.join(dir, `${DOC}.html`));
+      if (txt !== null) check(txt === text, `${textRel} is not the xml2rfc ${XML2RFC} --text render of the source (re-render as VALIDATION.md describes)`);
+      if (htm !== null) check(htm.replace(/[ \t]+$/gm, '') === html, `${htmlRel} is not the xml2rfc ${XML2RFC} --html --no-external-js render of the source with trailing spaces removed (re-render as VALIDATION.md describes)`);
+      renderedFresh = txt !== null && htm !== null;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  } else if (rendersRequired) {
+    errors.push(`the render check needs xml2rfc ${XML2RFC} on PATH (found ${version ?? 'none'})`);
+  } else {
+    console.log(`CAID-04: note: xml2rfc ${XML2RFC} is not on PATH (found ${version ?? 'none'}), so RENDERS/ was not compared with a fresh render; run with --renders before upload`);
+  }
+}
 
 const sums = readFileSync(path.join(packet, 'SHA256SUMS.txt'), 'utf8').trim().split('\n');
 const expectedPaths = new Set([sourceRel, textRel, htmlRel]);
@@ -1129,10 +1306,18 @@ check(expectedPaths.size === 0, `missing checksum path ${[...expectedPaths].join
 
 // ---------------------------------------------------------------------------
 // --prefiling: the filing gate (M3). Section 13 points at tree/main/caid and
-// says the code there implements -04, and [CAID-REGISTRY] cites a commit;
-// both hold only once the -04 pull request has merged. Reads origin/main as
-// last fetched; run git fetch origin first.
+// says the code there implements -04, runs the corpus, and skips the
+// cbor-sha256 vectors; Section 8.3 states the mapping rules the ports
+// follow; Appendix A is caid.abnf; and [CAID-REGISTRY] cites a commit.
+// Those hold at tree/main only when origin/main carries exactly the CAID
+// tree this packet was checked against. Reads origin/main as last fetched;
+// run git fetch origin first.
 // ---------------------------------------------------------------------------
+
+// The paths whose content the draft describes as published at
+// tree/main/caid: the ports, the corpora and runners, the spec sources, the
+// registry, and the vendored copy Section 13 names.
+const FILING_PATHS = ['caid', 'packages/verify/vendor/caid.mjs'];
 
 if (prefiling) {
   const git = (...args) => {
@@ -1148,6 +1333,21 @@ if (prefiling) {
       check((git('show', `origin/main:${port}`)?.toString() ?? '').includes(DOC), `prefiling: ${port} on origin/main does not implement -04, so Section 13 would be false`);
     }
     if (pinnedCommit) check(git('merge-base', '--is-ancestor', pinnedCommit, 'origin/main') !== null, `prefiling: the [CAID-REGISTRY] commit ${pinnedCommit} is not reachable from origin/main`);
+    // R1-M3-GATE, R3, GATE-1: the checks above hold on a main that lacks
+    // this tree's CAID changes (the stage B fix of the JavaScript port, the
+    // conditional cbor-sha256 vectors and the runners that skip them, the
+    // new vectors, the caid.abnf comment). This one does not: every file
+    // under FILING_PATHS on origin/main equals HEAD's, and the working tree
+    // that the checks above read equals HEAD there.
+    const status = git('status', '--porcelain', '--untracked-files=all', '--', ...FILING_PATHS);
+    check(status !== null && status.toString().trim() === '', `prefiling: the working tree differs from HEAD under ${FILING_PATHS.join(', ')}; commit or discard the changes first:\n    ${(status?.toString().trim() ?? 'git status failed').split('\n').join('\n    ')}`);
+    const branch = git('rev-parse', '--abbrev-ref', 'HEAD')?.toString().trim() ?? 'HEAD';
+    const advice = branch === 'main' || branch === 'HEAD' ? 'Bring this checkout and origin/main to one CAID tree and re-run' : `Merge ${branch} into main and re-run`;
+    const differing = git('diff', '--name-only', 'HEAD', 'origin/main', '--', ...FILING_PATHS);
+    const names = differing?.toString().trim().split('\n').filter(Boolean) ?? null;
+    check(names !== null && names.length === 0, names === null
+      ? 'prefiling: git diff HEAD origin/main failed'
+      : `prefiling: origin/main (${mainCommit.slice(0, 12)}) does not carry the CAID tree of ${branch}; ${names.length} file(s) under ${FILING_PATHS.join(', ')} differ, so Sections 8.3 and 13 and Appendix A would be false at tree/main/caid. ${advice}:\n    ${names.slice(0, 30).join('\n    ')}${names.length > 30 ? `\n    ... and ${names.length - 30} more` : ''}`);
   }
 }
 
@@ -1157,4 +1357,4 @@ if (errors.length) {
   process.exit(1);
 }
 const { iana: d1, other: d2 } = split.counts;
-console.log(`CAID-04: Appendix A (${abnfText.split('\n').length - 1} lines) equals caid.abnf; Appendix B, detail, limits and IANA tables equal their sources; Appendix D lists registry v5 (${registry.types.length} types) as ${d1.total} initial IANA entries (${d1.active} active, ${d1.deprecated} deprecated) and ${d2.total} not requested of IANA; Appendix C (cbor-sha256 included) and the examples recompute; ${claimAnchors.length} change claims map to vectors; review wording, BCP 14 markup, references, renders and checksums${prefiling ? ', and the filing gate against origin/main,' : ''} PASS.`);
+console.log(`CAID-04: Appendix A (${abnfText.split('\n').length - 1} lines) equals caid.abnf; Appendix B, detail, limits and IANA tables equal their sources; Appendix D lists registry v5 (${registry.types.length} types) as ${d1.total} initial IANA entries (${d1.active} active, ${d1.deprecated} deprecated) and ${d2.total} not requested of IANA; Appendix C (cbor-sha256 included) and the examples recompute; ${claimAnchors.length} change claims map to vectors; review wording, BCP 14 markup, references, renders${renderedFresh ? ' (equal to a fresh xml2rfc 3.34.0 render)' : ''} and checksums${prefiling ? ', and the filing gate against origin/main,' : ''} PASS.`);
