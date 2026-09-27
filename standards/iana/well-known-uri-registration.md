@@ -13,13 +13,17 @@ Internet-Drafts, not IETF-adopted or endorsed**.
 
 ## 1. agent-action-control.json
 
-**Status: READY-ON-POST.** This is the one registration a draft's own IANA
-Considerations already *requests*:
+**Status: NOT FILED; no active backing draft.** The backing draft below is
+in state Replaced on Datatracker, and its successors
+(draft-schrock-ep-architecture, draft-schrock-action-evidence-boundary) have
+no IANA actions. This template is process history; do not file it unless an
+active draft requests the registration. The replaced draft's IANA
+Considerations *requested* it:
 `draft-schrock-agent-action-manifest-00`, Section 9, "requests registration of
 the following well-known URI in the 'Well-Known URIs' registry established by
-[RFC8615]" with exactly the fields below. File it once the draft is live on
-the datatracker (a Specification Required registry needs a publicly available
-specification document to point at).
+[RFC8615]" with exactly the fields below. A Specification Required registry
+needs a publicly available specification document to point at, and a
+replaced draft is not one to file against.
 
 ### Registration template (RFC 8615 §3.1)
 
