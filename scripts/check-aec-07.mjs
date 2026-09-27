@@ -5,7 +5,8 @@
 // VERIFIED (cryptographic and structural checks) and ACCEPTED (the relying
 // party's pinned trust inputs) stay separate results everywhere the draft
 // states or uses them, the -06 definitions that merged them are gone, the
-// renders and checksums match the source, and the posted -06 is unchanged.
+// renders and checksums match the source, the posted -06 is unchanged, and the
+// evaluator that Sections 10 and 21 describe is the one on the same tree.
 
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -39,7 +40,14 @@ const txtBytes = readFileSync(new URL(`RENDERS/${basename}.txt`, root));
 const xml = xmlBytes.toString('utf8');
 const txt = txtBytes.toString('utf8');
 const flatXml = xml.replace(/\s+/g, ' ');
-const flatTxt = txt.replace(/\s+/g, ' ');
+// Page footers and running headers can fall inside a sentence; drop them
+// before flattening so required text is matched as a reader sees it.
+const flatTxt = txt
+  .split('\n')
+  .filter((line) => !/\[Page \d+\]$/.test(line) && !/^Internet-Draft {2,}.* \d{4}$/.test(line))
+  .join('\n')
+  .replace(/\f/g, '')
+  .replace(/\s+/g, ' ');
 
 invariant(/^[\x09\x0a\x0d\x20-\x7e]*$/.test(xml), 'XML source must be printable ASCII');
 invariant(/^[\x09\x0a\x0c\x0d\x20-\x7e]*$/.test(txt), 'TXT render must be printable ASCII');
@@ -89,6 +97,18 @@ for (const required of [
   'AEC MUST NOT collapse ACCEPTED into VERIFIED',
   'Verification and acceptance.',
   'Changes in -07',
+  'Native verification is not sufficient for composition.',
+  'Except where a native procedure checks trust inputs and cryptography together and cannot attribute a failure',
+  'With the same exception, a party with different trust inputs',
+  'sets it to the string EP-AEC-EVALUATOR-07-v1',
+  // Section 11 keeps the -06 requirement level, now stated per result.
+  'Its native verifier MUST report VERIFIED only when the bundle\'s closed structure',
+  'and MUST report ACCEPTED only when the relying-party-selected policy',
+  'The ep-receipt built-in MUST report VERIFIED only when',
+  'its log checkpoint signature verifies under the relying party\'s pinned log key',
+  'without a pinned log key VERIFIED cannot be evaluated',
+  'The built-in MUST report ACCEPTED only for a VERIFIED Trust Receipt',
+  'The ep-quorum built-in MUST report ACCEPTED only when',
 ]) invariant(flatTxt.includes(required), `TXT rendering is stale or missing: ${required}`);
 
 // The -06 wording that folded pinned trust inputs into VERIFIED, and the
@@ -106,6 +126,12 @@ for (const forbidden of [
   'Only after native VERIFIED, establish',
   'In both arrangements, VERIFIED precedes MATCH, and both precede SATISFIED',
   'docName="draft-schrock-ep-authorization-evidence-chain-06"',
+  // Earlier -07 wording: Section 11 without BCP 14 keywords, the log key as
+  // an ACCEPTED pin, and the undefined "validity" terms in Section 1.
+  'Its native verifier reports VERIFIED when',
+  'built-in reports ACCEPTED only',
+  'policy hash, log key, maximum evidence age',
+  'Native validity is not sufficient for composition',
 ]) {
   invariant(!flatXml.includes(forbidden), `-06 text survived in the XML: ${forbidden}`);
   invariant(!flatTxt.includes(forbidden), `-06 text survived in the TXT render: ${forbidden}`);
@@ -129,4 +155,29 @@ for (const [index, relative] of expectedPaths.entries()) {
   }
 }
 
-console.log('AEC -07: VERIFIED and ACCEPTED separated in definitions, algorithm, replay and lifecycle; -06 wording removed; renders, checksums and posted -06 integrity PASS.');
+// Sections 10 and 21 describe the evaluator revision that accompanies -07.
+// Those sentences must be true of the code on this tree, so the packet cannot
+// land on main ahead of that evaluator (README, Hold 1). This runs last so a
+// text or checksum failure is reported first.
+const evaluatorSource = readFileSync(new URL('../packages/verify/src/evidence-chain.ts', import.meta.url), 'utf8');
+const evaluatorRevision = /export const AEC_EVALUATOR_REVISION = '([^']+)';/.exec(evaluatorSource)?.[1] ?? 'no revision';
+const absent = [
+  // Trust Receipt integrity checked under the relying party's log key.
+  'function receiptIntegrity(',
+  'approverKeys: resolved, logPublicKey: profile.log_public_key',
+  // An unresolvable key reference is NOT_EVALUATED, never FAILED.
+  "reason: 'key_unresolved'",
+  "'native_key_unresolved'",
+  // Separate per-fact results.
+  "fact.native_verification = 'VERIFIED'",
+  "native_verification: 'NOT_EVALUATED', acceptance: 'NOT_EVALUATED'",
+].filter((marker) => !evaluatorSource.includes(marker));
+invariant(
+  evaluatorRevision === 'EP-AEC-EVALUATOR-07-v1' && absent.length === 0,
+  'text, renders, checksums and posted -06 integrity pass, but Sections 10 and 21 describe the '
+    + 'EP-AEC-EVALUATOR-07-v1 evaluator and packages/verify/src/evidence-chain.ts on this tree emits '
+    + `${evaluatorRevision}${absent.length ? ` and lacks ${absent.join(', ')}` : ''}. `
+    + 'Merge feat/verify-aec-07-evaluator first, or revise Sections 10 and 21 (README, Hold 1).',
+);
+
+console.log('AEC -07: VERIFIED and ACCEPTED separated in definitions, algorithm, replay, built-ins and lifecycle; -06 wording removed; renders, checksums, posted -06 integrity and the Section 21 evaluator on this tree PASS.');

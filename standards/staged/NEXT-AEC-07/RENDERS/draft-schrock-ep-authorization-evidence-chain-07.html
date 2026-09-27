@@ -1234,7 +1234,6 @@ li > p:last-of-type:only-child {
 }
 </style>
 <link href="rfc-local.css" rel="stylesheet" type="text/css">
-<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
 </head>
 <body class="xml2rfc">
 <table class="ears">
@@ -1446,12 +1445,12 @@ li > p:last-of-type:only-child {
       operation record, or a transparency receipt. These artifacts answer
       different questions. A relying party may require several of them for one
       action.<a href="#section-1-1" class="pilcrow">¶</a></p>
-<p id="section-1-2">Native validity is not sufficient for composition. A valid permit for
-      action A and a valid approval for action B do not jointly authorize
-      either action. Likewise, two valid artifacts can still be inadequate if
-      the relying party required a fresher approval, a checked revocation
-      status, or a byte-backed relation showing that one artifact explicitly
-      references another.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-2">Native verification is not sufficient for composition. A permit for
+      action A and an approval for action B, each VERIFIED and ACCEPTED, do
+      not jointly authorize either action. Likewise, two VERIFIED and ACCEPTED
+      artifacts can still be inadequate if the relying party required a
+      fresher approval, a checked revocation status, or a byte-backed relation
+      showing that one artifact explicitly references another.<a href="#section-1-2" class="pilcrow">¶</a></p>
 <p id="section-1-3">EP-AEC provides the thin composition layer. It dispatches artifacts
       to their native verifiers, maps only integrity-protected native action
       commitments to the relying party's expected material action, evaluates
@@ -1509,9 +1508,11 @@ li > p:last-of-type:only-child {
         <dd style="margin-left: 1.5em" id="section-2-3.4">The native verifier's cryptographic and structural checks passed:
         the artifact is well formed under the native format rules the verifier
         implements, and every signature or proof it carries verifies over the
-        bytes it covers.
-        VERIFIED depends only on the artifact, the format specification, and
-        the verification key. When a format names its key only by reference,
+        bytes it covers. Except where a native procedure checks trust inputs
+        and cryptography together and cannot attribute a failure
+        (<a href="#native-contract" class="auto internal xref">Section 6</a>), VERIFIED depends only on the
+        artifact, the format specification, and the verification key. When a
+        format names its key only by reference,
         that key is the one resolved from relying-party key material
         (<a href="#native-contract" class="auto internal xref">Section 6</a>). VERIFIED says nothing about whether
         the relying party trusts that key, issuer, or policy, and nothing about
@@ -1526,10 +1527,10 @@ li > p:last-of-type:only-child {
         time; the issuer, audience, key class, native policy, and format
         revision are ones the relying party pinned; and the verification time
         falls within the artifact's native validity period. ACCEPTED is
-        relative to one relying party's pins. A party with different trust
-        inputs that holds or resolves the same verification key can reproduce
-        VERIFIED for the same bytes and reach a different acceptance
-        result. ACCEPTED does not depend on the expected material action;
+        relative to one relying party's pins. With the same exception, a party
+        with different trust inputs that holds or resolves the same
+        verification key can reproduce VERIFIED for the same bytes and reach a
+        different acceptance result. ACCEPTED does not depend on the expected material action;
         MATCH decides that.<a href="#section-2-3.6" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
@@ -2036,7 +2037,10 @@ WS       = *(SP / HTAB / CR / LF)
 </pre><a href="#section-10-2" class="pilcrow">¶</a>
 </div>
 <p id="section-10-3">The <code>algorithm_revision</code> identifies the evaluation algorithm
-      and fact members the evaluator implements. Records with different
+      and fact members the evaluator implements. An evaluator implementing
+      the algorithm and fact members of this revision of this document sets
+      it to the string <code>EP-AEC-EVALUATOR-07-v1</code>; a later revision that
+      changes either assigns a new value. Records with different
       algorithm revisions are not compared digest for digest; a record from an
       evaluator implementing -06 of this document carries one combined
       validity member per fact instead of <code>native_verification</code> and
@@ -2085,28 +2089,37 @@ WS       = *(SP / HTAB / CR / LF)
       <code>ep-quorum</code> explicitly, according to the native artifact's role.<a href="#section-11-1" class="pilcrow">¶</a></p>
 <p id="section-11-2">The <code>ep-authorization-bundle</code> component carries the
       pre-execution Authorization Bundle of <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>,
-      Section 6. Its native verifier reports VERIFIED when the bundle's closed
-      structure, action and context commitments, and completed signoff
-      signatures under the keys its signoffs reference verify, and reports
-      ACCEPTED only when the relying-party-selected policy, approver
-      selection, approver keys, their directory status and key classes, and
-      required status and presentation evidence are accepted under that
-      profile. Whether the bundle's action is the exact expected action is
+      Section 6. Its native verifier MUST report VERIFIED only when the
+      bundle's closed structure, action and context commitments, and
+      completed signoff signatures under the keys its signoffs reference
+      verify, and MUST report ACCEPTED only when the relying-party-selected
+      policy, approver selection, approver keys, their directory status and
+      key classes, and required status and presentation evidence are accepted
+      under that profile. Whether the bundle's action is the exact expected action is
       established by MATCH under <a href="#matching" class="auto internal xref">Section 7</a>. Distinct subjects
       MUST come only from verified completed signoffs, not from an unsigned
       label or the wider selected approver roster. A SATISFIED bundle is
       approval evidence, not proof of consumption or execution.<a href="#section-11-2" class="pilcrow">¶</a></p>
-<p id="section-11-3">The <code>ep-receipt</code> built-in reports ACCEPTED only for a VERIFIED
-      Trust Receipt that meets a relying-party profile pinning the approver
-      directory, accepted key class, WebAuthn RP ID and signed-origin
-      allowlist where required, policy hash, log key, maximum evidence age,
-      verification time, and fresh registry snapshot as specified by
+<p id="section-11-3">The <code>ep-receipt</code> built-in MUST report VERIFIED only when the
+      Trust Receipt's signoff signatures verify under the keys their approver
+      key identifiers resolve to and its log checkpoint signature verifies
+      under the relying party's pinned log key, which the offline
+      verification algorithm of <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>, Section 7.3,
+      takes as an input. The checkpoint check therefore combines a trust
+      input with cryptography: a checkpoint that does not verify under the
+      pinned log key is not VERIFIED (<a href="#native-contract" class="auto internal xref">Section 6</a>),
+      whether it was forged or signed by another log, and without a pinned
+      log key VERIFIED cannot be evaluated. The built-in MUST report ACCEPTED
+      only for a VERIFIED Trust Receipt that meets a relying-party profile
+      pinning the approver directory, accepted key class, WebAuthn RP ID and
+      signed-origin allowlist where required, policy hash, maximum evidence
+      age, verification time, and fresh registry snapshot as specified by
       <span>[<a href="#EP-RECEIPTS" class="cite xref">EP-RECEIPTS</a>]</span>. A bare
       operator envelope is not an <code>ep-receipt</code> human leg. A terminal
       Trust Receipt and a pre-execution Authorization Bundle MUST NOT be
       substituted for one another. Verifying a consumed receipt does not
       restore authority or permit another execution.<a href="#section-11-3" class="pilcrow">¶</a></p>
-<p id="section-11-4">The <code>ep-quorum</code> built-in reports ACCEPTED only when the
+<p id="section-11-4">The <code>ep-quorum</code> built-in MUST report ACCEPTED only when the
       presented quorum policy equals the relying-party-pinned policy and the
       selected approver, role, distinctness, origin, ordering, and freshness
       rules of <span>[<a href="#EP-QUORUM" class="cite xref">EP-QUORUM</a>]</span> hold. A safety-critical profile
@@ -2336,16 +2349,21 @@ native VERIFIED
 </li>
         <li class="normal" id="section-18-1.5">Each normalized fact and replay record carries the two results as
         separate <code>native_verification</code> and <code>acceptance</code> members,
-        the replay record gains <code>algorithm_revision</code> and binds
+        the replay record gains <code>algorithm_revision</code> (value
+        <code>EP-AEC-EVALUATOR-07-v1</code> for this revision) and binds
         trust-snapshot digests, and reason codes SHOULD distinguish a
         verification failure, a verification not evaluated, an acceptance
         refusal, and a failed match (Sections 9 and 10).<a href="#section-18-1.5" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-18-1.6">Section 11 assigns the built-in checks to the two results: ep-quorum
-        is VERIFIED under the keys its members carry; the Authorization Bundle
-        and Trust Receipt are VERIFIED under the keys their signoffs reference
-        and ACCEPTED under the pinned policy, directory, and key classes; the
-        bundle's exact action moves from acceptance to MATCH.<a href="#section-18-1.6" class="pilcrow">¶</a>
+        <li class="normal" id="section-18-1.6">Section 11 assigns the built-in checks to the two results and
+        states each as a requirement on the result it decides: ep-quorum is
+        VERIFIED under the keys its members carry; the Authorization Bundle is
+        VERIFIED under the keys its signoffs reference; the Trust Receipt is
+        VERIFIED under the keys its signoffs reference and, for its log
+        checkpoint, under the pinned log key, a combined check under
+        Section 6; the Authorization Bundle and Trust Receipt are ACCEPTED
+        under the pinned policy, directory, and key classes; the bundle's
+        exact action moves from acceptance to MATCH.<a href="#section-18-1.6" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-18-1.7">Section 13 adds the relying-party ACCEPTED step to the lifecycle
         and maps the VERIFIED of <span>[<a href="#EP-AEB" class="cite xref">EP-AEB</a>]</span> to VERIFIED and

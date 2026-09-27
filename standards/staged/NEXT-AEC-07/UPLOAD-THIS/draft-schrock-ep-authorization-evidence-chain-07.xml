@@ -57,12 +57,12 @@
       operation record, or a transparency receipt. These artifacts answer
       different questions. A relying party may require several of them for one
       action.</t>
-      <t>Native validity is not sufficient for composition. A valid permit for
-      action A and a valid approval for action B do not jointly authorize
-      either action. Likewise, two valid artifacts can still be inadequate if
-      the relying party required a fresher approval, a checked revocation
-      status, or a byte-backed relation showing that one artifact explicitly
-      references another.</t>
+      <t>Native verification is not sufficient for composition. A permit for
+      action A and an approval for action B, each VERIFIED and ACCEPTED, do
+      not jointly authorize either action. Likewise, two VERIFIED and ACCEPTED
+      artifacts can still be inadequate if the relying party required a
+      fresher approval, a checked revocation status, or a byte-backed relation
+      showing that one artifact explicitly references another.</t>
       <t>EP-AEC provides the thin composition layer. It dispatches artifacts
       to their native verifiers, maps only integrity-protected native action
       commitments to the relying party's expected material action, evaluates
@@ -107,9 +107,11 @@
         <dd>The native verifier's cryptographic and structural checks passed:
         the artifact is well formed under the native format rules the verifier
         implements, and every signature or proof it carries verifies over the
-        bytes it covers.
-        VERIFIED depends only on the artifact, the format specification, and
-        the verification key. When a format names its key only by reference,
+        bytes it covers. Except where a native procedure checks trust inputs
+        and cryptography together and cannot attribute a failure
+        (<xref target="native-contract"/>), VERIFIED depends only on the
+        artifact, the format specification, and the verification key. When a
+        format names its key only by reference,
         that key is the one resolved from relying-party key material
         (<xref target="native-contract"/>). VERIFIED says nothing about whether
         the relying party trusts that key, issuer, or policy, and nothing about
@@ -122,10 +124,10 @@
         time; the issuer, audience, key class, native policy, and format
         revision are ones the relying party pinned; and the verification time
         falls within the artifact's native validity period. ACCEPTED is
-        relative to one relying party's pins. A party with different trust
-        inputs that holds or resolves the same verification key can reproduce
-        VERIFIED for the same bytes and reach a different acceptance
-        result. ACCEPTED does not depend on the expected material action;
+        relative to one relying party's pins. With the same exception, a party
+        with different trust inputs that holds or resolves the same
+        verification key can reproduce VERIFIED for the same bytes and reach a
+        different acceptance result. ACCEPTED does not depend on the expected material action;
         MATCH decides that.</dd>
         <dt>MATCH</dt>
         <dd>A VERIFIED and ACCEPTED artifact's integrity-protected native action
@@ -528,7 +530,10 @@ WS       = *(SP / HTAB / CR / LF)
 }
 ]]></sourcecode>
       <t>The <tt>algorithm_revision</tt> identifies the evaluation algorithm
-      and fact members the evaluator implements. Records with different
+      and fact members the evaluator implements. An evaluator implementing
+      the algorithm and fact members of this revision of this document sets
+      it to the string <tt>EP-AEC-EVALUATOR-07-v1</tt>; a later revision that
+      changes either assigns a new value. Records with different
       algorithm revisions are not compared digest for digest; a record from an
       evaluator implementing -06 of this document carries one combined
       validity member per fact instead of <tt>native_verification</tt> and
@@ -574,28 +579,37 @@ WS       = *(SP / HTAB / CR / LF)
       <tt>ep-quorum</tt> explicitly, according to the native artifact's role.</t>
       <t>The <tt>ep-authorization-bundle</tt> component carries the
       pre-execution Authorization Bundle of <xref target="EP-RECEIPTS"/>,
-      Section 6. Its native verifier reports VERIFIED when the bundle's closed
-      structure, action and context commitments, and completed signoff
-      signatures under the keys its signoffs reference verify, and reports
-      ACCEPTED only when the relying-party-selected policy, approver
-      selection, approver keys, their directory status and key classes, and
-      required status and presentation evidence are accepted under that
-      profile. Whether the bundle's action is the exact expected action is
+      Section 6. Its native verifier MUST report VERIFIED only when the
+      bundle's closed structure, action and context commitments, and
+      completed signoff signatures under the keys its signoffs reference
+      verify, and MUST report ACCEPTED only when the relying-party-selected
+      policy, approver selection, approver keys, their directory status and
+      key classes, and required status and presentation evidence are accepted
+      under that profile. Whether the bundle's action is the exact expected action is
       established by MATCH under <xref target="matching"/>. Distinct subjects
       MUST come only from verified completed signoffs, not from an unsigned
       label or the wider selected approver roster. A SATISFIED bundle is
       approval evidence, not proof of consumption or execution.</t>
-      <t>The <tt>ep-receipt</tt> built-in reports ACCEPTED only for a VERIFIED
-      Trust Receipt that meets a relying-party profile pinning the approver
-      directory, accepted key class, WebAuthn RP ID and signed-origin
-      allowlist where required, policy hash, log key, maximum evidence age,
-      verification time, and fresh registry snapshot as specified by
+      <t>The <tt>ep-receipt</tt> built-in MUST report VERIFIED only when the
+      Trust Receipt's signoff signatures verify under the keys their approver
+      key identifiers resolve to and its log checkpoint signature verifies
+      under the relying party's pinned log key, which the offline
+      verification algorithm of <xref target="EP-RECEIPTS"/>, Section 7.3,
+      takes as an input. The checkpoint check therefore combines a trust
+      input with cryptography: a checkpoint that does not verify under the
+      pinned log key is not VERIFIED (<xref target="native-contract"/>),
+      whether it was forged or signed by another log, and without a pinned
+      log key VERIFIED cannot be evaluated. The built-in MUST report ACCEPTED
+      only for a VERIFIED Trust Receipt that meets a relying-party profile
+      pinning the approver directory, accepted key class, WebAuthn RP ID and
+      signed-origin allowlist where required, policy hash, maximum evidence
+      age, verification time, and fresh registry snapshot as specified by
       <xref target="EP-RECEIPTS"/>. A bare
       operator envelope is not an <tt>ep-receipt</tt> human leg. A terminal
       Trust Receipt and a pre-execution Authorization Bundle MUST NOT be
       substituted for one another. Verifying a consumed receipt does not
       restore authority or permit another execution.</t>
-      <t>The <tt>ep-quorum</tt> built-in reports ACCEPTED only when the
+      <t>The <tt>ep-quorum</tt> built-in MUST report ACCEPTED only when the
       presented quorum policy equals the relying-party-pinned policy and the
       selected approver, role, distinctness, origin, ordering, and freshness
       rules of <xref target="EP-QUORUM"/> hold. A safety-critical profile
@@ -798,15 +812,20 @@ native VERIFIED
         (Section 7).</li>
         <li>Each normalized fact and replay record carries the two results as
         separate <tt>native_verification</tt> and <tt>acceptance</tt> members,
-        the replay record gains <tt>algorithm_revision</tt> and binds
+        the replay record gains <tt>algorithm_revision</tt> (value
+        <tt>EP-AEC-EVALUATOR-07-v1</tt> for this revision) and binds
         trust-snapshot digests, and reason codes SHOULD distinguish a
         verification failure, a verification not evaluated, an acceptance
         refusal, and a failed match (Sections 9 and 10).</li>
-        <li>Section 11 assigns the built-in checks to the two results: ep-quorum
-        is VERIFIED under the keys its members carry; the Authorization Bundle
-        and Trust Receipt are VERIFIED under the keys their signoffs reference
-        and ACCEPTED under the pinned policy, directory, and key classes; the
-        bundle's exact action moves from acceptance to MATCH.</li>
+        <li>Section 11 assigns the built-in checks to the two results and
+        states each as a requirement on the result it decides: ep-quorum is
+        VERIFIED under the keys its members carry; the Authorization Bundle is
+        VERIFIED under the keys its signoffs reference; the Trust Receipt is
+        VERIFIED under the keys its signoffs reference and, for its log
+        checkpoint, under the pinned log key, a combined check under
+        Section 6; the Authorization Bundle and Trust Receipt are ACCEPTED
+        under the pinned policy, directory, and key classes; the bundle's
+        exact action moves from acceptance to MATCH.</li>
         <li>Section 13 adds the relying-party ACCEPTED step to the lifecycle
         and maps the VERIFIED of <xref target="EP-AEB"/> to VERIFIED and
         ACCEPTED here. Section 14 adds the verification and acceptance

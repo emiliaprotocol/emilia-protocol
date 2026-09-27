@@ -29,7 +29,11 @@ them survives in either -07 file.
   CAID-04 and AE Challenge -08 packets do, so `git diff --check` is clean.
 - The source and the TXT rendering are printable ASCII, contain no en or em
   dash, and no TXT line exceeds 72 columns.
-- `idnits 3.1.0 -m submission`: `PASS - No nit found`.
+- `idnits 3.1.0 -m submission` on the TXT rendering: `PASS - No nit found`.
+  On the XML source it reports one error, `SUBMISSION_TYPE_UNEXPECTED`: the
+  source sets `submissionType="IETF"` and the existing document has no stream
+  on Datatracker. The posted -06 XML gets the same error in the same mode,
+  and Datatracker accepted -06, so it does not block upload.
 - `idnits 3.1.0` in its default mode: three `POSSIBLE_DOWNREF` findings, for
   the normative CAID, Quorum and Authorization Receipts Internet-Drafts. They
   are the same three findings the -06 record retained, for the same reason:
@@ -39,7 +43,12 @@ them survives in either -07 file.
 
 ## Checks
 
-- `npm run check:aec-07`: PASS.
+- `npm run check:aec-07`: every text, render, checksum and posted -06 check
+  passes; the script then fails by design on this branch, because
+  `packages/verify/src/evidence-chain.ts` here emits `EP-AEC-EVALUATOR-05-v1`
+  and lacks the Section 21 evaluator (see `README.md`). The same script, with
+  the pending branch's `evidence-chain.ts` in place of this tree's and
+  nothing else changed, prints PASS.
 - `npm run check:standards-staged`, `npm run check:repository-boundary`,
   `npm run check:public-conformance-claims`, `npm run check:authority-claims`,
   `npm run check:llm-context`, `npm run check:standalone-runtimes` and
@@ -70,10 +79,38 @@ them survives in either -07 file.
   Agent Qualification Statements for Consequential Actions"; the -06
   reference entry gave a shorter title and no day, both corrected.
 
+## Section 11 requirement level
+
+Posted -06 Section 11 stated three built-in requirements with BCP 14
+keywords: the bundle's native verifier "MUST validate" its inputs, the
+ep-receipt built-in "MUST accept only" a Trust Receipt under a pinned
+profile, and the ep-quorum built-in "MUST compare" the presented and pinned
+policies. -07 keeps each as a MUST on the result it decides ("MUST report
+VERIFIED only when", "MUST report ACCEPTED only when"). The part of the -06
+bundle requirement that named the exact expected action moved to MATCH, as
+"Changes in -07" says. The ep-receipt paragraph now also states its VERIFIED
+condition: signoff signatures under the keys their `approver_key_id` values
+resolve to, and the log checkpoint under the relying party's pinned log key.
+The receipts -13 offline verification algorithm (Section 7.3, staged render
+lines 1463-1487) takes the trusted log public key as an input and verifies
+the checkpoint signature against it, so that check combines a trust input
+with cryptography and falls under the Section 6 rule for failures that
+cannot be attributed. The -13 example checkpoint carries a `log_key_id`, so
+the text does not claim that the format leaves the log key unidentified.
+`scripts/check-aec-07.mjs` requires the keyword sentences and forbids the
+unkeyed ones.
+
+## Replay record revision value
+
+Section 10 now defines `algorithm_revision` for this revision as
+`EP-AEC-EVALUATOR-07-v1`, the value `AEC_EVALUATOR_REVISION` has in
+`packages/verify/src/evidence-chain.ts` on the pending evaluator branch. On
+main the constant is `EP-AEC-EVALUATOR-05-v1`.
+
 ## Implementation claims in Section 21
 
-The new Section 21 paragraph describes branch `feat/verify-aec-07-evaluator`
-(commits `52882ef6d` and `fbe9b89ec`), which is not on this branch. Each
+The Section 21 paragraph describes the pending branch
+`feat/verify-aec-07-evaluator`, which is not on this branch or on main. Each
 sentence is backed by a test in `packages/verify/aec-current-profile.test.ts`
 on that branch:
 
@@ -96,7 +133,8 @@ on that branch:
 - the receipt checkpoint sentence: `receiptIntegrity` in
   `packages/verify/src/evidence-chain.ts` passes the relying party's log key
   to `verifyTrustReceipt`, whose checkpoint check fails when the signature
-  does not verify under that key;
+  does not verify under that key, and returns key-unresolved when no log key
+  is configured;
 - a result that could not evaluate VERIFIED: "AEC07 a native result that
   could not evaluate VERIFIED is NOT_EVALUATED, never FAILED".
 
@@ -105,9 +143,14 @@ The action-matching change was also checked with the probe that found it
 VERIFIED, REJECTED, INDETERMINATE, `native_acceptance_refused`; after it
 VERIFIED, ACCEPTED, NOT_EQUIVALENT, `material_action_not_matched`.
 
-Test runs on `fbe9b89ec`: `node --test aec-current-profile.test.js
+Test runs on the pending branch: `node --test aec-current-profile.test.js
 evidence-chain.test.js` passes 53 of 53 (37 profile tests, 13 of them AEC-07
-tests, and 16 legacy-API vector tests). `npm test` in `packages/verify`
+tests, and 16 legacy-API vector tests). This was re-run on 2026-09-28 against
+the branch head, exported with `git archive` (`packages/verify` and
+`conformance/vectors`), on node v26.5.0; the branch's source and that test
+file are unchanged since its evaluator change, and its later commits only
+re-pin evidence. The totals below were recorded when the evaluator change was
+made and were not re-run on 2026-09-28. `npm test` in `packages/verify`
 passes 1,256 of 1,257 node tests with 1 skipped, then 32 of 32 and 62 of 62
 in its two `tsx` suites, after `npm run build` and `npm run
 build:standalone-runtimes`. The eight AEC vitest suites under `tests/`
@@ -126,7 +169,7 @@ pin `packages/verify/dist/evidence-chain.js`. All are refreshed on
 
 - `conformance/composition/authzen-coaz-mcp-aeb-v0.1/source-lock.json` and
   `report.reference.json`: `refresh-source-lock.mjs`, `check.mjs --emit`,
-  then `check.mjs` (commit `fbe9b89ec`).
+  then `check.mjs`, in the evaluator change itself.
 - `formal/results/formal-runtime-scenario-conformance.v2.json`:
   `npm run sync:formal-traces` with the pinned TLC jar (SHA-256
   `936a2620...`, the value the record pins), 78 scenarios, PASS.
