@@ -31,7 +31,7 @@
  * executable form of the multi-effort survey matrix.
  */
 import crypto from 'node:crypto';
-import { canonicalize, verifyTrustReceipt, verifyQuorum } from './index.js';
+import { canonicalize, verifyTrustReceipt, verifyQuorum, verifyWebAuthnSignoff } from './index.js';
 import { EP_PLATFORM_ATTESTATION_COMPONENT, verifyPlatformAttestation, } from './platform-attestation.js';
 import { strictJsonGate, canonicalizeStrictJson } from './strict-json.js';
 import { verifyAuthorizationBundle } from './authorization-bundle.js';
@@ -657,10 +657,14 @@ export function verifyAuthorizationChain(aec, opts = {}) {
 // Structured AEC-05 evaluation contract. No stateful authorization is performed.
 // The optional ep-authorization-bundle role is an explicit AEC-06 addition;
 // it is never aliased to the terminal ep-receipt / Trust Receipt role.
+// AEC-07: every native result carries VERIFIED and ACCEPTED separately.
+// The legacy string-requirement API above keeps one combined `valid` per row.
 // ---------------------------------------------------------------------------
 export const AEC_REQUIREMENT_VERSION = 'EP-AEC-REQUIREMENT-v1';
 export const AEC_REPLAY_VERSION = 'EP-AEC-REPLAY-v1';
-export const AEC_EVALUATOR_REVISION = 'EP-AEC-EVALUATOR-05-v1';
+// 07: each normalized fact records native_verification and acceptance as
+// separate results (AEC-07 Section 6), so replay digests differ from 05.
+export const AEC_EVALUATOR_REVISION = 'EP-AEC-EVALUATOR-07-v1';
 export const AEC_BUNDLE_COMPONENT = 'ep-authorization-bundle';
 const AEC_LIMITS = Object.freeze({
     maxDepth: 64, maxNodes: 50000, maxStringBytes: 1024 * 1024,
@@ -725,20 +729,74 @@ function validateAecRequirement(value, limits) {
 }
 /** Aggregate only fields already verified by the native human verifier. The
  * oldest issuance and earliest expiry conservatively enforce every signoff's
- * window. No label, key encoding or unsigned subject becomes an identity. */
+ * window. No label, key encoding or unsigned subject becomes an identity.
+ * Called only after both native results are positive. */
 function humanNativeFacts(result, contexts, revision) {
+    // Defensive path: without signed contexts or protected times there is no
+    // checked integrity claim to report, so the result is not VERIFIED.
     if (!result.valid || contexts.length === 0)
-        return { valid: false, reason: 'native_human_evidence_invalid' };
+        return { verified: false, accepted: false, reason: 'native_human_evidence_invalid' };
     const times = contexts.map(c => ({ issued: strictInstantMs(c.issued_at), expires: strictInstantMs(c.expires_at) }));
     if (times.some(t => !Number.isFinite(t.issued) || !Number.isFinite(t.expires)))
-        return { valid: false };
+        return { verified: false, accepted: false, reason: 'native_human_evidence_invalid' };
     return {
-        valid: true, format_revision: revision, action_digest: result.action_digest,
+        verified: true, accepted: true, format_revision: revision, action_digest: result.action_digest,
         issued_at: new Date(Math.min(...times.map(t => t.issued))).toISOString(),
         expires_at: new Date(Math.min(...times.map(t => t.expires))).toISOString(),
         subject_ids: [...new Set(contexts.map(c => c.approver).filter(v => textValue(v)))],
         bindings: [],
     };
+}
+/** Platform-attestation refusals the native verifier reaches only after the
+ * JWT signature verified under the resolved attester key. Every earlier
+ * refusal (shape, header, claims syntax, unknown attester, bad signature)
+ * leaves the token not VERIFIED. */
+const PLATFORM_POST_SIGNATURE_REFUSALS = new Set([
+    'profile_mismatch', 'audience_mismatch', 'nonce_mismatch', 'action_digest_mismatch',
+    'measurement_result_invalid', 'measurement_untrusted',
+    'token_from_future', 'token_expired', 'token_too_old',
+]);
+/** VERIFIED for a quorum: its structure is intact, every member's context
+ * commits to the quorum action_hash, and every member's WebAuthn assertion
+ * verifies under the key that member carries, in offline-integrity mode (no
+ * relying-party RP ID or origin pins). Whether those keys, roles, policy, RP ID
+ * and origins are the pinned ones is the separate ACCEPTED check. */
+function quorumIntegrity(evidence) {
+    try {
+        const members = Array.isArray(evidence?.members) ? evidence.members : null;
+        if (!isRecord(evidence) || !isRecord(evidence.policy)
+            || typeof evidence.action_hash !== 'string' || !evidence.action_hash
+            || !members || members.length === 0 || members.length > MAX_QUORUM_MEMBERS)
+            return false;
+        return members.every((m) => isRecord(m)
+            && typeof m.approver_public_key === 'string' && m.approver_public_key.length > 0
+            && isRecord(m.signoff) && isRecord(m.signoff.context)
+            && m.signoff.context.action_hash === evidence.action_hash
+            && verifyWebAuthnSignoff(m.signoff, m.approver_public_key, { mode: 'offline-integrity' })?.valid === true);
+    }
+    catch {
+        return false;
+    }
+}
+/** VERIFIED for a Trust Receipt. The receipt names its signing keys only by
+ * approver_key_id, so the key comes from the relying party's directory; the
+ * check omits the RP ID, origin and policy pins, which remain ACCEPTED inputs.
+ * verifyTrustReceipt also checks the resolved key's approver binding,
+ * compromise marker and validity window inside its signature step, so a
+ * receipt failing one of those is reported as not VERIFIED (the conservative
+ * attribution AEC-07 Section 6 requires), never as VERIFIED. */
+function receiptIntegrity(evidence, profile) {
+    if (!isRecord(profile) || !isRecord(profile.approver_keys)
+        || typeof profile.log_public_key !== 'string' || !profile.log_public_key)
+        return false;
+    try {
+        return verifyTrustReceipt(evidence, {
+            approverKeys: profile.approver_keys, logPublicKey: profile.log_public_key,
+        })?.valid === true;
+    }
+    catch {
+        return false;
+    }
 }
 function structuredBuiltin(type, trust, hooks) {
     if (type === AEC_BUNDLE_COMPONENT)
@@ -747,8 +805,15 @@ function structuredBuiltin(type, trust, hooks) {
             const result = verifyAuthorizationBundle(evidence, {
                 ...trust, ...hooks, now: ctx.verification_time, expectedAction: ctx.action,
             });
+            // VERIFIED: closed shape, context commitments and every signoff signature.
+            // The bundle verifier folds key class and key currency into its signature
+            // check, so a failure there is conservatively not VERIFIED.
+            const verified = result.checks.closed_shape === true && result.checks.contexts === true
+                && result.checks.signatures === true && !result.reasons.includes('action_hash_mismatch');
+            if (!verified)
+                return { verified: false, accepted: false, reason: 'native_bundle_integrity_failed' };
             if (result.verdict !== 'SATISFIED')
-                return { valid: false, reason: 'native_bundle_refused' };
+                return { verified: true, accepted: false, reason: 'native_bundle_pins_refused' };
             // Only SIGNED contexts contribute subjects. The bundle can contain a
             // wider selected roster than the actual threshold of completed signoffs.
             const signedDigests = new Set(ev.signoffs.map((s) => s.context_hash));
@@ -763,17 +828,31 @@ function structuredBuiltin(type, trust, hooks) {
     const built = builtinVerifiers()[type];
     return (evidence, ctx) => {
         const profile = trust.policy;
+        // The legacy built-in applies the relying-party pins and the native
+        // cryptography together; its `valid` is therefore the ACCEPTED result.
         const result = built(evidence, {
             keysByType: { [type]: trust.keys ?? {} }, policiesByType: { [type]: profile },
             verificationTime: ctx.verification_time, action: ctx.action,
         });
-        if (result.valid !== true)
-            return { valid: false, reason: 'native_builtin_refused' };
         const ev = evidence;
+        let verified;
+        if (type === EP_PLATFORM_ATTESTATION_COMPONENT) {
+            verified = result.valid === true || PLATFORM_POST_SIGNATURE_REFUSALS.has(result.detail?.reason);
+        }
+        else if (type === 'ep-quorum') {
+            verified = quorumIntegrity(evidence);
+        }
+        else {
+            verified = receiptIntegrity(evidence, profile);
+        }
+        if (!verified)
+            return { verified: false, accepted: false, reason: 'native_builtin_integrity_failed' };
+        if (result.valid !== true)
+            return { verified: true, accepted: false, reason: 'native_builtin_pins_refused' };
         if (type === EP_PLATFORM_ATTESTATION_COMPONENT) {
             // Decode only AFTER the closed native JWT verifier accepted the bytes.
             const payload = JSON.parse(Buffer.from(ev.token.split('.')[1], 'base64url').toString('utf8'));
-            return { valid: true, format_revision: ctx.profile.native_format_revision,
+            return { verified: true, accepted: true, format_revision: ctx.profile.native_format_revision,
                 action_digest: result.action_digest, issuer: payload.iss, audience: payload.aud,
                 issued_at: new Date(payload.iat * 1000).toISOString(), expires_at: new Date(payload.exp * 1000).toISOString(),
                 subject_ids: [], bindings: [] };
@@ -786,7 +865,7 @@ function structuredBuiltin(type, trust, hooks) {
         const contexts = type === 'ep-quorum' ? ev.members.map((m) => m.signoff.context)
             : ev.contexts.filter((c) => signedDigests.has(sha256hex(canonicalize(c))));
         const native = humanNativeFacts(result, contexts, ctx.profile.native_format_revision);
-        if (native.valid && freshRegistrySnapshot(profile, ctx.verification_time)) {
+        if (native.accepted && freshRegistrySnapshot(profile, ctx.verification_time)) {
             native.status = { authenticated: true, status: 'active', snapshot_digest: aecDigest(profile),
                 checked_at: profile.registry_checked_at,
                 expires_at: new Date(strictInstantMs(profile.registry_checked_at) + profile.max_registry_age_sec * 1000).toISOString() };
@@ -963,7 +1042,9 @@ export function createAuthorizationChainEvaluator(configuration) {
                     native_verifier_profile_digest: verifier?.profileDigest ?? null,
                     trust_snapshot_digest: verifier?.trustDigest ?? null,
                     mapping_profile_digest: verifier?.mappingDigest ?? null,
-                    native_valid: false, native_action_digest: null, format_revision: null,
+                    // Two separate results, never collapsed (AEC-07 Section 6).
+                    native_verification: 'NOT_EVALUATED', acceptance: 'NOT_EVALUATED',
+                    native_action_digest: null, format_revision: null,
                     issuer: null, audience: null, mapping_verdict: 'INDETERMINATE',
                     freshness: { result: 'NOT_REQUIRED', issued_at: null, expires_at: null },
                     status: { result: 'NOT_REQUIRED', snapshot_digest: null, checked_at: null, expires_at: null },
@@ -997,12 +1078,41 @@ export function createAuthorizationChainEvaluator(configuration) {
                     fact.reasons.push('native_verifier_error_or_deadline');
                     continue;
                 }
-                if (!closedKeys(native, ['valid'], ['reason', 'format_revision', 'action_digest', 'native_payload', 'issued_at', 'expires_at', 'issuer', 'audience', 'subject_ids', 'bindings', 'status'])
-                    || native.valid !== true || native.format_revision !== verifier.profile.native_format_revision
-                    || (native.action_digest != null && !digestValue(native.action_digest))
+                if (isRecord(native) && own(native, 'valid')) {
+                    fact.reasons.push('native_result_legacy_valid_field');
+                    continue;
+                }
+                if (!closedKeys(native, ['verified', 'accepted'], ['reason', 'format_revision', 'action_digest', 'native_payload', 'issued_at', 'expires_at', 'issuer', 'audience', 'subject_ids', 'bindings', 'status'])
+                    || typeof native.verified !== 'boolean' || typeof native.accepted !== 'boolean') {
+                    fact.reasons.push('native_result_shape_invalid');
+                    continue;
+                }
+                if (native.accepted && !native.verified) {
+                    fact.reasons.push('native_result_inconsistent');
+                    continue;
+                }
+                if (!native.verified) {
+                    fact.native_verification = 'FAILED';
+                    fact.reasons.push('native_verification_failed');
+                    continue;
+                }
+                fact.native_verification = 'VERIFIED';
+                if (!native.accepted) {
+                    fact.acceptance = 'REJECTED';
+                    fact.reasons.push('native_acceptance_refused');
+                    continue;
+                }
+                // The pinned native format revision is a relying-party acceptance input.
+                if (native.format_revision !== verifier.profile.native_format_revision) {
+                    fact.acceptance = 'REJECTED';
+                    fact.reasons.push('native_format_revision_mismatch');
+                    continue;
+                }
+                fact.acceptance = 'ACCEPTED';
+                if ((native.action_digest != null && !digestValue(native.action_digest))
                     || (native.issuer != null && !textValue(native.issuer))
                     || (native.audience != null && !(textValue(native.audience) || (Array.isArray(native.audience) && native.audience.length <= limits.maxSubjects && native.audience.every((v) => textValue(v)))))) {
-                    fact.reasons.push('native_verification_failed');
+                    fact.reasons.push('native_fact_shape_invalid');
                     continue;
                 }
                 const subjects = native.subject_ids ?? [];
@@ -1013,7 +1123,6 @@ export function createAuthorizationChainEvaluator(configuration) {
                     fact.reasons.push('native_fact_shape_invalid');
                     continue;
                 }
-                fact.native_valid = true;
                 fact.native_action_digest = native.action_digest ?? null;
                 fact.format_revision = native.format_revision;
                 fact.issuer = native.issuer ?? null;

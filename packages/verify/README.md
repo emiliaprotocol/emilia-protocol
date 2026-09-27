@@ -981,8 +981,27 @@ evidence under the constructor's pins; a saved positive result is not trusted
 evidence. Required subject thresholds count only native-verified identities,
 and required relations must bind the target evidence digest.
 
+A native verifier callback returns two separate Booleans, as AEC-07 Section 6
+requires. `verified` says the artifact's cryptographic and structural checks
+passed. `accepted` says the relying party's pinned trust inputs for that
+component type (trust anchors or key directory, issuer, audience, key class,
+native policy, validity at the verification time) accept the verified
+artifact. A callback that cannot tell which of the two a failure belongs to
+returns `verified: false`. `accepted: true` without `verified: true` is refused
+as `native_result_inconsistent`, and the single `valid` Boolean of 5.x is
+refused as `native_result_legacy_valid_field`. Each replay fact records
+`native_verification` (`VERIFIED`, `FAILED` or `NOT_EVALUATED`) and
+`acceptance` (`ACCEPTED`, `REJECTED` or `NOT_EVALUATED`) as separate fields, and
+a component is eligible only when both are positive. Action mapping runs only
+on an accepted artifact. The built-in `ep-quorum` verifier checks integrity
+under the keys the quorum carries; the built-in `ep-receipt`,
+`ep-authorization-bundle` and platform-attestation verifiers resolve keys from
+the pinned material and report a key-directory failure inside the signature
+step as not `VERIFIED`.
+
 The older `verifyAuthorizationChain` string-requirement API is a separate
-legacy interface, not the complete structured AEC-05 contract. The explicit
+legacy interface, not the complete structured AEC-05 contract. Its component
+rows keep one combined `valid` flag for verification and acceptance. The explicit
 `ep-authorization-bundle` role is an additive AEC-06 profile; it must not be
 substituted for the terminal `ep-receipt` role. Neither evaluator reserves
 authority or authorizes execution. Custom native verification and mapping
