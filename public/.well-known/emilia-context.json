@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "ce261c96f1589e4598110576df8d1127060e0a915c2d1e993b31bfd4d38c1fe4",
+    "input_digest_sha256": "913ddd7b037b2189c6bf34ae84c3aad0adb21fa7a18da542ef59e7610a7caeeb",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -52,13 +52,13 @@
       },
       {
         "path": "caid/conformance/vectors.json",
-        "sha256": "135766a2be5c924bb61c49c4dc4d5c1fbb93d074354cdc6e430169e6de7aed89",
-        "bytes": 449489
+        "sha256": "7b23f027aba4b7deffae117ef7d1c91f3db6d02b457360caea787610ede59ee7",
+        "bytes": 474109
       },
       {
         "path": "caid/conformance/mapping-vectors.json",
-        "sha256": "f8f5bdb8c0c189bc47f0670efc61241942d5c629d61f27b921329b1facaeb424",
-        "bytes": 79016
+        "sha256": "db64ea5ce9d171890d39328109b23a8df2ba252b9f956e7b9690532fb780b236",
+        "bytes": 81421
       },
       {
         "path": "conformance/vectors/model-to-matter.v1.json",
@@ -423,8 +423,8 @@
       "evidence_bundle_sha256": "463c1e072912be6adbbe08d3b7ce54e762d642309fb5dcce31983cdfcf128c50"
     },
     "caid": {
-      "core_vectors": 551,
-      "mapping_vectors": 73,
+      "core_vectors": 575,
+      "mapping_vectors": 76,
       "same_team_ports": [
         "javascript",
         "python",

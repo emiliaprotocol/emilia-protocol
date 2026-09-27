@@ -25,20 +25,23 @@ Updated: 2026-09-27
   65,536 characters and more, and that every matcher is linear-time: a static
   analysis plus adversarial inputs of 2^20 characters timed in all three.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
-- 551 shared core vectors (corpus version 5) passing in all three ports
+- 575 shared core vectors (corpus version 5) passing in all three ports
   through their JSON text entry points, with native/byte parity on every
   input that decodes and a native lane for host values: the strict JSON
   text rules and limits, number rounding, deterministic reason order,
   verification details and `definition_mismatch` (with pins of every type),
   definition conformance and `definition_sha256`, host definitions, the
   length limits and the value count, the named code formats, `unknown_suite`
-  at parse, and one vector per registry v5 type. The 96 version 4 vectors keep their
+  at parse, and one vector per registry v5 type. Six vectors and cases are
+  conditional on cbor-sha256 support, which is OPTIONAL: four pin
+  `unknown_suite` where it is not implemented, and two (the Appendix C.1
+  object) apply only where it is, so every port here skips those two. The 96 version 4 vectors keep their
   ids, and all 22 version 4 CAIDs reproduce unchanged
   (`caid/conformance/check-v4.mjs`).
 - 1,966 grammar boundary cases, and the roughly half-million case list that
   `caid/spec/abnf-check.mjs` writes, passing in all three ports through
   `parseCaid` and `computeCaid`, never through the generated matchers.
-- 73 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
+- 76 Action-Mapping Profile vectors (version 2) passing with byte-for-byte
   agreement on verdicts and exact reason lists in all three ports, including
   the SILP IR to CAID `CANCEL+EMAIL` profile.
 - A differential fuzz of about 87,000 seeded cases in which the JavaScript,
@@ -90,11 +93,15 @@ was required, those 11 types could not compute at all under v4. Replaying a v3
 decision needs the v3 registry and the pre-v4 implementations together (for
 example from commit `f46328afc`).
 
-The 25 interoperability mappings are candidates pending author review. Four
-have complete extraction fixtures under their pinned profiles, thirteen are
-partial, and eight define no complete native action artifact. The latter
-twenty-one fail closed as `INDETERMINATE`; optional carry-profile success is
-not represented as native support or author endorsement.
+The 25 interoperability mappings are candidates pending author review; they
+encode the author's reading of other formats' published specifications, not
+validation by those formats' authors. Two have complete CAID-field
+extractions under their pinned profiles (one lossless, and one that returns
+`INDETERMINATE` because its source action identity commits additional
+semantics), eight are partial, and fifteen define no complete native action
+artifact. Twenty-four fail closed as `INDETERMINATE`
+(`interop/consequential-action-v1/manifest.json`); optional carry-profile
+success is not represented as native support or author endorsement.
 
 ## Standards status
 
@@ -120,7 +127,9 @@ sources. A mapping result never becomes authorization.
 
 ## Deferred
 
-- Deterministic CBOR implementation (`cbor-sha256` is defined, not shipped).
+- Deterministic CBOR implementation (`cbor-sha256` is registered and its
+  support is OPTIONAL; no port ships it, and its two conformance vectors
+  apply only to an implementation that does).
 - IANA registry creation, which the -04 draft requests.
 - External clean-room implementation of CAID itself.
 - Author validation of the 25 candidate adjacent-protocol mappings.
