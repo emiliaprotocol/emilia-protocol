@@ -1,0 +1,125 @@
+{
+  "@version": "CAID-04-CHANGES-VECTORS-v1",
+  "description": "Maps every item of Changes since -03 in draft-schrock-canonical-action-identifier-04 that changes processing or the reference registry (an li anchor starting chg-) to the conformance vectors that pin it. scripts/check-caid-04.mjs requires every chg- item to be listed here and every id to exist in the named corpus. Items anchored ed- change text only.",
+  "corpora": {
+    "core": "caid/conformance/vectors.json",
+    "mapping": "caid/conformance/mapping-vectors.json",
+    "interop": "caid/interop/consequential-action-v1/mapping-vectors.json"
+  },
+  "claims": {
+    "chg-refused-depth": {
+      "core": ["decode-accept-depth-64", "decode-refuse-depth-65", "native-refuse-depth-65"]
+    },
+    "chg-refused-canonical-size": {
+      "core": ["compute-canonical-at-limit", "refuse-canonical-over-limit"]
+    },
+    "chg-refused-noncharacter": {
+      "core": ["decode-refuse-noncharacter", "native-refuse-noncharacter"]
+    },
+    "chg-refused-text-size": {
+      "core": ["decode-accept-text-at-limit", "decode-refuse-text-over-limit"]
+    },
+    "chg-refused-json-text": {
+      "core": ["decode-refuse-byte-order-mark", "decode-refuse-invalid-utf8", "decode-refuse-utf16le", "decode-refuse-trailing-content", "decode-refuse-nan-literal", "decode-refuse-unescaped-control-character"]
+    },
+    "chg-refused-duplicate-names": {
+      "core": ["decode-refuse-duplicate-member-name", "decode-refuse-duplicate-member-name-escaped"]
+    },
+    "chg-refused-host-values": {
+      "core": ["native-refuse-lone-surrogate-string-value", "native-refuse-lone-surrogate-member-name"]
+    },
+    "chg-refused-definitions": {
+      "core": ["refuse-definition-required-fields-absent", "refuse-definition-required-fields-empty", "refuse-definition-field-not-object", "refuse-definition-conflicting-duplicates"]
+    },
+    "chg-refused-field-names": {
+      "core": ["refuse-definition-field-name-empty", "refuse-definition-field-name-colon", "refuse-definition-field-name-action-type", "refuse-definition-field-name-repeated", "refuse-definition-field-extra-member"]
+    },
+    "chg-refused-timestamps": {
+      "core": ["refuse-timestamp-lowercase-t", "refuse-timestamp-lowercase-z", "refuse-timestamp-second-60", "refuse-timestamp-february-29-common-year"]
+    },
+    "chg-refused-caid-case": {
+      "core": ["parse-malformed-uppercase-prefix"]
+    },
+    "chg-refused-amount": {
+      "core": ["refuse-invalid-amount-leading-zero"]
+    },
+    "chg-refused-suite": {
+      "core": ["refuse-suite-leading-digit", "refuse-digest-nonzero-unused-bits", "verify-malformed-nonzero-unused-bits"]
+    },
+    "chg-refused-mapping": {
+      "mapping": ["two-rules-one-source-path-abstains", "null-member-abstains", "target-field-not-string-abstains", "profile-string-513-octets-abstains", "target-action-type-513-octets-abstains"]
+    },
+    "chg-json-text": {
+      "core": ["compute-json-malformed-single-reason", "verify-json-malformed"]
+    },
+    "chg-data-model": {
+      "core": ["refuse-integer-field-overflowing-literal", "compute-number-underflow-zero", "compute-number-negative-zero"]
+    },
+    "chg-host-values": {
+      "core": ["native-refuse-lone-surrogate-string-value", "native-refuse-depth-65"]
+    },
+    "chg-reason-order": {
+      "core": ["refuse-gate-invalid-action-type-stops", "refuse-number-before-value", "refuse-multiple-ordered"]
+    },
+    "chg-definition-conformance": {
+      "core": ["compute-definition-equal-duplicates", "refuse-definition-conflicting-duplicates", "compute-definition-order-independent"]
+    },
+    "chg-definition-digest": {
+      "core": ["definition-sha256-payment-release-1", "compute-payment-release-happy"]
+    },
+    "chg-definition-mismatch": {
+      "core": ["verify-definition-mismatch", "verify-definition-match"]
+    },
+    "chg-verify-details": {
+      "core": ["verify-invalid-object-details", "verify-not-an-object", "verify-valid"]
+    },
+    "chg-deprecated": {
+      "core": ["compute-deprecated-type"]
+    },
+    "chg-code-type": {
+      "core": ["compute-code-fields", "refuse-invalid-code-icd-10-cm-no-dot", "refuse-code-not-string", "refuse-code-unregistered-format", "refuse-definition-code-system-malformed"]
+    },
+    "chg-field-type-rules": {
+      "core": ["refuse-amount-trailing-newline", "compute-empty-string-present", "compute-integer-field-integral-float", "refuse-integer-field-above-max-safe"]
+    },
+    "chg-pin-rule": {
+      "core": ["compute-dns-record-delete-1", "compute-vendor-onboard-1"]
+    },
+    "chg-option-guards": {
+      "core": ["refuse-suite-option-wrong-type"]
+    },
+    "chg-accept-unregistered": {
+      "core": ["verify-unknown-action-type"]
+    },
+    "chg-mapping-extensions": {
+      "mapping": ["sha256-hex-to-digest-maps", "sha256-hex-to-digest-uppercase-abstains", "declared-source-semantic-loss-abstains", "omitted-fields-on-lossless-profile-abstains"]
+    },
+    "chg-mapping-limits": {
+      "mapping": ["rules-129-abstains", "pointer-2049-octets-abstains", "profile-string-512-octets-maps"]
+    },
+    "chg-mapping-target-field": {
+      "mapping": ["target-field-at-version-maps"]
+    },
+    "chg-mapping-order": {
+      "mapping": ["stage-a-reasons-accumulate", "stage-b-follows-stage-a", "stage-c-rule-order", "stage-d-mapped-action-order", "comparison-left-then-right"]
+    },
+    "chg-mapping-suite": {
+      "mapping": ["empty-suite-not-defaulted"]
+    },
+    "chg-reason-unknown-suite-parse": {
+      "core": ["refuse-suite-unregistered", "refuse-suite-unregistered-unchecked-digest", "verify-malformed-unregistered-suite"]
+    },
+    "chg-reason-surrogate": {
+      "core": ["decode-refuse-lone-high-surrogate-escape", "decode-refuse-lone-low-surrogate-escape", "native-refuse-lone-surrogate-string-value"]
+    },
+    "chg-reason-amount": {
+      "core": ["refuse-invalid-amount-exponent", "refuse-invalid-amount-plus-sign", "refuse-amount-not-string"]
+    },
+    "chg-reason-registered-suite": {
+      "core": ["parse-registered-suite-not-implemented", "verify-registered-suite-not-implemented"]
+    },
+    "chg-registry-v5": {
+      "core": ["compute-payment-refund-2", "compute-contract-execute-2", "compute-prior-auth-approve-2", "compute-key-create-2"]
+    }
+  }
+}
