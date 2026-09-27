@@ -1,8 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
+
+// mapping-vectors runs a CAID Action-Mapping conformance corpus against the
+// Go implementation.
+//
+// Usage: go run ./cmd/mapping-vectors [--corpus PATH] [--json]
+//
+// The corpus is decoded by the package's strict document decoder and walked
+// as generic values; nothing here decodes through encoding/json. With --json
+// the runner prints [{id, pass, verdict, reasons}] in corpus order (the
+// output only is written with encoding/json), which caid/conformance/run.mjs
+// compares across the three implementations.
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,62 +23,37 @@ import (
 	caidlib "caid"
 )
 
-type SideDescriptor struct {
-	Source         string `json:"source"`
-	Profile        string `json:"profile"`
-	Pin            string `json:"pin"`
-	NativeVerified *bool  `json:"native_verified"`
-}
+type obj = map[string]interface{}
 
-type Mutation struct {
-	Side   string      `json:"side"`
-	Target string      `json:"target"`
-	Op     string      `json:"op"`
-	Path   string      `json:"path"`
-	Value  interface{} `json:"value"`
-}
-
-type Expectation struct {
-	Verdict        string   `json:"verdict"`
-	Reasons        []string `json:"reasons"`
-	ReasonContains string   `json:"reason_contains"`
-}
-
-type Vector struct {
-	ID                 string         `json:"id"`
-	Left               SideDescriptor `json:"left"`
-	Right              SideDescriptor `json:"right"`
-	Mutations          []Mutation     `json:"mutations"`
-	RepinAfterMutation []string       `json:"repin_after_mutation"`
-	Expect             Expectation    `json:"expect"`
-}
-
-type Corpus struct {
-	Version       string                            `json:"@version"`
-	Suite         string                            `json:"suite"`
-	Definitions   []interface{}                     `json:"definitions"`
-	EnumSnapshots []interface{}                     `json:"enum_snapshots"`
-	Profiles      map[string]map[string]interface{} `json:"profiles"`
-	Sources       map[string]map[string]interface{} `json:"sources"`
-	Vectors       []Vector                          `json:"vectors"`
-}
-
-type Output struct {
+type output struct {
 	ID      string   `json:"id"`
 	Pass    bool     `json:"pass"`
 	Verdict string   `json:"verdict"`
 	Reasons []string `json:"reasons"`
 }
 
+// clone deep-copies a decoded value so mutations never leak between vectors.
 func clone(value interface{}) interface{} {
-	data, _ := json.Marshal(value)
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	var out interface{}
-	if err := decoder.Decode(&out); err != nil {
-		panic(err)
+	switch t := value.(type) {
+	case map[string]interface{}:
+		out := make(map[string]interface{}, len(t))
+		for k, v := range t {
+			out[k] = clone(v)
+		}
+		return out
+	case []interface{}:
+		out := make([]interface{}, len(t))
+		for i, v := range t {
+			out[i] = clone(v)
+		}
+		return out
 	}
-	return out
+	return value
+}
+
+func str(m obj, key string) string {
+	s, _ := m[key].(string)
+	return s
 }
 
 func pointerSegments(pointer string) []string {
@@ -80,10 +65,11 @@ func pointerSegments(pointer string) []string {
 	return out
 }
 
-func mutate(value interface{}, segments []string, operation Mutation) interface{} {
+// mutate applies one corpus mutation ({op: set|delete, path, value}).
+func mutate(value interface{}, segments []string, op string, newValue interface{}) interface{} {
 	if len(segments) == 0 {
-		if operation.Op == "set" {
-			return clone(operation.Value)
+		if op == "set" {
+			return clone(newValue)
 		}
 		return nil
 	}
@@ -91,12 +77,13 @@ func mutate(value interface{}, segments []string, operation Mutation) interface{
 	if len(segments) == 1 {
 		switch typed := value.(type) {
 		case map[string]interface{}:
-			if operation.Op == "delete" {
+			switch op {
+			case "delete":
 				delete(typed, head)
-			} else if operation.Op == "set" {
-				typed[head] = clone(operation.Value)
-			} else {
-				panic("unsupported vector mutation: " + operation.Op)
+			case "set":
+				typed[head] = clone(newValue)
+			default:
+				panic("unsupported vector mutation: " + op)
 			}
 			return typed
 		case []interface{}:
@@ -104,53 +91,80 @@ func mutate(value interface{}, segments []string, operation Mutation) interface{
 			if err != nil || index < 0 || index >= len(typed) {
 				panic("invalid vector array mutation")
 			}
-			if operation.Op == "delete" {
+			switch op {
+			case "delete":
 				return append(typed[:index], typed[index+1:]...)
-			}
-			if operation.Op == "set" {
-				typed[index] = clone(operation.Value)
+			case "set":
+				typed[index] = clone(newValue)
 				return typed
 			}
-			panic("unsupported vector mutation: " + operation.Op)
+			panic("unsupported vector mutation: " + op)
 		default:
 			panic("invalid vector mutation target")
 		}
 	}
 	switch typed := value.(type) {
 	case map[string]interface{}:
-		typed[head] = mutate(typed[head], segments[1:], operation)
+		typed[head] = mutate(typed[head], segments[1:], op, newValue)
 		return typed
 	case []interface{}:
 		index, err := strconv.Atoi(head)
 		if err != nil || index < 0 || index >= len(typed) {
 			panic("invalid vector array path")
 		}
-		typed[index] = mutate(typed[index], segments[1:], operation)
+		typed[index] = mutate(typed[index], segments[1:], op, newValue)
 		return typed
 	default:
 		panic("invalid vector mutation path")
 	}
 }
 
-func buildSide(corpus Corpus, descriptor SideDescriptor) map[string]interface{} {
-	profile := clone(corpus.Profiles[descriptor.Profile]).(map[string]interface{})
-	source := clone(corpus.Sources[descriptor.Source]).(map[string]interface{})
-	sourceDescriptor := clone(profile["source_format"]).(map[string]interface{})
-	pin := descriptor.Pin
+func buildSide(corpus obj, descriptor obj) obj {
+	profiles, _ := corpus["profiles"].(obj)
+	sources, _ := corpus["sources"].(obj)
+	profile := clone(profiles[str(descriptor, "profile")])
+	source := clone(sources[str(descriptor, "source")])
+	var sourceDescriptor interface{}
+	if p, ok := profile.(obj); ok {
+		sourceDescriptor = clone(p["source_format"])
+	}
+	pin := str(descriptor, "pin")
 	if pin == "profile" {
 		pin = caidlib.MappingProfileHash(profile)
 	}
 	nativeVerified := true
-	if descriptor.NativeVerified != nil {
-		nativeVerified = *descriptor.NativeVerified
+	if raw, present := descriptor["native_verified"]; present && raw != nil {
+		nativeVerified, _ = raw.(bool)
 	}
-	return map[string]interface{}{
+	return obj{
 		"source":                source,
 		"profile":               profile,
 		"source_descriptor":     sourceDescriptor,
 		"expected_profile_hash": pin,
 		"native_verified":       nativeVerified,
 	}
+}
+
+func stringList(v interface{}) []string {
+	raw, _ := v.([]interface{})
+	out := make([]string, 0, len(raw))
+	for _, x := range raw {
+		s, _ := x.(string)
+		out = append(out, s)
+	}
+	return out
+}
+
+func equalStrings(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func contains(values []string, wanted string) bool {
@@ -162,104 +176,110 @@ func contains(values []string, wanted string) bool {
 	return false
 }
 
-func equalStrings(left, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for index := range left {
-		if left[index] != right[index] {
-			return false
-		}
-	}
-	return true
-}
-
 func main() {
 	vectorPath := filepath.Clean(filepath.Join("..", "..", "conformance", "mapping-vectors.json"))
-	for index, arg := range os.Args[1:] {
-		if arg == "--corpus" {
-			if index+2 >= len(os.Args) {
-				panic("--corpus requires a path")
+	jsonMode := false
+	for i := 1; i < len(os.Args); i++ {
+		switch os.Args[i] {
+		case "--corpus":
+			if i+1 >= len(os.Args) {
+				fmt.Fprintln(os.Stderr, "--corpus requires a path")
+				os.Exit(2)
 			}
-			vectorPath = filepath.Clean(os.Args[index+2])
+			i++
+			vectorPath = filepath.Clean(os.Args[i])
+		case "--json":
+			jsonMode = true
 		}
 	}
 	data, err := os.ReadFile(vectorPath)
 	if err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
-	// The strict decoder refuses duplicate member names and non-UTF-8 input
-	// before the typed decode below reads the corpus structure.
-	if _, err := caidlib.DecodeJSON(data); err != nil {
-		panic(err)
+	decoded, err := caidlib.DecodeDocumentJSON(data)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "FAIL: cannot decode %s: %v\n", vectorPath, err)
+		os.Exit(1)
 	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	var corpus Corpus
-	if err := decoder.Decode(&corpus); err != nil {
-		panic(err)
+	corpus, ok := decoded.(obj)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "FAIL: %s is not a JSON object\n", vectorPath)
+		os.Exit(1)
 	}
+	definitions, _ := corpus["definitions"].([]interface{})
+	enumSnapshots, _ := corpus["enum_snapshots"].([]interface{})
+	var suite *string
+	if raw, present := corpus["suite"]; present {
+		s, isString := raw.(string)
+		if !isString {
+			s = "\x00non-string"
+		}
+		suite = &s
+	}
+	vectors, _ := corpus["vectors"].([]interface{})
 
-	output := []Output{}
-	for _, vector := range corpus.Vectors {
-		left := buildSide(corpus, vector.Left)
-		right := buildSide(corpus, vector.Right)
-		for _, operation := range vector.Mutations {
+	results := []output{}
+	for _, raw := range vectors {
+		vector, _ := raw.(obj)
+		leftDescriptor, _ := vector["left"].(obj)
+		rightDescriptor, _ := vector["right"].(obj)
+		left := buildSide(corpus, leftDescriptor)
+		right := buildSide(corpus, rightDescriptor)
+		mutations, _ := vector["mutations"].([]interface{})
+		for _, m := range mutations {
+			operation, _ := m.(obj)
 			side := left
-			if operation.Side == "right" {
+			if str(operation, "side") == "right" {
 				side = right
 			}
-			side[operation.Target] = mutate(side[operation.Target], pointerSegments(operation.Path), operation)
+			target := str(operation, "target")
+			side[target] = mutate(side[target], pointerSegments(str(operation, "path")), str(operation, "op"), operation["value"])
 		}
-		for _, sideName := range vector.RepinAfterMutation {
+		for _, sideName := range stringList(vector["repin_after_mutation"]) {
 			side := left
 			if sideName == "right" {
 				side = right
 			}
-			profile, _ := side["profile"].(map[string]interface{})
-			side["expected_profile_hash"] = caidlib.MappingProfileHash(profile)
+			side["expected_profile_hash"] = caidlib.MappingProfileHash(side["profile"])
 		}
-		result := caidlib.CompareMappedActionsWithEnumSnapshots(
-			left,
-			right,
-			corpus.Definitions,
-			corpus.EnumSnapshots,
-			corpus.Suite,
-		)
-		verdictOK := result.Verdict == vector.Expect.Verdict
-		reasonsOK := equalStrings(result.Reasons, vector.Expect.Reasons)
-		if vector.Expect.ReasonContains != "" {
-			reasonsOK = contains(result.Reasons, vector.Expect.ReasonContains)
+		result := caidlib.CompareMappedActionsWithOptions(left, right, caidlib.CompareOptions{
+			Definitions:   definitions,
+			EnumSnapshots: enumSnapshots,
+			Suite:         suite,
+		})
+		expect, _ := vector["expect"].(obj)
+		verdictOK := result.Verdict == str(expect, "verdict")
+		reasonsOK := equalStrings(result.Reasons, stringList(expect["reasons"]))
+		if wanted := str(expect, "reason_contains"); wanted != "" {
+			reasonsOK = contains(result.Reasons, wanted)
 		}
-		output = append(output, Output{
-			ID: vector.ID, Pass: verdictOK && reasonsOK,
+		results = append(results, output{
+			ID: str(vector, "id"), Pass: verdictOK && reasonsOK,
 			Verdict: result.Verdict, Reasons: result.Reasons,
 		})
 	}
 
-	jsonMode := false
-	for _, arg := range os.Args[1:] {
-		if arg == "--json" {
-			jsonMode = true
+	failed := false
+	for _, r := range results {
+		if !r.Pass {
+			failed = true
 		}
 	}
-	failed := false
 	if jsonMode {
-		encoded, _ := json.Marshal(output)
+		encoded, err := json.Marshal(results)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		fmt.Println(string(encoded))
 	} else {
-		for _, result := range output {
+		for _, r := range results {
 			status := "PASS"
-			if !result.Pass {
+			if !r.Pass {
 				status = "FAIL"
-				failed = true
 			}
-			fmt.Println(status, result.ID, result.Verdict)
-		}
-	}
-	for _, result := range output {
-		if !result.Pass {
-			failed = true
+			fmt.Println(status, r.ID, r.Verdict, strings.Join(r.Reasons, ","))
 		}
 	}
 	if failed {
