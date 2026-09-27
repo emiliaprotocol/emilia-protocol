@@ -39,10 +39,10 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 | # | Registration | IANA registry | Backing draft (section) | Draft text status | Template status | Gate to filing |
 |---|---|---|---|---|---|---|
 | 1 | `agent-action-control.json` | Well-Known URIs | draft-schrock-agent-action-manifest-00 (§3, §9) | **Requests registration** (fields in §9) | READY-ON-POST | Draft live on datatracker [verify posting after the 2026-07-06 batch upload] |
-| 2 | `authorization-evidence-required` | HTTP Problem Types | draft-schrock-ae-challenge-07 (§3, §6; published 2026-08-10) | **Requests registration** under Specification Required; reuses `application/problem+json` | CARRIED-BY-DRAFT | Continue focused HTTP and Independent Stream review; do not file a conflicting direct request |
+| 2 | `ae-required` (type URI `https://iana.org/assignments/http-problem-types#ae-required`, title "Authorization Evidence Required") | HTTP Problem Types | draft-schrock-ae-challenge-07 (§3, §6; published 2026-08-10) | **Requests registration** under Specification Required; reuses `application/problem+json` | CARRIED-BY-DRAFT | Continue focused HTTP and Independent Stream review; do not file a conflicting direct request |
 | 2a | `application/vnd.emilia.authorization-evidence-challenge+json` | Media Types (vendor tree) | EMILIA Version 1 serialization specification; draft-schrock-ae-challenge-07 is informative context only | **Bare object only; not an enclosing carrier** | IANA-TICKET-1458921 | Continue vendor-tree expert review; do not hold registration on the Internet-Draft's stream |
-| 3 | `application/ep-authorization-receipt+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-12 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
-| 4 | `application/ep-authorization-bundle+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-12 (§13) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
+| 3 | `application/ep-authorization-receipt+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-13 (§14) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
+| 4 | `application/ep-authorization-bundle+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-13 (§14) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
 | 5 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; no registration request | PROPOSED, requires draft text in next rev | Next-rev field definition + IANA request |
 | 6 | `X-EMILIA-Receipt` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object) | Field *named*, not normatively defined; RFC 6648 disfavors permanent "X-" registrations | PROPOSED, requires draft text in next rev | Next-rev field definition; draft decides on any unprefixed successor |
 | 7 | `application/ep-aec+json` | Media Types | draft-schrock-ep-authorization-evidence-chain-01 (§10) | Illustrative only ("e.g.") | NOT PREPARED | Chain draft must pick and fix the string first |
@@ -64,8 +64,9 @@ registry, not IANA's.
 - **Policy:** Specification Required with designated-expert review (RFC 9457
   §4.2 and RFC 8126 §4.6), not IETF Review or Standards Action.
 - **AE Challenge:** current revision -07 retains the -03 withdrawal of the dedicated standards-tree media
-  type and requests the common problem type
-  `authorization-evidence-required`, recommended status 403. Process the
+  type and requests the common problem type `ae-required` (type URI
+  `https://iana.org/assignments/http-problem-types#ae-required`, title
+  "Authorization Evidence Required"), recommended status 403. Process the
   registration with the Independent Stream document after focused HTTP
   review; do not reopen tickets #1456851 or #1456611.
 
@@ -83,7 +84,7 @@ registry, not IANA's.
   maintained regardless of the related Internet-Draft's stream or fate. The
   type labels the bare object, not an enclosing HTTP Problem Details response,
   and registration would not represent IETF endorsement.
-- **Receipt media types:** revision -12 requests
+- **Receipt media types:** revision -13 (§14) requests
   `application/ep-authorization-receipt+json` and
   `application/ep-authorization-bundle+json`, and carries complete templates
   for both. Process them with the Standards Track document; do not revive the
