@@ -1272,6 +1272,7 @@ for (const [anchor, needle, what] of [
   const onlyIfImplemented = (list) => list.filter((v) => v.applies_when?.suite_implemented === 'cbor-sha256').length;
   const want = { core: onlyIfImplemented(readJson('caid/conformance/vectors.json').vectors), grammar: onlyIfImplemented(readJson('caid/conformance/grammar-vectors.json').cases) };
   check(want.core > 0, 'the core corpus has no vector that applies only to a cbor-sha256 implementation, which Section 13 says the ports skip');
+  /** @type {[string, string, string[], string][]} */
   const RUNNERS = [
     ['JavaScript', 'node', ['caid/conformance/runners/run.mjs', '--json'], root],
     ['Python', process.env.CAID_PYTHON || 'python3', ['caid/conformance/runners/run.py', '--json'], root],
@@ -1280,7 +1281,7 @@ for (const [anchor, needle, what] of [
   for (const [language, command, args, cwd] of RUNNERS) {
     const r = spawnSync(command, args, { cwd, encoding: 'utf8', maxBuffer: 1 << 28 });
     if (r.error) {
-      const note = `the ${language} runner could not start (${r.error.code ?? r.error.message}), so its cbor-sha256 skips were not checked`;
+      const note = `the ${language} runner could not start (${/** @type {NodeJS.ErrnoException} */ (r.error).code ?? r.error.message}), so its cbor-sha256 skips were not checked`;
       if (prefiling) errors.push(note); else console.log(`CAID-04: note: ${note}`);
       continue;
     }
