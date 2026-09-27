@@ -50,7 +50,7 @@
   "local_files": [
     {
       "path": "conformance/composition/coaz-translation-v0.1/AUTHZEN-CONTRIBUTION.md",
-      "sha256": "c4d7b437f1fbb28bf6d35c2e836e05acd1acae69038d0f87bf30446e80443e39"
+      "sha256": "d0e227c9984fc453d79ca602a141bfbb185d2bc3edb229aeb4f0423342020be9"
     },
     {
       "path": "caid/impl/js/caid.mjs",

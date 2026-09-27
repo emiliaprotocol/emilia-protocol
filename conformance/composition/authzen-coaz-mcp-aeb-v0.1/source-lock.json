@@ -5,7 +5,7 @@
   "fetch_note": "This profile inherits the exact OpenID source facts refreshed by coaz-translation-v0.1 on 2026-08-25. No newer upstream status is claimed here.",
   "inherits": {
     "path": "conformance/composition/coaz-translation-v0.1/source-lock.json",
-    "sha256": "2b5aa8eb7d2beb0269c5b6fd7af242e0786bcc37256901b7720a6bc9c2829474"
+    "sha256": "f3ac99f40e8411952d747d8e09ec915beb0bbb5154c39291ef7a5c4ba79b2d9c"
   },
   "upstream_repository": {
     "url": "https://github.com/openid/authzen",
