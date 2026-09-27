@@ -19,7 +19,7 @@ describe('CAID Action-Mapping Profile', () => {
     expect(corpus['@version']).toBe('CAID-ACTION-MAPPING-VECTORS-v2');
     const results = runMappingVectors(corpus);
     expect(results).toHaveLength(corpus.vectors.length);
-    expect(results).toHaveLength(65);
+    expect(results).toHaveLength(73);
     expect(results.filter((result) => !result.pass)).toEqual([]);
   });
 

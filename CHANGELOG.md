@@ -67,6 +67,16 @@ Historical entries below retain the labels used when they were written.
   All three ports and the vendored Verify copy pass it with no divergence
   class; run against the pre-04 ports it reports the known defect classes.
 
+### CAID Go port API (`caid/impl/go`)
+
+- `MapActionOptions.Suite` and `CompareOptions.Suite` are now `*string`:
+  nil means the default suite `jcs-sha256`, and any other value, the empty
+  string included, is used as given. `CompareMappedActions` and
+  `CompareMappedActionsWithEnumSnapshots` pass their `suite` argument as
+  given, so an empty suite refuses on both sides instead of defaulting.
+  `MapActionResult` carries `definition_sha256`. The module path is `caid`,
+  so only code in this repository imports it.
+
 ### CAID identifier parsing
 
 - The CAID parsers in JavaScript (and the vendored Verify copy), Python, and

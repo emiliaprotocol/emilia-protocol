@@ -209,7 +209,8 @@ for (const c of coreCases({ limits: { json_text_octets: limits.json_text_octets,
   // other value (a string, number, array, boolean or null) is passed as is.
   const pin = input.expected_definition_sha256;
   if (pin && typeof pin === 'object' && !Array.isArray(pin)) {
-    const digest = (d) => oracle.definitionSha256(d).definition_sha256;
+    /** @returns {string} */
+    const digest = (d) => /** @type {string} */ (oracle.definitionSha256(d).definition_sha256);
     if (Object.prototype.hasOwnProperty.call(pin, 'of')) input.expected_definition_sha256 = digest(pin.of);
     else if (Object.prototype.hasOwnProperty.call(pin, 'list_of')) input.expected_definition_sha256 = [digest(pin.list_of)];
     else if (Object.prototype.hasOwnProperty.call(pin, 'upper_of')) input.expected_definition_sha256 = `sha256:${digest(pin.upper_of).slice('sha256:'.length).toUpperCase()}`;

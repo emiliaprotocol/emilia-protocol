@@ -147,7 +147,8 @@ for (const format of Object.keys(CODE_SYSTEMS)) {
   EXTRAS[`code.${format}`] = [['A00\u{1F600}', 'text'], ['A0\ud800', 'native'], [rep('', 'A', 70000), 'text'], ['Ａ００', 'text']];
 }
 const BAD_UTF8 = [[0xff], [0xc3], [0xed, 0xa0, 0x80], [0xc0, 0xaf], [0xf4, 0x90, 0x80, 0x80]];
-const MAX = oracle.spec.pattern_max_octets;
+/** @type {Record<string, number>} */
+const MAX = /** @type {any} */ (oracle.spec.pattern_max_octets);
 const LENGTH_LIMITS = {
   'action-type.compute': { max: MAX.action_type, refusal: 'invalid_action_type' },
   'action-type.parse': { max: MAX.action_type, refusal: 'malformed_caid' },

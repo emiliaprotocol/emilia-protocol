@@ -107,6 +107,7 @@ export function buildSpec(root) {
   // (V8 throws near 6.7 million characters) even though matching is linear
   // in time.
   const patterns = {};
+  /** @type {Record<string, number>} */
   const patternMaxOctets = {};
   const analysis = {};
   const limitById = Object.fromEntries(core.limits.map((l) => [l.id, l]));

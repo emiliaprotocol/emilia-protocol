@@ -338,9 +338,13 @@ export function createReference(spec) {
     if (pinned && definitionSha256 !== undefined && opts.expectedDefinitionSha256 !== definitionSha256) reasons.push('definition_mismatch');
     // The canonical text evaluate made, when its gates passed; otherwise
     // the object is canonicalized here.
-    const c = r.canonical !== undefined ? { ok: r.canonical !== null, canonical: r.canonical } : canonicalize(object);
+    let canonical = r.canonical;
+    if (canonical === undefined) {
+      const c = canonicalize(object);
+      canonical = c.ok ? c.canonical : null;
+    }
     if (!supported.has(parsed.caid.suite)) reasons.push('unknown_suite');
-    else if (c.ok && createHash('sha256').update(Buffer.from(c.canonical, 'utf8')).digest('base64url') !== parsed.caid.digest) reasons.push('digest_mismatch');
+    else if (typeof canonical === 'string' && createHash('sha256').update(Buffer.from(canonical, 'utf8')).digest('base64url') !== parsed.caid.digest) reasons.push('digest_mismatch');
     if (r.refusals.length) reasons.push('invalid_object');
     reasons.sort((a, b) => spec.sort_rank.verify[a] - spec.sort_rank.verify[b]);
     const details = reasons.flatMap((x) => (x === 'invalid_object' ? r.refusals.map((y) => detail(y, object, caidString)) : [detail(x, object, caidString)]));

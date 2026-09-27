@@ -1422,24 +1422,23 @@ function expand(p, st, path, frame) {
       if (typeof length !== "number") return null;
       // Only the keys the array has are read: a sparse array with a huge
       // length and few elements costs its elements, not its length.
+      // The own keys of an ordinary array list its indices in ascending
+      // order (OrdinaryOwnPropertyKeys), so they are read in one pass with
+      // no second list; keys out of order, and any key that is neither an
+      // index below the length nor "length", put the array outside the model.
       const keys = Reflect.ownKeys(p.src);
-      /** @type {number[]} */
-      const indices = [];
-      for (const key of keys) {
+      let expected = 0;
+      for (let k = 0; k < keys.length; k += 1) {
+        const key = keys[k];
         if (key === "length") continue;
         const index = arrayIndexOf(key);
-        if (index < 0 || index >= length) return null;
-        indices.push(index);
-      }
-      indices.sort((a, b) => a - b);
-      let expected = 0;
-      for (const index of indices) {
+        if (index < expected || index >= length) return null;
         if (index !== expected) {
           st.unsupported += 1;
           p.dst.push(UNSUPPORTED);
         }
         expected = index + 1;
-        const d = Reflect.getOwnPropertyDescriptor(p.src, String(index));
+        const d = Reflect.getOwnPropertyDescriptor(p.src, /** @type {string} */ (key));
         if (!d) return null;
         p.dst.push(place(p.dst.length, d));
       }
@@ -1632,6 +1631,26 @@ export function toCaidData(value) {
   const snap = snapshot(value, true);
   if (!snap.clean) return { ok: false, refusals: ["unsupported_value"] };
   return { ok: true, value: snap.value };
+}
+
+/**
+ * toCaidDataWithCanonical(value) -> {ok: true, value, canonical: string | null}
+ *                                 | {ok: false, refusals: ["unsupported_value"]}
+ *
+ * toCaidData, plus the RFC 8785 text of the copy as a document (under the
+ * document ceiling), or null when the copy cannot be canonicalized (a
+ * number outside the model, or an encoding past the ceiling). The value is
+ * read once, and the copy is serialized before it is returned, so a mapper
+ * that needs both the copy and its digest reads a large source once.
+ *
+ * @param {*} value
+ * @returns {{ok: true, value: any, canonical: string | null} | {ok: false, refusals: string[]}}
+ */
+export function toCaidDataWithCanonical(value) {
+  const snap = snapshot(value, true);
+  if (!snap.clean) return { ok: false, refusals: ["unsupported_value"] };
+  const c = serialize(snap.value, null, snap.outside, snap.exceeded);
+  return { ok: true, value: snap.value, canonical: c.ok ? c.bytes.toString("utf8") : null };
 }
 
 // ---------------------------------------------------------------------------

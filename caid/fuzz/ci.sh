@@ -4,7 +4,7 @@
 #
 #   sh caid/fuzz/ci.sh [tree-root] [allow-file]
 #
-# Runs the full seeded corpus (about 80k cases) against the tree (default:
+# Runs the full seeded corpus (about 87k cases) against the tree (default:
 # this checkout) and exits 1 when any lane's outcome differs from the spec
 # oracle in a class whose root cause the allow file does not list. The
 # committed allow file is [] (empty), so every difference fails. Requires

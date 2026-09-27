@@ -34,7 +34,7 @@ import {
   canonicalize,
   computeCaid,
   resolveCaidDefinition,
-  toCaidData,
+  toCaidDataWithCanonical,
 } from './caid.mjs';
 
 const M = CAID_SPEC.mapping;
@@ -346,13 +346,16 @@ export function mapAction(source, params = {}) {
     const suite = suiteOption === undefined ? 'jcs-sha256' : suiteOption;
     const definitions = read('definitions');
     const enumSnapshots = read('enumSnapshots');
-    const profileData = toCaidData(read('profile'));
+    // Each is read once, into a copy in the data model with its RFC 8785
+    // text: a large source is not read a second time for its digest.
+    const profileData = toCaidDataWithCanonical(read('profile'));
     const profile = profileData.ok ? profileData.value : undefined;
-    const sourceData = toCaidData(source);
+    const sourceData = toCaidDataWithCanonical(source);
     const sourceValue = sourceData.ok ? sourceData.value : undefined;
+    const digestOf = (data) => (data.ok && data.canonical !== null ? 'sha256:' + sha256Hex(Buffer.from(data.canonical, 'utf8')) : null);
 
     const rank = M.reason_rank;
-    const profileHash = profile === undefined ? null : hashCanonical(profile);
+    const profileHash = profile === undefined ? null : digestOf(profileData);
     const found = profileReasons(profile, profileHash !== null, definitions);
     const stageB = (reason) => found.push([rank[reason], 0, reason]);
     if (read('nativeVerified') !== true) stageB('native_verification_required');
@@ -364,7 +367,7 @@ export function mapAction(source, params = {}) {
     }
     const sourceIsObject = isPlainHostObject(source);
     if (!sourceIsObject) stageB('source_not_object');
-    const sourceDigest = sourceIsObject && isObject(sourceValue) ? hashCanonical(sourceValue) : null;
+    const sourceDigest = sourceIsObject && isObject(sourceValue) ? digestOf(sourceData) : null;
     if (sourceDigest === null) stageB('source_not_canonicalizable');
     const policy = LOSS_POLICIES.get(member(profile, 'loss_policy'));
     if (policy !== undefined && policy.stage_reason !== undefined) stageB(policy.stage_reason);

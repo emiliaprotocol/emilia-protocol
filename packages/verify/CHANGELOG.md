@@ -123,7 +123,10 @@ behavior only through an explicit dependency bump.
     cyclic value, which 5.0.0 threw `RangeError` on, refuses as
     `unsupported_value` alone: the cycle is still an object or an array, so
     a declared field of that kind holding it is not mistyped. The value is
-    read once, without invoking any getter, and nothing throws.
+    read once, without invoking any getter, and nothing throws. Passed as
+    the whole action object, a value that is not a plain object (a `Map`,
+    a `Date`, a class instance) fails the first gate as
+    `invalid_action_type` alone, as any other non-object does.
   - A string or member name holding a noncharacter (U+FDD0 to U+FDEF, or a
     code point whose low 16 bits are FFFE or FFFF), as `unsupported_value`.
     I-JSON (RFC 7493), which RFC 8785 requires as input, excludes them, and

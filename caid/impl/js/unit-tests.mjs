@@ -600,7 +600,7 @@ test("unsupported_number precedes unsupported_value whatever the traversal order
 
 test("an expected definition_sha256 that is supplied is never treated as absent", () => {
   const caid = computeCaid(bare(), OPTS).caid;
-  const right = definitionSha256(DEF).definition_sha256;
+  const right = /** @type {string} */ (definitionSha256(DEF).definition_sha256);
   assert.equal(verifyCaid(bare(), caid, { definitions: DEFS, expectedDefinitionSha256: right }).valid, true);
   assert.equal(verifyCaid(bare(), caid, { definitions: DEFS }).valid, true);
   assert.equal(verifyCaid(bare(), caid, { definitions: DEFS, expectedDefinitionSha256: undefined }).valid, true);
@@ -840,4 +840,34 @@ test("mapping comparison: left, then right, then the verdict reasons", () => {
   const r = compareMappedActions(side({}, { native_verified: false }), side(SOURCE, { expected_profile_hash: "x" }), { definitions: [MAP_DEF] });
   assert.deepEqual(r.reasons, ["left:native_verification_required", "right:mapping_profile_unpinned"]);
   assert.equal(r.verdict, "INDETERMINATE");
+});
+
+// ---------------------------------------------------------------------------
+// Memory: a large accepted input stays within a bounded heap. The serializer
+// keeps one frame per open container and one bounded output buffer, and a
+// mapping source is read once for both its copy and its digest. Before
+// that, the 16 MB action text below aborted Node with a 1 GiB heap, and the
+// mapping source needed about 1.5 GiB.
+// ---------------------------------------------------------------------------
+
+test("a 16 MB action object or mapping source is processed within a bounded heap", () => {
+  const here = new URL("./", import.meta.url).href;
+  const elements = 8_000_000;
+  const run = (heapMiB, body) => spawnSync(process.execPath, [`--max-old-space-size=${heapMiB}`, "--input-type=module", "-e", body], { encoding: "utf8", maxBuffer: 1 << 20 });
+  const compute = run(384, `
+    const { computeCaidJson } = await import(${JSON.stringify(`${here}caid.mjs`)});
+    const text = Buffer.from('{"action_type":"t.1","x":"y","a":[' + '0,'.repeat(${elements - 1}) + '0]}');
+    const r = computeCaidJson(text, { suite: "jcs-sha256", definitions: [{ action_type: "t.1", required_fields: [{ name: "x", type: "string" }] }] });
+    process.stdout.write(String(text.length > 15 * 1024 * 1024 && typeof r.caid === "string"));
+  `);
+  assert.equal(compute.status, 0, compute.stderr.slice(-400));
+  assert.equal(compute.stdout, "true");
+  const map = run(1024, `
+    const { decodeCaidJson } = await import(${JSON.stringify(`${here}caid.mjs`)});
+    const { mapAction } = await import(${JSON.stringify(`${here}mapping.mjs`)});
+    const d = decodeCaidJson(Buffer.from('{"a":[' + '0,'.repeat(${elements - 1}) + '0]}'));
+    process.stdout.write(String(/^sha256:[0-9a-f]{64}$/.test(mapAction(d.value, {}).source_digest)));
+  `);
+  assert.equal(map.status, 0, map.stderr.slice(-400));
+  assert.equal(map.stdout, "true");
 });
