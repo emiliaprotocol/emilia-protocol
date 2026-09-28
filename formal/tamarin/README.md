@@ -12,7 +12,7 @@ the honest human to sign arbitrary actions of the attacker's choice.
 
 ## What is modeled
 
-Maps to `standards/posted/draft-schrock-ep-authorization-receipts-04.txt`:
+Maps to `standards/archive/draft-schrock-ep-authorization-receipts-04.txt`:
 
 - A human approver with a device-bound signing key (Section 5.1, Class A).
   The public key is published, so the attacker always knows it.
@@ -165,7 +165,7 @@ which action is put up for quorum and which identity is named as the initiator.
 
 ## What is modeled
 
-Maps to `standards/posted/draft-schrock-ep-authorization-receipts-06.txt`:
+Maps to `standards/archive/draft-schrock-ep-authorization-receipts-06.txt`:
 
 - TWO distinct human approver identities, each with its own device-bound key
   (Section 5.1, Class A). Distinctness of enrolled identities is enforced

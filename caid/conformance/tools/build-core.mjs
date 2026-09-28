@@ -22,7 +22,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { coreCases } from './core-cases.mjs';
+import { encodeCbor } from './cbor.mjs';
+import { coreCases, SUITE_PROBE } from './core-cases.mjs';
 import { minify, rawSpans } from './jsontext.mjs';
 import * as oracle from './oracle.mjs';
 import { decodeStrict } from './strict-json.mjs';
@@ -46,6 +47,7 @@ export const V4_CHANGES = {
 };
 
 const sha256 = (buf) => 'sha256:' + createHash('sha256').update(buf).digest('hex');
+
 const stable = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x)
   ? Object.fromEntries(Object.keys(x).sort().map((key) => [key, x[key]])) : x));
 const same = (a, b) => stable(a) === stable(b);
@@ -54,10 +56,12 @@ const problem = (id, msg) => problems.push(`${id}: ${msg}`);
 
 // ---------------------------------------------------------------- envelope data
 const registry = JSON.parse(readFileSync(path.join(ROOT, 'caid/registry/action-types.json'), 'utf8'));
-const enumSnapshots = registry.enum_snapshot_files.map((entry) => {
-  const file = JSON.parse(readFileSync(path.join(ROOT, 'caid/registry', entry.path), 'utf8'));
-  return { values_ref: file.values_ref, values_snapshot: file.values_snapshot, values_sha256: file.values_sha256, values: file.values };
-});
+// The registry value-set files exactly as published. Members other than
+// values_ref, values_snapshot, values_sha256 and values (provenance, the
+// derivation, the hash input) never affect resolution (Section 4.4), so
+// every vector that resolves an external enum also checks that a port
+// ignores them.
+const enumSnapshots = registry.enum_snapshot_files.map((entry) => JSON.parse(readFileSync(path.join(ROOT, 'caid/registry', entry.path), 'utf8')));
 const v4Bytes = readFileSync(path.join(ROOT, V4_PATH));
 if (sha256(v4Bytes) !== V4_SHA256) throw new Error(`${V4_PATH} is not the frozen version 4 corpus`);
 const v4Text = v4Bytes.toString('utf8');
@@ -95,6 +99,36 @@ function evaluate(kind, input, definitions) {
     return Object.prototype.hasOwnProperty.call(input, 'native') ? oracle.verify(v.native, input.caid, o) : oracle.verifyText(v.bytes, input.caid, o);
   }
   throw new Error(`unknown kind ${kind}`);
+}
+
+// The vectors that apply only to an implementation of cbor-sha256 (support
+// is OPTIONAL; the oracle, like the three ports, implements jcs-sha256
+// only). The data-model checks are the same for every suite, and the size
+// limit is measured on the RFC 8785 encoding for every suite (Section 3.1),
+// so the jcs-sha256 result decides whether the object computes; the CAID
+// digest is then the SHA-256 of the core deterministic CBOR encoding.
+function cborCompute(bytes, definitions) {
+  const d = decodeStrict(bytes);
+  if (!d.ok) throw new Error('a cbor-sha256 vector needs JSON text that decodes');
+  const r = oracle.compute(d.value, { suite: 'jcs-sha256', definitions, enum_snapshots: enumSnapshots });
+  if (!r.caid) throw new Error(`a cbor-sha256 vector must compute: ${JSON.stringify(r)}`);
+  const canonical = encodeCbor(d.value);
+  const digest = createHash('sha256').update(canonical).digest();
+  return {
+    result: { caid: `caid:1:${d.value.action_type}:cbor-sha256:${digest.toString('base64url')}`, digest: `sha256:${digest.toString('hex')}`, definition_sha256: r.definition_sha256 },
+    canonical_hex: canonical.toString('hex'),
+  };
+}
+
+function evaluateCbor(kind, input, definitions) {
+  if (Object.prototype.hasOwnProperty.call(input, 'native') || !Object.prototype.hasOwnProperty.call(input, 'json')) throw new Error('a cbor-sha256 vector takes input.json');
+  const { result, canonical_hex } = cborCompute(Buffer.from(input.json, 'utf8'), definitions);
+  if (kind === 'compute') {
+    if (input.suite !== 'cbor-sha256') throw new Error('a cbor-sha256 compute vector names that suite');
+    return { r: result, canonical_hex };
+  }
+  if (kind === 'verify' && input.caid === result.caid) return { r: { valid: true, reasons: [], details: [], definition_sha256: result.definition_sha256 } };
+  throw new Error('only a matching cbor-sha256 verification is supported');
 }
 
 // Canonical member order of each expectation shape.
@@ -194,6 +228,12 @@ for (const type of registry.types) {
 const limits = oracle.spec.limits;
 for (const c of coreCases({ limits: { json_text_octets: limits.json_text_octets, canonical_octets: limits.canonical_octets } })) {
   const input = { ...c.input };
+  const cborVector = c.applies_when?.suite_implemented === 'cbor-sha256';
+  if (input.caid_of_suite) {
+    if (input.caid_of_suite !== 'cbor-sha256') throw new Error(`${c.id}: unknown caid_of_suite`);
+    input.caid = cborCompute(Buffer.from(input.json, 'utf8'), c.definitions).result.caid;
+    delete input.caid_of_suite;
+  }
   if (input.caid_of) {
     const of = input.caid_of;
     const r = of.native !== undefined
@@ -222,7 +262,10 @@ for (const c of coreCases({ limits: { json_text_octets: limits.json_text_octets,
   for (const k of ['json', 'json_b64', 'json_repeat', 'native', 'caid', 'expected_definition_sha256', 'definition', 'suite']) {
     if (Object.prototype.hasOwnProperty.call(input, k)) ordered[k] = input[k];
   }
-  const r = evaluate(c.kind, ordered, c.definitions);
+  let canonicalHex;
+  let r;
+  if (cborVector) ({ r, canonical_hex: canonicalHex } = evaluateCbor(c.kind, ordered, c.definitions));
+  else r = evaluate(c.kind, ordered, c.definitions);
   const expect = shapeExpect(c.kind, r);
   const s = c.expect;
   const bad = (msg) => problem(c.id, `${msg}; oracle ${JSON.stringify(expect).slice(0, 400)}`);
@@ -237,6 +280,8 @@ for (const c of coreCases({ limits: { json_text_octets: limits.json_text_octets,
   out.expect = expect;
   if (c.relation) out.relation = c.relation;
   if (c.time_budget_ms) out.time_budget_ms = c.time_budget_ms;
+  if (c.applies_when) out.applies_when = c.applies_when;
+  if (canonicalHex) out.canonical_hex = canonicalHex;
   out._same = c.same_definition_sha256_as;
   out._different = c.different_definition_sha256_from;
   vectors.push(out);
@@ -289,10 +334,12 @@ const envelope = {
   version: 5,
   suite_note: 'Shared cross-language CAID conformance vectors for draft-schrock-canonical-action-identifier-04. Each vector carries its own inline type definitions and never references the public registry, except the registry-* vectors, which copy one registry entry each. CAID carries no trust semantics: these vectors test identification only, not authorization, identity, or proof.',
   format: {
-    kinds: 'decode: decode the input octets as JSON text (Section 2.4); expect {ok} or {ok:false, refusals:["malformed_json"]}. parse: strict CAID parse of input.caid. compute: compute over the input with options suite (input.suite, passed as given, whatever its JSON type; absent means no suite), definitions (the vector member, passed as given) and enum_snapshots (this file); expect {caid, digest, definition_sha256} or {refusals}. verify: verify the input against input.caid with definitions, enum_snapshots and, when present, expected_definition_sha256 (passed as given); expect {valid, reasons, details, definition_sha256?}. definition: definition_sha256 of input.definition; expect {definition_sha256} or {refusals:["invalid_definition"]}.',
+    kinds: 'decode: decode the input octets as JSON text (Section 2.4); expect {ok} or {ok:false, refusals:["malformed_json"]}. parse: strict CAID parse of input.caid. compute: compute over the input with options suite (input.suite, passed as given, whatever its JSON type; absent means no suite), definitions (the vector member, passed as given) and enum_snapshots (this file: the registry value-set files as published, whose members other than values_ref, values_snapshot, values_sha256 and values never affect resolution); expect {caid, digest, definition_sha256} or {refusals}. verify: verify the input against input.caid with definitions, enum_snapshots and, when present, expected_definition_sha256 (passed as given); expect {valid, reasons, details, definition_sha256?}. definition: definition_sha256 of input.definition; expect {definition_sha256} or {refusals:["invalid_definition"]}.',
     inputs: 'Exactly one input form: input.json is a string whose UTF-8 encoding is the JSON text; input.json_b64 is the exact octets, base64; input.json_repeat {prefix, unit, count, suffix} is UTF-8(prefix) + count copies of UTF-8(unit) + UTF-8(suffix); input.native is a native-lane value (caid/conformance/runners/native.mjs describes the encoding). A runner calls the byte entry point for the first three forms and, when the octets decode, also the native entry point on the decoded value, and requires identical results. For input.native it builds the host value and calls the native entry point only.',
     relations: 'relation.same_caid_as / different_caid_from compare the CAIDs the implementation computes for two vectors. time_budget_ms bounds the wall time of the byte entry-point call.',
+    conditions: 'applies_when {suite_implemented: S} or {suite_not_implemented: S} limits a vector to implementations that do, or do not, implement the registered suite S (support for cbor-sha256 is OPTIONAL). A runner decides with suite_probe: computing suite_probe.object with definitions suite_probe.definitions, no enum snapshots and suite S yields a CAID exactly when the implementation implements S. A vector whose condition does not hold is skipped and reported as skipped, never as passed. canonical_hex, where present, is the canonical octets the vector\'s digest covers.',
   },
+  suite_probe: SUITE_PROBE,
   counts,
   previous_versions: [
     ...v4.previous_versions,

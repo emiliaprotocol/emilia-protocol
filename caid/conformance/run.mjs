@@ -123,10 +123,27 @@ run('core and grammar corpora against the spec oracle', 'node', ['caid/conforman
 // ---------------------------------------------------------------- 4. ports
 const core = JSON.parse(readFileSync(path.join(ROOT, 'conformance/vectors.json'), 'utf8'));
 const grammar = JSON.parse(readFileSync(path.join(ROOT, 'conformance/grammar-vectors.json'), 'utf8'));
-const corpora = `${core.vectors.length} core + ${grammar.cases.length} grammar`;
-run(`JavaScript: ${corpora}`, 'node', ['caid/conformance/runners/run.mjs'], REPO);
-run(`Python: ${corpora}`, PYTHON, ['caid/conformance/runners/run.py'], REPO);
-run(`Go: ${corpora}`, 'go', ['run', '.'], path.join(HERE, 'runners/go'));
+// Each language line reports what its runner ran, from the runner's own
+// summary: a vector whose applies_when condition does not hold for that
+// implementation is skipped, never counted as passed.
+function runLanguage(language, command, args, cwd) {
+  const label = `${language}: core and grammar corpora`;
+  steps.push(spawnStep(command, [...args, '--json'], cwd).then((r) => {
+    let summary = null;
+    try { summary = JSON.parse(r.stdout); } catch { /* reported below */ }
+    if (r.status !== 0 || !summary || summary.fail !== 0) {
+      const failures = summary?.failures ? JSON.stringify(summary.failures.slice(0, 20), null, 1) : (r.stdout || '').slice(-6000);
+      return { ok: false, label, text: `FAIL ${label}\n${failures}${(r.stderr || '').slice(-6000)}${r.error ? String(r.error) : ''}\n` };
+    }
+    const part = (total, skipped, noun) => (skipped ? `${total - skipped} of ${total} ${noun} (${skipped} skipped)` : `${total} ${noun}`);
+    const skippedCore = summary.per_corpus?.core?.skipped ?? 0;
+    const skippedGrammar = summary.per_corpus?.grammar?.skipped ?? 0;
+    return { ok: true, text: `PASS ${language}: ${part(core.vectors.length, skippedCore, 'core')} + ${part(grammar.cases.length, skippedGrammar, 'grammar')}\n` };
+  }));
+}
+runLanguage('JavaScript', 'node', ['caid/conformance/runners/run.mjs'], REPO);
+runLanguage('Python', PYTHON, ['caid/conformance/runners/run.py'], REPO);
+runLanguage('Go', 'go', ['run', '.'], path.join(HERE, 'runners/go'));
 run('JavaScript unit tests', 'node', ['--test', 'caid/impl/js/unit-tests.mjs'], REPO);
 run('Python unit tests', PYTHON, ['caid/impl/python/test_caid.py'], REPO);
 run('Go unit tests', 'go', ['test', '-count=1', './...'], GO_ROOT);
@@ -167,4 +184,7 @@ if (failed.length) {
   process.stderr.write(`\nCAID conformance: ${failed.length} step(s) failed:\n  ${failed.join('\n  ')}\n`);
   process.exit(1);
 }
-console.log(`CAID conformance: ${core.vectors.length} core + ${grammar.cases.length} grammar + ${mappingCorpus.vectors.length} mapping + ${interopCorpus.vectors.length} consequential-interoperability vectors green in JavaScript, Python and Go, against the spec oracle.`);
+// A vector with applies_when runs only where its suite condition holds
+// (cbor-sha256 support is OPTIONAL); the runners count the others as skipped.
+const conditional = core.vectors.filter((v) => v.applies_when).length + grammar.cases.filter((c) => c.applies_when).length;
+console.log(`CAID conformance: green for ${core.vectors.length} core + ${grammar.cases.length} grammar + ${mappingCorpus.vectors.length} mapping + ${interopCorpus.vectors.length} consequential-interoperability vectors in JavaScript, Python and Go and against the spec oracle, except that ${conditional} of them apply only where an OPTIONAL suite is, or is not, implemented, and each runner skipped those whose condition does not hold for its implementation (the per-language lines above give what each ran).`);

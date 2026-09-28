@@ -75,6 +75,46 @@ func TestCyclicHostValuesAreRefusedAndTheProcessSurvives(t *testing.T) {
 	})
 }
 
+// A reference back to an enclosing map or slice counts as one value and
+// nothing beyond it is visited (draft -04 Sections 2.2 and 2.5), so a
+// branching cycle stays far inside the value count and a number beside it
+// is still unsupported_number, as in the JavaScript and Python ports.
+func TestBackReferenceCountsAsOneValue(t *testing.T) {
+	branching := obj{"action_type": "t.1", "s": "x", "v": 1.5}
+	branching["p"] = branching
+	branching["q"] = branching
+	arr := []interface{}{nil, nil, nil}
+	arr[0], arr[1], arr[2] = arr, arr, arr
+	threeWay := obj{"action_type": "t.1", "s": "x", "v": 1.5, "a": arr}
+	want := []string{"unsupported_number", "unsupported_value"}
+	withTimeout(t, 10*time.Second, func() {
+		for name, value := range map[string]interface{}{"branching map": branching, "three-way slice": threeWay} {
+			if got := refusals(value, t1Definition); !reflect.DeepEqual(got, want) {
+				t.Errorf("%s: %v, want %v", name, got, want)
+			}
+		}
+	})
+	// A shorter view of one backing array is another array, not a
+	// reference back: [x, [x]] where the inner slice is s[1:2] holds no
+	// cycle until an element refers to a slice that is open on the path.
+	s := make([]interface{}, 2)
+	s[0] = "x"
+	s[1] = s[1:2]
+	if got := Canonicalize(s); got.OK || !reflect.DeepEqual(got.Refusals, []string{"unsupported_value"}) {
+		t.Errorf("slice view that refers to itself: %#v", got)
+	}
+	view := []interface{}{"x", "y"}
+	pair := []interface{}{view, view[0:1]}
+	if got := Canonicalize(pair); !got.OK || got.Canonical != `[["x","y"],["x"]]` {
+		t.Errorf("two views of one backing array: %#v", got)
+	}
+}
+
+var t1Definition = []interface{}{obj{
+	"action_type":     "t.1",
+	"required_fields": []interface{}{obj{"name": "s", "type": "string"}},
+}}
+
 func nest(depth int) interface{} {
 	var v interface{} = obj{}
 	for i := 1; i < depth; i++ {

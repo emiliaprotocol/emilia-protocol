@@ -2,9 +2,10 @@
   "meta": {
     "registry": "caid-suites",
     "registry_version": 2,
-    "updated": "2026-09-26",
+    "updated": "2026-09-27",
     "license": "CC0-1.0",
     "trust_note": "A suite defines only how canonical bytes and a digest are produced. It carries no trust semantics: recomputing a digest proves content identity, never authorization, execution, or safety.",
+    "status_note": "A suite's status is not a type's status. A suite is deprecated once practical collision attacks on its digest are known or anticipated (draft-schrock-canonical-action-identifier-04 Section 12.1), at the request of its change controller, or of the IESG for a controller that cannot be reached or does not respond. Issuers then stop emitting new CAIDs under it, and a relying party removes it from the suites it accepts once the artifacts it relies on carry a CAID under the successor; a verifier never infers acceptance from status.",
     "identifier_note": "The digest is encoded in the CAID string as base64url without padding per RFC 4648 section 5, case-sensitive. digest_octets fixes each suite's digest syntax: ceil(8n/6) characters for n octets, the final character carrying 6*ceil(8n/6)-8n zero low bits (Appendix A of draft-schrock-canonical-action-identifier-04). A grammatical suite outside this registry parses to unknown_suite; a registered suite is never removed, reassigned, or redefined."
   },
   "suites": [
@@ -46,7 +47,7 @@
         "name": "base64url, unpadded",
         "reference": "RFC 4648 section 5"
       },
-      "notes": "Defined in v1; implementations MAY support it. Draft -04 Section 3.1 fixes the mapping from the data model: an object is a map with text-string keys, an array an array, a string a text string, a number (always an integer) major type 0 or 1, and true, false and null the simple values 21, 20 and 22; no tag, byte string or floating-point value appears, and the size limit is measured on the RFC 8785 encoding. The reference implementations in this package ship jcs-sha256 only. Cross-suite equivalence is out of scope: a jcs-sha256 CAID and a cbor-sha256 CAID over the same logical content are different identifiers, and an artifact MAY carry one CAID per suite it computed."
+      "notes": "Defined in v1. Support is OPTIONAL: an implementation that does not implement it parses its CAIDs and refuses them at compute and verify as unknown_suite. Draft -04 Section 3.1 fixes the mapping from the data model: an object is a map with text-string keys, an array an array, a string a text string, a number (always an integer) major type 0 or 1, and true, false and null the simple values 21, 20 and 22; no tag, byte string or floating-point value appears, and the size limit is measured on the RFC 8785 encoding. The reference implementations in this package ship jcs-sha256 only; the conformance corpus carries two cbor-sha256 vectors over the Appendix C.1 object (canonical encoding 207 octets, digest sha256:edb04ef20891696de205147e0ba719167aa446300f4f04cf32bbf077edb4d2f6) that apply only to an implementation that implements it. Cross-suite equivalence is out of scope: a jcs-sha256 CAID and a cbor-sha256 CAID over the same logical content are different identifiers, and an artifact MAY carry one CAID per suite it computed."
     }
   ]
 }

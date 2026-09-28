@@ -1125,6 +1125,45 @@ function readOwnData(obj, key) {
   }
 }
 
+// The own property keys of a host object or array, without invoking a
+// getter. The engine may be unable to list them all at once: V8 lists at
+// most 2^24 keys (Reflect.ownKeys, Object.getOwnPropertyNames and
+// Object.getOwnPropertyDescriptors throw a RangeError, "Too many properties
+// to enumerate", for more), so an array of 2^24 or more elements, whose
+// length is one more key, or an object with more than 2^24 members named
+// by array indices, could not be read, although it is well within the
+// value count and every other port reads it. Such a container
+// is listed through Object.keys and Object.getOwnPropertySymbols, which
+// have no such limit: its enumerable string keys in the same order, then
+// its symbol keys. That listing (complete: false) leaves out the
+// non-enumerable keys: a non-enumerable element then reads as a hole, and
+// a non-enumerable property that is not an element is not seen. Throws
+// whatever a Proxy trap throws.
+/**
+ * @param {object} obj
+ * @returns {{keys: (string | symbol)[], complete: boolean}}
+ */
+function listOwnKeys(obj) {
+  try {
+    return { keys: Reflect.ownKeys(obj), complete: true };
+  } catch (e) {
+    if (!(e instanceof RangeError)) throw e;
+  }
+  return { keys: listEnumerableKeys(obj), complete: false };
+}
+
+// The enumerable string keys of a host object in own-key order, then its
+// symbol keys (the listing listOwnKeys falls back to).
+/**
+ * @param {object} obj
+ * @returns {(string | symbol)[]}
+ */
+function listEnumerableKeys(obj) {
+  /** @type {(string | symbol)[]} */
+  const keys = Object.keys(obj);
+  return keys.concat(Object.getOwnPropertySymbols(obj));
+}
+
 // Reads a host array's elements without invoking user code. Returns null
 // when the value is not an array or cannot be read completely: an option of
 // the wrong type counts as absent.
@@ -1192,7 +1231,10 @@ function readPin(options, key) {
 // typed arrays, class instances, functions, symbols, bigints and the holes
 // of a sparse array. Only the elements an array actually has are read, so
 // the work a sparse array costs is bounded by its elements, never by its
-// length. Numbers and strings are copied as they are; canonicalization
+// length. A container with more own keys than the engine can list at once
+// is read through its enumerable keys (listOwnKeys), so an array of 2^24
+// or more elements is read like any other. Numbers and strings are copied
+// as they are; canonicalization
 // decides whether they are in the model (unsupported_number;
 // unsupported_value for a lone surrogate or a noncharacter).
 //
@@ -1426,9 +1468,17 @@ function expand(p, st, path, frame) {
       // order (OrdinaryOwnPropertyKeys), so they are read in one pass with
       // no second list; keys out of order, and any key that is neither an
       // index below the length nor "length", put the array outside the model.
-      const keys = Reflect.ownKeys(p.src);
+      // An array too large for the engine to list its keys completely
+      // (listOwnKeys) stops being read past the value budget, unless it is
+      // the outermost value: every element costs at least one value, so the
+      // reads stay bounded, and past the budget nothing more is examined.
+      const { keys, complete } = listOwnKeys(p.src);
       let expected = 0;
       for (let k = 0; k < keys.length; k += 1) {
+        if (!complete && p.parent !== null && st.values > VALUE_BUDGET) {
+          incomplete(st);
+          return pending;
+        }
         const key = keys[k];
         if (key === "length") continue;
         const index = arrayIndexOf(key);
@@ -1448,11 +1498,27 @@ function expand(p, st, path, frame) {
       }
       return pending;
     }
-    const descriptors = /** @type {Record<string, PropertyDescriptor>} */ (Object.getOwnPropertyDescriptors(p.src));
-    const allKeys = Reflect.ownKeys(descriptors);
+    /** @type {Record<string, PropertyDescriptor> | null} */
+    let descriptors = null;
+    /** @type {(string | symbol)[]} */
+    let allKeys;
+    try {
+      descriptors = /** @type {Record<string, PropertyDescriptor>} */ (Object.getOwnPropertyDescriptors(p.src));
+      allKeys = Reflect.ownKeys(descriptors);
+    } catch (e) {
+      // Too many members for the engine to list at once (listOwnKeys): the
+      // enumerable ones are listed instead, and each is read on its own.
+      if (!(e instanceof RangeError)) return null;
+      allKeys = listEnumerableKeys(p.src);
+    }
     for (const key of allKeys) if (typeof key !== "string") return null;
     for (const key of /** @type {string[]} */ (allKeys)) {
-      const d = descriptors[key];
+      if (descriptors === null && p.parent !== null && st.values > VALUE_BUDGET) {
+        incomplete(st);
+        return pending;
+      }
+      const d = descriptors !== null ? descriptors[key] : Reflect.getOwnPropertyDescriptor(p.src, key);
+      if (d === undefined) return null;
       if (hasOwn(d, "value") && d.enumerable === true && d.value === undefined) {
         // undefined is not a JSON value: the member is absent for field
         // presence, and the value refuses as unsupported_value.
@@ -2127,17 +2193,32 @@ function definitionData(entry, actionType) {
     defineMember(view, list, items.map((item) => {
       if (!isPlainHostObject(item)) return item;
       const kept = {};
-      let descriptors;
+      /** @type {Record<string, PropertyDescriptor> | null} */
+      let descriptors = null;
+      /** @type {(string | symbol)[]} */
+      let keys;
       try {
-        descriptors = Object.getOwnPropertyDescriptors(item);
-      } catch {
-        return UNSUPPORTED;
+        descriptors = /** @type {Record<string, PropertyDescriptor>} */ (Object.getOwnPropertyDescriptors(item));
+        keys = Reflect.ownKeys(descriptors);
+      } catch (e) {
+        // Too many members for the engine to list at once (listOwnKeys).
+        if (!(e instanceof RangeError)) return UNSUPPORTED;
+        try {
+          keys = listEnumerableKeys(item);
+        } catch {
+          return UNSUPPORTED;
+        }
       }
-      for (const key of Reflect.ownKeys(descriptors)) {
+      for (const key of keys) {
         if (typeof key !== "string") return UNSUPPORTED;
         if (PROJECTION_EXCLUDED.has(key)) continue;
-        const md = /** @type {Record<string, PropertyDescriptor>} */ (descriptors)[key];
-        if (!hasOwn(md, "value") || md.enumerable !== true) return UNSUPPORTED;
+        let md;
+        try {
+          md = descriptors !== null ? descriptors[key] : Reflect.getOwnPropertyDescriptor(item, key);
+        } catch {
+          return UNSUPPORTED;
+        }
+        if (md === undefined || !hasOwn(md, "value") || md.enumerable !== true) return UNSUPPORTED;
         defineMember(kept, key, md.value);
       }
       return kept;

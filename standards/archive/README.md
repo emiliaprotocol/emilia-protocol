@@ -57,11 +57,32 @@ The following posted revision was superseded on 2026-08-11 and moved here:
 
 - `draft-schrock-ep-bounded-capability-receipts-03`
 
+The following superseded snapshots were moved here on 2026-09-27, when their
+successors were mirrored into `../posted/`:
+
+- `draft-schrock-ep-authorization-receipts-12` (superseded by -13)
+- `draft-schrock-ep-bounded-capability-receipts-04` (superseded by -05 and -06;
+  -05 was never mirrored and remains in its `../staged/` provenance packet)
+- `draft-schrock-ep-presentation-binding-00` (superseded by -01)
+- `draft-schrock-ep-quorum-03` (superseded by -04)
+
+On 2026-09-27 the per-request Cloudflare challenge script that the IETF archive
+delivery path appends to HTML was removed from seven archived renders:
+`draft-schrock-action-evidence-boundary-04`, `draft-schrock-ae-challenge-03`,
+`draft-schrock-ae-challenge-05`, `draft-schrock-ae-challenge-06`,
+`draft-schrock-ep-authorization-receipts-11`,
+`draft-schrock-ep-authorization-receipts-12`, and
+`draft-schrock-ep-bounded-capability-receipts-03`. Each is byte-identical to a
+fresh archive fetch with that script removed. The previous
+`draft-schrock-ae-challenge-06.html` was a copy of the -07 render; it was
+replaced with the archive's -06 HTML. The -06 TXT was already byte-identical
+to the archive.
+
 `draft-schrock-authorization-evidence-challenge-01.html` is an unfiled
 rendering from the longer-named July 3 series that Datatracker marks replaced
 by Action Evidence Boundary. The active standalone challenge is the distinct
-`draft-schrock-ae-challenge-01` revision in `../posted/`; this archived HTML is
-not an upload candidate.
+`draft-schrock-ae-challenge` series, whose current -07 revision is in
+`../posted/`; this archived HTML is not an upload candidate.
 
 The following unfiled standalone candidates were retired on 2026-07-14:
 

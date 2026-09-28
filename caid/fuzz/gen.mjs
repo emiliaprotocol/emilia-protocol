@@ -17,6 +17,8 @@
 //
 // Families:
 //   vec-core   structured mutations of every core corpus v5 vector
+//              (native vectors that build more than 2^20 values are left
+//              to the conformance run)
 //   vec-map    structured mutations of every mapping vector (v2 + interop)
 //   registry   a valid object per registry type, then per-field mutations
 //   grammar    every ASCII char at every position of short identifiers,
@@ -203,6 +205,23 @@ const ACTION_TYPE_VARIANTS = (t) => {
 };
 
 // ================================================================ vec-core
+// The number of values a native-lane encoding builds, counted once per
+// path as the value count counts them (a cyclic reference counts as one).
+const HEAVY_NATIVE = 2 ** 20;
+function nativeValues(v) {
+  if (Array.isArray(v)) return v.reduce((n, x) => n + nativeValues(x), 1);
+  if (v === null || typeof v !== "object") return 1;
+  const keys = Object.keys(v);
+  if (keys.length === 1 && keys[0].startsWith("$")) {
+    const t = v[keys[0]];
+    if (keys[0] === "$fill") return 1 + t.n * nativeValues(t.v);
+    if (keys[0] === "$dag") return (2 ** t.depth - 1) + 2 ** t.depth * nativeValues(t.leaf);
+    if (keys[0] === "$nest") return t.depth + nativeValues(t.leaf);
+    if (keys[0] === "$object") return t.reduce((n, [, x]) => n + nativeValues(x), 1);
+    return 1;
+  }
+  return keys.reduce((n, k) => n + nativeValues(v[k]), 1);
+}
 function familyVecCore() {
   for (const v of coreCorpus.vectors) {
     const defs = v.definitions;
@@ -216,6 +235,13 @@ function familyVecCore() {
       continue;
     }
     if (v.input.native !== undefined) {
+      // A native vector is run as it stands, never mutated. One whose host
+      // value, or whose definitions, reach more than 2^20 values (a long
+      // array, shared arrays near or past the value count) costs seconds in
+      // the oracle, which counts every path, and in some lanes; the
+      // conformance corpus already runs it in every port and against the
+      // oracle, so it stays there.
+      if (nativeValues(v.input.native) > HEAVY_NATIVE || nativeValues(v.definitions) > HEAVY_NATIVE) continue;
       M("native vector") && emit("vec-core", { op: v.kind, native: v.input.native, defs, snaps_ref: "iso", ...(v.kind === "compute" ? { suite: v.input.suite } : { caid: v.input.caid }) });
       continue;
     }

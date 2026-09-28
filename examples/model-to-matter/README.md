@@ -34,11 +34,11 @@ npm run m2m:conformance
 npm run test:mutation:model-to-matter
 ```
 
-The Experimental Internet-Draft source is staged at
-`standards/posted/draft-schrock-model-to-matter-00.xml`. It is a July 19
-Experimental filing candidate, scheduled after the four-document protocol
-line. An executor partner remains necessary for any deployment or adoption
-claim, not for publication of the open profile.
+The Experimental Internet-Draft `draft-schrock-model-to-matter` was first
+filed as -00 on July 19, 2026. That source is retained at
+`standards/archive/draft-schrock-model-to-matter-00.xml`, and the current
+posted snapshot is in `standards/posted/`. An executor partner remains
+necessary for any deployment or adoption claim.
 
 ## Honest boundary
 

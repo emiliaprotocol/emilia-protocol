@@ -23,7 +23,7 @@
     },
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "fab6661cd27dc0f01971fcbed1dbe1615d19f97bc3d14070643a8eea471434ae"
+      "sha256": "25ee8e5657b3aee64c6e1ecadcab0eb74b4fd81443ada4245165276f993d3a4a"
     },
     {
       "path": "caid/registry/enum-snapshots.mjs",
@@ -511,7 +511,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "b86da37b4af4b3d4bbd9e7560b54bbb6e8e6a739d867fcb7df618eb65f304fb2"
+      "sha256": "79d807c6eea0a4d8e7597006aba83bf344d8c63cb28fbedf7a6086688607a96c"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1199,7 +1199,7 @@
     },
     {
       "path": "packages/verify/dist/evidence-chain.js",
-      "sha256": "a7008d3d5694ded35a2593367ae6da079c978a7ac4876b1ab4751a3491c01122"
+      "sha256": "4ac3b63363b6848bc8d63fd6609ce66037cea59902cc9a3312213e661bae487a"
     },
     {
       "path": "packages/verify/dist/evidence-record.js",
@@ -1379,7 +1379,7 @@
     },
     {
       "path": "packages/verify/src/evidence-chain.ts",
-      "sha256": "f3d47a098521d7e4ab43b055f15576a3d0371ef0039dd9e50ff4ad2c5371f7df"
+      "sha256": "8539bfde0d37b443b28942ed91a0acee4fdb5ae4ca30acf2e3a39fe5d50f27e2"
     },
     {
       "path": "packages/verify/src/index.ts",
@@ -1407,7 +1407,7 @@
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "sha256": "fab6661cd27dc0f01971fcbed1dbe1615d19f97bc3d14070643a8eea471434ae"
+      "sha256": "25ee8e5657b3aee64c6e1ecadcab0eb74b4fd81443ada4245165276f993d3a4a"
     },
     {
       "path": "scripts/build-standalone-runtimes.mjs",

@@ -5,7 +5,7 @@
   "fetch_note": "This profile inherits the exact OpenID source facts refreshed by coaz-translation-v0.1 on 2026-08-25. No newer upstream status is claimed here.",
   "inherits": {
     "path": "conformance/composition/coaz-translation-v0.1/source-lock.json",
-    "sha256": "2b5aa8eb7d2beb0269c5b6fd7af242e0786bcc37256901b7720a6bc9c2829474"
+    "sha256": "bfab43c8719e1ac532d675028b4d908eec05cad3c840e1255a72aa3feb25d5a1"
   },
   "upstream_repository": {
     "url": "https://github.com/openid/authzen",
@@ -70,7 +70,7 @@
     },
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "fab6661cd27dc0f01971fcbed1dbe1615d19f97bc3d14070643a8eea471434ae"
+      "sha256": "25ee8e5657b3aee64c6e1ecadcab0eb74b4fd81443ada4245165276f993d3a4a"
     },
     {
       "path": "caid/registry/enum-snapshots.mjs",
@@ -238,7 +238,7 @@
     },
     {
       "path": "packages/verify/dist/evidence-chain.js",
-      "sha256": "a7008d3d5694ded35a2593367ae6da079c978a7ac4876b1ab4751a3491c01122"
+      "sha256": "4ac3b63363b6848bc8d63fd6609ce66037cea59902cc9a3312213e661bae487a"
     },
     {
       "path": "packages/verify/dist/evidence-record.js",
@@ -486,7 +486,7 @@
     },
     {
       "path": "packages/verify/src/evidence-chain.ts",
-      "sha256": "f3d47a098521d7e4ab43b055f15576a3d0371ef0039dd9e50ff4ad2c5371f7df"
+      "sha256": "8539bfde0d37b443b28942ed91a0acee4fdb5ae4ca30acf2e3a39fe5d50f27e2"
     },
     {
       "path": "packages/verify/src/evidence-record.ts",
@@ -614,7 +614,7 @@
     },
     {
       "path": "packages/verify/vendor/caid.mjs",
-      "sha256": "fab6661cd27dc0f01971fcbed1dbe1615d19f97bc3d14070643a8eea471434ae"
+      "sha256": "25ee8e5657b3aee64c6e1ecadcab0eb74b4fd81443ada4245165276f993d3a4a"
     }
   ],
   "public_dependency_base": "761ff724cb3c96fe5863023f978512d406d6b84c",

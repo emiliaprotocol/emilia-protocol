@@ -5,7 +5,7 @@ Registry" (RFC 9110, Sections 16.3.1 and 18.4; registry:
 <https://www.iana.org/assignments/http-fields>). See `README.md` in this
 directory for submission channels and the status tracker.
 
-**Both entries here are PROPOSED, requires draft text in next rev.** No
+**Both entries here are NOT PREPARED; no active backing draft.** No
 posted or batch draft carries a normative HTTP field *definition* or a
 registration request. The field names below appear in
 `draft-schrock-agent-action-manifest-00` — Section 5 (on refusal the service
@@ -16,14 +16,17 @@ example's control object (`"challenge_header": "Receipt-Required"`,
 implementation (`packages/require-receipt/index.js`:
 `RECEIPT_REQUIRED_HEADER = 'Receipt-Required'`,
 `RECEIPT_PROOF_HEADER = 'X-EMILIA-Receipt'`; consumed in `packages/gate`).
-That names the strings; it does not define the fields. A next revision must
-add a field-definition section (syntax, semantics, and whether the values are
-RFC 8941/RFC 9651 Structured Fields) plus an IANA Considerations request
-before either entry is filed. Prepared as **provisional** registrations,
-which is the registry's lane for fields whose specification is in progress.
+That names the strings; it does not define the fields. The manifest draft
+is in state Replaced on Datatracker, and no draft source in
+`standards/posted/` or `standards/staged/` carries either field name. An
+active draft must add a field-definition section (syntax, semantics, and
+whether the values are RFC 8941/RFC 9651 Structured Fields) plus an IANA
+Considerations request before either entry is filed. The templates below
+are drafted as **provisional** registrations, the registry's lane for fields
+whose specification is in progress, and are not ready to file.
 
 **Consistency rule applied:** these are the deployed, draft-named strings. Do
-not invent replacement names here — if the next revision introduces a cleaner
+not invent replacement names here. If a defining draft introduces a cleaner
 successor field (see the RFC 6648 note under entry 2), that is the draft's
 decision to make, and this file gets updated to match the draft, not the
 other way around.
@@ -44,9 +47,10 @@ telling the caller what evidence to bring.
 
 **Specification document(s):**
 draft-schrock-agent-action-manifest-00, Section 5 (names the field via the
-control object's `challenge_header` member) — an active individual
-Internet-Draft, not IETF-adopted or endorsed. A normative field definition is
-required in a future revision before permanent registration.
+control object's `challenge_header` member); an individual Internet-Draft,
+not IETF-adopted or endorsed, now in state Replaced. An active draft that
+defines the field normatively and requests the registration is required
+before filing.
 
 **Comments:**
 Response field only. The deployed serialization
@@ -81,9 +85,10 @@ receipt-gated action.
 **Specification document(s):**
 draft-schrock-agent-action-manifest-00, Section 5 (names the field via the
 control object's `proof_header` member); receipt profile per
-draft-schrock-ep-authorization-receipts. Both are active individual
-Internet-Drafts, not IETF-adopted or endorsed. A normative field definition
-is required in a future revision before permanent registration.
+draft-schrock-ep-authorization-receipts. The manifest draft is in state
+Replaced; draft-schrock-ep-authorization-receipts is active. Neither is
+IETF-adopted or endorsed. An active draft that defines the field normatively
+and requests the registration is required before filing.
 
 **Comments:**
 Request field only. The deployed value
@@ -96,7 +101,7 @@ adopting the Structured Fields Byte Sequence.
 RFC 6648 deprecates the "X-" prefix for new field names, so a *permanent*
 registration under this name is disfavored. The honest path: (a) register
 the deployed name provisionally, because it is what is on the wire and in
-posted draft text; (b) let the next draft revision decide whether to define
+posted draft text; (b) let the defining draft decide whether to define
 an unprefixed successor field, keeping X-EMILIA-Receipt as a documented
 deployed alias. This file deliberately does not invent the successor name.
 
@@ -112,5 +117,5 @@ deployed alias. This file deliberately does not invent the successor name.
   The templates above map onto those columns; the prose "Specification
   document(s)" becomes the Reference column.
 - Provisional entries exist precisely so in-progress specifications can hold
-  a name without claiming more than they have — which matches where these
-  drafts stand.
+  a name without claiming more than they have. That lane fits once an active
+  draft defines these fields; the only draft that names them is Replaced.

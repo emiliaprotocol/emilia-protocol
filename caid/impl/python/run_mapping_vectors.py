@@ -7,9 +7,18 @@ Usage: python3 run_mapping_vectors.py [--corpus PATH] [--json]
 The corpus is read with this port's strict decoder. A vector's expectation
 is a verdict plus the exact reason list ("reasons"); a version 1 vector may
 instead name one reason the list must contain ("reason_contains"). A set
-mutation carries its value as "value", or as "units", the UTF-16 code units
-of a string no strict JSON text can hold. With --json each result also
-carries both sides' definition_sha256 (None for a failed side).
+mutation carries its value as "value", as "units", the UTF-16 code units
+of a string no strict JSON text can hold, as "nest", {depth, container,
+leaf}: leaf inside depth nested lists (or dicts whose only member is "a"),
+a value nested deeper than strict JSON text may be, as "dag", {depth,
+leaf}: leaf inside depth nested two-element lists whose two elements are one
+shared list, a value past the value count, as "fill", {n, v}: a list of n
+elements, each the value v (built once and shared), or as "host", a host
+value no JSON text carries, as in the core corpus native lane: "cyclic", a
+reference to the dict or list that holds the member (its parent), or
+"opaque", a set().
+With --json each result also carries both sides' definition_sha256 (None for
+a failed side).
 """
 
 import copy
@@ -52,6 +61,28 @@ def _units_to_str(units):
     return "".join(out)
 
 
+def _nested(spec):
+    value = copy.deepcopy(spec["leaf"])
+    for _ in range(int(spec["depth"])):
+        value = {"a": value} if spec["container"] == "object" else [value]
+    return value
+
+
+def _shared(spec):
+    value = copy.deepcopy(spec["leaf"])
+    for _ in range(int(spec["depth"])):
+        value = [value, value]
+    return value
+
+
+def _host(kind, parent):
+    if kind == "cyclic":
+        return parent
+    if kind == "opaque":
+        return set()
+    raise ValueError("unsupported host value: " + str(kind))
+
+
 def _mutate(root, operation):
     parts = _segments(operation["path"])
     parent = root
@@ -64,7 +95,18 @@ def _mutate(root, operation):
         else:
             del parent[key]
     elif operation["op"] == "set":
-        parent[key] = _units_to_str(operation["units"]) if "units" in operation else copy.deepcopy(operation["value"])
+        if "units" in operation:
+            parent[key] = _units_to_str(operation["units"])
+        elif "nest" in operation:
+            parent[key] = _nested(operation["nest"])
+        elif "dag" in operation:
+            parent[key] = _shared(operation["dag"])
+        elif "fill" in operation:
+            parent[key] = [copy.deepcopy(operation["fill"]["v"])] * int(operation["fill"]["n"])
+        elif "host" in operation:
+            parent[key] = _host(operation["host"], parent)
+        else:
+            parent[key] = copy.deepcopy(operation["value"])
     else:
         raise ValueError("unsupported vector mutation: " + operation["op"])
 

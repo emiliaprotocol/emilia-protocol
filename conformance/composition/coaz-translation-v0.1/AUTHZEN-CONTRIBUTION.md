@@ -1,12 +1,23 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# Proposed AuthZEN COAZ-MCP contribution
+# AuthZEN COAZ-MCP contribution
 
-Status: proposed locally; not submitted to or accepted by OpenID AuthZEN.
+Status: submitted as `openid/authzen` pull request #626, "COAZ-MCP: bind
+permits to evaluated operations", opened 2026-08-23 and merged into the
+repository's `main` branch on 2026-09-10 (merge commit
+`ca92c756eb889ec90b88b83f6bc99c4eb59b0d83`).
+
+The merged change edits `profiles/authzen-coaz-mcp-binding-1_0.md`. Its wording
+differs from the candidate text below, and the merged diff is authoritative.
+It adds a rewrite and normalization step and a pre-permit operation-binding
+check to PEP Behavior (candidate change 1), and a new section, "Authorization
+Granularity and Omitted Inputs" (candidate change 2). Issue 603 was closed as
+completed when the pull request merged.
 
 Source basis: `openid/authzen` commit
 `e287920eed842b227e38531c1735b712337ca44d`, fetched 2026-08-25. The
 repository commit, two load-bearing Markdown files, rendered specifications,
-Authorization API 1.0, and open issue 603 are pinned in `source-lock.json`.
+Authorization API 1.0, and issue 603 as it stood on that date are pinned in
+`source-lock.json`. The candidate text below was written against that commit.
 
 ## Candidate change 1: bind a permit to the operation used for evaluation
 
@@ -22,9 +33,8 @@ permitted message is allowed to proceed:
 > or refuse it; it MUST NOT reuse the earlier permit. This comparison is
 > semantic and does not require raw JSON byte equality.
 
-This is candidate text for the pre-execution boundary described in open
-`openid/authzen` issue 603. The issue proposes the change; its open state does
-not establish working-group agreement.
+This is candidate text for the pre-execution boundary described in
+`openid/authzen` issue 603, which was open when the text was written.
 
 ## Candidate change 2: make the projection boundary explicit
 
@@ -71,5 +81,7 @@ not a normative dependency of either candidate change.
   implementation evidence.
 - A CAID establishes typed content correlation only. It does not establish
   authorization, execution, safety, source truth, or policy compliance.
-- This file is contribution-ready discussion material, not evidence of an
-  OpenID submission, review, consensus, adoption, or acceptance.
+- The upstream events this file records are the opening and merge of pull
+  request #626 in the `openid/authzen` repository and the closure of issue
+  603. None is evidence of working-group consensus, approval of a final
+  specification, adoption of any text, or implementation of the profile.

@@ -1,10 +1,10 @@
-# EMILIA — the authority toll booth for autonomous work
+# EMILIA: the authority checkpoint for autonomous work
 
 *Product brief · 2026-07 · EMILIA Protocol, Inc.*
 
 > **Every consequential agent action enters with authority and exits with a receipt.**
 
-**The frame:** EMILIA is building the universal authority toll booth for autonomous action. A human or institution
+**The frame:** EMILIA is building the authority checkpoint for autonomous action. A human or institution
 defines a finite operating mandate—mission, limits, evidence, expiry, delegation, and exception
 rules—and agents work unattended inside it. **EMILIA Gate** is the commercial Consequence Firewall
 that enforces each exact unit of work at the **actuator boundary**—before API calls, deploys,
@@ -182,8 +182,8 @@ Gate can sit at each of these actuator boundaries:
 
 ## Standards
 
-The governed repository inventory currently tracks 24 active Datatracker records: 20
-sole-authored records and four coauthored records. As of 2026-09-26 the current Datatracker
+The governed repository inventory currently tracks 26 active Datatracker records: 21
+sole-authored records and five coauthored records. As of 2026-09-27 the current Datatracker
 revisions include AE-CHALLENGE -07, AEB -07, CAID -03, Architecture -03, AEC -06, Authorization
 Receipts -13, Bounded Capability Receipts -06, Presentation Binding -01, Quorum -04,
 Model-to-Matter -04, and the coauthored GRACE Grid Curtailment -00.

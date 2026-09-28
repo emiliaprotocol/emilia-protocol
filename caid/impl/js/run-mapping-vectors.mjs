@@ -6,8 +6,17 @@
 // The corpus is read with this port's strict decoder. A vector's expected
 // reasons are an exact list ("reasons"); "reason_contains" is accepted for
 // corpora that pin a single reason. A set mutation carries its value as
-// "value", or as "units", the UTF-16 code units of a string that no strict
-// JSON text can hold (a noncharacter or a lone surrogate). With --json each
+// "value", as "units", the UTF-16 code units of a string that no strict
+// JSON text can hold (a noncharacter or a lone surrogate), as "nest",
+// {depth, container, leaf}: leaf inside depth nested arrays (or objects
+// whose only member is "a"), a value nested deeper than strict JSON text
+// may be, as "dag", {depth, leaf}: leaf inside depth nested two-element
+// arrays whose two elements are one shared array, a value past the value
+// count, as "fill", {n, v}: an array of n elements, each the value v
+// (built once and shared), long enough that V8 cannot list its keys at
+// once, or as "host", a host value no JSON text carries, as in the core
+// corpus native lane: "cyclic", a reference to the object or array that
+// holds the member (its parent), or "opaque", a new Map(). With --json each
 // result also carries both sides' definition_sha256 (null for a failed
 // side), which caid/conformance/run.mjs compares across implementations.
 //
@@ -49,11 +58,33 @@ function mutate(root, operation) {
     if (Array.isArray(parent)) parent.splice(key, 1);
     else delete parent[key];
   } else if (operation.op === 'set') {
-    const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units) : clone(operation.value);
+    const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units)
+      : Object.prototype.hasOwnProperty.call(operation, 'nest') ? nested(operation.nest)
+        : Object.prototype.hasOwnProperty.call(operation, 'dag') ? shared(operation.dag)
+          : Object.prototype.hasOwnProperty.call(operation, 'fill') ? new Array(operation.fill.n).fill(clone(operation.fill.v))
+            : Object.prototype.hasOwnProperty.call(operation, 'host') ? hostValue(operation.host, parent) : clone(operation.value);
     Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else {
     throw new Error('unsupported vector mutation: ' + operation.op);
   }
+}
+
+function hostValue(kind, parent) {
+  if (kind === 'cyclic') return parent;
+  if (kind === 'opaque') return new Map();
+  throw new Error('unsupported host value: ' + kind);
+}
+
+function nested({ depth, container, leaf }) {
+  let value = clone(leaf);
+  for (let i = 0; i < depth; i += 1) value = container === 'object' ? { a: value } : [value];
+  return value;
+}
+
+function shared({ depth, leaf }) {
+  let value = clone(leaf);
+  for (let i = 0; i < depth; i += 1) value = [value, value];
+  return value;
 }
 
 function buildSide(corpus, descriptor) {

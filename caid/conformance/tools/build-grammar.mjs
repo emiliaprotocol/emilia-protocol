@@ -30,6 +30,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { matches } from '../../spec/abnf.mjs';
 import { loadCaidGrammar } from '../../spec/gen.mjs';
+import { SUITE_PROBE } from './core-cases.mjs';
 import * as oracle from './oracle.mjs';
 import { decodeStrict, hasLoneSurrogate, hasNoncharacter } from './strict-json.mjs';
 
@@ -214,6 +215,12 @@ function addCase(driver, encoded, lane, grammarVerdict) {
   const entry = { driver, lane, case: encoded };
   if (grammarVerdict !== undefined) entry.grammar = grammarVerdict;
   entry.expect = expect;
+  // A registered suite that support may omit (cbor-sha256 is OPTIONAL)
+  // is unknown_suite only where it is not implemented.
+  const caseText = lane === 'bytes' ? null : caseString(encoded);
+  if (driver === 'suite.compute' && caseText !== 'jcs-sha256' && oracle.spec.suites.some((x) => x.suite === caseText)) {
+    entry.applies_when = { suite_not_implemented: caseText };
+  }
   // The result must follow the grammar verdict, except where the driver's
   // other rules decide first: the registry and digest syntax at parse, the
   // calendar for timestamps, format registration, the suite registry,
@@ -281,11 +288,13 @@ const envelope = {
   description: 'Curated grammar boundary cases for draft-schrock-canonical-action-identifier-04 Appendix A, run through each implementation\'s public entry points (parse and compute with one-field type definitions), never its generated regular expressions. grammar is the ABNF interpreter\'s verdict for the case string alone; expect is the exact result, which the driver\'s other rules (suite registry, digest syntax, calendar, format registration, JSON text and data-model refusals) can decide first.',
   format: {
     drivers: 'A parse driver parses caid.prefix + CASE + caid.suffix. A compute driver computes over object with definitions [definition] and the suite (jcs-sha256 unless the driver names "$CASE"), where every string "$CASE", as a value or a member name, is replaced by the case string.',
+    conditions: 'applies_when {suite_not_implemented: S} limits a case to implementations that do not implement the registered suite S (support for cbor-sha256 is OPTIONAL). A runner decides with suite_probe: computing suite_probe.object with definitions suite_probe.definitions, no enum snapshots and suite S yields a CAID exactly when the implementation implements S. A case whose condition does not hold is skipped and reported as skipped, never as passed.',
     cases: 'case is a string, {"$units": [UTF-16 code units]} (a string that may hold lone surrogates or noncharacters), {"repeat": {prefix, unit, count, suffix}}, or {"b64": octets}. Lane text: serialize the substituted object as JSON text (any correct encoder), call the byte entry point, and when the text decodes also the native entry point on the decoded value; the results must be identical. Lane native: build the host values and call the native entry point only. Lane bytes: serialize the object with the case replaced by the placeholder @@CASE@@, replace each occurrence of @@CASE@@ in the text with the raw case octets, and call the byte entry point. A compute expectation is {caid} (compare the computed CAID only; the core corpus pins the rest of the result) or {refusals} (compare exactly); a parse expectation is the exact parse result.',
   },
   source: 'node caid/spec/abnf-check.mjs --out (membership cases), spread deterministically; curated extras in caid/conformance/tools/build-grammar.mjs',
   counts,
   placeholder: PLACEHOLDER,
+  suite_probe: SUITE_PROBE,
   drivers: Object.fromEntries(Object.entries(DRIVERS).map(([k, d]) => {
     const { source, ...rest } = d;
     return [k, rest];

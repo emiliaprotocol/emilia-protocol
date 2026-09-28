@@ -71,6 +71,15 @@ it:
   (whose traps are never trusted: an object that contains one refuses), and
   containers nested deeper than 64.
 
+V8 cannot list more than 2^24 own keys at once (`Reflect.ownKeys` and
+`Object.getOwnPropertyDescriptors` throw a `RangeError`), so an array of
+2^24 or more elements, whose `length` is one more key, or an object with
+more than 2^24 members named by array indices, is read through
+`Object.keys` and `Object.getOwnPropertySymbols` instead. It is accepted or refused as above, within the value count, with
+one difference: those calls do not list non-enumerable keys, so a
+non-enumerable element there reads as a hole and still refuses the value,
+but a non-enumerable member that is not an element is not seen.
+
 For every value the strict decoder can produce, the native result equals the
 byte result. A member named `__proto__` is an ordinary own member on both
 paths. A string or member name holding a lone surrogate or a noncharacter

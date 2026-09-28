@@ -95,7 +95,7 @@ field-char    = %x00-39 / %x3B-D7FF / %xE000-10FFFF
                                  ; holds no noncharacter
 
 format-name   = lower-char *( lower-char / DIGIT / "-" )
-                                 ; the registered formats are A.4
+                                 ; the formats of this document: A.4
 
 code-system   = uri-scheme ":" 1*uri-char
                                  ; a scheme, ":", and URI characters:

@@ -1,0 +1,896 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Standards Track                       15 September 2026
+Expires: 19 March 2027
+
+
+         Agent Operation Continuity Across Executor Replacement
+              draft-schrock-agent-operation-continuity-00
+
+Abstract
+
+   An agent executor can fail or be replaced after a consequential
+   provider request may have crossed an effect boundary but before the
+   outcome is known.  Native authorization, succession, evidence-
+   boundary, and bounded-capability mechanisms address parts of this
+   interval, but they do not by themselves define how a replacement
+   executor preserves the same provider operation and its unresolved
+   evidence.
+
+   This document defines a composition profile for one authoritative
+   coordination domain.  The profile preserves stable operation-
+   occurrence identity, immutable provider bindings, authority
+   accounting, uncertain evidence, and stale-executor fences across
+   replacement.  It defines no new receipt, identity, authority,
+   provider, or ledger-migration format, and it does not require any
+   particular evidence envelope.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 19 March 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+
+
+Schrock                   Expires 19 March 2027                 [Page 1]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  Conventions and Definitions . . . . . . . . . . . . . . . . .   3
+   3.  Scope, Assumptions, and Non-Goals . . . . . . . . . . . . . .   4
+   4.  Continuity Requirements . . . . . . . . . . . . . . . . . . .   5
+     4.1.  AOC-REQ-001: One Authoritative Coordination Domain  . . .   5
+     4.2.  AOC-REQ-002: Stable Occurrence Identity Without a New
+            Namespace  . . . . . . . . . . . . . . . . . . . . . . .   5
+     4.3.  AOC-REQ-003: Immutable Provider Binding . . . . . . . . .   6
+     4.4.  AOC-REQ-004: Append-Only Attempt Evidence . . . . . . . .   6
+     4.5.  AOC-REQ-005: Preserve Uncertainty Through Replacement . .   7
+     4.6.  AOC-REQ-006: Fence Retired Executors  . . . . . . . . . .   7
+     4.7.  AOC-REQ-007: Historical Responses Are Evidence, Not
+            Authority  . . . . . . . . . . . . . . . . . . . . . . .   7
+     4.8.  AOC-REQ-008: Pre-Entry Release Requires Serialized
+            Non-Entry  . . . . . . . . . . . . . . . . . . . . . . .   7
+     4.9.  AOC-REQ-009: Status-Source Truth and Missing Knowledge  .   8
+     4.10. AOC-REQ-010: Refuse Rebinding and Duplicate Attempts  . .   8
+     4.11. AOC-REQ-011: Provider-Specific Terminal Interpretation  .   9
+     4.12. AOC-REQ-012: Provider Entry Consumes Authority  . . . . .   9
+     4.13. AOC-REQ-013: No Migration or Format-Equivalence Claim . .  10
+   5.  Native Composition Boundaries . . . . . . . . . . . . . . . .  10
+   6.  Provider Profile Contract . . . . . . . . . . . . . . . . . .  11
+   7.  Conformance . . . . . . . . . . . . . . . . . . . . . . . . .  11
+   8.  Security Considerations . . . . . . . . . . . . . . . . . . .  13
+   9.  Implementation Status . . . . . . . . . . . . . . . . . . . .  14
+   10. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  14
+   11. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  15
+   12. Normative References  . . . . . . . . . . . . . . . . . . . .  15
+   13. Informative References  . . . . . . . . . . . . . . . . . . .  15
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  16
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 19 March 2027                 [Page 2]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+1.  Introduction
+
+   A worker may submit a consequential request to a payment, messaging,
+   infrastructure, or other effecting provider and then fail before it
+   can persist the provider's response.  Replacing that worker does not
+   make the earlier request disappear.  A successor that treats the work
+   as fresh can duplicate the effect, while a successor that discards
+   the work can lose an unresolved obligation.
+
+   Several native mechanisms provide relevant pieces.  AADP [AADP]
+   provides durable per-action authorization intent, decision and report
+   idempotency, and an attempted/result-unknown report.  Succession
+   Receipts [SUCCESSION] can record a completed predecessor-to-successor
+   transition and carried commitments.  AEB [AEB] separates provider
+   entry from effect outcome and requires authenticated reconciliation.
+   Bounded Capability Receipts [BCR] define durable reservation,
+   provider-entry accounting, replay tombstones, and an admission epoch.
+
+   This document specifies the missing composition contract: preserve
+   one provider-operation occurrence and its evidence across replacement
+   without restoring spent authority, resetting provider keys, or
+   inventing a favorable outcome.  The contract is deliberately bounded
+   to one authoritative coordination domain and its covered provider
+   paths.
+
+2.  Conventions and Definitions
+
+   The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD,
+   SHOULD NOT, RECOMMENDED, NOT RECOMMENDED, MAY, and OPTIONAL in this
+   document are to be interpreted as described in BCP 14 [RFC2119]
+   [RFC8174] when, and only when, they appear in all capitals, as shown
+   here.
+
+   Operation occurrence  One intended consequential provider operation
+      whose continuity is being preserved.  Its reference may reuse an
+      existing native operation identifier that satisfies this profile.
+      This document creates no new identifier namespace.
+
+   Occurrence-creation binding  The durable, coordination-domain-owned
+      idempotency input or pinned system-of-record reference by which
+      the domain recognizes retries of an occurrence-creation request.
+
+   Coordination boundary  The trusted admission component for the
+      declared coordination domain.  It owns or validates occurrence
+      creation, serializes authority state and provider entry, and
+      fences stale worker executors.  It is distinct from the
+      replaceable worker executor.
+
+
+
+
+Schrock                   Expires 19 March 2027                 [Page 3]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+   Executor generation  A monotonically ordered generation or epoch used
+      by the coordination domain to distinguish the current executor
+      from a retired predecessor.
+
+   Provider binding  The immutable tuple of provider profile, provider
+      account or environment, exact request representation or digest,
+      native idempotency-key rule and value where available, and
+      provider operation reference where issued.
+
+   Provider entry  The authority-accounting boundary after which the
+      provider may have received the request.  Under BCR-06, this is the
+      atomic provider_entered transition that moves reserved authority
+      to consumed before adapter invocation.
+
+   Attempt evidence  Append-only evidence about preparation, provider
+      entry, acknowledgement, status, or terminal reconciliation for one
+      bound attempt.
+
+   Missing knowledge  An explicit statement that configured status
+      sources cannot establish a required fact.  It is not provider
+      failure, non-entry, success, or permission to retry.
+
+3.  Scope, Assumptions, and Non-Goals
+
+   This profile covers one authoritative coordination domain that
+   serializes admission for a protected provider path.  The domain
+   admits or refuses each covered occurrence and preserves it when the
+   worker executor is replaced.
+
+   The profile assumes that every covered executor uses the coordination
+   boundary before provider entry; that the deployment pins a provider
+   profile, account or environment, exact request representation, native
+   key and reference rules, status sources, and retention expectations;
+   and that each native authority mechanism retains its own accounting
+   and replay semantics.
+
+   The profile does not make an uncovered credential path safe.  An
+   implementation MUST disclose direct, administrator, break-glass,
+   queued, alternate-protocol, and system-of-record paths that bypass
+   the coordination domain.
+
+   This document does not define a universal customer, job,
+   responsibility, task, action-digest, agent, or worker identifier; a
+   new succession or authorization receipt; a portable authority ledger;
+   a universal provider key or outcome vocabulary; payment, refund,
+   compensation, reputation, or acceptance semantics; a mandatory
+   evidence format; or equivalence between native identifiers or
+   verdicts.
+
+
+
+Schrock                   Expires 19 March 2027                 [Page 4]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+4.  Continuity Requirements
+
+4.1.  AOC-REQ-001: One Authoritative Coordination Domain
+
+   For every covered operation occurrence, an implementation MUST
+   identify one authoritative coordination domain that serializes
+   reservation, provider-entry admission, executor-generation changes,
+   and terminal reconciliation.  A profile instance MUST NOT claim
+   exclusive admission control beyond paths mediated by that domain.
+
+4.2.  AOC-REQ-002: Stable Occurrence Identity Without a New Namespace
+
+   The coordination domain MUST select or assign a stable operation-
+   occurrence identifier before provider entry and MUST retain it
+   through executor replacement and terminal reconciliation.  An
+   implementation MAY use an existing native operation identifier, such
+   as a BCR operation identifier, when it is stable, occurrence-
+   specific, and replay-protected under the selected native profile.
+   This document does not define a new universal identifier.
+
+   The coordination domain MUST own the occurrence-creation rule or
+   validate it against a pinned authoritative system of record.  It MUST
+   either resolve a stable system-of-record occurrence reference or
+   atomically mint a new occurrence only after local policy determines
+   that the request is a distinct intended occurrence.  Creation retries
+   MUST use a durable occurrence-creation binding and return the
+   original occurrence.  A caller-supplied business occurrence
+   identifier MAY be used when the coordination boundary authenticates
+   it and validates its uniqueness and semantics under that rule.  A
+   caller-selected relabel, grant, task, or retry ID MUST NOT by itself
+   establish a new occurrence.
+
+   The occurrence identifier MUST NOT be an authority grant identifier,
+   reusable task identifier, or action digest.  A caller retry
+   identifier MAY map to the occurrence only after the coordination
+   boundary resolves it under the durable occurrence-creation binding.
+   Identical action digests MAY represent separate legitimate
+   occurrences when the occurrence-creation rule and local policy
+   distinguish them.  A deployment requiring at most one occurrence for
+   a material action MUST use a durable action fence or bind the unique
+   occurrence into the material action under its pinned definition; it
+   MUST NOT silently treat an action digest as an occurrence identifier.
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 19 March 2027                 [Page 5]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+   An implementation MAY map AADP request_id, AADP permit_id, a
+   Succession Receipt identifier, BCR operation_id, a provider-native
+   key, and a provider operation reference to the occurrence, but MUST
+   retain their types and native meanings and MUST NOT claim semantic
+   equivalence merely because values are stored together or carry equal
+   text.
+
+4.3.  AOC-REQ-003: Immutable Provider Binding
+
+   Before provider entry, the coordination domain MUST durably bind the
+   occurrence to all of the following:
+
+   1.  the exact provider profile and version;
+
+   2.  the provider account, tenant, environment, or equivalent
+       effecting namespace;
+
+   3.  the exact provider request bytes, or a deterministic digest over
+       the complete request representation defined by the profile;
+
+   4.  the native idempotency-key derivation rule and resulting key,
+       when the provider supports one; and
+
+   5.  the provider operation reference, acknowledgement reference, or
+       status locator when one becomes available.
+
+   Every later admission, status query, response, or reconciliation
+   transition MUST match this binding.  An implementation MUST NOT
+   rebind the occurrence to another profile, account, request, native
+   key, or provider reference to escape an unresolved or terminal state.
+
+4.4.  AOC-REQ-004: Append-Only Attempt Evidence
+
+   The coordination domain MUST preserve an append-only history
+   sufficient to distinguish preparation with no serialized provider
+   entry; serialized provider entry without authoritative
+   acknowledgement; provider acknowledgement or native reference; each
+   provider-status observation with source, time, and profile
+   interpretation; and the terminal reconciliation decision with its
+   evidence binding.
+
+   An implementation MAY use different local state labels.  It MUST NOT
+   overwrite a prior observation in a way that hides provider entry,
+   uncertainty, a retired executor, a conflicting observation, or a
+   prior terminal decision.
+
+
+
+
+
+
+Schrock                   Expires 19 March 2027                 [Page 6]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+4.5.  AOC-REQ-005: Preserve Uncertainty Through Replacement
+
+   Replacing an executor MUST NOT change the occurrence identifier,
+   discard its provider binding or attempt evidence, clear its
+   unresolved state, replenish or recreate its authority, or authorize
+   another provider attempt.  The successor MUST receive, or be able to
+   query, the current occurrence state and its unresolved evidence
+   before it can act on that occurrence.
+
+4.6.  AOC-REQ-006: Fence Retired Executors
+
+   The coordination domain MUST advance the executor generation and
+   retire the predecessor before admitting new work for the successor.
+   Reservation and provider-entry transactions MUST compare the current
+   generation with the generation captured for the pending attempt.
+
+   A retired executor MUST NOT create a new reservation, enter the
+   provider, replace the native provider key, or claim a new attempt.
+   The deployment MUST define finite limits for pending and in-flight
+   occurrences so executor failure cannot create unbounded held state.
+   Fencing inside the coordination domain MUST NOT be described as
+   revoking credentials or stopping paths outside that domain.
+
+4.7.  AOC-REQ-007: Historical Responses Are Evidence, Not Authority
+
+   An authenticated provider response received after executor
+   replacement MAY be accepted when it matches the immutable provider
+   binding and the exact predecessor attempt.  Accepting that response
+   MUST NOT reactivate the retired executor, create a new admission,
+   extend authority, or authorize replay.  A response that cannot be
+   bound to the exact prior attempt MUST leave the occurrence
+   unresolved.
+
+4.8.  AOC-REQ-008: Pre-Entry Release Requires Serialized Non-Entry
+
+   Held pre-entry authority MAY be released only when the authoritative
+   coordination domain serially establishes that provider entry did not
+   occur while the operation remains in its pre-entry reservation state.
+   The release transition MUST authenticate the reservation owner, match
+   the occurrence and exact request binding, be atomic with the
+   authority adjustment, and retain a terminal replay tombstone.
+
+   This requirement governs the AOC/provider-occurrence exposure and any
+   native authority reservation whose profile makes release depend on
+   provider non-entry.  It does not suppress a distinct AADP-native
+   permit-reservation expiry transition; the accounting separation and
+   unsupported-alias rule are stated in Section 5.
+
+
+
+
+Schrock                   Expires 19 March 2027                 [Page 7]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+   Deadline expiry, executor death, absence of a provider response, an
+   unrecognized provider reference, or an unauthenticated provider claim
+   MUST NOT by itself establish non-entry.  A later presentation of the
+   same occurrence or native key MUST NOT create a new reservation.
+
+4.9.  AOC-REQ-009: Status-Source Truth and Missing Knowledge
+
+   Each provider profile MUST identify all of the following:
+
+   *  authoritative status sources and their authentication pins;
+
+   *  the account and environment in which status is authoritative;
+
+   *  the native key or reference used for lookup;
+
+   *  the status retention horizon and freshness rules;
+
+   *  whether a result is complete for the bound account and interval;
+
+   *  the native meanings mapped to accepted, not_accepted,
+      final_failure, and success; and
+
+   *  how unavailable, expired, incomplete, conflicting, or unknown
+      results are represented as missing knowledge.
+
+   The implementation MUST preserve the native response and profile
+   interpretation separately.  It MUST NOT infer a terminal result from
+   HTTP class, transport completion, absence from a non-complete
+   listing, local exception text, elapsed time, or a provider label that
+   the pinned profile does not define.
+
+4.10.  AOC-REQ-010: Refuse Rebinding and Duplicate Attempts
+
+   Once an occurrence has a provider binding, a request to change the
+   provider account, exact request, profile version, native key, or
+   provider reference MUST be rejected as a conflicting operation.  A
+   request with the same occurrence-creation binding MUST resolve to the
+   existing occurrence.  Creating a new caller-selected operation
+   identifier, grant, task, action digest, occurrence identifier, or
+   executor generation MUST NOT bypass this refusal.
+
+   An unresolved or terminal occurrence MUST NOT enter the provider
+   again.  A provider-native idempotency key is a defense at the
+   provider boundary, not permission for the coordination domain to
+   admit a second attempt.
+
+
+
+
+
+
+Schrock                   Expires 19 March 2027                 [Page 8]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+4.11.  AOC-REQ-011: Provider-Specific Terminal Interpretation
+
+   The following terms are profile-level interpretations, not universal
+   provider states:
+
+   accepted  The provider acknowledges receipt or ownership of the bound
+      request.  This does not by itself mean the requested effect
+      succeeded.
+
+   not_accepted  The pinned profile has authoritative evidence that the
+      provider did not accept the request under the stated scope.  This
+      does not retroactively prove that the local provider-entry
+      boundary was not crossed.
+
+   final_failure  The provider reports a terminal failure under pinned
+      native semantics.  The profile MUST state whether the evidence
+      also establishes that no protected effect occurred.  Unless it
+      does, the provider workflow may be terminal while the protected-
+      effect outcome remains unresolved.
+
+   success  The pinned provider status source reports the profile-
+      defined successful result for the exact binding.  Its truth is
+      bounded by that source and does not establish independent
+      physical, legal, or commercial truth.
+
+   Unknown, pending, stale, incomplete, conflicting, or unmapped native
+   states MUST leave the occurrence unresolved.
+
+4.12.  AOC-REQ-012: Provider Entry Consumes Authority
+
+   When the native authority profile consumes or commits authority at
+   provider entry, later not_accepted, final_failure, compensation,
+   reversal, refund, or other remedy evidence MUST NOT restore, erase,
+   or relabel the original consumed authority merely because the
+   protected effect failed or was compensated.
+
+   A provider-specific terminal no-effect result MAY resolve outcome
+   uncertainty, but it does not imply an accounting refund under every
+   authority policy.  Any later adjustment, replacement attempt,
+   compensation, or new allocation MUST be separately authorized under
+   its governing native policy, linked to the original occurrence, and
+   assigned its own replay-protected operation identity.  The original
+   occurrence identity, provider binding, consumed-authority record, and
+   prior history entries MUST remain immutable.  Authenticated
+   reconciliation evidence and separately authorized adjustments MAY be
+   appended without rewriting those facts.
+
+
+
+
+
+Schrock                   Expires 19 March 2027                 [Page 9]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+4.13.  AOC-REQ-013: No Migration or Format-Equivalence Claim
+
+   This profile MUST NOT be used to claim that copying an operation
+   record transfers exclusive ownership of a live ledger, that a
+   Succession Receipt fences a provider path, that AADP and BCR state
+   machines are interchangeable, or that any EP evidence format is
+   mandatory.  A cross-domain ledger migration requires a separately
+   specified exclusive cutover protocol and is outside this profile.
+
+5.  Native Composition Boundaries
+
+   This profile relies on, but does not amend, AADP-02 Sections 4 and 7
+   for durable intent, decision and report idempotency, the timeout
+   report for attempted/result-unknown, and the prohibition on blind
+   retry; Succession Receipts-02 for evidence of a completed
+   predecessor-to-successor registry transition and carried commitments;
+   AEB-05 Sections 5.8 through 5.11 for atomic consumption or
+   reservation, dispatch intent, outcome separation, and authenticated
+   reconciliation; and BCR-06 Sections 10 and 11.1 for provider-entry
+   accounting, replay tombstones, crash recovery, and admission epochs.
+
+   AADP's request_id remains a decision-idempotency key and its
+   permit_id remains a single-use permit/report identity.  A Succession
+   Receipt remains evidence of an issuer-recorded completed transition.
+   AEB's effect states remain native AEB states.  BCR's capability-
+   scoped operation_id and provider-entry accounting remain native BCR
+   semantics.  Storing these values with one occurrence does not make
+   them wire-compatible or semantically equivalent.
+
+   AADP-02 Section 4 natively requires the PDP to append an expiry event
+   and release its permit reservation when execute_within passes without
+   a report.  AADP timeout remains the native report outcome when a
+   report is made for attempted/result-unknown; no-report expiry is a
+   distinct transition.  AOC does not amend or suppress the AADP expiry
+   transition.
+
+   In a composed deployment, the AADP permit reservation and the AOC/
+   provider-occurrence exposure MUST be represented as distinct native
+   accounting facts unless another specification defines their joint
+   state machine.  AADP expiry MAY release only the AADP-native permit
+   reservation; it MUST NOT erase the AOC occurrence tombstone, relabel
+   serialized provider entry as non-entry, restore BCR allowance already
+   consumed at provider entry, or authorize another attempt for that
+   occurrence.
+
+   If an implementation aliases the AADP reservation to the same counter
+   AOC/BCR requires held or consumed after provider entry, it cannot
+   claim simultaneous conformance to both contradictory transitions and
+
+
+
+Schrock                   Expires 19 March 2027                [Page 10]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+   MUST report the composition unsupported.  The AOC occurrence remains
+   unresolved until its provider-entry and effect evidence meet this
+   profile.  This is a source-level composition tension, not a tested
+   onedoor defect, and AOC does not invent an AADP verdict.
+
+   No EP, AADP, Succession Receipt, AEB, BCR, provider-native, or local
+   evidence format is mandatory.  Verification of an artifact proves
+   only that artifact's native claims under its pinned trust rules.
+
+6.  Provider Profile Contract
+
+   A provider mapping satisfies this profile only when it pins provider
+   identity, account or tenant, environment, API or profile version,
+   authenticated status sources, exact request representation, native
+   key derivation, reference-creation semantics, native status meanings,
+   terminality, no-effect meaning, retention and freshness horizons,
+   completeness and pagination guarantees, and the evidence needed to
+   bind a result to the occurrence.
+
+   A result outside those exact mappings is missing knowledge.  In
+   particular, generic FAILED is not proof of non-entry or no protected
+   effect.  A profile may define an authenticated provider result
+   equivalent to NO_EFFECT_CONFIRMED, but even that result does not
+   rewind provider entry or automatically restore authority.
+
+7.  Conformance
+
+   A conforming implementation MUST satisfy every requirement from AOC-
+   REQ-001 through AOC-REQ-013 and pass every case in this section under
+   its declared provider profile.  It MUST report unsupported cases,
+   missing status knowledge, bypass paths, and untested provider
+   semantics rather than treating them as passes.
+
+   A report MUST identify the implementation and provider profile
+   versions, test-input digest, occurrence identifier, executor
+   generation, provider-binding digest, terminal or unresolved state,
+   provider-entry and authority-accounting state, provider-entry attempt
+   count, evidence-source and missing-knowledge flags, case results, and
+   requirement IDs evaluated.  It MUST NOT expose credentials,
+   reservation tokens, or private provider requests.
+
+   1.   *AOC-CASE-001: Normal single-generation success.* One generation
+        reserves, binds, enters, receives a bound reference, and obtains
+        profile-defined success.  Exactly one entry occurs, authority is
+        consumed once, and evidence remains append-only.
+
+
+
+
+
+
+Schrock                   Expires 19 March 2027                [Page 11]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+   2.   *AOC-CASE-002: Crash before serialized provider entry.* The
+        domain proves serialized non-entry, fences the predecessor,
+        atomically releases the reservation, and retains a tombstone.
+        No provider call or reuse occurs.
+
+   3.   *AOC-CASE-003: Crash after entry before acknowledgement.*
+        Replacement preserves an unresolved occurrence and consumed
+        authority.  Neither generation performs another provider entry.
+
+   4.   *AOC-CASE-004: Historical response closes the predecessor
+        attempt.* An authenticated, exact-bound response may reconcile
+        the original attempt without reactivating the predecessor,
+        admitting a new attempt, or changing authority again.
+
+   5.   *AOC-CASE-005: Retired executor races the successor.* The stale
+        generation is refused, the successor cannot re-enter a possibly
+        entered occurrence, and bypass paths remain disclosed rather
+        than falsely fenced.
+
+   6.   *AOC-CASE-006: Native key reset attack.* Changing caller-
+        selected occurrence, task, grant, AADP, BCR, generation, digest,
+        or provider key labels resolves to the original creation binding
+        or is refused.  A separately intended identical action is
+        allowed only through the authoritative occurrence-creation rule.
+
+   7.   *AOC-CASE-007: Provider binding substitution.* A change to
+        profile, account, environment, request, native key, provider
+        reference, or status source is refused and cannot resolve,
+        release, or reauthorize the occurrence.
+
+   8.   *AOC-CASE-008: Missing retention or incomplete lookup.* Not-
+        found beyond retention or absence from an incomplete result is
+        missing knowledge, leaves the occurrence unresolved, and creates
+        no refund or retry right.
+
+   9.   *AOC-CASE-009: Conflicting or unauthenticated evidence.*
+        Observations are preserved, the occurrence stays unresolved, and
+        the implementation does not select a favorable result.
+
+   10.  *AOC-CASE-010: Terminal provider failure after entry.* Generic
+        final failure may leave the protected effect unresolved;
+        authenticated no-effect evidence may close that bounded outcome.
+        In both branches, entered authority stays consumed and any new
+        attempt is separately authorized.
+
+   11.  *AOC-CASE-011: Compensation does not rewrite the occurrence.* A
+        remedy has its own authorization, identity, replay protection,
+        and outcome, while the original occurrence identity, provider
+
+
+
+Schrock                   Expires 19 March 2027                [Page 12]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+        binding, consumed-authority record, and prior history entries
+        remain immutable.  Reconciliation and remedy evidence may be
+        appended.
+
+   12.  *AOC-CASE-012: Pending and in-flight limit under replacement.*
+        Work beyond the declared finite limit is refused without
+        provider entry, while existing unresolved records remain
+        queryable and unchanged.
+
+   A same-team model or runner MUST be labeled as such.  Passing
+   abstract local cases establishes consistency with the profile, not
+   independent interoperability, live-provider correctness, deployment,
+   or adoption.  Independent interoperability requires at least two
+   independently maintained implementations to exercise locked cases
+   with an agreed provider profile and compare observable decisions.
+
+8.  Security Considerations
+
+   The principal security failures addressed by this profile are
+   duplicate provider effects after worker replacement, authority
+   restoration after provider entry, stale-executor admission, provider-
+   key rebinding, loss or rewriting of uncertain evidence, and false
+   terminal conclusions from incomplete status sources.
+
+   The coordination boundary is a security-critical serialized state
+   owner.  Implementations need atomic durability for occurrence
+   creation, reservation, provider entry, generation changes, pre-entry
+   release, and terminal reconciliation.  If an attacker can roll back
+   or fork that state, the profile cannot prevent double admission.
+
+   Provider responses and status sources need authentication and binding
+   to the exact provider profile, account, environment, request, native
+   key, and reference.  A valid response for another account or request
+   is not evidence for the occurrence.  Clock, retention, completeness,
+   and pagination assumptions are part of the provider profile and
+   cannot be inferred from transport success.
+
+   An admission epoch fences only transactions mediated by the declared
+   coordination domain.  It does not recall a request already admitted
+   to the provider and does not revoke credentials or stop direct,
+   queued, administrator, or alternate-protocol paths.  Those paths need
+   separate controls and disclosure.
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 19 March 2027                [Page 13]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+   A malicious caller may relabel a retry as a fresh occurrence.  The
+   coordination boundary therefore owns or authoritatively validates the
+   occurrence-creation rule.  Conversely, equal action digests are not
+   enough to collapse two legitimate repeated operations; deployments
+   requiring material-action uniqueness need the explicit action fence
+   in Section 4.2.
+
+   Provider entry and protected-effect outcome are distinct.  Failure,
+   compensation, refund, or a provider-specific no-effect result cannot
+   silently restore authority already consumed at entry.  A separate
+   remedy requires separate authorization and replay protection.
+
+9.  Implementation Status
+
+   This section records implementation information in the spirit of
+   [RFC7942] and is intended for removal before publication as an RFC.
+
+   A same-team local model and synthetic provider runner exercise the
+   thirteen requirement identifiers and twelve conformance cases in this
+   draft.  The runner is bounded evidence of the model's behavior only.
+   It does not execute the AADP onedoor implementation, a live provider
+   API, a production authorization boundary, or an independently
+   maintained implementation.  Its results therefore do not establish
+   full native protocol conformance, independent interoperability,
+   deployment, adoption, or provider truth.  The implementation report
+   identifies unsupported and synthetic boundaries rather than treating
+   them as externally verified.
+
+10.  Privacy Considerations
+
+   Continuity records may link customer or tenant accounts, worker
+   generations, exact request digests, provider references, timestamps,
+   outcomes, and remedies over long periods.  That correlation can
+   expose commercial relationships, operational schedules, and sensitive
+   activity.  Implementations should minimize retained plaintext,
+   separate access to provider requests from access to coordination
+   metadata, and apply purpose-limited authorization and audit to status
+   and history queries.
+
+   Retention cannot be shortened below the interval needed to prevent
+   replay or reconcile provider uncertainty merely for convenience.  A
+   deployment should document the retention basis, deletion constraints,
+   cryptographic key lifecycle, and whether redaction leaves enough
+   durable binding to reject replay without retaining unnecessary
+   content.
+
+
+
+
+
+
+Schrock                   Expires 19 March 2027                [Page 14]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+   Conformance reports must not disclose bearer credentials, reservation
+   tokens, or raw private provider requests.  Digests may still enable
+   guessing of low-entropy data and therefore require an appropriate
+   canonicalization and confidentiality policy.
+
+11.  IANA Considerations
+
+   This document has no IANA actions.
+
+12.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+13.  Informative References
+
+   [AADP]     Saha, S., "The Agent Action Decision Protocol (AADP): Per-
+              Action Authorization for AI Agents", Work in Progress,
+              Internet-Draft, draft-saha-aadp-02, September 2026,
+              <https://www.ietf.org/archive/id/draft-saha-aadp-02.txt>.
+
+   [AEB]      Schrock, I., "The Action Evidence Boundary for
+              Consequential Agent Effects", Work in Progress, Internet-
+              Draft, draft-schrock-action-evidence-boundary-05, August
+              2026, <https://www.ietf.org/archive/id/draft-schrock-
+              action-evidence-boundary-05.txt>.
+
+   [BCR]      Schrock, I., "Bounded Capability Receipts and Durable
+              Spend Control for Agent Actions", Work in Progress,
+              Internet-Draft, draft-schrock-ep-bounded-capability-
+              receipts-06, September 2026,
+              <https://www.ietf.org/archive/id/draft-schrock-ep-bounded-
+              capability-receipts-06.txt>.
+
+   [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
+              Code: The Implementation Status Section", RFC 7942,
+              DOI 10.17487/RFC7942, July 2016,
+              <https://www.rfc-editor.org/info/rfc7942>.
+
+   [SUCCESSION]
+              Sabey, J., "Succession Receipts: Portable Signed Evidence
+              of Authority Succession Between Autonomous Agents", Work
+
+
+
+Schrock                   Expires 19 March 2027                [Page 15]
+
+Internet-Draft         Agent Operation Continuity         September 2026
+
+
+              in Progress, Internet-Draft, draft-sabey-succession-
+              receipts-02, July 2026, <https://www.ietf.org/archive/id/
+              draft-sabey-succession-receipts-02.txt>.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                   Expires 19 March 2027                [Page 16]

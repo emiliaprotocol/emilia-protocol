@@ -94,7 +94,7 @@ ever ingests another verifier's evidence into its own trust boundary.
 - `registry/` — action-type registry (version 5), suites, value sets, frozen
   history, definition digests, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations
-- `conformance/vectors.json` — 551 core vectors (corpus version 5): every
+- `conformance/vectors.json` — 616 core vectors (corpus version 5): every
   compute and verify input as exact JSON text with native/byte parity, a
   native lane for host values no decoder produces, the JSON text rules and
   size limits, number rounding, reason order, verification details,
@@ -103,10 +103,10 @@ ever ingests another verifier's evidence into its own trust boundary.
   (`conformance/history/vectors.v4.json` is version 4 byte for byte)
 - `conformance/grammar-vectors.json` — 1,966 grammar boundary cases driven
   through the public parse and compute entry points
-- `conformance/mapping-vectors.json` — 73 cross-format mapping vectors
+- `conformance/mapping-vectors.json` — 86 mapping vectors
   (version 2) with exact reason lists in the -04 stage order, including the
   SILP IR to CAID `CANCEL+EMAIL` profile
-- `fuzz/` — the differential fuzz: about 87,000 seeded cases through the
+- `fuzz/` — the differential fuzz: about 88,000 seeded cases through the
   JavaScript, vendored Verify, Python and Go entry points against the spec
   oracle, with an empty allow list
 - `interop/consequential-action-v1/` — 25 candidate, revision-pinned
@@ -150,10 +150,13 @@ generated region or file by hand; the checks fail on it.
 4. Run `node caid/spec/abnf-check.mjs`, `npm run caid:conformance` and
    `npm run caid:fuzz`.
 5. Update the staged draft (`standards/staged/NEXT-CAID-04`):
-   `node scripts/check-caid-04.mjs --emit` prints every generated table and
-   the Appendix D listing, a processing change needs a `chg-` item mapped to
+   `node scripts/check-caid-04.mjs --emit` prints every generated table,
+   the two Appendix D listings, and the Appendix C.1 cbor-sha256 example,
+   a processing change needs a `chg-` item mapped to
    vectors in `CHANGES-VECTORS.json`, and the renders follow the procedure
-   in its `VALIDATION.md`.
+   in its `VALIDATION.md`; `node scripts/check-caid-04.mjs --renders`
+   compares them with a fresh `xml2rfc 3.34.0` render. Before filing,
+   `--prefiling` also requires origin/main to carry this `caid/` tree.
 6. A change to the vendored copy moves pins outside `caid/`: the source
    locks of the composition profiles that pin `vendor/caid.mjs`
    (`conformance/composition/*/source-lock.json`),

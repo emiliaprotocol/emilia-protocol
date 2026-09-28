@@ -24,9 +24,9 @@ snapshots live in `posted/`, GRACE-00 remains in its checksum-pinned profile
 packet, and superseded history lives in `archive/`.
 
 Published snapshots are checked byte-for-byte against the immutable IETF
-archive before their local path is recorded as current. Exact submitted bytes,
-checksums, and local review renders remain retained under `staged/` or the
-document's recorded profile packet as provenance. The IETF archive is
+archive before their local path is recorded as current. Where retained, exact
+submitted bytes, checksums, and local review renders remain under `staged/` or
+the document's recorded profile packet as provenance. The IETF archive is
 authoritative for rendered forms and live status.
 
 ## Cohesive architecture
@@ -49,7 +49,7 @@ remain separate lifecycle transitions.
 The reader-facing canonical surface is:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-13`](staged/NEXT-AUTHORIZATION-RECEIPTS-13/UPLOAD-THIS/draft-schrock-ep-authorization-receipts-13.xml):
+   [`draft-schrock-ep-authorization-receipts-13`](posted/draft-schrock-ep-authorization-receipts-13.xml):
    one action-bound organizational approval-evidence profile. The -13 XML is
    byte-identical to the IETF archive copy.
 2. **Human Authorization Binding** —
@@ -70,12 +70,23 @@ presentation surface, not a consolidation or Datatracker relationship. It does
 not retire, merge, replace, update, obsolete, or subordinate any active draft;
 the distinct profile and lifecycle portfolio remains intact.
 
+Change the Authorization Receipts `source` and `revision` in that record only
+after the new revision is mirrored into `posted/`. The `/spec` page
+(`app/spec/page.tsx`) renders only
+`standards/posted/draft-schrock-ep-authorization-receipts-<revision>.xml` and
+returns 404 when that file does not exist. It logs a `source` value that names
+any other path, and `tests/site-spec-route.test.ts` fails on any source other
+than that posted path.
+
 ## Separate portfolio and runtime views
 
 The presentation surface does not replace the active profile portfolio. The
-complete active portfolio remains the 24 records in
-`STATUS.json.active_datatracker`, including 20 sole-authored records and four
-coauthored records, each with its own scope and revision history.
+complete active portfolio is the 26 records in
+`STATUS.json.active_datatracker`, including 21 sole-authored records and five
+coauthored records, each with its own scope and revision history. Each record
+also carries a maintenance status (`maintenance_status`, defined in
+`STATUS.json.status_language`) and its Datatracker expiry date; the
+human-readable table is in [`PORTFOLIO.md`](PORTFOLIO.md#maintenance-status).
 
 The separate runtime execution spine is **Architecture-03 -> CAID-03 ->
 AEC-06 -> AEB-07**: architecture and decision boundaries, exact material-action
@@ -199,6 +210,35 @@ receipt-absence, and unsigned-event claim boundaries. The abstract is
 unchanged from -02. It is an individual Internet-Draft, not a working-group
 item, and posting is not protocol-owner review.
 
+## September 6 Quorum corrective revision
+
+`draft-schrock-ep-quorum-04` was posted through Datatracker submission 168688
+(Datatracker time 2026-09-06T17:27:51Z) as one of the four September 6
+corrective revisions. Its XML and TXT match the immutable IETF archive
+byte-for-byte, and the snapshot was mirrored into `posted/` on 2026-09-27. The
+posted HTML is the IETF archive HTML with the per-request Cloudflare challenge
+script removed, checked on 2026-09-28.
+Revision -04 replaces the context-only chronology claim with the versioned
+`EP-QUORUM-SIGNOFF-CHAIN-v1` profile: a successor signs a digest of the
+completed predecessor signoff, including its signature, and legacy
+context-only chains cannot satisfy the profile. It does not establish trusted
+wall-clock time or human comprehension. It is an individual Internet-Draft, not
+a working-group item, and posting is not protocol-owner review.
+
+## September 12 Receipts and Presentation Binding revisions
+
+`draft-schrock-ep-authorization-receipts-13` (submission 168935, Datatracker
+time 2026-09-12T15:05:02Z) and `draft-schrock-ep-presentation-binding-01`
+(submission 168936, Datatracker time 2026-09-12T15:06:51Z) were posted through
+Datatracker. Their XML and TXT match the immutable IETF archive byte-for-byte,
+and the snapshots were mirrored into `posted/` on 2026-09-27. Each posted HTML
+is the IETF archive HTML, rendered by xml2rfc 3.34.1, with the per-request
+Cloudflare challenge script removed, checked on 2026-09-28. Receipts-13
+adds Section 13.13, "What Successful Verification Does Not Establish."
+Presentation Binding-01 adds Section 6.1, "Receipt and Presentation Evidence
+Remain Distinct." Both are individual Internet-Drafts, not working-group items,
+and posting is not protocol-owner review.
+
 ## September 24 AEB maintenance revision
 
 `draft-schrock-action-evidence-boundary-06` was posted through Datatracker
@@ -252,6 +292,21 @@ cannot produce a CAID until their external value sets are pinned. The Action
 Object, identifier syntax, digest suites, and mapping algorithm are unchanged.
 It is an individual Internet-Draft, not a working-group item, and posting is
 not protocol-owner review.
+
+## September 27 posted mirror
+
+Five published revisions were mirrored into `posted/` on 2026-09-27. Quorum-04,
+Authorization Receipts-13, and Presentation Binding-01 are described in the
+September 6 and September 12 sections above and keep their submitted sources in
+`staged/` provenance packets. Bounded Capability Receipts-06 (Datatracker
+submission 168817) and Agent Operation Continuity-00 (Datatracker submission
+169086) had no source in this repository. Their XML and TXT were fetched from
+the immutable IETF archive on 2026-09-27 and committed unchanged, with digests
+recorded in `STATUS.json.september_27_2026_posted_mirror`. The superseded
+Authorization Receipts-12, Presentation Binding-00, Quorum-03, and Bounded
+Capability Receipts-04 snapshots moved to `archive/`. Checked against the
+Datatracker API on 2026-09-28, `posted/` holds the current revision of every
+active sole-authored draft.
 
 ## New-filing freeze
 

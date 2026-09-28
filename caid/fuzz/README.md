@@ -18,13 +18,17 @@ node caid/fuzz/run.mjs --root DIR   # fuzz another tree (a git archive of main, 
 
 ## What runs
 
-- `gen.mjs` writes about 87,000 cases from this checkout's corpora and
+- `gen.mjs` writes about 88,000 cases from this checkout's corpora and
   registry (never from the tree under test), in families: `vec-core`,
   `vec-map`, `registry`, `grammar`, `code` (every named code format),
   `number`, `json`, `native`, `caidstr`, `defs`, `map-craft` and `pins`
   (definition digests, compute and verify with expected definition_sha256
   pins of every type, host definitions inside and outside the validation
   projection, and canonicalization). Every family draws from `--seed`.
+  A native core vector runs as it stands, so one that builds more than 2^20
+  values (a long array, shared arrays near or past the value count) is left
+  to `npm run caid:conformance`, which runs it in every port and against
+  the oracle; the oracle counts every path, so each costs seconds there.
 - Objects under test travel as octets and go to each implementation's -04
   JSON text entry point; when they decode, the driver also runs the native
   entry point on the decoded value and reports any difference as a parity
@@ -41,11 +45,12 @@ mapping cases are not compared in the Go lane.
 
 ## Measured
 
-On the CI toolchains (node 20.20.2, Python 3.11.15, go 1.27.0) on an M-class
-laptop, the full run of 87,382 cases took 18 s wall (generate 0.6 s, Go build
-0.1 s, drivers in parallel: JavaScript 10.1 s, Python 11.3 s, Go 3.5 s), and
-the quick self-test 15 s. Every driver also runs the native parity check on
-each decodable case. Hosted runners are typically two to four times slower.
+With node 24.18.0, Python 3.11.15 and go 1.26.4 on an M-class laptop, the
+full run of 88,288 cases (seed 20260926) took 16 s wall (generate 0.7 s, Go
+build 0.4 s, drivers in parallel: JavaScript 10.5 s, Python 11.8 s, Go
+2.6 s), and the quick self-test 5 s. Every driver also runs the native
+parity check on each decodable case. Hosted runners are typically two to
+four times slower.
 
 Run against the pre-04 ports, the harness reports the known classes, among
 them J1 (duplicate member names), J2 (invalid UTF-8), J3 (BOM), J6

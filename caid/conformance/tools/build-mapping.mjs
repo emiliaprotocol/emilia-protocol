@@ -56,10 +56,39 @@ function mutate(root, operation) {
   } else if (operation.op === 'set') {
     if (Array.isArray(parent) && key >= parent.length) throw new Error('a set mutation may not append to an array; set the whole array');
     // "units" carries a string no strict JSON text can hold, as its UTF-16
-    // code units.
-    const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units) : clone(operation.value);
+    // code units; "nest" a value nested deeper than a strict JSON text may
+    // be, as leaf inside depth arrays (or objects whose only member is "a");
+    // "dag" a value past the value count, as depth nested two-element
+    // arrays around leaf whose two elements are one shared array; "fill"
+    // an array of n elements, each the value v (one shared value), long
+    // enough that V8 cannot list its keys at once; "host" a host value no
+    // JSON text carries, as in the core corpus native lane: "cyclic" is a
+    // reference to the enclosing object or array (the parent of the path),
+    // "opaque" a value of no JSON kind (new Map()).
+    const value = Object.prototype.hasOwnProperty.call(operation, 'units') ? String.fromCharCode(...operation.units)
+      : Object.prototype.hasOwnProperty.call(operation, 'nest') ? nested(operation.nest)
+        : Object.prototype.hasOwnProperty.call(operation, 'dag') ? shared(operation.dag)
+          : Object.prototype.hasOwnProperty.call(operation, 'fill') ? new Array(operation.fill.n).fill(clone(operation.fill.v))
+            : Object.prototype.hasOwnProperty.call(operation, 'host') ? hostValue(operation.host, parent) : clone(operation.value);
     Object.defineProperty(parent, key, { value, writable: true, enumerable: true, configurable: true });
   } else throw new Error(`unsupported mutation ${operation.op}`);
+}
+function hostValue(kind, parent) {
+  if (kind === 'cyclic') return parent;
+  if (kind === 'opaque') return new Map();
+  throw new Error(`unsupported host value ${kind}`);
+}
+function nested({ depth, container, leaf }) {
+  let value = clone(leaf);
+  for (let i = 0; i < depth; i += 1) value = container === 'object' ? { a: value } : [value];
+  return value;
+}
+// 2^(depth+1) - 1 values counted once per path, in depth + 1 distinct
+// containers and leaves.
+function shared({ depth, leaf }) {
+  let value = clone(leaf);
+  for (let i = 0; i < depth; i += 1) value = [value, value];
+  return value;
 }
 function buildSide(corpus, descriptor) {
   const profile = clone(corpus.profiles[descriptor.profile]);
@@ -90,6 +119,10 @@ const EP = { source: 'ep-order', profile: 'ep-action-v1', pin: 'profile' };
 const AP2 = { source: 'ap2-order', profile: 'ap2-checkout-v1', pin: 'profile' };
 const set = (side, target, p, value) => ({ side, target, op: 'set', path: p, value });
 const setUnits = (side, target, p, units) => ({ side, target, op: 'set', path: p, units });
+const setNest = (side, target, p, depth, leaf = 0) => ({ side, target, op: 'set', path: p, nest: { depth, container: 'array', leaf } });
+const setDag = (side, target, p, depth, leaf = 0) => ({ side, target, op: 'set', path: p, dag: { depth, leaf } });
+const setHost = (side, target, p, host) => ({ side, target, op: 'set', path: p, host });
+const setFill = (side, target, p, n, v = 0) => ({ side, target, op: 'set', path: p, fill: { n, v } });
 const del = (side, target, p) => ({ side, target, op: 'delete', path: p });
 const HEX = 'a'.repeat(64);
 const epRules = v1.profiles['ep-action-v1'].rules;
@@ -203,6 +236,27 @@ const CASES = [
     [set('right', 'profile', '/rules/7/source_path', '/constraints/00/time'), set('right', 'profile', '/material_source_paths/7', '/constraints/00/time')], ['right'], 'INDETERMINATE', ['right:invalid_source_path:/constraints/00/time']],
   ['stage-b-source-not-canonicalizable', 'a source outside the data model stops at stage B, before any rule reads it', EP, EP,
     [set('right', 'source', '/parameters/total_amount', 1.5)], [], 'INDETERMINATE', ['right:source_not_canonicalizable']],
+  ['stage-b-source-deep-not-canonicalizable', 'the nesting limit on a host mapping source: a member nested 70 deep, beside no rule path, is source_not_canonicalizable (never unsupported_value)', EP, EP,
+    [setNest('right', 'source', '/x', 70)], [], 'INDETERMINATE', ['right:source_not_canonicalizable']],
+  // The value count applies to a host mapping source as to every host value
+  // (Section 2.6): 25 levels of a shared two-element array hold 2^26 - 1
+  // values, past 33,554,432, so the source is source_not_canonicalizable,
+  // never unsupported_value.
+  ['stage-b-source-value-count-not-canonicalizable', 'the value count on a host mapping source: a member holding 2^26 - 1 values through shared arrays, beside no rule path, is source_not_canonicalizable (never unsupported_value)', EP, EP,
+    [setDag('right', 'source', '/x', 25)], [], 'INDETERMINATE', ['right:source_not_canonicalizable']],
+  // A long host array within the value count is read like any other
+  // (Section 2.5): an array of 2^24 zeros, one V8 cannot list the keys of
+  // at once, gives the result of its 2^24 - 1 twin. Beside no rule path of
+  // a mapping source, the source canonicalizes and the mapping goes on. In
+  // an extra member of a repinned mapping profile, the profile is in the
+  // data model, so it has a digest that matches its pin: the extra member
+  // makes it invalid_mapping_profile, with no mapping_profile_unpinned.
+  ...[['16777216', 2 ** 24], ['16777215', 2 ** 24 - 1]].flatMap(([label, n]) => [
+    [`stage-b-source-array-${label}-elements-equivalent`, `a host mapping source with an extra member holding an array of ${label} zeros, beside no rule path, is within the value count and canonicalizes: the mapping goes on`, EP, EP,
+      [setFill('right', 'source', '/x', n)], [], 'EQUIVALENT_UNDER_PROFILE', []],
+    [`profile-array-${label}-elements-pinned-abstains`, `a repinned host mapping profile with an extra member holding an array of ${label} zeros is within the value count, so its digest matches the pin: invalid_mapping_profile for the extra member, and no mapping_profile_unpinned`, EP, EP,
+      [setFill('right', 'profile', '/x', n)], ['right'], 'INDETERMINATE', ['right:invalid_mapping_profile']],
+  ]),
   ['stage-d-compute-order', 'stage D reports the mapped action\'s compute reasons in compute order', EP, EP,
     [set('right', 'source', '/parameters/currency', 'EURO'), set('right', 'source', '/parameters/total_amount', '01.00')],
     [], 'INDETERMINATE', ['right:mapped_action:invalid_amount:total_amount', 'right:mapped_action:mistyped_field:currency']],
@@ -227,6 +281,48 @@ const CASES = [
   ['profile-schema-noncharacter-abstains', 'a noncharacter in source_format.schema also leaves the profile outside the data model', EP, EP,
     [setUnits('right', 'profile', '/source_format/schema', [0xfdd0])],
     [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:source_format_mismatch']],
+  // Stage B reads the profile's source_format and loss_policy members
+  // whenever the profile is an object, in the data model or not, and
+  // whether or not stage A failed (review IMPL-3). A host profile with a
+  // member nested 70 deep has no digest, so it is unpinned; its intact
+  // source_format still equals the descriptor, so there is no
+  // source_format_mismatch, and its loss_policy is still read.
+  ['profile-deep-member-abstains', 'a host profile with an extra member nested 70 deep is outside the data model: invalid_mapping_profile and mapping_profile_unpinned, and no source_format_mismatch, since stage B still reads its intact source_format', EP, EP,
+    [setNest('right', 'profile', '/x', 70)],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned']],
+  ['profile-deep-member-declared-loss-abstains', 'the same host profile declaring source semantic loss with one omission: stage B still reads its loss_policy and reports declared_source_semantic_loss', EP, EP,
+    [set('right', 'profile', '/loss_policy', 'declared-source-semantic-loss'), set('right', 'profile', '/omitted_source_fields', [{ source_path: '/ep_version', reason: 'transport version is not material' }]),
+      setNest('right', 'profile', '/x', 70)],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:declared_source_semantic_loss']],
+  // The value count applies to a host profile the same way: an extra member
+  // holding 2^26 - 1 values through shared arrays leaves the profile outside
+  // the data model, with no digest, and its intact source_format is still
+  // read.
+  ['profile-value-count-abstains', 'a host profile with an extra member holding 2^26 - 1 values through shared arrays is past the value count: invalid_mapping_profile and mapping_profile_unpinned (never unsupported_value), and no source_format_mismatch', EP, EP,
+    [setDag('right', 'profile', '/x', 25)],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned']],
+  // Stage B reads loss_policy, and source_format, from every host profile
+  // outside the data model: past the value count, cyclic (a member that
+  // refers back to the profile, or an array that holds itself), or holding
+  // a host value of no JSON kind. Each declares source semantic loss with
+  // one omission, so declared_source_semantic_loss shows loss_policy was
+  // read, and the absence of source_format_mismatch that source_format was.
+  ['profile-value-count-declared-loss-abstains', 'the host profile of profile-value-count-abstains declaring source semantic loss with one omission: stage B still reads its source_format and loss_policy and reports declared_source_semantic_loss', EP, EP,
+    [set('right', 'profile', '/loss_policy', 'declared-source-semantic-loss'), set('right', 'profile', '/omitted_source_fields', [{ source_path: '/ep_version', reason: 'transport version is not material' }]),
+      setDag('right', 'profile', '/x', 25)],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:declared_source_semantic_loss']],
+  ['profile-cyclic-member-declared-loss-abstains', 'a host profile declaring source semantic loss with one omission and an extra member that refers back to the profile is cyclic, so outside the data model: invalid_mapping_profile and mapping_profile_unpinned, no source_format_mismatch, and declared_source_semantic_loss', EP, EP,
+    [set('right', 'profile', '/loss_policy', 'declared-source-semantic-loss'), set('right', 'profile', '/omitted_source_fields', [{ source_path: '/ep_version', reason: 'transport version is not material' }]),
+      setHost('right', 'profile', '/x', 'cyclic')],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:declared_source_semantic_loss']],
+  ['profile-cyclic-array-member-declared-loss-abstains', 'the same with an extra member that is an array holding itself', EP, EP,
+    [set('right', 'profile', '/loss_policy', 'declared-source-semantic-loss'), set('right', 'profile', '/omitted_source_fields', [{ source_path: '/ep_version', reason: 'transport version is not material' }]),
+      set('right', 'profile', '/x', [0]), setHost('right', 'profile', '/x/0', 'cyclic')],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:declared_source_semantic_loss']],
+  ['profile-opaque-member-declared-loss-abstains', 'the same with an extra member holding a host value of no JSON kind (JavaScript Map, Python set, Go struct)', EP, EP,
+    [set('right', 'profile', '/loss_policy', 'declared-source-semantic-loss'), set('right', 'profile', '/omitted_source_fields', [{ source_path: '/ep_version', reason: 'transport version is not material' }]),
+      setHost('right', 'profile', '/x', 'opaque')],
+    [], 'INDETERMINATE', ['right:invalid_mapping_profile', 'right:mapping_profile_unpinned', 'right:declared_source_semantic_loss']],
 ];
 
 // ---------------------------------------------------------------- build
@@ -269,7 +365,7 @@ const { vectors: _v, ...envelope } = corpus;
 const out = {
   '@version': 'CAID-ACTION-MAPPING-VECTORS-v2',
   version: 2,
-  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.5). A vector that carries its own suite member uses it in place of the corpus suite for that comparison.`,
+  description: `${v1.description} Every expectation is an exact reason list in the -04 stage order (Section 8.3). A vector that carries its own suite member uses it in place of the corpus suite for that comparison. A set mutation carries its value as value, as units (the UTF-16 code units of a string no strict JSON text can hold), as nest ({depth, container, leaf}: leaf inside depth nested arrays, or objects whose only member is "a", a host value nested deeper than a strict JSON text may be), as dag ({depth, leaf}: leaf inside depth nested two-element arrays whose two elements are one shared array, 2^(depth+1) - 1 values counted once per path, for the value count of Section 2.6), as fill ({n, v}: an array of n elements, each the value v, built once and shared), or as host, a host value no JSON text carries: "cyclic", a reference to the object or array that holds the member (its parent), or "opaque", a host value of no JSON kind (JavaScript new Map(), Python set(), Go struct{}{}).`,
   previous_versions: [{
     version: 1,
     vectors: v1.vectors.length,

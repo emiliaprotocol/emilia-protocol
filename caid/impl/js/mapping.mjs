@@ -18,8 +18,10 @@
 //      loss policy (invalid_mapping_profile), definition resolution
 //      (unknown_action_type or invalid_definition), and one
 //      unmapped_material_field:<f> per unmapped required field.
-//   B  pin and source checks, sorted with A by reason rank. The mapping
-//      stops if A or B produced any reason.
+//   B  pin and source checks, sorted with A by reason rank. B reads the
+//      profile's source_format and loss_policy members whenever the
+//      profile is an object, in the data model or not, as the Python and
+//      Go ports do. The mapping stops if A or B produced any reason.
 //   C  one reason at most per rule, in rule order, parameterized by the
 //      rule's source path. The mapping stops if C produced any reason.
 //   D  mapped_action:<r> for each compute reason, in compute order.
@@ -348,8 +350,15 @@ export function mapAction(source, params = {}) {
     const enumSnapshots = read('enumSnapshots');
     // Each is read once, into a copy in the data model with its RFC 8785
     // text: a large source is not read a second time for its digest.
-    const profileData = toCaidDataWithCanonical(read('profile'));
+    const hostProfile = read('profile');
+    const profileData = toCaidDataWithCanonical(hostProfile);
     const profile = profileData.ok ? profileData.value : undefined;
+    // Stage B reads the profile's source_format and loss_policy members
+    // whenever the profile is an object, whether or not it is in the data
+    // model and whether or not stage A failed: from the data-model copy when
+    // there is one, otherwise from the host object's own data properties.
+    const profileIsObject = profile !== undefined ? isObject(profile) : isPlainHostObject(hostProfile);
+    const profileMember = (key) => (profile !== undefined ? member(profile, key) : profileIsObject ? ownData(hostProfile, key) : undefined);
     const sourceData = toCaidDataWithCanonical(source);
     const sourceValue = sourceData.ok ? sourceData.value : undefined;
     const digestOf = (data) => (data.ok && data.canonical !== null ? 'sha256:' + sha256Hex(Buffer.from(data.canonical, 'utf8')) : null);
@@ -362,14 +371,15 @@ export function mapAction(source, params = {}) {
     const expectedProfileHash = read('expectedProfileHash');
     if (typeof expectedProfileHash !== 'string' || expectedProfileHash !== profileHash) stageB('mapping_profile_unpinned');
     const sourceDescriptor = read('sourceDescriptor');
-    if (!isObject(sourceDescriptor) || !isObject(profile) || !descriptorEqual(sourceDescriptor, member(profile, 'source_format'))) {
+    if (!isObject(sourceDescriptor) || !profileIsObject || !descriptorEqual(sourceDescriptor, profileMember('source_format'))) {
       stageB('source_format_mismatch');
     }
     const sourceIsObject = isPlainHostObject(source);
     if (!sourceIsObject) stageB('source_not_object');
     const sourceDigest = sourceIsObject && isObject(sourceValue) ? digestOf(sourceData) : null;
     if (sourceDigest === null) stageB('source_not_canonicalizable');
-    const policy = LOSS_POLICIES.get(member(profile, 'loss_policy'));
+    const lossPolicy = profileMember('loss_policy');
+    const policy = typeof lossPolicy === 'string' ? LOSS_POLICIES.get(lossPolicy) : undefined;
     if (policy !== undefined && policy.stage_reason !== undefined) stageB(policy.stage_reason);
     if (found.length > 0) {
       found.sort((a, b) => a[0] - b[0] || a[1] - b[1]);

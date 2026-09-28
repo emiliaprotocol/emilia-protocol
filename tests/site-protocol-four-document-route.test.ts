@@ -29,6 +29,15 @@ describe('/protocol canonical four-document hub', () => {
     expect(protocolPage).toContain('draft: `${document.draft}-${document.revision}`');
   });
 
+  it('names the document-01 revision from the STATUS.json record that /spec renders', () => {
+    const receipts = documents.find((document) => document.draft === 'draft-schrock-ep-authorization-receipts');
+    expect(receipts).toBeDefined();
+    expect(protocolPage).toContain("document.draft === 'draft-schrock-ep-authorization-receipts'");
+    expect(protocolPage).toContain('Authorization Receipts{RECEIPTS_SUFFIX}');
+    expect(protocolPage).toContain('Read Receipts{RECEIPTS_SUFFIX}');
+    expect(protocolPage).not.toMatch(/Receipts -\d/);
+  });
+
   it('uses local explainers for Receipts and AEC and Datatracker for the two middle documents', () => {
     expect(protocolPage).toContain("href: '/spec'");
     expect(protocolPage).toContain("href: 'https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/'");
