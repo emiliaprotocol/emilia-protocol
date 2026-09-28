@@ -15,13 +15,14 @@ const registry = JSON.parse(readFileSync(new URL('../caid/registry/action-types.
 describe('CAID Action-Mapping Profile', () => {
   it('passes every shared material-equivalence vector', () => {
     // Mapping corpus v2 pins an exact reason list per vector in the -04
-    // stage order; the fixed count catches a silently dropped vector.
+    // stage order; the fixed count catches a silently dropped vector. Four
+    // vectors build an array of 2^24 elements, which takes seconds each.
     expect(corpus['@version']).toBe('CAID-ACTION-MAPPING-VECTORS-v2');
     const results = runMappingVectors(corpus);
     expect(results).toHaveLength(corpus.vectors.length);
-    expect(results).toHaveLength(73);
+    expect(results).toHaveLength(86);
     expect(results.filter((result) => !result.pass)).toEqual([]);
-  });
+  }, 300_000);
 
   it('uses the exact pinned public type definition instead of a colliding local alias', () => {
     for (const definition of corpus.definitions) {

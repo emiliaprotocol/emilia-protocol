@@ -11,6 +11,10 @@
 // --impl defaults to caid/impl/js/caid.mjs (the vendored Verify copy,
 // packages/verify/vendor/caid.mjs, takes the same runner). The entry points
 // used are named in API below; all of them are required.
+//
+// A vector or case with applies_when runs only when its suite condition
+// holds for this implementation, decided by computing the corpus's
+// suite_probe under that suite; otherwise it is counted as skipped.
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -65,14 +69,33 @@ const readCorpus = (file) => {
 const results = [];
 let pass = 0;
 let fail = 0;
+let skipped = 0;
 const perCorpus = {};
 const report = (corpus, id, ok, detail) => {
   perCorpus[corpus] = perCorpus[corpus] ?? { pass: 0, fail: 0 };
   if (ok) { pass += 1; perCorpus[corpus].pass += 1; } else { fail += 1; perCorpus[corpus].fail += 1; results.push({ corpus, id, detail }); }
 };
+const skip = (corpus) => {
+  perCorpus[corpus] = perCorpus[corpus] ?? { pass: 0, fail: 0 };
+  perCorpus[corpus].skipped = (perCorpus[corpus].skipped ?? 0) + 1;
+  skipped += 1;
+};
 const guard = (fn) => {
   try { return fn(); } catch (e) { return { thrown: `${e && e.name}: ${e && e.message}` }; }
 };
+// applies_when: {suite_implemented: S} or {suite_not_implemented: S}. The
+// implementation implements S exactly when the corpus's suite_probe
+// computes a CAID under S.
+const implemented = new Map();
+function applies(condition, probe) {
+  if (condition === undefined) return true;
+  const suite = condition.suite_implemented ?? condition.suite_not_implemented;
+  if (!implemented.has(suite)) {
+    const r = guard(() => API.compute(probe.object, { suite, definitions: probe.definitions, enumSnapshots: [] }));
+    implemented.set(suite, Boolean(r && typeof r.caid === 'string'));
+  }
+  return own(condition, 'suite_implemented') ? implemented.get(suite) : !implemented.get(suite);
+}
 
 // ---------------------------------------------------------------- core corpus
 function runCore() {
@@ -81,6 +104,7 @@ function runCore() {
   const snapshots = corpus.enum_snapshots;
   const caids = new Map();
   for (const v of corpus.vectors) {
+    if (!applies(v.applies_when, corpus.suite_probe)) { skip('core'); continue; }
     const input = v.input;
     const opts = { definitions: v.definitions, enumSnapshots: snapshots };
     if (v.kind === 'compute' && own(input, 'suite')) opts.suite = input.suite;
@@ -145,6 +169,7 @@ function runGrammar() {
   const corpus = readCorpus('grammar-vectors.json');
   const placeholder = corpus.placeholder;
   corpus.cases.forEach((c, index) => {
+    if (!applies(c.applies_when, corpus.suite_probe)) { skip('grammar'); return; }
     const d = corpus.drivers[c.driver];
     const id = `grammar[${index}] ${c.driver} ${c.lane}`;
     let actual;
@@ -190,11 +215,11 @@ if (missing.length) {
 }
 if (corpusChoice === 'core' || corpusChoice === 'all') runCore();
 if (corpusChoice === 'grammar' || corpusChoice === 'all') runGrammar();
-const summary = { runner: 'javascript', impl: path.relative(ROOT, implPath), corpus: corpusChoice, pass, fail, per_corpus: perCorpus, failures: results.slice(0, 500) };
+const summary = { runner: 'javascript', impl: path.relative(ROOT, implPath), corpus: corpusChoice, pass, fail, skipped, per_corpus: perCorpus, failures: results.slice(0, 500) };
 if (args.includes('--json')) process.stdout.write(JSON.stringify(summary) + '\n');
 else {
   for (const r of results.slice(0, 60)) console.log(`FAIL ${r.corpus} ${r.id}\n     ${r.detail}`);
   if (results.length > 60) console.log(`... ${results.length - 60} more failures`);
-  console.log(`${summary.runner} ${summary.impl} (${corpusChoice}): ${pass} passed, ${fail} failed ${JSON.stringify(perCorpus)}`);
+  console.log(`${summary.runner} ${summary.impl} (${corpusChoice}): ${pass} passed, ${fail} failed, ${skipped} skipped ${JSON.stringify(perCorpus)}`);
 }
 process.exit(fail ? 1 : 0);

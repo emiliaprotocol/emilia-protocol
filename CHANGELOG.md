@@ -24,20 +24,32 @@ Historical entries below retain the labels used when they were written.
 
 ### CAID conformance corpora and fuzz for draft -04
 
-- The core conformance corpus moves to version 5 (551 vectors). Every compute
+- The core conformance corpus moves to version 5 (616 vectors). Every compute
   and verify input is now exact JSON text (a string, base64 octets, or a
   repeat form for the 32 MiB and 16 MiB limits), and runners also check that
   the native entry point gives the same result on the decoded value. A
   native lane carries host values no conforming decoder produces: lone
-  surrogates, NaN and the infinities, `-0.0`, cyclic and opaque values, and
-  nesting past 64. New vectors cover the JSON text rules, the size limits,
-  number rounding, every pair of compute phases, verification details and
+  surrogates, NaN and the infinities, `-0.0`, cyclic and opaque values,
+  nesting past 64, and arrays of 2^24 or more elements. New vectors cover
+  the JSON text rules, the size limits, number rounding, every pair of
+  compute phases, verification details and
   `definition_mismatch`, malformed and conflicting definitions,
   `definition_sha256` and expected pins of every type, host definitions,
   the length limits of identifiers, action types and code systems, the
-  value count, all nine named code formats with a 1 MiB adversarial string
+  value count (at exactly 33,554,432 values and one more, which stops at the
+  nesting limit, counts a reference back to an enclosing object or array as
+  one value, and which a host definition, profile or source fails with the
+  reason of the step that reads it), all
+  nine named code formats with a 1 MiB adversarial string
   per format under a time budget, timestamps, parse cases including
   `unknown_suite` at parse, and one vector per registry v5 type.
+- Six vectors and cases apply only where the OPTIONAL cbor-sha256 suite is,
+  or is not, implemented (`applies_when`, decided with the corpus's
+  `suite_probe`): four pin `unknown_suite` where it is not implemented, and
+  two, the Appendix C.1 object, apply only where it is. Each runner skips a
+  vector whose condition does not hold and reports it as skipped, never as
+  passed; no port here implements the suite, so each runs 614 of the 616
+  core vectors, and `caid:conformance` prints what each runner ran.
 - Version 4 carries forward: the version 4 corpus is kept byte for byte under
   `caid/conformance/history/`, every version 4 vector keeps its id, and all
   22 version 4 CAIDs are expected unchanged (`caid/conformance/check-v4.mjs`).
@@ -48,12 +60,39 @@ Historical entries below retain the labels used when they were written.
   one-field definitions in JavaScript, Python and Go, so it tests the ports'
   entry points rather than their generated regular expressions. It includes
   astral, lone-surrogate, invalid-UTF-8, noncharacter and long cases.
-- The mapping corpus moves to version 2 (73 vectors): every expectation is an
+- The mapping corpus moves to version 2 (86 vectors): every expectation is an
   exact reason list in the -04 stage order, and new vectors cover the
   profile extension, UTF-8 octet limits, field-name targets, profile
   strings outside the data model and source paths. A vector may
   carry its own suite, which pins that an empty suite is refused and never
   defaulted (review D10).
+- Mapping stage B in the JavaScript port now reads `source_format` and
+  `loss_policy` from a host profile that is outside the data model, as the
+  Python and Go ports do, so such a profile is `invalid_mapping_profile`
+  and `mapping_profile_unpinned` with no spurious `source_format_mismatch`,
+  and a declared loss is still reported; `profile-deep-member-*`, and the
+  `*-declared-loss-abstains` vectors for a profile past the value count,
+  cyclic, or holding a host value of no JSON kind, pin it. The three mapping
+  runners gain a `host` mutation (`cyclic` or `opaque`) to express the last
+  two, and a `fill` mutation for an array of 2^24 elements.
+- The JavaScript port reads a host array of 2^24 or more elements, and an
+  object with more than 2^24 members named by array indices, instead of
+  refusing it. V8 cannot list more than 2^24 own keys at once
+  (`Reflect.ownKeys` and `Object.getOwnPropertyDescriptors` throw a
+  `RangeError`), and the port treated that error as a value outside the
+  data model, although such a value is within the value count and the
+  Python and Go ports read it. It now lists such a container through
+  `Object.keys` and `Object.getOwnPropertySymbols`, and stops reading an
+  inner one past the value count. The `native-array-16777216-*` core
+  vectors, their `16777215` twins and four mapping vectors pin it, and the
+  vendored Verify copy follows.
+- The Go port counts a reference back to an enclosing map or slice as one
+  value and visits nothing beyond it, as the JavaScript and Python ports and
+  the spec oracle do. It used to follow a cycle down to the nesting limit,
+  so two such references beside a fractional number passed the value count
+  and gave `unsupported_value` alone where the other ports give
+  `unsupported_number` and `unsupported_value`; the
+  `native-cyclic-*-with-fraction` vectors pin the rule.
 - One core-corpus runner per language lives beside the corpus
   (`caid/conformance/runners`); the per-port version 4 runners are removed.
 - Expectations come from a spec oracle built on the generated `caid/spec`
@@ -61,7 +100,7 @@ Historical entries below retain the labels used when they were written.
   any disagreement and the corpora are checked against their builders in CI.
 - The differential fuzz moves into `caid/fuzz` and compares the JavaScript,
   vendored Verify, Python and Go implementations with the same oracle on
-  about 87,000 seeded cases, with an empty allow list. It runs in the CI
+  about 88,000 seeded cases, with an empty allow list. It runs in the CI
   conformance job with the grammar proof and `npm run caid:conformance`,
   whose steps now run concurrently.
   All three ports and the vendored Verify copy pass it with no divergence

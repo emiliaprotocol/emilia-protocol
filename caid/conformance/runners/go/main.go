@@ -7,6 +7,10 @@
 //
 //	cd caid/conformance/runners/go && go run . [-corpus core|grammar|all] [-json]
 //
+// A vector or case with applies_when runs only when its suite condition
+// holds for this implementation, decided by computing the corpus's
+// suite_probe under that suite; otherwise it is counted as skipped.
+//
 // Standard library only.
 package main
 
@@ -41,16 +45,57 @@ type failure struct {
 }
 
 type tally struct {
-	Pass int `json:"pass"`
-	Fail int `json:"fail"`
+	Pass    int `json:"pass"`
+	Fail    int `json:"fail"`
+	Skipped int `json:"skipped,omitempty"`
 }
 
 var (
-	failures  []failure
-	perCorpus = map[string]*tally{}
-	passCount int
-	failCount int
+	failures     []failure
+	perCorpus    = map[string]*tally{}
+	passCount    int
+	failCount    int
+	skippedCount int
+	implemented  = map[string]bool{}
 )
+
+func skip(corpus string) {
+	t := perCorpus[corpus]
+	if t == nil {
+		t = &tally{}
+		perCorpus[corpus] = t
+	}
+	t.Skipped++
+	skippedCount++
+}
+
+// applies decides an applies_when condition ({suite_implemented: S} or
+// {suite_not_implemented: S}): the implementation implements S exactly when
+// the corpus's suite_probe computes a CAID under S.
+func applies(condition interface{}, probe interface{}) bool {
+	c, _ := condition.(map[string]interface{})
+	if c == nil {
+		return true
+	}
+	suite, wantImplemented := c["suite_implemented"].(string)
+	if !wantImplemented {
+		suite = str(c, "suite_not_implemented")
+	}
+	is, known := implemented[suite]
+	if !known {
+		p, _ := probe.(map[string]interface{})
+		r := guard(func() interface{} {
+			return computeValue(p["object"], opts{hasSuite: true, suite: suite, definitions: p["definitions"], enumSnapshots: []interface{}{}})
+		})
+		var result map[string]interface{}
+		if json.Unmarshal([]byte(canonical(r)), &result) == nil {
+			caidString, _ := result["caid"].(string)
+			is = caidString != ""
+		}
+		implemented[suite] = is
+	}
+	return is == wantImplemented
+}
 
 func report(corpus, id string, ok bool, detail string) {
 	t := perCorpus[corpus]
@@ -210,6 +255,10 @@ func runCore() {
 	caids := map[string]string{}
 	for _, raw := range vectors {
 		v, _ := raw.(map[string]interface{})
+		if !applies(v["applies_when"], corpus["suite_probe"]) {
+			skip("core")
+			continue
+		}
 		id := str(v, "id")
 		kind := str(v, "kind")
 		in, _ := v["input"].(map[string]interface{})
@@ -364,6 +413,10 @@ func runGrammar() {
 	cases, _ := corpus["cases"].([]interface{})
 	for index, raw := range cases {
 		c, _ := raw.(map[string]interface{})
+		if !applies(c["applies_when"], corpus["suite_probe"]) {
+			skip("grammar")
+			continue
+		}
 		d, _ := drivers[str(c, "driver")].(map[string]interface{})
 		lane := str(c, "lane")
 		id := fmt.Sprintf("grammar[%d] %s %s", index, str(c, "driver"), lane)
@@ -437,7 +490,7 @@ func main() {
 	}
 	summary := map[string]interface{}{
 		"runner": "go", "impl": "caid/impl/go", "corpus": *corpusChoice,
-		"pass": passCount, "fail": failCount, "per_corpus": perCorpus, "failures": limit,
+		"pass": passCount, "fail": failCount, "skipped": skippedCount, "per_corpus": perCorpus, "failures": limit,
 	}
 	if *asJSON {
 		out, _ := json.Marshal(summary)
@@ -451,7 +504,7 @@ func main() {
 			fmt.Printf("FAIL %s %s\n     %s\n", f.Corpus, f.ID, f.Detail)
 		}
 		pc, _ := json.Marshal(perCorpus)
-		fmt.Printf("go caid/impl/go (%s): %d passed, %d failed %s\n", *corpusChoice, passCount, failCount, pc)
+		fmt.Printf("go caid/impl/go (%s): %d passed, %d failed, %d skipped %s\n", *corpusChoice, passCount, failCount, skippedCount, pc)
 	}
 	if failCount > 0 {
 		os.Exit(1)

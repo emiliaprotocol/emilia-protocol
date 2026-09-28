@@ -251,13 +251,27 @@ The quality bar is the material-fields test:
   personal data and secrets never sit in an action object. A digest of a
   low-entropy identifier is still guessable; see the draft's Privacy
   Considerations.
+- A type added after registry version 5 whose required fields can all be
+  low-entropy requires a member that carries at least 128 bits of entropy,
+  such as a random instruction or occurrence identifier from the system of
+  record, unless its `digest_notes` or its specification state why not.
+  This is the criterion of the draft's Section 12.2. The types of registry
+  version 5 predate it; for the 54 of them that IANA is asked to register,
+  the draft's Privacy Considerations state why their identifiers are not
+  required to carry that entropy.
 - Enums carry a non-empty inline list, or an external `values_ref` plus an
   immutable edition/snapshot, a canonical values array, and its verified
   SHA-256 pin. A mutable standard, registry, catalog, or URL by itself is not
-  sufficient. No active type may carry an unresolved external enum.
+  sufficient. No active type may carry an unresolved external enum. A
+  proposal that pins an external enum supplies the snapshot file, in the
+  shape the draft's Section 4.4 gives, with the source it was derived from
+  and what is known of that source's terms, and the SHA-256 digest of the
+  file; review confirms that the file is publicly available under the
+  terms it states before the entry is registered.
 - Values from a large, changing, or licensed code system use a `code`
   field: `code_system` (an absolute URI naming the system) and `format` (a
-  code format registered in the draft's Appendix A). CAID pins syntax and
+  code format of the CAID Code Formats registry, whose initial entries are
+  part A.4 of the draft's Appendix A). CAID pins syntax and
   system only, never a value set, and never snapshots such a system. CPT is
   licensed by the American Medical Association: no CPT code, descriptor, or
   value set may appear in this registry, its vectors, or its value sets.
@@ -290,15 +304,64 @@ product without permission or attribution.
 ## 7. Stewardship and transition
 
 This registry is maintained by the EMILIA Protocol maintainers as its
-initial editors; that is the extent of any product affiliation, and nothing
-in the registry depends on or references any vendor's protocol.
+initial editors; that is the extent of any product affiliation.
 
-The -04 revision of the CAID draft asks IANA to create registries for CAID
-suites, action types, field types (including code formats), reason codes,
-mapping transforms, and mapping loss policies. Until IANA creates them, the
-files in this directory are the reference copy. The registry format has been
-kept deliberately simple (flat JSON, CC0) so that such a transition is a
-copy, not a migration.
+The -04 revision of the CAID draft asks IANA to create seven registries:
+CAID Suites, CAID Action Types, CAID Field Types, CAID Code Formats, CAID
+Reason Codes, CAID Mapping Transforms, and CAID Mapping Loss Policies. It
+also asks IANA to register the `caid` URI scheme. Until IANA creates the
+registries, the reference copies are `suites.json` and `action-types.json`
+in this directory for the first two, and `../spec/core.json` with
+`../spec/caid.abnf` for the other five. The registry format has been kept
+deliberately simple (flat JSON, CC0) so that such a transition is a copy,
+not a migration.
+
+## 7.1 Types that IANA is not asked to register
+
+Registry version 5 carries eight types that do not belong under IETF change
+control. They are not among the initial entries the draft asks IANA to
+register; the draft lists them apart, in its Appendix D.2:
+
+- `emilia.mobile.authorized-action.1`: named for a product, and its meaning
+  comes from a vendor specification (`mobile/spec/EP-MOBILE-CEREMONY-v1.md`
+  in this repository).
+- `agent.state.export.1`, `agent.state.import.1`,
+  `agent.state.key-release.1`, and `agent.state.retire-source.1`: defined
+  by `EP-PORTABLE-STATE-HANDOFF-v0.1`.
+- `science.bio.experiment.execute.1`: defined by the Model-to-Matter
+  Internet-Draft (`draft-schrock-model-to-matter`).
+- `travel.cancel-notify.1`: defined by the SILP Internet-Draft
+  (`draft-hwang-silp-protocol`), another author's document.
+- `dns.zone.transfer.1`: the name reads as a DNS zone transfer (AXFR or
+  IXFR), but the type is an EPP registrar transfer of a domain (RFC 5730).
+  A registered name is never reassigned, so the misnomer stays out of the
+  IANA registry.
+
+No other type is named for a vendor or product, or cites a vendor
+specification.
+
+These eight stay in registry version 5 unchanged, and they resolve, compute
+and verify like every other type. Removing one would make objects that are
+valid under registry version 4 invalid (section 2), and the draft pins the
+SHA-256 of `action-types.json`. Once IANA creates the CAID Action Types
+registry, each of the seven types defined by another specification can be
+registered under its Specification Required policy, with its own
+specification and its own change controller, which need not be the IETF.
+The draft's designated expert does not register a name whose first segment
+is organization-specific unless that organization is the change controller,
+so `emilia.mobile.authorized-action.1` can be registered only with its
+organization as change controller.
+`dns.zone.transfer.1` is not a candidate: a registered name is never
+reassigned, so the path for the registrar-transfer type is a successor
+whose name describes it, citing RFC 5730 and RFC 5731, in a later registry
+version. The IETF is the change controller of the initial entries the
+draft registers, and of no other entry. Because the draft pins the bytes of
+registry version 5, even an editorial correction to these entries, such as
+a change controller or a newer revision of a cited draft, waits for a later
+registry version.
+
+`scripts/check-caid-04.mjs` holds the same list as `IANA_EXCLUDED` and
+fails if the draft's Appendix D or its counts diverge from it.
 
 ## 8. Related work
 

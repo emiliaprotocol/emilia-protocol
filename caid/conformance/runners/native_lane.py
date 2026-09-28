@@ -55,6 +55,9 @@ def build_native(encoded, enclosing=None):
             key = k if isinstance(k, str) else build_native(k, enclosing)
             out[key] = build_native(x, out)
         return out
+    if tag == "$fill":
+        spec = encoded["$fill"]
+        return [build_native(spec["v"], enclosing)] * int(spec["n"])
     if tag == "$repeat":
         spec = encoded["$repeat"]
         return spec["unit"] * int(spec["count"])
