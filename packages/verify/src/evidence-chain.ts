@@ -882,13 +882,18 @@ function quorumIntegrity(evidence: any): boolean {
 }
 
 /** VERIFIED for a Trust Receipt. The receipt names each signing key only by
- * approver_key_id and its log key not at all, so both are resolved from the
- * relying party's key material; an id with no public key there, or no log
- * key, leaves VERIFIED unevaluated. The check uses only the resolved public
- * key bytes, with the signature form each signoff carries. The directory
- * entry's approver binding, key class, validity window and compromise marker,
- * and the RP ID, origin and policy pins, are ACCEPTED inputs that the full
- * native verifier checks afterwards. */
+ * approver_key_id, resolved from the relying party's key material. Its log
+ * checkpoint names its key by log_key_id (receipts-13 Section 7.2), but that
+ * id is not resolved here: as in the receipts-13 Section 7.3 offline
+ * algorithm, the checkpoint signature is checked under the trusted log public
+ * key the relying party supplies (profile.log_public_key). An approver id
+ * with no public key there, or no log key, leaves VERIFIED unevaluated. The
+ * check uses only the resolved public key bytes, with the signature form
+ * each signoff carries. The directory entry's approver binding, key class,
+ * validity window and compromise marker, and the RP ID, origin and policy
+ * pins, are ACCEPTED inputs that the full native verifier checks afterwards.
+ * Resolving the log key by log_key_id, which would make "pinned for this
+ * role" an ACCEPTED input, is not implemented. */
 function receiptIntegrity(evidence: any, profile: any): IntegrityOutcome {
   if (!isRecord(profile) || !isRecord(profile.approver_keys)
       || typeof profile.log_public_key !== 'string' || !profile.log_public_key) return 'KEY_UNRESOLVED';
