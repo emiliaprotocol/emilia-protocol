@@ -81,7 +81,7 @@ not a normative dependency of either candidate change.
   implementation evidence.
 - A CAID establishes typed content correlation only. It does not establish
   authorization, execution, safety, source truth, or policy compliance.
-- The only upstream event this file records is the merge of pull request
-  #626 into the `openid/authzen` repository. It is not evidence of
-  working-group consensus, approval of a final specification, adoption of any
-  text, or implementation of the profile.
+- The upstream events this file records are the opening and merge of pull
+  request #626 in the `openid/authzen` repository and the closure of issue
+  603. None is evidence of working-group consensus, approval of a final
+  specification, adoption of any text, or implementation of the profile.
