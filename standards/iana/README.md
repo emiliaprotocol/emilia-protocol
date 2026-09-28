@@ -1,4 +1,4 @@
-# standards/iana — IANA registration templates
+# standards/iana: IANA registration templates
 
 Completed registration templates for the IANA actions the EP draft set names.
 Built 2026-07-04 from a full inventory of the IANA Considerations sections of
@@ -10,30 +10,33 @@ packets for unposted revisions are under `standards/staged/`.
 only where a public specification carries that exact string. Standards-tree
 requests cite the responsible draft. A vendor-tree request may cite a stable
 vendor serialization specification and must not be represented as an IETF
-allocation. Where a draft only anticipates a standards registration, the template is marked
-**PROPOSED, requires draft text in next rev** and must not be filed until a
-revision backs it. Nothing here invents a name that contradicts posted text.
+allocation. Where a draft only anticipates a registration, no template is
+prepared: the tracker row is marked **NOT PREPARED** and nothing is filed
+until a revision requests it. Nothing here invents a name that contradicts
+posted text.
 
 ## Files
 
-- `http-problem-type-registration.md` — RFC 9457 registration template for
+- `http-problem-type-registration.md`: RFC 9457 registration template for
   the transport-neutral AE Challenge HTTP binding.
-- `media-type-registration.md` — the active RFC 6838 §5.6 templates for
+- `media-type-registration.md`: the active RFC 6838 §5.6 templates for
   `application/ep-authorization-receipt+json` and
   `application/ep-authorization-bundle+json`, the prepared AE Challenge
   vendor-tree request, and the retired standards-tree request retained as
   process history.
-- `ae-challenge-vendor-binding.md` — Version 1 media-type serialization
+- `ae-challenge-vendor-binding.md`: Version 1 media-type serialization
   specification for the bare AE-CHALLENGE-v1 object; despite the historical
   filename, it is not a complete carrier binding.
-- `ae-challenge-vendor-registration-form.md` — exact IANA form copy for
+- `ae-challenge-vendor-registration-form.md`: exact IANA form copy for
   `application/vnd.emilia.authorization-evidence-challenge+json`.
-- `well-known-uri-registration.md` — RFC 8615 template for
+- `well-known-uri-registration.md`: RFC 8615 template for
   `agent-action-control.json`, requested only by a draft that Datatracker now
   lists as Replaced; kept as process history and not to be filed.
-- `http-field-registration.md` — RFC 9110 §16.3.1 templates for
+- `http-field-registration.md`: RFC 9110 §16.3.1 templates for
   `Receipt-Required` and `X-EMILIA-Receipt` (both NOT PREPARED, because the
-  only draft that names them is Replaced; includes the RFC 6648 "X-" note).
+  only draft in `standards/` that names them as HTTP fields,
+  draft-schrock-agent-action-manifest-00, is Replaced; includes the RFC 6648
+  "X-" note).
 
 ## Status tracker
 
@@ -46,12 +49,12 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 | 4 | `application/ep-authorization-bundle+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-13 (§14) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
 | 5 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object), state Replaced on Datatracker | Field *named*, not normatively defined; no registration request | NOT PREPARED; no active backing draft | An active draft that defines the field and requests it |
 | 6 | `X-EMILIA-Receipt` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object), state Replaced on Datatracker | Field *named*, not normatively defined; RFC 6648 disfavors permanent "X-" registrations | NOT PREPARED; no active backing draft | An active draft that defines the field; that draft decides on any unprefixed successor |
-| 7 | `application/ep-aec+json` | Media Types | draft-schrock-ep-authorization-evidence-chain-01 (§10); current revision -06 (§17) has no IANA actions | Illustrative only ("e.g.") in -01; not carried into -06 | NOT PREPARED | A chain revision must pick and fix the string first |
+| 7 | `application/ep-aec+json` | Media Types | draft-schrock-ep-authorization-evidence-chain-01 (§11); current revision -06 (§17) has no IANA actions | Illustrative only ("e.g.") in -01; not carried into -06 | NOT PREPARED | A chain revision must pick and fix the string first |
 | 8 | `application/ep-eye-advisory+json` + SET event-type URI | Media Types / SET event URI | posted/draft-schrock-emilia-eye-00 | "may register" | NOT PREPARED | A revision committing to it |
 | 9 | JWT/CWT claim names | JWT Claims / CWT Claims | draft-schrock-human-authorization-binding-00 (§8) | "anticipated for a future revision, after host-format feedback" | NOT PREPARED | Host-format feedback, then next rev |
 
 Not IANA actions (no filing anywhere): the EP **profile registry** entries the
-drafts declare — `grid.curtailment` (draft-schrock-kintzele-grid-curtailment-00),
+drafts declare: `grid.curtailment` (draft-schrock-kintzele-grid-curtailment-00),
 `control_mode` values (partner-triggered human-oversight profile), historical
 PQC algorithm identifiers, and the render-profile / display-attestation
 identifiers the presentation-binding draft anticipates. Those live in EP's own
@@ -111,7 +114,7 @@ registry, not IANA's.
   the HTTP Field Name Registry; a designated expert reviews. Provisional
   entries are the lane for in-progress specifications.
 - The HTTP WG has historically handled expert review of this registry via a
-  GitHub request queue [verify — if
+  GitHub request queue [verify: if
   <https://github.com/protocol-registries/http-fields> is active, file there;
   otherwise the iana@iana.org route stands].
 - **Do not file either field** until an active draft carries a normative
@@ -133,8 +136,8 @@ registry, not IANA's.
    Optional heads-up to wellknown-uri-review@ietf.org first.
 5. Process entries 3 and 4 with Authorization Receipts through its Standards
    Track publication path; do not file parallel direct requests.
-6. **Everything else waits for draft text.** When a revision commits to a
-   PROPOSED entry, update its template here to cite the new revision, flip
+6. **Everything else waits for draft text.** When a revision requests a
+   NOT PREPARED entry, prepare its template here citing that revision, flip
    the tracker row, then file.
 7. After any filing, record the IANA ticket/outcome in the tracker row.
 
@@ -144,14 +147,14 @@ registry, not IANA's.
   or endorsed**; "posted" means accepted and published on the datatracker,
   nothing more. A template whose backing draft is Replaced is process history
   and is not filed.
-- Reference verifiers are **JavaScript, Python, and Go in one repository — a
+- Reference verifiers are **JavaScript, Python, and Go in one repository: a
   consistency check, not independent implementations. A separately authored
   Rust verifier is rebuilt from a pinned public commit and tree and passes the
   pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases. Strict independently attested
   construction acceptance remains zero**.
 - Formal models (TLA+/Alloy) cover the core state machine and quorum, **not**
   WebAuthn binding or log checkpoints.
-- Verification proves signature, binding, and log integrity — **never
+- Verification proves signature, binding, and log integrity, **never
   business correctness**. EP is not an auditor, regulator, or insurer; its
   documents support decisions, they do not conclude them.
 - A registered name is a name. It confers no adoption, no endorsement, and

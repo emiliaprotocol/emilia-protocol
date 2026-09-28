@@ -7,12 +7,16 @@ Updated: 2026-09-28
 This matrix covers the 20 sole-authored series that were active in
 `STATUS.json.active_datatracker` on 2026-08-22. Agent Operation Continuity-00,
 posted on 2026-09-15, is not reviewed here. The matrix is
-extension-agnostic: every current XML source in `standards/posted/` was read
-for its abstract, top-level sections, explicit claim boundary, inputs, and
-outputs. The five active coauthored records in `STATUS.json` remain tracked
-separately and are not candidates for unilateral consolidation here. Current
-per-series maintenance status is recorded in `STATUS.json`
-(`maintenance_status`).
+extension-agnostic: every XML source in `standards/posted/` that was current
+on 2026-08-22 was read for its abstract, top-level sections, explicit claim
+boundary, inputs, and outputs. The eight series revised since then (Action
+Evidence Boundary, Canonical Action Identifier, Architecture, Authorization
+Evidence Chain, Authorization Receipts, Bounded Capability Receipts,
+Presentation Binding, and Quorum) name their current `STATUS.json` revision,
+and each of those rows states what the later revisions add. The five active
+coauthored records in `STATUS.json` remain tracked separately and are not
+candidates for unilateral consolidation here. Current per-series maintenance
+status is recorded in `STATUS.json` (`maintenance_status`).
 
 The dependency column uses the computed 2026-08-15 citation ledger. Counts are
 independent external drafts under the current series name unless otherwise
