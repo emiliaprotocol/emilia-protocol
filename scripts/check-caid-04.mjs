@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 //
-// Checks the staged draft-schrock-canonical-action-identifier-04 packet
-// (standards/staged/NEXT-CAID-04) against the sources it restates:
+// Checks the draft-schrock-canonical-action-identifier-04 packet
+// (standards/staged/NEXT-CAID-04), publication provenance for the -04
+// revision posted on 2026-09-28, against the sources it restates:
 //
 //   - Appendix A equals caid/spec/caid.abnf byte for byte;
 //   - Appendix D lists every type of reference registry version 5 with its
@@ -31,6 +32,10 @@
 //     be gone, banned wording, both renders (and, with xml2rfc 3.34.0 on
 //     PATH, that they equal a fresh render), table rows split across a
 //     page, and SHA256SUMS.txt;
+//   - the posted snapshot in standards/posted: its XML and TXT equal the
+//     packet byte for byte, and its HTML (the IETF archive HTML without the
+//     per-request Cloudflare challenge script) carries no challenge markup
+//     and has the SHA-256 that standards/STATUS.json records;
 //   - with --prefiling, that origin/main carries this tree's caid/ and the
 //     vendored caid.mjs byte for byte, so Sections 2.2, 2.5, 8.3 and 13 and
 //     Appendix A hold at tree/main/caid.
@@ -1734,6 +1739,31 @@ for (const line of sums) {
 }
 check(expectedPaths.size === 0, `missing checksum path ${[...expectedPaths].join(', ')}`);
 
+// The posted snapshot (standards/posted). -04 was posted on 2026-09-28 as
+// Datatracker submission 169585. Its XML and TXT are the packet bytes. Its
+// HTML is the IETF archive HTML with the per-request Cloudflare challenge
+// script removed, which cannot be derived from the packet render, so it is
+// held to the SHA-256 that STATUS.json records and must carry no challenge
+// markup.
+{
+  const postedRel = 'standards/posted';
+  const record = readJson('standards/STATUS.json').september_28_2026_caid_wave;
+  const item = record?.items?.find((i) => i.draft === DOC);
+  check(item && item.source === `${postedRel}/${DOC}.xml` && item.datatracker_submission_id === 169585, `STATUS.json september_28_2026_caid_wave does not record ${postedRel}/${DOC}.xml as submission 169585`);
+  const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
+  for (const [relative, field] of [[sourceRel, 'xml_sha256'], [textRel, 'txt_sha256'], [htmlRel, 'html_sha256']]) {
+    const postedFile = path.join(root, postedRel, path.basename(relative));
+    if (!existsSync(postedFile)) { errors.push(`posted ${path.basename(relative)} is missing`); continue; }
+    const bytes = readFileSync(postedFile);
+    if (relative === htmlRel) {
+      check(!/\/cdn-cgi\/challenge-platform\/|__CF\$cv\$params/.test(bytes.toString('utf8')), `posted ${path.basename(relative)} carries the archive's Cloudflare challenge script`);
+    } else {
+      check(bytes.equals(readFileSync(path.join(packet, relative))), `posted ${path.basename(relative)} differs from the packet`);
+    }
+    check(record?.[field] === sha(bytes) && item?.[field === 'xml_sha256' ? 'snapshot_sha256' : field] === sha(bytes), `posted ${path.basename(relative)} does not have the ${field} that STATUS.json september_28_2026_caid_wave records`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // --prefiling: the filing gate (M3). Section 13 points at tree/main/caid and
 // says the code there implements -04, runs the corpus, and skips the
@@ -1794,4 +1824,4 @@ if (errors.length) {
   process.exit(1);
 }
 const { iana: d1, other: d2 } = split.counts;
-console.log(`CAID-04: Appendix A (${abnfText.split('\n').length - 1} lines) equals caid.abnf; Appendix B, detail, limits and IANA tables equal their sources; Appendix D lists registry v5 (${registry.types.length} types) as ${d1.total} initial IANA entries (${d1.active} active, ${d1.deprecated} deprecated) and ${d2.total} not requested of IANA; Appendix C (cbor-sha256 included) and the examples recompute; ${claimAnchors.length} change claims map to vectors; review wording, BCP 14 markup, references, renders${renderedFresh ? ' (equal to a fresh xml2rfc 3.34.0 render)' : ''} and checksums${prefiling ? ', and the filing gate against origin/main,' : ''} PASS.`);
+console.log(`CAID-04: Appendix A (${abnfText.split('\n').length - 1} lines) equals caid.abnf; Appendix B, detail, limits and IANA tables equal their sources; Appendix D lists registry v5 (${registry.types.length} types) as ${d1.total} initial IANA entries (${d1.active} active, ${d1.deprecated} deprecated) and ${d2.total} not requested of IANA; Appendix C (cbor-sha256 included) and the examples recompute; ${claimAnchors.length} change claims map to vectors; review wording, BCP 14 markup, references, renders${renderedFresh ? ' (equal to a fresh xml2rfc 3.34.0 render)' : ''}, checksums and the posted snapshot${prefiling ? ', and the filing gate against origin/main,' : ''} PASS.`);

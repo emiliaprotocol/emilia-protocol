@@ -42,7 +42,7 @@ authoritative for rendered forms.
 - `draft-schrock-action-remedy-receipts-00`
 - `draft-schrock-agent-operation-continuity-00`
 - `draft-schrock-agent-qualification-statements-00`
-- `draft-schrock-canonical-action-identifier-03`
+- `draft-schrock-canonical-action-identifier-04`
 - `draft-schrock-emilia-eye-00`
 - `draft-schrock-ep-architecture-03`
 - `draft-schrock-ep-authority-introduction-03`
@@ -81,7 +81,7 @@ subordinate, or demote any active draft.
 ## Separate runtime execution spine
 
 The runtime path is [Architecture-03](draft-schrock-ep-architecture-03.xml) →
-[CAID-03](draft-schrock-canonical-action-identifier-03.xml) →
+[CAID-04](draft-schrock-canonical-action-identifier-04.xml) →
 [AEC-06](draft-schrock-ep-authorization-evidence-chain-06.xml) →
 [AEB-07](draft-schrock-action-evidence-boundary-07.xml): system boundaries,
 exact material-action matching, evidence satisfaction, then executor-side
@@ -366,9 +366,10 @@ packet.
 
 The retained `../staged/NEXT-CAID-03` packet is publication provenance, not an
 upload candidate. Its XML is byte-for-byte identical to the posted source.
-CAID-02 is retained in `../archive/`. Publication does not establish
-protocol-owner review, independent implementation, working-group adoption, RFC
-status, or IETF endorsement.
+CAID-02 is retained in `../archive/`. CAID-03 was superseded by -04 on
+2026-09-28, and its snapshot moved to `../archive/`. Publication does not
+establish protocol-owner review, independent implementation, working-group
+adoption, RFC status, or IETF endorsement.
 
 ## September 27, 2026 mirror of two revisions with no retained source
 
@@ -390,3 +391,31 @@ SHA-256 digests in `september_27_2026_posted_mirror`:
 No HTML render is retained for either revision; the archive is authoritative
 for rendered forms. Publication does not establish implementation,
 working-group adoption, RFC status, or IETF endorsement.
+
+## September 28, 2026 CAID revision
+
+`draft-schrock-canonical-action-identifier-04` was posted as an active
+individual Internet-Draft through Datatracker submission 169585 (Datatracker
+time 2026-09-28T07:24:09Z) and mirrored into this directory the same day. Its
+XML and TXT are byte-for-byte identical to the immutable IETF archive
+artifacts. The posted HTML is the IETF archive HTML minus the per-request
+Cloudflare challenge script that the archive delivery path appends before
+`</body>`. Two fetches differed only in that script and were byte-identical
+once it was removed, so the posted HTML can be checked against the archive.
+The archive HTML was rendered by xml2rfc 3.34.1 and differs from the
+provenance packet's local xml2rfc 3.34.0 render in its recorded versions,
+some CSS rules, and trailing whitespace; the checksum-pinned local render
+remains in the provenance packet. `STATUS.json` records the SHA-256 digests
+in `september_28_2026_caid_wave`.
+
+-04 is a substantive revision. The suites, the digest, and the canonical form
+of every object that both -03 and -04 accept do not change, but -04 refuses
+inputs that -03 accepted, including some action objects whose CAIDs were
+valid under -03; its Section 14, "Changes since -03", lists every normative
+change.
+
+The retained `../staged/NEXT-CAID-04` packet is publication provenance, not an
+upload candidate. Its XML is byte-for-byte identical to the posted source.
+CAID-03 is retained in `../archive/`. Publication does not establish
+protocol-owner review, independent implementation, working-group adoption, RFC
+status, or IETF endorsement.

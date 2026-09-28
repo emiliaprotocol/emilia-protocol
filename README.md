@@ -346,7 +346,7 @@ provider entry, refuses a second attempt at the same action while an earlier
 one is in flight or uncertain, and keeps an uncertain result locked until
 authenticated reconciliation.
 
-[CAID-03](standards/posted/draft-schrock-canonical-action-identifier-03.xml)
+[CAID-04](standards/posted/draft-schrock-canonical-action-identifier-04.xml)
 is used when independently encoded representations must be compared. It is not
 a mandatory second mapping when the consequence-owning PEP already derives and
 enforces a current decision over the final operation.

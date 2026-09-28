@@ -88,7 +88,7 @@ also carries a maintenance status (`maintenance_status`, defined in
 `STATUS.json.status_language`) and its Datatracker expiry date; the
 human-readable table is in [`PORTFOLIO.md`](PORTFOLIO.md#maintenance-status).
 
-The separate runtime execution spine is **Architecture-03 -> CAID-03 ->
+The separate runtime execution spine is **Architecture-03 -> CAID-04 ->
 AEC-06 -> AEB-07**: architecture and decision boundaries, exact material-action
 identity and matching, evidence satisfaction, then executor-side admission and
 one-time consequence custody. This runtime path is not the four-document
@@ -291,7 +291,8 @@ the same CAID bytes, a code outside it is refused, and eleven active types
 cannot produce a CAID until their external value sets are pinned. The Action
 Object, identifier syntax, digest suites, and mapping algorithm are unchanged.
 It is an individual Internet-Draft, not a working-group item, and posting is
-not protocol-owner review.
+not protocol-owner review. -04 superseded it on 2026-09-28, and its snapshot
+moved to `archive/`.
 
 ## September 27 posted mirror
 
@@ -307,6 +308,30 @@ Authorization Receipts-12, Presentation Binding-00, Quorum-03, and Bounded
 Capability Receipts-04 snapshots moved to `archive/`. Checked against the
 Datatracker API on 2026-09-28, `posted/` holds the current revision of every
 active sole-authored draft.
+
+## September 28 CAID revision
+
+`draft-schrock-canonical-action-identifier-04` was posted through Datatracker
+submission 169585 (Datatracker time 2026-09-28T07:24:09Z). Its XML and TXT
+match the immutable IETF archive byte-for-byte and were mirrored into
+`posted/` the same day, with digests recorded in
+`STATUS.json.september_28_2026_caid_wave`. The posted HTML is the IETF archive
+HTML with the per-request Cloudflare challenge script removed. -04 is a
+substantive revision that makes the processing model complete and checkable:
+a strict I-JSON input profile, host values that are refused and never
+rewritten, one data model with one table of limits, definition conformance and
+`definition_sha256`, the `code` field type with named code formats, the
+monotone enum advance, a fixed reason order with verification details, and
+normative mapping stages A through D. The suites, the digest, and the canonical
+form of every object that both -03 and -04 accept do not change; the
+identifier syntax changes only by refusing the forms its Section 14.1 lists,
+and some action objects whose CAIDs were valid under -03 are now refused. The
+reference registry advances to version 5: 62 type versions, 53 active, all of
+which compute, and 9 deprecated. -04 adds Privacy Considerations and an
+Implementation Status section, revises Security Considerations, and requests
+seven IANA registries and the `caid` URI scheme. It is an individual
+Internet-Draft, not a working-group item, and posting is not protocol-owner
+review. CAID-03 moved to `archive/`.
 
 ## New-filing freeze
 

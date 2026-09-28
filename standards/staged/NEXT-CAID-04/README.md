@@ -1,8 +1,18 @@
-# CAID revision 04 working packet
+# CAID-04 publication provenance packet
 
-This directory stages `draft-schrock-canonical-action-identifier-04`. It is
-not published. The last posted revision is -03, whose exact source is kept
-in `../NEXT-CAID-03/`. This packet started from that source.
+Status: posted on 2026-09-28 as
+`draft-schrock-canonical-action-identifier-04` through Datatracker submission
+169585 (Datatracker time 2026-09-28T07:24:09Z, 97 pages). It is an active
+individual Internet-Draft. It is not a working-group item, an RFC, or IETF
+endorsement, and posting is not review by any referenced protocol owner.
+
+The XML under `UPLOAD-THIS/` is the exact submitted -04 source and matches the
+immutable IETF archive byte-for-byte. The text under `RENDERS/` also matches
+the archive byte-for-byte. The packet is retained for publication provenance,
+not as an upload candidate. The posted snapshot is
+[`../../posted/draft-schrock-canonical-action-identifier-04.xml`](../../posted/draft-schrock-canonical-action-identifier-04.xml);
+CAID-03 is retained in `../../archive/`. The publication check is recorded at
+the end of `VALIDATION.md`.
 
 -04 is a substantive revision. It makes the processing model complete and
 machine-checkable: strict JSON text input, host values, one data model with
@@ -14,12 +24,14 @@ rewritten Security section, a new Privacy section, seven IANA registries
 registry entries that are not requested of IANA) and the `caid` URI scheme,
 and an Implementation Status section. The
 draft's "Changes since -03" section lists every normative change,
-including the inputs it newly refuses.
+including the inputs it newly refuses. The suites, the digest, and the
+canonical form of every object that both -03 and -04 accept do not change;
+some action objects whose CAIDs were valid under -03 are refused.
 
 ## Files
 
 - `UPLOAD-THIS/draft-schrock-canonical-action-identifier-04.xml`: the
-  source.
+  submitted source.
 - `RENDERS/`: the TXT and HTML renderings of that source.
 - `SHA256SUMS.txt`: pins the source and both renderings.
 - `CHANGES-VECTORS.json`: maps every "Changes since -03" item that changes
@@ -83,44 +95,23 @@ including the inputs it newly refuses.
   skip exactly the vectors that apply only to an implementation of it.
 - When `xml2rfc 3.34.0` is on PATH, both renders equal a fresh render of
   the source (`--renders` requires it).
+- The posted XML and TXT in `../../posted/` equal the packet byte for byte,
+  and the posted HTML carries no Cloudflare challenge markup. All three have
+  the SHA-256 values that `STATUS.json` records in
+  `september_28_2026_caid_wave`.
 
-## Hold
+## Filing record
 
-Submission is the author's decision. Before it:
-
-1. The Implementation Status section points at `tree/main/caid` and says
-   all three implementations implement -04. Pull request #821 merged as
-   `cea10b85e`, but this packet's branch (`feat/caid-04-prefiling`) also
-   carries the JavaScript mapping stage B fix that the draft's Section 8.3
-   now states, the Go back-reference fix that Sections 2.2 and 2.5 state,
-   the JavaScript fix (in the vendored copy too) that reads a host array
-   of 2^24 or more elements, which Section 2.5 admits within the value
-   count, the conditional cbor-sha256 vectors and the runners that skip
-   them, the vectors its change log cites (and the mapping runners' `host`
-   and `fill` mutations that some of them need), and the `caid.abnf`
-   comment that Appendix A carries. Merge this branch before filing. The
-   branch has merged main at `dedd9a24d`; if main moves again, merge it
-   and regenerate `AI_CONTEXT.md`, `public/llms-full.txt` and
-   `public/.well-known/emilia-context.json` with
-   `node scripts/generate-llm-context.mjs --write` (both sides change their
-   input digest line, so a textual merge conflicts), then confirm with
-   `npm run check:llm-context`. After `git fetch origin`, run
-   `node scripts/check-caid-04.mjs --prefiling`. It fails today, as it
-   should. It requires that origin/main is the remote main
-   (`git ls-remote`), that it carries registry version 5,
-   `caid/spec/caid.abnf` and the -04 ports, that the [CAID-REGISTRY]
-   commit is reachable from origin/main, that origin/main's `caid/` tree
-   and `packages/verify/vendor/caid.mjs` equal this branch's byte for byte,
-   and that the renders equal a fresh `xml2rfc 3.34.0` render. It lists
-   every file that differs from main.
-2. [CAID-REGISTRY] is pinned to commit
-   `cea10b85e96460a04bf55d683a1ebc34e8b2c9a6`, the merge of #821 on main,
-   whose `caid/registry/action-types.json` is registry version 5 (SHA-256
-   `1e30ddd3...2551a`). The reference targets the raw file URL at that
-   commit, whose octets the digest covers, and names no blob URL.
-3. Set the date, confirm each cited draft revision and that -03 is still
-   the latest revision on Datatracker, re-render with the procedure in
-   `VALIDATION.md`, and refresh `SHA256SUMS.txt` and `VALIDATION.md`.
-4. The `caid` URI scheme is requested as Permanent through the draft's
-   IANA section. An early review request to uri-review@ietf.org (RFC 7595,
-   Section 7.1) is a separate author action.
+Pull request #824 merged the final state of this packet, with the code and
+corpus fixes its draft describes, into main as `2d8bde58c` at
+2026-09-28T06:49:54Z. The Datatracker submission API records the upload at
+2026-09-28T06:56:34Z and the posting at 2026-09-28T07:24:11Z. On 2026-09-28,
+after posting, `node scripts/check-caid-04.mjs --prefiling` passed against
+origin/main at `2d8bde58c`, which `git ls-remote` confirmed was the remote
+main, including the comparison with a fresh `xml2rfc 3.34.0` render.
+[CAID-REGISTRY] is pinned to commit
+`cea10b85e96460a04bf55d683a1ebc34e8b2c9a6`, whose
+`caid/registry/action-types.json` is registry version 5. The `caid` URI
+scheme is requested as Permanent through the draft's IANA section; an early
+review request to uri-review@ietf.org (RFC 7595, Section 7.1) is a separate
+author action and is not recorded here.

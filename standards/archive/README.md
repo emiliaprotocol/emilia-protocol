@@ -66,6 +66,11 @@ successors were mirrored into `../posted/`:
 - `draft-schrock-ep-presentation-binding-00` (superseded by -01)
 - `draft-schrock-ep-quorum-03` (superseded by -04)
 
+The following superseded snapshot was moved here on 2026-09-28, when its
+successor was mirrored into `../posted/`:
+
+- `draft-schrock-canonical-action-identifier-03` (superseded by -04)
+
 On 2026-09-27 the per-request Cloudflare challenge script that the IETF archive
 delivery path appends to HTML was removed from seven archived renders:
 `draft-schrock-action-evidence-boundary-04`, `draft-schrock-ae-challenge-03`,
