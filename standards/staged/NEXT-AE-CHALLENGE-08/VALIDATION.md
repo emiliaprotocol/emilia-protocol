@@ -25,10 +25,15 @@ regenerated and the checks below re-run on that date.
   xml2rfc prints no warnings. On 2026-09-28 this procedure produced the
   committed TXT and HTML byte for byte, both in `UPLOAD-THIS/` and on a copy
   of the source under the same file name in a scratch directory. Rendered
-  this way, the HTML inlines xml2rfc's metadata script. Writing the HTML to
-  another directory with `-o` leaves that script out and does not reproduce
-  the committed file; the TXT is the same either way. The HTML committed on
-  2026-09-27 reproduces with `xml2rfc --html -o
+  this way, the HTML inlines xml2rfc's metadata script. Writing the HTML
+  with an `-o` path whose directory part contains a `.` or `..` segment (for
+  example `../RENDERS/<name>.html`, or an absolute path through `..`) leaves
+  that script out and does not reproduce the committed file: xml2rfc 3.34.0
+  inlines the script only when the script path it resolves under that
+  directory still begins with the directory as written. An `-o` path without
+  such a segment, absolute or into a subdirectory, keeps the script and
+  reproduces the committed HTML. The TXT is the same either way. The HTML
+  committed on 2026-09-27 reproduces with `xml2rfc --html -o
   ../RENDERS/draft-schrock-ae-challenge-08.html` run in `UPLOAD-THIS/` (plus
   the `perl` step) and not with this procedure, so it lacked the script; it
   was replaced by the render from this procedure.

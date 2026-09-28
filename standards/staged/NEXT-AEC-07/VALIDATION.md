@@ -43,14 +43,20 @@ the posted -06 rendering the same way.
   committed TXT and HTML byte for byte, both in `UPLOAD-THIS/` and on a copy
   of the source under the same file name in a scratch directory. Rendered
   this way, the HTML inlines xml2rfc's metadata script, as the -06 HTML
-  does. Writing the HTML to another directory with `-o` leaves that script
-  out and does not reproduce the committed file; the TXT is the same either
-  way. The HTML committed on 2026-09-27 reproduces with `xml2rfc --html -o
+  does. Writing the HTML with an `-o` path whose directory part contains a
+  `.` or `..` segment (for example `../RENDERS/<name>.html`, or an absolute
+  path through `..`) leaves that script out and does not reproduce the
+  committed file: xml2rfc 3.34.0 inlines the script only when the script path
+  it resolves under that directory still begins with the directory as
+  written. An `-o` path without such a segment, absolute or into a
+  subdirectory, keeps the script and reproduces the committed HTML. The TXT
+  is the same either way. The HTML committed on 2026-09-27 reproduces with
+  `xml2rfc --html -o
   ../RENDERS/draft-schrock-ep-authorization-evidence-chain-07.html` run in
   `UPLOAD-THIS/` (plus the `perl` step) and not with this procedure, so it
-  lacked the script; it was replaced by the render from this procedure. The `perl` step removes
-  trailing spaces and tabs, as the CAID-04 and AE Challenge -08 packets do,
-  so `git diff --check` is clean.
+  lacked the script; it was replaced by the render from this procedure. The
+  `perl` step removes trailing spaces and tabs, as the CAID-04 and AE
+  Challenge -08 packets do, so `git diff --check` is clean.
 - Applied to the -06 source without the `perl` step, the same `xml2rfc`
   command reproduces the TXT and HTML in `../NEXT-AEC-06/RENDERS/` byte for
   byte; the committed -06 HTML keeps xml2rfc's trailing whitespace.
