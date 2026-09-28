@@ -73,9 +73,9 @@ it:
 
 V8 cannot list more than 2^24 own keys at once (`Reflect.ownKeys` and
 `Object.getOwnPropertyDescriptors` throw a `RangeError`), so an array of
-2^24 or more elements, or an object with as many members named by array
-indices, is read through `Object.keys` and `Object.getOwnPropertySymbols`
-instead. It is accepted or refused as above, within the value count, with
+2^24 or more elements, whose `length` is one more key, or an object with
+more than 2^24 members named by array indices, is read through
+`Object.keys` and `Object.getOwnPropertySymbols` instead. It is accepted or refused as above, within the value count, with
 one difference: those calls do not list non-enumerable keys, so a
 non-enumerable element there reads as a hole and still refuses the value,
 but a non-enumerable member that is not an element is not seen.

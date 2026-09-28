@@ -1,7 +1,7 @@
 # Validation record
 
 Validated on 2026-09-28. The source applies every confirmed finding of the
-pre-filing review, and every finding of the first through fifth audits of
+pre-filing review, and every finding of the first through sixth audits of
 those fixes, to the previously staged -04, which carried the
 amount-string ABNF and the suite and unused-bit parsing changes over -03
 and keeps both.
@@ -100,15 +100,16 @@ main, and `--prefiling` now fails unless `git rev-parse origin/main` equals
 `git ls-remote origin refs/heads/main`, so a stale fetch cannot pass it.
 Against that main its first checks hold: main carries registry version 5,
 `caid/spec/caid.abnf`, ports that name -04, and the [CAID-REGISTRY]
-commit. Its last check does not: 34 files differ between this branch and
-main, 33 under `caid/` and the vendored copy
+commit. Its last check does not: 35 files differ between this branch and
+main, 34 under `caid/` and the vendored copy
 `packages/verify/vendor/caid.mjs`, among them the JavaScript mapping
-stage B fix that Section 8.3 states, the Go
-back-reference fix that Sections 2.2 and 2.5 state, the JavaScript fix,
-in `caid/impl/js/caid.mjs` and the vendored copy, that reads a host array
-of 2^24 or more elements within the value count of Section 2.5, the
-conditional cbor-sha256 vectors and the runners that skip them, which
-Section 13 describes, the value-count, boundary, long-array and cycle
+stage B fix that Section 8.3 states, the Go back-reference fix that
+Sections 2.2 and 2.5 state, the JavaScript fix, in `caid/impl/js/caid.mjs`
+and the vendored copy, that reads a host array of 2^24 or more elements
+within the value count of Section 2.5, the `caid/impl/js/README.md` note
+on the own keys V8 cannot list at once, the conditional cbor-sha256
+vectors and the runners that skip them, which Section 13 describes, the
+value-count, boundary, long-array and cycle
 vectors, the native `$fill` tag and the mapping runners' `host` and `fill`
 mutations that express some of them, and the `caid.abnf` comment that
 Appendix A carries. The failure message names Sections 2.2, 2.5, 8.3 and
@@ -162,20 +163,22 @@ this tree:
   `native-definition-value-count-3355443{2,3}-default-optional-fields`,
   whose projection count includes the default optional_fields) pin the
   boundary, so a port that counts with >=, leaves the root out, counts a
-  back-reference as zero or skips the default fails them. Until this round
-  the JavaScript port, and so the vendored copy, refused a host array of
-  2^24 or more elements, which V8 cannot list the keys of at once
-  (`Reflect.ownKeys` throws a `RangeError`), as a value outside the data
-  model, although it is within the count and the Python and Go ports and
-  the oracle read it; it now lists such a container through `Object.keys`
+  back-reference as zero or skips the default fails them. Until commit
+  `9595ec9c6` the JavaScript port, and so the vendored copy, refused a host
+  array of 2^24 or more elements, which V8 cannot list the keys of at once
+  (`Reflect.ownKeys` throws a `RangeError` for more than 2^24 own keys, and
+  the array's `length` is one more), as a value outside the data model,
+  although it is within the count and the Python and Go ports and the
+  oracle read it; it now lists such a container through `Object.keys`
   and `Object.getOwnPropertySymbols`. Before that change it failed exactly
   the five `native-*-16777216-*` core vectors, the relation of the
   definition one, and the two `*-16777216-*` mapping vectors, and passed
-  their `16777215` twins and every boundary vector. Until this round the Go port followed
-  a cycle down to the nesting limit, so a branching cycle beside 1.5 passed
-  the count and gave `[unsupported_value]` where the JavaScript and Python
-  ports and the oracle gave `[unsupported_number, unsupported_value]`; Go
-  now counts the reference as one value. The vectors
+  their `16777215` twins and every boundary vector. Until commit
+  `58c97a59f` the Go port followed a cycle down to the nesting limit, so a
+  branching cycle beside 1.5 passed the count and gave
+  `[unsupported_value]` where the JavaScript and Python ports and the
+  oracle gave `[unsupported_number, unsupported_value]`; Go now counts the
+  reference as one value. The vectors
   `native-value-count-stops-at-depth-64`,
   `native-value-count-straddles-depth-64`,
   `native-value-count-with-phase-3-and-4` and its verify twin,
@@ -184,10 +187,15 @@ this tree:
   `native-definition-value-count-outside-projection`,
   `profile-value-count-abstains` and
   `stage-b-source-value-count-not-canonicalizable` pin the behavior in all
-  three ports and the vendored copy. Before the Go change, its runner
-  failed exactly the six branching-cycle vectors (compute and verify for
-  the branching object, the branching array and the three-way array) and
-  passed the single back-reference ones.
+  three ports and the vendored copy. Run with the current runner and
+  616-vector corpus, the Go port of `58c97a59f~1` fails exactly eight core
+  vectors: the six branching-cycle vectors (compute and verify for the
+  branching object, the branching array and the three-way array), and
+  `native-value-count-33554432-cyclic` and its verify twin, which came
+  later and sit at the limit, where following their back-references takes
+  it past the count. It passes the single back-reference vectors
+  (`native-cyclic-single-{object,array}-with-fraction` and their verify
+  twins).
 - Appendix D, "Action Types of Reference Registry Version 5", lists all 62
   types of registry version 5 once, with their `definition_sha256` values:
   D.1, the 54 initial IANA entries (45 active, 9 deprecated), and D.2, the
@@ -304,8 +312,10 @@ this tree:
   applications, among them the verifier rules for several CAIDs,
   signature coverage, truncation, the occurrence identifier, message
   bounds, number literals, logging, type entropy, keyed commitments,
-  identifier normalization and snapshot files, and the Security and
-  Privacy items of Section 14.6 describe text alone.
+  identifier normalization and snapshot files, and the Security, Privacy
+  and IANA items of Section 14.6 describe text alone: the `ed-iana` item no
+  longer restates the 128-bit entropy criterion that `ed-type-entropy`
+  lists, and the script checks all three.
 - Section 12.8 gives the utility of the scheme (RFC 7595, Section 3.1)
   against an ni URI (RFC 6920) and a URN namespace (RFC 8141), with the
   wording read against those RFCs (below), and the `ed-uri-utility` item
@@ -338,11 +348,14 @@ this tree:
 
 - `npm run caid:conformance` passes: 616 core, 1966 grammar, 86 mapping,
   and 100 consequential-interoperability vectors against the spec oracle,
-  with the generated-sources and registry checks. In JavaScript, Python,
-  and Go each runner reports 614 of the 616 core vectors run and passed
-  (2 skipped) and all 1966 grammar cases: six vectors apply only where
-  cbor-sha256 is, or is not, implemented, and each runner skips those
-  whose condition does not hold.
+  with the generated-sources and registry checks. For each of JavaScript,
+  Python, and Go it reports 614 of the 616 core vectors run and passed
+  (2 skipped) and all 1966 grammar cases: five core vectors and one
+  grammar case apply only where cbor-sha256 is, or is not, implemented,
+  and each runner skips those whose condition does not hold. The
+  runners' own tallies (`runners/run.mjs`, `runners/run.py`,
+  `runners/go`) count 652 core passes, because each of the 38 `relation`
+  vectors is also reported as a separate check.
 - `node caid/spec/gen.mjs --check` passes (4 generated files match), and
   `node caid/spec/abnf-check.mjs` reports 0 failures.
 - `npm run check:llm-context` passes.
@@ -485,6 +498,27 @@ Re-run for the fourth audit of the fixes, on the same day and machine:
   history sentence says of it; the Python and Go runners were checked to
   build a real cycle (a member that is its own profile, an array that
   holds itself) and a value of no JSON kind.
+
+Re-run for the sixth audit of the fixes, on 2026-09-28, on the same
+machine (node 26.5.0, go1.26.4):
+
+- `npm view @emilia-protocol/verify version` is still 5.0.0, the
+  Datatracker API reports the same latest revisions for this draft (03)
+  and every cited draft, the IETF archive URL for -04 still returns 404,
+  and `uri-schemes-1.csv` still has 439 lines and no caid entry.
+- The V8 limit behind the JavaScript fallback, on node 26.5.0 and
+  24.18.0: `Reflect.ownKeys`, `Object.getOwnPropertyNames` and
+  `Object.getOwnPropertyDescriptors` list an array of 2^24 - 1 elements
+  and an object with 2^24 members named by array indices (2^24 own keys
+  each), and throw a `RangeError` for an array of 2^24 elements and an
+  object with 2^24 + 1 such members; `Object.keys` lists all four. The
+  comment in `caid/impl/js/caid.mjs` (and so the vendored copy), the
+  JavaScript README and `CHANGELOG.md` counted an object with 2^24 such
+  members among the containers V8 cannot list, and the unit-test comment
+  put the limit at 2^24 or more own keys; each now says more than 2^24.
+- The JavaScript port of `9595ec9c6^` and the Go port of `58c97a59f~1`,
+  each run with the current runners and corpora, fail exactly the vectors
+  that the check-caid-04 section above lists for them.
 
 Carried from the earlier validation of this packet on the same day, and
 not re-run for this revision, because the text they support did not

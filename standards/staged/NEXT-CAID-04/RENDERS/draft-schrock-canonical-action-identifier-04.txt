@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Standards Track                       27 September 2026
-Expires: 31 March 2027
+Intended status: Standards Track                       28 September 2026
+Expires: 1 April 2027
 
 
                  The Canonical Action Identifier (CAID)
@@ -47,13 +47,13 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 31 March 2027.
+   This Internet-Draft will expire on 1 April 2027.
 
 
 
 
 
-Schrock                   Expires 31 March 2027                 [Page 1]
+Schrock                   Expires 1 April 2027                  [Page 1]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Schrock                   Expires 31 March 2027                 [Page 2]
+Schrock                   Expires 1 April 2027                  [Page 2]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -165,7 +165,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                 [Page 3]
+Schrock                   Expires 1 April 2027                  [Page 3]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -221,7 +221,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                 [Page 4]
+Schrock                   Expires 1 April 2027                  [Page 4]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -277,7 +277,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                 [Page 5]
+Schrock                   Expires 1 April 2027                  [Page 5]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -333,7 +333,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                 [Page 6]
+Schrock                   Expires 1 April 2027                  [Page 6]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -389,7 +389,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                 [Page 7]
+Schrock                   Expires 1 April 2027                  [Page 7]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -445,7 +445,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                 [Page 8]
+Schrock                   Expires 1 April 2027                  [Page 8]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -501,7 +501,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                 [Page 9]
+Schrock                   Expires 1 April 2027                  [Page 9]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -547,17 +547,17 @@ Internet-Draft                    CAID                    September 2026
       consequence for a reader that reads numbers as exact decimals.
 
    *  Fractional, NaN, infinite, and out-of-range values are refused as
-      unsupported_number by every conforming implementation, at any
-      depth up to 64 (Section 2.2), except in a host action object past
-      the value count, which yields unsupported_value instead
-      (Section 2.5).  Fractional quantities are carried as strings.
+      unsupported_number by every conforming implementation wherever an
+      object or array at depth 64 or less holds them (Section 2.2),
+      except in a host action object past the value count, which yields
+      unsupported_value instead (Section 2.5).  Fractional quantities
+      are carried as strings.
 
 
 
 
 
-
-Schrock                   Expires 31 March 2027                [Page 10]
+Schrock                   Expires 1 April 2027                 [Page 10]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -613,7 +613,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 11]
+Schrock                   Expires 1 April 2027                 [Page 11]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -669,7 +669,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 12]
+Schrock                   Expires 1 April 2027                 [Page 12]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -725,7 +725,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 13]
+Schrock                   Expires 1 April 2027                 [Page 13]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -781,7 +781,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 14]
+Schrock                   Expires 1 April 2027                 [Page 14]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -837,7 +837,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 15]
+Schrock                   Expires 1 April 2027                 [Page 15]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -893,7 +893,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 16]
+Schrock                   Expires 1 April 2027                 [Page 16]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -949,7 +949,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 17]
+Schrock                   Expires 1 April 2027                 [Page 17]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1005,7 +1005,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 18]
+Schrock                   Expires 1 April 2027                 [Page 18]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 19]
+Schrock                   Expires 1 April 2027                 [Page 19]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1117,7 +1117,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 20]
+Schrock                   Expires 1 April 2027                 [Page 20]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1173,7 +1173,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 21]
+Schrock                   Expires 1 April 2027                 [Page 21]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1229,7 +1229,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 22]
+Schrock                   Expires 1 April 2027                 [Page 22]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1285,7 +1285,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 23]
+Schrock                   Expires 1 April 2027                 [Page 23]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1341,7 +1341,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 24]
+Schrock                   Expires 1 April 2027                 [Page 24]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1397,7 +1397,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 25]
+Schrock                   Expires 1 April 2027                 [Page 25]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1453,7 +1453,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 26]
+Schrock                   Expires 1 April 2027                 [Page 26]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1509,7 +1509,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 27]
+Schrock                   Expires 1 April 2027                 [Page 27]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1565,7 +1565,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 28]
+Schrock                   Expires 1 April 2027                 [Page 28]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1621,7 +1621,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 29]
+Schrock                   Expires 1 April 2027                 [Page 29]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1677,7 +1677,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 30]
+Schrock                   Expires 1 April 2027                 [Page 30]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1733,7 +1733,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 31]
+Schrock                   Expires 1 April 2027                 [Page 31]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1789,7 +1789,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 32]
+Schrock                   Expires 1 April 2027                 [Page 32]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1845,7 +1845,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 33]
+Schrock                   Expires 1 April 2027                 [Page 33]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1901,7 +1901,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 34]
+Schrock                   Expires 1 April 2027                 [Page 34]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -1933,9 +1933,11 @@ Internet-Draft                    CAID                    September 2026
    |       |                        | suite that the implementation   |
    |       |                        | implements                      |
    +-------+------------------------+---------------------------------+
-   | 6     | unsupported_number     | a number at depth 64 or less in |
-   |       |                        | an object within the value      |
-   |       |                        | count is outside the data model |
+   | 6     | unsupported_number     | a number that an object or      |
+   |       |                        | array at depth 64 or less       |
+   |       |                        | holds, in an object within the  |
+   |       |                        | value count, is outside the     |
+   |       |                        | data model                      |
    +-------+------------------------+---------------------------------+
    | 7     | unsupported_value      | any other value is outside the  |
    |       |                        | data model, including a string  |
@@ -1955,9 +1957,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-
-
-Schrock                   Expires 31 March 2027                [Page 35]
+Schrock                   Expires 1 April 2027                 [Page 35]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2013,7 +2013,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 36]
+Schrock                   Expires 1 April 2027                 [Page 36]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2069,7 +2069,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 37]
+Schrock                   Expires 1 April 2027                 [Page 37]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2125,7 +2125,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 38]
+Schrock                   Expires 1 April 2027                 [Page 38]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2181,7 +2181,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 39]
+Schrock                   Expires 1 April 2027                 [Page 39]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2237,7 +2237,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 40]
+Schrock                   Expires 1 April 2027                 [Page 40]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2293,7 +2293,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 41]
+Schrock                   Expires 1 April 2027                 [Page 41]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2349,7 +2349,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 42]
+Schrock                   Expires 1 April 2027                 [Page 42]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2405,7 +2405,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 43]
+Schrock                   Expires 1 April 2027                 [Page 43]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2461,7 +2461,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 44]
+Schrock                   Expires 1 April 2027                 [Page 44]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2517,7 +2517,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 45]
+Schrock                   Expires 1 April 2027                 [Page 45]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2573,7 +2573,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 46]
+Schrock                   Expires 1 April 2027                 [Page 46]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2629,7 +2629,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 47]
+Schrock                   Expires 1 April 2027                 [Page 47]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2685,7 +2685,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 48]
+Schrock                   Expires 1 April 2027                 [Page 48]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2741,7 +2741,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 49]
+Schrock                   Expires 1 April 2027                 [Page 49]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2797,7 +2797,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 50]
+Schrock                   Expires 1 April 2027                 [Page 50]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2853,7 +2853,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 51]
+Schrock                   Expires 1 April 2027                 [Page 51]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2909,7 +2909,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 52]
+Schrock                   Expires 1 April 2027                 [Page 52]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -2965,7 +2965,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 53]
+Schrock                   Expires 1 April 2027                 [Page 53]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3021,7 +3021,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 54]
+Schrock                   Expires 1 April 2027                 [Page 54]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3077,7 +3077,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 55]
+Schrock                   Expires 1 April 2027                 [Page 55]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3133,7 +3133,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 56]
+Schrock                   Expires 1 April 2027                 [Page 56]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3189,7 +3189,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 57]
+Schrock                   Expires 1 April 2027                 [Page 57]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3245,7 +3245,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 58]
+Schrock                   Expires 1 April 2027                 [Page 58]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3301,7 +3301,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 59]
+Schrock                   Expires 1 April 2027                 [Page 59]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3357,7 +3357,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 60]
+Schrock                   Expires 1 April 2027                 [Page 60]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3413,7 +3413,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 61]
+Schrock                   Expires 1 April 2027                 [Page 61]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3469,7 +3469,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 62]
+Schrock                   Expires 1 April 2027                 [Page 62]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3525,7 +3525,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 63]
+Schrock                   Expires 1 April 2027                 [Page 63]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3567,7 +3567,7 @@ Internet-Draft                    CAID                    September 2026
    values, under the jcs-sha256 suite; none implements the cbor-sha256
    suite.  Maturity: they are the reference implementations of the
    author's conformance tooling, reviewed only within the author's
-   organization.  This section was last updated on 27 September 2026.
+   organization.  This section was last updated on 28 September 2026.
 
    All three implementations come from the author's organization, and
    none of them is independent.  No independent implementation is known
@@ -3581,7 +3581,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 64]
+Schrock                   Expires 1 April 2027                 [Page 64]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3637,7 +3637,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 65]
+Schrock                   Expires 1 April 2027                 [Page 65]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3693,7 +3693,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 66]
+Schrock                   Expires 1 April 2027                 [Page 66]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3749,7 +3749,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 67]
+Schrock                   Expires 1 April 2027                 [Page 67]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3805,7 +3805,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 68]
+Schrock                   Expires 1 April 2027                 [Page 68]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3861,7 +3861,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 69]
+Schrock                   Expires 1 April 2027                 [Page 69]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3917,7 +3917,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 70]
+Schrock                   Expires 1 April 2027                 [Page 70]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -3973,7 +3973,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 71]
+Schrock                   Expires 1 April 2027                 [Page 71]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4029,7 +4029,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 72]
+Schrock                   Expires 1 April 2027                 [Page 72]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4072,12 +4072,11 @@ Internet-Draft                    CAID                    September 2026
       IESG may act for a change controller that cannot be reached or
       does not respond; registers a new version of a type name only by,
       or with the written agreement of, the change controller of its
-      earlier versions; carries the 128-bit entropy criterion for later
-      registrations in the material-fields test; registers a name with
-      an organization-specific first segment only with that organization
-      as change controller; and asks IANA to store the snapshot files
-      derived from IANA registries.  The -03 statement that the author's
-      organization maintains the registries is removed.
+      earlier versions; registers a name with an organization-specific
+      first segment only with that organization as change controller;
+      and asks IANA to store the snapshot files derived from IANA
+      registries.  The -03 statement that the author's organization
+      maintains the registries is removed.
 
    *  The registration of the caid URI scheme states why the scheme is
       defined instead of using an ni URI [RFC6920] or a URN namespace
@@ -4085,7 +4084,8 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 73]
+
+Schrock                   Expires 1 April 2027                 [Page 73]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4141,7 +4141,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 74]
+Schrock                   Expires 1 April 2027                 [Page 74]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4197,7 +4197,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 75]
+Schrock                   Expires 1 April 2027                 [Page 75]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4253,7 +4253,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 76]
+Schrock                   Expires 1 April 2027                 [Page 76]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4309,7 +4309,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 77]
+Schrock                   Expires 1 April 2027                 [Page 77]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4365,7 +4365,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 78]
+Schrock                   Expires 1 April 2027                 [Page 78]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4421,7 +4421,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 79]
+Schrock                   Expires 1 April 2027                 [Page 79]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4477,7 +4477,7 @@ Appendix A.  Collected ABNF
 
 
 
-Schrock                   Expires 31 March 2027                [Page 80]
+Schrock                   Expires 1 April 2027                 [Page 80]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4533,7 +4533,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 81]
+Schrock                   Expires 1 April 2027                 [Page 81]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4589,7 +4589,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 82]
+Schrock                   Expires 1 April 2027                 [Page 82]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4645,7 +4645,7 @@ Appendix B.  Reason Codes
 
 
 
-Schrock                   Expires 31 March 2027                [Page 83]
+Schrock                   Expires 1 April 2027                 [Page 83]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4701,7 +4701,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 84]
+Schrock                   Expires 1 April 2027                 [Page 84]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4757,7 +4757,7 @@ Appendix C.  Worked Examples
 
 
 
-Schrock                   Expires 31 March 2027                [Page 85]
+Schrock                   Expires 1 April 2027                 [Page 85]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4813,7 +4813,7 @@ C.1.  Computation
 
 
 
-Schrock                   Expires 31 March 2027                [Page 86]
+Schrock                   Expires 1 April 2027                 [Page 86]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4869,7 +4869,7 @@ C.2.  Refusal and Reason Order
 
 
 
-Schrock                   Expires 31 March 2027                [Page 87]
+Schrock                   Expires 1 April 2027                 [Page 87]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4925,7 +4925,7 @@ C.3.  Verification Details
 
 
 
-Schrock                   Expires 31 March 2027                [Page 88]
+Schrock                   Expires 1 April 2027                 [Page 88]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -4981,7 +4981,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 89]
+Schrock                   Expires 1 April 2027                 [Page 89]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5037,7 +5037,7 @@ C.5.  Code Fields
 
 
 
-Schrock                   Expires 31 March 2027                [Page 90]
+Schrock                   Expires 1 April 2027                 [Page 90]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5093,7 +5093,7 @@ C.6.  Mapping
 
 
 
-Schrock                   Expires 31 March 2027                [Page 91]
+Schrock                   Expires 1 April 2027                 [Page 91]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5149,7 +5149,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 92]
+Schrock                   Expires 1 April 2027                 [Page 92]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5205,7 +5205,7 @@ D.1.  Initial IANA Entries
 
 
 
-Schrock                   Expires 31 March 2027                [Page 93]
+Schrock                   Expires 1 April 2027                 [Page 93]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5261,7 +5261,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 94]
+Schrock                   Expires 1 April 2027                 [Page 94]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5317,7 +5317,7 @@ Internet-Draft                    CAID                    September 2026
 
 
 
-Schrock                   Expires 31 March 2027                [Page 95]
+Schrock                   Expires 1 April 2027                 [Page 95]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5373,7 +5373,7 @@ D.2.  Reference-Registry Entries Not Requested of IANA
 
 
 
-Schrock                   Expires 31 March 2027                [Page 96]
+Schrock                   Expires 1 April 2027                 [Page 96]
 
 Internet-Draft                    CAID                    September 2026
 
@@ -5429,4 +5429,4 @@ Author's Address
 
 
 
-Schrock                   Expires 31 March 2027                [Page 97]
+Schrock                   Expires 1 April 2027                 [Page 97]

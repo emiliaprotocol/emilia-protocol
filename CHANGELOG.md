@@ -76,16 +76,16 @@ Historical entries below retain the labels used when they were written.
   runners gain a `host` mutation (`cyclic` or `opaque`) to express the last
   two, and a `fill` mutation for an array of 2^24 elements.
 - The JavaScript port reads a host array of 2^24 or more elements, and an
-  object with as many members named by array indices, instead of refusing
-  it. V8 cannot list more than 2^24 own keys at once (`Reflect.ownKeys` and
-  `Object.getOwnPropertyDescriptors` throw a `RangeError`), and the port
-  treated that error as a value outside the data model, although such a
-  value is within the value count and the Python and Go ports read it. It
-  now lists such a container through `Object.keys` and
-  `Object.getOwnPropertySymbols`, and stops reading an inner one past the
-  value count. The `native-array-16777216-*` core vectors, their
-  `16777215` twins and four mapping vectors pin it, and the vendored Verify
-  copy follows.
+  object with more than 2^24 members named by array indices, instead of
+  refusing it. V8 cannot list more than 2^24 own keys at once
+  (`Reflect.ownKeys` and `Object.getOwnPropertyDescriptors` throw a
+  `RangeError`), and the port treated that error as a value outside the
+  data model, although such a value is within the value count and the
+  Python and Go ports read it. It now lists such a container through
+  `Object.keys` and `Object.getOwnPropertySymbols`, and stops reading an
+  inner one past the value count. The `native-array-16777216-*` core
+  vectors, their `16777215` twins and four mapping vectors pin it, and the
+  vendored Verify copy follows.
 - The Go port counts a reference back to an enclosing map or slice as one
   value and visits nothing beyond it, as the JavaScript and Python ports and
   the spec oracle do. It used to follow a cycle down to the nesting limit,

@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="September" day="27"/>
+    <date year="2026" month="September" day="28"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>action</keyword>
@@ -364,8 +364,9 @@
           <xref target="security-parsing"/> states the consequence for a
           reader that reads numbers as exact decimals.</li>
           <li>Fractional, NaN, infinite, and out-of-range values are
-          refused as unsupported_number by every conforming implementation,
-          at any depth up to 64 (<xref target="data-model"/>), except in a
+          refused as unsupported_number by every conforming implementation
+          wherever an object or array at depth 64 or less holds them
+          (<xref target="data-model"/>), except in a
           host action object past the value count, which yields
           unsupported_value instead (<xref target="host-values"/>).
           Fractional quantities are carried as strings.</li>
@@ -1485,9 +1486,9 @@ ZLQQQ
           (<xref target="fieldtypes"/>)</td></tr>
           <tr><td>5</td><td>unknown_suite</td><td>the suite is not a
           registered suite that the implementation implements</td></tr>
-          <tr><td>6</td><td>unsupported_number</td><td>a number at depth 64
-          or less in an object within the value count is outside the data
-          model</td></tr>
+          <tr><td>6</td><td>unsupported_number</td><td>a number that an
+          object or array at depth 64 or less holds, in an object within the
+          value count, is outside the data model</td></tr>
           <tr><td>7</td><td>unsupported_value</td><td>any other value is
           outside the data model, including a string or member name with an
           unpaired surrogate or a noncharacter, nesting beyond 64, a
@@ -2785,7 +2786,7 @@ ZLQQQ
       and host values, under the jcs-sha256 suite; none implements the
       cbor-sha256 suite. Maturity: they are the reference implementations
       of the author's conformance tooling, reviewed only within the
-      author's organization. This section was last updated on 27 September
+      author's organization. This section was last updated on 28 September
       2026.</t>
       <t>All three implementations come from the author's organization,
       and none of them is independent. No independent implementation is
@@ -3228,14 +3229,11 @@ ZLQQQ
           change controller that cannot be reached or does not respond;
           registers a new version of a type name only by, or with the
           written agreement of, the change controller of its earlier
-          versions; carries the 128-bit entropy criterion for later
-          registrations in the material-fields test; registers a name with
-          an organization-specific first segment only with that
-          organization as change controller; and asks IANA to store the
-          snapshot files derived from IANA registries. The -03
-          statement
-          that the author's organization maintains the registries is
-          removed.</li>
+          versions; registers a name with an organization-specific first
+          segment only with that organization as change controller; and
+          asks IANA to store the snapshot files derived from IANA
+          registries. The -03 statement that the author's organization
+          maintains the registries is removed.</li>
           <li anchor="ed-uri-utility">The registration of the caid URI scheme
           states why the scheme is defined instead of using an ni URI
           <xref target="RFC6920"/> or a URN namespace

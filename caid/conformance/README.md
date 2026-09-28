@@ -118,11 +118,11 @@ expected definition_sha256 pins of every type; every pair of compute phases and
 the verify ranks; 27 malformed or conflicting definitions refused as
 `invalid_definition`, and 11 more definition cases (equal duplicates, open
 entry members, deprecated status, unregistered types and formats, field
-names); 11 `definition_sha256` vectors; 82 code-format vectors including a
-1 MiB adversarial string per format under a 2 s budget; 21 timestamps; 29
+names); 11 `definition_sha256` vectors; 76 code-format vectors including a
+1 MiB adversarial string per format under a 2 s budget; 21 timestamps; 30
 parse vectors (audit Appendix D, `unknown_suite` at parse); and one vector
 per registry type (62: each of the 53 active types computes; each of the 9
-deprecated types resolves and refuses only its unpinned enum field).
+deprecated types resolves and refuses only its unpinned enum fields).
 
 The pre-filing review added 24 vectors: a raw C1 control character
 (`decode-raw-c1-control`, `compute-raw-del-and-c1`); RFC 8785 member order
@@ -151,9 +151,9 @@ mistyped integer field (`native-value-count-with-phase-3-and-4` and its
 verify twin), and a branching and a single back-reference in an object and
 a branching, a three-way and a single back-reference in an array, each
 beside 1.5 (`native-cyclic-*-with-fraction` and their verify twins).
-The fifth audit added twenty-five: an array of 2^24 zeros, whose keys V8 cannot
-list at once, and its 2^24 - 1 twin, each in a declared array field, beside
-1.5 and inside a definition's validation projection
+The fifth audit added twenty-two: an array of 2^24 zeros, whose keys V8
+cannot list at once, and its 2^24 - 1 twin, each in a declared array field,
+beside 1.5 and inside a definition's validation projection
 (`native-array-16777216-*`, `native-array-16777215-*`,
 `native-definition-array-*`, and verify twins of the first two); the value
 count at exactly 33,554,432 values and one more, beside 1.5, with the

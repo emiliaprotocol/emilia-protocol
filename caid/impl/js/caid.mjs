@@ -1129,9 +1129,10 @@ function readOwnData(obj, key) {
 // getter. The engine may be unable to list them all at once: V8 lists at
 // most 2^24 keys (Reflect.ownKeys, Object.getOwnPropertyNames and
 // Object.getOwnPropertyDescriptors throw a RangeError, "Too many properties
-// to enumerate"), so an array of 2^24 elements, or an object with as many
-// members named by array indices, could not be read, although it is well
-// within the value count and every other port reads it. Such a container
+// to enumerate", for more), so an array of 2^24 or more elements, whose
+// length is one more key, or an object with more than 2^24 members named
+// by array indices, could not be read, although it is well within the
+// value count and every other port reads it. Such a container
 // is listed through Object.keys and Object.getOwnPropertySymbols, which
 // have no such limit: its enumerable string keys in the same order, then
 // its symbol keys. That listing (complete: false) leaves out the

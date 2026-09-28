@@ -1285,6 +1285,10 @@ for (const [needle, what] of [
   ['model: a number outside the model as unsupported_number and anything else as unsupported_value', 'F2-REG-UNSCOPED-NUMBER: the first MUST of Section 2.5'],
   ['whose RFC 8785 encoding is within this limit', 'F2-ITEMS-3: the antecedent of "this limit" (Section 2.2)'],
   ['Where such an identifier is sequential, anyone who holds', 'F2-ITEMS-2: the recovery needs the other members to be guessable too (Section 11)'],
+  // Round 6 of the fix audit. Section 2.2 gives a depth to objects and
+  // arrays, never to a number, so the rules scope a number by its holder.
+  ['a number at depth 64 or less in an object within the value count', 'F3-TBL2-NUMBER-DEPTH: the Table 2 phase 6 row'],
+  ['at any depth up to 64', 'F3-TBL2-NUMBER-DEPTH: the Section 2.3 bullet on fractional, NaN, infinite and out-of-range values'],
 ]) check(needle instanceof RegExp ? !needle.test(sourcePlain) : !sourcePlain.includes(needle), `source still carries the wording of ${what}`);
 // ED-13: "action object" is lowercase in running text; titles keep title case.
 // Sourcecode is left out: the Section 4.7 registration quotes the registry
@@ -1363,7 +1367,8 @@ for (const [anchor, needle, what] of [
   // reason, as native-value-count-with-phase-3-and-4 pins, so each rule
   // that names unsupported_number is scoped to an object within the count.
   ['numbers', 'except in a host action object past the value count, which yields unsupported_value instead', 'F1-REG-UNIVERSAL-NUMBER (Section 2.3)'],
-  ['computation', 'a number at depth 64 or less in an object within the value count is outside the data model', 'F1-REG-UNIVERSAL-NUMBER: Table 2, phase 6'],
+  ['computation', 'a number that an object or array at depth 64 or less holds, in an object within the value count, is outside the data model', 'F1-REG-UNIVERSAL-NUMBER, F3-TBL2-NUMBER-DEPTH: Table 2, phase 6'],
+  ['numbers', 'wherever an object or array at depth 64 or less holds them', 'F3-TBL2-NUMBER-DEPTH: native-fraction-at-depth-64 (Section 2.3)'],
   ['chg-deprecated', 'so a deprecated type resolves, computes, and verifies wherever its fields resolve', 'F1-REG-DEPRECATED: the 9 deprecated initial entries resolve but compute nothing (Section 12.2)'],
   ['ed-logging', 'which reverses the -03 recommendation that identifiers be treated as public values', 'F1-ED-LOGGING-03-QUOTE: -03 said SHOULD'],
   ['ed-type-entropy', 'should require a member that carries at least 128 bits of entropy from the system of record; a later registration without one states why', 'F1-ED-LOGGING-03-QUOTE: the SHOULD of Section 11 and the exception of Section 12.2'],
@@ -1477,8 +1482,8 @@ for (const [anchor, needle, what] of [
 }
 
 // R3-REG-3: each change since -03 appears in one list. The requirements on
-// other parties are items of Section 14.5, and the Security and Privacy
-// items of Section 14.6 describe text alone.
+// other parties are items of Section 14.5, and the Security, Privacy and
+// IANA items of Section 14.6 describe text alone (F3-ONE-LIST-IANA).
 {
   const parties = section('changes-03-parties');
   for (const a of ['ed-number-literals', 'ed-multiple-caids', 'ed-signature-coverage', 'ed-truncation', 'ed-occurrence', 'ed-message-bounds', 'ed-identifier-normalization', 'ed-logging', 'ed-type-entropy', 'ed-keyed-commitment', 'ed-snapshot-files', 'ed-approval-display', 'ed-number-readers', 'ed-suite-deprecation']) {
@@ -1489,6 +1494,7 @@ for (const [anchor, needle, what] of [
     check(!edSecurity.includes(topic), `the ed-security item still lists "${topic}", a requirement Section 14.5 lists (R3-REG-3)`);
   }
   check(!plain(item('ed-privacy')).includes('keyed commitment'), 'the ed-privacy item still lists the keyed-commitment rule, which Section 14.5 lists (R3-REG-3)');
+  check(!/128-bit|entropy/.test(plain(item('ed-iana'))), 'the ed-iana item still carries the 128-bit entropy criterion, which the ed-type-entropy item of Section 14.5 lists (F3-ONE-LIST-IANA)');
 }
 
 // Section 12.8: the utility paragraph cites RFC 7595 Section 3.1 and the

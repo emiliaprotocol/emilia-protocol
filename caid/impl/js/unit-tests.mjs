@@ -175,8 +175,11 @@ test("a sparse array costs its elements, never its length, and refuses without t
 
 test("a container with more own keys than V8 lists at once is read, not refused", () => {
   // Reflect.ownKeys and Object.getOwnPropertyDescriptors throw a RangeError
-  // in V8 for 2^24 or more own keys. The core corpus pins arrays of that
-  // length (native-array-16777216-*); this pins what it cannot: an object
+  // in V8 for more than 2^24 own keys: an array of 2^24 elements (its length
+  // is one more key), or an object with 2^24 + 1 members, but not an array
+  // of 2^24 - 1 elements or an object with 2^24 members (node 24.18.0 and
+  // 26.5.0). The core corpus pins arrays of 2^24 elements
+  // (native-array-16777216-*); this pins what it cannot: an object
   // with 2^24 + 1 members named by array indices, beside the host number
   // 1.5, is within the value count (unsupported_number alone, where the
   // refused container added unsupported_value); two distinct arrays of 2^24
