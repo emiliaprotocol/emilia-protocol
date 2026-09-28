@@ -46,9 +46,9 @@ mapping cases are not compared in the Go lane.
 ## Measured
 
 With node 24.18.0, Python 3.11.15 and go 1.26.4 on an M-class laptop, the
-full run of 88,286 cases (seed 20260926) took 15 s wall (generate 0.6 s, Go
-build 0.1 s, drivers in parallel: JavaScript 10.0 s, Python 11.3 s, Go
-2.5 s), and the quick self-test 5 s. Every driver also runs the native parity check on
+full run of 88,288 cases (seed 20260926) took 16 s wall (generate 0.7 s, Go
+build 0.4 s, drivers in parallel: JavaScript 10.5 s, Python 11.8 s, Go
+2.6 s), and the quick self-test 5 s. Every driver also runs the native parity check on
 each decodable case. Hosted runners are typically two to four times slower.
 
 Run against the pre-04 ports, the harness reports the known classes, among

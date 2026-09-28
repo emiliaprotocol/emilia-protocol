@@ -144,7 +144,10 @@ this tree:
   sentence on NaN or 1.5 and on a host number beyond 2^53-1, the Integer
   magnitude row of Table 1 (whose refusal column, like the nesting and
   value-count rows, now defers to the reading step for any value but an
-  action object), the integer and object entries of Section 4.3, and the
+  action object, which `native-definition-fraction-in-projection`,
+  `definition-fraction-in-projection` and
+  `definition-sha256-fraction-in-projection` pin for a definition), the
+  integer and object entries of Section 4.3, and the
   Table 2 phase 6 row. Each says what happens past the count, and the
   Section 4.3 object entry no longer says "alone"; a host definition,
   mapping profile or mapping source past the count gets the reason of the
@@ -333,10 +336,10 @@ this tree:
 
 ## Conformance and generated sources
 
-- `npm run caid:conformance` passes: 613 core, 1966 grammar, 86 mapping,
+- `npm run caid:conformance` passes: 616 core, 1966 grammar, 86 mapping,
   and 100 consequential-interoperability vectors against the spec oracle,
   with the generated-sources and registry checks. In JavaScript, Python,
-  and Go each runner reports 611 of the 613 core vectors run and passed
+  and Go each runner reports 614 of the 616 core vectors run and passed
   (2 skipped) and all 1966 grammar cases: six vectors apply only where
   cbor-sha256 is, or is not, implemented, and each runner skips those
   whose condition does not hold.

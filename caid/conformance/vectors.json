@@ -26,13 +26,13 @@
     ]
   },
   "counts": {
-    "compute:text": 355,
+    "compute:text": 356,
     "verify:text": 45,
     "parse": 50,
     "decode": 67,
-    "compute:native": 68,
+    "compute:native": 69,
     "verify:native": 16,
-    "definition": 12
+    "definition": 13
   },
   "previous_versions": [
     {
@@ -1307,6 +1307,9 @@
     {"id":"native-definition-opaque-member-outside-projection","kind":"compute","description":"native lane: an opaque host value outside the projection is never read","definitions":[{"action_type":"r.1","required_fields":[{"name":"a","type":"string"}],"references":{"$host":"opaque"}}],"input":{"native":{"action_type":"r.1","a":"x"},"suite":"jcs-sha256"},"expect":{"caid":"caid:1:r.1:jcs-sha256:Ppudt0hojLqHM7er7h3iYivEhe8ISEejAP6EvTL8l5s","digest":"sha256:3e9b9db748688cba8733b7abee1de2622bc485ef084847a300fe84bd32fc979b","definition_sha256":"sha256:6c648e121e5881f708598fa0a340ea352b2b44cbc7dba5bc032ee9213ff2a6f2"},"relation":{"same_caid_as":"native-definition-plain"}},
     {"id":"native-definition-deep-member-in-projection","kind":"compute","description":"native lane: a member of an unregistered-type field entry is inside the projection, so nesting it 70 deep makes the definition nonconforming","definitions":[{"action_type":"r.1","required_fields":[{"name":"a","type":"string"}],"optional_fields":[{"name":"g","type":"color","palette":{"$nest":{"depth":70,"container":"array","leaf":0}}}]}],"input":{"native":{"action_type":"r.1","a":"x"},"suite":"jcs-sha256"},"expect":{"refusals":["invalid_definition"]}},
     {"id":"native-definition-opaque-in-projection","kind":"compute","description":"native lane: an opaque host value inside the projection makes the definition nonconforming","definitions":[{"action_type":"r.1","required_fields":[{"name":"a","type":"string"}],"optional_fields":[{"name":"g","type":"color","palette":{"$host":"opaque"}}]}],"input":{"native":{"action_type":"r.1","a":"x"},"suite":"jcs-sha256"},"expect":{"refusals":["invalid_definition"]}},
+    {"id":"native-definition-fraction-in-projection","kind":"compute","description":"native lane: the host number 1.5 in a member of an unregistered-type field entry, inside the validation projection, is refused by the step that reads it: invalid_definition, never unsupported_number","definitions":[{"action_type":"r.1","required_fields":[{"name":"a","type":"string"}],"optional_fields":[{"name":"g","type":"color","palette":1.5}]}],"input":{"native":{"action_type":"r.1","a":"x"},"suite":"jcs-sha256"},"expect":{"refusals":["invalid_definition"]}},
+    {"id":"definition-fraction-in-projection","kind":"compute","description":"the number 1.5 in a member of an unregistered-type field entry of a definition read as JSON, inside the validation projection: invalid_definition, never unsupported_number","definitions":[{"action_type":"r.1","required_fields":[{"name":"a","type":"string"}],"optional_fields":[{"name":"g","type":"color","palette":1.5}]}],"input":{"json":"{\"action_type\":\"r.1\",\"a\":\"x\"}","suite":"jcs-sha256"},"expect":{"refusals":["invalid_definition"]}},
+    {"id":"definition-sha256-fraction-in-projection","kind":"definition","description":"a definition whose validation projection holds the number 1.5 has no definition_sha256","input":{"definition":{"action_type":"r.1","required_fields":[{"name":"a","type":"string"}],"optional_fields":[{"name":"g","type":"color","palette":1.5}]}},"expect":{"refusals":["invalid_definition"]}},
     {"id":"native-definition-value-count-in-projection","kind":"compute","description":"native lane: a shared array of 2^26 - 1 values in a member of an unregistered-type field entry puts the validation projection past the value count: invalid_definition","definitions":[{"action_type":"r.1","required_fields":[{"name":"a","type":"string"}],"optional_fields":[{"name":"g","type":"color","palette":{"$dag":{"depth":25,"leaf":0}}}]}],"input":{"native":{"action_type":"r.1","a":"x"},"suite":"jcs-sha256"},"expect":{"refusals":["invalid_definition"]}},
     {"id":"native-definition-value-count-outside-projection","kind":"compute","description":"native lane: the same shared array as the summary member, outside the validation projection, is never read","definitions":[{"action_type":"r.1","required_fields":[{"name":"a","type":"string"}],"summary":{"$dag":{"depth":25,"leaf":0}}}],"input":{"native":{"action_type":"r.1","a":"x"},"suite":"jcs-sha256"},"expect":{"caid":"caid:1:r.1:jcs-sha256:Ppudt0hojLqHM7er7h3iYivEhe8ISEejAP6EvTL8l5s","digest":"sha256:3e9b9db748688cba8733b7abee1de2622bc485ef084847a300fe84bd32fc979b","definition_sha256":"sha256:6c648e121e5881f708598fa0a340ea352b2b44cbc7dba5bc032ee9213ff2a6f2"},"relation":{"same_caid_as":"native-definition-plain"}},
     {"id":"native-oversized-string-and-number","kind":"compute","description":"native lane: a 34,000,000-character string makes the object oversized and a fractional number makes it unsupported_number alone; the work budget counts values, not characters","definitions":[{"action_type":"probe.big.1","required_fields":[{"name":"a","type":"string"}]}],"input":{"native":{"action_type":"probe.big.1","a":{"$repeat":{"unit":"x","count":34000000}},"c":[7.5]},"suite":"jcs-sha256"},"expect":{"refusals":["unsupported_number"]}},

@@ -24,7 +24,7 @@ Historical entries below retain the labels used when they were written.
 
 ### CAID conformance corpora and fuzz for draft -04
 
-- The core conformance corpus moves to version 5 (613 vectors). Every compute
+- The core conformance corpus moves to version 5 (616 vectors). Every compute
   and verify input is now exact JSON text (a string, base64 octets, or a
   repeat form for the 32 MiB and 16 MiB limits), and runners also check that
   the native entry point gives the same result on the decoded value. A
@@ -48,7 +48,7 @@ Historical entries below retain the labels used when they were written.
   `suite_probe`): four pin `unknown_suite` where it is not implemented, and
   two, the Appendix C.1 object, apply only where it is. Each runner skips a
   vector whose condition does not hold and reports it as skipped, never as
-  passed; no port here implements the suite, so each runs 611 of the 613
+  passed; no port here implements the suite, so each runs 614 of the 616
   core vectors, and `caid:conformance` prints what each runner ran.
 - Version 4 carries forward: the version 4 corpus is kept byte for byte under
   `caid/conformance/history/`, every version 4 vector keeps its id, and all

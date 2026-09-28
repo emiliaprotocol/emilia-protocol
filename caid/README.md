@@ -94,7 +94,7 @@ ever ingests another verifier's evidence into its own trust boundary.
 - `registry/` — action-type registry (version 5), suites, value sets, frozen
   history, definition digests, governance
 - `impl/js`, `impl/python`, `impl/go` — reference implementations
-- `conformance/vectors.json` — 613 core vectors (corpus version 5): every
+- `conformance/vectors.json` — 616 core vectors (corpus version 5): every
   compute and verify input as exact JSON text with native/byte parity, a
   native lane for host values no decoder produces, the JSON text rules and
   size limits, number rounding, reason order, verification details,

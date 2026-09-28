@@ -668,6 +668,13 @@ export function coreCases({ limits }) {
     compute('native-definition-opaque-member-outside-projection', 'native lane: an opaque host value outside the projection is never read', [{ ...R1, references: { $host: 'opaque' } }], r1Object, 'ok', sameAsPlain),
     compute('native-definition-deep-member-in-projection', 'native lane: a member of an unregistered-type field entry is inside the projection, so nesting it 70 deep makes the definition nonconforming', [{ ...R1, optional_fields: [{ name: 'g', type: 'color', palette: nest(70, 0) }] }], r1Object, { refusals: ['invalid_definition'] }),
     compute('native-definition-opaque-in-projection', 'native lane: an opaque host value inside the projection makes the definition nonconforming', [{ ...R1, optional_fields: [{ name: 'g', type: 'color', palette: { $host: 'opaque' } }] }], r1Object, { refusals: ['invalid_definition'] }),
+    // A number outside the model in a definition's validation projection is
+    // refused by the step that reads it (Table 1, Integer magnitude row):
+    // invalid_definition, never unsupported_number, from a host definition
+    // or one read from JSON text, and the definition has no digest.
+    compute('native-definition-fraction-in-projection', 'native lane: the host number 1.5 in a member of an unregistered-type field entry, inside the validation projection, is refused by the step that reads it: invalid_definition, never unsupported_number', [{ ...R1, optional_fields: [{ name: 'g', type: 'color', palette: 1.5 }] }], r1Object, { refusals: ['invalid_definition'] }),
+    compute('definition-fraction-in-projection', 'the number 1.5 in a member of an unregistered-type field entry of a definition read as JSON, inside the validation projection: invalid_definition, never unsupported_number', [{ ...R1, optional_fields: [{ name: 'g', type: 'color', palette: 1.5 }] }], text(j({ action_type: 'r.1', a: 'x' })), { refusals: ['invalid_definition'] }),
+    defn('definition-sha256-fraction-in-projection', 'a definition whose validation projection holds the number 1.5 has no definition_sha256', { ...R1, optional_fields: [{ name: 'g', type: 'color', palette: 1.5 }] }, 'invalid'),
     // The value count applies to a host definition as to every host value
     // (Section 2.6): a validation projection that exceeds it is
     // invalid_definition, never unsupported_value; the same shared array

@@ -180,11 +180,13 @@ test("a container with more own keys than V8 lists at once is read, not refused"
   // with 2^24 + 1 members named by array indices, beside the host number
   // 1.5, is within the value count (unsupported_number alone, where the
   // refused container added unsupported_value); two distinct arrays of 2^24
-  // elements pass the count and the second stops being read there; and a
-  // symbol key or a named member on such an array still refuses it.
+  // elements pass the count and the second stops being read there; a
+  // symbol key or a named member on such an array still refuses it; and
+  // canonicalize encodes a document holding one (33,554,439 octets, as the
+  // Python and Go ports do).
   const here = new URL("./", import.meta.url).href;
   const child = spawnSync(process.execPath, ["--max-old-space-size=6144", "--input-type=module", "-e", `
-    const { computeCaid } = await import(${JSON.stringify(`${here}caid.mjs`)});
+    const { canonicalize, computeCaid } = await import(${JSON.stringify(`${here}caid.mjs`)});
     const OPTS = ${JSON.stringify(OPTS)};
     const N = 2 ** 24;
     const out = [];
@@ -198,6 +200,8 @@ test("a container with more own keys than V8 lists at once is read, not refused"
     const withMember = new Array(N).fill(0);
     withMember.extra = 0;
     out.push(computeCaid({ action_type: "test.unit.1", a: "x", l: withMember }, OPTS).refusals);
+    const document = canonicalize({ a: new Array(N).fill(0) });
+    out.push(document.ok ? document.canonical.length : document.refusals);
     process.stdout.write(JSON.stringify(out));
   `], { encoding: "utf8", maxBuffer: 1 << 20 });
   assert.equal(child.status, 0, child.stderr.slice(-400));
@@ -206,6 +210,7 @@ test("a container with more own keys than V8 lists at once is read, not refused"
     ["unsupported_value"],
     ["mistyped_field:l", "unsupported_value"],
     ["mistyped_field:l", "unsupported_value"],
+    33554439,
   ]);
 });
 

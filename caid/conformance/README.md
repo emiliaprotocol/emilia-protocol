@@ -16,7 +16,7 @@ npm run caid:fuzz          # the differential fuzz (caid/fuzz)
 
 | Path | What it is |
 |---|---|
-| `vectors.json` | Core corpus, version 5: 613 vectors (decode, parse, compute, verify, definition) |
+| `vectors.json` | Core corpus, version 5: 616 vectors (decode, parse, compute, verify, definition) |
 | `grammar-vectors.json` | Grammar boundary corpus: 1,966 cases over 21 drivers |
 | `mapping-vectors.json` | Mapping corpus, version 2: 86 vectors with exact reason lists; a vector may carry its own suite |
 | `history/vectors.v4.json` | The version 4 core corpus, byte for byte (`sha256:7a201c87…`) |
@@ -151,7 +151,7 @@ mistyped integer field (`native-value-count-with-phase-3-and-4` and its
 verify twin), and a branching and a single back-reference in an object and
 a branching, a three-way and a single back-reference in an array, each
 beside 1.5 (`native-cyclic-*-with-fraction` and their verify twins).
-The fourth added twenty-two: an array of 2^24 zeros, whose keys V8 cannot
+The fifth audit added twenty-five: an array of 2^24 zeros, whose keys V8 cannot
 list at once, and its 2^24 - 1 twin, each in a declared array field, beside
 1.5 and inside a definition's validation projection
 (`native-array-16777216-*`, `native-array-16777215-*`,
@@ -167,7 +167,13 @@ object field within the count, nested past 64, and past the count, and 2^53
 in an integer field past the count (`native-fraction-in-object-field`,
 `native-deep-fraction-in-object-field`,
 `native-value-count-fraction-in-object-field`,
-`native-value-count-integer-beyond-range-in-integer-field`).
+`native-value-count-integer-beyond-range-in-integer-field`). Three more
+pin the Integer magnitude row of Table 1 for a definition: 1.5 inside the
+validation projection is `invalid_definition`, never `unsupported_number`,
+from a host definition or JSON, and has no `definition_sha256`
+(`native-definition-fraction-in-projection`,
+`definition-fraction-in-projection`,
+`definition-sha256-fraction-in-projection`).
 
 **Version 4 carries forward.** Every version 4 vector keeps its id, with its
 object as the version 4 tokens. All 22 version 4 CAIDs are expected

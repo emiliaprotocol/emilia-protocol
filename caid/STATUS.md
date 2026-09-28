@@ -25,7 +25,7 @@ Updated: 2026-09-27
   65,536 characters and more, and that every matcher is linear-time: a static
   analysis plus adversarial inputs of 2^20 characters timed in all three.
 - Same-team, dependency-free JavaScript, Python, and Go reference ports.
-- 611 of the 613 shared core vectors (corpus version 5) pass in all three
+- 614 of the 616 shared core vectors (corpus version 5) pass in all three
   ports through their JSON text entry points; the other two apply only to a
   cbor-sha256 implementation, and every port here skips them. The vectors
   run with native/byte parity on every
