@@ -48,8 +48,9 @@ mapping cases are not compared in the Go lane.
 With node 24.18.0, Python 3.11.15 and go 1.26.4 on an M-class laptop, the
 full run of 88,288 cases (seed 20260926) took 16 s wall (generate 0.7 s, Go
 build 0.4 s, drivers in parallel: JavaScript 10.5 s, Python 11.8 s, Go
-2.6 s), and the quick self-test 5 s. Every driver also runs the native parity check on
-each decodable case. Hosted runners are typically two to four times slower.
+2.6 s), and the quick self-test 5 s. Every driver also runs the native
+parity check on each decodable case. Hosted runners are typically two to
+four times slower.
 
 Run against the pre-04 ports, the harness reports the known classes, among
 them J1 (duplicate member names), J2 (invalid UTF-8), J3 (BOM), J6
