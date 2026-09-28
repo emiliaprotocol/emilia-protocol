@@ -1,15 +1,17 @@
 import type { Metadata } from 'next';
 import HomePageClient from './HomePageClient';
 
+const TITLE = 'Hire the AI. Keep Your Rules. | EMILIA';
+const DESCRIPTION =
+  'EMILIA gives AI the rules every new hire gets, and checks them at a gate the AI can’t go around. Every payment it allows gets a signed receipt your accountant can check offline, without asking the AI company.';
+
 export const metadata: Metadata = {
-  title: { absolute: 'Build Your AI Workforce | EMILIA' },
-  description:
-    'Find specialized agents or bring your own. Give them a job, set their limits and see how they perform. EMILIA brings workforce management and a builder marketplace together.',
+  title: { absolute: TITLE },
+  description: DESCRIPTION,
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'Build Your AI Workforce | EMILIA',
-    description:
-      'Help builders earn work and help companies delegate it. Explore the marketplace and EMILIA’s private local workforce alpha, built around Gate and the open Protocol.',
+    title: TITLE,
+    description: DESCRIPTION,
     url: 'https://www.emiliaprotocol.ai/',
     type: 'website',
     images: [
@@ -17,15 +19,14 @@ export const metadata: Metadata = {
         url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'EMILIA: Build your AI workforce. Find specialized agents or bring your own.',
+        alt: 'EMILIA: Hire the AI. Keep your rules. The gate checks every payment against your rules before any money moves.',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Build Your AI Workforce | EMILIA',
-    description:
-      'Find specialized agents or bring your own. Give them a job, set their limits and review the work. Workforce workspace: private local alpha.',
+    title: TITLE,
+    description: DESCRIPTION,
     images: ['/twitter-image'],
   },
 };

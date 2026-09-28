@@ -92,7 +92,7 @@ describe('workforce website story and public claim boundaries', () => {
 
   it('keeps private fundraising assumptions and unsupported service promises out of workforce copy', () => {
     const surfaces = [
-      'components/workforce/WorkforceStory.tsx', 'app/HomePageClient.tsx',
+      'components/workforce/WorkforceStory.tsx', 'app/HomePageClient.tsx', 'components/home/NewHireStory.tsx',
       'app/workforce/page.tsx', 'app/about/page.tsx', 'app/contact/page.tsx',
       'app/_social/SocialCard.tsx', '.agents/product-marketing-context.md',
     ].map(read).join('\n');
@@ -104,13 +104,13 @@ describe('workforce website story and public claim boundaries', () => {
 
   it('publishes a canonical workforce route linked from the homepage, navigation and sitemap', () => {
     const route = read('app/workforce/page.tsx');
-    const home = read('app/HomePageClient.tsx');
+    const home = read('components/home/NewHireStory.tsx');
     expect(route).toContain("alternates: { canonical: '/workforce' }");
     expect(route).toContain('activePage="workforce"');
     expect(route).toContain('<main>');
     expect(home).toContain('href="/workforce"');
-    expect(home).toContain('<WorkforceIntroduction />');
-    expect(home).toContain('<WorkforceNextStep />');
+    expect(route).toContain('<WorkforceIntroduction />');
+    expect(route).toContain('<WorkforceNextStep />');
     expect(read('components/SiteNav.tsx')).toContain("['/workforce', 'Workforce']");
     expect(sitemap().some(entry => new URL(entry.url).pathname === '/workforce')).toBe(true);
   });

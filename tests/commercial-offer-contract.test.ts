@@ -13,7 +13,9 @@ const intake = readFileSync(resolve(ROOT, 'app/api/pilot/request/route.ts'), 'ut
 const navigation = readFileSync(resolve(ROOT, 'components/SiteNav.tsx'), 'utf8');
 const govGuard = readFileSync(resolve(ROOT, 'app/govguard/page.tsx'), 'utf8');
 const finGuard = readFileSync(resolve(ROOT, 'app/finguard/page.tsx'), 'utf8');
-const home = readFileSync(resolve(ROOT, 'app/HomePageClient.tsx'), 'utf8');
+const home = readFileSync(resolve(ROOT, 'app/HomePageClient.tsx'), 'utf8')
+  + readFileSync(resolve(ROOT, 'components/home/NewHireStory.tsx'), 'utf8');
+const workforceRoute = readFileSync(resolve(ROOT, 'app/workforce/page.tsx'), 'utf8');
 const workforce = readFileSync(resolve(ROOT, 'components/workforce/WorkforceStory.tsx'), 'utf8');
 const assuranceBrief = readFileSync(resolve(ROOT, 'docs/EMILIA-ASSURANCE-PRODUCT-BRIEF.md'), 'utf8');
 const trustedContextPack = readFileSync(resolve(ROOT, 'docs/protocol/trusted-context-pack-v1.md'), 'utf8');
@@ -92,9 +94,9 @@ describe('commercial offer contract', () => {
     expect(intake).toContain('payer_adverse_determination');
     expect(finGuard).toContain('PROTECTED_WORKFLOW_PILOT.durationLabel');
     expect(finGuard).not.toContain('Pilot in 30 days');
-    expect(home).toContain('<WorkforceIntroduction />');
-    expect(home).toContain('<WorkforceNextStep />');
-    expect(home).toContain('private local alpha using synthetic refunds');
+    expect(workforceRoute).toContain('<WorkforceIntroduction />');
+    expect(workforceRoute).toContain('<WorkforceNextStep />');
+    expect(workforce).toContain('using synthetic refunds');
     expect(workforce).toContain('Build your<br />AI workforce.');
     expect(workforce).toContain('refunds workflow, a named owner and agreed acceptance criteria');
     expect(workforce).toContain('The external evaluation team and provider are not yet selected. Terms are not yet set.');

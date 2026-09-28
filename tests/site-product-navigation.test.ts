@@ -40,7 +40,7 @@ describe('public product naming and navigation contract', () => {
   });
 
   it('makes the self-service protection path discoverable and gives it an activation handoff', () => {
-    const homepage = read('app/HomePageClient.tsx');
+    const homepage = read('components/home/NewHireStory.tsx');
     const sitemap = read('app/sitemap.ts');
     const builder = read('app/protect/ProtectionBuilder.tsx');
     const activationCli = read('packages/gate/bin/ep-protect.mts');

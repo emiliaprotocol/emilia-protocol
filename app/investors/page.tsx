@@ -52,26 +52,26 @@ export default function InvestorsPage() {
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56, maxWidth: 760 }}>
         <div className="ep-tag" style={{ color: color.gold, fontFamily: font.mono || font.sans, fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 20 }}>Investor Inquiries</div>
         <h1 style={{ fontFamily: font.sans, fontSize: 44, fontWeight: 700, color: '#0C0A09', lineHeight: 1.06, marginBottom: 20, maxWidth: 700 }}>
-          Your AI workforce needs management.
+          Hire the AI. Keep your rules.
         </h1>
         <p style={{ fontFamily: font.sans, fontSize: 18, lineHeight: 1.55, color: '#44403C', maxWidth: 700, marginBottom: 12 }}>
-          Give every agent a job, set its authority, and know what happened.
-          EMILIA is building the operating workspace around Gate, with the open Protocol underneath.
+          EMILIA gives AI the rules every new hire gets, and checks them at a gate the AI can&apos;t go around.
+          The gate holds the keys, checks each exact action against the company&apos;s own records, and stops what falls outside the rules before it runs.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 15, lineHeight: 1.55, color: '#78716C', maxWidth: 700, marginBottom: 12 }}>
-          The agents can change. The company&apos;s instructions, remaining authority and unfinished
-          work need to stay accounted for. That is the infrastructure responsibility we are taking on.
+          Nobody grades their own homework. Each action the gate allows gets a signed receipt that an accountant,
+          auditor or insurer can check offline without asking the AI company. Which signers to trust stays their call.
         </p>
         <p style={{ fontFamily: font.sans, fontSize: 17, lineHeight: 1.5, fontWeight: 700, color: color.gold, maxWidth: 700, marginBottom: 12 }}>
           Authorization infrastructure for agentic AI.
         </p>
         <div style={{ display: 'grid', gap: 18, marginTop: 32, marginBottom: 24 }}>
           {[
-            ['The product', 'A workspace for jobs, owners, agent assignments, authority and work review. Gate applies customer limits on connected execution paths. A person or institution remains accountable.'],
-            ['The concrete example', 'A refunds job starts with $10,000 of authority. With $3,000 consumed and $400 unresolved, its replacement agent still has $6,600 available. The retired assignment cannot start new covered work. This is a synthetic local-alpha scenario, not customer money or settlement evidence.'],
-            ['The first evaluation', 'One finance team, one refunds workflow, a named owner and agreed acceptance criteria. The external team and provider are not yet selected. Evaluation terms are not yet set.'],
-            ['The business', 'The proposed business is recurring software and operating support for protected work, with scoped integration and deployment. Prices and willingness to pay need buyer validation.'],
-            ['The path to infrastructure', 'Keep useful identity, approval and business systems in place. Make authority and unfinished work survive changes in agents on supported paths. Earn expansion one customer workflow at a time.'],
+            ['The product', 'Gate sits between an AI agent and the system that moves money. It holds the credential, takes the payment details from the system of record rather than the agent, and applies the customer\'s limits on connected execution paths. A person or institution remains accountable.'],
+            ['The concrete example', 'An illustrative story: at 2:14 a.m. a fake "we\'ve changed banks" email asks an AI to send a real $8,400 supplier bill to a new account, under a $10,000 limit. Same bill, wrong account, so the gate stops it before the bank is called. Rosa, her company and the amounts are made up; business email compromise losses reported to the FBI in 2025 were $3.05 billion.'],
+            ['The first evaluation', 'One finance team, one supplier-payment or bank-detail-change workflow, a named owner and agreed acceptance criteria. The external team and provider are not yet selected. Evaluation terms are not yet set.'],
+            ['The business', 'Free blueprint; running it is our job. The proposed business is recurring software and operating support for protected work, with scoped integration and deployment. Prices and willingness to pay need buyer validation.'],
+            ['The path to infrastructure', 'Start with supplier payments. Keep useful identity, approval and business systems in place. Aim for a gate wherever AI does real work, earned one customer workflow at a time.'],
             ['The open foundation', 'EMILIA is the company. Gate is the commercial product. The Protocol provides public formats, verifiers and reference code that can be used without buying from EMILIA.'],
             ['The proof that matters next', 'A customer relying on the product for real work and accepting its results. Engineering tests, citations and same-team integrations are not substitutes for that evidence.'],
           ].map(([title, body]) => (

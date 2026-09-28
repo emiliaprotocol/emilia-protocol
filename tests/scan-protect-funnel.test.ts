@@ -21,7 +21,7 @@ describe('scan to protected MCP boundary funnel', () => {
 
   it('keeps the passive local scanner accessible from the shared workforce story', () => {
     const story = read('components/workforce/WorkforceStory.tsx');
-    expect(homepage).toContain('<WorkforceNextStep />');
+    expect(read('app/workforce/page.tsx')).toContain('<WorkforceNextStep />');
     expect(story).toContain('href="/scan#run-local"');
     expect(story).toContain('Map my agent');
     expect(story).toContain('href="/contact#workforce"');

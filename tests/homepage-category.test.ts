@@ -26,16 +26,41 @@ function compact(value) {
 }
 
 describe('homepage category contract', () => {
-  it('leads with workforce management and keeps the product, Gate and open Protocol distinct', () => {
-    const page = read('app/HomePageClient.js');
-    const story = read('components/workforce/WorkforceStory.tsx');
+  it('leads with the new-hire gate story and keeps its claim boundaries on the page', () => {
+    const client = read('app/HomePageClient.js');
+    const page = read('components/home/NewHireStory.tsx');
     const route = read('app/page.js');
 
-    expect(route).toContain('Build Your AI Workforce | EMILIA');
-    expect(route).toContain('Find specialized agents or bring your own.');
-    expect(page).toContain("from '@/components/workforce/WorkforceStory'");
+    expect(route).toContain('Hire the AI. Keep Your Rules. | EMILIA');
+    expect(route).toContain('checks them at a gate the AI can’t go around');
+    expect(client).toContain("from '@/components/home/NewHireStory'");
+    expect(client).toContain('<NewHireStory />');
+    for (const headline of [
+      'Hire the AI.<br />Keep your rules.',
+      'Rosa pays the bills',
+      'EMILIA is the gate',
+      'The new hire never<br />holds the keys',
+      'Same bill.<br />Wrong account.',
+      'Nobody grades their<br />own homework',
+      'Free blueprint.<br />Running it is our job.',
+    ]) {
+      expect(page).toContain(headline);
+    }
+    expect(page).toContain('An illustrative story with AI-generated images. Rosa, her company and every amount in it are made up.');
+    expect(page).toContain('This covers the payment paths a company connects through EMILIA.');
+    expect(page).toContain('A check shows a receipt is genuine and unchanged. Which signers to trust stays the accountant&apos;s call.');
+    expect(page).toContain('Each payment the gate allows gets a signed receipt');
+    expect(page).toContain('never from the AI&apos;s say-so');
+    expect(page).toContain('$3,046,598,558');
+    expect(page).toContain('href="/try"');
+    expect(page).toContain('href="/gate"');
+    expect(page).toContain('href="/verify"');
+    expect(page).not.toMatch(/\bindependent|certified|approved by|guarantee/i);
+
+    const workforceRoute = read('app/workforce/page.tsx');
+    const story = read('components/workforce/WorkforceStory.tsx');
     for (const section of ['WorkforceIntroduction', 'WorkforceHandover', 'WorkforceResponsibilities', 'WorkforceFoundation', 'WorkforceNextStep']) {
-      expect(page).toContain(`<${section} />`);
+      expect(workforceRoute).toContain(`<${section} />`);
     }
     expect(story).toContain('Build your<br />AI workforce.');
     expect(story).toContain('The job stays. The agent can change.');
@@ -62,7 +87,7 @@ describe('homepage category contract', () => {
     const proofStats = JSON.parse(read('lib/proof-stats.json'));
     const derived = deriveSourceProofStats(ROOT);
     const securityCase = JSON.parse(read('security/security-case.json'));
-    const page = read('app/HomePageClient.js');
+    const page = read('components/home/NewHireStory.tsx');
     const proofBlock = read('components/ProofBlock.js');
 
     expect(proofStats.tests.total).toBeGreaterThan(4500);
@@ -100,7 +125,7 @@ describe('homepage category contract', () => {
   it('keeps the technical composition hierarchy off the buyer homepage and bounded on diligence surfaces', () => {
     const hierarchy =
       'AgentROA governs calls. ORPRG proves policy permitted the effect. EMILIA verifies the exact authority and any required approver evidence under the relying party’s pinned rules, then controls admission at covered consequence boundaries.';
-    const homepage = compact(read('app/HomePageClient.js'));
+    const homepage = compact(read('app/HomePageClient.js') + read('components/home/NewHireStory.tsx'));
     const productStories = compact(read('lib/product-stories.ts'));
     const gate = compact(read('app/gate/page.js'));
     const investors = compact(read('app/investors/page.js'));
@@ -118,8 +143,9 @@ describe('homepage category contract', () => {
     expect(gate).toContain('RECEIPT PROGRAMS');
     expect(gate).toContain('npm run demo:receipt-program');
     expect(gate).toContain('It is not a ZK proof, consensus result, provider attestation');
-    expect(investors).toContain('Your AI workforce needs management.');
-    expect(investors).toContain('Give every agent a job, set its authority, and know what happened.');
+    expect(investors).toContain('Hire the AI. Keep your rules.');
+    expect(investors).toContain('Nobody grades their own homework.');
+    expect(investors).toContain('Rosa, her company and the amounts are made up');
     expect(investors).toContain('EMILIA is the company. Gate is the commercial product.');
     expect(investors).toContain('The workforce workspace is a private local alpha.');
     expect(investors).toContain('currently claims no customer traction, recurring revenue, production deployment');
