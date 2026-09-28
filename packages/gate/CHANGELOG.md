@@ -15,6 +15,10 @@ This package follows [Semantic Versioning](https://semver.org/).
   action object pass it (draft-schrock-canonical-action-identifier-04,
   Section 2.4).
 
+### Changed
+
+- The exact `@emilia-protocol/verify` dependency moves from 5.0.0 to 6.0.0.
+
 ## 0.28.0 (2026-09-25)
 
 ### Security

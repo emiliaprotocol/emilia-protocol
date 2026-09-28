@@ -50,7 +50,7 @@ describe('public runtime release pins', () => {
       expect(linkedGate.dependencies['@emilia-protocol/require-receipt'], lockPath)
         .toBe(requireReceipt.version);
       expect(linkedGate.dependencies['@emilia-protocol/verify'], lockPath)
-        .toBe(gate.dependencies['@emilia-protocol/verify']);
+        .toBe(verify.version);
       expect(linkedGate.bin['ep-protect'], lockPath).toBe('bin/ep-protect.mjs');
       expect(linkedRequireReceipt.version, lockPath).toBe(requireReceipt.version);
       expect(linkedVerify.version, lockPath).toBe(verify.version);
