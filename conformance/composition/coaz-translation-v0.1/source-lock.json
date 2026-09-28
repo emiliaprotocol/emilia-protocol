@@ -54,7 +54,7 @@
     },
     {
       "path": "caid/impl/js/caid.mjs",
-      "sha256": "fab6661cd27dc0f01971fcbed1dbe1615d19f97bc3d14070643a8eea471434ae"
+      "sha256": "1e1382c82c5ef859b5ea55b6f1d484b769897e698c3d6b4e24ee4d8150dac338"
     },
     {
       "path": "caid/registry/history/action-types.v4.json",

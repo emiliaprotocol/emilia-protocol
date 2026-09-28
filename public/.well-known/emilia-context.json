@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "a6dd2dcd2bd11b6dab0993e79b272469383647f3b7f9c2bded22a95cdc64e7fc",
+    "input_digest_sha256": "03f07a6cf822a0d509ccd02c09a5516746a8005c4b60038fc2e845ebb49dc7bb",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -22,7 +22,7 @@
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "4860310a2a4e07ca28806a3233538ab90a50b2f8ba35aa3b14e9313e4081ef7e",
+        "sha256": "a33ebbf104164c53d08bbfd2cb20120c2a6b8f60fd8fe75036301d432625abe6",
         "bytes": 6361
       },
       {
@@ -52,13 +52,13 @@
       },
       {
         "path": "caid/conformance/vectors.json",
-        "sha256": "568816bab3aa77b746c0b57cf019029b6876e9a66ded0f61a1806bd2b8250d47",
-        "bytes": 486191
+        "sha256": "b9004d3d243693e5aa566137263f73280fdc2d647d34a83beb66fb30c821d4c0",
+        "bytes": 501922
       },
       {
         "path": "caid/conformance/mapping-vectors.json",
-        "sha256": "3b1b9c2c6b31f8c1ec25118d6ad5e439b55dfeb051ecabaa560bda4dc95863a6",
-        "bytes": 86675
+        "sha256": "1d3c24370f0308835ef28c183022636e7ce7dd933ee6fa330e9919f70f783d57",
+        "bytes": 89160
       },
       {
         "path": "conformance/vectors/model-to-matter.v1.json",
@@ -318,7 +318,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "941fc7efc768f30990e5a24ef4bc48ea94b3f4b064531001f85b2814ad413c75",
+      "manifest_sha256": "ebce58a66427a45d5cfd445a0136ee6645f23c819ba6afb8ef11a2c1759291e9",
       "vector_bundle_sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
     },
     "formal": {
@@ -423,9 +423,9 @@
       "evidence_bundle_sha256": "ee1b704dd9bc76a371a1a0159b263a82970e86ddf606bba4e301adfeba97a4e8"
     },
     "caid": {
-      "core_vectors": 591,
+      "core_vectors": 613,
       "core_vectors_skipped_by_every_port": 2,
-      "mapping_vectors": 82,
+      "mapping_vectors": 86,
       "same_team_ports": [
         "javascript",
         "python",
