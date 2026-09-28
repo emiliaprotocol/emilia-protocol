@@ -2033,12 +2033,15 @@ Internet-Draft             Evidence Challenge             September 2026
 
    *  Uses the outcome terms of [AEC] (VERIFIED, ACCEPTED, SATISFIED,
       UNSATISFIED), restated in Section 1.3 so that this document has no
-      normative dependency on it.  The lineage outcomes are SATISFIED
-      and UNSATISFIED; closed reason identifiers keep a verification
+      normative dependency on it.  SATISFIED concerns evidence
+      sufficiency only; the relying party's local authorization decision
+      is outside it.  The lineage outcomes are SATISFIED and
+      UNSATISFIED; closed reason identifiers keep a verification
       failure, a verification that could not be evaluated, an acceptance
-      refusal, an action mismatch, and an evaluation that did not
-      complete distinct; a successor link is allowed only after a
-      completed UNSATISFIED evaluation.
+      refusal, an action mismatch, an unmet policy-bound evidence
+      requirement named by the challenge (policy_unsatisfied), and an
+      evaluation that did not complete distinct; a successor link is
+      allowed only after a completed UNSATISFIED evaluation.
 
    *  Lets a recipient that retains authenticated artifacts distinguish
       earlier and later statements across policy changes, corrected
@@ -2055,16 +2058,13 @@ Internet-Draft             Evidence Challenge             September 2026
       the note on the reference HTTP helpers, into an Implementation
       Status section that is removed on publication, and restates it to
       match the reference as it stands, including where the reference is
-      narrower than this document.
-
-   *  States that SATISFIED concerns evidence sufficiency only and that
-      the relying party's local authorization decision is outside it,
-      and limits policy_unsatisfied to a policy-bound evidence
-      requirement named by the challenge.
-
-
-
-
+      narrower than this document.  This withdraws the description in
+      Section 2.6.2 of -07 of an owner store with capacity accounting,
+      generation-bound reservation tokens, and deadline-gated recovery,
+      and of the challenge-size and item-count limits it listed, none of
+      which the reference challenge module implements, and replaces that
+      section's scenario-harness count with the bounded-model
+      description.
 
 
 

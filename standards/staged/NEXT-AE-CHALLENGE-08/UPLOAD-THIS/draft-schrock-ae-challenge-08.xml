@@ -1542,12 +1542,15 @@ Retry-After: 30
         <li>Uses the outcome terms of <xref target="AEC"/> (VERIFIED,
         ACCEPTED, SATISFIED, UNSATISFIED), restated in
         <xref target="terms"/> so that this document has no normative
-        dependency on it. The lineage outcomes are <tt>SATISFIED</tt> and
-        <tt>UNSATISFIED</tt>; closed reason identifiers keep a verification
-        failure, a verification that could not be evaluated, an acceptance
-        refusal, an action mismatch, and an evaluation that did not complete
-        distinct; a successor link is allowed only after
-        a completed <tt>UNSATISFIED</tt> evaluation.</li>
+        dependency on it. SATISFIED concerns evidence sufficiency only; the
+        relying party's local authorization decision is outside it. The
+        lineage outcomes are <tt>SATISFIED</tt> and <tt>UNSATISFIED</tt>;
+        closed reason identifiers keep a verification failure, a verification
+        that could not be evaluated, an acceptance refusal, an action
+        mismatch, an unmet policy-bound evidence requirement named by the
+        challenge (<tt>policy_unsatisfied</tt>), and an evaluation that did
+        not complete distinct; a successor link is allowed only after a
+        completed <tt>UNSATISFIED</tt> evaluation.</li>
         <li>Lets a recipient that retains authenticated artifacts distinguish
         earlier and later statements across policy changes, corrected
         presentations, and action transformations. It does not prove
@@ -1561,11 +1564,12 @@ Retry-After: 30
         the note on the reference HTTP helpers, into an Implementation Status
         section that is removed on publication, and restates it to match the
         reference as it stands, including where the reference is narrower
-        than this document.</li>
-        <li>States that SATISFIED concerns evidence sufficiency only and that
-        the relying party's local authorization decision is outside it, and
-        limits <tt>policy_unsatisfied</tt> to a policy-bound evidence
-        requirement named by the challenge.</li>
+        than this document. This withdraws the description in Section 2.6.2
+        of -07 of an owner store with capacity accounting, generation-bound
+        reservation tokens, and deadline-gated recovery, and of the
+        challenge-size and item-count limits it listed, none of which the
+        reference challenge module implements, and replaces that section's
+        scenario-harness count with the bounded-model description.</li>
         <li>Rewords the informal description of insufficient evidence in the
         Abstract, the state-bounds text, and the DMSC illustration so that it
         covers evidence that is VERIFIED but not ACCEPTED or not bound to the

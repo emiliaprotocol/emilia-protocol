@@ -125,6 +125,10 @@ for (const required of [
   'That adapter is exercised against an in-process emulation of its SQL statements, not a live database.',
   'None of this is an independent implementation',
   'SATISFIED concerns evidence sufficiency only.',
+  // "Changes since -07" compares with the posted -07, which has no SATISFIED
+  // term, and says which -07 implementation claims are withdrawn.
+  'SATISFIED concerns evidence sufficiency only; the relying party\'s local authorization decision is outside it.',
+  'This withdraws the description in Section 2.6.2 of -07',
   'is outside SATISFIED and is not reported with these reasons',
   'it requires that the confirmation be bound to a verifiable authorization grant issued by the authorization server, which makes the final decision',
   'The type is not specific to one application or deployment.',
@@ -167,6 +171,9 @@ for (const forbidden of [
   'under the policy snapshot the challenge binds',
   'this optional profile requires the relying party to start a fresh challenge',
   '1,024 storage-capability configurations',
+  // A Changes bullet that described a change from the unposted 2026-08-27
+  // candidate instead of from the posted -07.
+  'States that SATISFIED concerns evidence sufficiency only and that',
   // The replaced KLRC draft is no longer cited.
   'draft-klrc-aiagent-auth-03',
   'target="KLRC"',

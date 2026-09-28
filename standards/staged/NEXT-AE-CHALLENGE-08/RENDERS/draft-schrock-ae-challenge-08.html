@@ -1250,6 +1250,7 @@ li > p:last-of-type:only-child {
 }
 </style>
 <link href="rfc-local.css" rel="stylesheet" type="text/css">
+<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
 </head>
 <body class="xml2rfc">
 <table class="ears">
@@ -3109,12 +3110,15 @@ Retry-After: 30
         <li class="normal" id="section-10-2.2">Uses the outcome terms of <span>[<a href="#AEC" class="cite xref">AEC</a>]</span> (VERIFIED,
         ACCEPTED, SATISFIED, UNSATISFIED), restated in
         <a href="#terms" class="auto internal xref">Section 1.3</a> so that this document has no normative
-        dependency on it. The lineage outcomes are <code>SATISFIED</code> and
-        <code>UNSATISFIED</code>; closed reason identifiers keep a verification
-        failure, a verification that could not be evaluated, an acceptance
-        refusal, an action mismatch, and an evaluation that did not complete
-        distinct; a successor link is allowed only after
-        a completed <code>UNSATISFIED</code> evaluation.<a href="#section-10-2.2" class="pilcrow">¶</a>
+        dependency on it. SATISFIED concerns evidence sufficiency only; the
+        relying party's local authorization decision is outside it. The
+        lineage outcomes are <code>SATISFIED</code> and <code>UNSATISFIED</code>;
+        closed reason identifiers keep a verification failure, a verification
+        that could not be evaluated, an acceptance refusal, an action
+        mismatch, an unmet policy-bound evidence requirement named by the
+        challenge (<code>policy_unsatisfied</code>), and an evaluation that did
+        not complete distinct; a successor link is allowed only after a
+        completed <code>UNSATISFIED</code> evaluation.<a href="#section-10-2.2" class="pilcrow">¶</a>
 </li>
         <li class="normal" id="section-10-2.3">Lets a recipient that retains authenticated artifacts distinguish
         earlier and later statements across policy changes, corrected
@@ -3131,28 +3135,28 @@ Retry-After: 30
         the note on the reference HTTP helpers, into an Implementation Status
         section that is removed on publication, and restates it to match the
         reference as it stands, including where the reference is narrower
-        than this document.<a href="#section-10-2.5" class="pilcrow">¶</a>
+        than this document. This withdraws the description in Section 2.6.2
+        of -07 of an owner store with capacity accounting, generation-bound
+        reservation tokens, and deadline-gated recovery, and of the
+        challenge-size and item-count limits it listed, none of which the
+        reference challenge module implements, and replaces that section's
+        scenario-harness count with the bounded-model description.<a href="#section-10-2.5" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-10-2.6">States that SATISFIED concerns evidence sufficiency only and that
-        the relying party's local authorization decision is outside it, and
-        limits <code>policy_unsatisfied</code> to a policy-bound evidence
-        requirement named by the challenge.<a href="#section-10-2.6" class="pilcrow">¶</a>
-</li>
-        <li class="normal" id="section-10-2.7">Rewords the informal description of insufficient evidence in the
+        <li class="normal" id="section-10-2.6">Rewords the informal description of insufficient evidence in the
         Abstract, the state-bounds text, and the DMSC illustration so that it
         covers evidence that is VERIFIED but not ACCEPTED or not bound to the
         exact action, and uses "admission" rather than "acceptance" where the
-        text means admission.<a href="#section-10-2.7" class="pilcrow">¶</a>
+        text means admission.<a href="#section-10-2.6" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-10-2.8">Adds to the IANA Considerations why the <code>ae-required</code>
-        problem type is not specific to one application.<a href="#section-10-2.8" class="pilcrow">¶</a>
+        <li class="normal" id="section-10-2.7">Adds to the IANA Considerations why the <code>ae-required</code>
+        problem type is not specific to one application.<a href="#section-10-2.7" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-10-2.9">Replaces the reference to draft-klrc-aiagent-auth, which
+        <li class="normal" id="section-10-2.8">Replaces the reference to draft-klrc-aiagent-auth, which
         draft-ietf-wimse-aims replaced, with draft-ietf-wimse-aims-00, and
-        updates the other references.<a href="#section-10-2.9" class="pilcrow">¶</a>
+        updates the other references.<a href="#section-10-2.8" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-10-2.10">Folds example lines longer than 69 characters as specified in
-        <span>[<a href="#RFC8792" class="cite xref">RFC8792</a>]</span>.<a href="#section-10-2.10" class="pilcrow">¶</a>
+        <li class="normal" id="section-10-2.9">Folds example lines longer than 69 characters as specified in
+        <span>[<a href="#RFC8792" class="cite xref">RFC8792</a>]</span>.<a href="#section-10-2.9" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>

@@ -5,15 +5,37 @@ main `dedd9a24d`), which was prepared from the byte-verified published -07
 XML. `scripts/check-ae-challenge-08.mjs` still pins that published -07
 source at SHA-256
 `2bfb675ec652487bd90addbb95dda15551e69f4c022fc83a45195fee6d8d8e34`.
+Revised again on 2026-09-28 ("Changes since -07" wording, render procedure
+and idnits scope; see below); the source, renders and checksums were
+regenerated and the checks below re-run on that date.
 
 ## Rendering
 
 - `xmllint --noout`: PASS.
-- `xml2rfc 3.34.0 --text` and `--html`, with trailing spaces and tabs removed
-  from the HTML by `perl -pe 's/[ \t]+$//'`: PASS with no warnings. Applied to
-  the 2026-08-27 source under the same file name, the procedure reproduces
-  that candidate's TXT and HTML; the only difference seen when rendering a
-  renamed copy is the source file name in the HTML `link` element.
+- The renders are produced next to the source and then moved, run from this
+  packet directory with xml2rfc 3.34.0:
+
+  ```
+  cd UPLOAD-THIS
+  xml2rfc --text --html draft-schrock-ae-challenge-08.xml
+  perl -pi -e 's/[ \t]+$//' draft-schrock-ae-challenge-08.html
+  mv draft-schrock-ae-challenge-08.html draft-schrock-ae-challenge-08.txt ../RENDERS/
+  ```
+
+  xml2rfc prints no warnings. On 2026-09-28 this procedure produced the
+  committed TXT and HTML byte for byte, both in `UPLOAD-THIS/` and on a copy
+  of the source under the same file name in a scratch directory. Rendered
+  this way, the HTML inlines xml2rfc's metadata script. Writing the HTML to
+  another directory with `-o` leaves that script out and does not reproduce
+  the committed file; the TXT is the same either way. The HTML committed on
+  2026-09-27 reproduces only with `xml2rfc --html -o
+  ../RENDERS/draft-schrock-ae-challenge-08.html` run in `UPLOAD-THIS/` (plus
+  the `perl` step), so it lacked the script; it was replaced by the render
+  from this procedure.
+- Applied to the 2026-08-27 source (repository main `dedd9a24d`) under the
+  same file name, the same procedure reproduces that candidate's TXT and
+  HTML byte for byte; the only difference seen when rendering a renamed copy
+  is the source file name in the HTML `link` element.
 - Every TXT line fits 72 columns. The four example lines that exceeded it in
   the 2026-08-27 candidate are folded as RFC 8792 Section 7 specifies.
   Unfolding both folded examples and parsing them as JSON gives the original
@@ -24,11 +46,21 @@ source at SHA-256
 - `idnits 3.1.0 -m submission`: `PASS - No nit found`, on both the XML
   source and the TXT rendering. The 2026-08-27 candidate passed with one
   warning for the over-long lines.
-- `idnits 3.1.0` in its default mode: no errors and two warnings,
-  `PREFER_BCP14_REF` and `SECTION_TITLE_HAS_UNEXPECTED_INDENTATION` for the
-  Appendix line of the table of contents. The `MULTIPLE_REFERENCES_SECTION_TITLES`
-  error the earlier two-section layout produced is fixed by one References
-  section with Normative and Informative subsections.
+- `idnits 3.1.0` in its default mode on the TXT rendering: no errors and two
+  warnings, `PREFER_BCP14_REF` and `SECTION_TITLE_HAS_UNEXPECTED_INDENTATION`
+  for the Appendix line of the table of contents. The
+  `MULTIPLE_REFERENCES_SECTION_TITLES` error the earlier two-section layout
+  produced in the TXT is fixed by one References section with Normative and
+  Informative subsections.
+- `idnits 3.1.0` in its default mode on the XML source: two errors.
+  `TABS_NOT_ALLOWED` counts 600 tab characters in the source; the posted -07
+  XML has 653 and gets the same error, and Datatracker accepted it.
+  `INVALID_REFERENCES_NAME` is caused by the single References wrapper that
+  fixed the TXT error above: this idnits check expects each `references`
+  element to be named Normative or Informative, and the posted -07, which
+  had two such sections, does not get it. It also reports 240
+  `MISSING_BCP14_TAGS` comments (keywords not wrapped in `bcp14` elements;
+  the posted -07 XML gets 208). Submission mode passes on both files.
 - The Implementation Status and "Changes since -07" sections are marked
   `removeInRFC`, so xml2rfc states that each is removed before publication.
 - `shasum -a 256 -c SHA256SUMS.txt`: PASS.
@@ -45,7 +77,9 @@ source at SHA-256
   `evidence_not_evaluated` reason, the live-policy SATISFIED definition, the
   keyed policy-change rule, the complete list of where the reference is
   narrower, and the split model description, and forbids the wording each
-  replaced.
+  replaced. Since 2026-09-28 it also requires the folded outcome-terms
+  bullet and the withdrawal sentence in "Changes since -07", and forbids
+  the separate SATISFIED bullet they replaced.
 - `npm run check:standards-staged`, `npm run check:repository-boundary`,
   `npm run check:public-conformance-claims`, `npm run check:authority-claims`
   and `npm run check:llm-context`: PASS.
@@ -145,6 +179,26 @@ or a command run on this tree:
   `formal/evidence-challenge-lifecycle.model.mjs`): four storage capabilities
   (`durable_storage`, `atomic_registration`, `body_bound_storage`,
   `permanent_consumption`) and six challenge bindings. The draft says so.
+
+## Changes since -07
+
+The section compares with the posted -07, not with the unposted 2026-08-27
+candidate. The posted -07 XML (the pinned source above) contains neither
+`SATISFIED` nor `policy_unsatisfied` (0 matches each), so the SATISFIED
+scope and the `policy_unsatisfied` limit are part of the new outcome
+vocabulary, not a change to -07 text; the separate bullet that described
+them as a change is folded into the outcome-terms bullet. The
+implementation bullet now says what is withdrawn from -07 Section 2.6.2
+("Reference Evidence Boundary", posted XML lines 851-895): the owner store
+with capacity accounting, generation-bound reservations and deadline-gated
+recovery, and its challenge-size and item-count limits. In
+`lib/negotiate/evidence-challenge.ts` a case-insensitive search for
+capacity, reserv, recover, generation and 65536 finds nothing, and the only
+length limits are per-field string caps (512, 256 and 128 characters). The
+bullet does not say the reference lacks a PostgreSQL store or a bounded
+model: `packages/gate/src/store-postgres.ts` is the adapter the
+Implementation Status names, and the -07 scenario-harness count is replaced
+by the bounded-model description, not withdrawn without replacement.
 
 ## Outcome and reason terms
 
