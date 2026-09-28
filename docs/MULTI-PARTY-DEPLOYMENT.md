@@ -132,5 +132,9 @@ round-trip test proves the mapped members pass the real `quorumGate`.
 - The earlier `attest.js`/`consume.js` plan above is retained only as the
   bearer-subsystem reference; the Class-A wiring listed here is the shipped path.
 - **Standards record**: the multi-party predicate is written up as the IETF
-  companion draft `standards/draft-schrock-ep-quorum-00.md` and the preprint
+  companion draft `draft-schrock-ep-quorum`
+  (<https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/>; current posted
+  snapshot in `standards/posted/`, earlier retained revisions in
+  `standards/archive/`)
+  and the preprint
   `docs/papers/ep-quorum-preprint.md`.

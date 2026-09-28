@@ -1,0 +1,678 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc docName="draft-schrock-agent-operation-continuity-00"
+     category="std" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Agent Operation Continuity">Agent Operation Continuity Across Executor Replacement</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-agent-operation-continuity-00"/>
+    <author fullname="Iman Schrock" initials="I." surname="Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="September" day="15"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>operation continuity</keyword>
+    <keyword>executor replacement</keyword>
+    <keyword>idempotency</keyword>
+    <keyword>reconciliation</keyword>
+    <abstract>
+      <t>An agent executor can fail or be replaced after a consequential
+      provider request may have crossed an effect boundary but before the
+      outcome is known. Native authorization, succession, evidence-boundary,
+      and bounded-capability mechanisms address parts of this interval, but
+      they do not by themselves define how a replacement executor preserves
+      the same provider operation and its unresolved evidence.</t>
+      <t>This document defines a composition profile for one authoritative
+      coordination domain. The profile preserves stable operation-occurrence
+      identity, immutable provider bindings, authority accounting, uncertain
+      evidence, and stale-executor fences across replacement. It defines no
+      new receipt, identity, authority, provider, or ledger-migration format,
+      and it does not require any particular evidence envelope.</t>
+    </abstract>
+  </front>
+
+  <middle>
+    <section anchor="introduction">
+      <name>Introduction</name>
+      <t>A worker may submit a consequential request to a payment, messaging,
+      infrastructure, or other effecting provider and then fail before it can
+      persist the provider's response. Replacing that worker does not make the
+      earlier request disappear. A successor that treats the work as fresh can
+      duplicate the effect, while a successor that discards the work can lose
+      an unresolved obligation.</t>
+      <t>Several native mechanisms provide relevant pieces. AADP
+      <xref target="AADP"/> provides durable per-action authorization intent,
+      decision and report idempotency, and an attempted/result-unknown report.
+      Succession Receipts <xref target="SUCCESSION"/> can record a completed
+      predecessor-to-successor transition and carried commitments. AEB
+      <xref target="AEB"/> separates provider entry from effect outcome and
+      requires authenticated reconciliation. Bounded Capability Receipts
+      <xref target="BCR"/> define durable reservation, provider-entry
+      accounting, replay tombstones, and an admission epoch.</t>
+      <t>This document specifies the missing composition contract: preserve one
+      provider-operation occurrence and its evidence across replacement without
+      restoring spent authority, resetting provider keys, or inventing a
+      favorable outcome. The contract is deliberately bounded to one
+      authoritative coordination domain and its covered provider paths.</t>
+    </section>
+
+    <section anchor="conventions">
+      <name>Conventions and Definitions</name>
+      <t>The key words <bcp14>MUST</bcp14>, <bcp14>MUST NOT</bcp14>,
+      <bcp14>REQUIRED</bcp14>, <bcp14>SHALL</bcp14>,
+      <bcp14>SHALL NOT</bcp14>, <bcp14>SHOULD</bcp14>,
+      <bcp14>SHOULD NOT</bcp14>, <bcp14>RECOMMENDED</bcp14>,
+      <bcp14>NOT RECOMMENDED</bcp14>, <bcp14>MAY</bcp14>, and
+      <bcp14>OPTIONAL</bcp14> in this document are to be interpreted as
+      described in BCP 14 <xref target="RFC2119"/> <xref target="RFC8174"/>
+      when, and only when, they appear in all capitals, as shown here.</t>
+      <dl>
+        <dt>Operation occurrence</dt>
+        <dd>One intended consequential provider operation whose continuity is
+        being preserved. Its reference may reuse an existing native operation
+        identifier that satisfies this profile. This document creates no new
+        identifier namespace.</dd>
+        <dt>Occurrence-creation binding</dt>
+        <dd>The durable, coordination-domain-owned idempotency input or pinned
+        system-of-record reference by which the domain recognizes retries of an
+        occurrence-creation request.</dd>
+        <dt>Coordination boundary</dt>
+        <dd>The trusted admission component for the declared coordination
+        domain. It owns or validates occurrence creation, serializes authority
+        state and provider entry, and fences stale worker executors. It is
+        distinct from the replaceable worker executor.</dd>
+        <dt>Executor generation</dt>
+        <dd>A monotonically ordered generation or epoch used by the coordination
+        domain to distinguish the current executor from a retired predecessor.</dd>
+        <dt>Provider binding</dt>
+        <dd>The immutable tuple of provider profile, provider account or
+        environment, exact request representation or digest, native
+        idempotency-key rule and value where available, and provider operation
+        reference where issued.</dd>
+        <dt>Provider entry</dt>
+        <dd>The authority-accounting boundary after which the provider may have
+        received the request. Under BCR-06, this is the atomic
+        <tt>provider_entered</tt> transition that moves reserved authority to
+        consumed before adapter invocation.</dd>
+        <dt>Attempt evidence</dt>
+        <dd>Append-only evidence about preparation, provider entry,
+        acknowledgement, status, or terminal reconciliation for one bound
+        attempt.</dd>
+        <dt>Missing knowledge</dt>
+        <dd>An explicit statement that configured status sources cannot
+        establish a required fact. It is not provider failure, non-entry,
+        success, or permission to retry.</dd>
+      </dl>
+    </section>
+
+    <section anchor="scope">
+      <name>Scope, Assumptions, and Non-Goals</name>
+      <t>This profile covers one authoritative coordination domain that
+      serializes admission for a protected provider path. The domain admits or
+      refuses each covered occurrence and preserves it when the worker executor
+      is replaced.</t>
+      <t>The profile assumes that every covered executor uses the coordination
+      boundary before provider entry; that the deployment pins a provider
+      profile, account or environment, exact request representation, native
+      key and reference rules, status sources, and retention expectations; and
+      that each native authority mechanism retains its own accounting and replay
+      semantics.</t>
+      <t>The profile does not make an uncovered credential path safe. An
+      implementation <bcp14>MUST</bcp14> disclose direct, administrator,
+      break-glass, queued, alternate-protocol, and system-of-record paths that
+      bypass the coordination domain.</t>
+      <t>This document does not define a universal customer, job,
+      responsibility, task, action-digest, agent, or worker identifier; a new
+      succession or authorization receipt; a portable authority ledger; a
+      universal provider key or outcome vocabulary; payment, refund,
+      compensation, reputation, or acceptance semantics; a mandatory evidence
+      format; or equivalence between native identifiers or verdicts.</t>
+    </section>
+
+    <section anchor="requirements">
+      <name>Continuity Requirements</name>
+
+      <section anchor="aoc-req-001">
+        <name>AOC-REQ-001: One Authoritative Coordination Domain</name>
+        <t>For every covered operation occurrence, an implementation
+        <bcp14>MUST</bcp14> identify one authoritative coordination domain that
+        serializes reservation, provider-entry admission, executor-generation
+        changes, and terminal reconciliation. A profile instance
+        <bcp14>MUST NOT</bcp14> claim exclusive admission control beyond paths
+        mediated by that domain.</t>
+      </section>
+
+      <section anchor="aoc-req-002">
+        <name>AOC-REQ-002: Stable Occurrence Identity Without a New Namespace</name>
+        <t>The coordination domain <bcp14>MUST</bcp14> select or assign a stable
+        operation-occurrence identifier before provider entry and
+        <bcp14>MUST</bcp14> retain it through executor replacement and terminal
+        reconciliation. An implementation <bcp14>MAY</bcp14> use an existing
+        native operation identifier, such as a BCR operation identifier, when
+        it is stable, occurrence-specific, and replay-protected under the
+        selected native profile. This document does not define a new universal
+        identifier.</t>
+        <t>The coordination domain <bcp14>MUST</bcp14> own the
+        occurrence-creation rule or validate it against a pinned authoritative
+        system of record. It <bcp14>MUST</bcp14> either resolve a stable
+        system-of-record occurrence reference or atomically mint a new
+        occurrence only after local policy determines that the request is a
+        distinct intended occurrence. Creation retries <bcp14>MUST</bcp14> use
+        a durable occurrence-creation binding and return the original
+        occurrence. A caller-supplied business occurrence identifier
+        <bcp14>MAY</bcp14> be used when the coordination boundary authenticates
+        it and validates its uniqueness and semantics under that rule. A
+        caller-selected relabel, grant, task, or retry ID
+        <bcp14>MUST NOT</bcp14> by itself establish a new occurrence.</t>
+        <t>The occurrence identifier <bcp14>MUST NOT</bcp14> be an authority
+        grant identifier, reusable task identifier, or action digest. A caller
+        retry identifier <bcp14>MAY</bcp14> map to the occurrence only after the
+        coordination boundary resolves it under the durable occurrence-creation
+        binding. Identical action digests <bcp14>MAY</bcp14> represent separate
+        legitimate occurrences when the occurrence-creation rule and local
+        policy distinguish them. A deployment requiring at most one occurrence
+        for a material action <bcp14>MUST</bcp14> use a durable action fence or
+        bind the unique occurrence into the material action under its pinned
+        definition; it <bcp14>MUST NOT</bcp14> silently treat an action digest
+        as an occurrence identifier.</t>
+        <t>An implementation <bcp14>MAY</bcp14> map AADP <tt>request_id</tt>,
+        AADP <tt>permit_id</tt>, a Succession Receipt identifier, BCR
+        <tt>operation_id</tt>, a provider-native key, and a provider operation
+        reference to the occurrence, but <bcp14>MUST</bcp14> retain their types
+        and native meanings and <bcp14>MUST NOT</bcp14> claim semantic
+        equivalence merely because values are stored together or carry equal
+        text.</t>
+      </section>
+
+      <section anchor="aoc-req-003">
+        <name>AOC-REQ-003: Immutable Provider Binding</name>
+        <t>Before provider entry, the coordination domain
+        <bcp14>MUST</bcp14> durably bind the occurrence to all of the following:</t>
+        <ol>
+          <li>the exact provider profile and version;</li>
+          <li>the provider account, tenant, environment, or equivalent
+          effecting namespace;</li>
+          <li>the exact provider request bytes, or a deterministic digest over
+          the complete request representation defined by the profile;</li>
+          <li>the native idempotency-key derivation rule and resulting key,
+          when the provider supports one; and</li>
+          <li>the provider operation reference, acknowledgement reference, or
+          status locator when one becomes available.</li>
+        </ol>
+        <t>Every later admission, status query, response, or reconciliation
+        transition <bcp14>MUST</bcp14> match this binding. An implementation
+        <bcp14>MUST NOT</bcp14> rebind the occurrence to another profile,
+        account, request, native key, or provider reference to escape an
+        unresolved or terminal state.</t>
+      </section>
+
+      <section anchor="aoc-req-004">
+        <name>AOC-REQ-004: Append-Only Attempt Evidence</name>
+        <t>The coordination domain <bcp14>MUST</bcp14> preserve an append-only
+        history sufficient to distinguish preparation with no serialized
+        provider entry; serialized provider entry without authoritative
+        acknowledgement; provider acknowledgement or native reference; each
+        provider-status observation with source, time, and profile
+        interpretation; and the terminal reconciliation decision with its
+        evidence binding.</t>
+        <t>An implementation <bcp14>MAY</bcp14> use different local state labels.
+        It <bcp14>MUST NOT</bcp14> overwrite a prior observation in a way that
+        hides provider entry, uncertainty, a retired executor, a conflicting
+        observation, or a prior terminal decision.</t>
+      </section>
+
+      <section anchor="aoc-req-005">
+        <name>AOC-REQ-005: Preserve Uncertainty Through Replacement</name>
+        <t>Replacing an executor <bcp14>MUST NOT</bcp14> change the occurrence
+        identifier, discard its provider binding or attempt evidence, clear its
+        unresolved state, replenish or recreate its authority, or authorize
+        another provider attempt. The successor <bcp14>MUST</bcp14> receive, or
+        be able to query, the current occurrence state and its unresolved
+        evidence before it can act on that occurrence.</t>
+      </section>
+
+      <section anchor="aoc-req-006">
+        <name>AOC-REQ-006: Fence Retired Executors</name>
+        <t>The coordination domain <bcp14>MUST</bcp14> advance the executor
+        generation and retire the predecessor before admitting new work for the
+        successor. Reservation and provider-entry transactions
+        <bcp14>MUST</bcp14> compare the current generation with the generation
+        captured for the pending attempt.</t>
+        <t>A retired executor <bcp14>MUST NOT</bcp14> create a new reservation,
+        enter the provider, replace the native provider key, or claim a new
+        attempt. The deployment <bcp14>MUST</bcp14> define finite limits for
+        pending and in-flight occurrences so executor failure cannot create
+        unbounded held state. Fencing inside the coordination domain
+        <bcp14>MUST NOT</bcp14> be described as revoking credentials or stopping
+        paths outside that domain.</t>
+      </section>
+
+      <section anchor="aoc-req-007">
+        <name>AOC-REQ-007: Historical Responses Are Evidence, Not Authority</name>
+        <t>An authenticated provider response received after executor
+        replacement <bcp14>MAY</bcp14> be accepted when it matches the immutable
+        provider binding and the exact predecessor attempt. Accepting that
+        response <bcp14>MUST NOT</bcp14> reactivate the retired executor, create
+        a new admission, extend authority, or authorize replay. A response that
+        cannot be bound to the exact prior attempt <bcp14>MUST</bcp14> leave the
+        occurrence unresolved.</t>
+      </section>
+
+      <section anchor="aoc-req-008">
+        <name>AOC-REQ-008: Pre-Entry Release Requires Serialized Non-Entry</name>
+        <t>Held pre-entry authority <bcp14>MAY</bcp14> be released only when the
+        authoritative coordination domain serially establishes that provider
+        entry did not occur while the operation remains in its pre-entry
+        reservation state. The release transition <bcp14>MUST</bcp14>
+        authenticate the reservation owner, match the occurrence and exact
+        request binding, be atomic with the authority adjustment, and retain a
+        terminal replay tombstone.</t>
+        <t>This requirement governs the AOC/provider-occurrence exposure and
+        any native authority reservation whose profile makes release depend on
+        provider non-entry. It does not suppress a distinct AADP-native
+        permit-reservation expiry transition; the accounting separation and
+        unsupported-alias rule are stated in
+        <xref target="native-composition"/>.</t>
+        <t>Deadline expiry, executor death, absence of a provider response, an
+        unrecognized provider reference, or an unauthenticated provider claim
+        <bcp14>MUST NOT</bcp14> by itself establish non-entry. A later
+        presentation of the same occurrence or native key
+        <bcp14>MUST NOT</bcp14> create a new reservation.</t>
+      </section>
+
+      <section anchor="aoc-req-009">
+        <name>AOC-REQ-009: Status-Source Truth and Missing Knowledge</name>
+        <t>Each provider profile <bcp14>MUST</bcp14> identify all of the
+        following:</t>
+        <ul>
+          <li>authoritative status sources and their authentication pins;</li>
+          <li>the account and environment in which status is authoritative;</li>
+          <li>the native key or reference used for lookup;</li>
+          <li>the status retention horizon and freshness rules;</li>
+          <li>whether a result is complete for the bound account and interval;</li>
+          <li>the native meanings mapped to <tt>accepted</tt>,
+          <tt>not_accepted</tt>, <tt>final_failure</tt>, and
+          <tt>success</tt>; and</li>
+          <li>how unavailable, expired, incomplete, conflicting, or unknown
+          results are represented as missing knowledge.</li>
+        </ul>
+        <t>The implementation <bcp14>MUST</bcp14> preserve the native response
+        and profile interpretation separately. It <bcp14>MUST NOT</bcp14> infer
+        a terminal result from HTTP class, transport completion, absence from a
+        non-complete listing, local exception text, elapsed time, or a provider
+        label that the pinned profile does not define.</t>
+      </section>
+
+      <section anchor="aoc-req-010">
+        <name>AOC-REQ-010: Refuse Rebinding and Duplicate Attempts</name>
+        <t>Once an occurrence has a provider binding, a request to change the
+        provider account, exact request, profile version, native key, or
+        provider reference <bcp14>MUST</bcp14> be rejected as a conflicting
+        operation. A request with the same occurrence-creation binding
+        <bcp14>MUST</bcp14> resolve to the existing occurrence. Creating a new
+        caller-selected operation identifier, grant, task, action digest,
+        occurrence identifier, or executor generation <bcp14>MUST NOT</bcp14>
+        bypass this refusal.</t>
+        <t>An unresolved or terminal occurrence <bcp14>MUST NOT</bcp14> enter the
+        provider again. A provider-native idempotency key is a defense at the
+        provider boundary, not permission for the coordination domain to admit
+        a second attempt.</t>
+      </section>
+
+      <section anchor="aoc-req-011">
+        <name>AOC-REQ-011: Provider-Specific Terminal Interpretation</name>
+        <t>The following terms are profile-level interpretations, not universal
+        provider states:</t>
+        <dl>
+          <dt><tt>accepted</tt></dt>
+          <dd>The provider acknowledges receipt or ownership of the bound
+          request. This does not by itself mean the requested effect succeeded.</dd>
+          <dt><tt>not_accepted</tt></dt>
+          <dd>The pinned profile has authoritative evidence that the provider
+          did not accept the request under the stated scope. This does not
+          retroactively prove that the local provider-entry boundary was not
+          crossed.</dd>
+          <dt><tt>final_failure</tt></dt>
+          <dd>The provider reports a terminal failure under pinned native
+          semantics. The profile <bcp14>MUST</bcp14> state whether the evidence
+          also establishes that no protected effect occurred. Unless it does,
+          the provider workflow may be terminal while the protected-effect
+          outcome remains unresolved.</dd>
+          <dt><tt>success</tt></dt>
+          <dd>The pinned provider status source reports the profile-defined
+          successful result for the exact binding. Its truth is bounded by that
+          source and does not establish independent physical, legal, or
+          commercial truth.</dd>
+        </dl>
+        <t>Unknown, pending, stale, incomplete, conflicting, or unmapped native
+        states <bcp14>MUST</bcp14> leave the occurrence unresolved.</t>
+      </section>
+
+      <section anchor="aoc-req-012">
+        <name>AOC-REQ-012: Provider Entry Consumes Authority</name>
+        <t>When the native authority profile consumes or commits authority at
+        provider entry, later <tt>not_accepted</tt>, <tt>final_failure</tt>,
+        compensation, reversal, refund, or other remedy evidence
+        <bcp14>MUST NOT</bcp14> restore, erase, or relabel the original consumed
+        authority merely because the protected effect failed or was
+        compensated.</t>
+        <t>A provider-specific terminal no-effect result <bcp14>MAY</bcp14>
+        resolve outcome uncertainty, but it does not imply an accounting refund
+        under every authority policy. Any later adjustment, replacement
+        attempt, compensation, or new allocation <bcp14>MUST</bcp14> be
+        separately authorized under its governing native policy, linked to the
+        original occurrence, and assigned its own replay-protected operation
+        identity. The original occurrence identity, provider binding,
+        consumed-authority record, and prior history entries
+        <bcp14>MUST</bcp14> remain immutable. Authenticated reconciliation
+        evidence and separately authorized adjustments <bcp14>MAY</bcp14> be
+        appended without rewriting those facts.</t>
+      </section>
+
+      <section anchor="aoc-req-013">
+        <name>AOC-REQ-013: No Migration or Format-Equivalence Claim</name>
+        <t>This profile <bcp14>MUST NOT</bcp14> be used to claim that copying an
+        operation record transfers exclusive ownership of a live ledger, that a
+        Succession Receipt fences a provider path, that AADP and BCR state
+        machines are interchangeable, or that any EP evidence format is
+        mandatory. A cross-domain ledger migration requires a separately
+        specified exclusive cutover protocol and is outside this profile.</t>
+      </section>
+    </section>
+
+    <section anchor="native-composition">
+      <name>Native Composition Boundaries</name>
+      <t>This profile relies on, but does not amend, AADP-02 Sections 4 and 7
+      for durable intent, decision and report idempotency, the
+      <tt>timeout</tt> report for attempted/result-unknown, and the prohibition
+      on blind retry; Succession Receipts-02 for evidence of a completed
+      predecessor-to-successor registry transition and carried commitments;
+      AEB-05 Sections 5.8 through 5.11 for atomic consumption or reservation,
+      dispatch intent, outcome separation, and authenticated reconciliation;
+      and BCR-06 Sections 10 and 11.1 for provider-entry accounting, replay
+      tombstones, crash recovery, and admission epochs.</t>
+      <t>AADP's <tt>request_id</tt> remains a decision-idempotency key and its
+      <tt>permit_id</tt> remains a single-use permit/report identity. A
+      Succession Receipt remains evidence of an issuer-recorded completed
+      transition. AEB's effect states remain native AEB states. BCR's
+      capability-scoped <tt>operation_id</tt> and provider-entry accounting
+      remain native BCR semantics. Storing these values with one occurrence
+      does not make them wire-compatible or semantically equivalent.</t>
+      <t>AADP-02 Section 4 natively requires the PDP to append an expiry event
+      and release its permit reservation when <tt>execute_within</tt> passes
+      without a report. AADP <tt>timeout</tt> remains the native report outcome
+      when a report is made for attempted/result-unknown; no-report expiry is a
+      distinct transition. AOC does not amend or suppress the AADP expiry
+      transition.</t>
+      <t>In a composed deployment, the AADP permit reservation and the
+      AOC/provider-occurrence exposure <bcp14>MUST</bcp14> be represented as
+      distinct native accounting facts unless another specification defines
+      their joint state machine. AADP expiry <bcp14>MAY</bcp14> release only the
+      AADP-native permit reservation; it <bcp14>MUST NOT</bcp14> erase the AOC
+      occurrence tombstone, relabel serialized provider entry as non-entry,
+      restore BCR allowance already consumed at provider entry, or authorize
+      another attempt for that occurrence.</t>
+      <t>If an implementation aliases the AADP reservation to the same counter
+      AOC/BCR requires held or consumed after provider entry, it cannot claim
+      simultaneous conformance to both contradictory transitions and
+      <bcp14>MUST</bcp14> report the composition unsupported. The AOC occurrence
+      remains unresolved until its provider-entry and effect evidence meet this
+      profile. This is a source-level composition tension, not a tested
+      <tt>onedoor</tt> defect, and AOC does not invent an AADP verdict.</t>
+      <t>No EP, AADP, Succession Receipt, AEB, BCR, provider-native, or local
+      evidence format is mandatory. Verification of an artifact proves only
+      that artifact's native claims under its pinned trust rules.</t>
+    </section>
+
+    <section anchor="provider-profile">
+      <name>Provider Profile Contract</name>
+      <t>A provider mapping satisfies this profile only when it pins provider
+      identity, account or tenant, environment, API or profile version,
+      authenticated status sources, exact request representation, native key
+      derivation, reference-creation semantics, native status meanings,
+      terminality, no-effect meaning, retention and freshness horizons,
+      completeness and pagination guarantees, and the evidence needed to bind
+      a result to the occurrence.</t>
+      <t>A result outside those exact mappings is missing knowledge. In
+      particular, generic <tt>FAILED</tt> is not proof of non-entry or no
+      protected effect. A profile may define an authenticated provider result
+      equivalent to <tt>NO_EFFECT_CONFIRMED</tt>, but even that result does not
+      rewind provider entry or automatically restore authority.</t>
+    </section>
+
+    <section anchor="conformance">
+      <name>Conformance</name>
+      <t>A conforming implementation <bcp14>MUST</bcp14> satisfy every
+      requirement from AOC-REQ-001 through AOC-REQ-013 and pass every case in
+      this section under its declared provider profile. It
+      <bcp14>MUST</bcp14> report unsupported cases, missing status knowledge,
+      bypass paths, and untested provider semantics rather than treating them
+      as passes.</t>
+      <t>A report <bcp14>MUST</bcp14> identify the implementation and provider
+      profile versions, test-input digest, occurrence identifier, executor
+      generation, provider-binding digest, terminal or unresolved state,
+      provider-entry and authority-accounting state, provider-entry attempt
+      count, evidence-source and missing-knowledge flags, case results, and
+      requirement IDs evaluated. It <bcp14>MUST NOT</bcp14> expose credentials,
+      reservation tokens, or private provider requests.</t>
+      <ol>
+        <li anchor="aoc-case-001"><strong>AOC-CASE-001: Normal
+        single-generation success.</strong> One generation reserves, binds,
+        enters, receives a bound reference, and obtains profile-defined success.
+        Exactly one entry occurs, authority is consumed once, and evidence
+        remains append-only.</li>
+        <li anchor="aoc-case-002"><strong>AOC-CASE-002: Crash before serialized
+        provider entry.</strong> The domain proves serialized non-entry, fences
+        the predecessor, atomically releases the reservation, and retains a
+        tombstone. No provider call or reuse occurs.</li>
+        <li anchor="aoc-case-003"><strong>AOC-CASE-003: Crash after entry before
+        acknowledgement.</strong> Replacement preserves an unresolved
+        occurrence and consumed authority. Neither generation performs another
+        provider entry.</li>
+        <li anchor="aoc-case-004"><strong>AOC-CASE-004: Historical response
+        closes the predecessor attempt.</strong> An authenticated, exact-bound
+        response may reconcile the original attempt without reactivating the
+        predecessor, admitting a new attempt, or changing authority again.</li>
+        <li anchor="aoc-case-005"><strong>AOC-CASE-005: Retired executor races
+        the successor.</strong> The stale generation is refused, the successor
+        cannot re-enter a possibly entered occurrence, and bypass paths remain
+        disclosed rather than falsely fenced.</li>
+        <li anchor="aoc-case-006"><strong>AOC-CASE-006: Native key reset
+        attack.</strong> Changing caller-selected occurrence, task, grant, AADP,
+        BCR, generation, digest, or provider key labels resolves to the original
+        creation binding or is refused. A separately intended identical action
+        is allowed only through the authoritative occurrence-creation rule.</li>
+        <li anchor="aoc-case-007"><strong>AOC-CASE-007: Provider binding
+        substitution.</strong> A change to profile, account, environment,
+        request, native key, provider reference, or status source is refused and
+        cannot resolve, release, or reauthorize the occurrence.</li>
+        <li anchor="aoc-case-008"><strong>AOC-CASE-008: Missing retention or
+        incomplete lookup.</strong> Not-found beyond retention or absence from
+        an incomplete result is missing knowledge, leaves the occurrence
+        unresolved, and creates no refund or retry right.</li>
+        <li anchor="aoc-case-009"><strong>AOC-CASE-009: Conflicting or
+        unauthenticated evidence.</strong> Observations are preserved, the
+        occurrence stays unresolved, and the implementation does not select a
+        favorable result.</li>
+        <li anchor="aoc-case-010"><strong>AOC-CASE-010: Terminal provider
+        failure after entry.</strong> Generic final failure may leave the
+        protected effect unresolved; authenticated no-effect evidence may close
+        that bounded outcome. In both branches, entered authority stays
+        consumed and any new attempt is separately authorized.</li>
+        <li anchor="aoc-case-011"><strong>AOC-CASE-011: Compensation does not
+        rewrite the occurrence.</strong> A remedy has its own authorization,
+        identity, replay protection, and outcome, while the original occurrence
+        identity, provider binding, consumed-authority record, and prior history
+        entries remain immutable. Reconciliation and remedy evidence may be
+        appended.</li>
+        <li anchor="aoc-case-012"><strong>AOC-CASE-012: Pending and in-flight
+        limit under replacement.</strong> Work beyond the declared finite limit
+        is refused without provider entry, while existing unresolved records
+        remain queryable and unchanged.</li>
+      </ol>
+      <t>A same-team model or runner <bcp14>MUST</bcp14> be labeled as such.
+      Passing abstract local cases establishes consistency with the profile, not
+      independent interoperability, live-provider correctness, deployment, or
+      adoption. Independent interoperability requires at least two independently
+      maintained implementations to exercise locked cases with an agreed
+      provider profile and compare observable decisions.</t>
+    </section>
+
+    <section anchor="security-considerations">
+      <name>Security Considerations</name>
+      <t>The principal security failures addressed by this profile are duplicate
+      provider effects after worker replacement, authority restoration after
+      provider entry, stale-executor admission, provider-key rebinding, loss or
+      rewriting of uncertain evidence, and false terminal conclusions from
+      incomplete status sources.</t>
+      <t>The coordination boundary is a security-critical serialized state
+      owner. Implementations need atomic durability for occurrence creation,
+      reservation, provider entry, generation changes, pre-entry release, and
+      terminal reconciliation. If an attacker can roll back or fork that state,
+      the profile cannot prevent double admission.</t>
+      <t>Provider responses and status sources need authentication and binding to
+      the exact provider profile, account, environment, request, native key, and
+      reference. A valid response for another account or request is not evidence
+      for the occurrence. Clock, retention, completeness, and pagination
+      assumptions are part of the provider profile and cannot be inferred from
+      transport success.</t>
+      <t>An admission epoch fences only transactions mediated by the declared
+      coordination domain. It does not recall a request already admitted to the
+      provider and does not revoke credentials or stop direct, queued,
+      administrator, or alternate-protocol paths. Those paths need separate
+      controls and disclosure.</t>
+      <t>A malicious caller may relabel a retry as a fresh occurrence. The
+      coordination boundary therefore owns or authoritatively validates the
+      occurrence-creation rule. Conversely, equal action digests are not enough
+      to collapse two legitimate repeated operations; deployments requiring
+      material-action uniqueness need the explicit action fence in
+      <xref target="aoc-req-002"/>.</t>
+      <t>Provider entry and protected-effect outcome are distinct. Failure,
+      compensation, refund, or a provider-specific no-effect result cannot
+      silently restore authority already consumed at entry. A separate remedy
+      requires separate authorization and replay protection.</t>
+    </section>
+
+    <section anchor="implementation-status">
+      <name>Implementation Status</name>
+      <t>This section records implementation information in the spirit of
+      <xref target="RFC7942"/> and is intended for removal before publication
+      as an RFC.</t>
+      <t>A same-team local model and synthetic provider runner exercise the
+      thirteen requirement identifiers and twelve conformance cases in this
+      draft. The runner is bounded evidence of the model's behavior only. It
+      does not execute the AADP <tt>onedoor</tt> implementation, a live provider
+      API, a production authorization boundary, or an independently maintained
+      implementation. Its results therefore do not establish full native
+      protocol conformance, independent interoperability, deployment, adoption,
+      or provider truth. The implementation report identifies unsupported and
+      synthetic boundaries rather than treating them as externally verified.</t>
+    </section>
+
+    <section anchor="privacy-considerations">
+      <name>Privacy Considerations</name>
+      <t>Continuity records may link customer or tenant accounts, worker
+      generations, exact request digests, provider references, timestamps,
+      outcomes, and remedies over long periods. That correlation can expose
+      commercial relationships, operational schedules, and sensitive activity.
+      Implementations should minimize retained plaintext, separate access to
+      provider requests from access to coordination metadata, and apply
+      purpose-limited authorization and audit to status and history queries.</t>
+      <t>Retention cannot be shortened below the interval needed to prevent
+      replay or reconcile provider uncertainty merely for convenience. A
+      deployment should document the retention basis, deletion constraints,
+      cryptographic key lifecycle, and whether redaction leaves enough durable
+      binding to reject replay without retaining unnecessary content.</t>
+      <t>Conformance reports must not disclose bearer credentials, reservation
+      tokens, or raw private provider requests. Digests may still enable
+      guessing of low-entropy data and therefore require an appropriate
+      canonicalization and confidentiality policy.</t>
+    </section>
+
+    <section anchor="iana-considerations">
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions.</t>
+    </section>
+  </middle>
+
+  <back>
+    <references>
+      <name>Normative References</name>
+      <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="Scott Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+        <seriesInfo name="DOI" value="10.17487/RFC2119"/>
+      </reference>
+      <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174">
+        <front>
+          <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+          <author fullname="Barry Leiba" initials="B." surname="Leiba"/>
+          <date year="2017" month="May"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="8174"/>
+        <seriesInfo name="DOI" value="10.17487/RFC8174"/>
+      </reference>
+    </references>
+    <references>
+      <name>Informative References</name>
+      <reference anchor="AADP" target="https://www.ietf.org/archive/id/draft-saha-aadp-02.txt">
+        <front>
+          <title>The Agent Action Decision Protocol (AADP): Per-Action Authorization for AI Agents</title>
+          <author fullname="S. Saha" initials="S." surname="Saha"/>
+          <date year="2026" month="September"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-saha-aadp-02"/>
+      </reference>
+      <reference anchor="SUCCESSION" target="https://www.ietf.org/archive/id/draft-sabey-succession-receipts-02.txt">
+        <front>
+          <title>Succession Receipts: Portable Signed Evidence of Authority Succession Between Autonomous Agents</title>
+          <author fullname="J. Sabey" initials="J." surname="Sabey"/>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-sabey-succession-receipts-02"/>
+      </reference>
+      <reference anchor="AEB" target="https://www.ietf.org/archive/id/draft-schrock-action-evidence-boundary-05.txt">
+        <front>
+          <title>The Action Evidence Boundary for Consequential Agent Effects</title>
+          <author fullname="Iman Schrock" initials="I." surname="Schrock">
+            <organization>EMILIA Protocol, Inc.</organization>
+          </author>
+          <date year="2026" month="August"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-action-evidence-boundary-05"/>
+      </reference>
+      <reference anchor="BCR" target="https://www.ietf.org/archive/id/draft-schrock-ep-bounded-capability-receipts-06.txt">
+        <front>
+          <title>Bounded Capability Receipts and Durable Spend Control for Agent Actions</title>
+          <author fullname="Iman Schrock" initials="I." surname="Schrock">
+            <organization>EMILIA Protocol, Inc.</organization>
+          </author>
+          <date year="2026" month="September"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-bounded-capability-receipts-06"/>
+      </reference>
+      <reference anchor="RFC7942" target="https://www.rfc-editor.org/info/rfc7942">
+        <front>
+          <title>Improving Awareness of Running Code: The Implementation Status Section</title>
+          <author fullname="Yaron Sheffer" initials="Y." surname="Sheffer"/>
+          <author fullname="Adrian Farrel" initials="A." surname="Farrel"/>
+          <date year="2016" month="July"/>
+        </front>
+        <seriesInfo name="RFC" value="7942"/>
+        <seriesInfo name="DOI" value="10.17487/RFC7942"/>
+      </reference>
+    </references>
+  </back>
+</rfc>

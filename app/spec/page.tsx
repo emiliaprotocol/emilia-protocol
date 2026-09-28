@@ -1,5 +1,6 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { notFound } from 'next/navigation';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import {
@@ -7,11 +8,24 @@ import {
   renderInlineMarkdown as inlineFormat,
   sanitizeCodeLanguage,
 } from '@/lib/spec-markdown';
+import standardsStatus from '@/standards/STATUS.json';
+
+// The governed status file owns the current revision and its source path.
+// This page renders only a posted snapshot, never a staged candidate.
+// tests/site-spec-route.test.ts enforces the STATUS.json invariant (source is
+// the posted file for the named revision). Nothing here throws at module
+// scope: a bad STATUS.json value must degrade /spec alone, never fail the
+// production build for every route.
+const RECEIPTS = standardsStatus.canonical_four_document_surface.documents.find(
+  (document) => document.draft === 'draft-schrock-ep-authorization-receipts',
+);
+const RECEIPTS_REVISION = RECEIPTS?.revision ?? '';
+const RECEIPTS_DRAFT = `draft-schrock-ep-authorization-receipts-${RECEIPTS_REVISION}`;
 
 export const metadata = {
   // This page renders the posted Internet-Draft. "Internet-Draft", not "RFC" —
   // claiming RFC status for an individual I-D overstates IETF standing.
-  title: 'Authorization Receipts Internet-Draft -12',
+  title: RECEIPTS ? `Authorization Receipts Internet-Draft -${RECEIPTS_REVISION}` : 'Authorization Receipts Internet-Draft',
   description: 'EMILIA Protocol specification (IETF Internet-Draft) — verifiable human-authorization receipts for high-risk agent actions.',
   alternates: { canonical: '/spec' },
 };
@@ -77,7 +91,20 @@ function mdToHtml(md: string): string {
 }
 
 export default function SpecPage() {
-  const draftPath = join(process.cwd(), 'standards', 'posted', 'draft-schrock-ep-authorization-receipts-12.xml');
+  if (!RECEIPTS || !/^\d+$/.test(RECEIPTS_REVISION)) notFound();
+  // Keep the directory and name prefix literal: the build's file tracer turns
+  // the unknown revision into a wildcard, so the posted XML ships with the
+  // server bundle. A fully computed path would not be traced.
+  const draftPath = join(process.cwd(), 'standards', 'posted', `draft-schrock-ep-authorization-receipts-${RECEIPTS_REVISION}.xml`);
+  // A revision that has no posted snapshot yet (still staged) is a 404, never
+  // a render of the staged candidate.
+  if (!existsSync(draftPath)) notFound();
+  if (RECEIPTS.source !== `standards/posted/${RECEIPTS_DRAFT}.xml`) {
+    // The page never reads `source`; it reads only standards/posted/. The
+    // posted snapshot of the named revision exists (checked above), so render
+    // it and report the drift.
+    console.error(`/spec: STATUS.json names ${RECEIPTS.source}; rendering the posted snapshot of -${RECEIPTS_REVISION}`);
+  }
   const draft = readFileSync(draftPath, 'utf8');
   const html = mdToHtml(`\`\`\`text\n${draft}\n\`\`\``);
 
@@ -121,7 +148,7 @@ export default function SpecPage() {
           </a>
         </nav>
         <h1>EMILIA authorization receipts specification</h1>
-        <div className="spec-badge">DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-12 · STANDARDS TRACK CANDIDATE · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
+        <div className="spec-badge">{RECEIPTS_DRAFT.toUpperCase()} · STANDARDS TRACK CANDIDATE · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
         <p className="spec-summary">
           Document 01 defines one action-bound organizational approval-evidence profile. Gate can
           verify that evidence for the exact material action at a protected boundary, but this draft
@@ -131,7 +158,7 @@ export default function SpecPage() {
         <p style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 12, color: '#7a809a', marginBottom: 8 }}>Canonical copy on the <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/" target="_blank" rel="noopener noreferrer">IETF datatracker</a>. Conformance vectors: <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/CONFORMANCE.md" target="_blank" rel="noopener noreferrer">CONFORMANCE.md</a>. Multi-party companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-quorum</a>. Composition companion: <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/" target="_blank" rel="noopener noreferrer">draft-schrock-ep-authorization-evidence-chain</a>. Preprint: <a href="https://doi.org/10.5281/zenodo.20780638" target="_blank" rel="noopener noreferrer">Zenodo DOI</a>. Canonical path: <a href="/protocol">four-document hub</a>.</p>
         <div dangerouslySetInnerHTML={{ __html: html }} />
         <div className="spec-footer">
-          EMILIA Protocol — draft-schrock-ep-authorization-receipts-12 — Apache 2.0 License
+          EMILIA Protocol — {RECEIPTS_DRAFT} — Apache 2.0 License
         </div>
       </div>
       <SiteFooter />

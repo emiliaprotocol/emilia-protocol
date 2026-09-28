@@ -1,7 +1,8 @@
 # Multi-handshake quorum composer (EP-QUORUM reference composer)
 
 A runnable, offline reference composer for EP-QUORUM-v1
-(`standards/posted/draft-schrock-ep-quorum-02.txt`). It assembles a 2-of-3
+(`standards/archive/draft-schrock-ep-quorum-02.txt`, the revision its section
+references cite). It assembles a 2-of-3
 ordered composition of member handshakes over one canonical action, refuses
 every non-conforming handshake at the incremental admission rule (spec
 Section 6) before it can enter the trail, then hands the composed quorum

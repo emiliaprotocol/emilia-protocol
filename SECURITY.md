@@ -127,7 +127,7 @@ claim, proof that every mutation path is mediated, or proof of physical outcome.
   [`docs/security/STRIX_REMEDIATION_2026-07-18.md`](docs/security/STRIX_REMEDIATION_2026-07-18.md).
 - **Red-team case catalog** — `docs/conformance/RED_TEAM_CASES.md` (86 cataloged adversarial cases; use the generated proof summary for the current count).
 - **Protocol-level security considerations** —
-  [Authorization Receipts revision -12, Section 13](https://datatracker.ietf.org/doc/html/draft-schrock-ep-authorization-receipts-12#section-13)
+  [Authorization Receipts revision -13, Section 13](https://datatracker.ietf.org/doc/html/draft-schrock-ep-authorization-receipts-13#section-13)
   (operator compromise, presentation attacks, log equivocation, directory
   authority, separation-of-duties limits, and approver fatigue).
 - **What a receipt proves and does not prove** — `docs/RECEIPT-CLAIMS.md`.

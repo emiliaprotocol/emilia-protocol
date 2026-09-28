@@ -184,7 +184,7 @@
   background-color: #F1E8DC;
   background-image:
     linear-gradient(90deg, rgba(250, 250, 249, 0.99) 0%, rgba(250, 250, 249, 0.96) 34%, rgba(250, 250, 249, 0.64) 55%, rgba(250, 250, 249, 0.08) 78%),
-    url('/emilia-authority-tollbooth-v1.png');
+    url('/emilia-authority-checkpoint-v1.png');
   background-position: center, center;
   background-repeat: no-repeat;
   background-size: cover, cover;
@@ -758,7 +758,7 @@
     background-color: #F1E8DC;
     background-image:
       linear-gradient(180deg, rgba(250, 250, 249, 0.98) 0%, rgba(250, 250, 249, 0.94) 68%, rgba(250, 250, 249, 0.82) 100%),
-      url('/emilia-authority-tollbooth-v1.png');
+      url('/emilia-authority-checkpoint-v1.png');
     background-position: center, 60% center;
   }
   .ep-home-calm-kicker {

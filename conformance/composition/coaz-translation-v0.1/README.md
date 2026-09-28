@@ -37,9 +37,9 @@ AuthZEN Authorization API 1.0 Final was refreshed with the COAZ sources on
 2026-08-25.
 
 The bounded upstream change proposed from this reproduction is recorded in
-[`AUTHZEN-CONTRIBUTION.md`](./AUTHZEN-CONTRIBUTION.md). It remains a local
-proposal. It has not been submitted to, reviewed by, or accepted by OpenID
-AuthZEN.
+[`AUTHZEN-CONTRIBUTION.md`](./AUTHZEN-CONTRIBUTION.md). It was submitted as
+`openid/authzen` pull request #626, which merged on 2026-09-10 with revised
+wording; that file records the merge and its claim boundary.
 
 ## The translation surface, anchored to the pinned text
 

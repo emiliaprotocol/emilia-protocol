@@ -89,7 +89,7 @@ The auditor still tests the deployment; the mark only removes the question of wh
 verifier itself is sound, which the auditor would otherwise have to take on faith or
 re-derive.
 
-## The business boundary (why this is a franchise, not a toll)
+## The business boundary
 
 Per the [Neutrality Covenant](NEUTRALITY-COVENANT.md), the spec, the reference verifiers,
 and every conformance vector are Apache-2.0 forever, and the offline verifier never calls
