@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "f622d7afd4854b8fadc0613b00a2d3cd9696a793aa48f94df6fd8a35e2ffab2e",
+    "input_digest_sha256": "3350309227c250877631706a27dd5b520f7bd176977377064e115999242dd258",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "0782887e8b93fd25fbb64d3b0ed693f3cb2244a2a042b46f420fba53152367fc",
-        "bytes": 72707
+        "sha256": "61e6e32b41250b658398d0a844eddfad7146b6ce5ad441bcf50fb9426e0d3393",
+        "bytes": 78683
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4620,7 +4620,7 @@
       "identifier": "draft-schrock-ep-authorization-receipts",
       "revision_at_snapshot": "13",
       "role": "One action-bound organizational approval evidence profile",
-      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:05:02Z); use -13, which adds the consolidated receipt-claim boundary (Section 13.13) to the -12 baseline: acceptance-prefix integrity, the offline anti-backdating limit, historical-versus-current acceptance separation, the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request. Exact archive-identical XML is in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13",
+      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:05:02Z); use -13, which adds the consolidated receipt-claim boundary (Section 13.13) to the -12 baseline: acceptance-prefix integrity, the offline anti-backdating limit, historical-versus-current acceptance separation, the neutral Authorization Bundle, native evidence-role verification, optional OAuth RAR binding profile, normative CAID mapping, presentation binding, and the media-type request. The archive-identical XML is at standards/posted/draft-schrock-ep-authorization-receipts-13.xml and is recorded in september_12_2026_posted_snapshots; the submitted source is retained in standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4660,7 +4660,7 @@
       "identifier": "draft-schrock-ep-presentation-binding",
       "revision_at_snapshot": "01",
       "role": "Binding the signed action to what the approver was shown",
-      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:06:51Z); hold -01, which adds the receipt and presentation evidence boundary (Section 6.1). Exact archive-identical XML is in standards/staged/NEXT-PRESENTATION-BINDING-01",
+      "next_action": "Published September 12 (Datatracker posting 2026-09-12T15:06:51Z); hold -01, which adds the receipt and presentation evidence boundary (Section 6.1). The archive-identical XML is at standards/posted/draft-schrock-ep-presentation-binding-01.xml and is recorded in september_12_2026_posted_snapshots; the submitted source is retained in standards/staged/NEXT-PRESENTATION-BINDING-01",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-presentation-binding/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4668,7 +4668,7 @@
       "identifier": "draft-schrock-ep-quorum",
       "revision_at_snapshot": "04",
       "role": "Distinct-human multi-handshake composition",
-      "next_action": "Published September 6; use -04 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave. Publication is separate from implementation or package release.",
+      "next_action": "Published September 6; use -04 as the current individual draft. Exact XML is recorded in september_6_2026_corrective_wave; the archive-identical XML is at standards/posted/draft-schrock-ep-quorum-04.xml and is recorded in september_6_2026_quorum_posted_snapshot. Publication is separate from implementation or package release.",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -4774,7 +4774,7 @@
           "label": "Authorization Receipts",
           "draft": "draft-schrock-ep-authorization-receipts",
           "revision": "13",
-          "source": "standards/staged/NEXT-AUTHORIZATION-RECEIPTS-13/UPLOAD-THIS/draft-schrock-ep-authorization-receipts-13.xml",
+          "source": "standards/posted/draft-schrock-ep-authorization-receipts-13.xml",
           "datatracker": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
           "snapshot_sha256": "77e7021e116bebbd8e786dd27b51468701ea4887dfa0dd8d692e919f1fd00ffb",
           "canonical_question": "What action-bound organizational approval evidence was produced under the receipt profile?",
@@ -4896,7 +4896,7 @@
         {
           "priority": 5,
           "draft": "draft-schrock-ep-quorum-03",
-          "source": "standards/posted/draft-schrock-ep-quorum-03.xml",
+          "source": "standards/archive/draft-schrock-ep-quorum-03.xml",
           "claim": "Ordered multi-party ceremony and distinct-human policy semantics",
           "state": "published_ietf_archive_verified_exact_local_match"
         },

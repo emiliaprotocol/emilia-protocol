@@ -61,6 +61,13 @@ const CANONICAL_DOCUMENTS = standardsStatus.canonical_four_document_surface.docu
   };
 });
 
+// The document-01 call to action names the revision from the same STATUS.json
+// record that /spec renders, so the label cannot drift from the page it opens.
+const RECEIPTS_DOCUMENT = standardsStatus.canonical_four_document_surface.documents.find(
+  (document) => document.draft === 'draft-schrock-ep-authorization-receipts',
+);
+const RECEIPTS_SUFFIX = RECEIPTS_DOCUMENT ? ` -${RECEIPTS_DOCUMENT.revision}` : '';
+
 const DECISIONS = [
   { term: 'VERIFIED', definition: 'One artifact passed its native verifier under relying-party-selected trust inputs.' },
   { term: 'MATCH', definition: 'Independently verified artifacts denote the same exact material action under pinned mapping rules.' },
@@ -275,13 +282,13 @@ export default function ProtocolPage() {
           <div className="ep-reveal" style={{ ...styles.card, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 28, alignItems: 'center', padding: '32px min(36px, 8vw)', boxSizing: 'border-box', width: '100%' }}>
             <div>
               <div style={styles.eyebrow}>Start with document 01</div>
-              <h2 style={{ ...styles.h2, marginBottom: 10 }}>Authorization Receipts -10</h2>
+              <h2 style={{ ...styles.h2, marginBottom: 10 }}>Authorization Receipts{RECEIPTS_SUFFIX}</h2>
               <p style={{ ...styles.cardBody, fontSize: 15, margin: 0 }}>
                 Read the current posted receipt profile, then continue through binding, authority, and AEC.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 0 }}>
-              <a href="/spec" className="ep-cta" style={{ ...cta.primary, maxWidth: '100%', boxSizing: 'border-box', whiteSpace: 'normal', textAlign: 'center' }}>Read Receipts -10</a>
+              <a href="/spec" className="ep-cta" style={{ ...cta.primary, maxWidth: '100%', boxSizing: 'border-box', whiteSpace: 'normal', textAlign: 'center' }}>Read Receipts{RECEIPTS_SUFFIX}</a>
               <a href="/standards" className="ep-cta-secondary" style={{ ...cta.secondary, maxWidth: '100%', boxSizing: 'border-box', whiteSpace: 'normal', textAlign: 'center' }}>View the full portfolio</a>
             </div>
           </div>
