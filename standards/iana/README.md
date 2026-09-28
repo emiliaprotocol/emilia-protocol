@@ -32,8 +32,8 @@ revision backs it. Nothing here invents a name that contradicts posted text.
   `agent-action-control.json`, requested only by a draft that Datatracker now
   lists as Replaced; kept as process history and not to be filed.
 - `http-field-registration.md` — RFC 9110 §16.3.1 templates for
-  `Receipt-Required` and `X-EMILIA-Receipt` (both PROPOSED; includes the
-  RFC 6648 "X-" note).
+  `Receipt-Required` and `X-EMILIA-Receipt` (both NOT PREPARED, because the
+  only draft that names them is Replaced; includes the RFC 6648 "X-" note).
 
 ## Status tracker
 
@@ -46,7 +46,7 @@ revision backs it. Nothing here invents a name that contradicts posted text.
 | 4 | `application/ep-authorization-bundle+json` | Media Types (standards tree) | draft-schrock-ep-authorization-receipts-13 (§14) | **Requests registration** and carries the complete RFC 6838 template | CARRIED-BY-DRAFT | Process with the Standards Track document; do not file a conflicting direct request |
 | 5 | `Receipt-Required` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object), state Replaced on Datatracker | Field *named*, not normatively defined; no registration request | NOT PREPARED; no active backing draft | An active draft that defines the field and requests it |
 | 6 | `X-EMILIA-Receipt` | HTTP Field Names | draft-schrock-agent-action-manifest-00 (§5 + example control object), state Replaced on Datatracker | Field *named*, not normatively defined; RFC 6648 disfavors permanent "X-" registrations | NOT PREPARED; no active backing draft | An active draft that defines the field; that draft decides on any unprefixed successor |
-| 7 | `application/ep-aec+json` | Media Types | draft-schrock-ep-authorization-evidence-chain-01 (§10) | Illustrative only ("e.g.") | NOT PREPARED | Chain draft must pick and fix the string first |
+| 7 | `application/ep-aec+json` | Media Types | draft-schrock-ep-authorization-evidence-chain-01 (§10); current revision -06 (§17) has no IANA actions | Illustrative only ("e.g.") in -01; not carried into -06 | NOT PREPARED | A chain revision must pick and fix the string first |
 | 8 | `application/ep-eye-advisory+json` + SET event-type URI | Media Types / SET event URI | posted/draft-schrock-emilia-eye-00 | "may register" | NOT PREPARED | A revision committing to it |
 | 9 | JWT/CWT claim names | JWT Claims / CWT Claims | draft-schrock-human-authorization-binding-00 (§8) | "anticipated for a future revision, after host-format feedback" | NOT PREPARED | Host-format feedback, then next rev |
 
@@ -96,8 +96,8 @@ registry, not IANA's.
 
 - **Registry page:** <https://www.iana.org/assignments/well-known-uris>.
 - **Policy:** Specification Required with designated-expert review
-  (RFC 8615 §3.1) — the specification must be publicly available, which is
-  why entry 1 waits for the datatracker posting.
+  (RFC 8615 §3.1). The specification must be publicly available. Entry 1 is
+  not filed: its only backing draft is Replaced (see the tracker).
 - **Community review:** the **wellknown-uri-review@ietf.org** mailing list
   (named in RFC 8615) for feedback before filing.
 - **Filing:** send the completed template to **iana@iana.org** referencing
@@ -114,8 +114,9 @@ registry, not IANA's.
   GitHub request queue [verify — if
   <https://github.com/protocol-registries/http-fields> is active, file there;
   otherwise the iana@iana.org route stands].
-- **Do not file either field** until a draft revision carries a normative
-  field definition; see the PROPOSED markings in `http-field-registration.md`.
+- **Do not file either field** until an active draft carries a normative
+  field definition and requests the registration; see the NOT PREPARED
+  markings in `http-field-registration.md`.
 
 ## Order of operations
 
@@ -126,9 +127,10 @@ registry, not IANA's.
    self-contained Version 1 specification. Do not reopen the retired
    standards-tree tickets, hold the vendor request on an Internet-Draft stream,
    or describe the vendor type as an enclosing carrier.
-4. **File entry 1** (`agent-action-control.json`) only after re-verifying its
-   current backing-draft and registry state. Optional heads-up to
-   wellknown-uri-review@ietf.org first.
+4. **Do not file entry 1** (`agent-action-control.json`). Its only backing
+   draft is Replaced. File it only if an active draft requests the
+   registration, after re-verifying that draft and the registry state.
+   Optional heads-up to wellknown-uri-review@ietf.org first.
 5. Process entries 3 and 4 with Authorization Receipts through its Standards
    Track publication path; do not file parallel direct requests.
 6. **Everything else waits for draft text.** When a revision commits to a
@@ -138,9 +140,10 @@ registry, not IANA's.
 
 ## Honesty register (applies to every template here)
 
-- The backing documents are **active INDIVIDUAL Internet-Drafts, not
-  IETF-adopted or endorsed**; "posted" means accepted and published on the
-  datatracker, nothing more.
+- The backing documents are **INDIVIDUAL Internet-Drafts, not IETF-adopted
+  or endorsed**; "posted" means accepted and published on the datatracker,
+  nothing more. A template whose backing draft is Replaced is process history
+  and is not filed.
 - Reference verifiers are **JavaScript, Python, and Go in one repository — a
   consistency check, not independent implementations. A separately authored
   Rust verifier is rebuilt from a pinned public commit and tree and passes the

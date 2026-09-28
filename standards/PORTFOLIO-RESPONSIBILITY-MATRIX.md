@@ -1,6 +1,6 @@
 # Active sole-authored series responsibility matrix
 
-Updated: 2026-08-22
+Updated: 2026-09-27
 
 ## Decision and method
 

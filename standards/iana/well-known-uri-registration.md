@@ -6,8 +6,8 @@ established by RFC 8615 (registry:
 directory for submission channels and the status tracker.
 
 **Consistency rule applied throughout:** each suffix below is the exact string
-a draft carries. The backing documents are **active INDIVIDUAL
-Internet-Drafts, not IETF-adopted or endorsed**.
+a draft carries. The backing documents are **INDIVIDUAL Internet-Drafts, not
+IETF-adopted or endorsed**. The one backing draft below is in state Replaced.
 
 ---
 
@@ -16,9 +16,9 @@ Internet-Drafts, not IETF-adopted or endorsed**.
 **Status: NOT FILED; no active backing draft.** The backing draft below is
 in state Replaced on Datatracker. Its Datatracker successor,
 draft-schrock-action-evidence-boundary, and draft-schrock-ep-architecture,
-which `STATUS.json` also lists as a successor, have no IANA actions. This template is process history; do not file it unless an
-active draft requests the registration. The replaced draft's IANA
-Considerations *requested* it:
+which `STATUS.json` also lists as a successor, have no IANA actions. This
+template is process history; do not file it unless an active draft requests
+the registration. The replaced draft's IANA Considerations *requested* it:
 `draft-schrock-agent-action-manifest-00`, Section 9, "requests registration of
 the following well-known URI in the 'Well-Known URIs' registry established by
 [RFC8615]" with exactly the fields below. A Specification Required registry
@@ -37,8 +37,8 @@ Public Effect-Boundary Control Plane for Machine Actions" — Section 3 defines
 the location and serving requirements (`/.well-known/agent-action-control.json`,
 served with media type `application/json` over a transport providing server
 authentication and integrity); Section 9 makes the registration request. An
-active individual Internet-Draft, not IETF-adopted or endorsed; intended
-status Informational.
+individual Internet-Draft, not IETF-adopted or endorsed, now in state
+Replaced; intended status Informational.
 
 **Status:** permanent *(as declared in the draft's Section 9. The designated
 expert may prefer "provisional" for a suffix whose specification is an
