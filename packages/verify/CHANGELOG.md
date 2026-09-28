@@ -3,13 +3,22 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased: structured AEC evaluator contract (after 6.0.0)
+## Unreleased
 
-Version type: major. This entry is meant to ship in the major release after
-6.0.0. The 6.0.0 section below was prepared and reviewed without it and should
-be released as it stands.
+Version type: major, 6.0.0. The vendored CAID now refuses actions and adapter
+mapping profiles that 5.0.0 accepted, and the 5.0.0 entry below treats a
+release that refuses artifacts the previous version accepted as major. The
+structured AEC evaluator contract also changes in this release, a BREAKING
+change for custom native verifier callbacks and for readers of replay facts
+(see "Breaking: structured AEC evaluator contract" below).
+`@emilia-protocol/gate` pins Verify at exactly 5.0.0, so it reaches this
+behavior only through an explicit dependency bump.
 
-### Changed
+### Breaking: structured AEC evaluator contract
+
+BREAKING for custom native verifier callbacks passed to
+`createAuthorizationChainEvaluator` and for anything that reads its replay
+facts or replay digests. Ships in 6.0.0.
 
 - `createAuthorizationChainEvaluator` native verifier callbacks return two
   separate results instead of one `valid`, as
@@ -51,19 +60,11 @@ be released as it stands.
 - The built-ins check the relying-party pins against the action the artifact
   itself commits to and return that commitment for material-action matching.
   A trusted artifact for another action is `VERIFIED`, `ACCEPTED` and
-  `NOT_EQUIVALENT` with the reason `material_action_not_matched`, where it was
-  previously an acceptance refusal for the bundle and platform-attestation
-  built-ins.
+  `NOT_EQUIVALENT` with the reason `material_action_not_matched`. 5.0.0
+  passed the expected action into the bundle and platform-attestation
+  built-ins, which refused such an artifact as `native_valid: false`.
 - The legacy `verifyAuthorizationChain` API is unchanged and keeps one
   combined `valid` flag per component.
-
-## Unreleased
-
-Version type: major, 6.0.0. The vendored CAID now refuses actions and adapter
-mapping profiles that 5.0.0 accepted, and the 5.0.0 entry below treats a
-release that refuses artifacts the previous version accepted as major.
-`@emilia-protocol/gate` pins Verify at exactly 5.0.0, so it reaches this
-behavior only through an explicit dependency bump.
 
 ### Changed
 
