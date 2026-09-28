@@ -1553,13 +1553,17 @@ check(!plain(section('iana-code-formats')).includes('nested quantifiers'), 'Sect
     check(new RegExp(`<section anchor="${anchor}"[^>]*\\sremoveInRFC="true"`).test(source), `section ${anchor} is not marked removeInRFC="true" (ED-03)`);
   }
 }
-// M3, CLM-3: what Section 13 says about the verification package holds in
-// this tree: 5.0.0 is the version in packages/verify, 6.0.0 is the
-// unreleased major version, and the copy it will vendor implements -04.
+// M3, CLM-3: Section 13, as posted on 2026-09-28, calls 5.0.0 the published
+// verification package and 6.0.0 the next major release, which vendors the
+// -04 copy. This tree prepares that release: packages/verify is 6.0.0, its
+// changelog dates the 6.0.0 entry (which names -04) above the 5.0.0 entry,
+// and the copy it vendors implements -04.
 {
   const pkg = readJson('packages/verify/package.json');
-  check(pkg.version === '5.0.0', `Section 13 calls 5.0.0 the published verification package, but packages/verify is ${pkg.version}`);
-  check(/## Unreleased\s+Version type: major, 6\.0\.0/.test(read('packages/verify/CHANGELOG.md')), 'Section 13 calls 6.0.0 the next major release, but packages/verify/CHANGELOG.md does not');
+  const changelog = read('packages/verify/CHANGELOG.md');
+  const entry600 = changelog.match(/^## 6\.0\.0 \(\d{4}-\d{2}-\d{2}\)$([\s\S]*?)^## 5\.0\.0 \(/m);
+  check(pkg.version === '6.0.0', `Section 13 calls 6.0.0 the next major release of the verification package, but packages/verify is ${pkg.version}`);
+  check(entry600 !== null && entry600[1].includes(DOC), `Section 13 calls 6.0.0 the release that vendors the -04 copy, but packages/verify/CHANGELOG.md has no dated 6.0.0 entry above 5.0.0 that names ${DOC}`);
   check(read('packages/verify/vendor/caid.mjs').includes(`Implements ${DOC}`), 'the vendored copy the next major release will ship does not implement -04');
 }
 

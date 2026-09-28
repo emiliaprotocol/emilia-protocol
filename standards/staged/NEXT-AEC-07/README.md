@@ -78,9 +78,9 @@ this branch merges. It changes the public contract of
 of `valid`, replay facts carry `native_verification` and `acceptance` instead
 of `native_valid`, and replay records carry `algorithm_revision`
 `EP-AEC-EVALUATOR-07-v1`, the value Section 10 now defines.
-`packages/verify/CHANGELOG.md` records it under Unreleased ("Breaking:
+`packages/verify/CHANGELOG.md` records it in the 6.0.0 entry ("Breaking:
 structured AEC evaluator contract") as a BREAKING change to custom verifier
-callbacks and replay facts that ships in 6.0.0. The legacy
+callbacks and replay facts. The legacy
 `verifyAuthorizationChain` API is unchanged.
 
 ## Hold
