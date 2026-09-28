@@ -72,9 +72,11 @@ the distinct profile and lifecycle portfolio remains intact.
 
 Change the Authorization Receipts `source` and `revision` in that record only
 after the new revision is mirrored into `posted/`. The `/spec` page
-(`app/spec/page.tsx`) throws on any source other than
-`standards/posted/draft-schrock-ep-authorization-receipts-<revision>.xml`, and
-`tests/site-spec-route.test.ts` fails on a staged path.
+(`app/spec/page.tsx`) renders only
+`standards/posted/draft-schrock-ep-authorization-receipts-<revision>.xml` and
+returns 404 when that file does not exist. It logs a `source` value that names
+any other path, and `tests/site-spec-route.test.ts` fails on any source other
+than that posted path.
 
 ## Separate portfolio and runtime views
 
@@ -211,7 +213,8 @@ item, and posting is not protocol-owner review.
 (Datatracker time 2026-09-06T17:27:51Z) as one of the four September 6
 corrective revisions. Its XML and TXT match the immutable IETF archive
 byte-for-byte, and the snapshot was mirrored into `posted/` on 2026-09-27. The
-posted HTML follows the same whitespace-normalized local render rule as AEC-06.
+posted HTML is the IETF archive HTML with the per-request Cloudflare challenge
+script removed, checked on 2026-09-28.
 Revision -04 replaces the context-only chronology claim with the versioned
 `EP-QUORUM-SIGNOFF-CHAIN-v1` profile: a successor signs a digest of the
 completed predecessor signoff, including its signature, and legacy
@@ -226,8 +229,8 @@ time 2026-09-12T15:05:02Z) and `draft-schrock-ep-presentation-binding-01`
 (submission 168936, Datatracker time 2026-09-12T15:06:51Z) were posted through
 Datatracker. Their XML and TXT match the immutable IETF archive byte-for-byte,
 and the snapshots were mirrored into `posted/` on 2026-09-27. Each posted HTML
-is the provenance packet's local xml2rfc 3.34.0 render with trailing
-whitespace removed; the archive HTML was rendered by xml2rfc 3.34.1. Receipts-13
+is the IETF archive HTML, rendered by xml2rfc 3.34.1, with the per-request
+Cloudflare challenge script removed, checked on 2026-09-28. Receipts-13
 adds Section 13.13, "What Successful Verification Does Not Establish."
 Presentation Binding-01 adds Section 6.1, "Receipt and Presentation Evidence
 Remain Distinct." Both are individual Internet-Drafts, not working-group items,

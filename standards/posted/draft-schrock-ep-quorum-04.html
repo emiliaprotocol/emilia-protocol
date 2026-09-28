@@ -12,7 +12,7 @@
       approvers and keys, threshold, and an optional ordered trail. The relying
       party pins the governing policy and approver directory independently.
       Passing the predicate is approval evidence, not a complete authorization
-      decision, proof of execution, or proof of unused authority.
+      decision, proof of execution, or proof of unused authority. 
        This revision repairs the strong ordered profile. A successor signs a
       digest of the completed predecessor signoff, including its signature,
       rather than a precomputable context. The versioned profile establishes
@@ -21,7 +21,7 @@
       comprehension. Legacy context-only chains cannot satisfy it. JavaScript,
       Python, and Go reference verifiers share a corpus in one repository.
       Agreement is a same-team consistency check, not independent
-      interoperability evidence or a formal proof of the new construction.
+      interoperability evidence or a formal proof of the new construction. 
     " name="description">
 <meta content="xml2rfc 3.34.0" name="generator">
 <meta content="AI agents" name="keyword">
@@ -34,18 +34,19 @@
 <meta content="draft-schrock-ep-quorum-04" name="ietf.draft">
 <!-- Generator version information:
   xml2rfc 3.34.0
-    Python 3.14.5
+    Python 3.12.14
     ConfigArgParse 1.7.5
     google-i18n-address 3.1.1
     intervaltree 3.2.1
     Jinja2 3.1.6
-    lxml 6.1.1
+    lxml 6.1.3
     natsort 8.4.0
-    platformdirs 4.10.0
+    platformdirs 4.11.7
     pycountry 26.2.16
     PyYAML 6.0.3
     requests 2.34.2
-    wcwidth 0.8.1
+    wcwidth 0.8.3
+    weasyprint 69.0
 -->
 <link href="draft-schrock-ep-quorum-04.xml" rel="alternate" type="application/rfc+xml">
 <link href="#copyright" rel="license">
@@ -249,7 +250,7 @@ dl > dt {
   float: left;
   margin-right: 1em;
 }
-/*
+/* 
 dl.nohang > dt {
   float: none;
 }

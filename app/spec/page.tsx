@@ -92,11 +92,6 @@ function mdToHtml(md: string): string {
 
 export default function SpecPage() {
   if (!RECEIPTS || !/^\d+$/.test(RECEIPTS_REVISION)) notFound();
-  if (RECEIPTS.source !== `standards/posted/${RECEIPTS_DRAFT}.xml`) {
-    // The page never reads `source`; it reads only standards/posted/. Keep
-    // rendering the posted snapshot of the named revision and report the drift.
-    console.error(`/spec: STATUS.json names ${RECEIPTS.source}; rendering the posted snapshot of -${RECEIPTS_REVISION}`);
-  }
   // Keep the directory and name prefix literal: the build's file tracer turns
   // the unknown revision into a wildcard, so the posted XML ships with the
   // server bundle. A fully computed path would not be traced.
@@ -104,6 +99,12 @@ export default function SpecPage() {
   // A revision that has no posted snapshot yet (still staged) is a 404, never
   // a render of the staged candidate.
   if (!existsSync(draftPath)) notFound();
+  if (RECEIPTS.source !== `standards/posted/${RECEIPTS_DRAFT}.xml`) {
+    // The page never reads `source`; it reads only standards/posted/. The
+    // posted snapshot of the named revision exists (checked above), so render
+    // it and report the drift.
+    console.error(`/spec: STATUS.json names ${RECEIPTS.source}; rendering the posted snapshot of -${RECEIPTS_REVISION}`);
+  }
   const draft = readFileSync(draftPath, 'utf8');
   const html = mdToHtml(`\`\`\`text\n${draft}\n\`\`\``);
 

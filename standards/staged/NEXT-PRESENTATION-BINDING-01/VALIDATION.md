@@ -28,9 +28,12 @@ Checked on 2026-09-27, when the posted snapshot was mirrored into
   `121fd0ba41c207fd6f683e2ae8a01acbbd7cb1e7fc889845620690eedadc2156`. Both
   match `SHA256SUMS.txt` byte-for-byte.
 - The archive HTML differs from the retained render. The archive rendered it
-  with xml2rfc 3.34.1 and its delivery path injects request-specific Cloudflare
-  markup, so the retained render stays the checksum-pinned local form. The
-  posted HTML is that render with trailing whitespace removed.
+  with xml2rfc 3.34.1, so its recorded versions and some CSS rules differ, and
+  the retained render stays the checksum-pinned local form. Checked on
+  2026-09-28, the posted HTML is the archive HTML with the per-request
+  Cloudflare challenge script, which the archive delivery path appends before
+  `</body>`, removed; two fetches differed only in that script and were
+  byte-identical once it was removed.
 
 Publication is not working-group adoption, RFC status, protocol-owner review,
 implementation interoperability, or deployment evidence.

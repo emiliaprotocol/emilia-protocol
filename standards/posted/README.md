@@ -275,11 +275,14 @@ adoption, RFC status, or IETF endorsement.
 Internet-Draft through Datatracker submission 168688 (Datatracker time
 2026-09-06T17:27:51Z), one of the four September 6 corrective revisions. The
 snapshot was mirrored into this directory on 2026-09-27. Its XML and TXT are
-byte-for-byte identical to the immutable IETF archive artifacts. The posted
-HTML is the provenance packet's local xml2rfc 3.34.0 render with trailing
-whitespace removed, because the archive delivery path injects request-specific
-Cloudflare markup; the checksum-pinned exact render remains in the provenance
-packet.
+byte-for-byte identical to the immutable IETF archive artifacts. On
+2026-09-28 the posted HTML was replaced with the IETF archive HTML minus the
+per-request Cloudflare challenge script that the archive delivery path appends
+before `</body>`. Two fetches differed only in that script and were
+byte-identical once it was removed, so the posted HTML can be checked against
+the archive. The archive HTML differs from the provenance packet's local
+xml2rfc 3.34.0 render only in its recorded Python and library versions; the
+checksum-pinned local render remains in the provenance packet.
 
 The retained `../staged/NEXT-EP-QUORUM-04` packet is publication provenance,
 not an upload candidate. Its XML is byte-for-byte identical to the posted
@@ -294,11 +297,15 @@ Datatracker time 2026-09-12T15:05:02Z) and
 `draft-schrock-ep-presentation-binding-01` (submission 168936, Datatracker time
 2026-09-12T15:06:51Z) were posted as active individual Internet-Drafts. The
 snapshots were mirrored into this directory on 2026-09-27. Their XML and TXT
-are byte-for-byte identical to the immutable IETF archive artifacts. Each
-posted HTML is the provenance packet's local xml2rfc 3.34.0 render with
-trailing whitespace removed. The archive HTML was rendered by xml2rfc 3.34.1
-and its delivery path injects request-specific Cloudflare markup; the
-checksum-pinned local render remains in each provenance packet.
+are byte-for-byte identical to the immutable IETF archive artifacts. On
+2026-09-28 each posted HTML was replaced with the IETF archive HTML minus the
+per-request Cloudflare challenge script that the archive delivery path appends
+before `</body>`. Two fetches of each differed only in that script and were
+byte-identical once it was removed, so the posted HTML can be checked against
+the archive. The archive HTML was rendered by xml2rfc 3.34.1 and differs from
+the provenance packet's local xml2rfc 3.34.0 render in its recorded versions
+and some CSS rules; the checksum-pinned local render remains in each
+provenance packet.
 
 The retained `../staged/NEXT-AUTHORIZATION-RECEIPTS-13` and
 `../staged/NEXT-PRESENTATION-BINDING-01` packets are publication provenance,

@@ -47,6 +47,15 @@ describe('/spec source contract', () => {
     expect(page).toContain('if (!existsSync(draftPath)) notFound();');
   });
 
+  it('logs a source drift only after the posted snapshot is known to exist', () => {
+    // The drift log says the posted snapshot is rendered, so it must follow
+    // the existence check that returns 404 when there is nothing to render.
+    const existenceCheck = page.indexOf('if (!existsSync(draftPath)) notFound();');
+    const driftLog = page.indexOf('console.error(');
+    expect(existenceCheck).toBeGreaterThan(-1);
+    expect(driftLog).toBeGreaterThan(existenceCheck);
+  });
+
   it('places Receipts at the start of the canonical path without overstating its claim', () => {
     expect(page).toContain('Canonical path · 01 of 04');
     expect(page).toContain('href="/protocol"');
