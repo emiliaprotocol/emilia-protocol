@@ -26,12 +26,12 @@ describe('Gate Qualification v2 public product boundary', () => {
       expect(surface).toContain('GATE_QUALIFICATION.disclaimer');
     }
 
-    const homepage = read('app/HomePageClient.tsx');
+    const homepage = read('app/HomePageClient.tsx') + read('components/home/NewHireStory.tsx');
     const workforce = read('components/workforce/WorkforceStory.tsx');
-    expect(homepage).toContain('<WorkforceFoundation />');
+    expect(read('app/workforce/page.tsx')).toContain('<WorkforceFoundation />');
     expect(homepage).toContain('href="/proof"');
     expect(homepage).toContain('Those are engineering results, not customer adoption or proof of a complete deployment.');
-    expect(homepage).toContain('private local alpha using synthetic refunds');
+    expect(workforce).toContain('using synthetic refunds');
     expect(workforce).toContain('href="/gate"');
     expect(workforce).toContain('Enforcement requires completely mediated paths through the credential-owning Gate.');
     expect(workforce).toContain('A signed receipt does not prove the job was done well.');
@@ -58,7 +58,7 @@ describe('Gate Qualification v2 public product boundary', () => {
 
   it('presents Operated Gate only as a deployment-specific quote', () => {
     const commercialOffer = read('lib/commercial-offer.ts');
-    const homepage = read('app/HomePageClient.tsx');
+    const homepage = read('app/HomePageClient.tsx') + read('components/home/NewHireStory.tsx');
     const gate = read('app/gate/page.tsx');
     const pricing = read('app/pricing/page.tsx');
     const investors = read('app/investors/page.tsx');
@@ -70,7 +70,7 @@ describe('Gate Qualification v2 public product boundary', () => {
     expect(pricing).toContain("cta: { label: 'Scope a deployment'");
     expect(pricing).toContain('price: PRODUCTION_GATE.priceLabel');
     expect(pricing).toContain('Evaluation terms are not yet set; the existing Gate offers below do not price this evaluation.');
-    expect(investors).toContain('Your AI workforce needs management.');
+    expect(investors).toContain('Hire the AI. Keep your rules.');
     expect(investors).toContain('The proposed business is recurring software and operating support for protected work');
     expect(investors).toContain('Prices and willingness to pay need buyer validation.');
     expect(investors).toContain('The external team and provider are not yet selected. Evaluation terms are not yet set.');

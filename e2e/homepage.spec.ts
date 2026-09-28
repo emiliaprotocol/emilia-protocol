@@ -13,7 +13,7 @@ test.describe('Homepage', () => {
     // Hero heading exists
     const h1 = page.locator('h1').first();
     await expect(h1).toBeVisible();
-    await expect(h1).toHaveText('Build yourAI workforce.');
+    await expect(h1).toHaveText('Hire the AI.Keep your rules.');
 
     // Navigation bar is present
     const nav = page.getByRole('navigation', { name: 'Primary' });
@@ -34,8 +34,13 @@ test.describe('Homepage', () => {
     await expect(page).toHaveURL(/\/protocol/);
   });
 
-  test('workforce story and the unchanged allowance are visible', async ({ page }) => {
+  test('homepage tells the gate story and the workforce story keeps its own route', async ({ page }) => {
     await page.goto('/');
+    await expect(page.locator('#homework-title')).toHaveText('Nobody grades theirown homework');
+    await expect(page.getByRole('link', { name: 'Try it with Face ID' }).first()).toHaveAttribute('href', '/try');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    await page.goto('/workforce');
 
     await expect(page.locator('#workforce-title')).toBeVisible({
       timeout: 10_000,

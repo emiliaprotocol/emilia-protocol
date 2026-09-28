@@ -28,8 +28,21 @@ describe('mobile public-site experience contract', () => {
     expect(css).toContain('.ep-protocol-detail-row');
   });
 
+  it('keeps the new-hire homepage single-column and readable on phones', () => {
+    const story = read('components/home/NewHireStory.tsx');
+    const css = read('components/home/newhire.module.css');
+    expect(css).toContain('@media (max-width: 900px)');
+    expect(css).toContain('.split { grid-template-columns: 1fr; min-height: 0; }');
+    expect(css).toContain('.flow { grid-template-columns: 1fr; }');
+    expect(css).toContain('.contrast { grid-template-columns: 1fr;');
+    expect(css).toContain('.primary:focus-visible');
+    expect(css).toContain('min-height: 52px');
+    expect(story).toContain('sizes={HALF}');
+    expect(story.match(/ alt="/g)?.length).toBeGreaterThanOrEqual(8);
+  });
+
   it('keeps the workforce story readable and its handover record responsive on phones', () => {
-    const homepage = read('app/HomePageClient.tsx');
+    const homepage = read('app/workforce/page.tsx');
     const story = read('components/workforce/WorkforceStory.tsx');
     const css = read('components/workforce/workforce.module.css');
 

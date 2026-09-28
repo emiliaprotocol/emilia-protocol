@@ -11,12 +11,12 @@ import './ep.css';
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.emiliaprotocol.ai'),
   title: {
-    default: 'EMILIA | Build Your AI Workforce',
+    default: 'EMILIA | Hire the AI. Keep Your Rules.',
     template: '%s',
   },
   description:
-    'Find specialized agents or bring your own. Give them a job, set their limits and review the work. '
-    + 'EMILIA is building the operating home for your AI workforce.',
+    'EMILIA gives AI the rules every new hire gets, and checks them at a gate the AI can’t go around. '
+    + 'The protocol and a reference Gate are open source.',
   applicationName: 'EMILIA',
   authors: [{ name: 'EMILIA', url: 'https://www.emiliaprotocol.ai' }],
   creator: 'EMILIA',
@@ -26,23 +26,23 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://www.emiliaprotocol.ai',
     siteName: 'EMILIA',
-    title: 'EMILIA | Build Your AI Workforce',
+    title: 'EMILIA | Hire the AI. Keep Your Rules.',
     description:
-      'Find specialized agents or bring your own. Explore the marketplace and a private local workforce alpha, with Gate enforcing limits on configured paths.',
+      'EMILIA gives AI the rules every new hire gets, and checks them at a gate the AI can’t go around, before any money moves.',
     images: [
       {
         url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'EMILIA: Build your AI workforce. Find specialized agents or bring your own.',
+        alt: 'EMILIA: Hire the AI. Keep your rules. The gate checks every payment against your rules before any money moves.',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EMILIA | Build Your AI Workforce',
+    title: 'EMILIA | Hire the AI. Keep Your Rules.',
     description:
-      'Find specialized agents or bring your own. Give them a job, set their limits and review the work. Workforce workspace: private local alpha.',
+      'EMILIA gives AI the rules every new hire gets, and checks them at a gate the AI can’t go around, before any money moves.',
     images: ['/twitter-image'],
   },
   robots: {
@@ -84,8 +84,8 @@ const ORGANIZATION_JSONLD = {
   },
   email: ENTITY.email,
   description:
-    'EMILIA is building an AI workforce business, connecting a builder marketplace to employer-owned jobs, limits and work records. '
-    + 'Gate enforces customer authority on configured execution paths. The workforce workspace is a private local alpha; EMILIA Protocol is its open foundation.',
+    'EMILIA builds the gate between AI agents and the systems that move money: it checks each exact action against the company’s own rules before it runs, '
+    + 'and each allowed action gets a signed receipt that can be checked offline. Gate enforces customer authority on configured execution paths; EMILIA Protocol is its open foundation.',
   foundingDate: '2026-06-03',
   sameAs: [
     'https://github.com/emiliaprotocol',

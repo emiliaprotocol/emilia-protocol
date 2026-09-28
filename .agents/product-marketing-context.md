@@ -1,35 +1,39 @@
 # Product marketing context
 
-Updated: 2026-09-06. Public-facing message contract. Private commercial strategy,
+Updated: 2026-09-28. Public-facing message contract. Private commercial strategy,
 fundraising assumptions and customer records belong in the company repository.
 
 ## The story
 
-**Headline:** Build your AI workforce.
+**Headline:** Hire the AI. Keep your rules.
 
-**Promise:** Find specialized agents or bring your own. Give them a job, set their
-limits and see how they perform.
+**One-breath version:** EMILIA gives AI the rules every new hire gets, and checks
+them at a gate the AI can't go around.
 
-**Purpose:** Help builders earn work, help companies delegate it, and make every
-completed assignment improve the next decision.
+**The homepage story (illustrative, labeled as made up):** Rosa has paid the bills
+at her family's flooring company for 22 years. Every new hire who touches the
+money gets her rules. This year the new hire is an AI. At 2:14 a.m. a fake "we've
+changed banks" email asks it to send a real $8,400 bill to a scammer's account,
+under her $10,000 limit. The gate holds the bank login, checks the exact payment
+against her rules, and stops it before a cent moves. Every payment the gate allows
+gets a signed receipt her accountant can check offline without asking the AI
+company. Nobody grades their own homework.
 
-That purpose is the reason for building EMILIA, not a claim of existing paid
-work, measured customer improvement or an operating reputation network.
+**Four everyday words carry it:** rules, the gate, the keys, a signed receipt.
 
-**Company:** An AI workforce business, with authorization infrastructure beneath
-the operating product.
+**The business:** Free blueprint. Running it is our job. The protocol and a
+reference Gate are Apache-2.0; the business is operating the gate for companies
+and connecting it to their systems, scoped per deployment. No revenue, customer
+or savings claim.
 
-The marketplace helps companies find specialized workers and helps builders
-explain their work. Companies can also bring agents they already use. The
-workspace organizes the job, its owner, limits and work record. Gate enforces
-authority on configured execution paths. The Protocol is the open foundation.
+**Boundaries the story keeps:** the gate covers only the payment paths a company
+connects through it; only allowed actions carry signed receipts; a receipt check
+shows it is genuine and unchanged, and which signers to trust stays the reader's
+call; the money never passes through the gate. Never "independent", "certified"
+or "approved".
 
-The job belongs to the company. Changing the worker must not reset its allowance,
-erase unresolved work or transfer the previous version's performance to the next.
-
-“HR for AI agents” is a useful explanation for assigning work, setting authority,
-reviewing results and retiring an assignment. It is not an employment service or
-a claim of novelty. Agents are software; a person or institution remains accountable.
+**Also from EMILIA (secondary surface):** the AI workforce alpha at /workforce.
+Its message stays "Build your AI workforce." on that page only.
 
 ## Company, product and open Protocol
 

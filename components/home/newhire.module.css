@@ -1,0 +1,131 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* "The Checkpoint": asphalt, bone, one sodium accent. Solid surfaces, no radius, no shadows. */
+.story {
+  --asphalt: #0E0F0C; --bone: #F2EFE6; --sodium: #E8581C; --sodium-text: #B8400D;
+  --concrete: #8F8B80; --concrete-deep: #5F5B52; --rule-dark: #2A2B27; --rule-light: #D9D4C7;
+  font-family: var(--nh-serif), Georgia, serif;
+  color: var(--asphalt);
+  background: var(--bone);
+}
+.story * { box-sizing: border-box; }
+.story h1, .story h2 {
+  font-family: var(--nh-display), 'Arial Narrow', sans-serif;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .01em; line-height: .95; margin: 0 0 22px;
+}
+.story h1 { font-size: clamp(56px, 8.4vw, 124px); }
+.story h2 { font-size: clamp(42px, 5.4vw, 80px); }
+.story p { font-size: clamp(18px, 1.35vw, 21px); line-height: 1.55; margin: 0 0 18px; }
+.kicker {
+  font-family: var(--nh-display), 'Arial Narrow', sans-serif;
+  font-size: 17px !important; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--sodium-text); margin: 0 0 16px !important;
+}
+.note { font-size: 15px !important; color: var(--concrete-deep); }
+.caption { font-size: 15px !important; color: var(--concrete); margin-top: 18px !important; }
+.caption a { color: inherit; text-underline-offset: 4px; }
+
+.bone { background: var(--bone); color: var(--asphalt); }
+.asphalt { background: var(--asphalt); color: var(--bone); }
+.asphalt .kicker { color: var(--sodium); }
+.asphalt .note { color: var(--concrete); }
+
+.bleed { object-fit: cover; }
+
+/* Hero and full-bleed statements: image fills, text sits on a solid asphalt panel. */
+.hero, .statement { position: relative; min-height: min(88vh, 880px); display: flex; align-items: flex-end; overflow: hidden; background: var(--asphalt); }
+.statement { min-height: min(78vh, 760px); }
+.heroPanel, .statementPanel {
+  position: relative; z-index: 1; width: min(720px, calc(100% - 32px));
+  margin: 0 0 clamp(16px, 5vw, 64px) clamp(16px, 5vw, 64px);
+  padding: clamp(24px, 3.4vw, 48px);
+  background: var(--asphalt); color: var(--bone);
+  border-left: 6px solid var(--sodium);
+}
+.heroPanel .kicker, .statementPanel .kicker { color: var(--sodium); }
+.heroLead { font-size: clamp(20px, 1.7vw, 25px) !important; }
+
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; margin-top: 28px; }
+.primary, .secondary {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 52px;
+  font-family: var(--nh-display), 'Arial Narrow', sans-serif; font-size: 20px; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase; text-decoration: none;
+}
+.primary { padding: 12px 26px; background: var(--sodium); color: var(--asphalt); border: 2px solid var(--sodium); }
+.primary:hover { background: var(--bone); border-color: var(--bone); }
+.secondary { padding: 10px 0; color: var(--bone); border-bottom: 2px solid var(--bone); min-height: 0; }
+.secondary:hover { color: var(--sodium); border-color: var(--sodium); }
+.primary:focus-visible, .secondary:focus-visible, .textLink:focus-visible, .links a:focus-visible, .caption a:focus-visible, .bigNumber a:focus-visible {
+  outline: 3px solid var(--sodium); outline-offset: 5px;
+}
+
+/* Split image and text. */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: min(80vh, 760px); }
+.media { position: relative; min-height: 420px; }
+.media img { object-fit: cover; }
+.copy { display: flex; flex-direction: column; justify-content: center; padding: clamp(40px, 6vw, 96px) clamp(16px, 5vw, 88px); max-width: 760px; }
+.reverse .media { order: 2; }
+.copy h2 { font-size: clamp(40px, 4.3vw, 68px); }
+.rules { list-style: none; counter-reset: rule; margin: 4px 0 26px; padding: 0; border-top: 2px solid var(--asphalt); }
+.rules li {
+  counter-increment: rule; display: grid; grid-template-columns: 44px 1fr; align-items: baseline;
+  padding: 14px 0; border-bottom: 1px solid var(--rule-light); font-size: clamp(19px, 1.5vw, 23px);
+}
+.rules li::before { content: counter(rule, decimal-leading-zero); font-family: var(--nh-display), sans-serif; font-weight: 700; color: var(--sodium-text); }
+.textLink { align-self: flex-start; margin-top: 6px; color: var(--asphalt); font-family: var(--nh-display), sans-serif; font-size: 20px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; text-decoration: none; border-bottom: 2px solid var(--sodium); }
+.textLink:hover { color: var(--sodium-text); }
+
+/* Bands. */
+.band { padding: clamp(64px, 9vw, 128px) 0; }
+.bandInner, .bandStack { width: min(1240px, calc(100% - 32px)); margin: 0 auto; }
+.bandInner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px 72px; align-items: end; }
+.bigNumber strong {
+  display: block; font-family: var(--nh-display), sans-serif; font-weight: 700;
+  font-size: clamp(120px, 17vw, 240px); line-height: .85; color: var(--sodium); margin-bottom: 18px;
+}
+.bigNumber a { color: inherit; text-underline-offset: 4px; }
+.wide { max-width: 880px; }
+
+/* Gate diagram. */
+.flow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr); gap: 0; align-items: stretch; margin: 16px 0 40px; border: 2px solid var(--asphalt); }
+.node { padding: 24px 26px; border-right: 2px solid var(--asphalt); display: flex; flex-direction: column; justify-content: center; }
+.node span { font-family: var(--nh-display), sans-serif; font-size: 24px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.node p { margin: 8px 0 0 !important; }
+.gateNode { background: var(--sodium); color: var(--asphalt); }
+.outcomes { display: grid; grid-template-rows: 1fr 1fr; }
+.outcomes .node { border-right: 0; }
+.outcomes .node + .node { border-top: 2px solid var(--asphalt); }
+.stopNode { background: var(--asphalt); color: var(--bone); }
+.stopNode span { color: var(--sodium); }
+
+/* Same bill, wrong account. */
+.contrast { display: grid; grid-template-columns: minmax(0, 1fr) 12px minmax(0, 1fr); margin-top: 16px; }
+.allowed, .asked { padding: clamp(28px, 4vw, 52px); }
+.allowed { background: #E6E1D4; }
+.asked { background: var(--asphalt); color: var(--bone); }
+.bar { background: var(--sodium); }
+.contrast span { display: block; font-family: var(--nh-display), sans-serif; font-size: 20px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--concrete-deep); }
+.asked span { color: var(--concrete); }
+.contrast strong { display: block; font-family: var(--nh-display), sans-serif; font-weight: 700; font-size: clamp(64px, 8vw, 116px); line-height: 1; margin: 12px 0 6px; }
+.contrast em { display: block; font-style: normal; font-family: var(--nh-display), sans-serif; font-size: clamp(22px, 2vw, 28px); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--sodium); margin-top: 18px; }
+
+/* Blueprint. */
+.links { display: flex; flex-wrap: wrap; gap: 14px 28px; margin-top: 10px; }
+.links a { color: var(--bone); font-family: var(--nh-display), sans-serif; font-size: 20px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; text-decoration: none; border-bottom: 2px solid var(--sodium); }
+.links a:hover { color: var(--sodium); }
+
+@media (max-width: 900px) {
+  .split { grid-template-columns: 1fr; min-height: 0; }
+  .media { min-height: 300px; aspect-ratio: 16 / 10; }
+  .reverse .media { order: 0; }
+  .bandInner { grid-template-columns: 1fr; align-items: start; }
+  .flow { grid-template-columns: 1fr; }
+  .node { border-right: 0; border-bottom: 2px solid var(--asphalt); }
+  .outcomes .node:last-child { border-bottom: 0; }
+  .contrast { grid-template-columns: 1fr; grid-template-rows: auto 10px auto; }
+  .hero, .statement { min-height: 0; flex-direction: column; align-items: stretch; }
+  .hero .bleed, .statement .bleed { position: relative !important; height: 56vw !important; min-height: 240px; }
+  .heroPanel, .statementPanel { width: 100%; margin: 0; border-left: 0; border-top: 6px solid var(--sodium); padding: 32px 16px 40px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .primary, .secondary, .links a, .textLink { transition: color .15s ease, background-color .15s ease, border-color .15s ease; }
+}

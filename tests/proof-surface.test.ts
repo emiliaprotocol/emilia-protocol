@@ -77,7 +77,7 @@ describe('public engineering evidence surface', () => {
   });
 
   it('makes the proof page discoverable from high-authority site surfaces', () => {
-    expect(read('app/HomePageClient.js')).toContain('href="/proof"');
+    expect(read('components/home/NewHireStory.tsx')).toContain('href="/proof"');
     expect(read('app/security/page.js')).toContain('href="/proof"');
     expect(read('components/SiteFooter.js')).toContain("['/proof', 'Engineering Evidence']");
     expect(read('app/sitemap.ts')).toContain("{ path: '/proof'");
