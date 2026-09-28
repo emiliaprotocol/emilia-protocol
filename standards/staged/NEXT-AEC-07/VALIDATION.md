@@ -317,3 +317,13 @@ run; the bootstrap writer above keeps main's measured counts, which main's
 volatile-evidence refresh re-measures after merge.
 
 Datatracker has not published this packet. Upload is held; see `README.md`.
+
+## Filing revision, 2026-09-28
+
+CAID -04 was posted on 2026-09-28 (Datatracker, 07:24:09Z), so the [CAID]
+reference now names draft-schrock-canonical-action-identifier-04 dated
+28 September 2026, and the document date moves to 28 September 2026. The
+renders were regenerated with the in-place procedure above and SHA256SUMS.txt
+refreshed. The rendered TXT differs from the 2026-09-27 render only in the
+date, the expiry line and the [CAID] reference. `idnits -m submission`
+passes on the new TXT, and the packet check passes.

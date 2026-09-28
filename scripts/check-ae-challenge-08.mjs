@@ -44,7 +44,7 @@ for (const required of [
   `docName="${basename}"`,
   `value="${basename}"`,
   'submissionType="independent"',
-  '<date year="2026" month="September" day="27"/>',
+  '<date year="2026" month="September" day="28"/>',
   'Optional Evaluation Lineage Profile',
   'AE-EVALUATION-LINEAGE-v1',
   'predecessor_challenge_digest',

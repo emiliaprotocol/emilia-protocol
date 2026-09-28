@@ -56,11 +56,11 @@ invariant(txt.split('\n').every((line) => line.length <= 72), 'TXT render has a 
 for (const required of [
   `docName="${basename}"`,
   `value="${basename}"`,
-  '<date year="2026" month="September" day="27"/>',
+  '<date year="2026" month="September" day="28"/>',
   '<dt>ACCEPTED</dt>',
   '<dt>UNSATISFIED</dt>',
   '<name>Changes in -07</name>',
-  'draft-schrock-canonical-action-identifier-03',
+  'draft-schrock-canonical-action-identifier-04',
   'draft-schrock-ep-authorization-receipts-13',
   'draft-schrock-ep-quorum-04',
   'draft-schrock-action-evidence-boundary-07',

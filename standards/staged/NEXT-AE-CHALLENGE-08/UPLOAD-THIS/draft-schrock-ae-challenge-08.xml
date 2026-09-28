@@ -13,7 +13,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="September" day="27"/>
+    <date year="2026" month="September" day="28"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>evidence</keyword>
@@ -1671,9 +1671,9 @@ Retry-After: 30
           <front>
             <title>The Canonical Action Identifier (CAID)</title>
             <author fullname="Iman Schrock"/>
-            <date year="2026" month="September" day="26"/>
+            <date year="2026" month="September" day="28"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-03"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-canonical-action-identifier-04"/>
         </reference>
         <reference anchor="AEB" target="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">
           <front>
