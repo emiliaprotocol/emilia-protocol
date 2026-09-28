@@ -981,8 +981,33 @@ evidence under the constructor's pins; a saved positive result is not trusted
 evidence. Required subject thresholds count only native-verified identities,
 and required relations must bind the target evidence digest.
 
+A native verifier callback returns two separate results, as AEC-07 Section 6
+requires. `verified` says the artifact's cryptographic and structural checks
+passed under the verification key. `accepted` says the relying party's pinned
+trust inputs for that component type (trust anchors or key directory entry
+status, issuer, audience, key class, native policy, validity at the
+verification time) accept the verified artifact. `verified: null` says the
+check could not run, for example because no key could be resolved for a format
+that names its key by reference (`reason: 'key_unresolved'`); the fact records
+`NOT_EVALUATED`, not `FAILED`. A callback that evaluated the checks but cannot
+tell which of the two a failure belongs to returns `verified: false`. `accepted: true` without `verified: true` is refused
+as `native_result_inconsistent`, and the single `valid` Boolean of 5.x is
+refused as `native_result_legacy_valid_field`. Each replay fact records
+`native_verification` (`VERIFIED`, `FAILED` or `NOT_EVALUATED`) and
+`acceptance` (`ACCEPTED`, `REJECTED` or `NOT_EVALUATED`) as separate fields, and
+a component is eligible only when both are positive. Action mapping runs only
+on an accepted artifact. The built-in `ep-quorum` verifier checks integrity
+under the keys the quorum carries; the built-in `ep-receipt`,
+`ep-authorization-bundle` and platform-attestation verifiers resolve each key
+by reference from the relying party's key material, check signatures under the
+resolved public key only, and treat the directory entry's status as an
+acceptance input. An unresolvable key is `NOT_EVALUATED`. The built-ins check
+pins against the action the artifact commits to, so an accepted artifact for
+another action fails material-action matching rather than acceptance.
+
 The older `verifyAuthorizationChain` string-requirement API is a separate
-legacy interface, not the complete structured AEC-05 contract. The explicit
+legacy interface, not the complete structured AEC-05 contract. Its component
+rows keep one combined `valid` flag for verification and acceptance. The explicit
 `ep-authorization-bundle` role is an additive AEC-06 profile; it must not be
 substituted for the terminal `ep-receipt` role. Neither evaluator reserves
 authority or authorizes execution. Custom native verification and mapping

@@ -42,7 +42,7 @@ declare function evalRequirement(expr: any, satisfied: Set<string>): Obj;
 export declare function verifyAuthorizationChain(aec: Obj, opts?: Obj): Obj;
 export declare const AEC_REQUIREMENT_VERSION = "EP-AEC-REQUIREMENT-v1";
 export declare const AEC_REPLAY_VERSION = "EP-AEC-REPLAY-v1";
-export declare const AEC_EVALUATOR_REVISION = "EP-AEC-EVALUATOR-05-v1";
+export declare const AEC_EVALUATOR_REVISION = "EP-AEC-EVALUATOR-07-v1";
 export declare const AEC_BUNDLE_COMPONENT = "ep-authorization-bundle";
 export interface AecRequirement {
     '@version': typeof AEC_REQUIREMENT_VERSION;
@@ -74,13 +74,38 @@ export interface AecNativeStatus {
     checked_at: string;
     expires_at: string;
 }
-/** Every positive field must come from verified native bytes or the native
+/** A native verifier reports two separate results (AEC-07 Section 6):
+ *
+ *   verified  the artifact's cryptographic and structural checks passed under
+ *             the verification key (carried by the artifact, or resolved from
+ *             relying-party key material when the format names it only by
+ *             reference);
+ *   accepted  the relying party's pinned trust inputs for this component type
+ *             (trust anchors or key directory entry status, issuer, audience,
+ *             key class, native policy, validity at the verification time)
+ *             accept that VERIFIED artifact.
+ *
+ * `verified: null` means VERIFIED could not be evaluated: no verification key
+ * could be resolved from relying-party key material (reason `key_unresolved`),
+ * or the relying party's own configuration for the format is unusable. The
+ * fact then records native_verification NOT_EVALUATED, never FAILED, so an
+ * unknown signer is not recorded the way a forgery is.
+ *
+ * `accepted: true` with `verified` other than true is refused as
+ * inconsistent. A verifier that evaluated the checks but cannot tell which of
+ * the two results a failure belongs to reports `verified: false`; it never
+ * reports VERIFIED for bytes it did not check. The 5.x single `valid` Boolean
+ * is refused by name (`native_result_legacy_valid_field`), because it cannot
+ * say which result it carries.
+ *
+ * Every positive field must come from verified native bytes or the native
  * profile's authenticated status input, never from an unverified wrapper.
  * An absent claim stays absent: AEC does not infer subjects from signer keys,
  * current status from an issuer signature, or human operation from identity.
  */
 export interface AecNativeVerification {
-    valid: boolean;
+    verified: boolean | null;
+    accepted: boolean;
     reason?: string;
     format_revision?: string;
     action_digest?: string | null;

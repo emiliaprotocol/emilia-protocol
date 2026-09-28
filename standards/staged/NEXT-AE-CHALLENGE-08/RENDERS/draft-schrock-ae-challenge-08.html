@@ -8,7 +8,8 @@
 <meta content="Iman Schrock" name="author">
 <meta content="
        When a relying party refuses a consequential agent action because
-      authorization evidence is missing, stale, or unverifiable, the agent
+      authorization evidence is missing, stale, not verified, not accepted
+      under its trust inputs, or not bound to the exact action, the agent
       needs a machine-readable description of what remains necessary. This
       document defines a transport-neutral Authorization Evidence Challenge
       data model bound to the relying party's exact action. The challenge
@@ -39,9 +40,9 @@
        An optional evaluation-lineage profile carries an authenticated issuer
       statement about one evaluation of a claimed presentation. It binds the
       predecessor challenge, presentation, action, policy, evaluation
-      semantics, and any successor-challenge reference. A recipient that
-      retains authenticated artifacts can distinguish an earlier refusal or
-      indeterminate result from a later result. The profile carries no
+      semantics, and any successor-challenge reference. A recipient that retains authenticated artifacts can distinguish an earlier
+      unsatisfied result, whether or not its evaluation completed, from a later
+      result. The profile carries no
       authority, does not prove challenge consumption, ordering, completeness,
       or non-omission, and makes no claim that an action was admitted or
       executed.
@@ -1256,11 +1257,11 @@ li > p:last-of-type:only-child {
 <thead><tr>
 <td class="left">Internet-Draft</td>
 <td class="center">Evidence Challenge</td>
-<td class="right">August 2026</td>
+<td class="right">September 2026</td>
 </tr></thead>
 <tfoot><tr>
 <td class="left">Schrock</td>
-<td class="center">Expires 27 February 2027</td>
+<td class="center">Expires 31 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1273,12 +1274,12 @@ li > p:last-of-type:only-child {
 <dd class="internet-draft">draft-schrock-ae-challenge-08</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-08-26" class="published">26 August 2026</time>
+<time datetime="2026-09-27" class="published">27 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Informational</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-02-27">27 February 2027</time></dd>
+<dd class="expires"><time datetime="2027-03-31">31 March 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1292,7 +1293,8 @@ li > p:last-of-type:only-child {
 <section id="section-abstract">
       <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
 <p id="section-abstract-1">When a relying party refuses a consequential agent action because
-      authorization evidence is missing, stale, or unverifiable, the agent
+      authorization evidence is missing, stale, not verified, not accepted
+      under its trust inputs, or not bound to the exact action, the agent
       needs a machine-readable description of what remains necessary. This
       document defines a transport-neutral Authorization Evidence Challenge
       data model bound to the relying party's exact action. The challenge
@@ -1323,9 +1325,9 @@ li > p:last-of-type:only-child {
 <p id="section-abstract-5">An optional evaluation-lineage profile carries an authenticated issuer
       statement about one evaluation of a claimed presentation. It binds the
       predecessor challenge, presentation, action, policy, evaluation
-      semantics, and any successor-challenge reference. A recipient that
-      retains authenticated artifacts can distinguish an earlier refusal or
-      indeterminate result from a later result. The profile carries no
+      semantics, and any successor-challenge reference. A recipient that retains authenticated artifacts can distinguish an earlier
+      unsatisfied result, whether or not its evaluation completed, from a later
+      result. The profile carries no
       authority, does not prove challenge consumption, ordering, completeness,
       or non-omission, and makes no claim that an action was admitted or
       executed.<a href="#section-abstract-5" class="pilcrow">¶</a></p>
@@ -1349,7 +1351,7 @@ li > p:last-of-type:only-child {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 27 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 31 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1416,9 +1418,6 @@ li > p:last-of-type:only-child {
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.7.2.1">
                     <p id="section-toc.1-1.2.2.7.2.1.1"><a href="#section-2.7.1" class="auto internal xref">2.7.1</a>.  <a href="#name-state-exhaustion-conformanc" class="internal xref">State Exhaustion Conformance Cases</a></p>
 </li>
-                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.7.2.2">
-                    <p id="section-toc.1-1.2.2.7.2.2.1"><a href="#section-2.7.2" class="auto internal xref">2.7.2</a>.  <a href="#name-reference-evidence-boundary" class="internal xref">Reference Evidence Boundary</a></p>
-</li>
                 </ul>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2.2.8">
@@ -1446,25 +1445,33 @@ li > p:last-of-type:only-child {
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
-            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-implementation-status" class="internal xref">Implementation Status</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
-            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
-            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-future-work" class="internal xref">Future Work</a></p>
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
-            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-future-work" class="internal xref">Future Work</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
-            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-changes-since-07" class="internal xref">Changes since -07</a></p>
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
-            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-changes-since-07" class="internal xref">Changes since -07</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
-            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.1">
+                <p id="section-toc.1-1.11.2.1.1"><a href="#section-11.1" class="auto internal xref">11.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
+                <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
             <p id="section-toc.1-1.12.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-relationship-to-existing-me" class="internal xref">Relationship to Existing Mechanisms</a></p>
@@ -1585,6 +1592,42 @@ li > p:last-of-type:only-child {
 </dd>
         <dd class="break"></dd>
 </dl>
+<p id="section-1.3-2">The outcome terms VERIFIED, ACCEPTED, SATISFIED, and UNSATISFIED
+        are those of the Authorization Evidence Chain specification
+        <span>[<a href="#AEC" class="cite xref">AEC</a>]</span>. They are restated here so that this document
+        does not depend on that specification:<a href="#section-1.3-2" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-1.3-3">
+          <dt id="section-1.3-3.1">VERIFIED:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.3-3.2">An evidence artifact's cryptographic and structural checks
+          passed under its native format. VERIFIED says nothing about whether
+          the relying party trusts the key, issuer, or policy behind the
+          artifact.<a href="#section-1.3-3.2" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.3-3.3">ACCEPTED:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.3-3.4">A VERIFIED artifact also meets the relying party's pinned trust
+          inputs for its evidence type, such as trust anchors or key
+          directory, issuer, audience, key class, native policy, and validity
+          at the evaluation time.<a href="#section-1.3-3.4" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.3-3.5">SATISFIED:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.3-3.6">Every evidence requirement of a challenge was met at the
+          evaluation time, under the relying party's authenticated live policy
+          (<a href="#core-binding" class="auto internal xref">Section 2.2</a>), by evidence that is VERIFIED,
+          ACCEPTED, and bound to the exact action. SATISFIED concerns evidence
+          sufficiency only. Whether the relying party then authorizes the
+          action is a separate local decision outside SATISFIED.<a href="#section-1.3-3.6" class="pilcrow">¶</a>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-1.3-3.7">UNSATISFIED:</dt>
+          <dd style="margin-left: 1.5em" id="section-1.3-3.8">Every evaluation result other than SATISFIED, including an
+          evaluation that could not complete. Reason identifiers say why.<a href="#section-1.3-3.8" class="pilcrow">¶</a>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-1.3-4">The relying party's evaluation time in this document is the
+        verification time of <span>[<a href="#AEC" class="cite xref">AEC</a>]</span>.<a href="#section-1.3-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1603,18 +1646,24 @@ li > p:last-of-type:only-child {
       properties.<a href="#section-2-1" class="pilcrow">¶</a></p>
 <p id="section-2-2">The JSON format defined by <span>[<a href="#RFC8259" class="cite xref">RFC8259</a>]</span> is the reference
       serialization of the core model. A non-JSON binding MUST define an
-      unambiguous mapping to the same members and value types.<a href="#section-2-2" class="pilcrow">¶</a></p>
+      unambiguous mapping to the same members and value types. Example lines
+      longer than 69 characters are folded as specified in
+      <span>[<a href="#RFC8792" class="cite xref">RFC8792</a>]</span>.<a href="#section-2-2" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-2-3">
 <pre>
+NOTE: '\' line wrapping per RFC 8792
+
 {
   "@version": "AE-CHALLENGE-v1",
   "challenge_id": "7a3120d1-65b4-4d1a-85d4-9128adf76b41",
   "nonce": "ABEiM0RVZneImaq7zN3u_w",
-  "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+      aaaaaaaaaaaaaaaaaaaaaaa",
   "action_profile": "https://example.net/action/payment-v3",
   "audience": "https://gateway-a.example",
   "policy_id": "https://gateway-b.example/policies/high-risk-v4",
-  "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\
+      bbbbbbbbbbbbbbbbbbbbbbb",
   "required_evidence": [
     {
       "requirement_id": "human-approval",
@@ -1732,17 +1781,12 @@ li > p:last-of-type:only-child {
          use those pinned procedures. A transport reserialization, member-order
          change, non-JSON mapping, or mutable local configuration MUST NOT
          silently switch digest or canonicalization procedures.<a href="#section-2.2-5" class="pilcrow">¶</a></p>
-<p id="section-2.2-6">The reference HTTP helpers consume already decoded objects. They
-         begin only after the carrier has applied a bounded raw-message parser
-         and duplicate-member detection. Those helpers are not evidence that an
-         ordinary JSON parser supplied by a generic HTTP framework satisfies
-         these requirements.<a href="#section-2.2-6" class="pilcrow">¶</a></p>
-<p id="section-2.2-7">Self-describing issuance can avoid retaining one record for every
+<p id="section-2.2-6">Self-describing issuance can avoid retaining one record for every
         unanswered challenge. It does not remove single-use state. On the
          first returned presentation, the relying party still MUST claim the
          nonce through the compound authoritative transition in
-         <a href="#state-bounds" class="auto internal xref">Section 2.7</a> before evidence evaluation.<a href="#section-2.2-7" class="pilcrow">¶</a></p>
-<p id="section-2.2-8"><code>action_digest</code> MUST be computed by the relying party from
+         <a href="#state-bounds" class="auto internal xref">Section 2.7</a> before evidence evaluation.<a href="#section-2.2-6" class="pilcrow">¶</a></p>
+<p id="section-2.2-7"><code>action_digest</code> MUST be computed by the relying party from
         the exact action it would admit. It MUST NOT be copied from the
         presenter or from presented evidence. <code>action_profile</code> MUST be
         present, MUST be an absolute URI as defined by
@@ -1752,15 +1796,15 @@ li > p:last-of-type:only-child {
         profile. If two parties cannot
         establish the same material action under an understood profile, the
         challenge cannot repair the disagreement and the relying party MUST
-        refuse automated admission.<a href="#section-2.2-8" class="pilcrow">¶</a></p>
-<p id="section-2.2-9">The security action binding is the ordered pair
+        refuse automated admission.<a href="#section-2.2-7" class="pilcrow">¶</a></p>
+<p id="section-2.2-8">The security action binding is the ordered pair
          (<code>action_profile</code>, <code>action_digest</code>), not the digest
          alone. Every evidence correlation, continuation, comparison, and
          downstream admission profile that relies on this challenge MUST
          authenticate and compare both members. An implementation MUST NOT
          accept evidence merely because a digest produced under a different
-         action profile has the same octets.<a href="#section-2.2-9" class="pilcrow">¶</a></p>
-<p id="section-2.2-10">The relying party MUST pin the semantics of the selected
+         action profile has the same octets.<a href="#section-2.2-8" class="pilcrow">¶</a></p>
+<p id="section-2.2-9">The relying party MUST pin the semantics of the selected
          <code>action_profile</code> for the lifetime of the challenge. It MUST NOT
          fetch mutable profile content at evaluation time and silently apply
          different canonicalization or material-field rules under the same
@@ -1771,8 +1815,8 @@ li > p:last-of-type:only-child {
          resource selection, the provider request, or an externally observable
          effect. If a profile omits such a material field, it MUST NOT describe
          its digest as an exact-action binding, and a relying party that requires
-         exact-action binding MUST refuse to use it.<a href="#section-2.2-10" class="pilcrow">¶</a></p>
-<p id="section-2.2-11"><code>audience</code> identifies the component that is expected to
+         exact-action binding MUST refuse to use it.<a href="#section-2.2-9" class="pilcrow">¶</a></p>
+<p id="section-2.2-10"><code>audience</code> identifies the component that is expected to
          answer the challenge. A binding or authenticated envelope MUST let the
          presenter establish the challenge issuer and its own effective
          audience. Before following an obtain hint or disclosing evidence, the
@@ -1790,13 +1834,13 @@ li > p:last-of-type:only-child {
          update MUST NOT reinterpret the same audience string between issuance
          and return. If the pinned mapping is unavailable or has changed, the
          relying party MUST refuse the old presentation and MAY issue a fresh
-         challenge under the new mapping when policy permits.<a href="#section-2.2-11" class="pilcrow">¶</a></p>
-<p id="section-2.2-12"><code>policy_id</code> and <code>policy_digest</code> identify the local
+         challenge under the new mapping when policy permits.<a href="#section-2.2-10" class="pilcrow">¶</a></p>
+<p id="section-2.2-11"><code>policy_id</code> and <code>policy_digest</code> identify the local
         policy state from which the requirements were derived. They do not
         transfer policy authority to the presenter. At evaluation time the
         relying party MUST use its authenticated live policy and MUST NOT use
-        a policy supplied in the response.<a href="#section-2.2-12" class="pilcrow">¶</a></p>
-<p id="section-2.2-13">Delegation, translation, or task rewriting does not preserve one
+        a policy supplied in the response.<a href="#section-2.2-11" class="pilcrow">¶</a></p>
+<p id="section-2.2-12">Delegation, translation, or task rewriting does not preserve one
         action binding across hops. Each receiving relying party MUST
         re-evaluate the action it is asked to admit under its own policy and
         action profile. If that relying party issues a challenge, it MUST
@@ -1805,7 +1849,7 @@ li > p:last-of-type:only-child {
         as evidence or context, but it MUST NOT substitute for the receiving
         relying party's binding to a rewritten action. A chain of per-hop
         records does not by itself prove that the actions at different hops
-        are semantically equivalent.<a href="#section-2.2-13" class="pilcrow">¶</a></p>
+        are semantically equivalent.<a href="#section-2.2-12" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="core-requirements">
@@ -1894,9 +1938,9 @@ li > p:last-of-type:only-child {
 <p id="section-2.3-7"><code>obtain_hints</code> are untrusted routing hints. Following a
          hint, authenticating to its URI, or receiving an "approved" response
          confers no authority at the relying party. Evidence obtained through
-         a hint remains subject to native verification, exact-action matching,
-         freshness and status checks, policy evaluation, and one-time
-         consumption. A presenter MUST NOT send credentials or evidence to a
+         a hint remains subject to native verification, relying-party
+         acceptance, exact-action matching, freshness and status checks,
+         policy evaluation, and one-time consumption. A presenter MUST NOT send credentials or evidence to a
          hinted endpoint unless its own policy independently authorizes the
          endpoint, scheme, redirect behavior, and disclosed material. Each hint
          <code>requirement_id</code> MUST identify an entry in the same challenge.
@@ -1977,41 +2021,57 @@ li > p:last-of-type:only-child {
         MUST be the relying party's authoritative evaluation snapshot time,
         obtained from the relying party's authoritative time source and not
         from the presenter.<a href="#section-2.4-6" class="pilcrow">¶</a></p>
-<p id="section-2.4-7">The closed <code>outcome</code> values are
-        <code>evidence_sufficient</code>, <code>evidence_insufficient</code>, and
-        <code>evaluation_indeterminate</code>. <code>evidence_sufficient</code> means
-        only that the evidence requirements in the predecessor challenge were
-        satisfied under the bound policy and evaluation profiles at
+<p id="section-2.4-7">The closed <code>outcome</code> values are <code>SATISFIED</code> and
+        <code>UNSATISFIED</code>, with the meanings in
+        <a href="#terms" class="auto internal xref">Section 1.3</a>. <code>SATISFIED</code> means only that the
+        evidence requirements in the predecessor challenge were satisfied
+        under the bound policy and evaluation profiles at
         <code>evaluated_at</code>. It is not authorization, admission, execution,
-        settlement, or proof that an external fact remains true.
-        <code>evidence_insufficient</code> means evaluation completed and at least
-        one bound requirement was not satisfied.
-        <code>evaluation_indeterminate</code> means the relying party cannot
-        establish either result and MUST NOT relabel uncertainty as refusal or
-        success.<a href="#section-2.4-7" class="pilcrow">¶</a></p>
+        settlement, or proof that an external fact remains true. An
+        <code>UNSATISFIED</code> artifact records either a completed evaluation in
+        which at least one bound requirement was not satisfied, or an
+        evaluation that did not complete; its <code>reason_ids</code> say which.
+        A recipient MUST NOT read an evaluation that did not complete as a
+        completed refusal or as success.<a href="#section-2.4-7" class="pilcrow">¶</a></p>
 <p id="section-2.4-8"><code>reason_ids</code> MUST contain unique values from the following
-        closed set: <code>missing_evidence</code>, <code>stale_evidence</code>,
-        <code>unverifiable_evidence</code>, <code>status_unsatisfied</code>,
-        <code>policy_unsatisfied</code>, <code>evaluation_unavailable</code>, and
-        <code>evaluation_state_uncertain</code>. For
-        <code>evidence_sufficient</code>, the array MUST be empty. For
-        <code>evidence_insufficient</code>, it MUST contain one or more of the
-        first five values. For <code>evaluation_indeterminate</code>, it MUST
-        contain one or both of the final two values.<a href="#section-2.4-8" class="pilcrow">¶</a></p>
-<p id="section-2.4-9"><code>successor_challenge_digest</code> MAY appear only with
-        <code>evidence_insufficient</code> and only after the successor challenge
+        closed set. The completed-evaluation reasons are
+        <code>missing_evidence</code> (no artifact was presented for a required
+        evidence type), <code>evidence_not_verified</code> (the checks for a
+        presented artifact ran and it is not VERIFIED),
+        <code>evidence_not_evaluated</code> (VERIFIED could not be evaluated for a
+        presented artifact, for example because its verification key could not
+        be resolved; this is not a verification failure),
+        <code>evidence_not_accepted</code> (a presented artifact
+        is VERIFIED and not ACCEPTED), <code>action_not_matched</code> (a VERIFIED
+        and ACCEPTED artifact is not bound to the exact action under the
+        pinned action profile), <code>stale_evidence</code>,
+        <code>status_unsatisfied</code>, and <code>policy_unsatisfied</code> (a
+        policy-bound evidence requirement named by the challenge, such as a
+        <code>proof_predicates</code> value, was not met by evidence that is
+        otherwise VERIFIED, ACCEPTED, and bound to the exact action). A
+        refusal by the relying party's local authorization decision is
+        outside SATISFIED and is not reported with these reasons. The
+        incomplete-evaluation reasons are <code>evaluation_unavailable</code> and
+        <code>evaluation_state_uncertain</code>. For <code>SATISFIED</code>, the array
+        MUST be empty. For <code>UNSATISFIED</code>, it MUST contain either one or
+        more completed-evaluation reasons or one or both incomplete-evaluation
+        reasons, and MUST NOT mix the two kinds.<a href="#section-2.4-8" class="pilcrow">¶</a></p>
+<p id="section-2.4-9"><code>successor_challenge_digest</code> MAY appear only with an
+        <code>UNSATISFIED</code> outcome whose <code>reason_ids</code> are
+        completed-evaluation reasons, and only after the successor challenge
         has been authoritatively registered or its valid self-describing body
         has been constructed. The successor remains a fresh refusal under the
         live action and policy checks in <a href="#core-lifecycle" class="auto internal xref">Section 2.6</a>. The
         digest does not transfer satisfied evidence, authorize the action, or
-        promise another attempt. <code>evidence_sufficient</code> and
-        <code>evaluation_indeterminate</code> MUST NOT carry a successor digest.
+        promise another attempt. A <code>SATISFIED</code> outcome, and an
+        <code>UNSATISFIED</code> outcome that records an evaluation that did not
+        complete, MUST NOT carry a successor digest.
         Uncertain evaluation requires a separately authorized recovery path;
         it is not made safe to retry by this artifact.<a href="#section-2.4-9" class="pilcrow">¶</a></p>
 <p id="section-2.4-10">An artifact's action profile and digest and policy identifier and
         digest MUST equal the predecessor challenge bindings. If authenticated
-        live policy changes before evaluation, this optional profile requires
-        the relying party to start a fresh challenge under the changed policy.
+        live policy changes before evaluation, the relying party MUST start a
+        fresh challenge under the changed policy.
         Any resulting evaluation receives a distinct lineage artifact. If an
         action is transformed or any material action field changes, the relying
         party MUST likewise start a fresh challenge before evaluation. The
@@ -2080,8 +2140,8 @@ li > p:last-of-type:only-child {
          issuer and presenter-to-audience binding; validation of the registered
          or self-describing body; current exact-action agreement; authoritative
          routing; one atomic expiry-check, nonce-claim, and
-         capacity-reservation transition; native evidence verification; and
-         local policy evaluation.
+         capacity-reservation transition; native evidence verification and
+         acceptance; and local policy evaluation.
          Before that transition, the relying party refuses without claiming a
          nonce or reserving refusal-path capacity when bounded syntax or
          structure fails, the issuer or returning presenter cannot be
@@ -2133,8 +2193,9 @@ li > p:last-of-type:only-child {
         already claimed is a replay result. Failure, timeout, partition, or an
         uncertain result while reaching the owner is temporary unavailability,
         not replay, and MUST NOT be reported as an already-claimed nonce.<a href="#section-2.6-5" class="pilcrow">¶</a></p>
-<p id="section-2.6-6">If evidence remains missing, stale, or unverifiable, the relying
-         party MAY issue a follow-up challenge. Before doing so, it MUST
+<p id="section-2.6-6">If evidence remains missing, stale, not VERIFIED, not ACCEPTED, or
+        not bound to the exact action, the relying party MAY issue a follow-up
+        challenge. Before doing so, it MUST
          rederive the current proposed action under its pinned action profile.
          If that digest no longer equals the consumed challenge digest, it MUST
          NOT issue a follow-up for the old action. A valid follow-up MUST use a fresh
@@ -2374,7 +2435,7 @@ li > p:last-of-type:only-child {
          fails closed.<a href="#section-2.7-12" class="pilcrow">¶</a></p>
 <p id="section-2.7-13">When a hard cap is binding for an unclaimed exact body, capacity
          handling controls the response
-        even if the supplied evidence is also missing, stale, or unverifiable.
+        even if the supplied evidence is also insufficient.
         The relying party MUST NOT perform native evidence verification or
         local policy evaluation, and MUST NOT return a follow-up challenge, a
         stateless list of remaining requirements, obtain hints, or any other
@@ -2470,54 +2531,6 @@ li > p:last-of-type:only-child {
             unexpired consumed nonce.<a href="#section-2.7.1-2.16" class="pilcrow">¶</a>
 </li>
           </ul>
-</section>
-</div>
-<div id="reference-evidence-boundary">
-<section id="section-2.7.2">
-          <h4 id="name-reference-evidence-boundary">
-<a href="#section-2.7.2" class="section-number selfRef">2.7.2. </a><a href="#name-reference-evidence-boundary" class="section-name selfRef">Reference Evidence Boundary</a>
-          </h4>
-<p id="section-2.7.2-1">The same-team TypeScript reference includes an owner state machine
-          and a PostgreSQL transaction backend for the stateful path above. The
-          owner store registers issuance with capacity before exposure, stores
-          the issuance debit, bucket limits, and authenticated presenter instead
-          of recomputing them from the audience, uses PostgreSQL transaction time
-          for expiry, evidence-freshness evaluation, and recovery, locks replay and
-          capacity rows, returns an opaque generation-bound reservation, and
-          atomically finalizes a terminal result or a fresh follow-up. Recovery
-          is deadline-gated, requires a constructor-pinned local authorizer, and
-          replaces the reservation generation so an old token cannot finalize.
-          The production evaluator accepts only the owner-store object created
-          by that factory; copied objects and caller-declared capability flags
-          are refused. Capacity-row validation does not assume that JavaScript
-          and PostgreSQL use the same collation. Caller-selected production
-          follow-up nonces are rejected before claim, and a local follow-up
-          construction failure triggers terminal finalization without exposing
-          replacement state. If that finalization is uncertain, the evaluator
-          returns unavailability rather than claiming terminal state.<a href="#section-2.7.2-1" class="pilcrow">¶</a></p>
-<p id="section-2.7.2-2">The reference owner rejects a challenge larger than 65536 UTF-8
-          octets, more than 64 evidence requirements or obtain hints, more than
-          16 presentation or per-requirement profile identifiers, or more than
-          32 proof-predicate or critical identifiers. It also rejects relative
-          security identifiers, duplicate requirement identifiers, unknown
-          nested core members, non-canonical durable nonces, and invalid retry
-          windows before allocating state. Local evidence-type tokens are mapped
-          to exact absolute URIs under <code>https://emiliaprotocol.ai/ns/</code> for
-          its experimental profile; consumers use the complete URI and do not
-          infer semantics from that prefix. If authenticated live policy changes,
-          the reference starts a fresh interaction rather than treating old
-          verification work as a continuation.<a href="#section-2.7.2-2" class="pilcrow">¶</a></p>
-<p id="section-2.7.2-3">Executable tests cover duplicate claim, capacity refusal without
-          nonce burn, authoritative expiry and freshness time, terminal release of unused capacity,
-          atomic follow-up creation, stale-worker fencing, and the PostgreSQL
-          transaction adapter. They also exercise profile-native verification
-          through the Model-to-Matter path using owner-supplied time. A separate
-          finite same-team harness checks 114
-          small scenarios and exposes unsafe mutations. Neither artifact is an
-          independent implementation, a deployment audit, a proof of PostgreSQL
-          isolation, or a mechanized refinement proof. Deployments remain
-          responsible for installing the schema, pinning the capacity policy,
-          isolating the owner role, and verifying the database configuration.<a href="#section-2.7.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2620,6 +2633,8 @@ li > p:last-of-type:only-child {
        collision do not by themselves establish that condition.<a href="#section-3-7" class="pilcrow">¶</a></p>
 <div class="lang-http sourcecode" id="section-3-8">
 <pre>
+NOTE: '\' line wrapping per RFC 8792
+
 HTTP/1.1 403 Forbidden
 Content-Type: application/problem+json
 Cache-Control: no-store
@@ -2635,11 +2650,13 @@ Retry-After: 30
     "@version": "AE-CHALLENGE-v1",
     "challenge_id": "7a3120d1-65b4-4d1a-85d4-9128adf76b41",
     "nonce": "ABEiM0RVZneImaq7zN3u_w",
-    "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "action_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\
+        aaaaaaaaaaaaaaaaaaaaaaaaa",
     "action_profile": "https://example.net/action/payment-v3",
     "audience": "https://agent.example",
     "policy_id": "https://resource.example/policies/high-risk-v4",
-    "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\
+        bbbbbbbbbbbbbbbbbbbbbbbbb",
     "required_evidence": [
       { "requirement_id": "human-approval",
         "type": "https://example.net/e/authorization-receipt",
@@ -2682,7 +2699,7 @@ Retry-After: 30
        expired challenge and can request a new interaction under its carrier.
        Retry-After does
       not carry the jitter value and does not change the challenge expiry,
-      authorize the action, promise capacity or acceptance, or make a retry
+      authorize the action, promise capacity or admission, or make a retry
       safe after an uncertain effect. If an intermediary changes the HTTP
       status from 403, a client MUST NOT process the response as this carrier
       merely because the body still contains the type URI.<a href="#section-3-11" class="pilcrow">¶</a></p>
@@ -2712,7 +2729,8 @@ Retry-After: 30
 <p id="section-4-1">Agent gateways can carry the transport-neutral challenge during
       federation or handoff. The receiving gateway is the relying party: it
       derives the exact action, applies its own trust anchors and policy, and
-      issues a challenge when evidence is missing, stale, or unverifiable.
+      issues a challenge when evidence is missing, stale, not VERIFIED, not
+      ACCEPTED, or not bound to the exact action.
       The sending gateway or agent can obtain evidence and return a new
       presentation using a DMSC-defined extension point or error carrier.<a href="#section-4-1" class="pilcrow">¶</a></p>
 <p id="section-4-2">If the receiving gateway's required next step is a native OAuth
@@ -2727,7 +2745,7 @@ Retry-After: 30
       the two actions are equivalent requires a separately defined mapping or
       transformation proof.<a href="#section-4-3" class="pilcrow">¶</a></p>
 <p id="section-4-4">When a receiving gateway refuses an action because required
-      authorization evidence is missing, stale, or unverifiable, it may
+      authorization evidence is insufficient, it may
       return a structured evidence challenge identifying the exact action,
       outstanding evidence requirements, applicable freshness or status
       constraints, and supported presentation profiles. The challenge does
@@ -2746,7 +2764,7 @@ Retry-After: 30
       solve that property
       separately. If the receiving gateway cannot establish the
       required exclusivity, its safe result is refusal or indeterminate, not
-      acceptance based on the challenge.<a href="#section-4-5" class="pilcrow">¶</a></p>
+      admission based on the challenge.<a href="#section-4-5" class="pilcrow">¶</a></p>
 <div id="dmsc-case">
 <section id="section-4.1">
         <h3 id="name-illustrative-gateway-case">
@@ -2756,8 +2774,8 @@ Retry-After: 30
         the exact action under its pinned action profile and refuses because a
         current approval artifact is missing. B returns an AE-CHALLENGE bound
         to B's action digest and local evidence requirement. A obtains and
-        presents the artifact. B verifies it under B's trust anchors, matches
-        it to the same action, and reevaluates B's policy. The case passes only
+        presents the artifact. B verifies it, accepts it under B's trust anchors, matches it to
+        the same action, and reevaluates B's policy. The case passes only
         if A never treats the challenge as authorization and B refuses an
         action-digest mismatch, stale status, replayed nonce, or unsupported
         presentation profile. This is an illustration, not a DMSC conformance
@@ -2772,26 +2790,107 @@ Retry-After: 30
 </div>
 </section>
 </div>
-<div id="security">
+<div id="implementation-status">
 <section id="section-5">
-      <h2 id="name-security-considerations">
-<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      <h2 id="name-implementation-status">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-implementation-status" class="section-name selfRef">Implementation Status</a>
       </h2>
-<p id="section-5-1"><strong>Challenge forgery and evidence exfiltration.</strong> A
+<p id="section-5-1">This section is to be removed before publishing as an RFC.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-2">This section describes the same-team reference implementation at the
+      time of posting, for reviewers. It follows the form of the
+      Implementation Status section described in <span>[<a href="#RFC7942" class="cite xref">RFC7942</a>]</span>.
+      That process covers IETF-stream drafts; this document is intended for
+      the Independent Submission Stream.<a href="#section-5-2" class="pilcrow">¶</a></p>
+<p id="section-5-3">The Apache-2.0 TypeScript reference mints a challenge from the
+      relying party's own action object and evidence policy. It computes
+      <code>action_digest</code> and <code>policy_digest</code> itself, derives
+      <code>required_evidence</code> from the policy's requirement expression
+      (for an OR, it requests the unsatisfied branch with fewer missing
+      evidence types), carries freshness bounds as <code>max_age_sec</code>,
+      current-status requirements as <code>status</code>, and profile and
+      proof-predicate constraints, and by default generates the nonce from 18
+      random octets. A follow-up challenge copies the action digest from the
+      original challenge and is refused if the policy digest has changed.<a href="#section-5-3" class="pilcrow">¶</a></p>
+<p id="section-5-4">On the stateful path, the reference requires a challenge store that
+      registers a challenge before it is returned and consumes the exact
+      registered body on the first evaluation attempt, before evidence
+      evaluation. In production mode it refuses a store that does not declare
+      durable storage, atomic registration, body binding, and permanent
+      consumption. The accompanying store registers by atomic
+      insert-if-absent and consumes by compare-and-set on the digest of the
+      registered body, so a presentation that alters any challenge member
+      cannot consume the original registration. An unknown challenge version,
+      an invalid nonce or digest, policy drift, a challenge that does not
+      advertise the supported presentation profile, an audience mismatch, and
+      expiry are refused before consumption; a presentation in an unsupported
+      format or bound to a different action is refused after consumption. A
+      follow-up challenge is registered before it is returned, and storage
+      errors propagate instead of becoming a verdict. A PostgreSQL backend
+      adapter implements the same store transitions.<a href="#section-5-4" class="pilcrow">¶</a></p>
+<p id="section-5-5">The HTTP helpers produce and parse the carrier of
+      <a href="#http-carrier" class="auto internal xref">Section 3</a>: status 403,
+      <code>application/problem+json</code>, Cache-Control no-store, and the
+      <code>ae-required</code> problem type. They operate on already decoded
+      objects and perform no raw-message parsing or duplicate-member
+      detection, so a carrier using them remains responsible for the parsing
+      requirements of <a href="#core-validation" class="auto internal xref">Section 2.5</a>.<a href="#section-5-5" class="pilcrow">¶</a></p>
+<p id="section-5-6">The reference is narrower than this document. Its store keys a
+      registration by challenge identifier and nonce within one relying
+      party, not by authenticated issuer identity and nonce as
+      <a href="#core-binding" class="auto internal xref">Section 2.2</a> requires. Its durable path accepts nonces
+      of 16 through 128 base64url characters, and its syntax check accepts
+      digests in either letter case, where <a href="#core-members" class="auto internal xref">Section 2.1</a> and
+      <a href="#core-binding" class="auto internal xref">Section 2.2</a> require 22 through 128 characters and
+      lowercase hexadecimal. It treats
+      <code>audience</code> as optional and compares it with a configured string;
+      it does not authenticate the challenge issuer or the returning
+      presenter. It does not rederive the current proposed action before the
+      claim: it compares the action digest in the presentation with the stored
+      challenge digest, after consumption. A follow-up challenge copies the
+      stored action digest, where <a href="#core-lifecycle" class="auto internal xref">Section 2.6</a> requires
+      rederiving it from the current proposed action. It does not
+      implement the capacity,
+      outstanding-state, and exhaustion requirements of
+      <a href="#state-bounds" class="auto internal xref">Section 2.7</a>, the retry timing of
+      <a href="#core-lifecycle" class="auto internal xref">Section 2.6</a>, self-describing issuance, or the
+      optional evaluation-lineage profile of
+      <a href="#evaluation-lineage-profile" class="auto internal xref">Section 2.4</a>.<a href="#section-5-6" class="pilcrow">¶</a></p>
+<p id="section-5-7">Executable tests cover single-use consumption, expiry, action-swap
+      and policy-drift refusal, follow-up derivation, the HTTP carrier, OAuth
+      non-substitution routing, the production store-capability check, one
+      successful registration among 100 concurrent attempts, and one admitted
+      presentation among concurrent presentations after a store restart,
+      including 64 concurrent presentations through the PostgreSQL adapter.
+      That adapter is exercised against an in-process emulation of its SQL
+      statements, not a live database. A bounded same-team model checks 17
+      lifecycle obligations, each with a mutation that produces a
+      counterexample: 11 over all 1,024 combinations of four storage
+      capabilities and six challenge bindings, and 6 over a single
+      configuration each. None
+      of this is an independent implementation, a deployment audit, a proof
+      of database isolation, or a refinement proof.<a href="#section-5-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security">
+<section id="section-6">
+      <h2 id="name-security-considerations">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<p id="section-6-1"><strong>Challenge forgery and evidence exfiltration.</strong> A
        forged challenge cannot authorize an action, but it can redirect a
        presenter, induce unnecessary approval work, or solicit sensitive
        evidence. Presenters authenticate the issuer and verify that they are the
        effective audience before following obtain hints or disclosing evidence.
        Relying parties authenticate the returning presenter against that same
        audience before claiming state. A bare JSON object copied outside its
-       authenticated carrier has no origin authenticity.<a href="#section-5-1" class="pilcrow">¶</a></p>
-<p id="section-5-2"><strong>Hint SSRF and credential forwarding.</strong> An authenticated
+       authenticated carrier has no origin authenticity.<a href="#section-6-1" class="pilcrow">¶</a></p>
+<p id="section-6-2"><strong>Hint SSRF and credential forwarding.</strong> An authenticated
        issuer can still be compromised or misconfigured, and a hint can target
        loopback, link-local, private, metadata-service, or attacker-controlled
        endpoints. Presenters apply independent URI, origin, redirect, credential,
        and evidence-disclosure policy. Challenge authentication never makes a
-       hinted endpoint trusted.<a href="#section-5-2" class="pilcrow">¶</a></p>
-<p id="section-5-3"><strong>Action substitution.</strong> The relying party computes the
+       hinted endpoint trusted.<a href="#section-6-2" class="pilcrow">¶</a></p>
+<p id="section-6-3"><strong>Action substitution.</strong> The relying party computes the
        challenge action digest from the action it would admit and recomputes the
        digest from the current proposed action before claiming the challenge. A
        stored challenge digest, a digest supplied by the presenter, or an
@@ -2799,16 +2898,16 @@ Retry-After: 30
        protocol. This pre-claim comparison is not the executor's final action
        fence. A later admission or effect boundary rederives or immutably binds
        the action again so a change after challenge evaluation cannot substitute
-       a different effect.<a href="#section-5-3" class="pilcrow">¶</a></p>
-<p id="section-5-4"><strong>Action-profile confusion and incomplete actions.</strong> The
+       a different effect.<a href="#section-6-3" class="pilcrow">¶</a></p>
+<p id="section-6-4"><strong>Action-profile confusion and incomplete actions.</strong> The
        action binding is the authenticated pair of action profile and digest.
        Comparing a digest without its profile permits evidence produced under
        different action semantics to be spliced into the challenge. A profile
        that omits a beneficiary, resource, amount, provider parameter, or other
        field material to authorization or effect can also reproduce a digest
        while changing the real action. Profiles therefore pin their semantics,
-       cover every material field, and travel with every digest comparison.<a href="#section-5-4" class="pilcrow">¶</a></p>
-<p id="section-5-5"><strong>Replay and state exhaustion.</strong> Stateful issuance binds
+       cover every material field, and travel with every digest comparison.<a href="#section-6-4" class="pilcrow">¶</a></p>
+<p id="section-6-5"><strong>Replay and state exhaustion.</strong> Stateful issuance binds
       the complete body before exposure; self-describing issuance defers
       storage but still requires an atomic replay claim before evidence
        evaluation. The owner claims the issuer-and-nonce key and reserves all
@@ -2823,8 +2922,8 @@ Retry-After: 30
        evidence-signature verification and evidence-status work, so those tasks
        do not run after the state budget is exhausted. Envelope and presenter
        authentication that occur before the owner transition remain protected
-       only by the separate pre-owner anti-abuse budget.<a href="#section-5-5" class="pilcrow">¶</a></p>
-<p id="section-5-6"><strong>Targeted attempt burning.</strong> The claim-before-evaluation
+       only by the separate pre-owner anti-abuse budget.<a href="#section-6-5" class="pilcrow">¶</a></p>
+<p id="section-6-6"><strong>Targeted attempt burning.</strong> The claim-before-evaluation
        order means a structurally valid, exact-action presentation spends the
        challenge even when its evidence is insufficient. Authenticating the
        returning presenter against the effective audience before claim prevents
@@ -2838,8 +2937,8 @@ Retry-After: 30
        presentation, not to independently authorized initial challenges, and
        expiry does not silently refund it. This availability failure does not make the consumed nonce
        reusable and MUST NOT be reported as replay by the party whose first
-       claim succeeded.<a href="#section-5-6" class="pilcrow">¶</a></p>
-<p id="section-5-7"><strong>Replica consistency.</strong> Per-process replay caches permit
+       claim succeeded.<a href="#section-6-6" class="pilcrow">¶</a></p>
+<p id="section-6-7"><strong>Replica consistency.</strong> Per-process replay caches permit
       two verifier replicas to accept the same nonce. Verifiers for one issuer
       need one atomic replay domain or an exclusive deterministic shard.
       During partition or store failure they refuse rather than create local
@@ -2847,16 +2946,16 @@ Retry-After: 30
        result is replay; routing failure is unavailability and is not relabeled
        as attacker replay. An uncertain owner response does not prove that the
        transition failed to commit; callers retain the unavailable result and do
-       not create local replacement state.<a href="#section-5-7" class="pilcrow">¶</a></p>
-<p id="section-5-8"><strong>Parser and pre-claim work amplification.</strong> State caps
+       not create local replacement state.<a href="#section-6-7" class="pilcrow">¶</a></p>
+<p id="section-6-8"><strong>Parser and pre-claim work amplification.</strong> State caps
        apply only at the owner-side transition. They do not protect an unbounded
        JSON parser, duplicate-member ambiguity, canonicalization, envelope
        verification, action derivation, or an initial evidence evaluation used
        to decide whether to issue a challenge. Finite pre-cryptographic limits,
        duplicate-member refusal, and a separate pre-owner computation budget are
        therefore independent requirements. A known-exhausted replay-state bound
-       is handled before starting optional native verification.<a href="#section-5-8" class="pilcrow">¶</a></p>
-<p id="section-5-9"><strong>Retry synchronization and load amplification.</strong> A
+       is handled before starting optional native verification.<a href="#section-6-8" class="pilcrow">¶</a></p>
+<p id="section-6-9"><strong>Retry synchronization and load amplification.</strong> A
       precise challenge tells a presenter how to correct a request, so a
       population receiving similar refusals can retry in a synchronized burst.
       An issuer under pressure SHOULD combine recipient-specific retry timing,
@@ -2865,8 +2964,8 @@ Retry-After: 30
       control even when a challenge supplies a lower bound. Timing guidance
       paces only a new evidence presentation and MUST NOT be interpreted as
       evidence satisfaction, authorization, or a promise that capacity or
-       admission will exist after <code>not_before</code>.<a href="#section-5-9" class="pilcrow">¶</a></p>
-<p id="section-5-10"><strong>Information disclosure.</strong> Evidence requirements,
+       admission will exist after <code>not_before</code>.<a href="#section-6-9" class="pilcrow">¶</a></p>
+<p id="section-6-10"><strong>Information disclosure.</strong> Evidence requirements,
       policy identifiers, action profiles, and obtain hints can reveal
       sensitive policy structure. A relying party SHOULD disclose only the
       minimum information needed for remediation. The HTTP carrier requires
@@ -2881,15 +2980,15 @@ Retry-After: 30
        routing information, the binding or authenticated envelope MUST also
        provide confidentiality appropriate to the deployment. Digests do not
        make low-entropy values secret: equality tests and dictionary attacks can
-       reveal guessed actions, policies, or requirements.<a href="#section-5-10" class="pilcrow">¶</a></p>
-<p id="section-5-11"><strong>Stale facts and uncertain effects.</strong> A satisfied
+       reveal guessed actions, policies, or requirements.<a href="#section-6-10" class="pilcrow">¶</a></p>
+<p id="section-6-11"><strong>Stale facts and uncertain effects.</strong> A satisfied
        challenge means only that the relying party concluded, under its live
        local policy at evaluation time, that the evidence requirement was met.
        It does not prove that external facts remain
       true, that an action executed, or that an uncertain action is safe to
       retry. Status rechecking, execution custody, effect observation, and
-      reconciliation remain separate controls.<a href="#section-5-11" class="pilcrow">¶</a></p>
-<p id="section-5-12"><strong>Lineage rewriting and semantic substitution.</strong> An
+      reconciliation remain separate controls.<a href="#section-6-11" class="pilcrow">¶</a></p>
+<p id="section-6-12"><strong>Lineage rewriting and semantic substitution.</strong> An
       attacker can present a later sufficient evaluation as if it erased an
       earlier refusal, splice an evaluation across actions or policies, or
       claim that a lineage artifact authorizes execution. The optional
@@ -2897,82 +2996,88 @@ Retry-After: 30
       evaluation semantics, and relying-party time inside one authenticated
       artifact. A recipient that retains authenticated artifacts can
       distinguish them as separate issuer statements and rejects unknown
-      outcomes, invalid reason combinations, successor links on sufficient or
-      indeterminate results, and any mismatch in the bound digests. The profile
+      outcomes, invalid reason combinations, successor links on SATISFIED
+      results or on evaluations that did not complete, and any mismatch in
+      the bound digests. The profile
       still proves only the authenticated issuer's evaluation statement. It
       does not prove challenge consumption, ordering, completeness,
-      non-omission, or that source evidence was complete or true.<a href="#section-5-12" class="pilcrow">¶</a></p>
-<p id="section-5-13"><strong>Gateway split brain.</strong> An authenticated challenge from
+      non-omission, or that source evidence was complete or true.<a href="#section-6-12" class="pilcrow">¶</a></p>
+<p id="section-6-13"><strong>Gateway split brain.</strong> An authenticated challenge from
       a receiving gateway does not transfer a single-use authorization or its
       consumption ledger. Implementations MUST NOT claim cross-gateway
       double-admission prevention merely because both gateways implement this
       challenge. A separate conserved-admission protocol MAY transfer or fence
       admission ownership, but AE-CHALLENGE neither defines nor implies that
-      protocol.<a href="#section-5-13" class="pilcrow">¶</a></p>
+      protocol.<a href="#section-6-13" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="iana">
-<section id="section-6">
+<section id="section-7">
       <h2 id="name-iana-considerations">
-<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
       </h2>
-<p id="section-6-1">IANA is requested to add the following entry to the "HTTP Problem
+<p id="section-7-1">IANA is requested to add the following entry to the "HTTP Problem
       Types" registry established by <span>[<a href="#RFC9457" class="cite xref">RFC9457</a>]</span>. That registry
       uses the Specification Required policy defined by
       <span>[<a href="#RFC8126" class="cite xref">RFC8126</a>]</span> and therefore requires approval by a designated
-      expert; this request does not require IETF Review or Standards Action.<a href="#section-6-1" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-6-2">
-        <dt id="section-6-2.1">Type URI:</dt>
-        <dd style="margin-left: 1.5em" id="section-6-2.2">https://iana.org/assignments/http-problem-types#ae-required<a href="#section-6-2.2" class="pilcrow">¶</a>
+      expert; this request does not require IETF Review or Standards Action.<a href="#section-7-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-7-2">
+        <dt id="section-7-2.1">Type URI:</dt>
+        <dd style="margin-left: 1.5em" id="section-7-2.2">https://iana.org/assignments/http-problem-types#ae-required<a href="#section-7-2.2" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
-<dt id="section-6-2.3">Title:</dt>
-        <dd style="margin-left: 1.5em" id="section-6-2.4">Authorization Evidence Required<a href="#section-6-2.4" class="pilcrow">¶</a>
+<dt id="section-7-2.3">Title:</dt>
+        <dd style="margin-left: 1.5em" id="section-7-2.4">Authorization Evidence Required<a href="#section-7-2.4" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
-<dt id="section-6-2.5">Recommended HTTP status code:</dt>
-        <dd style="margin-left: 1.5em" id="section-6-2.6">403<a href="#section-6-2.6" class="pilcrow">¶</a>
+<dt id="section-7-2.5">Recommended HTTP status code:</dt>
+        <dd style="margin-left: 1.5em" id="section-7-2.6">403<a href="#section-7-2.6" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
-<dt id="section-6-2.7">Reference:</dt>
-        <dd style="margin-left: 1.5em" id="section-6-2.8">This document.<a href="#section-6-2.8" class="pilcrow">¶</a>
+<dt id="section-7-2.7">Reference:</dt>
+        <dd style="margin-left: 1.5em" id="section-7-2.8">This document.<a href="#section-7-2.8" class="pilcrow">¶</a>
 </dd>
       <dd class="break"></dd>
 </dl>
-<p id="section-6-3">The HTTP carrier reuses the registered
+<p id="section-7-3">The type is not specific to one application or deployment. Any HTTP
+      API that refuses a request because authorization evidence for the exact
+      requested action is missing or insufficient can use it, together with
+      the transport-neutral challenge defined in <a href="#core" class="auto internal xref">Section 2</a>, which
+      does not depend on any particular evidence format.<a href="#section-7-3" class="pilcrow">¶</a></p>
+<p id="section-7-4">The HTTP carrier reuses the registered
       <code>application/problem+json</code> media type. Non-HTTP bindings define
-      their own carriage without changing the core data model.<a href="#section-6-3" class="pilcrow">¶</a></p>
+      their own carriage without changing the core data model.<a href="#section-7-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="future-work">
-<section id="section-7">
+<section id="section-8">
       <h2 id="name-future-work">
-<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-future-work" class="section-name selfRef">Future Work</a>
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-future-work" class="section-name selfRef">Future Work</a>
       </h2>
-<p id="section-7-1">The following transport profiles and compositions are outside
+<p id="section-8-1">The following transport profiles and compositions are outside
        AE-CHALLENGE-v1. They are not required to implement the core data model
-       or the HTTP challenge-response carrier:<a href="#section-7-1" class="pilcrow">¶</a></p>
+       or the HTTP challenge-response carrier:<a href="#section-8-1" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-7-2.1">Agent2Agent and AgentProto profiles can define carriers that
+<li class="normal" id="section-8-2.1">Agent2Agent and AgentProto profiles can define carriers that
         preserve the complete challenge, authenticated issuer, audience, retry
-        timing, and attempt correlation.<a href="#section-7-2.1" class="pilcrow">¶</a>
+        timing, and attempt correlation.<a href="#section-8-2.1" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-7-2.2">A DMSC gateway profile can define direct carriage or an
-        authenticated, digest-bound reference.<a href="#section-7-2.2" class="pilcrow">¶</a>
+        <li class="normal" id="section-8-2.2">A DMSC gateway profile can define direct carriage or an
+        authenticated, digest-bound reference.<a href="#section-8-2.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-7-2.3">An OAuth composition profile can define when both a native OAuth
+        <li class="normal" id="section-8-2.3">An OAuth composition profile can define when both a native OAuth
         transaction challenge and an AE-CHALLENGE are present and expose their
-        independent replay domains.<a href="#section-7-2.3" class="pilcrow">¶</a>
+        independent replay domains.<a href="#section-8-2.3" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
 </div>
 <div id="acknowledgments">
-<section id="section-8">
+<section id="section-9">
       <h2 id="name-acknowledgments">
-<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
       </h2>
-<p id="section-8-1">Thanks to Sumit P. Ahuja for identifying synchronized retry and load
+<p id="section-9-1">Thanks to Sumit P. Ahuja for identifying synchronized retry and load
       amplification as a consequence of precise challenge guidance, for
       correcting retry criticality and non-promissory timing semantics, and
       for identifying refusal-path state exhaustion, cap-before-verification
@@ -2986,141 +3091,194 @@ Retry-After: 30
       identifier semantics. Thanks to Christine Classy for publishing the
       missing-evidence and repair-history example in <span>[<a href="#CF538" class="cite xref">CF538</a>]</span>,
       which motivated making evaluation lineage explicit while keeping it
-      separate from authority and execution claims.<a href="#section-8-1" class="pilcrow">¶</a></p>
+      separate from authority and execution claims.<a href="#section-9-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="changes">
-<section id="section-9">
+<section id="section-10">
       <h2 id="name-changes-since-07">
-<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-changes-since-07" class="section-name selfRef">Changes since -07</a>
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-changes-since-07" class="section-name selfRef">Changes since -07</a>
       </h2>
+<p id="section-10-1">This section is to be removed before publishing as an RFC.<a href="#section-10-1" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-9-1.1">Adds the optional <code>AE-EVALUATION-LINEAGE-v1</code> profile for an
-         authenticated, data-minimized issuer statement about one claimed-
-         presentation evaluation.<a href="#section-9-1.1" class="pilcrow">¶</a>
+<li class="normal" id="section-10-2.1">Adds the optional <code>AE-EVALUATION-LINEAGE-v1</code> profile for an
+        authenticated, data-minimized issuer statement about one
+        claimed-presentation evaluation, bound to the predecessor challenge,
+        exact presentation, evaluation semantics, action, policy, presenter,
+        issuer, and relying-party evaluation time.<a href="#section-10-2.1" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.2">Binds lineage to the predecessor challenge, exact presentation,
-         evaluation semantics, action, policy, presenter, issuer, and
-         relying-party evaluation time.<a href="#section-9-1.2" class="pilcrow">¶</a>
+        <li class="normal" id="section-10-2.2">Uses the outcome terms of <span>[<a href="#AEC" class="cite xref">AEC</a>]</span> (VERIFIED,
+        ACCEPTED, SATISFIED, UNSATISFIED), restated in
+        <a href="#terms" class="auto internal xref">Section 1.3</a> so that this document has no normative
+        dependency on it. SATISFIED concerns evidence sufficiency only; the
+        relying party's local authorization decision is outside it. The
+        lineage outcomes are <code>SATISFIED</code> and <code>UNSATISFIED</code>;
+        closed reason identifiers keep a verification failure, a verification
+        that could not be evaluated, an acceptance refusal, an action
+        mismatch, an unmet policy-bound evidence requirement named by the
+        challenge (<code>policy_unsatisfied</code>), and an evaluation that did
+        not complete distinct; a successor link is allowed only after a
+        completed <code>UNSATISFIED</code> evaluation.<a href="#section-10-2.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.3">Defines closed sufficient, insufficient, and indeterminate
-         outcomes with strict reason combinations and optional successor
-         linkage only after an insufficient evaluation.<a href="#section-9-1.3" class="pilcrow">¶</a>
+        <li class="normal" id="section-10-2.3">Lets a recipient that retains authenticated artifacts distinguish
+        earlier and later statements across policy changes, corrected
+        presentations, and action transformations. It does not prove
+        challenge consumption, ordering, completeness, or non-omission, and
+        records neither authority nor execution.<a href="#section-10-2.3" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-9-1.4">Lets a recipient that retains authenticated artifacts distinguish
-         earlier and later statements across policy changes, corrected
-         presentations, and action transformations. It does not prove
-         challenge consumption, ordering, completeness, or non-omission, and
-         records neither authority nor execution.<a href="#section-9-1.4" class="pilcrow">¶</a>
+        <li class="normal" id="section-10-2.4">States that evidence obtained through an obtain hint also needs
+        relying-party acceptance, includes acceptance in the evaluation order,
+        and allows a follow-up challenge when evidence is not VERIFIED, not
+        ACCEPTED, or not bound to the exact action.<a href="#section-10-2.4" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-10-2.5">Moves the description of the reference implementation, including
+        the note on the reference HTTP helpers, into an Implementation Status
+        section that is removed on publication, and restates it to match the
+        reference as it stands, including where the reference is narrower
+        than this document. This withdraws the description in Section 2.6.2
+        of -07 of an owner store with capacity accounting, generation-bound
+        reservation tokens, and deadline-gated recovery, and of the
+        challenge-size and item-count limits it listed, none of which the
+        reference challenge module implements, and replaces that section's
+        scenario-harness count with the bounded-model description.<a href="#section-10-2.5" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-10-2.6">Rewords the informal description of insufficient evidence in the
+        Abstract, the state-bounds text, and the DMSC illustration so that it
+        covers evidence that is VERIFIED but not ACCEPTED or not bound to the
+        exact action, and uses "admission" rather than "acceptance" where the
+        text means admission.<a href="#section-10-2.6" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-10-2.7">Adds to the IANA Considerations why the <code>ae-required</code>
+        problem type is not specific to one application.<a href="#section-10-2.7" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-10-2.8">Replaces the reference to draft-klrc-aiagent-auth, which
+        draft-ietf-wimse-aims replaced, with draft-ietf-wimse-aims-00, and
+        updates the other references.<a href="#section-10-2.8" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-10-2.9">Folds example lines longer than 69 characters as specified in
+        <span>[<a href="#RFC8792" class="cite xref">RFC8792</a>]</span>.<a href="#section-10-2.9" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
 </div>
-<section id="section-10">
-      <h2 id="name-normative-references">
-<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+<section id="section-11">
+      <h2 id="name-references">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-references" class="section-name selfRef">References</a>
       </h2>
+<section id="section-11.1">
+        <h3 id="name-normative-references">
+<a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
 <dl class="references">
 <dt id="RFC2119">[RFC2119]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc2119">https://www.rfc-editor.org/info/rfc2119</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC3339">[RFC3339]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Klyne, G.</span> and <span class="refAuthor">C. Newman</span>, <span class="refTitle">"Date and Time on the Internet: Timestamps"</span>, <span class="seriesInfo">RFC 3339</span>, <span class="seriesInfo">DOI 10.17487/RFC3339</span>, <time datetime="2002-07" class="refDate">July 2002</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3339">https://www.rfc-editor.org/info/rfc3339</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC3986">[RFC3986]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Berners-Lee, T.</span>, <span class="refAuthor">Fielding, R. T.</span>, and <span class="refAuthor">L. Masinter</span>, <span class="refTitle">"Uniform Resource Identifier (URI): Generic Syntax"</span>, <span class="seriesInfo">STD 66</span>, <span class="seriesInfo">RFC 3986</span>, <span class="seriesInfo">DOI 10.17487/RFC3986</span>, <time datetime="2005-01" class="refDate">January 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc3986">https://www.rfc-editor.org/info/rfc3986</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC4086">[RFC4086]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Eastlake 3rd, D.</span>, <span class="refAuthor">Schiller, J.</span>, and <span class="refAuthor">S. Crocker</span>, <span class="refTitle">"Randomness Requirements for Security"</span>, <span class="seriesInfo">BCP 106</span>, <span class="seriesInfo">RFC 4086</span>, <span class="seriesInfo">DOI 10.17487/RFC4086</span>, <time datetime="2005-06" class="refDate">June 2005</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4086">https://www.rfc-editor.org/info/rfc4086</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC4648">[RFC4648]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Josefsson, S.</span>, <span class="refTitle">"The Base16, Base32, and Base64 Data Encodings"</span>, <span class="seriesInfo">RFC 4648</span>, <span class="seriesInfo">DOI 10.17487/RFC4648</span>, <time datetime="2006-10" class="refDate">October 2006</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc4648">https://www.rfc-editor.org/info/rfc4648</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC6234">[RFC6234]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Eastlake 3rd, D.</span> and <span class="refAuthor">T. Hansen</span>, <span class="refTitle">"US Secure Hash Algorithms (SHA and SHA-based HMAC and HKDF)"</span>, <span class="seriesInfo">RFC 6234</span>, <span class="seriesInfo">DOI 10.17487/RFC6234</span>, <time datetime="2011-05" class="refDate">May 2011</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6234">https://www.rfc-editor.org/info/rfc6234</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC6585">[RFC6585]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Nottingham, M.</span> and <span class="refAuthor">R. Fielding</span>, <span class="refTitle">"Additional HTTP Status Codes"</span>, <span class="seriesInfo">RFC 6585</span>, <span class="seriesInfo">DOI 10.17487/RFC6585</span>, <time datetime="2012-04" class="refDate">April 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc6585">https://www.rfc-editor.org/info/rfc6585</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8126">[RFC8126]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Cotton, M.</span>, <span class="refAuthor">Leiba, B.</span>, and <span class="refAuthor">T. Narten</span>, <span class="refTitle">"Guidelines for Writing an IANA Considerations Section in RFCs"</span>, <span class="seriesInfo">BCP 26</span>, <span class="seriesInfo">RFC 8126</span>, <span class="seriesInfo">DOI 10.17487/RFC8126</span>, <time datetime="2017-06" class="refDate">June 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8126">https://www.rfc-editor.org/info/rfc8126</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8174">[RFC8174]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8174">https://www.rfc-editor.org/info/rfc8174</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8259">[RFC8259]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Bray, T., Ed.</span>, <span class="refTitle">"The JavaScript Object Notation (JSON) Data Interchange Format"</span>, <span class="seriesInfo">STD 90</span>, <span class="seriesInfo">RFC 8259</span>, <span class="seriesInfo">DOI 10.17487/RFC8259</span>, <time datetime="2017-12" class="refDate">December 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8259">https://www.rfc-editor.org/info/rfc8259</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC9110">[RFC9110]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Fielding, R., Ed.</span>, <span class="refAuthor">Nottingham, M., Ed.</span>, and <span class="refAuthor">J. Reschke, Ed.</span>, <span class="refTitle">"HTTP Semantics"</span>, <span class="seriesInfo">STD 97</span>, <span class="seriesInfo">RFC 9110</span>, <span class="seriesInfo">DOI 10.17487/RFC9110</span>, <time datetime="2022-06" class="refDate">June 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9110">https://www.rfc-editor.org/info/rfc9110</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC9111">[RFC9111]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Fielding, R. T.</span>, <span class="refAuthor">Nottingham, M.</span>, and <span class="refAuthor">J. Reschke</span>, <span class="refTitle">"HTTP Caching"</span>, <span class="seriesInfo">RFC 9111</span>, <span class="seriesInfo">STD 98</span>, <span class="seriesInfo">DOI 10.17487/RFC9111</span>, <time datetime="2022-06" class="refDate">June 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9111">https://www.rfc-editor.org/info/rfc9111</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC9457">[RFC9457]</dt>
-    <dd>
+      <dd>
 <span class="refAuthor">Nottingham, M.</span>, <span class="refAuthor">Wilde, E.</span>, and <span class="refAuthor">S. Dalal</span>, <span class="refTitle">"Problem Details for HTTP APIs"</span>, <span class="seriesInfo">RFC 9457</span>, <span class="seriesInfo">DOI 10.17487/RFC9457</span>, <time datetime="2023-07" class="refDate">July 2023</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9457">https://www.rfc-editor.org/info/rfc9457</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 </dl>
 </section>
-<section id="section-11">
-      <h2 id="name-informative-references">
-<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
-      </h2>
+<section id="section-11.2">
+        <h3 id="name-informative-references">
+<a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
 <dl class="references">
 <dt id="AEB">[AEB]</dt>
-      <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"The Action Evidence Boundary for Consequential Agent Effects"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-action-evidence-boundary-03</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/</a>&gt;</span>. </dd>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"The Action Evidence Boundary for Consequential Agent Effects"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-action-evidence-boundary-07</span>, <time datetime="2026-09-25" class="refDate">25 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/">https://datatracker.ietf.org/doc/draft-schrock-action-evidence-boundary/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="AEC">[AEC]</dt>
-      <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-evidence-chain-05</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/</a>&gt;</span>. </dd>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Evidence Chains: Composing Heterogeneous Agent-Action Evidence (EP-AEC)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-evidence-chain-07</span>, <time datetime="2026-09-27" class="refDate">27 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="AIMS">[AIMS]</dt>
+        <dd>
+<span class="refAuthor">Kasselman, P.</span>, <span class="refAuthor">Lombardo, J.</span>, <span class="refAuthor">Rosomakho, Y.</span>, <span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Steele, N.</span>, and <span class="refAuthor">A. Parecki</span>, <span class="refTitle">"AI Identity Management System"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-wimse-aims-00</span>, <time datetime="2026-09-15" class="refDate">15 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-ietf-wimse-aims/">https://datatracker.ietf.org/doc/draft-ietf-wimse-aims/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="AUTH-RECEIPTS">[AUTH-RECEIPTS]</dt>
-      <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Receipts for High-Risk Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-receipts-11</span>, <time datetime="2026-08-09" class="refDate">9 August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/</a>&gt;</span>. </dd>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Authorization Receipts for High-Risk Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-authorization-receipts-13</span>, <time datetime="2026-09-11" class="refDate">11 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="BCR">[BCR]</dt>
-      <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Bounded Capability Receipts and Durable Spend Control for Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-bounded-capability-receipts-03</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/</a>&gt;</span>. </dd>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"Bounded Capability Receipts and Durable Spend Control for Agent Actions"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-ep-bounded-capability-receipts-06</span>, <time datetime="2026-09-09" class="refDate">9 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/">https://datatracker.ietf.org/doc/draft-schrock-ep-bounded-capability-receipts/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="CAID">[CAID]</dt>
-      <dd>
-<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"The Canonical Action Identifier (CAID)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-canonical-action-identifier-02</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/</a>&gt;</span>. </dd>
+        <dd>
+<span class="refAuthor">Schrock, I.</span>, <span class="refTitle">"The Canonical Action Identifier (CAID)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-schrock-canonical-action-identifier-03</span>, <time datetime="2026-09-26" class="refDate">26 September 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/">https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="CF538">[CF538]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Classy, C.</span>, <span class="refTitle">"538: Iman Schrock Missing-Evidence Receipt"</span>, <time datetime="2026-08-12" class="refDate">12 August 2026</time>, <span>&lt;<a href="https://www.kaggle.com/code/chrissyserb/538-iman-schrock-missing-evidence-receipt">https://www.kaggle.com/code/chrissyserb/538-iman-schrock-missing-evidence-receipt</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="DMSC-GAPS">[DMSC-GAPS]</dt>
-      <dd>
-<span class="refAuthor">Dunbar, L.</span>, <span class="refAuthor">Wang, Y.</span>, <span class="refAuthor">Schrock, I.</span>, and <span class="refAuthor">B. Liu</span>, <span class="refTitle">"Deployment Scenarios and Gap Analysis for AI Agent Gateway"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-dunbar-dmsc-gw-scenarios-gap-analysis-03</span>, <time datetime="2026-08" class="refDate">August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/">https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="KLRC">[KLRC]</dt>
-      <dd>
-<span class="refAuthor">Kasselman, P.</span>, <span class="refAuthor">Lombardo, J.</span>, <span class="refAuthor">Rosomakho, Y.</span>, <span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Steele, N.</span>, and <span class="refAuthor">A. Parecki</span>, <span class="refTitle">"AI Agent Authentication and Authorization"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-klrc-aiagent-auth-03</span>, <time datetime="2026-07-06" class="refDate">6 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-klrc-aiagent-auth/">https://datatracker.ietf.org/doc/draft-klrc-aiagent-auth/</a>&gt;</span>. </dd>
+        <dd>
+<span class="refAuthor">Dunbar, L.</span>, <span class="refAuthor">Wang, Y.</span>, <span class="refAuthor">Schrock, I.</span>, and <span class="refAuthor">B. Liu</span>, <span class="refTitle">"Deployment Scenarios and Gap Analysis for AI Agent Gateway"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-dunbar-dmsc-gw-scenarios-gap-analysis-04</span>, <time datetime="2026-08-14" class="refDate">14 August 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/">https://datatracker.ietf.org/doc/draft-dunbar-dmsc-gw-scenarios-gap-analysis/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="OAUTH-TXN-CHALLENGE">[OAUTH-TXN-CHALLENGE]</dt>
-      <dd>
+        <dd>
 <span class="refAuthor">Rosomakho, Y.</span>, <span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">McGuinness, K.</span>, and <span class="refAuthor">P. Kasselman</span>, <span class="refTitle">"OAuth Transaction Authorization Challenge"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-rosomakho-oauth-txn-challenge-00</span>, <time datetime="2026-06-25" class="refDate">25 June 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-rosomakho-oauth-txn-challenge/">https://datatracker.ietf.org/doc/draft-rosomakho-oauth-txn-challenge/</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="RFC7942">[RFC7942]</dt>
+        <dd>
+<span class="refAuthor">Sheffer, Y.</span> and <span class="refAuthor">A. Farrel</span>, <span class="refTitle">"Improving Awareness of Running Code: The Implementation Status Section"</span>, <span class="seriesInfo">BCP 205</span>, <span class="seriesInfo">RFC 7942</span>, <span class="seriesInfo">DOI 10.17487/RFC7942</span>, <time datetime="2016-07" class="refDate">July 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc7942">https://www.rfc-editor.org/info/rfc7942</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8792">[RFC8792]</dt>
+        <dd>
+<span class="refAuthor">Watsen, K.</span>, <span class="refAuthor">Auerswald, E.</span>, <span class="refAuthor">Farrel, A.</span>, and <span class="refAuthor">Q. Wu</span>, <span class="refTitle">"Handling Long Lines in Content of Internet-Drafts and RFCs"</span>, <span class="seriesInfo">RFC 8792</span>, <span class="seriesInfo">DOI 10.17487/RFC8792</span>, <time datetime="2020-06" class="refDate">June 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc8792">https://www.rfc-editor.org/info/rfc8792</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC9470">[RFC9470]</dt>
-    <dd>
+      <dd>
 <span class="refAuthor">Bertocci, V.</span> and <span class="refAuthor">B. Campbell</span>, <span class="refTitle">"OAuth 2.0 Step Up Authentication Challenge Protocol"</span>, <span class="seriesInfo">RFC 9470</span>, <span class="seriesInfo">DOI 10.17487/RFC9470</span>, <time datetime="2023-09" class="refDate">September 2023</time>, <span>&lt;<a href="https://www.rfc-editor.org/info/rfc9470">https://www.rfc-editor.org/info/rfc9470</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 </dl>
+</section>
 </section>
 <div id="related-work">
 <section id="appendix-A">
@@ -3138,11 +3296,16 @@ Retry-After: 30
 <p id="appendix-A-2">OAuth Transaction Authorization Challenge
       <span>[<a href="#OAUTH-TXN-CHALLENGE" class="cite xref">OAUTH-TXN-CHALLENGE</a>]</span> supplies the OAuth-native
       choreography and transaction-bound grant that this document explicitly
-      does not define. The KLRC architecture <span>[<a href="#KLRC" class="cite xref">KLRC</a>]</span> describes
-      broader agent authentication and authorization requirements, including
-      human-in-the-loop and externalized authorization patterns. Authorization
-      Receipts <span>[<a href="#AUTH-RECEIPTS" class="cite xref">AUTH-RECEIPTS</a>]</span> are one possible portable human-
-      evidence type that an AE-CHALLENGE can request; neither the receipt nor
+      does not define. The WIMSE working group document AI Identity Management System
+      <span>[<a href="#AIMS" class="cite xref">AIMS</a>]</span> describes how existing workload identity and OAuth
+      specifications apply to agent authentication and authorization. Its
+      human-in-the-loop guidance does not treat a user confirmation obtained
+      during task execution as authorization by itself; it requires that the
+      confirmation be bound to a verifiable authorization grant issued by the
+      authorization server, which makes the final decision (Section 10.7 of
+      <span>[<a href="#AIMS" class="cite xref">AIMS</a>]</span>). That is the native OAuth path that
+      <a href="#oauth-boundary" class="auto internal xref">Section 1.1</a> keeps separate from AE-CHALLENGE. Authorization
+      Receipts <span>[<a href="#AUTH-RECEIPTS" class="cite xref">AUTH-RECEIPTS</a>]</span> are one possible portable human-evidence type that an AE-CHALLENGE can request; neither the receipt nor
       AE-CHALLENGE replaces a native OAuth grant or a relying party's final
       policy decision.<a href="#appendix-A-2" class="pilcrow">¶</a></p>
 </section>
