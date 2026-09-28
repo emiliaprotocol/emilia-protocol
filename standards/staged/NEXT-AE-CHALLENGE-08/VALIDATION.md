@@ -90,10 +90,13 @@ regenerated and the checks below re-run on that date.
   and `npm run check:llm-context`: PASS.
 - With the pinned TLC jar (SHA-256 `936a2620...`): `npm run
   check:formal-traces` PASS and `npm run check:security-case` OK (35
-  executable claims, 264 hashed evidence files, execution passed), after this
-  branch re-pinned the scenario conformance record for the `package.json`
-  change and re-emitted the security case. `npm run check:proof-stats` was
-  not re-run.
+  executable claims, 264 hashed evidence files, execution passed). On
+  2026-09-28 this branch merged `feat/verify-aec-07-evaluator` and origin/main
+  `2d8bde58c`, and its derived evidence was regenerated from main's files
+  with the repository's writers; the commands and results are in
+  `../NEXT-AEC-07/VALIDATION.md` ("Merged branch"), and both checks above
+  were re-run on the merged tree. `npm run check:proof-stats` was not
+  re-run.
 
 ## Sources checked for the new text
 

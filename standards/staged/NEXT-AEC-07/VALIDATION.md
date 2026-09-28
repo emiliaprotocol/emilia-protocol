@@ -5,7 +5,10 @@ Prepared on 2026-09-27 from `standards/posted/draft-schrock-ep-authorization-evi
 the value `../NEXT-AEC-06/SHA256SUMS.txt` records for the posted source).
 Revised on 2026-09-28 (see "Revision of 2026-09-28" below); the source,
 renders and checksums were regenerated and every check below was re-run on
-that date.
+that date. Later on 2026-09-28 `feat/verify-aec-07-evaluator` and then
+origin/main (`2d8bde58c`, with #824 and #825) were merged into this branch,
+Section 12 was revised again, and the checks below were re-run on the merged
+tree (see "Merged branch" below).
 
 ## The defect
 
@@ -87,20 +90,17 @@ the posted -06 rendering the same way.
 
 ## Checks
 
-- `npm run check:aec-07`: every text, render, checksum and posted -06 check
-  passes; the script then fails by design on this branch, because
-  `packages/verify/src/evidence-chain.ts` here emits `EP-AEC-EVALUATOR-05-v1`
-  and lacks the Section 21 evaluator (see `README.md`). The same script, with
-  the pending branch's `evidence-chain.ts` in place of this tree's and
-  nothing else changed, prints PASS.
+- `npm run check:aec-07`: PASS. The evaluator branch is merged here, so
+  `packages/verify/src/evidence-chain.ts` on this tree emits
+  `EP-AEC-EVALUATOR-07-v1` and has the receipt, key-resolution and per-fact
+  result code the script looks for. Before that merge the script failed by
+  design at that last step, after every text, render, checksum and posted
+  -06 check had passed.
 - `npm run check:standards-staged`, `npm run check:repository-boundary`,
   `npm run check:public-conformance-claims`, `npm run check:authority-claims`,
-  `npm run check:llm-context`, `npm run check:standalone-runtimes` and
-  `node scripts/check-caid-04.mjs`: PASS.
-- On 2026-09-28 the `check:aec-07` run with the pending branch's
-  `evidence-chain.ts` (branch head `92f1874e5`) was repeated after this
-  revision in a scratch tree holding only the script, this packet, the
-  posted -06 XML and that file: PASS.
+  `npm run check:llm-context`, `npm run check:standalone-runtimes`,
+  `node scripts/check-caid-04.mjs` and
+  `node scripts/check-language-governance.js`: PASS on the merged tree.
 - `node --test scripts/ci/change-lane.node-test.mjs`: 12 of 12 pass, with
   `check-aec-\d+` added to the kept-checker pattern.
 
@@ -152,8 +152,8 @@ The ep-quorum paragraph now also states its VERIFIED condition as a MUST:
 the quorum structure is intact, every member context commits to the quorum
 `action_hash`, and every member signoff verifies under the public key that
 member carries. That is what `quorumIntegrity` in
-`packages/verify/src/evidence-chain.ts` on `feat/verify-aec-07-evaluator`
-(head `92f1874e5`, lines 863-882) checks: a policy object, a non-empty
+`packages/verify/src/evidence-chain.ts` on this branch (merged from
+`feat/verify-aec-07-evaluator`, lines 863-882) checks: a policy object, a non-empty
 `action_hash`, a non-empty and bounded member list, and for each member an
 `approver_public_key`, a signoff context whose `action_hash` equals the
 quorum's, and a WebAuthn signoff that verifies under that key in
@@ -162,27 +162,43 @@ inputs). Before this revision the ep-quorum VERIFIED condition was stated
 only in Section 21, so the "Changes in -07" bullet about Section 11 claimed
 more than Section 11 said.
 
-The `receiptIntegrity` comment on that branch says a Trust Receipt names its
-log key "not at all". The -13 example checkpoint carries `log_key_id`, so
-the comment is wrong; it is on the evaluator branch, and the draft text does
-not rely on it. The draft keeps the receipts -13 Section 7.3 input model
-(the trusted log public key is an input) and states the limit in
-Section 14. Resolving the log key by `log_key_id`, which would move "pinned
-for this role" into ACCEPTED, is left for a later revision.
+The `receiptIntegrity` comment on the evaluator branch said a Trust Receipt
+names its log key "not at all", which the -13 example checkpoint's
+`log_key_id` contradicts. On this branch the comment now says the checkpoint
+names its key by `log_key_id` (receipts -13 Section 7.2), that the evaluator
+does not resolve that id, and that, as in the Section 7.3 offline algorithm,
+the checkpoint signature is checked under the trusted log public key the
+relying party supplies. The code is unchanged. The draft keeps the receipts
+-13 Section 7.3 input model (the trusted log public key is an input) and
+states the limit in Section 14. Resolving the log key by `log_key_id`,
+which would move "pinned for this role" into ACCEPTED, is left for a later
+revision.
 
 ## Revision of 2026-09-28
 
 - Section 12: the capability a `bounded-capability-operation` record
   references and that capability's issuance authorization must each be
-  VERIFIED and ACCEPTED under the relying party's pins for their own roles;
+  VERIFIED, and ACCEPTED under the relying party's pins for its own role;
   the component is not VERIFIED unless all three artifacts are, and not
-  ACCEPTED unless all three are; a combined native check that cannot
-  attribute a failure falls under the Section 6 rule. -06 and the earlier
-  -07 said only that the native verifier "validates" them under the pins.
-  No reference built-in exists for this component type (the evaluator
-  branch's `evidence-chain.ts` has no `bounded-capability` code), so the
-  sentence is a requirement on custom native verifiers, not an
-  implementation claim. "Changes in -07" now has a Section 12 bullet.
+  ACCEPTED unless all three are ACCEPTED and the native verifier's scope
+  result places the operation within the capability; a combined native
+  check that cannot attribute a failure falls under the Section 6 rule. -06
+  and the earlier -07 said only that the native verifier "validates" them
+  under the pins. The first 2026-09-28 wording ("each VERIFIED and ACCEPTED
+  under the relying party's pins for their own roles") read as if VERIFIED
+  depended on pins, and it kept the scope result as an eligibility condition
+  assigned to neither result: Section 6 lists no scope output and Section 9
+  step 4 has no scope step, so an evaluator following Section 9 could record
+  VERIFIED, ACCEPTED and MATCH for an out-of-scope operation with no field
+  in which to refuse it. The scope result is now an ACCEPTED condition, so
+  an out-of-scope operation is refused as a negative ACCEPTED result with
+  its reason, which Section 6 already requires. No reference built-in exists
+  for this component type (`evidence-chain.ts` on this branch has no
+  `bounded-capability` code), so the sentences are requirements on custom
+  native verifiers, not an implementation claim. "Changes in -07" has a
+  Section 12 bullet that says the same. `scripts/check-aec-07.mjs` requires
+  the new sentences and forbids both earlier phrasings, each of which occurs
+  in the previous source.
 - Section 7 step 4 maps the "VERIFIED and ACCEPTED native payload" (was
   "verified native payload"); Section 14's splicing example says "VERIFIED
   and ACCEPTED artifacts" (was "valid artifacts"); the Acknowledgments say
@@ -197,15 +213,15 @@ for this role" into ACCEPTED, is left for a later revision.
 
 Section 10 now defines `algorithm_revision` for this revision as
 `EP-AEC-EVALUATOR-07-v1`, the value `AEC_EVALUATOR_REVISION` has in
-`packages/verify/src/evidence-chain.ts` on the pending evaluator branch. On
-main the constant is `EP-AEC-EVALUATOR-05-v1`.
+`packages/verify/src/evidence-chain.ts` on this branch. On main, until this
+branch merges, the constant is `EP-AEC-EVALUATOR-05-v1`.
 
 ## Implementation claims in Section 21
 
-The Section 21 paragraph describes the pending branch
-`feat/verify-aec-07-evaluator`, which is not on this branch or on main. Each
-sentence is backed by a test in `packages/verify/aec-current-profile.test.ts`
-on that branch:
+The Section 21 paragraph describes the evaluator merged into this branch
+from `feat/verify-aec-07-evaluator`; it is not on main until this branch
+merges, and it ships in verify 6.0.0 (see `README.md`). Each sentence is
+backed by a test in `packages/verify/aec-current-profile.test.ts`:
 
 - separate `verified` and `accepted` results, recorded per fact as
   `native_verification` and `acceptance`: "AEC07 a verified artifact outside
@@ -236,56 +252,68 @@ The action-matching change was also checked with the probe that found it
 VERIFIED, REJECTED, INDETERMINATE, `native_acceptance_refused`; after it
 VERIFIED, ACCEPTED, NOT_EQUIVALENT, `material_action_not_matched`.
 
-Test runs on the pending branch: `node --test aec-current-profile.test.js
+Test runs on the merged tree (2026-09-28, node v26.5.0): in
+`packages/verify`, `node --test aec-current-profile.test.js
 evidence-chain.test.js` passes 53 of 53 (37 profile tests, 13 of them AEC-07
-tests, and 16 legacy-API vector tests). This was re-run on 2026-09-28 against
-the branch head, exported with `git archive` (`packages/verify` and
-`conformance/vectors`), on node v26.5.0; the branch's source and that test
-file are unchanged since its evaluator change, and its later commits only
-re-pin evidence. The totals below were recorded when the evaluator change was
-made and were not re-run on 2026-09-28. `npm test` in `packages/verify`
+tests, and 16 legacy-API vector tests), and `npm test` (which builds first)
 passes 1,256 of 1,257 node tests with 1 skipped, then 32 of 32 and 62 of 62
-in its two `tsx` suites, after `npm run build` and `npm run
-build:standalone-runtimes`. The eight AEC vitest suites under `tests/`
+in its two `tsx` suites. The eight AEC vitest suites under `tests/`
 (safety-critical, role conformance, platform attestation, mutation oracles,
 isolated refusals, role non-substitution, execution gate, fleet assurance)
 pass 120 of 120. `node conformance/composition/authzen-coaz-mcp-aeb-v0.1/check.mjs`
-passes after the documented refresh, and its two node test files pass 49 of
-49.
+passes, and its two node test files pass 49 of 49.
 
-## Pins the evaluator branch changes
+## Merged branch
 
-Three files pin the SHA-256 of `packages/verify/src/evidence-chain.ts`
-(`8539bfde...` before the change, `f3d47a09...` after it), and two of them also
-pin `packages/verify/dist/evidence-chain.js`. All are refreshed on
-`feat/verify-aec-07-evaluator` with the repository's own commands:
+This branch merges `feat/verify-aec-07-evaluator` (head `92f1874e5`) and
+then origin/main at `2d8bde58c` (#824, the CAID -04 pre-filing fixes, and
+#825, the portfolio status cleanup). Every conflict in both merges was in a
+derived file. In the main merge each derived file (`AI_CONTEXT.md`,
+`public/llms-full.txt`, `public/.well-known/emilia-context.json`,
+`security/security-case.json`, `lib/proof-stats.json`,
+`conformance/conformance-manifest.json`, the v2 and v3 clean-room bundles,
+`formal/results/formal-runtime-scenario-conformance.v2.json` and the
+authzen-coaz-mcp-aeb source lock and report) took origin/main's version and
+was then regenerated with the repository's writers, each in its own commit:
 
-- `conformance/composition/authzen-coaz-mcp-aeb-v0.1/source-lock.json` and
-  `report.reference.json`: `refresh-source-lock.mjs`, `check.mjs --emit`,
-  then `check.mjs`, in the evaluator change itself.
-- `formal/results/formal-runtime-scenario-conformance.v2.json`:
-  `npm run sync:formal-traces` with the pinned TLC jar (SHA-256
-  `936a2620...`, the value the record pins), 78 scenarios, PASS.
-- `security/security-case.json`: `npm run security-case:emit`, then
-  `npm run check:security-case`: OK, 35 executable claims, 264 hashed
-  evidence files, execution passed.
-- Derived from those: `conformance/conformance-manifest.json`, the v2 and v3
-  clean-room bundle pins and the generated LLM context
-  (`npm run conformance:manifest`, `npm run sync:clean-room-pins`,
-  `npm run sync:llm-context`); their checks pass.
+- `npm run sync:formal-traces` with the pinned TLC jar (SHA-256
+  `936a2620...`, the value CI pins): 78 scenarios, 51 paired negative
+  controls, 21 claims, PASS. Three pins change from main's record:
+  `package.json` (`check:aec-07`), `packages/verify/src/evidence-chain.ts`
+  (`8539bfde...` on main, `a0fa9292...` here) and
+  `packages/verify/dist/evidence-chain.js` (`4ac3b633...`, `8a33d45b...`).
+- `conformance/composition/authzen-coaz-mcp-aeb-v0.1/refresh-source-lock.mjs`,
+  `check.mjs --emit`, then `check.mjs`: only the two evidence-chain pins
+  change; 9 of 9 and 6 of 6 pass, references matched.
+- `npm run conformance:manifest`, then `npm run sync:clean-room-pins`: 21
+  suites, 340 vectors; the v2 and v3 `source_manifest` pins move to the new
+  manifest, frozen v1 unchanged. `npm run check:preprint` passes with no
+  `papers/preprint/main.tex` change, because its
+  `claimed_conformance_sha256` marker covers the claimed suites and vectors,
+  which did not change.
+- On a clean committed tree with `lib/proof-stats.json` equal to main's,
+  `npm run sync:proof-stats -- --bootstrap-derived-evidence` under the
+  pinned TLC jar re-executed and re-emitted the security case (35
+  executable claims, 264 evidence files, passed) and changed two proof-stats
+  fields, `formalScenarioConformance.evidenceSha256` and
+  `securityCase.evidenceBundleSha256`. The test counts (10,870 cases in 657
+  files) and `generatedAt` stay main's, as `scripts/ci/volatile-evidence.mjs`
+  requires of a pull request.
+- `npm run sync:llm-context`: only digests change (the conformance manifest,
+  the scenario conformance evidence, the security-case bundle and the input
+  digest). `git grep -i 'toll booth'` matches only
+  `tests/workforce-website.test.ts:45`.
 
-## This branch's own evidence pins
-
-The `check:aec-07` script added to `package.json` changed a file that the
-scenario conformance record pins, so this branch also re-pins it
-(`npm run sync:formal-traces`), re-emits the security case and regenerates the
-LLM context. On this branch `npm run check:formal-traces`,
-`npm run check:security-case` (OK, 35 claims, 264 files, execution passed),
-`npm run check:llm-context`, `npm run conformance:manifest:check` and
-`npm run check:clean-room-pins` pass.
+On the merged tree `npm run check:formal-traces`, `npm run
+check:security-case` under the pinned TLC jar (OK, 35 executable claims, 264
+hashed evidence files, execution passed), `npm run check:llm-context`,
+`npm run conformance:manifest:check`, `npm run check:clean-room-pins`,
+`npm run check:preprint` and `npm run build` pass.
 
 ## Not run
 
-`npm run check:proof-stats` was not re-run for this revision.
+`npm run check:proof-stats`, which re-measures the full test suite, was not
+run; the bootstrap writer above keeps main's measured counts, which main's
+volatile-evidence refresh re-measures after merge.
 
 Datatracker has not published this packet. Upload is held; see `README.md`.
