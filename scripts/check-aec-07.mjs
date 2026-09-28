@@ -112,9 +112,13 @@ for (const required of [
   'every member signoff verifies under the public key that member carries',
   'The built-in MUST report ACCEPTED only when the presented quorum policy equals',
   // Section 12 assigns the referenced capability and its issuance
-  // authorization to both results instead of one combined validation.
-  'issuance authorization are each VERIFIED and ACCEPTED under the relying party\'s pins for their own roles',
-  'not ACCEPTED unless all three are ACCEPTED',
+  // authorization to both results instead of one combined validation, keeps
+  // the pins on ACCEPTED only, and makes the native scope result an ACCEPTED
+  // condition so an out-of-scope operation has a result that refuses it.
+  'issuance authorization are each VERIFIED, and ACCEPTED under the relying party\'s pins for its own role',
+  'not ACCEPTED unless all three are ACCEPTED and the native verifier\'s scope result places the operation within that capability',
+  'An operation outside the capability\'s scope is therefore not ACCEPTED even when all three artifacts are ACCEPTED',
+  'makes the native verifier\'s scope result a condition of the component\'s ACCEPTED',
   // Remaining -06 vocabulary replaced: mapping input, lifecycle outcome
   // names, and the acknowledgment.
   'projects the VERIFIED and ACCEPTED native payload',
@@ -147,6 +151,10 @@ for (const forbidden of [
   // validation, the mapping input, the splicing example and the
   // acknowledgment.
   'the native verifier validates the referenced capability',
+  // Earlier -07 Section 12 wording that read as VERIFIED depending on pins
+  // and left the scope result outside both results.
+  'each VERIFIED and ACCEPTED under the relying party\'s pins',
+  'to be VERIFIED and ACCEPTED under the relying party\'s pins for their own roles',
   'projects the verified native payload',
   'individually valid artifacts',
   'separation among native validity',

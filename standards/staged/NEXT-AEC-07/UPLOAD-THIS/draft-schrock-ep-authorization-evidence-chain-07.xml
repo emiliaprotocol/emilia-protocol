@@ -633,11 +633,14 @@ WS       = *(SP / HTAB / CR / LF)
       <t>A <tt>bounded-capability-operation</tt> component is eligible only
       when its operation record is VERIFIED and ACCEPTED and binds the exact
       action, the capability that record references and that capability's
-      issuance authorization are each VERIFIED and ACCEPTED under the relying
-      party's pins for their own roles, and the native verifier's scope
+      issuance authorization are each VERIFIED, and ACCEPTED under the
+      relying party's pins for its own role, and the native verifier's scope
       result places the operation within that capability. The component is
       not VERIFIED unless the operation record and both referenced artifacts
-      are VERIFIED, and not ACCEPTED unless all three are ACCEPTED. A native
+      are VERIFIED, and not ACCEPTED unless all three are ACCEPTED and the
+      native verifier's scope result places the operation within that
+      capability. An operation outside the capability's scope is therefore
+      not ACCEPTED even when all three artifacts are ACCEPTED. A native
       procedure that checks a referenced artifact's trust inputs and
       cryptography together and cannot attribute a failure falls under the
       rule of <xref target="native-contract"/>. AEC does not query or
@@ -841,9 +844,11 @@ native VERIFIED
         under the pinned policy, directory, and key classes; the bundle's
         exact action moves from acceptance to MATCH.</li>
         <li>Section 12 requires the capability a bounded-capability operation
-        references, and that capability's issuance authorization, to be
-        VERIFIED and ACCEPTED under the relying party's pins for their own
-        roles, and applies the Section 6 rule to a combined check.</li>
+        references, and that capability's issuance authorization, each to be
+        VERIFIED, and ACCEPTED under the relying party's pins for its own
+        role; makes the native verifier's scope result a condition of the
+        component's ACCEPTED, so an operation outside the capability is not
+        ACCEPTED; and applies the Section 6 rule to a combined check.</li>
         <li>Section 13 adds the relying-party ACCEPTED step to the lifecycle
         and maps the VERIFIED of <xref target="EP-AEB"/> to VERIFIED and
         ACCEPTED here, and distinguishes the lifecycle's execution outcomes
