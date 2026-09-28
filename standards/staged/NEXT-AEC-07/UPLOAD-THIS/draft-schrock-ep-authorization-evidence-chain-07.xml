@@ -390,8 +390,8 @@
         <li>If that commitment uses the same action representation and digest
         algorithm, exact digest equality establishes MATCH.</li>
         <li>Otherwise, a relying-party-pinned Action-Mapping Profile from
-        <xref target="CAID"/> projects the verified native payload to the
-        expected CAID action type. Only the CAID verdict
+        <xref target="CAID"/> projects the VERIFIED and ACCEPTED native
+        payload to the expected CAID action type. Only the CAID verdict
         EQUIVALENT_UNDER_PROFILE establishes MATCH.</li>
       </ol>
       <t>NOT_EQUIVALENT, INDETERMINATE, an unknown mapping revision, a lossy
@@ -609,7 +609,10 @@ WS       = *(SP / HTAB / CR / LF)
       Trust Receipt and a pre-execution Authorization Bundle MUST NOT be
       substituted for one another. Verifying a consumed receipt does not
       restore authority or permit another execution.</t>
-      <t>The <tt>ep-quorum</tt> built-in MUST report ACCEPTED only when the
+      <t>The <tt>ep-quorum</tt> built-in MUST report VERIFIED only when the
+      quorum structure is intact, every member context commits to the quorum
+      <tt>action_hash</tt>, and every member signoff verifies under the public
+      key that member carries. The built-in MUST report ACCEPTED only when the
       presented quorum policy equals the relying-party-pinned policy and the
       selected approver, role, distinctness, origin, ordering, and freshness
       rules of <xref target="EP-QUORUM"/> hold. A safety-critical profile
@@ -629,9 +632,15 @@ WS       = *(SP / HTAB / CR / LF)
       the proposed action falls within its scope.</t>
       <t>A <tt>bounded-capability-operation</tt> component is eligible only
       when its operation record is VERIFIED and ACCEPTED and binds the exact
-      action, and the native verifier validates the referenced capability,
-      issuance authorization, scope result, and operation record under the
-      relying party's pins. AEC does not query or
+      action, the capability that record references and that capability's
+      issuance authorization are each VERIFIED and ACCEPTED under the relying
+      party's pins for their own roles, and the native verifier's scope
+      result places the operation within that capability. The component is
+      not VERIFIED unless the operation record and both referenced artifacts
+      are VERIFIED, and not ACCEPTED unless all three are ACCEPTED. A native
+      procedure that checks a referenced artifact's trust inputs and
+      cryptography together and cannot attribute a failure falls under the
+      rule of <xref target="native-contract"/>. AEC does not query or
       reserve current budget. A capability component MUST NOT satisfy
       <tt>ep-receipt</tt>, <tt>ep-quorum</tt>, or another human role.</t>
     </section>
@@ -653,7 +662,11 @@ native VERIFIED
       <t>This document splits the VERIFIED step of that lifecycle into two
       results. An artifact that <xref target="EP-AEB"/> calls VERIFIED, one
       that passed its native verifier under relying-party-selected trust
-      inputs, is VERIFIED and ACCEPTED here.</t>
+      inputs, is VERIFIED and ACCEPTED here. FAILED and INDETERMINATE in the
+      last line are execution outcomes of <xref target="EP-AEB"/>; they are
+      distinct from the <tt>native_verification</tt> value FAILED
+      (<xref target="replay"/>) and the CAID verdict INDETERMINATE
+      (<xref target="matching"/>).</t>
       <t>AEC can orchestrate native verification, acceptance, and mapping
       itself or consume trusted internal results from the same protected
       boundary. In both arrangements, VERIFIED precedes ACCEPTED, ACCEPTED
@@ -679,7 +692,7 @@ native VERIFIED
       be computed or selected by the protected boundary from the action it is
       actually preparing to perform.</t>
       <t><strong>Cross-binding.</strong> An attacker can splice individually
-      valid artifacts for different actions. Native verification and
+      VERIFIED and ACCEPTED artifacts for different actions. Native verification and
       acceptance before mapping and exact MATCH for each eligible component
       are required. A
       label, shared principal, shared session, or similar-looking parameter is
@@ -819,17 +832,24 @@ native VERIFIED
         refusal, and a failed match (Sections 9 and 10).</li>
         <li>Section 11 assigns the built-in checks to the two results and
         states each as a requirement on the result it decides: ep-quorum is
-        VERIFIED under the keys its members carry; the Authorization Bundle is
+        VERIFIED under the keys its members carry and ACCEPTED under the pinned
+        policy; the Authorization Bundle is
         VERIFIED under the keys its signoffs reference; the Trust Receipt is
         VERIFIED under the keys its signoffs reference and, for its log
         checkpoint, under the pinned log key, a combined check under
         Section 6; the Authorization Bundle and Trust Receipt are ACCEPTED
         under the pinned policy, directory, and key classes; the bundle's
         exact action moves from acceptance to MATCH.</li>
+        <li>Section 12 requires the capability a bounded-capability operation
+        references, and that capability's issuance authorization, to be
+        VERIFIED and ACCEPTED under the relying party's pins for their own
+        roles, and applies the Section 6 rule to a combined check.</li>
         <li>Section 13 adds the relying-party ACCEPTED step to the lifecycle
         and maps the VERIFIED of <xref target="EP-AEB"/> to VERIFIED and
-        ACCEPTED here. Section 14 adds the verification and acceptance
-        consideration, including where the separation stops.</li>
+        ACCEPTED here, and distinguishes the lifecycle's execution outcomes
+        FAILED and INDETERMINATE from the native verification value and the
+        CAID verdict of the same names. Section 14 adds the verification and
+        acceptance consideration, including where the separation stops.</li>
         <li>Defined UNSATISFIED explicitly as every result other than
         SATISFIED, including an evaluation that could not complete.</li>
         <li>Updated the implementation status and references.</li>
@@ -972,7 +992,7 @@ native VERIFIED
     <section anchor="acknowledgments" numbered="false">
       <name>Acknowledgments</name>
       <t>Review of adjacent work sharpened the separation among native
-      validity, cross-format action mapping, evidence satisfaction, local
+      verification, relying-party acceptance, cross-format action mapping, evidence satisfaction, local
       authorization, credential status, human operation, and effect truth.
       Acknowledgment does not imply endorsement.</t>
     </section>

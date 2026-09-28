@@ -1234,6 +1234,7 @@ li > p:last-of-type:only-child {
 }
 </style>
 <link href="rfc-local.css" rel="stylesheet" type="text/css">
+<script type="application/javascript">async function addMetadata(){try{const e=document.styleSheets[0].cssRules;for(let t=0;t<e.length;t++)if(/#identifiers/.exec(e[t].selectorText)){const a=e[t].cssText.replace("#identifiers","#external-updates");document.styleSheets[0].insertRule(a,document.styleSheets[0].cssRules.length)}}catch(e){console.log(e)}const e=document.getElementById("external-metadata");if(e)try{var t,a="",o=function(e){const t=document.getElementsByTagName("meta");for(let a=0;a<t.length;a++)if(t[a].getAttribute("name")===e)return t[a].getAttribute("content");return""}("rfc.number");if(o){t="https://www.rfc-editor.org/rfc/rfc"+o+".json";try{const e=await fetch(t);a=await e.json()}catch(e){t=document.URL.indexOf("html")>=0?document.URL.replace(/html$/,"json"):document.URL+".json";const o=await fetch(t);a=await o.json()}}if(!a)return;e.style.display="block";const s="",d="https://datatracker.ietf.org/doc",n="https://datatracker.ietf.org/ipr/search",c="https://www.rfc-editor.org/info",l=a.doc_id.toLowerCase(),i=a.doc_id.slice(0,3).toLowerCase(),f=a.doc_id.slice(3).replace(/^0+/,""),u={status:"Status",obsoletes:"Obsoletes",obsoleted_by:"Obsoleted By",updates:"Updates",updated_by:"Updated By",see_also:"See Also",errata_url:"Errata"};let h="<dl style='overflow:hidden' id='external-updates'>";["status","obsoletes","obsoleted_by","updates","updated_by","see_also","errata_url"].forEach(e=>{if("status"==e){a[e]=a[e].toLowerCase();var t=a[e].split(" "),o=t.length,w="",p=1;for(let e=0;e<o;e++)p<o?w=w+r(t[e])+" ":w+=r(t[e]),p++;a[e]=w}else if("obsoletes"==e||"obsoleted_by"==e||"updates"==e||"updated_by"==e){var g,m="",b=1;g=a[e].length;for(let t=0;t<g;t++)a[e][t]&&(a[e][t]=String(a[e][t]).toLowerCase(),m=b<g?m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>, ":m+"<a href='"+s+"/rfc/".concat(a[e][t])+"'>"+a[e][t].slice(3)+"</a>",b++);a[e]=m}else if("see_also"==e){var y,L="",C=1;y=a[e].length;for(let t=0;t<y;t++)if(a[e][t]){a[e][t]=String(a[e][t]);var _=a[e][t].slice(0,3),v=a[e][t].slice(3).replace(/^0+/,"");L=C<y?"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>, ":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>, ":"RFC"!=_?L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+_+" "+v+"</a>":L+"<a href='"+s+"/info/"+_.toLowerCase().concat(v.toLowerCase())+"'>"+v+"</a>",C++}a[e]=L}else if("errata_url"==e){var R="";R=a[e]?R+"<a href='"+a[e]+"'>Errata exist</a> | <a href='"+d+"/"+l+"'>Datatracker</a>| <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>":"<a href='"+d+"/"+l+"'>Datatracker</a> | <a href='"+n+"/?"+i+"="+f+"&submit="+i+"'>IPR</a> | <a href='"+c+"/"+l+"'>Info page</a>",a[e]=R}""!=a[e]?"Errata"==u[e]?h+=`<dt>More info:</dt><dd>${a[e]}</dd>`:h+=`<dt>${u[e]}:</dt><dd>${a[e]}</dd>`:"Errata"==u[e]&&(h+=`<dt>More info:</dt><dd>${a[e]}</dd>`)}),h+="</dl>",e.innerHTML=h}catch(e){console.log(e)}else console.log("Could not locate metadata <div> element");function r(e){return e.charAt(0).toUpperCase()+e.slice(1)}}window.removeEventListener("load",addMetadata),window.addEventListener("load",addMetadata);</script>
 </head>
 <body class="xml2rfc">
 <table class="ears">
@@ -1869,8 +1870,8 @@ li > p:last-of-type:only-child {
         algorithm, exact digest equality establishes MATCH.<a href="#section-7-2.3" class="pilcrow">¶</a>
 </li>
         <li id="section-7-2.4">Otherwise, a relying-party-pinned Action-Mapping Profile from
-        <span>[<a href="#CAID" class="cite xref">CAID</a>]</span> projects the verified native payload to the
-        expected CAID action type. Only the CAID verdict
+        <span>[<a href="#CAID" class="cite xref">CAID</a>]</span> projects the VERIFIED and ACCEPTED native
+        payload to the expected CAID action type. Only the CAID verdict
         EQUIVALENT_UNDER_PROFILE establishes MATCH.<a href="#section-7-2.4" class="pilcrow">¶</a>
 </li>
       </ol>
@@ -2119,7 +2120,10 @@ WS       = *(SP / HTAB / CR / LF)
       Trust Receipt and a pre-execution Authorization Bundle MUST NOT be
       substituted for one another. Verifying a consumed receipt does not
       restore authority or permit another execution.<a href="#section-11-3" class="pilcrow">¶</a></p>
-<p id="section-11-4">The <code>ep-quorum</code> built-in MUST report ACCEPTED only when the
+<p id="section-11-4">The <code>ep-quorum</code> built-in MUST report VERIFIED only when the
+      quorum structure is intact, every member context commits to the quorum
+      <code>action_hash</code>, and every member signoff verifies under the public
+      key that member carries. The built-in MUST report ACCEPTED only when the
       presented quorum policy equals the relying-party-pinned policy and the
       selected approver, role, distinctness, origin, ordering, and freshness
       rules of <span>[<a href="#EP-QUORUM" class="cite xref">EP-QUORUM</a>]</span> hold. A safety-critical profile
@@ -2142,9 +2146,15 @@ WS       = *(SP / HTAB / CR / LF)
       the proposed action falls within its scope.<a href="#section-12-1" class="pilcrow">¶</a></p>
 <p id="section-12-2">A <code>bounded-capability-operation</code> component is eligible only
       when its operation record is VERIFIED and ACCEPTED and binds the exact
-      action, and the native verifier validates the referenced capability,
-      issuance authorization, scope result, and operation record under the
-      relying party's pins. AEC does not query or
+      action, the capability that record references and that capability's
+      issuance authorization are each VERIFIED and ACCEPTED under the relying
+      party's pins for their own roles, and the native verifier's scope
+      result places the operation within that capability. The component is
+      not VERIFIED unless the operation record and both referenced artifacts
+      are VERIFIED, and not ACCEPTED unless all three are ACCEPTED. A native
+      procedure that checks a referenced artifact's trust inputs and
+      cryptography together and cannot attribute a failure falls under the
+      rule of <a href="#native-contract" class="auto internal xref">Section 6</a>. AEC does not query or
       reserve current budget. A capability component MUST NOT satisfy
       <code>ep-receipt</code>, <code>ep-quorum</code>, or another human role.<a href="#section-12-2" class="pilcrow">¶</a></p>
 </section>
@@ -2171,7 +2181,11 @@ native VERIFIED
 <p id="section-13-3">This document splits the VERIFIED step of that lifecycle into two
       results. An artifact that <span>[<a href="#EP-AEB" class="cite xref">EP-AEB</a>]</span> calls VERIFIED, one
       that passed its native verifier under relying-party-selected trust
-      inputs, is VERIFIED and ACCEPTED here.<a href="#section-13-3" class="pilcrow">¶</a></p>
+      inputs, is VERIFIED and ACCEPTED here. FAILED and INDETERMINATE in the
+      last line are execution outcomes of <span>[<a href="#EP-AEB" class="cite xref">EP-AEB</a>]</span>; they are
+      distinct from the <code>native_verification</code> value FAILED
+      (<a href="#replay" class="auto internal xref">Section 10</a>) and the CAID verdict INDETERMINATE
+      (<a href="#matching" class="auto internal xref">Section 7</a>).<a href="#section-13-3" class="pilcrow">¶</a></p>
 <p id="section-13-4">AEC can orchestrate native verification, acceptance, and mapping
       itself or consume trusted internal results from the same protected
       boundary. In both arrangements, VERIFIED precedes ACCEPTED, ACCEPTED
@@ -2200,7 +2214,7 @@ native VERIFIED
       be computed or selected by the protected boundary from the action it is
       actually preparing to perform.<a href="#section-14-2" class="pilcrow">¶</a></p>
 <p id="section-14-3"><strong>Cross-binding.</strong> An attacker can splice individually
-      valid artifacts for different actions. Native verification and
+      VERIFIED and ACCEPTED artifacts for different actions. Native verification and
       acceptance before mapping and exact MATCH for each eligible component
       are required. A
       label, shared principal, shared session, or similar-looking parameter is
@@ -2357,7 +2371,8 @@ native VERIFIED
 </li>
         <li class="normal" id="section-18-1.6">Section 11 assigns the built-in checks to the two results and
         states each as a requirement on the result it decides: ep-quorum is
-        VERIFIED under the keys its members carry; the Authorization Bundle is
+        VERIFIED under the keys its members carry and ACCEPTED under the pinned
+        policy; the Authorization Bundle is
         VERIFIED under the keys its signoffs reference; the Trust Receipt is
         VERIFIED under the keys its signoffs reference and, for its log
         checkpoint, under the pinned log key, a combined check under
@@ -2365,15 +2380,22 @@ native VERIFIED
         under the pinned policy, directory, and key classes; the bundle's
         exact action moves from acceptance to MATCH.<a href="#section-18-1.6" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-18-1.7">Section 13 adds the relying-party ACCEPTED step to the lifecycle
+        <li class="normal" id="section-18-1.7">Section 12 requires the capability a bounded-capability operation
+        references, and that capability's issuance authorization, to be
+        VERIFIED and ACCEPTED under the relying party's pins for their own
+        roles, and applies the Section 6 rule to a combined check.<a href="#section-18-1.7" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="section-18-1.8">Section 13 adds the relying-party ACCEPTED step to the lifecycle
         and maps the VERIFIED of <span>[<a href="#EP-AEB" class="cite xref">EP-AEB</a>]</span> to VERIFIED and
-        ACCEPTED here. Section 14 adds the verification and acceptance
-        consideration, including where the separation stops.<a href="#section-18-1.7" class="pilcrow">¶</a>
+        ACCEPTED here, and distinguishes the lifecycle's execution outcomes
+        FAILED and INDETERMINATE from the native verification value and the
+        CAID verdict of the same names. Section 14 adds the verification and
+        acceptance consideration, including where the separation stops.<a href="#section-18-1.8" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-18-1.8">Defined UNSATISFIED explicitly as every result other than
-        SATISFIED, including an evaluation that could not complete.<a href="#section-18-1.8" class="pilcrow">¶</a>
+        <li class="normal" id="section-18-1.9">Defined UNSATISFIED explicitly as every result other than
+        SATISFIED, including an evaluation that could not complete.<a href="#section-18-1.9" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="section-18-1.9">Updated the implementation status and references.<a href="#section-18-1.9" class="pilcrow">¶</a>
+        <li class="normal" id="section-18-1.10">Updated the implementation status and references.<a href="#section-18-1.10" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
@@ -2532,7 +2554,7 @@ native VERIFIED
 <a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
       </h2>
 <p id="appendix-A-1">Review of adjacent work sharpened the separation among native
-      validity, cross-format action mapping, evidence satisfaction, local
+      verification, relying-party acceptance, cross-format action mapping, evidence satisfaction, local
       authorization, credential status, human operation, and effect truth.
       Acknowledgment does not imply endorsement.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
 </section>

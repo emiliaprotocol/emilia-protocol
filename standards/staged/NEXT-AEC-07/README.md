@@ -28,9 +28,12 @@ signed by a key the relying party does not trust. -07:
   result contract (Section 6), matching (Section 7), the algorithm
   (Section 9), the replay record (Section 10, with `native_verification` and
   `acceptance` fact members and a defined `algorithm_revision` value), the
-  built-in components (Sections 11 and 12, each built-in requirement still a
-  MUST, now stated on the result it decides), the lifecycle (Section 13) and
-  Security Considerations (Section 14);
+  built-in components (Section 11, each built-in requirement still a MUST,
+  now stated on the result it decides), the bounded-capability component
+  (Section 12, whose referenced capability and issuance authorization must
+  each be VERIFIED and ACCEPTED under their own pins), the lifecycle
+  (Section 13, whose execution outcome FAILED is kept apart from the
+  native verification value) and Security Considerations (Section 14);
 - defines UNSATISFIED explicitly;
 - updates the implementation status and the cited revisions.
 

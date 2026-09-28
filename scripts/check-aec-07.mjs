@@ -108,7 +108,18 @@ for (const required of [
   'its log checkpoint signature verifies under the relying party\'s pinned log key',
   'without a pinned log key VERIFIED cannot be evaluated',
   'The built-in MUST report ACCEPTED only for a VERIFIED Trust Receipt',
-  'The ep-quorum built-in MUST report ACCEPTED only when',
+  'The ep-quorum built-in MUST report VERIFIED only when the quorum structure is intact',
+  'every member signoff verifies under the public key that member carries',
+  'The built-in MUST report ACCEPTED only when the presented quorum policy equals',
+  // Section 12 assigns the referenced capability and its issuance
+  // authorization to both results instead of one combined validation.
+  'issuance authorization are each VERIFIED and ACCEPTED under the relying party\'s pins for their own roles',
+  'not ACCEPTED unless all three are ACCEPTED',
+  // Remaining -06 vocabulary replaced: mapping input, lifecycle outcome
+  // names, and the acknowledgment.
+  'projects the VERIFIED and ACCEPTED native payload',
+  'FAILED and INDETERMINATE in the last line are execution outcomes',
+  'separation among native verification, relying-party acceptance',
 ]) invariant(flatTxt.includes(required), `TXT rendering is stale or missing: ${required}`);
 
 // The -06 wording that folded pinned trust inputs into VERIFIED, and the
@@ -132,6 +143,13 @@ for (const forbidden of [
   'built-in reports ACCEPTED only',
   'policy hash, log key, maximum evidence age',
   'Native validity is not sufficient for composition',
+  // -06 wording that survived into earlier -07 text: Section 12's combined
+  // validation, the mapping input, the splicing example and the
+  // acknowledgment.
+  'the native verifier validates the referenced capability',
+  'projects the verified native payload',
+  'individually valid artifacts',
+  'separation among native validity',
 ]) {
   invariant(!flatXml.includes(forbidden), `-06 text survived in the XML: ${forbidden}`);
   invariant(!flatTxt.includes(forbidden), `-06 text survived in the TXT render: ${forbidden}`);
