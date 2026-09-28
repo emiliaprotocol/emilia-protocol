@@ -1,6 +1,6 @@
 # EMILIA Standards Portfolio
 
-Updated: 2026-08-22
+Updated: 2026-09-27
 
 ## One story
 
@@ -85,7 +85,7 @@ through host-record binding and scoped authority, to relying-party evidence
 satisfaction:
 
 1. **Authorization Receipts** —
-   [`draft-schrock-ep-authorization-receipts-13`](staged/NEXT-AUTHORIZATION-RECEIPTS-13/UPLOAD-THIS/draft-schrock-ep-authorization-receipts-13.xml)
+   [`draft-schrock-ep-authorization-receipts-13`](posted/draft-schrock-ep-authorization-receipts-13.xml)
    defines one action-bound organizational approval-evidence profile and its
    extension seam. Snapshot SHA-256 (byte-identical to the IETF archive copy):
    `77e7021e116bebbd8e786dd27b51468701ea4887dfa0dd8d692e919f1fd00ffb`.
@@ -116,9 +116,9 @@ profile and lifecycle portfolio remains intact.
 ## Portfolio views that must not collapse
 
 The canonical presentation surface is not the active profile portfolio. The
-complete active portfolio remains the 24-entry `STATUS.json.active_datatracker`
+complete active portfolio is the 26-entry `STATUS.json.active_datatracker`
 inventory, including its distinct evidence profiles and lifecycle drafts; all
-20 sole-authored records and all four coauthored records retain their individual
+21 sole-authored records and all five coauthored records retain their individual
 status. Neither presentation order nor appearance in another view
 retires, merges, replaces, or demotes an active draft.
 
@@ -139,8 +139,10 @@ Exact revisions, source paths, Datatracker URLs, and snapshot digests for both
 views are recorded in `STATUS.json`.
 
 The extension-agnostic responsibility, input/output, claim-boundary, external
-dependency, and overlap review for all 20 active sole-authored series is in
+dependency, and overlap review for the 20 sole-authored series active on
+2026-08-22 is in
 [`PORTFOLIO-RESPONSIBILITY-MATRIX.md`](PORTFOLIO-RESPONSIBILITY-MATRIX.md).
+Agent Operation Continuity-00, posted later, is not covered there.
 That matrix is the required input to any future consolidation proposal.
 
 ## The matching claim
@@ -270,6 +272,24 @@ claims, and adds idempotency, wrong-holder, receipt-absence, and unsigned-event
 claim boundaries. It is an individual Internet-Draft, not an adopted
 working-group item.
 
+On **September 6, 2026**, Quorum-04 was posted through Datatracker submission
+168688 as one of four corrective revisions. Its XML and TXT were verified
+byte-for-byte against the immutable IETF archive, and the snapshot was
+mirrored into `posted/` on September 27. The revision replaces the
+context-only chronology claim with the versioned `EP-QUORUM-SIGNOFF-CHAIN-v1`
+profile, under which a successor signs a digest of the completed predecessor
+signoff, including its signature. It is an individual Internet-Draft, not an
+adopted working-group item.
+
+On **September 12, 2026**, Authorization Receipts-13 and Presentation
+Binding-01 were posted through Datatracker submissions 168935 and 168936. Their
+XML and TXT were verified byte-for-byte against the immutable IETF archive, and
+the snapshots were mirrored into `posted/` on September 27. Receipts-13 adds
+Section 13.13, "What Successful Verification Does Not Establish." Presentation
+Binding-01 adds Section 6.1, "Receipt and Presentation Evidence Remain
+Distinct." Both are individual Internet-Drafts, not adopted working-group
+items.
+
 On **September 24, 2026**, AEB-06 was posted through Datatracker submission
 169466. Its XML and TXT were verified byte-for-byte against the immutable IETF
 archive. The revision places AEB after the native authorization decision,
@@ -303,11 +323,23 @@ not change the Action Object, identifier syntax, digest suites, or mapping
 algorithm. It is an individual Internet-Draft, not an adopted working-group
 item.
 
-The published line also retains Authority Introduction-03, Quorum-03, Bounded
-Capability Receipts-02, and the other current individual drafts listed in
-`STATUS.json`. Model-to-Matter remains deliberately separate: publication does
-not claim a wet-lab deployment, screening capability, scientific-safety
-judgment, physical truth, or external endorsement.
+On **September 9, 2026**, Bounded Capability Receipts-06 was posted through
+Datatracker submission 168817, and on **September 15, 2026**, Agent Operation
+Continuity-00 was posted through Datatracker submission 169086 as a Standards
+Track individual draft. Continuity-00 defines a composition profile, for one
+authoritative coordination domain, that preserves a provider operation and its
+unresolved evidence across executor replacement; it defines no new receipt,
+identity, authority, provider, or ledger-migration format. The XML and TXT of
+both revisions were fetched from the immutable IETF archive and mirrored into
+`posted/` on September 27. Neither is an adopted working-group item. With the
+five September 27 mirrors, `posted/` holds the current revision of every active
+sole-authored draft, as checked against the Datatracker API on September 28.
+
+The published line also retains Authority Introduction-03, Quorum-04, and the
+other current individual drafts listed in `STATUS.json`. Model-to-Matter
+remains deliberately separate: publication does not claim a wet-lab deployment,
+screening capability, scientific-safety judgment, physical truth, or external
+endorsement.
 
 Machine-readable status, including every active individual draft and every
 disposition, is in [`STATUS.json`](STATUS.json). A published individual
@@ -333,6 +365,44 @@ that override does not claim that the standing exception was satisfied. No
 active draft is retired or merged by this freeze, and the distinct active
 profile portfolio remains intact.
 
+## Maintenance status
+
+Each active series carries a maintenance status in `STATUS.json`
+(`maintenance_status`, defined in `status_language`) and its Datatracker expiry
+date (`datatracker_expires`). No series is merged into another. A posted
+revision remains an active individual draft until it expires, whatever its
+maintenance status.
+
+| Series | Current revision | Maintenance status | Datatracker expiry |
+| --- | --- | --- | --- |
+| `draft-schrock-ae-challenge` | -07 | Maintained | 2027-02-12 |
+| `draft-schrock-canonical-action-identifier` | -03 | Maintained | 2027-03-30 |
+| `draft-schrock-ep-authorization-evidence-chain` | -06 | Maintained (one corrective revision planned first) | 2027-03-10 |
+| `draft-schrock-ep-authorization-receipts` | -13 | Maintained | 2027-03-16 |
+| `draft-dunbar-dmsc-gw-scenarios-gap-analysis` | -04 | Maintained with coauthors | 2027-02-15 |
+| `draft-ferro-schrock-memory-projection-record` | -01 | Maintained with coauthors | 2027-02-05 |
+| `draft-mih-sato-agent-accountability-composition` | -01 | Maintained with coauthors | 2027-02-17 |
+| `draft-schrock-kintzele-grid-curtailment` | -00 | Maintained with coauthors | 2027-02-23 |
+| `draft-intra-handshake-fail` | -48 | Maintained outside this repository | 2027-04-01 |
+| `draft-schrock-action-evidence-boundary` | -07 | No further revisions planned | 2027-03-30 |
+| `draft-schrock-ep-architecture` | -03 | No further revisions planned | 2027-03-10 |
+| `draft-schrock-ep-authority-introduction` | -03 | No further revisions planned | 2027-02-05 |
+| `draft-schrock-ep-bounded-capability-receipts` | -06 | No further revisions planned | 2027-03-13 |
+| `draft-schrock-ep-outcome-binding` | -00 | No further revisions planned | 2027-01-30 |
+| `draft-schrock-ep-presentation-binding` | -01 | No further revisions planned | 2027-03-16 |
+| `draft-schrock-ep-quorum` | -04 | No further revisions planned | 2027-03-10 |
+| `draft-schrock-ep-revocation-statement` | -01 | No further revisions planned | 2027-01-29 |
+| `draft-schrock-human-authorization-binding` | -00 | No further revisions planned | 2027-01-04 |
+| `draft-schrock-action-remedy-receipts` | -00 | Will not be revised | 2027-01-29 |
+| `draft-schrock-agent-operation-continuity` | -00 | Will not be revised | 2027-03-19 |
+| `draft-schrock-agent-qualification-statements` | -00 | Will not be revised | 2027-01-29 |
+| `draft-schrock-emilia-eye` | -00 | Will not be revised | 2026-12-28 |
+| `draft-schrock-ep-bounded-execution-program` | -00 | Will not be revised | 2027-02-04 |
+| `draft-schrock-ep-evidence-record` | -01 | Will not be revised | 2027-01-07 |
+| `draft-schrock-ep-reliance-agreement` | -00 | Will not be revised | 2027-02-04 |
+| `draft-schrock-model-to-matter` | -04 | Will not be revised | 2027-02-08 |
+
+
 ## Disposition ledger
 
 These are decisions, not an indefinite waiting room:
@@ -343,10 +413,10 @@ These are decisions, not an indefinite waiting room:
 | Authority Registry | Retired and absorbed | Authority Introduction-03 |
 | Agent Trust Stack | Retired and absorbed | Architecture-03 |
 | PQC | Retired as a standalone draft | Evidence Record crypto agility and anti-stripping |
-| Model-to-Matter | Active Experimental profile; current -04 published August 6 | Seven-role clearance, physical-state source claims, and program and requirement digest binding are current; deployment claims require a real executor |
+| Model-to-Matter | Active Experimental profile; current -04 published August 6; will not be revised | Seven-role clearance, physical-state source claims, and program and requirement digest binding are current; deployment claims require a real executor |
 | Human Oversight | Partner-triggered profile | A regulator or management-system standards partner validates the mapping |
 | GRACE grid curtailment | Active individual draft; -00 published August 22 | Coauthored application profile; preserve its physical-truth, tariff, payment, deployment, adoption, and endorsement nonclaims |
-| Reliance Agreement | Active individual draft; -00 published August 3 | Narrow signed terms and reliance-event wire format; legal and insurance outcomes remain out of scope |
+| Reliance Agreement | Active individual draft; -00 published August 3; will not be revised | Narrow signed terms and reliance-event wire format; legal and insurance outcomes remain out of scope |
 
 Retired sources remain in `archive/`; held application profiles live in
 `profiles/`. Neither directory is a filing queue.
@@ -354,7 +424,7 @@ Retired sources remain in `archive/`; held application profiles live in
 ## Adjacent work
 
 - Linda Dunbar, YiFei Wang, Iman Schrock, and Bing Liu's coauthored DMSC Agent
-  Gateway gap-analysis -03 provides a concrete cross-domain enforcement socket;
+  Gateway gap-analysis -04 provides a concrete cross-domain enforcement socket;
   it is an active individual draft, not DMSC BoF consensus.
 - WIMSE provides live workload identity and channel possession.
 - AuthZEN AARP provides requestable denial, asynchronous approval, an approval

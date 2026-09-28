@@ -142,7 +142,7 @@ Dossier rendering. Technical invariants only.
     observation, and reconciliation separate. Uncertainty never becomes
     authority to retry.
 
-22. Naming is layered and frozen: "authority toll booth" is the public
+22. Naming is layered and frozen: "authority checkpoint" is the public
     metaphor; "protected consequence boundary" is the technical
     architecture term; AEB is the standards contract; EMILIA Gate is the
     product; the AEB Crossing Record is the evidence. No additional

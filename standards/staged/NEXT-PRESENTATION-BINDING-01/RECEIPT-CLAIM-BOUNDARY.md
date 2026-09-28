@@ -1,5 +1,7 @@
 # PRESENTATION-BINDING-01 CANDIDATE: receipt claim boundary
 
+CURRENT STATUS (checked 2026-09-27): filed as Section 6.1 of draft-schrock-ep-presentation-binding-01, posted 2026-09-12; retained as provenance. The status paragraph below is historical.
+
 STATUS: STAGED, NOT FILED. This is working text for a possible future
 `draft-schrock-ep-presentation-binding-01`. It has not been submitted to the
 IETF and is not an RFC, an adopted working-group document, IETF consensus, or

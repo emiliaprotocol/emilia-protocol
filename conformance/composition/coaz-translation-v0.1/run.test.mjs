@@ -179,7 +179,9 @@ test('the proposed AuthZEN contribution is source-pinned and does not claim WG a
   );
   assert.equal(sourceLock.upstream_issue.number, 603);
   assert.equal(sourceLock.upstream_issue.state_at_fetch, 'open');
-  assert.match(contribution, /Status: proposed locally; not submitted to or accepted by OpenID AuthZEN\./);
+  assert.match(contribution, /Status: submitted as `openid\/authzen` pull request #626,/);
+  assert.match(contribution, /merged into the\s+repository's `main` branch on 2026-09-10/);
+  assert.match(contribution, /the merged diff is authoritative/);
   assert.match(contribution, /MUST NOT reuse the earlier permit/);
   assert.match(contribution, /was not evaluated by the PDP/);
   assert.doesNotMatch(

@@ -44,30 +44,30 @@
       evidence; neither object makes the authorization decision. That
       decision remains with the authorization server. 
     " name="description">
-<meta content="xml2rfc 3.34.0" name="generator">
+<meta content="xml2rfc 3.34.1" name="generator">
 <meta content="AI agents" name="keyword">
 <meta content="authorization" name="keyword">
 <meta content="receipts" name="keyword">
 <meta content="WebAuthn" name="keyword">
 <meta content="separation of duties" name="keyword">
-<meta content="draft-schrock-ep-authorization-receipts-11" name="ietf.draft">
+<meta content="draft-schrock-ep-authorization-receipts-13" name="ietf.draft">
 <!-- Generator version information:
-  xml2rfc 3.34.0
-    Python 3.12.13
-    ConfigArgParse 1.7.5
+  xml2rfc 3.34.1
+    Python 3.12.14
+    ConfigArgParse 1.7.7
     google-i18n-address 3.1.1
     intervaltree 3.2.1
     Jinja2 3.1.6
-    lxml 6.1.1
+    lxml 6.1.3
     natsort 8.4.0
-    platformdirs 4.11.0
+    platformdirs 4.11.8
     pycountry 26.2.16
     PyYAML 6.0.3
     requests 2.34.2
-    wcwidth 0.8.2
-    weasyprint 69.0
+    wcwidth 0.8.3
+    weasyprint 70.0
 -->
-<link href="draft-schrock-ep-authorization-receipts-11.xml" rel="alternate" type="application/rfc+xml">
+<link href="draft-schrock-ep-authorization-receipts-13.xml" rel="alternate" type="application/rfc+xml">
 <link href="#copyright" rel="license">
 <style type="text/css">/*
 
@@ -390,6 +390,10 @@ table p {
   /* XXX to avoid bottom margin on table row signifiers. If paragraphs should
      be allowed within tables more generally, it would be far better to select on a class. */
   margin: 0;
+}
+sub,
+sup {
+ white-space: nowrap;
 }
 
 /* pilcrow */
@@ -1098,6 +1102,9 @@ aside > p {
   figcaption, table caption {
     page-break-before: avoid;
   }
+  table {
+    page-break-inside: avoid;
+  }
 }
 /* Font size adjustments for print */
 @media print {
@@ -1256,11 +1263,11 @@ li > p:last-of-type:only-child {
 <thead><tr>
 <td class="left">Internet-Draft</td>
 <td class="center">EP Authorization Receipts</td>
-<td class="right">August 2026</td>
+<td class="right">September 2026</td>
 </tr></thead>
 <tfoot><tr>
 <td class="left">Schrock</td>
-<td class="center">Expires 10 February 2027</td>
+<td class="center">Expires 15 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1270,15 +1277,15 @@ li > p:last-of-type:only-child {
 <dt class="label-workgroup">Workgroup:</dt>
 <dd class="workgroup">Network Working Group</dd>
 <dt class="label-internet-draft">Internet-Draft:</dt>
-<dd class="internet-draft">draft-schrock-ep-authorization-receipts-11</dd>
+<dd class="internet-draft">draft-schrock-ep-authorization-receipts-13</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-08-09" class="published">9 August 2026</time>
+<time datetime="2026-09-11" class="published">11 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-02-10">10 February 2027</time></dd>
+<dd class="expires"><time datetime="2027-03-15">15 March 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1347,7 +1354,7 @@ li > p:last-of-type:only-child {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 10 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 15 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1482,31 +1489,37 @@ li > p:last-of-type:only-child {
                 <p id="section-toc.1-1.13.2.2.1"><a href="#section-13.2" class="auto internal xref">13.2</a>.  <a href="#name-approver-device-compromise" class="internal xref">Approver Device Compromise</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.3">
-                <p id="section-toc.1-1.13.2.3.1"><a href="#section-13.3" class="auto internal xref">13.3</a>.  <a href="#name-presentation-attacks" class="internal xref">Presentation Attacks</a></p>
+                <p id="section-toc.1-1.13.2.3.1"><a href="#section-13.3" class="auto internal xref">13.3</a>.  <a href="#name-historical-acceptance-later" class="internal xref">Historical Acceptance, Later Key Compromise, and Current Policy</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.4">
-                <p id="section-toc.1-1.13.2.4.1"><a href="#section-13.4" class="auto internal xref">13.4</a>.  <a href="#name-log-equivocation" class="internal xref">Log Equivocation</a></p>
+                <p id="section-toc.1-1.13.2.4.1"><a href="#section-13.4" class="auto internal xref">13.4</a>.  <a href="#name-presentation-attacks" class="internal xref">Presentation Attacks</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.5">
-                <p id="section-toc.1-1.13.2.5.1"><a href="#section-13.5" class="auto internal xref">13.5</a>.  <a href="#name-what-the-formal-models-do-a" class="internal xref">What the Formal Models Do and Do Not Prove</a></p>
+                <p id="section-toc.1-1.13.2.5.1"><a href="#section-13.5" class="auto internal xref">13.5</a>.  <a href="#name-log-equivocation" class="internal xref">Log Equivocation</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.6">
-                <p id="section-toc.1-1.13.2.6.1"><a href="#section-13.6" class="auto internal xref">13.6</a>.  <a href="#name-directory-authority" class="internal xref">Directory Authority</a></p>
+                <p id="section-toc.1-1.13.2.6.1"><a href="#section-13.6" class="auto internal xref">13.6</a>.  <a href="#name-what-the-formal-models-do-a" class="internal xref">What the Formal Models Do and Do Not Prove</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.7">
-                <p id="section-toc.1-1.13.2.7.1"><a href="#section-13.7" class="auto internal xref">13.7</a>.  <a href="#name-what-separation-of-duties-d" class="internal xref">What Separation of Duties Does and Does Not Provide</a></p>
+                <p id="section-toc.1-1.13.2.7.1"><a href="#section-13.7" class="auto internal xref">13.7</a>.  <a href="#name-directory-authority" class="internal xref">Directory Authority</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.8">
-                <p id="section-toc.1-1.13.2.8.1"><a href="#section-13.8" class="auto internal xref">13.8</a>.  <a href="#name-approver-fatigue" class="internal xref">Approver Fatigue</a></p>
+                <p id="section-toc.1-1.13.2.8.1"><a href="#section-13.8" class="auto internal xref">13.8</a>.  <a href="#name-what-separation-of-duties-d" class="internal xref">What Separation of Duties Does and Does Not Provide</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.9">
-                <p id="section-toc.1-1.13.2.9.1"><a href="#section-13.9" class="auto internal xref">13.9</a>.  <a href="#name-initiator-attestation-as-an" class="internal xref">Initiator Attestation as an Attack Surface</a></p>
+                <p id="section-toc.1-1.13.2.9.1"><a href="#section-13.9" class="auto internal xref">13.9</a>.  <a href="#name-approver-fatigue" class="internal xref">Approver Fatigue</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.10">
-                <p id="section-toc.1-1.13.2.10.1"><a href="#section-13.10" class="auto internal xref">13.10</a>. <a href="#name-no-symmetric-key-on-the-ver" class="internal xref">No symmetric key on the verification trust path</a></p>
+                <p id="section-toc.1-1.13.2.10.1"><a href="#section-13.10" class="auto internal xref">13.10</a>. <a href="#name-initiator-attestation-as-an" class="internal xref">Initiator Attestation as an Attack Surface</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.11">
-                <p id="section-toc.1-1.13.2.11.1"><a href="#section-13.11" class="auto internal xref">13.11</a>. <a href="#name-canonicalization-robustness" class="internal xref">Canonicalization Robustness</a></p>
+                <p id="section-toc.1-1.13.2.11.1"><a href="#section-13.11" class="auto internal xref">13.11</a>. <a href="#name-no-symmetric-key-on-the-ver" class="internal xref">No symmetric key on the verification trust path</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.12">
+                <p id="section-toc.1-1.13.2.12.1"><a href="#section-13.12" class="auto internal xref">13.12</a>. <a href="#name-canonicalization-robustness" class="internal xref">Canonicalization Robustness</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.13">
+                <p id="section-toc.1-1.13.2.13.1"><a href="#section-13.13" class="auto internal xref">13.13</a>. <a href="#name-what-successful-verificatio" class="internal xref">What Successful Verification Does Not Establish</a></p>
 </li>
             </ul>
 </li>
@@ -1528,28 +1541,31 @@ li > p:last-of-type:only-child {
             <p id="section-toc.1-1.16.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
-            <p id="section-toc.1-1.17.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-changes-since-10" class="internal xref">Changes since -10</a></p>
+            <p id="section-toc.1-1.17.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-changes-since-11" class="internal xref">Changes since -11</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18">
-            <p id="section-toc.1-1.18.1"><a href="#appendix-C" class="auto internal xref">Appendix C</a>.  <a href="#name-changes-since-09" class="internal xref">Changes since -09</a></p>
+            <p id="section-toc.1-1.18.1"><a href="#appendix-C" class="auto internal xref">Appendix C</a>.  <a href="#name-changes-since-10" class="internal xref">Changes since -10</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.19">
-            <p id="section-toc.1-1.19.1"><a href="#appendix-D" class="auto internal xref">Appendix D</a>.  <a href="#name-changes-since-08" class="internal xref">Changes since -08</a></p>
+            <p id="section-toc.1-1.19.1"><a href="#appendix-D" class="auto internal xref">Appendix D</a>.  <a href="#name-changes-since-09" class="internal xref">Changes since -09</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.20">
-            <p id="section-toc.1-1.20.1"><a href="#appendix-E" class="auto internal xref">Appendix E</a>.  <a href="#name-changes-since-07" class="internal xref">Changes since -07</a></p>
+            <p id="section-toc.1-1.20.1"><a href="#appendix-E" class="auto internal xref">Appendix E</a>.  <a href="#name-changes-since-08" class="internal xref">Changes since -08</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.21">
-            <p id="section-toc.1-1.21.1"><a href="#appendix-F" class="auto internal xref">Appendix F</a>.  <a href="#name-changes-since-06" class="internal xref">Changes since -06</a></p>
+            <p id="section-toc.1-1.21.1"><a href="#appendix-F" class="auto internal xref">Appendix F</a>.  <a href="#name-changes-since-07" class="internal xref">Changes since -07</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.22">
-            <p id="section-toc.1-1.22.1"><a href="#appendix-G" class="auto internal xref">Appendix G</a>.  <a href="#name-changes-since-04" class="internal xref">Changes since -04</a></p>
+            <p id="section-toc.1-1.22.1"><a href="#appendix-G" class="auto internal xref">Appendix G</a>.  <a href="#name-changes-since-06" class="internal xref">Changes since -06</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.23">
-            <p id="section-toc.1-1.23.1"><a href="#appendix-H" class="auto internal xref">Appendix H</a>.  <a href="#name-changes-since-00-through-04" class="internal xref">Changes since -00 (through -04)</a></p>
+            <p id="section-toc.1-1.23.1"><a href="#appendix-H" class="auto internal xref">Appendix H</a>.  <a href="#name-changes-since-04" class="internal xref">Changes since -04</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.24">
-            <p id="section-toc.1-1.24.1"><a href="#appendix-I" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+            <p id="section-toc.1-1.24.1"><a href="#appendix-I" class="auto internal xref">Appendix I</a>.  <a href="#name-changes-since-00-through-04" class="internal xref">Changes since -00 (through -04)</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.25">
+            <p id="section-toc.1-1.25.1"><a href="#appendix-J" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
 </li>
         </ul>
 </nav>
@@ -2166,7 +2182,7 @@ li > p:last-of-type:only-child {
           alongside the human-readable presentation derived from the exact
           Action Object that this section already requires, subject to the
           untrusted-content display rules in
-          <a href="#initiator-attestation-security" class="auto internal xref">Section 13.9</a>.<a href="#section-4.2-8.6" class="pilcrow">¶</a>
+          <a href="#initiator-attestation-security" class="auto internal xref">Section 13.10</a>.<a href="#section-4.2-8.6" class="pilcrow">¶</a>
 </li>
           <li class="normal" id="section-4.2-8.7">A signing client presented with a context whose
           <code>statement</code> exceeds 280 characters <span class="bcp14">MUST</span>
@@ -2380,7 +2396,7 @@ li > p:last-of-type:only-child {
           approver alongside the human-readable presentation derived from the
           exact Action Object that this section already requires, subject to the
           untrusted-content display rules in
-          <a href="#initiator-attestation-security" class="auto internal xref">Section 13.9</a>. A signing client
+          <a href="#initiator-attestation-security" class="auto internal xref">Section 13.10</a>. A signing client
           presented with a context whose <code>statement</code> exceeds 280
           characters <span class="bcp14">MUST</span> refuse to render it for signing.<a href="#section-4.3-8.6" class="pilcrow">¶</a>
 </li>
@@ -2501,7 +2517,7 @@ li > p:last-of-type:only-child {
         directory membership cannot forge an enrolled approver's
         signature, but it can enroll a key it controls under a legitimate
         approver's name -- relocating the forgery rather than preventing
-        it. See <a href="#directory-authority" class="auto internal xref">Section 13.6</a>.<a href="#section-5.2-2" class="pilcrow">¶</a></p>
+        it. See <a href="#directory-authority" class="auto internal xref">Section 13.7</a>.<a href="#section-5.2-2" class="pilcrow">¶</a></p>
 <p id="section-5.2-3">This directory is also the binding point between approver
         identifiers and real-world persons
         (<a href="#scope-of-identity" class="auto internal xref">Section 1.2</a>). The strength of that binding
@@ -2633,7 +2649,7 @@ li > p:last-of-type:only-child {
         <span class="bcp14">MUST</span> perform the following steps in order:<a href="#section-6.2-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-6.2-2">
           <li id="section-6.2-2.1">Apply the strict JSON and canonicalization gates in
-          <a href="#canonicalization-robustness" class="auto internal xref">Section 13.11</a> and verify the closed
+          <a href="#canonicalization-robustness" class="auto internal xref">Section 13.12</a> and verify the closed
           bundle shape.<a href="#section-6.2-2.1" class="pilcrow">¶</a>
 </li>
           <li id="section-6.2-2.2">Recompute <code>action_hash</code> from the canonical Action Object.<a href="#section-6.2-2.2" class="pilcrow">¶</a>
@@ -2932,7 +2948,7 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         designs: the checkpoint travels <em>inside</em> the receipt, so
         verification requires no query to the log. Detecting log
         equivocation (split-view attacks) additionally benefits from
-        gossip or witness cosigning (<a href="#log-equivocation" class="auto internal xref">Section 13.4</a>),
+        gossip or witness cosigning (<a href="#log-equivocation" class="auto internal xref">Section 13.5</a>),
         which is an online activity; the offline guarantee is that
         <em>this receipt is internally consistent, correctly signed by
         enrolled approver keys, and was included in a log tree whose head
@@ -2942,7 +2958,7 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         post-issuance revocation -- a receipt whose approver key was
         revoked an hour after commitment still verifies; the artifact is
         evidence of validity <em>at commit time</em>; and (b) log honesty
-        against split views (<a href="#log-equivocation" class="auto internal xref">Section 13.4</a>). A
+        against split views (<a href="#log-equivocation" class="auto internal xref">Section 13.5</a>). A
         relying party with freshness or revocation requirements
         <span class="bcp14">MUST</span> additionally consult a current directory head
         and log checkpoint online. Implementations <span class="bcp14">MUST NOT</span> describe offline verification as establishing that a
@@ -3045,7 +3061,7 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
       assertion.  Companion artifacts are conveyed separately; this document
       defines no network retrieval or presenter-supplied locator.  Parsers
       <span class="bcp14">MUST</span> apply the duplicate-member, surrogate, number, and
-      depth rejection rules in <a href="#canonicalization-robustness" class="auto internal xref">Section 13.11</a>
+      depth rejection rules in <a href="#canonicalization-robustness" class="auto internal xref">Section 13.12</a>
       to the companion before using any entry.
       For each required entry, an extension-specific verifier
       <span class="bcp14">MUST</span> verify the companion artifact under
@@ -3328,12 +3344,12 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         rather than claimed away. First, an operator that controls the
         signing client's rendering can harvest a <em>genuine</em>
         signature over an action the approver misunderstood -- a
-        presentation attack (<a href="#presentation-attacks" class="auto internal xref">Section 13.3</a>); for
+        presentation attack (<a href="#presentation-attacks" class="auto internal xref">Section 13.4</a>); for
         this reason an independently-authored rendering surface is
         <span class="bcp14">REQUIRED</span> for high-value policies. Second, an operator
         that unilaterally controls the Approver Directory can enroll keys
         it controls (<a href="#approver-directory" class="auto internal xref">Section 5.2</a>,
-        <a href="#directory-authority" class="auto internal xref">Section 13.6</a>). Accordingly, the accurate
+        <a href="#directory-authority" class="auto internal xref">Section 13.7</a>). Accordingly, the accurate
         claim for classes A/B is: "the operator cannot forge an
         approver's signature." The stronger claim -- "the operator cannot
         obtain an unauthorized approval" -- additionally requires the
@@ -3351,12 +3367,46 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         pair approval with out-of-band action rendering (the approver
         sees the wire details on a second surface).<a href="#section-13.2-1" class="pilcrow">¶</a></p>
 </section>
-<div id="presentation-attacks">
+<div id="historical-acceptance">
 <section id="section-13.3">
-        <h3 id="name-presentation-attacks">
-<a href="#section-13.3" class="section-number selfRef">13.3. </a><a href="#name-presentation-attacks" class="section-name selfRef">Presentation Attacks</a>
+        <h3 id="name-historical-acceptance-later">
+<a href="#section-13.3" class="section-number selfRef">13.3. </a><a href="#name-historical-acceptance-later" class="section-name selfRef">Historical Acceptance, Later Key Compromise, and Current Policy</a>
         </h3>
-<p id="section-13.3-1">The gravest risk in this protocol, stated without
+<p id="section-13.3-1">An acceptance that was independently recorded before a later key
+        compromise is not rewritten by that later compromise. Under the
+        receipt-core symbolic model, if acceptance precedes the first key
+        reveal, the matching user-verification-gated signature over the exact
+        accepted context already appears in the trace prefix before acceptance.
+        This acceptance-prefix integrity property is historical evidence about
+        that recorded event; it does not establish that the key remains
+        acceptable now.<a href="#section-13.3-1" class="pilcrow">¶</a></p>
+<p id="section-13.3-2">Ordinary signatures and a signer-asserted timestamp do not let an
+        offline verifier distinguish a genuinely pre-compromise signature from
+        a signature minted after compromise and backdated by the attacker. A
+        relying party that requires that chronology <span class="bcp14">MUST</span> require
+        an independently ordered witness, such as a previously accepted signed
+        log checkpoint or external timestamp, or a profile with an appropriate
+        forward-secure signing property. When required ordering evidence is
+        missing, stale, ambiguous, or unavailable, the verifier
+        <span class="bcp14">MUST</span> return <code>INDETERMINATE</code> rather than infer a
+        signing time from the receipt timestamp.<a href="#section-13.3-2" class="pilcrow">¶</a></p>
+<p id="section-13.3-3">Historical acceptance and current policy acceptance are separate
+        results. A verifier MAY report that a receipt satisfied the pinned
+        policy, directory, status, and trust inputs recorded for an earlier
+        acceptance. Before a new action or new reliance decision, the relying
+        party <span class="bcp14">MUST</span> apply its current policy and current required
+        status inputs. A historical acceptance <span class="bcp14">MUST NOT</span> be used
+        by itself to authorize a new effect, establish current non-revocation,
+        or prove that the same evidence remains acceptable under a later
+        policy epoch.<a href="#section-13.3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="presentation-attacks">
+<section id="section-13.4">
+        <h3 id="name-presentation-attacks">
+<a href="#section-13.4" class="section-number selfRef">13.4. </a><a href="#name-presentation-attacks" class="section-name selfRef">Presentation Attacks</a>
+        </h3>
+<p id="section-13.4-1">The gravest risk in this protocol, stated without
         minimization: the approver signs context hash H believing it
         represents action X when it represents action Y. A signature
         proves user presence and an act of approval toward the signed
@@ -3377,7 +3427,7 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         honestly: absent a trusted display path (hardware the operator
         does not author), rendering fidelity is enforced by controls
         (2)-(3), by audit, and by consented mismatch drills
-        (<a href="#approver-fatigue" class="auto internal xref">Section 13.8</a>) -- not by mathematics. The base
+        (<a href="#approver-fatigue" class="auto internal xref">Section 13.9</a>) -- not by mathematics. The base
         receipt guarantees exactness of the Action Object covered by the
         approver signature; by itself it cannot detect a difference between
         that object and the pixels the human actually saw. When a relying
@@ -3385,15 +3435,15 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         detect a mismatch between the profile-defined display bytes committed
         by trusted presentation evidence and the signed action. Even then, a
         compromised physical display path remains outside the cryptographic
-        claim.<a href="#section-13.3-1" class="pilcrow">¶</a></p>
+        claim.<a href="#section-13.4-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="log-equivocation">
-<section id="section-13.4">
+<section id="section-13.5">
         <h3 id="name-log-equivocation">
-<a href="#section-13.4" class="section-number selfRef">13.4. </a><a href="#name-log-equivocation" class="section-name selfRef">Log Equivocation</a>
+<a href="#section-13.5" class="section-number selfRef">13.5. </a><a href="#name-log-equivocation" class="section-name selfRef">Log Equivocation</a>
         </h3>
-<p id="section-13.4-1">A malicious log could show different trees to different
+<p id="section-13.5-1">A malicious log could show different trees to different
         parties. Checkpoints <span class="bcp14">SHOULD</span> be witness-cosigned
         and/or gossiped between independent EP operators; the federation
         profile makes cross-operator checkpoint exchange mandatory. Before a
@@ -3403,20 +3453,20 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         <span class="bcp14">MUST</span> verify any required consistency proof from the
         participant's previously accepted checkpoint. A quorum of witness
         signatures over a caller-supplied but unauthenticated tuple is not
-        evidence that the named log produced that tuple.<a href="#section-13.4-1" class="pilcrow">¶</a></p>
-<p id="section-13.4-2">For this purpose, independent operators require separate
+        evidence that the named log produced that tuple.<a href="#section-13.5-1" class="pilcrow">¶</a></p>
+<p id="section-13.5-2">For this purpose, independent operators require separate
         administrative control, key custody, and failure domains; multiple
         co-located processes under one operator do not provide independent
         witnessing. Comparing supplied authenticated views can prove that the
         views conflict. It does not by itself prove freshness, completeness,
-        or that every relying party received the latest checkpoint.<a href="#section-13.4-2" class="pilcrow">¶</a></p>
+        or that every relying party received the latest checkpoint.<a href="#section-13.5-2" class="pilcrow">¶</a></p>
 </section>
 </div>
-<section id="section-13.5">
+<section id="section-13.6">
         <h3 id="name-what-the-formal-models-do-a">
-<a href="#section-13.5" class="section-number selfRef">13.5. </a><a href="#name-what-the-formal-models-do-a" class="section-name selfRef">What the Formal Models Do and Do Not Prove</a>
+<a href="#section-13.6" class="section-number selfRef">13.6. </a><a href="#name-what-the-formal-models-do-a" class="section-name selfRef">What the Formal Models Do and Do Not Prove</a>
         </h3>
-<p id="section-13.5-1">The TLA+/Alloy models prove safety of the authorization state
+<p id="section-13.6-1">The TLA+/Alloy models prove safety of the authorization state
         machine: no replay, no self-approval, no bypass <em>within the
         modeled system</em>, no partial commitment. They prove nothing
         about any AI model's behavior, about host compromise, or about
@@ -3441,8 +3491,8 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         Directory, log checkpoints, or the Initiator
         Attestation (<a href="#initiator-attestation" class="auto internal xref">Section 4.2</a>); those sections
         are specified, not proven, and extending the models to them is
-        tracked work.<a href="#section-13.5-1" class="pilcrow">¶</a></p>
-<p id="section-13.5-2">A separate composed Tamarin model joins signed challenge, CAID,
+        tracked work.<a href="#section-13.6-1" class="pilcrow">¶</a></p>
+<p id="section-13.6-2">A separate composed Tamarin model joins signed challenge, CAID,
         two distinct user-verification-gated approvals, scoped authority
         under an exact pinned registry view, revocation, receipt-issuer
         pinning, one-time consumption, and execution in one symbolic trace
@@ -3460,14 +3510,21 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         model treats signatures as perfect symbolic primitives and does not
         prove WebAuthn internals, parser correctness, amount arithmetic,
         policy authorship, clock freshness, transparency-log completeness,
-        collusion resistance, or downstream exactly-once physical effects.<a href="#section-13.5-2" class="pilcrow">¶</a></p>
-<p id="section-13.5-3">The quorum abstraction in the standalone symbolic model is a fixed
+        collusion resistance, or downstream exactly-once physical effects.<a href="#section-13.6-2" class="pilcrow">¶</a></p>
+<p id="section-13.6-3">The standalone receipt-core Tamarin model additionally verifies
+        <code>acceptance_prefix_integrity_after_later_reveal</code>. The lemma is
+        deliberately narrow: for an acceptance that occurs before the first
+        modeled key reveal, matching user verification and signing over the
+        complete accepted context precede that acceptance. It does not prove
+        an offline anti-backdating property, trusted time, forward secrecy,
+        present-day key validity, or present-day policy acceptance.<a href="#section-13.6-3" class="pilcrow">¶</a></p>
+<p id="section-13.6-4">The quorum abstraction in the standalone symbolic model is a fixed
         2-of-2 instance. Its checked result is evidence for that instance, not
         a proof of the arbitrary k-of-n construction defined by the companion
         EP-QUORUM document and not a proof of production code. CI regression
         gating of an existing prover result increases reproducibility; it does
-        not add a lemma or enlarge the model's scope.<a href="#section-13.5-3" class="pilcrow">¶</a></p>
-<p id="section-13.5-4">Independent implementation status, stated precisely: the
+        not add a lemma or enlarge the model's scope.<a href="#section-13.6-4" class="pilcrow">¶</a></p>
+<p id="section-13.6-5">Independent implementation status, stated precisely: the
         three reference verifiers (JavaScript, Python, Go) agree on the
         published conformance vectors but live in one repository -- a
         cross-language consistency check, not independent
@@ -3478,8 +3535,8 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         and the available construction statement predates the evaluated
         hardening commit. It is therefore evidence of external implementation
         and execution for that bundle, not yet strict clean-room construction
-        acceptance for the current specification.<a href="#section-13.5-4" class="pilcrow">¶</a></p>
-<p id="section-13.5-5">The -11 Authorization Bundle algorithm has one TypeScript/JavaScript
+        acceptance for the current specification.<a href="#section-13.6-5" class="pilcrow">¶</a></p>
+<p id="section-13.6-6">The Authorization Bundle algorithm added in -11 has one TypeScript/JavaScript
         reference verifier and 27 generated cases covering the
         positive path, structural malformation, action and audience
         substitution, actor and subject confusion, approver-set selection,
@@ -3489,14 +3546,14 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         cross-language interoperability. The bundle-to-grant helper models a
         compare-and-set transition; it does not supply the authoritative
         durable store or prove that a deployment performs the transition
-        atomically.<a href="#section-13.5-5" class="pilcrow">¶</a></p>
+        atomically.<a href="#section-13.6-6" class="pilcrow">¶</a></p>
 </section>
 <div id="directory-authority">
-<section id="section-13.6">
+<section id="section-13.7">
         <h3 id="name-directory-authority">
-<a href="#section-13.6" class="section-number selfRef">13.6. </a><a href="#name-directory-authority" class="section-name selfRef">Directory Authority</a>
+<a href="#section-13.7" class="section-number selfRef">13.7. </a><a href="#name-directory-authority" class="section-name selfRef">Directory Authority</a>
         </h3>
-<p id="section-13.6-1"><a href="#approver-keys" class="auto internal xref">Section 5</a> removes the operator from the
+<p id="section-13.7-1"><a href="#approver-keys" class="auto internal xref">Section 5</a> removes the operator from the
         signature path; <a href="#approver-directory" class="auto internal xref">Section 5.2</a> must not
         readmit it as the authority that decides which keys count. If the
         EP operator alone signs the Approver Directory, a malicious
@@ -3506,14 +3563,14 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         key; second-party attestation on enrollment; Class C-equivalent
         treatment otherwise) exist for this reason. Auditors
         <span class="bcp14">SHOULD</span> verify directory key custody as part of any
-        assessment that relies on receipts.<a href="#section-13.6-1" class="pilcrow">¶</a></p>
+        assessment that relies on receipts.<a href="#section-13.7-1" class="pilcrow">¶</a></p>
 </section>
 </div>
-<section id="section-13.7">
+<section id="section-13.8">
         <h3 id="name-what-separation-of-duties-d">
-<a href="#section-13.7" class="section-number selfRef">13.7. </a><a href="#name-what-separation-of-duties-d" class="section-name selfRef">What Separation of Duties Does and Does Not Provide</a>
+<a href="#section-13.8" class="section-number selfRef">13.8. </a><a href="#name-what-separation-of-duties-d" class="section-name selfRef">What Separation of Duties Does and Does Not Provide</a>
         </h3>
-<p id="section-13.7-1">SelfApprovalImpossible (<a href="#consumption" class="auto internal xref">Section 7</a>) defeats
+<p id="section-13.8-1">SelfApprovalImpossible (<a href="#consumption" class="auto internal xref">Section 7</a>) defeats
         <em>unilateral</em> self-approval: no initiator can approve its
         own action, and m-of-n approvers are pairwise distinct
         identities. It does not defeat collusion among distinct enrolled
@@ -3522,14 +3579,14 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         coerced approver. Receipts make such events <em>attributable</em>
         -- named, signed, and evidenced -- which raises the cost of insider
         fraud; they do not make it impossible, and implementations
-        <span class="bcp14">MUST NOT</span> claim otherwise.<a href="#section-13.7-1" class="pilcrow">¶</a></p>
+        <span class="bcp14">MUST NOT</span> claim otherwise.<a href="#section-13.8-1" class="pilcrow">¶</a></p>
 </section>
 <div id="approver-fatigue">
-<section id="section-13.8">
+<section id="section-13.9">
         <h3 id="name-approver-fatigue">
-<a href="#section-13.8" class="section-number selfRef">13.8. </a><a href="#name-approver-fatigue" class="section-name selfRef">Approver Fatigue</a>
+<a href="#section-13.9" class="section-number selfRef">13.9. </a><a href="#name-approver-fatigue" class="section-name selfRef">Approver Fatigue</a>
         </h3>
-<p id="section-13.8-1">A gate that humans route around protects nothing;
+<p id="section-13.9-1">A gate that humans route around protects nothing;
         rubber-stamping is the empirical failure mode of every
         human-in-the-loop control under volume. This protocol is
         therefore not a general approval workflow: deployments
@@ -3545,20 +3602,20 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         they sign. Such telemetry is deployment guidance, not protocol;
         but the protocol's guarantees are only as strong as the attention
         of the human at its center, and implementations
-        <span class="bcp14">SHOULD</span> say so to their customers.<a href="#section-13.8-1" class="pilcrow">¶</a></p>
+        <span class="bcp14">SHOULD</span> say so to their customers.<a href="#section-13.9-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="initiator-attestation-security">
-<section id="section-13.9">
+<section id="section-13.10">
         <h3 id="name-initiator-attestation-as-an">
-<a href="#section-13.9" class="section-number selfRef">13.9. </a><a href="#name-initiator-attestation-as-an" class="section-name selfRef">Initiator Attestation as an Attack Surface</a>
+<a href="#section-13.10" class="section-number selfRef">13.10. </a><a href="#name-initiator-attestation-as-an" class="section-name selfRef">Initiator Attestation as an Attack Surface</a>
         </h3>
-<p id="section-13.9-1">The <code>statement</code> member of an Initiator Attestation
+<p id="section-13.10-1">The <code>statement</code> member of an Initiator Attestation
         (<a href="#initiator-attestation" class="auto internal xref">Section 4.2</a>) is
         attacker-influenceable free text rendered to a human at the moment
         of decision -- a social-engineering surface aimed at the approver,
         adjacent to the presentation attacks of
-        <a href="#presentation-attacks" class="auto internal xref">Section 13.3</a>. A compromised or
+        <a href="#presentation-attacks" class="auto internal xref">Section 13.4</a>. A compromised or
         prompt-injected initiator can state any trigger and any reason;
         injection can change what the initiator <em>proposes</em>,
         including this field, but it cannot change what a human
@@ -3571,7 +3628,7 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         labels it as the initiator's unverified claim, clearly separated
         from the operator-rendered Action Object. This is consistent with
         the rendering-faithfulness discipline of
-        <a href="#presentation-attacks" class="auto internal xref">Section 13.3</a>: the approver's decision
+        <a href="#presentation-attacks" class="auto internal xref">Section 13.4</a>: the approver's decision
         input is the rendered Action Object; the statement is commentary
         from a party the protocol never trusts. A related residual vector
         is divide-and-misinform: because each approver signs their own
@@ -3582,8 +3639,8 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         verifiers implementing the member <span class="bcp14">MUST</span> flag
         violations, but on verifiers that predate the member such a
         receipt still verifies -- the rule is a conformance check, not a
-        signature property.<a href="#section-13.9-1" class="pilcrow">¶</a></p>
-<p id="section-13.9-2">Privacy: statements written by an agent mid-task can leak
+        signature property.<a href="#section-13.10-1" class="pilcrow">¶</a></p>
+<p id="section-13.10-2">Privacy: statements written by an agent mid-task can leak
         sensitive operational context -- counterparty details, internal
         findings, fragments of prompts -- into receipts that are long-lived
         and portable by design. Deployments <span class="bcp14">SHOULD</span> prefer
@@ -3592,8 +3649,8 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         <span class="bcp14">SHOULD</span> constrain or template <code>statement</code>
         generation for regulated data, and <span class="bcp14">MUST</span> apply the
         same retention and disclosure controls to attestation content as
-        to the rest of the receipt.<a href="#section-13.9-2" class="pilcrow">¶</a></p>
-<p id="section-13.9-3">Absence is not evidence: a receipt without an attestation means
+        to the rest of the receipt.<a href="#section-13.10-2" class="pilcrow">¶</a></p>
+<p id="section-13.10-3">Absence is not evidence: a receipt without an attestation means
         only that the issuer did not populate it -- not that the initiator
         judged the action routine, and not that no escalation reasoning
         occurred. Verifiers and auditors <span class="bcp14">MUST NOT</span> infer
@@ -3601,20 +3658,20 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         and unchanged: for an action a policy gates on signoff, the
         absence of any valid receipt at all remains evidence that the
         control was bypassed -- that property comes from the gate, not from
-        this member.)<a href="#section-13.9-3" class="pilcrow">¶</a></p>
-<p id="section-13.9-4">No trust feedback: policy engines <span class="bcp14">MUST NOT</span> use
+        this member.)<a href="#section-13.10-3" class="pilcrow">¶</a></p>
+<p id="section-13.10-4">No trust feedback: policy engines <span class="bcp14">MUST NOT</span> use
         <code>initiator_attestation</code> content to relax thresholds, skip
         approvers, or raise any trust score. The initiator must gain
         nothing by saying the right words; the attestation is a claim by a
         party the protocol identifies but never trusts, not proof of its
-        internal state.<a href="#section-13.9-4" class="pilcrow">¶</a></p>
+        internal state.<a href="#section-13.10-4" class="pilcrow">¶</a></p>
 </section>
 </div>
-<section id="section-13.10">
+<section id="section-13.11">
         <h3 id="name-no-symmetric-key-on-the-ver">
-<a href="#section-13.10" class="section-number selfRef">13.10. </a><a href="#name-no-symmetric-key-on-the-ver" class="section-name selfRef">No symmetric key on the verification trust path</a>
+<a href="#section-13.11" class="section-number selfRef">13.11. </a><a href="#name-no-symmetric-key-on-the-ver" class="section-name selfRef">No symmetric key on the verification trust path</a>
         </h3>
-<p id="section-13.10-1">Every artifact a relying party verifies offline -- the approver
+<p id="section-13.11-1">Every artifact a relying party verifies offline -- the approver
         signoff (Class A: ES256/P-256), the operator commit and receipt
         (Ed25519), the log inclusion proof, and the portable revocation
         statement (Ed25519) -- is bound by an ASYMMETRIC signature whose
@@ -3632,14 +3689,14 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         provide EP's public-verifiability property. (HMAC <span class="bcp14">MAY</span> appear
         elsewhere in a deployment -- e.g. authenticating an operator's own cron
         or webhook calls -- provided it is never a link in the chain a third
-        party verifies.)<a href="#section-13.10-1" class="pilcrow">¶</a></p>
+        party verifies.)<a href="#section-13.11-1" class="pilcrow">¶</a></p>
 </section>
 <div id="canonicalization-robustness">
-<section id="section-13.11">
+<section id="section-13.12">
         <h3 id="name-canonicalization-robustness">
-<a href="#section-13.11" class="section-number selfRef">13.11. </a><a href="#name-canonicalization-robustness" class="section-name selfRef">Canonicalization Robustness</a>
+<a href="#section-13.12" class="section-number selfRef">13.12. </a><a href="#name-canonicalization-robustness" class="section-name selfRef">Canonicalization Robustness</a>
         </h3>
-<p id="section-13.11-1">Every signed EP artifact is verified over its canonical JSON
+<p id="section-13.12-1">Every signed EP artifact is verified over its canonical JSON
         form (<a href="#action-object" class="auto internal xref">Section 3</a>,
         <a href="#authorization-context" class="auto internal xref">Section 4</a>), so any divergence
         between two implementations' canonicalization behavior is a
@@ -3660,7 +3717,54 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         gates are applied at the parse boundary by the conformance
         runners, since the verifier packages receive already-parsed
         values; the profile predicate, canonical serialization, and
-        digests exercise the verifier packages themselves.)<a href="#section-13.11-1" class="pilcrow">¶</a></p>
+        digests exercise the verifier packages themselves.)<a href="#section-13.12-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="receipt-claim-boundaries">
+<section id="section-13.13">
+        <h3 id="name-what-successful-verificatio">
+<a href="#section-13.13" class="section-number selfRef">13.13. </a><a href="#name-what-successful-verificatio" class="section-name selfRef">What Successful Verification Does Not Establish</a>
+        </h3>
+<p id="section-13.13-1">A successfully verified receipt establishes the claims of the
+        selected verification profile over the supplied artifact and
+        relying-party trust inputs. It does not, by itself, establish any of
+        the following:<a href="#section-13.13-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-13.13-2.1">that the approved decision was wise, correct, lawful, safe, or
+          successful;<a href="#section-13.13-2.1" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-13.13-2.2">that the policy was adequate for the action;<a href="#section-13.13-2.2" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-13.13-2.3">that an approver was uncoerced or that distinct enrolled
+          identifiers denote distinct natural persons;<a href="#section-13.13-2.3" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-13.13-2.4">that the signing surface faithfully rendered the Action Object
+          to the approver;<a href="#section-13.13-2.4" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-13.13-2.5">that an approver identifier denotes a particular natural person
+          beyond the binding asserted by the independently trusted directory
+          and identity layer;<a href="#section-13.13-2.5" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-13.13-2.6">that the named approver personally authorized enrollment of the
+          signing key;<a href="#section-13.13-2.6" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-13.13-2.7">that the artifact is currently unrevoked, globally unconsumed,
+          or acceptable under the relying party's current policy; or<a href="#section-13.13-2.7" class="pilcrow">¶</a>
+</li>
+          <li class="normal" id="section-13.13-2.8">that the action was executed or produced the claimed external
+          effect.<a href="#section-13.13-2.8" class="pilcrow">¶</a>
+</li>
+        </ul>
+<p id="section-13.13-3">The verifier and relying party <span class="bcp14">MUST NOT</span> promote any
+        of those properties from a successful receipt-verification result.
+        Deployments that require one of them need separate evidence, controls,
+        or online state selected by the relying party. In particular,
+        presentation evidence can bind profile-defined display bytes to the
+        signed action, but a compromised physical display path remains outside
+        the cryptographic claim. Directory evidence can bind a key to an
+        approver identifier, but the strength of the identifier-to-person
+        mapping is a property of the selected directory and identity-proofing
+        layer.<a href="#section-13.13-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3701,7 +3805,7 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         receipt is evidence, not current authorization, proof of execution, or
         proof of human comprehension. Implementations must also apply the
         duplicate-member, Unicode-scalar, depth, and number restrictions in
-        <a href="#canonicalization-robustness" class="auto internal xref">Section 13.11</a>.<a href="#section-14-2.12" class="pilcrow">¶</a>
+        <a href="#canonicalization-robustness" class="auto internal xref">Section 13.12</a>.<a href="#section-14-2.12" class="pilcrow">¶</a>
 </dd>
         <dd class="break"></dd>
 <dt id="section-14-2.13">Interoperability considerations:</dt>
@@ -3949,161 +4053,184 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
       verdict. Those discussions shaped the Authorization Bundle and its
       transport-neutral native-binding extension point in this revision.<a href="#appendix-A-2" class="pilcrow">¶</a></p>
 </section>
-<div id="changes-since-10">
+<div id="changes-since-11">
 <section id="appendix-B">
-      <h2 id="name-changes-since-10">
-<a href="#appendix-B" class="section-number selfRef">Appendix B. </a><a href="#name-changes-since-10" class="section-name selfRef">Changes since -10</a>
+      <h2 id="name-changes-since-11">
+<a href="#appendix-B" class="section-number selfRef">Appendix B. </a><a href="#name-changes-since-11" class="section-name selfRef">Changes since -11</a>
       </h2>
 <ul class="normal">
-<li class="normal" id="appendix-B-1.1">Defined the closed <code>EP-AUTHORIZATION-BUNDLE-v1</code>
+<li class="normal" id="appendix-B-1.1">Added the narrow acceptance-prefix integrity result: a later key
+        reveal does not erase the matching user-verification and signing events
+        that preceded an already-recorded acceptance in the receipt-core
+        symbolic model.<a href="#appendix-B-1.1" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-B-1.2">Made the anti-backdating limit explicit. Ordinary signatures and a
+        signer-asserted timestamp do not prove that an offline receipt was
+        signed before compromise; required chronology needs an independently
+        ordered witness or an appropriate forward-secure profile.<a href="#appendix-B-1.2" class="pilcrow">¶</a>
+</li>
+        <li class="normal" id="appendix-B-1.3">Separated historical acceptance under pinned earlier inputs from
+        current policy acceptance. Historical evidence does not establish
+        current status and cannot authorize a new effect by itself.<a href="#appendix-B-1.3" class="pilcrow">¶</a>
+</li>
+      </ul>
+</section>
+</div>
+<div id="changes-since-10">
+<section id="appendix-C">
+      <h2 id="name-changes-since-10">
+<a href="#appendix-C" class="section-number selfRef">Appendix C. </a><a href="#name-changes-since-10" class="section-name selfRef">Changes since -10</a>
+      </h2>
+<ul class="normal">
+<li class="normal" id="appendix-C-1.1">Defined the closed <code>EP-AUTHORIZATION-BUNDLE-v1</code>
         pre-execution object, digest, three-state verification result, and
         ordered verification algorithm. Removed the undefined pre-execution
-        "consumption attestation" language.<a href="#appendix-B-1.1" class="pilcrow">¶</a>
+        "consumption attestation" language.<a href="#appendix-C-1.1" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-B-1.2">Added the missing relying-party <code>audience</code> member to the
+        <li class="normal" id="appendix-C-1.2">Added the missing relying-party <code>audience</code> member to the
         signed Authorization Context, correcting the mismatch between the -10
-        abstract and its wire example.<a href="#appendix-B-1.2" class="pilcrow">¶</a>
+        abstract and its wire example.<a href="#appendix-C-1.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-B-1.3">Defined a transport-neutral <code>authorization_binding</code> extension
+        <li class="normal" id="appendix-C-1.3">Defined a transport-neutral <code>authorization_binding</code> extension
         point. Native profiles independently verify and losslessly map their own
         artifacts before comparing the signed binding; this document does not
-        make the Bundle depend on OAuth, AP2, WIMSE, or another trust model.<a href="#appendix-B-1.3" class="pilcrow">¶</a>
+        make the Bundle depend on OAuth, AP2, WIMSE, or another trust model.<a href="#appendix-C-1.3" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-B-1.4">Kept OAuth Transaction Authorization Challenge as informative
+        <li class="normal" id="appendix-C-1.4">Kept OAuth Transaction Authorization Challenge as informative
         related work. Its optional OAuth/RAR projection is implemented as a
         separate package profile rather than a normative dependency of this
-        document.<a href="#appendix-B-1.4" class="pilcrow">¶</a>
+        document.<a href="#appendix-C-1.4" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-B-1.5">Required hostile cases for action substitution, actor/subject and
+        <li class="normal" id="appendix-C-1.5">Required hostile cases for action substitution, actor/subject and
         audience confusion, unbound UI confirmation, stale or unavailable
         status and policy, presenter-selected approvers, quorum failure,
         mapping failure, replay-layer confusion, dynamic-plan expansion, and
         indeterminate provider outcomes. Added one TypeScript/JavaScript
         reference verifier and 27 generated implementation-profile cases while
-        stating the absence of external and cross-language coverage.<a href="#appendix-B-1.5" class="pilcrow">¶</a>
+        stating the absence of external and cross-language coverage.<a href="#appendix-C-1.5" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-B-1.6">Requested registration of
+        <li class="normal" id="appendix-C-1.6">Requested registration of
         <code>application/ep-authorization-bundle+json</code> and corrected the
-        KLRC author citation.<a href="#appendix-B-1.6" class="pilcrow">¶</a>
+        KLRC author citation.<a href="#appendix-C-1.6" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
 </div>
 <div id="changes-since-09">
-<section id="appendix-C">
+<section id="appendix-D">
       <h2 id="name-changes-since-09">
-<a href="#appendix-C" class="section-number selfRef">Appendix C. </a><a href="#name-changes-since-09" class="section-name selfRef">Changes since -09</a>
+<a href="#appendix-D" class="section-number selfRef">Appendix D. </a><a href="#name-changes-since-09" class="section-name selfRef">Changes since -09</a>
       </h2>
 <ul class="normal">
-<li class="normal" id="appendix-C-1.1">Replaced the unverifiable assertion that a base receipt proves a
+<li class="normal" id="appendix-D-1.1">Replaced the unverifiable assertion that a base receipt proves a
         faithful signing-time rendering with a signing-client requirement and
         the optional <code>EP-PRESENTATION-BINDING-v1</code> verification profile.
         Added stable <code>display-unbound</code>, <code>display-mismatch</code>, and
         <code>display-untrusted</code> refusals; profiled existing mobile display
         hashes and detached display attestations; and defined native-first
-        composition with OASNT <code>dsp</code>.<a href="#appendix-C-1.1" class="pilcrow">¶</a>
+        composition with OASNT <code>dsp</code>.<a href="#appendix-D-1.1" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-C-1.2">Moved CAID to Normative References and required a
+        <li class="normal" id="appendix-D-1.2">Moved CAID to Normative References and required a
         relying-party-pinned CAID mapping whenever the receipt's action is
         compared across artifact formats. Missing, lossy, failed, or unpinned
-        mappings remain indeterminate.<a href="#appendix-C-1.2" class="pilcrow">¶</a>
+        mappings remain indeterminate.<a href="#appendix-D-1.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-C-1.3">Named the detailed Section 6 receipt profile
+        <li class="normal" id="appendix-D-1.3">Named the detailed Section 6 receipt profile
         <code>EP-AUTHORIZATION-RECEIPT-v1</code> and explicitly separated it from
-        the pre-existing generic <code>EP-RECEIPT-v1</code> envelope.<a href="#appendix-C-1.3" class="pilcrow">¶</a>
+        the pre-existing generic <code>EP-RECEIPT-v1</code> envelope.<a href="#appendix-D-1.3" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-C-1.4">Requested registration of
-        <code>application/ep-authorization-receipt+json</code>.<a href="#appendix-C-1.4" class="pilcrow">¶</a>
+        <li class="normal" id="appendix-D-1.4">Requested registration of
+        <code>application/ep-authorization-receipt+json</code>.<a href="#appendix-D-1.4" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
 </div>
 <div id="changes-since-08">
-<section id="appendix-D">
+<section id="appendix-E">
       <h2 id="name-changes-since-08">
-<a href="#appendix-D" class="section-number selfRef">Appendix D. </a><a href="#name-changes-since-08" class="section-name selfRef">Changes since -08</a>
+<a href="#appendix-E" class="section-number selfRef">Appendix E. </a><a href="#name-changes-since-08" class="section-name selfRef">Changes since -08</a>
       </h2>
 <ul class="normal">
-<li class="normal" id="appendix-D-1.1">Changed the intended status from Informational to Standards Track;
+<li class="normal" id="appendix-E-1.1">Changed the intended status from Informational to Standards Track;
         the wire format, canonicalization, signature inputs, and consumption
-        rules are unchanged.<a href="#appendix-D-1.1" class="pilcrow">¶</a>
+        rules are unchanged.<a href="#appendix-E-1.1" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-D-1.2">Clarified composition with the authorization-server, human-in-the-
+        <li class="normal" id="appendix-E-1.2">Clarified composition with the authorization-server, human-in-the-
         loop, transaction-token, and audit requirements in
         <span>[<a href="#I-D.klrc-aiagent-auth" class="cite xref">I-D.klrc-aiagent-auth</a>]</span> without treating confirmation
-        evidence as authorization.<a href="#appendix-D-1.2" class="pilcrow">¶</a>
+        evidence as authorization.<a href="#appendix-E-1.2" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
 </div>
 <div id="changes-since-07">
-<section id="appendix-E">
+<section id="appendix-F">
       <h2 id="name-changes-since-07">
-<a href="#appendix-E" class="section-number selfRef">Appendix E. </a><a href="#name-changes-since-07" class="section-name selfRef">Changes since -07</a>
+<a href="#appendix-F" class="section-number selfRef">Appendix F. </a><a href="#name-changes-since-07" class="section-name selfRef">Changes since -07</a>
       </h2>
 <ul class="normal">
-<li class="normal" id="appendix-E-1.1">Added the separate <code>EP-RECEIPT-EXTENSIONS-v1</code> companion
+<li class="normal" id="appendix-F-1.1">Added the separate <code>EP-RECEIPT-EXTENSIONS-v1</code> companion
         envelope, a bind-by-digest procedure, and a provisional extension
         namespace and registry design.  The base Trust Receipt schema, parser,
         canonical bytes, signature inputs, consumption rules, and log-proof
         verification remain unchanged; a base verifier never strips or ignores
-        a new receipt member.<a href="#appendix-E-1.1" class="pilcrow">¶</a>
+        a new receipt member.<a href="#appendix-F-1.1" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-E-1.2">Defined one common base action, base receipt, operation, and
-        consequence seam for companion artifacts.<a href="#appendix-E-1.2" class="pilcrow">¶</a>
+        <li class="normal" id="appendix-F-1.2">Defined one common base action, base receipt, operation, and
+        consequence seam for companion artifacts.<a href="#appendix-F-1.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-E-1.3">Added informative, non-exhaustive lifecycle examples including
+        <li class="normal" id="appendix-F-1.3">Added informative, non-exhaustive lifecycle examples including
         revocation, outcome binding, action remedy, evidence challenge,
         Authorization Evidence Chain composition, Authority Program stage
         receipts, and staged DTC settlement binding.  No implementation,
         deployment, or standards-adoption claim is made for an example merely
-        because it is named here.<a href="#appendix-E-1.3" class="pilcrow">¶</a>
+        because it is named here.<a href="#appendix-F-1.3" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
 </div>
 <div id="changes-since-06">
-<section id="appendix-F">
+<section id="appendix-G">
       <h2 id="name-changes-since-06">
-<a href="#appendix-F" class="section-number selfRef">Appendix F. </a><a href="#name-changes-since-06" class="section-name selfRef">Changes since -06</a>
+<a href="#appendix-G" class="section-number selfRef">Appendix G. </a><a href="#name-changes-since-06" class="section-name selfRef">Changes since -06</a>
       </h2>
 <ul class="normal">
-<li class="normal" id="appendix-F-1.1">Narrowed the abstract and introduction from category-wide
+<li class="normal" id="appendix-G-1.1">Narrowed the abstract and introduction from category-wide
         novelty claims to the guarantees of the selected EP verification
-        profile.<a href="#appendix-F-1.1" class="pilcrow">¶</a>
+        profile.<a href="#appendix-G-1.1" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-F-1.2">Scoped ConsumeOnce to one conforming shared atomic consumption
+        <li class="normal" id="appendix-G-1.2">Scoped ConsumeOnce to one conforming shared atomic consumption
         domain and stated that offline evidence cannot prove global
-        non-replay across independent executors.<a href="#appendix-F-1.2" class="pilcrow">¶</a>
+        non-replay across independent executors.<a href="#appendix-G-1.2" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-F-1.3">Replaced legal non-repudiation language with cryptographic
+        <li class="normal" id="appendix-G-1.3">Replaced legal non-repudiation language with cryptographic
         attribution, tamper evidence, and public verifiability; stated the
-        issuer-equivocation boundary.<a href="#appendix-F-1.3" class="pilcrow">¶</a>
+        issuer-equivocation boundary.<a href="#appendix-G-1.3" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-F-1.4">Added reference entries for the Canonical Action Identifier
+        <li class="normal" id="appendix-G-1.4">Added reference entries for the Canonical Action Identifier
         and EP Quorum companion documents, previously used as terms of
         art without citations, and a grouped companion-family paragraph
-        in Relationship to Other Work.<a href="#appendix-F-1.4" class="pilcrow">¶</a>
+        in Relationship to Other Work.<a href="#appendix-G-1.4" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-F-1.5">Added the CAID Action-Mapping composition boundary without
-        changing the EP v1 signature input.<a href="#appendix-F-1.5" class="pilcrow">¶</a>
+        <li class="normal" id="appendix-G-1.5">Added the CAID Action-Mapping composition boundary without
+        changing the EP v1 signature input.<a href="#appendix-G-1.5" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-F-1.6">Added Mastercard Verifiable Intent and AuthZEN AARP as adjacent,
-        composable work.<a href="#appendix-F-1.6" class="pilcrow">¶</a>
+        <li class="normal" id="appendix-G-1.6">Added Mastercard Verifiable Intent and AuthZEN AARP as adjacent,
+        composable work.<a href="#appendix-G-1.6" class="pilcrow">¶</a>
 </li>
-        <li class="normal" id="appendix-F-1.7">Clarified that a receipt can authorize and be consumed for
+        <li class="normal" id="appendix-G-1.7">Clarified that a receipt can authorize and be consumed for
         capability issuance, but cannot be reused as per-operation approval;
-        the capability protocol binds the full issuance-receipt digest.<a href="#appendix-F-1.7" class="pilcrow">¶</a>
+        the capability protocol binds the full issuance-receipt digest.<a href="#appendix-G-1.7" class="pilcrow">¶</a>
 </li>
       </ul>
 </section>
 </div>
 <div id="changes-since-04">
-<section id="appendix-G">
+<section id="appendix-H">
       <h2 id="name-changes-since-04">
-<a href="#appendix-G" class="section-number selfRef">Appendix G. </a><a href="#name-changes-since-04" class="section-name selfRef">Changes since -04</a>
+<a href="#appendix-H" class="section-number selfRef">Appendix H. </a><a href="#name-changes-since-04" class="section-name selfRef">Changes since -04</a>
       </h2>
-<p id="appendix-G-1">-05 adds the human-authorization-receipt composition frame for
+<p id="appendix-H-1">-05 adds the human-authorization-receipt composition frame for
       the SCITT agent-action statement cluster (how a WHO receipt is
       referenced, by digest, from capsule/record-style statements);
       updates the SCITT citation to RFC 9943; adds the key-custody
@@ -4111,19 +4238,19 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
       not assurance levels); corrects the formal-models status (the
       m-of-n quorum flow is now Alloy-checked) and states plainly which
       three normative mechanisms the reference implementation does not
-      yet cover.<a href="#appendix-G-1" class="pilcrow">¶</a></p>
+      yet cover.<a href="#appendix-H-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="changes-since-00">
-<section id="appendix-H">
+<section id="appendix-I">
       <h2 id="name-changes-since-00-through-04">
-<a href="#appendix-H" class="section-number selfRef">Appendix H. </a><a href="#name-changes-since-00-through-04" class="section-name selfRef">Changes since -00 (through -04)</a>
+<a href="#appendix-I" class="section-number selfRef">Appendix I. </a><a href="#name-changes-since-00-through-04" class="section-name selfRef">Changes since -00 (through -04)</a>
       </h2>
-<p id="appendix-H-1">This summary covers -00 through -04. Section
+<p id="appendix-I-1">This summary covers -00 through -04. Section
       numbering is stable; all changes are new subsections or in-place
-      additions.<a href="#appendix-H-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="normal type-1" id="appendix-H-2">
-        <li id="appendix-H-2.1">New <span class="bcp14">OPTIONAL</span> Authorization Context member
+      additions.<a href="#appendix-I-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="appendix-I-2">
+        <li id="appendix-I-2.1">New <span class="bcp14">OPTIONAL</span> Authorization Context member
         <code>initiator_attestation</code> (new
         <a href="#initiator-attestation" class="auto internal xref">Section 4.2</a>): a
         <span class="bcp14">REQUIRED</span> <code>escalation_trigger</code> enum
@@ -4141,24 +4268,24 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         is a claim by the initiator -- identified but never trusted -- not
         proof of the initiator's internal state. A terminology entry and a
         step-2 note in <a href="#offline-verification" class="auto internal xref">Section 7.3</a> were added
-        accordingly.<a href="#appendix-H-2.1" class="pilcrow">¶</a>
+        accordingly.<a href="#appendix-I-2.1" class="pilcrow">¶</a>
 </li>
-        <li id="appendix-H-2.2">Security Considerations additions (new
-        <a href="#initiator-attestation-security" class="auto internal xref">Section 13.9</a>): the
+        <li id="appendix-I-2.2">Security Considerations additions (new
+        <a href="#initiator-attestation-security" class="auto internal xref">Section 13.10</a>): the
         <code>statement</code> is attacker-influenceable text presented to a
         human (prompt-injection -&gt; social-engineering surface); conforming
         signing clients <span class="bcp14">MUST</span> render it as untrusted content
         (no markup, length cap, distinct styling), consistent with the
-        <a href="#presentation-attacks" class="auto internal xref">Section 13.3</a> rendering-faithfulness
+        <a href="#presentation-attacks" class="auto internal xref">Section 13.4</a> rendering-faithfulness
         caveat. Adds privacy guidance for free-text statements in
         long-lived receipts (prefer <code>policy_basis</code> identifiers),
         the rule that absence of an attestation is not evidence of
         non-escalation, the cross-context consistency requirement, and the
         prohibition on using attestation content as a trust input. The
         formal-models section now lists the Initiator Attestation among
-        the not-yet-modeled areas.<a href="#appendix-H-2.2" class="pilcrow">¶</a>
+        the not-yet-modeled areas.<a href="#appendix-I-2.2" class="pilcrow">¶</a>
 </li>
-        <li id="appendix-H-2.3">Introduction/terminology clarifications (new text in the
+        <li id="appendix-I-2.3">Introduction/terminology clarifications (new text in the
         Introduction, new <a href="#scope-of-identity" class="auto internal xref">Section 1.2</a>, and a
         sentence in <a href="#key-classes" class="auto internal xref">Section 5.1</a> and
         <a href="#approver-directory" class="auto internal xref">Section 5.2</a>): makes unmistakable that
@@ -4167,9 +4294,9 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         acquiescence/confirmation mechanism, and (b) proof of a specific
         natural-person identity is out of scope -- the Approver Directory
         trust root is the explicit slot where identity/key-discovery
-        layers bind keys to named persons.<a href="#appendix-H-2.3" class="pilcrow">¶</a>
+        layers bind keys to named persons.<a href="#appendix-I-2.3" class="pilcrow">¶</a>
 </li>
-        <li id="appendix-H-2.4">New <span class="bcp14">OPTIONAL</span> Authorization Context member
+        <li id="appendix-I-2.4">New <span class="bcp14">OPTIONAL</span> Authorization Context member
         <code>agent_binding</code> (new <a href="#agent-binding" class="auto internal xref">Section 4.3</a>): an
         external agent-identity reference (<code>agent_id</code>) and an
         <span class="bcp14">OPTIONAL</span> <code>delegation</code> (<code>scheme</code>,
@@ -4188,17 +4315,17 @@ REQUESTED -&gt; {PARTIALLY_APPROVED}* -&gt; APPROVED -&gt; COMMITTED
         <span class="bcp14">MAY</span> enforce freshness against it fail-closed, keeping
         the receipt agnostic to which external identity scheme prevails while
         making a stale or unconstrained upstream claim detectable after the
-        fact.<a href="#appendix-H-2.4" class="pilcrow">¶</a>
+        fact.<a href="#appendix-I-2.4" class="pilcrow">¶</a>
 </li>
-        <li id="appendix-H-2.5">Housekeeping: version and date bumped in the header; this
+        <li id="appendix-I-2.5">Housekeeping: version and date bumped in the header; this
         appendix added; the idnits non-ASCII em-dash / curly-quote cleanup
-        from -00 carried forward as a build step.<a href="#appendix-H-2.5" class="pilcrow">¶</a>
+        from -00 carried forward as a build step.<a href="#appendix-I-2.5" class="pilcrow">¶</a>
 </li>
       </ol>
 </section>
 </div>
 <div id="authors-addresses">
-<section id="appendix-I">
+<section id="appendix-J">
       <h2 id="name-authors-address">
 <a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
       </h2>

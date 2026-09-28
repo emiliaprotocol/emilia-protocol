@@ -1,5 +1,7 @@
 # Selective Disclosure of Authorization Receipts (staged section for presentation-binding -01)
 
+CURRENT STATUS (checked 2026-09-27): not in draft-schrock-ep-presentation-binding-01, which was posted on 2026-09-12 without this text. It remains staged and unfiled; the next available revision is -02. Re-check the live Datatracker revision before numbering.
+
 STATUS: STAGED, NOT FILED. This is working text intended for the
 `draft-schrock-ep-presentation-binding-01` revision. It has not been
 submitted to Datatracker, and nothing here is an IETF document, adopted or

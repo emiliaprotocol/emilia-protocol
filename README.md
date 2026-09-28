@@ -367,9 +367,9 @@ informative reference encoding. The exact submitted -07 bytes and their
 publication record are retained in
 [`standards/staged/NEXT-AEB-07`](standards/staged/NEXT-AEB-07).
 
-The complete active portfolio remains 24 Datatracker records: 20 sole-authored
-records and four coauthored records, each with its own scope and revision
-history. See the [standards guide](standards/README.md),
+The complete active portfolio is 26 Datatracker records: 21 sole-authored
+records and five coauthored records, each with its own scope, revision
+history, and recorded maintenance status. See the [standards guide](standards/README.md),
 [portfolio](standards/PORTFOLIO.md), and machine-readable
 [status inventory](standards/STATUS.json).
 

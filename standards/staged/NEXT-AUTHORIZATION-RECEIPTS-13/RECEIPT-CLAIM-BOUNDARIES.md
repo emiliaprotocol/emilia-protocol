@@ -1,5 +1,7 @@
 # RECEIPTS-13 CANDIDATE: consolidated receipt claim boundaries
 
+CURRENT STATUS (checked 2026-09-27): filed as Section 13.13 of draft-schrock-ep-authorization-receipts-13, posted 2026-09-12; retained as provenance. The status paragraph below is historical.
+
 STATUS: STAGED, NOT FILED. This is working text for a possible future
 `draft-schrock-ep-authorization-receipts-13`. Revision -12 was the current
 published revision when this text was checked on 2026-09-11. Check the live
