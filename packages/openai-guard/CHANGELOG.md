@@ -3,6 +3,11 @@
 
 ## Unreleased
 
+- Allow the optional verifier peer to use 6.x as well, so the guard can
+  install alongside a Gate that pins `@emilia-protocol/verify` 6.0.0. The
+  guard calls only `verifyReceipt()`, whose root entry verify 6.0.0 leaves
+  unchanged; the package tests pass against the repository's verify 6.0.0
+  source. This takes effect only when a new guard version is published.
 - Allow the optional verifier peer to use 5.x as well as 3.21.x and 4.x, so
   the guard can install alongside Gate 0.27.0, which pins
   `@emilia-protocol/verify` 5.0.0. The guard calls only `verifyReceipt()`,

@@ -442,8 +442,9 @@ arbitrary-concurrency proof, or mechanized TypeScript/SQL refinement.
 ### 11.2 Release order
 
 The release metadata in this tree requires
-`@emilia-protocol/verify@5.0.0` first. Only after the exact registry tarball is
-available at the pinned digest may `@emilia-protocol/gate@0.27.0` release.
+`@emilia-protocol/verify@6.0.0` first. Only after the exact registry tarball is
+available at the pinned digest may the next `@emilia-protocol/gate` version
+release; Gate 0.28.0, already released, pins Verify 5.0.0.
 `ep-qualify@0.1.5` pins the exact `@emilia-protocol/verify@3.21.0` tarball
 instead, so it is not ordered after this Verify release; the two downstream
 packages release independently. Package versions and workflows in a checkout do not establish

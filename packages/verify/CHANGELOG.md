@@ -3,9 +3,9 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 6.0.0 (2026-09-28)
 
-Version type: major, 6.0.0. The vendored CAID now refuses actions and adapter
+Version type: major. The vendored CAID now refuses actions and adapter
 mapping profiles that 5.0.0 accepted, and the 5.0.0 entry below treats a
 release that refuses artifacts the previous version accepted as major. The
 structured AEC evaluator contract also changes in this release, a BREAKING
@@ -18,7 +18,7 @@ behavior only through an explicit dependency bump.
 
 BREAKING for custom native verifier callbacks passed to
 `createAuthorizationChainEvaluator` and for anything that reads its replay
-facts or replay digests. Ships in 6.0.0.
+facts or replay digests.
 
 - `createAuthorizationChainEvaluator` native verifier callbacks return two
   separate results instead of one `valid`, as
@@ -112,7 +112,8 @@ facts or replay digests. Ships in 6.0.0.
   now report `caid_mapping_failed` followed by `caid_mapping_failed:<reason>`
   for each CAID refusal (here `caid_mapping_failed:invalid_definition`),
   where 5.0.0 reported `caid_mapping_failed` alone. The helper is exported as
-  `caidMappingFailureReasons()`.
+  `caidMappingFailureReasons()`. The sample mapper that the Crossing Lab
+  scaffolds into a new workspace reports the same reasons.
 - The vendored CAID implementation (`vendor/caid.mjs`), which the AEB
   adapters, the AP2 native adapter, the FIDO and AP2 bridge, authorization
   server confirmation, the crossing lab, portable state handoff, and policy
@@ -449,7 +450,7 @@ profile label without receiving or re-verifying that evaluation, and can report 
 conversion `COMPLETE`. A `COMPLETE` conversion therefore shows only that the
 signer committed to the references; it does not show that the referenced
 evaluation exists or matches the operation.
-The Unreleased section above adds the evaluation join and stops the upgrade
+The 5.0.0 entry above adds the evaluation join and stops the upgrade
 from reporting an unchecked reference as `COMPLETE`.
 
 ## 4.0.0 (2026-09-13)
