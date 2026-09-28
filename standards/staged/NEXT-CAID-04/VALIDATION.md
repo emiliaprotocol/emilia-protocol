@@ -82,8 +82,9 @@ and keeps both.
   lines that begin with "Appendix".
 - The TXT and the XML contain no U+2013 or U+2014. The only double hyphens
   in the TXT are the arrows of the Section 1.2 figure and table borders.
-  `check-caid-04` fails on "adopted", "adoption", "quantum-safe",
-  "FIPS-compliant", or "SCITT-integrated" anywhere in the XML or TXT, and
+  `check-caid-04` fails on any phrase in its banned-phrase list (adoption
+  claims and the retired post-quantum, FIPS and SCITT claim phrases; the
+  list is BANNED in scripts/check-caid-04.mjs) anywhere in the XML or TXT, and
   on "independent implementation" or "endorse" outside the three
   disclaimers of Section 13 and the endorsement disclaimer of the
   Acknowledgments. Tool names are not listed in the public script: before
