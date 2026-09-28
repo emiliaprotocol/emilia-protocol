@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "468e4bbd86ce5a1270753b770c6fddf653f8d2f428ba1c4be03c998795150d9b",
+    "input_digest_sha256": "0286a0e5b4efd75c41c52343a83df3934cf172f373c90e2610ab069ed4c092f7",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "55d9b22b5da03f02c91efb4d4f0ab9a00dd508fe128e75c929bddab11a608abc",
+        "sha256": "249246a088cadc1182bae89d23be492dad8f3037982635f0738636c271bff868",
         "bytes": 4299
       },
       {
@@ -350,7 +350,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "1f0e1554ffd87b44f63ac52cc8500f6d72f7e299c32d5f781b58720d1f83b9d8",
+        "evidenceSha256": "9338eb8c1c4f6786f69bf5c13c6fd64c48fa5ef4f11107cf86c08bdf77fd8eaa",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
