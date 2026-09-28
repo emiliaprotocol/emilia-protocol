@@ -3,11 +3,11 @@
   "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "3350309227c250877631706a27dd5b520f7bd176977377064e115999242dd258",
+    "input_digest_sha256": "f60c0ade5adc59affe4647ebd7b17e40f5bcf4ad7b29574144533fae843d9046",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "2e138eddb28ce6caa87779367c73c0a0afdf18a39bc5a72bfbad10ef9553d32a",
+        "sha256": "59c2069277b413793087ea9e968be39966af0d1c04301ccf03ffcbbf4330e44e",
         "bytes": 51312
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "61e6e32b41250b658398d0a844eddfad7146b6ce5ad441bcf50fb9426e0d3393",
-        "bytes": 78683
+        "sha256": "63b40ac22ec927517c58acbc31093b22d037f5f0ceb3545f1bd44fe3910f128b",
+        "bytes": 78748
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4479,7 +4479,7 @@
     "The AgentROA and ORPRG adapters implement the exact documented native formats and relying-party profiles. They do not claim universal support for every future revision or ORPRG wire profile.",
     "The checked-in TPM interoperability fixture was generated with a software TPM. The verifier is real, but no physical TPM, manufacturer EK chain, measured-boot deployment, or running-production-binary attestation is claimed.",
     "The three local witness instances prove emit, quorum, and gossip behavior. They are not independent operators. Independent witness evidence exists only after separately administered external operators generate and control their own keys and publish live views.",
-    "Twenty-six Datatracker records are active in the repository portfolio as of September 27, 2026: 21 sole-authored series and five coauthored series. The current coauthored records are Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, GRACE Grid Curtailment -00, and Early Attestation Considered Very Harmful (draft-intra-handshake-fail) -47. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
+    "Twenty-six Datatracker records are active in the repository portfolio as of September 28, 2026: 21 sole-authored series and five coauthored series. The current coauthored records are Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, GRACE Grid Curtailment -00, and Early Attestation Considered Very Harmful (draft-intra-handshake-fail) -48. They are proposals, not RFCs, adopted working-group items, or IETF endorsement.",
     "The mobile ceremony proves that a pinned enrolled credential completed a user-verified platform ceremony over exact bytes. It does not prove civil identity, comprehension, legality, wisdom, safety, or physical outcome.",
     "Apple App Attest and Google Play Integrity are online verification dependencies at mobile ceremony time. Their tokens are not silently claimed as offline-verifiable evidence; the resulting EP Class-A signoff and receipt retain only their separately specified properties.",
     "The government mobile reference apps and example.gov identifiers are implementation examples. They do not claim adoption, procurement, partnership, or endorsement by any state, agency, or government entity.",
@@ -4746,15 +4746,15 @@
     },
     {
       "identifier": "draft-intra-handshake-fail",
-      "revision_at_snapshot": "47",
+      "revision_at_snapshot": "48",
       "role": "Coauthored analysis of published vulnerabilities in early attestation; Iman Schrock is one of 15 listed authors",
-      "next_action": "Revision -47 posted September 27 (Datatracker posting 2026-09-27T17:15:53Z). Revisions are prepared outside this repository; do not imply sole or lead authorship.",
+      "next_action": "Revision -48 posted September 28 (Datatracker posting 2026-09-28T00:30:22Z). Revisions are prepared outside this repository and change often; check Datatracker for the current revision, and do not imply sole or lead authorship.",
       "url": "https://datatracker.ietf.org/doc/draft-intra-handshake-fail/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     }
   ],
   "standards_portfolio": {
-    "updated": "2026-09-27",
+    "updated": "2026-09-28",
     "decision_vocabulary": {
       "VERIFIED": "One artifact passed its native verifier under relying-party-selected trust inputs.",
       "MATCH": "Independently verified artifacts denote the same material action directly or under exact pinned mapping profiles.",

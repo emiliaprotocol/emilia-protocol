@@ -1,6 +1,6 @@
 {
   "@version": "EMILIA-STANDARDS-PORTFOLIO-v1",
-  "updated": "2026-09-27",
+  "updated": "2026-09-28",
   "active_datatracker_count": 26,
   "active_schrock_datatracker_count": 22,
   "sole_authored_datatracker_count": 21,
@@ -448,12 +448,12 @@
     },
     {
       "draft": "draft-intra-handshake-fail",
-      "revision": "47",
+      "revision": "48",
       "layer": "identity_transport",
       "role": "Coauthored analysis of published vulnerabilities in early attestation; Iman Schrock is one of 15 listed authors",
-      "next_action": "Revision -47 posted September 27 (Datatracker posting 2026-09-27T17:15:53Z). Revisions are prepared outside this repository; do not imply sole or lead authorship.",
+      "next_action": "Revision -48 posted September 28 (Datatracker posting 2026-09-28T00:30:22Z). Revisions are prepared outside this repository and change often; check Datatracker for the current revision, and do not imply sole or lead authorship.",
       "maintenance_status": "maintained_outside_repository",
-      "datatracker_expires": "2027-03-31"
+      "datatracker_expires": "2027-04-01"
     }
   ],
   "replaced_datatracker": [

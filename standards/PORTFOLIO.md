@@ -383,7 +383,7 @@ maintenance status.
 | `draft-ferro-schrock-memory-projection-record` | -01 | Maintained with coauthors | 2027-02-05 |
 | `draft-mih-sato-agent-accountability-composition` | -01 | Maintained with coauthors | 2027-02-17 |
 | `draft-schrock-kintzele-grid-curtailment` | -00 | Maintained with coauthors | 2027-02-23 |
-| `draft-intra-handshake-fail` | -47 | Maintained outside this repository | 2027-03-31 |
+| `draft-intra-handshake-fail` | -48 | Maintained outside this repository | 2027-04-01 |
 | `draft-schrock-action-evidence-boundary` | -07 | No further revisions planned | 2027-03-30 |
 | `draft-schrock-ep-architecture` | -03 | No further revisions planned | 2027-03-10 |
 | `draft-schrock-ep-authority-introduction` | -03 | No further revisions planned | 2027-02-05 |
