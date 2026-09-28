@@ -752,6 +752,7 @@ export function coreCases({ limits }) {
   // alone, since the size limit applies only when nothing else refused. In
   // a member of an unregistered-type field entry, inside the validation
   // projection of a definition, it computes.
+  /** @param {number} n @param {any} [v] */
   const fill = (n, v = 0) => ({ $fill: { n, v } });
   /** @type {[string, number][]} */
   const longArrays = [['16777216', 2 ** 24], ['16777215', 2 ** 24 - 1]];
