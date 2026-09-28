@@ -9,10 +9,11 @@ and posting is not review by any referenced protocol owner.
 The XML under `UPLOAD-THIS/` is the exact submitted -03 source and matches the
 immutable IETF archive byte-for-byte. The text under `RENDERS/` also matches
 the archive byte-for-byte. The packet is retained for publication provenance,
-not as an upload candidate. The posted snapshot is
-[`../../posted/draft-schrock-canonical-action-identifier-03.xml`](../../posted/draft-schrock-canonical-action-identifier-03.xml);
-CAID-02 is retained in `../../archive/`. The publication check is recorded at
-the end of `VALIDATION.md`.
+not as an upload candidate. The posted snapshot, superseded by -04 on
+2026-09-28, is retained at
+[`../../archive/draft-schrock-canonical-action-identifier-03.xml`](../../archive/draft-schrock-canonical-action-identifier-03.xml);
+CAID-02 is also retained in `../../archive/`. The publication check is
+recorded at the end of `VALIDATION.md`.
 
 ## Changes from -02
 
@@ -53,4 +54,6 @@ spaces were removed before its checksum was recorded. `SHA256SUMS.txt` covers
 all three files. `VALIDATION.md` records the checks run before submission and
 the publication check.
 
-Later normative changes are staged in [`../NEXT-CAID-04/`](../NEXT-CAID-04/) and are not part of this posted revision.
+Later normative changes are in -04, posted on 2026-09-28, whose provenance
+packet is [`../NEXT-CAID-04/`](../NEXT-CAID-04/). They are not part of this
+revision.

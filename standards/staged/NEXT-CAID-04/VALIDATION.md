@@ -530,5 +530,30 @@ Section 10.7, the document encoding limit results, the
 RFC 7493 Section 2.1 and 2.3 reading, and the
 `draft-thallapelly-oasnt-caid-01` Section 6.4 reading.
 
-Datatracker has not published this packet. Submission is held; see
-`README.md`.
+When these checks ran, Datatracker had not yet published this packet; the
+publication check below records the later posting.
+
+## Publication check
+
+Checked on 2026-09-28 after posting:
+
+- The Datatracker submission API lists submission 169585 for
+  `draft-schrock-canonical-action-identifier` revision 04 in state `posted`,
+  and the document record shows revision 04 at 2026-09-28T07:24:09Z,
+  expiring 2027-04-01. The IETF archive URL for -05 returns 404.
+- The IETF archive XML has SHA-256
+  `2327aa36bba57c368140d7573184113df38e6c4f75a97fe09625d76a91162b93` and the
+  archive text has SHA-256
+  `c2949c587f28917fe764428a80af1b86a0a78d3b4fbef09d2690b1d8e7cc4c2a`. Both
+  match `SHA256SUMS.txt` byte-for-byte.
+- The archive HTML differs from the retained render. The archive rendered it
+  with xml2rfc 3.34.1, so it differs in its recorded versions, some CSS
+  rules, and trailing whitespace, and the retained render stays the
+  checksum-pinned local form. The posted HTML is the archive HTML with the
+  per-request Cloudflare challenge script, which the archive delivery path
+  appends before `</body>`, removed; two fetches differed only in that script
+  and were byte-identical once it was removed. Its SHA-256 is
+  `2f1630e7dce0be5e5da1ab18aada08c2915ec1c349068462c20e9b975f740983`.
+
+Publication is not working-group adoption, RFC status, protocol-owner review,
+implementation interoperability, or deployment evidence.

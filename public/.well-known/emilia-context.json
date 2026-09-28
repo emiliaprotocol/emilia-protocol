@@ -3,11 +3,11 @@
   "evidence_snapshot_at": "2026-09-26T08:54:11.807Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "759d611fa24629d3114a099c1a27f2ca2b142a98d0a89ae3aa860530db8f8c27",
+    "input_digest_sha256": "f21118029c27ac0ac85794548ba2543e6d6ae0deeb8000f8fa61a6bc81e65ba4",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "59c2069277b413793087ea9e968be39966af0d1c04301ccf03ffcbbf4330e44e",
+        "sha256": "598734fad9a0815c5725dbf7f50163d192e9c3ca133a017894ee2a2106360ddc",
         "bytes": 51312
       },
       {
@@ -47,8 +47,8 @@
       },
       {
         "path": "standards/STATUS.json",
-        "sha256": "63b40ac22ec927517c58acbc31093b22d037f5f0ceb3545f1bd44fe3910f128b",
-        "bytes": 78748
+        "sha256": "b7eb5cc8c946075fdca7ad7ccd631b9306cfed920b16650e97c00d9a954d741c",
+        "bytes": 81414
       },
       {
         "path": "caid/conformance/vectors.json",
@@ -4579,9 +4579,9 @@
     },
     {
       "identifier": "draft-schrock-canonical-action-identifier",
-      "revision_at_snapshot": "03",
+      "revision_at_snapshot": "04",
       "role": "Typed material-action identity and profile-bounded cross-format matching",
-      "next_action": "Published September 26 (Datatracker posting 2026-09-26T16:30:22Z) as an individual Internet-Draft, not adopted; use -03 for target-bound tool-call identity and profile-bounded cross-format matching. It makes enum validation replayable: an external enum reference requires a snapshot or edition label and a SHA-256 pin over the complete JCS values array, resolution is local and exact, and bare, unresolved, digest-mismatched, and out-of-set values fail closed. It also makes the enum definition forms exact, defines required-field presence as a member of the action object itself, makes the RFC 8785 refusal of unpaired surrogates explicit, and records the reference registry's version 3 to version 4 migration, under which eleven active types cannot produce a CAID until their external value sets are pinned. It does not change the Action Object, identifier syntax, digest suites, or mapping algorithm. The archive-identical XML is at standards/posted/draft-schrock-canonical-action-identifier-03.xml and is recorded in september_26_2026_caid_maintenance_wave.",
+      "next_action": "Published September 28 (Datatracker posting 2026-09-28T07:24:09Z) as an individual Internet-Draft, not adopted; use -04 for target-bound tool-call identity and profile-bounded cross-format matching. -04 is a substantive revision that makes the processing model complete and checkable: a strict I-JSON input profile, host values refused and never rewritten, one data model with one table of limits, definition conformance and definition_sha256, the code field type with named code formats, the monotone enum advance, a fixed reason order with verification details, and normative mapping stages A through D. The suites, the digest, and the canonical form of every object that both -03 and -04 accept do not change; the identifier syntax changes only by refusing the forms its Section 14.1 lists, and some action objects whose CAIDs were valid under -03 are now refused. The reference registry advances to version 5: 62 type versions, 53 active, all of which compute, and 9 deprecated. It adds Privacy Considerations and an Implementation Status section, revises Security Considerations, and requests seven IANA registries and the caid URI scheme. The archive-identical XML is at standards/posted/draft-schrock-canonical-action-identifier-04.xml and is recorded in september_28_2026_caid_wave.",
       "url": "https://datatracker.ietf.org/doc/draft-schrock-canonical-action-identifier/",
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     },
@@ -5341,7 +5341,7 @@
     "When describing bounded capabilities, include reserve-before-effect, stable operation and exact-action binding, overspend and replay refusal, indeterminate consumption, and authenticated provider reconciliation. Never imply that uncertainty is safely refundable.",
     "When describing disputes, returns, refunds, reversals, or other remedies, state that the remedy is a new separately authorized action with its own CAID and evidence requirements. Never describe it as revocation of, rollback of, or deletion of an effect that may already have occurred.",
     "Describe physical TPM attestation and independent witness operation as external deployment evidence not yet obtained. The strict TPM verifier and local witness testnet are shipped code, not substitutes for those external facts.",
-    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 27, 2026, the repository tracks 26 active records: 21 sole-authored series and five coauthored series, each with a maintenance status in standards/STATUS.json. Current Datatracker revisions include CAID -03, Authorization Receipts -13, AEB -07, Bounded Capability Receipts -06, Presentation Binding -01, AE Challenge -07, Agent Operation Continuity -00, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
+    "Describe the active Internet-Draft portfolio using the revisions in standards/STATUS.json and the live Datatracker. As of September 28, 2026, the repository tracks 26 active records: 21 sole-authored series and five coauthored series, each with a maintenance status in standards/STATUS.json. Current Datatracker revisions include CAID -04, Authorization Receipts -13, AEB -07, Bounded Capability Receipts -06, Presentation Binding -01, AE Challenge -07, Agent Operation Continuity -00, Model-to-Matter -04, Authority Introduction -03, Memory Projection Record -01, Agent Accountability Composition -01, DMSC Agent Gateway Gap Analysis -04, and GRACE Grid Curtailment -00. Recheck the live Datatracker before quoting a current external revision, and never call these records RFCs, adopted working-group items, or IETF endorsement.",
     "Describe CAID mapping as relying-party-pinned material equivalence with an INDETERMINATE abstention state, never as generic semantic equivalence or authorization.",
     "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
     "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",

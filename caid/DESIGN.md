@@ -2,9 +2,9 @@
 
 This file is no longer normative. The normative text of CAID is the
 Internet-Draft `draft-schrock-canonical-action-identifier` (revision -04,
-staged at `../standards/staged/NEXT-CAID-04/`; the posted -03 is at
-`../standards/posted/`). Where this directory and the draft disagree, the
-draft wins and this directory has a bug.
+posted on 2026-09-28 and mirrored at `../standards/posted/`; its provenance
+packet is `../standards/staged/NEXT-CAID-04/`). Where this directory and the
+draft disagree, the draft wins and this directory has a bug.
 
 Everything else here is derived from the draft or governed by it:
 

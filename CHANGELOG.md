@@ -210,7 +210,10 @@ Historical entries below retain the labels used when they were written.
   package takes its currency pin from it. The CAID conformance corpus moves
   to version 2 (73 core vectors) and now runs in CI. The WIMSE CAID scope
   companion profile moves to `WIMSE-CAID-SCOPE-01` for registry v4. The
-  Internet-Draft revision describing registry v4 is staged, not submitted.
+  Internet-Draft revision describing registry v4, CAID-03, was posted on
+  2026-09-26 through Datatracker submission 169526, and CAID-04, which
+  describes registry v5, was posted on 2026-09-28 through submission 169585.
+  Both are individual Internet-Drafts, not adopted.
 
 ### Consequence admission
 

@@ -126,7 +126,7 @@ Separately, the **runtime execution spine** is:
 
 1. **Architecture-03** defines the system boundaries and non-collapsing
    decision vocabulary.
-2. **CAID-03** identifies and matches the exact material action.
+2. **CAID-04** identifies and matches the exact material action.
 3. **AEC-06** verifies and composes action-matched evidence into a relying-party
    satisfaction result.
 4. **AEB-07** applies the executor-side admission boundary, including authority
@@ -321,7 +321,7 @@ the reference registry from version 3 to version 4, under which eleven active
 types cannot produce a CAID until their external value sets are pinned. It does
 not change the Action Object, identifier syntax, digest suites, or mapping
 algorithm. It is an individual Internet-Draft, not an adopted working-group
-item.
+item. CAID-04 superseded it on September 28.
 
 On **September 9, 2026**, Bounded Capability Receipts-06 was posted through
 Datatracker submission 168817, and on **September 15, 2026**, Agent Operation
@@ -334,6 +334,23 @@ both revisions were fetched from the immutable IETF archive and mirrored into
 `posted/` on September 27. Neither is an adopted working-group item. With the
 five September 27 mirrors, `posted/` holds the current revision of every active
 sole-authored draft, as checked against the Datatracker API on September 28.
+
+On **September 28, 2026**, CAID-04 was posted through Datatracker submission
+169585. Its XML and TXT were verified byte-for-byte against the immutable IETF
+archive and mirrored into `posted/` the same day; CAID-03 moved to `archive/`.
+It is a substantive revision that makes the processing model complete and
+checkable: a strict I-JSON input profile, host values that are refused and
+never rewritten, one data model with one table of limits, definition
+conformance and `definition_sha256`, the `code` field type with named code
+formats, the monotone enum advance, a fixed reason order with verification
+details, and normative mapping stages. The suites, the digest, and the
+canonical form of every object that both -03 and -04 accept do not change, but
+-04 refuses inputs that -03 accepted, including some action objects whose CAIDs
+were valid under -03. The reference registry advances to version 5, in which
+all 53 active types compute. -04 adds Privacy Considerations and an
+Implementation Status section, and requests seven IANA registries and the
+`caid` URI scheme. It is an individual Internet-Draft, not an adopted
+working-group item.
 
 The published line also retains Authority Introduction-03, Quorum-04, and the
 other current individual drafts listed in `STATUS.json`. Model-to-Matter
@@ -376,7 +393,7 @@ maintenance status.
 | Series | Current revision | Maintenance status | Datatracker expiry |
 | --- | --- | --- | --- |
 | `draft-schrock-ae-challenge` | -07 | Maintained | 2027-02-12 |
-| `draft-schrock-canonical-action-identifier` | -03 | Maintained | 2027-03-30 |
+| `draft-schrock-canonical-action-identifier` | -04 | Maintained | 2027-04-01 |
 | `draft-schrock-ep-authorization-evidence-chain` | -06 | Maintained (one corrective revision planned first) | 2027-03-10 |
 | `draft-schrock-ep-authorization-receipts` | -13 | Maintained | 2027-03-16 |
 | `draft-dunbar-dmsc-gw-scenarios-gap-analysis` | -04 | Maintained with coauthors | 2027-02-15 |

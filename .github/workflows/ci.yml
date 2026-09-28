@@ -1421,8 +1421,8 @@ jobs:
       # and interoperability corpora in all three ports through public
       # entry points. The fuzz compares every port with the spec oracle on
       # about 88k seeded cases with an empty allow list, after a self-test
-      # of the harness. The published -03 and staged -04 packet checks and
-      # the WIMSE companion profile consume the same registry and pins.
+      # of the harness. The published -03 and -04 packet checks and the
+      # WIMSE companion profile consume the same registry and pins.
       - name: CAID grammar proof (generated matchers, then every case through each port's public API)
         run: |
           node caid/spec/abnf-check.mjs --out "$RUNNER_TEMP/caid-grammar-cases.json"

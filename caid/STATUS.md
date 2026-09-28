@@ -110,17 +110,20 @@ success is not represented as native support or author endorsement.
 
 ## Standards status
 
-`draft-schrock-canonical-action-identifier-03` was published as an individual
-Internet-Draft on 2026-09-26 through Datatracker submission 169526. It is not
+`draft-schrock-canonical-action-identifier-04` was published as an individual
+Internet-Draft on 2026-09-28 through Datatracker submission 169585. It is not
 an RFC, an adopted IETF working-group item, or IETF endorsement. The draft
 defines the identifier and the profile-bounded mapping algorithm; the IETF
 archive is authoritative for the published revision.
 
-Revision -03 specifies the registry-v4 enum behavior described above: pinned,
-digest-checked value-set snapshots resolved locally, and fail-closed refusal of
-bare, unresolved, mismatched, or out-of-set values. The superseded -02 text,
-published 2026-08-06, does not contain it; its snapshot is retained in
-`../standards/archive/`.
+Revision -04 specifies the processing model described above: the strict JSON
+text profile, host values, the limits, definition conformance and
+`definition_sha256`, the `code` field type, the fixed reason order with
+verification details, the mapping stages, and reference registry version 5.
+It refuses inputs that -03 accepted, including some action objects whose CAIDs
+were valid under -03; its Section 14 lists every normative change. The
+superseded -03 text, published 2026-09-26, and the -02 text, published
+2026-08-06, are retained in `../standards/archive/`.
 
 ## Explicit boundaries
 

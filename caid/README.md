@@ -83,9 +83,9 @@ ever ingests another verifier's evidence into its own trust boundary.
 
 ## Layout
 
-- `../standards/staged/NEXT-CAID-04/` and
-  `../standards/posted/draft-schrock-canonical-action-identifier-03.xml` —
-  the Internet-Draft, which is the normative text
+- `../standards/posted/draft-schrock-canonical-action-identifier-04.xml` —
+  the Internet-Draft, posted on 2026-09-28, which is the normative text; its
+  publication provenance packet is `../standards/staged/NEXT-CAID-04/`
 - `DESIGN.md` — where each rule lives now; no longer normative
 - `spec/` — derived from the draft: `caid.abnf` (Appendix A), `core.json`
   (limits, reasons and ranks, field types, mapping closed sets), `gen.mjs`
@@ -149,14 +149,17 @@ generated region or file by hand; the checks fail on it.
    Then `npm run caid:corpus`.
 4. Run `node caid/spec/abnf-check.mjs`, `npm run caid:conformance` and
    `npm run caid:fuzz`.
-5. Update the staged draft (`standards/staged/NEXT-CAID-04`):
+5. Update the draft. -04 is posted, so its packet
+   (`standards/staged/NEXT-CAID-04`) is publication provenance and is not
+   edited. `node scripts/check-caid-04.mjs` fails when a change here
+   contradicts what -04 states (Appendix A against `caid.abnf`, the
+   generated tables, Appendix D, the recomputed examples). Such a change
+   belongs in a new revision packet built the way the -04 packet was:
    `node scripts/check-caid-04.mjs --emit` prints every generated table,
    the two Appendix D listings, and the Appendix C.1 cbor-sha256 example,
-   a processing change needs a `chg-` item mapped to
-   vectors in `CHANGES-VECTORS.json`, and the renders follow the procedure
-   in its `VALIDATION.md`; `node scripts/check-caid-04.mjs --renders`
-   compares them with a fresh `xml2rfc 3.34.0` render. Before filing,
-   `--prefiling` also requires origin/main to carry this `caid/` tree.
+   a processing change needs a `chg-` item mapped to vectors in
+   `CHANGES-VECTORS.json`, and the renders follow the procedure in the
+   packet's `VALIDATION.md`.
 6. A change to the vendored copy moves pins outside `caid/`: the source
    locks of the composition profiles that pin `vendor/caid.mjs`
    (`conformance/composition/*/source-lock.json`),
