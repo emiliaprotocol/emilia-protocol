@@ -45,10 +45,10 @@ the posted -06 rendering the same way.
   this way, the HTML inlines xml2rfc's metadata script, as the -06 HTML
   does. Writing the HTML to another directory with `-o` leaves that script
   out and does not reproduce the committed file; the TXT is the same either
-  way. The HTML committed on 2026-09-27 reproduces only with `xml2rfc --html
-  -o ../RENDERS/draft-schrock-ep-authorization-evidence-chain-07.html` run
-  in `UPLOAD-THIS/` (plus the `perl` step), so it lacked the script; it was
-  replaced by the render from this procedure. The `perl` step removes
+  way. The HTML committed on 2026-09-27 reproduces with `xml2rfc --html -o
+  ../RENDERS/draft-schrock-ep-authorization-evidence-chain-07.html` run in
+  `UPLOAD-THIS/` (plus the `perl` step) and not with this procedure, so it
+  lacked the script; it was replaced by the render from this procedure. The `perl` step removes
   trailing spaces and tabs, as the CAID-04 and AE Challenge -08 packets do,
   so `git diff --check` is clean.
 - Applied to the -06 source without the `perl` step, the same `xml2rfc`

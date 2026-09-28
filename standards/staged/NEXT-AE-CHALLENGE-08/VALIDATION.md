@@ -28,10 +28,10 @@ regenerated and the checks below re-run on that date.
   this way, the HTML inlines xml2rfc's metadata script. Writing the HTML to
   another directory with `-o` leaves that script out and does not reproduce
   the committed file; the TXT is the same either way. The HTML committed on
-  2026-09-27 reproduces only with `xml2rfc --html -o
+  2026-09-27 reproduces with `xml2rfc --html -o
   ../RENDERS/draft-schrock-ae-challenge-08.html` run in `UPLOAD-THIS/` (plus
-  the `perl` step), so it lacked the script; it was replaced by the render
-  from this procedure.
+  the `perl` step) and not with this procedure, so it lacked the script; it
+  was replaced by the render from this procedure.
 - Applied to the 2026-08-27 source (repository main `dedd9a24d`) under the
   same file name, the same procedure reproduces that candidate's TXT and
   HTML byte for byte; the only difference seen when rendering a renamed copy
