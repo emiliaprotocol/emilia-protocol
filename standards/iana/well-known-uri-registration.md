@@ -1,4 +1,4 @@
-# IANA Well-Known URIs registrations — EMILIA Protocol
+# IANA Well-Known URIs registrations: EMILIA Protocol
 
 Completed registration templates for the "Well-Known URIs" registry
 established by RFC 8615 (registry:
@@ -33,7 +33,7 @@ replaced draft is not one to file against.
 
 **Specification document(s):**
 draft-schrock-agent-action-manifest-00, "The Agent Action Control Manifest: A
-Public Effect-Boundary Control Plane for Machine Actions" — Section 3 defines
+Public Effect-Boundary Control Plane for Machine Actions". Section 3 defines
 the location and serving requirements (`/.well-known/agent-action-control.json`,
 served with media type `application/json` over a transport providing server
 authentication and integrity); Section 9 makes the registration request. An
@@ -42,14 +42,14 @@ Replaced; intended status Informational.
 
 **Status:** permanent *(as declared in the draft's Section 9. The designated
 expert may prefer "provisional" for a suffix whose specification is an
-individual Internet-Draft; if so, accept the provisional entry and align the
-draft text in the next revision rather than arguing the point — the suffix
-string is what matters.)*
+individual Internet-Draft; if so, accept the provisional entry and align any
+successor draft's text rather than arguing the point. The suffix string is
+what matters.)*
 
 **Related information:** An earlier, declaration-only predecessor document
 (`EP-ACTION-RISK-MANIFEST-v0.1`, served at `/.well-known/agent-actions.json`)
-is superseded by this manifest (draft Section 3) and was **never registered —
-do not register the predecessor suffix**. The manifest is discovery and
+is superseded by this manifest (draft Section 3) and was **never registered.
+Do not register the predecessor suffix**. The manifest is discovery and
 declaration only; the draft is explicit (Section 6) that enforcement at the
 effect boundary is authoritative and the manifest cannot relax it.
 
