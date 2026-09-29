@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Observe-mode OpenShell gateway interceptor plus approver-signed receipts and an offline check that every committed draft-chunk approval was signed by an approver key the operator does not hold.",
+  "description": "Observe-mode OpenShell gateway interceptor, approver-signed receipts for draft-chunk approvals, and an offline check that reports each committed approval as verified and, separately, accepted under keys the reader pinned.",
   "license": "Apache-2.0",
   "bin": {
     "openshell-approver-receipts": "./src/cli.ts"

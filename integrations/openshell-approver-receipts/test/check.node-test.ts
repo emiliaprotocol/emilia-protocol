@@ -7,7 +7,7 @@ import { check } from '../src/check.ts';
 import type { CheckInput, Report } from '../src/check.ts';
 import {
   PRINCIPAL, RULE, T0, chain, configLine, hex, logText, newApprover, pins, postCommit, read, receiptFor,
-  start, validate, validateBulk,
+  inventory, start, validate, validateBulk, webauthnReceiptFor,
 } from './helpers.ts';
 
 const alice = newApprover();
@@ -31,7 +31,7 @@ function singleApprovalLog(opts: { readToken?: string; readRule?: object; noRead
 }
 
 function run(input: Partial<CheckInput> & { logText: string }): Report {
-  return check({ receiptTexts: [], pinsText: pins([{ spkiB64u: alice.spkiB64u }]), chainTexts: [chain([[1, H1], [2, H2]])], ...input });
+  return check({ receiptTexts: [], pinsText: pins([{ spkiB64u: alice.spkiB64u }]), chainTexts: [chain([[1, H1], [2, H2]])], inventoryTexts: [inventory()], ...input });
 }
 
 const codes = (report: Report) => report.findings.map((f) => f.code).sort();
@@ -378,7 +378,8 @@ test('hostile input fuzz: check() never throws and always returns a report', () 
   let seed = 0x5eed;
   const rand = (n: number) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
   const receipt = JSON.stringify(receiptFor(alice, { chunkId: 'c1', token: TOK }));
-  const base = [singleApprovalLog(), receipt, pins([{ spkiB64u: alice.spkiB64u }]), chain([[1, H1], [2, H2]])];
+  const gatewayLog = configLine('id-sb', 'APPROVED', 'gateway approved draft chunk c1-aaaaaaaa: add-rule r', `version:v2 hash:${H2}`);
+  const base = [singleApprovalLog(), receipt, pins([{ spkiB64u: alice.spkiB64u }]), chain([[1, H1], [2, H2]]), inventory(), gatewayLog];
   const junk = ['', '\u0000', '{', '[]', 'null', '1e999', '"\ud800"', '{"__proto__":{"x":1}}', '{"seq":1,"prev":"0","t":"x","kind":"evaluation"}', '\n\n\n'];
   for (let i = 0; i < 400; i += 1) {
     const inputs = base.map((text) => {
@@ -394,7 +395,9 @@ test('hostile input fuzz: check() never throws and always returns a report', () 
       return chars.join('');
     });
     let report: Report | undefined;
-    assert.doesNotThrow(() => { report = check({ logText: inputs[0], receiptTexts: [inputs[1]], pinsText: inputs[2], chainTexts: [inputs[3]], gatewayLogText: inputs[0] }); }, `iteration ${i}`);
+    assert.doesNotThrow(() => {
+      report = check({ logText: inputs[0], receiptTexts: [inputs[1]], pinsText: inputs[2], chainTexts: [inputs[3]], inventoryTexts: [inputs[4]], gatewayLogText: inputs[5], trustGatewayLog: i % 2 === 0 });
+    }, `iteration ${i}`);
     assert.ok(report && ['pass', 'fail', 'incomplete'].includes(report.result));
     invariants(report as Report);
   }
@@ -406,4 +409,144 @@ test('a signature by another key over the same payload is refused', () => {
   const forged = crypto.sign('sha256', Buffer.from(jcs(receipt.payload)), { key: mallory.privateKey, dsaEncoding: 'ieee-p1363' });
   const report = run({ logText: singleApprovalLog(), receiptTexts: [JSON.stringify({ payload: receipt.payload, proof: { ...receipt.proof, signature: b64u(forged) } })] });
   assert.deepEqual(codes(report), ['receipt_bad_signature']);
+});
+
+const RP = { rp_id: 'approve.example.com', origins: ['https://approve.example.com'] };
+
+test('WebAuthn proof: ACCEPTED only under a pin that names the relying party', () => {
+  const base = receiptFor(alice, { chunkId: 'c1', token: TOK });
+  // An assertion made on another origin and RP, in a cross-origin frame.
+  const foreign = webauthnReceiptFor(alice, base, { origin: 'https://evil.example', rpId: 'evil.example', crossOrigin: true });
+  const noRp = run({ logText: singleApprovalLog(), receiptTexts: [JSON.stringify(foreign)] });
+  invariants(noRp);
+  assert.deepEqual(codes(noRp), ['receipt_key_not_accepted']);
+  assert.deepEqual([noRp.approvals[0].verified, noRp.approvals[0].accepted], [true, false]);
+  assert.match(noRp.findings[0].message, /webauthn proof but the pin names no relying party/);
+  // The same foreign assertion under a pin that names the relying party.
+  const rpPins = pins([{ spkiB64u: alice.spkiB64u, webauthn: RP }]);
+  const scoped = run({ logText: singleApprovalLog(), receiptTexts: [JSON.stringify(foreign)], pinsText: rpPins });
+  assert.deepEqual(codes(scoped), ['receipt_key_not_accepted']);
+  assert.match(scoped.findings[0].message, /relying-party scope/);
+  // A same-origin assertion under that pin passes.
+  const good = webauthnReceiptFor(alice, base);
+  const ok = run({ logText: singleApprovalLog(), receiptTexts: [JSON.stringify(good)], pinsText: rpPins });
+  assert.equal(ok.result, 'pass', JSON.stringify(ok.findings));
+  assert.equal(ok.approvals[0].approver?.format, 'webauthn');
+});
+
+test('pin formats: a passkey pin does not accept an es256 proof unless it says so', () => {
+  const es256 = JSON.stringify(receiptFor(alice, { chunkId: 'c1', token: TOK }));
+  const passkeyOnly = run({ logText: singleApprovalLog(), receiptTexts: [es256], pinsText: pins([{ spkiB64u: alice.spkiB64u, webauthn: RP }]) });
+  assert.deepEqual(codes(passkeyOnly), ['receipt_key_not_accepted']);
+  assert.match(passkeyOnly.findings[0].message, /es256 proof, but the pin allows only webauthn/);
+  const both = run({ logText: singleApprovalLog(), receiptTexts: [es256], pinsText: pins([{ spkiB64u: alice.spkiB64u, webauthn: RP, formats: ['es256', 'webauthn'] }]) });
+  assert.equal(both.result, 'pass', JSON.stringify(both.findings));
+  for (const bad of [{ formats: ['webauthn'] }, { formats: [] }, { formats: ['rs256'] }, { formats: ['es256', 'es256'] }]) {
+    const report = run({ logText: singleApprovalLog(), receiptTexts: [es256], pinsText: pins([{ spkiB64u: alice.spkiB64u, ...bad }]) });
+    assert.ok(codes(report).includes('malformed_pins'), JSON.stringify(bad));
+  }
+});
+
+test('auto-approval and removal rest on gateway log text: pass needs trustGatewayLog', () => {
+  const H4 = hex('v4');
+  const gatewayLog = [
+    configLine('id-sb', 'APPROVED', 'gateway approved draft chunk c1-aaaaaaaa: add-rule r', `version:v2 hash:${H2}`),
+    configLine('id-sb', 'APPROVED', 'auto-approved: no new prover findings (source=mechanistic) \u2014 chunk c3-cccccccc: add-rule r', `auto:true source:mechanistic version:v3 hash:${H3}`),
+    configLine('id-sb', 'REMOVED', 'gateway reverted approved draft chunk c3-cccccccc: remove-rule r', `version:v4 hash:${H4}`),
+  ].join('\n');
+  const input = {
+    logText: singleApprovalLog(),
+    receiptTexts: [JSON.stringify(receiptFor(alice, { chunkId: 'c1', token: TOK }))],
+    chainTexts: [chain([[1, H1], [2, H2], [3, H3], [4, H4]])],
+    gatewayLogText: gatewayLog,
+  };
+  const untrusted = run(input);
+  invariants(untrusted);
+  assert.deepEqual(untrusted.findings, []);
+  assert.equal(untrusted.result, 'incomplete');
+  assert.deepEqual(untrusted.chain.map((t) => [t.version, t.classification, t.basis ?? null]), [
+    [1, 'initial_policy', null], [2, 'receipted_human_approval', null], [3, 'auto_approval', 'gateway_log'], [4, 'removal', 'gateway_log'],
+  ]);
+  assert.equal(untrusted.completeness.gateway_log_trusted, false);
+  assert.match(untrusted.completeness.reason ?? '', /gateway log/);
+  const trusted = run({ ...input, trustGatewayLog: true });
+  invariants(trusted);
+  assert.equal(trusted.result, 'pass', JSON.stringify(trusted.findings));
+  assert.equal(trusted.completeness.gateway_log_trusted, true);
+  assert.ok(trusted.notes.some((n) => /unauthenticated/.test(n)));
+});
+
+test('a gateway-logged approval in a sandbox with no chain, or past the end of a chain, is not a pass', () => {
+  const receipt = JSON.stringify(receiptFor(alice, { chunkId: 'c1', token: TOK }));
+  const inSb = configLine('id-sb', 'APPROVED', 'gateway approved draft chunk c1-aaaaaaaa: add-rule r', `version:v2 hash:${H2}`);
+  // An approval made while the observer was down, in a sandbox with no observed approvals.
+  const otherSandbox = run({
+    logText: singleApprovalLog(), receiptTexts: [receipt],
+    gatewayLogText: [inSb, configLine('id-sb2', 'APPROVED', 'gateway approved draft chunk c2-bbbbbbbb: add-rule r', `version:v2 hash:${H3}`)].join('\n'),
+  });
+  invariants(otherSandbox);
+  assert.equal(otherSandbox.result, 'fail');
+  assert.deepEqual(codes(otherSandbox), ['gateway_event_without_chain']);
+  assert.ok(otherSandbox.completeness.unchecked_sandboxes.includes('sandbox_id=id-sb2'));
+  // The same sandbox, one version past the chain the reader supplied.
+  const pastEnd = run({
+    logText: singleApprovalLog(), receiptTexts: [receipt],
+    gatewayLogText: [inSb, configLine('id-sb', 'APPROVED', 'gateway approved draft chunk c3-cccccccc: add-rule r', `version:v3 hash:${H3}`)].join('\n'),
+  });
+  invariants(pastEnd);
+  assert.deepEqual(codes(pastEnd), ['chain_stale']);
+  // Inside the chain's range with a hash the chain does not have.
+  const mismatch = run({
+    logText: singleApprovalLog(), receiptTexts: [receipt],
+    gatewayLogText: configLine('id-sb', 'APPROVED', 'gateway approved draft chunk c1-aaaaaaaa: add-rule r', `version:v2 hash:${H3}`),
+  });
+  assert.deepEqual(codes(mismatch), ['gateway_event_not_in_chain']);
+  // An auto-approval in a sandbox with no chain: not a finding, but that sandbox was not checked.
+  const autoElsewhere = run({
+    logText: singleApprovalLog(), receiptTexts: [receipt], trustGatewayLog: true,
+    gatewayLogText: configLine('id-sb3', 'APPROVED', 'auto-approved chunk c9-99999999: add-rule r', `auto:true version:v2 hash:${H3}`),
+  });
+  invariants(autoElsewhere);
+  assert.deepEqual(autoElsewhere.findings, []);
+  assert.equal(autoElsewhere.result, 'incomplete');
+  assert.deepEqual(autoElsewhere.completeness.unchecked_sandboxes, ['sandbox_id=id-sb3']);
+});
+
+test('a transition line without sandbox_id is a finding, not silently dropped', () => {
+  const report = run({
+    logText: singleApprovalLog(),
+    receiptTexts: [JSON.stringify(receiptFor(alice, { chunkId: 'c1', token: TOK }))],
+    chainTexts: [chain([[1, H1], [2, H2], [3, H3]])],
+    gatewayLogText: `[gateway] [OCSF ] [ocsf] CONFIG:APPROVED [INFO] auto-approved chunk c3-cccccccc: add-rule r [auto:true version:v3 hash:${H3}]`,
+  });
+  invariants(report);
+  assert.deepEqual(codes(report), ['gateway_log_unattributed', 'unexplained_policy_change']);
+  assert.match(report.findings.find((f) => f.code === 'gateway_log_unattributed')?.message ?? '', /1 CONFIG line/);
+});
+
+test('an unlogged approval in a sandbox neither log mentions is caught through the inventory', () => {
+  // The observer was down and the gateway log line is gone: only the
+  // workspace inventory names sb2, whose v2 nobody approved with a receipt.
+  const receipt = JSON.stringify(receiptFor(alice, { chunkId: 'c1', token: TOK }));
+  const both = inventory([['sb', 'id-sb'], ['sb2', 'id-sb2']]);
+  const noChain = run({ logText: singleApprovalLog(), receiptTexts: [receipt], inventoryTexts: [both] });
+  invariants(noChain);
+  assert.equal(noChain.result, 'incomplete');
+  assert.deepEqual(noChain.completeness.unchecked_sandboxes, ['default/sb2']);
+  const withChain = run({
+    logText: singleApprovalLog(), receiptTexts: [receipt], inventoryTexts: [both],
+    chainTexts: [chain([[1, H1], [2, H2]]), chain([[1, H1], [2, H3]], { sandbox: 'sb2', sandboxId: 'id-sb2' })],
+  });
+  invariants(withChain);
+  assert.deepEqual(codes(withChain), ['unexplained_policy_change']);
+  assert.equal(withChain.findings[0].sandbox, 'sb2');
+  // No inventory: the check cannot say the logs mention every sandbox.
+  const noInventory = run({ logText: singleApprovalLog(), receiptTexts: [receipt], inventoryTexts: [] });
+  invariants(noInventory);
+  assert.equal(noInventory.result, 'incomplete');
+  assert.match(noInventory.completeness.reason ?? '', /no sandbox inventory was supplied for workspace default/);
+  // A workspace with no sandboxes and nothing logged passes on its inventory.
+  assert.equal(run({ logText: logText([start()]), chainTexts: [], inventoryTexts: [inventory([])] }).result, 'pass');
+  const bad = run({ logText: singleApprovalLog(), receiptTexts: [receipt], inventoryTexts: ['{"format":"x"}', 'nope', inventory([['a', 'x'], ['b', 'x']])] });
+  assert.equal(codes(bad).filter((c) => c === 'malformed_inventory').length, 3);
 });

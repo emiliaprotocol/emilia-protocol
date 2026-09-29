@@ -7,9 +7,9 @@
 import crypto from 'node:crypto';
 import { GENESIS } from '../src/log.ts';
 import { b64u, ruleDigest, sha256Hex } from '../src/canonical.ts';
-import { buildPayload, signEs256 } from '../src/receipt.ts';
+import { approvalDigest, buildPayload, signEs256 } from '../src/receipt.ts';
 import type { ApprovalPayload, Receipt } from '../src/receipt.ts';
-import { CHAIN_FORMAT, PINS_FORMAT } from '../src/check.ts';
+import { CHAIN_FORMAT, INVENTORY_FORMAT, PINS_FORMAT } from '../src/check.ts';
 
 export const PRINCIPAL = {
   display_name: 'Unauthenticated Local Dev',
@@ -132,10 +132,13 @@ export function resign(receipt: Receipt, approver: ReturnType<typeof newApprover
   return signEs256({ ...receipt.payload, ...change }, approver.privateKey);
 }
 
-export function pins(entries: { spkiB64u: string; workspaces?: string[]; label?: string; webauthn?: object }[]): string {
+export function pins(entries: { spkiB64u: string; workspaces?: string[]; label?: string; webauthn?: object; formats?: string[] }[]): string {
   return JSON.stringify({
     format: PINS_FORMAT,
-    approvers: entries.map((e) => ({ label: e.label ?? 'approver', public_key_spki: e.spkiB64u, workspaces: e.workspaces ?? ['default'], ...(e.webauthn ? { webauthn: e.webauthn } : {}) })),
+    approvers: entries.map((e) => ({
+      label: e.label ?? 'approver', public_key_spki: e.spkiB64u, workspaces: e.workspaces ?? ['default'],
+      ...(e.webauthn ? { webauthn: e.webauthn } : {}), ...(e.formats ? { formats: e.formats } : {}),
+    })),
   });
 }
 
@@ -146,6 +149,30 @@ export function chain(revisions: [number, string][], opts: { sandbox?: string; s
   });
 }
 
+/** A `chain --all` sandbox inventory for workspace default. */
+export function inventory(sandboxes: [string, string][] = [['sb', 'id-sb']]): string {
+  return JSON.stringify({ format: INVENTORY_FORMAT, workspace: 'default', read_at: at(100_000), sandboxes: sandboxes.map(([sandbox, sandbox_id]) => ({ sandbox, sandbox_id })) });
+}
+
 export function configLine(sandboxId: string, state: string, message: string, tags: string): string {
   return `2026-09-29T07:27:04.801024Z  INFO ocsf: sandbox_id=${sandboxId} CONFIG:${state} [INFO] ${message} [${tags}]`;
+}
+
+/**
+ * A WebAuthn assertion over an existing receipt's payload, synthesized in the
+ * authenticator format with the approver's software key (no real passkey).
+ */
+export function webauthnReceiptFor(
+  approver: ReturnType<typeof newApprover>,
+  base: Receipt,
+  opts: { origin?: string; rpId?: string; crossOrigin?: boolean } = {},
+): Receipt {
+  const challenge = b64u(approvalDigest(base.payload));
+  const clientData = JSON.stringify({ type: 'webauthn.get', challenge, origin: opts.origin ?? 'https://approve.example.com', crossOrigin: opts.crossOrigin ?? false });
+  const authData = Buffer.concat([crypto.createHash('sha256').update(opts.rpId ?? 'approve.example.com').digest(), Buffer.from([0x05]), Buffer.from([0, 0, 0, 1])]);
+  const signature = crypto.sign('sha256', Buffer.concat([authData, crypto.createHash('sha256').update(clientData).digest()]), approver.privateKey);
+  return {
+    payload: base.payload,
+    proof: { format: 'webauthn', public_key_spki: approver.spkiB64u, authenticator_data: b64u(authData), client_data_json: b64u(Buffer.from(clientData)), signature: b64u(signature) },
+  };
 }

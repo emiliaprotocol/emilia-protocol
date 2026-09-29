@@ -19,7 +19,7 @@ import { parseLog } from '../src/log.ts';
 import { startObserver } from '../src/observer.ts';
 import type { RunningObserver } from '../src/observer.ts';
 import { INTERCEPTOR_SERVICE, OPENSHELL_SERVICE, lookupType, serviceDefinition } from '../src/protos.ts';
-import { PRINCIPAL, RULE, chain, hex, newApprover, pins, receiptFor } from './helpers.ts';
+import { PRINCIPAL, RULE, chain, hex, inventory, newApprover, pins, receiptFor } from './helpers.ts';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oar-obs-'));
 const socket = path.join(dir, 'obs.sock');
@@ -147,6 +147,7 @@ test('Evaluate: always allowed, never patched, annotated with the log sequence',
     receiptTexts: [JSON.stringify(receiptFor(alice, { chunkId: 'c1', token: TOKEN }))],
     pinsText: pins([{ spkiB64u: alice.spkiB64u }]),
     chainTexts: [chain([[1, H1], [2, H2]])],
+    inventoryTexts: [inventory()],
   });
   assert.equal(report.result, 'pass', JSON.stringify(report.findings));
   assert.deepEqual([report.approvals[0].verified, report.approvals[0].accepted], [true, true]);

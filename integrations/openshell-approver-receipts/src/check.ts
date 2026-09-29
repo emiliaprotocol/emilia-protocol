@@ -10,10 +10,17 @@
 //             the ones the gateway committed and the observer read back, and
 //             it was issued no later than the commit (plus skew).
 //   accepted  verified, AND the signing key is pinned by the reader for that
-//             workspace (and, for a WebAuthn proof whose pin names a relying
-//             party, the assertion is scoped to it).
+//             workspace and for the proof's format. A WebAuthn proof is
+//             accepted only under a pin that names the relying party, and the
+//             assertion must be scoped to it (rpIdHash, origin, not
+//             crossOrigin).
 // The gateway's caller principal is reported as context only. It is
 // unsigned and never satisfies either field.
+//
+// The gateway log is unauthenticated text that whoever runs the gateway can
+// edit. Chain versions it explains are tagged basis "gateway_log"; the ones
+// it clears (auto_approval, removal) count toward `pass` only when the caller
+// sets trustGatewayLog.
 
 import { strictJsonGate } from '@emilia-protocol/verify/strict-json';
 import { parseLog } from './log.ts';
@@ -26,6 +33,7 @@ import type { Receipt, SignatureCheck, WebAuthnPins } from './receipt.ts';
 export const REPORT_FORMAT = 'emilia.openshell.approver-receipt-report.v1';
 export const PINS_FORMAT = 'emilia.openshell.approver-pins.v1';
 export const CHAIN_FORMAT = 'emilia.openshell.policy-chain.v1';
+export const INVENTORY_FORMAT = 'emilia.openshell.sandbox-inventory.v1';
 
 const OBSERVED = new Set(['ApproveDraftChunk', 'ApproveAllDraftChunks']);
 
@@ -34,7 +42,18 @@ export interface CheckInput {
   receiptTexts: string[];
   pinsText: string;
   chainTexts?: string[];
+  /**
+   * Sandbox inventories (`chain --all`): every sandbox a workspace held when
+   * the reader listed it. `pass` needs one for every workspace checked, and a
+   * chain for every sandbox it lists.
+   */
+  inventoryTexts?: string[];
   gatewayLogText?: string;
+  /**
+   * Count auto_approval and removal versions, which rest only on gateway log
+   * text, toward `pass`. Without it they leave the result `incomplete`.
+   */
+  trustGatewayLog?: boolean;
   pairingWindowMs?: number;
   issuedAfterCommitSkewSeconds?: number;
 }
@@ -101,6 +120,8 @@ export interface TransitionResult {
     | 'invalid_revision';
   commit_seq?: number;
   gateway_log_line?: number;
+  /** Set when the classification comes from a gateway log line (unauthenticated text). */
+  basis?: 'gateway_log';
 }
 
 export interface Report {
@@ -117,7 +138,17 @@ export interface Report {
   };
   approvals: ApprovalResult[];
   chain: TransitionResult[];
-  completeness: { checked: boolean; checked_sandboxes: string[]; unchecked_sandboxes: string[]; reason?: string };
+  completeness: {
+    checked: boolean;
+    checked_sandboxes: string[];
+    unchecked_sandboxes: string[];
+    /** The newest version each supplied chain holds, and when it was read. */
+    chain_heads: { sandbox: string; sandbox_id: string; last_version: number; read_at: string | null }[];
+    /** Workspaces for which a sandbox inventory was supplied. */
+    inventoried_workspaces: string[];
+    gateway_log_trusted: boolean;
+    reason?: string;
+  };
   findings: Finding[];
   notes: string[];
 }
@@ -169,17 +200,22 @@ interface GatewayRead {
   error: string | null;
 }
 
+type ProofFormat = 'es256' | 'webauthn';
+
 interface Pin {
   kid: string;
   label: string | null;
   workspaces: Set<string>;
   webauthn: WebAuthnPins | null;
+  /** Proof formats this key is accepted in. Default: webauthn when the pin names a relying party, else es256. */
+  formats: Set<ProofFormat>;
 }
 
 interface Chain {
   workspace: string;
   sandbox: string;
   sandbox_id: string;
+  read_at: string | null;
   revisions: { version: number; policy_hash: string; status: string }[];
 }
 
@@ -231,7 +267,7 @@ function parsePins(text: string, findings: Finding[]): Map<string, Pin> {
   doc.approvers.forEach((entry: unknown, index: number) => {
     try {
       if (!isObj(entry)) throw new Error('entry is not an object');
-      const allowed = new Set(['label', 'public_key_spki', 'workspaces', 'webauthn']);
+      const allowed = new Set(['label', 'public_key_spki', 'workspaces', 'webauthn', 'formats']);
       const extra = Object.keys(entry).filter((k) => !allowed.has(k));
       if (extra.length > 0) throw new Error(`unknown member(s) ${extra.join(', ')}`);
       const key = p256PublicKey(entry.public_key_spki);
@@ -249,8 +285,19 @@ function parsePins(text: string, findings: Finding[]): Map<string, Pin> {
         }
         webauthn = { rp_id: w.rp_id, origins: w.origins as string[] };
       }
+      let formats: Set<ProofFormat>;
+      if (entry.formats === undefined) {
+        formats = new Set([webauthn ? 'webauthn' : 'es256']);
+      } else {
+        const list = entry.formats;
+        if (!Array.isArray(list) || list.length === 0 || !list.every((f) => f === 'es256' || f === 'webauthn') || new Set(list).size !== list.length) {
+          throw new Error('formats must be a non-empty list of distinct "es256" and "webauthn"');
+        }
+        formats = new Set(list as ProofFormat[]);
+        if (formats.has('webauthn') && !webauthn) throw new Error('formats includes webauthn, so the pin must name the relying party (webauthn: {rp_id, origins})');
+      }
       if (pins.has(key.value.kid)) throw new Error('the same key is pinned twice');
-      pins.set(key.value.kid, { kid: key.value.kid, label: (entry.label as string | undefined) ?? null, workspaces: new Set(entry.workspaces as string[]), webauthn });
+      pins.set(key.value.kid, { kid: key.value.kid, label: (entry.label as string | undefined) ?? null, workspaces: new Set(entry.workspaces as string[]), webauthn, formats });
     } catch (error) {
       findings.push({ code: 'malformed_pins', message: `approvers[${index}]: ${error instanceof Error ? error.message : String(error)}` });
     }
@@ -281,9 +328,44 @@ function parseChain(text: string, index: number, findings: Finding[]): Chain | n
       seen.add(r.version);
       return { version: r.version, policy_hash: r.policy_hash, status: r.status };
     }).sort((a, b) => a.version - b.version);
-    return { workspace: doc.workspace as string, sandbox: doc.sandbox as string, sandbox_id: doc.sandbox_id as string, revisions };
+    return {
+      workspace: doc.workspace as string, sandbox: doc.sandbox as string, sandbox_id: doc.sandbox_id as string,
+      read_at: typeof doc.read_at === 'string' ? doc.read_at : null, revisions,
+    };
   } catch (error) {
     findings.push({ code: 'malformed_chain', message: `chain[${index}]: ${error instanceof Error ? error.message : String(error)}` });
+    return null;
+  }
+}
+
+interface Inventory {
+  workspace: string;
+  sandboxes: { sandbox: string; sandbox_id: string }[];
+}
+
+function parseInventory(text: string, index: number, findings: Finding[]): Inventory | null {
+  const parsed = strictParse(text, `inventory[${index}]`);
+  if (!parsed.ok) {
+    findings.push({ code: 'malformed_inventory', message: parsed.reason });
+    return null;
+  }
+  const doc = parsed.value;
+  try {
+    if (!isObj(doc) || doc.format !== INVENTORY_FORMAT) throw new Error(`format is not ${INVENTORY_FORMAT}`);
+    if (typeof doc.workspace !== 'string' || doc.workspace.length === 0) throw new Error('workspace is not a non-empty string');
+    if (!Array.isArray(doc.sandboxes)) throw new Error('sandboxes is not a list');
+    const seen = new Set<string>();
+    const sandboxes = doc.sandboxes.map((entry: unknown) => {
+      if (!isObj(entry) || typeof entry.sandbox !== 'string' || entry.sandbox.length === 0 || typeof entry.sandbox_id !== 'string' || entry.sandbox_id.length === 0) {
+        throw new Error('each sandbox needs a non-empty sandbox and sandbox_id');
+      }
+      if (seen.has(entry.sandbox_id)) throw new Error(`sandbox_id ${entry.sandbox_id} appears twice`);
+      seen.add(entry.sandbox_id);
+      return { sandbox: entry.sandbox, sandbox_id: entry.sandbox_id };
+    });
+    return { workspace: doc.workspace, sandboxes };
+  } catch (error) {
+    findings.push({ code: 'malformed_inventory', message: `inventory[${index}]: ${error instanceof Error ? error.message : String(error)}` });
     return null;
   }
 }
@@ -381,9 +463,12 @@ function committedApprovals(v: Validate, p: PostCommit, read: GatewayRead): { ch
 }
 
 const NOTES = [
-  'verified and accepted are separate: verified = signature and binding; accepted = verified under a key the reader pinned for that workspace.',
+  'verified and accepted are separate: verified = signature and binding; accepted = verified under a key the reader pinned for that workspace and proof format (a WebAuthn proof also needs the pin\'s relying party).',
   'gateway_principal is the gateway-asserted caller identity. It is unsigned context and never satisfies verified or accepted.',
   'Completeness runs over the policy version chain, not over CONFIG:APPROVED lines. Auto-approvals are their own category, not failed receipts.',
+  'The gateway log is unauthenticated text that whoever runs the gateway can edit. Chain versions classified from it carry basis "gateway_log"; auto_approval and removal count toward pass only with trust_gateway_log.',
+  'A policy chain is only as complete as the read that produced it: supply chains the reader exported from the gateway itself. A chain cut short at the end hides later versions unless the gateway log shows them (chain_stale).',
+  'pass covers the sandboxes in the supplied inventories (ListSandboxes at read time). A sandbox deleted before the inventory was read is not in it.',
   'This covers draft-chunk (network rule) approvals only. It does not cover direct operator policy writes or per-request business actions; the chain check lists the former as findings.',
 ];
 
@@ -547,10 +632,13 @@ export function check(input: CheckInput): Report {
       const verified = reasons.length === 0;
       let accepted = false;
       const pin = r.sig.kid ? pins.get(r.sig.kid) : undefined;
+      const format = r.receipt.proof.format;
       if (verified) {
         if (!pin) reasons.push('key is not pinned by the reader');
         else if (!pin.workspaces.has(a.v.workspace)) reasons.push(`key is pinned, but not for workspace ${a.v.workspace}`);
-        else if (r.receipt.proof.format === 'webauthn' && pin.webauthn) {
+        else if (format === 'webauthn' && !pin.webauthn) reasons.push('webauthn proof but the pin names no relying party, so its origin and rpIdHash cannot be checked');
+        else if (!pin.formats.has(format)) reasons.push(`${format} proof, but the pin allows only ${[...pin.formats].join(', ')} proofs for this key`);
+        else if (format === 'webauthn' && pin.webauthn) {
           const scoped = verifyReceiptSignature(r.receipt, pin.webauthn);
           if (!scoped.ok) reasons.push(`relying-party scope: ${scoped.reason}`);
           else accepted = true;
@@ -606,7 +694,11 @@ export function check(input: CheckInput): Report {
     if (parsed.unparsed_config_lines.length > 0) {
       findings.push({ code: 'gateway_log_unparsed', message: `gateway log CONFIG lines ${parsed.unparsed_config_lines.slice(0, 10).join(', ')} could not be parsed` });
     }
+    if (parsed.lines_without_sandbox_id > 0) {
+      findings.push({ code: 'gateway_log_unattributed', message: `${parsed.lines_without_sandbox_id} CONFIG line(s) record a policy version but carry no sandbox_id, so they cannot be attributed to a sandbox (supply the gateway's own output, not \`openshell logs\`)` });
+    }
   }
+  const trustGatewayLog = input.trustGatewayLog === true;
   const checkedSandboxes: string[] = [];
   const approvalsBySandbox = (c: Chain) => approvals.filter((a) => (a.sandbox_id ? a.sandbox_id === c.sandbox_id : a.workspace === c.workspace && a.sandbox === c.sandbox));
   for (const c of chains) {
@@ -647,16 +739,17 @@ export function check(input: CheckInput): Report {
       const human = logged.find((e) => e.state === 'APPROVED' && !e.auto);
       const merged = logged.find((e) => e.state === 'MERGED' && !e.bulk_summary);
       const removed = logged.find((e) => e.state === 'REMOVED');
+      const fromLog = { basis: 'gateway_log' as const };
       if (human) {
-        chain.push({ ...base, classification: 'approval_not_observed', gateway_log_line: human.line });
+        chain.push({ ...base, classification: 'approval_not_observed', gateway_log_line: human.line, ...fromLog });
         findings.push({ code: 'approval_not_observed', message: `the gateway logged a human approval of chunk ${human.chunk_id ?? '?'} at v${rev.version} of ${c.sandbox}, but no observed commit is attributed to it`, sandbox: c.sandbox, version: rev.version, line: human.line });
       } else if (auto && !merged) {
-        chain.push({ ...base, classification: 'auto_approval', gateway_log_line: auto.line });
+        chain.push({ ...base, classification: 'auto_approval', gateway_log_line: auto.line, ...fromLog });
       } else if (merged) {
-        chain.push({ ...base, classification: 'policy_change_without_approval', gateway_log_line: merged.line });
+        chain.push({ ...base, classification: 'policy_change_without_approval', gateway_log_line: merged.line, ...fromLog });
         findings.push({ code: 'policy_change_without_approval', message: `v${rev.version} of ${c.sandbox} is an operator policy merge (${merged.message}); no approver receipt covers it`, sandbox: c.sandbox, version: rev.version, line: merged.line });
       } else if (removed) {
-        chain.push({ ...base, classification: 'removal', gateway_log_line: removed.line });
+        chain.push({ ...base, classification: 'removal', gateway_log_line: removed.line, ...fromLog });
       } else if (rev.policy_hash === c.revisions[i - 1].policy_hash) {
         chain.push({ ...base, classification: 'revision_without_policy_change' });
       } else {
@@ -665,10 +758,67 @@ export function check(input: CheckInput): Report {
       }
     }
   }
-  const unchecked = [...new Set(approvals
-    .filter((a) => !chains.some((c) => (a.sandbox_id ? a.sandbox_id === c.sandbox_id : a.workspace === c.workspace && a.sandbox === c.sandbox)))
-    .map((a) => `${a.workspace}/${a.sandbox}`))];
-  const completenessChecked = chains.length > 0 && unchecked.length === 0;
+
+  // Gateway log events no supplied chain accounts for: a sandbox the reader
+  // did not check, or a version the chain was read too early to contain.
+  const namesById = new Map<string, string>();
+  for (const a of approvals) if (a.sandbox_id && !namesById.has(a.sandbox_id)) namesById.set(a.sandbox_id, `${a.workspace}/${a.sandbox}`);
+  const sandboxName = (sandboxId: string): string => namesById.get(sandboxId) ?? `sandbox_id=${sandboxId}`;
+  const add = (map: Map<string, GatewayPolicyEvent[]>, e: GatewayPolicyEvent) => {
+    const list = map.get(e.sandbox_id);
+    if (list) list.push(e);
+    else map.set(e.sandbox_id, [e]);
+  };
+  const uncheckedFromLog = new Set<string>();
+  const withoutChain = new Map<string, GatewayPolicyEvent[]>();
+  const pastEnd = new Map<string, GatewayPolicyEvent[]>();
+  for (const e of gatewayEvents) {
+    const own = chains.filter((c) => c.sandbox_id === e.sandbox_id);
+    if (own.length === 0) {
+      uncheckedFromLog.add(sandboxName(e.sandbox_id));
+      if (!(e.state === 'APPROVED' && e.auto)) add(withoutChain, e);
+      continue;
+    }
+    if (own.some((c) => c.revisions.some((r) => r.version === e.version && r.policy_hash === e.policy_hash))) continue;
+    const last = Math.max(...own.map((c) => c.revisions[c.revisions.length - 1].version));
+    if (e.version > last) {
+      add(pastEnd, e);
+    } else {
+      findings.push({ code: 'gateway_event_not_in_chain', message: `the gateway log records ${e.state} at v${e.version} ${e.policy_hash.slice(0, 12)} of ${own[0].sandbox}, which the policy chain does not contain`, sandbox: own[0].sandbox, version: e.version, line: e.line });
+    }
+  }
+  const versions = (events: GatewayPolicyEvent[]) => {
+    const all = [...new Set(events.map((e) => `v${e.version}`))];
+    return all.length > 20 ? `${all.slice(0, 20).join(', ')} and ${all.length - 20} more` : all.join(', ');
+  };
+  for (const [sandboxId, events] of withoutChain) {
+    findings.push({ code: 'gateway_event_without_chain', message: `the gateway log records policy changes (${[...new Set(events.map((e) => (e.state === 'APPROVED' ? 'human approval' : e.state)))].join(', ')}) at ${versions(events)} of ${sandboxName(sandboxId)}, and no policy chain was supplied for that sandbox`, version: events[0].version, line: events[0].line });
+  }
+  for (const [sandboxId, events] of pastEnd) {
+    const own = chains.find((c) => c.sandbox_id === sandboxId) as Chain;
+    findings.push({ code: 'chain_stale', message: `the gateway log records ${versions(events)} of ${own.sandbox}, past the newest version in the supplied chain; export the chain again`, sandbox: own.sandbox, version: events[0].version, line: events[0].line });
+  }
+
+  // Sandboxes the logs never mention: the inventory lists them all.
+  const inventories = (input.inventoryTexts ?? []).map((text, index) => parseInventory(text, index, findings)).filter((i): i is Inventory => i !== null);
+  const inventoried = new Set(inventories.map((i) => i.workspace));
+  const uninventoried = [...new Set([...approvals.map((a) => a.workspace), ...chains.map((c) => c.workspace)])].filter((w) => !inventoried.has(w)).sort();
+  const unchecked = [...new Set([
+    ...approvals
+      .filter((a) => !chains.some((c) => (a.sandbox_id ? a.sandbox_id === c.sandbox_id : a.workspace === c.workspace && a.sandbox === c.sandbox)))
+      .map((a) => `${a.workspace}/${a.sandbox}`),
+    ...uncheckedFromLog,
+    ...inventories.flatMap((i) => i.sandboxes.filter((sb) => !chains.some((c) => c.sandbox_id === sb.sandbox_id)).map((sb) => `${i.workspace}/${sb.sandbox}`)),
+  ])];
+  const logOnly = chain.filter((t) => t.basis === 'gateway_log' && (t.classification === 'auto_approval' || t.classification === 'removal'));
+  const reason = chains.length === 0 && inventories.length === 0 ? 'no policy chain was supplied'
+    : unchecked.length > 0 ? `no policy chain was supplied for ${unchecked.join(', ')}`
+    : uninventoried.length > 0
+      ? `no sandbox inventory was supplied for workspace ${uninventoried.join(', ')}, so sandboxes neither log mentions are not covered (export one with \`chain --all\`)`
+    : logOnly.length > 0 && !trustGatewayLog
+      ? `${logOnly.length} version(s) (${logOnly.map((t) => `${t.sandbox} v${t.version} ${t.classification}`).join(', ')}) are explained only by the gateway log, which is unauthenticated; pass needs trust_gateway_log`
+      : undefined;
+  const completenessChecked = reason === undefined;
 
   const result: Report['result'] = findings.length > 0 ? 'fail' : completenessChecked ? 'pass' : 'incomplete';
   return {
@@ -689,7 +839,10 @@ export function check(input: CheckInput): Report {
       checked: completenessChecked,
       checked_sandboxes: checkedSandboxes,
       unchecked_sandboxes: unchecked,
-      ...(chains.length === 0 ? { reason: 'no policy chain was supplied' } : {}),
+      chain_heads: chains.map((c) => ({ sandbox: `${c.workspace}/${c.sandbox}`, sandbox_id: c.sandbox_id, last_version: c.revisions[c.revisions.length - 1].version, read_at: c.read_at })),
+      inventoried_workspaces: [...inventoried].sort(),
+      gateway_log_trusted: trustGatewayLog,
+      ...(reason !== undefined ? { reason } : {}),
     },
     findings,
     notes: NOTES,

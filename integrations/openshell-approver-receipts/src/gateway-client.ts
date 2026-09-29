@@ -174,13 +174,39 @@ export class GatewayClient {
     });
   }
 
-  async getSandboxId(workspace: string, name: string): Promise<string> {
+  /** The sandbox's id and the provider names its spec attaches. */
+  async getSandbox(workspace: string, name: string): Promise<{ id: string; providers: string[] }> {
     const response = await this.unary<Obj>('GetSandbox', { name, workspace_scope: { workspace } });
     const sandbox = response.sandbox as Obj | undefined;
     const metadata = sandbox?.metadata as Obj | undefined;
     const id = metadata?.id;
     if (typeof id !== 'string' || id.length === 0) throw new Error(`GetSandbox returned no id for ${workspace}/${name}`);
-    return id;
+    const spec = sandbox?.spec as Obj | undefined;
+    const providers = Array.isArray(spec?.providers) ? (spec.providers as unknown[]).filter((p): p is string => typeof p === 'string') : [];
+    return { id, providers };
+  }
+
+  async getSandboxId(workspace: string, name: string): Promise<string> {
+    return (await this.getSandbox(workspace, name)).id;
+  }
+
+  /** Every sandbox in one workspace, as { sandbox: name, sandbox_id }. */
+  async listSandboxes(workspace: string, maxPages = 50): Promise<{ sandbox: string; sandbox_id: string }[]> {
+    const out: { sandbox: string; sandbox_id: string }[] = [];
+    let pageToken = '';
+    for (let page = 0; page < maxPages; page += 1) {
+      const response = await this.unary<Obj>('ListSandboxes', { page_size: 1000, page_token: pageToken, workspace_scope: { workspace } });
+      for (const sandbox of (response.sandboxes as Obj[] | undefined) ?? []) {
+        const metadata = sandbox.metadata as Obj | undefined;
+        const name = metadata?.name;
+        const id = metadata?.id;
+        if (typeof name !== 'string' || name.length === 0 || typeof id !== 'string' || id.length === 0) throw new Error('ListSandboxes returned a sandbox without a name or id');
+        out.push({ sandbox: name, sandbox_id: id });
+      }
+      pageToken = typeof response.next_page_token === 'string' ? response.next_page_token : '';
+      if (!pageToken) return out.sort((a, b) => a.sandbox.localeCompare(b.sandbox));
+    }
+    throw new Error(`ListSandboxes did not finish within ${maxPages} pages`);
   }
 
   async getDraftChunks(workspace: string, sandbox: string, statusFilter = ''): Promise<ChunkView[]> {

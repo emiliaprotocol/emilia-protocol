@@ -6,9 +6,10 @@
 // evaluation with allowed=true, no patches, and a log annotation carrying its
 // own sequence number. It never denies and never modifies an operation.
 //
-// Why two phases: `validate` is the only phase that names the chunk and the
-// review token; `post_commit` is the only phase that proves the gateway
-// committed. No correlation id reaches an interceptor, so after each
+// Why two phases: `validate` carries the prepared operation after any
+// interceptor patches, which names the chunk and the review token
+// (`modify_operation` sees it before those patches, and this observer does not
+// bind it); `post_commit` is the only phase that proves the gateway committed. No correlation id reaches an interceptor, so after each
 // post_commit the observer reads the gateway (GetSandbox, GetDraftPolicy,
 // ListSandboxPolicies) with its OWN credential and logs what it saw. The
 // offline checker joins validate, post_commit and those reads.

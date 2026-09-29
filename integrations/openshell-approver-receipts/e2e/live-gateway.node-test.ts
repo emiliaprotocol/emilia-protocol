@@ -7,12 +7,18 @@
 //
 // Scenario A (sandbox oar-a): three draft chunks from real denied
 // connections, each signed by the pinned approver key, approved with the
-// official CLI (`rule approve`, then `rule approve-all`). The check must pass.
+// official CLI (`rule approve`, then `rule approve-all`). Then the documented
+// approver loop for a stale token, through this package's `sign` command: two
+// chunks pending at once, the first approved, `sign` refuses the second, one
+// `openshell rule approve` is refused and refreshes the token, `sign` then
+// succeeds and the approval commits. The check must pass.
 //
 // Scenario B (sandbox oar-b): a receipt from an unpinned key, an approval
-// with no receipt, a receipt made stale by an intervening approval, an
-// approval made while the observer is down, an operator `policy update`, and
-// an operator `policy set`. The check must fail with exactly those findings.
+// with no receipt, a receipt signed over a token an earlier approval had
+// already made stale (`sign` refuses it; the test signs it through the library
+// as a client without that check would), an approval made while the observer
+// is down, an operator `policy update`, and an operator `policy set`. The
+// check must fail with exactly those findings.
 //
 // Scenario C (sandbox oar-c): --approval-mode auto. The auto-approval must be
 // reported as its own category, not as a missing receipt.
@@ -94,6 +100,8 @@ test('live OpenShell gateway: observe, sign, approve, check', { skip, timeout: 2
     approvers: [{ label: 'approver (demo local key)', public_key_spki: b64u(approverSpki), workspaces: [WORKSPACE] }],
   }, null, 2);
   fs.writeFileSync(path.join(work, 'pins.json'), `${pinsText}\n`);
+  const approverKeyPath = path.join(work, 'approver.key.pem');
+  fs.writeFileSync(approverKeyPath, approver.privateKey.export({ format: 'pem', type: 'pkcs8' }), { mode: 0o600 });
 
   const logPath = path.join(work, 'observer.jsonl');
   const reader = new GatewayClient({ endpoint });
@@ -193,6 +201,28 @@ ${dockerEndpoint ? `\n[openshell.drivers.docker]\ngrpc_endpoint = "${dockerEndpo
     note(`signed receipt for ${sandbox}/${chunk.chunk_id} rule=${chunk.rule_name} digest=${chunk.rule_digest} token=${chunk.review_token.slice(0, 12)}...`);
     return receipt;
   };
+  // This package's `sign` command against the live gateway, as an approver runs it.
+  const cliSign = (sandbox: string, chunkId: string, out: string) => {
+    const result = spawnSync(process.execPath, [
+      CLI, 'sign', '--key', approverKeyPath, '--gateway', endpoint, '--workspace', WORKSPACE, '--sandbox', sandbox,
+      '--chunk-id', chunkId, '--yes', '--out', path.join(work, out),
+    ], { encoding: 'utf8', timeout: 60_000 });
+    note(`$ sign ${sandbox} ${chunkId} -> exit ${result.status}`);
+    if (result.stderr) note(result.stderr.trimEnd().split('\n').map((l) => `    ${l}`).join('\n'));
+    return result;
+  };
+  const compact = (file: string) => JSON.stringify(JSON.parse(fs.readFileSync(path.join(work, file), 'utf8')));
+  // `chain --all`: the workspace inventory plus one chain per sandbox, read by this package's CLI.
+  const exportAll = (dirName: string): { inventory: string; chains: string[] } => {
+    const out = path.join(work, dirName);
+    const result = spawnSync(process.execPath, [CLI, 'chain', '--gateway', endpoint, '--workspace', WORKSPACE, '--all', '--out-dir', out], { encoding: 'utf8', timeout: 60_000 });
+    note(`$ chain --all --out-dir ${dirName} -> exit ${result.status}`);
+    assert.equal(result.status, 0, result.stderr);
+    const inventory = fs.readFileSync(path.join(out, 'inventory.json'), 'utf8');
+    const chains = fs.readdirSync(out).filter((f) => f.startsWith('chain-')).sort().map((f) => fs.readFileSync(path.join(out, f), 'utf8'));
+    note(`    inventory: ${(JSON.parse(inventory) as { sandboxes: { sandbox: string }[] }).sandboxes.map((sb) => sb.sandbox).join(', ')}`);
+    return { inventory, chains };
+  };
   // The gateway refreshes a review token lazily: an approval sent with a token
   // made stale by an earlier approval is refused with "proposal inputs
   // changed; evaluation refreshed, refetch and review again". The CLI does not
@@ -244,23 +274,53 @@ ${dockerEndpoint ? `\n[openshell.drivers.docker]\ngrpc_endpoint = "${dockerEndpo
     receiptsA.push(sign('oar-a', a2, approver.privateKey, approverSpki));
     receiptsA.push(sign('oar-a', a3, approver.privateKey, approverSpki));
     assert.equal(cli(['rule', 'approve-all', 'oar-a']).status, 0);
+    // The approver loop for a stale token, through `sign`.
+    deny('oar-a', 'www.iana.org');
+    deny('oar-a', 'www.example.com');
+    const a4 = await pendingChunk('oar-a', 'www.iana.org');
+    const a5 = await pendingChunk('oar-a', 'www.example.com');
+    const a4Signed = cliSign('oar-a', a4.chunk_id, 'receipt-a4.json');
+    assert.equal(a4Signed.status, 0, a4Signed.stderr);
+    assert.match(a4Signed.stderr, /token freshness\s+current/);
+    assert.equal(cli(['rule', 'approve', 'oar-a', '--chunk-id', a4.chunk_id]).status, 0);
+    const a5Stale = cliSign('oar-a', a5.chunk_id, 'receipt-a5-stale.json');
+    assert.equal(a5Stale.status, 2, 'sign refuses a token an earlier approval made stale');
+    assert.match(a5Stale.stderr, /predates policy v4/);
+    assert.equal(fs.existsSync(path.join(work, 'receipt-a5-stale.json')), false);
+    const refresh = cli(['rule', 'approve', 'oar-a', '--chunk-id', a5.chunk_id]);
+    assert.notEqual(refresh.status, 0, 'the gateway refuses the stale token and refreshes it');
+    assert.match(`${refresh.stdout}${refresh.stderr}`, /proposal inputs changed/);
+    const a5Signed = cliSign('oar-a', a5.chunk_id, 'receipt-a5.json');
+    assert.equal(a5Signed.status, 0, a5Signed.stderr);
+    assert.equal(cli(['rule', 'approve', 'oar-a', '--chunk-id', a5.chunk_id]).status, 0);
+    receiptsA.push(compact('receipt-a4.json'), compact('receipt-a5.json'));
     await waitForReads();
     fs.writeFileSync(path.join(work, 'receipts-a.jsonl'), `${receiptsA.join('\n')}\n`);
     fs.copyFileSync(logPath, path.join(work, 'observer-after-a.jsonl'));
     fs.copyFileSync(gatewayLogPath, path.join(work, 'gateway-after-a.log'));
-    const chainA = await exportChain('oar-a');
+    await exportChain('oar-a');
+    const afterA = exportAll('chains-after-a');
     const reportA = check({
       logText: fs.readFileSync(path.join(work, 'observer-after-a.jsonl'), 'utf8'),
       receiptTexts: [receiptsA.join('\n')],
       pinsText,
-      chainTexts: [chainA],
+      chainTexts: afterA.chains,
+      inventoryTexts: [afterA.inventory],
       gatewayLogText: fs.readFileSync(path.join(work, 'gateway-after-a.log'), 'utf8'),
     });
     writeReport('report-a.json', reportA);
     assert.equal(reportA.result, 'pass', JSON.stringify(reportA.findings, null, 2));
-    assert.equal(reportA.summary.committed_approvals, 3);
-    assert.equal(reportA.summary.accepted, 3);
+    assert.equal(reportA.summary.committed_approvals, 5);
+    assert.equal(reportA.summary.accepted, 5);
     assert.ok(reportA.approvals.every((a) => a.verified && a.accepted && a.pairing === 'confirmed'));
+    // The same check through the CLI, as a reader runs it.
+    const cliCheckA = spawnSync(process.execPath, [
+      CLI, 'check', '--log', path.join(work, 'observer-after-a.jsonl'), '--pins', path.join(work, 'pins.json'),
+      '--receipts', path.join(work, 'receipts-a.jsonl'), '--chains-dir', path.join(work, 'chains-after-a'),
+      '--gateway-log', path.join(work, 'gateway-after-a.log'),
+    ], { encoding: 'utf8', timeout: 60_000 });
+    note(`$ check --chains-dir chains-after-a -> exit ${cliCheckA.status}`);
+    assert.equal(cliCheckA.status, 0, cliCheckA.stdout);
 
     // Scenario B: every way it should fail.
     await createSandbox('oar-b');
@@ -272,8 +332,12 @@ ${dockerEndpoint ? `\n[openshell.drivers.docker]\ngrpc_endpoint = "${dockerEndpo
     const b3 = await pendingChunk('oar-b', 'www.ietf.org');
     receiptsB.push(sign('oar-b', b1, stranger.privateKey, strangerSpki)); // not pinned
     approve('oar-b', b1.chunk_id);
+    // b2 was evaluated against v1, so b1's approval already made its token stale.
+    const b2Refused = cliSign('oar-b', b2.chunk_id, 'receipt-b2-cli.json');
+    assert.equal(b2Refused.status, 2, 'sign refuses the stale token');
+    assert.match(b2Refused.stderr, /predates policy v2/);
     const b2Now = (await reader.getDraftChunks(WORKSPACE, 'oar-b', 'pending')).find((c) => c.chunk_id === b2.chunk_id) ?? b2;
-    receiptsB.push(sign('oar-b', b2Now, approver.privateKey, approverSpki)); // goes stale below
+    receiptsB.push(sign('oar-b', b2Now, approver.privateKey, approverSpki)); // signed through the library over that stale token
     approve('oar-b', b3.chunk_id); // no receipt at all
     approve('oar-b', b2.chunk_id); // commits under a newer token than the one signed
     deny('oar-b', 'www.rfc-editor.org');
@@ -313,22 +377,25 @@ network_policies:
 `);
     assert.equal(cli(['policy', 'set', 'oar-b', '--policy', policyFile, '--yes', '--wait', '--timeout', '60']).status, 0);
     fs.writeFileSync(path.join(work, 'receipts-b.jsonl'), `${receiptsB.join('\n')}\n`);
-    const chainB = await exportChain('oar-b');
+    await exportChain('oar-b');
 
     // Scenario C: auto-approval.
     await createSandbox('oar-c', ['--approval-mode', 'auto']);
     deny('oar-c', 'example.com');
-    const chainC = await waitFor('an auto-approved version in oar-c', async () => {
+    await waitFor('an auto-approved version in oar-c', async () => {
       const revisions = await reader.listPolicyRevisions(WORKSPACE, 'oar-c');
       return revisions.length >= 2 ? true : null;
     }, 90_000, 2000).then(() => exportChain('oar-c'));
 
     await sleep(500);
+    const afterAll = exportAll('chains-full');
+    assert.equal(afterAll.chains.length, 3);
     const full = check({
       logText: fs.readFileSync(logPath, 'utf8'),
       receiptTexts: [receiptsA.join('\n'), receiptsB.join('\n')],
       pinsText,
-      chainTexts: [chainA, chainB, chainC],
+      chainTexts: afterAll.chains,
+      inventoryTexts: [afterAll.inventory],
       gatewayLogText: fs.readFileSync(gatewayLogPath, 'utf8'),
     });
     writeReport('report-full.json', full);
@@ -343,8 +410,11 @@ network_policies:
       'receipt_without_committed_approval',
       'unexplained_policy_change',
     ]);
-    assert.equal(full.approvals.filter((a) => a.accepted).length, 3);
-    assert.ok(full.chain.some((t) => t.sandbox === 'oar-c' && t.classification === 'auto_approval'));
+    assert.equal(full.approvals.filter((a) => a.accepted).length, 5);
+    assert.ok(full.chain.some((t) => t.sandbox === 'oar-c' && t.classification === 'auto_approval' && t.basis === 'gateway_log'));
+    assert.equal(full.completeness.gateway_log_trusted, false);
+    assert.deepEqual(full.completeness.inventoried_workspaces, [WORKSPACE]);
+    assert.deepEqual(full.completeness.unchecked_sandboxes, []);
     const byChunk = new Map(full.approvals.map((a) => [a.chunk_id, a]));
     assert.equal(byChunk.get(b1.chunk_id)?.verified, true);
     assert.equal(byChunk.get(b1.chunk_id)?.accepted, false);

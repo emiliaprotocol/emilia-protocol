@@ -98,3 +98,27 @@ test('gateway log: ANSI colour, missing sandbox id and broken tags', () => {
   assert.deepEqual(parseGatewayLog(broken).unparsed_config_lines, [1]);
   assert.deepEqual(parseGatewayLog(undefined as unknown as string).events, []);
 });
+
+test('gateway log: hostile CONFIG lines parse in linear time; overlong lines are refused, not parsed', () => {
+  // Each line used to cost time quadratic in its length (about 115 ms at 55 KB).
+  const hostile = Array.from({ length: 100 }, () => `CONFIG:${'sandbox_id='.repeat(5_000)}`).join('\n');
+  let started = performance.now();
+  const parsed = parseGatewayLog(hostile);
+  const elapsed = performance.now() - started;
+  assert.ok(elapsed < 1_000, `100 hostile 55 KB lines took ${elapsed.toFixed(0)} ms`);
+  assert.equal(parsed.unparsed_config_lines.length, 100);
+  started = performance.now();
+  assert.deepEqual(parseGatewayLog(`CONFIG:${'sandbox_id='.repeat(40_000)}`).unparsed_config_lines, [1]);
+  assert.ok(performance.now() - started < 200);
+  // A line past the cap is refused even when it would otherwise parse.
+  const overlong = `ocsf: sandbox_id=s1 CONFIG:APPROVED [INFO] gateway approved draft chunk c1-aaaaaaaa: ${'x'.repeat(70 * 1024)} [version:v2 hash:${'a'.repeat(64)}]`;
+  assert.deepEqual(parseGatewayLog(overlong), { events: [], lines_without_sandbox_id: 0, unparsed_config_lines: [1] });
+  // An over-long sandbox id is not taken as an attribution.
+  const longId = `ocsf: sandbox_id=${'s'.repeat(200)} CONFIG:APPROVED [INFO] gateway approved draft chunk c1-aaaaaaaa: x [version:v2 hash:${'a'.repeat(64)}]`;
+  assert.deepEqual(parseGatewayLog(longId).events, []);
+});
+
+test('gateway log: only transition lines without sandbox_id are counted as unattributed', () => {
+  const noTransition = '[gateway] [ocsf] CONFIG:MERGED [INFO] gateway bulk-approved 0 draft chunk(s) and skipped 2';
+  assert.deepEqual(parseGatewayLog(noTransition), { events: [], lines_without_sandbox_id: 0, unparsed_config_lines: [] });
+});
