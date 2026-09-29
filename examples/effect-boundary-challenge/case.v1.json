@@ -1,0 +1,28 @@
+{
+  "profile": "EMILIA-EFFECT-BOUNDARY-CHALLENGE-v1",
+  "status": "experimental-review-fixture",
+  "operation": {
+    "id": "refund:order-123:01",
+    "provider": "mock-stripe",
+    "provider_account": "acct_authorized",
+    "payment_intent": "pi_refund_test",
+    "amount_minor": 5000
+  },
+  "events": [
+    { "step": 1, "input": "valid approval A and token T1 for the exact operation", "provider": "accepts one refund, then response is lost", "expect": "INDETERMINATE; one provider entry" },
+    { "step": 2, "input": "restart; valid approval B and different token T2 for the same operation; provider idempotency cache expired", "provider": "must not be entered", "expect": "held or refused; still one provider entry" },
+    { "step": 3, "input": "status lookup unavailable", "provider": "no authenticated outcome", "expect": "INDETERMINATE; no provider retry" },
+    { "step": 4, "input": "account-scoped provider status matches operation, request, payment and amount", "provider": "reports the first refund", "expect": "accepted/committed observation; still one provider entry" },
+    { "step": 5, "input": "fresh approval for changed amount under the original operation ID", "provider": "must not be entered", "expect": "refused; still one provider entry" }
+  ],
+  "required_report": [
+    "provider_entry_count",
+    "provider_effect_count",
+    "stable_business_operation_source",
+    "attempt_store_durability_and_ownership",
+    "credential_custody_and_bypass_paths",
+    "status_source_and_authentication",
+    "state_after_each_step",
+    "claim_limits"
+  ]
+}
