@@ -9,9 +9,13 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { gzip, ungzip } from 'pako';
+import { removeScratchTree, superviseScratchRoot, sweepStaleScratchDirectories, } from './lib/scratch-directory.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const git = process.platform === 'win32' ? 'git.exe' : 'git';
+const SCRATCH_PREFIX = 'ep-repro-pack-';
+const WORKER_ENV = 'EP_REPRO_PACK_WORKER';
+let staleScratchSwept = false;
 export function npmArtifactFilename(packageName, version) {
     if (typeof packageName !== 'string'
         || typeof version !== 'string'
@@ -226,7 +230,14 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
         || packageRelative.startsWith('../')) {
         throw new Error('package path must be a repository-relative directory');
     }
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-repro-pack-'));
+    // In-process callers (the security case, attestation rebuilds) cannot be
+    // supervised from here; sweeping once per process bounds what their killed
+    // runs leave behind to one day.
+    if (!staleScratchSwept) {
+        staleScratchSwept = true;
+        sweepStaleScratchDirectories(SCRATCH_PREFIX);
+    }
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), SCRATCH_PREFIX));
     try {
         function run(command, args, label, options = {}) {
             const result = spawnSync(command, args, {
@@ -686,23 +697,19 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
         };
     }
     finally {
-        const makeRemovable = (entry) => {
-            const stat = fs.lstatSync(entry);
-            if (stat.isDirectory() && !stat.isSymbolicLink()) {
-                fs.chmodSync(entry, 0o700);
-                for (const name of fs.readdirSync(entry))
-                    makeRemovable(path.join(entry, name));
-            }
-            else if (!stat.isSymbolicLink()) {
-                fs.chmodSync(entry, 0o600);
-            }
-        };
-        if (fs.existsSync(scratch))
-            makeRemovable(scratch);
-        fs.rmSync(scratch, { recursive: true, force: true });
+        removeScratchTree(scratch);
     }
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// import.meta.url is the realpath of the main module, so a script reached
+// through a symlinked directory (macOS /var, /tmp) must be compared by realpath
+// too; otherwise the CLI silently does nothing and exits 0.
+const isEntryPoint = Boolean(process.argv[1])
+    && fs.realpathSync(path.resolve(process.argv[1])) === fileURLToPath(import.meta.url);
+if (isEntryPoint && process.env[WORKER_ENV] !== '1') {
+    // Killed runs used to strand read-only scratch trees; see lib/scratch-directory.
+    superviseScratchRoot(SCRATCH_PREFIX, WORKER_ENV);
+}
+else if (isEntryPoint) {
     try {
         const argv = process.argv.slice(2);
         let packagePath = null;
