@@ -111,7 +111,7 @@ export function superviseScratchRoot(prefix, workerEnv) {
     if (swept.length > 0) {
         console.error(`removed ${swept.length} stale ${prefix}* scratch director${swept.length === 1 ? 'y' : 'ies'}`);
     }
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+    const root = path.resolve(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
     // A POSIX worker leads its own process group so one kill reaches every
     // spawnSync descendant (npm, git, tar, package builds) still writing into
     // the root. Windows has no process groups; there only the worker is signalled.

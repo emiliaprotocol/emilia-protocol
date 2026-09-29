@@ -237,7 +237,8 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
         staleScratchSwept = true;
         sweepStaleScratchDirectories(SCRATCH_PREFIX);
     }
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), SCRATCH_PREFIX));
+    // Absolute even under a relative TMPDIR: npm runs with the package dir as cwd.
+    const scratch = path.resolve(fs.mkdtempSync(path.join(os.tmpdir(), SCRATCH_PREFIX)));
     try {
         function run(command, args, label, options = {}) {
             const result = spawnSync(command, args, {
