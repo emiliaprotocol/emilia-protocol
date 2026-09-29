@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertPythonArtifactBytesMatch } from './python-artifact-integrity.mjs';
+import { removeScratchTree, superviseScratchRoot } from './lib/scratch-directory.mjs';
 
 const ROOT: string = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv: string[] = process.argv.slice(2);
@@ -25,6 +26,18 @@ const packageArgs: string[] = argv.filter((_, index) => !optionIndexes.has(index
 if (packageArgs.length === 0) {
   console.error('usage: verify-reproducible-wheel [--emit FILE] [--outdir DIR] PACKAGE_DIR...');
   process.exit(2);
+}
+
+// The builds run in execFileSync, where no signal handler of this process runs,
+// so a killed run used to leave its scratch directory behind: the finally below
+// never ran. The CLI supervises instead (lib/scratch-directory): the work runs in
+// a worker process group whose TMPDIR is a private root that is removed on every
+// exit path, after a startup sweep of day-old ep-wheel-repro-* leftovers.
+const SCRATCH_PREFIX: string = 'ep-wheel-repro-';
+const WORKER_ENV: string = 'EP_WHEEL_REPRO_WORKER';
+if (process.env[WORKER_ENV] !== '1') {
+  await superviseScratchRoot(SCRATCH_PREFIX, WORKER_ENV);
+  process.exit();
 }
 
 const python: string = process.env.PYTHON || 'python3';
@@ -54,7 +67,8 @@ function build(packageDir: string, destination: string): string[] {
     .sort();
 }
 
-const temp: string = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-wheel-repro-'));
+// Absolute even under a relative TMPDIR: the builds run with the repository as cwd.
+const temp: string = path.resolve(fs.mkdtempSync(path.join(os.tmpdir(), SCRATCH_PREFIX)));
 const packages: any[] = [];
 try {
   for (let index = 0; index < packageArgs.length; index += 1) {
@@ -92,7 +106,7 @@ try {
   }
   throw error;
 } finally {
-  fs.rmSync(temp, { recursive: true, force: true });
+  removeScratchTree(temp);
 }
 
 const manifest: any = {

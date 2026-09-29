@@ -18,6 +18,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { verifyReproduciblePackage } from "./verify-reproducible-package.mjs";
+import { superviseScratchRoot, sweepStaleScratchDirectories, } from "./lib/scratch-directory.mjs";
 import { strictParseGate } from "../conformance/runners/strict-json.mjs";
 import { buildSuiteContract, compareResultRow, executionSuiteFile, validateResultRows, } from "../conformance/result-contract.mjs";
 import { validateTraceManifest } from "../conformance/refinement/schema.mjs";
@@ -50,6 +51,24 @@ const emitIndex = args.indexOf("--emit");
 const emitPath = emitIndex >= 0 ? args[emitIndex + 1] : null;
 if (emitIndex >= 0 && !emitPath)
     throw new Error("--emit requires a path");
+// Release-artifact binding packs npm packages from read-only Git snapshots under
+// the temp directory, and --execute runs evidence tests that make their own
+// scratch trees there. All of it spends its time blocked in spawnSync, where no
+// signal handler of this process runs, so a killed run used to strand the trees
+// (hundreds of MB each) until a later run's day-old sweep. The CLI supervises
+// instead (lib/scratch-directory): the work runs in a worker process group whose
+// TMPDIR is a private root that is removed on every exit path. The evidence does
+// not depend on where the scratch trees live. Metadata-only validation makes no
+// scratch state and runs unsupervised.
+const SCRATCH_PREFIX = "ep-security-case-";
+const WORKER_ENV = "EP_SECURITY_CASE_WORKER";
+if (!validateOnly && process.env[WORKER_ENV] !== "1") {
+    // Inside the worker, verifyReproduciblePackage only sweeps the private root;
+    // keep sweeping trees that unsupervised callers left in the shared one.
+    sweepStaleScratchDirectories("ep-repro-pack-");
+    await superviseScratchRoot(SCRATCH_PREFIX, WORKER_ENV);
+    process.exit();
+}
 const errors = [];
 const evidenceFiles = new Set([
     path.relative(ROOT, SOURCE),
