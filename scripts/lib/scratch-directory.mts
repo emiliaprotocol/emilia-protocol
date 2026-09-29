@@ -14,7 +14,7 @@
  * itself being SIGKILLed.
  */
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -59,8 +59,10 @@ export function removeScratchTree(target: string): void {
  * Remove `<directory>/<prefix>XXXXXX` scratch directories (the exact mkdtemp
  * shape) that this user owns and that nothing has modified for `maxAgeMs`.
  * Symlinks, other users' directories and non-matching names are left alone.
- * Platforms without POSIX ownership are never swept. Best effort: a directory
- * that cannot be removed now is retried by the next run. Returns the removed paths.
+ * Without POSIX ownership (Windows, `uid: null`) a directory is swept only when
+ * it lies inside the user's own profile, as the default per-user %TEMP% does,
+ * where no other user can create entries. Best effort: a directory that cannot
+ * be removed now is retried by the next run. Returns the removed paths.
  */
 export function sweepStaleScratchDirectories(
   prefix: string,
@@ -69,14 +71,19 @@ export function sweepStaleScratchDirectories(
     maxAgeMs = STALE_SCRATCH_AGE_MS,
     now = Date.now(),
     uid = process.getuid?.() ?? null,
+    home = os.homedir(),
   }: {
     directory?: string;
     maxAgeMs?: number;
     now?: number;
     uid?: number | null;
+    home?: string;
   } = {},
 ): string[] {
-  if (uid === null) return [];
+  if (uid === null) {
+    const withinHome: string = path.relative(path.resolve(home), path.resolve(directory));
+    if (!withinHome || withinHome.startsWith('..') || path.isAbsolute(withinHome)) return [];
+  }
   let names: string[];
   try {
     names = fs.readdirSync(directory);
@@ -89,7 +96,7 @@ export function sweepStaleScratchDirectories(
     const candidate: string = path.join(directory, name);
     try {
       const stat: fs.Stats = fs.lstatSync(candidate);
-      if (!stat.isDirectory() || stat.uid !== uid) continue;
+      if (!stat.isDirectory() || (uid !== null && stat.uid !== uid)) continue;
       if (now - Math.max(stat.mtimeMs, stat.ctimeMs) < maxAgeMs) continue;
       removeScratchTree(candidate);
       removed.push(candidate);
@@ -119,7 +126,9 @@ export function superviseScratchRoot(prefix: string, workerEnv: string): void {
   const root: string = path.resolve(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
   // A POSIX worker leads its own process group so one kill reaches every
   // spawnSync descendant (npm, git, tar, package builds) still writing into
-  // the root. Windows has no process groups; there only the worker is signalled.
+  // the root. Windows has no process groups or catchable SIGTERM; there the
+  // worker's tree is force-terminated with taskkill /T while the worker is
+  // alive, which is the only time its descendants can still be found.
   const ownGroup: boolean = process.platform !== 'win32';
   let removed: boolean = false;
   let received: NodeJS.Signals | null = null;
@@ -128,7 +137,9 @@ export function superviseScratchRoot(prefix: string, workerEnv: string): void {
     if (worker.pid === undefined) return;
     try {
       if (ownGroup) process.kill(-worker.pid, signal);
-      else if (worker.exitCode === null && worker.signalCode === null) worker.kill(signal);
+      else if (worker.exitCode === null && worker.signalCode === null) {
+        spawnSync('taskkill', ['/pid', String(worker.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+      }
     } catch {
       // ESRCH: nothing left to signal.
     }

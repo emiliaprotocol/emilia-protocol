@@ -111,19 +111,30 @@ describe('reproducibility scratch cleanup', () => {
       now: Date.now() + 2 * DAY_MS,
       uid: (process.getuid?.() ?? 0) + 1,
     })).toEqual([]);
-    // No ownership model means no sweep.
+    // Without an ownership model (Windows), only a per-user directory is swept.
     expect(sweepStaleScratchDirectories(PREFIX, {
       directory: parent,
       now: Date.now() + 2 * DAY_MS,
       uid: null,
+      home: tempDir('other-home'),
     })).toEqual([]);
     expect(existsSync(stale)).toBe(true);
-
     expect(sweepStaleScratchDirectories(PREFIX, {
       directory: parent,
       now: Date.now() + 2 * DAY_MS,
+      uid: null,
+      home: path.dirname(parent),
     })).toEqual([stale]);
     expect(existsSync(stale)).toBe(false);
+
+    const staleOwned = path.join(parent, `${PREFIX}Zz98Yx`);
+    mkdirSync(staleOwned);
+    chmodSync(staleOwned, 0o555);
+    expect(sweepStaleScratchDirectories(PREFIX, {
+      directory: parent,
+      now: Date.now() + 2 * DAY_MS,
+    })).toEqual([staleOwned]);
+    expect(existsSync(staleOwned)).toBe(false);
     for (const survivor of [otherName, otherPrefix, plainFile, link]) {
       expect(existsSync(survivor)).toBe(true);
     }
