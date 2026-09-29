@@ -1,0 +1,16 @@
+{
+  "source": "https://github.com/NVIDIA/OpenShell",
+  "commit": "9cb72baa2e61a1b5f12407e6e82da7fdba0aa722",
+  "commit_date": "2026-09-29T05:15:02Z",
+  "path": "proto/",
+  "license": "Apache-2.0",
+  "note": "Byte-identical copies of the upstream files at this commit. Do not edit; replace them and update this file together.",
+  "files": {
+    "datamodel.proto": "e50bd875a760f54b80269c65ee47984cae424fb623b7f59551ba62550c23e70b",
+    "extension.proto": "60f28ee9dc846d41152f4db7e82a439c78d024786efaceb464900d1d1ad129ad",
+    "gateway_interceptor.proto": "931411aaae512b41117039f35b8c8727c8aefa87e898879e8b6f277c0149f79d",
+    "openshell.proto": "67f4b2e3f643de4a4b37d54875871a292c28edd75df621ef7938f562e132bc9e",
+    "options.proto": "10c8a99b505047f759951285fdae6068afd267ef672d00a65385a91ee8d027ee",
+    "sandbox.proto": "ed3d2650c8d1c4cbb653259c6055adba2dba8a51498ab6a1b2cfc339997ab2b9"
+  }
+}

@@ -1,0 +1,12 @@
+openshell-approver-receipts
+Copyright 2026 EMILIA Protocol, Inc. and contributors
+Licensed under the Apache License, Version 2.0.
+
+This directory includes, in proto/, unmodified copies of Protocol Buffers
+definitions from NVIDIA OpenShell (https://github.com/NVIDIA/OpenShell), at
+commit 9cb72baa2e61a1b5f12407e6e82da7fdba0aa722:
+
+  Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+  SPDX-License-Identifier: Apache-2.0
+
+This integration is not part of OpenShell and is not affiliated with NVIDIA.

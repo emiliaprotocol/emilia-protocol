@@ -125,6 +125,23 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
+  # ── npm (OpenShell approver receipts integration) ──────────────────────────
+  - package-ecosystem: npm
+    directory: /integrations/openshell-approver-receipts
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: UTC
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - javascript
+    commit-message:
+      prefix: "chore(deps)"
+
   # ── pip (Python SDK) ────────────────────────────────────────────────────────
   - package-ecosystem: pip
     directory: /sdks/python

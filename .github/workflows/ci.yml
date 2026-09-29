@@ -187,6 +187,15 @@ jobs:
         # bundle tool; their suites prove the fail-closed lane decision and
         # the derived-evidence-only bundle.
         run: node --test packages/verify/test.js packages/verify/*.test.js packages/issue/test.js packages/issue/*.test.js packages/attest/test.js packages/require-receipt/*.test.js packages/grpc-guard/*.test.mjs packages/gateway-authz/*.test.mjs integrations/github-authority-map-action/tests/*.node-test.mjs integrations/github-merge-gate-action/tests/*.node-test.mjs scripts/ci/*.node-test.mjs
+      - name: Verify OpenShell approver receipts (node:test)
+        # integrations/openshell-approver-receipts carries its own lockfile
+        # (@grpc/grpc-js, protobufjs). This runs its unit suite and strict
+        # type check. The live-gateway run in its e2e/ needs Docker and the
+        # OpenShell release binaries, so it is run by hand, not here.
+        run: |
+          npm ci --prefix integrations/openshell-approver-receipts --ignore-scripts
+          npm --prefix integrations/openshell-approver-receipts test
+          npm --prefix integrations/openshell-approver-receipts run typecheck
       - name: Verify AAE x PSEA x Gate attempt pair (node:test)
         run: node --test interop/aae-psea-gate/verify.test.mjs interop/aae-psea-gate/reperform.test.mjs
       - name: Verify the public verifier-forgery corpus (node:test)
@@ -543,6 +552,7 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm ci --prefix examples/aeb-crossing-lab/insight-oracle-swap-v3 --ignore-scripts
+      - run: npm ci --prefix integrations/openshell-approver-receipts --ignore-scripts
       - name: Type-check backend/tooling tier (checkJs)
         run: npx tsc -p tsconfig.rest.json --incremental false
 

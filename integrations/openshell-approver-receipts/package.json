@@ -1,0 +1,33 @@
+{
+  "name": "@emilia-protocol/openshell-approver-receipts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Observe-mode OpenShell gateway interceptor, approver-signed receipts for draft-chunk approvals, and an offline check that reports each committed approval as verified and, separately, accepted under keys the reader pinned.",
+  "license": "Apache-2.0",
+  "bin": {
+    "openshell-approver-receipts": "./src/cli.ts"
+  },
+  "scripts": {
+    "test": "node --test test/*.node-test.ts",
+    "test:e2e": "node --test e2e/*.node-test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@emilia-protocol/verify": "^6.0.0",
+    "@grpc/grpc-js": "^1.14.0",
+    "protobufjs": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.0",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "integrations/openshell-approver-receipts"
+  }
+}
