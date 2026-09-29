@@ -804,11 +804,17 @@ export function verifyReproduciblePackage(
   }
 }
 
-// import.meta.url is the realpath of the main module, so a script reached
-// through a symlinked directory (macOS /var, /tmp) must be compared by realpath
-// too; otherwise the CLI silently does nothing and exits 0.
-const isEntryPoint: boolean = Boolean(process.argv[1])
-  && fs.realpathSync(path.resolve(process.argv[1])) === fileURLToPath(import.meta.url);
+// Compare realpaths: import.meta.url is normally the main module's realpath, so
+// a script reached through a symlinked directory (macOS /var, /tmp) otherwise
+// silently does nothing and exits 0. Importers must never fail on this check.
+const isEntryPoint: boolean = ((): boolean => {
+  try {
+    return Boolean(process.argv[1])
+      && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+})();
 if (isEntryPoint && process.env[WORKER_ENV] !== '1') {
   // Killed runs used to strand read-only scratch trees; see lib/scratch-directory.
   superviseScratchRoot(SCRATCH_PREFIX, WORKER_ENV);
