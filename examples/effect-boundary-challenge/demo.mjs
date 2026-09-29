@@ -9,10 +9,10 @@ import {
   reconcileStripeRefundDurable,
 } from '../../packages/gate/adapters/stripe-refund-durable.js';
 
-const job = Object.freeze({
+const job = Object.freeze(/** @type {{ payment_intent: string, amount: number, operation_id: string }} */ ({
   payment_intent: 'pi_refund_test', amount: 5000,
   operation_id: 'refund:order-123:01',
-});
+}));
 const actionType = createStripeDurableRefundManifest().actions
   .find((entry) => entry.match?.tool === 'create_refund').action_type;
 
