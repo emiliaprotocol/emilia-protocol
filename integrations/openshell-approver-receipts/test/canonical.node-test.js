@@ -128,6 +128,30 @@ test('chunk view: two proposed_rule occurrences on the wire are refused', () => 
     assert.equal(view.rule_digest, null);
     assert.match(view.rule_error ?? '', /more than once/);
 });
+test('chunk view: map-default expansion cannot hide unknown wire fields at equal size', () => {
+    const wrap = (tag, bytes) => protobuf.Writer.create().uint32(tag).bytes(bytes).finish();
+    // This valid map entry omits both its default key and its empty message
+    // value. protobufjs adds four bytes for them when it re-encodes the entry.
+    const endpoint = Uint8Array.from([0x6a, 0x00]);
+    const unknown = wrap((99 << 3) | 2, Uint8Array.from([0x00])); // four bytes
+    const rule = wrap((2 << 3) | 2, endpoint);
+    const withUnknown = Buffer.concat([rule, unknown]);
+    const type = lookupType('openshell.sandbox.v1.NetworkPolicyRule');
+    assert.equal(type.encode(type.decode(withUnknown)).finish().length, withUnknown.length, 'the size-only guard cannot distinguish these bytes');
+    const view = chunkViewFromBytes(wrap((4 << 3) | 2, withUnknown));
+    assert.equal(view.rule_digest, null);
+    assert.match(view.rule_error ?? '', /unknown field 99/);
+    // The same compensation can occur inside a known message or map value.
+    const nested = Buffer.concat([endpoint, unknown]);
+    const nestedView = chunkViewFromBytes(wrap((4 << 3) | 2, wrap((2 << 3) | 2, nested)));
+    assert.equal(nestedView.rule_digest, null);
+    assert.match(nestedView.rule_error ?? '', /unknown field 99/);
+    const mapValue = wrap((2 << 3) | 2, unknown);
+    const mapEndpoint = wrap((13 << 3) | 2, mapValue);
+    const mapView = chunkViewFromBytes(wrap((4 << 3) | 2, wrap((2 << 3) | 2, mapEndpoint)));
+    assert.equal(mapView.rule_digest, null);
+    assert.match(mapView.rule_error ?? '', /unknown field 99/);
+});
 test('base64url decoding is canonical only', () => {
     assert.deepEqual(fromB64u('AQID'), Buffer.from([1, 2, 3]));
     assert.deepEqual(fromB64u('AQI'), Buffer.from([1, 2]));

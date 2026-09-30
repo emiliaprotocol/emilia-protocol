@@ -184,6 +184,9 @@ export async function evaluateProviderEntryGuard(
 export function composeProviderEntryGuards(
   ...guards: Array<ProviderEntryGuard | null | undefined>
 ): ProviderEntryGuard {
+  if (guards.some((guard) => guard != null && typeof guard !== 'function')) {
+    throw new TypeError('provider-entry guards must be functions when configured');
+  }
   const active = guards.filter((guard): guard is ProviderEntryGuard => typeof guard === 'function');
   const controlDomains = [...new Set(active
     .map((guard) => requiredProviderEntryControlDomain(guard))

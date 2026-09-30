@@ -920,7 +920,9 @@ export function withCustomerOwnedProtectionGateway(handler, options = {}) {
     if (!Array.isArray(verified.manifest.actions) || verified.manifest.actions.length < 1) {
         throw new TypeError('customer-owned MCP gateway manifest is empty');
     }
-    const annotations = {};
+    // Tool names are opaque identifiers. In particular, '__proto__' must be an
+    // own mapping so the protected/read-only conflict check cannot be bypassed.
+    const annotations = Object.create(null);
     const selectedTools = [];
     for (const action of verified.manifest.actions) {
         if (!action || typeof action !== 'object' || Array.isArray(action)

@@ -3,7 +3,7 @@
   "evidence_snapshot_at": "2026-09-28T10:09:53.276Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mts",
-    "input_digest_sha256": "ecee886fa8373ec7bdb69a77a69650cc1e3fe326a9b691e76c3b513d9856d8e2",
+    "input_digest_sha256": "3daa572e14d770462e88b0d61a7c28d0372af4da8cd60e817c600229674f2d2a",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "76dc276fcccbe70ef065689078712321585294e28dcc7ae5ca5346386a081c57",
+        "sha256": "82ea8c72b1a760437df56c4a1708b1af1a9cfb308acf368aaa568a2c87f61f46",
         "bytes": 4299
       },
       {
@@ -37,7 +37,7 @@
       },
       {
         "path": "security/security-case.json",
-        "sha256": "c3d5963b87a04b91c2f79d04bc7af85bcd9d76233dd456ac54d1dcf130d025cf",
+        "sha256": "6558c0d5d5d7e1164fcaf5e39388d5d326ff33162f8b55eecd0f675af5d540a9",
         "bytes": 391520
       },
       {
@@ -350,7 +350,7 @@
         "coveredModelActions": 28,
         "actionCompleteModels": 1,
         "formalMutationOperators": 51,
-        "evidenceSha256": "d3ab53ac50b67b232380b7e9c2c8020c611ee0be94390cc945f9b6e000ff2fea",
+        "evidenceSha256": "6fd3dd6315eab2863f169444ba63711085e48a857f6b97ff0c168bba7188fcb6",
         "boundary": "selected model/runtime scenarios under explicit projection relations; not a mechanized implementation refinement proof"
       },
       "evidence_taxonomy": {
@@ -420,7 +420,7 @@
       "status": "passed",
       "claims": 35,
       "evidence_files": 264,
-      "evidence_bundle_sha256": "23bc38c7df0d285fb6c476b0aedfb08e603804a1f72f4a087c2d63370f94bd44"
+      "evidence_bundle_sha256": "501e465a2473ef915f546274dcccfb7dd1e904638245c590dbc1725a1a4387e4"
     },
     "caid": {
       "core_vectors": 616,

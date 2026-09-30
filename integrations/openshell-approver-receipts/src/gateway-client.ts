@@ -85,12 +85,42 @@ function rawFieldOccurrences(bytes: Uint8Array, fieldNumber: number): Uint8Array
 const policyChunkType = (): protobuf.Type => lookupType('openshell.v1.PolicyChunk');
 const ruleType = (): protobuf.Type => lookupType('openshell.sandbox.v1.NetworkPolicyRule');
 
+/** Inspect every message and map entry before decoding can discard unknown fields. */
+function requireModeledFields(type: protobuf.Type, bytes: Uint8Array, depth = 0): void {
+  if (depth > 32) throw new Error('rule nesting is deeper than 32');
+  const reader = protobuf.Reader.create(bytes);
+  while (reader.pos < reader.len) {
+    const tag = reader.uint32();
+    const field = type.fieldsById[tag >>> 3];
+    const wireType = tag & 7;
+    if (!field) throw new Error(`unknown field ${tag >>> 3} in ${type.fullName}`);
+    field.resolve();
+    if (field.map) {
+      if (wireType !== 2) throw new Error(`invalid wire type for map ${field.fullName}`);
+      const entry = protobuf.Reader.create(reader.bytes());
+      while (entry.pos < entry.len) {
+        const entryTag = entry.uint32();
+        const entryField = entryTag >>> 3;
+        const entryWireType = entryTag & 7;
+        if (entryField !== 1 && entryField !== 2) throw new Error(`unknown map-entry field ${entryField} in ${field.fullName}`);
+        if (entryField === 2 && field.resolvedType instanceof protobuf.Type) {
+          if (entryWireType !== 2) throw new Error(`invalid wire type for map value ${field.fullName}`);
+          requireModeledFields(field.resolvedType, entry.bytes(), depth + 1);
+        } else entry.skipType(entryWireType);
+      }
+    } else if (field.resolvedType instanceof protobuf.Type) {
+      if (wireType !== 2) throw new Error(`invalid wire type for message ${field.fullName}`);
+      requireModeledFields(field.resolvedType, reader.bytes(), depth + 1);
+    } else reader.skipType(wireType);
+  }
+}
+
 /**
  * Decode one PolicyChunk from its wire bytes. The rule digest is computed only
- * when this build decodes the rule without losing bytes: if re-encoding the
- * decoded rule is shorter or longer than what the gateway sent, the gateway
- * sent fields this build does not model (for example after an upstream
- * schema change) and the rule is refused instead of silently truncated.
+ * when every wire field is modeled by this build, including nested messages
+ * and map entries. Re-encoding must also preserve the wire size. Equal sizes
+ * alone are not enough: omitted map defaults can expand and mask the bytes
+ * lost when an unknown field is discarded.
  */
 export function chunkViewFromBytes(chunkBytes: Uint8Array): ChunkView {
   const chunk = policyChunkType().toObject(policyChunkType().decode(chunkBytes), TO_OBJECT) as Obj;
@@ -112,6 +142,12 @@ export function chunkViewFromBytes(chunkBytes: Uint8Array): ChunkView {
     return view;
   }
   const ruleBytes = ruleOccurrences[0];
+  try {
+    requireModeledFields(ruleType(), ruleBytes);
+  } catch (error) {
+    view.rule_error = `proposed_rule cannot be fully modeled by the pinned protos (the gateway schema may be newer than the pinned protos): ${error instanceof Error ? error.message : String(error)}`;
+    return view;
+  }
   const decoded = ruleType().decode(ruleBytes);
   const reEncoded = ruleType().encode(decoded).finish();
   if (reEncoded.length !== ruleBytes.length) {

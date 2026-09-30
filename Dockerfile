@@ -18,7 +18,7 @@ ENV NODE_ENV=production
 
 # The digest-pinned base predates Alpine's CVE-2026-14456 fix. Pin the
 # patched runtime libraries so a rebuilt image cannot retain 3.5.7-r0.
-RUN apk add --no-cache --upgrade libcrypto3=3.5.8-r0 libssl3=3.5.8-r0 && \
+RUN apk add --no-cache --upgrade libcrypto3=3.5.9-r0 libssl3=3.5.9-r0 && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs && \
     rm -rf /usr/local/lib/node_modules/npm \
