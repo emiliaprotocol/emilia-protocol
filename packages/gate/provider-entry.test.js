@@ -121,6 +121,24 @@ test('composed guards stop at the first refusal and preserve prior evidence', as
         guards: [{ first: true }, { second: 'refused' }],
     });
 });
+test('guard composition refuses malformed configured guards instead of dropping them', () => {
+    const validGuard = async () => ({ ok: true });
+    for (const invalidGuard of [false, 0, '', {}, [], 'organization-status']) {
+        assert.throws(() => composeProviderEntryGuards(validGuard, invalidGuard), /provider-entry guards must be functions when configured/);
+    }
+});
+test('guard composition preserves explicitly omitted optional guards', async () => {
+    let calls = 0;
+    const guard = composeProviderEntryGuards(null, async () => {
+        calls += 1;
+        return { ok: true, evidence: { active: true } };
+    }, undefined);
+    assert.deepEqual(await guard(providerEntryContext({ now: NOW })), {
+        ok: true,
+        evidence: { guards: [{ active: true }] },
+    });
+    assert.equal(calls, 1);
+});
 test('organization control-domain requirements survive guard composition', () => {
     const organizationGuard = createOrganizationStatusProviderEntryGuard({
         organizationId: 'org_a',
