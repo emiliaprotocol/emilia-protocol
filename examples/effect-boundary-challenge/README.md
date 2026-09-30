@@ -59,7 +59,11 @@ deterministic mock provider and attempt store. It does **not** call Stripe or
 move money. The demo gives the restarted Gate a distinct signed receipt; it
 does not pass an OAuth token into the connector. Token variation in the case
 file is a requirement for implementations that use one, not a claim tested by
-this demo. The focused test covers fresh authorization after a simulated
+this demo. Step 5 is blocked by the attempt the operation ID already holds:
+the connector returns `ok: false` with its generic hold (`INDETERMINATE`,
+`operation_already_reserved`) for the changed request, while the original
+attempt stays `COMMITTED`. The provider is not entered, but the trace names a
+hold, not a distinct amount-mismatch refusal. The focused test covers fresh authorization after a simulated
 restart; the broader connector suite exercises mutation, concurrency, lost
 rows, ambiguous provider views, and stale owners. The separate
 `stripe-refund-durable-postgres.test.mjs` uses real PostgreSQL only when

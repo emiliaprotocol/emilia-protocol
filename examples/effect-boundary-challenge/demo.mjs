@@ -179,6 +179,14 @@ const mutation = await guardStripeRefundDurable(changed.connector, {
   operation_reference: 'refund-job-01', receipt: changed.receipt,
 });
 assert.equal(mutation.ok, false);
+// The operation's existing attempt blocks the changed request. Its request
+// digest does not match that attempt, so the connector reports its generic
+// hold rather than a distinct amount-mismatch refusal. The original attempt
+// stays COMMITTED and no second attempt is recorded.
+assert.equal(mutation.state, 'INDETERMINATE');
+assert.equal(mutation.reason, 'operation_already_reserved');
+assert.equal(store.state, 'COMMITTED');
+assert.equal(store.rows.size, 1);
 assert.equal(provider.entries, 1);
 trace.push({ step: 5, state: mutation.state, reason: mutation.reason, provider_entries: provider.entries });
 
