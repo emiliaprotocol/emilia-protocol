@@ -755,7 +755,7 @@
     },
     {
       "path": "packages/gate/dist/provider-entry.js",
-      "sha256": "d9e273b3833239d375477a43cd23986dcb8de27afd4af243f6f229608c719b73"
+      "sha256": "688534011066c846e1df743abce9c672fa4cd65e913f2f4c56c6c4249b56c699"
     },
     {
       "path": "packages/gate/dist/provider-outcome-binding.js",
