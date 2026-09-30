@@ -102,7 +102,7 @@ try {
   }
 } catch (error) {
   if (/No module named build|No module named hatchling|Backend 'hatchling/.test((error as any).message || '')) {
-    throw new Error(`${(error as any).message}\nInstall pinned build tooling first: python -m pip install build==1.3.0 hatchling==1.32.0`);
+    throw new Error(`${(error as any).message}\nInstall pinned build tooling first: python -m pip install build==1.3.0 hatchling==1.32.4`);
   }
   throw error;
 } finally {

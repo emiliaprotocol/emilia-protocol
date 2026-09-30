@@ -118,7 +118,7 @@ OIDC release provenance.
 2. Run with pinned build tooling:
 
    ```sh
-   python -m pip install build==1.3.0 hatchling==1.27.0
+   python -m pip install build==1.3.0 hatchling==1.32.4
    npm run release:verify:python
    ```
 
