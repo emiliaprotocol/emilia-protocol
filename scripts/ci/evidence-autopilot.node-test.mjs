@@ -495,6 +495,12 @@ test('the workflows run the pin writer, hold bundles to GitHub\'s source copies 
     .map((step) => autopilot.indexOf(step));
   assert.ok(order.every((index, i) => index > 0 && (i === 0 || index > order[i - 1])), 'sync:clean-room-pins runs after the manifest writer');
   assert.match(autopilot, /npm run check:clean-room-pins/);
+  // A labeled event the gate skips must not share the pull request's
+  // cancel-in-progress group, or Dependabot's own labels cancel the opened
+  // run. The no-op condition is the exact complement of the gate's.
+  assert.ok(autopilot.includes("(github.event.action != 'labeled' || github.event.label.name == 'evidence-autopilot')"));
+  const group = /\nconcurrency:\n\s+group: (.*)\n\s+cancel-in-progress: true\n/.exec(autopilot)?.[1];
+  assert.equal(group, "evidence-autopilot-${{ github.event.pull_request.number }}${{ (github.event.action == 'labeled' && github.event.label.name != 'evidence-autopilot') && format('-noop-{0}', github.run_id) || '' }}");
 
   const publish = workflow('evidence-autopilot-publish.yml');
   assert.equal(publish.match(/evidence-autopilot\.mjs source-files\)/g)?.length, 2);
