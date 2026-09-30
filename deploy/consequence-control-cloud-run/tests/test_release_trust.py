@@ -1258,7 +1258,7 @@ class WorkflowTrustContractTests(unittest.TestCase):
     def test_runtime_images_pin_fixed_openssl_and_actuator_carries_exact_caid(self) -> None:
         patched_openssl = (
             "apk add --no-cache --upgrade "
-            "libcrypto3=3.5.8-r0 libssl3=3.5.8-r0"
+            "libcrypto3=3.5.9-r0 libssl3=3.5.9-r0"
         )
         for relative_path in (
             "Dockerfile",
