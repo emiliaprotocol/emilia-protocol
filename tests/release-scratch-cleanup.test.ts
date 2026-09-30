@@ -16,6 +16,7 @@ import {
 import { execFileSync, spawn } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   removeScratchTree,
   sweepStaleScratchDirectories,
@@ -146,14 +147,16 @@ describe('reproducibility scratch cleanup', () => {
     // the fixture. The fixture's build announces itself and then blocks, so
     // every kill lands while the read-only reviewed snapshot exists and a
     // grandchild process is running inside the scratch tree.
-    const startBlockedRun = (): {
+    const startBlockedRun = ({
+      nodeArgs = [],
+      tmp = realpathSync(tempDir('tmpdir')),
+    }: { nodeArgs?: string[]; tmp?: string } = {}): {
       child: ReturnType<typeof spawn>;
       tmp: string;
       marker: string;
       output: () => string;
     } => {
       const fixture = tempDir('fixture');
-      const tmp = realpathSync(tempDir('tmpdir'));
       const marker = path.join(tempDir('marker'), 'build.json');
       writeFileSync(path.join(fixture, 'package.json'), `${JSON.stringify({
         name: 'scratch-cleanup-fixture',
@@ -183,6 +186,7 @@ describe('reproducibility scratch cleanup', () => {
       const environment: NodeJS.ProcessEnv = { ...process.env, TMPDIR: tmp, TMP: tmp, TEMP: tmp };
       delete environment.EP_REPRO_PACK_WORKER;
       const child = spawn(process.execPath, [
+        ...nodeArgs,
         path.join(fixture, 'scripts', 'verify-reproducible-package.mjs'),
         '.',
         '--commit',
@@ -259,6 +263,57 @@ describe('reproducibility scratch cleanup', () => {
 
       expect(result).toEqual({ code: 1, signal: null });
       expect(run.output()).toContain('reproducibility check failed');
+      expect(scratchEntries(run.tmp)).toEqual([]);
+    }, FIXTURE_TIMEOUT_MS);
+
+    it.skipIf(onWindows)('removes scratch state and stops the build when the worker itself is SIGKILLed', async () => {
+      const run = startBlockedRun();
+      await waitFor(() => existsSync(run.marker), 'the fixture build to start', run.output);
+      const { pid: buildPid } = JSON.parse(readFileSync(run.marker, 'utf8'));
+      // The worker is the supervisor's only child; the build runs below it.
+      const workers = execFileSync('ps', ['-A', '-o', 'pid=', '-o', 'ppid='], { encoding: 'utf8' })
+        .trim().split('\n')
+        .map((line) => line.trim().split(/\s+/u).map(Number))
+        .filter(([, ppid]) => ppid === run.child.pid)
+        .map(([pid]) => pid);
+      expect(workers).toHaveLength(1);
+
+      // Nothing can catch SIGKILL in the worker, and its spawnSync grandchildren
+      // outlive it unless the supervisor stops the whole group.
+      process.kill(workers[0], 'SIGKILL');
+      const result = await exited(run.child);
+
+      expect(result).toEqual({ code: 128 + os.constants.signals.SIGKILL, signal: null });
+      expect(scratchEntries(run.tmp)).toEqual([]);
+      await waitFor(() => !isAlive(buildPid), 'the fixture build to die', run.output);
+    }, FIXTURE_TIMEOUT_MS);
+
+    it.skipIf(onWindows)('sweeps a tree stranded by an earlier killed run when the CLI starts', async () => {
+      const tmp = realpathSync(tempDir('tmpdir'));
+      // What a SIGKILLed supervisor leaves behind: a root holding read-only source.
+      const stranded = path.join(tmp, `${PREFIX}Kd9Xq2`);
+      mkdirSync(stranded);
+      buildReadOnlyTree(stranded, tempDir('stranded-outside'));
+      chmodSync(stranded, 0o555);
+      // utimes cannot age ctime, which the sweep also checks, so the CLI runs
+      // with its clock two days ahead instead. The worker inherits execArgv.
+      const clockAhead = path.join(tempDir('clock'), 'clock-ahead.mjs');
+      writeFileSync(clockAhead, [
+        'const realNow = Date.now;',
+        `Date.now = () => realNow() + ${2 * DAY_MS};`,
+        '',
+      ].join('\n'));
+
+      const run = startBlockedRun({ nodeArgs: ['--import', pathToFileURL(clockAhead).href], tmp });
+      await waitFor(() => existsSync(run.marker), 'the fixture build to start', run.output);
+
+      // Swept before the run created its own root, which is still in use.
+      expect(existsSync(stranded)).toBe(false);
+      expect(run.output()).toContain(`removed 1 stale ${PREFIX}* scratch directory`);
+      expect(scratchEntries(run.tmp)).toHaveLength(1);
+
+      run.child.kill('SIGTERM');
+      expect((await exited(run.child)).signal).toBe('SIGTERM');
       expect(scratchEntries(run.tmp)).toEqual([]);
     }, FIXTURE_TIMEOUT_MS);
   });
