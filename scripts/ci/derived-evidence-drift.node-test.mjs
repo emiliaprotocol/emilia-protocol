@@ -234,6 +234,8 @@ test('allowlist patterns match whole fields only, and odd keys never match a wil
     'release_artifacts.gate-sdk.kind',
     'release_artifacts.gate-sdk.package',
     'release_artifacts["a.b"].sha256',
+    'release_artifacts.gate-sdk.nested.sha256',
+    'release_artifacts..sha256',
     'claims[1].release_artifact_hashes[0].artifact_id',
     'claims[1].release_artifact_hashes',
     'claims[1].statement',

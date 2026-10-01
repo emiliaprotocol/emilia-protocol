@@ -29,8 +29,9 @@
  *     request that changes security/security-case.json must make it exact.
  *   - Everywhere else it is strict: main (push, schedule, manual), main's
  *     refresh pull request and any other ref fail on any stale digest. Main
- *     never attests a stale case, because the attest steps follow this
- *     policy step. Release and publish workflows and the release-image
+ *     never attests a stale case: the case's attest step follows this policy
+ *     step, which runs after the job's other checks so a lagging case does
+ *     not skip them. Release and publish workflows and the release-image
  *     builder run check:security-case without --drift-report, which compares
  *     the file byte for byte.
  *

@@ -684,8 +684,10 @@ jobs:
   # in the checked-in case (a claim as authored in security/claims.v1.json,
   # the execution record, its shape) must match the fresh resolution on every
   # run, and a pull request that changes security/security-case.json must
-  # make it exact. The attest steps run after the policy step, so main never
-  # attests a stale case.
+  # make it exact. The policy step runs after every other check and right
+  # before the security case is attested, so main never attests a stale case
+  # and a lagging case does not skip the formal, hostility and manifest checks
+  # or the conformance manifest attestations.
   security-case:
     needs: [changes]
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
@@ -745,20 +747,8 @@ jobs:
           # hook the other steps in this job already have.
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
         # Fails on any claim, execution or shape drift; records drift in the
-        # derived digests alone for the next step.
+        # derived digests alone for the policy step below.
         run: npm run check:security-case -- --drift-report "$RUNNER_TEMP/security-case-drift.json"
-      - name: Apply the derived-digest policy (advisory on pull requests, strict elsewhere)
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          HEAD_REF: ${{ github.head_ref }}
-        run: >-
-          node scripts/ci/volatile-evidence.mjs policy
-          --scope security-case
-          --report "$RUNNER_TEMP/security-case-drift.json"
-          --event "$EVENT_NAME"
-          --ref "$GITHUB_REF"
-          --head-ref "$HEAD_REF"
-          --touched-base HEAD^1
       - name: Replay bounded formal traces against runtime behavior
         env:
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
@@ -785,11 +775,6 @@ jobs:
         run: npm run conformance:manifest:check
       - name: Verify exact frozen clean-room evidence baseline
         run: npm run conformance:manifest:clean-room
-      - name: Attest exact security case on protected-branch runs
-        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-path: security/security-case.json
       - name: Attest exact conformance manifest on protected-branch runs
         if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
@@ -800,6 +785,27 @@ jobs:
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: conformance/clean-room/conformance-manifest.v1.json
+      # Last check before the case is attested: every other check above still
+      # runs (and main still attests the two conformance manifests) when only
+      # the case's derived digests lag, so a lagging case on main never masks
+      # a formal-trace, hostility or manifest failure.
+      - name: Apply the derived-digest policy (advisory on pull requests, strict elsewhere)
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: >-
+          node scripts/ci/volatile-evidence.mjs policy
+          --scope security-case
+          --report "$RUNNER_TEMP/security-case-drift.json"
+          --event "$EVENT_NAME"
+          --ref "$GITHUB_REF"
+          --head-ref "$HEAD_REF"
+          --touched-base HEAD^1
+      - name: Attest exact security case on protected-branch runs
+        if: github.event_name != 'pull_request' && github.event_name != 'merge_group'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: security/security-case.json
       - name: Upload resolved security and conformance cases
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

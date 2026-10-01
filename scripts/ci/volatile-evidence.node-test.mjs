@@ -1083,21 +1083,29 @@ test('ci.yml reports volatile drift and applies the policy with the merge base',
   }
 });
 
-test('ci.yml executes every claim, then applies the security-case policy before anything is attested', () => {
+test('ci.yml executes every claim, runs every other check, then applies the security-case policy before the case is attested', () => {
   const job = workflow('ci.yml').jobs['security-case'];
   const steps = job.steps;
   assert.equal(steps[0].with['fetch-depth'], 2, 'the policy diffs the merge commit against its first parent');
   const check = steps.findIndex((step) => /npm run check:security-case\b/.test(step.run ?? ''));
   const policy = steps.findIndex((step) => /volatile-evidence\.mjs policy/.test(step.run ?? ''));
   assert.match(steps[check].run, /^npm run check:security-case -- --drift-report "\$RUNNER_TEMP\/security-case-drift\.json"$/);
-  assert.equal(policy, check + 1, 'the policy step runs right after the claims executed');
+  assert.ok(check >= 0 && policy > check, 'the policy reads the report the executed claims wrote');
+  // Every other check runs before the policy, so a lagging case on main never
+  // skips a formal-trace, hostility or manifest check.
+  for (const step of steps.slice(policy + 1)) assert.equal(step.run, undefined, `no check runs after the policy: ${step.name}`);
   assert.match(steps[policy].run, /--scope security-case[\s\S]*--report "\$RUNNER_TEMP\/security-case-drift\.json"[\s\S]*--event "\$EVENT_NAME"[\s\S]*--ref "\$GITHUB_REF"[\s\S]*--head-ref "\$HEAD_REF"[\s\S]*--touched-base HEAD\^1/);
   assert.equal(steps[policy].env.EVENT_NAME, '${{ github.event_name }}');
   assert.equal(steps[policy].if, undefined, 'the policy runs on every event');
   assert.equal(steps[policy]['continue-on-error'], undefined);
   const attests = steps.map((step, index) => [step, index]).filter(([step]) => String(step.uses).startsWith('actions/attest@'));
-  assert.ok(attests.length >= 1);
-  for (const [, index] of attests) assert.ok(index > policy, 'main attests only a case the policy found exact');
+  const caseAttests = attests.filter(([step]) => step.with?.['subject-path'] === SECURITY_CASE);
+  assert.equal(caseAttests.length, 1);
+  assert.equal(caseAttests[0][1], policy + 1, 'main attests only a case the policy found exact');
+  for (const [step, index] of attests) {
+    if (index < policy) assert.notEqual(step.with?.['subject-path'], SECURITY_CASE);
+    assert.equal(step.if, "github.event_name != 'pull_request' && github.event_name != 'merge_group'", step.name);
+  }
   // The policy needs no API: the security-case scope has no grace clock.
   assert.deepEqual(job.permissions, { contents: 'read', 'id-token': 'write', attestations: 'write' });
 });

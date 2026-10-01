@@ -101,9 +101,9 @@ node scripts/check-language-governance.js
 With `--drift-report`, the security case still executes every claim and
 fails on any difference from the checked-in case outside its derived digests,
 which it records instead; the proof-stats check still fails on everything it
-verifies (a failing measured suite, the security case, formal and conformance
-evidence, every derived proof field) and only records drift in the measured
-test counts. `main` refreshes both after merge; see
+verifies (a failing measured suite, the security case outside its derived
+digests, formal and conformance evidence, every derived proof field) and only
+records drift in the measured test counts. `main` refreshes both after merge; see
 [Volatile evidence](#volatile-evidence). Without `--drift-report` both checks
 compare byte for byte, as `main` and every release do.
 
@@ -207,8 +207,9 @@ evidence autopilot App and set to auto-merge (provisioning:
 On that pull request a stale file fails CI, and so does any change to another
 path. The writers are idempotent, so a run on a current `main` publishes
 nothing. On `main` the security case is strict: a push run whose case has
-stale digests fails its `security-case` job at once and attests nothing, until
-the refresh pull request lands. The push run and the refresh run fail once the
+stale digests fails its `security-case` job and does not attest the case until
+the refresh pull request lands (the job's other checks still run, and the
+conformance manifests are still attested). The push run and the refresh run fail once the
 test counts have lagged for more than 24 hours; the refresh also runs every 12
 hours, so on a quiet `main` that failure appears within about 36 hours of the
 merge that staled them. Releases stay strict: npm package publication runs the
