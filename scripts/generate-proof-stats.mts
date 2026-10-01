@@ -339,7 +339,10 @@ export function acquireProofStatsRunLock({
   }
 }
 
-export function securityCaseExecutionArgs(check: boolean): string[] {
+export function securityCaseExecutionArgs(
+  check: boolean,
+  driftReport?: string,
+): string[] {
   return [
     "--import",
     "./scripts/ts-loader/register.mjs",
@@ -348,6 +351,11 @@ export function securityCaseExecutionArgs(check: boolean): string[] {
     // The writer resolves the case from this same live execution before using
     // it for counts. Check mode never rewrites evidence to make a check pass.
     ...(!check ? ["--emit", "security/security-case.json"] : []),
+    // check:proof-stats -- --drift-report is the pull-request mode: the live
+    // case may then report (not fail on) lagging derived digests, exactly as
+    // CI's security-case job does on a pull request. Without it the case is
+    // compared byte for byte.
+    ...(check && driftReport ? ["--drift-report", driftReport] : []),
   ];
 }
 
@@ -583,21 +591,38 @@ if (bootstrapDerivedEvidence) {
   }
 }
 if (!securityCasePreverified) {
-  const liveSecurityCase = spawnSync(
-    process.execPath,
-    securityCaseExecutionArgs(check),
-    {
-      encoding: "utf8",
-      maxBuffer: 1e9,
-    },
-  );
-  if (liveSecurityCase.error) throw liveSecurityCase.error;
-  if (liveSecurityCase.status !== 0) {
-    throw new Error(
-      `The live machine-verifiable security case failed:\n${
-        liveSecurityCase.stderr || liveSecurityCase.stdout
-      }`,
+  const securityCaseDriftDir: string | undefined =
+    check && driftReport ? mkdtempSync(join(tmpdir(), "ep-security-case-drift-")) : undefined;
+  const securityCaseDrift: string | undefined = securityCaseDriftDir
+    ? join(securityCaseDriftDir, "security-case-drift.json")
+    : undefined;
+  try {
+    const liveSecurityCase = spawnSync(
+      process.execPath,
+      securityCaseExecutionArgs(check, securityCaseDrift),
+      {
+        encoding: "utf8",
+        maxBuffer: 1e9,
+      },
     );
+    if (liveSecurityCase.error) throw liveSecurityCase.error;
+    if (liveSecurityCase.status !== 0) {
+      throw new Error(
+        `The live machine-verifiable security case failed:\n${
+          liveSecurityCase.stderr || liveSecurityCase.stdout
+        }`,
+      );
+    }
+    if (securityCaseDrift && existsSync(securityCaseDrift)) {
+      const report = JSON.parse(readFileSync(securityCaseDrift, "utf8")) as { current?: boolean };
+      if (report.current !== true) {
+        console.error(
+          "PROOF STATS: the security case's derived digests lag; reported, not failed, because they may lag on pull requests (main regenerates them after merge)",
+        );
+      }
+    }
+  } finally {
+    if (securityCaseDriftDir) rmSync(securityCaseDriftDir, { recursive: true, force: true });
   }
 }
 const stats: ProofStats = {

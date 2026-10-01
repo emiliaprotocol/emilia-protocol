@@ -3,12 +3,38 @@
 /**
  * Volatile evidence: policy and main-branch refresh tooling.
  *
- * Five derived files are regenerated on main after merge: lib/proof-stats.json
- * and the four LLM context artifacts rendered from it. Only one part of them
- * changes on almost every merge: the measured test counts
- * (ADVISORY_DRIFT). Requiring every pull request to carry exact counts made
- * each merge conflict every other open pull request and forced a ~25 minute
- * regeneration plus a full CI re-run, so main owns the counts:
+ * Six derived files are regenerated on main after merge:
+ * security/security-case.json, lib/proof-stats.json and the four LLM context
+ * artifacts rendered from them. Two parts of them change on almost every
+ * merge (ADVISORY_DRIFT): the measured test counts, and the security case's
+ * derived digests (the evidence bundle hash, the hash of every pinned file,
+ * the release tarball hashes and each claim's copy of them; see
+ * scripts/ci/derived-evidence-drift.mjs). Requiring every pull request to
+ * carry them exactly made each merge conflict every other open pull request
+ * and forced a 10 to 25 minute regeneration plus a full CI re-run per rebase,
+ * so main owns them.
+ *
+ * The security case's digests (policy --scope security-case, run in ci.yml's
+ * security-case job after the case executed every claim on the merge commit):
+ *
+ *   - Deny by default. verify-security-case --drift-report already fails on
+ *     any difference outside SECURITY_CASE_DERIVED_FIELDS (a claim as
+ *     authored in security/claims.v1.json, the execution record, the claim
+ *     count, an artifact's kind or package, any added or removed key, the
+ *     file's formatting); this policy checks the report's fields again.
+ *   - On pull_request and merge_group, digest drift is reported and does not
+ *     fail. lib/proof-stats.json and the LLM context derive their copies of
+ *     the digests from the checked-in case, so a pull request that leaves the
+ *     case as main has it needs no derived-evidence commit at all. A pull
+ *     request that changes security/security-case.json must make it exact.
+ *   - Everywhere else it is strict: main (push, schedule, manual), main's
+ *     refresh pull request and any other ref fail on any stale digest. Main
+ *     never attests a stale case, because the attest steps follow this
+ *     policy step. Release and publish workflows and the release-image
+ *     builder run check:security-case without --drift-report, which compares
+ *     the file byte for byte.
+ *
+ * The test counts (the default scope, run in language-governance-checks):
  *
  *   - Deny by default. The only drift that is not a failure is drift in the
  *     fields ADVISORY_DRIFT lists, the lib/proof-stats.json test counts. Every
@@ -25,11 +51,11 @@
  *     as the base has them (sync:proof-stats -- --bootstrap-derived-evidence)
  *     or make them exact; it may not set any other count or timestamp.
  *   - Main's own refresh pull request (head branch REFRESH_BRANCH_PREFIX...)
- *     is strict: any stale file fails, and so does any changed path outside
- *     the five files, so auto-merge lands only the writers' output that CI
- *     re-derived itself.
+ *     is strict in both scopes: any stale file fails, and so does any changed
+ *     path outside the six files, so auto-merge lands only the writers' output
+ *     that CI re-derived itself.
  *   - .github/workflows/volatile-evidence-refresh.yml runs on every push to
- *     main and twice a day. It regenerates the five files with the official
+ *     main and twice a day. It regenerates the six files with the official
  *     writers in an unprivileged job, and a privileged job publishes them as
  *     ONE open pull request (REFRESH_TITLE) through the evidence autopilot
  *     App, with a compare-and-swap createCommitOnBranch commit that dco.yml
@@ -50,6 +76,8 @@
  *   node scripts/ci/volatile-evidence.mjs policy --event <name> --ref <ref>
  *     (--report <drift.json> --report <drift.json> | --stale <json array>)
  *     [--head-ref <branch>] [--touched-base <rev>] [--sha <commit>] [--repository <owner/name>]
+ *   node scripts/ci/volatile-evidence.mjs policy --scope security-case --report <drift.json>
+ *     --event <name> --ref <ref> [--head-ref <branch>] [--touched-base <rev>]
  *   node scripts/ci/volatile-evidence.mjs collect --source-sha <sha> --out <dir> [--github-output <file>]
  *   node scripts/ci/volatile-evidence.mjs request --bundle <dir> --source-sha <sha> \
  *     --repository <owner/name> --run-url <url> --out <file> [--pr-body-out <file>] [--github-output <file>]
@@ -62,38 +90,86 @@ import { appendFileSync, readFileSync, realpathSync, writeFileSync } from 'node:
 import { isDeepStrictEqual } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
+import {
+  DRIFT_REPORT_VERSION,
+  SECURITY_CASE,
+  SECURITY_CASE_DERIVED_FIELDS,
+  SECURITY_CASE_WRITER,
+  fieldAllowed,
+  summarizeFields,
+} from './derived-evidence-drift.mjs';
 import { COMMIT_TRAILER, DERIVED_EVIDENCE, collect, commitRequest } from './evidence-autopilot.mjs';
 
-/** Written by sync:proof-stats and sync:llm-context; a subset of DERIVED_EVIDENCE. */
-export const VOLATILE_EVIDENCE = Object.freeze([
-  'lib/proof-stats.json',
+export { DRIFT_REPORT_VERSION };
+
+const PROOF_STATS = 'lib/proof-stats.json';
+const LLM_CONTEXT = Object.freeze([
   'AI_CONTEXT.md',
   'public/llms.txt',
   'public/llms-full.txt',
   'public/.well-known/emilia-context.json',
 ]);
+
+/**
+ * Written by sync:proof-stats (which re-executes and re-emits the security
+ * case) and sync:llm-context; a subset of DERIVED_EVIDENCE.
+ */
+export const VOLATILE_EVIDENCE = Object.freeze([SECURITY_CASE, PROOF_STATS, ...LLM_CONTEXT]);
 if (!VOLATILE_EVIDENCE.every((path) => DERIVED_EVIDENCE.includes(path))) {
   throw new Error('volatile evidence must stay inside the derived-evidence allowlist dco.yml exempts');
 }
 
-const PROOF_STATS = 'lib/proof-stats.json';
+/** The files each drift-report writer may name as stale. */
+export const WRITER_FILES = Object.freeze({
+  [SECURITY_CASE_WRITER]: Object.freeze([SECURITY_CASE]),
+  'sync:proof-stats': Object.freeze([PROOF_STATS]),
+  'sync:llm-context': LLM_CONTEXT,
+});
+
+/**
+ * The reports one policy run takes: the default scope in
+ * language-governance-checks, the security-case scope in the security-case
+ * job. Exactly one report per writer of the scope is required.
+ */
+export const DRIFT_SCOPES = Object.freeze({
+  'proof-stats': Object.freeze(['sync:proof-stats', 'sync:llm-context']),
+  'security-case': Object.freeze([SECURITY_CASE_WRITER]),
+});
+export const DRIFT_WRITERS = DRIFT_SCOPES['proof-stats'];
+if (JSON.stringify(Object.values(WRITER_FILES).flat().sort()) !== JSON.stringify([...VOLATILE_EVIDENCE].sort())) {
+  throw new Error('every volatile file has exactly one drift-report writer');
+}
+
+/** @type {Readonly<Record<string, readonly string[]>>} */
+const FILES_BY_WRITER = WRITER_FILES;
+/** @type {Readonly<Record<string, readonly string[]>>} */
+const WRITERS_BY_SCOPE = DRIFT_SCOPES;
+
+/**
+ * @param {string} scope
+ * @returns {readonly string[]}
+ */
+function scopeFiles(scope) {
+  return WRITERS_BY_SCOPE[scope].flatMap((writer) => FILES_BY_WRITER[writer]);
+}
 
 /**
  * The advisory allowlist, deny by default: per volatile file, the drifted
- * fields that may lag instead of failing. Only the measured test counts are
- * listed. Every other lib/proof-stats.json field (formalEvidenceCoverage,
- * tamarin, tla, alloy, formalScenarioConformance, securityCase, conformance,
+ * fields that may lag instead of failing (fieldAllowed: `[]` is any index,
+ * `*` any one key). For lib/proof-stats.json only the measured test counts
+ * are listed; every other proof-stats field (formalEvidenceCoverage, tamarin,
+ * tla, alloy, formalScenarioConformance, securityCase, conformance,
  * externalImplementation, redTeamCases, tests.policy, anything added later)
- * and every LLM context file has no entry, so its drift fails.
- * scripts/generate-proof-stats.mts ADVISORY_PROOF_STATS_FIELDS is the same
- * list (a node test pins the two).
+ * fails. scripts/generate-proof-stats.mts ADVISORY_PROOF_STATS_FIELDS is the
+ * same list (a node test pins the two). For security/security-case.json only
+ * the derived digests are listed (SECURITY_CASE_DERIVED_FIELDS, the list the
+ * writer itself enforces). Every LLM context file has no entry, so its drift
+ * fails.
  */
 export const ADVISORY_DRIFT = Object.freeze({
+  [SECURITY_CASE]: SECURITY_CASE_DERIVED_FIELDS,
   [PROOF_STATS]: Object.freeze(['tests.files', 'tests.total']),
 });
-
-export const DRIFT_REPORT_VERSION = 'EP-VOLATILE-EVIDENCE-DRIFT-v1';
-export const DRIFT_WRITERS = Object.freeze(['sync:proof-stats', 'sync:llm-context']);
 export const REFRESH_WORKFLOW = 'volatile-evidence-refresh.yml';
 export const REFRESH_BRANCH_PREFIX = 'automation/volatile-evidence-';
 /** The only branch names the refresh creates, reuses, closes or deletes. */
@@ -138,20 +214,29 @@ function staleList(paths) {
   return [...new Set(paths)].sort();
 }
 
+/** Writers whose reports name drifted fields: one per field-allowlisted file. */
+const FIELD_WRITERS = Object.freeze(['sync:proof-stats', SECURITY_CASE_WRITER]);
+
 /**
- * Validates the drift reports the two checks wrote and merges their stale
- * paths. Exactly one report per writer is required, so a check that never
- * reached its comparison cannot read as current. `fields` are the
- * lib/proof-stats.json fields that drifted, or null when that report did not
- * say (which classifyDrift treats as outside the allowlist).
+ * Validates the drift reports one scope's checks wrote and merges their stale
+ * paths. Exactly one report per writer of the scope is required, so a check
+ * that never reached its comparison cannot read as current, and a report may
+ * name only its own writer's files. `fields` are the drifted fields of the
+ * scope's field-bearing file (lib/proof-stats.json or
+ * security/security-case.json), or null when that report did not say (which
+ * classifyDrift treats as outside the allowlist).
  *
  * @param {DriftReport[]} reports
+ * @param {readonly string[]} [expected] the scope's writers (DRIFT_SCOPES)
  * @returns {MergedDrift}
  */
-export function mergeDriftReports(reports) {
+export function mergeDriftReports(reports, expected = DRIFT_WRITERS) {
   const writers = reports.map((report) => report?.writer).sort();
-  if (JSON.stringify(writers) !== JSON.stringify([...DRIFT_WRITERS].sort())) {
-    throw new Error(`expected one drift report from each of ${DRIFT_WRITERS.join(' and ')}, got ${JSON.stringify(writers)}`);
+  if (JSON.stringify(writers) !== JSON.stringify([...expected].sort())) {
+    throw new Error(`expected one drift report from each of ${expected.join(' and ')}, got ${JSON.stringify(writers)}`);
+  }
+  if (expected.filter((writer) => FIELD_WRITERS.includes(writer)).length > 1) {
+    throw new Error('one policy run takes at most one field-bearing drift report');
   }
   const stale = [];
   /** @type {string[] | null} */
@@ -160,16 +245,18 @@ export function mergeDriftReports(reports) {
     if (report['@version'] !== DRIFT_REPORT_VERSION) throw new Error(`${report.writer}: unsupported drift report version`);
     if (typeof report.current !== 'boolean') throw new Error(`${report.writer}: current must be a boolean`);
     const paths = staleList(report.stale);
+    const foreign = paths.filter((path) => !(FILES_BY_WRITER[report.writer] ?? []).includes(path));
+    if (foreign.length > 0) throw new Error(`${report.writer} does not write ${foreign.join(', ')}`);
     if (report.current !== (paths.length === 0)) throw new Error(`${report.writer}: current contradicts stale`);
     stale.push(...paths);
-    if (report.writer === 'sync:proof-stats') {
+    if (FIELD_WRITERS.includes(report.writer)) {
       if (Array.isArray(report.fields) && report.fields.every((field) => typeof field === 'string')) {
         fields = [...new Set(report.fields)].sort();
       } else if (report.fields !== undefined || paths.length > 0) {
         fields = null;
       }
     } else if (Array.isArray(report.fields) && report.fields.length > 0) {
-      throw new Error(`${report.writer}: only the proof-stats report names drifted fields`);
+      throw new Error(`${report.writer}: only the proof-stats and security-case reports name drifted fields`);
     }
   }
   return { stale: [...new Set(stale)].sort(), fields };
@@ -177,24 +264,29 @@ export function mergeDriftReports(reports) {
 
 /**
  * Splits drift into what the allowlist tolerates and what it denies. A stale
- * lib/proof-stats.json is advisory only when the report names its drifted
- * fields and every one is in ADVISORY_DRIFT; a stale file with no allowlist
- * entry (every LLM context file) is denied.
+ * lib/proof-stats.json or security/security-case.json is advisory only when
+ * the report names its drifted fields and every one matches its
+ * ADVISORY_DRIFT entry; a stale file with no allowlist entry (every LLM
+ * context file) is denied. `fields` belong to the one allowlisted file in
+ * `stale` (mergeDriftReports never merges two).
  *
  * @param {MergedDrift} drift
  * @returns {{ advisory: string[], denied: Array<{ path: string, fields: string[] }> }}
  */
 export function classifyDrift({ stale, fields }) {
+  if (stale.filter((path) => Object.hasOwn(ADVISORY_DRIFT, path)).length > 1) {
+    throw new Error('drifted fields can be attributed to only one allowlisted file');
+  }
   const advisory = [];
   const denied = [];
   for (const path of stale) {
     const allowed = Object.hasOwn(ADVISORY_DRIFT, path) ? ADVISORY_DRIFT[path] : [];
-    const drifted = path === PROOF_STATS ? fields : null;
+    const drifted = Object.hasOwn(ADVISORY_DRIFT, path) ? fields : null;
     if (drifted === null || drifted.length === 0) {
       denied.push({ path, fields: drifted ?? [] });
       continue;
     }
-    const outside = drifted.filter((field) => !allowed.includes(field));
+    const outside = drifted.filter((field) => !fieldAllowed(field, allowed));
     if (outside.length > 0) denied.push({ path, fields: outside });
     else advisory.push(path);
   }
@@ -325,20 +417,22 @@ export function proofStatsChangeProblems({ head, base, stale, now }) {
 }
 
 /**
- * How a run treats drift in the five files.
+ * How a run treats drift in the volatile files.
  *   strict   main's refresh pull request: stale fails, and so does any other
- *            changed path.
- *   advisory any other pull request, merge-queue candidates, other refs:
- *            test-count drift is reported.
- *   grace    main: test-count drift fails after GRACE_HOURS.
+ *            changed path. In the security-case scope also every run that is
+ *            not a pull request or merge group (main, any other ref).
+ *   advisory any other pull request and merge-queue candidates (and, for the
+ *            test counts only, other refs): allowlisted drift is reported.
+ *   grace    main, test counts only: they fail after GRACE_HOURS.
  * Drift outside ADVISORY_DRIFT fails in every mode.
  *
- * @param {{ event: string, ref: string, headRef?: string }} run
+ * @param {{ event: string, ref: string, headRef?: string, scope?: string }} run
  * @returns {'strict' | 'advisory' | 'grace'}
  */
-export function policyMode({ event, ref, headRef = '' }) {
+export function policyMode({ event, ref, headRef = '', scope = 'proof-stats' }) {
   if (event === 'pull_request' && headRef.startsWith(REFRESH_BRANCH_PREFIX)) return 'strict';
   if (event === 'pull_request' || event === 'merge_group') return 'advisory';
+  if (scope === 'security-case') return 'strict';
   if (ref !== 'refs/heads/main') return 'advisory';
   if (!TRUSTED_RUN_EVENTS.includes(event)) return 'advisory';
   return 'grace';
@@ -621,14 +715,63 @@ export async function planRefresh({ client, repository, sourceSha, botLogin }) {
 }
 
 /**
+ * The security-case scope's job summary. Digest drift is grouped by pattern:
+ * one changed pinned file drifts every claim's copy of the bundle hash.
+ *
  * @param {{ mode: string, stale: string[], fields: string[] | null, touched?: string[],
- *   denied?: Array<{ path: string, fields: string[] }>, problems?: string[], decision?: GraceDecision }} input
+ *   denied?: Array<{ path: string, fields: string[] }>, problems?: string[] }} input
  * @returns {string}
  */
-export function summaryMarkdown({ mode, stale, fields, touched = [], denied = [], problems = [], decision }) {
+function securityCaseSummaryMarkdown({ mode, stale, fields, touched = [], denied = [], problems = [] }) {
+  const isStale = stale.includes(SECURITY_CASE);
+  const lines = ['### Security case: derived digests', ''];
+  lines.push('| File | State |', '| --- | --- |');
+  lines.push(`| \`${SECURITY_CASE}\` | ${isStale ? 'stale' : 'current'}${touched.includes(SECURITY_CASE) ? ' (changed by this pull request)' : ''} |`, '');
+  if (fields && fields.length > 0) {
+    lines.push(`Drifted fields: ${summarizeFields(fields).map((field) => `\`${field}\``).join(', ')}.`, '');
+  }
+  if (problems.length > 0) {
+    lines.push('Failing:', '', ...problems.map((problem) => `- ${problem}`), '');
+  }
+  if (denied.length > 0) {
+    const outside = denied.flatMap(({ fields: names }) => names);
+    lines.push(
+      'Failing: drift outside the derived digests is never advisory.',
+      ...(outside.length > 0 ? outside.slice(0, 50).map((field) => `- \`${field}\``) : [`- \`${SECURITY_CASE}\``]),
+      ...(outside.length > 50 ? [`- and ${outside.length - 50} more`] : []),
+      '',
+      'A claim, the execution record or the file\'s shape changed without the case being regenerated. Commit your change,',
+      'then run `npm run sync:proof-stats -- --bootstrap-derived-evidence` (re-executes and re-emits the case and refreshes',
+      'the derived proof fields, keeping main\'s test counts) and `npm run sync:llm-context`, and commit the results.',
+    );
+  } else if (!isStale) {
+    lines.push('The checked-in case is exactly what the writer resolves for this commit.');
+  } else if (mode === 'advisory' && problems.length === 0) {
+    lines.push(
+      'Advisory: every claim executed on this commit and everything else in the case matches; only the derived digests',
+      `lag. Main regenerates them after merge (\`.github/workflows/${REFRESH_WORKFLOW}\`). They are strict on main, on main's`,
+      'refresh pull request and in every release and publish workflow (see CONTRIBUTING.md#volatile-evidence).',
+    );
+  } else if (mode !== 'advisory') {
+    lines.push(
+      'Failing: outside pull requests and merge groups the case must be exact. On main it is current again once the',
+      `refresh pull request from \`.github/workflows/${REFRESH_WORKFLOW}\` lands.`,
+    );
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+/**
+ * @param {{ mode: string, stale: string[], fields: string[] | null, touched?: string[],
+ *   denied?: Array<{ path: string, fields: string[] }>, problems?: string[], decision?: GraceDecision,
+ *   scope?: string }} input
+ * @returns {string}
+ */
+export function summaryMarkdown({ mode, stale, fields, touched = [], denied = [], problems = [], decision, scope = 'proof-stats' }) {
+  if (scope === 'security-case') return securityCaseSummaryMarkdown({ mode, stale, fields, touched, denied, problems });
   const lines = ['### Volatile evidence', ''];
   lines.push('| File | State |', '| --- | --- |');
-  for (const path of VOLATILE_EVIDENCE) {
+  for (const path of scopeFiles('proof-stats')) {
     const state = stale.includes(path) ? 'stale' : 'current';
     lines.push(`| \`${path}\` | ${state}${touched.includes(path) ? ' (changed by this pull request)' : ''} |`);
   }
@@ -665,14 +808,18 @@ export function summaryMarkdown({ mode, stale, fields, touched = [], denied = []
 /**
  * @param {{ mode: 'strict' | 'advisory' | 'grace', stale: string[], fields?: string[] | null,
  *   regenerated?: boolean, problems?: string[], sha?: string,
- *   client?: ReturnType<typeof githubClient>, now?: Date }} input
+ *   client?: ReturnType<typeof githubClient>, now?: Date, scope?: string }} input
  *   `regenerated` marks `stale` as the refresh's own output (--stale): those
  *   files changed because the writers ran, so only the grace clock applies.
  *   `problems` are failures found before the drift (changed paths, a
- *   proof-stats change the pull request may not make).
+ *   proof-stats or security-case change the pull request may not make).
+ *   In the security-case scope only `advisory` tolerates digest drift; any
+ *   other mode fails it without consulting the grace clock.
  * @returns {Promise<{ exitCode: number, decision?: GraceDecision, denied: Array<{ path: string, fields: string[] }>, annotation: string }>}
  */
-export async function evaluatePolicy({ mode, stale, fields = [], regenerated = false, problems = [], sha, client, now = new Date() }) {
+export async function evaluatePolicy({
+  mode, stale, fields = [], regenerated = false, problems = [], sha, client, now = new Date(), scope = 'proof-stats',
+}) {
   const { denied } = regenerated ? { denied: [] } : classifyDrift({ stale, fields });
   if (problems.length > 0) {
     return {
@@ -683,6 +830,27 @@ export async function evaluatePolicy({ mode, stale, fields = [], regenerated = f
   }
   if (stale.length === 0) return { exitCode: 0, denied, annotation: '' };
   const files = stale.join(', ');
+  if (scope === 'security-case' && !regenerated) {
+    if (denied.length > 0) {
+      return {
+        exitCode: 1,
+        denied,
+        annotation: `::error title=Security case drift outside the derived digests::${SECURITY_CASE} differs from the fresh resolution in ${denied.flatMap(({ fields: names }) => names).slice(0, 20).join(', ') || 'unattributed fields'}. Only the derived digests may lag; regenerate the case (npm run sync:proof-stats -- --bootstrap-derived-evidence, npm run sync:llm-context).`,
+      };
+    }
+    if (mode === 'advisory') {
+      return {
+        exitCode: 0,
+        denied,
+        annotation: `::notice title=Security case digests lag (advisory)::${SECURITY_CASE}: only derived digests differ (${summarizeFields(fields ?? []).join(', ')}); main regenerates them after merge.`,
+      };
+    }
+    return {
+      exitCode: 1,
+      denied,
+      annotation: `::error title=Security case is stale::${SECURITY_CASE} differs from what the writer resolves for this commit. Its derived digests may lag only on pull requests and merge groups, never on main, main's refresh pull request or a release.`,
+    };
+  }
   if (denied.length > 0) {
     const named = denied.map(({ path, fields: outside }) => (outside.length > 0 ? `${path} (${outside.join(', ')})` : path)).join('; ');
     return {
@@ -721,11 +889,11 @@ export function refreshCommitMessage(sourceSha, runUrl) {
     headline: REFRESH_TITLE,
     body: [
       `Regenerated from main at ${sourceSha} by ${REFRESH_WORKFLOW} with the`,
-      'official writers (sync:proof-stats, then sync:llm-context). Only the',
-      'five volatile evidence files change. The publisher checked the bundle\'s',
-      'shape and transit integrity; the required checks on this commit, which',
-      'fail a stale file or any other changed path on this pull request,',
-      'decide whether it is correct.',
+      'official writers (sync:proof-stats, which re-executes and re-emits the',
+      'security case, then sync:llm-context). Only the volatile evidence files',
+      'change. The publisher checked the bundle\'s shape and transit integrity;',
+      'the required checks on this commit, which fail a stale file or any other',
+      'changed path on this pull request, decide whether it is correct.',
       '',
       COMMIT_TRAILER,
       `Evidence-Autopilot-Run: ${runUrl}`,
@@ -746,7 +914,7 @@ export function refreshPullRequestBody({ sourceSha, runUrl, paths }) {
     `Automated refresh from \`.github/workflows/${REFRESH_WORKFLOW}\` ([run](${runUrl})).`,
     '',
     `Regenerates the volatile evidence from main at ${sourceSha} with the official writers`,
-    '(`sync:proof-stats`, then `sync:llm-context`):',
+    '(`sync:proof-stats`, which re-executes and re-emits the security case, then `sync:llm-context`):',
     '',
     ...staleList(paths).map((path) => `- \`${path}\``),
     '',
@@ -814,13 +982,15 @@ export async function main(argv, { env = process.env, fetchImpl = fetch, now = n
     const staleJson = one(options, 'stale');
     if ((reports.length > 0) === Boolean(staleJson)) throw new Error('policy takes --report files or --stale, not both');
     const event = one(options, 'event');
-    const mode = policyMode({ event, ref: one(options, 'ref'), headRef: one(options, 'head-ref') });
+    const scope = one(options, 'scope') || 'proof-stats';
+    if (!Object.hasOwn(DRIFT_SCOPES, scope)) throw new Error(`unknown --scope ${JSON.stringify(scope)}; expected ${Object.keys(DRIFT_SCOPES).join(' or ')}`);
+    const mode = policyMode({ event, ref: one(options, 'ref'), headRef: one(options, 'head-ref'), scope });
     // --stale is the refresh workflow's own regenerated output, which says
     // nothing about which fields drifted; it only dates staleness on main.
     if (staleJson && mode !== 'grace') throw new Error('policy --stale is for the refresh workflow on main only (grace mode)');
     /** @type {MergedDrift} */
     const merged = reports.length > 0
-      ? mergeDriftReports(reports.map((file) => JSON.parse(readFileSync(file, 'utf8'))))
+      ? mergeDriftReports(reports.map((file) => JSON.parse(readFileSync(file, 'utf8'))), WRITERS_BY_SCOPE[scope])
       : { stale: staleList(JSON.parse(staleJson)), fields: null };
     const repo = one(options, 'repo') || process.cwd();
     const touchedBase = one(options, 'touched-base');
@@ -833,10 +1003,17 @@ export async function main(argv, { env = process.env, fetchImpl = fetch, now = n
       if (mode === 'strict') {
         const outside = changed.filter((path) => !VOLATILE_EVIDENCE.includes(path));
         if (outside.length > 0) {
-          problems.push(`Main's refresh pull request may change only the five volatile files, but it changes ${outside.join(', ')}.`);
+          problems.push(`Main's refresh pull request may change only the ${VOLATILE_EVIDENCE.length} volatile files, but it changes ${outside.join(', ')}.`);
         }
       }
-      if (touched.includes(PROOF_STATS)) {
+      // Keep main's copy or make it exact: digests a pull request writes
+      // itself must be the writer's, never hand-edited or left over from an
+      // older base.
+      if (scope === 'security-case' && mode === 'advisory' && touched.includes(SECURITY_CASE)
+          && merged.stale.includes(SECURITY_CASE)) {
+        problems.push(`This pull request changes ${SECURITY_CASE}, so it must be exactly what the writer resolves for the merge commit: restore main's copy (\`git checkout origin/main -- ${SECURITY_CASE}\`, plus lib/proof-stats.json and the LLM context if you regenerated them too) or regenerate it on the current base (\`npm run sync:proof-stats -- --bootstrap-derived-evidence\`, then \`npm run sync:llm-context\`).`);
+      }
+      if (scope === 'proof-stats' && touched.includes(PROOF_STATS)) {
         const found = proofStatsChangeProblems({
           head: proofStatsAt('HEAD', repo),
           base: proofStatsAt(touchedBase, repo),
@@ -863,6 +1040,7 @@ export async function main(argv, { env = process.env, fetchImpl = fetch, now = n
       sha: one(options, 'sha'),
       client,
       now,
+      scope,
     });
     const summary = summaryMarkdown({
       mode,
@@ -872,6 +1050,7 @@ export async function main(argv, { env = process.env, fetchImpl = fetch, now = n
       denied: result.denied,
       problems,
       decision: result.decision,
+      scope,
     });
     if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, summary);
     console.log(summary);

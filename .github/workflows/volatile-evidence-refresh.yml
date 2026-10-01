@@ -1,15 +1,17 @@
 name: Volatile evidence refresh
 
 # Keeps main's volatile evidence current so pull requests never carry the
-# measured test counts.
+# measured test counts or the security case's derived digests.
 #
 # lib/proof-stats.json and the four LLM context artifacts rendered from it
 # (AI_CONTEXT.md, public/llms.txt, public/llms-full.txt,
-# public/.well-known/emilia-context.json) embed the exact test counts, which
-# change on almost every merge. Pull requests no longer regenerate those
-# counts: CI reports test-count drift without failing
-# (scripts/ci/volatile-evidence.mjs; every other drift still fails), and this
-# workflow regenerates the five files on every push to main and every 12
+# public/.well-known/emilia-context.json) embed the exact test counts, and
+# security/security-case.json embeds the hash of every file it pins; both
+# change on almost every merge. Pull requests no longer regenerate them: CI
+# reports test-count drift and, on pull requests and merge groups, security
+# case digest drift without failing (scripts/ci/volatile-evidence.mjs; every
+# other drift still fails, and the security case is strict on main), and
+# this workflow regenerates the six files on every push to main and every 12
 # hours, then publishes ONE pull request titled
 # "chore(evidence): refresh volatile evidence" with auto-merge enabled. The
 # writers are idempotent (an unchanged test count keeps its generatedAt), so a
@@ -17,10 +19,11 @@ name: Volatile evidence refresh
 # observation the grace clock starts from.
 #
 # Trust split, as in evidence-autopilot*.yml:
-#   - `regenerate` runs main's code (the official writers and the full test
-#     suite) with a read-only token and no secrets, and uploads a bundle of the
-#     five files only (`volatile-evidence.mjs collect` refuses any other
-#     changed path, so a writer that touched the security case fails the run).
+#   - `regenerate` runs main's code (the official writers, the full test
+#     suite and the security case) with a read-only token and no secrets, and
+#     uploads a bundle of the six files only (`volatile-evidence.mjs collect`
+#     refuses any other changed path, so a writer that touched the formal
+#     traces or the conformance manifest fails the run).
 #   - `publish` is the only job that can read the evidence autopilot App's
 #     credentials (environment `evidence-autopilot`, deployment branches:
 #     main). It runs nothing from the bundle and installs nothing: it checks
@@ -39,18 +42,21 @@ name: Volatile evidence refresh
 #     across workflow file changes, which it has no permission for.
 #   - Correctness is decided by the required checks on the refresh pull
 #     request (policy mode `strict`): a stale volatile file fails, and so does
-#     any changed path outside the five files, so a later push to the branch
+#     any changed path outside the six files, so a later push to the branch
 #     cannot ride the App's auto-merge with other changes.
 #   - `grace` fails this run once main's volatile evidence has been stale for
 #     more than GRACE_HOURS (volatile-evidence.mjs), dated from this
 #     workflow's trusted runs on main; ci.yml's push run applies the same
-#     rule. On a quiet main the first run that can see an expired grace is a
+#     rule to the test counts, and fails a stale security case at once (its
+#     security-case job is strict on main and never attests a stale case).
+#     On a quiet main the first run that can see an expired grace is a
 #     scheduled one, so the failure appears within about 36 hours of the push
 #     that staled the files (later if GitHub delays the schedule). A push run
 #     of ci.yml can be cancelled by the next push to main; that push's own
 #     runs check again.
 #
-# Settings this workflow depends on (see the pull request that added it):
+# Settings this workflow depends on (provisioning steps:
+# docs/operations/EVIDENCE-AUTOPILOT.md):
 #   - the evidence autopilot GitHub App with repository permissions
 #     Contents: read and write, Pull requests: read and write and Metadata:
 #     read, installed on this repository only;
@@ -142,13 +148,15 @@ jobs:
           set -euo pipefail
           git config user.name 'volatile-evidence-refresh (local, never pushed)'
           git config user.email 'volatile-evidence-refresh@invalid'
-          # The proof-stats writer re-executes and re-emits the security case,
-          # which packs the reviewed tree and refuses a dirty checkout, so each
-          # stage is committed locally. Only the five volatile files are
-          # staged; anything else a writer changes stays dirty and stops the
-          # run at `collect`.
+          # The proof-stats writer re-executes and re-emits the security case
+          # (its derived digests lag main after every merge that touched a
+          # pinned file), which packs the reviewed tree and refuses a dirty
+          # checkout, so each stage is committed locally. Only the six
+          # volatile files are staged; anything else a writer changes stays
+          # dirty and stops the run at `collect`.
           checkpoint() {
             git add -- \
+              security/security-case.json \
               lib/proof-stats.json \
               AI_CONTEXT.md \
               public/llms.txt \
@@ -248,6 +256,11 @@ jobs:
           repositories: ${{ github.event.repository.name }}
           permission-contents: write
           permission-pull-requests: write
+
+      - name: Explain a refused App token
+        if: ${{ failure() && steps.app-token.outcome == 'failure' }}
+        run: |
+          echo "::error title=Evidence autopilot App token refused::GitHub refused an installation token with Contents: write and Pull requests: write. If the error above says the permissions are not granted, the App's installation lacks one of them, usually Pull requests: Read and write (both secrets are set, or the previous step would have failed). See docs/operations/EVIDENCE-AUTOPILOT.md."
 
       - name: Plan against the open refresh pull requests with trusted code
         id: plan

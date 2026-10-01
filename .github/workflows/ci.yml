@@ -269,7 +269,9 @@ jobs:
     # same SHA. Nothing this job builds leaves the runner. Only the measured
     # test counts in lib/proof-stats.json may lag in CI (volatile-evidence
     # policy: advisory on pull requests, graced on main; every other field is
-    # strict), so a CI image may carry lagging test counts. Releases stay
+    # strict), and on pull requests and merge groups the security case's
+    # derived digests, so a CI image may carry lagging test counts and, on a
+    # pull request, a lagging security case. Releases stay
     # strict: consequence-control-deploy.yml builds
     # without the preverification flag, so its builder runs check:proof-stats,
     # and _publish-npm-package.yml runs check:proof-stats and check:llm-context.
@@ -673,6 +675,17 @@ jobs:
         run: node scripts/check-write-discipline.js
 
   # ── Job 4: Exact, content-addressed security case ────────────────
+  # Every claim executes on every run. The case's derived digests (the
+  # evidence bundle hash, each pinned file's hash, the release tarball hashes
+  # and each claim's copy of them; scripts/ci/derived-evidence-drift.mjs) may
+  # lag on pull_request and merge_group runs only: the policy step reports
+  # them there and fails them everywhere else, and main's
+  # volatile-evidence-refresh.yml regenerates them after merge. Anything else
+  # in the checked-in case (a claim as authored in security/claims.v1.json,
+  # the execution record, its shape) must match the fresh resolution on every
+  # run, and a pull request that changes security/security-case.json must
+  # make it exact. The attest steps run after the policy step, so main never
+  # attests a stale case.
   security-case:
     needs: [changes]
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs') }}
@@ -691,6 +704,10 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The merge commit and its first parent: the policy step diffs them
+          # to see whether a pull request changes the case itself.
+          fetch-depth: 2
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           # Must match the npm publication workflows: the security case binds
@@ -719,7 +736,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           scripts/download-tla2tools.sh tla2tools.jar
-      - name: Execute exact claims and require the checked-in security case to be current
+      - name: Execute exact claims and compare the checked-in security case
         env:
           # Every claim's implementations[] entry is dynamically import()ed to
           # confirm the named export is real and callable. packages/gate/src
@@ -727,7 +744,21 @@ jobs:
           # renamed-in-place convention, so this step needs the same loader
           # hook the other steps in this job already have.
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
-        run: npm run check:security-case
+        # Fails on any claim, execution or shape drift; records drift in the
+        # derived digests alone for the next step.
+        run: npm run check:security-case -- --drift-report "$RUNNER_TEMP/security-case-drift.json"
+      - name: Apply the derived-digest policy (advisory on pull requests, strict elsewhere)
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: >-
+          node scripts/ci/volatile-evidence.mjs policy
+          --scope security-case
+          --report "$RUNNER_TEMP/security-case-drift.json"
+          --event "$EVENT_NAME"
+          --ref "$GITHUB_REF"
+          --head-ref "$HEAD_REF"
+          --touched-base HEAD^1
       - name: Replay bounded formal traces against runtime behavior
         env:
           NODE_OPTIONS: '--import ${{ github.workspace }}/scripts/ts-loader/register.mjs'
@@ -790,7 +821,10 @@ jobs:
     #
     # Volatile evidence (scripts/ci/volatile-evidence.mjs): lib/proof-stats.json
     # and the four LLM context artifacts are regenerated on main by
-    # volatile-evidence-refresh.yml. Deny by default: only drift in the
+    # volatile-evidence-refresh.yml. They take their copies of the security
+    # case's digests from the checked-in case, so a pull request that leaves
+    # security/security-case.json as main has it leaves them current too.
+    # Deny by default: only drift in the
     # measured test counts (tests.total, tests.files) may lag. The two checks
     # below fail on every other drift themselves (any other proof field, any
     # stale LLM context file) and record the rest in drift reports, and the
@@ -802,8 +836,9 @@ jobs:
     # the drift is older than the grace window. Everything else the checks
     # verify (a passing measured suite, the security case, formal and
     # conformance evidence, every generator assertion) still fails the job.
-    # The security case, formal traces, conformance manifest and clean-room
-    # pins stay strict in the security-case job.
+    # The formal traces, conformance manifest and clean-room pins stay strict
+    # in the security-case job, and so does everything in the security case
+    # but its derived digests (advisory on pull requests there).
     runs-on: ubuntu-latest
     permissions:
       contents: read
