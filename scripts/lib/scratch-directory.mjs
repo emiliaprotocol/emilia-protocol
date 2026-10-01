@@ -110,6 +110,11 @@ export function sweepStaleScratchDirectories(prefix, { directory = os.tmpdir(), 
  * signal), and on this process's own exit, including exits caused by uncaught
  * errors. Stale roots from earlier runs are swept before starting. The worker's
  * exit status becomes this process's exit status.
+ *
+ * The returned promise settles once the worker has exited and the root is gone,
+ * with process.exitCode already set. It never settles when a forwarded signal
+ * is re-raised, since that ends this process. A CLI whose work runs at module
+ * top level awaits it and exits, so the supervisor never runs that work itself.
  */
 export function superviseScratchRoot(prefix, workerEnv) {
     const swept = sweepStaleScratchDirectories(prefix);
@@ -164,19 +169,23 @@ export function superviseScratchRoot(prefix, workerEnv) {
     for (const signal of FORWARDED_SIGNALS)
         process.on(signal, onSignal);
     process.on('exit', cleanup);
-    worker.on('error', (error) => {
-        console.error(`could not start supervised worker: ${error.message}`);
-        cleanup();
-        process.exitCode = 1;
-    });
-    worker.on('exit', (code, signal) => {
-        cleanup();
-        if (received) {
-            for (const forwarded of FORWARDED_SIGNALS)
-                process.removeListener(forwarded, onSignal);
-            process.kill(process.pid, received);
-            return;
-        }
-        process.exitCode = code ?? 128 + (signal ? os.constants.signals[signal] : 0);
+    return new Promise((resolve) => {
+        worker.on('error', (error) => {
+            console.error(`could not start supervised worker: ${error.message}`);
+            cleanup();
+            process.exitCode = 1;
+            resolve();
+        });
+        worker.on('exit', (code, signal) => {
+            cleanup();
+            if (received) {
+                for (const forwarded of FORWARDED_SIGNALS)
+                    process.removeListener(forwarded, onSignal);
+                process.kill(process.pid, received);
+                return;
+            }
+            process.exitCode = code ?? 128 + (signal ? os.constants.signals[signal] : 0);
+            resolve();
+        });
     });
 }

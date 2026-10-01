@@ -27,7 +27,7 @@
     "@hono/node-server": "2.0.10",
     "body-parser": "2.3.0",
     "fast-uri": "3.1.8",
-    "hono": "4.13.5",
+    "hono": "4.13.7",
     "qs": "6.16.0"
   },
   "devDependencies": {
