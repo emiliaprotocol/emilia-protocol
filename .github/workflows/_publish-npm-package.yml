@@ -70,6 +70,7 @@ jobs:
       release_artifact_digest: ${{ steps.upload.outputs.artifact-digest }}
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
+    timeout-minutes: 75
     steps:
       - name: Checkout exact dispatched release source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -384,6 +385,7 @@ jobs:
     name: Publish ${{ inputs.package_name }}
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: registry-publishing-approval
     concurrency:
       group: registry-publish-${{ inputs.package_name }}

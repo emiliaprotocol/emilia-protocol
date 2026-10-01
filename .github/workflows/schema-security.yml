@@ -65,6 +65,7 @@ jobs:
   candidate-reconciliation:
     if: github.event_name == 'pull_request_target' || github.event_name == 'merge_group'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check out trusted base reconciliation code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -101,6 +102,7 @@ jobs:
     # Never on merge_group: that run reads this file from the candidate.
     if: github.event_name != 'merge_group'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # The schema-gate credential lives in this environment, whose deployment
     # branches must be restricted to main (see the header).
     environment: schema-gate
@@ -161,6 +163,7 @@ jobs:
     if: always()
     needs: [candidate-reconciliation, live-schema-contract]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Require candidate reconciliation when applicable and live schema truth
         env:

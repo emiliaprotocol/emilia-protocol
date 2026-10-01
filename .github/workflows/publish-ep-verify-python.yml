@@ -24,6 +24,7 @@ jobs:
   publish:
     name: Publish ep-verify
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     environment: registry-publishing-approval

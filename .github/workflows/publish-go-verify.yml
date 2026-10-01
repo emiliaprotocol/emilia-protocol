@@ -21,6 +21,7 @@ permissions:
 jobs:
   preflight:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     permissions:
@@ -171,6 +172,7 @@ jobs:
   approval:
     needs: preflight
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment: registry-publishing-approval
     permissions: {}
     steps:
@@ -179,6 +181,7 @@ jobs:
   create_tag:
     needs: [preflight, approval]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
@@ -218,6 +221,7 @@ jobs:
   verify_proxy:
     needs: [preflight, create_tag]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       id-token: write
