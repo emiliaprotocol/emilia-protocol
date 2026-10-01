@@ -44,8 +44,13 @@ env:
 permissions:
   contents: read
 
+# A newer qualifying event on the same pull request supersedes an older run.
+# A `labeled` event for any other label never qualifies (the gate skips it),
+# so it runs in a group of its own: Dependabot adds its labels within a second
+# of opening a pull request, and in a shared group those no-op runs cancelled
+# the `opened` run that does the work (#839, #842, #843).
 concurrency:
-  group: evidence-autopilot-${{ github.event.pull_request.number }}
+  group: evidence-autopilot-${{ github.event.pull_request.number }}${{ (github.event.action == 'labeled' && github.event.label.name != 'evidence-autopilot') && format('-noop-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 jobs:
