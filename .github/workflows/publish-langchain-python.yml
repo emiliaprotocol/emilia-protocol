@@ -22,6 +22,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: registry-publishing-approval
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar

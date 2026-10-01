@@ -25,6 +25,7 @@ jobs:
   alloy:
     name: Check formal/*.als (Alloy 6.2.0, SAT4J)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout

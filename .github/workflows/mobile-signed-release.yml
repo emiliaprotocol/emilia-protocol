@@ -28,6 +28,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       inputs.confirmation == 'BUILD SIGNED MOBILE ARTIFACTS'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment: mobile-store-release-approval
     permissions:
       contents: read
@@ -59,6 +60,7 @@ jobs:
   android:
     needs: approval
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: mobile-store-release-approval
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -137,6 +139,7 @@ jobs:
   ios:
     needs: approval
     runs-on: macos-15
+    timeout-minutes: 30
     environment: mobile-store-release-approval
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer

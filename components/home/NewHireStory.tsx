@@ -1,19 +1,44 @@
 // SPDX-License-Identifier: Apache-2.0
 import Link from 'next/link';
 import Image from 'next/image';
-import { Barlow_Condensed, Newsreader } from 'next/font/google';
+import localFont from 'next/font/local';
 import proofStats from '@/lib/proof-stats.json';
 import styles from './newhire.module.css';
 
-const display = Barlow_Condensed({ subsets: ['latin'], weight: ['600', '700'], variable: '--nh-display', display: 'swap' });
-const serif = Newsreader({ subsets: ['latin'], weight: ['400', '500'], style: ['normal', 'italic'], variable: '--nh-serif', display: 'swap' });
+// Self-hosted so the production build never depends on a live Google Fonts
+// response. These are the exact latin-subset files fonts.gstatic.com serves for
+// the css2 requests next/font/google made here (Barlow Condensed wght 600;700,
+// Newsreader ital,wght 400;500), each family's OFL.txt beside them. Newsreader
+// is variable (wght 200-800): one file per style, declared at 400 and 500 as
+// Google declares it. The family names match what next/font/google emitted.
+const barlowCondensed = localFont({
+  src: [
+    { path: '../../app/fonts/barlow-condensed/BarlowCondensed-SemiBold-latin.woff2', weight: '600', style: 'normal' },
+    { path: '../../app/fonts/barlow-condensed/BarlowCondensed-Bold-latin.woff2', weight: '700', style: 'normal' },
+  ],
+  declarations: [{ prop: 'font-family', value: 'Barlow Condensed' }],
+  variable: '--nh-display',
+  display: 'swap',
+});
+const newsreader = localFont({
+  src: [
+    { path: '../../app/fonts/newsreader/Newsreader-latin.woff2', weight: '400', style: 'normal' },
+    { path: '../../app/fonts/newsreader/Newsreader-latin.woff2', weight: '500', style: 'normal' },
+    { path: '../../app/fonts/newsreader/Newsreader-Italic-latin.woff2', weight: '400', style: 'italic' },
+    { path: '../../app/fonts/newsreader/Newsreader-Italic-latin.woff2', weight: '500', style: 'italic' },
+  ],
+  declarations: [{ prop: 'font-family', value: 'Newsreader' }],
+  variable: '--nh-serif',
+  display: 'swap',
+  adjustFontFallback: 'Times New Roman',
+});
 
 const WIDE = '100vw';
 const HALF = '(max-width: 900px) 100vw, 50vw';
 
 export function NewHireStory(): React.ReactElement {
   return (
-    <div className={`${styles.story} ${display.variable} ${serif.variable}`}>
+    <div className={`${styles.story} ${barlowCondensed.variable} ${newsreader.variable}`}>
       <section className={styles.hero} aria-labelledby="newhire-title">
         <Image className={styles.bleed} src="/home-newhire-cover-v1.webp" alt="Toll gates at dusk under orange lamps, with the light trails of traffic passing through." fill priority sizes={WIDE} />
         <div className={styles.heroPanel}>

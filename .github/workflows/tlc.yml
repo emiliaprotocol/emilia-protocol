@@ -75,6 +75,7 @@ jobs:
   tlc:
     name: Verify handshake, authority, consequence, and effect-profile models
     runs-on: ubuntu-latest
+    timeout-minutes: 35
 
     steps:
       - name: Checkout

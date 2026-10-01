@@ -79,6 +79,7 @@ concurrency:
 jobs:
   protocol-and-server:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -117,6 +118,7 @@ jobs:
 
   ios:
     runs-on: macos-15
+    timeout-minutes: 10
     env:
       # macos-15 still defaults to Xcode 16.4 / Swift 6.1. The checked-in
       # package manifest requires Swift tools 6.2, which is installed here.
@@ -142,6 +144,7 @@ jobs:
 
   android:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -155,6 +158,7 @@ jobs:
 
   secure-app:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -203,6 +207,7 @@ jobs:
 
   secure-app-ios-native:
     runs-on: macos-26
+    timeout-minutes: 20
     env:
       CI: 1
       EXPO_NO_TELEMETRY: 1
@@ -240,6 +245,7 @@ jobs:
 
   secure-app-android-native:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       CI: 1
       EXPO_NO_TELEMETRY: 1

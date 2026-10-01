@@ -24,6 +24,7 @@ jobs:
   publish:
     name: Publish emilia-smolagents
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     env:
       TLA2TOOLS_JAR: ${{ github.workspace }}/tla2tools.jar
     environment: registry-publishing-approval

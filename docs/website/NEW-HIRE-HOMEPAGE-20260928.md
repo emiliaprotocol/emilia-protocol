@@ -28,6 +28,8 @@ email compromise losses of $3,046,598,558.
 - AI-generated photographic key art (Gemini image model), converted from PNG
   with `cwebp -resize 1920 0 -q 74 -metadata none`. No semantic edits.
 - Palette: asphalt `#0E0F0C`, bone `#F2EFE6`, one sodium accent `#E8581C`.
-  Type: Barlow Condensed headlines, Newsreader body, self-hosted by `next/font`.
+  Type: Barlow Condensed headlines, Newsreader body. Latin-subset woff2 files
+  from Google Fonts with each family's OFL, committed in `app/fonts/` and
+  loaded by `next/font/local` so the build never fetches fonts.
 - The kitchen image shows an illustrative person from behind, not a real
   customer or employee. No logos or readable text in any image.
