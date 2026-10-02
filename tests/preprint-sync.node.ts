@@ -7,6 +7,7 @@ import {
   auditPreprintClaims,
   claimedConformanceSha256,
   normalizeExtractedText,
+  renderedHtmlText,
 } from '../scripts/check-preprint-sync.mjs';
 
 const evidence = {
@@ -211,5 +212,26 @@ describe('preprint evidence synchronization guard', () => {
 
   it('normalizes PDF ligatures and page whitespace deterministically', () => {
     assert.equal(normalizeExtractedText('veri\uFB01ed\n\n  claims'), 'verified claims');
+  });
+
+  it('reads rendered XHTML text without style or script content', () => {
+    const xhtml = '<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head>'
+      + '<style>p { color: red }</style><script>var hidden = 1;</script></head>'
+      + '<body><p>The four Tamarin models</p></body></html>';
+    assert.equal(normalizeExtractedText(renderedHtmlText(xhtml)), 'The four Tamarin models');
+  });
+
+  it('fails on malformed rendered XHTML instead of auditing a repaired tree', () => {
+    for (const [name, xhtml] of [
+      ['mismatched tags', '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>claims</body></html>'],
+      ['unquoted attribute (warning level)', '<html xmlns="http://www.w3.org/1999/xhtml" lang=en><body/></html>'],
+      ['empty document', ''],
+    ]) {
+      assert.throws(
+        () => renderedHtmlText(xhtml, 'fixture.html'),
+        /^Error: fixture\.html could not be parsed as XHTML \((warning|error|fatalError): /,
+        name,
+      );
+    }
   });
 });

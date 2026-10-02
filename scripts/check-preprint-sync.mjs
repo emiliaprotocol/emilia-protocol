@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DOMParser } from '@xmldom/xmldom';
+import { DOMParser, MIME_TYPE } from '@xmldom/xmldom';
 import { deriveSourceProofStats } from './generate-proof-stats.mjs';
 const TRACKED_DRAFTS = [
     'draft-schrock-ep-authorization-receipts',
@@ -236,8 +236,30 @@ function auditFormalAndExternalClaims(failures, text, label, evidence) {
     }
     auditComposedTamarinBlock(failures, text, label, evidence);
 }
-function renderedHtmlText(html) {
-    const document = new DOMParser().parseFromString(html, 'application/xhtml+xml');
+/**
+ * Text content of the rendered XHTML copy with style and script removed.
+ *
+ * Any xmldom diagnostic, at the warning level included, throws instead of
+ * auditing a tree the parser had to repair: the claims audited below are only
+ * meaningful against the copy a reader actually sees.
+ */
+export function renderedHtmlText(html, label = 'rendered XHTML') {
+    let diagnostic = null;
+    let document;
+    try {
+        document = new DOMParser({
+            onError: (level, message) => {
+                diagnostic ??= `${level}: ${message}`;
+                throw new Error(diagnostic);
+            },
+        }).parseFromString(html, MIME_TYPE.XML_XHTML_APPLICATION);
+    }
+    catch (error) {
+        throw new Error(`${label} could not be parsed as XHTML (${diagnostic ?? error.message})`);
+    }
+    if (diagnostic !== null) {
+        throw new Error(`${label} could not be parsed as XHTML (${diagnostic})`);
+    }
     for (const tagName of ['style', 'script']) {
         const elements = [...Array.from(document.getElementsByTagName(tagName))];
         for (const element of elements)
@@ -324,7 +346,7 @@ export function checkRepository(root) {
         staging: readFileSync(resolve(root, 'papers/preprint/STAGING.md'), 'utf8'),
         evidence,
     });
-    auditRenderedCopy(failures, renderedHtmlText(readFileSync(resolve(root, 'papers/authorization-receipts-preprint.html'), 'utf8')), 'authorization-receipts-preprint.html', evidence);
+    auditRenderedCopy(failures, renderedHtmlText(readFileSync(resolve(root, 'papers/authorization-receipts-preprint.html'), 'utf8'), 'authorization-receipts-preprint.html'), 'authorization-receipts-preprint.html', evidence);
     auditRenderedCopy(failures, extractPdfText(resolve(root, 'papers/authorization-receipts-preprint.pdf')), 'authorization-receipts-preprint.pdf', evidence);
     return { evidence, failures };
 }

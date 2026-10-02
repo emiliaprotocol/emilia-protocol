@@ -203,6 +203,17 @@ describe('SAML ACS — signed response target binding (openssl required)', () =>
     expect(r.valid).toBe(false);
     expect(r.error).toMatch(/exactly one bearer SubjectConfirmation/);
   });
+
+  it('refuses a signed message that the binding parser reports even a warning for', async () => {
+    // node-saml verifies signatures on its nested xmldom 0.8 copy, which is
+    // silent about U+FFFD; the binding check's xmldom 0.9 parser reports it as
+    // a warning. The signature is valid, so the refusal below can only come
+    // from the strict binding parse, where every diagnostic level rejects.
+    const r = await validateTargetedResponse(samlResponseXml({
+      attributeValue: 'approver\uFFFD@example.com',
+    }));
+    expect(r).toMatchObject({ valid: false, error: 'SAML response XML could not be parsed' });
+  });
 });
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -215,12 +226,14 @@ function samlResponseXml({
   includeDestination = true,
   includeRecipient = true,
   additionalBearerRecipient,
+  attributeValue = 'approver@example.com',
 }: {
   destination?: string;
   recipient?: string;
   includeDestination?: boolean;
   includeRecipient?: boolean;
   additionalBearerRecipient?: string;
+  attributeValue?: string;
 } = {}): string {
   // Anchor to real now so the assertion's Conditions window is currently valid
   // (a hardcoded instant would expire by test-run time and be rejected).
@@ -248,7 +261,7 @@ function samlResponseXml({
       <saml:AuthnContext><saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</saml:AuthnContextClassRef></saml:AuthnContext>
     </saml:AuthnStatement>
     <saml:AttributeStatement>
-      <saml:Attribute Name="email"><saml:AttributeValue>approver@example.com</saml:AttributeValue></saml:Attribute>
+      <saml:Attribute Name="email"><saml:AttributeValue>${attributeValue}</saml:AttributeValue></saml:Attribute>
     </saml:AttributeStatement>
   </saml:Assertion>
 </samlp:Response>`;

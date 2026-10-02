@@ -5,7 +5,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DOMParser } from '@xmldom/xmldom';
+import { DOMParser, MIME_TYPE } from '@xmldom/xmldom';
+import type { Document } from '@xmldom/xmldom';
 import { deriveSourceProofStats } from './generate-proof-stats.mjs';
 
 const TRACKED_DRAFTS: readonly string[] = [
@@ -331,11 +332,29 @@ function auditFormalAndExternalClaims(failures: string[], text: string, label: s
   auditComposedTamarinBlock(failures, text, label, evidence);
 }
 
-function renderedHtmlText(html: string): string {
-  const document = new DOMParser().parseFromString(
-    html,
-    'application/xhtml+xml',
-  );
+/**
+ * Text content of the rendered XHTML copy with style and script removed.
+ *
+ * Any xmldom diagnostic, at the warning level included, throws instead of
+ * auditing a tree the parser had to repair: the claims audited below are only
+ * meaningful against the copy a reader actually sees.
+ */
+export function renderedHtmlText(html: string, label = 'rendered XHTML'): string {
+  let diagnostic: string | null = null;
+  let document: Document;
+  try {
+    document = new DOMParser({
+      onError: (level, message) => {
+        diagnostic ??= `${level}: ${message}`;
+        throw new Error(diagnostic);
+      },
+    }).parseFromString(html, MIME_TYPE.XML_XHTML_APPLICATION);
+  } catch (error) {
+    throw new Error(`${label} could not be parsed as XHTML (${diagnostic ?? (error as Error).message})`);
+  }
+  if (diagnostic !== null) {
+    throw new Error(`${label} could not be parsed as XHTML (${diagnostic})`);
+  }
   for (const tagName of ['style', 'script']) {
     const elements = [...Array.from(document.getElementsByTagName(tagName))];
     for (const element of elements) element.parentNode?.removeChild(element);
@@ -500,6 +519,7 @@ export function checkRepository(root: string): { evidence: any; failures: string
     failures,
     renderedHtmlText(
       readFileSync(resolve(root, 'papers/authorization-receipts-preprint.html'), 'utf8'),
+      'authorization-receipts-preprint.html',
     ),
     'authorization-receipts-preprint.html',
     evidence,
