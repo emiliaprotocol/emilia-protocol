@@ -47,8 +47,16 @@ type SamlResponseTargetOptions = {
  * first diagnostic and throws, which xmldom 0.9 turns into a `ParseError` that
  * stops parsing; the recorded diagnostic is checked as well so the policy does
  * not depend on that conversion. Returns null when the XML must be refused.
+ *
+ * A single leading U+FEFF is the UTF-8 byte-order mark left over from decoding
+ * the base64 bytes with `toString('utf8')`. It is an encoding signature, not
+ * document content (XML 1.0 section 4.3.3), and node-saml's 0.8 parse ignores
+ * it, but xmldom 0.9 reports it as content outside the root element. Dropping
+ * exactly that one character keeps a BOM-prefixed IdP response, which the
+ * signature check already accepted, from being refused here.
  */
 function parseSignedResponseXml(xml: string): Document | null {
+  if (xml.charCodeAt(0) === 0xfeff) xml = xml.slice(1);
   let diagnostic: string | null = null;
   let document: Document;
   try {

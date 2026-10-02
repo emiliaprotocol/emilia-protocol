@@ -214,6 +214,32 @@ describe('SAML ACS — signed response target binding (openssl required)', () =>
     }));
     expect(r).toMatchObject({ valid: false, error: 'SAML response XML could not be parsed' });
   });
+
+  it('accepts a signed message that starts with a UTF-8 byte-order mark', async () => {
+    // The BOM is an encoding signature. xmldom 0.9 reports it as content
+    // outside the root element when it reaches the parser, so the binding
+    // parse must drop it the same way node-saml's 0.8 signature parse does.
+    const signed = signTargetedResponse(samlResponseXml(), idp.key, idp.cert);
+    const r = await validateSamlResponse(
+      sp(idp.certBody, true),
+      Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(signed)]).toString('base64'),
+      { expectedAcsUrl: ACS_URL },
+    );
+    expect(r.valid).toBe(true);
+  });
+
+  it('still refuses a BOM-prefixed message whose Destination does not match', async () => {
+    const signed = signTargetedResponse(samlResponseXml({
+      destination: 'https://other.example/api/sso/saml/acs',
+    }), idp.key, idp.cert);
+    const r = await validateSamlResponse(
+      sp(idp.certBody, true),
+      Buffer.from(`﻿${signed}`).toString('base64'),
+      { expectedAcsUrl: ACS_URL },
+    );
+    expect(r.valid).toBe(false);
+    expect(r.error).toMatch(/Destination does not match/);
+  });
 });
 
 // ── helpers ──────────────────────────────────────────────────────────────────

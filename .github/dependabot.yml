@@ -74,8 +74,9 @@ updates:
           # Our own code uses the xmldom 0.9 line. Keep it out of this group so
           # each bump is a standalone PR: 0.9.x patches take the normal patch
           # auto-merge path, and a 0.x minor (0.10+) may break the API, so it
-          # gets human review. node-saml, xml-crypto, xml-encryption, and
-          # mammoth declare only ^0.8 and stay on the nested 0.8.15 copies
+          # gets human review unless it closes a security advisory. node-saml,
+          # xml-crypto, xml-encryption, and mammoth declare only ^0.8 and stay
+          # on the nested 0.8.15 copies
           # pinned in package.json "overrides". Those pins are deliberate until
           # each consumer supports 0.9. They are exact, so a 0.8 LTS fix means
           # bumping them by hand.
