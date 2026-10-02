@@ -110,4 +110,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge --auto --merge --delete-branch "$PR_URL"
+        # Merge queues reject --delete-branch; branch cleanup is separate.
+        run: gh pr merge --auto --merge "$PR_URL"
