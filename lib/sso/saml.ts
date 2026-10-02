@@ -13,11 +13,24 @@
  * round-trip (a real signed assertion from Okta/Entra) is exercised during
  * onboarding against that tenant.
  *
+ * Two xmldom lines are in play by design. node-saml, xml-crypto, and
+ * xml-encryption declare only `@xmldom/xmldom` ^0.8, so package.json pins them
+ * to their own nested 0.8.15 copy and signature verification runs on 0.8. The
+ * endpoint-binding check below is this module's own code and runs on the
+ * directly-depended 0.9 line. Its parser is deliberately stricter than
+ * node-saml's (which tolerates warnings): any 0.9 diagnostic rejects the
+ * message. Only XML that 0.9 parses without a single warning reaches the
+ * Destination and Recipient comparison, which keeps the inputs the two parser
+ * versions could read differently (unquoted or redefined attributes, unbound
+ * prefixes, stray end-tag characters, replacement characters) away from that
+ * comparison.
+ *
  * @license Apache-2.0
  */
 
 import { SAML } from '@node-saml/node-saml';
-import { DOMParser } from '@xmldom/xmldom';
+import { DOMParser, MIME_TYPE } from '@xmldom/xmldom';
+import type { Document, Element } from '@xmldom/xmldom';
 
 const SAML_PROTOCOL_NS = 'urn:oasis:names:tc:SAML:2.0:protocol';
 const SAML_ASSERTION_NS = 'urn:oasis:names:tc:SAML:2.0:assertion';
@@ -27,24 +40,44 @@ type SamlResponseTargetOptions = {
   expectedAcsUrl: string;
 };
 
+/**
+ * Parse an already signature-validated SAML Response with xmldom 0.9 under the
+ * strict SAML policy: every parser diagnostic, at the `warning`, `error`, and
+ * `fatalError` levels alike, rejects the message. The callback records the
+ * first diagnostic and throws, which xmldom 0.9 turns into a `ParseError` that
+ * stops parsing; the recorded diagnostic is checked as well so the policy does
+ * not depend on that conversion. Returns null when the XML must be refused.
+ *
+ * A single leading U+FEFF is the UTF-8 byte-order mark left over from decoding
+ * the base64 bytes with `toString('utf8')`. It is an encoding signature, not
+ * document content (XML 1.0 section 4.3.3), and node-saml's 0.8 parse ignores
+ * it, but xmldom 0.9 reports it as content outside the root element. Dropping
+ * exactly that one character keeps a BOM-prefixed IdP response, which the
+ * signature check already accepted, from being refused here.
+ */
+function parseSignedResponseXml(xml: string): Document | null {
+  if (xml.charCodeAt(0) === 0xfeff) xml = xml.slice(1);
+  let diagnostic: string | null = null;
+  let document: Document;
+  try {
+    document = new DOMParser({
+      onError: (level, message) => {
+        diagnostic ??= `${level}: ${message}`;
+        throw new Error(diagnostic);
+      },
+    }).parseFromString(xml, MIME_TYPE.XML_APPLICATION);
+  } catch {
+    return null;
+  }
+  return diagnostic === null ? document : null;
+}
+
 function validateSignedResponseTarget(
   xml: string,
   expectedAcsUrl: string,
 ): string | null {
-  let parseError = '';
-  let document: Document;
-  try {
-    document = new DOMParser({
-      errorHandler: {
-        warning: (message) => { parseError ||= String(message); },
-        error: (message) => { parseError ||= String(message); },
-        fatalError: (message) => { parseError ||= String(message); },
-      },
-    }).parseFromString(xml, 'application/xml');
-  } catch {
-    return 'SAML response XML could not be parsed';
-  }
-  if (parseError) return 'SAML response XML could not be parsed';
+  const document = parseSignedResponseXml(xml);
+  if (!document) return 'SAML response XML could not be parsed';
 
   const response = document.documentElement;
   if (response?.namespaceURI !== SAML_PROTOCOL_NS || response.localName !== 'Response') {

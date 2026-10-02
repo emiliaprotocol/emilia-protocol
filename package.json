@@ -216,7 +216,7 @@
     "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^14.0.2",
     "@supabase/supabase-js": "^2.117.1",
-    "@xmldom/xmldom": "0.8.15",
+    "@xmldom/xmldom": "0.9.12",
     "cbor": "10.0.12",
     "cbor-x": "^1.6.6",
     "jose": "^6.2.3",
@@ -237,7 +237,6 @@
   },
   "overrides": {
     "@emilia-protocol/verify": "$@emilia-protocol/verify",
-    "@xmldom/xmldom": "$@xmldom/xmldom",
     "@hono/node-server": "2.0.10",
     "body-parser": "2.3.0",
     "brace-expansion@5": "$brace-expansion",
@@ -253,6 +252,18 @@
     "ws": "^8.21.0",
     "minimatch@3.1.5": {
       "brace-expansion": "2.1.7"
+    },
+    "@node-saml/node-saml": {
+      "@xmldom/xmldom": "0.8.15"
+    },
+    "mammoth": {
+      "@xmldom/xmldom": "0.8.15"
+    },
+    "xml-crypto": {
+      "@xmldom/xmldom": "0.8.15"
+    },
+    "xml-encryption": {
+      "@xmldom/xmldom": "0.8.15"
     }
   },
   "devDependencies": {
