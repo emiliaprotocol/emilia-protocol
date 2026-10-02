@@ -100,8 +100,18 @@ blanket-ignored.
 
 The lock pins the supported `@expo/metro 56.0.2` and `metro 0.84.5` graph. Metro
 0.84.5 removes the vulnerable `image-size` dependency. The graph entered this
-boundary only after clearing the app's seven-day release quarantine, and raw
-`npm audit --json` reports no known vulnerabilities.
+boundary only after clearing the app's seven-day release quarantine.
+
+Raw `npm audit --json` reports one live advisory, accepted until 2026-10-30:
+GHSA-86w9-cpqp-85rv in `node-forge` 1.4.0, reached only through the Expo CLI
+(`expo -> @expo/cli -> node-forge`, and via `@expo/code-signing-certificates`).
+No node-forge release outside the advisory range exists yet. The CLI uses
+node-forge's RSA verification only in its development-server manifest signer,
+which this app does not configure, and none of it ships in the exported
+bundles. `lib/audit-gate.test.mjs` fails if `app.json` gains
+`updates.codeSigningCertificate` or `extra.eas.projectId`, if `expo-updates`
+enters the lock, or if app source imports node-forge. Delete the entry once a
+fixed node-forge clears the quarantine.
 
 The gate in `../../scripts/audit-with-exceptions.mjs` handles a bounded hold
 without going quiet. Every advisory it lets through must be named in

@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,6 +31,7 @@ const GATE = join(REPO_ROOT, 'scripts/audit-with-exceptions.mjs');
 
 const ICNS = 'https://github.com/advisories/GHSA-w3rx-r6r6-pgpr';
 const OTHER = 'https://github.com/advisories/GHSA-0000-0000-0000';
+const NODE_FORGE = 'https://github.com/advisories/GHSA-86w9-cpqp-85rv';
 
 const NOW = Date.parse('2026-09-01T00:00:00Z');
 
@@ -335,10 +336,43 @@ test('an unsupported severity floor is a usage failure, not a clean report', () 
 
 test('the committed exception file satisfies the enforced schema', () => {
   const exceptions = loadExceptions(join(SECURE_APP, 'audit-exceptions.json'));
-  assert.deepEqual(exceptions, [], 'the repaired dependency graph should need no active exceptions');
+  assert.deepEqual(
+    exceptions.map((exception) => exception.advisory),
+    [NODE_FORGE],
+    'only the unfixed node-forge CLI advisory may be accepted',
+  );
+  const [nodeForge] = exceptions;
+  assert.equal(nodeForge.package, 'node-forge');
+  assert.equal(nodeForge.severity, 'high');
+  assert.deepEqual(
+    [...nodeForge.affectedPackages].sort(),
+    ['@expo/cli', '@expo/code-signing-certificates', 'expo', 'node-forge'],
+  );
+  assert.equal(nodeForge.acceptedOnText, '2026-10-02');
+  assert.equal(nodeForge.expiresOnText, '2026-10-30');
   for (const exception of exceptions) {
     assert.ok(exception.expiresOn > exception.acceptedOn);
     assert.ok(exception.affectedPackages.size > 0);
+  }
+});
+
+test('the node-forge acceptance still matches the app it was argued against', () => {
+  // The exception says the vulnerable RSA verification is unreachable because
+  // the CLI's manifest signer is never configured and the app never imports
+  // node-forge. Fail here, before expiry, if either premise stops holding.
+  const app = JSON.parse(readFileSync(join(SECURE_APP, 'app.json'), 'utf8')).expo;
+  assert.equal(app.updates?.codeSigningCertificate, undefined);
+  assert.equal(app.extra?.eas?.projectId, undefined);
+
+  const lockfile = JSON.parse(readFileSync(join(SECURE_APP, 'package-lock.json'), 'utf8'));
+  assert.equal(lockfile.packages['node_modules/expo-updates'], undefined);
+
+  const sources = ['App.tsx', 'index.ts', ...readdirSync(join(SECURE_APP, 'lib'))
+    .filter((name) => /\.(?:ts|tsx|js|mjs)$/.test(name) && !name.endsWith('.test.mjs'))
+    .map((name) => join('lib', name))];
+  for (const source of sources) {
+    const text = readFileSync(join(SECURE_APP, source), 'utf8');
+    assert.doesNotMatch(text, /node-forge|@expo\/code-signing-certificates|@expo\/cli/, source);
   }
 });
 
@@ -356,5 +390,9 @@ test('the gate passes against the real dependency tree', () => {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   assert.match(stdout, /AUDIT GATE PASS/);
-  assert.match(stdout, /no advisories observed/);
+  assert.match(stdout, /1 accepted advisory\(ies\)/);
+  assert.ok(
+    stdout.split(/\r?\n/).some((line) => line.trim() === NODE_FORGE),
+    'the accepted advisory must appear as an exact output line',
+  );
 });
