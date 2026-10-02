@@ -1,8 +1,12 @@
 # CAID -05: IANA URI-scheme name repair
 
-Source for upload: `UPLOAD-THIS/draft-schrock-canonical-action-identifier-05.xml`.
+Posted source: `UPLOAD-THIS/draft-schrock-canonical-action-identifier-05.xml`.
+Datatracker confirmed publication on 2026-10-02:
+<https://datatracker.ietf.org/doc/html/draft-schrock-canonical-action-identifier-05>.
+The archived XML is byte-identical to the source in this directory (SHA-256
+`581c2d1e902f5365a3578c62751d32be728f2b6072354f873ce6b74bb77f1ebc`).
 The TXT and HTML in `RENDERS/` are generated review copies. The posted -04
-files are immutable and are not upload inputs for this revision.
+files remain immutable.
 
 IANA ticket #1460612 reported on 2026-10-02 that the designated expert did
 not find `caid` sufficiently descriptive and distinguished under RFC 7595
@@ -32,7 +36,7 @@ Validation on 2026-10-02:
 - `idnits -m submission` reported `PASS No nit found` for the TXT.
 - The -04 source and its posted copies were not edited.
 
-After posting -05, reply to Amanda in the existing IANA ticket with the
-Datatracker URL and a Provisional registration template for `canactid`.
-Until the revised draft is public, do not represent the request as approved
-or ask IANA to register a scheme whose defining draft still says `caid`.
+IANA ticket #1460612 is **not** a completed registration. A concise reply
+accepting `canactid`, linking the posted -05, and asking for Provisional
+status is staged in the existing email thread, not sent. Do not describe
+`canactid` as registered until IANA adds it to the URI Schemes registry.
