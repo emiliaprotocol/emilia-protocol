@@ -391,5 +391,8 @@ test('the gate passes against the real dependency tree', () => {
   });
   assert.match(stdout, /AUDIT GATE PASS/);
   assert.match(stdout, /1 accepted advisory\(ies\)/);
-  assert.ok(stdout.includes(NODE_FORGE));
+  assert.ok(
+    stdout.split(/\r?\n/).some((line) => line.trim() === NODE_FORGE),
+    'the accepted advisory must appear as an exact output line',
+  );
 });
