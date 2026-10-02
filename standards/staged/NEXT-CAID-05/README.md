@@ -36,7 +36,8 @@ Validation on 2026-10-02:
 - `idnits -m submission` reported `PASS No nit found` for the TXT.
 - The -04 source and its posted copies were not edited.
 
-IANA ticket #1460612 is **not** a completed registration. A concise reply
-accepting `canactid`, linking the posted -05, and asking for Provisional
-status is staged in the existing email thread, not sent. Do not describe
-`canactid` as registered until IANA adds it to the URI Schemes registry.
+IANA ticket #1460612 is **not** a completed registration. On 2026-10-02,
+Iman replied in that existing ticket, accepted `canactid`, linked the
+posted -05, and supplied the updated Provisional registration fields with
+Iman as change controller. Do not describe `canactid` as registered until
+IANA adds it to the URI Schemes registry.
