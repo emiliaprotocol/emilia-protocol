@@ -22,6 +22,7 @@ import { superviseScratchRoot, sweepStaleScratchDirectories, } from "./lib/scrat
 import { strictParseGate } from "../conformance/runners/strict-json.mjs";
 import { buildSuiteContract, compareResultRow, executionSuiteFile, validateResultRows, } from "../conformance/result-contract.mjs";
 import { validateTraceManifest } from "../conformance/refinement/schema.mjs";
+import { checkSecurityCase } from "./ci/derived-evidence-drift.mjs";
 // The governed security case dynamically executes TypeScript-migrated source
 // whose historical import specifiers still end in .js. Register the same
 // resolver CI uses so `npm run check:security-case` is not CI-environment-only.
@@ -42,6 +43,19 @@ if (sourceArgument && !validateOnly)
     throw new Error("--source may only be used with --validate-only");
 if (execute && validateOnly)
     throw new Error("--execute and --validate-only cannot be combined");
+// --drift-report <file> is CI's pull-request mode (scripts/ci/volatile-evidence.mjs):
+// every claim still executes, and any difference from the checked-in case
+// outside its derived digests (scripts/ci/derived-evidence-drift.mjs) still
+// fails here; drift in those digests alone is recorded in <file> for the
+// policy step, which accepts it only on pull_request and merge_group runs.
+const driftReportIndex = args.indexOf("--drift-report");
+const driftReport = driftReportIndex >= 0 ? (args[driftReportIndex + 1] ?? null) : null;
+if (driftReportIndex >= 0 && (!driftReport || driftReport.startsWith("--")))
+    throw new Error("--drift-report requires a file path");
+if (driftReport && !execute)
+    throw new Error("--drift-report requires --execute: only a run that executed every claim may report digest drift");
+if (driftReport && args.includes("--emit"))
+    throw new Error("--drift-report is check-mode only; it cannot be combined with --emit");
 const SOURCE = sourceArgument
     ? path.resolve(sourceArgument)
     : path.join(ROOT, "security", "claims.v1.json");
@@ -1135,12 +1149,23 @@ if (emitPath) {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, serialized);
 }
-else if (fs.existsSync(DEFAULT_RESOLVED)) {
-    const checkedIn = fs.readFileSync(DEFAULT_RESOLVED, "utf8");
-    if (checkedIn !== serialized) {
-        console.error("SECURITY CASE: FAIL (security/security-case.json is stale; run npm run security-case:emit)");
-        process.exit(1);
+else {
+    // A missing checked-in case fails too: nothing would be compared otherwise.
+    const comparison = checkSecurityCase({
+        recordedText: fs.existsSync(DEFAULT_RESOLVED)
+            ? fs.readFileSync(DEFAULT_RESOLVED, "utf8")
+            : null,
+        computed: resolved,
+        driftReport: Boolean(driftReport),
+        parse: (text) => parseStrictJson(text, "checked-in security case"),
+    });
+    if (driftReport) {
+        fs.writeFileSync(path.resolve(driftReport), `${JSON.stringify(comparison.report, null, 2)}\n`);
     }
+    for (const message of comparison.messages)
+        console.error(message);
+    if (comparison.exitCode !== 0)
+        process.exit(comparison.exitCode);
 }
 const artifactSummary = Object.entries(releaseArtifacts)
     .map(([id, artifact]) => `${id}=sha256:${artifact.sha256}`)

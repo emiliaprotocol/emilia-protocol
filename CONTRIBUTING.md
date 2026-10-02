@@ -88,7 +88,7 @@ checks below:
 ```bash
 npm run check:protocol
 npm run conformance:manifest:check
-npm run check:security-case
+npm run check:security-case -- --drift-report /tmp/security-case-drift.json
 npm run check:proof-stats -- --drift-report /tmp/proof-stats-drift.json
 npm run check:public-conformance-claims
 npm run check:llm-context
@@ -98,11 +98,14 @@ npm run check:release-chain
 node scripts/check-language-governance.js
 ```
 
-With `--drift-report`, the proof-stats check still fails on everything it
-verifies (a failing measured suite, the security case, formal and conformance
-evidence, every derived proof field) and only records drift in the measured
-test counts, which `main` refreshes after merge; see
-[Volatile evidence](#volatile-evidence).
+With `--drift-report`, the security case still executes every claim and
+fails on any difference from the checked-in case outside its derived digests,
+which it records instead; the proof-stats check still fails on everything it
+verifies (a failing measured suite, the security case outside its derived
+digests, formal and conformance evidence, every derived proof field) and only
+records drift in the measured test counts. `main` refreshes both after merge; see
+[Volatile evidence](#volatile-evidence). Without `--drift-report` both checks
+compare byte for byte, as `main` and every release do.
 
 Some governed checks need pinned external runtimes installed by CI, including
 the formal-methods toolchain. The jobs in
@@ -116,7 +119,8 @@ security case, Gate product suite, SDK, wheel and package suites are skipped.
 CI decides this with the classifier as it is on `main`, never the pull
 request's copy; a pull request that touches `.github/` or `scripts/ci/` always
 runs the full lane, and so does every pull request while `main`'s latest push
-run has not passed the security case.
+run has not passed the security case (including the window between a merge
+that changed a pinned file and the refresh pull request that re-pins it).
 `node scripts/ci/change-lane.mjs --event local --base origin/main` prints the
 classifier's lane and reason before you push. Label a pull request
 `evidence-autopilot` to have CI regenerate the derived evidence files
@@ -132,11 +136,39 @@ evidence is correct. See `.github/workflows/evidence-autopilot*.yml`.
 `lib/proof-stats.json` records the exact number of test cases and test files,
 and the four LLM context artifacts (`AI_CONTEXT.md`, `public/llms.txt`,
 `public/llms-full.txt`, `public/.well-known/emilia-context.json`) repeat those
-counts. The counts change on almost every merge, so `main` owns them and pull
-requests do not carry them. Everything else in these five files stays strict.
+counts. `security/security-case.json` records the SHA-256 of every file the
+security case pins (about 264), the evidence bundle hash over them, the
+release tarball hashes, and each claim's copy of those hashes. Both change on
+almost every merge, so `main` owns them and pull requests do not carry them.
+Everything else in these six files stays strict.
 
 What this means for a pull request:
 
+- Do not regenerate the security case for a change that only touches files
+  it pins. The `security-case` job still executes every claim on the merge
+  commit and fails on any difference from the checked-in case outside its
+  derived digests (`evidence_bundle_sha256`, `evidence_file_count`,
+  `evidence_files`, each release artifact's `sha256`, `file_count`, `version`
+  and `filename`, and each claim's `release_artifact_hashes[].sha256`; the
+  list is `SECURITY_CASE_DERIVED_FIELDS` in
+  `scripts/ci/derived-evidence-drift.mjs`). On `pull_request` and
+  `merge_group` runs it reports digest drift in its job summary and does not
+  fail on it. `lib/proof-stats.json` and the LLM context take their copies of
+  the digests from the checked-in case, so leaving the case as `main` has it
+  leaves them current as well: such a pull request commits no derived
+  evidence at all. Locally, `npm run check:security-case -- --drift-report
+  /tmp/security-case-drift.json` gives the same verdict.
+- A change to a claim in `security/claims.v1.json`, or to anything else the
+  case restates (the execution record, the scenario counts, an artifact's
+  kind or package), still needs the regenerated case. A pull request that
+  changes `security/security-case.json` at all must make it exactly what the
+  writer resolves for the merge commit; a hand-edited or outdated digest
+  fails. If a rebase conflicts in the generated files and your change alters
+  no claim, take `main`'s copies (`git checkout origin/main --
+  security/security-case.json lib/proof-stats.json AI_CONTEXT.md
+  public/llms.txt public/llms-full.txt public/.well-known/emilia-context.json`),
+  re-run `npm run sync:llm-context` if your change alters one of its inputs,
+  and commit.
 - Do not update the test counts. On `pull_request` and `merge_group` runs,
   the `language-governance` job reports test-count drift in its job summary
   and does not fail on it.
@@ -161,24 +193,30 @@ What this means for a pull request:
   exactly what the suite measures for the merge commit (`npm run
   sync:proof-stats`), with a `generatedAt` no earlier than the base's and not
   in the future. Hand-edited public evidence does not merge.
-- The strict derived evidence is unchanged: `security/security-case.json`, the
-  formal traces, the conformance manifest, the clean-room pins and the
-  standalone runtimes must still be current in your pull request. The LLM
-  context tests and the public-claim audit read the generator's output for
-  your sources, and pinned proof counts are derived from the sources.
+- Still strict in your pull request: the formal traces, the conformance
+  manifest, the clean-room pins, the standalone runtimes and everything in
+  the security case except its derived digests. The LLM context tests and the
+  public-claim audit read the generator's output for your sources, and pinned
+  proof counts are derived from the sources.
 
 After a merge, `.github/workflows/volatile-evidence-refresh.yml` regenerates the
-five files on `main` with the official writers and opens (or supersedes) one
+six files on `main` with the official writers and opens (or supersedes) one
 pull request, `chore(evidence): refresh volatile evidence`, committed by the
-evidence autopilot App and set to auto-merge. On that pull request a stale file
-fails CI, and so does any change to another path. The writers are idempotent,
-so a run on a current `main` publishes nothing. On `main`, the push run and the
-refresh run fail once the test counts have lagged for more than 24 hours; the
-refresh also runs every 12 hours, so on a quiet `main` that failure appears
-within about 36 hours of the merge that staled them. Releases stay strict
-(npm package publication checks all five files, the protected
-consequence-control deployment checks `lib/proof-stats.json`), so cut them from
-a `main` commit after the refresh has landed.
+evidence autopilot App and set to auto-merge (provisioning:
+[docs/operations/EVIDENCE-AUTOPILOT.md](docs/operations/EVIDENCE-AUTOPILOT.md)).
+On that pull request a stale file fails CI, and so does any change to another
+path. The writers are idempotent, so a run on a current `main` publishes
+nothing. On `main` the security case is strict: a push run whose case has
+stale digests fails its `security-case` job and does not attest the case until
+the refresh pull request lands (the job's other checks still run, and the
+conformance manifests are still attested). The push run and the refresh run fail once the
+test counts have lagged for more than 24 hours; the refresh also runs every 12
+hours, so on a quiet `main` that failure appears within about 36 hours of the
+merge that staled them. Releases stay strict: npm package publication runs the
+security case, proof-stats and LLM context checks without `--drift-report`, and
+the protected consequence-control deployment runs the security case and
+proof-stats checks the same way, so cut them from a `main` commit after the
+refresh has landed.
 
 ## Contribution workflow
 

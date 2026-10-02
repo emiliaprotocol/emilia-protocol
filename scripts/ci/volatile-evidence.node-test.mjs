@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Self-test for scripts/ci/volatile-evidence.mjs: only drift in the measured
-// test counts may lag (advisory on pull requests and merge groups, graced on
-// main), everything else fails in every mode; main's refresh pull request is
-// strict and may change nothing but the five files; the writers are
+// test counts (advisory on pull requests and merge groups, graced on main) and
+// in the security case's derived digests (advisory on pull requests and merge
+// groups, strict everywhere else) may lag, everything else fails in every
+// mode; main's refresh pull request is strict and may change nothing but the
+// six files; the writers are
 // idempotent, so a refresh on a current main publishes nothing and records the
 // "current" observation the grace clock needs; the publisher reuses and
 // closes only refresh pull requests it can prove are its own and older.
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
@@ -24,10 +26,13 @@ import {
   proofStatsFileText,
   stableGeneratedAt,
 } from '../generate-proof-stats.mjs';
+import { SECURITY_CASE, SECURITY_CASE_DERIVED_FIELDS, SECURITY_CASE_WRITER } from './derived-evidence-drift.mjs';
 import { COMMIT_TRAILER, DERIVED_EVIDENCE, collect as collectDerived } from './evidence-autopilot.mjs';
 import {
   ADVISORY_DRIFT,
   DRIFT_REPORT_VERSION,
+  DRIFT_SCOPES,
+  WRITER_FILES,
   GRACE_HOURS,
   PUBLISH_JOB,
   REFRESH_BRANCH,
@@ -117,20 +122,26 @@ test('a refresh merged to main does not create a new proof-stats timestamp on it
   assert.equal(stableGeneratedAt(refreshed, null), refreshed.generatedAt);
 });
 
-test('the volatile set is exactly the five main-owned files, inside the DCO allowlist', () => {
+test('the volatile set is exactly the six main-owned files, inside the DCO allowlist', () => {
   assert.deepEqual([...VOLATILE_EVIDENCE].sort(), [
     'AI_CONTEXT.md',
     'lib/proof-stats.json',
     'public/.well-known/emilia-context.json',
     'public/llms-full.txt',
     'public/llms.txt',
+    'security/security-case.json',
   ]);
   for (const path of VOLATILE_EVIDENCE) assert.ok(DERIVED_EVIDENCE.includes(path), path);
   for (const strict of [
-    'security/security-case.json',
     'formal/results/formal-runtime-scenario-conformance.v2.json',
     'conformance/conformance-manifest.json',
+    'conformance/clean-room/v2/bundle.v2.json',
+    'conformance/clean-room/v3/bundle.v3.json',
   ]) assert.ok(!VOLATILE_EVIDENCE.includes(strict), `${strict} stays strict`);
+  // Each volatile file has exactly one writer, and each scope reads its writers' reports.
+  assert.deepEqual(Object.values(WRITER_FILES).flat().sort(), [...VOLATILE_EVIDENCE].sort());
+  assert.deepEqual(WRITER_FILES[SECURITY_CASE_WRITER], [SECURITY_CASE]);
+  assert.deepEqual(DRIFT_SCOPES, { 'proof-stats': ['sync:proof-stats', 'sync:llm-context'], 'security-case': [SECURITY_CASE_WRITER] });
   assert.equal(refreshBranch(SHA_A), `${REFRESH_BRANCH_PREFIX}aaaaaaaaaaaa`);
   assert.ok(REFRESH_BRANCH.test(refreshBranch(SHA_A)));
   for (const bad of [`${REFRESH_BRANCH_PREFIX}foo`, `${REFRESH_BRANCH_PREFIX}aaaaaaaaaaa#`, `${REFRESH_BRANCH_PREFIX}aaaaaaaaaaaa/x`,
@@ -140,10 +151,13 @@ test('the volatile set is exactly the five main-owned files, inside the DCO allo
   assert.throws(() => refreshBranch('main'), /40-character/);
 });
 
-test('the advisory allowlist is the measured test counts only, and the writer uses the same list', () => {
-  assert.deepEqual(Object.keys(ADVISORY_DRIFT), ['lib/proof-stats.json']);
+test('the advisory allowlist is the test counts and the security case digests, each the list its writer enforces', () => {
+  assert.deepEqual(Object.keys(ADVISORY_DRIFT).sort(), ['lib/proof-stats.json', SECURITY_CASE]);
   assert.deepEqual([...ADVISORY_DRIFT['lib/proof-stats.json']], TESTS_ONLY);
   assert.deepEqual([...ADVISORY_PROOF_STATS_FIELDS], TESTS_ONLY);
+  // verify-security-case --drift-report enforces this same frozen list.
+  assert.equal(ADVISORY_DRIFT[SECURITY_CASE], SECURITY_CASE_DERIVED_FIELDS);
+  assert.ok(Object.isFrozen(SECURITY_CASE_DERIVED_FIELDS));
 });
 
 test('deny by default: test-count drift is advisory, every other proof field and any LLM file is denied', () => {
@@ -171,9 +185,24 @@ test('deny by default: test-count drift is advisory, every other proof field and
   // A stale proof-stats report that does not name its fields is denied.
   assert.equal(classifyDrift({ stale: ['lib/proof-stats.json'], fields: null }).denied.length, 1);
   assert.equal(classifyDrift({ stale: ['lib/proof-stats.json'], fields: [] }).denied.length, 1);
-  for (const path of VOLATILE_EVIDENCE.filter((file) => file !== 'lib/proof-stats.json')) {
+  for (const path of WRITER_FILES['sync:llm-context']) {
     assert.deepEqual(classifyDrift({ stale: [path], fields: TESTS_ONLY }), { advisory: [], denied: [{ path, fields: [] }] }, path);
   }
+});
+
+test('deny by default for the security case: digest drift is advisory, claims, execution and shape are denied', () => {
+  const digests = ['evidence_bundle_sha256', 'evidence_files[4].sha256', 'claims[3].release_artifact_hashes[1].sha256',
+    'release_artifacts.verify-sdk.sha256', 'release_artifacts.verify-sdk.version', 'evidence_files', 'evidence_file_count'];
+  assert.deepEqual(classifyDrift({ stale: [SECURITY_CASE], fields: digests }), { advisory: [SECURITY_CASE], denied: [] });
+  for (const field of ['claims[0].statement', 'claims[2].tests', 'claim_count', 'execution.status', 'execution.evidence',
+    'release_artifacts.verify-sdk.kind', 'release_artifacts.verify-sdk.package', 'claims[1].release_artifact_hashes[0].artifact_id',
+    'evidence_bundle_sha256 (key added, removed or retyped)', '(serialization)', '(unparseable)', '(missing)', 'tests.total']) {
+    assert.deepEqual(classifyDrift({ stale: [SECURITY_CASE], fields: [...digests, field] }).denied, [{ path: SECURITY_CASE, fields: [field] }], field);
+  }
+  assert.equal(classifyDrift({ stale: [SECURITY_CASE], fields: null }).denied.length, 1);
+  assert.equal(classifyDrift({ stale: [SECURITY_CASE], fields: [] }).denied.length, 1);
+  // Fields can never be attributed across the two allowlisted files.
+  assert.throws(() => classifyDrift({ stale: [SECURITY_CASE, 'lib/proof-stats.json'], fields: TESTS_ONLY }), /only one allowlisted file/);
 });
 
 test('proof-stats drift fields are dotted leaves, and generatedAt is never one', () => {
@@ -206,8 +235,17 @@ test('drift reports must come from both writers, name only volatile files and ag
     /one drift report from each/,
   );
   assert.throws(
-    () => mergeDriftReports([report('sync:proof-stats', ['security/security-case.json']), report('sync:llm-context', [])]),
+    () => mergeDriftReports([report('sync:proof-stats', ['conformance/conformance-manifest.json']), report('sync:llm-context', [])]),
     /not volatile evidence/,
+  );
+  // A report names only its own writer's files.
+  assert.throws(
+    () => mergeDriftReports([report('sync:proof-stats', ['security/security-case.json']), report('sync:llm-context', [])]),
+    /sync:proof-stats does not write security\/security-case\.json/,
+  );
+  assert.throws(
+    () => mergeDriftReports([report('sync:proof-stats', []), report('sync:llm-context', ['lib/proof-stats.json'])]),
+    /sync:llm-context does not write lib\/proof-stats\.json/,
   );
   assert.throws(
     () => mergeDriftReports([{ ...report('sync:proof-stats', []), current: false }, report('sync:llm-context', [])]),
@@ -219,8 +257,19 @@ test('drift reports must come from both writers, name only volatile files and ag
   );
   assert.throws(
     () => mergeDriftReports([report('sync:proof-stats', []), report('sync:llm-context', [], { fields: ['tests.total'] })]),
-    /only the proof-stats report/,
+    /only the proof-stats and security-case reports/,
   );
+
+  // The security-case scope takes exactly one report, from the security case writer.
+  const security = DRIFT_SCOPES['security-case'];
+  assert.deepEqual(
+    mergeDriftReports([report(SECURITY_CASE_WRITER, [SECURITY_CASE], { fields: ['evidence_bundle_sha256'] })], security),
+    { stale: [SECURITY_CASE], fields: ['evidence_bundle_sha256'] },
+  );
+  assert.equal(mergeDriftReports([report(SECURITY_CASE_WRITER, [SECURITY_CASE])], security).fields, null);
+  assert.throws(() => mergeDriftReports([report('sync:proof-stats', [])], security), /one drift report from each of security-case:emit/);
+  assert.throws(() => mergeDriftReports([report(SECURITY_CASE_WRITER, [])]), /one drift report from each of sync:proof-stats/);
+  assert.throws(() => mergeDriftReports([report(SECURITY_CASE_WRITER, ['public/llms.txt'])], security), /does not write public\/llms\.txt/);
 });
 
 test('pull requests and merge groups are advisory, the refresh pull request strict, main on a grace clock', () => {
@@ -235,6 +284,18 @@ test('pull requests and merge groups are advisory, the refresh pull request stri
   for (const event of ['push', 'schedule', 'workflow_dispatch']) {
     assert.equal(policyMode({ event, ref: 'refs/heads/main' }), 'grace', event);
     assert.equal(policyMode({ event, ref: 'refs/heads/feature' }), 'advisory', event);
+  }
+});
+
+test('security case digests are advisory on pull requests and merge groups only, strict on every other run', () => {
+  const scope = 'security-case';
+  assert.equal(policyMode({ event: 'pull_request', ref: 'refs/pull/1/merge', headRef: 'feat/x', scope }), 'advisory');
+  assert.equal(policyMode({ event: 'merge_group', ref: 'refs/heads/gh-readonly-queue/main/pr-1-abc', scope }), 'advisory');
+  assert.equal(policyMode({ event: 'pull_request', ref: 'refs/pull/2/merge', headRef: refreshBranch(SHA_A), scope }), 'strict');
+  for (const event of ['push', 'schedule', 'workflow_dispatch', 'release', 'workflow_call']) {
+    for (const ref of ['refs/heads/main', 'refs/heads/feature', 'refs/tags/v6.0.0']) {
+      assert.equal(policyMode({ event, ref, scope }), 'strict', `${event} ${ref}`);
+    }
   }
 });
 
@@ -584,7 +645,7 @@ test('a no-op refresh on main collects nothing, so publish is skipped and the ru
       cwd: ROOT,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    const files = Object.fromEntries(VOLATILE_EVIDENCE.filter((path) => path !== 'lib/proof-stats.json')
+    const files = Object.fromEntries(WRITER_FILES['sync:llm-context']
       .map((path) => [path, readFileSync(join(out, path), 'utf8')]));
     rmSync(out, { recursive: true, force: true });
     return files;
@@ -667,10 +728,11 @@ test('the refresh refuses strict evidence, even when the full derived allowlist 
   try {
     f.write('lib/proof-stats.json', '{"v":2}\n');
     f.write('security/security-case.json', '{"v":2}\n');
-    f.git('commit', '-q', '-am', 'writers touched the security case');
+    f.write('formal/results/formal-runtime-scenario-conformance.v2.json', '{"v":2}\n');
+    f.git('commit', '-q', '-am', 'writers touched the formal traces');
     await assert.rejects(
       main(['collect', '--repo', f.repo, '--source-sha', f.source, '--out', join(f.root, 'bundle')]),
-      /outside the derived-evidence allowlist:\nsecurity\/security-case\.json/,
+      /outside the derived-evidence allowlist:\nformal\/results\/formal-runtime-scenario-conformance\.v2\.json/,
     );
     // The same change is a valid Dependabot autopilot bundle, and that bundle
     // is refused by the volatile request.
@@ -679,7 +741,7 @@ test('the refresh refuses strict evidence, even when the full derived allowlist 
     await assert.rejects(
       main(['request', '--bundle', derived, '--source-sha', f.source, '--repository', REPOSITORY,
         '--run-url', RUN_URL, '--out', join(f.root, 'r.json')]),
-      /security\/security-case\.json: not a derived-evidence path/,
+      /formal\/results\/formal-runtime-scenario-conformance\.v2\.json: not a derived-evidence path/,
     );
     assert.throws(
       () => collectDerived({ repo: f.repo, sourceSha: f.source, out: derived, allowlist: ['lib/code.ts'] }),
@@ -710,7 +772,7 @@ test('main\'s refresh pull request fails on any changed path outside the five fi
     // A later push that rides the refresh branch with another change.
     f.write('public/llms.txt', 'v3\n');
     f.write('lib/code.ts', 'export const x = 1;\n');
-    f.write('security/security-case.json', '{"v":2}\n');
+    f.write('conformance/conformance-manifest.json', '{"v":2}\n');
     f.git('add', '-A');
     f.git('commit', '-q', '-m', 'rider');
     assert.deepEqual(touchedVolatile('HEAD^1', f.repo), ['public/llms.txt']);
@@ -954,6 +1016,11 @@ test('the refresh workflow keeps the App key away from the writers and plans bef
   assert.equal(regenerate.environment, undefined);
   assert.ok(!JSON.stringify(regenerate).includes('secrets.'));
   assert.ok(JSON.stringify(regenerate).includes('volatile-evidence.mjs collect'));
+  // The writers' checkpoint stages exactly the volatile files, the re-emitted security case included.
+  const writers = regenerate.steps.find((step) => /checkpoint\(\)/.test(step.run ?? '')).run;
+  const staged = writers.match(/git add -- \\\n([\s\S]*?)\n\s*git commit/)[1].split('\\').map((path) => path.trim()).filter(Boolean);
+  assert.deepEqual(staged.sort(), [...VOLATILE_EVIDENCE].sort());
+  assert.match(writers, /npm run sync:proof-stats\n/);
 
   // Only the publisher enters the main-only environment, and it installs and
   // runs nothing but main's own tooling.
@@ -1009,10 +1076,172 @@ test('ci.yml reports volatile drift and applies the policy with the merge base',
   assert.equal(job.steps[0].with['fetch-depth'], 2);
 
   // The strict derived evidence keeps its strict checks.
-  const security = workflow('ci.yml').jobs['security-case'].steps.map((step) => step.run ?? '').join('\n');
-  for (const command of ['check:security-case', 'check:formal-traces', 'conformance:manifest:check', 'conformance:manifest:clean-room', 'check:standalone-runtimes']) {
+  const securityJob = workflow('ci.yml').jobs['security-case'];
+  const security = securityJob.steps.map((step) => step.run ?? '').join('\n');
+  for (const command of ['check:formal-traces', 'conformance:manifest:check', 'conformance:manifest:clean-room', 'check:standalone-runtimes']) {
     assert.match(security, new RegExp(`npm run ${command}$`, 'm'), command);
   }
+});
+
+test('ci.yml executes every claim, runs every other check, then applies the security-case policy before the case is attested', () => {
+  const job = workflow('ci.yml').jobs['security-case'];
+  const steps = job.steps;
+  assert.equal(steps[0].with['fetch-depth'], 2, 'the policy diffs the merge commit against its first parent');
+  const check = steps.findIndex((step) => /npm run check:security-case\b/.test(step.run ?? ''));
+  const policy = steps.findIndex((step) => /volatile-evidence\.mjs policy/.test(step.run ?? ''));
+  assert.match(steps[check].run, /^npm run check:security-case -- --drift-report "\$RUNNER_TEMP\/security-case-drift\.json"$/);
+  assert.ok(check >= 0 && policy > check, 'the policy reads the report the executed claims wrote');
+  // Every other check runs before the policy, so a lagging case on main never
+  // skips a formal-trace, hostility or manifest check.
+  for (const step of steps.slice(policy + 1)) assert.equal(step.run, undefined, `no check runs after the policy: ${step.name}`);
+  assert.match(steps[policy].run, /--scope security-case[\s\S]*--report "\$RUNNER_TEMP\/security-case-drift\.json"[\s\S]*--event "\$EVENT_NAME"[\s\S]*--ref "\$GITHUB_REF"[\s\S]*--head-ref "\$HEAD_REF"[\s\S]*--touched-base HEAD\^1/);
+  assert.equal(steps[policy].env.EVENT_NAME, '${{ github.event_name }}');
+  assert.equal(steps[policy].if, undefined, 'the policy runs on every event');
+  assert.equal(steps[policy]['continue-on-error'], undefined);
+  const attests = steps.map((step, index) => [step, index]).filter(([step]) => String(step.uses).startsWith('actions/attest@'));
+  const caseAttests = attests.filter(([step]) => step.with?.['subject-path'] === SECURITY_CASE);
+  assert.equal(caseAttests.length, 1);
+  assert.equal(caseAttests[0][1], policy + 1, 'main attests only a case the policy found exact');
+  for (const [step, index] of attests) {
+    if (index < policy) assert.notEqual(step.with?.['subject-path'], SECURITY_CASE);
+    assert.equal(step.if, "github.event_name != 'pull_request' && github.event_name != 'merge_group'", step.name);
+  }
+  // The policy needs no API: the security-case scope has no grace clock.
+  assert.deepEqual(job.permissions, { contents: 'read', 'id-token': 'write', attestations: 'write' });
+});
+
+test('releases, publishing and the release-image builder compare the security case byte for byte', () => {
+  // Only ci.yml's security-case job may pass --drift-report; everything else
+  // that runs the case gets the writer's strict comparison.
+  const dir = join(ROOT, '.github/workflows');
+  const sources = readdirSync(dir).filter((name) => /\.ya?ml$/.test(name)).map((name) => [`.github/workflows/${name}`, readFileSync(join(dir, name), 'utf8')]);
+  sources.push(['deploy/consequence-control-cloud-run/build-release-images.sh',
+    readFileSync(join(ROOT, 'deploy/consequence-control-cloud-run/build-release-images.sh'), 'utf8')]);
+  let strictRuns = 0;
+  for (const [path, text] of sources) {
+    for (const line of text.split('\n').filter((entry) => /check:security-case|verify-security-case\.mjs/.test(entry))) {
+      if (path === '.github/workflows/ci.yml' && /--drift-report "\$RUNNER_TEMP\/security-case-drift\.json"/.test(line)) continue;
+      assert.ok(!/--drift-report/.test(line), `${path}: ${line.trim()}`);
+      if (/npm run check:security-case\s*$/.test(line)) strictRuns += 1;
+    }
+  }
+  assert.ok(strictRuns >= 2, 'npm publication and the release-image builder run the strict check');
+  const publish = readFileSync(join(dir, '_publish-npm-package.yml'), 'utf8');
+  assert.match(publish, /^\s*npm run check:security-case$/m);
+  assert.match(publish, /^\s*npm run check:proof-stats$/m);
+  assert.match(publish, /^\s*npm run check:llm-context$/m);
+});
+
+test('the security-case policy CLI: pull requests and merge groups pass stale digests, main and other refs fail', async () => {
+  const f = fixture();
+  const dir = mkdtempSync(join(tmpdir(), 'volatile-security-'));
+  try {
+    f.write('lib/code.ts', 'export const x = 1;\n');
+    f.git('add', '-A');
+    f.git('commit', '-q', '-m', 'pull request changes a pinned file only');
+    const drift = join(dir, 'security-case-drift.json');
+    const summary = join(dir, 'summary.md');
+    const env = { GITHUB_STEP_SUMMARY: summary };
+    const noFetch = async () => { throw new Error('the security-case scope never calls the API'); };
+    const digests = ['claims[0].release_artifact_hashes[1].sha256', 'claims[1].release_artifact_hashes[1].sha256',
+      'evidence_bundle_sha256', 'evidence_files[7].sha256', 'release_artifacts.security-evidence.sha256'];
+    writeFileSync(drift, JSON.stringify(report(SECURITY_CASE_WRITER, [SECURITY_CASE], { fields: digests })));
+    const policy = (...args) => main(['policy', '--scope', 'security-case', '--report', drift, ...args], { env, fetchImpl: noFetch, now: NOW });
+    const pr = ['--event', 'pull_request', '--ref', 'refs/pull/9/merge', '--head-ref', 'feat/x', '--touched-base', 'HEAD^1', '--repo', f.repo];
+
+    assert.equal(await policy(...pr), 0);
+    let text = readFileSync(summary, 'utf8');
+    assert.match(text, /### Security case: derived digests/);
+    assert.match(text, /\| `security\/security-case\.json` \| stale \|/);
+    assert.match(text, /`claims\[\]\.release_artifact_hashes\[\]\.sha256 \(2\)`/);
+    assert.match(text, /Advisory: every claim executed on this commit/);
+    assert.equal(await policy('--event', 'merge_group', '--ref', 'refs/heads/gh-readonly-queue/main/pr-9'), 0);
+
+    // Main, the refresh pull request and any other run: the same report fails, with no API call.
+    for (const args of [
+      ['--event', 'push', '--ref', 'refs/heads/main', '--sha', SHA_C, '--repository', REPOSITORY],
+      ['--event', 'schedule', '--ref', 'refs/heads/main'],
+      ['--event', 'workflow_dispatch', '--ref', 'refs/heads/main'],
+      ['--event', 'workflow_dispatch', '--ref', 'refs/heads/release/6.1'],
+      ['--event', 'push', '--ref', 'refs/tags/v6.1.0'],
+      ['--event', 'pull_request', '--ref', 'refs/pull/7/merge', '--head-ref', refreshBranch(SHA_A), '--touched-base', 'HEAD^1', '--repo', f.repo],
+    ]) {
+      assert.equal(await policy(...args), 1, args.join(' '));
+    }
+    text = readFileSync(summary, 'utf8');
+    assert.match(text, /Failing: outside pull requests and merge groups the case must be exact/);
+
+    // Drift outside the digests fails even on a pull request.
+    writeFileSync(drift, JSON.stringify(report(SECURITY_CASE_WRITER, [SECURITY_CASE], { fields: [...digests, 'claims[0].statement'] })));
+    assert.equal(await policy(...pr), 1);
+    assert.equal(await policy('--event', 'merge_group', '--ref', 'refs/heads/gh-readonly-queue/main/pr-9'), 1);
+    assert.match(readFileSync(summary, 'utf8'), /drift outside the derived digests is never advisory[\s\S]*`claims\[0\]\.statement`/);
+
+    // A current case passes everywhere.
+    writeFileSync(drift, JSON.stringify(report(SECURITY_CASE_WRITER, [], { fields: [] })));
+    assert.equal(await policy('--event', 'push', '--ref', 'refs/heads/main'), 0);
+    assert.equal(await policy(...pr), 0);
+
+    // The scope takes only the security case writer's report, and the refresh's --stale list never.
+    await assert.rejects(policy('--event', 'pull_request', '--ref', 'refs/pull/9/merge'), /--touched-base/);
+    await assert.rejects(main(['policy', '--scope', 'security-case', '--report', drift, '--report', drift, '--event', 'push', '--ref', 'refs/heads/main'],
+      { env, fetchImpl: noFetch, now: NOW }), /one drift report from each of security-case:emit/);
+    await assert.rejects(main(['policy', '--scope', 'security-case', '--stale', '["security/security-case.json"]', '--event', 'push', '--ref', 'refs/heads/main'],
+      { env, fetchImpl: noFetch, now: NOW }), /grace mode/);
+    await assert.rejects(main(['policy', '--scope', 'evidence', '--report', drift, '--event', 'push', '--ref', 'refs/heads/main'],
+      { env, fetchImpl: noFetch, now: NOW }), /unknown --scope/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    f.cleanup();
+  }
+});
+
+test('a pull request that changes the security case must make it exact: keep main\'s copy or regenerate it', async () => {
+  const f = fixture();
+  const dir = mkdtempSync(join(tmpdir(), 'volatile-security-touch-'));
+  try {
+    const drift = join(dir, 'security-case-drift.json');
+    const env = {};
+    const policy = () => main(['policy', '--scope', 'security-case', '--report', drift, '--event', 'pull_request',
+      '--ref', 'refs/pull/9/merge', '--head-ref', 'feat/x', '--touched-base', 'HEAD^1', '--repo', f.repo], { env, now: NOW });
+    f.write('lib/code.ts', 'export const x = 1;\n');
+    f.write(SECURITY_CASE, '{"v":2}\n');
+    f.git('add', '-A');
+    f.git('commit', '-q', '-m', 'pull request regenerated the case on an older base, or edited a digest by hand');
+    assert.deepEqual(touchedVolatile('HEAD^1', f.repo), [SECURITY_CASE]);
+    writeFileSync(drift, JSON.stringify(report(SECURITY_CASE_WRITER, [SECURITY_CASE], { fields: ['evidence_bundle_sha256'] })));
+    assert.equal(await policy(), 1);
+    const result = await evaluatePolicy({ mode: 'advisory', scope: 'security-case', stale: [SECURITY_CASE], fields: ['evidence_bundle_sha256'],
+      problems: ['This pull request changes security/security-case.json'] });
+    assert.equal(result.exitCode, 1);
+    assert.match(result.annotation, /Volatile evidence change refused/);
+    // The same pull request with the case exactly what the writer resolves passes.
+    writeFileSync(drift, JSON.stringify(report(SECURITY_CASE_WRITER, [], { fields: [] })));
+    assert.equal(await policy(), 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    f.cleanup();
+  }
+});
+
+test('security-case policy outcomes need no API and never use the grace clock', async () => {
+  const noApi = { refreshRuns: async () => { throw new Error('no grace clock for the security case'); }, observe };
+  const stale = [SECURITY_CASE];
+  const fields = ['evidence_bundle_sha256', 'evidence_files[0].sha256'];
+  const advisory = await evaluatePolicy({ mode: 'advisory', scope: 'security-case', stale, fields });
+  assert.equal(advisory.exitCode, 0);
+  assert.match(advisory.annotation, /^::notice title=Security case digests lag \(advisory\)::/);
+  for (const mode of ['strict', 'grace']) {
+    const result = await evaluatePolicy({ mode, scope: 'security-case', stale, fields, sha: SHA_C, client: noApi, now: NOW });
+    assert.equal(result.exitCode, 1, mode);
+    assert.match(result.annotation, /^::error title=Security case is stale::/, mode);
+  }
+  for (const mode of ['advisory', 'strict', 'grace']) {
+    const result = await evaluatePolicy({ mode, scope: 'security-case', stale, fields: [...fields, 'claims[0].statement'], sha: SHA_C, client: noApi, now: NOW });
+    assert.equal(result.exitCode, 1, mode);
+    assert.match(result.annotation, /Security case drift outside the derived digests::[\s\S]*claims\[0\]\.statement/, mode);
+  }
+  assert.equal((await evaluatePolicy({ mode: 'strict', scope: 'security-case', stale: [], fields: [] })).exitCode, 0);
 });
 
 test('the writers fail drift outside the test counts even with --drift-report', () => {
