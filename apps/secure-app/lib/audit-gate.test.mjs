@@ -32,6 +32,23 @@ const GATE = join(REPO_ROOT, 'scripts/audit-with-exceptions.mjs');
 const ICNS = 'https://github.com/advisories/GHSA-w3rx-r6r6-pgpr';
 const OTHER = 'https://github.com/advisories/GHSA-0000-0000-0000';
 const NODE_FORGE = 'https://github.com/advisories/GHSA-86w9-cpqp-85rv';
+const BRACES = 'https://github.com/advisories/GHSA-vfj7-8cjw-p6xm';
+const BRACES_AFFECTED = [
+  '@expo/cli',
+  '@expo/metro',
+  '@expo/metro-config',
+  '@expo/metro-file-map',
+  '@react-native/community-cli-plugin',
+  '@react-native/virtualized-lists',
+  'braces',
+  'expo',
+  'metro',
+  'metro-config',
+  'metro-file-map',
+  'metro-transform-worker',
+  'micromatch',
+  'react-native',
+];
 
 const NOW = Date.parse('2026-09-01T00:00:00Z');
 
@@ -338,10 +355,10 @@ test('the committed exception file satisfies the enforced schema', () => {
   const exceptions = loadExceptions(join(SECURE_APP, 'audit-exceptions.json'));
   assert.deepEqual(
     exceptions.map((exception) => exception.advisory),
-    [NODE_FORGE],
-    'only the unfixed node-forge CLI advisory may be accepted',
+    [NODE_FORGE, BRACES],
+    'only the unfixed node-forge CLI and braces watcher advisories may be accepted',
   );
-  const [nodeForge] = exceptions;
+  const [nodeForge, braces] = exceptions;
   assert.equal(nodeForge.package, 'node-forge');
   assert.equal(nodeForge.severity, 'high');
   assert.deepEqual(
@@ -350,6 +367,11 @@ test('the committed exception file satisfies the enforced schema', () => {
   );
   assert.equal(nodeForge.acceptedOnText, '2026-10-02');
   assert.equal(nodeForge.expiresOnText, '2026-10-30');
+  assert.equal(braces.package, 'braces');
+  assert.equal(braces.severity, 'high');
+  assert.deepEqual([...braces.affectedPackages].sort(), BRACES_AFFECTED);
+  assert.equal(braces.acceptedOnText, '2026-10-04');
+  assert.equal(braces.expiresOnText, '2026-12-01');
   for (const exception of exceptions) {
     assert.ok(exception.expiresOn > exception.acceptedOn);
     assert.ok(exception.affectedPackages.size > 0);
@@ -376,6 +398,45 @@ test('the node-forge acceptance still matches the app it was argued against', ()
   }
 });
 
+test('the braces acceptance still matches the tree it was argued against', () => {
+  // The exception says braces is reached only through Metro's file watchers,
+  // which expand globs built from local configuration. Fail here, before
+  // expiry, if a second copy appears, if a new package starts importing
+  // micromatch or braces, or if app source imports any of the chain.
+  const lockfile = JSON.parse(readFileSync(join(SECURE_APP, 'package-lock.json'), 'utf8'));
+  const bracesCopies = Object.keys(lockfile.packages).filter((path) => /(?:^|\/)node_modules\/braces$/.test(path));
+  assert.deepEqual(bracesCopies, ['node_modules/braces']);
+  assert.equal(lockfile.packages['node_modules/braces'].version, '3.0.3');
+  const bracesDependents = Object.entries(lockfile.packages)
+    .filter(([, entry]) => entry.dependencies?.braces !== undefined)
+    .map(([path]) => path);
+  assert.deepEqual(bracesDependents, ['node_modules/micromatch']);
+  const micromatchDependents = Object.entries(lockfile.packages)
+    .filter(([, entry]) => entry.dependencies?.micromatch !== undefined)
+    .map(([path]) => path)
+    .sort();
+  assert.deepEqual(micromatchDependents, ['node_modules/@expo/metro-file-map', 'node_modules/metro-file-map']);
+
+  const sources = ['App.tsx', 'index.ts', ...readdirSync(join(SECURE_APP, 'lib'))
+    .filter((name) => /\.(?:ts|tsx|js|mjs)$/.test(name) && !name.endsWith('.test.mjs'))
+    .map((name) => join('lib', name))];
+  for (const source of sources) {
+    const text = readFileSync(join(SECURE_APP, source), 'utf8');
+    assert.doesNotMatch(text, /['"](?:braces|micromatch|metro-file-map|@expo\/metro-file-map)['"]/, source);
+  }
+});
+
+test('the committed exceptions still fail on any other live advisory', () => {
+  const exceptions = loadExceptions(join(SECURE_APP, 'audit-exceptions.json'));
+  const advisories = collectLiveAdvisories(bundlerChainReport({ url: OTHER }), 'low');
+  const { failures, accepted } = evaluate({ advisories, exceptions, now: NOW });
+  assert.equal(accepted.length, 0);
+  assert.ok(
+    failures.some((failure) => failure.reason === FAILURE.UNCOVERED_ADVISORY && failure.advisory === OTHER),
+    'an advisory outside the committed exceptions must fail as uncovered',
+  );
+});
+
 test('the committed Metro repair removes the vulnerable image-size edge', () => {
   const lockfile = JSON.parse(readFileSync(join(SECURE_APP, 'package-lock.json'), 'utf8'));
   assert.equal(lockfile.packages['node_modules/@expo/metro'].version, '56.0.2');
@@ -390,9 +451,11 @@ test('the gate passes against the real dependency tree', () => {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   assert.match(stdout, /AUDIT GATE PASS/);
-  assert.match(stdout, /1 accepted advisory\(ies\)/);
-  assert.ok(
-    stdout.split(/\r?\n/).some((line) => line.trim() === NODE_FORGE),
-    'the accepted advisory must appear as an exact output line',
-  );
+  assert.match(stdout, /2 accepted advisory\(ies\)/);
+  for (const advisory of [NODE_FORGE, BRACES]) {
+    assert.ok(
+      stdout.split(/\r?\n/).some((line) => line.trim() === advisory),
+      `${advisory} must appear as an exact output line`,
+    );
+  }
 });

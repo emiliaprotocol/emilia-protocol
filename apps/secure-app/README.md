@@ -102,8 +102,8 @@ The lock pins the supported `@expo/metro 56.0.2` and `metro 0.84.5` graph. Metro
 0.84.5 removes the vulnerable `image-size` dependency. The graph entered this
 boundary only after clearing the app's seven-day release quarantine.
 
-Raw `npm audit --json` reports one live advisory, accepted until 2026-10-30:
-GHSA-86w9-cpqp-85rv in `node-forge` 1.4.0, reached only through the Expo CLI
+Raw `npm audit --json` reports two live advisories with no upstream fix. The
+first, accepted until 2026-10-30, is GHSA-86w9-cpqp-85rv in `node-forge` 1.4.0, reached only through the Expo CLI
 (`expo -> @expo/cli -> node-forge`, and via `@expo/code-signing-certificates`).
 No node-forge release outside the advisory range exists yet. The CLI uses
 node-forge's RSA verification only in its development-server manifest signer,
@@ -112,6 +112,16 @@ bundles. `lib/audit-gate.test.mjs` fails if `app.json` gains
 `updates.codeSigningCertificate` or `extra.eas.projectId`, if `expo-updates`
 enters the lock, or if app source imports node-forge. Delete the entry once a
 fixed node-forge clears the quarantine.
+
+The second, accepted until 2026-12-01 to match the root audit's recheck date
+for the same advisory, is GHSA-vfj7-8cjw-p6xm in `braces` 3.0.3 (stack
+exhaustion on deeply nested brace patterns). It is reached only through
+`micromatch` in Metro's file watchers (`@expo/metro-file-map` and
+`metro-file-map`), which expand globs built from local Metro configuration,
+never from approval, pairing, or network input. The exported iOS and Android
+bundles contain no braces or micromatch module. `lib/audit-gate.test.mjs`
+fails if a second braces copy appears, if anything other than those two
+watchers starts depending on micromatch, or if app source imports the chain.
 
 The gate in `../../scripts/audit-with-exceptions.mjs` handles a bounded hold
 without going quiet. Every advisory it lets through must be named in
