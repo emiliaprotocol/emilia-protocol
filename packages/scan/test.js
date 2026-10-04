@@ -789,7 +789,7 @@ test('selected-action shortcut refuses unknown, read-only, multiple, and unavail
 
   const missingRuntime = run('--action', 'sendWire', '--apply', '--verify');
   assert.equal(missingRuntime.status, 1);
-  assert.match(`${missingRuntime.stdout}${missingRuntime.stderr}`, /npm install --save-exact @emilia-protocol\/mcp-guard@0\.6\.0/);
+  assert.match(`${missingRuntime.stdout}${missingRuntime.stderr}`, /npm install --save-exact @emilia-protocol\/mcp-guard@0\.6\.1/);
   assert.equal(existsSync(join(dir, 'emilia')), false, 'failed verification preflight must not write a partial starter');
 
   const hostileOutput = spawnSync(process.execPath, [
@@ -814,6 +814,45 @@ test('selected-action shortcut refuses unknown, read-only, multiple, and unavail
   assert.notEqual(ambiguous.status, 0);
   assert.match(`${ambiguous.stdout}${ambiguous.stderr}`, /duplicate action name/i);
   assert.equal(existsSync(join(dir, 'emilia')), false);
+});
+
+test('selected-action preflight refuses older, forged, and incompatible Guard runtimes before writes', () => {
+  const cases = [
+    { label: 'older package', packageVersion: '0.6.0', runtimeVersion: '0.6.1' },
+    { label: 'forged package version', packageVersion: '666.0.0', runtimeVersion: '0.6.1' },
+    { label: 'forged runtime version', packageVersion: '0.6.1', runtimeVersion: '666.0.0' },
+    { label: 'missing runtime export', packageVersion: '0.6.1', runtimeVersion: '0.6.1', omitBinder: true },
+    { label: 'wrong entry contract', packageVersion: '0.6.1', runtimeVersion: '0.6.1', entry: 'forged.js' },
+  ];
+  for (const fixture of cases) {
+    const dir = mkdtempSync(join(tmpdir(), 'emilia-selected-runtime-refusal-'));
+    const guard = join(dir, 'node_modules', '@emilia-protocol', 'mcp-guard');
+    mkdirSync(guard, { recursive: true });
+    writeFileSync(join(guard, 'package.json'), JSON.stringify({
+      name: '@emilia-protocol/mcp-guard',
+      version: fixture.packageVersion,
+      type: 'module',
+      main: fixture.entry ?? 'index.js',
+      exports: { '.': { import: `./${fixture.entry ?? 'index.js'}` } },
+    }));
+    writeFileSync(join(guard, 'index.js'), [
+      `export const MCP_GUARD_RUNTIME_VERSION = ${JSON.stringify(fixture.runtimeVersion)};`,
+      'export function withMcpGuard() { throw new Error("forged Guard was invoked"); }',
+      ...(fixture.omitBinder ? [] : ['export function bindToolAction() {}']),
+    ].join('\n'));
+    const input = join(dir, 'tools.json');
+    writeFileSync(input, '[{"name":"sendWire","description":"Send an outgoing wire transfer"}]');
+    const result = spawnSync(process.execPath, [
+      join(import.meta.dirname, 'cli.mjs'), 'protect', input,
+      '--action', 'sendWire', '--apply', '--verify',
+    ], { cwd: dir, encoding: 'utf8' });
+    assert.equal(result.status, 1, `${fixture.label}: ${result.stdout}\n${result.stderr}`);
+    assert.match(`${result.stdout}${result.stderr}`,
+      /Local verification requires the exact audited runtime\. Install it first: npm install --save-exact @emilia-protocol\/mcp-guard@0\.6\.1/,
+      fixture.label);
+    assert.equal(existsSync(join(dir, 'emilia')), false,
+      `${fixture.label}: failed runtime preflight must not write a starter`);
+  }
 });
 
 test('reviewed shortcut refuses manifest drift, wrong selected action, and handoff overwrite without changing existing bytes', () => {

@@ -6,23 +6,23 @@ consequential actions. Point it at what your agent can do; it tells you what
 should require authorization evidence, and hands you proposed config to review.
 
 ```bash
-npx @emilia-protocol/scan@0.5.1 brain ./tools.json       # local, interactive Authority Map
-npx @emilia-protocol/scan@0.5.1 brain --sample           # generate the built-in demonstration
+npx @emilia-protocol/scan@0.5.2 brain ./tools.json       # local, interactive Authority Map
+npx @emilia-protocol/scan@0.5.2 brain --sample           # generate the built-in demonstration
 
-npx @emilia-protocol/scan@0.5.1 authority               # local config-derived authority inventory
-npx @emilia-protocol/scan@0.5.1 source ./src             # passive source registration discovery
-npx @emilia-protocol/scan@0.5.1 diff --baseline reviewed-source.json ./src
-npx @emilia-protocol/scan@0.5.1 --sample                 # classify the built-in surface
-npx @emilia-protocol/scan@0.5.1 ./tools.json             # classify your MCP tool list
-npx @emilia-protocol/scan@0.5.1 ./openapi.json           # classify your HTTP API surface
+npx @emilia-protocol/scan@0.5.2 authority               # local config-derived authority inventory
+npx @emilia-protocol/scan@0.5.2 source ./src             # passive source registration discovery
+npx @emilia-protocol/scan@0.5.2 diff --baseline reviewed-source.json ./src
+npx @emilia-protocol/scan@0.5.2 --sample                 # classify the built-in surface
+npx @emilia-protocol/scan@0.5.2 ./tools.json             # classify your MCP tool list
+npx @emilia-protocol/scan@0.5.2 ./openapi.json           # classify your HTTP API surface
 
 # generate one selected-action Gate Starter (dry-run by default)
-npx @emilia-protocol/scan@0.5.1 protect ./tools.json
-npm install --save-exact @emilia-protocol/mcp-guard@0.6.0
-npx @emilia-protocol/scan@0.5.1 protect ./tools.json --action sendWire --apply --verify
+npx @emilia-protocol/scan@0.5.2 protect ./tools.json
+npm install --save-exact @emilia-protocol/mcp-guard@0.6.1
+npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action sendWire --apply --verify
 
 # after reading emilia/authority-map.html and action-control.manifest.json
-npx @emilia-protocol/scan@0.5.1 protect ./tools.json --action sendWire --reviewed \
+npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action sendWire --reviewed \
   --crossing-profile ccs-wang-draft08-v13
 ```
 
@@ -35,8 +35,8 @@ relative path, line, framework, parser version, confidence, exact file digest,
 and registration-line digest. Dynamic names remain explicit unresolved entries.
 
 ```bash
-npx @emilia-protocol/scan@0.5.1 source ./src --json --out source-review.json
-npx @emilia-protocol/scan@0.5.1 diff --baseline source-review.json ./src --json
+npx @emilia-protocol/scan@0.5.2 source ./src --json --out source-review.json
+npx @emilia-protocol/scan@0.5.2 diff --baseline source-review.json ./src --json
 ```
 
 The source report contains a non-authorizing
@@ -71,13 +71,13 @@ such as credential and argument objects are not copied into the dashboard.
 
 ```bash
 # Default: owner-only ./emilia-authority-brain.html; refuses overwrite
-npx @emilia-protocol/scan@0.5.1 brain ./tools.json
+npx @emilia-protocol/scan@0.5.2 brain ./tools.json
 
 # The output must remain one direct-child .html file in the current directory
-npx @emilia-protocol/scan@0.5.1 brain ./tools.json --out authority-map.html
+npx @emilia-protocol/scan@0.5.2 brain ./tools.json --out authority-map.html
 
 # Explicit replacement of one existing regular, single-link output file
-npx @emilia-protocol/scan@0.5.1 brain ./tools.json --out authority-map.html --force
+npx @emilia-protocol/scan@0.5.2 brain ./tools.json --out authority-map.html --force
 ```
 
 Output is staged completely before installation and created with mode `0600`.
@@ -114,7 +114,7 @@ accepts MCP tool lists and generates a self-contained local Authority Map plus a
 passive scan/manifest surface in this release: the command refuses to generate
 a verification-only HTTP middleware until durable one-use consumption is wired.
 Generated integration instructions install the audited runtime exactly with
-`npm install --save-exact @emilia-protocol/mcp-guard@0.6.0`.
+`npm install --save-exact @emilia-protocol/mcp-guard@0.6.1`.
 Each generated directory also contains an owner-only
 `.emilia-gate-starter.json` marker that binds all five generated artifacts and
 states `not_activated`. `--force` can replace only an exact, owner-only starter
@@ -161,16 +161,16 @@ two-stage so generation can never silently become owner review:
 
 ```bash
 # Install the exact audited local runtime once. The scanner never auto-installs.
-npm install --save-exact @emilia-protocol/mcp-guard@0.6.0
+npm install --save-exact @emilia-protocol/mcp-guard@0.6.1
 
 # Stage 1: create the Gate Starter and run RR-1. No handoff is emitted.
-npx @emilia-protocol/scan@0.5.1 protect ./tools.json \
+npx @emilia-protocol/scan@0.5.2 protect ./tools.json \
   --action deleteCustomer --apply --verify
 
 # Read emilia/authority-map.html and emilia/action-control.manifest.json.
 
 # Stage 2: validate the existing unchanged bytes and emit the reviewed handoff.
-npx @emilia-protocol/scan@0.5.1 protect ./tools.json \
+npx @emilia-protocol/scan@0.5.2 protect ./tools.json \
   --action deleteCustomer --reviewed \
   --crossing-profile ccs-wang-draft08-v13
 ```
@@ -265,9 +265,9 @@ attestation or an `EP-ACTION-REFUSAL-STATEMENT-v1` artifact.
 The `authority` command is a separate passive diagnostic:
 
 ```bash
-npx @emilia-protocol/scan@0.5.1 authority
-npx @emilia-protocol/scan@0.5.1 authority --json
-npx @emilia-protocol/scan@0.5.1 authority --out authority-report.json
+npx @emilia-protocol/scan@0.5.2 authority
+npx @emilia-protocol/scan@0.5.2 authority --json
+npx @emilia-protocol/scan@0.5.2 authority --out authority-report.json
 ```
 
 It reads bounded local configuration files to inventory supported agent
