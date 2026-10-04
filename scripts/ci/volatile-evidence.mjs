@@ -161,8 +161,12 @@ function scopeFiles(scope) {
  * are listed; every other proof-stats field (formalEvidenceCoverage, tamarin,
  * tla, alloy, formalScenarioConformance, securityCase, conformance,
  * externalImplementation, redTeamCases, tests.policy, anything added later)
- * fails. scripts/generate-proof-stats.mts ADVISORY_PROOF_STATS_FIELDS is the
- * same list (a node test pins the two). For security/security-case.json only
+ * fails. ADVISORY_PROOF_STATS_FIELDS in the proof-stats generator is the
+ * same list (a node test pins the two). The generator is named that way, not
+ * by path, because the security-case job runs this file and the change-lane
+ * audit (change-lane.mjs) treats any path it names as reachable from that
+ * docs-lane-skipped job; this file only reads drift reports and never runs
+ * the generator. For security/security-case.json only
  * the derived digests are listed (SECURITY_CASE_DERIVED_FIELDS, the list the
  * writer itself enforces). Every LLM context file has no entry, so its drift
  * fails.

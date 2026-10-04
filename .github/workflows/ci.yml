@@ -1464,7 +1464,15 @@ jobs:
   # one team's ports in one repository: a consistency check, not independent
   # clean-room implementations. The separately pinned Rust implementation runs
   # in the external-rust-evidence job below.
-  conformance:
+  #
+  # The checks run as three parallel jobs (conformance-core,
+  # conformance-caid, conformance-caid-packets), each on node 20, Python 3.11
+  # and Go 1.27. `conformance`, the required status check, is the
+  # aggregator at the end: it runs whatever happened above it and passes
+  # only when all three succeeded, so a failed, cancelled or skipped part
+  # fails it. None of these jobs carries the docs-lane condition; they run
+  # on every event, as the single job did.
+  conformance-core:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -1490,38 +1498,11 @@ jobs:
         run: node conformance/run.mjs
       - name: Conformance docs count guard
         run: npm run check:conformance-docs
-      # CAID (draft-schrock-canonical-action-identifier-04), on this job's
-      # node 20, Python 3.11 and Go 1.27. The grammar proof checks that the
-      # generated matchers equal caid/spec/caid.abnf in all three engines
-      # and are linear-time. caid:conformance checks the generated constants
-      # and vendored Verify copy, the registry, the corpora against their
-      # builders and the spec oracle, and the core v5, grammar, mapping v2
-      # and interoperability corpora in all three ports through public
-      # entry points. The fuzz compares every port with the spec oracle on
-      # about 88k seeded cases with an empty allow list, after a self-test
-      # of the harness. The published -03 and -04 packet checks and the
-      # WIMSE companion profile consume the same registry and pins.
-      - name: CAID grammar proof (generated matchers, then every case through each port's public API)
-        run: |
-          node caid/spec/abnf-check.mjs --out "$RUNNER_TEMP/caid-grammar-cases.json"
-          node caid/impl/js/run-grammar-vectors.mjs --quiet --corpus "$RUNNER_TEMP/caid-grammar-cases.json"
-          python3 caid/impl/python/run_grammar_vectors.py --corpus "$RUNNER_TEMP/caid-grammar-cases.json"
-          (cd caid/impl/go && go run ./cmd/grammar-vectors "$RUNNER_TEMP/caid-grammar-cases.json")
-      - name: CAID conformance (spec, registry, core v5, grammar, mapping v2, interop; JS + Python + Go)
-        env:
-          # The grammar corpus check reuses the case list the grammar proof wrote.
-          CAID_GRAMMAR_CASES: ${{ runner.temp }}/caid-grammar-cases.json
-        run: npm run caid:conformance
       - name: CAID differential fuzz against the spec oracle
         timeout-minutes: 10
         run: |
           node caid/fuzz/run.mjs --selftest --quick --ci --allow caid/fuzz/allow.json --out "$RUNNER_TEMP/caid-fuzz-selftest"
           sh caid/fuzz/ci.sh
-      - name: CAID -03 and -04 packets, WIMSE CAID scope profile
-        run: |
-          node scripts/check-caid-03.mjs
-          node scripts/check-caid-04.mjs
-          node standards/profiles/NEXT-WIMSE-CAID-SCOPE-01/validate.mjs
       - name: SCITT statement identity and Capsule seam profile conformance
         run: |
           npm run conformance:composition:scitt-statement-identity
@@ -1584,6 +1565,88 @@ jobs:
         run: python3 -m pytest conformance/py/test_ep_pq_verify.py
       - name: PQ conformance (Python lane, vector runner)
         run: python3 conformance/py/run_pq.py
+
+  # CAID (draft-schrock-canonical-action-identifier-04). The grammar proof
+  # checks that the generated matchers equal caid/spec/caid.abnf in all
+  # three engines and are linear-time. caid:conformance checks the generated
+  # constants and vendored Verify copy, the registry, the corpora against
+  # their builders and the spec oracle, and the core v5, grammar, mapping v2
+  # and interoperability corpora in all three ports through public entry
+  # points; it reuses the grammar case list, so both run in conformance-caid.
+  # The published -03 and -04 packet checks and the WIMSE companion profile
+  # consume the same registry and pins (conformance-caid-packets). The
+  # differential fuzz, which compares every port with the spec oracle on
+  # about 88k seeded cases with an empty allow list after a self-test of the
+  # harness, runs in conformance-core. The CAID code and its Python and Go
+  # ports use only node built-ins and the two standard libraries, so the two
+  # CAID jobs install no npm or pip packages.
+  conformance-caid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.0'
+      - name: CAID grammar proof (generated matchers, then every case through each port's public API)
+        run: |
+          node caid/spec/abnf-check.mjs --out "$RUNNER_TEMP/caid-grammar-cases.json"
+          node caid/impl/js/run-grammar-vectors.mjs --quiet --corpus "$RUNNER_TEMP/caid-grammar-cases.json"
+          python3 caid/impl/python/run_grammar_vectors.py --corpus "$RUNNER_TEMP/caid-grammar-cases.json"
+          (cd caid/impl/go && go run ./cmd/grammar-vectors "$RUNNER_TEMP/caid-grammar-cases.json")
+      - name: CAID conformance (spec, registry, core v5, grammar, mapping v2, interop; JS + Python + Go)
+        env:
+          # The grammar corpus check reuses the case list the grammar proof wrote.
+          CAID_GRAMMAR_CASES: ${{ runner.temp }}/caid-grammar-cases.json
+        run: npm run caid:conformance
+
+  conformance-caid-packets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.0'
+      - name: CAID -03 and -04 packets, WIMSE CAID scope profile
+        run: |
+          node scripts/check-caid-03.mjs
+          node scripts/check-caid-04.mjs
+          node standards/profiles/NEXT-WIMSE-CAID-SCOPE-01/validate.mjs
+
+  # Required status check. Branch protection requires a check named
+  # `conformance`; this job is it. `if: always()` makes it report even when
+  # a part failed or was cancelled, and it fails unless every part's result
+  # is success, so a skipped part fails it too.
+  conformance:
+    needs: [conformance-core, conformance-caid, conformance-caid-packets]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every conformance part to succeed
+        env:
+          CORE: ${{ needs.conformance-core.result }}
+          CAID: ${{ needs.conformance-caid.result }}
+          CAID_PACKETS: ${{ needs.conformance-caid-packets.result }}
+        run: |
+          echo "conformance-core: $CORE"
+          echo "conformance-caid: $CAID"
+          echo "conformance-caid-packets: $CAID_PACKETS"
+          [[ "$CORE" == success && "$CAID" == success && "$CAID_PACKETS" == success ]] \
+            || { echo "::error::a conformance part did not succeed"; exit 1; }
 
   # ── Job 11c: Pinned external Rust implementation evidence ────────
   # Rebuilds an externally authored verifier from an immutable source tree and

@@ -59,7 +59,7 @@ Read this before describing any of it outside the repository.
 - Both halves run in CI. `.github/workflows/go-verify.yml` runs
   `go test ./...` inside `packages/go-verify` (the backend-absent half); it
   does not cross a module boundary, so this module is run separately by the
-  `conformance` job in `.github/workflows/ci.yml`, step "PQ conformance (Go
+  `conformance-core` job in `.github/workflows/ci.yml`, step "PQ conformance (Go
   lane, live ML-DSA-65 backend via CIRCL)", on every push and pull request to
   `main`. The publish path is unaffected: `publish-go-verify.yml` diffs
   `packages/go-verify` against the module proxy and never sees this tree.
