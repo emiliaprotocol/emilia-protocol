@@ -26,7 +26,7 @@ default. The mode is printed, so a green run that never touched a lattice cannot
 be mistaken for one that did.
 
 CI. This runner and conformance/py/test_ep_pq_verify.py both run in the
-`conformance` job of .github/workflows/ci.yml, on every push and pull request to
+`conformance-core` job of .github/workflows/ci.yml, on every push and pull request to
 main, in LIVE mode: that job installs the hash-pinned dilithium-py backend from
 .github/workflow-requirements/pq-conformance.txt. Read the printed backend line
 in the job log rather than assuming the mode.

@@ -67,8 +67,8 @@ python3 conformance/runners/run_invariants.py         # Python lane (CI-gated)
 go run conformance/runners/run_invariants.go          # Go lane (CI-gated)
 ```
 
-All three lanes run in CI (`.github/workflows/ci.yml`, cross-language
-conformance job); the JS lane additionally runs as a vitest suite
+All three lanes run in CI (`.github/workflows/ci.yml`, `conformance-core`
+job); the JS lane additionally runs as a vitest suite
 (`conformance/invariants.test.js`, which also asserts the runner is non-vacuous
 by feeding it a mutated corpus).
 
