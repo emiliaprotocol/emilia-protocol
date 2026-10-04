@@ -12,15 +12,22 @@ import { dirname, join } from 'node:path';
 import test from 'node:test';
 
 import {
+  DEFER_CONDITION,
   DOCS_LANE,
   FULL_LANE,
+  QUEUE_TESTED_CONDITION,
+  QUICK_LANE,
   SKIP_CONDITION,
+  TESTED_LANE,
   bindingReference,
   classify,
   extractProseReferences,
   isAuditedSource,
   isDocsCandidate,
   jobBlocks,
+  jobCondition,
+  jobNeeds,
+  laneContract,
   parseRawDiff,
   reachableKeptCheckers,
   run,
@@ -265,6 +272,133 @@ test('ci.yml closure: skipped jobs, their npm scripts and entered packages', () 
   );
 });
 
+test('lane conditions: each names its event, and an empty lane runs the job', () => {
+  assert.deepEqual([QUICK_LANE, DOCS_LANE, TESTED_LANE, FULL_LANE], ['quick', 'docs', 'tested', 'full']);
+  // A condition is "runs" unless it compares the lane equal to a skip lane;
+  // != comparisons only, so a failed changes job (empty lane) runs everything.
+  for (const condition of [SKIP_CONDITION, DEFER_CONDITION, QUEUE_TESTED_CONDITION]) {
+    assert.doesNotMatch(condition, /outputs\.lane ==/, condition);
+    assert.match(condition, /^\(github\.event_name != '(pull_request|push)' \|\| /, condition);
+  }
+  assert.match(DEFER_CONDITION, /lane != 'quick'/);
+  assert.match(DEFER_CONDITION, /lane != 'docs'/);
+  assert.match(QUEUE_TESTED_CONDITION, /event_name != 'push'/);
+  assert.match(QUEUE_TESTED_CONDITION, /lane != 'tested'/);
+});
+
+test('job fields: needs in every YAML form and the job-level if only', () => {
+  const workflow = [
+    'jobs:',
+    '  a:',
+    '    needs: [changes, build] # comment',
+    '    if: ${{ !cancelled() }}',
+    '    steps:',
+    '      - if: always()',
+    '  b:',
+    '    needs: build',
+    '  c:',
+    '    needs:',
+    '      - changes',
+    '      - a',
+    '    runs-on: x',
+    '  d:',
+    '    steps:',
+    '      - if: success()',
+    '',
+  ].join('\n');
+  const blocks = jobBlocks(workflow);
+  assert.deepEqual(jobNeeds(blocks.get('a')), ['changes', 'build']);
+  assert.deepEqual(jobNeeds(blocks.get('b')), ['build']);
+  assert.deepEqual(jobNeeds(blocks.get('c')), ['changes', 'a']);
+  assert.deepEqual(jobNeeds(blocks.get('d')), []);
+  assert.equal(jobCondition(blocks.get('a')), '${{ !cancelled() }}');
+  assert.equal(jobCondition(blocks.get('d')), '');
+});
+
+/**
+ * A minimal ci.yml in the shape of the real one: a `changes` job with
+ * QUEUE_TESTED_JOBS, a docs-skipped job, a deferred job, a deferred and
+ * deduplicated job, and aggregators over them.
+ */
+function laneWorkflow({ queueTested = 'heavy', extraJobs = [] } = {}) {
+  return [
+    'jobs:',
+    '  changes:',
+    '    steps:',
+    '      - env:',
+    `          QUEUE_TESTED_JOBS: ${queueTested}`,
+    '  light:',
+    '    needs: [changes]',
+    `    if: \${{ !cancelled() && ${SKIP_CONDITION} }}`,
+    '  case:',
+    '    needs: [changes]',
+    `    if: \${{ !cancelled() && ${DEFER_CONDITION} }}`,
+    '  heavy:',
+    '    needs: [changes]',
+    `    if: \${{ !cancelled() && ${DEFER_CONDITION} && ${QUEUE_TESTED_CONDITION} }}`,
+    '  follower:',
+    '    needs: [changes, case]',
+    `    if: \${{ !cancelled() && ${SKIP_CONDITION} && needs.case.result == 'success' }}`,
+    '  gate:',
+    '    needs: [changes, case, heavy]',
+    '    if: always()',
+    '    steps:',
+    '      - env:',
+    '          LANE: ${{ needs.changes.outputs.lane }}',
+    ...extraJobs,
+    '',
+  ].join('\n');
+}
+
+test('lane contract: the deliberate shapes pass', () => {
+  assert.deepEqual(laneContract(laneWorkflow()), []);
+});
+
+test('lane contract: every other way to skip a job on the lane is refused', () => {
+  const problems = (options) => laneContract(laneWorkflow(options)).join('\n');
+  assert.match(problems({ queueTested: '' }), /QUEUE_TESTED_JOBS lists \[\] but QUEUE_TESTED_CONDITION is carried by \[heavy\]/);
+  assert.match(problems({ queueTested: 'heavy case' }), /QUEUE_TESTED_JOBS lists \[case, heavy\]/);
+  assert.match(problems({ queueTested: 'heavy ghost', extraJobs: [] }), /names ghost, which is not a job/);
+  assert.match(problems({ extraJobs: [
+    '  adhoc:',
+    '    needs: [changes]',
+    "    if: ${{ !cancelled() && needs.changes.outputs.lane == 'full' }}",
+  ] }), /adhoc: its if: gates on the lane outside/);
+  assert.match(problems({ extraJobs: [
+    '  orphan:',
+    `    if: \${{ !cancelled() && ${DEFER_CONDITION} }}`,
+  ] }), /orphan: its if: reads the lane but it does not need changes/);
+  assert.match(problems({ extraJobs: [
+    '  bare:',
+    '    needs: [changes]',
+    `    if: \${{ ${DEFER_CONDITION} }}`,
+  ] }), /bare: a lane-gated job must start its if: with !cancelled\(\) &&/);
+  // An aggregator that requires success but cannot tell a lane skip from a
+  // failure would fail every quick pull request.
+  assert.match(problems({ extraJobs: [
+    '  strict:',
+    '    needs: [heavy]',
+    '    if: always()',
+    '    steps:',
+    "      - run: '[[ \"${{ needs.heavy.result }}\" == success ]]'",
+  ] }), /strict: needs heavy, which a lane skips, but neither skips with it nor reads the lane/);
+  // The same job with the deferral it depends on is fine.
+  assert.equal(problems({ extraJobs: [
+    '  smoke:',
+    '    needs: [changes, heavy]',
+    `    if: \${{ !cancelled() && ${DEFER_CONDITION} && ${QUEUE_TESTED_CONDITION} && needs.heavy.result == 'success' }}`,
+  ], queueTested: 'heavy smoke' }), '');
+  assert.match(laneContract('jobs:\n  test:\n    runs-on: x\n').join('\n'), /has no changes job/);
+});
+
+test('ci.yml closure: deferred jobs are outside the docs audit', () => {
+  // A deferred job is skipped in the docs lane too, but the merge queue runs
+  // it on the commit that lands, so what it reads does not bind prose.
+  const workflow = laneWorkflow();
+  const closure = skippedJobClosure(workflow, () => null);
+  assert.deepEqual(closure.jobs, ['light', 'follower']);
+});
+
 test('raw diff parsing is strict', () => {
   const raw = ':100644 100644 aaaa bbbb M\0docs/a.md\0:000000 120000 0000 cccc A\0docs/link\0';
   assert.deepEqual(parseRawDiff(raw), [
@@ -372,6 +506,27 @@ test('end to end on a pull_request merge commit, failing closed on anything odd'
     const malformed = lane(['--event'], '');
     assert.equal(malformed.lane, FULL_LANE);
     assert.match(malformed.reasons[0], /classifier error, failing closed/);
+
+    // A ci.yml that gates a job on the lane any other way never takes the
+    // docs lane, even for prose nothing reads.
+    git('checkout', '-q', 'main');
+    write('.github/workflows/ci.yml', [
+      'jobs:',
+      '  changes:',
+      '    runs-on: ubuntu-latest',
+      '  security-case:',
+      '    needs: [changes]',
+      `    if: \${{ !cancelled() && ${SKIP_CONDITION} }}`,
+      '  e2e:',
+      '    needs: [changes]',
+      "    if: ${{ !cancelled() && needs.changes.outputs.lane == 'full' }}",
+      '',
+    ].join('\n'));
+    git('commit', '-q', '-am', 'ad-hoc lane condition');
+    mergePullRequest('prose-after-contract-break', () => write('docs/free.md', 'free, edited again\n'));
+    const broken = lane(['--event', 'pull_request']);
+    assert.equal(broken.lane, FULL_LANE);
+    assert.match(broken.reasons.join('\n'), /breaks the lane contract: e2e: its if: gates on the lane outside/);
   } finally {
     rmSync(repo, { recursive: true, force: true });
     rmSync(output, { force: true });

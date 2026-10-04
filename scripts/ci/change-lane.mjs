@@ -1,14 +1,20 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: Apache-2.0
 /**
- * CI change-lane classifier.
+ * CI change-lane classifier and lane contract.
  *
- * Decides whether a pull request may take the prose fast lane in
- * .github/workflows/ci.yml. The answer is `docs` only when every changed path
+ * ci.yml's `changes` job picks one of four lanes (FULL_LANE, QUICK_LANE,
+ * DOCS_LANE, TESTED_LANE; the job's header comment says when). This file
+ * holds the job-level conditions every lane-gated job carries, the contract
+ * those conditions must keep (laneContract), and the prose classifier.
+ *
+ * The classifier decides whether a quick-lane pull request may also take the
+ * prose lane. The answer is `docs` only when every changed path
  * is prose (docs/, standards/ or papers/ prose files, or a root *.md) AND no
  * source that a docs-lane-skipped job executes or reads names a changed path
- * or one of its directories. Everything else, including any classifier
- * error, is `full`.
+ * or one of its directories, and ci.yml keeps the lane contract. Everything
+ * else, including any classifier error, is `full`, which the `changes` job
+ * reads as "not docs" (a pull request then takes the quick lane).
  *
  * The fast lane never skips a job that reads prose: `test` (dozens of suites
  * read docs/ and standards/), `build`, `e2e` and `docker-build` (the app
@@ -16,7 +22,11 @@
  * language, claim, proof-stat, preprint, observatory, docs-secrets and
  * docs-consistency checks all still run. It skips only the jobs whose `if:`
  * carries SKIP_CONDITION, and it derives that set from ci.yml at run time.
- * Pushes to main and merge groups always run the full lane.
+ * The jobs a quick-lane pull request defers to the merge queue carry
+ * DEFER_CONDITION instead; they are skipped in the docs lane too, but the
+ * merge queue, not this audit, is what makes that safe, so they are outside
+ * the audited closure. Pushes to main and merge groups never take the docs
+ * lane.
  *
  * In CI this file is never taken from the pull request: the `changes` job in
  * ci.yml runs the copy (and self-test) from the base commit, and sends any
@@ -38,6 +48,10 @@ import { pathToFileURL } from 'node:url';
 
 export const DOCS_LANE = 'docs';
 export const FULL_LANE = 'full';
+/** A pull request without the `full-ci` label: DEFER_CONDITION jobs skip. */
+export const QUICK_LANE = 'quick';
+/** A push to main the merge queue already tested: QUEUE_TESTED_CONDITION jobs skip. */
+export const TESTED_LANE = 'tested';
 
 /**
  * The exact job-level condition that marks a ci.yml job as docs-lane-skipped.
@@ -46,6 +60,24 @@ export const FULL_LANE = 'full';
  * the `changes` job reports.
  */
 export const SKIP_CONDITION = "(github.event_name != 'pull_request' || needs.changes.outputs.lane != 'docs')";
+
+/**
+ * The job-level condition that defers a heavy job from a quick or docs pull
+ * request to the merge queue. Like SKIP_CONDITION it names the event, and it
+ * compares with != only, so an empty lane (a failed `changes` job) runs the
+ * job.
+ */
+export const DEFER_CONDITION = "(github.event_name != 'pull_request' || (needs.changes.outputs.lane != 'quick' && needs.changes.outputs.lane != 'docs'))";
+
+/**
+ * The job-level condition that skips a job on a push to main whose exact
+ * commit already passed it in a merge_group run. The `changes` job checks
+ * the jobs listed in its QUEUE_TESTED_JOBS, and laneContract requires that
+ * list to equal the set of jobs carrying this condition.
+ */
+export const QUEUE_TESTED_CONDITION = "(github.event_name != 'push' || needs.changes.outputs.lane != 'tested')";
+
+const LANE_CONDITIONS = [SKIP_CONDITION, DEFER_CONDITION, QUEUE_TESTED_CONDITION];
 
 /** Directories whose prose files are docs-lane candidates. */
 export const DOCS_ROOTS = ['docs/', 'standards/', 'papers/'];
@@ -186,6 +218,91 @@ export function jobBlocks(workflow) {
     blocks.set(header[1], body.slice(start, end));
   });
   return blocks;
+}
+
+/**
+ * A job block's `needs:` list (inline list, scalar or block list).
+ *
+ * @param {string} block
+ * @returns {string[]}
+ */
+export function jobNeeds(block) {
+  const inline = /^ {4}needs:[ \t]*(\S[^\n]*)$/m.exec(block);
+  if (inline) {
+    const value = inline[1].replace(/\s+#.*$/, '').trim();
+    const list = value.startsWith('[') ? value.slice(1, value.lastIndexOf(']')) : value;
+    return list.split(',').map((name) => name.trim()).filter(Boolean);
+  }
+  const listed = /^ {4}needs:[ \t]*\n((?: {6}- [^\n]+\n?)+)/m.exec(block);
+  return listed ? [...listed[1].matchAll(/^ {6}- ([^\s#]+)/gm)].map((match) => match[1]) : [];
+}
+
+/**
+ * A job block's job-level `if:` expression, or ''.
+ *
+ * @param {string} block
+ * @returns {string}
+ */
+export function jobCondition(block) {
+  return /^ {4}if:[ \t]*([^\n]*)$/m.exec(block)?.[1].trim() ?? '';
+}
+
+/**
+ * Checks that ci.yml gates jobs on the lane only in the ways the lanes are
+ * defined, so a skipped job is always one of the deliberate skips:
+ *
+ *   - a lane condition is only ever SKIP_CONDITION, DEFER_CONDITION or
+ *     QUEUE_TESTED_CONDITION, verbatim, in a job that needs `changes`;
+ *   - the `changes` job's QUEUE_TESTED_JOBS lists exactly the jobs carrying
+ *     QUEUE_TESTED_CONDITION, so a push skips only jobs whose merge-queue
+ *     result it checked;
+ *   - a job that needs a deferred or deduplicated job either carries the same
+ *     condition, requires that job's success in its own `if:` (so it is
+ *     skipped with it), or reads the lane (an aggregator that tells a lane
+ *     skip from a failure).
+ *
+ * @param {string} workflow ci.yml text
+ * @returns {string[]} problems; empty when the contract holds
+ */
+export function laneContract(workflow) {
+  const blocks = jobBlocks(workflow);
+  /** @type {string[]} */
+  const problems = [];
+  if (!blocks.has('changes')) return [`${CI_WORKFLOW} has no changes job`];
+  /** @type {Map<string, { needs: string[], condition: string, block: string }>} */
+  const jobs = new Map();
+  for (const [name, block] of blocks) jobs.set(name, { needs: jobNeeds(block), condition: jobCondition(block), block });
+  const carriers = (condition) => [...jobs].filter(([, job]) => job.condition.includes(condition)).map(([name]) => name);
+
+  for (const [name, job] of jobs) {
+    if (!job.condition.includes('outputs.lane')) continue;
+    if (!job.needs.includes('changes')) problems.push(`${name}: its if: reads the lane but it does not need changes`);
+    const rest = LANE_CONDITIONS.reduce((text, condition) => text.split(condition).join(''), job.condition);
+    if (rest.includes('outputs.lane')) problems.push(`${name}: its if: gates on the lane outside SKIP_CONDITION, DEFER_CONDITION and QUEUE_TESTED_CONDITION`);
+    if (!/^\$\{\{\s*!cancelled\(\)\s*&&/.test(job.condition)) problems.push(`${name}: a lane-gated job must start its if: with !cancelled() &&`);
+  }
+
+  const declared = /^\s*QUEUE_TESTED_JOBS:[ \t]*([^\n]*)$/m.exec(blocks.get('changes') ?? '');
+  const listed = (declared?.[1] ?? '').replace(/\s+#.*$/, '').split(/\s+/).filter(Boolean).sort();
+  const deduplicated = carriers(QUEUE_TESTED_CONDITION).sort();
+  if (listed.join(' ') !== deduplicated.join(' ')) {
+    problems.push(`changes: QUEUE_TESTED_JOBS lists [${listed.join(', ')}] but QUEUE_TESTED_CONDITION is carried by [${deduplicated.join(', ')}]`);
+  }
+  for (const name of listed) if (!jobs.has(name)) problems.push(`changes: QUEUE_TESTED_JOBS names ${name}, which is not a job`);
+
+  for (const condition of [DEFER_CONDITION, QUEUE_TESTED_CONDITION]) {
+    const skipped = new Set(carriers(condition));
+    for (const [name, job] of jobs) {
+      if (job.condition.includes(condition)) continue;
+      for (const need of job.needs.filter((n) => skipped.has(n))) {
+        const followsSuccess = job.condition.includes(`needs.${need}.result == 'success'`);
+        if (!followsSuccess && !job.block.includes('needs.changes.outputs.lane')) {
+          problems.push(`${name}: needs ${need}, which a lane skips, but neither skips with it nor reads the lane`);
+        }
+      }
+    }
+  }
+  return problems;
 }
 
 /**
@@ -592,6 +709,7 @@ export function repositoryAudit(cwd) {
   /** @type {string[]} */
   const violations = [];
   if (closure.jobs.length === 0) violations.push(`${CI_WORKFLOW} has no docs-lane-skipped jobs to audit`);
+  for (const problem of laneContract(workflow)) violations.push(`${CI_WORKFLOW} breaks the lane contract: ${problem}`);
   for (const checker of reachableKeptCheckers(tracked, closure.text, read)) {
     violations.push(`${checker} reads prose and is reachable from a docs-lane-skipped job`);
   }
