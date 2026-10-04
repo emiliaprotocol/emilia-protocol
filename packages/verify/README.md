@@ -981,6 +981,40 @@ evidence under the constructor's pins; a saved positive result is not trusted
 evidence. Required subject thresholds count only native-verified identities,
 and required relations must bind the target evidence digest.
 
+Replay records carry `algorithm_revision` `EP-AEC-EVALUATOR-08-v1`. `replay`
+compares the complete record only when it was made by that revision and
+reports `comparison` as `MATCH`, `MISMATCH`, `UNSUPPORTED_REVISION` or
+`RECORD_INVALID`. A stored `EP-AEC-EVALUATOR-07-v1` record is reported
+`UNSUPPORTED_REVISION`: it is not relabeled or recomputed under -08, and the
+returned `result` is a new -08 record with its own digest.
+
+### Requirement expressions
+
+The requirement `expression` is parsed once, when the evaluator is
+constructed, and evaluation runs on that tree. A malformed expression or one
+over the fixed caps (4096 UTF-8 octets, 256 tokens counting identifiers,
+operators and parentheses, 32 levels of nesting) is refused at construction
+with `aec_requirement_invalid`; no replay record exists for it. The lexer
+takes the longest identifier run before classifying it, so `aORb` and `ORb`
+are identifiers and only an exact `AND` or `OR` is an operator; lowercase
+`and` and `or` are ordinary identifiers, and identifiers are case-sensitive.
+Only space, tab, CR and LF separate tokens. Operators group left to right:
+`a OR b AND c` means `((a OR b) AND c)`. AND and OR remain valid native
+component types; only the expression reserves them.
+
+`compileAecRequirementExpression(expression)` and
+`evaluateAecRequirementExpression(expression, eligibleTypes)` expose the same
+parse as diagnostics: syntax `VALID` or `INVALID`, the refusal class
+(`syntax` or `limit`), the Boolean value, the canonical fully parenthesized
+parse and a parse identity (`sha256:` over `EP-AEC-EXPRESSION-PARSE-v1`, one
+zero octet and the canonical parse). The evaluator exposes the same values as
+`requirement_expression`. The parse identity says how an implementation
+grouped the expression; a matching parse identity does not guarantee a
+matching verdict, and it never travels in the v1 requirement or replay
+objects. The requirement profile digest still commits to the expression
+exactly as stored. The frozen corpus is
+`conformance/vectors/aec-expression.v1.json`.
+
 A native verifier callback returns two separate results, as AEC-07 Section 6
 requires. `verified` says the artifact's cryptographic and structural checks
 passed under the verification key. `accepted` says the relying party's pinned

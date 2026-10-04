@@ -10,6 +10,9 @@
 // signoffs, quorum, revocation, time-attestation, trust-receipt, provenance,
 // evidence-record, canonicalization, boundary, AEC acceptance, and the opt-in profiles currency,
 // initiator-attestation, consumption-proof, witness, and timestamp-proof.
+// Profile suites (PROFILE_SUITES in suites.mts, such as the AEC -08
+// requirement-expression corpus) run after them under the same agreement rule
+// and fail the run on any divergence, but stay outside the live totals.
 //
 // timestamp-proof (RFC 3161) is now in the cross-language runner: the JS minimal
 // DER/CMS reader was ported faithfully to Python (pure-Python DER reader +
@@ -22,7 +25,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { LIVE_SUITE_FILES } from './suites.mjs';
+import { LIVE_SUITE_FILES, PROFILE_SUITE_FILES } from './suites.mjs';
 import {
   buildSuiteContract,
   compareResultRow,
@@ -51,13 +54,15 @@ const ALL_IMPLS = IMPLS.map((i) => i.lang);
 let totalFailures = 0;
 let anyRan = false;
 const completedSuites: string[] = [];
+const completedProfiles: string[] = [];
 // Track every impl that was skipped in ANY suite. The "three independent
 // implementations agree" claim is only honest if all three actually ran on
 // every suite — a skipped impl (e.g. missing go/python) must FAIL the run, not
 // be silently papered over. (MED audit finding: over-claimed conformance.)
 const missingImpls = new Set();
 
-for (const suiteFile of SUITES) {
+for (const suiteFile of [...SUITES, ...PROFILE_SUITE_FILES]) {
+  const profile = (PROFILE_SUITE_FILES as readonly string[]).includes(suiteFile);
   const vectorsPath = resolve(root, 'conformance/vectors', suiteFile);
   const executionFile = executionSuiteFile(suiteFile);
   const executionPath = resolve(root, 'conformance/vectors', executionFile);
@@ -69,7 +74,12 @@ for (const suiteFile of SUITES) {
       ? suite
       : JSON.parse(readFileSync(executionPath, 'utf8'));
   }
-  catch { console.log(`\n⚠ ${suiteFile}: not found — skipped`); continue; }
+  catch {
+    console.log(`\n⚠ ${suiteFile}: not found — skipped`);
+    // A registered profile suite that cannot be read is a failure, not a skip.
+    if (profile) totalFailures++;
+    continue;
+  }
   const contract = buildSuiteContract(suiteFile, suite, executionSuite);
 
   const results: Record<string, any> = {};
@@ -87,10 +97,10 @@ for (const suiteFile of SUITES) {
     }
   }
 
-  console.log(`\n${suite.suite || suiteFile} — ${suite.vectors.length} vectors`);
+  console.log(`\n${suite.suite || suiteFile}${profile ? ' (profile suite, not in the live totals)' : ''} — ${suite.vectors.length} vectors`);
   if (ran.length === 0) { console.log('  (no implementations ran)'); totalFailures++; continue; }
   anyRan = true;
-  completedSuites.push(suite.suite || suiteFile);
+  (profile ? completedProfiles : completedSuites).push(suite.suite || suiteFile);
   const head = `  ${pad('vector', 48)}${pad('expect', 16)}${ran.map((l) => pad(l, 12)).join('')}`;
   console.log(head);
   console.log('  ' + '─'.repeat(head.length - 2));
@@ -121,4 +131,7 @@ if (missingImpls.size > 0) {
   process.exit(1);
 }
 console.log(`\n✅ all ${completedSuites.length} suites (${completedSuites.join(' · ')}) — all ${ALL_IMPLS.length} cross-language implementations (${ALL_IMPLS.join(', ')}) agree. One team, one repository: a consistency check, not independent reimplementations.`);
+if (completedProfiles.length) {
+  console.log(`✅ profile suites outside the live totals, same agreement: ${completedProfiles.join(' · ')}. Each covers only the contract its scope names (conformance/suites.mjs).`);
+}
 process.exit(0);

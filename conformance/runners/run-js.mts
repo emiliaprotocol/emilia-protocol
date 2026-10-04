@@ -6,7 +6,7 @@ import { evaluatePredictedEffects } from '../../packages/verify/effect-predicate
 import { verifyTimestampProof } from '../../packages/verify/timestamp-proof.js';
 import { verifyAuthorityProofViaDocument } from '../../lib/authority/document-proof-join.js';
 import { artifactDigest, EVIDENCE_GRAPH_VERSION, evaluateEvidenceGraph } from '../../lib/evidence/evidence-graph.js';
-import { verifyAuthorizationChain } from '../../packages/verify/evidence-chain.js';
+import { verifyAuthorizationChain, evaluateAecRequirementExpression } from '../../packages/verify/evidence-chain.js';
 import { verifyResolutionReceipt } from '../../packages/verify/resolution.js';
 import { strictParseGate } from './strict-json.mjs';
 import { createHash } from 'node:crypto';
@@ -201,6 +201,13 @@ const out = vectors.map((v) => {
   // EP-TIMESTAMP-PROOF-v1 (RFC 3161): valid iff the pinned TSA's TimeStampToken
   // verifies over the expected digest (fail-closed on any refusal).
   if (v.timestamp_proof !== undefined) return { id: v.id, ...validResult(verifyTimestampProof(v.timestamp_proof, v.expected_digest, v.pinned_tsa_keys).verified) };
+  // EP-AEC-EXPRESSION-v1: syntax, refusal class, value, result, canonical parse
+  // and parse identity of one requirement expression, each compared separately.
+  if (v.aec_expression) {
+    const e = evaluateAecRequirementExpression(v.aec_expression.expression, v.aec_expression.eligible_types);
+    return { id: v.id, syntax: e.syntax, invalid_class: e.invalid_class, value: e.value, result: e.result,
+      canonical_parse: e.canonical_parse, parse_identity: e.parse_identity };
+  }
   // EP-AEC-ROLE-v1: valid iff the evidence requirement is SATISFIED, with the built-in
   // ep-receipt using role-scoped pins (keys_by_type) and a permissive stub for
   // each stub_type. Exercises real signatures, role scoping, and signed binding.

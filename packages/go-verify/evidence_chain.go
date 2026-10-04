@@ -353,110 +353,248 @@ func aecIdentChar(c byte) bool {
 		c == '_' || c == '.' || c == ':' || c == '-'
 }
 
-func aecTokenize(s string) ([]string, bool) {
-	if len(s) == 0 || len(s) > aecMaxRequirementLength {
-		return nil, false
+// AEC -08 requirement expressions (evaluator EP-AEC-EVALUATOR-08-v1).
+//
+// Mirrors compileAecRequirementExpression in packages/verify/src/evidence-chain.ts:
+// the lexer takes the LONGEST identifier run and only then classifies it (a
+// complete run of exactly AND or OR is an operator; every other run, such as
+// "and", "Or" or "aORb", is an identifier); only SP, HTAB, CR and LF are
+// whitespace; operators group left to right with equal precedence; the caps
+// are 4096 UTF-8 octets, 256 tokens (identifiers, operators and parentheses
+// all count) and 32 levels of nesting. Refusal order: length, then the lexer
+// left to right, then the parser left to right. One parse produces one tree;
+// the canonical parse, parse identity and Boolean value all come from it. The
+// parse identity is an interpretation diagnostic: a matching identity does not
+// guarantee a matching verdict.
+
+// AECExpressionParseDomain separates the parse identity hash.
+const AECExpressionParseDomain = "EP-AEC-EXPRESSION-PARSE-v1"
+
+type aecExprToken struct {
+	kind string // "id", "op", "(", ")"
+	text string
+}
+
+type aecExprNode struct {
+	ident       string
+	op          string // "" for an identifier, otherwise AND or OR
+	left, right *aecExprNode
+}
+
+type aecExprRefusal struct{ class, detail string }
+
+func aecIsExprWS(c byte) bool { return c == ' ' || c == '\t' || c == '\r' || c == '\n' }
+
+// aecHasExpressionContent reports whether s holds a byte other than SP, HTAB, CR, LF.
+func aecHasExpressionContent(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if !aecIsExprWS(s[i]) {
+			return true
+		}
 	}
-	var toks []string
+	return false
+}
+
+func aecLexExpression(s string) ([]aecExprToken, *aecExprRefusal) {
+	if len(s) > aecMaxRequirementLength {
+		return nil, &aecExprRefusal{"limit", "length_limit"}
+	}
+	var toks []aecExprToken
 	i := 0
 	for i < len(s) {
 		c := s[i]
-		if c == ' ' || c == '\t' || c == '\r' || c == '\n' {
+		if aecIsExprWS(c) {
 			i++
 			continue
 		}
 		if c == '(' || c == ')' {
-			toks = append(toks, string(c))
+			toks = append(toks, aecExprToken{string(c), string(c)})
 			i++
 		} else if (c == '&' || c == '|') && i+1 < len(s) && s[i+1] == c {
-			toks = append(toks, s[i:i+2])
+			op := "AND"
+			if c == '|' {
+				op = "OR"
+			}
+			toks = append(toks, aecExprToken{"op", op})
 			i += 2
 		} else if aecIdentChar(c) {
 			j := i + 1
 			for j < len(s) && aecIdentChar(s[j]) {
 				j++
 			}
-			toks = append(toks, s[i:j])
+			run := s[i:j]
+			if run == "AND" || run == "OR" {
+				toks = append(toks, aecExprToken{"op", run})
+			} else {
+				toks = append(toks, aecExprToken{"id", run})
+			}
 			i = j
 		} else {
-			return nil, false
+			return nil, &aecExprRefusal{"syntax", "invalid_character"}
 		}
 		if len(toks) > aecMaxRequirementTokens {
-			return nil, false
+			return nil, &aecExprRefusal{"limit", "token_limit"}
 		}
 	}
-	return toks, len(toks) > 0
+	if len(toks) == 0 {
+		return nil, &aecExprRefusal{"syntax", "empty"}
+	}
+	return toks, nil
 }
 
-func aecEvalRequirement(expr string, satisfied map[string]bool) (bool, bool) {
-	toks, tokenOK := aecTokenize(expr)
-	if !tokenOK {
-		return false, false
+func aecParseExpression(s string) (*aecExprNode, int, *aecExprRefusal) {
+	toks, refusal := aecLexExpression(s)
+	if refusal != nil {
+		return nil, 0, refusal
 	}
 	i := 0
-	peek := func() string {
-		if i < len(toks) {
-			return toks[i]
+	var parseExpr func(int) (*aecExprNode, *aecExprRefusal)
+	var parseTerm func(int) (*aecExprNode, *aecExprRefusal)
+	parseTerm = func(depth int) (*aecExprNode, *aecExprRefusal) {
+		if i >= len(toks) {
+			return nil, &aecExprRefusal{"syntax", "unexpected_end"}
 		}
-		return ""
-	}
-	eat := func() string {
-		t := peek()
-		if i < len(toks) {
+		t := toks[i]
+		if t.kind == "(" {
 			i++
-		}
-		return t
-	}
-	var parseExpr func(int) (bool, bool)
-	var parseTerm func(int) (bool, bool)
-	parseTerm = func(depth int) (bool, bool) {
-		if peek() == "(" {
-			eat()
-			v, ok := parseExpr(depth + 1)
-			if !ok || peek() != ")" {
-				return false, false
+			inner, r := parseExpr(depth + 1)
+			if r != nil {
+				return nil, r
 			}
-			eat()
-			return v, true
+			if i >= len(toks) {
+				return nil, &aecExprRefusal{"syntax", "unclosed_group"}
+			}
+			if toks[i].kind != ")" {
+				return nil, &aecExprRefusal{"syntax", "unexpected_token"}
+			}
+			i++
+			return inner, nil
 		}
-		id := eat()
-		if id == "" || id == ")" || id == "AND" || id == "OR" || id == "&&" || id == "||" || !aecIdent.MatchString(id) {
-			return false, false
+		if t.kind != "id" {
+			return nil, &aecExprRefusal{"syntax", "unexpected_token"}
 		}
-		return satisfied[id], true
+		i++
+		return &aecExprNode{ident: t.text}, nil
 	}
-	parseExpr = func(depth int) (bool, bool) {
+	parseExpr = func(depth int) (*aecExprNode, *aecExprRefusal) {
 		if depth > aecMaxRequirementDepth {
-			return false, false
+			return nil, &aecExprRefusal{"limit", "depth_limit"}
 		}
-		v, ok := parseTerm(depth)
-		if !ok {
-			return false, false
+		node, r := parseTerm(depth)
+		if r != nil {
+			return nil, r
 		}
-		for {
-			p := peek()
-			if p == "AND" || p == "&&" || p == "OR" || p == "||" {
-				eat()
-				r, rightOK := parseTerm(depth)
-				if !rightOK {
-					return false, false
-				}
-				if p == "AND" || p == "&&" {
-					v = v && r
-				} else {
-					v = v || r
-				}
-			} else {
-				break
+		for i < len(toks) && toks[i].kind == "op" {
+			op := toks[i].text
+			i++
+			right, rr := parseTerm(depth)
+			if rr != nil {
+				return nil, rr
 			}
+			node = &aecExprNode{op: op, left: node, right: right}
 		}
-		return v, true
+		return node, nil
 	}
-	v, ok := parseExpr(0)
-	if !ok || i != len(toks) {
-		return false, false
+	tree, r := parseExpr(0)
+	if r != nil {
+		return nil, 0, r
 	}
-	return v, true
+	if i != len(toks) {
+		return nil, 0, &aecExprRefusal{"syntax", "trailing_input"}
+	}
+	return tree, len(toks), nil
+}
+
+func aecRenderExpression(n *aecExprNode) string {
+	if n.op == "" {
+		return n.ident
+	}
+	return "(" + aecRenderExpression(n.left) + " " + n.op + " " + aecRenderExpression(n.right) + ")"
+}
+
+func aecParseIdentity(canonical string) string {
+	h := sha256.New()
+	h.Write([]byte(AECExpressionParseDomain))
+	h.Write([]byte{0})
+	h.Write([]byte(canonical))
+	return "sha256:" + hex.EncodeToString(h.Sum(nil))
+}
+
+func aecEvalExpressionTree(n *aecExprNode, eligible map[string]bool) bool {
+	if n.op == "" {
+		return eligible[n.ident]
+	}
+	left := aecEvalExpressionTree(n.left, eligible)
+	right := aecEvalExpressionTree(n.right, eligible)
+	if n.op == "AND" {
+		return left && right
+	}
+	return left || right
+}
+
+// AECExpressionEvaluation keeps syntax validity apart from truth. Value,
+// CanonicalParse and ParseIdentity are nil for an invalid expression.
+type AECExpressionEvaluation struct {
+	Syntax         string  `json:"syntax"`
+	InvalidClass   *string `json:"invalid_class"`
+	Value          *bool   `json:"value"`
+	Result         string  `json:"result"`
+	CanonicalParse *string `json:"canonical_parse"`
+	ParseIdentity  *string `json:"parse_identity"`
+}
+
+// AECCompiledExpression is one parse of a requirement expression; Evaluate
+// reads only that tree.
+type AECCompiledExpression struct {
+	Valid          bool
+	InvalidClass   string
+	Detail         string
+	TokenCount     int
+	CanonicalParse string
+	ParseIdentity  string
+	tree           *aecExprNode
+}
+
+// CompileAECRequirementExpression parses once and exposes the tree's
+// diagnostics. Expression agreement with the JS reference is not conformance
+// to the structured -07/-08 requirement and replay contract, which this
+// package does not implement.
+func CompileAECRequirementExpression(expr string) AECCompiledExpression {
+	tree, count, refusal := aecParseExpression(expr)
+	if refusal != nil {
+		return AECCompiledExpression{InvalidClass: refusal.class, Detail: refusal.detail}
+	}
+	canonical := aecRenderExpression(tree)
+	return AECCompiledExpression{Valid: true, TokenCount: count, CanonicalParse: canonical,
+		ParseIdentity: aecParseIdentity(canonical), tree: tree}
+}
+
+// Evaluate computes the Boolean value of the compiled tree over the eligible types.
+func (c AECCompiledExpression) Evaluate(eligible map[string]bool) AECExpressionEvaluation {
+	if !c.Valid || c.tree == nil {
+		class := c.InvalidClass
+		if class == "" {
+			class = "syntax"
+		}
+		return AECExpressionEvaluation{Syntax: "INVALID", InvalidClass: &class, Result: "UNSATISFIED"}
+	}
+	value := aecEvalExpressionTree(c.tree, eligible)
+	result := "UNSATISFIED"
+	if value {
+		result = "SATISFIED"
+	}
+	canonical, identity := c.CanonicalParse, c.ParseIdentity
+	return AECExpressionEvaluation{Syntax: "VALID", Value: &value, Result: result,
+		CanonicalParse: &canonical, ParseIdentity: &identity}
+}
+
+// EvaluateAECRequirementExpression compiles once, then evaluates that tree.
+func EvaluateAECRequirementExpression(expr string, eligibleTypes []string) AECExpressionEvaluation {
+	eligible := make(map[string]bool, len(eligibleTypes))
+	for _, t := range eligibleTypes {
+		eligible[t] = true
+	}
+	return CompileAECRequirementExpression(expr).Evaluate(eligible)
 }
 
 func callAECVerifier(v ComponentVerifier, evidence any, ctx map[string]any) (result ComponentResult) {
@@ -489,7 +627,13 @@ func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]Component
 
 // VerifyAuthorizationChainWithOptions is the profile-aware AEC verifier.
 func VerifyAuthorizationChainWithOptions(aec map[string]any, verifiers map[string]ComponentVerifier, keysByType map[string]map[string]string, opts AECOptions) AECResult {
-	pinned := strings.TrimSpace(opts.Requirement)
+	// Only SP, HTAB, CR and LF are expression whitespace (AEC -08). A pinned
+	// requirement is evaluated exactly as supplied, never trimmed: trimming
+	// Unicode spaces here once let "\u00a0a" evaluate as "a".
+	pinned := ""
+	if aecHasExpressionContent(opts.Requirement) {
+		pinned = opts.Requirement
+	}
 	policiesByType := opts.PoliciesByType
 	res := AECResult{RequirementSource: "presenter"}
 	if pinned != "" {
@@ -524,12 +668,14 @@ func VerifyAuthorizationChainWithOptions(aec map[string]any, verifiers map[strin
 	req, reqOk := aec["requirement"].(string)
 	if pinned != "" {
 		req = pinned
-	} else if !reqOk || strings.TrimSpace(req) == "" {
+	} else if !reqOk || !aecHasExpressionContent(req) {
 		return fail("missing requirement expression")
 	}
 	if len(req) > aecMaxRequirementLength {
 		return fail("requirement expression exceeds size limit")
 	}
+	// Parse once, before component work; the verdict is computed on this tree.
+	compiledRequirement := CompileAECRequirementExpression(req)
 	chainDigest := ActionDigest(action)
 	res.ActionDigest = chainDigest
 	expectedDigest := ""
@@ -596,7 +742,9 @@ func VerifyAuthorizationChainWithOptions(aec map[string]any, verifiers map[strin
 		}
 		res.Components = append(res.Components, row)
 	}
-	value, expressionValid := aecEvalRequirement(req, satisfied)
+	evaluated := compiledRequirement.Evaluate(satisfied)
+	expressionValid := evaluated.Syntax == "VALID"
+	value := expressionValid && *evaluated.Value
 	res.Satisfied = pinned != "" && expectedDigest != "" && expressionValid && value
 	res.Allow = res.Satisfied
 	if !expressionValid {
@@ -611,7 +759,7 @@ func VerifyAuthorizationChainWithOptions(aec map[string]any, verifiers map[strin
 		res.Reasons = append(res.Reasons, "relying-party expected action is required for satisfaction")
 	}
 	if pinned != "" && reqOk {
-		if presenter := strings.TrimSpace(aec["requirement"].(string)); presenter != "" && presenter != pinned {
+		if presenter := aec["requirement"].(string); aecHasExpressionContent(presenter) && presenter != pinned {
 			res.Reasons = append(res.Reasons, fmt.Sprintf("presenter requirement ignored in favor of relying-party requirement (presenter claimed: %q)", presenter))
 		}
 	}

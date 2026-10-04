@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PROFILE_SUITES } from '../conformance/suites.mjs';
 
 const ROOT: string = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifest: any = JSON.parse(fs.readFileSync(path.join(ROOT, 'conformance/conformance-manifest.json'), 'utf8'));
@@ -95,6 +96,13 @@ export function auditClaimText(text: string, file: string = '<text>', expectatio
     }
   }
 
+  // Python and Go share the requirement-expression profile suite with the
+  // JavaScript reference, but only JavaScript implements the structured AEC
+  // requirement and replay contract. Expression agreement is not that.
+  for (const match of text.matchAll(/\b(?:Python|Go)\b(?:\s*(?:,|\/|and)\s*(?:Python|Go|JavaScript|JS))*\s+(?:ports?\s+|verifiers?\s+)?(?:implements?|conforms?\s+to|pass(?:es)?|supports?)\s+(?:the\s+)?structured\s+(?:AEC\s+)?(?:-?0?\d+(?:\/-?0?\d+)?\s+)?(?:requirement|replay|evaluator)/gi)) {
+    if (isNegated(text, match.index)) continue;
+    findings.push(finding(file, text, match, 'Python and Go implement AEC requirement-expression evaluation only, not the structured requirement and replay contract'));
+  }
   for (const match of text.matchAll(/\b(\d+)\s+(?:cross-language\s+)?conformance\s+suites?\b/gi)) {
     const external = isExternalBaselineClaim(text, match.index);
     const expected = external ? externalSuites : suites;
@@ -226,6 +234,31 @@ function renderLlmContext(): Map<string, string> {
   }
 }
 
+/** Profile suites are executed by every port and recorded in the manifest,
+ * never folded into the live totals, and each carries the scope it claims. */
+export function auditProfileSuites(currentManifest: any = manifest, registry: readonly { file: string; claim_scope: string }[] = PROFILE_SUITES): string[] {
+  const problems: string[] = [];
+  const recorded: any[] = Array.isArray(currentManifest?.profile_suites) ? currentManifest.profile_suites : [];
+  const liveVectors = (currentManifest?.suites ?? []).reduce((sum: number, suite: any) => sum + suite.vectors, 0);
+  if (liveVectors !== currentManifest?.totals?.vectors || (currentManifest?.suites ?? []).length !== currentManifest?.totals?.suites) {
+    problems.push('live totals must count exactly the live suites; profile suites stay outside them');
+  }
+  if (recorded.length !== registry.length) problems.push(`manifest records ${recorded.length} profile suites; conformance/suites.mjs registers ${registry.length}`);
+  for (const entry of registry) {
+    const match = recorded.find((suite: any) => suite?.path === `conformance/vectors/${entry.file}`);
+    if (!match) { problems.push(`profile suite ${entry.file} is not recorded in the conformance manifest`); continue; }
+    if (match.claim_scope !== entry.claim_scope) problems.push(`profile suite ${entry.file} claim scope differs from conformance/suites.mjs`);
+    if (/aec-expression/.test(entry.file) && !/not conformance to the structured/.test(entry.claim_scope)) {
+      problems.push(`profile suite ${entry.file} must say expression agreement is not structured AEC conformance`);
+    }
+  }
+  const profileVectors = recorded.reduce((sum: number, suite: any) => sum + (suite?.vectors ?? 0), 0);
+  for (const port of currentManifest?.implementations ?? []) {
+    if (recorded.length && port?.profile_vectors !== profileVectors) problems.push(`${port?.implementation_id} did not run every profile vector`);
+  }
+  return problems;
+}
+
 export function auditRepository(): Finding[] {
   const findings: Finding[] = [];
   const rendered: Map<string, string> = renderLlmContext();
@@ -249,6 +282,9 @@ if (isMain()) {
   if (manifest?.['@version'] !== 'EP-CONFORMANCE-MANIFEST-v1') throw new Error('unsupported conformance manifest');
   if (pin?.['@version'] !== 'EP-EXTERNAL-IMPLEMENTATION-PIN-v1') throw new Error('unsupported external implementation pin');
   const findings = auditRepository();
+  for (const problem of auditProfileSuites()) {
+    findings.push({ file: 'conformance/conformance-manifest.json', line: 1, match: 'profile_suites', message: problem });
+  }
   if (findings.length) {
     console.error(`PUBLIC CONFORMANCE CLAIMS: FAIL (${findings.length} finding(s))`);
     for (const item of findings) console.error(`${item.file}:${item.line}: ${item.message}: ${JSON.stringify(item.match)}`);

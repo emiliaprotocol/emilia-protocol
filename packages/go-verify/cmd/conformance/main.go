@@ -115,6 +115,14 @@ type vec struct {
 	Requirement          string                       `json:"requirement"`
 	ExpectedActionDigest string                       `json:"expected_action_digest"`
 	VerificationTime     string                       `json:"verification_time"`
+	// EP-AEC-EXPRESSION-v1: a requirement expression and the eligible component
+	// types it is evaluated over. Expression level only.
+	AECExpression *aecExpressionVec `json:"aec_expression"`
+}
+
+type aecExpressionVec struct {
+	Expression    string   `json:"expression"`
+	EligibleTypes []string `json:"eligible_types"`
 }
 
 // pinnedTSAKeysFromRaw normalizes the polymorphic `pinned_tsa_keys` vector field
@@ -661,6 +669,13 @@ func main() {
 			_ = json.Unmarshal(v.TimestampProof, &token)
 			keys := pinnedTSAKeysFromRaw(v.PinnedTSAKeys)
 			valid = emiliaverify.VerifyTimestampProof(token, v.ExpectedDigest, keys).Verified
+		case v.AECExpression != nil:
+			// EP-AEC-EXPRESSION-v1: syntax, refusal class, value, result,
+			// canonical parse and parse identity, each compared separately.
+			evaluated := emiliaverify.EvaluateAECRequirementExpression(v.AECExpression.Expression, v.AECExpression.EligibleTypes)
+			encoded, _ := json.Marshal(evaluated)
+			typed = map[string]any{}
+			_ = json.Unmarshal(encoded, &typed)
 		case v.AECChain != nil:
 			// EP-AEC-ROLE-v1: valid iff VerifyAuthorizationChain ALLOWs, with the
 			// built-in ep-receipt using role-scoped pins (keys_by_type) and a

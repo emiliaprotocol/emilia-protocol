@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { canonicalize } from '../packages/verify/index.js';
 import { strictParseGate } from '../conformance/runners/strict-json.mjs';
-import { LIVE_SUITE_FILES } from '../conformance/suites.mjs';
+import { LIVE_SUITE_FILES, PROFILE_SUITES } from '../conformance/suites.mjs';
 import { buildSuiteContract, compareResultRow, executionSuiteFile, validateResultRows, } from '../conformance/result-contract.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLE_PATH = path.join(ROOT, 'conformance/clean-room/bundle.v1.json');
@@ -135,10 +135,22 @@ for (const suiteRef of suiteRefs) {
     }
     suites.push(manifestSuite);
 }
-const implementationResults = [];
-for (const implementation of implementations) {
+const profileSuites = [];
+if (!cleanRoom) {
+    for (const profile of PROFILE_SUITES) {
+        const profilePath = `conformance/vectors/${profile.file}`;
+        const bytes = fs.readFileSync(path.resolve(ROOT, profilePath));
+        const suite = parseStrictJson(bytes.toString('utf8'), `profile suite ${profilePath}`);
+        if (!Array.isArray(suite.vectors) || suite.vectors.length === 0)
+            throw new Error(`profile suite has no vectors: ${profilePath}`);
+        if (typeof profile.claim_scope !== 'string' || !profile.claim_scope)
+            throw new Error(`profile suite has no claim scope: ${profilePath}`);
+        profileSuites.push({ path: profilePath, sha256: sha256(bytes), vectors: suite.vectors.length, claim_scope: profile.claim_scope });
+    }
+}
+function runSuites(implementation, suiteList) {
     const normalized = [];
-    for (const suite of suites) {
+    for (const suite of suiteList) {
         const suitePath = path.resolve(ROOT, suite.path);
         const suiteFile = path.basename(suite.path);
         const executionPath = suite.execution_path
@@ -174,6 +186,12 @@ for (const implementation of implementations) {
         }
     }
     normalized.sort((a, b) => a.suite.localeCompare(b.suite) || a.id.localeCompare(b.id));
+    return normalized;
+}
+const implementationResults = [];
+for (const implementation of implementations) {
+    const normalized = runSuites(implementation, suites);
+    const profileNormalized = profileSuites.length ? runSuites(implementation, profileSuites) : null;
     const runnerBytes = fs.readFileSync(implementation.runner);
     implementationResults.push({
         implementation_id: implementation.id,
@@ -184,6 +202,10 @@ for (const implementation of implementations) {
         suites: suites.length,
         vectors: normalized.length,
         normalized_results_sha256: sha256(Buffer.from(canonicalize(normalized), 'utf8')),
+        ...(profileNormalized ? {
+            profile_vectors: profileNormalized.length,
+            profile_normalized_results_sha256: sha256(Buffer.from(canonicalize(profileNormalized), 'utf8')),
+        } : {}),
         status: 'pass',
     });
 }
@@ -199,6 +221,7 @@ const manifest = {
     },
     suites,
     totals: { suites: suites.length, vectors: vectorCount, implementations: implementationResults.length },
+    ...(profileSuites.length ? { profile_suites: profileSuites } : {}),
     implementations: implementationResults,
 };
 manifest.manifest_sha256 = sha256(Buffer.from(canonicalize(manifest), 'utf8'));
@@ -214,4 +237,4 @@ if (emitPath) {
 }
 if (!check && !emitPath)
     process.stdout.write(output);
-console.error(`CONFORMANCE MANIFEST: PASS (${cleanRoom ? 'clean-room frozen' : 'live'}; ${suites.length} suites, ${vectorCount} vectors, ${implementationResults.length} one-team ports; sha256:${manifest.manifest_sha256})`);
+console.error(`CONFORMANCE MANIFEST: PASS (${cleanRoom ? 'clean-room frozen' : 'live'}; ${suites.length} suites, ${vectorCount} vectors, ${implementationResults.length} one-team ports${profileSuites.length ? `; profile suites outside the totals: ${profileSuites.map((suite) => `${path.basename(suite.path)} (${suite.vectors} vectors)`).join(', ')}` : ''}; sha256:${manifest.manifest_sha256})`);

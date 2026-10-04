@@ -3,6 +3,41 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Structured AEC evaluator revision EP-AEC-EVALUATOR-08-v1
+
+The requirement-expression algorithm is now normative, so the evaluator
+revision changes, as AEC -07 Section 10 requires. Replay digests recorded
+under `EP-AEC-EVALUATOR-07-v1` do not match -08 records, even where the
+Boolean meaning is unchanged. The `EP-AEC-REQUIREMENT-v1` and
+`EP-AEC-REPLAY-v1` envelope versions and member sets are unchanged.
+
+- The expression is parsed once at construction and evaluation runs on that
+  tree. The token rules the parser already followed are now stated and
+  tested: longest identifier run first, exact uppercase `AND` and `OR` as
+  the only word operators, SP, HTAB, CR and LF as the only whitespace,
+  left-to-right grouping, whole-input validation, and the fixed caps of 4096
+  UTF-8 octets, 256 tokens and 32 levels of nesting. The length cap now
+  counts UTF-8 octets instead of UTF-16 code units; an over-long expression
+  containing non-ASCII characters is refused as a limit instead of a syntax
+  error, and is refused either way.
+- `replay()` returns `comparison` (`MATCH`, `MISMATCH`,
+  `UNSUPPORTED_REVISION`, `RECORD_INVALID`) and `recorded_revision`. A record
+  from another evaluator revision is reported `UNSUPPORTED_REVISION`, never
+  compared as -08.
+- New diagnostics: `compileAecRequirementExpression`,
+  `evaluateAecRequirementExpression`, `AEC_EXPRESSION_LIMITS`,
+  `AEC_EXPRESSION_PARSE_DOMAIN`, `AEC_SUPERSEDED_EVALUATOR_REVISIONS`, and the
+  evaluator's `requirement_expression` (canonical parse, parse identity,
+  token count). The parse identity is an interpretation diagnostic, not a
+  verdict guarantee, and is not carried on the wire.
+- Legacy `verifyAuthorizationChain`: a pinned requirement counts as present
+  only if it holds a character other than SP, HTAB, CR or LF, and its length
+  is measured in UTF-8 octets. The Python and Go ports now apply the same
+  rules; the Go port previously trimmed Unicode whitespace from a pinned
+  requirement before evaluating it.
+
 ## 6.0.0 (2026-09-28)
 
 Version type: major. The vendored CAID now refuses actions and adapter

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { auditClaimText } from '../scripts/check-public-conformance-claims.mjs';
+import { auditClaimText, auditProfileSuites } from '../scripts/check-public-conformance-claims.mjs';
 
 describe('public conformance claim guard', () => {
   it('accepts the current evidence boundary', () => {
@@ -81,5 +81,39 @@ describe('public conformance claim guard', () => {
 
   it('still requires an exact bare number to match exactly', () => {
     expect(auditClaimText('5,334 automated test cases across 264 files.', 'exact-ok.md', floorExpectations)).toEqual([]);
+  });
+  it('refuses advertising Python or Go expression agreement as structured AEC conformance', () => {
+    const counts = { suites: 21, vectors: 340, tests: 5334, testFiles: 264 };
+    for (const text of [
+      'The Python and Go ports implement the structured AEC -07/-08 requirement and replay contract.',
+      'Go conforms to the structured requirement contract.',
+      'Python passes the structured AEC replay vectors.',
+    ]) {
+      const findings = auditClaimText(text, 'overclaim.md', counts);
+      expect(findings.map((item) => item.message), text).toEqual([
+        'Python and Go implement AEC requirement-expression evaluation only, not the structured requirement and replay contract',
+      ]);
+    }
+    expect(auditClaimText('Python and Go do not implement the structured AEC requirement and replay contract.', 'ok.md', counts)).toEqual([]);
+    expect(auditClaimText('Python and Go agree on requirement-expression evaluation.', 'ok.md', counts)).toEqual([]);
+  });
+
+  it('keeps profile suites recorded, scoped, run by every port, and outside the live totals', () => {
+    const registry = [{ file: 'aec-expression.v1.json', claim_scope: 'Expression only; not conformance to the structured contract.' }];
+    const manifest = {
+      suites: [{ path: 'conformance/vectors/a.json', vectors: 3 }],
+      totals: { suites: 1, vectors: 3 },
+      profile_suites: [{ path: 'conformance/vectors/aec-expression.v1.json', vectors: 5, claim_scope: registry[0].claim_scope }],
+      implementations: [{ implementation_id: 'js', profile_vectors: 5 }, { implementation_id: 'go', profile_vectors: 5 }],
+    };
+    expect(auditProfileSuites(manifest, registry)).toEqual([]);
+    expect(auditProfileSuites({ ...manifest, totals: { suites: 2, vectors: 8 } }, registry))
+      .toContain('live totals must count exactly the live suites; profile suites stay outside them');
+    expect(auditProfileSuites({ ...manifest, profile_suites: [] }, registry))
+      .toContain('profile suite aec-expression.v1.json is not recorded in the conformance manifest');
+    expect(auditProfileSuites({ ...manifest, implementations: [{ implementation_id: 'go', profile_vectors: 4 }] }, registry))
+      .toContain('go did not run every profile vector');
+    expect(auditProfileSuites(manifest, [{ file: 'aec-expression.v1.json', claim_scope: 'Expression conformance.' }]))
+      .toContain('profile suite aec-expression.v1.json must say expression agreement is not structured AEC conformance');
   });
 });

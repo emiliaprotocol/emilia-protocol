@@ -62,9 +62,11 @@ no render line over 72 columns, the cited revisions are the ones listed in
 
 It also fails unless `packages/verify/src/evidence-chain.ts` on the same tree
 is the evaluator that Sections 10 and 21 describe (it emits
-`EP-AEC-EVALUATOR-07-v1` and has the receipt, key-resolution and per-fact
-result code those sections name), so the packet cannot land on main ahead of
-the code its Implementation Status describes. `feat/verify-aec-07-evaluator`
+`EP-AEC-EVALUATOR-07-v1`, or its declared successor `EP-AEC-EVALUATOR-08-v1`,
+and has the receipt, key-resolution and per-fact result code those sections
+name), so the packet cannot land on main ahead of the code its Implementation
+Status describes. -08 keeps those structures and changes only the
+requirement-expression algorithm, which Section 10 says needs a new revision. `feat/verify-aec-07-evaluator`
 is merged into this branch, and the check passes here.
 
 ## Reference implementation

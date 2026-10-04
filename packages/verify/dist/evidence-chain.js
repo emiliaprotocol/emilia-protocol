@@ -380,85 +380,237 @@ function builtinVerifiers() {
     };
 }
 /**
- * Evaluate a tiny boolean requirement expression over the SET of verified
- * component types. Grammar (safe, no eval):
- *   expr = term *(("AND"/"OR"/"&&"/"||") term)
- *   term = "(" expr ")" / IDENT
- * IDENT matches a verified component `type`. Labels are display-only.
+ * Requirement expressions (AEC -08, evaluator EP-AEC-EVALUATOR-08-v1).
+ *
+ * Case-sensitive grammar (RFC 5234 with RFC 7405 %s literals):
+ *   expression = *WSP term *( *WSP operator *WSP term ) *WSP
+ *   term       = "(" *WSP expression *WSP ")" / identifier
+ *   operator   = %s"AND" / %s"OR" / "&&" / "||"
+ *   identifier = 1*( ALPHA / DIGIT / "_" / "." / ":" / "-" )
+ *   WSP        = SP / HTAB / CR / LF
+ *
+ * Token boundaries: the lexer takes the LONGEST run of identifier characters
+ * and only then classifies the complete run. A run that is exactly AND or OR
+ * is an operator; every other run, including `and`, `Or`, `aORb` and `ORb`,
+ * is an identifier. Identifiers are case-sensitive. AND and OR are reserved
+ * only inside expressions; they stay valid native component types.
+ *
+ * Operators have equal precedence and group left to right:
+ * `a OR b AND c` is `((a OR b) AND c)`.
+ *
+ * Validity is separate from truth. A syntactically valid identifier naming no
+ * eligible component type is false. Malformed syntax or an exceeded limit makes
+ * the expression INVALID. Both evaluate UNSATISFIED; diagnostics keep them
+ * apart. The whole input is lexed and parsed before any value is computed, so
+ * short-circuiting can never skip a syntax or limit check.
+ *
+ * Fixed caps (part of the evaluator revision, not relying-party configurable):
+ * 4096 UTF-8 octets, 256 tokens (identifiers, operators and parentheses all
+ * count), 32 levels of parenthesis nesting. Refusal order is deterministic:
+ * the length cap, then the lexer left to right (an invalid character is a
+ * syntax refusal; the 257th token is a limit refusal), then the parser left
+ * to right (nesting beyond 32 is a limit refusal; anything else a syntax one).
+ *
+ * One parser produces one tree. The canonical parse, the parse identity and
+ * the Boolean value are all computed from that tree; nothing re-reads the
+ * expression text with its own grouping rules.
  */
-function tokenizeRequirement(expr) {
-    if (typeof expr !== 'string' || expr.length === 0 || expr.length > MAX_REQUIREMENT_LENGTH)
-        return null;
-    const toks = [];
+export const AEC_EXPRESSION_LIMITS = Object.freeze({ maxOctets: MAX_REQUIREMENT_LENGTH, maxTokens: MAX_REQUIREMENT_TOKENS, maxDepth: MAX_REQUIREMENT_DEPTH });
+/** Domain separator of the parse identity: SHA-256 over this ASCII string, one
+ * 0x00 octet, then the ASCII canonical parse. */
+export const AEC_EXPRESSION_PARSE_DOMAIN = 'EP-AEC-EXPRESSION-PARSE-v1';
+/** UTF-8 octet length. A lone surrogate counts as the three octets of the
+ * replacement character a UTF-8 encoder substitutes for it. */
+function utf8Octets(value) {
+    let octets = 0;
+    for (let i = 0; i < value.length; i++) {
+        const unit = value.charCodeAt(i);
+        if (unit < 0x80)
+            octets += 1;
+        else if (unit < 0x800)
+            octets += 2;
+        else if (unit >= 0xd800 && unit <= 0xdbff && i + 1 < value.length
+            && value.charCodeAt(i + 1) >= 0xdc00 && value.charCodeAt(i + 1) <= 0xdfff) {
+            octets += 4;
+            i++;
+        }
+        else
+            octets += 3;
+    }
+    return octets;
+}
+/** True when the string holds a character other than SP, HTAB, CR or LF. */
+function hasExpressionContent(value) {
+    return typeof value === 'string' && /[^ \t\r\n]/.test(value);
+}
+function lexAecExpression(expression) {
+    if (typeof expression !== 'string')
+        return { ok: false, invalid_class: 'syntax', detail: 'not_a_string' };
+    if (utf8Octets(expression) > MAX_REQUIREMENT_LENGTH)
+        return { ok: false, invalid_class: 'limit', detail: 'length_limit' };
+    const tokens = [];
     let i = 0;
-    while (i < expr.length) {
-        const ch = expr[i];
+    while (i < expression.length) {
+        const ch = expression[i];
         if (ch === ' ' || ch === '\t' || ch === '\r' || ch === '\n') {
             i++;
             continue;
         }
         if (ch === '(' || ch === ')') {
-            toks.push(ch);
+            tokens.push({ kind: ch, text: ch });
             i++;
         }
-        else if ((ch === '&' && expr[i + 1] === '&') || (ch === '|' && expr[i + 1] === '|')) {
-            toks.push(ch + expr[i + 1]);
+        else if ((ch === '&' && expression[i + 1] === '&') || (ch === '|' && expression[i + 1] === '|')) {
+            tokens.push({ kind: 'operator', operator: ch === '&' ? 'AND' : 'OR', text: ch + ch });
             i += 2;
         }
         else if (IDENT_CHAR.test(ch)) {
             let j = i + 1;
-            while (j < expr.length && IDENT_CHAR.test(expr[j]))
+            while (j < expression.length && IDENT_CHAR.test(expression[j]))
                 j++;
-            toks.push(expr.slice(i, j));
+            const run = expression.slice(i, j);
+            // Classify only the complete maximal run.
+            tokens.push(run === 'AND' || run === 'OR'
+                ? { kind: 'operator', operator: run, text: run }
+                : { kind: 'identifier', text: run });
             i = j;
         }
         else
-            return null;
-        if (toks.length > MAX_REQUIREMENT_TOKENS)
-            return null;
+            return { ok: false, invalid_class: 'syntax', detail: 'invalid_character' };
+        if (tokens.length > MAX_REQUIREMENT_TOKENS)
+            return { ok: false, invalid_class: 'limit', detail: 'token_limit' };
     }
-    return toks.length > 0 ? toks : null;
+    return tokens.length > 0 ? { ok: true, tokens } : { ok: false, invalid_class: 'syntax', detail: 'empty' };
 }
-function evalRequirement(expr, satisfied) {
-    const toks = tokenizeRequirement(expr);
-    if (!toks)
-        return { valid: false, value: false };
+class AecExpressionRefused extends Error {
+    invalid_class;
+    detail;
+    constructor(invalid_class, detail) {
+        super(detail);
+        this.invalid_class = invalid_class;
+        this.detail = detail;
+    }
+}
+function parseAecExpression(expression) {
+    const lexed = lexAecExpression(expression);
+    if (!lexed.ok)
+        return lexed;
+    const tokens = lexed.tokens;
     let i = 0;
-    const peek = () => toks[i];
-    const eat = () => toks[i++];
-    function parseExpr(depth = 0) {
+    function parseExpr(depth) {
         if (depth > MAX_REQUIREMENT_DEPTH)
-            throw new Error('requirement nesting limit exceeded');
-        let v = parseTerm(depth);
-        while (peek() === 'AND' || peek() === 'OR' || peek() === '&&' || peek() === '||') {
-            const op = eat();
-            const r = parseTerm(depth);
-            v = (op === 'AND' || op === '&&') ? (v && r) : (v || r);
+            throw new AecExpressionRefused('limit', 'depth_limit');
+        let node = parseTerm(depth);
+        while (i < tokens.length) {
+            const token = tokens[i];
+            if (token.kind !== 'operator')
+                break;
+            i++;
+            node = Object.freeze({ kind: 'operator', operator: token.operator, left: node, right: parseTerm(depth) });
         }
-        return v;
+        return node;
     }
     function parseTerm(depth) {
-        if (peek() === '(') {
-            eat();
-            const v = parseExpr(depth + 1);
-            if (peek() !== ')')
-                throw new Error('unclosed requirement group');
-            eat();
-            return v;
+        const token = tokens[i];
+        if (token === undefined)
+            throw new AecExpressionRefused('syntax', 'unexpected_end');
+        if (token.kind === '(') {
+            i++;
+            const inner = parseExpr(depth + 1);
+            if (tokens[i]?.kind !== ')')
+                throw new AecExpressionRefused('syntax', tokens[i] === undefined ? 'unclosed_group' : 'unexpected_token');
+            i++;
+            return inner;
         }
-        const id = eat();
-        if (id === undefined || id === ')' || id === 'AND' || id === 'OR' || id === '&&' || id === '||' || !IDENT.test(id)) {
-            throw new Error('invalid requirement term');
-        }
-        return satisfied.has(id);
+        if (token.kind !== 'identifier')
+            throw new AecExpressionRefused('syntax', 'unexpected_token');
+        i++;
+        return Object.freeze({ kind: 'identifier', name: token.text });
     }
     try {
-        const value = parseExpr();
-        return { valid: i === toks.length, value: i === toks.length ? value === true : false };
+        const tree = parseExpr(0);
+        if (i !== tokens.length)
+            return { ok: false, invalid_class: 'syntax', detail: 'trailing_input' };
+        return { ok: true, tree, token_count: tokens.length };
     }
-    catch {
-        return { valid: false, value: false };
+    catch (error) {
+        if (error instanceof AecExpressionRefused)
+            return { ok: false, invalid_class: error.invalid_class, detail: error.detail };
+        throw error;
     }
+}
+/** Fully parenthesized ASCII rendering of the tree: every operator node is
+ * `(` left SP AND|OR SP right `)`, `&&` and `||` render as AND and OR,
+ * identifiers keep their exact case, source parentheses that do not change
+ * grouping disappear, and operands are never commuted or reassociated. */
+function renderAecExpression(node) {
+    return node.kind === 'identifier'
+        ? node.name
+        : `(${renderAecExpression(node.left)} ${node.operator} ${renderAecExpression(node.right)})`;
+}
+function aecParseIdentity(canonical) {
+    return `sha256:${crypto.createHash('sha256')
+        .update(Buffer.concat([Buffer.from(AEC_EXPRESSION_PARSE_DOMAIN, 'ascii'), Buffer.from([0]), Buffer.from(canonical, 'ascii')]))
+        .digest('hex')}`;
+}
+/** Evaluate the parsed tree. Only an exact, case-sensitive type match counts. */
+function evaluateAecExpressionTree(node, eligible) {
+    if (node.kind === 'identifier')
+        return eligible.has(node.name);
+    const left = evaluateAecExpressionTree(node.left, eligible);
+    const right = evaluateAecExpressionTree(node.right, eligible);
+    return node.operator === 'AND' ? left && right : left || right;
+}
+/**
+ * Parse a requirement expression once and expose the tree's diagnostics.
+ *
+ * The parse identity names how this implementation grouped the expression.
+ * It is an interpretation diagnostic, not an authorization result: two
+ * evaluators that report the same parse identity can still return different
+ * answers (one can mis-evaluate an operator, case-fold a role lookup, or credit
+ * evidence that failed native verification). It is never carried in the v1
+ * requirement or replay objects, and it does not replace the requirement
+ * profile digest, which commits to the expression exactly as stored.
+ */
+export function compileAecRequirementExpression(expression) {
+    const parsed = parseAecExpression(expression);
+    if (!parsed.ok) {
+        const refused = Object.freeze({
+            syntax: 'INVALID', invalid_class: parsed.invalid_class, value: null, result: 'UNSATISFIED',
+            canonical_parse: null, parse_identity: null,
+        });
+        return Object.freeze({
+            valid: false, invalid_class: parsed.invalid_class, detail: parsed.detail,
+            token_count: null, canonical_parse: null, parse_identity: null,
+            evaluate: () => ({ ...refused }),
+        });
+    }
+    const tree = parsed.tree;
+    const canonical = renderAecExpression(tree);
+    const identity = aecParseIdentity(canonical);
+    return Object.freeze({
+        valid: true, invalid_class: null, detail: null, token_count: parsed.token_count,
+        canonical_parse: canonical, parse_identity: identity,
+        evaluate(eligibleTypes) {
+            const value = evaluateAecExpressionTree(tree, new Set(eligibleTypes));
+            return { syntax: 'VALID', invalid_class: null, value, result: value ? 'SATISFIED' : 'UNSATISFIED',
+                canonical_parse: canonical, parse_identity: identity };
+        },
+    });
+}
+/** Convenience diagnostic: compile once, then evaluate that tree. */
+export function evaluateAecRequirementExpression(expression, eligibleTypes) {
+    return compileAecRequirementExpression(expression).evaluate(eligibleTypes);
+}
+// Internal compatibility views used by the mutation-oracle tests.
+function tokenizeRequirement(expr) {
+    const lexed = lexAecExpression(expr);
+    return lexed.ok ? lexed.tokens.map(t => t.text) : null;
+}
+function evalRequirement(expr, satisfied) {
+    const compiled = typeof expr === 'object' && expr !== null ? expr : compileAecRequirementExpression(expr);
+    const evaluated = compiled.evaluate(satisfied);
+    return { valid: evaluated.syntax === 'VALID', value: evaluated.value === true };
 }
 /**
  * LEGACY expression-only API, not the structured AEC-05 requirement/replay
@@ -491,7 +643,9 @@ function evalRequirement(expr, satisfied) {
 function verifyAuthorizationChainInternal(aec, opts = {}) {
     opts = opts && typeof opts === 'object' ? opts : {};
     const reasons = [];
-    const pinned = typeof opts.requirement === 'string' && opts.requirement.trim() ? opts.requirement : null;
+    // Only SP, HTAB, CR and LF are expression whitespace (AEC -08). A pinned
+    // requirement is evaluated exactly as supplied, never trimmed.
+    const pinned = hasExpressionContent(opts.requirement) ? opts.requirement : null;
     const requirementSource = pinned ? 'relying_party' : 'presenter';
     const fail = (why) => {
         reasons.push(why);
@@ -510,10 +664,12 @@ function verifyAuthorizationChainInternal(aec, opts = {}) {
     if (aec.components.length > MAX_COMPONENTS)
         return fail(`too many components (maximum ${MAX_COMPONENTS})`);
     const requirement = pinned ?? aec.requirement;
-    if (typeof requirement !== 'string' || !requirement.trim())
+    if (!hasExpressionContent(requirement))
         return fail('missing requirement expression');
-    if (requirement.length > MAX_REQUIREMENT_LENGTH)
+    if (utf8Octets(requirement) > MAX_REQUIREMENT_LENGTH)
         return fail('requirement expression exceeds size limit');
+    // Parse once, before any component work; the verdict is computed on this tree.
+    const compiledRequirement = compileAecRequirementExpression(requirement);
     let chainDigest;
     try {
         chainDigest = actionDigest(aec.action);
@@ -598,7 +754,7 @@ function verifyAuthorizationChainInternal(aec, opts = {}) {
         }
         return row;
     });
-    const evaluated = evalRequirement(requirement, satisfied);
+    const evaluated = evalRequirement(compiledRequirement, satisfied);
     const satisfiedResult = requirementSource === 'relying_party' && expectedDigest !== null && evaluated.valid && evaluated.value;
     if (!evaluated.valid)
         reasons.push('requirement expression is malformed or exceeds parser limits');
@@ -608,7 +764,7 @@ function verifyAuthorizationChainInternal(aec, opts = {}) {
         reasons.push('presenter requirement is descriptive only; relying-party requirement is required for satisfaction');
     if (expectedDigest === null)
         reasons.push('relying-party expected action is required for satisfaction');
-    if (pinned && typeof aec.requirement === 'string' && aec.requirement.trim() && aec.requirement !== pinned) {
+    if (pinned && hasExpressionContent(aec.requirement) && aec.requirement !== pinned) {
         reasons.push(`presenter requirement ignored in favor of relying-party requirement (presenter claimed: "${aec.requirement}")`);
     }
     return {
@@ -633,7 +789,7 @@ export function verifyAuthorizationChain(aec, opts = {}) {
     let requirementSource = 'presenter';
     try {
         if (opts && typeof opts === 'object'
-            && typeof opts.requirement === 'string' && opts.requirement.trim()) {
+            && hasExpressionContent(opts.requirement)) {
             requirementSource = 'relying_party';
         }
     }
@@ -664,7 +820,16 @@ export const AEC_REQUIREMENT_VERSION = 'EP-AEC-REQUIREMENT-v1';
 export const AEC_REPLAY_VERSION = 'EP-AEC-REPLAY-v1';
 // 07: each normalized fact records native_verification and acceptance as
 // separate results (AEC-07 Section 6), so replay digests differ from 05.
-export const AEC_EVALUATOR_REVISION = 'EP-AEC-EVALUATOR-07-v1';
+// 08: the requirement-expression algorithm is normative (maximal identifier
+// runs, exact uppercase AND/OR, SP/HTAB/CR/LF only, whole-input validation,
+// left-to-right grouping, fixed caps). -07 Section 10 requires a new revision
+// when the algorithm changes, so replay digests differ from 07 even where the
+// Boolean meaning is the same. The requirement and replay envelope versions
+// and member sets are unchanged.
+export const AEC_EVALUATOR_REVISION = 'EP-AEC-EVALUATOR-08-v1';
+/** Revisions this evaluator has replaced. A record carrying one is reported
+ * UNSUPPORTED_REVISION by replay(); it is never relabeled or compared as -08. */
+export const AEC_SUPERSEDED_EVALUATOR_REVISIONS = Object.freeze(['EP-AEC-EVALUATOR-05-v1', 'EP-AEC-EVALUATOR-07-v1']);
 export const AEC_BUNDLE_COMPONENT = 'ep-authorization-bundle';
 const AEC_LIMITS = Object.freeze({
     maxDepth: 64, maxNodes: 50000, maxStringBytes: 1024 * 1024,
@@ -697,10 +862,17 @@ function aecDigest(value) {
 }
 function validateAecRequirement(value, limits) {
     const r = strictSnapshot(value, limits);
+    // The v1 member set is closed and unchanged in -08: parse metadata never
+    // travels inside the requirement. The expression string is kept exactly as
+    // supplied (RFC 8785 preserves string contents), so the requirement profile
+    // digest commits to the stored bytes, while the tree compiled here is the
+    // only thing evaluation reads.
     if (!closedKeys(r, ['@version', 'requirement_id', 'expression'], ['purpose', 'freshness_sec', 'status_required', 'role_constraints', 'required_bindings'])
         || r['@version'] !== AEC_REQUIREMENT_VERSION || !textValue(r.requirement_id)
-        || (own(r, 'purpose') && typeof r.purpose !== 'string')
-        || !evalRequirement(r.expression, new Set()).valid)
+        || (own(r, 'purpose') && typeof r.purpose !== 'string'))
+        throw new TypeError('aec_requirement_invalid');
+    const expression = compileAecRequirementExpression(r.expression);
+    if (!expression.valid)
         throw new TypeError('aec_requirement_invalid');
     if (own(r, 'freshness_sec') && (!isRecord(r.freshness_sec)
         || Object.keys(r.freshness_sec).length > limits.maxComponents
@@ -725,7 +897,14 @@ function validateAecRequirement(value, limits) {
             || !typeValue(b.from_type) || !typeValue(b.to_type) || !textValue(b.relation, 128)))) {
         throw new TypeError('aec_required_binding_invalid');
     }
-    return r;
+    return { requirement: r, expression };
+}
+/** The component types a requirement expression may count: exactly the facts
+ * marked eligible (VERIFIED, ACCEPTED, MATCH or EQUIVALENT_UNDER_PROFILE, and
+ * every freshness and status condition met). A FAILED, REJECTED or
+ * NOT_EVALUATED fact is never eligible. */
+function eligibleFactTypes(facts) {
+    return new Set(facts.filter(f => f.eligible === true).map(f => f.type));
 }
 /** Aggregate only fields already verified by the native human verifier. The
  * oldest issuance and earliest expiry conservatively enforce every signoff's
@@ -1018,7 +1197,7 @@ export function createAuthorizationChainEvaluator(configuration) {
         if (!Number.isSafeInteger(value) || value < 1 || value > AEC_LIMITS[key])
             throw new TypeError('aec_limits_invalid');
     }
-    const requirement = validateAecRequirement(configuration.requirement, limits);
+    const { requirement, expression: requirementExpression } = validateAecRequirement(configuration.requirement, limits);
     const requirementDigest = aecDigest(requirement);
     if (!isRecord(configuration.nativeVerifiers) || Object.keys(configuration.nativeVerifiers).length > MAX_COMPONENTS)
         throw new TypeError('aec_native_configuration_invalid');
@@ -1307,8 +1486,9 @@ export function createAuthorizationChainEvaluator(configuration) {
                 fact.eligible = fact.reasons.length === 0;
             }
             const eligible = replay.facts.filter(f => f.eligible);
-            const types = new Set(eligible.map(f => f.type));
-            if (!evalRequirement(requirement.expression, types).value)
+            // Evaluate the tree compiled at construction; the expression text is
+            // not parsed again here.
+            if (requirementExpression.evaluate(eligibleFactTypes(replay.facts)).value !== true)
                 replay.reasons.push('expression_unsatisfied');
             for (let i = 0; i < (requirement.role_constraints?.length ?? 0); i++) {
                 const constraint = requirement.role_constraints[i];
@@ -1332,17 +1512,40 @@ export function createAuthorizationChainEvaluator(configuration) {
     }
     return Object.freeze({
         requirement_profile_digest: requirementDigest, evaluator_profile_digest: evaluatorProfileDigest,
+        /** Interpretation diagnostic for the pinned expression, computed from the
+         * one tree evaluation uses. Not part of any wire object, and a matching
+         * parse identity does not guarantee a matching verdict. */
+        requirement_expression: Object.freeze({
+            canonical_parse: requirementExpression.canonical_parse,
+            parse_identity: requirementExpression.parse_identity,
+            token_count: requirementExpression.token_count,
+        }),
         evaluate,
         /** Reverify original evidence under this constructor's pins. A presenter
-         * cannot turn serialized facts or a previously true Boolean into evidence. */
+         * cannot turn serialized facts or a previously true Boolean into evidence.
+         *
+         * Migration: only a record made by this evaluator revision is compared, and
+         * the comparison is over the complete record digest. A record from any
+         * other revision (a stored -07 record, say) is reported
+         * UNSUPPORTED_REVISION: it is not relabeled, its digest is not recomputed
+         * under -08, and `matches` is false. `result` is always a fresh
+         * evaluation under this revision, a new and separately identified record. */
         async replay(chain, recorded, inputs) {
             const result = await evaluate(chain, inputs);
             let claimedDigest = null;
+            let recordedRevision = null;
             try {
-                claimedDigest = aecDigest(strictSnapshot(recorded, limits));
+                const snapshot = strictSnapshot(recorded, limits);
+                claimedDigest = aecDigest(snapshot);
+                if (isRecord(snapshot) && snapshot['@version'] === AEC_REPLAY_VERSION && typeof snapshot.algorithm_revision === 'string') {
+                    recordedRevision = snapshot.algorithm_revision;
+                }
             }
             catch { /* refused below */ }
-            return Object.freeze({ matches: claimedDigest !== null && claimedDigest === result.replay_digest,
+            const comparison = claimedDigest === null || recordedRevision === null ? 'RECORD_INVALID'
+                : recordedRevision !== AEC_EVALUATOR_REVISION ? 'UNSUPPORTED_REVISION'
+                    : claimedDigest === result.replay_digest ? 'MATCH' : 'MISMATCH';
+            return Object.freeze({ matches: comparison === 'MATCH', comparison, recorded_revision: recordedRevision,
                 claimed_replay_digest: claimedDigest, result });
         },
     });
@@ -1365,5 +1568,12 @@ export const __aecSecurityInternals = Object.freeze({
     boundedJson,
     tokenizeRequirement,
     evalRequirement,
+    lexAecExpression,
+    parseAecExpression,
+    renderAecExpression,
+    aecParseIdentity,
+    evaluateAecExpressionTree,
+    eligibleFactTypes,
+    utf8Octets,
 });
 //# sourceMappingURL=evidence-chain.js.map

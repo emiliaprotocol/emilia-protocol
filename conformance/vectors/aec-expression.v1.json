@@ -1,0 +1,2286 @@
+{
+  "@version": "EP-AEC-EXPRESSION-VECTORS-v1",
+  "suite": "EP-AEC-EXPRESSION-v1",
+  "frozen": true,
+  "description": "Requirement-expression corpus for the AEC -08 expression contract (evaluator EP-AEC-EVALUATOR-08-v1). Each vector states syntax validity, the refusal class of an invalid expression, the Boolean value of a valid expression over the given eligible component types, the canonical parse, and the parse identity as separate assertions.",
+  "claim_scope": "Passing this finite corpus is necessary for the -08 expression profile, not proof of correctness for every input. A matching parse identity is an interpretation diagnostic; it does not prove a matching verdict. The JavaScript, Python and Go implementations that run it are one team's ports in one repository; their agreement is a consistency check, not independent implementation. Python and Go agreement covers requirement-expression evaluation only, not the structured -07/-08 requirement and replay contract.",
+  "evaluator_revision": "EP-AEC-EVALUATOR-08-v1",
+  "grammar": {
+    "whitespace": [
+      "U+0020",
+      "U+0009",
+      "U+000D",
+      "U+000A"
+    ],
+    "identifier_characters": "A-Z a-z 0-9 _ . : -",
+    "operators": {
+      "AND": [
+        "AND",
+        "&&"
+      ],
+      "OR": [
+        "OR",
+        "||"
+      ]
+    },
+    "token_boundary": "longest identifier run first; a complete run equal to AND or OR is an operator, any other run is an identifier",
+    "grouping": "equal precedence, left to right"
+  },
+  "limits": {
+    "max_octets": 4096,
+    "max_tokens": 256,
+    "max_depth": 32,
+    "counted_tokens": "identifiers, operators and parentheses"
+  },
+  "refusal_order": "length cap, then lexer left to right (invalid character: syntax; 257th token: limit), then parser left to right (depth beyond 32: limit; otherwise syntax)",
+  "parse_identity": {
+    "domain": "EP-AEC-EXPRESSION-PARSE-v1",
+    "construction": "sha256: followed by lowercase hex SHA-256 of ASCII(domain) || 0x00 || ASCII(canonical_parse)",
+    "canonical_parse": "identifier as written; operator node as ( left SP AND|OR SP right ); && and || render as AND and OR; source parentheses that do not change grouping are dropped; no commutation or reassociation"
+  },
+  "vectors": [
+    {
+      "id": "table-01-aORb-eligible-a",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "aORb",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": false,
+        "result": "UNSATISFIED",
+        "canonical_parse": "aORb",
+        "parse_identity": "sha256:a1de64d0b313782eb41b192a3df6f8782b048ca5905260c82e3f7d413e52f41b"
+      }
+    },
+    {
+      "id": "table-02-aORb-eligible-aORb",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "aORb",
+        "eligible_types": [
+          "aORb"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "aORb",
+        "parse_identity": "sha256:a1de64d0b313782eb41b192a3df6f8782b048ca5905260c82e3f7d413e52f41b"
+      }
+    },
+    {
+      "id": "table-03-a-OR-b",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "a OR b",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a OR b)",
+        "parse_identity": "sha256:f5e01b11c224758e3c4b5a3fac7f3df2658b2efd8a08c8981a3ee05e5c005767"
+      }
+    },
+    {
+      "id": "table-04-a-OR-paren-b",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "a OR(b)",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a OR b)",
+        "parse_identity": "sha256:f5e01b11c224758e3c4b5a3fac7f3df2658b2efd8a08c8981a3ee05e5c005767"
+      }
+    },
+    {
+      "id": "table-05-paren-a-OR-paren-b",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "(a)OR(b)",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a OR b)",
+        "parse_identity": "sha256:f5e01b11c224758e3c4b5a3fac7f3df2658b2efd8a08c8981a3ee05e5c005767"
+      }
+    },
+    {
+      "id": "table-06-aOR-paren-b",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "aOR(b)",
+        "eligible_types": [
+          "aOR"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "table-07-paren-a-ORb",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "(a)ORb",
+        "eligible_types": [
+          "a",
+          "ORb"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "table-08-a-ANDb",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "a ANDb",
+        "eligible_types": [
+          "a",
+          "ANDb"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "table-09-lowercase-and-identifier",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "and",
+        "eligible_types": [
+          "and"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "and",
+        "parse_identity": "sha256:4c7fada6f55cda4d0dce9e1f03cb0a335c28b484036c2c6cfabe50859f500619"
+      }
+    },
+    {
+      "id": "table-10-And-case-sensitive",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "And",
+        "eligible_types": [
+          "and"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": false,
+        "result": "UNSATISFIED",
+        "canonical_parse": "And",
+        "parse_identity": "sha256:6facce6db2d1875ce8aa1e171899a79385474a4bc29190c5e6748a041c8436ae"
+      }
+    },
+    {
+      "id": "table-11-bare-AND",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "AND",
+        "eligible_types": [
+          "AND"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "table-12-lowercase-or-not-operator",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "a or b",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "table-13-left-to-right",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "a OR b AND c",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": false,
+        "result": "UNSATISFIED",
+        "canonical_parse": "((a OR b) AND c)",
+        "parse_identity": "sha256:9c533f1ef06e4240182c300bb12bcae495881c461a54898b6d1f588f83120c1e"
+      }
+    },
+    {
+      "id": "table-14-explicit-group",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "a OR (b AND c)",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a OR (b AND c))",
+        "parse_identity": "sha256:9dcb21c1214e96feaa24bc6f0f7c3135fbd8357687162b9ac623a2f1d97da3cb"
+      }
+    },
+    {
+      "id": "table-15-malformed-branch-behind-true-or",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "a OR (b AND)",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "table-16-malformed-branch-behind-false-and",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "missing AND (b OR)",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "table-17-trailing-identifier",
+      "group": "review-table",
+      "aec_expression": {
+        "expression": "a OR b trailing",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-ascii-four",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": " \ta\r\nOR\tb \n",
+        "eligible_types": [
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a OR b)",
+        "parse_identity": "sha256:f5e01b11c224758e3c4b5a3fac7f3df2658b2efd8a08c8981a3ee05e5c005767"
+      }
+    },
+    {
+      "id": "ws-ascii-only-is-empty",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": " \t\r\n",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-empty-string",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-nbsp-separator",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "a\u00a0OR b",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-nbsp-trailing-not-trimmed",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "a\u00a0",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-em-space",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "a\u2003OR b",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-line-separator",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "a\u2028OR b",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-paragraph-separator",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "a OR\u2029b",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-next-line",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "a\u0085OR b",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-bom-leading",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "\ufeffa",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-zero-width-space",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "a\u200bOR b",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-vertical-tab",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "a\u000bOR b",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-form-feed",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "a\fOR b",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ws-form-feed-trailing-not-trimmed",
+      "group": "whitespace",
+      "aec_expression": {
+        "expression": "a\f",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ident-dotted-OR",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "a.OR.b",
+        "eligible_types": [
+          "a.OR.b"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "a.OR.b",
+        "parse_identity": "sha256:8cdce1fe119456b42fc37ebd90ddee5e34785047eed8074585e8d112d258910c"
+      }
+    },
+    {
+      "id": "ident-dotted-OR-not-split",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "a.OR.b",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": false,
+        "result": "UNSATISFIED",
+        "canonical_parse": "a.OR.b",
+        "parse_identity": "sha256:8cdce1fe119456b42fc37ebd90ddee5e34785047eed8074585e8d112d258910c"
+      }
+    },
+    {
+      "id": "ident-colon-AND",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "x:AND:y",
+        "eligible_types": [
+          "x:AND:y"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "x:AND:y",
+        "parse_identity": "sha256:776649150c18304f8ffd9ddcdfe4851c70932782b1264ad4a9d7eb8a674f30aa"
+      }
+    },
+    {
+      "id": "ident-hyphen-OR-not-split",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "p-OR-q",
+        "eligible_types": [
+          "p",
+          "q"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": false,
+        "result": "UNSATISFIED",
+        "canonical_parse": "p-OR-q",
+        "parse_identity": "sha256:47ac22eb32f7964760aef2f79da1467df616cad54170364c831de1476fe02066"
+      }
+    },
+    {
+      "id": "ident-underscore-AND-operand",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "r_AND_s OR t",
+        "eligible_types": [
+          "r_AND_s"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(r_AND_s OR t)",
+        "parse_identity": "sha256:6fdb441e2dfac07835be68bb05f8bcc65994996caca8aedffa88a207a81615fb"
+      }
+    },
+    {
+      "id": "ident-urn-mixed",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "urn:ep.ORx-1_AND",
+        "eligible_types": [
+          "urn:ep.ORx-1_AND"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "urn:ep.ORx-1_AND",
+        "parse_identity": "sha256:eb32747b3ca3f7e2102398572aa0ab77e25afeff82ceb2b2f0964095c560b92e"
+      }
+    },
+    {
+      "id": "ident-AND-prefix-run",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "AND.x",
+        "eligible_types": [
+          "AND.x"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "AND.x",
+        "parse_identity": "sha256:44bb7d2b5125c3bdea6d6997adee2cd08163e8c7370e5403b3082eb69225edd4"
+      }
+    },
+    {
+      "id": "ident-ORb-alone",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "ORb",
+        "eligible_types": [
+          "ORb"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "ORb",
+        "parse_identity": "sha256:f8d145fb1dbaf1be6335b037720b7b7c169ac393542f1d7e6237e7e8d5b063a1"
+      }
+    },
+    {
+      "id": "ident-ORb-operand",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "a OR ORb",
+        "eligible_types": [
+          "ORb"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a OR ORb)",
+        "parse_identity": "sha256:2583e8470c50056b798ad9862dbdd69a93d61e7cffe03023639d3e00b4e15545"
+      }
+    },
+    {
+      "id": "ident-ANDOR",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "ANDOR",
+        "eligible_types": [
+          "ANDOR"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "ANDOR",
+        "parse_identity": "sha256:7292a2f191849b6d97016e381097270a631cbddfd633c6b65d809d2ead4ffed1"
+      }
+    },
+    {
+      "id": "ident-mixed-case-Or",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "Or",
+        "eligible_types": [
+          "Or"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "Or",
+        "parse_identity": "sha256:0a2ebab658570856cdcc71a5c4a8905cb1679861466cd3383935c2b444678e8e"
+      }
+    },
+    {
+      "id": "ident-mixed-case-oR-not-operator",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "a oR b",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ident-case-sensitive-lookup",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "A OR b",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": false,
+        "result": "UNSATISFIED",
+        "canonical_parse": "(A OR b)",
+        "parse_identity": "sha256:d236ec9e299046a646aed8dbd8fd2c7f39a21eb8a15cdd8ab194a335e9ce2fab"
+      }
+    },
+    {
+      "id": "ident-digits",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "123 AND x.9",
+        "eligible_types": [
+          "123",
+          "x.9"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(123 AND x.9)",
+        "parse_identity": "sha256:011cc26916f8d71868fe82be3ec895fde328044c345c9f4f78704f4f78913b95"
+      }
+    },
+    {
+      "id": "ident-single-hyphen",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "-",
+        "eligible_types": [
+          "-"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "-",
+        "parse_identity": "sha256:e8ad364af701b3c706facd59593d4e8e155dfd04988086fb9b6e1c7d894d6dec"
+      }
+    },
+    {
+      "id": "ident-bare-OR",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "OR",
+        "eligible_types": [
+          "OR"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ident-leading-operator",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "AND a",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ident-trailing-operator",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "a AND",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ident-double-operator",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "a OR OR b",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ident-adjacent-identifiers",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "a b",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ident-invalid-character",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "a!",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "ident-slash-not-identifier",
+      "group": "identifier",
+      "aec_expression": {
+        "expression": "a/b",
+        "eligible_types": [
+          "a/b"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "alias-and",
+      "group": "alias",
+      "aec_expression": {
+        "expression": "a && b",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a AND b)",
+        "parse_identity": "sha256:187de89c31a255d5d6d9c8a3c80099257391012d1e165b82fc1f38ef04f15197"
+      }
+    },
+    {
+      "id": "alias-or-unspaced",
+      "group": "alias",
+      "aec_expression": {
+        "expression": "a||b",
+        "eligible_types": [
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a OR b)",
+        "parse_identity": "sha256:f5e01b11c224758e3c4b5a3fac7f3df2658b2efd8a08c8981a3ee05e5c005767"
+      }
+    },
+    {
+      "id": "alias-mixed-left-to-right",
+      "group": "alias",
+      "aec_expression": {
+        "expression": "a&&b||c",
+        "eligible_types": [
+          "c"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "((a AND b) OR c)",
+        "parse_identity": "sha256:e13442f743c7a08bcf393f6c7c0b9aed69e7c2411c4a307965ba242fd6510951"
+      }
+    },
+    {
+      "id": "alias-single-ampersand",
+      "group": "alias",
+      "aec_expression": {
+        "expression": "a & b",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "alias-single-bar",
+      "group": "alias",
+      "aec_expression": {
+        "expression": "a | b",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "alias-triple-ampersand",
+      "group": "alias",
+      "aec_expression": {
+        "expression": "a &&& b",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "alias-triple-bar",
+      "group": "alias",
+      "aec_expression": {
+        "expression": "a ||| b",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "alias-operator-pair",
+      "group": "alias",
+      "aec_expression": {
+        "expression": "a AND && b",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "group-redundant",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "(a)",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "a",
+        "parse_identity": "sha256:7e744b941d431739d6664e64819b04d1083f410c0c3d3cd139d1ea4d75ca3b8d"
+      }
+    },
+    {
+      "id": "group-double-redundant",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "((a))",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": false,
+        "result": "UNSATISFIED",
+        "canonical_parse": "a",
+        "parse_identity": "sha256:7e744b941d431739d6664e64819b04d1083f410c0c3d3cd139d1ea4d75ca3b8d"
+      }
+    },
+    {
+      "id": "group-empty",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "()",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "group-whole",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "(a OR b)",
+        "eligible_types": [
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a OR b)",
+        "parse_identity": "sha256:f5e01b11c224758e3c4b5a3fac7f3df2658b2efd8a08c8981a3ee05e5c005767"
+      }
+    },
+    {
+      "id": "group-left-chain",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "a OR b OR c",
+        "eligible_types": [
+          "c"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "((a OR b) OR c)",
+        "parse_identity": "sha256:d9b2f58679f6c5aa3b655fc7ccfa5dc61b72074c307254efd01b3cf4789a730f"
+      }
+    },
+    {
+      "id": "group-right-explicit",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "a OR (b OR c)",
+        "eligible_types": [
+          "c"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a OR (b OR c))",
+        "parse_identity": "sha256:c93be6114c80608c41ea07c69c38ff2070a4b4b56e81486e99efbc04d89a264d"
+      }
+    },
+    {
+      "id": "group-and-then-or",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "a AND b OR c",
+        "eligible_types": [
+          "c"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "((a AND b) OR c)",
+        "parse_identity": "sha256:e13442f743c7a08bcf393f6c7c0b9aed69e7c2411c4a307965ba242fd6510951"
+      }
+    },
+    {
+      "id": "group-four-operands",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "a OR b AND c OR d",
+        "eligible_types": [
+          "d"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(((a OR b) AND c) OR d)",
+        "parse_identity": "sha256:c5341070a552c7ababe0a9c06d0d7166b194f4a3fc6183bd91f1cdcb40b789f1"
+      }
+    },
+    {
+      "id": "group-explicit-same-tree-as-table-13",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "(a OR b) AND c",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": false,
+        "result": "UNSATISFIED",
+        "canonical_parse": "((a OR b) AND c)",
+        "parse_identity": "sha256:9c533f1ef06e4240182c300bb12bcae495881c461a54898b6d1f588f83120c1e"
+      }
+    },
+    {
+      "id": "group-nested-alias",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "a && (b || c)",
+        "eligible_types": [
+          "a",
+          "c"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a AND (b OR c))",
+        "parse_identity": "sha256:5bee5d328d5ef3dda355369ed7c0170067756919f106ce4b40baa37aa7e13b6f"
+      }
+    },
+    {
+      "id": "group-unclosed",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "(a",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "group-unopened",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "a)",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "group-leading-close",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": ")a",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "group-extra-close",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "(a))",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "group-missing-close",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "((a)",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "group-trailing-input-after-true",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "a OR b c",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "group-unclosed-behind-false-and",
+      "group": "grouping",
+      "aec_expression": {
+        "expression": "missing AND (b",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-length-4095-identifier",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "eligible_types": [
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "parse_identity": "sha256:c569638362481fdcbeb6595dfcb9ed9c03b3259c32c9edee1d7898e8274180d9"
+      }
+    },
+    {
+      "id": "limit-length-4096-identifier",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": false,
+        "result": "UNSATISFIED",
+        "canonical_parse": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "parse_identity": "sha256:a44186b6eb1f5455ae20e639b4b7b29b6aa74999685dc50e95f98db4dce5c40a"
+      }
+    },
+    {
+      "id": "limit-length-4096-identifier-eligible",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "eligible_types": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "parse_identity": "sha256:a44186b6eb1f5455ae20e639b4b7b29b6aa74999685dc50e95f98db4dce5c40a"
+      }
+    },
+    {
+      "id": "limit-length-4097-identifier",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "limit",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-length-4096-with-whitespace",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               a",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "a",
+        "parse_identity": "sha256:7e744b941d431739d6664e64819b04d1083f410c0c3d3cd139d1ea4d75ca3b8d"
+      }
+    },
+    {
+      "id": "limit-length-4097-with-whitespace",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                a",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "limit",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-length-octets-4096-nbsp-is-syntax",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u00a0",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-length-octets-4097-nbsp-is-limit",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\u00a0",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "limit",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-tokens-253",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "r0 OR r1 OR r2 OR r3 OR r4 OR r5 OR r6 OR r7 OR r8 OR r9 OR r10 OR r11 OR r12 OR r13 OR r14 OR r15 OR r16 OR r17 OR r18 OR r19 OR r20 OR r21 OR r22 OR r23 OR r24 OR r25 OR r26 OR r27 OR r28 OR r29 OR r30 OR r31 OR r32 OR r33 OR r34 OR r35 OR r36 OR r37 OR r38 OR r39 OR r40 OR r41 OR r42 OR r43 OR r44 OR r45 OR r46 OR r47 OR r48 OR r49 OR r50 OR r51 OR r52 OR r53 OR r54 OR r55 OR r56 OR r57 OR r58 OR r59 OR r60 OR r61 OR r62 OR r63 OR r64 OR r65 OR r66 OR r67 OR r68 OR r69 OR r70 OR r71 OR r72 OR r73 OR r74 OR r75 OR r76 OR r77 OR r78 OR r79 OR r80 OR r81 OR r82 OR r83 OR r84 OR r85 OR r86 OR r87 OR r88 OR r89 OR r90 OR r91 OR r92 OR r93 OR r94 OR r95 OR r96 OR r97 OR r98 OR r99 OR r100 OR r101 OR r102 OR r103 OR r104 OR r105 OR r106 OR r107 OR r108 OR r109 OR r110 OR r111 OR r112 OR r113 OR r114 OR r115 OR r116 OR r117 OR r118 OR r119 OR r120 OR r121 OR r122 OR r123 OR r124 OR r125 OR r126",
+        "eligible_types": [
+          "r126"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((r0 OR r1) OR r2) OR r3) OR r4) OR r5) OR r6) OR r7) OR r8) OR r9) OR r10) OR r11) OR r12) OR r13) OR r14) OR r15) OR r16) OR r17) OR r18) OR r19) OR r20) OR r21) OR r22) OR r23) OR r24) OR r25) OR r26) OR r27) OR r28) OR r29) OR r30) OR r31) OR r32) OR r33) OR r34) OR r35) OR r36) OR r37) OR r38) OR r39) OR r40) OR r41) OR r42) OR r43) OR r44) OR r45) OR r46) OR r47) OR r48) OR r49) OR r50) OR r51) OR r52) OR r53) OR r54) OR r55) OR r56) OR r57) OR r58) OR r59) OR r60) OR r61) OR r62) OR r63) OR r64) OR r65) OR r66) OR r67) OR r68) OR r69) OR r70) OR r71) OR r72) OR r73) OR r74) OR r75) OR r76) OR r77) OR r78) OR r79) OR r80) OR r81) OR r82) OR r83) OR r84) OR r85) OR r86) OR r87) OR r88) OR r89) OR r90) OR r91) OR r92) OR r93) OR r94) OR r95) OR r96) OR r97) OR r98) OR r99) OR r100) OR r101) OR r102) OR r103) OR r104) OR r105) OR r106) OR r107) OR r108) OR r109) OR r110) OR r111) OR r112) OR r113) OR r114) OR r115) OR r116) OR r117) OR r118) OR r119) OR r120) OR r121) OR r122) OR r123) OR r124) OR r125) OR r126)",
+        "parse_identity": "sha256:2029a3d48a4ac46c70da4b6d8765070eee6847e20a45bf36ffc177a904ecb0d5"
+      }
+    },
+    {
+      "id": "limit-tokens-255-true",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "r0 OR r1 OR r2 OR r3 OR r4 OR r5 OR r6 OR r7 OR r8 OR r9 OR r10 OR r11 OR r12 OR r13 OR r14 OR r15 OR r16 OR r17 OR r18 OR r19 OR r20 OR r21 OR r22 OR r23 OR r24 OR r25 OR r26 OR r27 OR r28 OR r29 OR r30 OR r31 OR r32 OR r33 OR r34 OR r35 OR r36 OR r37 OR r38 OR r39 OR r40 OR r41 OR r42 OR r43 OR r44 OR r45 OR r46 OR r47 OR r48 OR r49 OR r50 OR r51 OR r52 OR r53 OR r54 OR r55 OR r56 OR r57 OR r58 OR r59 OR r60 OR r61 OR r62 OR r63 OR r64 OR r65 OR r66 OR r67 OR r68 OR r69 OR r70 OR r71 OR r72 OR r73 OR r74 OR r75 OR r76 OR r77 OR r78 OR r79 OR r80 OR r81 OR r82 OR r83 OR r84 OR r85 OR r86 OR r87 OR r88 OR r89 OR r90 OR r91 OR r92 OR r93 OR r94 OR r95 OR r96 OR r97 OR r98 OR r99 OR r100 OR r101 OR r102 OR r103 OR r104 OR r105 OR r106 OR r107 OR r108 OR r109 OR r110 OR r111 OR r112 OR r113 OR r114 OR r115 OR r116 OR r117 OR r118 OR r119 OR r120 OR r121 OR r122 OR r123 OR r124 OR r125 OR r126 OR r127",
+        "eligible_types": [
+          "r127"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((r0 OR r1) OR r2) OR r3) OR r4) OR r5) OR r6) OR r7) OR r8) OR r9) OR r10) OR r11) OR r12) OR r13) OR r14) OR r15) OR r16) OR r17) OR r18) OR r19) OR r20) OR r21) OR r22) OR r23) OR r24) OR r25) OR r26) OR r27) OR r28) OR r29) OR r30) OR r31) OR r32) OR r33) OR r34) OR r35) OR r36) OR r37) OR r38) OR r39) OR r40) OR r41) OR r42) OR r43) OR r44) OR r45) OR r46) OR r47) OR r48) OR r49) OR r50) OR r51) OR r52) OR r53) OR r54) OR r55) OR r56) OR r57) OR r58) OR r59) OR r60) OR r61) OR r62) OR r63) OR r64) OR r65) OR r66) OR r67) OR r68) OR r69) OR r70) OR r71) OR r72) OR r73) OR r74) OR r75) OR r76) OR r77) OR r78) OR r79) OR r80) OR r81) OR r82) OR r83) OR r84) OR r85) OR r86) OR r87) OR r88) OR r89) OR r90) OR r91) OR r92) OR r93) OR r94) OR r95) OR r96) OR r97) OR r98) OR r99) OR r100) OR r101) OR r102) OR r103) OR r104) OR r105) OR r106) OR r107) OR r108) OR r109) OR r110) OR r111) OR r112) OR r113) OR r114) OR r115) OR r116) OR r117) OR r118) OR r119) OR r120) OR r121) OR r122) OR r123) OR r124) OR r125) OR r126) OR r127)",
+        "parse_identity": "sha256:2c5e0e6851d880e1233ca2728bdcb8beb9bc626f406d2bc1fb3f051be8f2f0a5"
+      }
+    },
+    {
+      "id": "limit-tokens-255-false",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "r0 OR r1 OR r2 OR r3 OR r4 OR r5 OR r6 OR r7 OR r8 OR r9 OR r10 OR r11 OR r12 OR r13 OR r14 OR r15 OR r16 OR r17 OR r18 OR r19 OR r20 OR r21 OR r22 OR r23 OR r24 OR r25 OR r26 OR r27 OR r28 OR r29 OR r30 OR r31 OR r32 OR r33 OR r34 OR r35 OR r36 OR r37 OR r38 OR r39 OR r40 OR r41 OR r42 OR r43 OR r44 OR r45 OR r46 OR r47 OR r48 OR r49 OR r50 OR r51 OR r52 OR r53 OR r54 OR r55 OR r56 OR r57 OR r58 OR r59 OR r60 OR r61 OR r62 OR r63 OR r64 OR r65 OR r66 OR r67 OR r68 OR r69 OR r70 OR r71 OR r72 OR r73 OR r74 OR r75 OR r76 OR r77 OR r78 OR r79 OR r80 OR r81 OR r82 OR r83 OR r84 OR r85 OR r86 OR r87 OR r88 OR r89 OR r90 OR r91 OR r92 OR r93 OR r94 OR r95 OR r96 OR r97 OR r98 OR r99 OR r100 OR r101 OR r102 OR r103 OR r104 OR r105 OR r106 OR r107 OR r108 OR r109 OR r110 OR r111 OR r112 OR r113 OR r114 OR r115 OR r116 OR r117 OR r118 OR r119 OR r120 OR r121 OR r122 OR r123 OR r124 OR r125 OR r126 OR r127",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": false,
+        "result": "UNSATISFIED",
+        "canonical_parse": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((r0 OR r1) OR r2) OR r3) OR r4) OR r5) OR r6) OR r7) OR r8) OR r9) OR r10) OR r11) OR r12) OR r13) OR r14) OR r15) OR r16) OR r17) OR r18) OR r19) OR r20) OR r21) OR r22) OR r23) OR r24) OR r25) OR r26) OR r27) OR r28) OR r29) OR r30) OR r31) OR r32) OR r33) OR r34) OR r35) OR r36) OR r37) OR r38) OR r39) OR r40) OR r41) OR r42) OR r43) OR r44) OR r45) OR r46) OR r47) OR r48) OR r49) OR r50) OR r51) OR r52) OR r53) OR r54) OR r55) OR r56) OR r57) OR r58) OR r59) OR r60) OR r61) OR r62) OR r63) OR r64) OR r65) OR r66) OR r67) OR r68) OR r69) OR r70) OR r71) OR r72) OR r73) OR r74) OR r75) OR r76) OR r77) OR r78) OR r79) OR r80) OR r81) OR r82) OR r83) OR r84) OR r85) OR r86) OR r87) OR r88) OR r89) OR r90) OR r91) OR r92) OR r93) OR r94) OR r95) OR r96) OR r97) OR r98) OR r99) OR r100) OR r101) OR r102) OR r103) OR r104) OR r105) OR r106) OR r107) OR r108) OR r109) OR r110) OR r111) OR r112) OR r113) OR r114) OR r115) OR r116) OR r117) OR r118) OR r119) OR r120) OR r121) OR r122) OR r123) OR r124) OR r125) OR r126) OR r127)",
+        "parse_identity": "sha256:2c5e0e6851d880e1233ca2728bdcb8beb9bc626f406d2bc1fb3f051be8f2f0a5"
+      }
+    },
+    {
+      "id": "limit-tokens-255-and",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "r0 AND r1 AND r2 AND r3 AND r4 AND r5 AND r6 AND r7 AND r8 AND r9 AND r10 AND r11 AND r12 AND r13 AND r14 AND r15 AND r16 AND r17 AND r18 AND r19 AND r20 AND r21 AND r22 AND r23 AND r24 AND r25 AND r26 AND r27 AND r28 AND r29 AND r30 AND r31 AND r32 AND r33 AND r34 AND r35 AND r36 AND r37 AND r38 AND r39 AND r40 AND r41 AND r42 AND r43 AND r44 AND r45 AND r46 AND r47 AND r48 AND r49 AND r50 AND r51 AND r52 AND r53 AND r54 AND r55 AND r56 AND r57 AND r58 AND r59 AND r60 AND r61 AND r62 AND r63 AND r64 AND r65 AND r66 AND r67 AND r68 AND r69 AND r70 AND r71 AND r72 AND r73 AND r74 AND r75 AND r76 AND r77 AND r78 AND r79 AND r80 AND r81 AND r82 AND r83 AND r84 AND r85 AND r86 AND r87 AND r88 AND r89 AND r90 AND r91 AND r92 AND r93 AND r94 AND r95 AND r96 AND r97 AND r98 AND r99 AND r100 AND r101 AND r102 AND r103 AND r104 AND r105 AND r106 AND r107 AND r108 AND r109 AND r110 AND r111 AND r112 AND r113 AND r114 AND r115 AND r116 AND r117 AND r118 AND r119 AND r120 AND r121 AND r122 AND r123 AND r124 AND r125 AND r126 AND r127",
+        "eligible_types": [
+          "r0",
+          "r1",
+          "r2",
+          "r3",
+          "r4",
+          "r5",
+          "r6",
+          "r7",
+          "r8",
+          "r9",
+          "r10",
+          "r11",
+          "r12",
+          "r13",
+          "r14",
+          "r15",
+          "r16",
+          "r17",
+          "r18",
+          "r19",
+          "r20",
+          "r21",
+          "r22",
+          "r23",
+          "r24",
+          "r25",
+          "r26",
+          "r27",
+          "r28",
+          "r29",
+          "r30",
+          "r31",
+          "r32",
+          "r33",
+          "r34",
+          "r35",
+          "r36",
+          "r37",
+          "r38",
+          "r39",
+          "r40",
+          "r41",
+          "r42",
+          "r43",
+          "r44",
+          "r45",
+          "r46",
+          "r47",
+          "r48",
+          "r49",
+          "r50",
+          "r51",
+          "r52",
+          "r53",
+          "r54",
+          "r55",
+          "r56",
+          "r57",
+          "r58",
+          "r59",
+          "r60",
+          "r61",
+          "r62",
+          "r63",
+          "r64",
+          "r65",
+          "r66",
+          "r67",
+          "r68",
+          "r69",
+          "r70",
+          "r71",
+          "r72",
+          "r73",
+          "r74",
+          "r75",
+          "r76",
+          "r77",
+          "r78",
+          "r79",
+          "r80",
+          "r81",
+          "r82",
+          "r83",
+          "r84",
+          "r85",
+          "r86",
+          "r87",
+          "r88",
+          "r89",
+          "r90",
+          "r91",
+          "r92",
+          "r93",
+          "r94",
+          "r95",
+          "r96",
+          "r97",
+          "r98",
+          "r99",
+          "r100",
+          "r101",
+          "r102",
+          "r103",
+          "r104",
+          "r105",
+          "r106",
+          "r107",
+          "r108",
+          "r109",
+          "r110",
+          "r111",
+          "r112",
+          "r113",
+          "r114",
+          "r115",
+          "r116",
+          "r117",
+          "r118",
+          "r119",
+          "r120",
+          "r121",
+          "r122",
+          "r123",
+          "r124",
+          "r125",
+          "r126",
+          "r127"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((r0 AND r1) AND r2) AND r3) AND r4) AND r5) AND r6) AND r7) AND r8) AND r9) AND r10) AND r11) AND r12) AND r13) AND r14) AND r15) AND r16) AND r17) AND r18) AND r19) AND r20) AND r21) AND r22) AND r23) AND r24) AND r25) AND r26) AND r27) AND r28) AND r29) AND r30) AND r31) AND r32) AND r33) AND r34) AND r35) AND r36) AND r37) AND r38) AND r39) AND r40) AND r41) AND r42) AND r43) AND r44) AND r45) AND r46) AND r47) AND r48) AND r49) AND r50) AND r51) AND r52) AND r53) AND r54) AND r55) AND r56) AND r57) AND r58) AND r59) AND r60) AND r61) AND r62) AND r63) AND r64) AND r65) AND r66) AND r67) AND r68) AND r69) AND r70) AND r71) AND r72) AND r73) AND r74) AND r75) AND r76) AND r77) AND r78) AND r79) AND r80) AND r81) AND r82) AND r83) AND r84) AND r85) AND r86) AND r87) AND r88) AND r89) AND r90) AND r91) AND r92) AND r93) AND r94) AND r95) AND r96) AND r97) AND r98) AND r99) AND r100) AND r101) AND r102) AND r103) AND r104) AND r105) AND r106) AND r107) AND r108) AND r109) AND r110) AND r111) AND r112) AND r113) AND r114) AND r115) AND r116) AND r117) AND r118) AND r119) AND r120) AND r121) AND r122) AND r123) AND r124) AND r125) AND r126) AND r127)",
+        "parse_identity": "sha256:4198023ac48607574748aa594cb3976b9308a2d44c7f29ee0d95d2d22095ad80"
+      }
+    },
+    {
+      "id": "limit-tokens-256-ends-in-operator",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "r0 OR r1 OR r2 OR r3 OR r4 OR r5 OR r6 OR r7 OR r8 OR r9 OR r10 OR r11 OR r12 OR r13 OR r14 OR r15 OR r16 OR r17 OR r18 OR r19 OR r20 OR r21 OR r22 OR r23 OR r24 OR r25 OR r26 OR r27 OR r28 OR r29 OR r30 OR r31 OR r32 OR r33 OR r34 OR r35 OR r36 OR r37 OR r38 OR r39 OR r40 OR r41 OR r42 OR r43 OR r44 OR r45 OR r46 OR r47 OR r48 OR r49 OR r50 OR r51 OR r52 OR r53 OR r54 OR r55 OR r56 OR r57 OR r58 OR r59 OR r60 OR r61 OR r62 OR r63 OR r64 OR r65 OR r66 OR r67 OR r68 OR r69 OR r70 OR r71 OR r72 OR r73 OR r74 OR r75 OR r76 OR r77 OR r78 OR r79 OR r80 OR r81 OR r82 OR r83 OR r84 OR r85 OR r86 OR r87 OR r88 OR r89 OR r90 OR r91 OR r92 OR r93 OR r94 OR r95 OR r96 OR r97 OR r98 OR r99 OR r100 OR r101 OR r102 OR r103 OR r104 OR r105 OR r106 OR r107 OR r108 OR r109 OR r110 OR r111 OR r112 OR r113 OR r114 OR r115 OR r116 OR r117 OR r118 OR r119 OR r120 OR r121 OR r122 OR r123 OR r124 OR r125 OR r126 OR r127 OR",
+        "eligible_types": [
+          "r0",
+          "r1",
+          "r2",
+          "r3",
+          "r4",
+          "r5",
+          "r6",
+          "r7",
+          "r8",
+          "r9",
+          "r10",
+          "r11",
+          "r12",
+          "r13",
+          "r14",
+          "r15",
+          "r16",
+          "r17",
+          "r18",
+          "r19",
+          "r20",
+          "r21",
+          "r22",
+          "r23",
+          "r24",
+          "r25",
+          "r26",
+          "r27",
+          "r28",
+          "r29",
+          "r30",
+          "r31",
+          "r32",
+          "r33",
+          "r34",
+          "r35",
+          "r36",
+          "r37",
+          "r38",
+          "r39",
+          "r40",
+          "r41",
+          "r42",
+          "r43",
+          "r44",
+          "r45",
+          "r46",
+          "r47",
+          "r48",
+          "r49",
+          "r50",
+          "r51",
+          "r52",
+          "r53",
+          "r54",
+          "r55",
+          "r56",
+          "r57",
+          "r58",
+          "r59",
+          "r60",
+          "r61",
+          "r62",
+          "r63",
+          "r64",
+          "r65",
+          "r66",
+          "r67",
+          "r68",
+          "r69",
+          "r70",
+          "r71",
+          "r72",
+          "r73",
+          "r74",
+          "r75",
+          "r76",
+          "r77",
+          "r78",
+          "r79",
+          "r80",
+          "r81",
+          "r82",
+          "r83",
+          "r84",
+          "r85",
+          "r86",
+          "r87",
+          "r88",
+          "r89",
+          "r90",
+          "r91",
+          "r92",
+          "r93",
+          "r94",
+          "r95",
+          "r96",
+          "r97",
+          "r98",
+          "r99",
+          "r100",
+          "r101",
+          "r102",
+          "r103",
+          "r104",
+          "r105",
+          "r106",
+          "r107",
+          "r108",
+          "r109",
+          "r110",
+          "r111",
+          "r112",
+          "r113",
+          "r114",
+          "r115",
+          "r116",
+          "r117",
+          "r118",
+          "r119",
+          "r120",
+          "r121",
+          "r122",
+          "r123",
+          "r124",
+          "r125",
+          "r126",
+          "r127"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-tokens-257",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "r0 OR r1 OR r2 OR r3 OR r4 OR r5 OR r6 OR r7 OR r8 OR r9 OR r10 OR r11 OR r12 OR r13 OR r14 OR r15 OR r16 OR r17 OR r18 OR r19 OR r20 OR r21 OR r22 OR r23 OR r24 OR r25 OR r26 OR r27 OR r28 OR r29 OR r30 OR r31 OR r32 OR r33 OR r34 OR r35 OR r36 OR r37 OR r38 OR r39 OR r40 OR r41 OR r42 OR r43 OR r44 OR r45 OR r46 OR r47 OR r48 OR r49 OR r50 OR r51 OR r52 OR r53 OR r54 OR r55 OR r56 OR r57 OR r58 OR r59 OR r60 OR r61 OR r62 OR r63 OR r64 OR r65 OR r66 OR r67 OR r68 OR r69 OR r70 OR r71 OR r72 OR r73 OR r74 OR r75 OR r76 OR r77 OR r78 OR r79 OR r80 OR r81 OR r82 OR r83 OR r84 OR r85 OR r86 OR r87 OR r88 OR r89 OR r90 OR r91 OR r92 OR r93 OR r94 OR r95 OR r96 OR r97 OR r98 OR r99 OR r100 OR r101 OR r102 OR r103 OR r104 OR r105 OR r106 OR r107 OR r108 OR r109 OR r110 OR r111 OR r112 OR r113 OR r114 OR r115 OR r116 OR r117 OR r118 OR r119 OR r120 OR r121 OR r122 OR r123 OR r124 OR r125 OR r126 OR r127 OR r128",
+        "eligible_types": [
+          "r0",
+          "r1",
+          "r2",
+          "r3",
+          "r4",
+          "r5",
+          "r6",
+          "r7",
+          "r8",
+          "r9",
+          "r10",
+          "r11",
+          "r12",
+          "r13",
+          "r14",
+          "r15",
+          "r16",
+          "r17",
+          "r18",
+          "r19",
+          "r20",
+          "r21",
+          "r22",
+          "r23",
+          "r24",
+          "r25",
+          "r26",
+          "r27",
+          "r28",
+          "r29",
+          "r30",
+          "r31",
+          "r32",
+          "r33",
+          "r34",
+          "r35",
+          "r36",
+          "r37",
+          "r38",
+          "r39",
+          "r40",
+          "r41",
+          "r42",
+          "r43",
+          "r44",
+          "r45",
+          "r46",
+          "r47",
+          "r48",
+          "r49",
+          "r50",
+          "r51",
+          "r52",
+          "r53",
+          "r54",
+          "r55",
+          "r56",
+          "r57",
+          "r58",
+          "r59",
+          "r60",
+          "r61",
+          "r62",
+          "r63",
+          "r64",
+          "r65",
+          "r66",
+          "r67",
+          "r68",
+          "r69",
+          "r70",
+          "r71",
+          "r72",
+          "r73",
+          "r74",
+          "r75",
+          "r76",
+          "r77",
+          "r78",
+          "r79",
+          "r80",
+          "r81",
+          "r82",
+          "r83",
+          "r84",
+          "r85",
+          "r86",
+          "r87",
+          "r88",
+          "r89",
+          "r90",
+          "r91",
+          "r92",
+          "r93",
+          "r94",
+          "r95",
+          "r96",
+          "r97",
+          "r98",
+          "r99",
+          "r100",
+          "r101",
+          "r102",
+          "r103",
+          "r104",
+          "r105",
+          "r106",
+          "r107",
+          "r108",
+          "r109",
+          "r110",
+          "r111",
+          "r112",
+          "r113",
+          "r114",
+          "r115",
+          "r116",
+          "r117",
+          "r118",
+          "r119",
+          "r120",
+          "r121",
+          "r122",
+          "r123",
+          "r124",
+          "r125",
+          "r126",
+          "r127",
+          "r128"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "limit",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-tokens-257-behind-true-or",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "a OR r0 OR r1 OR r2 OR r3 OR r4 OR r5 OR r6 OR r7 OR r8 OR r9 OR r10 OR r11 OR r12 OR r13 OR r14 OR r15 OR r16 OR r17 OR r18 OR r19 OR r20 OR r21 OR r22 OR r23 OR r24 OR r25 OR r26 OR r27 OR r28 OR r29 OR r30 OR r31 OR r32 OR r33 OR r34 OR r35 OR r36 OR r37 OR r38 OR r39 OR r40 OR r41 OR r42 OR r43 OR r44 OR r45 OR r46 OR r47 OR r48 OR r49 OR r50 OR r51 OR r52 OR r53 OR r54 OR r55 OR r56 OR r57 OR r58 OR r59 OR r60 OR r61 OR r62 OR r63 OR r64 OR r65 OR r66 OR r67 OR r68 OR r69 OR r70 OR r71 OR r72 OR r73 OR r74 OR r75 OR r76 OR r77 OR r78 OR r79 OR r80 OR r81 OR r82 OR r83 OR r84 OR r85 OR r86 OR r87 OR r88 OR r89 OR r90 OR r91 OR r92 OR r93 OR r94 OR r95 OR r96 OR r97 OR r98 OR r99 OR r100 OR r101 OR r102 OR r103 OR r104 OR r105 OR r106 OR r107 OR r108 OR r109 OR r110 OR r111 OR r112 OR r113 OR r114 OR r115 OR r116 OR r117 OR r118 OR r119 OR r120 OR r121 OR r122 OR r123 OR r124 OR r125 OR r126 OR r127",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "limit",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-tokens-257-behind-false-and",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "missing AND r0 OR r1 OR r2 OR r3 OR r4 OR r5 OR r6 OR r7 OR r8 OR r9 OR r10 OR r11 OR r12 OR r13 OR r14 OR r15 OR r16 OR r17 OR r18 OR r19 OR r20 OR r21 OR r22 OR r23 OR r24 OR r25 OR r26 OR r27 OR r28 OR r29 OR r30 OR r31 OR r32 OR r33 OR r34 OR r35 OR r36 OR r37 OR r38 OR r39 OR r40 OR r41 OR r42 OR r43 OR r44 OR r45 OR r46 OR r47 OR r48 OR r49 OR r50 OR r51 OR r52 OR r53 OR r54 OR r55 OR r56 OR r57 OR r58 OR r59 OR r60 OR r61 OR r62 OR r63 OR r64 OR r65 OR r66 OR r67 OR r68 OR r69 OR r70 OR r71 OR r72 OR r73 OR r74 OR r75 OR r76 OR r77 OR r78 OR r79 OR r80 OR r81 OR r82 OR r83 OR r84 OR r85 OR r86 OR r87 OR r88 OR r89 OR r90 OR r91 OR r92 OR r93 OR r94 OR r95 OR r96 OR r97 OR r98 OR r99 OR r100 OR r101 OR r102 OR r103 OR r104 OR r105 OR r106 OR r107 OR r108 OR r109 OR r110 OR r111 OR r112 OR r113 OR r114 OR r115 OR r116 OR r117 OR r118 OR r119 OR r120 OR r121 OR r122 OR r123 OR r124 OR r125 OR r126 OR r127",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "limit",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-tokens-257-before-invalid-character",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "r0 OR r1 OR r2 OR r3 OR r4 OR r5 OR r6 OR r7 OR r8 OR r9 OR r10 OR r11 OR r12 OR r13 OR r14 OR r15 OR r16 OR r17 OR r18 OR r19 OR r20 OR r21 OR r22 OR r23 OR r24 OR r25 OR r26 OR r27 OR r28 OR r29 OR r30 OR r31 OR r32 OR r33 OR r34 OR r35 OR r36 OR r37 OR r38 OR r39 OR r40 OR r41 OR r42 OR r43 OR r44 OR r45 OR r46 OR r47 OR r48 OR r49 OR r50 OR r51 OR r52 OR r53 OR r54 OR r55 OR r56 OR r57 OR r58 OR r59 OR r60 OR r61 OR r62 OR r63 OR r64 OR r65 OR r66 OR r67 OR r68 OR r69 OR r70 OR r71 OR r72 OR r73 OR r74 OR r75 OR r76 OR r77 OR r78 OR r79 OR r80 OR r81 OR r82 OR r83 OR r84 OR r85 OR r86 OR r87 OR r88 OR r89 OR r90 OR r91 OR r92 OR r93 OR r94 OR r95 OR r96 OR r97 OR r98 OR r99 OR r100 OR r101 OR r102 OR r103 OR r104 OR r105 OR r106 OR r107 OR r108 OR r109 OR r110 OR r111 OR r112 OR r113 OR r114 OR r115 OR r116 OR r117 OR r118 OR r119 OR r120 OR r121 OR r122 OR r123 OR r124 OR r125 OR r126 OR r127 OR r128 !",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "limit",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-tokens-invalid-character-before-257",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "! r0 OR r1 OR r2 OR r3 OR r4 OR r5 OR r6 OR r7 OR r8 OR r9 OR r10 OR r11 OR r12 OR r13 OR r14 OR r15 OR r16 OR r17 OR r18 OR r19 OR r20 OR r21 OR r22 OR r23 OR r24 OR r25 OR r26 OR r27 OR r28 OR r29 OR r30 OR r31 OR r32 OR r33 OR r34 OR r35 OR r36 OR r37 OR r38 OR r39 OR r40 OR r41 OR r42 OR r43 OR r44 OR r45 OR r46 OR r47 OR r48 OR r49 OR r50 OR r51 OR r52 OR r53 OR r54 OR r55 OR r56 OR r57 OR r58 OR r59 OR r60 OR r61 OR r62 OR r63 OR r64 OR r65 OR r66 OR r67 OR r68 OR r69 OR r70 OR r71 OR r72 OR r73 OR r74 OR r75 OR r76 OR r77 OR r78 OR r79 OR r80 OR r81 OR r82 OR r83 OR r84 OR r85 OR r86 OR r87 OR r88 OR r89 OR r90 OR r91 OR r92 OR r93 OR r94 OR r95 OR r96 OR r97 OR r98 OR r99 OR r100 OR r101 OR r102 OR r103 OR r104 OR r105 OR r106 OR r107 OR r108 OR r109 OR r110 OR r111 OR r112 OR r113 OR r114 OR r115 OR r116 OR r117 OR r118 OR r119 OR r120 OR r121 OR r122 OR r123 OR r124 OR r125 OR r126 OR r127 OR r128",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-depth-31",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "(((((((((((((((((((((((((((((((a)))))))))))))))))))))))))))))))",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "a",
+        "parse_identity": "sha256:7e744b941d431739d6664e64819b04d1083f410c0c3d3cd139d1ea4d75ca3b8d"
+      }
+    },
+    {
+      "id": "limit-depth-32",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "((((((((((((((((((((((((((((((((a))))))))))))))))))))))))))))))))",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "a",
+        "parse_identity": "sha256:7e744b941d431739d6664e64819b04d1083f410c0c3d3cd139d1ea4d75ca3b8d"
+      }
+    },
+    {
+      "id": "limit-depth-33",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "(((((((((((((((((((((((((((((((((a)))))))))))))))))))))))))))))))))",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "limit",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-depth-32-operator-inside",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "((((((((((((((((((((((((((((((((a AND b))))))))))))))))))))))))))))))))",
+        "eligible_types": [
+          "a",
+          "b"
+        ]
+      },
+      "expect": {
+        "syntax": "VALID",
+        "invalid_class": null,
+        "value": true,
+        "result": "SATISFIED",
+        "canonical_parse": "(a AND b)",
+        "parse_identity": "sha256:187de89c31a255d5d6d9c8a3c80099257391012d1e165b82fc1f38ef04f15197"
+      }
+    },
+    {
+      "id": "limit-depth-33-behind-true-or",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "a OR (((((((((((((((((((((((((((((((((b)))))))))))))))))))))))))))))))))",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "limit",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-depth-33-behind-false-and",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "missing AND (((((((((((((((((((((((((((((((((b)))))))))))))))))))))))))))))))))",
+        "eligible_types": []
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "limit",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-depth-33-unclosed-is-limit",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "(((((((((((((((((((((((((((((((((a",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "limit",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    },
+    {
+      "id": "limit-depth-32-unclosed-is-syntax",
+      "group": "limit",
+      "aec_expression": {
+        "expression": "((((((((((((((((((((((((((((((((a)))))))))))))))))))))))))))))))",
+        "eligible_types": [
+          "a"
+        ]
+      },
+      "expect": {
+        "syntax": "INVALID",
+        "invalid_class": "syntax",
+        "value": null,
+        "result": "UNSATISFIED",
+        "canonical_parse": null,
+        "parse_identity": null
+      }
+    }
+  ]
+}
