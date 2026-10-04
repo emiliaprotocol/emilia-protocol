@@ -35,8 +35,10 @@ export default function GracePage() {
               When the grid asks an AI datacenter to reduce load, GRACE binds who authorized the
               exact event, what was allowed, which supplied actuator and meter claims were accepted,
               and the result computed from them, with the baseline method pinned by hash. The
-              bundle verifies offline. It is signed by an operator-side key; only the meter statement
-              carries a separate key. It does not prove physical meter truth or decide settlement.
+              bundle verifies offline. The bundle and its Action State record are signed under one
+              operator-side key; the approver signoffs, the actuator acknowledgment, and the meter
+              statement are each signed under their own pinned keys. It does not prove physical meter
+              truth or decide settlement.
             </p>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 14, fontSize: 17, color: color.t1 }}>
               COSA moves the megawatts. <span style={{ color: color.gold }}>EMILIA binds the authorization, supplied observations, and deterministic result.</span>
