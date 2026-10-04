@@ -114,6 +114,14 @@ proves the checked-in bytes and `aec-expression.v1.SHA256SUMS` match. v1 is
 frozen: a changed vector is a new corpus version. Runtime verification never
 fetches the corpus.
 
+Immutable locator for v1 (cite both values; the path alone is not a locator):
+
+- URL: `https://raw.githubusercontent.com/emiliaprotocol/emilia-protocol/2ebba2d8439b8e268ba6c3bc2fbbfdd42d2fb318/conformance/vectors/aec-expression.v1.json`
+- SHA-256: `927e3663299bd6c11836d4ad22a6dd398b85d16478100921bf68cf03ed459d4b`
+
+The URL names the commit that introduced the corpus. A reader checks the
+bytes against the SHA-256, not the URL.
+
 The JavaScript, Python and Go ports run it in `npm run conformance`, and the
 manifest records it under `profile_suites`, outside the live totals. It covers
 expression evaluation only. Python and Go agreement on it is not conformance
