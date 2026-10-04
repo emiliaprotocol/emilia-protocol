@@ -84,7 +84,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '20.19.5'
+          node-version: '24'
           cache: npm
       - name: Start Postgres
         # Pulls the official image with registry fallback; see the script.
@@ -93,6 +93,10 @@ jobs:
           PG_PASSWORD: mobile-contract
           PG_DB: mobile_contract
       - run: npm ci --ignore-scripts
+      - name: Switch to the portable mobile runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '20.19.5'
       - name: Check release invariants
         run: npm run mobile:release-check
       - name: Enforce trust-table write discipline
@@ -163,7 +167,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '20.19.5'
+          node-version: '24'
           cache: npm
           cache-dependency-path: |
             package-lock.json
@@ -183,6 +187,10 @@ jobs:
         run: npm test
       - name: Typecheck secure-app from the repository root
         run: npm run typecheck:secure-app
+      - name: Switch to the secure-app Expo runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '20.19.5'
       - name: Validate Expo dependency compatibility
         working-directory: apps/secure-app
         run: |
