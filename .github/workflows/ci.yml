@@ -339,7 +339,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -355,6 +355,10 @@ jobs:
       - run: npm ci --ignore-scripts
       - name: Verify public, private, pending, and archived migration history
         run: npm run check:migration-history
+      - name: Switch to the minimum package runtime for standalone proofs
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20
       - name: Gate the documented standalone example runs on minimum Node
         # receipt-program, authority-loop-v1, and agent-mailbox-v0.1 ship node:test suites that ran
         # in NO runner until 2026-08-07 (vitest excludes examples/**, and no job
@@ -369,6 +373,10 @@ jobs:
       # control-to-actuator, and split-boundary behavior.
       - name: Run the Gate reference proof on minimum Node
         run: npm run proof:gate:reference
+      - name: Restore the root development runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
       - name: Verify the SYNC interoperability fixture and fail-closed chain boundary
         run: npm run test:sync-interop
       - name: Install the PostgreSQL client used by the live isolation test
@@ -580,7 +588,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Type-check the security core (checkJs)
@@ -599,7 +607,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Type-check lib/ (checkJs)
@@ -620,7 +628,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm ci --prefix examples/aeb-crossing-lab/insight-oracle-swap-v3 --ignore-scripts
@@ -642,7 +650,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Type-check app/ (checkJs)
@@ -690,7 +698,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Run the bounded fixed-seed fuzz batch (<60s)
@@ -744,7 +752,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Check write discipline
@@ -1116,7 +1124,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Run ESLint
@@ -1136,7 +1144,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
       - name: Run protocol discipline checks
@@ -1186,7 +1194,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - name: Install dependencies against the local unreleased verifier
         run: |
@@ -1206,6 +1214,10 @@ jobs:
           cp "$RUNNER_TEMP/mcp-server-package.json" package.json
           cp "$RUNNER_TEMP/mcp-server-package-lock.json" package-lock.json
           npm pack
+      - name: Switch to the minimum bundled MCP runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20
       - name: Smoke test — verify entry point loads
         working-directory: mcp-server
         run: node -e "import('./bundle.js').then(() => console.log('MCP server entry OK'))"
@@ -1536,8 +1548,9 @@ jobs:
   # in the external-rust-evidence job below.
   #
   # The checks run as three parallel jobs (conformance-core,
-  # conformance-caid, conformance-caid-packets), each on node 20, Python 3.11
-  # and Go 1.27. `conformance`, the required status check, is the
+  # conformance-caid, conformance-caid-packets), with Python 3.11 and Go 1.27.
+  # The root-installing core lane uses Node 24; the dependency-free CAID lanes
+  # keep Node 20. `conformance`, the required status check, is the
   # aggregator at the end: it runs whatever happened above it and passes
   # only when all three succeeded, so a failed, cancelled or skipped part
   # fails it, except for the lane skips it names. None of the parts carries
@@ -1552,7 +1565,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
@@ -1793,7 +1806,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       # The evaluator verifies the externally produced result through Gate's
       # repository-local verification path. Install the locked workspace graph
