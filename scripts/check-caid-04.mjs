@@ -68,6 +68,7 @@ import { fileURLToPath } from 'node:url';
 import { loadGrammar, matches } from '../caid/spec/abnf.mjs';
 import { buildSpec } from '../caid/spec/gen.mjs';
 import { createReference } from '../caid/spec/reference.mjs';
+import { unexpectedXml2rfcWarnings } from './xml2rfc-render-warnings.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packetRel = 'standards/staged/NEXT-CAID-04';
@@ -655,10 +656,12 @@ check(source.includes('category="std"'), 'candidate is not Standards Track');
 check(!source.includes('submissionType='), 'an individual draft must not claim a document stream');
 const dateMatch = /<date year="(\d{4})" month="([A-Z][a-z]+)" day="(\d{1,2})"\/>/.exec(source.slice(0, source.indexOf('</front>')));
 check(dateMatch, 'the document date is not a full year, month and day');
+let sourceDocumentDate = null;
 if (dateMatch) {
   const [, y, mo, d] = dateMatch;
   const parsed = new Date(`${mo} ${d}, ${y} 00:00:00 UTC`);
   check(!Number.isNaN(parsed.getTime()) && parsed.getUTCDate() === Number(d), 'the document date is not a calendar date');
+  if (!Number.isNaN(parsed.getTime())) sourceDocumentDate = parsed.toISOString().slice(0, 10);
   check(text.includes(`${Number(d)} ${mo} ${y}`), 'the TXT render does not carry the source date');
 }
 check(text.includes('Intended status: Standards Track'), 'TXT render has the wrong intended status');
@@ -1692,9 +1695,11 @@ for (const p of ['history/action-types.v4.json', 'caid/registry/action-types.jso
 let renderedFresh = false;
 {
   const XML2RFC = '3.34.0';
-  // The two warnings xml2rfc gives for an individual Standards Track draft
-  // that names no stream (VALIDATION.md); any other warning is a failure.
-  const EXPECTED_WARNINGS = [/Expected a valid submissionType/, /Setting consensus="true"/];
+  // Preserve the date of the posted -04 snapshot. Only its exact past-date
+  // age warning joins the two individual-draft warnings in VALIDATION.md;
+  // a new filing (--prefiling), errors and all other warnings stay strict.
+  const historicalDocumentDate = !prefiling && sourceDocumentDate === '2026-09-28'
+    ? sourceDocumentDate : null;
   const probe = spawnSync('xml2rfc', ['--version'], { encoding: 'utf8' });
   const version = probe.status === 0 ? probe.stdout.trim() : null;
   if (version === `xml2rfc ${XML2RFC}`) {
@@ -1703,7 +1708,7 @@ let renderedFresh = false;
       const render = (flags, out) => {
         const r = spawnSync('xml2rfc', [...flags, '--out', out, sourceFile], { encoding: 'utf8' });
         if (r.status !== 0) { errors.push(`xml2rfc ${XML2RFC} ${flags.join(' ')} failed: ${(r.stderr || '').trim().split('\n').at(-1)}`); return null; }
-        const unexpected = (r.stderr || '').split('\n').filter((l) => /\b(?:Warning|Error):/.test(l) && !EXPECTED_WARNINGS.some((w) => w.test(l)));
+        const unexpected = unexpectedXml2rfcWarnings(r.stderr || '', { historicalDocumentDate });
         check(unexpected.length === 0, `xml2rfc ${XML2RFC} ${flags.join(' ')} reports: ${unexpected.join(' | ')}`);
         return readFileSync(out, 'utf8');
       };

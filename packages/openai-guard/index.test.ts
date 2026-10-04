@@ -15,10 +15,21 @@ import { bindToolAction } from '../require-receipt/index.js';
 
 test('package metadata supports compatible verifier lines and verifies signed receipts', async () => {
   const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
-  assert.equal(packageJson.version, '0.5.1');
-  assert.equal(packageJson.peerDependencies['@emilia-protocol/verify'], '^3.21.0 || ^4.0.0 || ^5.0.0 || ^6.0.0');
+  assert.equal(packageJson.version, '0.5.2');
+  assert.equal(packageJson.peerDependencies['@emilia-protocol/verify'], '^3.21.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0');
   const doc = receipt('payment.release');
   assert.equal((await offlineVerifyReceipt(doc, trustedKey)).valid, true);
+  const untrustedKey = crypto.generateKeyPairSync('ed25519').publicKey
+    .export({ type: 'spki', format: 'der' }).toString('base64url');
+  assert.equal((await offlineVerifyReceipt(doc, untrustedKey)).valid, false);
+  const forged = structuredClone(doc);
+  const signature = Buffer.from(forged.signature.value, 'base64url');
+  signature[0] ^= 1;
+  forged.signature.value = signature.toString('base64url');
+  assert.equal((await offlineVerifyReceipt(forged, trustedKey)).valid, false);
+  const wrongAlgorithm = structuredClone(doc);
+  wrongAlgorithm.signature.algorithm = 'none';
+  assert.equal((await offlineVerifyReceipt(wrongAlgorithm, trustedKey)).valid, false);
   doc.payload.claim.action_type = 'payment.redirect';
   assert.equal((await offlineVerifyReceipt(doc, trustedKey)).valid, false);
 });
