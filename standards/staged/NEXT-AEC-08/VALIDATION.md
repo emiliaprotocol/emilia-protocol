@@ -192,9 +192,10 @@ the text:
    limits are now exact, and Section 5 no longer lists the expression size
    as a relying-party limit.
 
-Re-run against this tree (TXT SHA-256 `eaffa47b...`; the parser code is
-unchanged since the earlier render): the clean-room parser produces all six
-assertions of all 104 vectors. The seeded case files regenerate byte for byte
+Re-run against this tree, whose TXT render is `eaffa47b...` (the clean-room
+parser was not rewritten from the new text; the seven changes state readings
+it already took, and the 40 new cases below exercise them): the clean-room
+parser produces all six assertions of all 104 vectors. The seeded case files regenerate byte for byte
 (seed 20261004, 30,000 cases, `280d1d85...`; seed 1004, 20,000 cases,
 `ff28cc8e...`). Over 398,261 inputs (the 104 vectors, the 32 hand-written
 cases, 40 new cases for items 2 to 4, the 50,000 seeded cases and the
