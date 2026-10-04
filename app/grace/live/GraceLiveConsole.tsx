@@ -18,6 +18,11 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './live.module.css';
+// One recorded response of GET /api/v1/grace/reference-scenario. That route runs
+// the reference harness, which is refused in production by design, so the public
+// page replays this recording. recorded-reference-run.test.ts keeps it equal to a
+// fresh run on every value that does not depend on the per-run reference keys.
+import recordedRun from './recorded-reference-run.json';
 
 interface StageItem {
   id: string;
@@ -36,6 +41,7 @@ const STAGES: StageItem[] = [
 ];
 
 const PHASE_DELAY_MS = 720;
+const OFFLINE_COMMAND = 'node examples/grace/live-control-room.mjs';
 
 interface GraceReferenceScenario {
   ok: boolean;
@@ -130,19 +136,14 @@ export default function GraceLiveConsole(): React.ReactElement {
     timers.current = [];
   }, []);
 
-  const run = useCallback(async () => {
+  const run = useCallback(() => {
     clearTimers();
-    setStatus('loading');
     setError('');
     setData(null);
     setPhase(-1);
     try {
-      const response = await fetch('/api/v1/grace/reference-scenario', {
-        cache: 'no-store',
-        headers: { accept: 'application/json' },
-      });
-      const body = await response.json();
-      if (!response.ok || body.ok !== true) throw new Error(body.error || 'reference_scenario_failed');
+      const body = recordedRun as unknown as GraceReferenceScenario;
+      if (body.ok !== true) throw new Error('reference_scenario_failed');
       setData(body);
       setStatus('running');
       STAGES.forEach((_, index) => {
@@ -168,8 +169,7 @@ export default function GraceLiveConsole(): React.ReactElement {
   const targetMw = baselineMw - orderedMw;
   const announcedStageIndex = Math.max(phase, 0);
   let liveStatus = `Step ${announcedStageIndex + 1} of ${STAGES.length}: ${STAGES[announcedStageIndex].label}.`;
-  if (status === 'idle') liveStatus = 'Ready to run the reference curtailment.';
-  if (status === 'loading') liveStatus = 'Loading the reference curtailment.';
+  if (status === 'idle') liveStatus = 'Ready to replay the recorded reference curtailment.';
   if (status === 'error') liveStatus = 'The reference curtailment is unavailable.';
   if (runComplete) liveStatus = `Reference curtailment complete. ${STAGES.length} of ${STAGES.length} stages complete.`;
 
@@ -198,13 +198,13 @@ export default function GraceLiveConsole(): React.ReactElement {
             <span>Grid asks</span><i>→</i><span>Two roles approve</span><i>→</i><span>Gate admits once</span><i>→</i><span>Meter checks</span><i>→</i><span>Admit settlement once</span>
           </div>
           <div className={styles.runControls}>
-            <button type="button" className={styles.runButton} onClick={run} disabled={status === 'loading' || status === 'running'}>
-              {status === 'loading' || status === 'running' ? (
+            <button type="button" className={styles.runButton} onClick={run} disabled={status === 'running'}>
+              {status === 'running' ? (
                 <RefreshCw aria-hidden="true" size={17} className={styles.spin} />
               ) : (
                 <Play aria-hidden="true" size={16} fill="currentColor" />
               )}
-              {status === 'loading' || status === 'running' ? 'Running the reference flow' : runComplete ? 'Run again' : 'Run the curtailment demo'}
+              {status === 'running' ? 'Replaying the reference run' : runComplete ? 'Replay again' : 'Replay the curtailment demo'}
             </button>
             <a href="#grace-attacks">See what gets blocked</a>
           </div>
@@ -212,6 +212,10 @@ export default function GraceLiveConsole(): React.ReactElement {
             <Radio aria-hidden="true" size={15} />
             Signed reference simulation. No physical grid event is claimed.
           </div>
+          <p className={styles.offlineRun}>
+            This page replays one recorded run of the reference circuit. Run the same circuit
+            yourself from a clone of the repository: <code>{OFFLINE_COMMAND}</code>
+          </p>
         </div>
 
         <div className={styles.curtailmentVisual}>

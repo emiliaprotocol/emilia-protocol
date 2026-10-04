@@ -228,7 +228,7 @@ def main() -> int:
     }
     valid, checks = verify_bundle(bundle)
     line(f"\n  6. SETTLE     Proof-of-Curtailment Bundle -> {('VALID' if valid else 'INVALID')}  {checks}")
-    line(f"     ISO pays against this, offline. No trust in the operator's logs.")
+    line("     Verifies offline: integrity of the supplied inputs, not meter truth or payment.")
 
     # 7 ADVERSARIAL
     line(f"\n  7. ADVERSARIAL")
