@@ -38,7 +38,7 @@ const STAKEHOLDERS = [
 
 const PILOT_STEPS = [
   { n: '1', t: 'Integrate', b: 'One facility or GPU cluster, with the facility controller wired to verify orders offline, fail-closed. A real smart-PDU or meter needs its own adapter and verifier, which GRACE does not ship yet: today’s verifiers accept only simulated meter and actuator statements.' },
-  { n: '2', t: 'Drill', b: 'Three simulated curtailment drills, plus one live curtailment where the program and facility allow, each emitting a full Proof-of-Curtailment Bundle.' },
+  { n: '2', t: 'Drill', b: 'Three simulated curtailment drills, each emitting a Proof-of-Curtailment Bundle. A live curtailment, where the program and facility allow, needs real meter and actuator adapters and verifiers, which do not exist yet.' },
   { n: '3', t: 'Verify & report', b: 'Every bundle signature checked offline; adversarial paths exercised (forged order, tampered telemetry, replay: all refused). A utility/aggregator-facing report packages the result.' },
   { n: '4', t: 'Keep it current', b: 'Ongoing managed evidence: repeat drills on an agreed schedule, key registry, audit exports, and the settlement archive. Drill scheduling is a service step run with the facility; it is not shipped code.' },
 ];
@@ -53,12 +53,13 @@ export default function FlexPassportPage() {
           <div style={styles.container}>
             <div style={{ ...styles.eyebrow, color: color.gold }}>GRACE FLEX PASSPORT</div>
             <h1 style={{ ...styles.h1, marginTop: 16, maxWidth: 820 }}>
-              Prove your facility can give power back to the grid on command.
+              Portable, offline-verifiable evidence for flexible AI load.
             </h1>
             <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
-              Prove your facility can curtail. Get connected faster. Get paid for flexibility.
-              Survive audit. The Flex Passport is a portable evidence packet, verifiable offline, that
-              binds who authorized each curtailment, what was ordered, and what the meter reported.
+              The Flex Passport is a portable evidence packet, verifiable offline, that binds who
+              authorized each curtailment, what was ordered, and what the meter statement reported.
+              Interconnection, payment, and audit decisions stay with the utility, the program, and
+              the auditor.
             </p>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 14, fontSize: 17, color: color.t1 }}>
               <span style={{ color: color.gold }}>EMILIA makes the authorization and evidence behind AI compute flexibility verifiable.</span>
@@ -83,9 +84,7 @@ export default function FlexPassportPage() {
               Flexibility is proven. Verification is the missing piece.
             </h2>
             <p style={{ ...styles.body, maxWidth: 700, marginTop: 16 }}>
-              The IEA projects global data-centre electricity demand more than doubles by 2030 to
-              roughly <b style={{ color: color.t1 }}>945&nbsp;TWh</b>, with AI-optimized capacity more
-              than quadrupling. And grid-responsive AI compute is no longer theoretical: 2026 research
+              Grid-responsive AI compute is no longer theoretical: 2026 research
               demonstrates a real <b style={{ color: color.t1 }}>130&nbsp;kW GPU cluster</b> delivering
               rapid load reduction and sustained curtailment in deployment while preserving priority
               jobs. Schedulers can shed. Meters can measure. What is missing is

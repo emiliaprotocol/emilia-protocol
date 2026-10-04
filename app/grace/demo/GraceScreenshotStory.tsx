@@ -158,11 +158,12 @@ export default function GraceScreenshotStory(): React.ReactElement {
 
     <section className={`${styles.slide} ${styles.effect}`} key="effect">
       <div className={styles.effectCopy}>
-        <SlideLabel number={4}>THE PHYSICAL EFFECT</SlideLabel>
+        <SlideLabel number={4}>THE SIMULATED EFFECT</SlideLabel>
         <h2>64.000 <span>to</span> 46.072 MW</h2>
         <p>
-          An independent meter reports 17.847 MW delivered. The settlement rule is pinned
-          outside the meter, and Action State binds the authorization, dispatch, and measurement.
+          A separately keyed simulated meter reports 17.847 MW delivered; no physical load
+          moved. The settlement rule is pinned outside the meter, and Action State binds the
+          authorization, dispatch, and simulated measurement.
         </p>
         <div className={styles.effectStats}>
           <div><strong>99.2%</strong><span>delivered</span></div>
@@ -171,7 +172,7 @@ export default function GraceScreenshotStory(): React.ReactElement {
       </div>
       <ScreenshotFrame
         src="/grace-demo/measured-effect.png"
-        alt="Measured facility load and the signed evidence packet"
+        alt="Simulated facility load and the signed evidence packet"
         className={styles.effectCapture}
       />
       <Boundary />
