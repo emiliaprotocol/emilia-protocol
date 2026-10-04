@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// EMILIA GRACE — Proof-of-Curtailment: a verifiable demand-response rail for AI
+// EMILIA GRACE Proof-of-Curtailment: a verifiable demand-response rail for AI
 // compute. Energy vertical landing page (COSA × EMILIA).
 
 import SiteNav from '@/components/SiteNav';
@@ -7,16 +7,16 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
 
 const LOOP = [
-  { n: '1', title: 'Authorize', body: 'A market-authorized party (ISO, utility, aggregator, or facility under the applicable tariff) signs a bounded grid.curtailment order — named human, or quorum for hard cuts.' },
+  { n: '1', title: 'Authorize', body: 'A bounded grid.curtailment order is raised for a market-authorized party (ISO, utility, aggregator, or facility under the applicable tariff). The accountable decision is captured as device-bound signoffs over the exact action digest, with the quorum size set by a pinned approver roster. No real ISO or market-party key signs the order today.' },
   { n: '2', title: 'Verify & gate', body: 'The facility controller verifies the order offline, fail-closed: posture changes only against a valid, in-scope, unexpired order. Spoofed or stale orders are refused.' },
-  { n: '3', title: 'Shed', body: 'The scheduler reduces compute — cache-first inference, deferred batch, capped GPU clocks — preserving life-safety lanes. Power falls. (COSA moves the megawatts.)' },
+  { n: '3', title: 'Shed', body: 'The scheduler reduces compute (cache-first inference, deferred batch, capped GPU clocks) while preserving life-safety lanes. Power falls only in a physical deployment, where COSA moves the megawatts; in the public reference the shed is simulated.' },
   { n: '4', title: 'Measure', body: 'A separately keyed meter or smart PDU signs the supplied telemetry. The public reference simulates this source; its signature authenticates the supplied records but does not prove physical truth or a complete source population.' },
-  { n: '5', title: 'Compute', body: 'The reference computes the delivered-load result from accepted inputs under the program’s prescribed baseline method, pinned by hash. This proves deterministic computation from supplied inputs, not physical delivery.' },
+  { n: '5', title: 'Compute', body: 'The reference computes delivered load in average MW: the baseline value carried in the meter statement minus the average interval load. The program’s baseline method is pinned by hash, so a method swap is evident, but the reference does not execute that method. This proves deterministic computation from supplied inputs, not physical delivery.' },
   { n: '6', title: 'Package', body: 'A Proof-of-Curtailment Bundle records the accepted order, acknowledgment, meter evidence, and computed result for offline verification. The program separately decides eligibility and settlement under its own rules.' },
 ];
 
 const BUYERS = [
-  { who: 'AI / HPC datacenters & neoclouds', val: 'Present portable evidence of the authorized event, supplied observations, and result computed under the program’s pinned method.' },
+  { who: 'AI / HPC datacenters & neoclouds', val: 'Present portable evidence of the authorized event, supplied observations, and computed result, with the program’s baseline method pinned by hash.' },
   { who: 'Grid operators / ISOs / utilities', val: 'Evaluate supplied curtailment evidence without relying only on the operator’s application logs. Program rules still determine eligibility and settlement.' },
   { who: 'Demand-response aggregators', val: 'Carry a portable, tamper-evident M&V artifact for large, fast flexible loads into the program’s existing review and settlement process.' },
 ];
@@ -34,15 +34,17 @@ export default function GracePage() {
             <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
               When the grid asks an AI datacenter to reduce load, GRACE binds who authorized the
               exact event, what was allowed, which supplied actuator and meter claims were accepted,
-              and the result computed under a pinned method. The bundle verifies offline without
-              trusting the operator’s application logs. It does not prove physical meter truth or
-              decide settlement.
+              and the result computed from them, with the baseline method pinned by hash. The
+              bundle verifies offline. The bundle and its Action State record are signed under one
+              operator-side key; the approver signoffs, the actuator acknowledgment, and the meter
+              statement are each signed under their own pinned keys. It does not prove physical meter
+              truth or decide settlement.
             </p>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 14, fontSize: 17, color: color.t1 }}>
               COSA moves the megawatts. <span style={{ color: color.gold }}>EMILIA binds the authorization, supplied observations, and deterministic result.</span>
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
-              <a href="/grace/live" style={cta.primary}>Run the live control room</a>
+              <a href="/grace/live" style={cta.primary}>Replay the reference control room</a>
               <a href="/grace/flex-passport" style={cta.primary}>Get the Flex Passport</a>
               <a href="#loop" style={cta.secondary}>How it works</a>
               <a href="/pilot?v=grace" style={cta.secondary}>Request pilot</a>
@@ -58,13 +60,15 @@ export default function GracePage() {
               Flexible compute is growing, but grid programs still need evidence they can evaluate.
             </h2>
             <p style={{ ...styles.body, maxWidth: 700, marginTop: 16 }}>
-              Duke University’s Nicholas Institute finds the 22 largest U.S. balancing areas could
-              absorb <b style={{ color: color.t1 }}>76–126 GW of new load</b> if it can be curtailed
-              under ~1% of hours — ERCOT alone ≈ 10 GW at 0.5%. But that headroom is only bankable if
+              Duke University’s Nicholas Institute finds the 22 U.S. balancing areas it analyzed could
+              absorb <b style={{ color: color.t1 }}>76–126 GW of new load</b> if that load accepts
+              curtailment of 0.25% to 1% of its maximum potential annual energy use. ERCOT alone adds
+              about 10 GW at 0.5%. But that headroom is only bankable if
               the curtailment evidence is <em>verifiable</em> enough for a grid operator to evaluate.
               Today, operators may have to rely heavily on self-reported logs and supplied
               measurements. <span style={{ color: color.t1 }}>GRACE addresses one part of that gap:
-              authorization and tamper-evident evidence over supplied inputs under a pinned method.</span>
+              authorization and tamper-evident evidence over supplied inputs, with the baseline method
+              pinned by hash but not executed.</span>
             </p>
           </div>
         </section>
@@ -103,7 +107,7 @@ export default function GracePage() {
             </div>
             <p style={{ ...styles.body, maxWidth: 700, marginTop: 24, fontSize: 14, color: color.t2 }}>
               First mover: an AI/HPC datacenter or neocloud operator with a DR aggregator or utility
-              sponsor — the party that holds the interconnection/payment incentive and a grid
+              sponsor: the party that holds the interconnection/payment incentive and a grid
               counterpart that can evaluate the bundle under its program rules.
             </p>
           </div>
@@ -115,14 +119,15 @@ export default function GracePage() {
             <div style={styles.eyebrow}>DEMONSTRATION</div>
             <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 760 }}>Available now: the full reference circuit, visible end to end.</h2>
             <p style={{ ...styles.body, maxWidth: 700, marginTop: 16 }}>
-              A runnable reference circuit is published and verifies under the current EMILIA
-              verifier. It issues a grid.curtailment order, simulates a shed, signs separately keyed
-              simulated meter evidence, computes the reference result, and emits the
-              Proof-of-Curtailment Bundle. The adversarial paths refuse tampered telemetry, forged
-              orders, and replay. The control-room view makes each transition inspectable without
-              implying a physical deployment or complete source population. A hardware
-              demonstration with a host-approved compute node and independent meter still requires
-              a facility partner.
+              A runnable reference circuit is published with its tests. It issues a
+              grid.curtailment order, simulates a shed, signs separately keyed simulated meter
+              evidence, computes the reference result, and emits the signed Proof-of-Curtailment
+              Bundle. The adversarial paths refuse tampered telemetry, forged orders, and replay.
+              The control-room view replays a recorded run of that circuit so each transition is
+              inspectable without implying a physical deployment or complete source population.
+              The actuator and meter adapters are reference simulations, and no physical
+              measurement has been run. A hardware demonstration with a host-approved compute node
+              and independent meter still requires a facility partner.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
               <a href="/grace/live" style={cta.primary}>Open the reference control room</a>
@@ -135,12 +140,13 @@ export default function GracePage() {
         <section style={styles.section}>
           <div style={styles.container}>
             <div style={styles.eyebrow}>HONEST POSTURE</div>
-            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 760 }}>GRACE does not invent the baseline. It makes application of the pinned method tamper-evident.</h2>
+            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 760 }}>GRACE does not invent the baseline. It pins the method’s hash so a method swap is evident.</h2>
             <p style={{ ...styles.body, maxWidth: 700, marginTop: 16 }}>
               The baseline methodology belongs to the ISO/program (CAISO ELAP, PJM CBL, ERCOT). GRACE
               pins its digest and binds the accepted authorization, supplied meter observations,
-              and deterministic computation. The result is tamper-evident under the pinned method
-              and supplied inputs. It does not establish that the readings are physically true or
+              and deterministic computation. The result is tamper-evident given the supplied inputs,
+              including the baseline value carried in the meter statement; GRACE does not execute
+              the pinned method. It does not establish that the readings are physically true or
               complete, that an event qualifies under a tariff, or what should be paid. Settlement
               remains a separate program decision.
             </p>

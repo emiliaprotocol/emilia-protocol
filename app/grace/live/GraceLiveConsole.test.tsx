@@ -11,7 +11,8 @@ describe('/grace/live reference story', () => {
     const markup = renderToStaticMarkup(<GraceLiveConsole />);
 
     expect(markup).toContain('The grid needs 18 MW back. Which agent is allowed to act?');
-    expect(markup).toContain('Run the curtailment demo');
+    expect(markup).toContain('Replay the curtailment demo');
+    expect(markup).toContain('node examples/grace/live-control-room.mjs');
     expect(markup).toContain('No physical grid event is claimed.');
     expect(markup).toContain('Two roles approve');
     expect(markup).toContain('Adapter acknowledges');
@@ -21,5 +22,10 @@ describe('/grace/live reference story', () => {
   it('waits for an explicit visitor action before running the reference flow', () => {
     expect(consoleSource).toContain('useEffect(() => clearTimers, [clearTimers])');
     expect(consoleSource.match(/useEffect\(/g)).toHaveLength(1);
+  });
+
+  it('replays the recorded run instead of calling the production-refused harness route', () => {
+    expect(consoleSource).toContain("import recordedRun from './recorded-reference-run.json'");
+    expect(consoleSource).not.toContain('fetch(');
   });
 });

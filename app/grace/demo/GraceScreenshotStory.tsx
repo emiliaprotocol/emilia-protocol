@@ -146,7 +146,7 @@ export default function GraceScreenshotStory(): React.ReactElement {
       <div className={styles.topCopy}>
         <SlideLabel number={3}>THE CONTROL CHAIN</SlideLabel>
         <h2>Permission closes before power moves.</h2>
-        <p>Six transitions. Every boundary signed or independently checked.</p>
+        <p>Six transitions. Approvals, the actuator acknowledgment, and the meter statement are signed and checked against pinned keys before the next step; the bundle is signed last.</p>
       </div>
       <ScreenshotFrame
         src="/grace-demo/control-room.png"
@@ -158,11 +158,12 @@ export default function GraceScreenshotStory(): React.ReactElement {
 
     <section className={`${styles.slide} ${styles.effect}`} key="effect">
       <div className={styles.effectCopy}>
-        <SlideLabel number={4}>THE PHYSICAL EFFECT</SlideLabel>
+        <SlideLabel number={4}>THE SIMULATED EFFECT</SlideLabel>
         <h2>64.000 <span>to</span> 46.072 MW</h2>
         <p>
-          An independent meter reports 17.847 MW delivered. The settlement rule is pinned
-          outside the meter, and Action State binds the authorization, dispatch, and measurement.
+          A separately keyed simulated meter reports 17.847 MW delivered; no physical load
+          moved. The settlement rule is pinned outside the meter, and Action State binds the
+          authorization, dispatch, and simulated measurement.
         </p>
         <div className={styles.effectStats}>
           <div><strong>99.2%</strong><span>delivered</span></div>
@@ -171,7 +172,7 @@ export default function GraceScreenshotStory(): React.ReactElement {
       </div>
       <ScreenshotFrame
         src="/grace-demo/measured-effect.png"
-        alt="Measured facility load and the signed evidence packet"
+        alt="Simulated facility load and the signed evidence packet"
         className={styles.effectCapture}
       />
       <Boundary />
@@ -204,7 +205,7 @@ export default function GraceScreenshotStory(): React.ReactElement {
     <section className={`${styles.slide} ${styles.closing}`} key="closing">
       <div className={styles.closingMark}>GRACE</div>
       <SlideLabel number={6}>THE RELIANCE RECORD</SlideLabel>
-      <h2>From human permission to physical consequence.</h2>
+      <h2>From human permission to a signed record.</h2>
       <div className={styles.chain}>
         {([
           [Smartphone, 'Approve'],
@@ -226,7 +227,7 @@ export default function GraceScreenshotStory(): React.ReactElement {
       </p>
       <Link className={styles.liveLink} href="/grace/live">
         <Activity aria-hidden="true" size={18} />
-        Open the live reference run
+        Replay the reference run
       </Link>
       <Boundary />
     </section>,

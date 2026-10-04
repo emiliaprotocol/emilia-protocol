@@ -431,11 +431,11 @@
     },
     {
       "path": "lib/grace/curtailment.js",
-      "sha256": "b9d886fc3731db946657037225a5282c71396863b53b22ca0f3a43c8f22da7b3"
+      "sha256": "ca0b9f191e4e9107744b91620edfab49db8989e7f2756a404d9be50e6a21e81e"
     },
     {
       "path": "lib/grace/curtailment.ts",
-      "sha256": "633da4788af0ce9bc7be521fb52b0e4ff7c23986a3904a911067132cc010efe5"
+      "sha256": "71cf5aa2639ef8be17c6082cb1831f606a9ba3c04573564006a75d8ea8511387"
     },
     {
       "path": "lib/grace/forecast-evidence.js",

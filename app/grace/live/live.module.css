@@ -180,6 +180,20 @@
   color: #d4af5b;
 }
 
+.offlineRun {
+  max-width: 620px;
+  margin: 10px 0 0;
+  color: #9faca4;
+  font-family: var(--font-ibm-plex-mono), 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.offlineRun code {
+  color: #e7ece9;
+  overflow-wrap: anywhere;
+}
+
 .curtailmentVisual {
   min-width: 0;
   overflow: hidden;
