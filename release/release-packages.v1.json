@@ -61,12 +61,12 @@
       "mode": "npm_reusable",
       "registry_dependency_tarballs": [
         {
-          "spec": "@emilia-protocol/require-receipt@0.8.1",
-          "sha256": "fb79602d51504e8abf9c1487d75eb5d046e1a2aeb76d2912819d568afded214e"
+          "spec": "@emilia-protocol/require-receipt@0.8.2",
+          "sha256": "95583e0ec6d2d7b77410abed44ae88ea866cd5ba38749129754145df218ae938"
         },
         {
-          "spec": "@emilia-protocol/verify@6.0.0",
-          "sha256": "bfbf4d6a7edb689618c756ee5e22068ac38c4623b1ec4d136450ca1c0d1b7d92"
+          "spec": "@emilia-protocol/verify@7.0.0",
+          "sha256": "131ac4af85eaa5f10106ee244128c61f417612ea706ec17233382aff86f6373f"
         }
       ]
     },

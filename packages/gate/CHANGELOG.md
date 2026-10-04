@@ -4,7 +4,7 @@
 All notable changes to `@emilia-protocol/gate` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.29.0 (2026-10-04)
 
 ### Added
 
@@ -17,7 +17,33 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
-- The exact `@emilia-protocol/verify` dependency moves from 5.0.0 to 6.0.0.
+- The exact `@emilia-protocol/verify` dependency moves from the published
+  Gate 0.28.0 dependency, 5.0.0, to 7.0.0. The exact
+  `@emilia-protocol/require-receipt` dependency moves from 0.8.1 to 0.8.2.
+  Gate's authorization-chain adapters continue to use Verify's legacy string
+  API; malformed or unsupported whitespace in a configured expression is
+  refused before provider entry.
+- The move from Verify 5 also takes the CAID -04 and AEB changes introduced
+  in Verify 6. AEB mapping profiles made by Verify 5's adapter helpers must
+  be regenerated: their definition declares `action_type` as a field, which
+  CAID -04 refuses. Profiles with open enums or bare external enum references
+  must explicitly list accepted values; these adapters do not resolve external
+  snapshots. Review the new definitions, regenerate their profile and registry
+  digests, and re-pin the relying-party configuration before creating fresh
+  evaluations. Gate re-derives AEB evaluations at admission, so affected old
+  profiles or evaluations fail closed rather than authorizing under the old
+  mapping. Preserve the original artifacts and verifier pins for historical
+  reproduction; do not overwrite them with the new definitions or results.
+  The action-bearing JSON paths named in Verify's changelog also tighten
+  decoding, including malformed UTF-8 and selected byte order mark and Unicode
+  noncharacter refusals for inputs Verify 5 accepted. See the [Verify 6 migration
+  details](../verify/CHANGELOG.md#600-2026-09-28) for the exact caller scope.
+- Verify 7's separate structured evaluator uses `EP-AEC-EVALUATOR-08-v1` and
+  refuses replay records made by `EP-AEC-EVALUATOR-05-v1` or
+  `EP-AEC-EVALUATOR-07-v1` as `UNSUPPORTED_REVISION`.
+  Keep the original pinned evaluator to reproduce those historical records;
+  a fresh `-08` evaluation is a new record, not a relabeled old one. Gate does
+  not add a structured-evaluator or replay-conformance claim.
 
 ## 0.28.0 (2026-09-25)
 
