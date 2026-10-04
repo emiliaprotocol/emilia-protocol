@@ -5,14 +5,16 @@ All notable changes to `@emilia-protocol/issue` are documented here.
 
 ## Unreleased
 
+## 0.7.1 (2026-10-04)
+
 ### Added
 
 - `strictJsonGate(text, { refuseNoncharacters: true })` also refuses a
   string or member name that holds a Unicode noncharacter after unescaping,
   which I-JSON (RFC 7493) excludes. It is opt-in: without the option the
-  gate behaves as before. Callers that decode JSON text carrying a CAID
-  action object pass it (draft-schrock-canonical-action-identifier-04,
-  Section 2.4).
+  gate behaves as before. Align the helper declaration with that optional
+  argument. The CLI keeps its default parsing policy, and issuance signing
+  domains and receipt wire formats are unchanged.
 
 ## 0.7.0 (2026-08-30)
 

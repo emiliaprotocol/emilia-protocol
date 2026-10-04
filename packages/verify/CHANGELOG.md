@@ -5,6 +5,18 @@ This package follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 7.0.0 (2026-10-04)
+
+Version type: major. The structured evaluator now emits
+`EP-AEC-EVALUATOR-08-v1`. A stored -07 record is reported as
+`UNSUPPORTED_REVISION`, with `matches: false`, rather than compared under the
+new revision. Preserve historical records and their original evaluator pins;
+do not relabel them. A fresh -08 evaluation of the same evidence is a new
+record with its own profile and replay digest, not validation of the old replay.
+The v1 requirement and replay envelope versions and member sets are unchanged.
+Gate selects a verifier version through an explicit exact dependency pin; this
+release does not silently migrate already installed Gate deployments.
+
 ### Structured AEC evaluator revision EP-AEC-EVALUATOR-08-v1
 
 The requirement-expression algorithm is now normative, so the evaluator

@@ -5,14 +5,18 @@ All notable changes to `@emilia-protocol/require-receipt` are documented here.
 
 ## Unreleased
 
+## 0.8.2 (2026-10-04)
+
 ### Added
 
 - `strictJsonGate(text, { refuseNoncharacters: true })` also refuses a
   string or member name that holds a Unicode noncharacter after unescaping,
   which I-JSON (RFC 7493) excludes. It is opt-in: without the option the
-  gate behaves as before. Callers that decode JSON text carrying a CAID
-  action object pass it (draft-schrock-canonical-action-identifier-04,
-  Section 2.4).
+  gate behaves as before. The option is available through the package helper
+  and generated drop-in; this release does not enable it for every JSON
+  caller or change receipt and authorization semantics.
+
+## 0.8.1 (2026-08-30)
 
 ### Security
 
@@ -25,10 +29,6 @@ All notable changes to `@emilia-protocol/require-receipt` are documented here.
   Compatibility note: an existing guarded manifest that declares no
   `execution_binding` is now invalid and must name the material fields the
   executor observes from its system of record.
-
-## 0.8.1 (2026-08-30)
-
-### Security
 
 - Refuse contradictory selector identities instead of falling through to a
   legacy first-match classification.

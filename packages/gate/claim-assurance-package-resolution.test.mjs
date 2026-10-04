@@ -39,8 +39,16 @@ test('packed Gate accepts an injected packed Verify evaluator in a blank consume
 
     const gatePackage = JSON.parse(fs.readFileSync(path.join(installedGate, 'package.json'), 'utf8'));
     const verifyPackage = JSON.parse(fs.readFileSync(path.join(installedVerify, 'package.json'), 'utf8'));
+    const sourceGatePackage = JSON.parse(fs.readFileSync(path.join(gateRoot, 'package.json'), 'utf8'));
+    const sourceVerifyPackage = JSON.parse(fs.readFileSync(path.join(verifyRoot, 'package.json'), 'utf8'));
     assert.equal(typeof verifyPackage.version, 'string');
-    assert.equal(gatePackage.dependencies['@emilia-protocol/verify'], verifyPackage.version);
+    // The evaluator is explicitly injected below, not loaded through Gate's
+    // pinned dependency. A new Verify release can be prepared before Gate's
+    // deliberate registry dependency migration; both packed identities must
+    // still match their own approved source declarations.
+    assert.equal(gatePackage.dependencies['@emilia-protocol/verify'], sourceGatePackage.dependencies['@emilia-protocol/verify']);
+    assert.equal(gatePackage.version, sourceGatePackage.version);
+    assert.equal(verifyPackage.version, sourceVerifyPackage.version);
     assert.ok(gatePackage.exports['./claim-assurance']);
     assert.ok(verifyPackage.exports['./claim-assurance']);
 

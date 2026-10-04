@@ -51,7 +51,7 @@ import type {
 
 import { EPError } from './types.js';
 
-const SDK_VERSION = '0.11.0';
+const SDK_VERSION = '0.11.1';
 const DEFAULT_BASE_URL = 'https://emiliaprotocol.ai';
 const DEFAULT_TIMEOUT = 30_000;
 

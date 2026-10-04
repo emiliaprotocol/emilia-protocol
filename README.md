@@ -196,11 +196,11 @@ Start with one declared consequential MCP action. Install the exact local
 runtime, then create its Gate Starter and run the bounded four-case check:
 
 ```bash
-npm install --save-exact @emilia-protocol/mcp-guard@0.6.0
-npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action sendWire --apply --verify
+npm install --save-exact @emilia-protocol/mcp-guard@0.6.1
+npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action sendWire --apply --verify
 
 # after reading emilia/authority-map.html and action-control.manifest.json
-npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action sendWire --reviewed \
+npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action sendWire --reviewed \
   --crossing-profile ccs-wang-draft08-v13
 ```
 
@@ -463,7 +463,7 @@ complete; until it is, no blanket claim about the whole stack is made.
 
 ## Quickstart
 
-1. Install the exact local guard runtime, then run `npx @emilia-protocol/scan@0.5.0 protect ./tools.json --action sendWire --apply --verify`, replacing `sendWire` with one exact declared consequential tool.
+1. Install the exact local guard runtime, then run `npx @emilia-protocol/scan@0.5.2 protect ./tools.json --action sendWire --apply --verify`, replacing `sendWire` with one exact declared consequential tool.
 2. Review the generated Authority Map, action manifest, material fields, selected boundary, and named blind spots.
 3. Run the separate `--reviewed --crossing-profile <launch-profile>` command to create the owner-only handoff and unsealed Lab workspace from those unchanged bytes.
 4. Install Gate on the path that owns the provider credential and durable consumption state.

@@ -15,6 +15,16 @@ This is the core primitive that makes EP a **protocol**, not an API.
 npm install @emilia-protocol/verify
 ```
 
+### Upgrading from 6.x
+
+Version 7 uses `EP-AEC-EVALUATOR-08-v1` for structured authorization-chain
+evaluation. Its `replay()` reports a stored -07 record as
+`comparison: 'UNSUPPORTED_REVISION'` and `matches: false`. The returned
+`result` is a fresh -08 evaluation, not confirmation of the historical record.
+Keep old replay records unchanged and retain the exact 6.x evaluator and trust
+inputs if you need to reproduce them. Do not rewrite their revision or digest.
+The legacy `verifyAuthorizationChain` API retains its combined validity result.
+
 ## Quick Start
 
 ```js

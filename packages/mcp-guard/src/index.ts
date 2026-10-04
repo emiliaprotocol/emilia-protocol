@@ -57,7 +57,7 @@ import {
 type AnyRecord = Record<string, any>;
 
 /** Runtime/package identity used by generated consumers that pin this release. */
-export const MCP_GUARD_RUNTIME_VERSION = '0.6.0';
+export const MCP_GUARD_RUNTIME_VERSION = '0.6.1';
 
 // ---------------------------------------------------------------------------
 // Canonicalization (RFC 8785-style, key-sorted) — used ONLY for the additive

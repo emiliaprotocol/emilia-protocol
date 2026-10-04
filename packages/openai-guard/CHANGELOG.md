@@ -3,17 +3,17 @@
 
 ## Unreleased
 
-- Allow the optional verifier peer to use 6.x as well, so the guard can
-  install alongside a Gate that pins `@emilia-protocol/verify` 6.0.0. The
-  guard calls only `verifyReceipt()`, whose root entry verify 6.0.0 leaves
-  unchanged; the package tests pass against the repository's verify 6.0.0
-  source. This takes effect only when a new guard version is published.
-- Allow the optional verifier peer to use 5.x as well as 3.21.x and 4.x, so
-  the guard can install alongside Gate 0.27.0, which pins
-  `@emilia-protocol/verify` 5.0.0. The guard calls only `verifyReceipt()`,
-  which verify 5.0.0 keeps; the package tests pass against the repository's
-  verify 5.0.0 source. This takes effect only when a new guard version is
-  published.
+## 0.5.2 (2026-10-04)
+
+- Expand the optional verifier peer to include 5.x, 6.x, and 7.x alongside
+  the existing 3.21.x and 4.x lines, allowing installation with Gate 0.29.0
+  and its Verify 7.0.0 dependency without bypassing peer checks.
+- Exercise signed and tampered receipts, forged signatures, wrong trust keys,
+  exact tool arguments, replay refusal, and duplicate JSON with the packed
+  Verify 7.0.0 candidate installed in a blank consumer.
+- The optional offline client calls the unchanged root `verifyReceipt()` API.
+  This compatibility update does not reinterpret historical AEC replay records,
+  add AEC evaluation to the guard, or widen its configured enforcement boundary.
 
 ## 0.5.1 (2026-09-13)
 

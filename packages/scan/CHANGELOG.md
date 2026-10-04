@@ -3,6 +3,16 @@
 
 ## Unreleased
 
+## 0.5.2 (2026-10-04)
+
+- Require exactly `@emilia-protocol/mcp-guard@0.6.1` for local protection
+  checks and generated integration instructions, carrying the Guard patch's
+  declared-surface safety fix into new Scan starters.
+- Keep package metadata, runtime version, required exports, and consumer-root
+  validation strict. Older, forged, or shadowed Guard runtimes remain refused.
+- Exercise the locally packed Guard with RequireReceipt 0.8.2 while retaining
+  the hash-verified published Verify 3.21.0 dependency and registry cutoff.
+
 ## 0.5.1 (2026-09-13)
 
 - Accept both npm 11 and npm 12 pack reports in the installed-consumer test.

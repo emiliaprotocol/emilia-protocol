@@ -5,6 +5,16 @@ All notable changes to `@emilia-protocol/mcp-guard` are documented here.
 
 ## Unreleased
 
+## 0.6.1 (2026-10-04)
+
+### Security
+
+- Preserve prototype-named tools such as `__proto__` as own entries in the
+  customer-owned gateway's protection map. A protected tool cannot also be
+  configured read-only, and its exact receipt requirement remains enforced.
+- Enforcement still covers only calls routed through the configured gateway;
+  alternate execution paths remain outside this middleware's boundary.
+
 ## 0.6.0 (2026-08-30)
 
 ### Added
