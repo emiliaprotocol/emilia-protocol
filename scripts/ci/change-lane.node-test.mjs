@@ -120,6 +120,7 @@ test('audited sources: code a skipped job may run, not trees only kept jobs read
     'scripts/check-standards-staged.mjs',
     'scripts/check-ae-challenge-08.mjs',
     'scripts/check-aec-07.mjs',
+    'scripts/check-aec-08.mjs',
     'scripts/check-artifact-lifecycle.mjs',
     'scripts/generate-proof-stats.mts',
     'integrations/github-merge-gate-action/tests/merge-gate.node-test.mjs',

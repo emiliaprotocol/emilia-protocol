@@ -69,6 +69,17 @@ EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go
     not independent reimplementations.)
 ```
 
+The same run then executes one profile suite outside those totals:
+`EP-AEC-EXPRESSION-v1` (`conformance/vectors/aec-expression.v1.json`, 104
+vectors), the frozen requirement-expression corpus for the AEC -08 evaluator
+revision `EP-AEC-EVALUATOR-08-v1`. Each vector asserts syntax validity, the
+refusal class, the Boolean value, the result, the canonical parse and the
+parse identity separately, and all three ports must agree on every field. It
+covers expression evaluation only: Python and Go agreement here is not
+conformance to the structured -07/-08 requirement and replay contract, which
+only the JavaScript evaluator implements. The manifest records it under
+`profile_suites`.
+
 The externally portable clean-room bundle remains a separately pinned
 16-suite/164-vector baseline; the newer 30-vector AEC acceptance and 33-vector
 four-outcome resolution suites have not been attributed to that external

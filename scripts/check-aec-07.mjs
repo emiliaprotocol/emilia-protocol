@@ -184,7 +184,10 @@ for (const [index, relative] of expectedPaths.entries()) {
 // Sections 10 and 21 describe the evaluator revision that accompanies -07.
 // Those sentences must be true of the code on this tree, so the packet cannot
 // land on main ahead of that evaluator (README, Hold 1). This runs last so a
-// text or checksum failure is reported first.
+// text or checksum failure is reported first. EP-AEC-EVALUATOR-08-v1 is the
+// declared successor: it keeps every -07 structure checked below and changes
+// only the requirement-expression algorithm, which -07 Section 10 says needs
+// a new revision. Any other revision fails.
 const evaluatorSource = readFileSync(new URL('../packages/verify/src/evidence-chain.ts', import.meta.url), 'utf8');
 const evaluatorRevision = /export const AEC_EVALUATOR_REVISION = '([^']+)';/.exec(evaluatorSource)?.[1] ?? 'no revision';
 const absent = [
@@ -199,7 +202,7 @@ const absent = [
   "native_verification: 'NOT_EVALUATED', acceptance: 'NOT_EVALUATED'",
 ].filter((marker) => !evaluatorSource.includes(marker));
 invariant(
-  evaluatorRevision === 'EP-AEC-EVALUATOR-07-v1' && absent.length === 0,
+  ['EP-AEC-EVALUATOR-07-v1', 'EP-AEC-EVALUATOR-08-v1'].includes(evaluatorRevision) && absent.length === 0,
   'text, renders, checksums and posted -06 integrity pass, but Sections 10 and 21 describe the '
     + 'EP-AEC-EVALUATOR-07-v1 evaluator and packages/verify/src/evidence-chain.ts on this tree emits '
     + `${evaluatorRevision}${absent.length ? ` and lacks ${absent.join(', ')}` : ''}. `

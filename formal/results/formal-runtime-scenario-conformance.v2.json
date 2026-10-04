@@ -511,7 +511,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "42df62275ac9510c42f0fe927fe640176daf3ef52e2c8faac10ab24d2459d087"
+      "sha256": "c6cd72c711a6624999a31a2b1b9c5b6362e593818f3ad057b7a2ea6bb6968e1a"
     },
     {
       "path": "packages/gate/aec-execution.js",
@@ -1199,7 +1199,7 @@
     },
     {
       "path": "packages/verify/dist/evidence-chain.js",
-      "sha256": "8a33d45b8ee40617ca469a109ee0f66e7dffb518dc9627cf674d7f231fadfa07"
+      "sha256": "bbbcaba97d25235a64be180eeba285bcc0be720cdc85070954e015c4159eb2b8"
     },
     {
       "path": "packages/verify/dist/evidence-record.js",
@@ -1379,7 +1379,7 @@
     },
     {
       "path": "packages/verify/src/evidence-chain.ts",
-      "sha256": "a0fa929293efd2f732b1801c82981ef3c111cf4aa0a2980844b709c1e91c8126"
+      "sha256": "7379f8b58a1b3f97659b8c295369a146569ba07475665a06c3ac74ade579e42c"
     },
     {
       "path": "packages/verify/src/index.ts",

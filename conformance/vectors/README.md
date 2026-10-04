@@ -89,6 +89,79 @@ It derives and parses the CAID and binds the exact session, provenance-reference
 set, and outcome label. It does not parse or natively verify those external
 formats and makes no claim of C2PA, AUDIT, OTEL, or SCITT conformance.
 
+## `aec-expression.v1.json` — EP-AEC-EXPRESSION-v1 (frozen)
+
+The requirement-expression corpus for the AEC -08 expression contract
+(evaluator `EP-AEC-EVALUATOR-08-v1`). Each vector gives an expression and the
+eligible component types, and states five things separately: syntax validity
+(`VALID` or `INVALID`), the refusal class of an invalid expression (`syntax`
+or `limit`), the Boolean value of a valid one, the `SATISFIED` or
+`UNSATISFIED` result, and the canonical parse with its parse identity. A
+parser that refused everything would still fail every syntax assertion on a
+valid row, so validity and truth cannot be confused.
+
+The 104 vectors cover every row of the -08 acceptance table, the four permitted whitespace characters and the ones that are not
+(NBSP, EM SPACE, U+2028, U+2029, NEL, BOM, zero-width space, VT, FF),
+operator-looking substrings inside dotted, colon, hyphen and underscore
+identifiers, the `&&` and `||` aliases, grouping without reassociation, and
+each cap at, below and beyond its threshold, including overflowing branches
+behind a true OR and a false AND prefix.
+
+Expectations are written by hand in `generate-aec-expression.mts`; only the
+parse identity is derived (SHA-256 over `EP-AEC-EXPRESSION-PARSE-v1`, one zero
+octet and the canonical parse). `node generate-aec-expression.mjs --check`
+proves the checked-in bytes and `aec-expression.v1.SHA256SUMS` match. v1 is
+frozen: a changed vector is a new corpus version. Runtime verification never
+fetches the corpus.
+
+Immutable locator for v1 (cite both values; the path alone is not a locator):
+
+- URL: `https://raw.githubusercontent.com/emiliaprotocol/emilia-protocol/2ebba2d8439b8e268ba6c3bc2fbbfdd42d2fb318/conformance/vectors/aec-expression.v1.json`
+- SHA-256: `927e3663299bd6c11836d4ad22a6dd398b85d16478100921bf68cf03ed459d4b`
+
+The URL names the commit that introduced the corpus. A reader checks the
+bytes against the SHA-256, not the URL.
+
+The JavaScript, Python and Go ports run it in `npm run conformance`, and the
+manifest records it under `profile_suites`, outside the live totals. It covers
+expression evaluation only. Python and Go agreement on it is not conformance
+to the structured -07/-08 requirement and replay contract, which only the
+JavaScript `createAuthorizationChainEvaluator` implements; the JavaScript
+package tests also run every vector through that evaluator and through the
+legacy `verifyAuthorizationChain`. Passing a finite corpus is necessary for
+the profile, not proof of correctness for every input, and a matching parse
+identity does not prove a matching verdict.
+
+## `aec-replay-07.v1.json` — genuine AEC -07 replay record (frozen)
+
+A replay record made by the released -07 evaluator, kept as stored, for the
+-08 replay migration tests in `packages/verify/aec-expression.test.ts`. The
+producer is the published npm package `@emilia-protocol/verify` 6.0.0, whose
+`AEC_EVALUATOR_REVISION` is `EP-AEC-EVALUATOR-07-v1` (tarball integrity
+`sha512-47L+T0rzZ6vyQHnd+rvdQJvBsRWab0XdK6wOsueCgmy6gIxNWuRpIDy1JhzUTfhGWootI+01rFwLT0SxnJvQ5A==`).
+The inputs are the frozen `aec-role.v1.json` vector
+`accept_pinned_human_receipt` (a real Class-A WebAuthn Trust Receipt with its
+pinned RP profile and verification time), checked by the built-in
+`ep-receipt` verifier under the requirement expression `ep-receipt`; it
+evaluates SATISFIED, and 6.0.0's own `replay()` matches the record.
+
+- `aec-replay-07.v1.json`: inputs, producer provenance and a record summary.
+- `aec-replay-07.v1.record.json`: the record exactly as 6.0.0 serialized it
+  (RFC 8785 bytes, no trailing newline). Its SHA-256,
+  `de32112e9e9f47925e6ad6b3e05d039fb26901471033f9980bcfc03bb2306365`, is the
+  replay digest 6.0.0 reported.
+- `aec-replay-07.v1.SHA256SUMS`: SHA-256 of both files.
+
+`node generate-aec-replay-07.mjs --check` needs no package: it proves the
+inputs still equal the source vector, the record is canonical and matches the
+summary, and the checksums hold. Regenerating, or adding `--tarball` to the
+check to re-run the producer, needs only the published package:
+`npm pack @emilia-protocol/verify@6.0.0`, then
+`node generate-aec-replay-07.mjs --tarball emilia-protocol-verify-6.0.0.tgz`.
+The generator refuses a tarball whose npm integrity differs and never loads
+this repository's evaluator. The fixture is not a conformance suite and is
+not counted in the manifest.
+
 ## Opt-in profile suites (cross-language)
 
 Five opt-in verify profiles ship shared, cross-language vector suites that the

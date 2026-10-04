@@ -40,4 +40,17 @@ export const EXACT_EXTERNAL_RESULT_KINDS = Object.freeze({
     'revocation.exec.v2.json': 'valid',
     'authority-document-proof-join.exec.v1.json': 'accepted',
 });
+// Cross-language profile suites. Every port runs them in conformance/run.mjs
+// and the manifest writer records them under `profile_suites`, but they are
+// not part of the live corpus totals above: the clean-room bundles pin that
+// corpus, and a profile suite covers one narrow contract, stated in its scope.
+export const PROFILE_SUITES = Object.freeze([
+    Object.freeze({
+        file: 'aec-expression.v1.json',
+        claim_scope: 'AEC -08 requirement-expression evaluation (EP-AEC-EVALUATOR-08-v1 expression contract) only. '
+            + 'JavaScript, Python and Go agreement here is not conformance to the structured -07/-08 requirement and replay contract, '
+            + 'which only the JavaScript createAuthorizationChainEvaluator implements.',
+    }),
+]);
+export const PROFILE_SUITE_FILES = Object.freeze(PROFILE_SUITES.map((suite) => suite.file));
 export default LIVE_SUITE_FILES;

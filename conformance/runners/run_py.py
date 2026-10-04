@@ -13,7 +13,8 @@ from emilia_verify import (verify_receipt, verify_webauthn_signoff, verify_quoru
                             verify_resolution_receipt,
                             verify_authority_proof_via_document,
                             evaluate_predicted_effects, predicted_effects_digest,
-                            trust_receipt_digest, verify_outcome_binding)
+                            trust_receipt_digest, verify_outcome_binding,
+                            evaluate_aec_requirement_expression)
 # EP-CANONICALIZATION-v1 differential branch. Same gate as the JS runner
 # (conformance/runners/strict-json.mjs) and the Go runner: standard parse, then
 # duplicate member names / unpaired surrogates / depth > 64 reject, then the EP
@@ -251,6 +252,11 @@ def _run(v):
     # verifies over the expected digest (fail-closed on any refusal).
     if "timestamp_proof" in v:
         return _valid(verify_timestamp_proof(v["timestamp_proof"], v.get("expected_digest"), v.get("pinned_tsa_keys"))["verified"])
+    # EP-AEC-EXPRESSION-v1: syntax, refusal class, value, result, canonical parse
+    # and parse identity of one requirement expression, each compared separately.
+    if "aec_expression" in v:
+        e = v["aec_expression"]
+        return evaluate_aec_requirement_expression(e["expression"], e["eligible_types"])
     # EP-AEC-ROLE-v1: valid iff the evidence requirement is SATISFIED, with the built-in
     # ep-receipt using role-scoped pins (keys_by_type) and a permissive stub for each
     # stub_type. Exercises real signatures, role scoping, and signed action binding.

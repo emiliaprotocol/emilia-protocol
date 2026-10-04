@@ -2036,78 +2036,184 @@ def _builtin_aec_verifiers() -> dict:
     return {"ep-quorum": ep_quorum, "ep-receipt": ep_receipt}
 
 
-def _tokenize_aec_requirement(expr: Any):
-    if not isinstance(expr, str) or not expr or len(expr) > _AEC_MAX_REQUIREMENT_LENGTH:
-        return None
-    toks = []
+# AEC -08 requirement expressions (evaluator EP-AEC-EVALUATOR-08-v1).
+#
+# Mirrors compileAecRequirementExpression in packages/verify/src/evidence-chain.ts:
+# the lexer takes the LONGEST identifier run and only then classifies it (a
+# complete run of exactly AND or OR is an operator, every other run, such as
+# `and`, `Or`, `aORb`, is an identifier); only SP, HTAB, CR and LF are
+# whitespace; operators group left to right with equal precedence; the length
+# cap is 4096 UTF-8 octets, the token cap 256 (identifiers, operators and
+# parentheses all count), the nesting cap 32. Refusal order: length, then the
+# lexer left to right, then the parser left to right. One parse produces one
+# tree; the canonical parse, parse identity and Boolean value all come from it.
+# The parse identity is an interpretation diagnostic: a matching identity does
+# not guarantee a matching verdict.
+AEC_EXPRESSION_PARSE_DOMAIN = "EP-AEC-EXPRESSION-PARSE-v1"
+_AEC_EXPR_WS = " \t\r\n"
+
+
+class _AecExpressionRefused(Exception):
+    def __init__(self, invalid_class: str, detail: str):
+        super().__init__(detail)
+        self.invalid_class = invalid_class
+        self.detail = detail
+
+
+def _aec_utf8_octets(value: str) -> int:
+    # A lone surrogate counts as the three octets of its replacement character.
+    return len(value.encode("utf-8", "surrogatepass"))
+
+
+def _aec_has_expression_content(value: Any) -> bool:
+    return isinstance(value, str) and value.strip(_AEC_EXPR_WS) != ""
+
+
+def _lex_aec_expression(expr: Any) -> list:
+    if not isinstance(expr, str):
+        raise _AecExpressionRefused("syntax", "not_a_string")
+    if _aec_utf8_octets(expr) > _AEC_MAX_REQUIREMENT_LENGTH:
+        raise _AecExpressionRefused("limit", "length_limit")
+    toks: list = []
     i = 0
-    while i < len(expr):
+    n = len(expr)
+    while i < n:
         ch = expr[i]
-        if ch in " \t\r\n":
+        if ch in _AEC_EXPR_WS:
             i += 1
             continue
         if ch in "()":
-            toks.append(ch)
+            toks.append((ch, ch))
             i += 1
-        elif ch in "&|" and i + 1 < len(expr) and expr[i + 1] == ch:
-            toks.append(ch + ch)
+        elif ch in "&|" and i + 1 < n and expr[i + 1] == ch:
+            toks.append(("op", "AND" if ch == "&" else "OR"))
             i += 2
         elif _AEC_IDENT_CHAR.fullmatch(ch):
             j = i + 1
-            while j < len(expr) and _AEC_IDENT_CHAR.fullmatch(expr[j]):
+            while j < n and _AEC_IDENT_CHAR.fullmatch(expr[j]):
                 j += 1
-            toks.append(expr[i:j])
+            run = expr[i:j]
+            toks.append(("op", run) if run in ("AND", "OR") else ("id", run))
             i = j
         else:
-            return None
+            raise _AecExpressionRefused("syntax", "invalid_character")
         if len(toks) > _AEC_MAX_REQUIREMENT_TOKENS:
-            return None
-    return toks or None
+            raise _AecExpressionRefused("limit", "token_limit")
+    if not toks:
+        raise _AecExpressionRefused("syntax", "empty")
+    return toks
 
 
-def _eval_requirement(expr: str, satisfied: set) -> dict:
-    toks = _tokenize_aec_requirement(expr)
-    if toks is None:
-        return {"valid": False, "value": False}
-    pos = {"i": 0}
+def _parse_aec_expression(expr: Any):
+    """Return (tree, token_count). Trees are ("id", name) or ("op", AND|OR, left, right)."""
+    toks = _lex_aec_expression(expr)
+    pos = [0]
 
-    def peek():
-        return toks[pos["i"]] if pos["i"] < len(toks) else None
-
-    def eat():
-        t = peek()
-        pos["i"] += 1
-        return t
-
-    def parse_expr(depth=0):
+    def parse_expr(depth):
         if depth > _AEC_MAX_REQUIREMENT_DEPTH:
-            raise ValueError("requirement nesting limit exceeded")
-        v = parse_term(depth)
-        while peek() in ("AND", "OR", "&&", "||"):
-            op = eat()
-            r = parse_term(depth)
-            v = (v and r) if op in ("AND", "&&") else (v or r)
-        return v
+            raise _AecExpressionRefused("limit", "depth_limit")
+        node = parse_term(depth)
+        while pos[0] < len(toks) and toks[pos[0]][0] == "op":
+            op = toks[pos[0]][1]
+            pos[0] += 1
+            node = ("op", op, node, parse_term(depth))
+        return node
 
     def parse_term(depth):
-        if peek() == "(":
-            eat()
-            v = parse_expr(depth + 1)
-            if peek() != ")":
-                raise ValueError("unclosed requirement group")
-            eat()
-            return v
-        ident = eat()
-        if ident is None or ident in (")", "AND", "OR", "&&", "||") or not _AEC_IDENT.fullmatch(ident):
-            raise ValueError("invalid requirement term")
-        return ident in satisfied
+        if pos[0] >= len(toks):
+            raise _AecExpressionRefused("syntax", "unexpected_end")
+        kind, text = toks[pos[0]]
+        if kind == "(":
+            pos[0] += 1
+            inner = parse_expr(depth + 1)
+            if pos[0] >= len(toks):
+                raise _AecExpressionRefused("syntax", "unclosed_group")
+            if toks[pos[0]][0] != ")":
+                raise _AecExpressionRefused("syntax", "unexpected_token")
+            pos[0] += 1
+            return inner
+        if kind != "id":
+            raise _AecExpressionRefused("syntax", "unexpected_token")
+        pos[0] += 1
+        return ("id", text)
 
+    tree = parse_expr(0)
+    if pos[0] != len(toks):
+        raise _AecExpressionRefused("syntax", "trailing_input")
+    return tree, len(toks)
+
+
+def _render_aec_expression(node) -> str:
+    if node[0] == "id":
+        return node[1]
+    return "(" + _render_aec_expression(node[2]) + " " + node[1] + " " + _render_aec_expression(node[3]) + ")"
+
+
+def _aec_parse_identity(canonical: str) -> str:
+    return "sha256:" + hashlib.sha256(
+        AEC_EXPRESSION_PARSE_DOMAIN.encode("ascii") + b"\x00" + canonical.encode("ascii")).hexdigest()
+
+
+def _eval_aec_expression_tree(node, eligible) -> bool:
+    if node[0] == "id":
+        return node[1] in eligible
+    left = _eval_aec_expression_tree(node[2], eligible)
+    right = _eval_aec_expression_tree(node[3], eligible)
+    return (left and right) if node[1] == "AND" else (left or right)
+
+
+class AecCompiledExpression:
+    """One parse of a requirement expression. ``evaluate`` reads only this tree."""
+
+    __slots__ = ("valid", "invalid_class", "detail", "token_count", "canonical_parse", "parse_identity", "_tree")
+
+    def __init__(self, expr: Any):
+        try:
+            tree, count = _parse_aec_expression(expr)
+        except _AecExpressionRefused as refused:
+            self.valid, self.invalid_class, self.detail = False, refused.invalid_class, refused.detail
+            self.token_count = self.canonical_parse = self.parse_identity = self._tree = None
+            return
+        self.valid, self.invalid_class, self.detail, self.token_count = True, None, None, count
+        self._tree = tree
+        self.canonical_parse = _render_aec_expression(tree)
+        self.parse_identity = _aec_parse_identity(self.canonical_parse)
+
+    def evaluate(self, eligible_types) -> dict:
+        if not self.valid:
+            return {"syntax": "INVALID", "invalid_class": self.invalid_class, "value": None,
+                    "result": "UNSATISFIED", "canonical_parse": None, "parse_identity": None}
+        value = bool(_eval_aec_expression_tree(self._tree, set(eligible_types)))
+        return {"syntax": "VALID", "invalid_class": None, "value": value,
+                "result": "SATISFIED" if value else "UNSATISFIED",
+                "canonical_parse": self.canonical_parse, "parse_identity": self.parse_identity}
+
+
+def compile_aec_requirement_expression(expr: Any) -> AecCompiledExpression:
+    """Parse once; expose the tree's diagnostics and an evaluator over that tree.
+
+    Requirement-expression agreement with the JS reference is not conformance to
+    the structured -07/-08 requirement and replay contract, which this package
+    does not implement.
+    """
+    return AecCompiledExpression(expr)
+
+
+def evaluate_aec_requirement_expression(expr: Any, eligible_types) -> dict:
+    return AecCompiledExpression(expr).evaluate(eligible_types)
+
+
+def _tokenize_aec_requirement(expr: Any):
     try:
-        v = parse_expr()
-        valid = pos["i"] == len(toks)
-        return {"valid": valid, "value": bool(v) if valid else False}
-    except Exception:
-        return {"valid": False, "value": False}
+        return [text for _, text in _lex_aec_expression(expr)]
+    except _AecExpressionRefused:
+        return None
+
+
+def _eval_requirement(expr: Any, satisfied: set) -> dict:
+    compiled = expr if isinstance(expr, AecCompiledExpression) else AecCompiledExpression(expr)
+    evaluated = compiled.evaluate(satisfied)
+    return {"valid": evaluated["syntax"] == "VALID", "value": evaluated["value"] is True}
 
 
 def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
@@ -2133,7 +2239,9 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
     quorum policy, audience, and enrolled approver directory.
     """
     reasons: list = []
-    pinned = requirement if isinstance(requirement, str) and requirement.strip() else None
+    # Only SP, HTAB, CR and LF are expression whitespace (AEC -08); a pinned
+    # requirement is evaluated exactly as supplied, never trimmed.
+    pinned = requirement if _aec_has_expression_content(requirement) else None
     requirement_source = "relying_party" if pinned else "presenter"
 
     def fail(why):
@@ -2156,10 +2264,12 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
     if len(comps_in) > _AEC_MAX_COMPONENTS:
         return fail(f"too many components (maximum {_AEC_MAX_COMPONENTS})")
     req = pinned if pinned is not None else aec.get("requirement")
-    if not isinstance(req, str) or not req.strip():
+    if not _aec_has_expression_content(req):
         return fail("missing requirement expression")
-    if len(req) > _AEC_MAX_REQUIREMENT_LENGTH:
+    if _aec_utf8_octets(req) > _AEC_MAX_REQUIREMENT_LENGTH:
         return fail("requirement expression exceeds size limit")
+    # Parse once, before component work; the verdict is computed on this tree.
+    compiled_requirement = AecCompiledExpression(req)
 
     try:
         chain_digest = action_digest(aec["action"])
@@ -2233,7 +2343,7 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
             # Presenter-controlled labels are display metadata only.
         components.append(row)
 
-    evaluated = _eval_requirement(req, satisfied)
+    evaluated = _eval_requirement(compiled_requirement, satisfied)
     satisfied_result = (requirement_source == "relying_party" and expected_digest is not None
                         and evaluated["valid"] and evaluated["value"])
     if not evaluated["valid"]:
@@ -2245,7 +2355,7 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
     if expected_digest is None:
         reasons.append("relying-party expected action is required for satisfaction")
     presenter_req = aec.get("requirement")
-    if pinned and isinstance(presenter_req, str) and presenter_req.strip() and presenter_req != pinned:
+    if pinned and _aec_has_expression_content(presenter_req) and presenter_req != pinned:
         reasons.append(
             f'presenter requirement ignored in favor of relying-party requirement (presenter claimed: "{presenter_req}")')
     return {"satisfied": satisfied_result,

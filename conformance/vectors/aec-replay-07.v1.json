@@ -1,0 +1,163 @@
+{
+  "@version": "EP-AEC-REPLAY-FIXTURE-v1",
+  "fixture": "aec-replay-07.v1",
+  "frozen": true,
+  "description": "A replay record made by the released AEC -07 evaluator over real evidence, kept as stored. The -08 evaluator must report it UNSUPPORTED_REVISION without modifying it, and re-evaluation under -08 must produce a new, separately identified record.",
+  "producer": {
+    "package": "@emilia-protocol/verify",
+    "version": "6.0.0",
+    "npm_integrity": "sha512-47L+T0rzZ6vyQHnd+rvdQJvBsRWab0XdK6wOsueCgmy6gIxNWuRpIDy1JhzUTfhGWootI+01rFwLT0SxnJvQ5A==",
+    "npm_shasum": "05fd162c85f0d8248f353e53c78b92b80efcdbcd",
+    "published": "2026-09-28T13:24:43.580Z",
+    "algorithm_revision": "EP-AEC-EVALUATOR-07-v1"
+  },
+  "source": {
+    "vectors": "conformance/vectors/aec-role.v1.json",
+    "vector_id": "accept_pinned_human_receipt",
+    "requirement_from": "packages/verify/aec-current-profile.test.ts (AEC07 built-in ep-receipt)"
+  },
+  "regeneration": "node conformance/vectors/generate-aec-replay-07.mjs --tarball <npm pack of @emilia-protocol/verify@6.0.0>",
+  "inputs": {
+    "requirement": {
+      "@version": "EP-AEC-REQUIREMENT-v1",
+      "requirement_id": "payment-evidence@1",
+      "expression": "ep-receipt",
+      "freshness_sec": {},
+      "role_constraints": [],
+      "required_bindings": []
+    },
+    "native_verifiers": {
+      "ep-receipt": {
+        "profile": {
+          "id": "native-receipt",
+          "revision": "1",
+          "native_format_revision": "Trust-Receipt"
+        },
+        "trustSnapshot": {
+          "policy": {
+            "approver_keys": {
+              "ep:key:dir#1": {
+                "approver_id": "ep:approver:dir",
+                "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAExI0iUg5ukcKVc-QyZAmy6slaSQaydM-GpNHn-t-NKGTKRFHtEHWAB4X8SiwfUQzQky53gIV0I20osyKavdLDUw",
+                "key_class": "A",
+                "valid_from": "2026-01-01T00:00:00Z",
+                "valid_to": "2036-01-01T00:00:00Z",
+                "status": "active",
+                "revoked_at": null
+              }
+            },
+            "log_public_key": "MCowBQYDK2VwAyEA_CttDAOoWDXQ8P1KXtYJUZsZFyK98tMCxdsWNRhZriA",
+            "rp_id": "rp",
+            "allowed_origins": [
+              "https://test.emilia"
+            ],
+            "expected_policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+            "max_age_sec": 3600,
+            "registry_checked_at": "2026-06-13T11:30:00.000Z",
+            "max_registry_age_sec": 300
+          }
+        }
+      }
+    },
+    "chain": {
+      "@version": "EP-AEC-v1",
+      "action": {
+        "action_type": "payment.release",
+        "policy_id": "pol:test",
+        "initiator": "ep:agent:1",
+        "params": {
+          "amount": 82000,
+          "currency": "USD"
+        }
+      },
+      "requirement": "ep-receipt",
+      "components": [
+        {
+          "type": "ep-receipt",
+          "evidence": {
+            "receipt_id": "ep:receipt:hUnI2HdPW4w",
+            "action": {
+              "action_type": "payment.release",
+              "policy_id": "pol:test",
+              "initiator": "ep:agent:1",
+              "params": {
+                "amount": 82000,
+                "currency": "USD"
+              }
+            },
+            "action_hash": "sha256:48525ea7dd5e494830b4be7f12357fa90d8e3f6675c0c0acf36d9f7c117725ae",
+            "contexts": [
+              {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "sha256:48525ea7dd5e494830b4be7f12357fa90d8e3f6675c0c0acf36d9f7c117725ae",
+                "policy_id": "pol:test",
+                "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+                "initiator": "ep:agent:1",
+                "approver": "ep:approver:dir",
+                "approver_index": 1,
+                "required_approvals": 1,
+                "nonce": "m79YjRaoPnWruywvSGNxKw",
+                "issued_at": "2026-06-13T11:00:00.000Z",
+                "expires_at": "2026-06-13T18:00:00.000Z"
+              }
+            ],
+            "signoffs": [
+              {
+                "context_hash": "sha256:f68f7b94e5c7b1cd05587fb62841c84608dfd32b4c4fc77a533c0c8f762e5116",
+                "key_class": "A",
+                "approver_key_id": "ep:key:dir#1",
+                "signed_at": "2026-06-13T11:00:00.000Z",
+                "webauthn": {
+                  "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+                  "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiOW85N2xPWEhzYzBGV0gtMktFSElSZ2pmMHl0TVQ4ZDZVendNajNZdVVSWSIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+                  "signature": "MEYCIQCpO8lj0Ox03UL9DhEAdoFBdkIK_8gfyaX_2VevnjR6vQIhAJ4yvDuypb_EOFREcBkTQiJYcq0BsY88jFQh96a8ylet"
+                },
+                "signature": "MEYCIQCpO8lj0Ox03UL9DhEAdoFBdkIK_8gfyaX_2VevnjR6vQIhAJ4yvDuypb_EOFREcBkTQiJYcq0BsY88jFQh96a8ylet"
+              }
+            ],
+            "consumption": {
+              "nonce": "V6UniQU5wvri8p851DVYtA",
+              "state": "COMMITTED",
+              "committed_at": "2026-06-13T11:30:00.000Z"
+            },
+            "log_proof": {
+              "alg": "EP-MERKLE-v2",
+              "leaf_hash": "sha256:071e14816b66069a702fecd1a279d6ade93573c967a2dd5b9f1457513113ada7",
+              "leaf_index": 0,
+              "inclusion_path": [],
+              "checkpoint": {
+                "tree_size": 1,
+                "root_hash": "sha256:071e14816b66069a702fecd1a279d6ade93573c967a2dd5b9f1457513113ada7",
+                "log_key_id": "ep:log:test#1",
+                "merkle_alg": "EP-MERKLE-v2",
+                "log_signature": "15VibUDc_nb2WMh6LRtRUEo8_VTLtDMg9XZas1Wvp3N44FrFXGegubPJto7fo77VELqeMv8Q0kKX8ql8mfU7Dg"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "expected_action": {
+      "action_type": "payment.release",
+      "policy_id": "pol:test",
+      "initiator": "ep:agent:1",
+      "params": {
+        "amount": 82000,
+        "currency": "USD"
+      }
+    },
+    "verification_time": "2026-06-13T11:31:00.000Z"
+  },
+  "record": {
+    "file": "aec-replay-07.v1.record.json",
+    "encoding": "RFC 8785 canonical JSON exactly as serialized by the producer; no trailing newline",
+    "replay_digest": "sha256:de32112e9e9f47925e6ad6b3e05d039fb26901471033f9980bcfc03bb2306365",
+    "algorithm_revision": "EP-AEC-EVALUATOR-07-v1",
+    "evaluator_profile_digest": "sha256:dd186425a41364d685b7a3be393a31845b49184fe4724fe852e631ffd7c5adea",
+    "satisfied": true
+  },
+  "producer_self_replay": {
+    "matches": true
+  }
+}

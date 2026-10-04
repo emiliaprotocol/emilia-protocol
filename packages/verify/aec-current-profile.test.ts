@@ -72,7 +72,7 @@ test('AEC05: structured requirement enforces real signatures, native subjects, b
   assert.deepEqual(result.replay.facts[0].subject_ids, ['person:one']);
   assert.equal(result.replay.facts[0].native_verifier_profile_digest, digest(registration().profile));
   assert.equal(result.replay.facts[0].trust_snapshot_digest, digest(registration().trustSnapshot));
-  assert.equal(result.replay.algorithm_revision, 'EP-AEC-EVALUATOR-07-v1');
+  assert.equal(result.replay.algorithm_revision, 'EP-AEC-EVALUATOR-08-v1');
   for (const fact of result.replay.facts) {
     assert.equal(fact.native_verification, 'VERIFIED');
     assert.equal(fact.acceptance, 'ACCEPTED');

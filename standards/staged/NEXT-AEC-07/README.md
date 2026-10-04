@@ -1,7 +1,9 @@
 # AEC revision 07 working packet
 
 This directory stages `draft-schrock-ep-authorization-evidence-chain-07`.
-It is not published. The last posted revision is -06 (Datatracker posting
+Posted 2026-09-28T13:23:04Z: the IETF archive copy of the -07 XML has the
+SHA-256 that `SHA256SUMS.txt` pins for `UPLOAD-THIS/`. -08 is staged in
+`../NEXT-AEC-08/`. The rest of this file is the pre-posting record. The last posted revision is -06 (Datatracker posting
 2026-09-06T17:33:02Z), whose exact source is kept in `../NEXT-AEC-06/` and
 `../../posted/`. This packet started from that source byte for byte.
 
@@ -62,9 +64,11 @@ no render line over 72 columns, the cited revisions are the ones listed in
 
 It also fails unless `packages/verify/src/evidence-chain.ts` on the same tree
 is the evaluator that Sections 10 and 21 describe (it emits
-`EP-AEC-EVALUATOR-07-v1` and has the receipt, key-resolution and per-fact
-result code those sections name), so the packet cannot land on main ahead of
-the code its Implementation Status describes. `feat/verify-aec-07-evaluator`
+`EP-AEC-EVALUATOR-07-v1`, or its declared successor `EP-AEC-EVALUATOR-08-v1`,
+and has the receipt, key-resolution and per-fact result code those sections
+name), so the packet cannot land on main ahead of the code its Implementation
+Status describes. -08 keeps those structures and changes only the
+requirement-expression algorithm, which Section 10 says needs a new revision. `feat/verify-aec-07-evaluator`
 is merged into this branch, and the check passes here.
 
 ## Reference implementation

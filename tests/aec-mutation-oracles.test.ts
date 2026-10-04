@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-import { __aecSecurityInternals, actionDigest } from '../packages/verify/src/evidence-chain.ts';
+import {
+  __aecSecurityInternals, actionDigest, compileAecRequirementExpression, evaluateAecRequirementExpression,
+} from '../packages/verify/src/evidence-chain.ts';
 import { __aecExecutionSecurityInternals } from '../packages/gate/aec-execution.js';
 import {
   __atomicEvidenceSecurityInternals,
@@ -207,6 +210,42 @@ describe('AEC verifier mutation oracles', () => {
       expect(evalRequirement(expression, satisfied)).toEqual({ valid: false, value: false });
     }
     expect(evalRequirement(`${'('.repeat(34)}a${')'.repeat(34)}`, satisfied)).toEqual({ valid: false, value: false });
+  });
+
+  it('matches every assertion of the frozen AEC -08 expression corpus', () => {
+    const corpus = JSON.parse(readFileSync(new URL('../conformance/vectors/aec-expression.v1.json', import.meta.url), 'utf8'));
+    for (const vector of corpus.vectors) {
+      const { expression, eligible_types: eligible } = vector.aec_expression;
+      expect(evaluateAecRequirementExpression(expression, eligible), vector.id).toStrictEqual(vector.expect);
+      const compiled = compileAecRequirementExpression(expression);
+      expect(compiled.valid, vector.id).toBe(vector.expect.syntax === 'VALID');
+      expect(compiled.invalid_class, vector.id).toBe(vector.expect.invalid_class);
+      expect(evalRequirement(expression, new Set(eligible)), vector.id)
+        .toEqual({ valid: vector.expect.syntax === 'VALID', value: vector.expect.value === true });
+    }
+  });
+
+  it('counts UTF-8 octets, classifies only complete identifier runs, and tells syntax from limit refusals', () => {
+    const { utf8Octets, lexAecExpression, parseAecExpression } = __aecSecurityInternals;
+    expect(utf8Octets('a')).toBe(1);
+    expect(utf8Octets('\u00a0')).toBe(2);
+    expect(utf8Octets('\u2028')).toBe(3);
+    expect(utf8Octets('\ud83d\ude00')).toBe(4);
+    expect(utf8Octets('\ud800')).toBe(3);
+    expect(utf8Octets('\udc00a')).toBe(4);
+    expect(lexAecExpression('aORb OR ORb').tokens.map((t) => t.kind)).toEqual(['identifier', 'operator', 'identifier']);
+    expect(lexAecExpression('a && b').tokens[1]).toEqual({ kind: 'operator', operator: 'AND', text: '&&' });
+    expect(lexAecExpression('a || b').tokens[1]).toEqual({ kind: 'operator', operator: 'OR', text: '||' });
+    expect(lexAecExpression(7)).toEqual({ ok: false, invalid_class: 'syntax', detail: 'not_a_string' });
+    expect(parseAecExpression('(a b)')).toEqual({ ok: false, invalid_class: 'syntax', detail: 'unexpected_token' });
+    expect(parseAecExpression('(a')).toEqual({ ok: false, invalid_class: 'syntax', detail: 'unclosed_group' });
+    expect(parseAecExpression('a OR')).toEqual({ ok: false, invalid_class: 'syntax', detail: 'unexpected_end' });
+    expect(parseAecExpression('a b')).toEqual({ ok: false, invalid_class: 'syntax', detail: 'trailing_input' });
+    expect(parseAecExpression(`${'('.repeat(33)}a`)).toEqual({ ok: false, invalid_class: 'limit', detail: 'depth_limit' });
+    expect(compileAecRequirementExpression(' ').detail).toBe('empty');
+    expect(compileAecRequirementExpression('a'.repeat(4097)).detail).toBe('length_limit');
+    expect(compileAecRequirementExpression(Array(129).fill('a').join(' OR ')).detail).toBe('token_limit');
+    expect(compileAecRequirementExpression('a!').detail).toBe('invalid_character');
   });
 });
 

@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { canonicalize } from '../packages/verify/index.js';
 import { strictParseGate } from '../conformance/runners/strict-json.mjs';
-import { LIVE_SUITE_FILES } from '../conformance/suites.mjs';
+import { LIVE_SUITE_FILES, PROFILE_SUITES } from '../conformance/suites.mjs';
 import {
   buildSuiteContract,
   compareResultRow,
@@ -164,6 +164,23 @@ for (const suiteRef of suiteRefs) {
   suites.push(manifestSuite);
 }
 
+// Profile suites run through the same three ports and result contract, but
+// are recorded apart from `suites` and `totals`: the live corpus totals are
+// pinned by the clean-room bundles and quoted by public claims, and a profile
+// suite covers only the contract its claim_scope names. Live catalog only.
+interface ManifestProfileSuite { path: string; sha256: string; vectors: number; claim_scope: string }
+const profileSuites: ManifestProfileSuite[] = [];
+if (!cleanRoom) {
+  for (const profile of PROFILE_SUITES as readonly { file: string; claim_scope: string }[]) {
+    const profilePath = `conformance/vectors/${profile.file}`;
+    const bytes = fs.readFileSync(path.resolve(ROOT, profilePath));
+    const suite = parseStrictJson(bytes.toString('utf8'), `profile suite ${profilePath}`) as Record<string, unknown>;
+    if (!Array.isArray(suite.vectors) || suite.vectors.length === 0) throw new Error(`profile suite has no vectors: ${profilePath}`);
+    if (typeof profile.claim_scope !== 'string' || !profile.claim_scope) throw new Error(`profile suite has no claim scope: ${profilePath}`);
+    profileSuites.push({ path: profilePath, sha256: sha256(bytes), vectors: suite.vectors.length, claim_scope: profile.claim_scope });
+  }
+}
+
 interface ImplementationResult {
   implementation_id: string;
   language: string;
@@ -173,13 +190,14 @@ interface ImplementationResult {
   suites: number;
   vectors: number;
   normalized_results_sha256: string;
+  profile_vectors?: number;
+  profile_normalized_results_sha256?: string;
   status: string;
 }
 
-const implementationResults: ImplementationResult[] = [];
-for (const implementation of implementations) {
+function runSuites(implementation: (typeof implementations)[number], suiteList: ManifestSuite[]): unknown[] {
   const normalized: unknown[] = [];
-  for (const suite of suites) {
+  for (const suite of suiteList) {
     const suitePath = path.resolve(ROOT, suite.path);
     const suiteFile = path.basename(suite.path);
     const executionPath = suite.execution_path
@@ -214,6 +232,13 @@ for (const implementation of implementations) {
     }
   }
   (normalized as any[]).sort((a: any, b: any) => a.suite.localeCompare(b.suite) || a.id.localeCompare(b.id));
+  return normalized;
+}
+
+const implementationResults: ImplementationResult[] = [];
+for (const implementation of implementations) {
+  const normalized = runSuites(implementation, suites);
+  const profileNormalized = profileSuites.length ? runSuites(implementation, profileSuites) : null;
   const runnerBytes = fs.readFileSync(implementation.runner);
   implementationResults.push({
     implementation_id: implementation.id,
@@ -224,6 +249,10 @@ for (const implementation of implementations) {
     suites: suites.length,
     vectors: normalized.length,
     normalized_results_sha256: sha256(Buffer.from(canonicalize(normalized), 'utf8')),
+    ...(profileNormalized ? {
+      profile_vectors: profileNormalized.length,
+      profile_normalized_results_sha256: sha256(Buffer.from(canonicalize(profileNormalized), 'utf8')),
+    } : {}),
     status: 'pass',
   });
 }
@@ -234,6 +263,7 @@ interface Manifest {
   vector_bundle: { version: string; path: string; sha256: string };
   suites: ManifestSuite[];
   totals: { suites: number; vectors: number; implementations: number };
+  profile_suites?: ManifestProfileSuite[];
   implementations: ImplementationResult[];
   manifest_sha256?: string;
 }
@@ -250,6 +280,7 @@ const manifest: Manifest = {
   },
   suites,
   totals: { suites: suites.length, vectors: vectorCount, implementations: implementationResults.length },
+  ...(profileSuites.length ? { profile_suites: profileSuites } : {}),
   implementations: implementationResults,
 };
 manifest.manifest_sha256 = sha256(Buffer.from(canonicalize(manifest as unknown), 'utf8'));
@@ -264,4 +295,4 @@ if (emitPath) {
   fs.writeFileSync(emitPath, output);
 }
 if (!check && !emitPath) process.stdout.write(output);
-console.error(`CONFORMANCE MANIFEST: PASS (${cleanRoom ? 'clean-room frozen' : 'live'}; ${suites.length} suites, ${vectorCount} vectors, ${implementationResults.length} one-team ports; sha256:${manifest.manifest_sha256})`);
+console.error(`CONFORMANCE MANIFEST: PASS (${cleanRoom ? 'clean-room frozen' : 'live'}; ${suites.length} suites, ${vectorCount} vectors, ${implementationResults.length} one-team ports${profileSuites.length ? `; profile suites outside the totals: ${profileSuites.map((suite) => `${path.basename(suite.path)} (${suite.vectors} vectors)`).join(', ')}` : ''}; sha256:${manifest.manifest_sha256})`);

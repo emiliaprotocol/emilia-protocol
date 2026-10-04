@@ -107,6 +107,7 @@
     "check:ae-challenge-03": "node scripts/check-ae-challenge-03.mjs",
     "check:ae-challenge-08": "node scripts/check-ae-challenge-08.mjs",
     "check:aec-07": "node scripts/check-aec-07.mjs",
+    "check:aec-08": "node scripts/check-aec-08.mjs",
     "check:demo-key": "node scripts/check-demo-key-isolation.js",
     "check:admissibility": "node scripts/check-admissibility-registry.mjs",
     "audit:root": "node scripts/audit-root.mjs",

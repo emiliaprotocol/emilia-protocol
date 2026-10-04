@@ -4,7 +4,7 @@
   "vector_bundle": {
     "version": "EP-LIVE-CONFORMANCE-CATALOG-v1",
     "path": "conformance/suites.mjs",
-    "sha256": "ee1021eb36de8e50448d9f12f00d16f3e24561276c9a42241e88178d5daa0d3e"
+    "sha256": "bd3d62e7bd186976d04acbdfb45aba1091398799ee500beb3d85b8d679a9f8df"
   },
   "suites": [
     {
@@ -120,6 +120,14 @@
     "vectors": 340,
     "implementations": 3
   },
+  "profile_suites": [
+    {
+      "path": "conformance/vectors/aec-expression.v1.json",
+      "sha256": "927e3663299bd6c11836d4ad22a6dd398b85d16478100921bf68cf03ed459d4b",
+      "vectors": 104,
+      "claim_scope": "AEC -08 requirement-expression evaluation (EP-AEC-EVALUATOR-08-v1 expression contract) only. JavaScript, Python and Go agreement here is not conformance to the structured -07/-08 requirement and replay contract, which only the JavaScript createAuthorizationChainEvaluator implements."
+    }
+  ],
   "implementations": [
     {
       "implementation_id": "emilia-javascript-reference",
@@ -127,16 +135,18 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run-js.mjs",
-        "sha256": "7452eb7b6b91ac9a1387a63eb8a0bc299c0597371945cb8aea0096980d039a7b"
+        "sha256": "08c372d7d90ffe231a0967663b4ccd1e18dc86b8d7efb4d001fecf7c7e4397e9"
       },
       "source": {
-        "files": 347,
-        "bytes": 6764712,
-        "tree_sha256": "b07d3f610c4c223d41180a0c9fecc52700fd0bb2ce08f321f7ed8488769463dc"
+        "files": 349,
+        "bytes": 6845822,
+        "tree_sha256": "a9952e033fc897fd5e3827033a981a028ed4c9f4e42b9077c359a1e39ad75e26"
       },
       "suites": 21,
       "vectors": 340,
       "normalized_results_sha256": "5f6a1e6b8690b6b5f8c1060c4b5580278438c5ec803f69432c6941c5aeea2c9e",
+      "profile_vectors": 104,
+      "profile_normalized_results_sha256": "9e4727bbe4ab188802b102dc06680c3e61df06d853dc6e61539a195be7939c97",
       "status": "pass"
     },
     {
@@ -145,16 +155,18 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run_py.py",
-        "sha256": "a2511c5f7efae51d0d138e1b46535adeddcffd4d70e03656f708050b6ff2eb81"
+        "sha256": "60ea1f01b05c03975fc4226d5889c808a203fc6c85e010a46e5273478476b3a0"
       },
       "source": {
         "files": 3,
-        "bytes": 240018,
-        "tree_sha256": "0b0b29efef1acc7cb6f5e2df7aab5186fb27e694fd918d919571af8f0aab1621"
+        "bytes": 245237,
+        "tree_sha256": "732968b9861b94d56296f2b3d1748d0ecf4484d1114a88c03ce72c4b9942e652"
       },
       "suites": 21,
       "vectors": 340,
       "normalized_results_sha256": "ac08d6eb21ffbea816e38e64bc2b58a8811f692cef84b01a47c6127d0a27ec01",
+      "profile_vectors": 104,
+      "profile_normalized_results_sha256": "9e4727bbe4ab188802b102dc06680c3e61df06d853dc6e61539a195be7939c97",
       "status": "pass"
     },
     {
@@ -163,18 +175,20 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "packages/go-verify/cmd/conformance/main.go",
-        "sha256": "0f97aa28e8ab5b1045d6d71ad5b4ecf96673c4adb27115d69e3b69336f5ef85d"
+        "sha256": "3a7a6614341daeea6c00358fa71feb521040a7a1121ea19065b869ac4675b143"
       },
       "source": {
-        "files": 49,
-        "bytes": 481665,
-        "tree_sha256": "241e5aed6fa201c312998223f85a3dc6c1caa3e103f460ca40e5b9a7ecbb31d1"
+        "files": 50,
+        "bytes": 494979,
+        "tree_sha256": "48948fa0ec9b6756687cf1907e4c2943450231da344e828c992fe876d4da00ce"
       },
       "suites": 21,
       "vectors": 340,
       "normalized_results_sha256": "ac08d6eb21ffbea816e38e64bc2b58a8811f692cef84b01a47c6127d0a27ec01",
+      "profile_vectors": 104,
+      "profile_normalized_results_sha256": "9e4727bbe4ab188802b102dc06680c3e61df06d853dc6e61539a195be7939c97",
       "status": "pass"
     }
   ],
-  "manifest_sha256": "84485718a008d0bdbf842c5a367cd9051b1b0b46914051be6f1e9a6484b2ae99"
+  "manifest_sha256": "38aa5959ba22783a652c89f0489e3181a94d91deb9c1b93051f7baa655166e59"
 }

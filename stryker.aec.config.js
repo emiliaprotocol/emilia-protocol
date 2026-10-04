@@ -18,7 +18,7 @@ const config = {
     // These moved from hand-written .js to compiled TypeScript (src/*.ts ->
     // dist/*.js, with a re-export shim at the old .js path). Ranges
     // re-derived line-for-line against the real src/*.ts sources.
-    'packages/verify/src/evidence-chain.ts:57-536',
+    'packages/verify/src/evidence-chain.ts:57-716',
     'packages/gate/src/aec-execution.ts:38-318',
     'packages/gate/src/evidence.ts:27-40',
     'packages/gate/src/evidence.ts:98-307',

@@ -60,7 +60,7 @@
           },
           {
             "path": "packages/verify/package.json",
-            "sha256": "216719b1447eff9970204b299febe1538b61a547e83e2d992c036a1da54220ee"
+            "sha256": "67df2f54f971591396e896be9dff0d49388eed73b9574a92df7f68f6caaba0b5"
           },
           {
             "path": "packages/verify/src/aadp-authorization-artifact.ts",
@@ -73,8 +73,8 @@
         ]
       }
     },
-    "source_lock_file_sha256": "sha256:92de91789ca758211024c63ee100885c09ffd919872305fcc6ffc1ce8a1bb1df",
-    "source_lock_canonical_digest": "sha256:404ea017560975622795b1267d5d77afd94b2cae0a204ebb5e96517b4116443c",
+    "source_lock_file_sha256": "sha256:ef2a2fee6c394919090783fa602a3141ef8aca87ab3eee29436c4a5a58c6b9fe",
+    "source_lock_canonical_digest": "sha256:5b3e18c1b747de41bc1d2dd7d14a8c1b402c97cfa2502e417e5b7ed0d8dfd3a7",
     "aadp": {
       "draft": "draft-saha-aadp-01",
       "implementation_kind": "draft-derived-bounded-lifecycle-model",
@@ -438,8 +438,8 @@
       "claim": "the deterministic report binds every source-locked hash",
       "passed": true,
       "actual": {
-        "source_lock_file_sha256": "sha256:92de91789ca758211024c63ee100885c09ffd919872305fcc6ffc1ce8a1bb1df",
-        "source_lock_canonical_digest": "sha256:404ea017560975622795b1267d5d77afd94b2cae0a204ebb5e96517b4116443c",
+        "source_lock_file_sha256": "sha256:ef2a2fee6c394919090783fa602a3141ef8aca87ab3eee29436c4a5a58c6b9fe",
+        "source_lock_canonical_digest": "sha256:5b3e18c1b747de41bc1d2dd7d14a8c1b402c97cfa2502e417e5b7ed0d8dfd3a7",
         "hashes": [
           "ba6d9db982b23f642227b5a8f9f68589d0f3692c2e97adbfa2ac8a18792d8db8",
           "72b90df3c5e45386442e548eaf565c7049b6260842711db3354ce90271dac081",
@@ -447,7 +447,7 @@
           "25c03b4e90b63cc5eb074b317d502dcd5b6bc3b218cd55eee9657b76ae21e20b",
           "c0c01956b5ce064e2d7b868c7d84813425e69ce819efb4e374fce986937c76f4",
           "36b8bbb56579bb0db1f5f5d60a5532b0ff3f5d508273c84a905c379dd8d5da20",
-          "216719b1447eff9970204b299febe1538b61a547e83e2d992c036a1da54220ee",
+          "67df2f54f971591396e896be9dff0d49388eed73b9574a92df7f68f6caaba0b5",
           "90be1bb9fa540f0777b07753d9b841f6302b9ed52b9b7947abd0eeddadc32ed9",
           "6360e1e8b6ef01765b467c5ff35c18998de8458c21370f33987242ea5e8a0062"
         ],
@@ -455,5 +455,5 @@
       }
     }
   ],
-  "report_digest": "sha256:524d75be22c2001b63e3ceacb8b9246a6bb3358bffd5113abd3aed0c4a3aaf95"
+  "report_digest": "sha256:d3678a8b4ab53edd7fb3bc8cc3c54a7c47e08a5ea65b57ae683fbff685349f1c"
 }
